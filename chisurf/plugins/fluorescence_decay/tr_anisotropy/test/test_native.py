@@ -200,3 +200,26 @@ def test_load_example_is_cached_and_releases_the_tour_step(tmp_path):
     assert app.tour.awaiting
     app.load_example()
     assert not app.tour.awaiting and app.model.files_ready()
+
+
+def test_created_fits_can_be_run_as_created(tmp_path, monkeypatch):
+    """*Create fits* then *Fit*, with nothing set by hand (found 2026-10-11).
+
+    The created fits had the range (0, 0), so the user's Fit failed with
+    "9 parameters against 0 residuals"; the test above set the range itself.
+    """
+    import chisurf
+
+    monkeypatch.setattr(chisurf, "fits", [])
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    model = NativeAnisotropyModel()
+    model.example_folder = tmp_path
+    model.load_example()
+    assert model.load_data()
+    vv, vh, global_fit = model.create_fits()
+    for fit in (vv, vh, global_fit):
+        xmin, xmax = fit.fit_range
+        assert xmax - xmin > 100, (fit.name, fit.fit_range)
+    chi2_start = global_fit.chi2r
+    global_fit.run()
+    assert global_fit.chi2r < chi2_start / 100

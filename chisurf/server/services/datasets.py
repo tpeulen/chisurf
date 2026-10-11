@@ -286,8 +286,8 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
         if not isinstance(members, list) or not members:
             raise ValueError("cached group has no members")
         prepared = [_prepare_cached_dataset(member, seen) for member in members]
-        if any(member["kind"] != "curve" for member in prepared):
-            raise ValueError("cached groups contain curve records only")
+        if any(member["kind"] not in {"curve", "structure"} for member in prepared):
+            raise ValueError("cached groups contain curve or structure records only")
         uid = payload.get("uid")
         if not isinstance(uid, str) or not uid:
             raise ValueError("cached group UID is missing")
@@ -304,11 +304,16 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
             raise ValueError("cached group metadata contradicts its UID")
         _scientific_value(metadata)
         return {**payload, "members": prepared, "metadata": metadata}
-    if kind not in {"curve", "legacy"}:
+    if kind not in {"curve", "structure", "legacy"}:
         raise ValueError("unsupported cached dataset kind")
     arrays = {}
     raw_arrays = payload.get("arrays", {}) if kind == "curve" else payload
     fields = ("x", "y", "ex", "ey", "mask") if kind == "curve" else ("x", "y", "ex", "ey")
+    if kind == "structure":
+        # Atoms, not arrays: the structural snapshot of the project codec.
+        if payload.get("arrays") or not isinstance(payload.get("structure"), dict):
+            raise ValueError("cached structure must carry its snapshot and no curve arrays")
+        fields = ()
     for field in fields:
         if field not in raw_arrays:
             if kind == "curve" or field in {"x", "y"}:
@@ -324,14 +329,17 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
                 continue
             array = np.asarray(values, dtype=float)
         allowed_kinds = "biuf" if field == "mask" else "iuf"
+        # A saved curve snapshot is finite by construction; the legacy x/y/ex/ey vectors are
+        # what a client sends for measured data, which legitimately carries NaN and Inf (they
+        # are masked or sanitised on the way out, never refused on the way in).
         if (
             array.dtype.kind not in allowed_kinds
             or array.ndim != 1
-            or not np.all(np.isfinite(array))
+            or (kind != "legacy" and not np.all(np.isfinite(array)))
         ):
             raise ValueError("cached arrays must be finite numeric vectors")
         arrays[field] = array.copy()
-    if len({len(array) for array in arrays.values()}) != 1:
+    if arrays and len({len(array) for array in arrays.values()}) != 1:
         raise ValueError("cached arrays have different lengths")
     metadata = _restore_scientific_value(payload.get("metadata", {}))
     if not isinstance(metadata, dict):
@@ -398,7 +406,9 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
             raise ValueError("cached reader dependency identity differs")
     elif inputs:
         raise ValueError("cached reader inputs have no owning reader")
-    if kind == "curve" and (not isinstance(payload.get("uid"), str) or not payload["uid"]):
+    if kind in {"curve", "structure"} and (
+        not isinstance(payload.get("uid"), str) or not payload["uid"]
+    ):
         raise ValueError("cached curve UID is missing")
     experiment = payload.get("experiment")
     if experiment is not None:
@@ -426,8 +436,41 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
     }
 
 
-def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
-    """Reconstruct validated data using fixed domain types and the trusted reader codec."""
+def _live_identities(state: SessionState) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The experiments and readers the session's datasets already hold, by UID."""
+    experiments: dict[str, Any] = {}
+    readers: dict[str, Any] = {}
+    for dataset in list(state.datasets):
+        members = _dataset_members(dataset) or []
+        for item in (dataset, *members):
+            experiment = getattr(item, "experiment", None)
+            uid = str(getattr(experiment, "unique_identifier", "") or "")
+            if uid:
+                experiments.setdefault(uid, experiment)
+            reader = getattr(item, "data_reader", None)
+            uid = str(getattr(reader, "unique_identifier", "") or "")
+            if uid:
+                readers.setdefault(uid, reader)
+    return experiments, readers
+
+
+def _restore_cached_dataset(
+    prepared: dict[str, Any],
+    live: tuple[dict[str, Any], dict[str, Any]] | None = None,
+) -> Any:
+    """Reconstruct validated data using fixed domain types and the trusted reader codec.
+
+    Parameters
+    ----------
+    prepared : dict
+        A record :func:`_prepare_cached_dataset` validated.
+    live : tuple of dict, optional
+        The experiments and readers the session already holds, by UID
+        (:func:`_live_identities`). A record naming one of them binds to that
+        object, so a reader that read two files is one reader in the session,
+        as it is in the client that read them; its configuration becomes the
+        one this record carries (the client's reader as it is now).
+    """
     from chisurf.core.data import (
         DataCurve,
         DataCurveGroup,
@@ -436,11 +479,17 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
         ExperimentDataGroup,
     )
     from chisurf.core.experiments.core.experiment import Experiment
-    from chisurf.core.project.session import _resolve_model, _restore_reader, restore_auxiliary
+    from chisurf.core.project.session import (
+        _resolve_model,
+        _restore_reader,
+        apply_reader_fields,
+        restore_auxiliary,
+    )
 
+    live_experiments, live_readers = live if live is not None else ({}, {})
     readers: dict[str, Any] = {}
     curves: dict[str, Any] = {}
-    experiments: dict[str, Any] = {}
+    experiments: dict[str, Any] = dict(live_experiments)
 
     def construct(record):
         """Restore the known curve/group and reader-IRF edges without reading data."""
@@ -482,17 +531,36 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
                     experiment.add_model_class(_resolve_model(model_state))
                 experiments[state["uid"]] = experiment
             experiment = experiments[state["uid"]]
-        reader = _restore_reader(record.get("reader"), experiment, readers)
+        reader_state = record.get("reader")
+        bound = live_readers.get(reader_state["uid"]) if reader_state else None
+        if bound is not None and (
+            (type(bound).__module__, type(bound).__name__)
+            == (reader_state["module"], reader_state["class"])
+            and getattr(bound, "experiment", None) is experiment
+        ):
+            apply_reader_fields(bound, reader_state.get("state") or {})
+            reader = bound
+        else:
+            reader = _restore_reader(reader_state, experiment, readers)
         for role, source in record["reader_inputs"].items():
             setattr(reader, role, construct(source))
-        curve = DataCurve(
-            **record["arrays"],
-            name=record.get("name", "dataset"),
-            unique_identifier=uid,
-            experiment=experiment,
-            data_reader=reader,
-            setup=reader,
-        )
+        if record["kind"] == "structure":
+            from chisurf.core.models.structure.snapshot import restore_structure
+
+            curve = restore_structure(record["structure"])
+            if curve is None or str(curve.unique_identifier) != uid:
+                raise ValueError("cached structure identity contradicts its UID")
+            curve.experiment = experiment
+            curve.data_reader = reader
+        else:
+            curve = DataCurve(
+                **record["arrays"],
+                name=record.get("name", "dataset"),
+                unique_identifier=uid,
+                experiment=experiment,
+                data_reader=reader,
+                setup=reader,
+            )
         curve.filename = record.get("filename", "")
         curve.meta_data.update(record["metadata"])
         restore_auxiliary(curve, record.get("auxiliary") or {})
@@ -556,7 +624,7 @@ def add_dataset(
     if curve_data is not None:
         try:
             prepared = _prepare_cached_dataset(curve_data)
-            ds = _restore_cached_dataset(prepared)
+            ds = _restore_cached_dataset(prepared, _live_identities(state))
             if prepared["kind"] == "legacy" and name:
                 ds.name = str(name)
             state.add_dataset(ds)

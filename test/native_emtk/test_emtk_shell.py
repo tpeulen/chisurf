@@ -148,6 +148,9 @@ def test_real_plugins_render_inside_the_shell():
     shell = EmtkShellApp()
     driver = Driver(shell, size=(1400, 900))
     driver.frame(2)
+    # The Tools tree puts Help last, below the dock's fold: find it with the filter, as a user does.
+    shell.filter = "about"
+    driver.frame(2)
     driver.click("tools.about")
     shell.open_plugin("calculators")
     _settle(driver, shell, timeout=120.0)

@@ -86,12 +86,12 @@ class MEMJobs:
 
         while not self._queue.empty():
             line = self._queue.get_nowait()
-            self.output.append(line)
             try:
                 item = json.loads(line)
                 self.progress = (int(item["done"]), int(item["total"]))
+                continue  # the worker's progress record: shown as "Progress: i/n", not as text
             except (ValueError, KeyError, TypeError):
-                pass
+                self.output.append(line)
         if self.process is None or self.process.poll() is None:
             return False
         process, self.process = self.process, None
@@ -100,6 +100,7 @@ class MEMJobs:
         if process.returncode == 0 and self._result_path.is_file():
             with self._result_path.open("rb") as stream:
                 result = pickle.load(stream)
+            status = f"{self.kind} completed."
             if self.kind == "run":
                 self.model.result = result
                 self.model.result_snapshot = self.snapshot
@@ -109,14 +110,23 @@ class MEMJobs:
                 self.model.settings.irf_background = float(result["irf_background"])
                 if "x_donly" in result:
                     self.model.settings.x_donly = float(result["x_donly"])
+                status = (
+                    f"MEM done: chi2 = {float(result['chisq']):.4g} at nu = {float(result['nu']):.4g}"
+                    + ("." if result.get("converged", True) else " (not converged: raise MEM iterations).")
+                )
             elif self.kind == "lcurve":
                 self.model.lcurve = result
                 corner = result["corner_index"]
                 if corner is not None:
                     self.model.settings.nu = float(10.0 ** result["log10_nu"][corner])
+                    status = (
+                        f"L-curve corner at nu = {self.model.settings.nu:.4g} (set): press Run MEM to use it."
+                    )
+                else:
+                    status = "L-curve has no corner in this span: widen it and sweep again."
             else:
                 self.model.samples = result
-            self.model.status = f"{self.kind} completed."
+            self.model.status = status
         else:
             while not self._queue.empty():
                 self.output.append(self._queue.get_nowait())

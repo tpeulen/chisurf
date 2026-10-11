@@ -2072,9 +2072,9 @@ class HelpGui:
                     "copy", id=f"cp_{idx}", tooltip=tr("Copy this code block to the clipboard")
                 ):
                     try:
-                        from emtk.clipboard import set_clipboard_text
+                        from emtk.clipboard import copy as copy_to_clipboard
 
-                        set_clipboard_text(block.text)
+                        copy_to_clipboard(block.text)
                     except Exception:
                         pass
 

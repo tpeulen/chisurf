@@ -8,7 +8,10 @@ What this slice provides:
 * a **menu bar** built from the plugin manifests: ``display_name`` is the menu path (``"Spectroscopy:Correlation:FCS"``
   sits under *Spectroscopy*, group *Correlation*), ``menu_hidden`` plugins are left out, exactly as the Qt plugin
   menus read it;
-* a **Tools** dock listing the same entries with a filter;
+* the **ribbon** under it (:mod:`chisurf.emtk.shell_ribbon`): the Qt ribbon's tabs, groups and buttons from the same
+  manifests, the *File* and *Main* tabs' session groups, a search field, folding, and the help and language buttons;
+* a **Tools** dock listing the same entries as a tree with a filter; every plugin row, menu item and ribbon button
+  shows the plugin's manifest icon;
 * every opened plugin as a **dock window** of one :class:`emtk.docking.DockManager` (tabs in the centre region by
   default; it can be floated, re-docked, split and closed like any dock). The plugin's own ``entrypoints.emtk`` app is
   made on a worker thread (:class:`~chisurf.emtk.background_build.BackgroundBuild`) and drawn into its window with
@@ -44,6 +47,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
+from chisurf.emtk.shell_ribbon import ACTION_ICONS
 from chisurf.emtk.shell_session import MenuAction, ShellProject
 
 #: Settings id of the shell's own layout and preferences (``<settings>/emtk/emtk_shell.*.json``).
@@ -84,6 +88,10 @@ class MenuEntry:
     description: str = ""
     experimental: bool = False
     deprecated: bool = False
+    #: The manifest's pictogram.
+    icon: str = ""
+    #: A command-line tool: listed only in experimental mode, as the Qt ribbon does.
+    cli_only: bool = False
 
     @property
     def label(self) -> str:
@@ -131,6 +139,8 @@ def menu_entries(catalog: dict[str, dict] | None = None) -> list[MenuEntry]:
                 str(data.get("description") or "").strip().split("\n\n")[0],
                 bool(data.get("experimental")),
                 bool(data.get("deprecated")),
+                str(data.get("icon") or ""),
+                bool(data.get("cli_only")),
             )
         )
     return sorted(entries, key=lambda entry: tuple(part.casefold() for part in entry.path))
@@ -203,6 +213,14 @@ class EmtkShellApp(ImApp):
     ) -> None:
         self.entries = menu_entries(catalog)
         self.by_id = {entry.plugin_id: entry for entry in self.entries}
+        from chisurf.emtk.shell_ribbon import ShellRibbon, menu_tree
+
+        #: ``{menu: {caption: [MenuEntry]}}``: the plugin menus and the Tools tree, in ribbon order.
+        self.menus = menu_tree(self.entries)
+        self.ribbon = ShellRibbon(self)
+        #: The canvas size of the last frame (what *Screenshot* copies).
+        self._canvas = (1400, 900)
+        self._screenshot_pending = False
         self.loader = loader or _default_loader
         self.window_size = (1400, 900)
         self.item_rects: dict[str, tuple] = {}
@@ -353,10 +371,14 @@ class EmtkShellApp(ImApp):
         for hosted in self.hosted.values():
             hosted.box = None
         self._drawn = {}
+        self._canvas = (int(w), int(h))
         try:
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
+        if self._screenshot_pending:
+            self._screenshot_pending = False
+            self._copy_screenshot()
         self._closed_by_user()
         self.project.guard_fit_windows()
         self.data.closed_by_user()
@@ -365,7 +387,8 @@ class EmtkShellApp(ImApp):
     def render(self) -> None:
         width, height = im.get_main_viewport().size
         self._draw_menu_bar(width)
-        self.docks.draw((0.0, MENU_BAR, width, max(1.0, height - MENU_BAR)))
+        top = MENU_BAR + self._draw_ribbon(width)
+        self.docks.draw((0.0, top, width, max(1.0, height - top)))
         self.data.draw_file_dialog((0.0, 0.0, width, height))
         self.console.draw_overlays((0.0, 0.0, width, height))
         self.project.draw((0.0, 0.0, width, height))
@@ -382,6 +405,18 @@ class EmtkShellApp(ImApp):
         self.draw_child(painter, app, *box, local_coordinates=True)
         self._drawn[child_id] = (window_key, app, box)
 
+    def _draw_ribbon(self, width: float) -> float:
+        """The ribbon under the menu bar; returns its height."""
+        height = self.ribbon.height()
+        im.set_next_window_pos((0.0, MENU_BAR), im.Cond.ALWAYS)
+        im.set_next_window_size((width, height), im.Cond.ALWAYS)
+        flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        if im.begin("shell ribbon", flags=flags):
+            self.ribbon.draw((0.0, MENU_BAR, width, height))
+            self._menu_open = self._menu_open or self.ribbon.menu_open()
+        im.end()
+        return height
+
     def _draw_menu_bar(self, width: float) -> None:
         im.set_next_window_pos((0.0, 0.0), im.Cond.ALWAYS)
         im.set_next_window_size((width, MENU_BAR), im.Cond.ALWAYS)
@@ -389,19 +424,22 @@ class EmtkShellApp(ImApp):
         flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         if im.begin("shell menu bar", flags=flags):
             im.begin_menu_bar()
-            plugins: dict[str, list[MenuEntry]] = {}
-            for entry in self.entries:
-                plugins.setdefault(tr(entry.menu), []).append(entry)
+            plugins = {tr(menu): groups for menu, groups in self.menus.items()}
             session = self.session_menus()
-            # File first, then the plugin menus, then View and Settings, as the Qt menu bar; a plugin
-            # menu with a session menu's title (the File tools under "File") joins that menu.
-            order = [session[0]] + [(menu, []) for menu in plugins if menu not in dict(session)]
+            # File first, then the plugin menus, then View, Macro and Settings, and Help last; a
+            # plugin menu with a session menu's title (the File tools under "File") joins that menu.
+            help_menu = tr("Help")
+            order = [session[0]] + [
+                (menu, []) for menu in plugins if menu not in dict(session) and menu != help_menu
+            ]
             order += session[1:]
+            if help_menu in plugins:
+                order.append((help_menu, []))
             for menu, actions in order:
                 if im.begin_menu(menu):
                     self._menu_open = True
                     self._draw_actions(actions)
-                    self._draw_plugin_entries(plugins.get(menu, []))
+                    self._draw_plugin_entries(plugins.get(menu, {}), separate=bool(actions))
                     im.end_menu()
                 self.item_rects["menu." + menu] = im.get_item_rect()
             im.end_menu_bar()
@@ -419,23 +457,28 @@ class EmtkShellApp(ImApp):
                     im.separator()
             group = action.group
             selected = bool(action.checked()) if action.checked is not None else False
-            if im.menu_item(action.label, action.shortcut, selected=selected, enabled=action.enabled()):
+            icon = ACTION_ICONS.get(action.key) or (ACTION_ICONS["recent"] if action.key.startswith("recent.") else None)
+            if im.menu_item(action.label, action.shortcut, selected=selected, enabled=action.enabled(),
+                            icon=icon):
                 action.run()
             self.item_rects[f"menu.{action.key}"] = im.get_item_rect()
             if action.description:
                 im.set_item_tooltip(action.description)
 
-    def _draw_plugin_entries(self, entries: list[MenuEntry]) -> None:
-        """The plugins of one menu, grouped under disabled caption rows."""
-        group = None
-        for entry in entries:
-            if entry.group != group and entry.group:
-                # A disabled row is the section caption; ``separator_text`` became a
-                # popup row only in emtk adee696, and this shell runs on older pins too.
-                im.menu_item(tr(entry.group), enabled=False)
-            group = entry.group
-            if im.menu_item(tr(entry.label), selected=entry.plugin_id in self.hosted):
-                self.open_plugin(entry.plugin_id)
+    def _draw_plugin_entries(self, groups: dict[str, list[MenuEntry]], separate: bool = False) -> None:
+        """The plugins of one menu, each group a captioned section, each row with the plugin's icon."""
+        from chisurf.emtk.shell_ribbon import entry_label
+
+        for caption, entries in groups.items():
+            if caption:
+                im.separator_text(tr(caption))
+            elif separate:
+                im.separator()
+            separate = True
+            for entry in entries:
+                if im.menu_item(entry_label(entry), selected=entry.plugin_id in self.hosted,
+                                icon=entry.icon or None):
+                    self.open_plugin(entry.plugin_id)
 
     # ── session menus ─────────────────────────────────────────────────────
 
@@ -638,6 +681,30 @@ class EmtkShellApp(ImApp):
             self.docks.undock(key, (offset + 280.0, offset + MENU_BAR, width * 0.5, height * 0.5))
             self.docks.raise_window(key)
 
+    def window_actions(self) -> list[MenuAction]:
+        """The Main tab's own window actions that no menu carries (*Screenshot*)."""
+        return [
+            MenuAction("screenshot", tr("Screenshot"), self.request_screenshot, "", "",
+                       tr("Copy a picture of the window to the clipboard.")),
+        ]
+
+    def request_screenshot(self) -> None:
+        """*Screenshot*: copy the window to the clipboard once the frame that asked has ended."""
+        self._screenshot_pending = True
+        self.request_frame()
+
+    def _copy_screenshot(self) -> None:
+        from emtk.clipboard import copy_image
+        from emtk.export import png_bytes
+
+        try:
+            copy_image(png_bytes(self, size=self._canvas, frames=1))
+        except Exception:  # noqa: BLE001 - a failed grab is reported, the shell keeps running
+            _log.exception("the screenshot failed")
+            self.status = tr("Screenshot failed: the window could not be grabbed.")
+            return
+        self.status = tr("Screenshot copied to clipboard.")
+
     def close_request(self) -> bool:
         """The window's close button: close only after the unsaved-changes question (asked once)."""
         return self.project.request_quit()
@@ -645,28 +712,49 @@ class EmtkShellApp(ImApp):
     # ── docks ─────────────────────────────────────────────────────────────
 
     def _draw_tools(self, box) -> None:
+        """The Tools tree: one section per menu, its groups as captions, each tool with its icon."""
+        from chisurf.emtk.shell_ribbon import entry_label, entry_tooltip
+
         changed, value = im.input_text_with_hint("##tool filter", self.filter, tr("Filter tools"))
         if changed:
             self.filter = value
         self.item_rects["tools.filter"] = im.get_item_rect()
-        needle = self.filter.casefold().strip()
-        menu = None
-        for entry in self.entries:
-            text = " ".join(entry.path).casefold()
-            if needle and needle not in text and needle not in entry.plugin_id:
+        words = self.filter.casefold().split()
+
+        def matches(entry: MenuEntry) -> bool:
+            text = " ".join([*entry.path, *map(tr, entry.path), entry.plugin_id]).casefold()
+            return all(word in text for word in words)
+
+        shown = 0
+        for menu, groups in self.menus.items():
+            found = {caption: [e for e in entries if matches(e)] for caption, entries in groups.items()}
+            found = {caption: entries for caption, entries in found.items() if entries}
+            if not found:
                 continue
-            if entry.menu != menu:
-                im.separator_text(tr(entry.menu))
-                menu = entry.menu
-            label = tr(entry.label) if not entry.group else f"{tr(entry.group)} › {tr(entry.label)}"
-            if entry.experimental:
-                label = "⚠ " + label
-            if im.selectable(f"{label}##{entry.plugin_id}", entry.plugin_id in self.hosted):
-                self.open_plugin(entry.plugin_id)
-            self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
-            im.set_item_tooltip(
-                tr(entry.description) if entry.description else tr("Open {name}").format(name=label)
-            )
+            # A filter opens every section that has a match; otherwise the user's clicks own it.
+            is_open = im.collapsing_header(f"{tr(menu)}##tools.{menu}", True if words else 32)
+            self.item_rects[f"tools.menu.{menu}"] = im.get_item_rect()
+            if not is_open:
+                continue
+            for caption, entries in found.items():
+                im.indent()
+                if caption:
+                    im.text_disabled(tr(caption))
+                    self.item_rects[f"tools.group.{menu}.{caption}"] = im.get_item_rect()
+                    im.indent()
+                for entry in entries:
+                    shown += 1
+                    label = entry_label(entry)
+                    if im.selectable(f"{label}##{entry.plugin_id}", entry.plugin_id in self.hosted,
+                                     icon=entry.icon or None):
+                        self.open_plugin(entry.plugin_id)
+                    self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
+                    im.set_item_tooltip(entry_tooltip(entry))
+                if caption:
+                    im.unindent()
+                im.unindent()
+        if words and not shown:
+            im.text_disabled(tr("No tool matches the filter."))
 
     def _draw_start(self, box) -> None:
         im.text_unformatted(tr("ChiSurf"))

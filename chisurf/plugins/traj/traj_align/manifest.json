@@ -2,6 +2,7 @@
   "id": "traj_align",
   "version": "1.0.0",
   "display_name": "Structure:Trajectory:Align",
+  "icon": "📐",
   "description": "Align molecular dynamics trajectories to a reference frame or structure.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Structure", "Trajectory"],

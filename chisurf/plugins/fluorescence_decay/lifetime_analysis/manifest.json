@@ -2,6 +2,7 @@
   "id": "lifetime_analysis",
   "version": "1.0.0",
   "display_name": "Spectroscopy:Decay:Decay Analysis",
+  "icon": "📉",
   "description": "Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator.",
   "authors": [
     "Thomas-Otavio Peulen"

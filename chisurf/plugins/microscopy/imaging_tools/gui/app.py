@@ -14,6 +14,7 @@ from emtk.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.plugin_icons import entry_icon
 from chisurf.plugins.calculator.hub.gui.app import CalculatorHubApp
+from chisurf.plugins.core.setup_channel_definition.gui.model import default_settings
 
 from .client import DetectorSetupClient
 
@@ -169,7 +170,9 @@ class ImagingToolsApp(CalculatorHubApp):
         self.selected = "browser"
         self.search = ""
         self.status = "Ready"
-        self.setup = copy.deepcopy(self.client.get_current())
+        # Without a live or last-used definition the tools use what Setup shows a new user (its defaults), not a
+        # ch-0 fallback window that Setup never displays.
+        self.setup = copy.deepcopy(self.client.get_current()) or default_settings()
         self._pipeline = {"source": "", "hdf5": ""}
         self._calibration = {}
         self._saved_children = {}
@@ -272,6 +275,17 @@ class ImagingToolsApp(CalculatorHubApp):
             restore = getattr(child, "restore_settings", None)
             if restore:
                 restore(copy.deepcopy(self._saved_children[role]))
+        if role != "setup":
+            # The shared detector setup and calibration reach every tool as it is built, also one the background
+            # precompute builds before it is ever opened; otherwise it computes on the ch-0 fallback window and
+            # keeps that result when opened later (opening an existing tool applies no context).
+            for method, payload in (
+                ("apply_setup_settings", self.setup),
+                ("apply_calibration", self._calibration),
+            ):
+                apply = getattr(child, method, None)
+                if callable(apply) and payload:
+                    apply(copy.deepcopy(payload))
         return child
 
     select = goto_role  # the hub base's name for it
@@ -390,10 +404,16 @@ class ImagingToolsApp(CalculatorHubApp):
         """Deliver the results of background jobs; a tool that is not on screen never draws, so nobody else would."""
         for child in self.children.values():
             job = getattr(child, "job", None)
-            if job is not None and job.busy and callable(getattr(job, "poll", None)):
+            if job is None:
+                continue
+            if job.busy and callable(getattr(job, "poll", None)):
                 job.poll()
-                if hasattr(child, "model"):
-                    child.model.busy = job.busy
+            # Mirror the job into ``model.busy`` in both directions. Setting it only while the job ran left it True for
+            # good when the open tool's own frame delivered the result (the Spot Finder's Load example / Detect): every
+            # later precompute then waited on a tool that was idle, and Run all stalled.
+            model = getattr(child, "model", None)
+            if model is not None and (job.busy or getattr(model, "busy", False)):
+                model.busy = job.busy
 
     def animating(self):
         return bool(super().animating() or self._precompute_queue or self._precomputing)
@@ -727,8 +747,13 @@ class ImagingToolsApp(CalculatorHubApp):
         self._precompute_tick()
 
     def on_files_dropped(self, paths):
-        handler = getattr(self.child, "on_files_dropped", None)
-        return bool(handler and handler(paths))
+        # A tool answers drops under either hook name of the emtk host contract (the pixel steps, Drift, Resolution,
+        # Tracking and Colocalization define ``files_dropped``; the CLSM tools ``on_files_dropped``).
+        for name in ("files_dropped", "on_files_dropped"):
+            handler = getattr(self.child, name, None)
+            if callable(handler):
+                return bool(handler(paths))
+        return False
 
     files_dropped = on_files_dropped
 

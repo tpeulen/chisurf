@@ -111,6 +111,12 @@ STRINGS = {
 
 def install_translations():
     for index, locale in enumerate(LOCALES[1:]):
+        # Layered over the chisurf catalogue (domain="chisurf"): a hand-added string without a
+        # domain loses to that catalogue, which translates the bare word "Donor" for the
+        # fluorescence tools ("Dador"), not for the paddle.
         i18n.add_translations(
-            locale, {source: values[index] for source, values in STRINGS.items()}, context="Pong"
+            locale,
+            {source: values[index] for source, values in STRINGS.items()},
+            context="Pong",
+            domain="chisurf",
         )

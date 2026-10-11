@@ -3,7 +3,7 @@
 The ribbon has no layout file — a plugin's manifest ``display_name`` is its
 address, so moving one tool is a one-line manifest edit that nothing reviews as
 a layout change. This pins the result, computed with the shipped default
-settings through :func:`chisurf.gui.widgets.ribbon.layout.plugin_layout`, the
+settings through :func:`chisurf.core.plugin.ribbon_layout.plugin_layout`, the
 function the ribbon itself builds from. A deliberate move updates ``EXPECTED``
 in the same change; an accidental one fails here.
 """
@@ -16,7 +16,7 @@ import pytest
 import yaml
 
 import chisurf.plugins
-from chisurf.gui.widgets.ribbon.layout import (
+from chisurf.core.plugin.ribbon_layout import (
     TAB_ORDER,
     group_records,
     ordered_tabs,

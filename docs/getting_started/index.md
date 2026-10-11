@@ -53,7 +53,7 @@ edge, resize it, or close it. The arrangement is saved when ChiSurf exits and
 restored on the next start.
 
 To get back to the arrangement above, use **View → Reset Layout**
-(also on the ribbon's *Main* tab, under *Other Tools*). It forgets the saved
+(also on the ribbon's *Main* tab, under *Window*). It forgets the saved
 layout as well as re-applying the default, so the reset survives the next start.
 
 ```{note}
@@ -63,6 +63,20 @@ hide every later improvement to it. Anything you rearrange afterwards is kept
 as usual.
 
 ```
+
+### The ribbon in the native window
+
+The native window (`python -m chisurf --emtk-shell`, opt-in while it replaces
+the Qt window) has the same ribbon: the tabs *File*, *Main*, *Spectroscopy*,
+*Structure* and *Tools*, each tool in the group its plugin manifest names and
+with the manifest's icon. In a narrow window the rightmost groups fold into one
+button each (▾) that lists their tools, and what still does not fit goes behind
+**»**, so every tool stays one click away. In the ribbon's corner,
+**Search…** lists the matching tools of every tab, ▴ folds the ribbon down to
+its tabs (a tab click then shows its buttons until you pick one), **❓ Help**
+opens the documentation and 🌍 switches the language. The menu bar and the
+**Tools** dock list the same tools under the same groups; the dock is a tree
+with a filter.
 
 ## Your first analysis
 

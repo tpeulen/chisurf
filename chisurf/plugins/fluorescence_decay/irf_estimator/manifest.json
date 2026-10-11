@@ -2,6 +2,7 @@
   "id": "irf_estimator",
   "version": "2.0.0",
   "display_name": "Spectroscopy:Decay:IRF Estimation",
+  "icon": "⚡",
   "description": "Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.",
   "authors": [
     "Thomas-Otavio Peulen"

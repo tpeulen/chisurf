@@ -2,6 +2,7 @@
   "id": "wizards",
   "version": "1.0.0",
   "display_name": "Tools:Calculators:Wizards",
+  "icon": "🪄",
   "description": "Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view.",
   "authors": [
     "Thomas-Otavio Peulen"

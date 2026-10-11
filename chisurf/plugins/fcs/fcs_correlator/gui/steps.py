@@ -55,7 +55,7 @@ def _body(name: str, pad: float = 6.0) -> None:
 
 def _same_line_if_fits(label: str, used: float) -> float:
     """Put the next button on this line if it fits, else on the next; the width used on the line after it."""
-    width = im.calc_text_size(label)[0] + 2 * im.get_style().frame_padding[0]
+    width = im.calc_text_size(tr(label))[0] + 2 * im.get_style().frame_padding[0]
     room = im.get_content_region_avail()[0]
     if used > 0 and used + im.get_style().item_spacing[0] + width <= room:
         im.same_line()
@@ -555,7 +555,7 @@ class CorrelatorStepApp(ImApp):
         )
         self.item_rects["load_filters"] = im.get_item_rect()
         used = _same_line_if_fits(
-            "Unload", im.calc_text_size("Load filters...")[0] + 2 * im.get_style().frame_padding[0]
+            "Unload", im.calc_text_size(tr("Load filters..."))[0] + 2 * im.get_style().frame_padding[0]
         )
         im.begin_disabled(not self.model.filter_mode)
         if im.button(tr("Unload")):

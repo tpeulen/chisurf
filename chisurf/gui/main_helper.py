@@ -632,6 +632,32 @@ class SetupMixin:
 
         self._refresh_setup_ui()
 
+    def _give_reader_settings_the_height(self: Main, widget) -> None:
+        """Let a native reader-settings host take the *File parameters* height.
+
+        A hosted emtk surface reports no size hint, so in the box layout beside
+        the expanding *Drop files here.* label it collapsed to about 80 px: the
+        file field showed and every setting below it (header rows, bin width,
+        repetition rate, polarisation) was cut off with no scroll bar. A Qt
+        reader controller keeps its own natural height, and the drop label the
+        remaining space.
+
+        Parameters
+        ----------
+        widget : QtWidgets.QWidget
+            The reader's settings widget just placed in the reader layout.
+        """
+        from qtpy import QtWidgets
+
+        container = self.layout_experiment_reader.parentWidget()
+        outer = container.parentWidget().layout() if container is not None else None
+        if not isinstance(outer, QtWidgets.QBoxLayout):
+            return
+        native = getattr(widget, "control", None) is not None
+        if native:
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        outer.setStretchFactor(container, 1 if native else 0)
+
     def _reader_plugin_context(self: Main):
         """Reuse one main-owned context over the active API, transport and session.
 
@@ -729,6 +755,7 @@ class SetupMixin:
             widget.update()
         if self.layout_experiment_reader.indexOf(widget) < 0:
             self.layout_experiment_reader.addWidget(widget)
+        SetupMixin._give_reader_settings_the_height(self, widget)
         widget.show()
         if hasattr(widget, "updateUI") and callable(widget.updateUI):
             widget.updateUI()

@@ -835,10 +835,17 @@ def read_bur_file(bur_path):
     bur_path = pathlib.Path(bur_path)
     if not bur_path.exists():
         raise FileNotFoundError(bur_path)
+    from chisurf.core.datastore import column_names, take_columns
+
     store = read_csv_table(bur_path, delimiter="\t")
     if store is None:
         raise OSError(f"{bur_path} is not a tab-delimited burst table")
-    return store
+    # A Seidel ``.bur`` ends every line with a tab, which a CSV reader turns into
+    # a column named ``""``; it is no measurement, and every consumer (browser
+    # table, ndX columns, ``Bursts.table``) would otherwise list it.
+    names = column_names(store)
+    named = [name for name in names if str(name).strip()]
+    return store if len(named) == len(names) else take_columns(store, named)
 
 
 #: Per-burst companion files in the ``…4`` family, keyed to each ``.bur`` by stem:

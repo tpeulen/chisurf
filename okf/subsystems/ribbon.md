@@ -2,9 +2,9 @@
 type: Subsystem
 title: Ribbon and hubs
 description: How a plugin's manifest address becomes a ribbon tab, group and button, how hubs (meta tools) host other plugins, and the guards that keep every tool in exactly one place.
-resource: chisurf/gui/widgets/ribbon/
+resource: chisurf/gui/widgets/ribbon/, chisurf/core/plugin/ribbon_layout.py, chisurf/emtk/shell_ribbon.py
 tags: [gui, ribbon, plugins, hubs, navigation]
-timestamp: '2026-10-05T00:00:00Z'
+timestamp: '2026-10-11T00:00:00Z'
 ---
 
 # What it is
@@ -13,12 +13,19 @@ The ribbon has **no layout file**. A plugin's manifest `display_name` is its
 address, `"Tab:Group:Name"`: the first segment is the tab, the last the button,
 everything between the group (`"Tab:A:B:Name"` → group `"A › B"`, any depth;
 `"Tab:Name"` → a group named after its tab). The rules live once, Qt-free, in
-`chisurf/gui/widgets/ribbon/layout.py` (`split_address`, `is_listed`,
+`chisurf/core/plugin/ribbon_layout.py` (`split_address`, `is_listed`,
 `group_records`, `plugin_layout`, `TAB_ORDER`). `PluginMethodsMixin._create_plugin_tabs`
 (`ribbon_plugins.py`) builds the tabs from `group_records`, and the layout test reads
 `plugin_layout`. `Setup:` and `Help:` plugins are drawn into the File and Main tabs
 by their own hosts (`ribbon_categories.py`). The menubar "Plugins" menu reads the
 same addresses (`chisurf/gui/__init__.py`, `populate_plugins`).
+
+The emtk shell (`python -m chisurf --emtk-shell`) builds its ribbon from the same
+function: `chisurf/emtk/shell_ribbon.py::plugin_tree` feeds `plugin_layout` the native
+plugins, and `emtk.ribbon.Ribbon` draws the tabs, groups and buttons. Its menu bar and
+Tools dock read the same tree (`menu_tree`), so all three agree. The maturity markers
+(⚠️, ⛔) come from `chisurf/core/plugin/maturity.py` in both shells. The parity record
+against this ribbon is [Qt retirement (shell)](qt-retirement.md), resume item 5.
 
 A **hub** (meta tool) is an ordinary plugin with an address whose window hosts
 other plugins as panels: TTTR Tools, File tools, Image Tools, Calculators,
@@ -65,6 +72,11 @@ Hub scopes that decide where a new tool goes:
 - `test/plugins/test_plugin_menu_tabs.py`: the closed tab vocabulary.
 
 ## Where to pick this up
+
+6. Measure: the emtk shell's ribbon must stay equal to this one tab for tab:
+   `test/native_emtk/test_emtk_shell_ribbon.py::test_parity_with_the_qt_ribbon`. A deliberate
+   move here updates `EXPECTED` in `test_ribbon_layout.py` and needs no change there, because
+   both read `plugin_layout`; re-capture the Qt half with `capture_shell_s5_qt_before.py`.
 
 5. Open: **Panel captions are clipped** at the ribbon's default height in offscreen grabs
    (descenders). This predates the regroup.

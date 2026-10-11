@@ -14,6 +14,7 @@ import logging
 from typing import Any, NamedTuple
 
 from emtk import im
+from emtk.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,8 @@ class Stepper:
         return [
             {
                 "index": i,
-                "label": ("✓ " if self.step_complete(i) else "  ") + step.title,
+                # Translated before the mark is prefixed: "✓ Run" is in no catalogue.
+                "label": ("✓ " if self.step_complete(i) else "  ") + tr(step.title),
                 "title": step.title,
                 "complete": self.step_complete(i),
                 "current": i == self.step,

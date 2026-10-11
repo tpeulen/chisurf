@@ -487,37 +487,10 @@ def clear_fits(state: SessionState, event_bus: Any = None) -> ServiceResult:
 
 
 def _initialise_fit_range(fit: Any) -> None:
-    """Give a newly created fit a range it can actually be run over.
+    """Give a newly created fit a range it can run over (:func:`initialise_fit_range`)."""
+    from chisurf.core.fitting.fit import initialise_fit_range
 
-    A fresh fit's range is ``(0, 0)``, and the optimiser rejects that with
-    ``Improper input: N=4 must not exceed M=(0,)`` — so a fit created over RPC
-    could be created but never run. The reader's ``autofitrange`` is preferred,
-    because that is what the GUI and the agent layer both use; a dataset built
-    from raw ``curve_data`` over the wire has no reader, so the whole curve is
-    the fallback rather than nothing.
-
-    Parameters
-    ----------
-    fit : object
-        The newly created fit.
-    """
-    data = getattr(fit, "data", None)
-    if data is None:
-        return
-    reader = getattr(data, "data_reader", None)
-    if reader is not None and hasattr(reader, "autofitrange"):
-        try:
-            start, stop = reader.autofitrange(data)
-            fit.fit_range = (int(start), int(stop))
-            return
-        except Exception:
-            logger.debug("autofitrange failed; falling back to the whole curve", exc_info=True)
-    try:
-        n = len(data)
-        if n > 1:
-            fit.fit_range = (0, int(n) - 1)
-    except Exception:
-        logger.debug("could not derive a fit range from the data", exc_info=True)
+    initialise_fit_range(fit)
 
 
 def _model_names() -> list:

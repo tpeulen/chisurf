@@ -203,7 +203,7 @@ class AnisotropyApp(ImApp):
         for index, step in enumerate(self.steps):
             mark = "[x]" if self.model.step_complete(index) else "[ ]"
             if im.selectable(
-                f"{mark} {step['title']}##anisotropy{index}", selected=self.step_index == index
+                f"{mark} {tr(step['title'])}##anisotropy{index}", selected=self.step_index == index
             ):
                 self.select_step(index)
             im.set_item_tooltip(step.get("subtitle", step["title"]))
@@ -229,7 +229,7 @@ class AnisotropyApp(ImApp):
         m = self.model
         fields = STACKED_FIELDS if m.stacked_files else FILE_FIELDS
         label_w = max(im.calc_text_size(label)[0] for _, label in fields) + 12.0
-        browse_w = im.calc_text_size("Browse")[0] + 2 * im.get_style().frame_padding[0]
+        browse_w = im.calc_text_size(tr("Browse"))[0] + 2 * im.get_style().frame_padding[0]
         spacing = im.get_style().item_spacing[0]
         field_w = max(
             160.0,
@@ -429,13 +429,13 @@ class AnisotropyApp(ImApp):
         im.end_child()
         # bottom bar: the status line, then Back / Next at the right (as the Qt wizard)
         im.separator()
-        back_w = im.calc_text_size("Back")[0] + 2 * im.get_style().frame_padding[0]
+        back_w = im.calc_text_size(tr("Back"))[0] + 2 * im.get_style().frame_padding[0]
         status_w = max(100.0, avail_w - 2 * (back_w + 24.0) - 30.0)
         im.begin_child("status", (status_w, 22.0), scrollable=False)
         im.text_disabled(m.status[:200])
         im.end_child()
         spacing = im.get_style().item_spacing[0]
-        next_w = im.calc_text_size("Next")[0] + 2 * im.get_style().frame_padding[0]
+        next_w = im.calc_text_size(tr("Next"))[0] + 2 * im.get_style().frame_padding[0]
         im.same_line(max(0.0, avail_w - back_w - next_w - 2 * spacing))
         im.begin_disabled(self.step_index == 0)
         if im.button(tr("Back")):

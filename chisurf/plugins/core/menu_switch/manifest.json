@@ -2,6 +2,7 @@
   "id": "menu_switch",
   "version": "1.0.0",
   "display_name": "Setup:Menu Switch",
+  "icon": "🔄",
   "description": "Menu Switch\n\nSwitches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own.",
   "authors": [
     "Thomas-Otavio Peulen"

@@ -13,6 +13,38 @@ from pathlib import Path
 from chisurf.core.support import i18n as core_i18n
 
 SUPPORTED_LOCALES = ("en", "de", "fr", "es", "pt", "ru")
+
+#: Human-readable, self-endonym display names for known locale codes. Codes not
+#: listed fall back to the bare code so a new ``.qm`` is still selectable.
+LANGUAGE_DISPLAY_NAMES = {
+    "en": "English",
+    "de": "Deutsch",
+    "fr": "Français",
+    "es": "Español",
+    "it": "Italiano",
+    "pt": "Português",
+    "nl": "Nederlands",
+    "ja": "日本語",
+    "zh": "中文",
+    "ru": "Русский",
+}
+
+#: Flag emoji per locale, for the compact flag-dropdown switchers. English maps
+#: to the Union Jack (🇬🇧) rather than the US flag — ChiSurf's UI English follows
+#: British conventions. Locales without an entry fall back to a globe (🌐).
+LANGUAGE_FLAGS = {
+    "en": "🇬🇧",
+    "de": "🇩🇪",
+    "fr": "🇫🇷",
+    "es": "🇪🇸",
+    "it": "🇮🇹",
+    "pt": "🇵🇹",
+    "nl": "🇳🇱",
+    "ja": "🇯🇵",
+    "zh": "🇨🇳",
+    "ru": "🇷🇺",
+}
+
 _installed = False
 
 
@@ -86,3 +118,19 @@ def set_locale(locale: str) -> str:
 
     toolkit_i18n.set_locale(locale)
     return toolkit_i18n.get_locale()
+
+
+def choose_language(code: str) -> str:
+    """Make *code* the UI language: switch the running UI now and keep it for the next start.
+
+    The language pickers (the emtk shell's ribbon, the settings) share this, so a choice is
+    persisted the same way everywhere (``gui.language`` in the user's settings). Persistence is
+    best-effort and logged; the live switch is authoritative.
+    """
+    import logging
+
+    from chisurf.core.settings import settings_utils
+
+    if not settings_utils.set_language(code):
+        logging.getLogger("chisurf.emtk.i18n").warning("the language %r was not saved", code)
+    return set_locale(code)

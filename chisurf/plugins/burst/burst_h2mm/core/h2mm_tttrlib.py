@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .h2mm import BurstPhotons, H2mmModel, factory_model
+from .h2mm import MIN_TRANS, BurstPhotons, H2mmModel, factory_model
 
 try:
     import tttrlib
@@ -87,7 +87,7 @@ def optimize(
     data: BurstPhotons,
     max_iter: int = 500,
     tol: float = 1e-7,
-    min_trans: float = 1e-12,
+    min_trans: float = MIN_TRANS,
     accelerate: bool = True,
     single_precision: bool = False,
     on_iter=None,
@@ -163,7 +163,7 @@ def fit_states(
     for r in range(restarts):
         init = factory_model(n_states, data.n_streams, seed=None if seed is None else int(seed) + r)
         fit = eng.optimize(
-            _to_engine_model(init), int(max_iter), float(tol), 1e-12, True, bool(single_precision)
+            _to_engine_model(init), int(max_iter), float(tol), MIN_TRANS, True, bool(single_precision)
         )
         cand = _from_engine_model(fit, data.n_photons)
         if best is None or cand.loglik > best.loglik:

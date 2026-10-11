@@ -27,7 +27,7 @@ import chisurf.plugins
 #: ``ribbon_categories.py``) and reused when a plugin names them; ``Setup`` and
 #: ``Help`` are pulled out of the plugin loop and rendered into those two;
 #: ``Spectroscopy``/``Imaging``/``Structure``/``Tools`` are the domain tabs the
-#: plugins create (their order is ``chisurf.gui.widgets.ribbon.layout.TAB_ORDER``).
+#: plugins create (their order is ``chisurf.core.plugin.ribbon_layout.TAB_ORDER``).
 #: Adding a tab is a deliberate act — extend this set and ``TAB_ORDER``.
 ALLOWED_TOP_LEVEL = frozenset(
     {

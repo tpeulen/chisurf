@@ -310,6 +310,68 @@ workstreams supply tours, demos, reachable layouts and source prerequisites.
 The C27 matrix and intermediate hash runs are diagnostic, not acceptance.
 
 
+## Real-use QA matrix
+
+The click-all sweep, the slice parity tests and most widget tests drive a synthetic
+`emtk.testing.Driver`: one fixed size, English, scale 1, a press and its release delivered back
+to back at one point. The owner found three bugs that every one of those tests passed: clicks
+missing after a window resize, an emtk shell without the ribbon, console plots shown as text.
+Each sat on an axis the harness never varied, or between the areas the slice tests owned. The
+matrix varies those axes, one at a time.
+
+**1. Realistic input (`~/dev/emtk/emtk/testing_realistic.py`).** `RealisticDriver` is a `Driver`
+subclass, so every existing helper keeps working. Events are `rendercanvas` dicts queued by
+rendercanvas' own `EventEmitter`, which merges consecutive pointer moves and wheel deltas between
+frames as a desktop does. They are translated by `emtk.native.CanvasEvents`, the code a real
+window runs. A click travels to its target over `move_steps` frames. Press and release land in
+different frames while the hand drifts `jitter` px. Wheel notches arrive one per frame. Held keys
+repeat on a virtual platform clock (`hold_key`), and `blur()` releases held keys. `resize()` and
+`set_scale()` arrive as resize events, and `move_window()` moves the window under a still hand.
+Frames draw into the real `QuadPainter` at the device scale (`HostPainter` records and forwards).
+`HostedDriver` runs a real `NativeHost`, either on an offscreen canvas with a chosen pixel ratio
+or on a **hidden glfw window**. The window's `show_window` is suppressed. It exercises the
+display's content scale, framebuffer vs window size, `glfw.set_window_size` resize callbacks and
+the live cursor query. Only the OS cursor is simulated (`glfw.get_cursor_pos`), so the real
+pointer is never warped. Trap: a hidden window's swap chain is occluded, so wgpu cancels the
+frame before the app draws (`DrawCancelled: Occluded`). The glfw driver therefore runs the
+surface's CPU half itself. `clipped_texts(painter)` lists labels the active clip cuts. Tests:
+`tests/test_testing_realistic.py` (16, including the glfw cases on macOS).
+
+**2. Click-all matrix axis (`test/e2e/test_click_all_plugins.py::test_emtk_plugin_real_use`).**
+Each variant reruns the whole sweep (tour, tooltips, every safe control) with one change.
+
+| variant | change | extra failure |
+|---|---|---|
+| `size_800x600`, `size_1920x1080` | window size | a control's own caption clipped |
+| `resize` | 1100×720, then 800×600 after half the clicks; later clicks re-resolve | as above |
+| `scale2` | `RealisticDriver(scale=2.0)`, the real painter at ratio 2 | as above |
+| `lang_de`, `lang_fr` | `EMTK_LANG` | a clipped *translated* string; an English source drawn although the catalogue translates it |
+| `realistic` | `RealisticDriver` at scale 1 | — |
+
+Selection is set by `CHISURF_E2E_MATRIX`. `sample` is the default and runs
+`CHISURF_E2E_MATRIX_SAMPLE` plugins per variant (3). They are a hash-ranked choice that rotates
+with `CHISURF_E2E_MATRIX_SEED`, so successive CI seeds cover the catalogue. `full` runs every
+variant times every plugin. A comma list of variant names runs those variants in full, and `off`
+runs none. Artifacts go to `renders/e2e/<variant>/<id>.{json,png,log}`. The JSON adds
+`clipped_labels`, `untranslated_visible`, `missing_translation` (the catalogue backlog: an
+extracted source whose translation is unfinished, which is recorded but does not fail) and
+`resized_at`. Realistic variants get 3× the worker timeout, and the others 1.5×. The base sweep is
+unchanged. Run one case with
+`QT_QPA_PLATFORM=offscreen python -m pytest test/e2e/test_click_all_plugins.py -k "real_use and lang_de-synthetic_decay"`.
+
+**3. Whole-app parity (`test/native_emtk/test_emtk_shell_whole_parity.py`).**
+`capture_shell_whole_qt_before.py` records everything the Qt main window offers in
+`shell_whole_qt_inventory.json`. That covers the ribbon (tabs, panels, buttons, corner controls),
+every menu action, every toolbar action, each dock's title, labels and buttons, and one behaviour:
+the console draws a figure. Trap: the ribbon builds after the window shows, so the script waits
+for it. A capture without it would pass every comparison, which is why
+`test_the_inventory_covers_the_whole_window` exists. The test draws the emtk shell at 1440×900,
+opens each menu and shows each dock, then matches by caption, so a ribbon button that became a
+menu item still counts. A **ribbon tab** must be a tab or button: a menu header of the same name
+does not count, because that is how the missing ribbon hid. Gaps go in `KNOWN_GAPS`, each with a
+reason, and the list only shrinks: `test_known_gaps_only_shrink` fails on an entry the shell now
+has.
+
 ## Type-check ratchet
 
 CI runs `pytest test/test_mypy_baseline.py -m slow` (blocking): `test/mypy_baseline.json` holds each

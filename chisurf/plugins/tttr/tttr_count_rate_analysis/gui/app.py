@@ -232,7 +232,7 @@ class CountRateGui(TourTarget):
                 self.on_add_files()
         im.set_item_tooltip(tr("Queue TTTR files (.ptu, .ht3, .spc, …) for the analysis."))
         self.remember("add_files")
-        if im.get_line_avail() >= im.calc_text_size("Clear")[0] + 24:
+        if im.get_line_avail() >= im.calc_text_size(tr("Clear"))[0] + 24:
             im.same_line()
         if im.button(tr("Clear")):
             if callable(self.on_clear):

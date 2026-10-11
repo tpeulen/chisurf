@@ -45,6 +45,13 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "gui" / "burst_browser.view.json"
 _ALL = "All"
 
 
+def _stream_counts(values) -> np.ndarray:
+    """One stream's per-burst counts/rates with the ``-1`` "no photon" sentinel read as 0."""
+    values = np.asarray(values, dtype=float).copy()
+    values[values < 0] = 0.0
+    return values
+
+
 class BurstBrowserViewModel:
     """State + logic for the Burst Browser (no Qt)."""
 
@@ -260,9 +267,12 @@ class BurstBrowserViewModel:
         elif "Proximity Ratio" in names:
             self._col_E, self.have_E = "Proximity Ratio", True
         elif green_col and red_col:
-            i_dd = numeric_column(table, green_col)
-            i_da = numeric_column(table, red_col)
-            i_aa = numeric_column(table, yellow_col) if yellow_col else None
+            # A stream with no photon in the burst is written as ``-1`` (the
+            # burst table's sentinel); used as a count it pushed S above 1 and E
+            # below 0 for a third of the sm-DNA bursts. No photon is zero.
+            i_dd = _stream_counts(numeric_column(table, green_col))
+            i_da = _stream_counts(numeric_column(table, red_col))
+            i_aa = _stream_counts(numeric_column(table, yellow_col)) if yellow_col else None
             values = apparent_es(i_dd, i_da, i_aa)
             with np.errstate(divide="ignore", invalid="ignore"):
                 derived["E"] = np.where(i_dd + i_da > 0, values["E"], np.nan)

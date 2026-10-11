@@ -339,51 +339,36 @@ class DataCurve(*_DATACURVE_BASES):
             resized[:kept] = previous[:kept]
             setattr(self, name, resized)
 
-    def __str__(self):
-        """Return a human-readable summary of the dataset (head/tail values)."""
-        s = "Dataset:\n"
+    def __repr__(self):
+        """Return ``<DataCurve 'name' n=points>``, not the wrapped IMP.bff proxy."""
         try:
-            s += "filename: " + self.filename + "\n"
-            s += f"length  : {len(self)}\n"
-            s += "x\ty\terror-x\terror-y\n"
+            n = len(self.x)
+        except Exception:  # noqa: BLE001 - a half-built curve still has a repr
+            n = 0
+        return f"<{type(self).__name__} {str(getattr(self, 'name', '') or '')!r} n={n}>"
 
-            if len(self.x) > 10:
-                lx = self.x[:4]
-                ly = self.y[:4]
-                lex = self.ex[:4]
-                ley = self.ey[:4]
-                for i in range(3):
-                    x, y, ex, ey = lx[i], ly[i], lex[i], ley[i]
-                    s += f"{x:<12.3e}\t"
-                    s += f"{y:<12.3e}\t"
-                    s += f"{ex:<12.3e}\t"
-                    s += f"{ey:<12.3e}\t"
-                    s += "\n"
-                s += "....\n"
-                ux = self.x[-4:]
-                uy = self.y[-4:]
-                uex = self.ex[-4:]
-                uey = self.ey[-4:]
-                for i in range(2):
-                    x, y, ex, ey = ux[i], uy[i], uex[i], uey[i]
-                    s += f"{x:<12.3e}\t"
-                    s += f"{y:<12.3e}\t"
-                    s += f"{ex:<12.3e}\t"
-                    s += f"{ey:<12.3e}\t"
-                    s += "\n"
+    def __str__(self):
+        """Return a human-readable summary: the file, the length and the first/last rows."""
+
+        def row(i: int) -> str:
+            return "\t".join(f"{v[i]:<12.3e}" for v in (self.x, self.y, self.ex, self.ey))
+
+        lines = [f"Dataset: {getattr(self, 'name', '')}"]
+        try:
+            lines.append(f"filename: {self.filename}")
+            n = len(self.x)
+            lines.append(f"length  : {n}")
+            lines.append("x\ty\terror-x\terror-y")
+            if n > 10:
+                lines += [row(i) for i in range(3)] + ["...."] + [row(i) for i in range(n - 2, n)]
             else:
-                for i in range(len(self.x)):
-                    x, y, ex, ey = self.x[i], self.y[i], self.ex[i], self.ey[i]
-                    s += f"{x:<12.3e}\t"
-                    s += f"{y:<12.3e}\t"
-                    s += f"{ex:<12.3e}\t"
-                    s += f"{ey:<12.3e}\t"
-        except (AttributeError, KeyError) as e:
+                lines += [row(i) for i in range(n)]
+        except (AttributeError, KeyError, TypeError, IndexError) as e:
             import logging
 
             logging.debug(f"Error in Dataset.__str__: {e}")
-            s += "This curve does not have complete data..."
-        return s
+            lines.append("This curve does not have complete data...")
+        return "\n".join(lines) + "\n"
 
     def to_dict(
         self,
@@ -776,6 +761,11 @@ class DataGroup(list, chisurf.core.base.Base):
     helpers to export the group to YAML.
     """
 
+    def __repr__(self):
+        """Return ``<DataCurveGroup 'name' [members]>``: the group's name and its curves."""
+        name = str(getattr(self, "name", "") or "")
+        return f"<{type(self).__name__} {name!r} {list.__repr__(self)}>"
+
     @property
     def names(self) -> typing.List[str]:
         """Return the names of all datasets in this group."""
@@ -966,8 +956,8 @@ class DataCurveGroup(DataGroup):
         self.current_dataset.mask = v
 
     def __str__(self):
-        """Return a list of string summaries for each dataset."""
-        return [str(d) + "\n------\n" for d in self]
+        """Return the summaries of the member datasets, separated by rules."""
+        return "------\n".join(str(d) for d in self)
 
     def __getitem__(self, key):
         """Index or slice the group, returning 5-tuple for slices.

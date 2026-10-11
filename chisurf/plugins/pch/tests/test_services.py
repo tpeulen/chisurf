@@ -74,3 +74,29 @@ def test_pch_mixture_refuses_unequal_parameter_lists():
     k_vals = np.arange(10, dtype=float)
     with pytest.raises(ValueError):
         pch_mixture(k_vals, [3.0, 8.0], [2.0])
+
+
+def test_the_fit_is_poisson_weighted_and_its_chi2_is_meaningful():
+    """Counts drawn from one species: the fit finds it and chi2_r is of order one.
+
+    The unweighted fit let P(0)/P(1) decide and its Pearson chi^2 over expected counts
+    of ~1e-14 in the empty tail gave chi2_r ~1e20 on real data (found 2026-10-11).
+    """
+    import numpy as np
+
+    from chisurf.plugins.pch.api.algorithms import pch_mixture
+
+    k = np.arange(25, dtype=float)
+    p = pch_mixture(k, [1.5], [0.8])
+    p = p / p.sum()
+    n = 1_000_000
+    counts = np.random.default_rng(1).multinomial(n, p)
+    r = _fit_handler(
+        k.tolist(), (counts / n).tolist(), hist_counts=counts.tolist(), total_bins=n, n_components=1
+    )
+    assert r["ok"], r
+    res = r["result"]
+    assert res["epsilons"][0] == pytest.approx(1.5, rel=0.03)
+    assert res["avg_Ns"][0] == pytest.approx(0.8, rel=0.03)
+    assert 0.2 < res["reduced_chi2"] < 3.0, res["reduced_chi2"]
+    assert res["dof"] == int((counts > 0).sum()) - 2, "empty bins carry no degree of freedom"

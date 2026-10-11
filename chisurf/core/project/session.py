@@ -381,6 +381,32 @@ def _reader_state(reader: Any) -> dict[str, Any] | None:
     return result
 
 
+def apply_reader_fields(reader: Any, values: dict[str, Any]) -> None:
+    """Set a reader's recorded configuration fields (validated by the caller).
+
+    Parameters
+    ----------
+    reader : object
+        The reader to configure.
+    values : dict
+        The ``state`` mapping of a reader descriptor (:func:`_reader_state`).
+    """
+    # This property changes other settings. Apply it before the independently
+    # recorded fields, including after JSON has sorted the configuration keys.
+    if "is_vv_vh" in values:
+        reader.is_vv_vh = bool(values["is_vv_vh"])
+    if "n_colors" in values:
+        reader.n_colors = values["n_colors"]
+    for field, value in values.items():
+        if field in {"is_vv_vh", "n_colors"}:
+            continue
+        if field in {"rebin", "matrix_columns"}:
+            value = tuple(value)
+        if field in {"channel_luts", "channel_shifts"}:
+            value = {int(k): v for k, v in value.items()}
+        setattr(reader, field, copy.deepcopy(value))
+
+
 def _restore_reader(state: Any, experiment: Any, cache: dict[str, Any]) -> Any:
     if state is None:
         return None
@@ -433,20 +459,7 @@ def _restore_reader(state: Any, experiment: Any, cache: dict[str, Any]) -> Any:
                 reader.instrument_response_function = irf
             except Exception as exc:
                 raise SessionCodecError("invalid reader IRF array") from exc
-    # This property changes other settings. Apply it before the independently
-    # recorded fields, including after JSON has sorted the configuration keys.
-    if "is_vv_vh" in values:
-        reader.is_vv_vh = bool(values["is_vv_vh"])
-    if "n_colors" in values:
-        reader.n_colors = values["n_colors"]
-    for field, value in values.items():
-        if field in {"is_vv_vh", "n_colors"}:
-            continue
-        if field in {"rebin", "matrix_columns"}:
-            value = tuple(value)
-        if field in {"channel_luts", "channel_shifts"}:
-            value = {int(k): v for k, v in value.items()}
-        setattr(reader, field, copy.deepcopy(value))
+    apply_reader_fields(reader, values)
     reader.unique_identifier = uid
     if experiment is not None:
         experiment.add_reader(reader)

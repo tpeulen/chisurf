@@ -457,6 +457,15 @@ class MaxentApp(ImApp):
             if curve is not None:
                 implot.plot_line("Regularization sweep", curve["chi2r"], curve["sol_norm"])
                 implot.plot_scatter("nu values", curve["chi2r"], curve["sol_norm"])
+                corner = curve.get("corner_index")
+                if corner is not None:
+                    # The corner the sweep picked (and wrote into nu): marked, as the guide promises.
+                    implot.set_next_marker_style(implot.MARKER_DIAMOND, 9.0)
+                    implot.plot_scatter(
+                        "Corner",
+                        np.asarray([curve["chi2r"][corner]], float),
+                        np.asarray([curve["sol_norm"][corner]], float),
+                    )
                 self.plot_info["lcurve"] = [
                     implot.plot_to_pixels(float(x), float(y))
                     for x, y in zip(curve["chi2r"], curve["sol_norm"])

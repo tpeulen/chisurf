@@ -17,6 +17,11 @@
 
 ## 2026-10-10
 
+- W9 phase 2 slice S5 (ribbon): the emtk shell has the Qt ribbon (emtk `emtk/ribbon.py`: tabs, large/small
+  buttons, fold-to-menu and overflow at narrow widths, search) built from the same placement rules, emoji on
+  every plugin entry (41 manifests gained theirs; guards for presence and uniqueness), menus with groups and
+  icons, and a Tools tree by menu path; a live 🌍 language switch. Checkpoint commit also carries the QA walks'
+  in-progress fixes (FCS/lifetime, imaging, smFRET part 2, real-use matrix, S2 defects).
 - QA walk, smFRET guides (01–66 subset): 10 defects fixed with tests — `csc accurate-fret --simulate`
   crashed on its own `#` header, Accurate FRET dropped a Calibrate press during a read, `.bur` tables carried
   a blank column, H2MM transition arrows overlapped and per-state decays were indistinguishable, the `>>`

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import numpy as np
 
 import chisurf.core.data
@@ -376,7 +378,9 @@ def read_tcspc_csv(
     y_rebin = y_rebin[:ib, :]
     data_curves = list()
     n_data_sets = y_rebin.shape[0]
-    fn = csvSetup.filename
+    # A curve is named after its file, not its path: the full path filled the
+    # dataset list, the fit titles and the IRF field with the directory.
+    fn = os.path.basename(str(csvSetup.filename)) or str(csvSetup.filename)
     ex = np.zeros(x.shape)  # Initialize ex variable
     if supplied_ex is not None:
         ex = np.sqrt(np.square(supplied_ex * dt).reshape(-1, rebin_y).sum(axis=1)) / rebin_y**2
@@ -441,14 +445,14 @@ def read_tcspc_csv(
             if n_data_sets > 1:
                 name = f"{fn} {i:d}_{n_data_sets:d}"
             else:
-                name = filename
+                name = fn
             data = chisurf.core.data.DataCurve(
                 x=x, y=yi, ex=ex, ey=eyi, experiment=experiment, name=name, **kwargs
             )
             data.filename = filename
             _describe(data)
             data_curves.append(data)
-    data_group = chisurf.core.data.DataCurveGroup(data_curves, filename)
+    data_group = chisurf.core.data.DataCurveGroup(data_curves, fn)
     _annotate_anisotropy_meta(
         data_group=data_group, g_factor=g_factor, l1=l1, l2=l2, source=calibration_source
     )

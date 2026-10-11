@@ -71,8 +71,10 @@ class GaussDiffusion(FittingParameterGroup):
     structure/aspect-ratio parameter) and the background-corrected molecular
     brightness are derived, read-only outputs (see :meth:`GeneralFCSModel.
     _gauss_shape`) rather than independent fit parameters — this group still
-    fits absolute ``w_r``/``w_z`` directly (see the module docstring), ``s``
+    parametrises absolute ``w_r``/``w_z`` (see the module docstring), ``s``
     is reported for comparison with the legacy dimensionless parametrization.
+    ``w_r`` starts fixed: in a single focus only ``D/w_r**2`` and ``D/w_z**2``
+    are measured, so ``D``, ``w_r`` and ``w_z`` cannot all be free.
     ``bg`` is a background count rate (kHz) subtracted before computing
     brightness, matching :class:`~chisurf.core.models.fcs.mdf.MdfPhysical`.
     """
@@ -101,16 +103,24 @@ class GaussDiffusion(FittingParameterGroup):
             registry_id="fcs_gauss.D",
             description="Translational diffusion coefficient of the fluorophore (µm²/s).",
         )
+        # Fixed by default: a single focus measures only D/w_r² and D/w_z², so
+        # with D, w_r and w_z all free the fit is rank deficient and the D it
+        # reports depends on where it started. Fix w_r at the calibrated waist
+        # (a dye of known D); the two-focus preset frees it, because its known
+        # focus separation sets the length scale.
         self._w_r = FittingParameter(
             value=250.0,
             name="w_r",
             lb=10.0,
             ub=5000.0,
             bounds_on=True,
-            fixed=False,
+            fixed=True,
             label_text="w<sub>r</sub>[nm]",
             registry_id="fcs_gauss.w_r",
-            description="Radial waist (1/e²) of the detection PSF (nm).",
+            description=(
+                "Radial waist (1/e²) of the detection PSF (nm). Fixed at the calibrated value: "
+                "a single focus measures only D/w_r², so D and w_r cannot both be fitted."
+            ),
         )
         self._w_z = FittingParameter(
             value=1000.0,
@@ -366,6 +376,8 @@ class GeneralFCSModel(ModelCurve):
         self.species = DiffusionSpecies(name="species_diffusion", fit=fit)
         self.two_focus._diam.value = 400.0
         self.two_focus._diam.fixed = True  # a known, fixed geometric constant
+        # The known separation sets the length scale: w_r and D are both measured.
+        self.two_focus._w_r.fixed = False
         self.bunching = BunchingTerms(name="bunching", fit=fit)
         self.anticorr = AnticorrTerms(name="anticorr", fit=fit)
         #: Re-entrancy guard: writing a derived output parameter
@@ -380,8 +392,18 @@ class GeneralFCSModel(ModelCurve):
         return list(super().parameters_all)
 
     def get_state(self) -> dict:
-        """Return the selected diffusion mode and component topology."""
-        return {"diffusion_mode": self.diffusion_mode, "n_species": self.species.n_species}
+        """Return the selected diffusion mode and component topology.
+
+        The relaxation terms are topology too: without their counts a model
+        with an added bunching term restores with fewer parameters than it was
+        saved with.
+        """
+        return {
+            "diffusion_mode": self.diffusion_mode,
+            "n_species": self.species.n_species,
+            "n_bunching": len(self.bunching),
+            "n_anticorr": len(self.anticorr),
+        }
 
     def set_state(self, state: dict) -> None:
         """Restore topology before assigning all active and inactive preset ports.
@@ -395,6 +417,10 @@ class GeneralFCSModel(ModelCurve):
         if mode not in self._DIFFUSION_MODES or type(count) is not int or count < 1:
             raise ValueError("invalid FCS diffusion configuration")
         self.species._rebuild_species(count)
+        # Absent in projects saved before the counts were recorded: those
+        # could only be restored without relaxation terms.
+        self.bunching.set_count(state.get("n_bunching", 0))
+        self.anticorr.set_count(state.get("n_anticorr", 0))
         self._diffusion_mode = mode
         self.find_parameters()
 

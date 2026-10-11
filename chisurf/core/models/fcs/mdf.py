@@ -289,6 +289,25 @@ class MdfFCSModel(ModelCurve):
         self.outputs = MdfOutputs(name="mdf_outputs", fit=fit)
         self.find_parameters()
 
+    def get_state(self) -> dict:
+        """The saved state plus the number of bunching terms, the model's one topology."""
+        state = dict(super().get_state())
+        state["n_bunching"] = len(self.bunching)
+        return state
+
+    def set_state(self, state: dict) -> None:
+        """Rebuild the bunching terms before their values are assigned by position.
+
+        Parameters
+        ----------
+        state : dict
+            The mapping :meth:`get_state` returned.
+        """
+        if isinstance(state, dict):
+            self.bunching.set_count(state.get("n_bunching", 0))
+            self.find_parameters()
+        super().set_state(state)
+
     def _update_model(self, **kwargs) -> None:
         """Evaluate the Enderlein-MDF diffusion autocorrelation into ``self.y``."""
         data = self.fit.data

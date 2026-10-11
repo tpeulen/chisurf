@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import datetime
+import logging
 from pathlib import Path
 from typing import Any, Callable
 
@@ -65,6 +66,22 @@ def expand_paths(paths) -> list[Path]:
 
 
 _EXTENSIONS = {str(ext).lower().lstrip(".") for ext in TTTR_EXTENSIONS}
+
+log = logging.getLogger(__name__)
+
+#: Why a file was not registered: MMFDB stores objects only for a signed-in user, so without a session every
+#: upload is refused ("Authentication required"); the file is used from disk all the same.
+NOT_SIGNED_IN = (
+    "Not signed in to MMFDB: the file is used from disk and not registered. "
+    "Sign in (MMFDB Admin) to register it."
+)
+
+
+def signed_in(client: Any) -> bool:
+    """Whether *client* can write to MMFDB: an MMFDB client carries a session ``token``; one that has none is
+    anonymous, and MMFDB refuses an anonymous upload. A client without a ``token`` attribute authenticates
+    itself (a test double, a pre-authorised transport)."""
+    return client is not None and (not hasattr(client, "token") or bool(getattr(client, "token")))
 
 
 def import_raw_file(client: Any, path: Path) -> dict[str, Any]:
@@ -146,6 +163,7 @@ class BurstDataSelectionModel:
         self._imported: set[str] = set()
         self.selected_index: int | None = None
         self.status_text = "No TTTR files selected."
+        self._told_not_signed_in = False
 
     # -- the source protocol ------------------------------------------------------------------------------- #
     def paths(self) -> list[Path]:
@@ -187,9 +205,16 @@ class BurstDataSelectionModel:
         except Exception as exc:  # noqa: BLE001 - no database: the record says so
             entry = {"error": f"MMFDB unavailable: {exc}"}
         else:
-            entry = (
-                {"error": "MMFDB unavailable."} if client is None else import_raw_file(client, path)
-            )
+            if client is None:
+                entry = {"error": "MMFDB unavailable."}
+            elif not signed_in(client):
+                # Not a fault: no request is sent, and the notice is given once, not once per file.
+                entry = {"skipped": NOT_SIGNED_IN}
+                if not self._told_not_signed_in:
+                    self._told_not_signed_in = True
+                    log.info("Burst data selection: %s", NOT_SIGNED_IN)
+            else:
+                entry = import_raw_file(client, path)
         self.imports[str(path)] = entry
         self._changed(notify=False)
         return entry
@@ -219,14 +244,19 @@ class BurstDataSelectionModel:
 
     # -- views --------------------------------------------------------------------------------------------- #
     def imported_count(self) -> int:
-        return sum(1 for entry in self.imports.values() if "error" not in entry)
+        return sum(1 for entry in self.imports.values() if _registered(entry))
 
     def _changed(self, notify: bool = True) -> None:
-        self.status_text = (
-            f"{len(self._paths)} TTTR file(s) selected; {self.imported_count()} imported to MMFDB."
-            if self._paths
-            else "No TTTR files selected."
-        )
+        if not self._paths:
+            self.status_text = "No TTTR files selected."
+        elif any("skipped" in (self.imports.get(str(p)) or {}) for p in self._paths):
+            self.status_text = (
+                f"{len(self._paths)} TTTR file(s) selected; not signed in to MMFDB, so they are not registered."
+            )
+        else:
+            self.status_text = (
+                f"{len(self._paths)} TTTR file(s) selected; {self.imported_count()} imported to MMFDB."
+            )
         if notify and callable(self.on_change):
             self.on_change()
 
@@ -247,9 +277,16 @@ class BurstDataSelectionModel:
                 self.auto_import = auto
 
 
+def _registered(entry: dict | None) -> bool:
+    """Whether *entry* (an :attr:`BurstDataSelectionModel.imports` record) put the file in MMFDB."""
+    return bool(entry) and "error" not in entry and "skipped" not in entry
+
+
 def _status(entry: dict | None) -> str:
     if not entry:
         return "not imported"
+    if "skipped" in entry:
+        return "not signed in"
     if "error" in entry:
         return "error"
     if "raw_data_error" in entry:
@@ -553,8 +590,8 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         im.separator()
         entry = self.source.mmfdb_payload().get("imports", {}).get(str(path))
         im.text(f"MMFDB: {_status(entry)}")
-        if entry and "error" in entry:
-            im.text_wrapped(str(entry["error"]))
+        if entry and ("error" in entry or "skipped" in entry):
+            im.text_wrapped(str(entry.get("error") or entry["skipped"]))
         elif entry:
             obj = (entry.get("object_result") or {}).get("object", {}) or {}
             raw = (entry.get("raw_data_result") or {}).get("raw_data", {}) or {}
@@ -562,7 +599,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             im.text(f"Raw data: {raw.get('raw_data_id', '-')}")
             if entry.get("raw_data_error"):
                 im.text_wrapped(f"Registration failed: {entry['raw_data_error']}")
-        label = "Import again" if entry else "Import now"
+        label = "Import again" if _registered(entry) else "Import now"
         if im.button(label + "##data_import"):
             self.track("import")
             self.source.import_path(path)
@@ -580,7 +617,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             except OSError:
                 pass
         imports = self.source.mmfdb_payload().get("imports", {})
-        registered = sum(1 for p in paths if "error" not in (imports.get(str(p)) or {"error": 1}))
+        registered = sum(1 for p in paths if _registered(imports.get(str(p))))
         im.bullet_text(f"Files: {len(paths)}")
         im.bullet_text(f"On disk: {_format_size(total)}")
         im.bullet_text(f"In MMFDB: {registered} of {len(paths)}")

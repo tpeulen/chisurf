@@ -2,6 +2,7 @@
   "id": "burst_mle_analysis",
   "version": "1.1.0",
   "display_name": "Spectroscopy:Single-Molecule:Burst MLE",
+  "icon": "📈",
   "description": "Maximum likelihood lifetime analysis for single-molecule burst data.",
   "authors": [
     "Thomas-Otavio Peulen"

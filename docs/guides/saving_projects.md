@@ -37,11 +37,11 @@ local file. **Save As** remains the explicit portable-file operation.
 
 1. Use **Save Project** (`Ctrl+S`). In file mode, choose a name ending in
    `.cs.pto` the first time. Later saves reuse the current destination.
-2. Use **Save Project As** (`Ctrl+Shift+S`) to choose a different portable
-   destination. This writes the current live analysis, not an earlier database
-   version.
-3. Reopen the `.cs.pto` through the project-opening action. Confirm that the
-   imported data, fit windows and parameter settings are present before
+2. Use **Export Project…** (`Ctrl+Shift+S`) to save under a different portable
+   destination, which becomes the project's file. This writes the current live
+   analysis, not an earlier database version.
+3. Reopen the `.cs.pto` with **Open Project…** (or **Recent Projects**). Confirm
+   that the imported data, fit windows and parameter settings are present before
    continuing the analysis.
 
 Saving an individual fit is a separate operation (`Ctrl+Alt+S`), not a
@@ -93,9 +93,10 @@ session has unsaved work; an empty session asks "Quit ChiSurf?" instead. The
 autosave writes the same `.autosave.cs.pto` copy. A fit window's **×** asks,
 then removes the fit, as in the Qt window.
 
-Not there yet: saving or loading a single fit (`Ctrl+Alt+S`, **Load Fit**) and
-**Macro ▸ Record**. Undo and redo cover the session since it was opened; the
-undo history is not written into the project file.
+Not there yet: saving or loading a single fit (`Ctrl+Alt+S`, **Load Fit**).
+**Macro ▸ Record** and **Macro ▸ Run Macro…** work as in the Qt window (see
+[the console guide](59_console.md)). Undo and redo cover the session since it
+was opened; the undo history is not written into the project file.
 
 ## Failures do not mean an empty project
 

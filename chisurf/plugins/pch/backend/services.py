@@ -136,7 +136,7 @@ def _fit_handler(
     try:
         from chisurf.core.math.numerics import least_squares
 
-        from ..api.algorithms import pch_mixture
+        from ..api.algorithms import pch_chi2, pch_mixture, pch_weighted_residuals
 
         k = np.array(k_vals, dtype=float)
         pe = np.array(p_exp, dtype=float)
@@ -151,23 +151,26 @@ def _fit_handler(
         init_Ns = initial_Ns if initial_Ns else [3.0] * n_components
         mask_reg = (k >= fit_low) & (k <= fit_high)
         params_init = init_eps + init_Ns
+        # Poisson-weighted over the populated bins of the range (pch_weighted_residuals):
+        # unweighted residuals of P(k) let P(0) and P(1) decide the fit, and a Pearson
+        # chi^2 over expected counts of ~1e-14 in the empty tail made chi^2_r ~1e20.
+        n_used = int((mask_reg & (hc > 0)).sum())
 
-        def resid(p):
+        def weighted(p):
             pmod = pch_mixture(k, p[:n_components], p[n_components:])
-            pmod /= pmod.sum()
-            return pmod[mask_reg] - pe[mask_reg]
+            total = pmod.sum()
+            if not np.isfinite(total) or total <= 0:
+                return np.full(n_used, 1e10)
+            return pch_weighted_residuals(hc, pmod / total, tb, mask_reg)
 
-        res = least_squares(resid, np.array(params_init), bounds=(0, np.inf))
+        res = least_squares(weighted, np.array(params_init), bounds=(0, np.inf))
         epsilons = res.x[:n_components].tolist()
         avg_Ns = res.x[n_components:].tolist()
         Ns_arr = np.array(avg_Ns)
         fractions = (Ns_arr / Ns_arr.sum() * 100.0).tolist()
         p_fit = pch_mixture(k, res.x[:n_components], res.x[n_components:])
         p_fit /= p_fit.sum()
-        exp_cnt = p_fit * tb
-        mask_chi = mask_reg & (exp_cnt > 0)
-        chi2 = float(np.sum((hc[mask_chi] - exp_cnt[mask_chi]) ** 2 / exp_cnt[mask_chi]))
-        dof = int(mask_chi.sum()) - (n_components * 2)
+        chi2, dof = pch_chi2(hc, p_fit, tb, mask_reg, 2 * n_components)
         red_chi2 = chi2 / dof if dof > 0 else float("nan")
         return {
             "ok": True,

@@ -10,7 +10,7 @@
     "Spectroscopy",
     "Single-Molecule"
   ],
-  "icon": "🗂️",
+  "icon": "📈",
   "state_namespace": "trace_browser",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",

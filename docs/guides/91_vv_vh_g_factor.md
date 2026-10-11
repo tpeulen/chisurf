@@ -40,7 +40,7 @@ than treating the finite-window first moment as the exact input lifetime.
 
 ## 1. Open the tool and load the fast reference
 
-*Spectroscopy → Decay → VV/VH G-Factor Calculator*. Press **Fast reference...** and choose the
+*Spectroscopy → Decay → Decay Analysis*, panel **5. VV/VH G-Factor**. Press **Fast reference...** and choose the
 VV/VH file of the fast dye (or drop it on the window). The status line reports $G$ and the results table
 lists $G$ raw and its standard deviation.
 

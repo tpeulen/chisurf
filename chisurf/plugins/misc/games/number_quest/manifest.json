@@ -2,6 +2,7 @@
   "id": "number_quest",
   "version": "1.0.0",
   "display_name": "Tools:Miscellaneous:Games:Number Quest",
+  "icon": "🔢",
   "description": "A small number-guessing game contained in the Games hub.",
   "authors": [
     "ChiSurf contributors"

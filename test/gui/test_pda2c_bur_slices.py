@@ -29,6 +29,8 @@ def _reference(path):
     first = frame[names["first file"]].astype(str).str.strip()
     last = frame[names["last file"]].astype(str).str.strip()
     keep = (first == last) & (first != "")
+    if "number of photons" in names:  # the zero separator rows are no bursts
+        keep &= frame[names["number of photons"]].astype(float) > 0
     return (
         first[keep].to_numpy(dtype=object),
         frame.loc[keep, names["first photon"]].astype(float).astype("int64").to_numpy(),

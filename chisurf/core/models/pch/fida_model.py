@@ -52,7 +52,10 @@ class FidaModel(ModelCurve):
                 value=value,
                 lb=lb,
                 ub=ub,
-                bounds_on=False,
+                # On: a brightness, an occupancy or a background is never
+                # negative, and unbounded the fit ran both N negative, which
+                # switched the species off and left a pure background (χ²ᵣ 407).
+                bounds_on=True,
                 fixed=fixed,
                 registry_id=f"fida.{name}",
             )

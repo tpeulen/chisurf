@@ -21,6 +21,7 @@ from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
+from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -241,7 +242,7 @@ class UserEditorApp(ImApp):
         """The ``password_fields`` custom section: two masked text entries."""
         flags = im.InputTextFlags.PASSWORD
         label_w = max(
-            im.calc_text_size("Confirm password")[0], im.calc_text_size("New password")[0]
+            im.calc_text_size(tr("Confirm password"))[0], im.calc_text_size(tr("New password"))[0]
         )
         for label, attr, name, tip in (
             (

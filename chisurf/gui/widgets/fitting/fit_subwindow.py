@@ -4,7 +4,7 @@ import json
 import os
 import pathlib
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 import chisurf.core.data
@@ -80,7 +80,6 @@ class FitSubWindow(CustomMdiSubWindow):
         self.plot_tab_widget = FitPlotsArea(self)
         self.flip_to_code_btn = QtWidgets.QToolButton()
         self.flip_to_code_btn.setText("Code")
-        self.flip_to_code_btn.setFixedSize(50, 20)
         self.flip_to_code_btn.clicked.connect(self.toggle_code_view)
         self.flip_to_code_btn.setAutoRaise(True)
         self.flip_to_code_btn.setCheckable(True)
@@ -90,6 +89,14 @@ class FitSubWindow(CustomMdiSubWindow):
         self.flip_to_code_btn.setStyleSheet(
             "QToolButton, QToolButton:checked { background: transparent; border: none;"
             " color: palette(text); font-weight: bold; }"
+        )
+        # Wide enough for both of its labels in the bold application font: a
+        # fixed 50 px elided "Code" to "C...e" at the default font size.
+        bold = QtGui.QFont(self.flip_to_code_btn.font())
+        bold.setBold(True)
+        metrics = QtGui.QFontMetrics(bold)
+        self.flip_to_code_btn.setFixedSize(
+            max(metrics.horizontalAdvance(label) for label in ("Code", "Plots")) + 12, 20
         )
 
         # Add Code button directly to CustomTitleBar to save maximum vertical space

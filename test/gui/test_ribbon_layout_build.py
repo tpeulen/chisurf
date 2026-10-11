@@ -37,7 +37,7 @@ def _plugin_ribbon():
 def test_every_tab_and_panel_of_the_layout_is_built(qapp):
     import chisurf.core.settings as settings_module
     import chisurf.plugins
-    from chisurf.gui.widgets.ribbon.layout import plugin_layout
+    from chisurf.core.plugin.ribbon_layout import plugin_layout
 
     settings = settings_module.cs_settings
     expected = plugin_layout(
@@ -55,7 +55,7 @@ def test_every_tab_and_panel_of_the_layout_is_built(qapp):
             assert group in built[tab], (tab, group, built[tab])
             from qtpy import QtWidgets
 
-            from chisurf.gui.widgets.ribbon.layout import split_address
+            from chisurf.core.plugin.ribbon_layout import split_address
 
             for start in range(0, len(records), 8):
                 number = start // 8 + 1

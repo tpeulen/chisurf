@@ -57,9 +57,9 @@ def _scan(producer, dt=0.064, n_micro=128, window_dt=0.01):
 
 @pytest.mark.parametrize("dt,n_micro,window_dt", [(0.064, 128, 0.01), (0.032, 256, 0.002)])
 def test_scan_declares_both_physical_clocks(producer, dt, n_micro, window_dt):
-    """The stream header expresses seconds, while simulation microtime uses ns."""
+    """The stream header expresses seconds; the macro clock is the laser sync, as in a measured T3 file."""
     stream = _scan(producer, dt, n_micro, window_dt)
-    assert stream.header.macro_time_resolution == pytest.approx(window_dt)
+    assert stream.header.macro_time_resolution == pytest.approx(n_micro * dt * 1e-9)
     assert stream.header.micro_time_resolution == pytest.approx(dt * 1e-9, rel=1e-12, abs=0.0)
     assert stream.header.number_of_micro_time_channels == n_micro
     assert float(stream.header.micro_time_resolution) * n_micro * 1e9 == pytest.approx(8.192)
@@ -81,7 +81,7 @@ def test_ptu_roundtrip_retains_calibrated_axes_and_events(producer, tmp_path, dt
     producer.write_mixture_ptu(simulation, path)
     restored = tttrlib.TTTR(str(path))
     assert restored.header.micro_time_resolution == pytest.approx(dt * 1e-9, rel=1e-12, abs=0.0)
-    assert restored.header.macro_time_resolution == pytest.approx(0.01)
+    assert restored.header.macro_time_resolution == pytest.approx(n_micro * dt * 1e-9)
     assert restored.header.number_of_micro_time_channels == n_micro
     for name in ("macro_times", "micro_times", "routing_channels", "event_types"):
         np.testing.assert_array_equal(getattr(restored, name), getattr(simulation.tttr, name))
@@ -90,7 +90,7 @@ def test_ptu_roundtrip_retains_calibrated_axes_and_events(producer, tmp_path, dt
     ticks = np.asarray(restored.macro_times)[photons]
     assert bins.size > 100
     np.testing.assert_allclose(bins * restored.header.micro_time_resolution * 1e9, bins * dt)
-    np.testing.assert_allclose(ticks * restored.header.macro_time_resolution, ticks * 0.01)
+    np.testing.assert_allclose(ticks * restored.header.macro_time_resolution, ticks * n_micro * dt * 1e-9)
 
 
 def test_writer_replaces_placeholder_microtime_metadata(producer, tmp_path):
@@ -119,7 +119,7 @@ def test_sample_and_irf_share_the_known_delay_axis(producer, tmp_path):
         restored = tttrlib.TTTR(str(path))
         assert restored.header.number_of_micro_time_channels == 128
         assert restored.header.micro_time_resolution == pytest.approx(64e-12, rel=1e-12, abs=0.0)
-        assert restored.header.macro_time_resolution == pytest.approx(0.01)
+        assert restored.header.macro_time_resolution == pytest.approx(8.192e-9)
         photons = np.asarray(restored.event_types) == 0
         means.append(float(np.asarray(restored.micro_times)[photons].mean()) * 64e-3)
     # Quantisation and the finite period bias the photon mean slightly; this
@@ -184,3 +184,33 @@ def test_header_derived_lifetime_matches_explicit_physical_reference(producer, t
     assert tau == pytest.approx(0.6, rel=0.12)
     for curve, reference in zip(actual.model_curves, expected.model_curves, strict=True):
         np.testing.assert_allclose(curve, reference, rtol=1e-8, atol=1e-8)
+
+
+def test_a_written_scan_reconstructs_and_phasors_without_being_told_the_scanner(producer, tmp_path):
+    """A generator scan reopened from PTU/PTO auto-detects its raster and gives a finite phasor.
+
+    The header used to call the 10 ms integration window the macro clock and carried no ``ImgHdr_*`` tags:
+    every imaging step showed a ``0x0`` image, and once the image was rebuilt the automatic phasor
+    frequency (``micro / macro`` resolution) was ~3e-9 cycles per channel, so every pixel read (1, 0).
+    """
+    y, x = np.indices((12, 12))
+    brightness = 0.2 + np.exp(-0.5 * (((x - 6) / 3) ** 2 + ((y - 6) / 3) ** 2))
+    tau = 2.0
+    simulation = producer.simulate_clsm_from_maps(
+        brightness, np.full((12, 12), tau), brightness_scale=3000.0, n_lifetime_levels=2,
+        n_intensity_levels=3, irf_sigma=0.01, irf_center=0.0,
+    )
+    expected = np.asarray(simulation.intensity)
+    for suffix in ("ptu", "pto"):
+        path = tmp_path / f"scan.{suffix}"
+        assert simulation.tttr.write(str(path))
+        stream = tttrlib.TTTR(str(path))
+        assert stream.header.macro_time_resolution == pytest.approx(256 * 0.032e-9)
+        clsm = tttrlib.CLSMImage(stream, channels=[0], fill=True)
+        np.testing.assert_array_equal(np.asarray(clsm.intensity).sum(axis=0), expected)
+        phasor = np.asarray(clsm.get_phasor(stream, frequency=-1, minimum_number_of_photons=20))
+        g, s = phasor[..., 0], phasor[..., 1]
+        lit = (g > -1) & np.isfinite(g)
+        omega_tau = 2 * np.pi * tau / 8.192
+        assert np.median(g[lit]) == pytest.approx(1 / (1 + omega_tau**2), abs=0.05), suffix
+        assert np.median(s[lit]) == pytest.approx(omega_tau / (1 + omega_tau**2), abs=0.05), suffix

@@ -48,7 +48,7 @@ def simulate() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 def fit(n_components: int) -> dict[str, Any]:
     """Fit *n_components* exponentials; return reduced chi-square, dof and lifetimes."""
-    from scipy.optimize import least_squares
+    from chisurf.core.math.numerics import least_squares
 
     t, y, sigma = simulate()
 

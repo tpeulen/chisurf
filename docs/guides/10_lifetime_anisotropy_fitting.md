@@ -92,7 +92,7 @@ d_FRET   = decay([0.6, 3.5, 0.4, 0.7])     # + a 0.7 ns FRET-quenched fraction
 
 ## The Anisotropy Wizard (time-resolved anisotropy)
 
-*Spectroscopy → Decay → Anisotropy-Wizard* builds the linked VV/VH global fit from four
+*Tools → Calculators → Wizards*, entry **Anisotropy**, builds the linked VV/VH global fit from four
 measured curves. It fits VV and VH themselves, linked, never the ratio $r(t)$ (forming the ratio first
 destroys the Poisson weights). The window has the six steps listed on the left, each with a check mark
 once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** starts the guided tour and

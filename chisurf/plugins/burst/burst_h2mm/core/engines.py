@@ -42,7 +42,7 @@ import logging
 
 import numpy as np
 
-from .h2mm import BurstPhotons, H2mmModel
+from .h2mm import MIN_TRANS, BurstPhotons, H2mmModel
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +302,7 @@ def optimize(
     data: BurstPhotons,
     max_iter: int = 500,
     tol: float = 1e-7,
-    min_trans: float = 1e-12,
+    min_trans: float = MIN_TRANS,
     accelerate: bool = True,
     single_precision: bool = False,
     on_iter=None,

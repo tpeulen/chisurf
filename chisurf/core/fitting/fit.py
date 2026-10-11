@@ -413,9 +413,10 @@ class Fit(cs.core.base.Base):
         Returns
         -------
         float
-            Chi-squared divided by degrees of freedom.
+            Chi-squared divided by degrees of freedom, as a Python ``float``
+            (``np.float64`` printed as ``np.float64(...)`` at the console).
         """
-        return get_chi2(list(), model=self.model)
+        return float(get_chi2(list(), model=self.model))
 
     @property
     def durbin_watson(self) -> float:
@@ -1662,6 +1663,40 @@ class Fit(cs.core.base.Base):
         if errors:
             parameter.error_estimate = float(max(errors))
         return r
+
+
+def initialise_fit_range(fit) -> None:
+    """Give a newly created fit a range it can actually be run over.
+
+    A fresh fit's range is ``(0, 0)``, and the optimiser rejects that
+    ("N parameters against 0 residuals") -- so a fit created by a tool or over
+    RPC could be created but never run. The reader's ``autofitrange`` is
+    preferred, because that is what the GUI and the agent layer both use; a
+    dataset without a reader (raw ``curve_data`` over the wire, curves a
+    wizard builds) gets the whole curve rather than nothing.
+
+    Parameters
+    ----------
+    fit : Fit or FitGroup
+        The newly created fit.
+    """
+    data = getattr(fit, "data", None)
+    if data is None:
+        return
+    reader = getattr(data, "data_reader", None)
+    if reader is not None and hasattr(reader, "autofitrange"):
+        try:
+            start, stop = reader.autofitrange(data)
+            fit.fit_range = (int(start), int(stop))
+            return
+        except Exception:
+            cs.logging.debug("autofitrange failed; falling back to the whole curve")
+    try:
+        n = len(getattr(data, "y", data))
+        if n > 1:
+            fit.fit_range = (0, int(n) - 1)
+    except Exception:
+        cs.logging.debug("could not derive a fit range from the data")
 
 
 class FitGroup(Fit):

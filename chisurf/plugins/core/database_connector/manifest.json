@@ -2,6 +2,7 @@
   "id": "database_connector",
   "version": "0.1.0",
   "display_name": "Core:Database Connector",
+  "icon": "🗄️",
   "description": "Core database connector services for source/user database resolution, migration, backup, reset, repository access, and FLR CIF import/export.",
   "authors": [
     "Thomas-Otavio Peulen"

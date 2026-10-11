@@ -1,5 +1,7 @@
+import atexit
 import os
 import pathlib
+import shutil
 import sys
 import tempfile
 
@@ -29,6 +31,9 @@ _REAL_SETTINGS_DIR = pathlib.Path.home() / ".chisurf"
 _HERMETIC_SETTINGS_DIR = pathlib.Path(tempfile.mkdtemp(prefix="chisurf-test-settings-"))
 os.environ["CHISURF_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
 os.environ["MMFDB_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
+# One directory per pytest process, tens of MB each (the user database): without this a day of
+# runs fills the disk, and a full disk makes every later test fail with ENOSPC.
+atexit.register(shutil.rmtree, _HERMETIC_SETTINGS_DIR, ignore_errors=True)
 
 # Matplotlib must not open windows during a test run. The default backend on
 # macOS is ``macosx``, a native GUI backend, so any test that draws a figure

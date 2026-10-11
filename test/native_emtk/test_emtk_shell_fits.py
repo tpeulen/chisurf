@@ -174,7 +174,7 @@ def test_load_fit_edit_and_run_through_the_api(shell):
 
 def test_a_fit_made_elsewhere_opens_its_window_from_the_event(shell):
     """``fit.created`` from another caller of the server opens the window: the event stream drives the shell."""
-    driver = Driver(shell, size=(1200, 800))
+    driver = Driver(shell, size=(1200, 900))
     _load(driver, shell, KRISTINE)
     api = shell.data.session.api
     result = api.add_fit([0], model_name=MODEL)
@@ -186,7 +186,7 @@ def test_a_fit_made_elsewhere_opens_its_window_from_the_event(shell):
 
 
 def test_a_file_dropped_on_the_shell_is_read(shell):
-    driver = Driver(shell, size=(1200, 800))
+    driver = Driver(shell, size=(1200, 900))
     driver.frame(2)
     data = shell.data
     data.read.experiment = "FCS"
@@ -203,7 +203,7 @@ def test_closing_a_fit_window_keeps_the_fit(shell, monkeypatch):
     from chisurf.core.settings import cs_settings
 
     monkeypatch.setitem(cs_settings, "gui", {**(cs_settings.get("gui") or {}), "confirm_close_fit": False})
-    driver = Driver(shell, size=(1200, 800))
+    driver = Driver(shell, size=(1200, 900))
     _load(driver, shell, KRISTINE)
     uid = _add_fit(driver, shell)
     shell.docks.hide(shell.data.windows[uid].key)

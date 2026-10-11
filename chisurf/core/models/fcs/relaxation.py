@@ -94,6 +94,20 @@ class BunchingTerms(FittingParameterGroup):
             self._ba.pop()
             self._bt.pop()
 
+    def set_count(self, n: int) -> None:
+        """Hold exactly *n* terms: append default terms or drop the last ones.
+
+        The number of terms is the group's topology. A saved model records it
+        and restores it before its parameter values, which are matched to the
+        terms by position.
+        """
+        if type(n) is not int or n < 0:
+            raise ValueError(f"invalid number of bunching terms: {n!r}")
+        while len(self) < n:
+            self.add_bunching()
+        while len(self) > n:
+            self.remove_bunching()
+
     def apply(self, g: np.ndarray, tau_ms: np.ndarray) -> np.ndarray:
         """Multiply ``g`` by every active bunching term's relaxation factor."""
         for ba, bt in self.terms():
@@ -175,6 +189,15 @@ class AnticorrTerms(FittingParameterGroup):
         if self._aca:
             self._aca.pop()
             self._act.pop()
+
+    def set_count(self, n: int) -> None:
+        """Hold exactly *n* terms (see :meth:`BunchingTerms.set_count`)."""
+        if type(n) is not int or n < 0:
+            raise ValueError(f"invalid number of anticorrelation terms: {n!r}")
+        while len(self) < n:
+            self.add_anticorr()
+        while len(self) > n:
+            self.remove_anticorr()
 
     def apply(self, g: np.ndarray, tau_ms: np.ndarray) -> np.ndarray:
         """Multiply ``g`` by every active anticorrelation term's dip factor."""

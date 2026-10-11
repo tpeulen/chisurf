@@ -218,7 +218,7 @@ and the hub's Correlator view label lag time in ms.
   lag point is dropped. With a single curve there is no spread and no
   uncertainty column is written; the fit then falls back to the photon-noise
   model.
-* **Save Merged** writes `<folder>.cor` next to the chunk folder — for a
+* **Save** writes `<folder>.cor` next to the chunk folder (**Save as…** elsewhere) — for a
   correlated stream, `cr5.cor` beside the data file.
 * **Add to ChiSurf** saves (if needed) and loads that file as an FCS dataset,
   ready for {doc}`09_diffusion_fcs`.

@@ -185,32 +185,39 @@ def _grab_burst_selection_guides():
 
 
 def _grab_burst_analysis_pipeline():
-    """Guide 27: Burst Analysis, step 2 after a search over the ten files."""
-    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+    """Guide 27: the native Burst Analysis hub on step 2 after Next searched the ten sm-DNA files."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+    from chisurf.plugins.burst.burst_selection.gui.model import save_setup
+    from emtk_shot import render, wait
 
     data = _sm_dna_copy()
-    folder = data.parent / "spc"
-    folder.mkdir()
-    for spc in data.glob("*.spc"):
-        shutil.copy(spc, folder)
-    tool = BurstAnalysisTool()
-    tool.resize(1600, 1000)
-    tool.show()
-    _pump(1)
-    tool.nav_list.setCurrentRow(0)
-    _pump(1)
-    tool._panel_widget(0).add_paths(sorted(folder.glob("*.spc")))
-    tool.nav_list.setCurrentRow(1)
-    _pump(2)
-    selection = tool._panel_widget(1)
-    t0 = time.time()
-    selection.analyze_files(force=True)
-    while not getattr(selection, "_has_processed", False) and time.time() - t0 < 240:
-        QApplication.instance().processEvents()
-        time.sleep(0.05)
-    _pump(2)
-    _grab(tool, "27_burst_analysis_pipeline.png")
-    tool.close()
+    # The setup is saved and chosen by name, as on step 0: never the one the settings directory happens to hold.
+    save_setup("BH SPC-130 dsDNA", SM_DNA_SETUP)
+    hub = create_app()
+    driver = Driver(hub, (1400, 860))
+
+    def busy():
+        for child in hub.children.values():
+            for obj in (child, getattr(child, "controller", None), getattr(child, "job", None)):
+                if any(getattr(obj, name, False) is True for name in ("running", "busy")):
+                    return True
+        return bool(hub._pending_next)
+
+    wait(driver, lambda: "setup" in hub.children, timeout=60)
+    hub.children["setup"].select_setup("BH SPC-130 dsDNA")
+    driver.click(hub.item_rects["next"])  # 1. Data Selection
+    wait(driver, lambda: "data" in hub.children, timeout=60)
+    hub.on_files_dropped(sorted(str(p) for p in data.glob("*.spc")))
+    driver.click(hub.item_rects["next"])  # 2. Burst Selection
+    wait(driver, lambda: "selection" in hub.children, timeout=60)
+    driver.click(hub.item_rects["next"])  # Next searches every file, then moves on
+    wait(driver, lambda: not busy(), timeout=400)
+    print(hub.children["selection"].model.status_text, flush=True)
+    hub.select("selection")
+    render(hub, "27_burst_analysis_pipeline.png", size=(1400, 860), driver=driver)
+    hub.close()
 
 
 def _grab_ndx_2d_gaussians():

@@ -12,8 +12,8 @@ from qtpy.QtCore import Qt, QTimer
 from qtpy.QtGui import QIcon
 
 import chisurf as cs
-from chisurf.gui.widgets.navigation import maturity_markers, maturity_warnings
-from chisurf.gui.widgets.ribbon.layout import group_records
+from chisurf.core.plugin.maturity import maturity_markers, maturity_warnings
+from chisurf.core.plugin.ribbon_layout import group_records
 
 # Import enhanced icon utilities for emoji support
 try:
@@ -115,7 +115,7 @@ class PluginMethodsMixin:
     def _create_plugin_tabs(self, plugins):
         """Create one ribbon tab per address tab and one panel per group.
 
-        The grouping rules live in :mod:`chisurf.gui.widgets.ribbon.layout`, which
+        The grouping rules live in :mod:`chisurf.core.plugin.ribbon_layout`, which
         the layout test reads too: ``"Tab:Name"`` lands in a group named after its
         tab, ``"Tab:A:B:Name"`` in the group ``"A › B"`` at any depth. A group with
         more buttons than fit one panel continues in ``"Group 2"``, ``"Group 3"``.

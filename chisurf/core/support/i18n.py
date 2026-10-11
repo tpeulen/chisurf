@@ -69,6 +69,14 @@ def has_translation_backend() -> bool:
     return _backend is not None
 
 
+@typing.overload
+def tr(text: str, context: str = ...) -> str: ...
+
+
+@typing.overload
+def tr(text: None, context: str = ...) -> None: ...
+
+
 def tr(text: str | None, context: str = DEFAULT_CONTEXT) -> str | None:
     """Translate ``text`` through the active backend, else :mod:`emtk.i18n`.
 

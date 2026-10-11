@@ -52,6 +52,51 @@ IDS_ACTION = sorted(
     and not (m["entrypoints"].get("gui") or m["entrypoints"].get("emtk"))
 )
 SIZE = (1100, 720)
+#: The real-use QA matrix (okf/workflows/testing.md, "Real-use QA matrix"). The base sweep above
+#: drives every plugin at one size, English, scale 1, with instantaneous press/release; each
+#: variant changes exactly one of those. ``driver: realistic`` is emtk.testing_realistic: events in
+#: the platform's vocabulary through emtk.native.CanvasEvents, press and release in different
+#: frames with the hand moving, the real device painter at the content scale.
+VARIANTS = {
+    "size_800x600": {"size": (800, 600)},
+    "size_1920x1080": {"size": (1920, 1080)},
+    "resize": {"size": (1100, 720), "resize_to": (800, 600)},
+    "scale2": {"size": (1100, 720), "driver": "realistic", "scale": 2.0},
+    "lang_de": {"size": (1100, 720), "lang": "de"},
+    "lang_fr": {"size": (1100, 720), "lang": "fr"},
+    "realistic": {"size": (1100, 720), "driver": "realistic"},
+}
+#: The variant this worker runs (``--variant``); ``{}`` is the base sweep.
+VARIANT: dict = {}
+
+
+def matrix_cases(ids, mode=None, sample=None):
+    """``(variant, plugin)`` pairs the matrix runs.
+
+    ``CHISURF_E2E_MATRIX``: ``off``; ``sample`` (default) -- per variant
+    ``CHISURF_E2E_MATRIX_SAMPLE`` plugins (3), a deterministic hash-ranked choice rotated by
+    ``CHISURF_E2E_MATRIX_SEED`` so CI covers the catalogue over successive seeds; ``full`` -- every
+    variant times every plugin; or a comma list of variant names (full plugin set for those).
+    """
+    mode = (mode or os.environ.get("CHISURF_E2E_MATRIX", "sample")).strip().lower()
+    if mode in ("", "off", "0", "none"):
+        return []
+    if mode == "full":
+        return [(v, i) for v in VARIANTS for i in ids]
+    if mode != "sample":
+        chosen = [v.strip() for v in mode.split(",") if v.strip() in VARIANTS]
+        return [(v, i) for v in chosen for i in ids]
+    count = int(sample or os.environ.get("CHISURF_E2E_MATRIX_SAMPLE", "3"))
+    seed = os.environ.get("CHISURF_E2E_MATRIX_SEED", "0")
+    cases = []
+    for variant in VARIANTS:
+        ranked = sorted(
+            ids, key=lambda i: hashlib.sha256(f"{seed}:{variant}:{i}".encode()).hexdigest()
+        )
+        cases += [(variant, i) for i in ranked[:count]]
+    return cases
+
+
 HARNESS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 # The documented baseline remains recognizable; extra exclusions protect real
 # accounts, remote jobs and hardware even when a plugin calls them "Run".
@@ -135,9 +180,9 @@ def walk(spec):
             yield from walk(section.get("sections", []))
 
 
-def _isolated(plugin_id, mode):
+def _isolated(plugin_id, mode, variant=None):
     """Launch one worker, retaining output and explicit crash/timeout evidence."""
-    directory = artifact_dir()
+    directory = artifact_dir() / variant if variant else artifact_dir()
     directory.mkdir(parents=True, exist_ok=True)
     result_path = directory / f"{artifact_stem(plugin_id)}.json"
     (directory / f"{artifact_stem(plugin_id)}.png").unlink(missing_ok=True)
@@ -179,6 +224,10 @@ def _isolated(plugin_id, mode):
         "--mode",
         mode,
     ]
+    if variant:
+        command += ["--variant", variant]
+        # A realistic click takes 8 frames, not 3; a big window draws more per frame.
+        timeout *= 3.0 if VARIANTS[variant].get("driver") == "realistic" else 1.5
     try:
         completed = subprocess.run(
             command, cwd=REPO, env=env, capture_output=True, text=True, timeout=timeout
@@ -220,6 +269,15 @@ def _isolated(plugin_id, mode):
 def test_emtk_plugin_survives_every_control(plugin_id):
     """Assert each native manifest's factory and safe interaction scenario."""
     _isolated(plugin_id, "emtk")
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    ("variant", "plugin_id"), matrix_cases(IDS_EMTK), ids=lambda v: str(v)
+)
+def test_emtk_plugin_real_use(variant, plugin_id):
+    """The same sweep under one real-use variant: size, resize, scale, language or input."""
+    _isolated(plugin_id, "emtk", variant)
 
 
 @pytest.mark.e2e
@@ -1015,6 +1073,133 @@ INVENTORY_BUDGET = {"help": 150}
 INVENTORY_CEILING = 1024
 
 
+def _unfinished_sources(lang):
+    """Sources the ``chisurf_<lang>.ts`` catalogue extracts but has not translated yet."""
+    import xml.etree.ElementTree as ElementTree
+
+    path = REPO / "chisurf" / "gui" / "i18n" / f"chisurf_{lang}.ts"
+    out = set()
+    try:
+        root = ElementTree.parse(path).getroot()
+    except (OSError, ElementTree.ParseError):
+        return out
+    for message in root.iter("message"):
+        source = (message.findtext("source") or "").strip()
+        translation = message.find("translation")
+        if source and (
+            translation is None
+            or translation.get("type") == "unfinished"
+            or not (translation.text or "").strip()
+        ):
+            out.add(source)
+    return out
+
+
+class RealUseFindings:
+    """What a matrix variant checks on every settled frame of the sweep.
+
+    * **clipped captions** -- a control whose own caption the active clip cuts (measured with
+      the painter's real metrics, :func:`emtk.testing_realistic.clipped_texts`); under a
+      language variant also any clipped *translated* string, which is what a longer German or
+      French text does to a layout sized for English;
+    * **untranslated text** (language variants) -- a drawn string the catalogue translates to
+      something else, i.e. English source text that reached the screen without passing
+      through ``tr``.
+
+    Inactive for the base sweep, so its verdicts are unchanged.
+    """
+
+    def __init__(self, driver, recorder_rows):
+        self.driver = driver
+        self.rows = recorder_rows
+        self.active = bool(VARIANT)
+        self.lang = VARIANT.get("lang")
+        self.clipped: dict = {}
+        self.untranslated: dict = {}
+        self._tr_cache: dict = {}
+        self._translated: set = set()
+        if self.lang:
+            from emtk import i18n as toolkit
+
+            from chisurf.core.support.i18n import register_catalogues
+
+            register_catalogues()
+            toolkit.set_language(self.lang)
+            self._toolkit = toolkit
+            self.missing: dict = {}
+            self._unfinished = _unfinished_sources(self.lang)
+
+    def _translation(self, text):
+        """The catalogue's translation of *text* in any domain, or None."""
+        if text in self._tr_cache:
+            return self._tr_cache[text]
+        found = None
+        for domain in self._toolkit.domains():
+            try:
+                out = self._toolkit.tr(text, domain=domain)
+            except Exception:  # noqa: BLE001 - a malformed catalogue is its own test's finding
+                continue
+            if out and out != text:
+                found = out
+                break
+        self._tr_cache[text] = found
+        if found:
+            self._translated.add(found.strip())
+        return found
+
+    def scan(self):
+        """Inspect the last drawn frame."""
+        if not self.active:
+            return
+        painter = self.driver.painter
+        if painter is None or not hasattr(painter, "text_metadata"):
+            return
+        from emtk.testing_realistic import clipped_texts
+
+        captions = {
+            str(row.get("label") or "").split("##")[0].strip()
+            for row in self.rows()
+            if row.get("kind") in CLICKABLE
+        }
+        captions.discard("")
+        texts = {str(entry[5]).strip() for entry in painter.texts}
+        if self.lang:
+            for text in texts:
+                if len(text) > 1 and any(c.isalpha() for c in text):
+                    translation = self._translation(text)
+                    if translation and text not in self._translated:
+                        self.untranslated.setdefault(text, translation)
+                    elif not translation and text in self._unfinished:
+                        self.missing[text] = self.missing.get(text, 0) + 1
+        for hit in clipped_texts(painter):
+            text = hit["text"].strip()
+            if text in captions or (self.lang and text in self._translated):
+                self.clipped.setdefault(
+                    text, {"hidden_px": hit["hidden_px"], "visible": hit["visible"],
+                           "size": list(self.driver.size)}
+                )
+
+    def report(self, result):
+        """Record the findings; each kind fails the variant."""
+        if not self.active:
+            return
+        result["clipped_labels"] = self.clipped
+        if self.lang:
+            result["untranslated_visible"] = self.untranslated
+            # Catalogue backlog, not a code defect: the source is extracted but its
+            # translation is unfinished. Recorded for the i18n job, never failing.
+            result["missing_translation"] = sorted(self.missing)
+        if self.clipped:
+            result["errors"].append(
+                f"{len(self.clipped)} clipped label(s): " + ", ".join(sorted(self.clipped)[:12])
+            )
+        if self.untranslated:
+            result["errors"].append(
+                f"{len(self.untranslated)} untranslated visible text(s): "
+                + ", ".join(sorted(self.untranslated)[:12])
+            )
+
+
 def _native(plugin_id, result, png_path):
     """Draw a real app, visit safe controls, audit its tour and tooltips."""
     from emtk import im, keys
@@ -1110,7 +1295,14 @@ def _native(plugin_id, result, png_path):
     checkpoint(result)
     global CURRENT_APP
     app = CURRENT_APP = load_plugin(plugin_id, persist=False)
-    driver = Driver(app, SIZE)
+    size = tuple(VARIANT.get("size", SIZE))
+    if VARIANT.get("driver") == "realistic":
+        from emtk.testing_realistic import RealisticDriver
+
+        driver = RealisticDriver(app, size, scale=float(VARIANT.get("scale", 1.0)))
+    else:
+        driver = Driver(app, size)
+    findings = RealUseFindings(driver, recorder_rows=lambda: recorder.rows)
     recorder = Recorder()
     samples = []
     try:
@@ -1127,7 +1319,10 @@ def _native(plugin_id, result, png_path):
             controls = {
                 row["visit_id"]: dict(row) for row in recorder.rows if row["kind"] in CLICKABLE
             }
+            findings.scan()
             pending = sorted(controls)
+            # Half-way through the sweep (after the first click for a tool with few controls).
+            resize_after = max(1, len(pending) // 2) if VARIANT.get("resize_to") else None
             visited = set()
             exercised_stops = set()
             from chisurf.emtk import job_gate
@@ -1255,6 +1450,13 @@ def _native(plugin_id, result, png_path):
                     driver.click(click_box)
                 result["clicked"].append(raw_name)
                 result.setdefault("clicked_ids", []).append(name)
+                if resize_after is not None and len(result["clicked"]) >= resize_after:
+                    # The window manager resizes mid-session; every later click must land at
+                    # the new positions (the sweep re-resolves each control from the frame).
+                    driver.draw(size=tuple(VARIANT["resize_to"]))
+                    result["resized_at"] = {"click": len(result["clicked"]),
+                                            "to": list(driver.size)}
+                    resize_after = None
                 if control["kind"] == "combo":
                     result["combos"].append(raw_name)
                 elif control["kind"] == "begin_tab_item":
@@ -1278,12 +1480,18 @@ def _native(plugin_id, result, png_path):
                 assert not getattr(app, "running", False), "long-running control without cancel"
                 recorder.rows.clear()
                 driver.frame()
+                findings.scan()
                 for row in recorder.rows:
                     if row["kind"] in CLICKABLE:
                         controls[row["visit_id"]] = dict(row)
                         if row["visit_id"] not in visited and row["visit_id"] not in pending:
                             pending.append(row["visit_id"])
             job_gate.disarm()
+            if resize_after is not None:
+                # A sweep that ended before the half-way click still resizes, so the tour and
+                # the Tab presses below run at the new size.
+                driver.draw(size=tuple(VARIANT["resize_to"]))
+                result["resized_at"] = {"click": len(result["clicked"]), "to": list(driver.size)}
             result["controls"] = list(controls.values())
             for section in walk(getattr(app, "spec", {})):
                 if section.get("type") == "choice":
@@ -1312,8 +1520,9 @@ def _native(plugin_id, result, png_path):
                 tour.stop()
             recorder.rows.clear()
             driver.frame()
-        inventory = emtk_inventory(app, SIZE)
+        inventory = emtk_inventory(app, tuple(driver.size))
         result["inventory"] = inventory
+        findings.report(result)
         missing = sorted(
             set(inventory["controls_without_tooltip"])
             | {
@@ -1383,8 +1592,10 @@ def _qt(plugin_id, result, png_path, qapp):
         qapp.processEvents()
 
 
-def run_one(plugin_id, mode):
+def run_one(plugin_id, mode, variant=None):
     """Create scratch state before imports, then always write a worker result."""
+    global VARIANT
+    VARIANT = dict(VARIANTS[variant]) if variant else {}
     directory = artifact_dir()
     directory.mkdir(parents=True, exist_ok=True)
     stem = artifact_stem(plugin_id)
@@ -1392,7 +1603,8 @@ def run_one(plugin_id, mode):
         "plugin": plugin_id,
         "mode": mode,
         "status": "running",
-        "size": list(SIZE),
+        "size": list(VARIANT.get("size", SIZE)),
+        "variant": variant,
         "harness_sha256": HARNESS_SHA256,
         "python": sys.version,
         "machine": platform.machine(),
@@ -1415,6 +1627,8 @@ def run_one(plugin_id, mode):
             "LUMIS_QUEST_HOME": str(Path(scratch) / "lumis"),
             "QT_QPA_PLATFORM": "offscreen",
         }
+        if VARIANT.get("lang"):
+            env["EMTK_LANG"] = VARIANT["lang"]
         with patch.dict(os.environ, env), ExitStack() as stack:
             try:
                 if plugin_id == "code_editor":
@@ -1480,5 +1694,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-one", required=True)
     parser.add_argument("--mode", choices=("emtk", "qt"), required=True)
+    parser.add_argument("--variant", choices=sorted(VARIANTS), default=None)
     args = parser.parse_args()
-    raise SystemExit(run_one(args.run_one, args.mode))
+    raise SystemExit(run_one(args.run_one, args.mode, args.variant))

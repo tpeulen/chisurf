@@ -44,8 +44,10 @@ def _extract_curve_data(dataset: Any) -> dict[str, Any] | None:
             }
         return value
 
+    from chisurf.core.structure import Structure
+
     if isinstance(dataset, DataGroup):
-        if any(not isinstance(member, DataCurve) for member in dataset):
+        if any(not isinstance(member, (DataCurve, Structure)) for member in dataset):
             return None
         if not dataset:
             raise ValueError("cached curve groups require nonempty DataCurve members")
@@ -58,7 +60,10 @@ def _extract_curve_data(dataset: Any) -> dict[str, Any] | None:
             "metadata": _scientific_value(dataset.meta_data or {}),
             "members": [record(member) for member in dataset],
         }
-    if isinstance(dataset, DataCurve):
+    # A structure travels as the codec's structure record (its atoms), not as
+    # a curve: without it the server had nothing to build but an empty curve
+    # named after the file, and every structure model read that.
+    if isinstance(dataset, (DataCurve, Structure)):
         return record(dataset)
     x, y = getattr(dataset, "x", None), getattr(dataset, "y", None)
     if x is None or y is None:

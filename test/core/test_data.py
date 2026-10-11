@@ -361,9 +361,9 @@ class TestDataCurveGroup:
     def test_str(self, sample_curve_short):
         c2 = chisurf.core.data.DataCurve(x=np.array([0.0]), y=np.array([1.0]), name="B")
         g = chisurf.core.data.DataCurveGroup([sample_curve_short, c2])
-        result = g.__str__()
-        assert isinstance(result, list)
-        assert len(result) == 2
+        result = str(g)  # a list here made print(group) raise TypeError
+        assert isinstance(result, str)
+        assert result.count("Dataset:") == 2
 
 
 class TestExperimentDataGroup:

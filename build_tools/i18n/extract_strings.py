@@ -55,7 +55,8 @@ CONTEXT = "chisurf"
 #: wherever they appear in the nested spec. Mirrors the runtime translation seams
 #: in ``chisurf/core/dataspec`` and ``chisurf/core/plugin/manifest.py``.
 #: ``display_name`` and ``categories`` are deliberately excluded — they double as
-#: menu-path / identity keys and stay canonical (localized at the nav seam).
+#: menu-path / identity keys and stay canonical; a ``display_name``'s *segments* are
+#: collected by :func:`_collect_menu_path`, since each is drawn through ``tr()``.
 TEXT_KEYS = frozenset(
     {
         # AutoForm section fields
@@ -178,12 +179,13 @@ def _collect_from_python(strings: set[str]) -> None:
             if not isinstance(node, ast.Call) or not node.args:
                 continue
             func = node.func
+            # ``mark("…")`` is emtk's marker for a table of labels translated where it is drawn.
             is_tr = (
                 isinstance(func, ast.Attribute)
-                and func.attr == "tr"
+                and func.attr in ("tr", "mark")
                 and isinstance(func.value, ast.Name)
                 and func.value.id == "i18n"
-            ) or (isinstance(func, ast.Name) and func.id in ("tr", "Msg"))
+            ) or (isinstance(func, ast.Name) and func.id in ("tr", "Msg", "mark"))
             if not is_tr:
                 continue
             first = node.args[0]
@@ -197,6 +199,20 @@ def _not_shipped(path: pathlib.Path) -> bool:
     return any(
         part in {"test", "tests", "__pycache__"} or "cookiecutter" in part for part in path.parts
     ) or path.name.startswith("test_")
+
+
+def _collect_menu_path(path: pathlib.Path, data: object, out: set[str]) -> None:
+    """Collect the captions of a plugin manifest's menu path (``display_name``).
+
+    The path stays canonical in the manifest -- it is the plugin's address -- but each segment is
+    drawn translated: the ribbon's tab, group and button, the menus and the Tools dock call
+    ``tr(segment)``. Without the segments in the catalogue those captions never translate.
+    """
+    if path.name != "manifest.json" or not isinstance(data, dict):
+        return
+    name = data.get("display_name")
+    if isinstance(name, str):
+        out.update(part.strip() for part in name.split(":") if part.strip())
 
 
 def collect_strings() -> set[str]:
@@ -216,6 +232,7 @@ def collect_strings() -> set[str]:
             raise ValueError(f"Invalid translation declaration {path}: {error}") from error
         _collect_from_json(data, strings)
         _collect_labels(data, strings)
+        _collect_menu_path(path, data, strings)
     _collect_from_python(strings)
     # Drop empties / pure-format placeholders.
     return {s for s in strings if s and s.strip()}

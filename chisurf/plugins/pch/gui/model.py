@@ -395,13 +395,14 @@ class PchModel:
         fr = self.fit_result
         fit_low, fit_high = int(self.fit_low), int(self.fit_high)
 
+        from chisurf.plugins.pch.api.algorithms import pch_chi2
+
         k_arr = np.array(self.result.k_vals)
-        p_fit = np.array(fr.p_fit)
-        exp_cnt = p_fit * self.result.total_bins
-        obs_cnt = np.array(self.result.hist_counts)
-        mask = (k_arr >= fit_low) & (k_arr <= fit_high) & (exp_cnt > 0)
-        chi2 = float(np.sum((obs_cnt[mask] - exp_cnt[mask]) ** 2 / exp_cnt[mask]))
-        dof = int(mask.sum()) - (fr.n_components * 2)
+        mask = (k_arr >= fit_low) & (k_arr <= fit_high)
+        # The fit's own statistic: the same weights the backend minimised.
+        chi2, dof = pch_chi2(
+            self.result.hist_counts, fr.p_fit, self.result.total_bins, mask, fr.n_components * 2
+        )
         red_chi2 = chi2 / dof if dof > 0 else float("nan")
 
         lines = [

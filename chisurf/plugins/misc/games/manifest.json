@@ -2,6 +2,7 @@
   "id": "games",
   "version": "1.0.0",
   "display_name": "Tools:System:Games",
+  "icon": "🎮",
   "description": "A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout.",
   "authors": [
     "ChiSurf contributors"

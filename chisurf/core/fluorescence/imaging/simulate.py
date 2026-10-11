@@ -987,17 +987,28 @@ def _run_scan(
             False,
         )
     )
+    # Macro timestamps count laser periods (the sync clock of a real T3 file),
+    # micro timestamps dt-ns bins. The engine reports integration windows of
+    # window_dt seconds plus each event's offset inside its window; a header
+    # that called the window the macro clock declared a 100 Hz "laser", and
+    # every reader that derives the period from it (the phasor's automatic
+    # frequency, the excitation period) got a degenerate answer from a file
+    # whose image reconstructed fine.
+    period_s = float(n_micro) * float(dt) * 1e-9
+    seconds = np.asarray(engine.macro_window(), np.float64) * float(window_dt) + np.asarray(
+        engine.arrival_time(), np.float64
+    )
+    ticks = np.maximum.accumulate(np.floor(seconds / period_s).astype(np.uint64))
     tttr = tttrlib.TTTR(
-        np.asarray(engine.macro_window(), np.uint64),
+        ticks,
         np.asarray(engine.micro_time(), np.uint16),
         np.asarray(engine.channel(), np.int8),
         np.asarray(engine.event_type(), np.int8),
     )
-    # Macro timestamps count integration windows of window_dt seconds; micro
-    # timestamps count dt-ns bins. Array construction otherwise uses 1-s clocks.
-    tttr.header.set_macro_time_resolution(float(window_dt))
+    tttr.header.set_macro_time_resolution(period_s)
     tttr.header.set_micro_time_resolution(float(dt) * 1e-9)
     tttr.header.set_number_of_micro_time_channels(int(n_micro))
+    declare_scan_header(tttr, n_pixel)
     clsm = tttrlib.CLSMImage(
         tttr_data=tttr,
         marker_frame_start=[4],
@@ -1010,6 +1021,38 @@ def _run_scan(
     )
     clsm.fill(tttr, channels=list(fill_channels))
     return tttr, clsm
+
+
+def declare_scan_header(tttr, n_pixel: int) -> None:
+    """Write the simulated raster's geometry and markers into the stream header.
+
+    The scanner writes line-start, line-stop and frame markers on routing
+    channels 1, 2 and 4 (plus a pixel marker on 8, which a reader need not
+    use: the dwell is uniform). A reader that is not told so auto-detects from
+    the ``ImgHdr_*`` tags of the file, and without them a written scan
+    reconstructs to an empty ``0x0`` image in every imaging step. The tags use
+    the PicoQuant index encoding (routing channel ``2**(index - 1)``), which
+    ``CLSMImage`` decodes for a PTU and the PTO container keeps.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The simulated stream; its header is updated in place.
+    n_pixel : int
+        Side of the square scan grid (pixels per line and lines per frame).
+    """
+    header = tttr.header
+    for name, value in (
+        ("ImgHdr_Dimensions", 3),
+        ("ImgHdr_Ident", 1),
+        ("ImgHdr_PixX", int(n_pixel)),
+        ("ImgHdr_PixY", int(n_pixel)),
+        ("ImgHdr_LineStart", 1),
+        ("ImgHdr_LineStop", 2),
+        ("ImgHdr_Frame", 3),
+        ("ImgHdr_MaxFrames", 1),
+    ):
+        header.set_int_tag(name, value)
 
 
 # ---------------------------------------------------------------------------

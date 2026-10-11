@@ -62,7 +62,22 @@ def av_distance_distribution(structure, axis, **labels) -> np.ndarray:
             simulation_grid_resolution=labels["simulation_grid_resolution"],
         )
 
-    counts, _ = volume(1).pRDA(volume(2), rda_axis=axis, same_size=False)
+    volumes = {k: volume(k) for k in (1, 2)}
+    empty = [
+        f"label {k} (residue {labels[f'res_{k}']} {labels[f'atom_name_{k}']})"
+        for k, av in volumes.items()
+        if av.n_points == 0
+    ]
+    if empty:
+        # A buried site is an answer, not a failure of the sampler: name it,
+        # rather than the distance sampler's "labels have no states".
+        raise ValueError(
+            " and ".join(empty)
+            + (" have" if len(empty) > 1 else " has")
+            + " no accessible volume: no dye position is reachable from the attachment atom "
+            "at this linker length and width"
+        )
+    counts, _ = volumes[1].pRDA(volumes[2], rda_axis=axis, same_size=False)
     p = np.zeros(len(axis))
     p[1 : 1 + len(counts)] = counts
     return p

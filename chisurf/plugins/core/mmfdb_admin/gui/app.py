@@ -262,7 +262,7 @@ class MMFDBAdminApp(ImApp):
         actions = self.shell["database_actions"]["sections"][0]["buttons"]
         pad = 2.0 * im.get_style().frame_padding[0] + im.get_style().item_inner_spacing[0]
         needed = sum(im.calc_text_size(b["label"])[0] + pad for b in actions)
-        needed += im.calc_text_size("Help")[0] + im.calc_text_size("Guide")[0] + 4 * pad + 24.0
+        needed += im.calc_text_size(tr("Help"))[0] + im.calc_text_size(tr("Guide"))[0] + 4 * pad + 24.0
         im.same_line()
         if im.get_content_region_avail()[0] < needed:
             im.new_line()

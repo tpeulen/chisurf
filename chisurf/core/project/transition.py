@@ -64,9 +64,9 @@ def _assert_gui_thread(gui: Any) -> None:
     if gui is not None and hasattr(gui, "thread"):
         if threading.current_thread() is not threading.main_thread():
             raise ProjectTransitionError("Project replacement requires its owning GUI thread")
-        from qtpy.QtCore import QThread
-
-        if gui.thread() != QThread.currentThread():
+        # The owner's own QThread class: this module is the model layer and names no view toolkit.
+        owning = gui.thread()
+        if owning != type(owning).currentThread():
             raise ProjectTransitionError("Project replacement requires its owning GUI thread")
 
 

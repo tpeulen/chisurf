@@ -81,7 +81,7 @@
           "collapsible": false
         }
       ],
-      "description": "Single-focus 3-D Gaussian PSF: diffusion time t_diff (ms), structure parameter z0/w0 and number of molecules N."
+      "description": "Single-focus 3-D Gaussian PSF: number of molecules N, diffusion coefficient D, the radial and axial waists w_r and w_z (nm), baseline b and background BG. A single focus measures only D/w_r\u00b2 and D/w_z\u00b2, so w_r is fixed at its calibrated value; s = w_z/w_r and the brightness are derived."
     },
     {
       "type": "panel",
@@ -138,7 +138,7 @@
           "collapsible": false
         }
       ],
-      "description": "Photophysical bunching terms (triplet, blinking): amplitude and relaxation time (us) each."
+      "description": "Photophysical bunching terms (triplet, blinking): amplitude and relaxation time (ms) each."
     },
     {
       "type": "panel",
@@ -158,13 +158,17 @@
           "collapsible": false
         }
       ],
-      "description": "Antibunching / anticorrelation terms (e.g. FRET dynamics): negative amplitude and relaxation time (us)."
+      "description": "Antibunching / anticorrelation terms (e.g. FRET dynamics): amplitude and relaxation time (ns) each."
     },
     {
       "type": "panel",
       "title": "Outputs (MDF mode)",
       "collapsible": true,
       "collapsed": true,
+      "hidden_when": {
+        "attr": "diffusion_mode",
+        "not_equals": "mdf"
+      },
       "sections": [
         {
           "type": "parameter_group_table",

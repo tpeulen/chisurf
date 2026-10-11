@@ -278,20 +278,28 @@ class HmmApp(ImApp):
                 x, y = np.asarray(item["x"], float), np.asarray(item["y"], float)
                 if log_y:
                     y = np.where(y > 0, y, np.nan)
-                implot.set_next_line_style(
-                    hex_colour(item.get("color", "#888888")), float(item.get("width", 1))
-                )
+                colour = hex_colour(item.get("color", "#888888"))
+                implot.set_next_line_style(colour, float(item.get("width", 1)))
                 implot.plot_line(str(item["name"]), x, y)
                 if item.get("symbol"):
-                    implot.plot_scatter(str(item["name"]) + "##pts", x, y)
+                    # The markers belong to the line: same colour, no legend entry of their own
+                    # (a "name##pts" label listed every series twice, the second in another colour).
+                    implot.set_next_marker_style(fill=colour, outline=colour)
+                    implot.plot_scatter("##" + str(item["name"]) + "-points", x, y)
             self.plot_info[name] = {"pos": implot.get_plot_pos(), "size": implot.get_plot_size()}
             implot.end_plot()
+
+    def time_label(self, quantity):
+        """Axis caption of a time axis: seconds once a bin width is set, bins otherwise."""
+        if self.model.settings.time_step != 1.0:
+            return f"{quantity} (s)"
+        return "bin" if quantity == "time" else f"{quantity} (bins)"
 
     def trace_plot(self, box):
         self.plot(
             "trace",
             self.model.trace_series(),
-            "time" if self.model.settings.time_step != 1.0 else "bin",
+            self.time_label("time"),
             "counts per bin",
             empty="Load a trace (Add files... or Demo trace).",
         )
@@ -309,7 +317,7 @@ class HmmApp(ImApp):
         self.plot(
             "dwell",
             self.model.dwell_series(),
-            "dwell time",
+            self.time_label("dwell time"),
             "occurrences",
             log_y=True,
             empty="Fit the model to see the dwell-time histograms.",

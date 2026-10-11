@@ -2240,9 +2240,9 @@ class CodeEditorGui:
         im.same_line()
         if action_button("copy", tooltip=tr("Copy the output log to the clipboard")):
             try:
-                from emtk.clipboard import set_clipboard_text
+                from emtk.clipboard import copy as copy_to_clipboard
 
-                set_clipboard_text("\n".join(self.model.output_logs))
+                copy_to_clipboard("\n".join(self.model.output_logs))
             except Exception:
                 pass
         im.same_line()

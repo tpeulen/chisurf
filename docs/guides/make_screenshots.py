@@ -280,22 +280,29 @@ def _grab_pda3c_exchange_panel():
 
 
 def _grab_burst_browser():
-    """Grab the Burst Browser (per-burst table + E/S histograms) on real .bur data."""
-    import glob
+    """Guide 28: the native Burst Browser on the real sm-DNA burst folder, histogram of E."""
+    from screenshots.emtk_shot import FIG, app_from, wait
+    from emtk.testing import Driver
 
-    from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
-
-    folders = glob.glob(
-        "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All*/bi4_bur"
-    )
-    if not folders:
-        print("SKIP _grab_burst_browser: no sample .bur folder")
-        return
-    widget = BurstBrowserWidget()
-    widget.resize(1100, 720)
-    widget.load_folder(folders[0])
-    QApplication.instance().processEvents()
-    _grab(widget, "burst_browser.png")
+    folder = pathlib.Path(
+        "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All 0.1000#15/bi4_bur"
+    ).resolve()
+    app = app_from("burst_browser")
+    driver = Driver(app, (1400, 860))
+    driver.frame(2)
+    app.load_folder(folder)
+    wait(driver, lambda: (app.controller.poll(), not app.controller.running)[1])
+    options = app.model.hist_column_options()
+    for column in ("FRET Efficiency", "E", "Proximity Ratio"):
+        if column in options:
+            app.model.hist_column = column
+            break
+    app.model.refresh()
+    driver.frame(4)
+    print("burst browser:", app.model.status_text(), "| hist", app.model.hist_column, flush=True)
+    driver.screenshot(FIG / "burst_browser.png")
+    print("wrote burst_browser.png", flush=True)
+    app.close()
 
 
 def _grab_2cde_tool():
@@ -432,40 +439,34 @@ def _grab_frc_tool():
 
 
 def _grab_burst_gs_tool():
-    """Grab the photon-by-photon kinetics tool (guide 49).
+    """Grab the native photon-by-photon kinetics tool (guide 49).
 
-    Fitted on simulated photons from a molecule with *known* rates, so the
-    figure can be read against the truth: 3000 and 1000 s^-1 at E = 0.25 / 0.75.
-    Two grabs — the report with the fitted numbers, and the transition-time
-    scan, which is the part of the tool with no binned equivalent.
+    Fitted on the window's own default simulation (two states, 3000 and 1000 s^-1
+    at E = 0.25 / 0.75, 200 bursts of 200 photons, seed 1) exactly as a person who
+    opens it and presses *Fit* sees it, so the figure can be read against the
+    truth. Two grabs: the fitted report and rates, and the transition-time scan
+    (the part of the tool with no binned equivalent).
     """
-    from qtpy.QtWidgets import QTabWidget
+    from screenshots.emtk_shot import FIG, app_from, wait
+    from emtk.testing import Driver
 
-    from chisurf.plugins.burst.burst_gs.gui.tool import BurstGsTool
+    app = app_from("burst_gs")
+    driver = Driver(app, (1440, 860))
+    driver.frame(2)
+    app.model.use_simulation = True  # the *Simulate* tick: no burst tables needed
+    app.controller.run()
+    wait(driver, lambda: (app.controller.poll(), not app.controller.running)[1], timeout=600)
+    print("burst_gs:", " ".join(app.model.results_text.split())[:400], flush=True)
+    driver.screenshot(FIG / "burst_gs_workspace.png")
+    print("wrote burst_gs_workspace.png", flush=True)
 
-    tool = BurstGsTool()
-    model = tool.model
-    model.use_simulation = True
-    model.sim_n_bursts = 250
-    model.sim_photons_per_burst = 200
-    model.scan_transition_time = True
-    model.transit_points = 30
-    model.compute()
-    tool.resize(1440, 860)
-    tool.show()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "burst_gs_workspace.png")
-
-    for tabs in tool.findChildren(QTabWidget):
-        labels = [tabs.tabText(i) for i in range(tabs.count())]
-        if "Transition time" in labels:
-            tabs.setCurrentIndex(labels.index("Transition time"))
-            QApplication.instance().processEvents()
-            tool._refresh()
-            QApplication.instance().processEvents()
-            _grab(tool, "burst_gs_transition_time.png")
-            break
+    app.model.scan_transition_time = True
+    app.model.transit_points = 30
+    app.controller.run()
+    wait(driver, lambda: (app.controller.poll(), not app.controller.running)[1], timeout=900)
+    driver.screenshot(FIG / "burst_gs_transition_time.png")
+    print("wrote burst_gs_transition_time.png", flush=True)
+    app.close()
 
 
 def _grab_tracking_tool():
@@ -800,8 +801,13 @@ def _grab_region_editor():
 
 
 def _grab_hmm_tool():
-    """Hidden-Markov-model tool fitted on a simulated two-state trace."""
-    from chisurf.plugins.core.hmm.gui.tool import HmmTool
+    """Hidden-Markov-model tool (native app) fitted on a simulated two-state trace (guide 54).
+
+    The trace is handed over in memory (``set_traces``, the seam the intensity trace uses);
+    then **Fit** and **Scan states** are pressed as a person presses them, each waited for.
+    """
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
     rng = np.random.default_rng(0)
     transmat = np.array([[0.985, 0.015], [0.03, 0.97]])
@@ -811,20 +817,29 @@ def _grab_hmm_tool():
         states[t] = rng.choice(2, p=transmat[states[t - 1]])
     trace = means[states] + rng.normal(0, 4, size=(len(states), 1))
 
-    tool = HmmTool()
-    tool.resize(1280, 860)
-    tool.set_traces([trace], ["simulated"])
-    tool.model.time_step = 1e-3
-    tool.model.n_states = 2
-    tool.model.min_states, tool.model.max_states = 1, 4
-    tool.show()
-    QApplication.instance().processEvents()
-    # Run synchronously: the worker thread would not have finished by the grab.
-    tool.model.run()
-    tool.model.run_scan()
-    tool._refresh()
-    QApplication.instance().processEvents()
-    _grab(tool, "hmm_workspace.png")
+    app = app_from("hmm")
+    driver = Driver(app, (1400, 860))
+    driver.frame(3)
+    app.set_traces([trace], ["simulated"])
+    app.model.time_step = 1e-3
+    app.model.n_states = 2
+    app.model.min_states, app.model.max_states = 1, 4
+    driver.frame(2)
+    driver.click("request_scan")
+    wait(driver, lambda: not app.job.busy)
+    driver.click("request_run")
+    wait(driver, lambda: not app.job.busy)
+    _emtk_park(driver)
+    for tab, name in (("Histogram", "hmm_workspace.png"), ("Dwell times", "hmm_dwell.png"),
+                      ("Scan", "hmm_scan.png")):
+        driver.click(tab)  # the tab caption, as a person brings a panel forward
+        driver.frame(4)
+        _emtk_park(driver)
+        driver.screenshot(FIG / name)
+        print("wrote", name, flush=True)
+    fit = app.model.fit
+    print("hmm means", [s.mean for s in fit.summaries], "rates", fit.transition_rates, flush=True)
+    app.close()
 
 
 def _grab_burst_fusion_tool():
@@ -984,10 +999,11 @@ def _grab_maxent_decay():
     express, costs 0.5 in chi2r, and pushes the answer into the timeshift --
     which reads as a ChiSurf defect and is not one.
     """
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
+
     import chisurf
     from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
-    from chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui import MaxentDecayWidget
 
     n, dt, oversample = 512, 0.0323, 32
     # Build on a fine grid and average each channel down: that integration is
@@ -1012,25 +1028,31 @@ def _grab_maxent_decay():
         start_bin=int(1.0 / dt), stop_bin=n - 1,
     )
     fit.data.name = "MEM-demo-decay"
-    install_fitting_client(None)
-    chisurf.fits = [fit]
+    chisurf.fits = [fit]  # the session's live fit, which Refresh lists
 
-    tool = MaxentDecayWidget()
-    tool.resize(1400, 900)
-    tool.show()
-    QApplication.instance().processEvents()
-    tool._on_refresh_data()
+    app = app_from("maxent_decay")
+    driver = Driver(app, (1400, 900))
+    driver.frame(3)
+    driver.click("refresh")
+    driver.click("use_fit")
     # The default grid reaches down to where no decay is left to describe; its
     # first bin then collects an edge spike that dwarfs both real peaks.
-    tool.spin_tau_min.setValue(0.4)
-    tool.spin_tau_max.setValue(7.0)
-    tool.spin_tau_bins.setValue(120)
+    app.model.settings.tau_min, app.model.settings.tau_max, app.model.settings.tau_bins = 0.4, 7.0, 120
     # Nuisance fitting is deliberately OFF: with the fixture discretised
     # correctly there is nothing for it to find (it recovers a timeshift of
     # -0.014 channels and improves chi2r by 0.0006, for 160x the run time).
-    tool._run_mem()
-    QApplication.instance().processEvents()
-    _grab(tool, "maxent_distribution.png")
+    driver.frame(2)
+    driver.click("run")
+    wait(driver, lambda: app.jobs.process is None, timeout=600)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "maxent_distribution.png")
+    print("wrote maxent_distribution.png:", app.model.status, flush=True)
+    driver.click("lcurve")
+    wait(driver, lambda: app.jobs.process is None, timeout=900)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "maxent_decay_window.png")
+    print("wrote maxent_decay_window.png:", app.model.status, flush=True)
+    app.close()
 
 
 def _grab_global_view():

@@ -2,7 +2,7 @@
 type: Subsystem
 title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
-resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_session.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
+resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
 timestamp: '2026-10-11T00:00:00Z'
 ---
@@ -23,14 +23,18 @@ once, and a fit window `×` that asks and then removes the fit. `KNOWN_GAPS` in
 `test/native_emtk/test_emtk_shell_session.py` keeps three items. Slice S4 reached parity with the Qt console the
 same day: a Console dock on emtk's `TextEditor` over the Qt-free engine (`chisurf/emtk/console.py`), *Macro ▸ Record*
 and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) text in every emtk text field
-(`emtk.ime`). The Qt shell is still the default.
+(`emtk.ime`). Slice S5's ribbon reached parity with the Qt ribbon the same day
+(`chisurf/emtk/shell_ribbon.py` on emtk's new `emtk.ribbon`): its tabs, groups and buttons come from the manifests
+through the Qt ribbon's own placement rules, and the menu bar and Tools dock list the same tree with the manifest
+icons. The status strip and the startup stages of S5 are still open. The Qt shell is still the default.
 
 1. Measure: the allow-list has 245 entries. Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The
    per-area split comes from `cut -d/ -f1 test/plugin_qt_allowlist.txt | sort | uniq -c` once comments are dropped:
    chimol 111, core 76, misc 20, microscopy 7, modelling 7, ndxplorer 6, spectra_downloader 4, tttr 4, root 3,
    calculator 2, fret_line 2, cookiecutter 1, quenching_estimator 1, vv_vh_anisotropy 1. Trap: about 171 of the 245
    are **tests**. They import Qt to drive the legacy host, not because the plugin needs it. A slice removes a test
-   line by porting the test to `emtk.testing.Driver`, never by deleting the test.
+   line by porting the test to `emtk.testing.Driver`, never by deleting the test. Open: S2's lines (microscopy, tttr
+   and ndxplorer tests) still drive the Qt host.
 2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
    `lifetime_amplitude_options`) are resolved by `chisurf/server/services/model_sections.py` and drawn by
    `chisurf/emtk/model_sections.py`; writes go through `model.curve.set` / `model.curve.unload` /
@@ -50,7 +54,18 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
    twice; a paired table shows every slot column (Qt hides some); *show r(t)* and the κ² windows are dialogs over the
    shell; the ⚙ dialog writes the user settings, because they are preferences and not session state. The link menu,
    paired component rows and *New…* sample (`chisurf/emtk/sample_picker.py::NewSampleDialog`) are ported.
-5. Open: S2's allow-list lines (microscopy, tttr and ndxplorer tests) still drive the Qt host; port them to `Driver`.
+5. Measure: S5 ribbon parity is `test/native_emtk/test_emtk_shell_ribbon.py::test_parity_with_the_qt_ribbon`
+   against `shell_s5_qt_inventory.json` (`capture_shell_s5_qt_before.py`, about a minute; PNGs in `renders/w9_s5/`).
+   Tab order, group order and button order match; `KNOWN_GAPS` holds only the three fit items of item 7. Deliberate:
+   *Menu Switch* (the emtk shell has menu bar and ribbon at once) and the Qt pin/auto-fold, which is one fold toggle.
+   One layout feeds the ribbon, the menus and the Tools tree: `shell_ribbon.plugin_tree` over
+   `chisurf/core/plugin/ribbon_layout.py` (moved out of the Qt package so the shell can import it, with the maturity
+   markers now in `chisurf/core/plugin/maturity.py`). Open: the S5 status strip (progress) and a `surface="emtk"`
+   startup stage set. Trap: tab and group captions are manifest `display_name` segments, collected for translation
+   since this slice (`build_tools/i18n/extract_strings.py::_collect_menu_path`); their de/fr entries are unfinished
+   until the queued translation job, so the German shell still shows *Spectroscopy*. Trap: re-extracting while
+   another lane has uncommitted `tr()` edits marks their removed strings obsolete; put such entries back (S5 restored
+   *Close Help*) or `test_committed_authored_ui_text_has_german_and_french_catalogue_sources` fails.
 6. Measure: the shell's fit pages live under `chisurf.gui`, whose package `__init__` imports `qtpy`; opening the
    first fit window (and registering the experiments) loads the Qt modules, though no `QApplication` is made and Qt
    draws nothing. The Code face (`chisurf/gui/widgets/fitting/fit_code_face.py`) is there too.
@@ -65,13 +80,12 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
    reader; "parameter count changed" after a bunching term), logged only (known issues, 2026-10-11).
 8. Open: plugins that have only an `action` entrypoint (`menu_switch`) or only a Qt `gui` entrypoint are not offered
    by the emtk shell. `execute_plugin_action` still takes the Qt main window. Measure: `menu_entries()` returns 28
-   entries, against 29 visible manifests.
+   entries, against 29 visible manifests; the one left out is *Menu Switch*, a deliberate difference (item 5).
 9. Blocked: S6 (delete the Qt shell) is blocked on W7's click-all passing on the native host
    (`test/e2e/test_click_all_plugins.py`), on S5 reaching parity, and on item 7.
 10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
-    `~/dev/emtk` with tests. emtk `84ce461` (message dialogs, close veto, `emtk.ime`, hosted controls owning Tab,
-    rasterised glyphs inside their advance, table keys `fit_rows`/`drag_call`/`selection_attr` declared) is
-    installed in both envs but not pushed, so `pixi.lock` still pins `95da067`. Measure: `git -C ~/dev/emtk log --oneline 95da067..HEAD`.
+    `~/dev/emtk` with tests. S5 added `emtk.ribbon` and menu icons (emtk `3d3cc92`, `f5fe918`, in the `48c17dd`
+    that `pixi.lock` pins); none of it is pushed. Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.
 11. Measure: `test/native_emtk/capture_shell_s3_qt_before.py` and `capture_shell_s4_qt_before.py` rewrite the S3 and
     S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in `renders/w9_s3/`,
     `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1 with no trace once).
@@ -150,9 +164,9 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Central area | `QMdiArea mdiarea` (`gui.ui:44`), Tile, Tab and Cascade (`main.py:557-568`) | `emtk.docking.DockManager` centre region: tabs, split, float | tile and cascade arrangements (split presets are enough) | S1 / S2 | same |
 | Docks | 6 `QDockWidget`s in `gui.ui`: Analysis :82, Plot :193, Console :342, Datasets :403, Logging :509, Read data :584; default tabified at `main.py:1490-1514` | `DockManager` regions; Read data, Datasets, Analysis, Plot settings are `chisurf/emtk/fit_docks.py` over `chisurf/emtk/views/*.view.json`; the model editor `chisurf/emtk/model_editor.py` over `model.editor`; controller dialogs `chisurf/emtk/fit_controls.py`; reader sections `chisurf/emtk/detector_cascade.py`; sample question `chisurf/emtk/sample_picker.py` | — (curve pickers and custom sections: `chisurf/emtk/model_sections.py`; PDA reader: `chisurf/emtk/pda_sections.py`); Console in S4 | S2 done (control parity), S4 | `test/native_emtk/test_emtk_shell_fits.py`, `test_emtk_shell_readers.py`, `test/server/test_model_editor_service.py` |
 | Layout persistence | QSettings ("ChiSurf","MainWindow") `geometry/state/layout_version` (`main.py:330-369`); `gui/layout_state.py` | `chisurf.emtk.state.attach_native_state` → `<settings>/emtk/emtk_shell.{layout,window,settings}.json` | — | S1 done (open plugins reopen) | `test_restore_reopens_the_plugins_that_were_open` |
-| Ribbon | `widgets/ribbon/**` (22 files, about 6,600 lines); `display_name` "Tab:Group:Name"; QSettings RibbonState | menu bar from the same `display_name` (`menu_entries`) and the Tools dock | ribbon tab strip with icon buttons and quick access; the [Ribbon](ribbon.md) placement guard reads the same manifests | S1 menu done; S5 ribbon | `test_shipped_menus_offer_every_visible_native_plugin` |
-| Toolbar plugins | `main.py:944-1044` `plugins.toolbar_plugins`; `gui/plugin_toolbar.py` | — | a tool strip under the menu bar | S5 | — |
-| Plugin menus | `gui/__init__.py:850-1104` `populate_plugins` (disabled, order, experimental, `menu_hidden`, `cli_only`) | `menu_entries()` (`menu_hidden`, emtk only, ⚠ for experimental) | `plugins.disabled_plugins`, `plugin_order`, icons, Dev menu | S1 partial, S5 | same |
+| Ribbon | `widgets/ribbon/**` (22 files, about 6,600 lines); `display_name` "Tab:Group:Name"; QSettings RibbonState | `emtk.ribbon.Ribbon` via `chisurf/emtk/shell_ribbon.py`: tabs, groups, large and small icon buttons, tooltips, collapse then overflow at narrow widths, search, fold toggle, help and language buttons | fold state is not persisted (the Qt pin is) | S5 done | `test_emtk_shell_ribbon.py` (vs `shell_s5_qt_inventory.json`), emtk `tests/test_ribbon.py` |
+| Toolbar plugins | `main.py:944-1044` `plugins.toolbar_plugins`; `gui/plugin_toolbar.py` | the ribbon's *Main ▸ Window* group (the toolbar's window actions, *Screenshot* through `emtk.export` and `clipboard.copy_image`) | `plugins.toolbar_plugins` entries | S5 partial | `test_a_session_button_runs_its_action` |
+| Plugin menus | `gui/__init__.py:850-1104` `populate_plugins` (disabled, order, experimental, `menu_hidden`, `cli_only`) | `shell_ribbon.menu_tree` over the ribbon's `plugin_layout` (`disabled_plugins`, `plugin_order`, `cli_only`, maturity markers), icon column in every menu row (emtk `MenuItem.icon`), the Tools dock a tree with a filter | Dev menu | S5 done | `test_the_tools_tree_follows_the_ribbon_and_filters` |
 | Plugin launch | `misc_helpers.run_plugin_from_dir` → `registry.build_plugin_widget` → `qt_host.ControlHost(factory())`, a separate top-level window | `load_plugin` on a `BackgroundBuild` worker, drawn with `ImApp.draw_child` inside a dock | `action` entrypoints; macro or wizard `__init__.py` plugins | S1 done | `test_a_hosted_plugin_gets_its_clicks_and_keys_and_closes_with_its_window` |
 | Fit windows | `main.py:2058-2125` `_open_fit_subwindow` → `FitSubWindow(CustomMdiSubWindow)`; the content is already `FitPlotsArea` → one `ControlHost(FitWindowSurface)` | `chisurf/emtk/fit_window.py`: the same `FitWindowSurface`, one dock window per fit; the active fit tab drives the Analysis and Plot settings docks | — (the Code face is the same `FitCodeFace`, writes through `model.code.apply`) | S2 done | `test_load_fit_edit_and_run_through_the_api`, `test_the_model_editor_is_the_models_view_json_written_through_the_api` |
 | Server events | `gui/zmq_poller.py:36` 50 ms QTimer → `_on_server_event` (`main.py:1855`) | `chisurf/core/server_events.py` `ServerEventSubscriber`: a worker owns the SUB socket and calls `request_frame`; the shell drains on its frame | — | S2 done | `test/core/test_server_events.py`, `test_a_fit_made_elsewhere_opens_its_window_from_the_event` |
@@ -305,7 +319,10 @@ A missing control blocks the slice.
     in the emtk shell `chisurf.run` was the identity function, so every `cs.run(...)` macro line did nothing.
   - Not yet: code_editor's Qt, the Log dock's filter (resume item 12 (d)).
 - **S5: ribbon, toolbar, status, startup.**
-  - Ribbon tab strip, toolbar plugins, status strip, `surface="emtk"` startup stages.
+  - Done 2026-10-11: the ribbon (resume item 5), the plugin menus and Tools tree from the same layout, every plugin
+    manifest carrying an icon (`test/plugins/test_plugin_icon_manifest.py`: every non-library manifest has one,
+    listed plugins have distinct ones), the language switch (`chisurf.emtk.i18n.choose_language`).
+  - Open: toolbar plugins, status strip, `surface="emtk"` startup stages.
   - Delete the remaining Qt plugin tools (games, help, mmfdb_admin, hydropro, spectra_downloader, fret_line).
 - **S6: switch and delete.**
   - `python -m chisurf` launches the emtk shell.

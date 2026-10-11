@@ -346,8 +346,11 @@ def read_bur_bursts(path):
       lower-cased;
     * a burst whose ``First File`` and ``Last File`` disagree spans two
       measurements and has no single photon stream to slice, so it is dropped --
-      as is a burst naming no file at all, which is what the interleaved
-      separator rows carry;
+      as is a burst naming no file at all;
+    * the interleaved separator rows (and the sentinel row of a skipped burst)
+      are all zeros -- ``First File`` and ``Last File`` both read ``0`` -- so
+      they name a "file" and would slice photon 0 as a one-photon burst. A row
+      whose ``Number of Photons`` is not positive is no burst and is dropped;
     * ``Last Photon`` is inclusive in the format and exclusive in a Python
       slice, hence ``stop = last + 1``.
 
@@ -378,6 +381,13 @@ def read_bur_bursts(path):
     first_file = np.array([str(v).strip() for v in columns["first file"]], dtype=object)
     last_file = np.array([str(v).strip() for v in columns["last file"]], dtype=object)
     keep = (first_file == last_file) & (first_file != "")
+    if "number of photons" in columns:
+        try:
+            n_photons = np.asarray(columns["number of photons"], dtype=float)
+        except (TypeError, ValueError):
+            n_photons = None
+        if n_photons is not None:
+            keep &= n_photons > 0
     if not keep.any():
         return None
 

@@ -183,6 +183,22 @@ class Setup:
         """Return every routing channel referenced by any detector, sorted."""
         return sorted({ch for d in self.detectors for ch in d.routing_channels})
 
+    def summary_detectors(self) -> dict[str, dict[str, Any]]:
+        """The detectors as the burst summary and the IRF/background extraction take them.
+
+        Returns
+        -------
+        dict
+            ``{name: {"chs": [...], "micro_time_ranges": [[lo, hi], ...]}}``.
+        """
+        return {
+            d.name: {
+                "chs": list(d.routing_channels),
+                "micro_time_ranges": [list(r) for r in d.microtime_ranges],
+            }
+            for d in self.detectors
+        }
+
     def stream_defs(self) -> list[Any]:
         """Return H2MM :class:`StreamDef` objects for every detector."""
         from chisurf.core.fluorescence.burst.photons import StreamDef
@@ -668,13 +684,7 @@ class Bursts:
         """
         from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
 
-        detectors = {
-            d.name: {
-                "chs": list(d.routing_channels),
-                "micro_time_ranges": [list(r) for r in d.microtime_ranges],
-            }
-            for d in self.setup.detectors
-        }
+        detectors = self.setup.summary_detectors()
         search = self._search or {}
         min_photons = int(search.get("min_photons", 60))
         photon_window = int(search.get("photon_window", 10))
@@ -837,6 +847,13 @@ class Bursts:
         from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
 
         e = proximity_ratio(self.table)
+        if e is None:
+            donor, acceptor = self.setup._pair(donor, acceptor)
+            counts = [f"Number of Photons ({name})" for name in (donor, acceptor)]
+            if all(col in self.table for col in counts):
+                n_d, n_a = (numeric_column(self.table, col) for col in counts)
+                total = n_d + n_a
+                e = np.divide(n_a, total, out=np.full(total.shape, np.nan), where=total > 0)
         if e is None:
             for col in ("Proximity Ratio Mean", "E", "Efficiency"):
                 if col in self.table:
@@ -1290,6 +1307,10 @@ class BurstWorkflow:
         request = AnalysisRequest(
             files=[str(p) for p in local_paths],
             filetype=setup.file_type,
+            # The setup's detectors give the table its per-detector columns
+            # (`Number of Photons (<name>)` ...), which recurrence and the
+            # proximity ratio are computed from.
+            detectors=setup.summary_detectors(),
             settings=settings,
             output_dir=str(out_dir),
         )

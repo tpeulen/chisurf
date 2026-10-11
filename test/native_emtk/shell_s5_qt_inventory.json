@@ -1,0 +1,406 @@
+{
+ "tabs": {
+  "File": {
+   "Recent": [
+    {
+     "text": "No recent projects",
+     "tooltip": "",
+     "icon": true,
+     "enabled": false,
+     "size": "small"
+    }
+   ],
+   "Project": [
+    {
+     "text": "Open Project...",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Save Project",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Export Project...",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Import Project...",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Close Project",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Fits": [
+    {
+     "text": "Load Fit",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Current Fit",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "All Fits",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Close Fit",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Close all fits",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Application": [
+    {
+     "text": "Quit",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Reinitialize",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Setup": [
+    {
+     "text": "Menu Switch",
+     "tooltip": "Switch the current ChiSurf window between the menu bar and ribbon, and save the interface preference.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Settings",
+     "tooltip": "Unified Settings for ChiSurf",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Switch User",
+     "tooltip": "Switch the active MMFDB user for this ChiSurf session.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Data": [
+    {
+     "text": "File tools",
+     "tooltip": "Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID\u2192Analysis, and the TTTR header editor.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ]
+  },
+  "Main": {
+   "Window": [
+    {
+     "text": "Add dataset",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Tile Windows",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Tab Windows",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Reset Layout",
+     "tooltip": "",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Screenshot",
+     "tooltip": "",
+     "icon": false,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Help": [
+    {
+     "text": "About ChiSurf",
+     "tooltip": "ChiSurf About Plugin\n\nThis plugin provides information about ChiSurf, including version, developer,\nand contact information.\n\nFeatures:\n- Display ChiSurf logo\n- Show version information\n- Display developer contact details",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Documentation",
+     "tooltip": "Documentation browser and help resource viewer for ChiSurf.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ]
+  },
+  "Spectroscopy": {
+   "Decay": [
+    {
+     "text": "Decay Analysis \u26a0\ufe0f",
+     "tooltip": "\u26a0\ufe0f  Decay Analysis is experimental and not yet validated\nIntegrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Correlation": [
+    {
+     "text": "FCS",
+     "tooltip": "Unified **FCS** plugin \u2014 a meta tool hosting the FCS workflow behind a rail.\n\nMerges the FCS *Correlator* workflow (detector \u2192 files \u2192 filter \u2192 correlate \u2192\nmerge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS,\ndiffusion/volume calculator, fFCS filter calculator, correlation-channel\npresets) into a single left-navigation tool. Built on the reusable\n``NavigationPanelTool`` shell. The ribbon execs this file with\n``__name__ == \"plugin\"``.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "PCH",
+     "tooltip": "Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Single-Molecule": [
+    {
+     "text": "ALEX Suite",
+     "tooltip": "The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, \u00b5s-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV export. Writes the same .pto container and burst companions as the PIE burst workflow.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Burst Analysis",
+     "tooltip": "Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Intensity trace",
+     "tooltip": "Intensity Trace Analysis for Single-Molecule Data\n\nThis plugin provides tools for analyzing fluorescence intensity time traces from \nsingle-molecule experiments. It enables researchers to extract dynamic information \nfrom photon counting data, particularly for studying conformational changes, \nmolecular interactions, and reaction kinetics at the single-molecule level.\n\nFeatures:\n- Loading and displaying Time-Tagged Time-Resolved (TTTR) data as intensity traces\n- Histogram analysis of photon counts with customizable binning\n- Hidden Markov Model (HMM) analysis for state detection and classification\n- Bayesian Information Criterion (BIC) calculation for optimal state number determination\n- Dwell time analysis for extracting kinetic information and rate constants\n- FRET efficiency calculation and state-specific distribution analysis\n- Transition probability matrix visualization and analysis\n- Exponential fitting of dwell time distributions\n- Interactive visualization with adjustable parameters\n- Support for multi-channel data analysis (donor/acceptor channels)\n\nThe plugin implements a comprehensive workflow for single-molecule state analysis:\n1. Load TTTR data and convert to binned intensity traces\n2. Visualize traces and photon count distributions\n3. Apply HMM to identify discrete states in noisy data\n4. Analyze state transitions and dwell times to extract kinetic information\n5. For FRET data, calculate efficiency distributions for each state\n\nIdeal for analyzing single-molecule FRET, protein folding/unfolding, enzyme dynamics,\nligand binding, blinking behavior, or any other dynamic processes that can be \nobserved in fluorescence intensity traces. The HMM approach is particularly powerful\nfor detecting states in noisy data with overlapping distributions.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Trace Browser",
+     "tooltip": "Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "ebFRET \u26a0\ufe0f",
+     "tooltip": "\u26a0\ufe0f  A plain port of the ebFRET GUI. The VBEM/empirical-Bayes loop is pure NumPy and slower than ebFRET's compiled forward-backward; runs on large datasets take minutes per state count.\nebFRET, ported from its MATLAB GUI: empirical-Bayes hidden Markov analysis of binned donor/acceptor smFRET time series. The same window -- time series with the Viterbi path, the ensemble histograms and parameter distributions, series/crop/state controls -- the same menus (load/save session, raw/SF-Tracer/SMD import, photobleaching and outlier removal, priors, summary/trace/SMD export) and the same analysis loop, run on the backend. Ships a simulated four-state demo.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Kinetics": [
+    {
+     "text": "Hidden Markov model",
+     "tooltip": "Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf \u2014 the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Imaging": [
+    {
+     "text": "Image Tools",
+     "tooltip": "Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ]
+  },
+  "Structure": {
+   "Modelling": [
+    {
+     "text": "ChiMOL",
+     "tooltip": "Molecular structure viewer and protein analysis plugin for ChiSurf.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Structure Tools",
+     "tooltip": "Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, QuEst, HydroPro and Trajectory Tools.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ]
+  },
+  "Tools": {
+   "Photon data": [
+    {
+     "text": "TTTR Tools",
+     "tooltip": "Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Calculators": [
+    {
+     "text": "Calculators",
+     "tooltip": "Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Light Path Simulator",
+     "tooltip": "Optical light path simulator to calculate crosstalk and R0 overlap integrals.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Spectra Downloader \u26a0\ufe0f",
+     "tooltip": "\u26a0\ufe0f  Spectra Downloader is EXPERIMENTAL and UNTESTED \u2014 results are not validated\nDownload, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Wizards",
+     "tooltip": "Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Views": [
+    {
+     "text": "Acquisition",
+     "tooltip": "Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Global View",
+     "tooltip": "Interactive network graph for visualizing and managing parameter relationships across fits in global analysis.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "ndX",
+     "tooltip": "Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "System": [
+    {
+     "text": "Code Editor",
+     "tooltip": "Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Games",
+     "tooltip": "A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "MMFDB Admin",
+     "tooltip": "Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ]
+  }
+ },
+ "quick_access": [],
+ "right": [
+  {
+   "class": "QToolButton",
+   "tooltip": "Collapse Ribbon"
+  },
+  {
+   "class": "QWidget",
+   "tooltip": ""
+  },
+  {
+   "class": "QLineEdit",
+   "tooltip": ""
+  },
+  {
+   "class": "QToolButton",
+   "tooltip": "Unpin ribbon (enable auto-fold)"
+  },
+  {
+   "class": "QToolButton",
+   "tooltip": "Open Help Plugin"
+  },
+  {
+   "class": "LanguageFlagSwitcher",
+   "tooltip": "Language: English"
+  }
+ ]
+}

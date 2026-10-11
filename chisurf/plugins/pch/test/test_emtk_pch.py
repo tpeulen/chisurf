@@ -42,9 +42,10 @@ def pump(app, seconds=60.0):
 
 # 1. the model does the science without any GUI
 def test_model_produces_the_reference_result():
-    # Reference numbers: the retired Qt tool (PCHApp) on the same file with
-    # channels 0,8, bin time 50 us, starting values eps=2 and N=3 per species,
-    # region 0-24; taken from its fit results and status line on 2026-09-30.
+    # Reference numbers: channels 0,8, bin time 50 us, starting values eps=2 and
+    # N=3 per species, region 0-24, Poisson-weighted over the populated bins
+    # (2026-10-11). The retired Qt tool's unweighted fit gave eps=0.332, N=1.83
+    # and chi2_r ~1e20; its numbers are no longer the reference.
     model = make_model()
     assert model.load_path(str(DATA))
     model.compute_now()
@@ -56,10 +57,10 @@ def test_model_produces_the_reference_result():
 
     model.fit_now()
     fit = model.fit_result
-    assert fit.epsilons[0] == pytest.approx(0.3320787632444934, rel=1e-5)
-    assert fit.avg_Ns[0] == pytest.approx(1.8326288170909257, rel=1e-5)
-    assert fit.dof == 23
-    assert model.species[0]["epsilon"] == pytest.approx(0.3320787632444934, rel=1e-5)
+    assert fit.epsilons[0] == pytest.approx(0.30775725585095803, rel=1e-4)
+    assert fit.avg_Ns[0] == pytest.approx(1.922047169889705, rel=1e-4)
+    assert fit.dof == 20  # 22 populated bins of 0-24, two parameters
+    assert model.species[0]["epsilon"] == pytest.approx(0.30775725585095803, rel=1e-4)
 
     model.set_n_components(2)
     model.species[0].update(epsilon=2.0, n_mean=3.0)
@@ -68,12 +69,12 @@ def test_model_produces_the_reference_result():
     # Species labels are interchangeable; brightness and occupancy must remain paired.
     np.testing.assert_allclose(
         sorted(zip(fit.epsilons, fit.avg_Ns)),
-        [(0.058043027099024654, 8.750137325612235), (8.28225986388613, 0.021963498790065913)],
+        [(0.08369703933524852, 6.183498857726637), (9.574636828921552, 0.01848996942002179)],
         rtol=1e-4,
         atol=0,
     )
-    assert fit.chi2 == pytest.approx(1018.399056377842, rel=1e-4)
-    assert fit.dof == 21
+    assert fit.chi2 == pytest.approx(65.40727472787775, rel=1e-4)
+    assert fit.dof == 18
     for i, (epsilon, occupancy, fraction) in enumerate(
         zip(fit.epsilons, fit.avg_Ns, fit.fractions), start=1
     ):
@@ -85,9 +86,9 @@ def test_model_produces_the_reference_result():
     assert summary[0:2] == ["χ²", "="]
     assert summary[3:6] == ["red.", "χ²", "="]
     assert summary[7:9] == ["dof", "="]
-    assert float(summary[2]) == pytest.approx(1018.399056377842, rel=1e-4)
-    assert float(summary[6]) == pytest.approx(1018.399056377842 / 21, rel=1e-4)
-    assert int(summary[9]) == 21
+    assert float(summary[2]) == pytest.approx(65.40727472787775, rel=1e-4)
+    assert float(summary[6]) == pytest.approx(65.40727472787775 / 18, rel=1e-4)
+    assert int(summary[9]) == 18
 
 
 # 2. the model's actions
@@ -213,7 +214,7 @@ def test_app_draws_empty_and_populated(size):
         painter = RecordingPainter()
         app.draw(painter, 0, 0, *size)
     text = "\n".join(painter.strings)
-    assert any("Comp1: ε=0.3321" in s for s in painter.strings), text
+    assert any("Comp1: ε=0.3078" in s for s in painter.strings), text
     assert "Fit complete" in text and "1e-06" in text  # log axis of the histogram
 
 
@@ -248,10 +249,10 @@ def test_main_action_end_to_end(tmp_path):
     model.species[0].update(epsilon=2.0, n_mean=3.0)
     model.fit()
     pump(app)
-    assert model.fit_result.chi2 == pytest.approx(1018.399056377842, rel=1e-4)
+    assert model.fit_result.chi2 == pytest.approx(65.40727472787775, rel=1e-4)
     np.testing.assert_allclose(
         sorted((row["epsilon"], row["n_mean"]) for row in model.species),
-        [(0.058043027099024654, 8.750137325612235), (8.28225986388613, 0.021963498790065913)],
+        [(0.08369703933524852, 6.183498857726637), (9.574636828921552, 0.01848996942002179)],
         rtol=1e-4,
         atol=0,
     )
@@ -378,3 +379,25 @@ def test_guide_targets_are_drawn_and_awaits_release(tmp_path):
     model.fit()
     pump(app)
     assert not app.tour.awaiting
+
+
+def test_the_histogram_scales_to_the_data_not_to_the_fit_tail():
+    """A one-species fit falls to 1e-27 at k = 24; the y axis stays on the measured P(k).
+
+    Autoscaled to the fit, the data were squeezed into the top quarter of the plot and
+    P(0) sat on the frame (found 2026-10-11).
+    """
+    from chisurf.plugins.pch.gui.app import make_app
+
+    app = make_app()
+    model = app.model
+    model.runner = None
+    model.channels, model.bin_time_us = "0,8", 50.0
+    model.load_path(str(DATA))
+    model.compute_now()
+    model.fit_now()
+    for _ in range(3):
+        painter = RecordingPainter()
+        app.draw(painter, 0, 0, 1200, 800)
+    exponents = [int(s.split("e-")[1]) for s in painter.strings if s.startswith("1e-")]
+    assert exponents and max(exponents) <= 7, exponents

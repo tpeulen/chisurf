@@ -1,0 +1,1035 @@
+{
+ "_comment": "Whole Qt main window control inventory (ribbon, menus, toolbars, docks), written by test/native_emtk/capture_shell_whole_qt_before.py; compared by test_emtk_shell_whole_parity.py.",
+ "window_size": [
+  1440,
+  900
+ ],
+ "ribbon": {
+  "File": {
+   "Recent": [
+    {
+     "text": "No recent projects",
+     "tooltip": ""
+    }
+   ],
+   "Project": [
+    {
+     "text": "Open Project...",
+     "tooltip": ""
+    },
+    {
+     "text": "Save Project",
+     "tooltip": ""
+    },
+    {
+     "text": "Export Project...",
+     "tooltip": ""
+    },
+    {
+     "text": "Import Project...",
+     "tooltip": ""
+    },
+    {
+     "text": "Close Project",
+     "tooltip": ""
+    }
+   ],
+   "Fits": [
+    {
+     "text": "Load Fit",
+     "tooltip": ""
+    },
+    {
+     "text": "Current Fit",
+     "tooltip": ""
+    },
+    {
+     "text": "All Fits",
+     "tooltip": ""
+    },
+    {
+     "text": "Close Fit",
+     "tooltip": ""
+    },
+    {
+     "text": "Close all fits",
+     "tooltip": ""
+    }
+   ],
+   "Application": [
+    {
+     "text": "Quit",
+     "tooltip": ""
+    },
+    {
+     "text": "Reinitialize",
+     "tooltip": ""
+    }
+   ],
+   "Setup": [
+    {
+     "text": "Menu Switch",
+     "tooltip": "Switch the current ChiSurf window between the menu bar and ribbon, and save the interface preference."
+    },
+    {
+     "text": "Settings",
+     "tooltip": "Unified Settings for ChiSurf"
+    },
+    {
+     "text": "Switch User",
+     "tooltip": "Switch the active MMFDB user for this ChiSurf session."
+    }
+   ],
+   "Data": [
+    {
+     "text": "File tools",
+     "tooltip": "Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header e"
+    }
+   ]
+  },
+  "Main": {
+   "Window": [
+    {
+     "text": "Add dataset",
+     "tooltip": ""
+    },
+    {
+     "text": "Tile Windows",
+     "tooltip": ""
+    },
+    {
+     "text": "Tab Windows",
+     "tooltip": ""
+    },
+    {
+     "text": "Reset Layout",
+     "tooltip": ""
+    },
+    {
+     "text": "Screenshot",
+     "tooltip": ""
+    }
+   ],
+   "Help": [
+    {
+     "text": "About ChiSurf",
+     "tooltip": "ChiSurf About Plugin\n\nThis plugin provides information about ChiSurf, including version, developer,\nand contact information.\n\nFeatures:\n- Display ChiSurf logo\n- Show version information\n- Display deve"
+    },
+    {
+     "text": "Documentation",
+     "tooltip": "Documentation browser and help resource viewer for ChiSurf."
+    }
+   ]
+  },
+  "Spectroscopy": {
+   "Decay": [
+    {
+     "text": "Decay Analysis ⚠️",
+     "tooltip": "⚠️  Decay Analysis is experimental and not yet validated\nIntegrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor c"
+    }
+   ],
+   "Correlation": [
+    {
+     "text": "FCS",
+     "tooltip": "Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.\n\nMerges the FCS *Correlator* workflow (detector → files → filter → correlate →\nmerge) with the optional FCS tools (2D-FLCS,"
+    },
+    {
+     "text": "PCH",
+     "tooltip": "Photon Counting Histogram (PCH) analysis for single-molecule fluorescence data. Compute PCH histograms from TTTR files and fit multi-species models to extract molecular brightness and occupancy."
+    }
+   ],
+   "Single-Molecule": [
+    {
+     "text": "ALEX Suite",
+     "tooltip": "The classic ALEX-Suite workflow, as a linear ChiSurf pipeline: files, µs-ALEX alternation, burst search, background, accurate FRET, E-S. Plus the titration/stack-plot analysis and the ALEX-Suite CSV e"
+    },
+    {
+     "text": "Burst Analysis",
+     "tooltip": "Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, and background estimation."
+    },
+    {
+     "text": "Intensity trace",
+     "tooltip": "Intensity Trace Analysis for Single-Molecule Data\n\nThis plugin provides tools for analyzing fluorescence intensity time traces from \nsingle-molecule experiments. It enables researchers to extract dyna"
+    },
+    {
+     "text": "Trace Browser",
+     "tooltip": "Browse PTU/TTTR intensity traces from a folder, rate and annotate files, preview traces, and export selected traces."
+    },
+    {
+     "text": "ebFRET ⚠️",
+     "tooltip": "⚠️  A plain port of the ebFRET GUI. The VBEM/empirical-Bayes loop is pure NumPy and slower than ebFRET's compiled forward-backward; runs on large datasets take minutes per state count.\nebFRET, ported "
+    }
+   ],
+   "Kinetics": [
+    {
+     "text": "Hidden Markov model",
+     "tooltip": "Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count "
+    }
+   ],
+   "Imaging": [
+    {
+     "text": "Image Tools",
+     "tooltip": "Unified imaging toolbox: Image Browser, Drift Correction, FRC Resolution, Flow Maps, Particle Tracking, Colocalization, the per-pixel maps, CLSM Draw, Region MLE, PSF Determination, CLSM Generator."
+    }
+   ]
+  },
+  "Structure": {
+   "Modelling": [
+    {
+     "text": "ChiMOL",
+     "tooltip": "Molecular structure viewer and protein analysis plugin for ChiSurf."
+    },
+    {
+     "text": "Structure Tools",
+     "tooltip": "Unified structure toolbox: FPS JSON Editor, FRET Docking  Screening, QuEst, HydroPro and Trajectory Tools."
+    }
+   ]
+  },
+  "Tools": {
+   "Photon data": [
+    {
+     "text": "TTTR Tools",
+     "tooltip": "Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools."
+    }
+   ],
+   "Calculators": [
+    {
+     "text": "Calculators",
+     "tooltip": "Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculators and embeds the selected one in a two-panel view."
+    },
+    {
+     "text": "Light Path Simulator",
+     "tooltip": "Optical light path simulator to calculate crosstalk and R0 overlap integrals."
+    },
+    {
+     "text": "Spectra Downloader ⚠️",
+     "tooltip": "⚠️  Spectra Downloader is EXPERIMENTAL and UNTESTED — results are not validated\nDownload, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources)"
+    },
+    {
+     "text": "Wizards",
+     "tooltip": "Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view."
+    }
+   ],
+   "Views": [
+    {
+     "text": "Acquisition",
+     "tooltip": "Single-molecule fluorescence acquisition: stream photons from real TCSPC hardware or the built-in tttrlib Sim* photon simulator (confocal diffusion with FRET, anisotropy and photophysics)."
+    },
+    {
+     "text": "Global View",
+     "tooltip": "Interactive network graph for visualizing and managing parameter relationships across fits in global analysis."
+    },
+    {
+     "text": "ndX",
+     "tooltip": "Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burs"
+    }
+   ],
+   "System": [
+    {
+     "text": "Code Editor",
+     "tooltip": "Shared multi-document code/text editor with project navigation, symbols, diagnostics, and optional Python LSP integration."
+    },
+    {
+     "text": "Games",
+     "tooltip": "A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Breakout."
+    },
+    {
+     "text": "MMFDB Admin",
+     "tooltip": "Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, setups, raw/processed data, provenance, and project archives."
+    }
+   ]
+  }
+ },
+ "ribbon_corner": [
+  {
+   "kind": "button",
+   "text": "ChiSurf",
+   "tooltip": "ChiSurf Ribbon",
+   "visible": true
+  },
+  {
+   "kind": "button",
+   "text": "^",
+   "tooltip": "Collapse Ribbon",
+   "visible": true
+  },
+  {
+   "kind": "line_edit",
+   "text": "Search...",
+   "tooltip": "",
+   "visible": true
+  },
+  {
+   "kind": "button",
+   "text": "P",
+   "tooltip": "Unpin ribbon (enable auto-fold)",
+   "visible": true
+  },
+  {
+   "kind": "button",
+   "text": "?",
+   "tooltip": "Open Help Plugin",
+   "visible": true
+  },
+  {
+   "kind": "button",
+   "text": "Language: English",
+   "tooltip": "Language: English",
+   "visible": true
+  }
+ ],
+ "menus": {
+  "File": [
+   {
+    "text": "Add dataset",
+    "shortcut": "Ctrl+N",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Project",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Save Project",
+      "shortcut": "Ctrl+S",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Export Project...",
+      "shortcut": "Ctrl+Shift+S",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Open Project...",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Import Project...",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Fits",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Load Fit",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Current Fit",
+      "shortcut": "Ctrl+Alt+S",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "All Fits",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Close Fit",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Close all fits",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Close Project",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Reinitialize",
+    "shortcut": "Ctrl+R",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Recent Projects",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "No recent projects",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Clear Recent Projects",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Quit",
+    "shortcut": "Ctrl+Q",
+    "checkable": false,
+    "visible": true
+   }
+  ],
+  "View": [
+   {
+    "text": "Docks",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Dataset",
+      "shortcut": "",
+      "checkable": true,
+      "visible": true
+     },
+     {
+      "text": "Fit",
+      "shortcut": "",
+      "checkable": true,
+      "visible": true
+     },
+     {
+      "text": "Plot-options",
+      "shortcut": "",
+      "checkable": true,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Tile Windows",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Tab Windows",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Cascade Fit Windows",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Reset Layout",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Type Here",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": []
+   },
+   {
+    "text": "Undo",
+    "shortcut": "Ctrl+Z",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Redo",
+    "shortcut": "Ctrl+Y",
+    "checkable": false,
+    "visible": true
+   }
+  ],
+  "Macro": [
+   {
+    "text": "Record",
+    "shortcut": "",
+    "checkable": true,
+    "visible": true
+   }
+  ],
+  "Settings": [
+   {
+    "text": "Edit",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "FRET RDA axis ...",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Data loading ...",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Reset local settings",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Clear logging files",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Clear user styles",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   },
+   {
+    "text": "Clear user plugins",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true
+   }
+  ],
+  "Plugins": [
+   {
+    "text": "Dev",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": []
+   },
+   {
+    "text": "File",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Data",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "File tools",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "text": "Help",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "About ChiSurf",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Documentation",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Setup",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Menu Switch",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Settings",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     },
+     {
+      "text": "Switch User",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Spectroscopy",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Correlation",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "FCS",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "PCH",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "Decay",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Decay Analysis",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "Imaging",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Image Tools",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "Kinetics",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Hidden Markov model",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "Single-Molecule",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "ALEX Suite",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Burst Analysis",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Intensity trace",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Trace Browser",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "ebFRET",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "text": "Structure",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Modelling",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "ChiMOL",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Structure Tools",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "text": "Tools",
+    "shortcut": "",
+    "checkable": false,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Calculators",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Calculators",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Light Path Simulator",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Spectra Downloader",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Wizards",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "Photon data",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "TTTR Tools",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "System",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Code Editor",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Games",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "MMFDB Admin",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "Views",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Acquisition",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Global View",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "ndX",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "toolbars": {
+  "toolBar": {
+   "visible": false,
+   "actions": [
+    "Add dataset",
+    "All Fits",
+    "Close Fit",
+    "Tile Windows",
+    "Tab Windows",
+    "Reset Layout",
+    "Screenshot",
+    "Quit"
+   ]
+  }
+ },
+ "docks": {
+  "dockWidgetDatasets": {
+   "controls": [
+    "#",
+    "0",
+    "1",
+    "2",
+    "analysis",
+    "dataname",
+    "datatype",
+    "global",
+    "globaldataset",
+    "globalfit",
+    "model",
+    "modeltype",
+    "parametertransform"
+   ],
+   "labels": [
+    "Model:"
+   ],
+   "buttons": [
+    "Analysis"
+   ],
+   "line_edits": 0,
+   "combos": 1,
+   "spin_boxes": 0,
+   "tables": 5,
+   "title": "Datasets",
+   "visible_at_start": true
+  },
+  "dockWidgetAnalysis": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0,
+   "title": "Analysis",
+   "visible_at_start": true
+  },
+  "dockWidgetPlot": {
+   "controls": [],
+   "labels": [],
+   "buttons": [],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0,
+   "title": "Plot settings",
+   "visible_at_start": true
+  },
+  "dockWidget_console": {
+   "controls": [
+    "1",
+    "?",
+    "guide",
+    "✕"
+   ],
+   "labels": [],
+   "buttons": [
+    "?",
+    "Guide",
+    "✕"
+   ],
+   "line_edits": 1,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 1,
+   "title": "Console",
+   "visible_at_start": true
+  },
+  "dockWidgetHistory": {
+   "controls": [
+    "/users/tpeulen/dev/chisurf/chisur…",
+    "0.0ms",
+    "0.2ms",
+    "1",
+    "13:51:36",
+    "13:51:37",
+    "2",
+    "2026-10-11t11:51:29.270130+00:00",
+    "2026-10-11t11:51:29.293564+00:00",
+    "2026-10-11t11:51:30.074754+00:00",
+    "2026-10-11t11:51:30.106744+00:00",
+    "3",
+    "73.4ms",
+    "action",
+    "adddataset(s):globaldataset",
+    "auth.login",
+    "clear",
+    "dataset.add",
+    "dataset_add",
+    "duration",
+    "experiment.set",
+    "filter",
+    "fittingclientserverunreachable:timeout:noresponsewithin5000ms",
+    "hide",
+    "history",
+    "level",
+    "login",
+    "message",
+    "meta",
+    "mmfdb.security",
+    "noversionsfoundattheupdateurl",
+    "ok",
+    "origin",
+    "pause",
+    "ping",
+    "run_command",
+    "runcommand:%configcompleter.use_jedi=false",
+    "status",
+    "summary",
+    "target",
+    "time",
+    "warning",
+    "what"
+   ],
+   "labels": [
+    "Filter",
+    "History"
+   ],
+   "buttons": [
+    "Clear",
+    "Pause",
+    "hide"
+   ],
+   "line_edits": 3,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 8,
+   "title": "Logging",
+   "visible_at_start": true
+  },
+  "dockWidgetReadData": {
+   "controls": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "becker-sdt",
+    "data",
+    "deer",
+    "dropfileshere.",
+    "experiment",
+    "fcs",
+    "filetype",
+    "imagecorrelation",
+    "mfd",
+    "modelling",
+    "pcf",
+    "pch",
+    "pda",
+    "simulator",
+    "tcspc",
+    "tttr-file",
+    "txt/csv"
+   ],
+   "labels": [
+    "Drop files here.",
+    "Experiment",
+    "File type"
+   ],
+   "buttons": [
+    "Data"
+   ],
+   "line_edits": 0,
+   "combos": 2,
+   "spin_boxes": 0,
+   "tables": 2,
+   "title": "Read data",
+   "visible_at_start": true
+  }
+ }
+}

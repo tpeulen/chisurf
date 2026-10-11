@@ -437,3 +437,15 @@ def test_no_page_leaves_a_panel_as_a_top_level_widget(window, qapp):
         and any(w in getattr(p, "_panels", ()) for p in window._plots_all if p is not None)
     ]
     assert stray == []
+
+
+def test_the_code_button_is_wide_enough_for_its_labels(window):
+    """A fixed 50 px elided "Code" to "C...e" in the bold title-bar font (found 2026-10-11)."""
+    from qtpy import QtGui
+
+    button = window.flip_to_code_btn
+    bold = QtGui.QFont(button.font())
+    bold.setBold(True)
+    metrics = QtGui.QFontMetrics(bold)
+    for label in ("Code", "Plots"):
+        assert button.width() >= metrics.horizontalAdvance(label), (label, button.width())

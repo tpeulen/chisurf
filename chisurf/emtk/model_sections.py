@@ -213,6 +213,7 @@ class RtWindow(_Window):
         if im.button(tr("Save CSV") + "##rt-save"):
             self.views.docks.open_file_dialog(tr("Save anisotropy decay"), mode="save",
                                               done=self.save_csv)
+        im.set_item_tooltip(tr("Save the anisotropy decay r(t) as a CSV file."))
         self.rect("save")
         im.same_line()
         if action_button("close", id="rt-close"):
@@ -305,6 +306,7 @@ class Kappa2ShowWindow(_Window):
                 self.rect("distance_plot")
         if im.button(tr("OK") + "##k2-show-ok"):
             self.close()
+        im.set_item_tooltip(tr("Close the kappa-squared window."))
         self.rect("ok")
 
 
@@ -363,6 +365,7 @@ class Kappa2ComputeDialog(_Window):
         self.rects.update({f"form.{k}": v for k, v in self.form.rects.items()})
         if im.button(tr("Compute") + "##k2c-compute"):
             self.compute()
+        im.set_item_tooltip(tr("Compute the kappa-squared distribution for these settings."))
         self.rect("compute")
         im.same_line()
         im.text_disabled(tr("⟨κ²⟩ = {mean:.3f} ± {sd:.3f}").format(
@@ -381,6 +384,7 @@ class Kappa2ComputeDialog(_Window):
         self.rect("plot")
         if im.button(tr("OK") + "##k2c-ok"):
             self.accept()
+        im.set_item_tooltip(tr("Use the computed kappa-squared distribution in the model."))
         self.rect("ok")
         im.same_line()
         if action_button("cancel", id="k2c-cancel",
@@ -1056,6 +1060,7 @@ class SectionViews:
             for i, name in enumerate(names):
                 if im.selectable(f"{name}##mixer-{i}", i == index):
                     mine["pick"] = uids[i]
+                im.set_item_tooltip(tr("Add this lifetime fit to the mixture."))
             im.end_combo()
         self._rect(state, f"mixer.{ident}.fit")
         im.set_item_tooltip(tr("Select a lifetime fit to add to the mixture."))

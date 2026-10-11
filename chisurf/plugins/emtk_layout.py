@@ -368,7 +368,8 @@ class LabelColumn:
         return self.text_w is not None
 
     def measure(self, captions: Sequence[str]) -> None:
-        self.text_w = max((im.calc_text_size(c)[0] for c in captions), default=0.0)
+        # The column holds what is drawn: the translated captions, not their sources.
+        self.text_w = max((im.calc_text_size(_shown(c))[0] for c in captions), default=0.0)
 
     @property
     def x(self) -> float:
@@ -379,12 +380,24 @@ class LabelColumn:
         """Pad the field captions of *sections* to the column (idempotent)."""
         space = im.calc_text_size(" ")[0] or 1.0
         for section in labelled(sections):
+            # The source stays the source (the form translates it, keeping the padding);
+            # the padding is measured against the translation that is drawn.
             text = section["label"].rstrip()
-            gap = (self.text_w or 0.0) - im.calc_text_size(text)[0]
+            gap = (self.text_w or 0.0) - im.calc_text_size(_shown(text))[0]
             section["label"] = text + " " * max(int(gap // space), 0)
         self.text_w = max(
-            [self.text_w or 0.0] + [im.calc_text_size(s["label"])[0] for s in labelled(sections)]
+            [self.text_w or 0.0]
+            + [im.calc_text_size(_shown(s["label"]))[0] for s in labelled(sections)]
         )
+
+
+def _shown(caption: str) -> str:
+    """A field caption as the form draws it: its words translated, its padding kept."""
+    text = str(caption)
+    core = text.strip()
+    if not core:
+        return text
+    return text[: len(text) - len(text.lstrip())] + tr(core) + text[len(text.rstrip()):]
 
 
 def button_width(label: str) -> float:

@@ -69,36 +69,8 @@ def _live_notifier() -> _LanguageNotifier:
     return language_notifier
 
 
-#: Human-readable, self-endonym display names for known locale codes. Codes not
-#: listed fall back to the bare code so a new ``.qm`` is still selectable.
-LANGUAGE_DISPLAY_NAMES = {
-    "en": "English",
-    "de": "Deutsch",
-    "fr": "Français",
-    "es": "Español",
-    "it": "Italiano",
-    "pt": "Português",
-    "nl": "Nederlands",
-    "ja": "日本語",
-    "zh": "中文",
-    "ru": "Русский",
-}
-
-#: Flag emoji per locale, for the compact flag-dropdown switchers. English maps
-#: to the Union Jack (🇬🇧) rather than the US flag — ChiSurf's UI English follows
-#: British conventions. Locales without an entry fall back to a globe (🌐).
-LANGUAGE_FLAGS = {
-    "en": "🇬🇧",
-    "de": "🇩🇪",
-    "fr": "🇫🇷",
-    "es": "🇪🇸",
-    "it": "🇮🇹",
-    "pt": "🇵🇹",
-    "nl": "🇳🇱",
-    "ja": "🇯🇵",
-    "zh": "🇨🇳",
-    "ru": "🇷🇺",
-}
+#: The locale names and flags live with the Qt-free catalogue seam, which the emtk shell reads too.
+from chisurf.emtk.i18n import LANGUAGE_DISPLAY_NAMES, LANGUAGE_FLAGS  # noqa: E402
 
 
 def language_flag(code: str) -> str:

@@ -78,3 +78,25 @@ def test_without_structures_the_model_has_every_parameter_and_no_fret():
     assert model._fraction_parameter_rows() == []
     model.load_structures(["no-such-file.pdb"])
     assert model.names == [] and model.problem is not None
+
+
+def test_t4l_ca_labels_give_a_distance_distribution():
+    """148L at FPS's linker width, CA sites: a distribution, not a skipped structure.
+
+    N132's CA was walled in by its bonded neighbours at the 0.5 A grid the
+    model uses (and found at 0.7 A): the accessible-volume search left the
+    anchor one stencil step at a time. IMP.bff's search now lets the linker's
+    first step reach one width plus one grid step, as FPS and FRETraj do.
+    """
+    import pytest
+
+    structure = chisurf.core.structure.Structure(str(PDBS / "148l.pdb"))
+    axis = np.linspace(0.0, 150.0, 301)
+    p = fret_structure.av_distance_distribution(structure, axis, res_1=44, res_2=132)
+    assert p.shape == axis.shape and np.all(np.isfinite(p)) and p.sum() > 0
+    mean = float(np.sum(axis * p) / p.sum())
+    assert 20.0 < mean < 70.0
+
+    # I100 sits in the T4L core: that label has no volume, and the error says which.
+    with pytest.raises(ValueError, match=r"label 2 \(residue 100 CA\)"):
+        fret_structure.av_distance_distribution(structure, axis, res_1=44, res_2=100)

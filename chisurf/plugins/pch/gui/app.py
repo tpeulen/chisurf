@@ -146,6 +146,15 @@ class PchApp(ImApp):
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             k, p = model.histogram_points()
+            measured = np.asarray(p, dtype=float)
+            measured = measured[measured > 0]
+            if measured.size:
+                # Scale to the measured P(k), padded a factor 3 each way: autoscaled to
+                # the fit, a model tail at 1e-27 squeezed the data into the top quarter
+                # and P(0) sat on the frame. A changed histogram is a new request.
+                implot.setup_axis_limits(
+                    implot.AXIS_Y1, float(measured.min()) / 3.0, float(measured.max()) * 3.0
+                )
             if len(k):
                 implot.plot_scatter("P(k)", k, p)
             kf, pf = model.fit_curve()

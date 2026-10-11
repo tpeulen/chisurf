@@ -200,3 +200,26 @@ def test_the_described_mixture_state_is_the_same_before_and_after_binding(sessio
     _fit(state, "Lifetime")
     _fit(state, "Lifetime mixture")
     assert capture_session(state.datasets, state.fits) is not None
+
+
+def test_a_mixture_mixes_a_lifetime_fit_made_in_the_app(session):
+    """The app's *Lifetime* fit (``tcspc_polarized``) publishes its lifetimes to a mixture.
+
+    Its published ``lifetime_spectrum`` named a port the polarised decay does not write, so
+    the mixture read ``[0.]`` and refused it as "not (amplitude, lifetime) pairs".
+    """
+    import numpy as np
+
+    api, state = session
+    _fit(state, "Lifetime")
+    _fit(state, "Lifetime mixture")
+    lifetime, mixture = state.fits[0].model, state.fits[1].model
+    prompt = str(state.datasets[0].unique_identifier)
+    for fit in state.fits:
+        assert api.model_curve_set("convolve.irf", prompt, fit_uid=str(fit.unique_identifier))["ok"]
+    mixture.append_model(lifetime)
+    spectrum = np.asarray(lifetime.problem.get_output("lifetime_spectrum"))
+    assert spectrum.size >= 2 and spectrum.size % 2 == 0 and np.all(spectrum[1::2] > 0)
+    assert mixture.problem is not None
+    mixture.update()
+    assert np.all(np.isfinite(np.asarray(mixture.y)))

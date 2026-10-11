@@ -452,7 +452,10 @@ def test_fixed_nuisance_values_reach_the_solver(fitted):
 def test_run_gives_the_solver_result_and_draws_all_four_plots(fitted):
     ui = fitted
     m = run(ui)
-    assert m.result is not None and m.status == "run completed."
+    # The status names the fit quality (the guide's figure caption quotes it); before 2026-10-11 it read
+    # only "run completed." and chi2 was nowhere in the window.
+    assert m.result is not None and m.status.startswith("MEM done: chi2 = ")
+    assert f"{m.result['chisq']:.4g}" in m.status
     reference = MEMModel()
     reference.load_fit(stub_fit())
     reference.settings.tau_bins, reference.settings.tau_max = 32, 8.0
@@ -497,7 +500,13 @@ def test_the_lcurve_button_sweeps_and_sets_nu_and_a_click_on_a_point_picks_its_n
     ui.click_name("lcurve")
     m = ui.settle()
     assert m.lcurve is not None and len(m.lcurve["log10_nu"]) == 16
-    ui.draw(3)
+    # The corner the sweep wrote into nu is said and drawn; the worker's JSON progress records are
+    # not shown as text (they printed as '{"done": 16, "total": 16}' under the status).
+    assert "L-curve corner at nu" in m.status
+    strings = [t[5] for t in ui.draw(3).texts]
+    assert "Corner" in strings
+    assert not any(text.startswith('{"done"') for text in strings)
+    assert not any(line.startswith('{"done"') for line in ui.app.jobs.output)
     points = ui.app.plot_info["lcurve"]
     index = 3
     ui.click((points[index][0] - 3, points[index][1] - 3, 6, 6))

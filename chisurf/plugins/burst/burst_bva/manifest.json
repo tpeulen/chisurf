@@ -2,6 +2,7 @@
   "id": "burst_bva",
   "version": "2.1.0",
   "display_name": "Spectroscopy:Single-Molecule:BVA",
+  "icon": "📊",
   "description": "Burst Variance Analysis for single-molecule FRET experiments.",
   "authors": [
     "Thomas-Otavio Peulen"

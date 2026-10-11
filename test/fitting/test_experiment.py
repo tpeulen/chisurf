@@ -139,18 +139,22 @@ class Tests(unittest.TestCase):
 
         # The curve carries the file it was read from; the reference used to
         # say "None", recorded back when the reader dropped that provenance.
-        ref_str = f"""Dataset:
-filename: {os.path.normpath(filename)}
-length  : 207
-x	y	error-x	error-y
-1.360e-05   	4.216e+00   	1.000e+00   	1.174e-01
-2.719e-05   	3.877e+00   	1.000e+00   	1.370e-01
-4.079e-05   	3.670e+00   	1.000e+00   	1.329e-01
-....
-2.737e+03   	1.007e+00   	1.000e+00   	9.853e-03
-2.965e+03   	1.005e+00   	1.000e+00   	6.491e-03
-"""
-        self.assertEqual(ref_str, fcs_curve[0].__str__())
+        # Head and the true last two rows (it used to print rows -4 and -3 as
+        # the "tail"); compared line by line without the column padding.
+        ref_lines = [
+            "Dataset: Kristine_with_error",
+            f"filename: {os.path.normpath(filename)}",
+            "length  : 207",
+            "x\ty\terror-x\terror-y",
+            "1.360e-05   \t4.216e+00   \t1.000e+00   \t1.174e-01",
+            "2.719e-05   \t3.877e+00   \t1.000e+00   \t1.370e-01",
+            "4.079e-05   \t3.670e+00   \t1.000e+00   \t1.329e-01",
+            "....",
+            "3.193e+03   \t1.006e+00   \t1.000e+00   \t6.432e-03",
+            "3.422e+03   \t1.005e+00   \t1.000e+00   \t4.782e-03",
+        ]
+        got = [line.rstrip() for line in fcs_curve[0].__str__().splitlines()]
+        self.assertEqual(ref_lines, got)
 
     def test_DataCurve(self):
         x = np.linspace(0, np.pi * 2.0)

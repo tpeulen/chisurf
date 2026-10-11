@@ -41,10 +41,10 @@ anti-correlation terms as needed:
 The composable FCS model editor. The **Type** selector switches the diffusion
 term (MDF / single-focus Gauss / two-focus). The live **Equation** box shows the
 currently active $G(\tau)$; the parameter table exposes $N$, the diffusion
-coefficient $D$, the lateral/axial waists $w_r$/$w_z$, the offset $b$, and the
-background rate `BG`. **Bunching**, **Anticorr**, and **Outputs** fold-outs add
-triplet/blinking, reaction dynamics, and derived quantities ($V_\text{eff}$,
-concentration, brightness).
+coefficient $D$, the lateral/axial waists $w_r$/$w_z$ ($w_r$ fixed), the offset
+$b$, the background rate `BG`, and the derived structure parameter $s=w_z/w_r$
+and brightness $\varepsilon$. The **Bunching terms** and **Anticorr terms**
+fold-outs add triplet/blinking and reaction dynamics.
 ```
 
 Each row of the parameter table in {numref}`fig-fcs-model-editor` maps onto the
@@ -59,10 +59,16 @@ photodynamic factor $P(\tau)$.
    Kristine curve) — see {doc}`12_handling_tttr_files` for reading TTTR data.
 2. Add an **FCS fit** on the resulting curve; the model editor
    ({numref}`fig-fcs-model-editor`) opens.
-3. Choose the diffusion **Type** and, if the curve rises at short lag, add a
-   **Bunching** term (triplet). Fit.
-4. Read $N$, $D$ (or $\tau_D$) and the derived concentration/brightness from the
-   **Outputs** panel.
+3. Choose the diffusion **Type**. In one focus the curve depends on $D$ only
+   through $D/w_r^2$ and $D/w_z^2$, so $w_r$ starts **Fixed**: set it to the waist
+   calibrated with a dye of known $D$ before reading $D$ (the **Two-focus** type
+   frees it, as its known focus separation sets the length scale). If the curve
+   rises at short lag, open **Bunching terms** and press **add** for a triplet
+   term. Press **Fit**.
+4. Read $N$, $D$, $s$ and the brightness $\varepsilon$ from the
+   *3D Gaussian (single-focus)* table. The **MDF** type adds an
+   **Outputs (MDF mode)** panel with $V_\text{eff}$, the concentration and
+   $\tau_D$; it is hidden in the other modes, which do not compute them.
 
 ### Headless / scripting
 

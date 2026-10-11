@@ -19,6 +19,24 @@ if str(_topdir) not in sys.path:
     sys.path.insert(0, str(_topdir))
 
 
+@pytest.fixture(autouse=True)
+def _restore_ui_language():
+    """Leave the toolkit language as the test found it.
+
+    A test that switches language (``set_locale("pt")``) and fails before its own reset would
+    otherwise hand every later test in the session a Portuguese UI.
+    """
+    try:
+        from emtk import i18n
+    except Exception:
+        yield
+        return
+    before = i18n.get_locale()
+    yield
+    if i18n.get_locale() != before:
+        i18n.set_locale(before)
+
+
 @pytest.fixture(scope="session")
 def qapp():
     from qtpy.QtWidgets import QApplication

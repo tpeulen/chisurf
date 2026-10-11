@@ -192,6 +192,7 @@ class ClsmGeneratorViewModel:
                 tttr.write(str(p))
             self._save_intensity_tif(p)
             self._write_container(p)
+            self._write_scan_layout(p)
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             logger.debug("save failed", exc_info=True)
             self.status_text = f"Save failed: {exc}"
@@ -229,6 +230,22 @@ class ClsmGeneratorViewModel:
             )
         except Exception:
             logger.debug("container export skipped", exc_info=True)
+
+    def _write_scan_layout(self, path: pathlib.Path) -> None:
+        """Declare the simulated scanner's grid in the ``<stem>.json`` sidecar.
+
+        A PTU or PTO stream carries the grid in its ``ImgHdr_*`` header tags
+        (:func:`~chisurf.core.fluorescence.imaging.simulate.declare_scan_header`);
+        an SPC or HT3 stream cannot, and the CLSM, Spot Finder and Region MLE
+        tools read the scanner from this sidecar instead. Nothing is written
+        for an ``.npz`` array dump.
+        """
+        if path.suffix.lower() == ".npz":
+            return
+        import json
+
+        layout = {"kind": "chisurf-simulated-raster", "n_pixel_per_line": int(self._sim.n_pixel)}
+        path.with_suffix(".json").write_text(json.dumps({"scan_layout": layout}, indent=1))
 
     def _save_intensity_tif(self, path: pathlib.Path) -> None:
         try:

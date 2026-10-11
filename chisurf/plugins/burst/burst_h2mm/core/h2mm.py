@@ -47,6 +47,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
+#: Floor of an off-diagonal transition probability per base time unit during EM. A transition the data do not
+#: support settles here; its "rate" ``MIN_TRANS / base_time_s`` is a bound, not a measurement.
+MIN_TRANS = 1e-12
+
 
 @dataclass
 class H2mmModel:

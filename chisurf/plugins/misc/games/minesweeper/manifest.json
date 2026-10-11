@@ -2,6 +2,7 @@
   "id": "minesweeper",
   "version": "1.0.0",
   "display_name": "Tools:Miscellaneous:Games:Minesweeper",
+  "icon": "💣",
   "description": "A Minesweeper game with selectable playfield size and mine count, contained in the Games hub.",
   "authors": [
     "ChiSurf contributors"

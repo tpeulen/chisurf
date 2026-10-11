@@ -402,7 +402,7 @@ def register_dataset(dataset):
 
 def build_fit_group(dataset, model_class, model_kw=None):
     """Build a calibrated fit before making any session registry changes."""
-    from chisurf.core.fitting.fit import FitGroup
+    from chisurf.core.fitting.fit import FitGroup, initialise_fit_range
 
     calibration = _resolve_dataset_anisotropy_calibration(dataset)
     model_kw = dict(model_kw or {})
@@ -413,6 +413,8 @@ def build_fit_group(dataset, model_class, model_kw=None):
     group = FitGroup(data=dataset, model_class=model_class, model_kw=model_kw)
     _apply_anisotropy_calibration_to_fit(group, calibration)
     _attach_tttr_header(group, dataset)
+    # A fresh group's range is (0, 0): the wizard's fits could not be run.
+    initialise_fit_range(group)
     return group
 
 

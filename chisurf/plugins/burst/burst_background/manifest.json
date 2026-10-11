@@ -2,6 +2,7 @@
   "id": "burst_background",
   "version": "1.0.0",
   "display_name": "Spectroscopy:Single-Molecule:Burst Background Estimation",
+  "icon": "🌑",
   "description": "Estimate detector background rates from TTTR burst data.",
   "authors": [
     "Thomas-Otavio Peulen"

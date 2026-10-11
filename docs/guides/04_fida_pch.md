@@ -59,7 +59,12 @@ is single-molecule bursts on a nearly empty focus.
 ```
 
 The default **Channels** is `0,2` and **Bin Time** 100 µs; set the channels to
-your detectors. Do not trust this tool's χ² — see *Known defects*.
+your detectors. The fit weights each bin by the Poisson error of its count
+(√counts) over the populated bins of the range, so χ²ᵣ reads as usual: on the
+data of {numref}`fig-pch-tool` one component gives ε = 0.308, ⟨N⟩ = 1.92 and
+χ²ᵣ = 196 — a single species does not describe a burst-rich histogram — and two
+components (starting values ε = 2, ⟨N⟩ = 3 per species) give ε = 9.57 and
+0.084, ⟨N⟩ = 0.0185 and 6.18, χ²ᵣ = 3.6.
 
 ### FIDA in the PCH experiment
 
@@ -81,9 +86,9 @@ species 3 fixed at 0, bounds on. χ²ᵣ = 1.45 with a dim species
 `bg` = 0.073 counts/bin; the computed mean, 0.1088, equals the data's.
 ```
 
-Switch **Bounds** on for every `q` and `N` before fitting: with the default
-(off) the same fit drives both `N` negative, which silently switches both
-species off and leaves a pure background (χ²ᵣ = 407).
+Every `q`, `N` and `bg` starts with **Bounds** on at zero: unbounded, the same
+fit drives both `N` negative, which silently switches both species off and
+leaves a pure background (χ²ᵣ = 407).
 
 ### Headless
 
@@ -127,26 +132,13 @@ FIDA photon-counting histograms.
 
 ## Known defects
 
-- **The PCH tool's fit is unweighted and its χ² meaningless.** The backend
-  (`chisurf/plugins/pch/backend/services.py`, `pch.fit`) minimises
-  `pmod − p_exp` with no weights, so P(0) and P(1) decide the fit and the tail
-  is ignored; χ² is then Pearson's over every bin with a positive expected
-  count, including tail bins with expected counts near 10⁻¹⁴. On the data of
-  {numref}`fig-pch-tool` one component gives ε = 0.332, ⟨N⟩ = 1.83 and
-  χ²ᵣ = 1.5 × 10²⁰ over the full range (1.1 × 10¹⁰ over k ≤ 13), with the model
-  falling ten decades below the data at k = 13. Two components (starting values
-  ε = 2, ⟨N⟩ = 3 per species) return in about a second with ε = 8.28 and 0.058,
-  ⟨N⟩ = 0.022 and 8.75 and χ²ᵣ = 48.5 over k ≤ 24 — better, but the misfit
-  above k = 10 remains. Use FIDA in the PCH experiment.
-- **`FidaModel` parameters have bounds off** (`fida_model.py`, `_p(..., bounds_on=False)`),
-  so an unattended fit can run `N` negative; see above.
 - **`fida.fida_pch` ignores `profile` and `oversample`.** Both are documented
   arguments, but the function calls `tttrlib.fida_pch(k_max, species, n, bg)`
   without them, so a custom brightness profile has no effect.
 
 **Save Results** writes `<base>.npz`, `.csv` and `.txt` plus two pictures, `<base>_histogram.png` (the P(k) plot with its fit) and `<base>_window.png` (the intensity trace above it).
 
-The native PCH tool starts at1100×720, preserving saved geometry, loaded photons
+The native PCH tool starts at 1100×720, preserving saved geometry, loaded photons
 and completed fitted species. Symmetric mixture components can exchange order
 without changing their paired brightness/occupancy or predicted histogram.
 Validate numerical parameters and the objective rather than rounded display

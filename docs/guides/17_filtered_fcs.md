@@ -72,12 +72,12 @@ The native calculator at its declared tool size, computing the built-in
 convolved lifetime example with filter, reconstruction and residual plots.
 ```
 
-**Spectroscopy ▸ Correlation ▸ FCS Filter Calculator**
+**Spectroscopy ▸ Correlation ▸ FCS**, then **Filter Calc** under *Tools* in its rail,
 opens with a built-in example (two lifetimes,
 scatter and afterpulsing) so the panel is never empty; **Mixed...** replaces
 it with a measured decay (`.pto`, TTTR, or a text histogram). The window has a **Sources** tab, a **Detector setup** tab (the shared detector editor), **Auto-fit**, **Instrument** and **Info** tabs on the left and the three plots on the right:
 
-- **Sources** — the toolbar (**Mixed...**, **Auto-fit**, **Unmix**, **Compute filters**, **Save project...**, **Load project...**, **Export results...**, **Example**, **Guide**, **Help**), *Inputs* (**Pol** for parallel/perpendicular filters,
+- **Sources** — the toolbar (**Mixed...**, **Auto-fit**, **Unmix**, **Compute filters**, **Save project...**, **Load project...**, **Export results...**, **Load example**, **Guide**, **Help**), *Inputs* (**Pol** for parallel/perpendicular filters,
   **IRF**, **AP** afterpulse/constant nuisance), the **Detectors** of the
   selected setup with a per-detector IRF *Width*, *Skew*, *Shift* and IRF file
   (**Browse IRF...**), **Global (stacked) detectors**, the **Mixed decay** with
@@ -112,9 +112,9 @@ The **Auto-fit** tab after the fit: settings, the reduced χ², and the fitted m
 parameters (amplitudes, lifetimes, scatter, background, IRF shift, width and skew) as an editable table.
 ```
 
-A component pinned on a bound, as here, is the fit saying the model is not
-what the data hold — a real dilute smFRET sample is not a two-lifetime
-mixture. Use Auto-fit components as a starting set and prefer measured
+A component pinned on a **Lifetime min/max** bound is the fit saying the model
+is not what the data hold — a real dilute smFRET sample, such as the BH SPC-132
+burst recording, is not a two-lifetime mixture. Use Auto-fit components as a starting set and prefer measured
 reference patterns.
 
 ### 2D-FLCS on many molecules, with error bars
@@ -200,19 +200,13 @@ filter the early ones, so the filtered correlations separate the species.
 Filtered FCS patterns and filters.
 ```
 
-## Known defects
-
-- In the *Detectors* table of the Filter Calculator the **Width**, **Skew** and
-  **Shift** spin boxes are too narrow for their values (`0.14…`, `-0.0…`,
-  `2.27…` in the figure).
-
 ## See also
 
 - {src}`chisurf/core/fluorescence/fcs/filtered.py`; plugins `fcs_filter_calculator`, `flc_2d`.
 - Tool: the **FCS Filter Calculator** (`chisurf/plugins/fcs/fcs_filter_calculator/`) and **2D-FLCS** (`chisurf/plugins/fcs/flc_2d/`).
 
-The native2D-FLCS tool declares1100×720 and retains saved geometry. Successful
-optional1D-MEM processing restores the completed lifetime/kinetic status instead
+The native 2D-FLCS tool declares 1100×720 and retains saved geometry. Successful
+optional 1D-MEM processing restores the completed lifetime/kinetic status instead
 of leaving a Building message. Scientific spectra, residuals and correlations
 are retained. MEM solver comparisons use the same objective/gradient/bounds and
 stopping input; a broad unnormalized amplitude sum is not an invariant across
