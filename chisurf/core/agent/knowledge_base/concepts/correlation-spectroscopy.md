@@ -30,10 +30,11 @@ parameters are free**.
 The shape of the observation volume — the lateral and axial dimensions,
 `w_r` and `w_z` in the default mode — is a property of the instrument,
 measured by calibrating with a dye of known diffusion coefficient. In a fresh
-fit these arrive *free*. Fitting them together with the diffusion coefficient
-makes both meaningless: a wider volume and slower diffusion produce the same
-curve. Fix them at the calibrated values, or **link them across a series**,
-then fit the particle number and the diffusion coefficient.
+fit `w_r` arrives *fixed* at a 250 nm default and `w_z` *free*: fitting the
+lateral waist together with the diffusion coefficient makes both meaningless,
+because a wider volume and slower diffusion produce the same curve. Set them
+to the calibrated values, or **link them across a series**, then fit the
+particle number and the diffusion coefficient.
 
 The model carries several diffusion presets and computes with exactly one, so
 the parameter names depend on the active mode: `w_r`/`w_z` for the Gaussian

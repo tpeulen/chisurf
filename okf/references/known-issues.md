@@ -4,6 +4,90 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## QA walk of the FCS, lifetime, anisotropy, filtered-FCS, PCH/FIDA, console and project guides (found 2026-10-11)
+
+status: fixed — owner: opus-5.5/qa-spectroscopist (T-20261011-QA-FCS-TCSPC). Walked guides 04, 09, 10, 17, 59, 75,
+76, 91 and saving_projects step by step in the Qt shell (`chisurf.gui.get_app()` driver, offscreen, scratch
+`CHISURF_SETTINGS_DIR`) and the emtk shell (`make_app(persist=False)` on `emtk.testing_realistic.HostedDriver`,
+offscreen wgpu canvas; synthetic `Driver` for the console), every step screenshotted and read. Both shells agree
+numerically: Kristine FCS fit χ²ᵣ 5.084 (N 0.365, D 165.7 µm²/s with the old free waist), IBH lifetime fit
+χ²ᵣ 1.572 (τ 4.157 ns); save → close → reopen keeps every parameter; emtk undo restores N; matplotlib draws inline
+in both consoles; the FCS hub's *Add to ChiSurf* lands in the emtk shell's dataset list; LLTF's headless numbers
+(guide 76) and the filter calculator's built-in example (guide 17: 1.16/3.38 ns, 66/34 %, χ²ᵣ 1.04) reproduce.
+Fixed, each with a regression test:
+
+* **General FCS: the default fit was rank deficient.** Single-focus *Gauss* left `D`, `w_r`, `w_z` all free though
+  the curve depends on `D/w_r²` and `D/w_z²` only; Kristine's `D` went 166 → 39 µm²/s just by adding a bunching
+  term, with finite-looking errors. `w_r` now arrives fixed (two-focus frees it: the known separation sets the
+  scale); guide 09, the `fit-correlation` skill and the agent knowledge base say so.
+  `test/models/test_fcs_general_defaults.py`; agent tests updated.
+* **General FCS: *Outputs (MDF mode)* showed in Gauss/two-focus mode with every row N/A**, while guide 09 told the
+  user to read the concentration there. Hidden unless MDF (`general.view.json`); stale panel descriptions
+  (bunching "(us)" for a ms column, the 3-D Gaussian panel's parameter list) corrected; guide and
+  `fcs_model_editor.png` regenerated.
+* **Qt shell: the TCSPC *TXT/CSV* reader settings collapsed to ~80 px** beside the expanding *Drop files here.*
+  label (the emtk host reports no size hint): dt, header rows, repetition rate and polarisation were unreachable.
+  `SetupMixin._give_reader_settings_the_height`; `test/gui/test_reader_settings_host_height.py`.
+* **Qt fit window: the title bar's *Code* button read "C...e"** (fixed 50 px in the bold app font). Sized from
+  the font; `test/gui/test_fit_window_emtk.py::test_the_code_button_is_wide_enough_for_its_labels`.
+* **TCSPC text decays were named by their full path** in both shells (dataset list, fit titles, picker rows).
+  Named by file name; `test/fio/test_tcspc_csv_dataset_names.py`.
+* **Console: `cs.imported_datasets` printed IMP.bff SWIG proxies, `print(group)` raised `TypeError: __str__
+  returned non-string`, a short curve's rows ran into one line, a long curve's "tail" printed rows −4/−3, and
+  `fit.chi2r` printed `np.float64(...)`.** `DataCurve`/`DataGroup` reprs, `DataCurveGroup.__str__`, `Fit.chi2r`;
+  `test/core/test_data_console_display.py` (the pins in `test_experiment.py` / `test_data.py` that encoded the old
+  output were updated).
+* **PCH tool: unweighted fit, χ²ᵣ ~1e20** (the open item 4 of the 2026-09 list below). Poisson (Neyman) weights
+  over the populated bins of the range, one definition (`pch_weighted_residuals`/`pch_chi2`) shared by the backend
+  and the results text; BH132 green 50 µs: one species χ²ᵣ 196, two χ²ᵣ 3.6. The histogram's y axis now follows the
+  data, not a model tail at 1e-27. `chisurf/plugins/pch/tests/test_services.py`,
+  `chisurf/plugins/pch/test/test_emtk_pch.py` (reference numbers re-derived).
+* **FIDA model: bounds off by default**, so the guide-04 fit ran both N negative. On at zero;
+  `test/models/test_fida_model_bounds.py`.
+* **Anisotropy Wizard: *Create fits* made fits with range (0, 0)**; pressing *Fit* failed "9 parameters against 0
+  residuals" in both shells. `build_fit_group` now initialises the range (`chisurf.core.fitting.fit.
+  initialise_fit_range`, moved from the server so both use one rule);
+  `tr_anisotropy/test/test_native.py::test_created_fits_can_be_run_as_created`.
+* **Stale guides**: 10 (*Anisotropy-Wizard* menu entry is hidden: *Tools → Calculators → Wizards*), 17 (filter
+  calculator reached through the FCS hub; the figure was a half-computed BH132 run under a caption describing the
+  built-in example — screenshot script settles and uses the example; a fixed "spin boxes too narrow" known defect
+  removed), 91 (G-factor: *Decay Analysis*, panel 5), 75 (*Save Merged* is **Save**), saving_projects
+  (*Save Project As* is **Export Project…**; Macro ▸ Record exists in the emtk shell), 04/17/18 missing spaces.
+
+## Anisotropy Wizard's global fit misses its own simulated example by a constant offset (found 2026-10-11)
+
+status: open — owner: tcspc_polarized described model / Anisotropy Wizard IRF normalisation. Reproduce:
+`NativeAnisotropyModel(); example_folder = tmp; load_example(); load_data(); vv, vh, g = create_fits(); g.run()`.
+With the reader's auto range (40–683) χ²ᵣ = 4.2, τ 3.91 ns, ρ 2.04 ns, **r0 0.347** against the demo's truth
+4.0 / 2.0 / 0.38; with the range the wizard's own test uses (20–780) χ²ᵣ = 27.6 (τ 3.99, ρ 1.99, r0 0.385). The VV
+model sits ~25 counts above the data everywhere the data are near zero (bin 25: data 0, model 25.3; bin 799: data 4,
+model 25.9) — moving the IRF background region (0–30, 240–640, 400–780) does not change it. The test
+`test_example_global_fit_recovers_the_simulated_lifetime_and_rotation` passes only because it never checks χ².
+
+## emtk shell / Qt gaps seen in the 2026-10-11 QA walk, outside the walker's lanes (found 2026-10-11)
+
+status: open — owners as named.
+
+* **Installed emtk vs the working tree** — owner: whoever edits `chisurf/emtk/help_guide.py` (uncommitted, imports
+  `emtk.type_scale`). `emtk.type_scale` is untracked in `~/dev/emtk` (`48c17dd` took the qt_host hunks back), so
+  with the installed emtk every help/guide user — the emtk shell's *Console* dock among them — fails to draw
+  ("window 'console' failed to draw: No module named 'emtk.type_scale'"). Commit both together.
+* **emtk shell model editor: derived output rows** (`s`, `ε`, the MDF outputs) show a ticked *Fixed* check box and a
+  *Bounds* box; the Qt editor shows none for outputs — owner: model editor (W9 S2).
+* **emtk shell console: `api.list_fits()` rows carry no χ²ᵣ** (`f.get('chi2r')` is `None`), so guide 59's
+  "compare χ² across every fit" has no one-liner there — owner: console/API lane.
+* **Qt shell in German**: menu/ribbon (*File, Main, Reset Layout, Screenshot, About ChiSurf, Documentation, Window,
+  Help*), fit-window tabs (*Data table, Info, Parameter scan*) and the status *Ready* stay English; the docks' tab
+  bar elides to "Daten ei… Daten… An…" at the default width — owner: i18n job (deferred) / Qt legacy shell.
+* **Filter calculator: the *Weighted residuals* y label overflows its short panel** ("Weighted residuals d" runs off
+  the top) — owner: emtk implot axis labels.
+* **VV/VH G-factor tool ships no demo**, so guide 91 cannot be walked without the user's own reference files —
+  owner: the plugin.
+* **Qt IRF field shows the full path** (`ExperimentalDataSelector.curve_name` returns `filename`) — owner of the
+  curve-name semantics in `chisurf/macros/model.py` (uncommitted edits by another lane).
+* **`test/gui/test_fit_window_emtk.py::test_a_right_click_offers_that_panels_menu`** fails against the emtk working
+  tree (menu labels `['Export data as CSV…', 'Export image…', None]`) — owner: the emtk implot menu change in flight.
+
 ## Guide screenshot scripts still import the Qt burst tools retired in W9 phase 1 (found 2026-10-10)
 
 status: open — partly ported 2026-10-11 (2CDE, BVA, accurate FRET ×3, H2MM ×3, ALEX alternation/titration); the rest is tracked by `test/test_guide_screenshot_imports.py` and its allow-list. Original note: `docs/guides/make_screenshots.py` (burst_browser ~286, burst_gs ~435, accurate_fret ~599, burst_ebfret ~1150, alex_suite ~1510/1544), `docs/guides/screenshots/guides_02_14.py` (accurate_fret ~335, burst_bva ~154), `guides_15_25.py` (burst_background ~182, accurate_fret ~556), `guides_26_36.py` (burst_analysis ~165), `guides_39_53.py` (burst_analysis ~154) and `spectra_mfd.py:51` (mfd_prepare) still import the deleted `gui/tool.py` / `gui/sections.py` of accurate_fret, burst_analysis, alex_suite, burst_background, burst_browser, burst_bva, burst_2cde, burst_ebfret, burst_fcs_correlator, burst_gs, burst_irf_bg and mfd_prepare, so those grab functions raise ImportError. Re-derive with `grep -rn "gui.tool import\|burst_background import\|burst_browser import" docs/guides`. Fix: build the emtk app with `emtk_shot.app_from(<plugin id>)` and render it with `emtk.testing.Driver` (see `guides_56_65.py`).
@@ -64,18 +148,25 @@ Scratch scripts were in `/tmp/qa_smfret/` (not kept); every repro below is self-
   Committed in `bed3b9e4c`. Repro: parse the `.ts` and compare leading whitespace of source/translation. Owner: the
   queued i18n job (catalogue work is deferred there). This walk also added/changed a few source strings (ALEX
   descriptions, tooltips): they need catalogue entries.
-* **Adding any file to a burst workflow logs `ERROR MMFDB RPC failed: mmfdb.objects.put: Authentication required`**
-  when no MMFDB session exists (fresh profile, ALEX *Load example*): `burst_analysis/gui/data_selection_app.py`
-  `import_raw_file` auto-imports every added file. Owner: MMFDB auth / burst data selection (decide whether an
-  anonymous session skips the import or asks).
+* **Adding any file to a burst workflow logged `ERROR MMFDB RPC failed: mmfdb.objects.put: Authentication required`**
+  when no MMFDB session exists (fresh profile, ALEX *Load example*). status: resolved 2026-10-11 — MMFDB stores
+  objects only for a signed-in user, so `burst_analysis/gui/data_selection_app.py` no longer sends the upload without
+  a session token (`signed_in`): the file is recorded as *not signed in* (used from disk, *Import now* offered), one
+  INFO notice per selection and the status line say so, and nothing is listed as an import error. A signed-in client
+  still registers every file. Prompting for a login on every add was rejected: the workflow does not need MMFDB.
+  Test `burst_analysis/tests/test_data_selection_without_login.py`.
 * **The arm64 env's installed emtk lags `~/dev/emtk` HEAD**: `chisurf/emtk/help_guide.py` imports
   `emtk.type_scale`, which the installed copy lacks, so every native plugin import fails in that env (walked here with
   `PYTHONPATH=~/dev/emtk`). Owner: the lane that changed `help_guide.py` (reinstall emtk into the envs).
 * **emtk `view_form` `info` sections with `is_markdown` flatten markdown tables** to raw `| … |` rows, and emtk's
   markdown widget (`im.markdown`) draws in a small proportional face that drops `.`, `,` and `=` in both
   `PixelPainter` and `PilPainter` renders. Owner: emtk.
-* **H2MM floor rates** (1e-12 per tick) are listed as `0.0` with a 1.35e7 ms waiting time and still get an arrow
-  (documented in guide 30's known defects). Owner: burst_h2mm.
+* **H2MM floor rates** (1e-12 per tick) were listed as `0.0` with a 1.35e7 ms waiting time and still got an arrow.
+  status: resolved 2026-10-11 — the floor is one constant (`burst_h2mm/core/h2mm.py` `MIN_TRANS`, used by both
+  engines); `gui/result_view.py` `floor_rate`/`rates_at_floor` mark rates within 2× of `MIN_TRANS / base_time_s`;
+  the *Rates* table lists them as `< 7.4e-05` / `> 1.35e+07` ms, the kinetic scheme draws no arrow, measured rates
+  below 10 1/s keep three digits (were `0.0`/`1.1` at `.1f`). Guide 30 (four-state fit: S0→S2/S3, S2→S3, S3→S0/S1
+  at the floor), `docs/concepts/h2mm.md` and the plugin help say so. Test `burst_h2mm/tests/test_floor_rates.py`.
 * **15 guide grabbers** still import deleted Qt tools (allow-list above): burst_browser, burst_gs, burst_ebfret,
   burst_background, burst_analysis (guides 26–36, 39–53), mfd_prepare, plus non-smFRET (hmm, maxent, lumis_quest,
   intensity_trace, batch_analysis, tttr_to_pto, acq). Their figures are stale until ported.
@@ -1800,9 +1891,9 @@ Open, highest value first:
 3. **Burst Selection won't open on a fresh profile** —
    `tttr_detector_setups.load_detector_setups` (~228) with owner
    "user_default" hits a sqlite FOREIGN KEY when that user row is absent.
-4. **PCH plugin fit unusable** — `pch/backend/services.py:156-171` unweighted,
-   Pearson χ² over bins with expected ~1e-14 (χ²r 1.5e20). FIDA fits run N
-   negative with bounds off; `fida_pch` ignores `profile`/`oversample`.
+4. ~~**PCH plugin fit unusable**~~ **Fixed 2026-10-11** (Poisson-weighted fit, one χ²
+   definition; FIDA bounds on by default — see the 2026-10-11 QA entry at the top).
+   Still open: `fida_pch` ignores `profile`/`oversample`.
 5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
    tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
 6. **Acquisition**: routing-channel spinboxes never added to the dock (stay

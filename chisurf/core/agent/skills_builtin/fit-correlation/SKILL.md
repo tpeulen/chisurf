@@ -70,11 +70,13 @@ assuming — they change with the mode.
 
 **The shape of the observation volume is a calibration, not a fit result.**
 `w_r` and `w_z` come from a calibration measurement with a dye of known
-diffusion coefficient — and they arrive **free** in a fresh fit. Leaving them
-free while also fitting `D` makes both meaningless, because the fit can trade
-a wider volume against slower diffusion and reach the same curve. Fix them
-(`set_parameter` with `fixed=true`) at the calibrated values, then fit `N`
-and `D`.
+diffusion coefficient. In one focus the curve depends on `D` only through
+`D/w_r²` and `D/w_z²`, so a fresh fit arrives with `w_r` **fixed** — at a
+default of 250 nm, not at your instrument's waist — and `w_z` free. Leaving
+`w_r` free while also fitting `D` makes both meaningless, because the fit can
+trade a wider volume against slower diffusion and reach the same curve. Set
+`w_r` (and, once calibrated, `w_z`) to the calibrated values with
+`set_parameter` and `fixed=true`, then fit `N` and `D`.
 
 Across a **series** of measurements the shape is the same in every one, so
 link it rather than fixing it — see the `fit-series` skill.

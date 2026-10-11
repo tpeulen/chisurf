@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). PRD-62: pick a diffusion type (Gauss, MDF, or two-focus Gauss, each also taking bunching/anticorrelation relaxation terms). The diffusion_mode choice carries rebuild_on_change, so picking a mode schedules a deferred AutoForm.rebuild(); each diffusion panel's hidden_when (not_equals its own mode) then hides the whole panel (header included) live — only the active mode's panel is even visible.",
+  "_comment": "Editor layout for the general composable FCS model (GeneralFCSModel). Pick a diffusion type (Gauss, MDF, or two-focus Gauss, each also taking bunching/anticorrelation relaxation terms). The diffusion_mode choice carries rebuild_on_change, so picking a mode schedules a deferred AutoForm.rebuild(); each diffusion panel's hidden_when (not_equals its own mode) then hides the whole panel (header included) live — only the active mode's panel is even visible.",
   "sections": [
     {
       "type": "panel",

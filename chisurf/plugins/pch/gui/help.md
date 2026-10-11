@@ -22,4 +22,4 @@ The results text lists ε, ⟨N⟩ and the fraction of every species and the χ�
 The same analysis runs headless: pch analyze data.ptu --components 2 --bin-time 50 computes and fits a file, and pch refit results.npz --components 3 re-fits a saved histogram. Add --json for machine-readable output.
 
 ## Before trusting a result
-The fit is unweighted and the χ² is Pearson's over every bin with a positive expected count, so a tail bin with a tiny expectation can dominate it. Compare the fitted curve with the data on the log axis, not only the number.
+The fit weights every bin by the Poisson error of its count (√counts) over the populated bins of the range, and the χ² is that weighted sum, so χ²ᵣ near one means the model describes the histogram. A single species rarely describes a burst-rich histogram: compare the fitted curve with the data on the log axis as well as the number.

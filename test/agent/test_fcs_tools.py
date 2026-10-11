@@ -86,18 +86,19 @@ def test_only_the_active_diffusion_mode_is_fitted(correlation_fit):
     names = [parameter.name for parameter in model.parameters]
 
     assert len(names) == len(set(names)), f"a parameter is exposed more than once: {names}"
-    assert "w_r" in names, "the active (gauss) preset should be present"
+    assert "w_z" in names, "the active (gauss) preset should be present"
     assert "w0" not in names, "the inactive MDF preset should not be"
 
 
-def test_the_shape_parameters_arrive_free_and_can_be_fixed(correlation_fit):
-    """Fixing the calibrated volume is the judgement the skill teaches."""
+def test_the_lateral_waist_arrives_fixed_and_the_axial_one_can_be_fixed(correlation_fit):
+    """One focus measures D/w_r² only: w_r arrives fixed, w_z free; fixing it is the skill's judgement."""
     before = {p["name"]: p for p in fitting_tools.get_fit(correlation_fit, fit=0)["parameters"]}
-    assert before["w_r"]["fixed"] is False, "the volume shape is free in a fresh fit"
+    assert before["w_r"]["fixed"] is True, "D and w_r cannot both be free in one focus"
+    assert before["w_z"]["fixed"] is False
 
-    fitting_tools.set_parameter(correlation_fit, parameter="w_r", fit=0, fixed=True)
+    fitting_tools.set_parameter(correlation_fit, parameter="w_z", fit=0, fixed=True)
     after = {p["name"]: p for p in fitting_tools.get_fit(correlation_fit, fit=0)["parameters"]}
-    assert after["w_r"]["fixed"] is True
+    assert after["w_z"]["fixed"] is True
 
 
 def test_fitting_moves_the_parameters_off_their_defaults(correlation_fit):

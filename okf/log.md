@@ -17,6 +17,11 @@
 
 ## 2026-10-10
 
+- QA walk, FCS/lifetime/PCH/console/project guides: 16 defects fixed with tests — the FCS general model's
+  default fit was unidentifiable (D, w_r, w_z free; one focus measures D/w_r²; w_r now starts fixed), its MDF
+  Outputs panel showed N/A outside MDF, the PCH fit was unweighted (χ²ᵣ ~1e20; now Poisson-weighted), FIDA
+  bounds were off, Anisotropy Wizard fits had range (0,0), TCSPC text decays were named by full path, console
+  printed SWIG proxies; guides 04/09/10/17/18/75/91 and saving_projects corrected.
 - W9 phase 2 slice S5 (ribbon): the emtk shell has the Qt ribbon (emtk `emtk/ribbon.py`: tabs, large/small
   buttons, fold-to-menu and overflow at narrow widths, search) built from the same placement rules, emoji on
   every plugin entry (41 manifests gained theirs; guards for presence and uniqueness), menus with groups and

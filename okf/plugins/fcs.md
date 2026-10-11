@@ -7,6 +7,17 @@ tags: [plugins, fcs]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
+## Where to pick this up
+
+1. Measure when the general FCS model or the PCH fit changes (guide 09/04 numbers): Kristine
+   (`test/data/fcs/kristine/Kristine_with_error.cor`), *FCS (general)*, defaults → χ²ᵣ 5.08 in both shells; PCH tool on
+   BH132 green, 50 µs → one species ε 0.308, ⟨N⟩ 1.92, χ²ᵣ 196; two species (start ε 2, ⟨N⟩ 3) χ²ᵣ 3.6.
+   Trap: the general model's `w_r` now starts fixed (single focus is degenerate in D and w_r) — a fit that frees it
+   reports a D that depends on the start value.
+2. Open: guides not walked in the 2026-10-11 pass: 05, 06, 16, 56, 60, 73 (correlation side); emtk shell console has
+   no χ²ᵣ in `api.list_fits()` rows (known issue "emtk shell / Qt gaps seen in the 2026-10-11 QA walk").
+3. Method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
+
 The `fcs/` group processes raw photon data into correlation curves and the quantities derived from them — diffusion coefficients, concentrations, lifetime-filtered species and exchange dynamics. Fluorescence Correlation Spectroscopy (FCS) studies molecular dynamics, diffusion and interactions from intensity fluctuations in a confocal volume.
 
 The group presents a **single menu entry — `FCS`** (`fcs_toolbox`). It merges the

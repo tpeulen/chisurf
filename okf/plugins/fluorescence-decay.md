@@ -7,6 +7,18 @@ tags: [plugins, tcspc]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
+## Where to pick this up
+
+1. Open: **the Anisotropy Wizard's global fit does not fit its own simulated example** (χ²ᵣ 4.2 with the reader's
+   auto range, 27.6 over bins 20–780; r0 0.347 against 0.38). Measure: `NativeAnisotropyModel().load_example()`,
+   `load_data()`, `create_fits()`, run the global fit, compare model and data where the data are ~0 (bin 25:
+   0 vs 25.3). Trap: the plugin test checks parameters only, never χ². Moving the IRF background region does not
+   help. Known issue "Anisotropy Wizard's global fit misses its own simulated example" (2026-10-11).
+2. Open: **the VV/VH G-factor tool has no demo**, so guide 91 cannot be walked without user files; the synthetic
+   references the guide figures use live only in the screenshot scripts.
+3. Done 2026-10-11: the wizard's fits are created with a runnable range (`initialise_fit_range` in
+   `build_fit_group`); guide walk method and the rest in known issue "QA walk of the FCS, lifetime, …".
+
 The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting (TCSPC) microtime histograms: fitting lifetime decays, recovering the instrument response function (IRF), extracting lifetime or FRET-distance distributions, and resolving rotational anisotropy. These tools depend on a correct IRF and instrument corrections, so estimation and calibration steps sit alongside the fitting steps.
 
 | Plugin dir | Display name | What it does |

@@ -138,7 +138,8 @@ def test_the_shape_can_be_shared_across_a_series(correlation_series):
     assert len(result["linked"]) == 6, "two parameters across three follower fits"
 
     free = result["free_parameters"]
-    assert free["1"] == free["0"] - 2, "each follower loses both shape parameters"
+    # w_r arrives fixed (one focus measures D/w_r² only), so a follower loses w_z.
+    assert free["1"] == free["0"] - 1, "each follower loses its free shape parameter"
 
 
 def test_a_globally_fitted_series_shares_one_value(correlation_series):

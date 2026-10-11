@@ -20,7 +20,6 @@ chisurf/core/models/deer/deer_gauss.view.json
 chisurf/core/models/deer/deer_maxent.view.json
 chisurf/core/models/deer/deer_rice.view.json
 chisurf/core/models/deer/deer_tikhonov.view.json
-chisurf/core/models/fcs/general.view.json
 chisurf/core/models/fcs/mdf.py
 chisurf/core/models/fcs/mdf.view.json
 chisurf/core/models/pda2c/anisotropy.py
