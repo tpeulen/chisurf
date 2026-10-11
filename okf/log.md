@@ -1,5 +1,11 @@
 # Update Log
 
+## 2026-10-12
+
+- Emoji in the code editor and console take two cells (emtk b16238d): caret, selection, clicks and drawing share
+  one cell rule, and an arrow or backspace steps over a whole emoji. emtk's golden images regenerated for the
+  intended window frame of 3287f89 (be6a9d2). Open: a skin-tone emoji draws as two glyphs.
+
 ## 2026-10-11
 
 - Anisotropy wizard: its Add/Remove component row had slid under the status bar (a field now stacks under a long
