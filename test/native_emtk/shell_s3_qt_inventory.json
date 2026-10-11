@@ -1,0 +1,419 @@
+{
+ "_comment": "Before-half of the W9 S3 migration: the Qt shell's session menus (File, View, Macro, Settings; the Plugins menu is S1's), every action with a shortcut, and the control inventory (test/gui/migration_parity.py) of SaveProjectDialog, CollisionDialog and the three message boxes (unsaved-changes guard on close, fit window close, quit of an empty session), with test/data/fcs/kristine/Kristine_with_error.cor read and one 'FCS (general: diffusion + bunching/anticorr)' fit; captured 2026-10-11 by capture_shell_s3_qt_before.py before the emtk session menus were written. PNGs: renders/w9_s3/.",
+ "menus": {
+  "File": [
+   {
+    "text": "Add dataset",
+    "shortcut": "Ctrl+N",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Project",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Save Project",
+      "shortcut": "Ctrl+S",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "Export Project...",
+      "shortcut": "Ctrl+Shift+S",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "Open Project...",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "Import Project...",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Fits",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Load Fit",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "separator": true
+     },
+     {
+      "text": "Current Fit",
+      "shortcut": "Ctrl+Alt+S",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "All Fits",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "separator": true
+     },
+     {
+      "text": "Close Fit",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "Close all fits",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Close Project",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Reinitialize",
+    "shortcut": "Ctrl+R",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Recent Projects",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true,
+    "menu": [
+     {
+      "text": "No recent projects",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": false,
+      "visible": true
+     },
+     {
+      "separator": true
+     },
+     {
+      "text": "Clear Recent Projects",
+      "shortcut": "",
+      "checkable": false,
+      "enabled": true,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "separator": true
+   },
+   {
+    "text": "Quit",
+    "shortcut": "Ctrl+Q",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   }
+  ],
+  "View": [
+   {
+    "text": "Docks",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true,
+    "menu": [
+     {
+      "text": "Dataset",
+      "shortcut": "",
+      "checkable": true,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "Fit",
+      "shortcut": "",
+      "checkable": true,
+      "enabled": true,
+      "visible": true
+     },
+     {
+      "text": "Plot-options",
+      "shortcut": "",
+      "checkable": true,
+      "enabled": true,
+      "visible": true
+     }
+    ]
+   },
+   {
+    "text": "Tile Windows",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Tab Windows",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Cascade Fit Windows",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "separator": true
+   },
+   {
+    "text": "Reset Layout",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Type Here",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true,
+    "menu": []
+   },
+   {
+    "text": "Undo",
+    "shortcut": "Ctrl+Z",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Redo",
+    "shortcut": "Ctrl+Y",
+    "checkable": false,
+    "enabled": false,
+    "visible": true
+   }
+  ],
+  "Macro": [
+   {
+    "text": "Record",
+    "shortcut": "",
+    "checkable": true,
+    "enabled": true,
+    "visible": true
+   }
+  ],
+  "Settings": [
+   {
+    "text": "Edit",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "separator": true
+   },
+   {
+    "text": "FRET RDA axis ...",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Data loading ...",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Reset local settings",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Clear logging files",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Clear user styles",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   },
+   {
+    "text": "Clear user plugins",
+    "shortcut": "",
+    "checkable": false,
+    "enabled": true,
+    "visible": true
+   }
+  ]
+ },
+ "shortcuts": {
+  "Quit": "Ctrl+Q",
+  "Current Fit": "Ctrl+Alt+S",
+  "Add dataset": "Ctrl+N",
+  "Save Project": "Ctrl+S",
+  "Load result in current fit": "Ctrl+L",
+  "Reinitialize": "Ctrl+R",
+  "Export Project...": "Ctrl+Shift+S",
+  "Undo": "Ctrl+Z",
+  "Redo": "Ctrl+Y",
+  "Close": "Ctrl+F4"
+ },
+ "dialogs": {
+  "SaveProjectDialog": {
+   "controls": [
+    "1",
+    "2",
+    "cancel",
+    "notes",
+    "ok",
+    "private",
+    "projectname",
+    "public",
+    "visibility"
+   ],
+   "labels": [
+    "Notes:",
+    "Project name:",
+    "Visibility:"
+   ],
+   "buttons": [
+    "Cancel",
+    "OK"
+   ],
+   "line_edits": 1,
+   "combos": 1,
+   "spin_boxes": 0,
+   "tables": 1
+  },
+  "CollisionDialog": {
+   "controls": [
+    "cancel",
+    "remap&import",
+    "thefollowingidsfromthearchivealreadyexistinthedatabase.originalproject:proj_xv3.onconfirmation,conflictingidswillberemapped."
+   ],
+   "labels": [
+    "The following IDs from the archive already exist in the database.\nOriginal project: proj_x v3.\nOn confirmation, conflicting IDs will be remapped."
+   ],
+   "buttons": [
+    "Cancel",
+    "Remap & Import"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0
+  },
+  "close_guard": {
+   "controls": [
+    "cancel",
+    "don'tsave",
+    "save",
+    "savechangestothecurrentprojectbeforecontinuing?"
+   ],
+   "labels": [
+    "Save changes to the current project before continuing?"
+   ],
+   "buttons": [
+    "Cancel",
+    "Don't Save",
+    "Save"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0,
+   "title": "",
+   "text": "Save changes to the current project before continuing?"
+  },
+  "fit_close": {
+   "controls": [
+    "&no",
+    "&yes",
+    "areyousuretoclosethisfit?:fcs(general:diffusion+bunching/anticorr)-kristine_with_error"
+   ],
+   "labels": [
+    "Are you sure to close this fit?:\nFCS (general: diffusion + bunching/anticorr) - Kristine_with_error"
+   ],
+   "buttons": [
+    "&No",
+    "&Yes"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0,
+   "title": "",
+   "text": "Are you sure to close this fit?:\nFCS (general: diffusion + bunching/anticorr) - Kristine_with_error"
+  },
+  "quit": {
+   "controls": [
+    "&no",
+    "&yes",
+    "areyousuretoquit?"
+   ],
+   "labels": [
+    "Are you sure to quit?"
+   ],
+   "buttons": [
+    "&No",
+    "&Yes"
+   ],
+   "line_edits": 0,
+   "combos": 0,
+   "spin_boxes": 0,
+   "tables": 0,
+   "title": "",
+   "text": "Are you sure to quit?"
+  }
+ }
+}

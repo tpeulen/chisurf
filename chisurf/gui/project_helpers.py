@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import pathlib
 
@@ -10,59 +9,24 @@ from chisurf.gui import QtCore, QtWidgets, dialogs, run_on_gui_thread
 
 
 def _recent_projects_file() -> pathlib.Path:
-    """Return the path to the persisted recent-projects JSON file.
+    """Return the path to the persisted recent-projects JSON file (shared with the emtk shell)."""
+    from chisurf.core.project import recent
 
-    Returns
-    -------
-    pathlib.Path
-        ``~/.chisurf/recent_projects.json`` (via ``get_path``) or a
-        plain ``~/.chisurf/recent_projects.json`` fallback.
-    """
-    try:
-        return cs.core.settings.get_path("settings") / "recent_projects.json"
-    except Exception:
-        return pathlib.Path.home() / ".chisurf" / "recent_projects.json"
+    return recent.recent_projects_file()
 
 
 def load_recent_projects() -> list[str]:
-    fp = _recent_projects_file()
-    try:
-        if not fp.is_file():
-            return []
-    except Exception:
-        return []
-    try:
-        data = json.loads(fp.read_text(encoding="utf-8"))
-    except Exception:
-        return []
-    items = data.get("projects", []) if isinstance(data, dict) else data
-    if not isinstance(items, list):
-        return []
-    out: list[str] = []
-    for it in items:
-        try:
-            s = str(it)
-        except Exception:
-            continue
-        if s:
-            out.append(s)
-    return out
+    """The stored recent projects, newest first."""
+    from chisurf.core.project import recent
+
+    return recent.load()
 
 
 def store_recent_projects(projects: list[str]) -> None:
-    fp = _recent_projects_file()
-    try:
-        fp.parent.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass
-    payload = {"projects": list(projects or [])}
-    try:
-        fp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    except Exception:
-        try:
-            logging.exception(f"Failed to write recent projects file: {fp}")
-        except Exception:
-            pass
+    """Write the recent-projects list."""
+    from chisurf.core.project import recent
+
+    recent.store(projects)
 
 
 def set_recent_projects(window, projects: list[str]) -> None:
@@ -73,38 +37,14 @@ def set_recent_projects(window, projects: list[str]) -> None:
 
 
 def add_recent_project(window, project_path) -> None:
-    try:
-        p = os.path.abspath(os.path.normpath(str(project_path)))
-    except Exception:
-        return
-    if not p:
-        return
+    """Put *project_path* first in the window's recent list, store it and refresh the menu."""
+    from chisurf.core.project import recent
 
     try:
         current = list(getattr(window, "_recent_projects", []) or [])
     except Exception:
         current = []
-
-    def _key(s: str) -> str:
-        try:
-            s2 = os.path.normpath(str(s))
-        except Exception:
-            s2 = str(s)
-        return s2.lower() if os.name == "nt" else s2
-
-    seen = set()
-    new_list: list[str] = []
-    for item in [p] + current:
-        if not item:
-            continue
-        k = _key(item)
-        if k in seen:
-            continue
-        seen.add(k)
-        new_list.append(item)
-
-    max_n = 10
-    new_list = new_list[:max_n]
+    new_list = recent.added(current, project_path)
     set_recent_projects(window, new_list)
     store_recent_projects(new_list)
     refresh_recent_projects_menu(window)

@@ -197,7 +197,12 @@ def test_a_file_dropped_on_the_shell_is_read(shell):
     assert data.datasets.datasets[-1]["name"] == "Kristine_with_error"
 
 
-def test_closing_a_fit_window_keeps_the_fit(shell):
+def test_closing_a_fit_window_keeps_the_fit(shell, monkeypatch):
+    """With ``gui.confirm_close_fit`` off the × only closes the window (on, it asks and removes the fit:
+    ``test_emtk_shell_session.py``), as in the Qt shell."""
+    from chisurf.core.settings import cs_settings
+
+    monkeypatch.setitem(cs_settings, "gui", {**(cs_settings.get("gui") or {}), "confirm_close_fit": False})
     driver = Driver(shell, size=(1200, 800))
     _load(driver, shell, KRISTINE)
     uid = _add_fit(driver, shell)

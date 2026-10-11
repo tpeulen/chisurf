@@ -272,6 +272,22 @@ class OperationHistory:
                 and (self._baseline is not None if index == -1 else index in self._science_states)
             )
 
+    def step_target(self, direction: int) -> int | None:
+        """The cursor one user step back (``direction < 0``) or forward, ``None`` at either end.
+
+        A stop is a restorable state that ends a step (:meth:`is_step_end`), so
+        undo passes over derived recomputes in one press, as the history browser
+        does.
+        """
+        with self._lock:
+            step = -1 if direction < 0 else 1
+            index = self._cursor + step
+            while -1 <= index < len(self._events):
+                if self.can_navigate(index) and self.is_step_end(index):
+                    return index
+                index += step
+            return None
+
     def navigate(self, index: int):
         """Publish exact science and move the cursor only after owner acknowledgement."""
         from chisurf.history.science import decode_science

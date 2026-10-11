@@ -396,6 +396,43 @@ def set_fret_rda_axis(
         return False
 
 
+def apply_fret_rda_axis(
+    rda_min: float,
+    rda_max: float,
+    rda_resolution: int,
+    rda_scale: str = "log",
+) -> np.ndarray | None:
+    """Persist the FRET R_DA axis, make it the live one and return it.
+
+    Swaps *rda_min* and *rda_max* when they are reversed and falls back to a
+    ``"log"`` scale for anything but ``"log"`` / ``"lin"``. The live settings
+    (``chisurf.core.settings.fret``) and ``chisurf.core.fluorescence.rda_axis``
+    change only after the settings file was written; fits that use the axis
+    must be updated by the caller.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        The new axis, ``None`` when the settings could not be written.
+    """
+    import chisurf
+
+    scale = str(rda_scale or "log").strip().lower()
+    if scale not in ("log", "lin"):
+        scale = "log"
+    low, high = sorted((float(rda_min), float(rda_max)))
+    count = int(rda_resolution)
+    if not set_fret_rda_axis(rda_min=low, rda_max=high, rda_resolution=count, rda_scale=scale):
+        return None
+    settings = chisurf.core.settings
+    if not isinstance(getattr(settings, "fret", None), dict):
+        settings.fret = {}
+    settings.fret.update(rda_min=low, rda_max=high, rda_resolution=count, rda_scale=scale)
+    axis = build_fret_rda_axis(low, high, count, scale)
+    chisurf.core.fluorescence.rda_axis = axis
+    return axis
+
+
 def set_optimization_settings(
     sampling: dict = None,
     leastsq: dict = None,

@@ -1,0 +1,13 @@
+{
+  "title": "Save Project",
+  "sections": [
+    {"type": "value", "kind": "str", "attr": "project_name", "label": "Project name",
+     "placeholder": "Enter project name",
+     "description": "The project's name in the database. A new version of a project saved before keeps its name."},
+    {"type": "choice", "attr": "visibility", "label": "Visibility",
+     "options": [["private", "Private"], ["public", "Public"]],
+     "description": "Private: only the owner can see this project. Public: any authenticated user can see this project."},
+    {"type": "value", "kind": "text", "attr": "notes", "label": "Notes", "placeholder": "Optional notes...",
+     "description": "What this version holds, for whoever opens it later."}
+  ]
+}

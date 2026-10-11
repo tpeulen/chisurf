@@ -275,6 +275,87 @@ def load_database(
         raise ProjectStorageError(f"MMFDB project restore failed for {version_id}: {exc}") from exc
 
 
+def database_client(mmfdb_settings: Mapping[str, Any] | None = None) -> Any:
+    """The authenticated client of the configured MMFDB deployment.
+
+    One import is one preview, one import and one readback: pass the same client
+    to :func:`import_preview` and :func:`import_database`.
+    """
+    settings = _settings(mmfdb_settings)
+    if select_backend(settings) != "mmfdb":
+        raise ProjectStorageError("MMFDB requested without a configured real MMFDB deployment")
+    return _real_client(settings)
+
+
+def import_preview(
+    file_path: str | Path,
+    *,
+    mmfdb_settings: Mapping[str, Any] | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """What importing a ``.cs.pto`` into MMFDB would collide with, without importing it.
+
+    Returns
+    -------
+    dict
+        ``collisions`` (category -> ids already in the database) and ``origin``
+        (the archive's ``project_id`` / ``version_number``).
+    """
+    settings = _settings(mmfdb_settings)
+    if select_backend(settings) != "mmfdb":
+        raise ProjectStorageError("MMFDB import requested without a configured real MMFDB deployment")
+    preview = _client_for(settings, client).import_preview(file_path=str(file_path))
+    if preview.get("ok") is not True:
+        raise ProjectStorageError(preview.get("error") or "Import preview failed")
+    return {
+        "collisions": dict(preview.get("collisions") or {}),
+        "origin": dict(preview.get("origin") or {}),
+    }
+
+
+def import_database(
+    file_path: str | Path,
+    *,
+    resolve_collisions: bool,
+    mmfdb_settings: Mapping[str, Any] | None = None,
+    client: Any | None = None,
+) -> dict[str, Any]:
+    """Import a ``.cs.pto`` as a new MMFDB version and verify its exact readback.
+
+    Import publishes a store copy only: the live session and its document
+    identity are not touched (only an owner restore attaches a database identity).
+
+    Returns
+    -------
+    dict
+        ``project_id``, ``version_id`` and ``version_number`` of the new version.
+    """
+    from .pto import _validate_project_payload
+
+    settings = _settings(mmfdb_settings)
+    if select_backend(settings) != "mmfdb":
+        raise ProjectStorageError("MMFDB import requested without a configured real MMFDB deployment")
+    transport = _client_for(settings, client)
+    result = transport.import_csp(file_path=str(file_path), resolve_collisions=resolve_collisions)
+    if result.get("ok") is not True:
+        raise ProjectStorageError(result.get("error") or "Import failed")
+    version_id = result.get("version_id")
+    project_id = result.get("project_id")
+    version_number = result.get("version_number")
+    if not version_id or not project_id or type(version_number) is not int or version_number < 1:
+        raise ProjectStorageError("Import returned an invalid project version identity")
+    restored = transport.restore_project(version_id)
+    if restored.get("ok") is not True:
+        raise ProjectStorageError("Imported project version readback failed")
+    for field in ("version_id", "project_id", "version_number"):
+        if type(restored.get(field)) is not type(result[field]) or restored.get(field) != result[field]:
+            raise ProjectStorageError(f"Imported project {field} readback mismatch")
+    payload = _validate_project_payload(result.get("project_payload"))
+    if restored.get("project_payload") != payload:
+        raise ProjectStorageError("Imported project scientific readback mismatch")
+    return {"project_id": project_id, "version_id": version_id, "version_number": version_number}
+
+
 __all__ = [
     "ProjectStorageError",
     "select_backend",
@@ -282,4 +363,7 @@ __all__ = [
     "load_file",
     "save_database",
     "load_database",
+    "database_client",
+    "import_preview",
+    "import_database",
 ]

@@ -104,7 +104,7 @@ def test_settings_form_renders_fields(qapp):
 
 
 def test_settings_model_setter_persists(qapp, monkeypatch):
-    from chisurf.gui.widgets import staged_loading_settings as sls
+    from chisurf.core.fio import staging_settings as sls
 
     saved = {}
     monkeypatch.setattr(sls, "set_data_loading_settings", lambda d: saved.update(d))

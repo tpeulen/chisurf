@@ -399,18 +399,15 @@ class ProjectMixin:
 
                 return project_helpers.open_recent_project(self, file_path)
 
-            client = storage._real_client(storage._settings(None))
-
-            preview = client.import_preview(file_path=file_path)
-            if preview.get("ok") is not True:
-                raise storage.ProjectStorageError(preview.get("error") or "Import preview failed")
-            collisions = preview.get("collisions", {})
+            client = storage.database_client()
+            preview = storage.import_preview(file_path, client=client)
+            collisions = preview["collisions"]
             has_collisions = any(v for v in collisions.values())
 
             if has_collisions:
                 from chisurf.plugins.core.project_browser.gui.tool import CollisionDialog
 
-                dlg = CollisionDialog(collisions, preview.get("origin", {}), self)
+                dlg = CollisionDialog(collisions, preview["origin"], self)
                 if dlg.exec() != QtWidgets.QDialog.Accepted:
                     return False
             else:
@@ -418,42 +415,18 @@ class ProjectMixin:
                     self,
                     "Confirm Import",
                     f"No collisions detected.\n"
-                    f"Original: {preview.get('origin', {}).get('project_id', '?')}\n"
+                    f"Original: {preview['origin'].get('project_id', '?')}\n"
                     f"Proceed?",
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 )
                 if ok != QtWidgets.QMessageBox.Yes:
                     return False
 
-            result = client.import_csp(file_path=file_path, resolve_collisions=has_collisions)
-            if result.get("ok") is not True:
-                raise storage.ProjectStorageError(result.get("error") or "Import failed")
-            version_id = result.get("version_id")
-            project_id = result.get("project_id")
-            version_number = result.get("version_number")
-            if (
-                not version_id
-                or not project_id
-                or type(version_number) is not int
-                or version_number < 1
-            ):
-                raise storage.ProjectStorageError(
-                    "Import returned an invalid project version identity"
-                )
-            restored = client.restore_project(version_id)
-            if restored.get("ok") is not True:
-                raise storage.ProjectStorageError("Imported project version readback failed")
-            for field in ("version_id", "project_id", "version_number"):
-                if (
-                    type(restored.get(field)) is not type(result[field])
-                    or restored.get(field) != result[field]
-                ):
-                    raise storage.ProjectStorageError(f"Imported project {field} readback mismatch")
-            from chisurf.core.project.pto import _validate_project_payload
-
-            payload = _validate_project_payload(result.get("project_payload"))
-            if restored.get("project_payload") != payload:
-                raise storage.ProjectStorageError("Imported project scientific readback mismatch")
+            result = storage.import_database(
+                file_path, resolve_collisions=has_collisions, client=client
+            )
+            project_id = result["project_id"]
+            version_number = result["version_number"]
             # Import publishes a store copy. Only the owner restore transaction
             # may attach a database identity to the live scientific document.
             dialogs.information(

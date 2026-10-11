@@ -13,7 +13,7 @@ from qtpy import QtWidgets
 import chisurf as cs
 import chisurf.core.fluorescence
 import chisurf.core.settings
-from chisurf.core.settings.settings_utils import build_fret_rda_axis, set_fret_rda_axis
+from chisurf.core.settings.settings_utils import apply_fret_rda_axis
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
 
@@ -109,46 +109,11 @@ class FretRdaAxisSettingsWidget(QtWidgets.QGroupBox):
             scale = "log"
 
         if rda_max <= rda_min:
-            tmp = rda_min
-            rda_min = rda_max
-            rda_max = tmp
+            rda_min, rda_max = rda_max, rda_min
             self.sb_min.setValue(rda_min)
             self.sb_max.setValue(rda_max)
-
-        ok = set_fret_rda_axis(
-            rda_min=rda_min,
-            rda_max=rda_max,
-            rda_resolution=n_points,
-            rda_scale=scale,
-        )
-        if not ok:
+        if apply_fret_rda_axis(rda_min, rda_max, n_points, scale) is None:
             return
-
-        try:
-            if not isinstance(getattr(cs.core.settings, "fret", None), dict):
-                cs.core.settings.fret = {}
-        except Exception:
-            cs.core.settings.fret = {}
-
-        cs.core.settings.fret["rda_min"] = float(rda_min)
-        cs.core.settings.fret["rda_max"] = float(rda_max)
-        cs.core.settings.fret["rda_resolution"] = int(n_points)
-        cs.core.settings.fret["rda_scale"] = scale
-
-        try:
-            new_axis = build_fret_rda_axis(
-                cs.core.settings.fret["rda_min"],
-                cs.core.settings.fret["rda_max"],
-                cs.core.settings.fret["rda_resolution"],
-                cs.core.settings.fret.get("rda_scale", scale),
-            )
-        except Exception:
-            return
-
-        try:
-            cs.core.fluorescence.rda_axis = new_axis
-        except Exception:
-            pass
 
         try:
             fc = get_fitting_client()

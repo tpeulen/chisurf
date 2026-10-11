@@ -80,6 +80,23 @@ Before a nonempty project is discarded, ChiSurf offers:
 Cancelling the save-file chooser or encountering a save error also keeps the
 session open. The same decision protects project replacement and reset.
 
+## In the native window
+
+The native window (`python -m chisurf --emtk-shell`, opt-in while it replaces
+the Qt window) has the same **File** menu and shortcuts: **Save Project**
+(`Ctrl+S`), **Export Project…** (`Ctrl+Shift+S`, save under a new file), **Open
+Project…**, **Import Project…**, **Close Project**, **Reinitialize** (`Ctrl+R`),
+**Recent Projects** and **Quit** (`Ctrl+Q`); **View** has **Undo** (`Ctrl+Z`)
+and **Redo** (`Ctrl+Y`). Closing the window, quitting, opening or closing a
+project ask the Save / Don't Save / Cancel question once, and only when the
+session has unsaved work; an empty session asks "Quit ChiSurf?" instead. The
+autosave writes the same `.autosave.cs.pto` copy. A fit window's **×** asks,
+then removes the fit, as in the Qt window.
+
+Not there yet: saving or loading a single fit (`Ctrl+Alt+S`, **Load Fit**) and
+**Macro ▸ Record**. Undo and redo cover the session since it was opened; the
+undo history is not written into the project file.
+
 ## Failures do not mean an empty project
 
 An invalid or corrupt project is rejected before replacing the active

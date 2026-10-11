@@ -18,6 +18,9 @@ What this slice provides:
   (:mod:`chisurf.emtk.fit_docks`), working through :class:`chisurf.core.api.ChiSurfAPI` against an in-process
   server whose events arrive through a Qt-free subscriber (:mod:`chisurf.emtk.session`). A file dropped onto the
   shell, with no tool taking it, is read with the selected file type.
+* the **session menus** -- *File* (datasets, project files, fits, recent projects, quit), *View* (docks, window
+  arrangements, undo and redo) and *Settings* -- with the Qt shell's shortcuts, the project dialogs, the
+  unsaved-changes guard on close and the autosave (:mod:`chisurf.emtk.shell_session`).
 
 Anything drawn inside a dock by an app of its own (a plugin, a fit window, a reader's settings) is a *child*: it is
 drawn with :meth:`emtk.app.ImApp.draw_child` through :meth:`EmtkShellApp.host_child`, and the pointer, wheel, keys
@@ -39,6 +42,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
+from chisurf.emtk.shell_session import MenuAction, ShellProject
 
 #: Settings id of the shell's own layout and preferences (``<settings>/emtk/emtk_shell.*.json``).
 SHELL_ID = "emtk_shell"
@@ -50,6 +54,23 @@ PLUGIN_KEY = "plugin."
 LOG_LINES = 500
 
 _log = logging.getLogger("chisurf.emtk.shell")
+
+
+def parse_shortcut(text: str) -> tuple[int, int] | None:
+    """``"Ctrl+Shift+S"`` as ``(key, modifiers)`` of :mod:`emtk.keys` / :mod:`emtk.events`.
+
+    ``Ctrl`` is Command on a Mac (emtk swaps them, as Qt does).
+    """
+    from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
+
+    if not text:
+        return None
+    *mods, key = [part.strip() for part in text.split("+")]
+    bits = {"ctrl": CONTROL_MODIFIER, "shift": SHIFT_MODIFIER, "alt": ALT_MODIFIER}
+    modifiers = 0
+    for mod in mods:
+        modifiers |= bits[mod.lower()]
+    return (ord(key.lower()) if len(key) == 1 else 0), modifiers
 
 
 @dataclass(frozen=True)
@@ -208,6 +229,7 @@ class EmtkShellApp(ImApp):
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
 
         self.data = DataDocks(self, session_factory)
+        self.project = ShellProject(self)
         for key in (ANALYSIS_KEY, PLOT_KEY):
             self.docks.dock(key, "left_lower")
         self.docks.focus(ANALYSIS_KEY)
@@ -302,6 +324,7 @@ class EmtkShellApp(ImApp):
         self._painter = painter
         self._collect_builds()
         self.data.poll()
+        self.project.poll()
         for hosted in self.hosted.values():
             hosted.box = None
         self._drawn = {}
@@ -310,6 +333,7 @@ class EmtkShellApp(ImApp):
         finally:
             self._painter = None
         self._closed_by_user()
+        self.project.guard_fit_windows()
         self.data.closed_by_user()
         self.data.focused_window()
 
@@ -318,6 +342,7 @@ class EmtkShellApp(ImApp):
         self._draw_menu_bar(width)
         self.docks.draw((0.0, MENU_BAR, width, max(1.0, height - MENU_BAR)))
         self.data.draw_file_dialog((0.0, 0.0, width, height))
+        self.project.draw((0.0, 0.0, width, height))
 
     def host_child(self, window_key: str, child_id: str, app: Any, box) -> None:
         """Draw *app* into *box* (canvas coordinates) of dock window *window_key*; input over it goes to it.
@@ -338,42 +363,181 @@ class EmtkShellApp(ImApp):
         flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
         if im.begin("shell menu bar", flags=flags):
             im.begin_menu_bar()
-            menus: dict[str, list[MenuEntry]] = {}
+            plugins: dict[str, list[MenuEntry]] = {}
             for entry in self.entries:
-                menus.setdefault(entry.menu, []).append(entry)
-            for menu, entries in menus.items():
-                if im.begin_menu(tr(menu)):
+                plugins.setdefault(tr(entry.menu), []).append(entry)
+            session = self.session_menus()
+            # File first, then the plugin menus, then View and Settings, as the Qt menu bar; a plugin
+            # menu with a session menu's title (the File tools under "File") joins that menu.
+            order = [session[0]] + [(menu, []) for menu in plugins if menu not in dict(session)]
+            order += session[1:]
+            for menu, actions in order:
+                if im.begin_menu(menu):
                     self._menu_open = True
-                    group = None
-                    for entry in entries:
-                        if entry.group != group and entry.group:
-                            # A disabled row is the section caption; ``separator_text`` became a
-                            # popup row only in emtk adee696, and this shell runs on older pins too.
-                            im.menu_item(tr(entry.group), enabled=False)
-                        group = entry.group
-                        if im.menu_item(tr(entry.label), selected=entry.plugin_id in self.hosted):
-                            self.open_plugin(entry.plugin_id)
+                    self._draw_actions(actions)
+                    self._draw_plugin_entries(plugins.get(menu, []))
                     im.end_menu()
                 self.item_rects["menu." + menu] = im.get_item_rect()
-            if im.begin_menu(tr("Window")):
-                self._menu_open = True
-                for key, title in (
-                    ("tools", "Tools"),
-                    ("data.read", "Read data"),
-                    ("data.sets", "Datasets"),
-                    ("fit.analysis", "Analysis"),
-                    ("fit.plot", "Plot settings"),
-                    ("start", "Start"),
-                    ("log", "Log"),
-                ):
-                    if im.menu_item(tr(title), selected=self.docks.is_visible(key)):
-                        self.docks.toggle(key)
-                if im.menu_item(tr("Reset layout")):
-                    self.docks.reset()
-                im.end_menu()
-            self.item_rects["menu.Window"] = im.get_item_rect()
             im.end_menu_bar()
         im.end()
+
+    def _draw_actions(self, actions: list[MenuAction]) -> None:
+        """The items of a session menu: group captions, shortcut texts, check marks."""
+        group = None
+        for action in actions:
+            if action.group != group:
+                # A group is a captioned section (Qt's submenus: Project, Fits, Recent Projects, Docks).
+                if action.group:
+                    im.separator_text(action.group)
+                elif group:
+                    im.separator()
+            group = action.group
+            selected = bool(action.checked()) if action.checked is not None else False
+            if im.menu_item(action.label, action.shortcut, selected=selected, enabled=action.enabled()):
+                action.run()
+            self.item_rects[f"menu.{action.key}"] = im.get_item_rect()
+            if action.description:
+                im.set_item_tooltip(action.description)
+
+    def _draw_plugin_entries(self, entries: list[MenuEntry]) -> None:
+        """The plugins of one menu, grouped under disabled caption rows."""
+        group = None
+        for entry in entries:
+            if entry.group != group and entry.group:
+                # A disabled row is the section caption; ``separator_text`` became a
+                # popup row only in emtk adee696, and this shell runs on older pins too.
+                im.menu_item(tr(entry.group), enabled=False)
+            group = entry.group
+            if im.menu_item(tr(entry.label), selected=entry.plugin_id in self.hosted):
+                self.open_plugin(entry.plugin_id)
+
+    # ── session menus ─────────────────────────────────────────────────────
+
+    def session_menus(self) -> list[tuple[str, list[MenuAction]]]:
+        """*File*, *View* and *Settings* as ``(title, [MenuAction])``; the shortcut table is read from them."""
+        project, data = self.project, self.data
+        has_session = lambda: project.channel is not None  # noqa: E731
+        has_fits = lambda: bool(data.datasets.fits)  # noqa: E731
+        file_menu = [
+            MenuAction("add_dataset", tr("Add dataset"), data.read.load, "Ctrl+N",
+                       description=tr("Read the file in Read data with the selected file type."),
+                       enabled=lambda: data.session is not None),
+            MenuAction("save_project", tr("Save Project"), project.save, "Ctrl+S", tr("Project"),
+                       tr("Save the project to its file, or choose one."), has_session),
+            MenuAction("export_project", tr("Export Project…"), project.save_as, "Ctrl+Shift+S",
+                       tr("Project"), tr("Save the project under a new .cs.pto file (save as)."),
+                       has_session),
+            MenuAction("open_project", tr("Open Project…"), project.open_project, "", tr("Project"),
+                       tr("Replace the session with a saved project."), has_session),
+            MenuAction("import_project", tr("Import Project…"), project.import_project, "",
+                       tr("Project"), tr("Open a .cs.pto, or import a copy into the database."),
+                       has_session),
+            MenuAction("close_fit", tr("Close Fit"), project.close_fit, "", tr("Fits"),
+                       tr("Remove the current fit (asks first)."),
+                       lambda: bool(data.current_uid)),
+            MenuAction("close_all_fits", tr("Close all fits"), project.close_all_fits, "", tr("Fits"),
+                       tr("Remove every fit from the session."), has_fits),
+            MenuAction("close_project", tr("Close Project"), project.close_project, "", "",
+                       tr("Start an empty session (asks to save unsaved work)."), has_session),
+            MenuAction("reinitialize", tr("Reinitialize"),
+                       lambda: project.close_project(reinitialize=True), "Ctrl+R", "",
+                       tr("Clear all data and start again (asks to save unsaved work)."), has_session),
+        ]
+        recent = [
+            MenuAction(f"recent.{index}", f"{index + 1} {path}",
+                       lambda p=path: project.open_recent(p), "", tr("Recent Projects"),
+                       enabled=has_session)
+            for index, path in enumerate(project.recent)
+        ] or [MenuAction("recent.none", tr("No recent projects"), lambda: None, "",
+                         tr("Recent Projects"), enabled=lambda: False)]
+        file_menu += recent
+        file_menu += [
+            MenuAction("clear_recent", tr("Clear Recent Projects"), project.clear_recent, "",
+                       tr("Recent Projects"), enabled=lambda: bool(project.recent)),
+            MenuAction("quit", tr("Quit"), project.request_quit, "Ctrl+Q", "",
+                       tr("Close ChiSurf (asks to save unsaved work).")),
+        ]
+        docks = [
+            ("data.read", tr("Read data")), ("data.sets", tr("Datasets")),
+            ("fit.analysis", tr("Analysis")), ("fit.plot", tr("Plot settings")), ("tools", tr("Tools")),
+            ("start", tr("Start")), ("log", tr("Log")),
+        ]
+        view_menu = [
+            MenuAction(f"dock.{key}", title, lambda k=key: self.docks.toggle(k), "", tr("Docks"),
+                       checked=lambda k=key: self.docks.is_visible(k))
+            for key, title in docks
+        ]
+        view_menu += [
+            MenuAction("tile_windows", tr("Tile Windows"), self.tile_fit_windows, "", "",
+                       tr("Show every fit window side by side."), has_fits),
+            MenuAction("tab_windows", tr("Tab Windows"), self.tab_fit_windows, "", "",
+                       tr("Show the fit windows as tabs."), has_fits),
+            MenuAction("cascade_windows", tr("Cascade Fit Windows"), self.cascade_fit_windows, "", "",
+                       tr("Float the fit windows, each a little below the last."), has_fits),
+            MenuAction("reset_layout", tr("Reset layout"), self.docks.reset, "", "",
+                       tr("Put every dock back where it started.")),
+            MenuAction("undo", tr("Undo"), project.undo, "Ctrl+Z", "",
+                       tr("Go back one change of the science."), project.can_undo),
+            MenuAction("redo", tr("Redo"), project.redo, "Ctrl+Y", "",
+                       tr("Go forward one change of the science."), project.can_redo),
+        ]
+        settings_menu = [
+            MenuAction("settings_edit", tr("Edit"), project.edit_settings, "", "",
+                       tr("Open the settings editor."), lambda: "setup" in self.by_id),
+            MenuAction("fret_rda_axis", tr("FRET RDA axis…"), project.rda_axis, "", "",
+                       tr("The distance grid FRET models use.")),
+            MenuAction("data_loading", tr("Data loading…"), project.data_loading, "", "",
+                       tr("Staging of files on slow storage, and the plot point budget.")),
+            MenuAction("reset_local_settings", tr("Reset local settings"),
+                       project.reset_local_settings, "", "",
+                       tr("Return your settings folder to the shipped defaults.")),
+            MenuAction("clear_logging_files", tr("Clear logging files"),
+                       project.clear_logging_files),
+            MenuAction("clear_user_styles", tr("Clear user styles"), project.clear_user_styles),
+            MenuAction("clear_user_plugins", tr("Clear user plugins"), project.clear_user_plugins),
+        ]
+        return [(tr("File"), file_menu), (tr("View"), view_menu), (tr("Settings"), settings_menu)]
+
+    def shortcuts(self) -> dict[tuple[int, int], MenuAction]:
+        """``(key, modifiers) -> action`` of every session menu item with a shortcut."""
+        table = {}
+        for _menu, actions in self.session_menus():
+            for action in actions:
+                parsed = parse_shortcut(action.shortcut)
+                if parsed is not None:
+                    table[parsed] = action
+        return table
+
+    def _fit_window_keys(self) -> list[str]:
+        return [window.key for window in self.data.windows.values()]
+
+    def tab_fit_windows(self) -> None:
+        """*Tab Windows*: every fit window a tab of the centre."""
+        for key in self._fit_window_keys():
+            self.docks.dock(key, "center")
+            self.docks.show(key)
+
+    def tile_fit_windows(self) -> None:
+        """*Tile Windows*: the fit windows side by side, each in a region of its own."""
+        keys = self._fit_window_keys()
+        self.tab_fit_windows()
+        region = "center"
+        for index, key in enumerate(keys[1:], start=1):
+            zone = "right" if index % 2 else "bottom"
+            region = self.docks.split_region(region, zone, ratio=1.0 / (len(keys) - index + 1))
+            self.docks.dock(key, region)
+
+    def cascade_fit_windows(self) -> None:
+        """*Cascade Fit Windows*: the fit windows float, each offset from the last."""
+        width, height = self.window_size
+        for index, key in enumerate(self._fit_window_keys()):
+            offset = 40.0 + 28.0 * index
+            self.docks.undock(key, (offset + 280.0, offset + MENU_BAR, width * 0.5, height * 0.5))
+            self.docks.raise_window(key)
+
+    def close_request(self) -> bool:
+        """The window's close button: close only after the unsaved-changes question (asked once)."""
+        return self.project.request_quit()
 
     # ── docks ─────────────────────────────────────────────────────────────
 
@@ -412,6 +576,13 @@ class EmtkShellApp(ImApp):
         im.spacing()
         im.text_disabled(self.status)
         self.item_rects["status"] = im.get_item_rect()
+        document = self.project.document
+        where = str(document.path) if document.path else tr("not saved yet")
+        im.text_disabled(tr("Project: {name} ({where})").format(name=document.name, where=where))
+        self.item_rects["project"] = im.get_item_rect()
+        if self.project.status:
+            im.text_disabled(self.project.status)
+            self.item_rects["project.status"] = im.get_item_rect()
 
     def _draw_log(self, box) -> None:
         for line in list(self.log.lines)[-200:]:
@@ -440,7 +611,7 @@ class EmtkShellApp(ImApp):
 
     def _plugin_at(self, x: float, y: float) -> str | None:
         """The child whose drawn content is on top at (x, y): floating windows front to back, then docked tabs."""
-        if self._menu_open or self.data.modal_open:
+        if self._menu_open or self.data.modal_open or self.project.modal:
             return None
         order = list(reversed(self.docks.floating()))
         order += [self.docks.active_tab(region) for region in self.docks.regions]
@@ -467,6 +638,8 @@ class EmtkShellApp(ImApp):
         return app, box[:2]
 
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
+        if self.project.modal and not self.project.contains(x, y):
+            return  # a question is open: a press beside it does nothing (it is modal)
         target = self._plugin_at(x, y)
         self._capture = target
         if target is not None:
@@ -506,10 +679,37 @@ class EmtkShellApp(ImApp):
         return super().scroll(rows)
 
     def key(self, key, text="", modifiers=0):
+        if self.project.modal:
+            return super().key(key, text, modifiers)
         child, _origin = self._child(self._focus)
+        if self._shortcut(key, modifiers, child):
+            return True
         if child is not None:
             return child.key(key, text, modifiers)
         return super().key(key, text, modifiers)
+
+    def _shortcut(self, key, modifiers, child) -> bool:
+        """Run the session menu item bound to this key, as Qt's application-wide shortcuts do.
+
+        Undo and redo are left to a text field that has the keyboard (its own undo), in the
+        shell or in the focused child.
+        """
+        from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
+
+        mods = int(modifiers) & (CONTROL_MODIFIER | SHIFT_MODIFIER | ALT_MODIFIER)
+        letter = int(key)
+        if 65 <= letter <= 90:
+            letter += 32
+        action = self.shortcuts().get((letter, mods))
+        if action is None or not action.enabled():
+            return False
+        if action.key in ("undo", "redo"):
+            typing = getattr(child, "io", self.io) if child is not None else self.io
+            if getattr(typing, "want_capture_keyboard", False):
+                return False
+        action.run()
+        self.request_frame()
+        return True
 
     def on_files_dropped(self, paths) -> bool:
         """Hand dropped files to the focused child when it takes them, else read them as data."""
@@ -523,11 +723,12 @@ class EmtkShellApp(ImApp):
 
     def animating(self) -> bool:
         busy = any(hosted.build is not None for hosted in self.hosted.values()) or self.data.busy
+        busy = busy or self.project.busy
         children = any(app.animating() for _key, app, _box in self._drawn.values())
         return super().animating() or busy or children
 
     def next_frame_in(self):
-        delays = [super().next_frame_in()]
+        delays = [super().next_frame_in(), self.project.next_frame_in()]
         delays += [app.next_frame_in() for _key, app, _box in self._drawn.values()]
         return min((delay for delay in delays if delay is not None), default=None)
 
@@ -547,6 +748,7 @@ class EmtkShellApp(ImApp):
         """Close every hosted plugin, the fit windows and the session, and detach the log handler."""
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
+        self.project.close()
         self.data.close()
         logging.getLogger("chisurf").removeHandler(self.log)
 

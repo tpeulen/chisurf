@@ -1,0 +1,21 @@
+{
+  "title": "FRET RDA axis",
+  "sections": [
+    {"type": "info", "text": "Distance axis used for FRET-related distance distributions: the grid of donor-acceptor distances (log or linear spacing) that FRET models evaluate their distributions on."},
+    {"type": "value", "kind": "float", "attr": "rda_min", "label": "R_DA min", "suffix": " Å",
+     "decimals": 3, "minimum": 0.01, "maximum": 10000.0,
+     "description": "The shortest distance of the axis."},
+    {"type": "value", "kind": "float", "attr": "rda_max", "label": "R_DA max", "suffix": " Å",
+     "decimals": 3, "minimum": 0.01, "maximum": 10000.0,
+     "description": "The longest distance of the axis."},
+    {"type": "value", "kind": "int", "attr": "rda_resolution", "label": "N points",
+     "minimum": 4, "maximum": 4096,
+     "description": "How many distances the axis has."},
+    {"type": "choice", "attr": "rda_scale", "label": "Scale", "options": [["log", "log"], ["lin", "lin"]],
+     "description": "Logarithmic or linear spacing of the distances."},
+    {"type": "button_row", "buttons": [
+      {"label": "Save axis", "action": "save_axis",
+       "description": "Write the axis to your settings, make it the one in use and update the fits."}
+    ]}
+  ]
+}

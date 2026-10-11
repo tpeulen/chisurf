@@ -17,6 +17,10 @@
 
 ## 2026-10-10
 
+- W9 phase 2 slice S3: the emtk shell has the Qt shell's File/View/Settings menus and shortcuts, project
+  save/open/import/export over the project services, recent projects, undo/redo, autosave and a close
+  guard that asks once (`chisurf/emtk/shell_session.py`); emtk 5e8223c adds a scriptable message/confirm
+  dialog. Gaps: fit export (Qt-bound Word report), Macro/Record (S4 console).
 - W7 click-all: all 124 native plugins pass (each failing id re-run alone 3–5×). Product fixes: BVA's
   settings pane scrolls (a button sat below the clip), the hub's fast-forward Stop stops the running step,
   intensity traces thin to 4000 points and publish rebins under a lock (a torn frame raised mid-plot),

@@ -151,7 +151,7 @@ class StagingCancelled(Exception):
 
 #: Default values for the ``data_loading`` settings section. These seed both
 #: the runtime fallbacks (:func:`_settings`) and the AutoForm JSON view-spec
-#: (``chisurf/gui/widgets/staged_loading_view.json``); keep the two in sync.
+#: (``chisurf/core/fio/staging_settings.view.json``); keep the two in sync.
 DEFAULTS = {
     "enabled": True,
     # Opening a vendor photon file produces the measurement's container, which

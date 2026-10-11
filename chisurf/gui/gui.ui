@@ -1255,18 +1255,6 @@
     <string>Load Fit</string>
    </property>
   </action>
-  <action name="actionLoad_result_in_current_fit">
-   <property name="icon">
-    <iconset resource="resources/resource.qrc">
-     <normaloff>:/icons/icons/document-open.svg</normaloff>:/icons/icons/document-open.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Load result in current fit</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+L</string>
-   </property>
-  </action>
   <action name="actionConvert">
    <property name="enabled">
     <bool>false</bool>
