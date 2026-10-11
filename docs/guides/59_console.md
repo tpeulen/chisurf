@@ -140,6 +140,37 @@ want once you need to zoom.
   much was dropped.
 * **`%quickref`** is the one-page summary; `%lsmagic` lists every `%` command.
 
+## In the native window
+
+The native window (`python -m chisurf --emtk-shell`, opt-in while it replaces
+the Qt window) has the same console as a **Console** dock beside **Log**, with
+the same keys: Enter runs or continues a block, Shift+Enter adds a line, Up and
+Down walk the history (filtered by what you had typed), `Ctrl+R` searches it,
+Tab completes and `(` or Shift+Tab shows the call signature, `obj?` opens the
+help pane under the transcript, `Ctrl+K` / `Ctrl+U` / `Ctrl+Y` cut and paste
+the line, `Ctrl+L` clears. While the console has the keys, `Ctrl+R` is the
+history search, not **Reinitialize**.
+
+Three differences:
+
+* The input is its own box under the transcript instead of an inline prompt.
+* The session's fits and datasets are reached through **`api`** — the session's
+  `ChiSurfAPI`, on a connection of the console's own — rather than `cs.fits`:
+
+  ```python
+  api.list_fits()
+  api.set_parameter_value("N", 2.0, fit_uid=api.list_fits()[0]["uid"])
+  ```
+
+  A command that changes the science is one **Undo** step, named after the
+  command.
+* Images, SVG and HTML display as their text form; `input()` raises `EOFError`.
+
+**Macro ▸ Record** and **Macro ▸ Run Macro…** record and replay as above; the
+macro is saved through the native file dialog. Dead keys, accented letters and
+an input method (Japanese, Chinese, Korean) type as in any other field: the
+text being composed is shown underlined at the cursor until it is committed.
+
 ## Headless
 
 Everything above works without a GUI. The interpreter is a separate, Qt-free

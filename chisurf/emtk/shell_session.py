@@ -148,6 +148,13 @@ class FormDialog:
         ``on_button(key) -> bool``; ``True`` closes the dialog.
     """
 
+    #: The tooltip of each button key the shell's forms use.
+    tooltips = {
+        "ok": "Apply the form.",
+        "cancel": "Close without applying the form.",
+        "close": "Close this window.",
+    }
+
     def __init__(self, title: str, spec: dict, model: Any, buttons, on_button) -> None:
         from emtk.dialog_window import DialogWindow
         from emtk.view_form import FormState
@@ -180,6 +187,7 @@ class FormDialog:
             if im.button(f"{tr(label)}##form.{key}"):
                 chosen = key
             self.rects[key] = im.get_item_rect()
+            im.set_item_tooltip(tr(self.tooltips.get(key, label)))
         self.rects.update(self.form.rects)
         self.window.end()
         if self.window.box is not None:
@@ -425,6 +433,14 @@ class ShellProject:
         topic = str(payload.get("topic", ""))
         if any(topic == t or (t.endswith(".") and topic.startswith(t)) for t in RECORD_TOPICS):
             self._record_topic = self._record_topic or topic
+
+    def note_command(self, summary: str) -> None:
+        """A console command ran (``chisurf.run``): the next history step carries its *summary*.
+
+        A step is recorded only when the science changed, as for every other change; a command that
+        changed nothing (``print``) leaves no undo step.
+        """
+        self._record_topic = self._record_topic or str(summary)
 
     def _refresh_docks(self) -> None:
         """After the science was replaced: reopen the fit windows over the new fits and re-read."""
@@ -1027,15 +1043,16 @@ class ShellProject:
     # ── drawing ───────────────────────────────────────────────────────────
 
     def open_file_dialog(
-        self, title: str, mode: str, done: Callable[[str], Any], *, filename: str = ""
+        self, title: str, mode: str, done: Callable[[str], Any], *, filename: str = "",
+        filters: Any = PROJECT_FILTER,
     ) -> None:
-        """A project file dialog over the shell; *done(path)* gets the choice."""
+        """A file dialog over the shell (project files unless *filters* says otherwise); *done(path)* gets the choice."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
         directory = str(Path(self.document.path).parent) if self.document.path else str(_working_path())
         self.file_dialog = FileDialog(
-            title, mode=mode, filters=PROJECT_FILTER, directory=directory, filename=filename
+            title, mode=mode, filters=filters, directory=directory, filename=filename
         )
         self._file_window = DialogWindow(title, size=(760, 540))
         self._file_window.show()

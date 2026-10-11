@@ -19,8 +19,10 @@ What this slice provides:
   server whose events arrive through a Qt-free subscriber (:mod:`chisurf.emtk.session`). A file dropped onto the
   shell, with no tool taking it, is read with the selected file type.
 * the **session menus** -- *File* (datasets, project files, fits, recent projects, quit), *View* (docks, window
-  arrangements, undo and redo) and *Settings* -- with the Qt shell's shortcuts, the project dialogs, the
-  unsaved-changes guard on close and the autosave (:mod:`chisurf.emtk.shell_session`).
+  arrangements, undo and redo), *Macro* (record, run) and *Settings* -- with the Qt shell's shortcuts, the project
+  dialogs, the unsaved-changes guard on close and the autosave (:mod:`chisurf.emtk.shell_session`);
+* the **Console** dock: ChiSurf's Python console on emtk's TextEditor (:mod:`chisurf.emtk.console`), which is
+  also where ``chisurf.run(...)`` runs while the shell is open.
 
 Anything drawn inside a dock by an app of its own (a plugin, a fit window, a reader's settings) is a *child*: it is
 drawn with :meth:`emtk.app.ImApp.draw_child` through :meth:`EmtkShellApp.host_child`, and the pointer, wheel, keys
@@ -186,6 +188,9 @@ class EmtkShellApp(ImApp):
     session_factory : callable, optional
         ``session_factory(wake=...) -> ShellSession`` (:func:`chisurf.emtk.session.start_session`), run on a
         worker thread; without one the data and fit docks say there is no session.
+    console_history, console_session_file : path or bool, optional
+        The console's input-history file and session log (:class:`~chisurf.emtk.console.ShellConsole`);
+        ``None`` uses the settings folder, ``False`` keeps none (tests).
     """
 
     def __init__(
@@ -193,6 +198,8 @@ class EmtkShellApp(ImApp):
         catalog: dict[str, dict] | None = None,
         loader: Callable[[str], Any] | None = None,
         session_factory: Callable[..., Any] | None = None,
+        console_history: Any = None,
+        console_session_file: Any = None,
     ) -> None:
         self.entries = menu_entries(catalog)
         self.by_id = {entry.plugin_id: entry for entry in self.entries}
@@ -222,6 +229,8 @@ class EmtkShellApp(ImApp):
         self.docks.add_window("tools", tr("Tools"), self._draw_tools, dock="left", closable=False)
         self.docks.add_window("start", tr("Start"), self._draw_start, dock="center")
         self.docks.add_window("log", tr("Log"), self._draw_log, dock="bottom")
+        self.docks.add_window("console", tr("Console"), self._draw_console, dock="bottom",
+                              scrollable=False)
         self.log = _LogBuffer()
         logging.getLogger("chisurf").addHandler(self.log)
         _log.setLevel(logging.INFO)
@@ -230,10 +239,24 @@ class EmtkShellApp(ImApp):
 
         self.data = DataDocks(self, session_factory)
         self.project = ShellProject(self)
+        from chisurf.emtk.console import ShellConsole
+
+        self.console = ShellConsole(
+            {"gui": self},
+            history_path=console_history,
+            session_file=console_session_file,
+            wake=self.request_frame,
+            record_command=self.project.note_command,
+        )
+        self._console_session: Any = None
+        self._console_channel: Any = None
+        self._push_console_namespace()
+        self.console.install()
         for key in (ANALYSIS_KEY, PLOT_KEY):
             self.docks.dock(key, "left_lower")
         self.docks.focus(ANALYSIS_KEY)
         self.docks.focus("tools")
+        self.docks.focus("console")
 
     # ── plugins ───────────────────────────────────────────────────────────
 
@@ -325,6 +348,8 @@ class EmtkShellApp(ImApp):
         self._collect_builds()
         self.data.poll()
         self.project.poll()
+        self.console.poll()
+        self._push_console_namespace()
         for hosted in self.hosted.values():
             hosted.box = None
         self._drawn = {}
@@ -342,6 +367,7 @@ class EmtkShellApp(ImApp):
         self._draw_menu_bar(width)
         self.docks.draw((0.0, MENU_BAR, width, max(1.0, height - MENU_BAR)))
         self.data.draw_file_dialog((0.0, 0.0, width, height))
+        self.console.draw_overlays((0.0, 0.0, width, height))
         self.project.draw((0.0, 0.0, width, height))
 
     def host_child(self, window_key: str, child_id: str, app: Any, box) -> None:
@@ -460,7 +486,7 @@ class EmtkShellApp(ImApp):
         docks = [
             ("data.read", tr("Read data")), ("data.sets", tr("Datasets")),
             ("fit.analysis", tr("Analysis")), ("fit.plot", tr("Plot settings")), ("tools", tr("Tools")),
-            ("start", tr("Start")), ("log", tr("Log")),
+            ("start", tr("Start")), ("log", tr("Log")), ("console", tr("Console")),
         ]
         view_menu = [
             MenuAction(f"dock.{key}", title, lambda k=key: self.docks.toggle(k), "", tr("Docks"),
@@ -496,7 +522,84 @@ class EmtkShellApp(ImApp):
             MenuAction("clear_user_styles", tr("Clear user styles"), project.clear_user_styles),
             MenuAction("clear_user_plugins", tr("Clear user plugins"), project.clear_user_plugins),
         ]
-        return [(tr("File"), file_menu), (tr("View"), view_menu), (tr("Settings"), settings_menu)]
+        macro_menu = [
+            MenuAction("record", tr("Record"), self.toggle_macro_recording, "", "",
+                       tr("Record what runs in the console; click again to stop and save it as a macro."),
+                       checked=lambda: self.console.recording),
+            MenuAction("run_macro", tr("Run Macro…"), self.run_macro, "", "",
+                       tr("Run a saved macro (.cm.py) in the console's namespace.")),
+        ]
+        return [(tr("File"), file_menu), (tr("View"), view_menu), (tr("Macro"), macro_menu),
+                (tr("Settings"), settings_menu)]
+
+    # ── console and macros ────────────────────────────────────────────────
+
+    def _push_console_namespace(self) -> None:
+        """Give the console ``api`` once the session is up (and again after it was replaced)."""
+        import os
+
+        import numpy as np
+
+        import chisurf
+
+        session = getattr(self.data, "session", None)
+        if session is self._console_session and self._console_session is not None:
+            return
+        names = {"cs": chisurf, "np": np, "os": os, "gui": self}
+        self._close_console_channel()
+        if session is not None:
+            # A connection of the console's own: it calls on the frame thread, and a ZMQ socket
+            # must not cross threads (the docks' calls run on workers).
+            api = getattr(session, "api", None)
+            if getattr(session, "server", None) is not None:
+                from chisurf.emtk.shell_session import ProjectChannel
+
+                try:
+                    self._console_channel = ProjectChannel(session)
+                    api = self._console_channel.api
+                except Exception:  # noqa: BLE001 - the console still runs Python without ``api``
+                    _log.exception("connecting the console to the session failed")
+            names["api"] = api
+        self.console.push(names)
+        self._console_session = session
+
+    def _close_console_channel(self) -> None:
+        channel, self._console_channel = getattr(self, "_console_channel", None), None
+        if channel is not None:
+            channel.close()
+
+    def toggle_macro_recording(self) -> None:
+        """*Macro ▸ Record*: start recording the console; the second click stops and offers to save."""
+        console = self.console
+        if not console.recording:
+            console.start_recording()
+            self.docks.show("console")
+            self.docks.focus("console")
+            console.focus_input()
+            self.status = tr("Recording macro…")
+            return
+        console.stop_recording()
+        self.status = tr("Ready")
+        if not console.macro.strip():
+            self.project.dialogs.message(tr("Record macro"), tr("Nothing was recorded."))
+            return
+        from chisurf.emtk.console import MACRO_FILTER
+
+        self.project.open_file_dialog(
+            tr("Save macro"), "save", console.save_macro, filters=MACRO_FILTER, filename="macro.cm.py"
+        )
+
+    def run_macro(self) -> None:
+        """*Macro ▸ Run Macro…*: choose a macro file and run it in the console."""
+        from chisurf.emtk.console import MACRO_FILTER
+
+        def run(path: str) -> None:
+            self.docks.show("console")
+            self.docks.focus("console")
+            self.console.focus_input()
+            self.console.run_file(path)
+
+        self.project.open_file_dialog(tr("Run Macro"), "open", run, filters=MACRO_FILTER)
 
     def shortcuts(self) -> dict[tuple[int, int], MenuAction]:
         """``(key, modifiers) -> action`` of every session menu item with a shortcut."""
@@ -583,6 +686,9 @@ class EmtkShellApp(ImApp):
         if self.project.status:
             im.text_disabled(self.project.status)
             self.item_rects["project.status"] = im.get_item_rect()
+
+    def _draw_console(self, box) -> None:
+        self.console.draw(box)
 
     def _draw_log(self, box) -> None:
         for line in list(self.log.lines)[-200:]:
@@ -688,6 +794,23 @@ class EmtkShellApp(ImApp):
             return child.key(key, text, modifiers)
         return super().key(key, text, modifiers)
 
+    def compose(self, text, cursor=None):
+        """The input method's composition goes where the keys go: the focused child, else the shell."""
+        if not self.project.modal:
+            child, _origin = self._child(self._focus)
+            if child is not None and callable(getattr(child, "compose", None)):
+                return child.compose(text, cursor)
+        return super().compose(text, cursor)
+
+    def ime_caret(self):
+        """The caret of the focused text, in the shell's coordinates (a child's is offset by its box)."""
+        child, (ox, oy) = self._child(self._focus)
+        caret = getattr(child, "ime_caret", None) if child is not None else None
+        caret = caret() if callable(caret) else caret
+        if caret is not None:
+            return (caret[0] + ox, caret[1] + oy, caret[2])
+        return super().ime_caret()
+
     def _shortcut(self, key, modifiers, child) -> bool:
         """Run the session menu item bound to this key, as Qt's application-wide shortcuts do.
 
@@ -697,6 +820,8 @@ class EmtkShellApp(ImApp):
         from emtk.events import ALT_MODIFIER, CONTROL_MODIFIER, SHIFT_MODIFIER
 
         mods = int(modifiers) & (CONTROL_MODIFIER | SHIFT_MODIFIER | ALT_MODIFIER)
+        if child is None and self.console.control.has_focus and self.console.claims(key, modifiers):
+            return False  # Ctrl+R searches the console's history there, as in the Qt console
         letter = int(key)
         if 65 <= letter <= 90:
             letter += 32
@@ -748,6 +873,8 @@ class EmtkShellApp(ImApp):
         """Close every hosted plugin, the fit windows and the session, and detach the log handler."""
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
+        self.console.close()
+        self._close_console_channel()
         self.project.close()
         self.data.close()
         logging.getLogger("chisurf").removeHandler(self.log)

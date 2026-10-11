@@ -32,8 +32,6 @@ KNOWN_GAPS = {
     "loadfit": "fit import of a .fit.json into the session: no Qt-free service yet",
     "currentfit": "fit export (CSV, fit.json, Word report with screenshots) is Qt-bound in core_fit.save_fit",
     "allfits": "the same export for every fit",
-    "macro": "macro recording records console input: the console is slice S4",
-    "record": "the Macro menu's only item",
 }
 #: Qt controls present under another spelling, or replaced on purpose.
 RENAMED = {

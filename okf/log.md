@@ -17,6 +17,10 @@
 
 ## 2026-10-10
 
+- W9 phase 2 slice S4: the emtk shell's Console dock (`chisurf/emtk/console.py`) matches the Qt console on 25
+  driven behaviours (history, Ctrl+R, completion, signature hints, help, kill/yank, live output, macro
+  recording through `chisurf.run`, which the emtk shell had silently dropped); Macro menu with Record and Run
+  Macro…; composed (IME) text input in every emtk text field (emtk 3e61af1, afb4e40, aceb942).
 - W9 phase 2 slice S3: the emtk shell has the Qt shell's File/View/Settings menus and shortcuts, project
   save/open/import/export over the project services, recent projects, undo/redo, autosave and a close
   guard that asks once (`chisurf/emtk/shell_session.py`); emtk 5e8223c adds a scriptable message/confirm

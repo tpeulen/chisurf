@@ -2,7 +2,7 @@
 type: Subsystem
 title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
-resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_session.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
+resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_session.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
 timestamp: '2026-10-11T00:00:00Z'
 ---
@@ -18,7 +18,10 @@ Code face. The session holds the Global Dataset, and a dataset row dragged onto 
 Slice S3 reached control parity for the session menus on 2026-10-11 (`chisurf/emtk/shell_session.py`): File, View
 and Settings with the Qt shortcuts, save and reopen of `.cs.pto`, undo and redo, autosave, a close guard that asks
 once, and a fit window `×` that asks and then removes the fit. `KNOWN_GAPS` in
-`test/native_emtk/test_emtk_shell_session.py` keeps five items. The Qt shell is still the default.
+`test/native_emtk/test_emtk_shell_session.py` keeps three items. Slice S4 reached parity with the Qt console the
+same day: a Console dock on emtk's `TextEditor` over the Qt-free engine (`chisurf/emtk/console.py`), *Macro ▸ Record*
+and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) text in every emtk text field
+(`emtk.ime`). The Qt shell is still the default.
 
 1. Measure: the allow-list has 245 entries. Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The
    per-area split comes from `cut -d/ -f1 test/plugin_qt_allowlist.txt | sort | uniq -c` once comments are dropped:
@@ -53,20 +56,31 @@ once, and a fit window `×` that asks and then removes the fit. `KNOWN_GAPS` in
 7. Open: S3's `KNOWN_GAPS` (`test/native_emtk/test_emtk_shell_session.py`). *Load Fit*, *Current Fit* (`Ctrl+Alt+S`)
    and *All Fits* are missing because fit export is Qt-bound in `chisurf/macros/core_fit.py::save_fit`, which writes
    CSV, `fit.json` and a Word report of `QWidget.grab()` screenshots; it needs a Qt-free export service that renders
-   the fit window with emtk. *Macro ▸ Record* records console input, so it waits for the S4 console. Measure: the
-   test's `KNOWN_GAPS` and `SHORTCUT_GAPS`. Also open: the shell's undo history is session-local; it is not written
+   the fit window with emtk. Measure: the test's `KNOWN_GAPS` and `SHORTCUT_GAPS`. Also open: the shell's undo history is session-local; it is not written
    into the `.cs.pto` as the Qt `cs.history` is. Login before the session (the ledger's Auth row) is not built.
 8. Open: plugins that have only an `action` entrypoint (`menu_switch`) or only a Qt `gui` entrypoint are not offered
    by the emtk shell. `execute_plugin_action` still takes the Qt main window. Measure: `menu_entries()` returns 28
    entries, against 29 visible manifests.
 9. Blocked: S6 (delete the Qt shell) is blocked on W7's click-all passing on the native host
-   (`test/e2e/test_click_all_plugins.py`), on S4 and S5 reaching parity, and on items 2, 3 and 7.
-10. Open: the emtk gaps listed below. **Multi-window** decides whether detached plugin windows survive the move. IME
-    text input is missing. Both go into `~/dev/emtk` with tests. emtk `5e8223c` (`emtk.message_dialog`, the native
-    close veto) is installed in both envs but not pushed, so `pixi.lock` still pins `95da067`.
-11. Measure: `test/native_emtk/capture_shell_s3_qt_before.py` rewrites the S3 before-half
-    (`shell_s3_qt_inventory.json`, PNGs in `renders/w9_s3/`). Trap: the ribbon replaces the Qt menu bar widget, so
-    `QMainWindow.menuBar()` segfaults. The script reads the `.ui`'s own `menuBar` attribute instead.
+   (`test/e2e/test_click_all_plugins.py`), on S5 reaching parity, and on items 2, 3 and 7.
+10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
+    `~/dev/emtk` with tests. emtk `aceb942` (message dialogs, close veto, `emtk.ime`, hosted controls owning Tab,
+    rasterised glyphs inside their advance) is installed in both envs but not pushed, so `pixi.lock` still pins
+    `95da067`. Measure: `git -C ~/dev/emtk log --oneline 95da067..HEAD`.
+11. Measure: `test/native_emtk/capture_shell_s3_qt_before.py` and `capture_shell_s4_qt_before.py` rewrite the S3 and
+    S4 before-halves (`shell_s3_qt_inventory.json`, `shell_s4_qt_inventory.json`; PNGs in `renders/w9_s3/`,
+    `renders/w9_s4/`). Run S4 with the env's python directly, not `conda run` (which exited 1 with no trace once).
+    Trap: the ribbon replaces the Qt menu bar widget, so `QMainWindow.menuBar()` segfaults. The scripts read the
+    `.ui`'s own `menuBar` attribute instead.
+12. Open: S4 remainders. (a) CJK draws one cell per character, narrowed to it (`emtk/dynamic_font.py`): legible at
+    2x, hard at 1x. Two-cell East Asian width changes every painter's `text_width` and the editors' column
+    arithmetic, so it needs a decision first. (b) GLFW 3.4 exposes no preedit, so the native window shows the
+    composition only in the OS candidate window. On macOS the keys of a composition are held back
+    (`emtk.ime.MarkedTextProbe`, `hasMarkedText`); inline preedit needs GLFW's IME API upstream. The browser host's
+    DOM composition events are not wired: `emtk/web/boot.js` is another lane's. (c) Deliberate console differences:
+    the input is its own box, rich display is written as text, `input()` raises `EOFError`, and Ctrl+C abandons the
+    input because a cell runs on the frame. (d) Not done from S4: code_editor's Qt and the Log dock's level filter and
+    history browser. Measure: `KNOWN_GAPS` in `test/native_emtk/test_emtk_shell_console.py` (empty).
 
 
 # Traps for slice S2
@@ -108,6 +122,18 @@ once, and a fit window `×` that asks and then removes the fit. `KNOWN_GAPS` in
 - A plugin menu titled like a session menu (the File tools under "File") is merged into that menu. Two `begin_menu`
   calls with one label share an id.
 
+# Traps for slice S4
+
+- A popup menu's rows are drawn by an overlay after the frame, so `im.get_item_rect()` after `im.menu_item` in a
+  popup returns the menu title's rectangle: `item_rects["menu.<key>"]` is not where the row is. A test clicks a menu
+  row by its caption (`driver.click("Record")`).
+- Keyboard navigation takes Tab before the application sees it. A hosted control gets it only with `wants_tab = True`
+  (the console completes with it); `im.text_editor` sets the same flag for itself.
+- The console calls the session on the frame thread, and the docks call it on workers: it needs a ZMQ connection of
+  its own (a socket must not cross threads).
+- `Driver.type` sends one key per character with the character as text; a `"\n"` types nothing in a `TextEditor`.
+  Put a multi-line cell in with `ShellConsole.set_input` and press Return.
+
 # The shell today (Qt) and the emtk equivalent
 
 Each row is one capability the shell uses. Evidence is given as `file:line`. "emtk" names what already exists and
@@ -130,7 +156,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Drag and drop of files | `label_filedrop` event filter (`main.py:1179`, `:1276-1312`) → `dataset.add` | `NativeHost` glfw file drop → `on_files_dropped`: the focused child first, else read with the selected file type | — | S2 done | `test_a_file_dropped_on_the_shell_is_read` |
 | In-app drag and drop | dataset selector `drag_enabled` (`main.py:1208`) | `emtk.widgets.dragdrop` (one context per host) | dragging between two OS windows (a dataset row onto a fit window is done: emtk table `drag_call`) | S2 done | emtk `test_ui_data_table_drag.py`, `test_a_dataset_dragged_onto_a_fit_window_is_attached_to_that_fit` |
 | Keyboard shortcuts | `gui.ui` actions and `configure_project_shortcuts` (`main.py:53-62`), ApplicationShortcut | `EmtkShellApp.shortcuts()` from the session menus, run before keys reach the focused child | `Ctrl+Alt+S` (fit export, resume item 7) | S3 done | `test_the_session_menus_bind_the_qt_shortcuts` |
-| Console | `cs.console = QIPythonWidget(chinsole.Chinsole)` (`gui/__init__.py:589`), `gui/chinsole/**` (8 files, 3,462 lines, `QTextEdit`); the engine `chisurf.core.console` is Qt-free | `emtk.widgets.text_editor.TextEditor`, `emtk.widgets.command_line` | a console view on the Qt-free engine (completion, pager, history) | S4 | — |
+| Console | `cs.console = QIPythonWidget(chinsole.Chinsole)` (`gui/__init__.py:589`), `gui/chinsole/**` (8 files, 3,462 lines, `QTextEdit`); the engine `chisurf.core.console` is Qt-free | `chisurf/emtk/console.py` (`ShellConsole` on `TextEditor`, hosted by `im.host_control`); *Macro ▸ Record / Run Macro…*; `chisurf.run` / `chisurf.log` / `chisurf.console` while the shell is open | rich display as text, `input()` (resume item 12) | S4 done | `test/native_emtk/test_emtk_shell_console.py` (25 behaviours vs `shell_s4_qt_inventory.json`) |
 | Logging dock | `plainTextEditLog` and filter, `_LogRelay` timers (`gui/__init__.py:192-374`) | S1 Log dock (`_LogBuffer` handler) | level filter, history browser | S1 partial, S4 | — |
 | Status bar | `TruncatingStatusBar` (`main.py:1216-1248`) and progress bar | S1 Start dock status line | a status strip with progress | S5 | — |
 | Splash | `SplashScreen(QSplashScreen)` (`gui/__init__.py:443`) | none: the first frame is under 100 ms ([GUI startup](../architecture/gui-startup.md)) | startup service stages need a native runner instead of `BackgroundStartupRunner` QTimer chaining | S5 | benchmarks page |
@@ -141,7 +167,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Clipboard | Qt | `emtk.clipboard` (glfw/platform) | — | done | emtk `test_clipboard.py` |
 | DPI and export | Qt scaling, `widget.grab()` | `NativeHost` ratio, `emtk.scaled_painter`, `--screenshot` | — | done | `test_emtk_shell_flag_opens_the_emtk_surface` |
 | Multi-window | every plugin is its own top-level Qt window | one `NativeHost` per process; floating docks inside one surface | **gap**: a second OS window sharing one app (detached docks on a second monitor) | S6 decision | — |
-| Text input, IME | Qt `inputMethodEvent` | `native.py` key and layout-aware `char` events | **gap**: no IME preedit/composition | S4 (console needs it) | — |
+| Text input, IME | Qt `inputMethodEvent` | `emtk.ime`: commits as typed text, preedit in `io.preedit` drawn at the caret of `input_text`, `TextEditor`, `TextField`; `qt_host.inputMethodEvent`; native holds back a composition's keys (`MarkedTextProbe`) | inline preedit in the glfw window, the browser's composition events (resume item 12) | S4 done | emtk `tests/test_ime.py`, `test_emtk_shell_console.py::test_composed_input_types_into_the_console` |
 | Molecular viewer | chimol `hosts/qt` | chimol native host | chimol's 110 Qt-driven tests | S7 | — |
 | Watermark, sparkline | `widgets/system_info_watermark.py` | chiplot or `emtk.implot` | — | S5 (or drop) | — |
 
@@ -252,9 +278,27 @@ A missing control blocks the slice.
     deleted. The Qt MMFDB import built two clients for one import; it now builds one. The data-loading settings
     model and its spec moved out of the Qt module (`chisurf/core/fio/staging_settings.py`). `apply_fret_rda_axis`
     is now Qt-free.
-- **S4: console and log.**
-  - Chinsole on `TextEditor` over `chisurf.core.console`, plus the emtk IME gap.
-  - Removes code_editor's Qt.
+- **S4 (control parity with the Qt console, 2026-10-11): console, macros, IME.**
+  - `chisurf/emtk/console.py`: `ShellConsole` (engine, transcript, history walk and search, completion list, calltip,
+    pager, kill ring, session log, macro recording) and `ConsoleControl` (transcript, pager and input `TextEditor`s
+    in one hosted control). Namespace `cs`, `gui` (the shell), `np`, `os` and `api`, the session's `ChiSurfAPI` on
+    a connection of the console's own (`ProjectChannel`). The Qt-free console settings moved to
+    `chisurf/core/console/settings.py`; the guide and help are the Qt console's files.
+  - The shell: a Console dock beside Log, a *Macro* menu (Record, checkable; Run Macro…) through the shell's file
+    dialog (`ShellProject.open_file_dialog(filters=...)`), console chords win over the menu shortcuts while it has
+    the keys, `chisurf.run` from any thread runs in the console on the next frame and records `run command: …` in
+    `chisurf.history` and as the next undo step's name (`ShellProject.note_command`).
+  - emtk: `emtk.ime` (commit as text, preedit, `MarkedTextProbe`, `committed_text` keeps the zero-width joiner),
+    `Surface.on_text_compose`, `ImApp.compose` / `ime_caret`, `Driver.compose` / `commit`, `qt_host` input method,
+    `host_control` forwarding `compose` and giving Tab to a control with `wants_tab`; rasterised glyphs inside their
+    advance (CJK overlapped its neighbours).
+  - Parity: before-half `shell_s4_qt_inventory.json` (25 behaviours driven with keys, the console dock inventory,
+    the Macro menu), compared in `test_parity_with_the_qt_console`; `KNOWN_GAPS` is empty. Deliberate differences:
+    resume item 12 (c); *Run Macro…* is new (the Qt shell ran macros from the code editor).
+  - Fixed on the way (Qt shell too): the Qt console's Up kept the old prefix after a walk back to the draft, so
+    "pri" + Up recalled the last line (`Chinsole.walk_history`, test `test_a_new_walk_filters_by_what_is_typed_then`);
+    in the emtk shell `chisurf.run` was the identity function, so every `cs.run(...)` macro line did nothing.
+  - Not yet: code_editor's Qt, the Log dock's filter (resume item 12 (d)).
 - **S5: ribbon, toolbar, status, startup.**
   - Ribbon tab strip, toolbar plugins, status strip, `surface="emtk"` startup stages.
   - Delete the remaining Qt plugin tools (games, help, mmfdb_admin, hydropro, spectra_downloader, fret_line).

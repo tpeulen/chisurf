@@ -745,7 +745,10 @@ class Chinsole(QtWidgets.QWidget):
 
         if position is None:
             if direction > 0:
-                self._history_index = len(entries)
+                # Back at what was being typed: the walk is over, so the next one
+                # starts afresh from whatever is typed then (a stale index kept the
+                # old prefix, and "pri" + Up recalled the last line, not a print).
+                self._history_index = None
                 self._set_text(self._history_stash)
             return
         self._history_index = position

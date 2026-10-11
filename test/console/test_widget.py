@@ -204,6 +204,18 @@ def test_history_restores_what_was_being_typed(console):
     assert console.view.input_buffer() == "half typed"
 
 
+def test_a_new_walk_filters_by_what_is_typed_then(console):
+    """After walking back to the draft, the next walk takes the newly typed prefix."""
+    run(console, "print('a')")
+    run(console, "value = 1")
+    console.view.set_input_buffer("")
+    console.walk_history(-1)
+    console.walk_history(+1)
+    console.view.set_input_buffer("pri")
+    console.walk_history(-1)
+    assert console.view.input_buffer() == "print('a')"
+
+
 # ----------------------------------------------------------------------
 # recording
 # ----------------------------------------------------------------------

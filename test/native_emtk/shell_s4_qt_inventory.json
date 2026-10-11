@@ -1,0 +1,177 @@
+{
+ "_comment": "Before-half of W9 S4 (made by test/native_emtk/capture_shell_s4_qt_before.py on the Qt shell, PNGs in renders/w9_s4/). Behaviours are console interactions driven with keys; test_emtk_shell_console.py drives the emtk console through the same list. history_prefix was red in Qt until the stale walk index was fixed (chinsole widget.walk_history), and is captured after that fix.",
+ "console": {
+  "controls": [
+   "1",
+   "2",
+   "3",
+   "4",
+   "?",
+   "guide",
+   "max?",
+   "maxmax(iterable,*[,default=obj,key=func])->valuemax(arg1,arg2,*args,*[,key=func])->value",
+   "·s4_alpha_value",
+   "·s4_beta_value",
+   "·s4_i",
+   "·s4_x",
+   "✕"
+  ],
+  "labels": [
+   "<b>max</b><br><span style='opacity:0.8'>max(iterable, *[, default=obj, key=func]) -&gt; value<br>max(arg1, arg2, *args, *[, key=func]) -&gt; value</span>",
+   "max?"
+  ],
+  "buttons": [
+   "?",
+   "Guide",
+   "✕"
+  ],
+  "line_edits": 1,
+  "combos": 0,
+  "spin_boxes": 0,
+  "tables": 1
+ },
+ "behaviours": {
+  "run_expression": {
+   "ok": true,
+   "observed": "['Out[2]: 42', 'In [3]:']"
+  },
+  "stdout": {
+   "ok": true,
+   "observed": "True"
+  },
+  "statement_silent": {
+   "ok": true,
+   "observed": "True"
+  },
+  "stderr_traceback": {
+   "ok": true,
+   "observed": "True"
+  },
+  "continuation_indent": {
+   "ok": true,
+   "observed": "for s4_i in range(2):\n    "
+  },
+  "multiline_block": {
+   "ok": true,
+   "observed": "(s4_i * 10)\n     ...:     \n0\n10\nIn [8]: "
+  },
+  "history_up": {
+   "ok": true,
+   "observed": "s4_x + 1"
+  },
+  "history_down": {
+   "ok": true,
+   "observed": ""
+  },
+  "history_prefix": {
+   "ok": true,
+   "observed": "print('hello s4')"
+  },
+  "completion_single": {
+   "ok": true,
+   "observed": "s4_alpha_value"
+  },
+  "completion_list": {
+   "ok": true,
+   "observed": "['s4_alpha_value', 's4_beta_value', 's4_i', 's4_x']"
+  },
+  "calltip": {
+   "ok": true,
+   "observed": "True"
+  },
+  "pinfo_pager": {
+   "ok": true,
+   "observed": "True"
+  },
+  "search_ctrl_r": {
+   "ok": true,
+   "observed": "print('hello s4')"
+  },
+  "kill_ctrl_k": {
+   "ok": true,
+   "observed": ""
+  },
+  "yank_ctrl_y": {
+   "ok": true,
+   "observed": "abcdef"
+  },
+  "kill_ctrl_u": {
+   "ok": true,
+   "observed": ""
+  },
+  "magic": {
+   "ok": true,
+   "observed": "True"
+  },
+  "cs_run": {
+   "ok": true,
+   "observed": "5"
+  },
+  "cs_run_history": {
+   "ok": true,
+   "observed": "['run command: s4_from_run = 5']"
+  },
+  "record_macro": {
+   "ok": true,
+   "observed": "s4_m = 3\n"
+  },
+  "replay_macro": {
+   "ok": true,
+   "observed": "3"
+  },
+  "session_log": {
+   "ok": true,
+   "observed": "/var/folders/cl/txwq_hq52rl_t0f9xjk3g5c00000gn/T/tmp.3DClTjniCF/settings/logs/session_12_47_11_10_2026.py"
+  },
+  "clear_ctrl_l": {
+   "ok": true,
+   "observed": "7"
+  },
+  "interrupt_ctrl_c": {
+   "ok": true,
+   "observed": "binding"
+  }
+ },
+ "menus": {
+  "Macro": [
+   {
+    "text": "Record",
+    "shortcut": "",
+    "checkable": true
+   }
+  ]
+ },
+ "namespace": [
+  "cs",
+  "gui",
+  "np",
+  "os"
+ ],
+ "behaviour_order": [
+  "run_expression",
+  "stdout",
+  "statement_silent",
+  "stderr_traceback",
+  "continuation_indent",
+  "multiline_block",
+  "history_up",
+  "history_down",
+  "history_prefix",
+  "completion_single",
+  "completion_list",
+  "calltip",
+  "pinfo_pager",
+  "search_ctrl_r",
+  "kill_ctrl_k",
+  "yank_ctrl_y",
+  "kill_ctrl_u",
+  "magic",
+  "cs_run",
+  "cs_run_history",
+  "record_macro",
+  "replay_macro",
+  "session_log",
+  "clear_ctrl_l",
+  "interrupt_ctrl_c"
+ ]
+}
