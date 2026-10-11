@@ -803,14 +803,25 @@ remains imported by real callers, each a deletion-path debt rather than a templa
 → When you touch any of them, port it to chimol's structure handling in the same change
 rather than adding another `Structure(...)` call site; a new call site violates the rule.
 
-## Release-readiness native roots — complete 2026-10-06
+## Release-readiness workstreams — status 2026-10-11
 
 | ID | Subsystem | Finding | Status |
 |---|---|---|---|
 | [W1](/prds/prd-154.md) | Tree/GUI inputs | Legacy forms/helpers, environment paths and missing Burst MLE model selection blocked release | ✅ SOURCE FIXED — [model acceptance](/validation/release-readiness-w1/mle-model-selection/acceptance.json); bundle-wide guard remains W0 |
 | [W5](/prds/prd-154.md) | emtk/GUI | Input navigation, overflowing graph zoom, frames, grids, host lifecycle and geometry lacked shared root contracts | ✅ FIXED — [evidence](/validation/release-readiness-w5.md) |
+| [W0](/prds/prd-154.md) | OKF bundle | Lint findings and the missing bundle guard | ✅ DONE 2026-10-10 — 0 findings, `test/okf_bundle_baseline.json` empty |
+| [W2](/prds/prd-154.md) | Project | No autosave; history not bound to replayable actions | ✅ DONE 2026-10-10 — sibling `*.autosave.cs.pto`, history audit, lossless undo-redo-save-reload |
+| [W3](/prds/prd-154.md) | Sampling | Chains lost on save; diagnostics page stale; ndX could not open `.cs.pto` | ✅ DONE 2026-10-10 |
+| [W4](/prds/prd-154.md) | Burst workflow | Companion folders written directly; no run picker | ✅ DONE 2026-10-11 — open: batch rows do not carry the burst run |
+| [W6g](/prds/prd-154.md) | Plugin uniformity | Shared setup, guided workflows and accessible controls with scientific parity | 🚧 PARTIAL 2026-10-11 — chrome, vocabulary, tours, demos, empty tooltip/literal allow-lists done; open: games audio, Channel Definition defects, quest RPC backend, acquisition count-rate page. [Current job](/validation/release-readiness-w6g/current-job.md) |
+| [W7](/prds/prd-154.md) | Click-all, CI | No e2e of every plugin; red suites | 🚧 PARTIAL 2026-10-11 — harness, `test-e2e`, CI job, release scenario landed; chimol tour and fcs_correlator/fcs_toolbox Stop button in progress |
+| [W8](/prds/prd-154.md) | Plotting | pyqtgraph still behind chiplot | ✅ DONE 2026-10-10 — import, backend, dependency struck; ~67 files still mention the word |
+| [W9](/prds/prd-154.md) | Qt retirement | Qt tools in every plugin family, Qt shell | 🚧 PARTIAL 2026-10-11 — phase 1: 505 to 245 allow-listed files; phase 2 (shell, `gui.ui`) not started |
+| [W10](/prds/prd-154.md) | MCTS | No modality token, fit-settings search or MFD/PIE games | ✅ DONE 2026-10-10 — open: FCS family accuracy, FRET families with 0 episodes ([PRD-152](/prds/prd-152-native-experiment-self-play.md)) |
+| [W11](/prds/prd-154.md) | Snappiness | 26 first frames over 100 ms; PSF not 3-D | ✅ DONE 2026-10-11 — all 122 measurable plugins under 100 ms; PSF isosurface ~65 fps |
+| [W12](/prds/prd-154.md) | imp.bff | Flat `src/` and `include/` | 🚧 PARTIAL 2026-10-11 — `src/` themed with READMEs; `include/` still flat |
+| [W13](/prds/prd-154.md) | mmfdb, flrCIF | Round trip, provenance, ELN gateway | ✅ DONE 2026-10-11 — open: no live Chemotion smoke test, PRD-48 phases 2-4 |
+| [W14](/prds/prd-154.md) | Documentation | Reviewed pages, concept and guide per plugin | 🚧 PARTIAL 2026-10-11 — HTML build green; `docs-release` blocked on human review (322 unreviewed of 420) |
 
-| [W6g](/prds/prd-154.md) | Plugin uniformity | Shared setup, guided workflows and accessible controls with scientific parity | 🚧 ACTIVE — FRET/ALEX and23 prior units committed;90/116 window readers covered,26core/game records remain (W6f). Tooltip1077, i18n/tour and SDK report3023f892f verified; real IPC gates verified; tooltip/i18n closure next. [Current job](/validation/release-readiness-w6g/current-job.md) |
-
-W7's programme-wide integration gates and W0's missing bundle guard remain open;
-the completed source rows do not mark the entire programme done.
+Part D gates 1, 2 and 4 of PRD-154 remain open (mypy 5076 errors, docs-release review, Qt allow-lists, board and root strays);
+the completed rows do not mark the entire programme done.
