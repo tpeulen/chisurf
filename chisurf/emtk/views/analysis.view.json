@@ -1,0 +1,30 @@
+{
+  "title": "Analysis",
+  "sections": [
+    {"type": "info", "source": "fit_title"},
+    {"type": "button_row", "buttons": [
+      {"label": "Fit", "action": "run_fit", "description": "Optimise the free parameters of the current fit."},
+      {"label": "auto", "action": "auto_range", "description": "Use every data point: the range from the first to the last."},
+      {"label": "Remove fit", "action": "remove_fit", "description": "Remove the current fit and close its window."}
+    ]},
+    {"type": "panel", "n_col": 2, "sections": [
+      {"type": "value", "kind": "int", "attr": "xmin", "label": "First", "minimum": 0, "call": "range_changed",
+       "description": "Index of the first data point the fit uses."},
+      {"type": "value", "kind": "int", "attr": "xmax", "label": "Last", "minimum": 0, "call": "range_changed",
+       "description": "Index of the last data point the fit uses."}
+    ]},
+    {"type": "info", "source": "fit_summary"},
+    {"type": "table", "source": "parameter_rows", "row_key": "uid", "edited_call": "edit_parameter",
+     "editable_call": "cell_editable", "muted_key": "muted", "expand": true, "fit_columns": true,
+     "description": "The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs and linked parameters are dimmed and read only.",
+     "columns": [
+       {"key": "name", "label": "Name", "description": "The parameter's name in the model."},
+       {"key": "value", "label": "Value", "editable": true, "format": "%.5g", "description": "The parameter's value; double-click to type a new one."},
+       {"key": "fixed", "label": "Fixed", "editable": true, "description": "A fixed parameter keeps its value when the fit runs."},
+       {"key": "lo", "label": "Lo", "editable": true, "format": "%.4g", "description": "Lower bound, used while Bounds is on."},
+       {"key": "hi", "label": "Hi", "editable": true, "format": "%.4g", "description": "Upper bound, used while Bounds is on."},
+       {"key": "bounds_on", "label": "Bounds", "editable": true, "description": "Keep the parameter between Lo and Hi while fitting."},
+       {"key": "error", "label": "Error", "format": "%.3g", "description": "Uncertainty estimate from the last fit."}
+     ]}
+  ]
+}

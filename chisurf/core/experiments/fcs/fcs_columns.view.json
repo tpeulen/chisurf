@@ -1,0 +1,17 @@
+{
+  "n_col": 2,
+  "sections": [
+    {"type": "value", "kind": "int", "attr": "col_x", "label": "x col", "minimum": 0, "maximum": 99,
+     "description": "CSV column holding the lag time τ."},
+    {"type": "value", "kind": "int", "attr": "col_y", "label": "y col", "minimum": 0, "maximum": 99,
+     "description": "CSV column holding the correlation G(τ)."},
+    {"type": "toggle", "attr": "error_x_on", "label": "x-error",
+     "description": "Read an uncertainty of τ from a column."},
+    {"type": "value", "kind": "int", "attr": "col_ex", "label": "x-error col", "minimum": 0, "maximum": 99,
+     "description": "CSV column holding the uncertainty of τ."},
+    {"type": "toggle", "attr": "error_y_on", "label": "y-error",
+     "description": "Read the uncertainty of G(τ) from a column (otherwise the noise model estimates it)."},
+    {"type": "value", "kind": "int", "attr": "col_ey", "label": "y-error col", "minimum": 0, "maximum": 99,
+     "description": "CSV column holding the uncertainty of G(τ)."}
+  ]
+}

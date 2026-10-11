@@ -4,6 +4,19 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Two server/schema tests red at HEAD, outside their owners' lanes (found 2026-10-11)
+
+status: open — seen while verifying W9 S2 (not caused by it; reproduced at HEAD in a clean worktree).
+
+* `test/server/test_rpc_edge_cases.py::TestInfNanEdgeCases` (inf and nan) expect `dataset.load` to accept
+  non-finite `curve_data` and sanitise it to `None` on read; the cached-dataset validation added in `0d8f234b4`
+  rejects it ("cached arrays must be finite numeric vectors"). One of the two contracts has to go; the owner of
+  dataset import decides which.
+* `test/test_ui_schemas.py::test_the_written_schemas_match_the_generator`: the shipped view schema differs from
+  `python -m chisurf.core.dataspec.schema` in the `native_group` definition, which is generated from the installed
+  emtk's section keys. Regenerate once the emtk pin and the installed emtk agree (see the
+  [Qt retirement ledger](../subsystems/qt-retirement.md) item 12).
+
 ## Setup:Channel Definition: lost first save, Qt calibration and rename, shared-editor gaps (found 2026-10-01)
 
 status: resolved 2026-10-11 — re-measured every bullet below against the tree: the first save survives `db.close()` (the repro prints 1 / 1;

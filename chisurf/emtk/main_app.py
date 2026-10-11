@@ -13,7 +13,15 @@ What this slice provides:
   default; it can be floated, re-docked, split and closed like any dock). The plugin's own ``entrypoints.emtk`` app is
   made on a worker thread (:class:`~chisurf.emtk.background_build.BackgroundBuild`) and drawn into its window with
   :meth:`emtk.app.ImApp.draw_child`; pointer, wheel, key and file-drop events go to the plugin under the pointer;
-* a **Log** dock showing the ``chisurf`` log records.
+* a **Log** dock showing the ``chisurf`` log records;
+* the **Read data**, **Datasets**, **Analysis** and **Plot settings** docks and one dock window per fit
+  (:mod:`chisurf.emtk.fit_docks`), working through :class:`chisurf.core.api.ChiSurfAPI` against an in-process
+  server whose events arrive through a Qt-free subscriber (:mod:`chisurf.emtk.session`). A file dropped onto the
+  shell, with no tool taking it, is read with the selected file type.
+
+Anything drawn inside a dock by an app of its own (a plugin, a fit window, a reader's settings) is a *child*: it is
+drawn with :meth:`emtk.app.ImApp.draw_child` through :meth:`EmtkShellApp.host_child`, and the pointer, wheel, keys
+and dropped files go to the child under the pointer (keys to the one pressed last).
 
 Plugins whose manifest declares only a Qt ``gui`` or an ``action`` entrypoint are not offered here yet.
 """
@@ -154,12 +162,16 @@ class EmtkShellApp(ImApp):
     loader : callable, optional
         ``loader(plugin_id) -> app``; :func:`chisurf.emtk.plugins.load_plugin` by default (which binds the plugin's
         saved preferences and layouts). Runs on a worker thread.
+    session_factory : callable, optional
+        ``session_factory(wake=...) -> ShellSession`` (:func:`chisurf.emtk.session.start_session`), run on a
+        worker thread; without one the data and fit docks say there is no session.
     """
 
     def __init__(
         self,
         catalog: dict[str, dict] | None = None,
         loader: Callable[[str], Any] | None = None,
+        session_factory: Callable[..., Any] | None = None,
     ) -> None:
         self.entries = menu_entries(catalog)
         self.by_id = {entry.plugin_id: entry for entry in self.entries}
@@ -171,12 +183,19 @@ class EmtkShellApp(ImApp):
         self.status = tr("Ready")
         self._painter = None
         self._menu_open = False
-        #: Plugin id holding the pointer since a press on it (gets the drag and the release).
+        #: Child holding the pointer since a press on it (gets the drag and the release).
         self._capture: str | None = None
-        #: Plugin id that was pressed last (gets the keys).
+        #: Child that was pressed last (gets the keys).
         self._focus: str | None = None
+        #: The children drawn in the last frame: child id -> (dock window key, app, box).
+        self._drawn: dict[str, tuple[str, Any, tuple[float, float, float, float]]] = {}
         self.docks = DockManager(
-            Split("h", 0.2, Region("left"), Split("v", 0.8, Region("center"), Region("bottom"))),
+            Split(
+                "h",
+                0.27,
+                Split("v", 0.5, Region("left"), Region("left_lower")),
+                Split("v", 0.8, Region("center"), Region("bottom")),
+            ),
             name="shell",
         )
         self.docks.add_window("tools", tr("Tools"), self._draw_tools, dock="left", closable=False)
@@ -186,6 +205,13 @@ class EmtkShellApp(ImApp):
         logging.getLogger("chisurf").addHandler(self.log)
         _log.setLevel(logging.INFO)
         super().__init__(self.render)
+        from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
+
+        self.data = DataDocks(self, session_factory)
+        for key in (ANALYSIS_KEY, PLOT_KEY):
+            self.docks.dock(key, "left_lower")
+        self.docks.focus(ANALYSIS_KEY)
+        self.docks.focus("tools")
 
     # ── plugins ───────────────────────────────────────────────────────────
 
@@ -236,9 +262,10 @@ class EmtkShellApp(ImApp):
             except Exception:  # noqa: BLE001 - one plugin failing to close must not take the shell down
                 _log.exception("closing %s failed", plugin_id)
         self.docks.remove_window(hosted.key)
-        if self._focus == plugin_id:
+        self._drawn.pop(hosted.key, None)
+        if self._focus == hosted.key:
             self._focus = None
-        if self._capture == plugin_id:
+        if self._capture == hosted.key:
             self._capture = None
 
     def _collect_builds(self) -> None:
@@ -274,18 +301,35 @@ class EmtkShellApp(ImApp):
     def draw(self, painter, x, y, w, h):
         self._painter = painter
         self._collect_builds()
+        self.data.poll()
         for hosted in self.hosted.values():
             hosted.box = None
+        self._drawn = {}
         try:
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
         self._closed_by_user()
+        self.data.closed_by_user()
+        self.data.focused_window()
 
     def render(self) -> None:
         width, height = im.get_main_viewport().size
         self._draw_menu_bar(width)
         self.docks.draw((0.0, MENU_BAR, width, max(1.0, height - MENU_BAR)))
+        self.data.draw_file_dialog((0.0, 0.0, width, height))
+
+    def host_child(self, window_key: str, child_id: str, app: Any, box) -> None:
+        """Draw *app* into *box* (canvas coordinates) of dock window *window_key*; input over it goes to it.
+
+        Called from a dock's draw callback. *child_id* names the child for focus and capture (a plugin's or a fit
+        window's dock key, ``reader.<n>`` for a reader's settings).
+        """
+        x, y, w, h = (float(v) for v in box)
+        box = (x, y, max(1.0, w), max(1.0, h))
+        painter = im.get_current_context().p
+        self.draw_child(painter, app, *box, local_coordinates=True)
+        self._drawn[child_id] = (window_key, app, box)
 
     def _draw_menu_bar(self, width: float) -> None:
         im.set_next_window_pos((0.0, 0.0), im.Cond.ALWAYS)
@@ -313,7 +357,15 @@ class EmtkShellApp(ImApp):
                 self.item_rects["menu." + menu] = im.get_item_rect()
             if im.begin_menu(tr("Window")):
                 self._menu_open = True
-                for key, title in (("tools", "Tools"), ("start", "Start"), ("log", "Log")):
+                for key, title in (
+                    ("tools", "Tools"),
+                    ("data.read", "Read data"),
+                    ("data.sets", "Datasets"),
+                    ("fit.analysis", "Analysis"),
+                    ("fit.plot", "Plot settings"),
+                    ("start", "Start"),
+                    ("log", "Log"),
+                ):
                     if im.menu_item(tr(title), selected=self.docks.is_visible(key)):
                         self.docks.toggle(key)
                 if im.menu_item(tr("Reset layout")):
@@ -345,8 +397,9 @@ class EmtkShellApp(ImApp):
             if im.selectable(f"{label}##{entry.plugin_id}", entry.plugin_id in self.hosted):
                 self.open_plugin(entry.plugin_id)
             self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
-            if entry.description:
-                im.set_item_tooltip(tr(entry.description))
+            im.set_item_tooltip(
+                tr(entry.description) if entry.description else tr("Open {name}").format(name=label)
+            )
 
     def _draw_start(self, box) -> None:
         im.text_unformatted(tr("ChiSurf"))
@@ -371,22 +424,23 @@ class EmtkShellApp(ImApp):
         x, y, w, h = (float(v) for v in box)
         hosted.box = (x, y, max(1.0, w), max(1.0, h))
         if hosted.app is not None:
-            painter = im.get_current_context().p
-            self.draw_child(painter, hosted.app, *hosted.box, local_coordinates=True)
+            self.host_child(hosted.key, hosted.key, hosted.app, hosted.box)
         elif hosted.error:
             im.text_wrapped(tr("The tool could not be opened."))
             im.text_wrapped(hosted.error)
-            if im.button(tr("Retry") + f"##{plugin_id}"):
+            retry = im.button(tr("Retry") + f"##{plugin_id}")
+            im.set_item_tooltip(tr("Close the tool and open it again."))
+            if retry:
                 self.close_plugin(plugin_id)
                 self.open_plugin(plugin_id)
         else:
             draw_opening(tr(hosted.entry.label), hosted.box, f"shell opening {plugin_id}")
 
-    # ── input: the plugin under the pointer gets it ───────────────────────
+    # ── input: the child under the pointer gets it ────────────────────────
 
     def _plugin_at(self, x: float, y: float) -> str | None:
-        """The plugin whose drawn content is on top at (x, y): floating windows front to back, then docked tabs."""
-        if self._menu_open:
+        """The child whose drawn content is on top at (x, y): floating windows front to back, then docked tabs."""
+        if self._menu_open or self.data.file_dialog is not None:
             return None
         order = list(reversed(self.docks.floating()))
         order += [self.docks.active_tab(region) for region in self.docks.regions]
@@ -398,21 +452,19 @@ class EmtkShellApp(ImApp):
                 frame[0] <= x < frame[0] + frame[2] and frame[1] <= y < frame[1] + frame[3]
             ):
                 continue
-            if not key.startswith(PLUGIN_KEY):
-                return None
-            hosted = self.hosted.get(key[len(PLUGIN_KEY) :])
-            if hosted is None or hosted.app is None or hosted.box is None:
-                return None
-            bx, by, bw, bh = hosted.box
-            inside = bx <= x < bx + bw and by <= y < by + bh
-            return hosted.entry.plugin_id if inside else None
+            for child_id, (window_key, _app, box) in self._drawn.items():
+                bx, by, bw, bh = box
+                if window_key == key and bx <= x < bx + bw and by <= y < by + bh:
+                    return child_id
+            return None
         return None
 
-    def _child(self, plugin_id: str | None):
-        hosted = self.hosted.get(plugin_id) if plugin_id else None
-        if hosted is None or hosted.app is None or hosted.box is None:
+    def _child(self, child_id: str | None):
+        drawn = self._drawn.get(child_id) if child_id else None
+        if drawn is None:
             return None, (0.0, 0.0)
-        return hosted.app, hosted.box[:2]
+        _window_key, app, box = drawn
+        return app, box[:2]
 
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         target = self._plugin_at(x, y)
@@ -460,28 +512,23 @@ class EmtkShellApp(ImApp):
         return super().key(key, text, modifiers)
 
     def on_files_dropped(self, paths) -> bool:
-        """Hand dropped files to the focused plugin when it takes them."""
+        """Hand dropped files to the focused child when it takes them, else read them as data."""
         child, _origin = self._child(self._focus)
-        if child is None:
-            return False
-        for name in ("on_paths_dropped", "on_files_dropped", "files_dropped"):
-            handler = getattr(child, name, None)
-            if callable(handler):
-                return handler(paths) is not False
-        return False
+        if child is not None:
+            for name in ("on_paths_dropped", "on_files_dropped", "files_dropped"):
+                handler = getattr(child, name, None)
+                if callable(handler) and handler(paths) is not False:
+                    return True
+        return self.data.drop([str(path) for path in paths or ()])
 
     def animating(self) -> bool:
-        busy = any(hosted.build is not None for hosted in self.hosted.values())
-        children = any(
-            hosted.app is not None and hosted.app.animating() for hosted in self.hosted.values()
-        )
+        busy = any(hosted.build is not None for hosted in self.hosted.values()) or self.data.busy
+        children = any(app.animating() for _key, app, _box in self._drawn.values())
         return super().animating() or busy or children
 
     def next_frame_in(self):
         delays = [super().next_frame_in()]
-        delays += [
-            hosted.app.next_frame_in() for hosted in self.hosted.values() if hosted.app is not None
-        ]
+        delays += [app.next_frame_in() for _key, app, _box in self._drawn.values()]
         return min((delay for delay in delays if delay is not None), default=None)
 
     # ── persistence ───────────────────────────────────────────────────────
@@ -497,15 +544,18 @@ class EmtkShellApp(ImApp):
                 self.open_plugin(plugin_id)
 
     def close(self) -> None:
-        """Close every hosted plugin and detach the log handler."""
+        """Close every hosted plugin, the fit windows and the session, and detach the log handler."""
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
+        self.data.close()
         logging.getLogger("chisurf").removeHandler(self.log)
 
 
 def make_app(persist: bool = True) -> EmtkShellApp:
-    """The shell app; with *persist* its dock layout, size and open plugins are kept between runs."""
-    app = EmtkShellApp()
+    """The shell app with its session; with *persist* its dock layout, size and open plugins are kept."""
+    from chisurf.emtk.session import start_session
+
+    app = EmtkShellApp(session_factory=start_session)
     if persist:
         from chisurf.emtk.state import attach_native_state
 

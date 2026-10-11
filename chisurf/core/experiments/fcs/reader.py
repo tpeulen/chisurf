@@ -10,6 +10,8 @@ import chisurf.core.fluorescence.fcs
 from chisurf.core.experiments.core.reader import ExperimentReader
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "fcs.view.json"
+#: The CSV column assignment, drawn in place of the ``fcs_columns`` section by native hosts.
+_COLUMNS_VIEW_JSON = pathlib.Path(__file__).parent / "fcs_columns.view.json"
 
 
 class FCS(ExperimentReader):
@@ -180,3 +182,22 @@ class FCS(ExperimentReader):
         from chisurf.core.dataspec import load_view_spec
 
         return load_view_spec(_VIEW_JSON)
+
+    def register_settings_sections(self, form) -> None:
+        """Draw the ``fcs_columns`` section natively (emtk forms; AutoForm has its own widget).
+
+        Parameters
+        ----------
+        form : emtk.view_form.FormState
+            The form the reader's settings are drawn with.
+        """
+        import json
+
+        spec = json.loads(_COLUMNS_VIEW_JSON.read_text(encoding="utf-8"))
+
+        def draw_columns(section, model, state, width) -> None:
+            from emtk.view_form import draw_sections
+
+            draw_sections(spec["sections"], model, state, int(spec.get("n_col") or 1))
+
+        form.custom["fcs_columns"] = draw_columns

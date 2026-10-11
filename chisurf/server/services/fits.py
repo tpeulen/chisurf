@@ -21,6 +21,8 @@ from chisurf.server.services._stats import (
     _collect_param_list,
     _safe_chi2,
     _safe_chi2r,
+    _safe_chi2r_current,
+    _safe_fit_range,
     _safe_n_free,
     _safe_n_points,
 )
@@ -175,7 +177,12 @@ def get_fit_info(
         return service_error("fit not found", error_code=NOT_FOUND)
     return {
         "ok": True,
-        "fit": _fit_dto(fit, idx, detailed=True),
+        "fit": {
+            **_fit_dto(fit, idx, detailed=True),
+            "fit_range": _safe_fit_range(fit),
+            # χ²ᵣ of the parameters as they are now (``chi2r`` is the last run's).
+            "chi2r_current": _safe_chi2r_current(fit),
+        },
     }
 
 

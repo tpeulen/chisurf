@@ -1,0 +1,28 @@
+{
+  "title": "Datasets",
+  "sections": [
+    {"type": "table", "source": "dataset_rows", "row_key": "uid", "selected_call": "select_dataset",
+     "delete_call": "remove_dataset", "height": 170,
+     "description": "The loaded datasets. Select one to add a fit to it; Delete removes it.",
+     "columns": [
+       {"key": "index", "label": "#", "width": 30, "description": "Position of the dataset in the session."},
+       {"key": "name", "label": "Data name", "description": "The dataset's name (its file name by default)."},
+       {"key": "experiment", "label": "Data type", "description": "The experiment the dataset was read for."}
+     ]},
+    {"type": "table", "source": "fit_rows", "row_key": "uid", "selected_call": "select_fit", "height": 130,
+     "description": "The fits. Select one to show its window and its parameters in the Analysis panel.",
+     "columns": [
+       {"key": "index", "label": "#", "width": 30, "description": "Position of the fit in the session."},
+       {"key": "data", "label": "Data name", "description": "The dataset the fit describes."},
+       {"key": "model", "label": "Model type", "description": "The model the fit uses."}
+     ]},
+    {"type": "choice", "attr": "model", "label": "Model", "options_source": "model_names",
+     "description": "This selection box is updated according to the selected dataset."},
+    {"type": "button_row", "buttons": [
+      {"label": "+ Analysis", "action": "add_fit",
+       "description": "Add a fit of the selected model to the selected dataset; its window opens."},
+      {"label": "Remove dataset", "action": "remove_selected",
+       "description": "Remove the selected dataset from the session."}
+    ]}
+  ]
+}

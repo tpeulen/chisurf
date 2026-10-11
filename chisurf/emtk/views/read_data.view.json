@@ -1,0 +1,22 @@
+{
+  "title": "Read data",
+  "sections": [
+    {"type": "choice", "attr": "experiment", "label": "Experiment", "options_source": "experiment_names",
+     "call": "experiment_changed",
+     "description": "Select a type of experiment. After selecting the experiment type you can select a setup-type."},
+    {"type": "choice", "attr": "setup", "label": "File type", "options_source": "setup_names",
+     "call": "setup_changed",
+     "description": "After selecting a setup-type adjust the parameters of the setup used to open the experimental data."},
+    {"type": "value", "kind": "str", "attr": "path", "label": "File", "placeholder": "Drop files here.",
+     "elide": "start",
+     "description": "The file to read. Drop a file onto the window, type its path or browse for it."},
+    {"type": "button_row", "buttons": [
+      {"label": "Browse…", "icon": "📂", "action": "browse", "description": "Choose the file to read."},
+      {"label": "Load example", "icon": "🧪", "action": "use_demo",
+       "description": "Write a correlation curve whose answer is known (one diffusing species, N = 2, τD = 0.5 ms) and select it with the FCS file type."},
+      {"label": "+ Data", "action": "load",
+       "description": "Read the file with the selected file type and add it to the datasets."}
+    ]},
+    {"type": "info", "source": "reader_note", "hidden_when": {"attr": "reader_note", "equals": ""}}
+  ]
+}

@@ -60,6 +60,41 @@ def _safe_chi2r(fit: Any, *, compute: bool = False) -> float | None:
         return None
 
 
+def _safe_chi2r_current(fit: Any) -> float | None:
+    """Return the reduced chi-squared of *fit*'s current parameters, or ``None``.
+
+    Unlike :func:`_safe_chi2r`, never the value recorded by the last run: after
+    a parameter edit that value is stale.
+
+    Parameters
+    ----------
+    fit : object
+        Fit instance.
+
+    """
+    try:
+        value = float(fit.chi2r)
+    except Exception:
+        return None
+    return value if value == value else None
+
+
+def _safe_fit_range(fit: Any) -> list[int] | None:
+    """Return ``[xmin, xmax]``, the data-point index range a fit uses, or ``None``.
+
+    Parameters
+    ----------
+    fit : object
+        Fit instance.
+
+    """
+    try:
+        xmin, xmax = getattr(fit, "fit_range")
+        return [int(xmin), int(xmax)]
+    except Exception:
+        return None
+
+
 def _safe_n_points(fit: Any) -> int | None:
     """Return the number of fit points, or ``None`` on failure.
 

@@ -579,6 +579,8 @@ class ChiSurfAPI:
                 "chi2r": _safe_chi2r(fit),
                 "n_points": _safe_n_points(fit),
                 "n_free": _safe_n_free(fit),
+                "fit_range": _safe_fit_range(fit),
+                "chi2r_current": _safe_chi2r_current(fit),
                 "dataset_uid": str(
                     getattr(getattr(fit, "data", None), "unique_identifier", "") or ""
                 ),
@@ -934,6 +936,37 @@ class ChiSurfAPI:
             return {"ok": False, "error": "fit has no update method"}
         except Exception as e:
             return {"ok": False, "error": str(e)}
+
+    def set_fit_range(
+        self,
+        xmin: int,
+        xmax: int,
+        fit_index: int | None = None,
+        fit_uid: str | None = None,
+    ) -> dict[str, Any]:
+        """Set the index range of the data points a fit uses.
+
+        Parameters
+        ----------
+        xmin, xmax : int
+            First and last data-point index of the range.
+        fit_index : int, optional
+            Positional index of the fit.
+        fit_uid : str, optional
+            Unique identifier of the fit (preferred).
+
+        Returns
+        -------
+        dict
+            ``{"ok": True}`` or an error result.
+        """
+        if self.mode == "server" and self.client is not None:
+            return self.client.fit__set_fit_range(
+                fit_index=fit_index, fit_uid=fit_uid, xmin=int(xmin), xmax=int(xmax)
+            )
+        from chisurf.server.services.fits import fit_set_fit_range
+
+        return fit_set_fit_range(self._state, fit_index, fit_uid, int(xmin), int(xmax))
 
     # ── parameters ────────────────────────────────────────────────
 
@@ -1333,6 +1366,8 @@ from chisurf.server.services._stats import (
     _collect_param_list,
     _safe_chi2,
     _safe_chi2r,
+    _safe_chi2r_current,
+    _safe_fit_range,
     _safe_n_free,
     _safe_n_points,
 )
