@@ -329,6 +329,10 @@ class FilesStepApp(ImApp):
 # ── 3. Photon / Burst Filter ─────────────────────────────────────────────────
 
 
+#: Most markers the dT scatter draws per series and frame (each is a painter call).
+MAX_SCATTER_POINTS = 4000
+
+
 class FilterStepApp(ImApp):
     """The filter parameters (mode-pruned spec), the kept-photon count and the dT / count-rate plots."""
 
@@ -367,7 +371,12 @@ class FilterStepApp(ImApp):
                 implot.set_next_marker_style(implot.MARKER_CIRCLE, 1.5, colour, 0.0, colour)
                 x, y = np.asarray(s["x"], float), np.asarray(s["y"], float)
                 keep = y > 0
-                implot.plot_scatter(s["name"], x[keep], y[keep])
+                x, y = x[keep], y[keep]
+                if len(x) > MAX_SCATTER_POINTS:
+                    # One marker is one painter call per frame: draw an even sample, not every photon.
+                    pick = np.linspace(0, len(x) - 1, MAX_SCATTER_POINTS).astype(np.int64)
+                    x, y = x[pick], y[pick]
+                implot.plot_scatter(s["name"], x, y)
             lo, hi = float(self.model.min_dmt), float(self.model.max_dmt)
             a = implot.drag_line_y(1, lo, (80, 180, 255, 255), 1.0)
             b = implot.drag_line_y(2, hi, (80, 180, 255, 255), 1.0)

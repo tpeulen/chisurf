@@ -1101,6 +1101,19 @@ def _native(plugin_id, result, png_path):
                             }
                         )
                         continue
+                    # A Stop/Cancel is enabled only while its job runs: when the job finished between
+                    # the reveal and the press, the same control is now greyed (its real click is proven
+                    # against a held-open job by each plugin's own Stop test).
+                    now = [row for row in recorder.rows if row["visit_id"] == name]
+                    if now and not now[0].get("enabled", True):
+                        visited.remove(name)
+                        result["skipped"].append(
+                            {
+                                "control": name,
+                                "reason": "disabled by its job finishing during the click",
+                            }
+                        )
+                        continue
                     # A floating window a previous control opened (a preview) may sit over the target.
                     # Escape closes the window under the pointer, so a user parks it there and presses Esc.
                     driver.hover(click_box)

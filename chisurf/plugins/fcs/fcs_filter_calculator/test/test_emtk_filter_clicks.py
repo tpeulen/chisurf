@@ -153,6 +153,31 @@ def test_stop_is_greyed_when_idle_and_a_click_does_nothing(drv):
     assert not drv.app.job.running and model(drv)._result is not None
 
 
+def test_stop_is_clickable_while_a_compute_runs_and_discards_it(drv, monkeypatch):
+    """A real press on the drawn Stop of a held-open compute ends the job and drops its result."""
+    from threading import Event
+
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui.model import FilterModel
+
+    entered, release = Event(), Event()
+
+    def compute(m):
+        entered.set()
+        assert release.wait(10)
+        m.message = "Worker result"
+
+    monkeypatch.setattr(FilterModel, "compute", compute)
+    assert drv.app.submit(lambda m: m.compute())
+    assert entered.wait(5)
+    drv.draw(2)
+    assert drv.app.job.running
+    drv.click("stop")
+    assert drv.app.job.cancelled.is_set(), "the press did not reach Stop"
+    release.set()
+    drv.settle()
+    assert drv.app.model.message != "Worker result"
+
+
 def test_guide_help_buttons_and_the_tour(drv):
     drv.click("help")
     window = drv.app.help

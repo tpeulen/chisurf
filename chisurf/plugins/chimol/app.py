@@ -257,7 +257,7 @@ class ChimolHostApp(ImApp):
         self.item_rects["command_line"] = (vx, vy + vh - prompt_h, vw, prompt_h)
         objects = self._object_count()
         if self._objects_seen is not None and objects > self._objects_seen:
-            self.tour.notify_used("structure")
+            self.tour.notify_used("example")
         self._objects_seen = objects
         im.text(f"ChiMOL · {objects} object(s)")
         self.item_rects["status"] = im.get_item_rect()
@@ -268,7 +268,11 @@ class ChimolHostApp(ImApp):
 
     def _toolbar(self, width: float) -> None:
         """Help and Guide, right-aligned in the status strip."""
-        im.same_line(max(0.0, width - 130.0))
+        im.same_line(max(0.0, width - 260.0))
+        if action_button("example"):
+            self.load_example()
+        self.item_rects["example"] = im.get_item_rect()
+        im.same_line()
         if action_button("help"):
             self.help_window.show()
         self.item_rects["help"] = im.get_item_rect()
@@ -276,6 +280,21 @@ class ChimolHostApp(ImApp):
         if action_button("guide"):
             self.tour.start()
         self.item_rects["guide"] = im.get_item_rect()
+
+    def load_example(self) -> bool:
+        """Load the bundled T4 lysozyme (148l) into the viewer; whether a command ran."""
+        if not self._ensure_chimol():  # joins a start under way: a press is never dropped
+            return False
+        from chimol.plugins.demos.catalog import DEMO_DIR  # noqa: PLC0415
+
+        try:
+            path = DEMO_DIR / "148l.pdb"
+            self._chimol_app.cmd.do(f'load "{path}"')
+        except Exception as exc:  # noqa: BLE001 - a missing example is reported, not fatal
+            self._error = f"{type(exc).__name__}: {exc}"
+            return False
+        self.request_frame()
+        return True
 
     def _object_count(self) -> int:
         if self._chimol_app is None:  # drawn every frame: never waits for a start under way

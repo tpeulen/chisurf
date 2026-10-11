@@ -444,3 +444,37 @@ def test_next_runs_the_step_and_fast_forward_walks_the_workflow():
     assert hub.app.selected == "merger" and hub.app.correlator_model._correlations
     assert hub.shown("Fast-forward finished.")
     hub.app.close()
+
+
+def test_stop_is_clickable_while_a_correlation_runs(monkeypatch):
+    """Correlate starts the job, the Stop button replaces it, a real press on it ends the run.
+
+    The job is held open chunk by chunk (it only ends when ``progress`` answers False), so the press cannot
+    land after a fast run finished: the run ends *because* Stop was pressed.
+    """
+    chunks = {"done": 0}
+
+    def slow_correlate(self, progress=None):
+        for i in range(1, 2000):
+            chunks["done"] = i
+            if progress is not None and not progress(i, 2000):
+                return f"stopped after {i} chunk(s)."
+            time.sleep(0.01)
+        return "finished"
+
+    monkeypatch.setattr(CorrelatorSettingsModel, "correlate_data", slow_correlate)
+    hub = _hub()
+    hub.click("load_example")
+    hub.nav("correlator")
+    hub.click("correlate")
+    deadline = time.monotonic() + 10
+    while "stop" not in hub.child.item_rects and time.monotonic() < deadline:
+        hub.draw(1)
+    assert hub.child.running and "stop" in hub.child.item_rects
+    assert hub.shown("Stop")
+    hub.click("stop")
+    assert hub.child._stop, "pressing the drawn Stop button did not reach the job"
+    hub.wait_correlated(timeout=10)
+    assert not hub.child.running and hub.shown("stopped after")
+    assert chunks["done"] < 2000
+    hub.app.close()

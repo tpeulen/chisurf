@@ -8,8 +8,8 @@
     },
     {
       "title": "Open a structure",
-      "text": "Use <b>File → Open</b> or the <b>Open</b> button, pick an entry of the <b>Demo</b> menu, or type <b>fetch 148l</b> at the prompt.",
-      "target": {"name": "structure"},
+      "text": "Use <b>File → Open</b> or the <b>Open</b> button, pick an entry of the <b>Demo</b> menu, press <b>Load example</b> in the status strip, or type <b>fetch 148l</b> at the prompt.",
+      "target": {"name": "example"},
       "await": {"hint": "Open any structure; the step continues when a new object appears in the object list."}
     },
     {
