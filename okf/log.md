@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- Every emtk plot has the "A" auto-range button (emtk aea9d8b, `emtk/widgets/auto_range.py`): shown in the plot's
+  lower-left while an axis is panned, zoomed or set; a click refits every axis and hides it. implot and chiplot's
+  emtk canvas share it; opt out with `Plot.set_auto_range_button(False)` / `implot.FLAGS_NO_AUTO_RANGE_BUTTON`.
+  See [chiplot](subsystems/chiplot.md).
 - AV defaults: one declaration everywhere and the fast search by default (owner decisions). The first linker step
   hops only from the seed (FPS hops from every node, about 4.6× the neighbours). IMP.bff c34e625c2 moves the
   Labelizer options, the position template and every grid default onto `AV_DEFAULT_*`; chimol 1f8abe1 restates

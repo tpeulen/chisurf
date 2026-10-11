@@ -660,6 +660,12 @@ class EmtkCanvas(base.Canvas):
         #: The Qt host, built when :meth:`widget` is first asked for. A panel
         #: drawn as a control by an emtk surface never needs one.
         self._widget = None
+        #: The "A" button (:mod:`emtk.widgets.auto_range`): shown while an axis
+        #: is not auto-ranged unless a caller opted out; where the last frame
+        #: drew it (``None`` when hidden) and whether the pointer is on it.
+        self._auto_button = True
+        self._auto_button_rect: tuple[float, float, float, float] | None = None
+        self._auto_button_hovered = False
 
     # -- the Qt side ---------------------------------------------------
     def _build_widget(self) -> QtWidgets.QWidget:
@@ -773,6 +779,36 @@ class EmtkCanvas(base.Canvas):
             painter.pop_clip()
         self._draw_axes(painter, plot, x, y, w, h, row)
         self._draw_texts(painter, plot)
+        self._draw_auto_range_button(painter, plot, (x, y, w, h))
+
+    def _auto_button_shown(self) -> bool:
+        """Whether the "A" button shows: an axis left auto-range and the user can pan."""
+        return self._auto_button and self._interactive and not all(self.is_auto_range())
+
+    def _draw_auto_range_button(self, painter, plot, box) -> None:
+        """The "A" in the plot area's lower-left while the view is not auto-ranged."""
+        if not self._auto_button_shown():
+            self._auto_button_rect = None
+            self._auto_button_hovered = False
+            return
+        from emtk.widgets import auto_range
+
+        rect = auto_range.button_rect(plot.x, plot.y, plot.w, plot.h)
+        self._auto_button_rect = rect
+        auto_range.draw(painter, rect, self._auto_button_hovered)
+        if self._auto_button_hovered:
+            auto_range.draw_tooltip(painter, rect, box)
+
+    def _on_auto_button(self, px: float, py: float) -> bool:
+        """Whether ``(px, py)`` is on the "A" button drawn last frame."""
+        from emtk.widgets import auto_range
+
+        return self._auto_button_shown() and auto_range.contains(self._auto_button_rect, px, py)
+
+    def set_auto_range_button(self, shown: bool) -> None:
+        """Show (default) or never show the "A" auto-range button on this panel."""
+        self._auto_button = bool(shown)
+        self.refresh()
 
     def _draw_images(self, painter, plot) -> None:
         """Blit the images ``_draw_entry`` collected, under the series."""
@@ -1432,6 +1468,11 @@ class EmtkCanvas(base.Canvas):
         """Start a drag on whatever the press landed on, or a pan on nothing."""
         self._dragging = None
         self._panning = None
+        if self._on_auto_button(px, py):
+            # The "A": every axis follows its data again; the press starts nothing.
+            self._auto_button_hovered = False
+            self.auto_range()
+            return
         for entry in reversed(self._entries):
             if not entry.visible or not entry.state.get("movable", True):
                 continue
@@ -1578,6 +1619,10 @@ class EmtkCanvas(base.Canvas):
 
     def hover(self, px: float, py: float, *_args: Any) -> None:
         """Report the pointer in data coordinates."""
+        on_button = self._on_auto_button(px, py)
+        if on_button != self._auto_button_hovered:
+            self._auto_button_hovered = on_button
+            self.refresh()
         for callback in self._move_callbacks:
             callback(self._from_pixels(px), self._from_pixels_y(py))
 
@@ -2450,6 +2495,10 @@ class EmtkImageView(base.ImageViewCanvas):
     def set_interactive(self, *, mouse=None, menu=None) -> None:
         """Toggle pan and zoom."""
         self._canvas.set_interactive(mouse=mouse, menu=menu)
+
+    def set_auto_range_button(self, shown: bool) -> None:
+        """Show (default) or never show the "A" auto-range button on the image."""
+        self._canvas.set_auto_range_button(shown)
 
     def add_overlay(self, data, *, colormap=None) -> H.Image:
         """Overlay a second image on the view and return its handle."""

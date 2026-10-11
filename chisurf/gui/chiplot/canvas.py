@@ -796,6 +796,18 @@ class PlotAPI:
         """
         return self._canvas.is_auto_range()
 
+    def set_auto_range_button(self, shown: bool = True) -> Plot:
+        """Show (default) or never show the "A" auto-range button. Returns ``self``.
+
+        Every panel has it: while an axis is not auto-ranged -- the user panned,
+        zoomed or wheeled, or a caller set a range -- a small "A" sits in the
+        lower-left of the plot area, and clicking it fits the view to the data
+        again (as pyqtgraph's plots do). Turn it off only for a panel whose view
+        must stay where the code put it, such as a fixed-scale reference axis.
+        """
+        self._canvas.set_auto_range_button(shown)
+        return self
+
     def autoscale(self, *, x=True, y=True, continuous=False) -> Plot:
         """Fit the view to its contents. Returns ``self``.
 
@@ -1715,6 +1727,13 @@ class ImageView(QtWidgets.QWidget):
     def set_interactive(self, *, mouse=True, menu=True) -> None:
         """Toggle view pan/zoom (``mouse``) and the right-click menu."""
         self._iv.set_interactive(mouse=mouse, menu=menu)
+
+    def set_auto_range_button(self, shown: bool = True) -> None:
+        """Show (default) or never show the "A" auto-range button.
+
+        See :meth:`Plot.set_auto_range_button`.
+        """
+        self._iv.set_auto_range_button(shown)
 
     def add_overlay(self, data, *, colormap=None) -> H.Image:
         """Overlay a second image on the view.

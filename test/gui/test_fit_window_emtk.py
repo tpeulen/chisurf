@@ -452,3 +452,27 @@ def test_the_code_button_is_wide_enough_for_its_labels(window):
     metrics = QtGui.QFontMetrics(bold)
     for label in ("Code", "Plots"):
         assert button.width() >= metrics.horizontalAdvance(label), (label, button.width())
+
+
+def test_the_auto_range_button_restores_a_zoomed_decay_panel(window, qapp, tmp_path):
+    """The "A" of every chiplot panel works on the fit window's shared emtk surface too."""
+    decay = window._plots_all[0].panel_items[2]
+    canvas = decay.canvas
+    fitted = canvas._drawn["x"]
+    assert canvas._auto_button_rect is None, "an auto-ranged panel shows no A"
+    pos = _point(decay.box)
+    _move(window, pos)
+    QtWidgets.QApplication.sendEvent(_host(window), _wheel_event(_host(window), pos, 120))
+    _frames(qapp, window)
+    rect = canvas._auto_button_rect
+    assert rect is not None, "a zoomed panel shows its A"
+    x, y, w, h = decay.box
+    assert x <= rect[0] and rect[0] + rect[2] <= x + w and y <= rect[1] and rect[1] + rect[3] <= y + h
+    _move(window, _point(rect))
+    _frames(qapp, window)
+    _host(window).grab().save(str(tmp_path / "fit_window_zoomed.png"))
+    _click(qapp, window, _point(rect))
+    assert canvas.is_auto_range() == (True, True)
+    assert canvas._drawn["x"] == pytest.approx(fitted)
+    assert canvas._auto_button_rect is None
+    _host(window).grab().save(str(tmp_path / "fit_window_after.png"))

@@ -404,6 +404,9 @@ class Canvas(abc.ABC):
     def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> None:
         """Enable/disable mouse pan-zoom and the right-click menu (default no-op)."""
 
+    def set_auto_range_button(self, shown: bool) -> None:
+        """Show (default) or never show the "A" auto-range button (default no-op)."""
+
     def provides_native_menu(self) -> bool:
         """Whether the backend already shows its own rich right-click menu.
 
@@ -533,6 +536,9 @@ class ImageViewCanvas(abc.ABC):
     @abc.abstractmethod
     def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> None:
         """Toggle view pan/zoom (``mouse``) and the right-click menu."""
+
+    def set_auto_range_button(self, shown: bool) -> None:
+        """Show (default) or never show the "A" auto-range button (default no-op)."""
 
     @abc.abstractmethod
     def add_overlay(

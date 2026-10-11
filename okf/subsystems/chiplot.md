@@ -336,6 +336,28 @@ drag scales about the point it started from (1.02 per pixel, x inverted); the
 wheel zooms about the cursor; and the corner **[A]** button restores
 auto-range.
 
+**The [A] button is every emtk plot's, by default** (emtk aea9d8b,
+`emtk/widgets/auto_range.py`). One module places (lower-left, *inside* the plot
+area, 15 px, 3 px inset), draws and hit-tests it and owns the tooltip
+`tr("Auto-range: fit the view to the data")`; both stacks call it: `emtk.implot`
+(shown while an enabled, non-locked axis has `follow == False`; tested before the
+plot's own input so a press on it never pans; the click is a double-click fit) and
+chiplot's `EmtkCanvas` (shown while `is_auto_range()` is not `(True, True)`; a
+press on it calls `auto_range()`, which also resets linked x panels). Deliberate
+differences from pyqtgraph: it shows whenever the view is not auto-ranged, not
+only on hover, and a caller's `set_range` counts as "not auto-ranged" there too.
+**Opt out** only for a view that must stay where the code put it:
+`Plot.set_auto_range_button(False)` / `ImageView.set_auto_range_button(False)`,
+or `implot.FLAGS_NO_AUTO_RANGE_BUTTON`; it is also hidden on a non-interactive
+panel (`set_interactive(mouse=False)`, `FLAGS_NO_INPUTS`). Guards:
+`emtk/tests/test_auto_range_button.py`, `test/gui/test_chiplot_auto_range_button.py`,
+the fit-window case in `test/gui/test_fit_window_emtk.py`, and the click-all sweep's
+`auto_range` phase (`test/e2e/test_click_all_plugins.py`: every plot drawn on the
+first frame and after the tour must show A after a wheel or drag and hide it after
+a click; results in each plugin's JSON under `auto_range`). Open edge: an implot
+plot with **no data** keeps its zoomed limits after the click (there is nothing to
+fit), though the A hides.
+
 The middle button is not a footnote. pyqtgraph handles it in the *same branch*
 as the left one (`ViewBox.mouseDragEvent` tests
 `button in [LeftButton, MiddleButton]`, and `GraphicsView` pans on either), and
@@ -454,6 +476,13 @@ canvases from the backend directly, which is exactly what let the seam go
 unexercised.
 
 # Where to pick this up — the emtk backend
+
+**Auto-range "A" button (2026-10-12):** done on both stacks (see "Auto-range, and mouse
+behaviour worth copying"). Next: run the full click-all sweep and read each plugin JSON's
+`auto_range` list — a plot reported "shows no A after zoom/pan" is one whose wheel and drag a
+parent takes (the known "wheel does not reach docked widgets" gap), not a button bug; and decide
+whether an implot plot with no data should return to its default limits on the click (today the
+limits stay, the A hides).
 
 **W8 state (2026-10-10, closed): pyqtgraph is gone.** No file under `chisurf/` imports it,
 the `pyqtgraph` backend and `_passthrough.py` are deleted, `pixi.toml` / `pyproject.toml` /

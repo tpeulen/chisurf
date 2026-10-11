@@ -118,6 +118,15 @@ deficiencies — the label always names the panel, the colour is the second cue.
 The key is declared once in `chisurf/emtk/task_colors.yaml`; a new tool filed
 under an existing ribbon group takes that group's colour.
 
+### Moving around a plot
+
+Every plot — fit windows, plugin plots, image views — answers the mouse the
+same way: drag to pan, turn the wheel to zoom about the pointer. While the view
+is panned or zoomed, a small boxed **A** sits in the plot's lower-left corner;
+click it and the view fits all the data again (as in pyqtgraph). It goes away
+once the plot follows its data, and new data then refits the view on its own —
+a zoomed plot keeps your zoom until you press **A**.
+
 ## Your first analysis
 
 The fastest way to see ChiSurf work end-to-end is one of the guides:
