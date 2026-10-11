@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Owner decision: the Qt shell stays the default and ships; deleting it (S6) is deferred until the emtk shell is
+  fully there. tttrlib dev pushed (photon counts in `tttr sm` burst tables, f986b73da). See
+  [Qt retirement](subsystems/qt-retirement.md).
 - The shared detector-setup editor is translated (de, fr; 121 new catalogue entries) and measures its button
   columns and dropped table columns from the translated captions. The real-use sweep no longer skips ndX's Load
   example: that skip hid two ndX radios sharing one item id (ndX cfaa4aa, Draw Mask is `brush_mode`), and the
