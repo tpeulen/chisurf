@@ -92,7 +92,7 @@ later). Colour key for users: [getting started](../../docs/getting_started/index
 
 ## Where to pick this up
 
-7. Task colours: measure with `test/native_emtk/test_task_colors.py` (palette loads, every
+7. Measure: task colours with `test/native_emtk/test_task_colors.py` (palette loads, every
    manifest plugin has a category, contrast ≥ 4.5 in dark and light, a hosted tab drawn in
    its colour) and emtk `tests/test_accents.py`. A new ribbon group needs a `groups` line in
    `task_colors.yaml` or the coverage test names it. Open: (a) the shell has **no light-theme
