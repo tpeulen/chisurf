@@ -236,9 +236,9 @@ def _database(tmp_path, user):
 
 
 def test_mmfdb_output_needs_a_sample_and_registers_the_raw_files_to_it(
-    model,
+    model,  # noqa: F811
     tmp_path,
-    monkeypatch,  # noqa: F811
+    monkeypatch,
 ):  # noqa: F811
     """MMFDB output binds the raw content to the sample, with the detector setup, and says when there is no sample."""
     from mmfdb.models import SampleDefinition
@@ -477,8 +477,8 @@ def _diagnostic(model, tttr, selected):  # noqa: F811
 
 
 def test_the_count_rate_trace_draws_all_before_selected_and_respects_the_toggles(
-    model,
-    monkeypatch,  # noqa: F811
+    model,  # noqa: F811
+    monkeypatch,
 ):  # noqa: F811
     """The selected trace is last (drawn on top) and a disabled trace is not even computed."""
     _Trace.calls.clear()

@@ -96,9 +96,9 @@ def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):  # noqa: F
 
 
 def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(
-    demo,
+    demo,  # noqa: F811
     tmp_path,
-    monkeypatch,  # noqa: F811
+    monkeypatch,
 ):  # noqa: F811
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     app, driver = _app()
