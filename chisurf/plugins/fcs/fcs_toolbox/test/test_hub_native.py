@@ -29,9 +29,24 @@ def hub():
 
 def test_the_rail_lists_the_workflow_then_the_tools_with_their_captions(hub):
     assert hub.app.title == "FCS"
-    assert [p["role"] for p in hub.app.tools] == ["channel_def", "files", "filter", "correlator", "merger", *ROLES]
-    for caption in ("1. Channel Definitions", "2. Files & Steps", "3. Photon / Burst Filter", "4. Correlator",
-                    "5. FCS Merger", "Tools", "Diffusion Calc", "Burst-wise FCS"):
+    assert [p["role"] for p in hub.app.tools] == [
+        "channel_def",
+        "files",
+        "filter",
+        "correlator",
+        "merger",
+        *ROLES,
+    ]
+    for caption in (
+        "1. Channel Definitions",
+        "2. Files & Steps",
+        "3. Photon / Burst Filter",
+        "4. Correlator",
+        "5. FCS Merger",
+        "Tools",
+        "Diffusion Calc",
+        "Burst-wise FCS",
+    ):
         assert hub.shown(caption), caption
     assert hub.shown("2D-FLCS ⚠") and hub.shown("Filter Calc ⚠") and hub.shown("Lifetime-FCS Sim ⚠")
     assert not hub.shown("Diffusion Calc ⚠"), "only experimental tools carry the warning mark"

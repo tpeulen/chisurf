@@ -200,7 +200,9 @@ def test_actual_container_stores_registry_parameter_units(name, tmp_path):
         source, {"green": store_from_arrays(columns)}, parameters={"model": name}
     )
     with Measurement.open(path, writable=False) as measurement:
-        obj = next(o for o in measurement.artifacts() if o.name == "mle green")
+        obj = next(
+            o for o in measurement.artifacts() if o.name.endswith("/mle green")
+        )  # in its own run
         import tttrlib
 
         table = tttrlib.pto_store(measurement._f, obj.uid)

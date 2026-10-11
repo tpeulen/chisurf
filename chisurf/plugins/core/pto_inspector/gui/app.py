@@ -209,7 +209,9 @@ class PtoInspectorApp(ImApp):
         action's canonical button (chisurf.plugins.emtk_layout.ACTIONS)."""
         im.begin_disabled(not enabled)
         if title in ACTIONS:
-            pressed = action_button(title, tooltip=None if ACTIONS[title].fixed_tooltip else tr(tip))
+            pressed = action_button(
+                title, tooltip=None if ACTIONS[title].fixed_tooltip else tr(tip)
+            )
         else:
             pressed = im.button(tr(title))
             im.set_item_tooltip(tr(tip))

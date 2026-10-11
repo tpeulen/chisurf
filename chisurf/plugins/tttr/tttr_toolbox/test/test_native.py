@@ -56,6 +56,7 @@ def fake_child():
             super().__init__(lambda: None)
             self.calls = []
             from chisurf.emtk.channel_definition import ChannelDefinitionWidget
+
             self.editor = ChannelDefinitionWidget(on_changed=lambda settings: None)
             self.value = 1
 

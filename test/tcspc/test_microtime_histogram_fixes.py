@@ -1,5 +1,6 @@
 """Keep the independent fortune-cookie regression while retiring print-only wizard checks."""
 
+
 def test_message_box_fortune(monkeypatch):
     """A broken fortune cookie must not take the message box down with it."""
     import chisurf as cs

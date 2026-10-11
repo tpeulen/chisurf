@@ -240,8 +240,11 @@ def test_a_subset_in_the_table_state_is_the_selection(work):
 
 def test_the_new_buttons_are_in_the_spec_in_order():
     spec = json.loads(SPEC.read_text())
-    labels = [icon_caption(b.get("icon", ""), b["label"])
-              for s in all_sections(spec) for b in s.get("buttons", [])]
+    labels = [
+        icon_caption(b.get("icon", ""), b["label"])
+        for s in all_sections(spec)
+        for b in s.get("buttons", [])
+    ]
     assert labels[4:12] == BUTTONS  # after the first row of four
     from chisurf.plugins.tttr.trace_browser.gui.model import TraceBrowserModel
 
@@ -327,14 +330,20 @@ def test_the_buttons_are_greyed_without_a_selection_or_a_host(work):
         open_folder(app, work)
         states = button_states(app)
         assert (
-            states["Select all"] is False and states[action_caption("export")] is False and states["CSV"] is False
+            states["Select all"] is False
+            and states[action_caption("export")] is False
+            and states["CSV"] is False
         )
         assert states["Delete"] is False
         assert states["HMM"] is True and states["TW"] is True and states["NDX"] is True  # no host
         app.model.set_selection([])
         app.model.multi_selection = []
         states = button_states(app)
-        assert states[action_caption("export")] is True and states["Delete"] is True and states["CSV"] is True
+        assert (
+            states[action_caption("export")] is True
+            and states["Delete"] is True
+            and states["CSV"] is True
+        )
     finally:
         app.close()
 
@@ -513,7 +522,9 @@ def test_delete_asks_first_then_moves_the_files_and_their_companions_to_trash(wo
         assert "Move to .trash?" in text and "Move to .trash" in text and "Cancel" in text
         assert "m000.set" in confirm["message"] and "m000.spc" in confirm["message"]
         assert (work / "m000.spc").exists()  # nothing moved before the answer
-        assert button_states(app)[action_caption("export")] is True  # the window is modal: others greyed
+        assert (
+            button_states(app)[action_caption("export")] is True
+        )  # the window is modal: others greyed
         with pressing(monkeypatch, "Move to .trash"):
             frames(app, n=1)
         settle_all(app)
@@ -893,13 +904,16 @@ def test_every_control_has_a_tooltip_with_the_new_controls(work, tmp_path):
         app.model.delete_selected()  # the confirmation window's buttons
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
-        assert {"Move to .trash", action_caption("cancel")} <= {row["label"] for row in inv["interactive"]}
+        assert {"Move to .trash", action_caption("cancel")} <= {
+            row["label"] for row in inv["interactive"]
+        }
         app.model.confirm_no()
         app.model.back_to_setup()
         inv = emtk_inventory(app)  # Help and Guide on the setup page too
-        assert inv["controls_without_tooltip"] == [] and {action_caption("help"), action_caption("guide")} <= {
-            r["label"] for r in inv["interactive"]
-        }
+        assert inv["controls_without_tooltip"] == [] and {
+            action_caption("help"),
+            action_caption("guide"),
+        } <= {r["label"] for r in inv["interactive"]}
     finally:
         app.close()
     for section in all_sections(json.loads(SPEC.read_text())):

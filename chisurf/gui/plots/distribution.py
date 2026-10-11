@@ -142,17 +142,17 @@ class OptionsForm:
 
     def __getattr__(self, name: str):
         if name.startswith("reset:"):
-            return lambda: self._reset(name[len("reset:"):])
+            return lambda: self._reset(name[len("reset:") :])
         if name.startswith("options:"):
-            return lambda: [str(v) for v in self._lookup(name[len("options:"):])]
+            return lambda: [str(v) for v in self._lookup(name[len("options:") :])]
         if name.startswith("first:"):
-            values = self._lookup(name[len("first:"):])
+            values = self._lookup(name[len("first:") :])
             return str(values[0]) if values else ""
         return self._lookup(name)
 
     def __setattr__(self, name: str, value) -> None:
         if name.startswith("first:"):
-            path = name[len("first:"):]
+            path = name[len("first:") :]
             values = list(self._lookup(path))
             chosen = next((v for v in values if str(v) == str(value)), None)
             if chosen is not None:
@@ -179,8 +179,9 @@ class OptionsForm:
 
         def flush() -> None:
             if leaves:
-                sections.append({"type": "panel", "collapsible": False, "n_col": 2,
-                                 "sections": list(leaves)})
+                sections.append(
+                    {"type": "panel", "collapsible": False, "n_col": 2, "sections": list(leaves)}
+                )
                 leaves.clear()
 
         for key, value in data.items():
@@ -189,8 +190,14 @@ class OptionsForm:
                 children = self._sections(value, path + ".", needle)
                 if children:
                     flush()
-                    sections.append({"type": "panel", "title": str(key), "collapsible": True,
-                                     "sections": children})
+                    sections.append(
+                        {
+                            "type": "panel",
+                            "title": str(key),
+                            "collapsible": True,
+                            "sections": children,
+                        }
+                    )
                 continue
             if needle and needle not in path.lower():
                 continue
@@ -201,28 +208,62 @@ class OptionsForm:
     @staticmethod
     def _leaf(path: str, label: str, value) -> list:
         """The field of one leaf and its ↩ (a blank cell for a read-only one)."""
-        reset = {"type": "button_row", "width": 30, "buttons": [
-            {"action": f"reset:{path}", "label": "↩", "description": "Reset to the starting value."}
-        ]}
+        reset = {
+            "type": "button_row",
+            "width": 30,
+            "buttons": [
+                {
+                    "action": f"reset:{path}",
+                    "label": "↩",
+                    "description": "Reset to the starting value.",
+                }
+            ],
+        }
         description = f"{path} of the distribution options."
         if isinstance(value, bool):
             field = {"type": "toggle", "attr": path, "label": label, "description": description}
         elif isinstance(value, int):
-            field = {"type": "value", "attr": path, "label": label, "kind": "int",
-                     "description": description}
+            field = {
+                "type": "value",
+                "attr": path,
+                "label": label,
+                "kind": "int",
+                "description": description,
+            }
         elif isinstance(value, float):
-            field = {"type": "value", "attr": path, "label": label, "kind": "float",
-                     "decimals": 6, "description": description}
+            field = {
+                "type": "value",
+                "attr": path,
+                "label": label,
+                "kind": "float",
+                "decimals": 6,
+                "description": description,
+            }
         elif isinstance(value, str):
-            field = {"type": "value", "attr": path, "label": label, "kind": "str",
-                     "description": description}
+            field = {
+                "type": "value",
+                "attr": path,
+                "label": label,
+                "kind": "str",
+                "description": description,
+            }
         elif isinstance(value, (list, tuple)) and value:
-            field = {"type": "choice", "attr": f"first:{path}", "label": label,
-                     "options_source": f"options:{path}",
-                     "description": description + " The chosen entry is moved to the front."}
+            field = {
+                "type": "choice",
+                "attr": f"first:{path}",
+                "label": label,
+                "options_source": f"options:{path}",
+                "description": description + " The chosen entry is moved to the front.",
+            }
         else:
-            field = {"type": "value", "attr": path, "label": label, "kind": "str",
-                     "read_only": True, "description": description + " (not editable here)"}
+            field = {
+                "type": "value",
+                "attr": path,
+                "label": label,
+                "kind": "str",
+                "read_only": True,
+                "description": description + " (not editable here)",
+            }
             reset = {"type": "info", "text": "", "width": 30}
         return [field, reset]
 
@@ -386,8 +427,9 @@ class DistributionPlot(plotbase.Plot):
         if not self._distribution_type:
             return
         im.set_next_item_width(-1.0)
-        changed, text = im.input_text_with_hint("##distribution-filter",
-                                                "Filter parameters…", self._filter)
+        changed, text = im.input_text_with_hint(
+            "##distribution-filter", "Filter parameters…", self._filter
+        )
         im.set_item_tooltip("Show only the options whose name contains this text.")
         if changed:
             self._filter = text
@@ -396,8 +438,10 @@ class DistributionPlot(plotbase.Plot):
 
     def get_settings_state(self) -> dict:
         """The settings, for the project file."""
-        return {"distribution_type": self._distribution_type,
-                "show_components": bool(self.show_gaussians)}
+        return {
+            "distribution_type": self._distribution_type,
+            "show_components": bool(self.show_gaussians),
+        }
 
     def set_settings_state(self, state: dict) -> None:
         """Restore :meth:`get_settings_state`."""

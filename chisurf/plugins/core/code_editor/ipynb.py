@@ -94,9 +94,7 @@ def _cell_id() -> str:
 
 
 def _new_notebook(**kwargs) -> NotebookNode:
-    nb = from_dict(
-        {"nbformat": 4, "nbformat_minor": NBFORMAT_MINOR, "metadata": {}, "cells": []}
-    )
+    nb = from_dict({"nbformat": 4, "nbformat_minor": NBFORMAT_MINOR, "metadata": {}, "cells": []})
     nb.update(kwargs)
     return nb
 
@@ -220,8 +218,10 @@ def reads(text: str, as_version: int = 4) -> NotebookNode:
     if as_version != 4:
         raise ValueError(f"only notebook format 4 is supported, not {as_version}")
     data = json.loads(text)
-    if not isinstance(data, dict) or data.get("nbformat") != 4 or not isinstance(
-        data.get("cells"), list
+    if (
+        not isinstance(data, dict)
+        or data.get("nbformat") != 4
+        or not isinstance(data.get("cells"), list)
     ):
         raise ValueError("not a format-4 notebook with a cells list")
     return _ensure_cell_ids(_strip_transient(_rejoin_lines(from_dict(data))))

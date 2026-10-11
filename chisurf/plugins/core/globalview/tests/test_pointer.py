@@ -23,7 +23,9 @@ CTRL = 0x04000000
 
 
 def _session(n=3):
-    spec = importlib.util.spec_from_file_location("_gv_test_model", Path(__file__).parent / "test_model.py")
+    spec = importlib.util.spec_from_file_location(
+        "_gv_test_model", Path(__file__).parent / "test_model.py"
+    )
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module._session(n)
@@ -124,7 +126,10 @@ def test_link_button_makes_the_second_selection_follow_the_first_and_unlink_rele
     _press_button(app, "link_selected")
     assert mutator.calls[-1][0] == "link" and follower.link is master and master.link is None
     link_edges = [e for e in model.control.document.edges if e.config["kind"] == "link"]
-    assert any(e.source == _node_id(follower_fit, "c") and e.target == _node_id(master_fit, "c") for e in link_edges)
+    assert any(
+        e.source == _node_id(follower_fit, "c") and e.target == _node_id(master_fit, "c")
+        for e in link_edges
+    )
     # unlink: select the follower and press Unlink
     _click_node(app, model, _node_id(follower_fit, "c"))
     _press_button(app, "unlink_selected")
@@ -146,7 +151,9 @@ def _drag(app, start, end, steps=8):
     _frames(app, 1)
     for step in range(1, steps + 1):
         app.pointer_move(
-            start[0] + (end[0] - start[0]) * step / steps, start[1] + (end[1] - start[1]) * step / steps, 1
+            start[0] + (end[0] - start[0]) * step / steps,
+            start[1] + (end[1] - start[1]) * step / steps,
+            1,
         )
         _frames(app, 1)
     app.release()

@@ -24,10 +24,24 @@ class DetectorWizardPage(QtWidgets.QWizardPage):
     detectorsChanged = QtCore.Signal()
     micro_time_binningChanged = QtCore.Signal(int)
 
-    def __init__(self, json_file=None, *args, model=None, settings=None, setups_file=None,
-                 show_edit_json=False, show_save=False, show_setups_file=True,
-                 show_setup_selection=True, show_help=True, show_tttr_reading=True,
-                 show_tables=True, show_add_inputs=True, allow_finish=True, **kwargs):
+    def __init__(
+        self,
+        json_file=None,
+        *args,
+        model=None,
+        settings=None,
+        setups_file=None,
+        show_edit_json=False,
+        show_save=False,
+        show_setups_file=True,
+        show_setup_selection=True,
+        show_help=True,
+        show_tttr_reading=True,
+        show_tables=True,
+        show_add_inputs=True,
+        allow_finish=True,
+        **kwargs,
+    ):
         """Load a working definition or injected model without conflating its named setup store."""
         super().__init__(*args, **kwargs)
         self.setTitle(tr("Detectors and PIE-window definition"))
@@ -55,13 +69,23 @@ class DetectorWizardPage(QtWidgets.QWizardPage):
             model.file_path = str(setups_file)
         self.model = model
         self._last_settings = model.get_settings()
-        visibility = {"edit_json": bool(show_edit_json), "save_definition": bool(show_save),
-                      "setups_file": bool(show_setups_file), "setup_selection": bool(show_setup_selection),
-                      "help": bool(show_help), "tttr_reading": bool(show_tttr_reading),
-                      "tables": bool(show_tables), "add_inputs": bool(show_add_inputs)}
-        self.app = SetupChannelDefinitionApp(model=model, on_changed=self._changed,
-                    open_last_used=not injected_model and json_file is None and settings is None,
-                    visibility=visibility, on_definition_saved=self._definition_saved)
+        visibility = {
+            "edit_json": bool(show_edit_json),
+            "save_definition": bool(show_save),
+            "setups_file": bool(show_setups_file),
+            "setup_selection": bool(show_setup_selection),
+            "help": bool(show_help),
+            "tttr_reading": bool(show_tttr_reading),
+            "tables": bool(show_tables),
+            "add_inputs": bool(show_add_inputs),
+        }
+        self.app = SetupChannelDefinitionApp(
+            model=model,
+            on_changed=self._changed,
+            open_last_used=not injected_model and json_file is None and settings is None,
+            visibility=visibility,
+            on_definition_saved=self._definition_saved,
+        )
         self.editor = self.app.page
         self._owned_callback = self.model.on_changed
         self.host = ControlHost(self.app, parent=self)
@@ -125,7 +149,11 @@ class DetectorWizardPage(QtWidgets.QWizardPage):
 
     def _close_hidden_owner(self, owner):
         """A rejected close keeps the visible owner and native surface alive."""
-        if not self._closed and owner in self._owners and (is_deleted(owner) or not owner.isVisible()):
+        if (
+            not self._closed
+            and owner in self._owners
+            and (is_deleted(owner) or not owner.isVisible())
+        ):
             self._close_native()
 
     def _owner_finished(self, *args):
@@ -314,8 +342,10 @@ class DetectorWizardPage(QtWidgets.QWizardPage):
 
     def set_microtime_per_channel_data(self, values, file_path=None):
         """Adopt already computed raw-channel preview histograms without another file read."""
-        self.model.preview = {int(ch): np.asarray(counts, dtype=float).ravel().copy()
-                              for ch, counts in (values or {}).items()}
+        self.model.preview = {
+            int(ch): np.asarray(counts, dtype=float).ravel().copy()
+            for ch, counts in (values or {}).items()
+        }
         if file_path is not None:
             self.model.preview_path = str(file_path)
         self.model.data["_microtime_per_channel_decay"] = {

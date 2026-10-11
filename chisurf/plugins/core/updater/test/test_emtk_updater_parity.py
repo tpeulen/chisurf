@@ -43,7 +43,9 @@ def model_checked(**kwargs):
     return model
 
 
-QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text())  # the retired Qt tool, live, on the same fakes
+QT = json.loads(
+    (Path(__file__).parent / "qt_reference.json").read_text()
+)  # the retired Qt tool, live, on the same fakes
 
 
 # ---------------------------------------------------------------------------------------------- 1. the numbers equal the Qt tool's

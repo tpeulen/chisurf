@@ -212,7 +212,9 @@ def test_errors_reach_the_window(folder, tmp_path, monkeypatch):
         assert app.model.status_text == "Select a valid burstwise analysis folder."
         app.model.set_folder(folder)
         monkeypatch.setattr(
-            core, "write_2cde_container", lambda *a, **k: (_ for _ in ()).throw(OSError("disk full"))
+            core,
+            "write_2cde_container",
+            lambda *a, **k: (_ for _ in ()).throw(OSError("disk full")),
         )
         app.controller.run()
         _settle(app)

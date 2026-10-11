@@ -64,7 +64,7 @@ def test_real_dock_addresses_remain_reachable(tmp_path, monkeypatch):
     app = attach_native_state("clsm_docks", make_app())
     try:
         driver = Driver(app, size=(1100, 720))
-        for key in ('controls', 'image', 'decay'):
+        for key in ("controls", "image", "decay"):
             assert app.docks.window(key) is not None
             app.docks.focus(key)
             driver.draw(2)

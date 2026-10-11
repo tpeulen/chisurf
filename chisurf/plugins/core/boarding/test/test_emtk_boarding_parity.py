@@ -221,7 +221,9 @@ def test_create_missing_writes_only_missing_files(model, hermetic):
     # The main settings file is never copied by "Create missing files" (the core reads it as
     # overrides on the release defaults); its absence reads as defaults, not MISSING.
     assert not (hermetic / "settings_chisurf.yaml").exists()
-    assert {r["item"]: r["status"] for r in model.status_rows()}["settings_chisurf.yaml"] == "defaults"
+    assert {r["item"]: r["status"] for r in model.status_rows()}[
+        "settings_chisurf.yaml"
+    ] == "defaults"
 
 
 def test_restore_defaults_asks_and_declining_changes_nothing(model, hermetic):
@@ -271,7 +273,9 @@ def test_open_settings_folder_opens_the_user_folder(model, hermetic):
 
 
 def test_refresh_rereads_status_and_marks(model, hermetic):
-    assert {r["item"]: r["status"] for r in model.status_rows()}["settings_chisurf.yaml"] == "defaults"
+    assert {r["item"]: r["status"] for r in model.status_rows()}[
+        "settings_chisurf.yaml"
+    ] == "defaults"
     (hermetic / "settings_chisurf.yaml").write_text("a: 1\n")
     model.refresh()
     assert model.step_complete(1) is True

@@ -65,8 +65,6 @@ def _loaded(**kw):
     return app
 
 
-
-
 @pytest.fixture(scope="module")
 def qt():
     """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""

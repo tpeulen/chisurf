@@ -123,8 +123,15 @@ def test_real_estimate_and_export_survive_every_dock_and_narrow_view(tmp_path, m
                 app.docks.focus(key)
                 driver.draw(3)
             x0, y0, w0, h0 = app.item_rects["controls"]
-            for name in ("dt", "manual_background", "first_channel", "last_channel",
-                         "request_estimate", "request_load", "request_save"):
+            for name in (
+                "dt",
+                "manual_background",
+                "first_channel",
+                "last_channel",
+                "request_estimate",
+                "request_load",
+                "request_save",
+            ):
                 x, y, width, height = app.item_rects[name]
                 assert x >= x0 and x + width <= x0 + w0 + 0.5, name
                 assert y >= y0 and y + height <= y0 + h0 + 0.5, name
@@ -147,8 +154,10 @@ def test_calibrated_independent_convolution_keeps_response_peak(tmp_path, monkey
     time = np.arange(500) * 0.1002
     response = np.exp(-0.5 * ((time - 5.0) / 0.5) ** 2)
     response /= response.sum()
-    reconvolved = np.convolve(np.exp(-time / 4.0), response)[:len(time)]
-    counts = np.random.default_rng(5).poisson(4e4 * reconvolved / reconvolved.max() + 8).astype(float)
+    reconvolved = np.convolve(np.exp(-time / 4.0), response)[: len(time)]
+    counts = (
+        np.random.default_rng(5).poisson(4e4 * reconvolved / reconvolved.max() + 8).astype(float)
+    )
     app = make_app()
     try:
         app.model.load_data(counts, time_axis=time)

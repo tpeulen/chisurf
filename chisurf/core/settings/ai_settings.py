@@ -185,7 +185,11 @@ def get_api_settings(provider: str | None = None) -> dict:
         provider = all_settings.get("selected_provider", DEFAULT_PROVIDER)
         if normalize_provider_key(provider) == "acp":
             delegate = all_settings.get("acp", {}).get("acp_backend_provider")
-            provider = delegate if delegate in DEFAULT_PROVIDER_SETTINGS and delegate != "acp" else DEFAULT_PROVIDER
+            provider = (
+                delegate
+                if delegate in DEFAULT_PROVIDER_SETTINGS and delegate != "acp"
+                else DEFAULT_PROVIDER
+            )
     provider = normalize_provider_key(provider)
 
     # Get settings for the specified provider, falling back to defaults
@@ -281,7 +285,11 @@ def save_api_settings(settings: dict, provider: str | None = None) -> bool:
         all_settings["selected_provider"] = provider
     elif normalize_provider_key(all_settings.get("selected_provider")) == "acp":
         delegate = settings.get("acp_backend_provider")
-        all_settings["selected_provider"] = delegate if delegate in DEFAULT_PROVIDER_SETTINGS and delegate != "acp" else DEFAULT_PROVIDER
+        all_settings["selected_provider"] = (
+            delegate
+            if delegate in DEFAULT_PROVIDER_SETTINGS and delegate != "acp"
+            else DEFAULT_PROVIDER
+        )
 
     return _write_settings_file(settings_path, all_settings)
 

@@ -121,7 +121,9 @@ class ServiceDispatcher:
                     (pending.keys() & self._handlers.keys()) | self._registration.rejected
                 )
                 if collisions:
-                    raise ValueError(f"Plugin {owner!r} RPC methods already registered: {collisions}")
+                    raise ValueError(
+                        f"Plugin {owner!r} RPC methods already registered: {collisions}"
+                    )
                 self._handlers.update(pending)
         finally:
             del self._registration.pending

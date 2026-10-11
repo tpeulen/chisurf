@@ -226,8 +226,10 @@ class Kappa2Gui(TourTarget):
                 self.on_compute()
                 self.tour.notify_used("compute")
         im.set_item_tooltip(
-            tr("Run the selected orientation model and draw its κ² distribution "
-            "and orientation statistics.")
+            tr(
+                "Run the selected orientation model and draw its κ² distribution "
+                "and orientation statistics."
+            )
         )
         self.remember("compute")
         im.end_disabled()
@@ -235,16 +237,20 @@ class Kappa2Gui(TourTarget):
             (
                 tr("Save"),
                 "save",
-                tr("Save the κ² distribution and the orientation statistics as CSV "
-                   "(enabled once a distribution is computed)."),
+                tr(
+                    "Save the κ² distribution and the orientation statistics as CSV "
+                    "(enabled once a distribution is computed)."
+                ),
                 self.on_save,
             ),
             (tr("Guide"), "guide", tr("A step-by-step walk through the tool."), self.start_guide),
             (
                 tr("Help"),
                 "help",
-                tr("The short help page: the three models, the anisotropies to measure "
-                   "first, and reading the result."),
+                tr(
+                    "The short help page: the three models, the anisotropies to measure "
+                    "first, and reading the result."
+                ),
                 self.show_help,
             ),
         ):
@@ -286,13 +292,18 @@ class Kappa2Gui(TourTarget):
                 # The assumed value the distribution should reproduce, as a line in the
                 # legend (an axis tag printed over the x tick labels).
                 implot.set_next_line_style(TRUE_K2_COLOUR, 1.0)
-                implot.plot_inf_lines(tr("true κ² = {value}").format(value=f"{m.kappa2_true:.3g}"), [float(m.kappa2_true)])
+                implot.plot_inf_lines(
+                    tr("true κ² = {value}").format(value=f"{m.kappa2_true:.3g}"),
+                    [float(m.kappa2_true)],
+                )
             else:
                 implot.plot_dummy(tr("press Compute to draw the distribution"))
             implot.end_plot()
             im.set_item_tooltip(
-                tr("Probability distribution of κ² the selected orientation model "
-                "produces, with the assumed true κ² marked.")
+                tr(
+                    "Probability distribution of κ² the selected orientation model "
+                    "produces, with the assumed true κ² marked."
+                )
             )
         self.remember("plot", tuple(box))  # the window's content: the plot fills it
 
@@ -327,7 +338,9 @@ class Kappa2App(ImApp):
         on_save: Callable[[], None] | None = None,
     ) -> None:
         self.tool = tool
-        self.window_size = window_size(json.loads(_SPEC_PATH.read_text(encoding="utf-8")), (640, 480))
+        self.window_size = window_size(
+            json.loads(_SPEC_PATH.read_text(encoding="utf-8")), (640, 480)
+        )
         self.kappa2_gui = Kappa2Gui(
             tool,
             on_compute=on_compute,
@@ -457,7 +470,11 @@ def make_app(kappa2: float = 0.667, **kwargs):
     def call(**params):
         """The backend handler; a failed answer is remembered for the status line."""
         answer = _kappa2_compute_handler(**params)
-        state.error = "" if answer.get("ok") else tr("The calculation failed: {error}").format(error=answer.get("error"))
+        state.error = (
+            ""
+            if answer.get("ok")
+            else tr("The calculation failed: {error}").format(error=answer.get("error"))
+        )
         return answer
 
     client = SimpleNamespace(compute=call)
@@ -470,7 +487,9 @@ def make_app(kappa2: float = 0.667, **kwargs):
         if state.error:
             state.status = state.error
         elif not finite():
-            state.status = tr("These inputs give no finite result (the statistics are not numbers).")
+            state.status = tr(
+                "These inputs give no finite result (the statistics are not numbers)."
+            )
         else:
             state.status = ""
 

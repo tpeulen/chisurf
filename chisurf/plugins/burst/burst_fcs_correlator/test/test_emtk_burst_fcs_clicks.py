@@ -177,7 +177,9 @@ def test_a_failing_correlation_reports_instead_of_raising(drv, monkeypatch):
 def test_guide_and_help_buttons(drv):
     drv.click("help")
     window = drv.app.help_window
-    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
+        drv.draw(2).strings
+    )
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()

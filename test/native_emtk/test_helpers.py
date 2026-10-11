@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def test_native_helpers_do_not_load_qt():
-    script = '''
+    script = """
 import importlib.abc
 import sys
 class BlockQt(importlib.abc.MetaPathFinder):
@@ -21,11 +21,13 @@ from chisurf.plugins.core.mmfdb_admin.gui.session import cached_token
 assert not code_links._is_qt_active()
 assert doc_links._loaded_qt_core() is None
 assert 'chisurf.gui' not in sys.modules
-'''
+"""
     result = subprocess.run(
         [sys.executable, "-c", script],
         cwd=Path(__file__).resolve().parents[2],
-        env={**os.environ}, capture_output=True, text=True,
+        env={**os.environ},
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
 
@@ -34,11 +36,11 @@ def test_catalog_skips_unfinished_and_plural_translations(tmp_path):
     from chisurf.emtk.i18n import read_catalog
 
     catalog = tmp_path / "sample.ts"
-    catalog.write_text('''<TS><context><name>tool</name>
+    catalog.write_text("""<TS><context><name>tool</name>
 <message><source>Save</source><translation>Speichern</translation></message>
 <message><source>Cancel</source><translation type="unfinished">Abbrechen</translation></message>
 <message numerus="yes"><source>Files</source><translation><numerusform>Dateien</numerusform></translation></message>
-</context></TS>''')
+</context></TS>""")
     assert read_catalog(catalog) == {"tool": {"Save": "Speichern"}}
 
 
@@ -55,8 +57,12 @@ def test_catalog_language_switching():
     try:
         i18n.install("de")
         translations = {
-            "en": "Save", "de": "Speichern", "fr": "Enregistrer",
-            "es": "Guardar", "pt": "Guardar", "ru": "Сохранить",
+            "en": "Save",
+            "de": "Speichern",
+            "fr": "Enregistrer",
+            "es": "Guardar",
+            "pt": "Guardar",
+            "ru": "Сохранить",
         }
         for locale, expected in translations.items():
             i18n.set_locale(locale)
@@ -108,7 +114,19 @@ def test_native_document_launch_does_not_construct_qt(monkeypatch, tmp_path):
     monkeypatch.setattr(doc_links, "_is_qt_active", lambda: False)
     monkeypatch.setattr(subprocess, "Popen", lambda command: commands.append(command))
     assert doc_links._open_document(path, "section")
-    assert commands == [[sys.executable, "-m", "chisurf.emtk", "--plugin", "help", "--path", str(path), "--anchor", "section"]]
+    assert commands == [
+        [
+            sys.executable,
+            "-m",
+            "chisurf.emtk",
+            "--plugin",
+            "help",
+            "--path",
+            str(path),
+            "--anchor",
+            "section",
+        ]
+    ]
 
 
 def test_dataset_filters_selection_and_local_resolution(tmp_path):
@@ -122,17 +140,43 @@ def test_dataset_filters_selection_and_local_resolution(tmp_path):
         def call(self, method, params):
             calls.append((method, params))
             if method == "mmfdb.datasets.browse":
-                return {"total": 51, "datasets": [{"artifact_id": "raw-1", "artifact_kind": "raw_measurement", "data_format": "ptu", "original_filename": "photons.ptu"}]}
+                return {
+                    "total": 51,
+                    "datasets": [
+                        {
+                            "artifact_id": "raw-1",
+                            "artifact_kind": "raw_measurement",
+                            "data_format": "ptu",
+                            "original_filename": "photons.ptu",
+                        }
+                    ],
+                }
             if method == "mmfdb.datasets.open":
                 return {"local_path": str(local)}
             raise AssertionError(method)
 
-    picker = DatasetPicker(client=Client(), kinds=["raw_measurement"], formats=["ptu"], scope="mine", on_paths=opened.append)
+    picker = DatasetPicker(
+        client=Client(),
+        kinds=["raw_measurement"],
+        formats=["ptu"],
+        scope="mine",
+        on_paths=opened.append,
+    )
     picker.query = "photons"
     picker.page = 1
     picker.is_open = True
     assert picker.refresh()
-    assert calls[0] == ("mmfdb.datasets.browse", {"scope": "own", "query": "photons", "kinds": ["raw_measurement"], "formats": ["ptu"], "limit": 50, "offset": 50})
+    assert calls[0] == (
+        "mmfdb.datasets.browse",
+        {
+            "scope": "own",
+            "query": "photons",
+            "kinds": ["raw_measurement"],
+            "formats": ["ptu"],
+            "limit": 50,
+            "offset": 50,
+        },
+    )
     assert picker.select("unknown") is None
     assert not picker.accept()
     selected = picker.select("raw-1")
@@ -209,7 +253,14 @@ def test_dataset_picker_renders_controls_and_tooltips(monkeypatch):
 
     picker = DatasetPicker(client=object(), formats=["ptu"])
     picker.is_open = True
-    picker.datasets = [{"artifact_id": "raw-1", "artifact_kind": "raw_measurement", "original_filename": "photons.ptu", "data_format": "ptu"}]
+    picker.datasets = [
+        {
+            "artifact_id": "raw-1",
+            "artifact_kind": "raw_measurement",
+            "original_filename": "photons.ptu",
+            "data_format": "ptu",
+        }
+    ]
     picker.total = 1
     tooltips = []
     monkeypatch.setattr(im, "set_item_tooltip", tooltips.append)
@@ -226,7 +277,10 @@ def test_dataset_picker_renders_controls_and_tooltips(monkeypatch):
 def test_guided_tour_waits_for_real_target_when_host_opted_in():
     from chisurf.emtk.help_guide import EmTkGuidedTour
 
-    steps = [{"target": {"attr": "npars"}, "await": {"hint": "Edit parameters"}}, {"target": {"tab": "results"}}]
+    steps = [
+        {"target": {"attr": "npars"}, "await": {"hint": "Edit parameters"}},
+        {"target": {"tab": "results"}},
+    ]
     tour = EmTkGuidedTour(steps, wait_for_controls=True)
     tour.start()
     tour.next()
@@ -250,16 +304,23 @@ def test_dataset_picker_respects_embedded_and_remote_client_modes(monkeypatch):
     from chisurf.plugins.core.mmfdb_admin.gui import client, session
 
     modes = []
+
     class Client:
         host, cmd_port, pub_port = "127.0.0.1", 8765, 8766
         token = None
+
         def __init__(self, *, inprocess):
             modes.append(inprocess)
+
     monkeypatch.setattr(client, "MMFDBClient", Client)
     monkeypatch.setattr(session, "cached_token", lambda *args: "existing-session")
     monkeypatch.setattr(dataset_picker, "_SESSION_CLIENT", None)
     for mode in ("embedded", "remote"):
-        monkeypatch.setattr(client, "client_config", lambda settings, selected=mode: {"mode": selected, "username": "existing-user"})
+        monkeypatch.setattr(
+            client,
+            "client_config",
+            lambda settings, selected=mode: {"mode": selected, "username": "existing-user"},
+        )
         dataset_picker.reset_session_client()
         connected = dataset_picker.session_client()
         assert connected.token == "existing-session"

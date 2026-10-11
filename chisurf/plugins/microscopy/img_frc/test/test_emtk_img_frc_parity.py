@@ -1033,9 +1033,14 @@ def test_the_imaging_hub_adopts_its_source_as_the_qt_tool_did(app, drv, stack_a)
 
 def test_the_window_draws_empty_and_populated_at_both_sizes(app, drv, stack_a):
     for size in ((1200, 800), (800, 600)):
-        assert {"Settings", "Measure", "Export CSV", "📂  Browse…", "Database", "Resolution"} <= set(
-            drv.draw(3, size).strings
-        )
+        assert {
+            "Settings",
+            "Measure",
+            "Export CSV",
+            "📂  Browse…",
+            "Database",
+            "Resolution",
+        } <= set(drv.draw(3, size).strings)
     loaded(app, drv, stack_a)
     measure(app, drv)
     for size in ((1200, 800), (800, 600)):

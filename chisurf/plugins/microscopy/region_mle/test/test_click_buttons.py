@@ -95,7 +95,11 @@ def test_preview_then_run_then_export_then_reopen(workdir, tmp_path):  # noqa: F
     other.close()
 
 
-def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(demo, tmp_path, monkeypatch):  # noqa: F811
+def test_load_demo_button_fills_the_lists_and_the_run_finds_the_known_lifetimes(
+    demo,
+    tmp_path,
+    monkeypatch,  # noqa: F811
+):  # noqa: F811
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
     app, driver = _app()
     assert app.model.files == []
@@ -121,5 +125,7 @@ def test_a_file_that_cannot_be_fitted_stays_reported_after_run(workdir, tmp_path
     driver.click("request_run")
     _settle(driver, app)
     assert app.model.results == []
-    assert app.model.status_text.startswith("broken.ptu:"), "the failure was wiped when the run ended"
+    assert app.model.status_text.startswith("broken.ptu:"), (
+        "the failure was wiped when the run ended"
+    )
     app.close()

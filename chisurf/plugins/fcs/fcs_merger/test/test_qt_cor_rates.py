@@ -22,9 +22,10 @@ def test_cor_chunks_keep_their_count_rate(qapp, qtbot, tmp_path):
     app.job.poll()
     page = app.model
     rows = page.curve_rows()
-    assert [rows[0][key] for key in ("cr_a", "cr_b", "duration")] == [20., 20., 10.]
+    assert [rows[0][key] for key in ("cr_a", "cr_b", "duration")] == [20.0, 20.0, 10.0]
     assert page.mean_correlation["count_rate"] == 20.0
     from chisurf.core.fluorescence.fcs.merge import save_mean_correlation
+
     save_mean_correlation(page.mean_correlation, page.output)
     saved = np.loadtxt(page.output)
     assert saved[0, 2] == 20.0 and saved[1, 2] == 20.0

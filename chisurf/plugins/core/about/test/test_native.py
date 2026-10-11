@@ -20,6 +20,7 @@ def test_about_preserves_identity_content_and_close_action(monkeypatch):
     assert "github.com/fluorescence-tools/chisurf" in text
     assert app.logo is not None
     from emtk.testing import Driver
+
     driver = Driver(app, (500, 500))
     driver.draw(2)
     driver.click(app.form.rects["close_about"])
@@ -27,7 +28,7 @@ def test_about_preserves_identity_content_and_close_action(monkeypatch):
 
 
 def test_about_factory_constructs_and_draws_without_qt():
-    code = '''
+    code = """
 import importlib.abc, sys
 class Block(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
@@ -39,7 +40,7 @@ from emtk.testing import RecordingPainter
 app = make_app()
 app.draw(RecordingPainter(), 0, 0, 500, 500)
 assert not any(name.startswith('qtpy') for name in sys.modules)
-'''
+"""
     root = str(Path(__file__).resolve().parents[1])
     code = code.replace(
         "from chisurf.plugins.core.about.gui.app import make_app",

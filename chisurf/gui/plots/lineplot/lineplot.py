@@ -289,7 +289,9 @@ class LinePlotSettings:
 
     def reference_mode_options(self) -> list[tuple[str, str]]:
         """``(key, label)`` of every reference mode, ``Raw`` first."""
-        return [("raw", "Raw")] + [(key, str(mode.label)) for key, mode in self._reference_modes.items()]
+        return [("raw", "Raw")] + [
+            (key, str(mode.label)) for key, mode in self._reference_modes.items()
+        ]
 
     @property
     def reference_mode(self) -> str:
@@ -326,7 +328,9 @@ class LinePlotSettings:
         mode = self.selected_reference_mode()
         if mode is None:
             return {}
-        return {spec.key: self._reference_values.get(spec.key, spec.default) for spec in mode.parameters}
+        return {
+            spec.key: self._reference_values.get(spec.key, spec.default) for spec in mode.parameters
+        }
 
     @reference_parameters.setter
     def reference_parameters(self, values: typing.Mapping[str, typing.Any]) -> None:
@@ -366,9 +370,14 @@ class LinePlotSettings:
                 step = int(spec.step if spec.step is not None else 1)
                 changed, value = im.input_int(label, int(value), step)
             elif kind == "choice":
-                keys = [c[0] if isinstance(c, (tuple, list)) and len(c) >= 2 else c for c in spec.choices]
-                names = [str(c[1]) if isinstance(c, (tuple, list)) and len(c) >= 2 else str(c)
-                         for c in spec.choices]
+                keys = [
+                    c[0] if isinstance(c, (tuple, list)) and len(c) >= 2 else c
+                    for c in spec.choices
+                ]
+                names = [
+                    str(c[1]) if isinstance(c, (tuple, list)) and len(c) >= 2 else str(c)
+                    for c in spec.choices
+                ]
                 current = next((i for i, k in enumerate(keys) if str(k) == str(value)), 0)
                 changed, picked = im.combo(label, current, names)
                 value = keys[picked] if keys else value
@@ -456,12 +465,25 @@ class LinePlotSettings:
             self.scale_x = str(state["scale_x"])
         if "res_logy" in state:
             self.res_logy = str(state["res_logy"])
-        for key in ("xmin_enabled", "xmax_enabled", "ymin_enabled", "ymax_enabled",
-                    "is_density", "display_group", "plot_ftt"):
+        for key in (
+            "xmin_enabled",
+            "xmax_enabled",
+            "ymin_enabled",
+            "ymax_enabled",
+            "is_density",
+            "display_group",
+            "plot_ftt",
+        ):
             if key in state:
                 setattr(self, key, bool(state[key]))
-        for key, attr in (("xmin", "xmin_value"), ("xmax", "xmax_value"), ("ymin", "ymin_value"),
-                          ("ymax", "ymax_value"), ("x_shift", "x_shift"), ("y_shift", "y_shift")):
+        for key, attr in (
+            ("xmin", "xmin_value"),
+            ("xmax", "xmax_value"),
+            ("ymin", "ymin_value"),
+            ("ymax", "ymax_value"),
+            ("x_shift", "x_shift"),
+            ("y_shift", "y_shift"),
+        ):
             if key in state:
                 try:
                     setattr(self, attr, float(state[key]))

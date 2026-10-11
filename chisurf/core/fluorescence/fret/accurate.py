@@ -234,8 +234,7 @@ def auto_calibrate(
             if np.isfinite(mu) and np.isfinite(sigma) and sigma >= 0:
                 provenance[name] = "data_and_optics_prior" if identified else "optics_prior"
     beta_assumption = (
-        "only one FRET population: beta defined by centring it at S = 0.5 "
-        "(1:1 labelling assumed)"
+        "only one FRET population: beta defined by centring it at S = 0.5 (1:1 labelling assumed)"
     )
     if beta_assumption in result["messages"]:
         provenance["beta"] = "stoichiometry_assumption"

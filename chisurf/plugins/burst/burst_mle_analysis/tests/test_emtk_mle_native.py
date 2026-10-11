@@ -314,10 +314,15 @@ def test_guide_targets_are_drawn_and_the_awaited_steps_are_released_by_presses(a
     steps = json.loads((GUI / "guide.json").read_text())["steps"]
     for step in steps:
         key = app.tour._target_key(step.get("target"))
-        if key and key not in ("decay", "distribution", "add_irf_files"):  # in the plot tabs / the files tab
+        if key and key not in (
+            "decay",
+            "distribution",
+            "add_irf_files",
+        ):  # in the plot tabs / the files tab
             assert key in app.item_rects or key in app.form.rects, key
     auto_step = next(
-        i for i, step in enumerate(steps)
+        i
+        for i, step in enumerate(steps)
         if step.get("await") and step.get("target", {}).get("name") == "auto"
     )
     app.start_guide()
@@ -390,8 +395,12 @@ def test_the_database_buttons_open_their_pickers(monkeypatch, app):
 def test_a_picked_dataset_reaches_the_model(monkeypatch, app, burst_table):
     """What the picker resolves to a local path goes where its button said: burst tables, IRF, background."""
     added = []
-    monkeypatch.setattr(app.model, "add_files", lambda paths: added.append(("bur", list(paths))) or 1)
-    monkeypatch.setattr(app.model, "add_irf_files", lambda paths: added.append(("irf", list(paths))))
+    monkeypatch.setattr(
+        app.model, "add_files", lambda paths: added.append(("bur", list(paths))) or 1
+    )
+    monkeypatch.setattr(
+        app.model, "add_irf_files", lambda paths: added.append(("irf", list(paths)))
+    )
     monkeypatch.setattr(app.model, "add_bg_files", lambda paths: added.append(("bg", list(paths))))
     for key in ("db_files", "db_irf_files", "db_bg_files"):
         app.pickers[key].on_paths([burst_table])

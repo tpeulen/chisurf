@@ -102,8 +102,10 @@ def test_the_check_marks_follow_the_conditions_and_a_run_marks_the_run_step(drv,
             s[5].strip("✓ ").strip(): s[5].startswith("✓")
             for s in drv.draw(2).texts  # noqa: E731
             if s[0] < 200
-            and s[5].strip("✓ ").strip() in ("Welcome", "Loaded data", "Files & fit", "Run", "Results")
+            and s[5].strip("✓ ").strip()
+            in ("Welcome", "Loaded data", "Files & fit", "Run", "Results")
         }
+
     assert marks() == {
         "Welcome": True,
         "Loaded data": True,
@@ -285,11 +287,13 @@ def test_the_wheel_scrolls_a_long_file_list(drv, folder):
     to_step(drv, "files")
     drv.drop(str(folder))
     x, y, w, h = drv.rect("file_rows")
+
     def first():
         return sorted(
             (t for t in drv.draw(2).texts if x <= t[0] <= x + w and y + 20 <= t[1] <= y + h),
             key=lambda t: t[1],
         )[0][5]  # noqa: E731
+
     before = first()
     drv.wheel(x + w / 2, y + h / 2, steps=-5)
     assert first() != before

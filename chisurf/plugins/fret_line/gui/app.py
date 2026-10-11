@@ -5,6 +5,7 @@ The three left tabs (components, sweep, lines), the action bar and the notice ar
 because a spec cannot express them: the live model editor of the selected component (its parameters are the model's own),
 the two plots, the Help / Guide buttons and the file chooser for Save CSV and measured input curves.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,26 +54,66 @@ class FRETLineApp(ImApp):
         self.file_dialog: FileDialog | None = None
         self.file_purpose: tuple = ()
         self.file_window = DialogWindow(tr("File"), size=(700.0, 540.0), key="fret_line_file")
-        self.message_window = DialogWindow(tr("FRET lines"), size=(480.0, 170.0), key="fret_line_notice", fit_height=True)
-        self.help_window = EmTkHelpWindow(title=tr("FRET line - Help"), resource=HERE / "help.md", owner=self)
+        self.message_window = DialogWindow(
+            tr("FRET lines"), size=(480.0, 170.0), key="fret_line_notice", fit_height=True
+        )
+        self.help_window = EmTkHelpWindow(
+            title=tr("FRET line - Help"), resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
-            steps=HERE / "guide.json", owner=self, wait_for_controls=True, on_step_change=self._tour_step,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key))
+            steps=HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            on_step_change=self._tour_step,
+            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+        )
         self.help_window.on_start_guide = self.tour.start
         self.form.on_used = self.tour.notify_used
         self._last_component = self.model.component_index
         self._pending: dict = {}
         self._initial_layout_selected = False
-        self.docks = DockManager(Split("v", 0.9, Split("v", 0.58, Split("h", 0.4, Region("controls"), Region("editor")),
-                                                       Split("h", 0.5, Region("efficiency"), Region("lifetime"))), Region("actions")))
-        self.docks.add_window("your_dyes", tr("Your dyes"), self.draw_your_dyes, dock="controls", closable=False)
-        for key, title, draw in (("components", tr("Components"), self.draw_components), ("sweep", tr("Sweep"), self.draw_sweep),
-                                 ("lines", tr("FRET lines"), self.draw_lines)):
+        self.docks = DockManager(
+            Split(
+                "v",
+                0.9,
+                Split(
+                    "v",
+                    0.58,
+                    Split("h", 0.4, Region("controls"), Region("editor")),
+                    Split("h", 0.5, Region("efficiency"), Region("lifetime")),
+                ),
+                Region("actions"),
+            )
+        )
+        self.docks.add_window(
+            "your_dyes", tr("Your dyes"), self.draw_your_dyes, dock="controls", closable=False
+        )
+        for key, title, draw in (
+            ("components", tr("Components"), self.draw_components),
+            ("sweep", tr("Sweep"), self.draw_sweep),
+            ("lines", tr("FRET lines"), self.draw_lines),
+        ):
             self.docks.add_window(key, title, draw, dock="controls", closable=False)
-        self.docks.add_window("editor", tr("Live model editor"), self.draw_editor, dock="editor", closable=False)
-        self.docks.add_window("efficiency", tr("FRET line"), lambda box: self.plot("e_fret", "E_FRET"), dock="efficiency", closable=False)
-        self.docks.add_window("lifetime", tr("τ_X(τ_F)"), lambda box: self.plot("tau_x", tr("τ_X (ns)")), dock="lifetime", closable=False)
-        self.docks.add_window("actions", tr("Actions"), self.draw_actions, dock="actions", closable=False)
+        self.docks.add_window(
+            "editor", tr("Live model editor"), self.draw_editor, dock="editor", closable=False
+        )
+        self.docks.add_window(
+            "efficiency",
+            tr("FRET line"),
+            lambda box: self.plot("e_fret", "E_FRET"),
+            dock="efficiency",
+            closable=False,
+        )
+        self.docks.add_window(
+            "lifetime",
+            tr("τ_X(τ_F)"),
+            lambda box: self.plot("tau_x", tr("τ_X (ns)")),
+            dock="lifetime",
+            closable=False,
+        )
+        self.docks.add_window(
+            "actions", tr("Actions"), self.draw_actions, dock="actions", closable=False
+        )
         for key in ("components", "sweep", "lines", "editor"):
             self.docks.windows[key].visible = False
         super().__init__(self.render)
@@ -108,8 +149,17 @@ class FRETLineApp(ImApp):
         if not self._initial_layout_selected:
             self._initial_layout_selected = True
             if vp.size[0] < 900:
-                compact = Split("v", 0.9, Split("v", 0.58, Region("controls"),
-                    Split("h", 0.5, Region("efficiency"), Region("lifetime"))), Region("actions"))
+                compact = Split(
+                    "v",
+                    0.9,
+                    Split(
+                        "v",
+                        0.58,
+                        Region("controls"),
+                        Split("h", 0.5, Region("efficiency"), Region("lifetime")),
+                    ),
+                    Region("actions"),
+                )
                 self.docks.configure_default_layout(compact, {"editor": "controls"})
         self.form.rects.clear()
         self.item_rects.clear()
@@ -129,7 +179,11 @@ class FRETLineApp(ImApp):
                 binding.control.select_key(wanted)
         binding = self.form.tables.get(LINES_TABLE)
         if binding is not None and self.model.lines:
-            wanted_line = self.model.lines[self.model.line_index]["name"] if 0 <= self.model.line_index < len(self.model.lines) else None
+            wanted_line = (
+                self.model.lines[self.model.line_index]["name"]
+                if 0 <= self.model.line_index < len(self.model.lines)
+                else None
+            )
             if binding.control.selected_key != wanted_line:
                 binding.control.select_key(wanted_line)
         for name in (COMPONENTS_TABLE, LINES_TABLE):
@@ -139,7 +193,6 @@ class FRETLineApp(ImApp):
     # -- the spec windows -------------------------------------------------------------------------- #
     def _sections(self, name: str) -> list:
         return self.panels[name]["sections"]
-
 
     def draw_your_dyes(self, box: Any) -> None:
         """Draw the declared pair starter and folded expert navigation."""
@@ -176,14 +229,22 @@ class FRETLineApp(ImApp):
     def _requests(self) -> None:
         request, self.model.request = self.model.request, ""
         if request == "save" and self.file_dialog is None:
-            self.file_dialog = FileDialog(tr("Save FRET lines"), mode="save", filename="fret_lines.csv", filters=tr("CSV (*.csv)"))
+            self.file_dialog = FileDialog(
+                tr("Save FRET lines"),
+                mode="save",
+                filename="fret_lines.csv",
+                filters=tr("CSV (*.csv)"),
+            )
             self.file_purpose = ("save",)
             self.file_window.title = tr("Save FRET lines")
             self.file_window.show()
 
     def choose_input(self, slot: str) -> None:
-        self.file_dialog = FileDialog(tr("Load {slot}").format(slot=slot), mode="open",
-                                      filters=tr("Curves (*.csv *.txt *.dat *.tsv *.pto);;All files (*)"))
+        self.file_dialog = FileDialog(
+            tr("Load {slot}").format(slot=slot),
+            mode="open",
+            filters=tr("Curves (*.csv *.txt *.dat *.tsv *.pto);;All files (*)"),
+        )
         self.file_purpose = ("input", self.model.selected["model"], slot)
         self.file_window.title = tr("Load {slot}").format(slot=slot)
         self.file_window.show()
@@ -233,19 +294,38 @@ class FRETLineApp(ImApp):
     def draw_inputs(self, model: Any) -> None:
         slots = model.dataset_slots()
         expanded = im.collapsing_header(tr("Input curves"))
-        im.set_item_tooltip(tr("Load or unload measured IRF, background and correction curves for this model."))
+        im.set_item_tooltip(
+            tr("Load or unload measured IRF, background and correction curves for this model.")
+        )
         if not expanded:
             return
         curves = self.input_curves()
         for slot in slots:
             im.push_id(slot)
             source = getattr(model.datasets, slot, None)
-            im.text_wrapped(slot + ": " + (getattr(source, "name", tr("Measured curve")) if source is not None else tr("not loaded")))
+            im.text_wrapped(
+                slot
+                + ": "
+                + (
+                    getattr(source, "name", tr("Measured curve"))
+                    if source is not None
+                    else tr("not loaded")
+                )
+            )
             if curves:
                 index = min(self.input_selection.get(slot, 0), len(curves) - 1)
-                _, index = im.combo(tr("Reference curve"), index, [getattr(c, "name", tr("Curve {number}").format(number=i + 1)) for i, c in enumerate(curves)])
+                _, index = im.combo(
+                    tr("Reference curve"),
+                    index,
+                    [
+                        getattr(c, "name", tr("Curve {number}").format(number=i + 1))
+                        for i, c in enumerate(curves)
+                    ],
+                )
                 self.input_selection[slot] = index
-                im.set_item_tooltip(tr("Select an already imported experimental curve for this model input."))
+                im.set_item_tooltip(
+                    tr("Select an already imported experimental curve for this model input.")
+                )
                 if im.button(tr("Use selected curve")):
                     self._guarded(self.model.bind_input, slot, curves[index])
                 im.set_item_tooltip(tr("Bind this experimental curve to the model input."))
@@ -256,7 +336,9 @@ class FRETLineApp(ImApp):
             im.begin_disabled(source is None)
             if im.button(tr("Unload curve")):
                 self.model.unload_input(slot)
-            im.set_item_tooltip(tr("Remove this measured input; unloading an IRF restores the modelled response."))
+            im.set_item_tooltip(
+                tr("Remove this measured input; unloading an IRF restores the modelled response.")
+            )
             im.end_disabled()
             im.pop_id()
 
@@ -292,19 +374,37 @@ class FRETLineApp(ImApp):
         if not references:
             im.begin_disabled()
             im.combo(tr("Donor reference"), 0, [tr("No live donor references")])
-            im.set_item_tooltip(tr("Open a donor-only fit or register a lifetime working model to populate the reference list."))
+            im.set_item_tooltip(
+                tr(
+                    "Open a donor-only fit or register a lifetime working model to populate the reference list."
+                )
+            )
             im.end_disabled()
         else:
             self.reference_index = min(self.reference_index, len(references) - 1)
-            _, self.reference_index = im.combo(tr("Donor reference"), self.reference_index, [r[0] for r in references])
-            im.set_item_tooltip(tr("Use a donor / lifetime spectrum from a live fit or registered model as the donor-only reference."))
+            _, self.reference_index = im.combo(
+                tr("Donor reference"), self.reference_index, [r[0] for r in references]
+            )
+            im.set_item_tooltip(
+                tr(
+                    "Use a donor / lifetime spectrum from a live fit or registered model as the donor-only reference."
+                )
+            )
             if im.button(tr("Apply donor reference")):
                 self._guarded(m.apply_donor_reference, references[self.reference_index][1])
-            im.set_item_tooltip(tr("Copy the reference amplitudes and lifetimes into this component; the source stays unchanged."))
+            im.set_item_tooltip(
+                tr(
+                    "Copy the reference amplitudes and lifetimes into this component; the source stays unchanged."
+                )
+            )
         subcomponents_open = True
         if im.get_main_viewport().size[0] < 900:
             subcomponents_open = im.collapsing_header(tr("Subcomponents"))
-            im.set_item_tooltip(tr("Add or remove donor lifetimes, distance distributions and rotational components."))
+            im.set_item_tooltip(
+                tr(
+                    "Add or remove donor lifetimes, distance distributions and rotational components."
+                )
+            )
             self.item_rects["subcomponents"] = im.get_item_rect()
         if subcomponents_open:
             for group_name, group in model._groups.items():
@@ -313,24 +413,36 @@ class FRETLineApp(ImApp):
                     im.text_unformatted(tr(group_name))
                     if im.button(tr("Add subcomponent")):
                         model.change_components(group_name, 1)
-                    im.set_item_tooltip(tr("Add an independent {group} component.").format(group=group_name))
+                    im.set_item_tooltip(
+                        tr("Add an independent {group} component.").format(group=group_name)
+                    )
                     im.same_line()
                     if im.button(tr("Remove subcomponent")):
                         model.remove_component(group_name)
-                    im.set_item_tooltip(tr("Remove the last {group} component; one stays.").format(group=group_name))
+                    im.set_item_tooltip(
+                        tr("Remove the last {group} component; one stays.").format(group=group_name)
+                    )
                     im.pop_id()
         settings_open = im.collapsing_header(tr("Model settings"))
-        im.set_item_tooltip(tr("Scalar settings that define the model's topology and numerical evaluation."))
+        im.set_item_tooltip(
+            tr("Scalar settings that define the model's topology and numerical evaluation.")
+        )
         if settings_open:
             for name in model.scalar_names():
                 value = model.get_scalar(name)
                 if value is None:
                     continue
                 new, problem = typed_number_field(
-                    f"scalar.{m.component_index}.{name}", float(value), self._number_buffers, integer=False, label=name
+                    f"scalar.{m.component_index}.{name}",
+                    float(value),
+                    self._number_buffers,
+                    integer=False,
+                    label=name,
                 )
                 self.item_rects[f"scalar.{name}"] = im.get_item_rect()
-                im.set_item_tooltip(tr("{name}: scalar configuration of the model.").format(name=name))
+                im.set_item_tooltip(
+                    tr("{name}: scalar configuration of the model.").format(name=name)
+                )
                 if problem:
                     self.error = f"{name}: {problem}"
                 if new is not None:
@@ -362,12 +474,16 @@ class FRETLineApp(ImApp):
                 if line["visible"]:
                     implot.set_next_line_style(hex_rgba(line["color"]), 2.0)
                     implot.plot_line(line["name"], line["result"]["tau_f"], line["result"][key])
-            if key == "tau_x":  # the diagonal tau_X = tau_F: the lifetime of a species that does not exchange
+            if (
+                key == "tau_x"
+            ):  # the diagonal tau_X = tau_F: the lifetime of a species that does not exchange
                 ref = float(self.model.tau_d0) or 1.0
                 implot.set_next_line_style((170, 170, 170, 255), 1.0)
                 implot.plot_line(tr("τ_X = τ_F"), [0.0, ref], [0.0, ref])
             implot.end_plot()
-            im.set_item_tooltip(tr("The computed lines; hide or remove them in the FRET lines tab."))
+            im.set_item_tooltip(
+                tr("The computed lines; hide or remove them in the FRET lines tab.")
+            )
         self.item_rects["plot_" + key] = im.get_item_rect()
 
     # -- settings and the tour ----------------------------------------------------------------------- #

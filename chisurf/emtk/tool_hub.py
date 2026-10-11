@@ -71,7 +71,9 @@ def _with_maturity(panel: dict) -> dict:
     if panel.get("separator") or not panel.get("plugin"):
         return panel
     try:
-        data = json.loads((PLUGINS / str(panel["plugin"]) / "manifest.json").read_text(encoding="utf-8"))
+        data = json.loads(
+            (PLUGINS / str(panel["plugin"]) / "manifest.json").read_text(encoding="utf-8")
+        )
     except (OSError, ValueError):
         return panel
     for flag, (_mark, default) in MATURITY.items():
@@ -115,9 +117,18 @@ class ToolHubApp(ImApp):
         self._setup_handed: dict[str, str] = {}
         panels = list(panels)
         if self.uses_setup and not any(p.get("role") == "setup" for p in panels):
-            panels.insert(0, {"name": "0. Setup", "role": "setup", "optional": True,
-                              "factory": self._make_setup_step,
-                              "description": tr("Detector setup shared by every step: routing, PIE windows and LUTs.")})
+            panels.insert(
+                0,
+                {
+                    "name": "0. Setup",
+                    "role": "setup",
+                    "optional": True,
+                    "factory": self._make_setup_step,
+                    "description": tr(
+                        "Detector setup shared by every step: routing, PIE windows and LUTs."
+                    ),
+                },
+            )
         self.panels = [_with_icon(_with_maturity(dict(p))) for p in panels]
         self.tools = [p for p in self.panels if not p.get("separator")]
         self.selected = initial or (self.tools[0]["role"] if self.tools else None)
@@ -189,8 +200,9 @@ class ToolHubApp(ImApp):
     def _construct(self, panel: dict) -> tuple[Any, str, str]:
         """Make a tool: ``(child, route, error)``. Runs on the UI thread or on the build thread; touches no hub state."""
         try:
-            factory, route = (plugin_factory(panel) if callable(panel.get("factory"))
-                              else self.resolver(panel))
+            factory, route = (
+                plugin_factory(panel) if callable(panel.get("factory")) else self.resolver(panel)
+            )
             if factory is None:
                 return None, route, "This tool has no native emtk app yet."
             return factory(), route, ""
@@ -214,10 +226,16 @@ class ToolHubApp(ImApp):
 
     def _start_build(self, role: str) -> None:
         """Make *role* (and what it :meth:`requires`) on a worker thread; :meth:`_collect_build` adopts it."""
-        panels = [p for r in self.requires(role) for p in self.tools
-                  if p["role"] == r and r not in self.children and r not in self.errors]
-        self._builder.start({p["role"]: (lambda p=p: self._construct(p)) for p in panels},
-                            name=f"chisurf-hub-{role}")
+        panels = [
+            p
+            for r in self.requires(role)
+            for p in self.tools
+            if p["role"] == r and r not in self.children and r not in self.errors
+        ]
+        self._builder.start(
+            {p["role"]: (lambda p=p: self._construct(p)) for p in panels},
+            name=f"chisurf-hub-{role}",
+        )
 
     def _collect_build(self, wait: bool = False) -> bool:
         """Adopt a finished background build (with *wait*, finish it first); whether one was adopted."""
@@ -261,6 +279,7 @@ class ToolHubApp(ImApp):
                     editors.append(value)
         if not editors:
             raise ValueError(f"Setup-using child {role!r} has no detector editor.")
+
         def can_apply():
             for owner in (child, getattr(child, "controller", None), getattr(child, "tool", None)):
                 for target in (owner, getattr(owner, "job", None)):
@@ -270,8 +289,9 @@ class ToolHubApp(ImApp):
 
         rebound = any(editor.model is not self.setup_model for editor in editors)
         for editor in editors:
-            editor.host(self.setup_model, on_edit_setup=lambda: self.select("setup"),
-                        can_apply=can_apply)
+            editor.host(
+                self.setup_model, on_edit_setup=lambda: self.select("setup"), can_apply=can_apply
+            )
         self._hosted[role] = editors
         if rebound:
             self._setup_handed.pop(role, None)
@@ -308,7 +328,10 @@ class ToolHubApp(ImApp):
             else:
                 self.status = "Ready"
         if by_user:
-            self._ff_queue, self._pending_next = [], False  # picking a step by hand stops a fast-forward
+            self._ff_queue, self._pending_next = (
+                [],
+                False,
+            )  # picking a step by hand stops a fast-forward
             self.tour.notify_used(panel["name"])
             self.tour.notify_used("nav." + role)
             if self.tour.active:  # a step names its panel by a part of the name ("Files & Steps")
@@ -410,7 +433,9 @@ class ToolHubApp(ImApp):
         """A step's target: a control of the hub, a rail row (by part of its name), or a control of the open tool."""
         if key in self.item_rects:
             return self.item_rects[key]
-        panel = next((p for p in self.tools if key and key.casefold() in p["name"].casefold()), None)
+        panel = next(
+            (p for p in self.tools if key and key.casefold() in p["name"].casefold()), None
+        )
         if panel is not None:
             return self.item_rects.get("nav." + panel["role"])
         child = self.child
@@ -427,7 +452,9 @@ class ToolHubApp(ImApp):
             return
         target = step.get("target") or {}
         target = target.get("panel", "") if isinstance(target, dict) else ""
-        panel = next((p for p in self.tools if target and target.casefold() in p["name"].casefold()), None)
+        panel = next(
+            (p for p in self.tools if target and target.casefold() in p["name"].casefold()), None
+        )
         if panel and not step.get("await"):
             self.select(panel["role"], by_user=False)
 
@@ -438,7 +465,8 @@ class ToolHubApp(ImApp):
         return [
             p
             for p in self.tools
-            if query in (tr(p["name"]) + " " + tr(p.get("description", "")) + " " + p["role"]).casefold()
+            if query
+            in (tr(p["name"]) + " " + tr(p.get("description", "")) + " " + p["role"]).casefold()
         ]
 
     def show_child_help(self):
@@ -462,9 +490,15 @@ class ToolHubApp(ImApp):
     def draw(self, painter, x, y, w, h):
         self._painter = painter
         if self._collect_build() and self.selected in self.children:
-            self.select(self.selected, by_user=False)  # the tool landed: hand it the workflow, as a selection does
-        if (self.selected and self.selected not in self.children and self.selected not in self.errors
-                and not self.building):
+            self.select(
+                self.selected, by_user=False
+            )  # the tool landed: hand it the workflow, as a selection does
+        if (
+            self.selected
+            and self.selected not in self.children
+            and self.selected not in self.errors
+            and not self.building
+        ):
             self._start_build(self.selected)
         try:
             super().draw(painter, x, y, w, h)
@@ -521,18 +555,28 @@ class ToolHubApp(ImApp):
         im.end()
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, HEADER), im.Cond.ALWAYS)
-        if im.begin(f"{self.title} destination", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            f"{self.title} destination",
+            flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE,
+        ):
             if self.panel:
                 im.text_unformatted(tr(self.panel["name"]))
                 im.same_line()
                 if action_button("help", id="tool_help"):
                     self.show_child_help()
                 self.item_rects["tool_help"] = im.get_item_rect()
-                banners = [self.panel[flag + "_message"] for flag in MATURITY if self.panel.get(flag)]
+                banners = [
+                    self.panel[flag + "_message"] for flag in MATURITY if self.panel.get(flag)
+                ]
                 if banners:
                     im.push_style_color(im.Col.TEXT, (240, 190, 60, 255))
-                    im.text_wrapped(MATURITY["experimental" if self.panel.get("experimental") else "deprecated"][0]
-                                    + " " + tr(" ".join(banners)))
+                    im.text_wrapped(
+                        MATURITY[
+                            "experimental" if self.panel.get("experimental") else "deprecated"
+                        ][0]
+                        + " "
+                        + tr(" ".join(banners))
+                    )
                     im.pop_style_color(1)
                     self.item_rects["maturity"] = im.get_item_rect()
                 else:
@@ -541,7 +585,9 @@ class ToolHubApp(ImApp):
         self.child_box = (left, HEADER, max(1.0, width - left), max(1.0, height - HEADER - BAR))
         im.set_next_window_pos((left, height - BAR), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, BAR), im.Cond.ALWAYS)
-        if im.begin(f"{self.title} status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            f"{self.title} status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             buttons_x = max(120.0, width - left - 230.0)
             # The status keeps to the room left of Back / >> / Next (cut, whole text as tooltip):
             # it must not run under the buttons, however long a step's message is.
@@ -559,8 +605,12 @@ class ToolHubApp(ImApp):
                 if im.button(tr("Stop") if self.fast_forwarding else ">>"):
                     self.fast_forward()
                 self.item_rects["fast_forward"] = im.get_item_rect()
-                im.set_item_tooltip(tr("Fast-forward: run every remaining step of this group in order, waiting for "
-                                       "each to finish. Press again to stop after the current step."))
+                im.set_item_tooltip(
+                    tr(
+                        "Fast-forward: run every remaining step of this group in order, waiting for "
+                        "each to finish. Press again to stop after the current step."
+                    )
+                )
                 im.same_line()
             im.begin_disabled(not self._neighbour(1))
             if im.button(tr("Next")):
@@ -619,18 +669,24 @@ class ToolHubApp(ImApp):
         self._child_capture = self._child_focus
         super().pointer_press(x, y, button, modifiers, clicks)
         if self.child and self._child_capture:
-            self.child.pointer_press(x - self.child_box[0], y - self.child_box[1], button, modifiers, clicks)
+            self.child.pointer_press(
+                x - self.child_box[0], y - self.child_box[1], button, modifiers, clicks
+            )
 
     def pointer_release(self, x, y, button, modifiers=0):
         super().pointer_release(x, y, button, modifiers)
         if self.child and self._child_capture:
-            self.child.pointer_release(x - self.child_box[0], y - self.child_box[1], button, modifiers)
+            self.child.pointer_release(
+                x - self.child_box[0], y - self.child_box[1], button, modifiers
+            )
         self._child_capture = False
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
         if self.child:
-            self.child.pointer_move(x - self.child_box[0], y - self.child_box[1], buttons, modifiers)
+            self.child.pointer_move(
+                x - self.child_box[0], y - self.child_box[1], buttons, modifiers
+            )
 
     def wheel(self, x, y, steps, modifiers=0):
         if self.child and self._inside(x, y) and not self._overlay_open(x, y):
@@ -679,9 +735,9 @@ class ToolHubApp(ImApp):
                 children[role] = export()
         state = {"selected": self.selected, "children": children}
         if self.uses_setup:
-            state["setup"] = json.loads(json.dumps(
-                self.setup_model.get_settings(), default=lambda value: value.tolist()
-            ))
+            state["setup"] = json.loads(
+                json.dumps(self.setup_model.get_settings(), default=lambda value: value.tolist())
+            )
         return state
 
     def restore_settings(self, state):
@@ -696,9 +752,15 @@ class ToolHubApp(ImApp):
         for role, data in (state or {}).get("children", {}).items():
             if role in roles:
                 child = self.ensure_child(role)
-                restore = getattr(child, "restore_settings", None) or getattr(child, "restore_state", None)
+                restore = getattr(child, "restore_settings", None) or getattr(
+                    child, "restore_state", None
+                )
                 if callable(restore):
-                    if role == "setup" and isinstance((state or {}).get("setup"), dict) and getattr(child, "model", None) is self.setup_model:
+                    if (
+                        role == "setup"
+                        and isinstance((state or {}).get("setup"), dict)
+                        and getattr(child, "model", None) is self.setup_model
+                    ):
                         child.page.restore_state(data.get("page", data))
                         child.autoload = False
                         continue

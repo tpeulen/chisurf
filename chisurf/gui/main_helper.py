@@ -719,7 +719,9 @@ class SetupMixin:
         if not isinstance(widget, QtWidgets.QWidget):
             reader = self.current_setup
             if not callable(getattr(reader, "view_spec", None)):
-                cs.logging.warning("the reader %r declares no settings view", getattr(reader, "name", reader))
+                cs.logging.warning(
+                    "the reader %r declares no settings view", getattr(reader, "name", reader)
+                )
                 self._current_setup_idx = self.comboBox_setupSelect.currentIndex()
                 return
             from emtk.qt_host import ControlHost
@@ -1462,7 +1464,9 @@ class HistoryMixin:
             # Undo/Redo follow every recorded edit, not only a navigation: an action that was last synced
             # before the first edit would stay disabled (and with it Ctrl+Z).
             try:
-                browser.historyChanged.connect(lambda _state: self._sync_history_navigation_actions())
+                browser.historyChanged.connect(
+                    lambda _state: self._sync_history_navigation_actions()
+                )
             except Exception:
                 pass
             self._sync_history_navigation_actions()

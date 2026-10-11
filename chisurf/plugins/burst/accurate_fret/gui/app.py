@@ -272,7 +272,9 @@ class AccurateFretGui(TourTarget):
             im.text(tr("Spectra database path:"))
             changed, path = im.input_text("##accurate_db", self.model.database_path or "")
             im.set_item_tooltip(
-                tr("Optional MMFDB database path for dyes and saved optical priors; empty uses the configured database.")
+                tr(
+                    "Optional MMFDB database path for dyes and saved optical priors; empty uses the configured database."
+                )
             )
             if changed:
                 self.model.database_path = path or None
@@ -473,9 +475,7 @@ class AccurateFretApp(ImApp):
         setup_model=None,
         db_path=None,
     ):
-        specification = json.loads(
-            Path(__file__).with_name("accurate_fret.view.json").read_text()
-        )
+        specification = json.loads(Path(__file__).with_name("accurate_fret.view.json").read_text())
         self.window_size = window_size(specification, (1100, 720))
         self.model = model or AccurateFretViewModel()
         self.controller = AccurateFretController(

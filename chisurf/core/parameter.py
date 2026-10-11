@@ -821,7 +821,6 @@ class Parameter(chisurf.core.base.Base):
             # Parameters without a concrete update hook simply ignore this.
             pass
 
-
     def _file_payload(self) -> dict:
         """Build a standalone scalar file, never a repr of its live native port."""
         if self.is_linked or self._callable:

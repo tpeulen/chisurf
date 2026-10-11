@@ -1,4 +1,5 @@
 """Keep plotting objects owned by the test that created them."""
+
 from contextlib import contextmanager
 
 import pytest

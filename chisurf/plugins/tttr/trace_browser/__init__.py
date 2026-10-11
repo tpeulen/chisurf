@@ -47,7 +47,9 @@ def __getattr__(attribute: str) -> Any:
 
 # When the plugin is loaded as a module with __name__ == "plugin",
 # this code will be executed by the Plugin Manager
-if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+if (
+    __name__ == "plugin"
+):  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
     from emtk.qt_host import ControlHost
 
     from chisurf.plugins.tttr.trace_browser.gui.app import make_app

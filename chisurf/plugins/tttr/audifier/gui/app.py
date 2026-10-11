@@ -633,7 +633,9 @@ class AudifierApp(TourTarget, ImApp):
         self.editor.draw()
         if im.button(tr("Update channels")):
             self.update_channels()
-        im.set_item_tooltip(tr("Rebuild detector colours and audio channels from the current setup."))
+        im.set_item_tooltip(
+            tr("Rebuild detector colours and audio channels from the current setup.")
+        )
         self.remember("update_channels")
         im.end_disabled()
 
@@ -648,7 +650,9 @@ class AudifierApp(TourTarget, ImApp):
     def draw_mixer(self, box, detectors=True):
         if detectors:
             if not self.model.detectors:
-                im.text_wrapped(tr("Load a stream or define detectors to choose the detector colours."))
+                im.text_wrapped(
+                    tr("Load a stream or define detectors to choose the detector colours.")
+                )
                 return
             form = self.table_forms["detectors"]
             form.rects.clear()
@@ -756,7 +760,9 @@ class AudifierApp(TourTarget, ImApp):
         payload = self.model.waterfall_payload()
         if self.texture is None or not payload:
             im.text_wrapped(
-                tr("Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility.")
+                tr(
+                    "Update computes a waterfall using the enabled detectors. Audio channel selection is independent of detector visibility."
+                )
             )
             self.remember("empty_waterfall")
             return
@@ -780,8 +786,10 @@ class AudifierApp(TourTarget, ImApp):
                 )
             implot.end_plot()
             im.set_item_tooltip(
-                tr("Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. "
-                "Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans.")
+                tr(
+                    "Horizontal axis: elapsed macro-time; vertical axis: micro-time bins or lifetime. "
+                    "Brightness encodes amplitude and hue identifies detectors. Wheel zooms, drag pans."
+                )
             )
             self.remember("waterfall_plot")
 

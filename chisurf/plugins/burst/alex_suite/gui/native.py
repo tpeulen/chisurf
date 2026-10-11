@@ -125,9 +125,21 @@ STEPS: list[dict[str, Any]] = [
 ]
 
 #: The E–S step's axes, in order of preference (ndX's equations name them; the first one a table has wins).
-ES_X = ("FRET efficiency (accurate)", "FRET efficiency(ALEX)", "FRET efficiency(PIE)", "FRET efficiency",
-        "Proximity ratio(PIE)", "Proximity ratio")
-ES_Y = ("Stoichiometry (accurate)", "Stoichiometry (ALEX)", "Stoichiometry (PIE)", "Sapp(PIE,S)", "Stoichiometry")
+ES_X = (
+    "FRET efficiency (accurate)",
+    "FRET efficiency(ALEX)",
+    "FRET efficiency(PIE)",
+    "FRET efficiency",
+    "Proximity ratio(PIE)",
+    "Proximity ratio",
+)
+ES_Y = (
+    "Stoichiometry (accurate)",
+    "Stoichiometry (ALEX)",
+    "Stoichiometry (PIE)",
+    "Sapp(PIE,S)",
+    "Stoichiometry",
+)
 
 #: What the status line asks for on each step (before anything else it says).
 NEEDS = {
@@ -391,11 +403,19 @@ class AlexHubApp(BurstAnalysisHubApp):
         child = self.child
         if child is None:
             return False
-        if self._pending_table and self.selected == "accurate_fret" and not child.controller.running:
+        if (
+            self._pending_table
+            and self.selected == "accurate_fret"
+            and not child.controller.running
+        ):
             table, self._pending_table = self._pending_table, ""
             if self._changed("accurate_fret", "table", table):
                 child.controller.load(table)
-        if self._pending_calibration and self.selected == "accurate_fret" and not child.controller.running:
+        if (
+            self._pending_calibration
+            and self.selected == "accurate_fret"
+            and not child.controller.running
+        ):
             self._pending_calibration = False
             if child.model.result is None and child.model.can_run() is None:
                 child.controller.run()
@@ -438,7 +458,10 @@ class AlexHubApp(BurstAnalysisHubApp):
                 return "Nothing to convert (PIE); Next."
         if role == "selection" and ctx.burst_folder is not None:
             return "Bursts found; Next (Restart searches again)."
-        if role == "accurate_fret" and getattr(getattr(child, "model", None), "result", None) is not None:
+        if (
+            role == "accurate_fret"
+            and getattr(getattr(child, "model", None), "result", None) is not None
+        ):
             return "Calibrated; Next opens the E–S map."
         return NEEDS.get(role, "")
 

@@ -40,7 +40,9 @@ def test_native_correlation_publishes_real_fits_and_preserves_on_cancel(tmp_path
     from pathlib import Path
 
     raw = tmp_path / "measurement.spc"
-    shutil.copyfile(Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc", raw)
+    shutil.copyfile(
+        Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc", raw
+    )
     bst = tmp_path / "measurement.spc.bst"
     bst.write_text("0 100\n")
     ctrl.add_files([bst])

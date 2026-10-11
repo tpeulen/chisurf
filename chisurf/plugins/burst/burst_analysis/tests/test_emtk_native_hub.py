@@ -67,7 +67,9 @@ def _busy(child) -> bool:
 def settle(drv, timeout=240.0) -> None:
     end = time.monotonic() + timeout
     drv.draw(2)
-    while (any(_busy(c) for c in drv.app.children.values()) or drv.app._pending_next) and time.monotonic() < end:
+    while (
+        any(_busy(c) for c in drv.app.children.values()) or drv.app._pending_next
+    ) and time.monotonic() < end:
         time.sleep(0.05)
         drv.draw(1)
     drv.draw(2)
@@ -96,8 +98,12 @@ def test_the_rail_is_the_legacy_panel_table():
     """Same steps, same order, same names and roles as the retired Qt shell's BURST_PANELS (qt_reference.json)."""
     from chisurf.plugins.burst.burst_analysis.gui.native import STEPS
 
-    recorded = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
-    native = [(p["role"], p["name"], bool(p.get("optional"))) for p in STEPS if not p.get("separator")]
+    recorded = json.loads(
+        (Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8")
+    )
+    native = [
+        (p["role"], p["name"], bool(p.get("optional"))) for p in STEPS if not p.get("separator")
+    ]
     legacy = [
         (p["role"], p["name"], bool(p.get("optional")))
         for p in recorded["BURST_PANELS"]
@@ -134,16 +140,33 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
     assert [p.name for p in ctx.bur_files] == ["m000.bur", "m001.bur"]
     assert "2. Burst Selection (2)" in [p["name"] for p in hub.tools]  # the rail's badge
 
-    for role in ("bva", "two_cde", "mle", "h2mm", "segment_mle", "browser", "accurate_fret", "burst_fcs",
-                 "burst_gs", "background", "irf_bg"):
+    for role in (
+        "bva",
+        "two_cde",
+        "mle",
+        "h2mm",
+        "segment_mle",
+        "browser",
+        "accurate_fret",
+        "burst_fcs",
+        "burst_gs",
+        "background",
+        "irf_bg",
+    ):
         hub.select(role)
         settle(drv)
         assert hub.errors.get(role) is None, (role, hub.errors.get(role))
     c = hub.children
     assert c["bva"].model.analysis_folder == ctx.burst_folder
-    assert (c["bva"].model.donor_channels_text, c["bva"].model.acceptor_channels_text) == ("0,1", "8,9")
+    assert (c["bva"].model.donor_channels_text, c["bva"].model.acceptor_channels_text) == (
+        "0,1",
+        "8,9",
+    )
     assert c["two_cde"].model.folder == str(ctx.burst_folder)
-    assert (c["two_cde"].model.donor_channels_text, c["two_cde"].model.file_type) == ("0,1", "SPC-130")
+    assert (c["two_cde"].model.donor_channels_text, c["two_cde"].model.file_type) == (
+        "0,1",
+        "SPC-130",
+    )
     for role, split in (("mle", False), ("segment_mle", True)):
         assert c[role].model.n_bursts == 198
         assert c[role].model.detector_names() == ["green", "red"]
@@ -158,9 +181,15 @@ def test_the_workflow_hands_every_step_its_input(hub, files):
         "Number of Photons (red)",
     )
     assert c["burst_fcs"].controller.files == [str(ctx.burst_folder)]
-    assert [p["pair_name"] for p in c["burst_fcs"].controller._pair_presets] == ["green_ACF", "red_ACF"]
+    assert [p["pair_name"] for p in c["burst_fcs"].controller._pair_presets] == [
+        "green_ACF",
+        "red_ACF",
+    ]
     assert [Path(p).name for p in c["burst_gs"].model.bur_files] == ["m000.bur", "m001.bur"]
-    assert (c["burst_gs"].model.donor_channels, c["burst_gs"].model.acceptor_channels) == ("0, 1", "8, 9")
+    assert (c["burst_gs"].model.donor_channels, c["burst_gs"].model.acceptor_channels) == (
+        "0, 1",
+        "8, 9",
+    )
     assert [Path(p).name for p in c["background"].model.files] == ["m000.spc", "m001.spc"]
     assert c["background"].model.diagnostics  # estimated on arrival, as the Qt step does
     assert [Path(p).name for p in c["irf_bg"].model.files] == ["m000.spc", "m001.spc"]
@@ -177,7 +206,9 @@ def test_a_fused_folder_redirects_the_later_steps(hub, files, tmp_path):
     drv.draw(2)
     fusion = hub.children["fusion"]
     assert fusion.model.folder_written is not None
-    fusion.model.folder_written(str(fused))  # what the step's Fuse button announces when it wrote its folder
+    fusion.model.folder_written(
+        str(fused)
+    )  # what the step's Fuse button announces when it wrote its folder
     assert hub.context.burst_folder == fused
     assert hub.children["bva"].model.analysis_folder == fused  # an open step follows at once
     # a new search supersedes the fusion
@@ -190,7 +221,11 @@ def test_send_to_mle_reaches_both_mle_steps(hub, files):
     for role in ("mle", "segment_mle"):
         hub.select(role)
         drv.draw(2)
-    n = hub.children["mle"].model.session.decay.size if hub.children["mle"].model.session.decay is not None else 64
+    n = (
+        hub.children["mle"].model.session.decay.size
+        if hub.children["mle"].model.session.decay is not None
+        else 64
+    )
     patterns = {"green": {"irf": np.ones(n), "bg": np.full(n, 0.5)}}
     assert hub.apply_irf_background_to_mle(patterns) == 1
     for role in ("mle", "segment_mle"):
@@ -284,5 +319,7 @@ print('QT-FREE OK')
         MMFDB_SETTINGS_DIR=str(tmp_path),
         MMFDB_DATABASE_PATH=str(tmp_path / "mmfdb.sqlite"),
     )
-    done = subprocess.run([sys.executable, "-c", script], cwd=repo, env=env, capture_output=True, text=True)
+    done = subprocess.run(
+        [sys.executable, "-c", script], cwd=repo, env=env, capture_output=True, text=True
+    )
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, (done.stdout + done.stderr)[-3000:]

@@ -202,7 +202,9 @@ def display_frame(frames: list, file_indices: list[int] | None = None):
     for index, frame in enumerate(frames):
         # ``.copy()`` is load-bearing: "File Idx" is added below, and ``as_table`` hands a store straight back.
         tagged = as_table(frame).copy()
-        which = file_indices[index] if file_indices is not None and index < len(file_indices) else index
+        which = (
+            file_indices[index] if file_indices is not None and index < len(file_indices) else index
+        )
         tagged["File Idx"] = np.full(row_count(tagged), which, dtype=np.int64)
         indexed.append(tagged)
     ui_frame = make_ui_dataframe(concat_stores(indexed))

@@ -1188,7 +1188,9 @@ def run(directory, stage, report):
         ]
         structural = None
         display_fits = [
-            member for member in _members(cs.fits) if type(member.model).__name__ == "AcquisitionModel"
+            member
+            for member in _members(cs.fits)
+            if type(member.model).__name__ == "AcquisitionModel"
         ]
         if not changes and display_fits:
             # A parameterless display model (AcquisitionModel): there is no
@@ -1231,7 +1233,9 @@ def run(directory, stage, report):
             assert owners, "edited parameter has no owning fit"
             owner_ids = {id(member) for member in owners}
             assert [scientific_observables(member) for member in owners] != [
-                before for member, before in zip(_members(cs.fits), actual) if id(member) in owner_ids
+                before
+                for member, before in zip(_members(cs.fits), actual)
+                if id(member) in owner_ids
             ], "GUI edit did not recompute the owning fit"
         changed = [scientific_observables(fit) for fit in _members(cs.fits)]
         expected_second = json.loads((directory / "expected-1.json").read_text())

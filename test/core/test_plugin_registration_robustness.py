@@ -24,7 +24,9 @@ class _Loader:
 
 
 def _manifest(plugin_id, entrypoint):
-    return PluginManifest.from_dict({"id": plugin_id, "version": "1", "entrypoints": {"cli": entrypoint}})
+    return PluginManifest.from_dict(
+        {"id": plugin_id, "version": "1", "entrypoints": {"cli": entrypoint}}
+    )
 
 
 @pytest.mark.parametrize("entrypoint", ["public-alias=example:command", "example:command"])
@@ -117,9 +119,13 @@ def test_service_registration_is_all_or_nothing(failure, caplog):
     loader = _Loader({"broken:register": broken, "healthy:register": healthy})
     registry = PluginRegistry(loader)
     registry._manifests = {
-        name: PluginManifest.from_dict({
-            "id": name, "version": "1", "entrypoints": {"services": f"{name}:register"},
-        })
+        name: PluginManifest.from_dict(
+            {
+                "id": name,
+                "version": "1",
+                "entrypoints": {"services": f"{name}:register"},
+            }
+        )
         for name in ("broken", "healthy")
     }
     registry.register_services(dispatcher)
@@ -128,7 +134,6 @@ def test_service_registration_is_all_or_nothing(failure, caplog):
     assert dispatcher.dispatch("healthy.ping")["result"] == "healthy"
     assert not dispatcher.dispatch("broken.partial")["ok"]
     assert "broken" in caplog.text
-
 
 
 def test_staged_services_are_visible_only_to_registering_thread():
@@ -165,7 +170,9 @@ def test_transaction_rechecks_concurrent_collision_at_commit():
             dispatcher.register("shared.ping", lambda _: {"ok": True, "result": "staged"})
             with ThreadPoolExecutor(max_workers=1) as executor:
                 executor.submit(
-                    dispatcher.register, "shared.ping", lambda _: {"ok": True, "result": "concurrent"},
+                    dispatcher.register,
+                    "shared.ping",
+                    lambda _: {"ok": True, "result": "concurrent"},
                 ).result(timeout=5)
     assert dispatcher.list_methods() == ["shared.ping"]
     assert dispatcher.dispatch("shared.ping")["result"] == "concurrent"
@@ -209,13 +216,18 @@ def test_legacy_duck_typed_dispatcher_still_receives_registration():
         dispatcher.register("legacy.ping", lambda _: {"ok": True})
 
     registry = PluginRegistry(_Loader({"legacy:register": register}))
-    registry._manifests = {"legacy": PluginManifest.from_dict({
-        "id": "legacy", "version": "1", "entrypoints": {"services": "legacy:register"},
-    })}
+    registry._manifests = {
+        "legacy": PluginManifest.from_dict(
+            {
+                "id": "legacy",
+                "version": "1",
+                "entrypoints": {"services": "legacy:register"},
+            }
+        )
+    }
     dispatcher = LegacyDispatcher()
     registry.register_services(dispatcher)
     assert dispatcher.methods["legacy.ping"]({}) == {"ok": True}
-
 
 
 def test_caught_rpc_collision_still_aborts_transaction():
@@ -232,7 +244,6 @@ def test_caught_rpc_collision_still_aborts_transaction():
             except ValueError:
                 pass
     assert dispatcher.list_methods() == ["core.ping"]
-
 
 
 def test_staged_falsey_callable_still_dispatches():

@@ -91,7 +91,9 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(ui, sou
                 assert ui.app.model.has_data
             elif key == "detect_period":
                 ui.click("detect_period")
-                settle(ui)  # the sample does not alternate: the measurement is refused, Period is kept
+                settle(
+                    ui
+                )  # the sample does not alternate: the measurement is refused, Period is kept
             elif key == "timing":
                 before = ui.app.model.period_shift
                 ui.type_into("period_shift", "23")  # a spin field: type the value, Enter

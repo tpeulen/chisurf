@@ -46,9 +46,7 @@ def app(pdb):
 
 
 def test_the_manifest_declares_the_native_entrypoint():
-    manifest = json.loads(
-        (Path(__file__).parents[1] / "manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((Path(__file__).parents[1] / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.quenching_estimator.gui.app:make_app"
     from chisurf.core.plugin.emtk_readiness import is_preview
 

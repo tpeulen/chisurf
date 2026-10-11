@@ -18,9 +18,21 @@ SIZES = [(1200, 800), (800, 600)]
 LABELS = [p.label for p in PANELS]
 #: The destinations of the retired Qt Settings hub (``SETTINGS_PANELS``), in its order.
 QT_PANEL_NAMES = [
-    "Getting Started", "ChiSurf Settings", "Acquisition", "Styles", "Plots", "Models",
-    "User Editor", "AI Settings", "Plugins", "Updates", "Packages", "Channel Definition",
-    "FCS Definitions", "TTTR LUT Tools", "Plugin Check",
+    "Getting Started",
+    "ChiSurf Settings",
+    "Acquisition",
+    "Styles",
+    "Plots",
+    "Models",
+    "User Editor",
+    "AI Settings",
+    "Plugins",
+    "Updates",
+    "Packages",
+    "Channel Definition",
+    "FCS Definitions",
+    "TTTR LUT Tools",
+    "Plugin Check",
 ]
 #: The dedicated panel (class name) each destination must host: never the generic file editor.
 EXPECTED = {

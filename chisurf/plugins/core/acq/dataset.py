@@ -29,8 +29,14 @@ MODEL_NAME = "Acquisition"
 class AcquisitionDataset(DataCurve):
     """Live decay curve plus the pipeline snapshot behind the fit-window pages."""
 
-    def __init__(self, *args: Any, name: str = "Acquisition", n_bins: int = 4096,
-                 tac_dt_ns: float = 0.004069, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        name: str = "Acquisition",
+        n_bins: int = 4096,
+        tac_dt_ns: float = 0.004069,
+        **kwargs: Any,
+    ) -> None:
         """Create an empty dataset; data arrives with :meth:`set_snapshot`.
 
         Parameters
@@ -111,8 +117,9 @@ class AcquisitionDataset(DataCurve):
         result = self.api.fit_update(fit_uid=str(self.fit.unique_identifier))
         return bool(result.get("ok"))
 
-    def start_stream(self, words: Any, config: Any, *, pause_s: float = 0.0005,
-                     chunk: int = 256, every: int = 8) -> None:
+    def start_stream(
+        self, words: Any, config: Any, *, pause_s: float = 0.0005, chunk: int = 256, every: int = 8
+    ) -> None:
         """Push *words* through a new pipeline on a worker thread.
 
         Parameters
@@ -135,8 +142,11 @@ class AcquisitionDataset(DataCurve):
         self.pipeline = pipeline = AcquisitionPipeline(config)
         relay = _Relay(self._events)
         self._thread = threading.Thread(
-            target=_run, args=(pipeline, words, relay, self._cancel, pause_s, chunk, every),
-            name="acq-demo-stream", daemon=True)
+            target=_run,
+            args=(pipeline, words, relay, self._cancel, pause_s, chunk, every),
+            name="acq-demo-stream",
+            daemon=True,
+        )
         self._thread.start()
 
     def stop_stream(self) -> None:
@@ -162,8 +172,15 @@ class _Relay:
         self.target.put(item[1])
 
 
-def _run(pipeline: Any, words: Any, relay: _Relay, cancel: threading.Event,
-         pause_s: float, chunk: int, every: int) -> None:
+def _run(
+    pipeline: Any,
+    words: Any,
+    relay: _Relay,
+    cancel: threading.Event,
+    pause_s: float,
+    chunk: int,
+    every: int,
+) -> None:
     """Worker body: stream, flush, publish the final snapshot."""
     from chisurf.plugins.core.acq.gui.live_plots import stream_words
 
@@ -206,8 +223,9 @@ def open_demo(main: Any = None, *, stream: bool = True) -> AcquisitionDataset:
         device_type = "SIMULATION"
 
     params = demo.simulation_params()
-    dataset = AcquisitionDataset(name="Acquisition demo", n_bins=params["N_tac_channels"],
-                                 tac_dt_ns=params["tac_dt"])
+    dataset = AcquisitionDataset(
+        name="Acquisition demo", n_bins=params["N_tac_channels"], tac_dt_ns=params["tac_dt"]
+    )
     experiment = experiment_types["tcspc"]
     if AcquisitionModel.name not in experiment.model_names:
         experiment.add_model_class(AcquisitionModel)
@@ -217,8 +235,9 @@ def open_demo(main: Any = None, *, stream: bool = True) -> AcquisitionDataset:
     for window in range(len(dataset.live._config_channels)):
         setattr(dataset.live, f"decay_show{window}", window < int(params["N_channels"]))
     dataset.live.decay_log_y = True
-    config = PipelineConfig(record_type=record_type_for_device(_Device()),
-                            n_microtime_bins=params["N_tac_channels"])
+    config = PipelineConfig(
+        record_type=record_type_for_device(_Device()), n_microtime_bins=params["N_tac_channels"]
+    )
     api = getattr(cs, "api", None)
     if api is None:
         from chisurf.core.api import ChiSurfAPI

@@ -31,7 +31,9 @@ class GameApp(ImApp):
             on_start_guide=self.start_guide,
         )
         self.tour = EmTkGuidedTour(
-            self.HELP_DIR / "guide.json", owner=self, wait_for_controls=True,
+            self.HELP_DIR / "guide.json",
+            owner=self,
+            wait_for_controls=True,
             get_target_rect=lambda name: self.header_form.rects.get(name),
         )
         self.header_form.on_used = self.tour.notify_used
@@ -126,7 +128,9 @@ class GameApp(ImApp):
             scale = min(1.0, max(0.1, available / max(text_width, 1)))
             im.push_font_scale(scale)
             try:
-                draw_sections([{**section, "buttons": buttons}], self, self.header_form, titles=False)
+                draw_sections(
+                    [{**section, "buttons": buttons}], self, self.header_form, titles=False
+                )
             finally:
                 im.pop_font_scale()
         finally:
@@ -169,7 +173,9 @@ class GameApp(ImApp):
 
     def animating(self) -> bool:
         """Service requested frames and active gameplay until the app closes."""
-        return not self.closed and (self.wants_frame or (not self.overlay_active and self.game_running()))
+        return not self.closed and (
+            self.wants_frame or (not self.overlay_active and self.game_running())
+        )
 
     def focus_lost(self) -> None:
         """Release transient input and mute audio without changing its preference."""

@@ -34,7 +34,11 @@ def test_declared_actions_schema_and_authored_size(tmp_path, monkeypatch):
     assert not validate_view_spec(json.loads((owner.HERE / "about.view.json").read_text()))
     guide = json.loads((owner.HERE / "guide.json").read_text())
     assert not validate_guide(guide)
-    assert [step["target"]["name"] for step in guide["steps"]] == ["open_help", "copy_details", "close_about"]
+    assert [step["target"]["name"] for step in guide["steps"]] == [
+        "open_help",
+        "copy_details",
+        "close_about",
+    ]
     directory = tmp_path / "gui"
     shutil.copytree(owner.HERE, directory)
     path = directory / "about.view.json"

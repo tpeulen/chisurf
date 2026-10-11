@@ -149,7 +149,9 @@ class TimeWindowGui(TourTarget):
             self._used("add_files")
             if callable(self.on_add_files):
                 self.on_add_files()
-        im.set_item_tooltip(tr("Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting."))
+        im.set_item_tooltip(
+            tr("Pick TTTR files (.ptu, .ht3, .phu, …) and queue them for splitting.")
+        )
         self.remember("add_files")
         im.same_line()
         if im.button(tr("Clear")):
@@ -217,8 +219,10 @@ class TimeWindowGui(TourTarget):
             if callable(self.on_process):
                 self.on_process()
         im.set_item_tooltip(
-            tr("Compute start/stop photon indices per time window for every queued "
-            "file and write one .bst (BID) file each.")
+            tr(
+                "Compute start/stop photon indices per time window for every queued "
+                "file and write one .bst (BID) file each."
+            )
         )
         self.remember("process")
         im.same_line()
@@ -249,7 +253,9 @@ class TimeWindowGui(TourTarget):
             "##output_dir", tool.output_dir_text, "Auto (derived from first file)"
         )
         im.set_item_tooltip(
-            tr("Where the .bst files go. Leave empty to create a folder next to the first input file.")
+            tr(
+                "Where the .bst files go. Leave empty to create a folder next to the first input file."
+            )
         )
         if hint != tool.output_dir_text:
             tool.output_dir_text = hint

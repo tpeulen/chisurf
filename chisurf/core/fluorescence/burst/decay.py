@@ -134,7 +134,9 @@ def sub_ensemble_decay(
     columns = {"Channel": np.arange(bins, dtype=np.float64)}
     if resolution > 0:
         # Time of the channel's left edge, in ns, for whichever rebinning.
-        columns["Time (ns)"] = np.arange(bins, dtype=np.float64) * (n_channels / bins) * resolution * 1e9
+        columns["Time (ns)"] = (
+            np.arange(bins, dtype=np.float64) * (n_channels / bins) * resolution * 1e9
+        )
     columns["Counts"] = counts
     return store_from_arrays(columns)
 

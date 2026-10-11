@@ -60,12 +60,16 @@ def test_configuration_panel_saves_yaml_to_disk(hub):
 
 
 def test_search_filters_panels(hub):
-    hub.filter = "kappa" if any("kappa" in p.label.casefold() for p in hub.panels) else "zzz_no_match"
+    hub.filter = (
+        "kappa" if any("kappa" in p.label.casefold() for p in hub.panels) else "zzz_no_match"
+    )
     painter = RecordingPainter()
     hub.draw(painter, 0, 0, 1100, 800)
     if hub.filter == "zzz_no_match":
         nav_rows = [
-            s for p in hub.panels for s in painter.strings
+            s
+            for p in hub.panels
+            for s in painter.strings
             if s.startswith(("▸ ", "  ")) and p.label in s
         ]
         assert not nav_rows, f"filter left nav rows visible: {nav_rows[:3]}"
@@ -74,8 +78,17 @@ def test_search_filters_panels(hub):
 def test_native_children_are_registered_as_native(hub):
     """Panels backed by a native plugin factory must route native, not YAML."""
     expected_native = {
-        "boarding", "style", "plots", "models", "users", "ai",
-        "plugins", "channels", "fcs", "lut", "check",
+        "boarding",
+        "style",
+        "plots",
+        "models",
+        "users",
+        "ai",
+        "plugins",
+        "channels",
+        "fcs",
+        "lut",
+        "check",
     }
     for panel in hub.panels:
         hub.select(panel.key)

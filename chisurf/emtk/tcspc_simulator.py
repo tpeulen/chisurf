@@ -29,7 +29,9 @@ class SimulatorSettingsModel:
 
     def __setattr__(self, name, value):
         """Commit ordinary settings to the owner and invalidate outdated previews."""
-        if name in {"reader", "context", "preview", "irf_candidate", "status"} or name.startswith("_"):
+        if name in {"reader", "context", "preview", "irf_candidate", "status"} or name.startswith(
+            "_"
+        ):
             object.__setattr__(self, name, value)
         elif isinstance(getattr(type(self), name, None), property):
             object.__setattr__(self, name, value)
@@ -80,8 +82,12 @@ class SimulatorSettingsModel:
                 for member in row["members"]:
                     uid = str(member.get("uid", ""))
                     if uid and member.get("length") is not None:
-                        result.append((json.dumps([parent, uid]),
-                                       f"{row.get('name', parent)} / {member.get('name', uid)} [{uid[:8]}]"))
+                        result.append(
+                            (
+                                json.dumps([parent, uid]),
+                                f"{row.get('name', parent)} / {member.get('name', uid)} [{uid[:8]}]",
+                            )
+                        )
             elif str(row.get("type", "")).endswith("Curve"):
                 result.append((json.dumps([parent, None]), str(row.get("name", parent))))
         return result
@@ -111,11 +117,23 @@ class SimulatorSettingsModel:
         if member is not None:
             parameters["member_uid"] = member
         result = self.context.api.get_dataset_curve_data(**parameters)
-        x, y = np.asarray(result.get("x", []), dtype=float), np.asarray(result.get("y", []), dtype=float)
-        if not result.get("ok") or x.ndim != 1 or x.size < 2 or x.shape != y.shape or not np.all(np.isfinite(x + y)) or not np.any(y > 0):
+        x, y = (
+            np.asarray(result.get("x", []), dtype=float),
+            np.asarray(result.get("y", []), dtype=float),
+        )
+        if (
+            not result.get("ok")
+            or x.ndim != 1
+            or x.size < 2
+            or x.shape != y.shape
+            or not np.all(np.isfinite(x + y))
+            or not np.any(y > 0)
+        ):
             self.status = str(result.get("error") or tr("The selected curve is not a usable IRF."))
             return
-        self.reader.instrument_response_function = DataCurve(x=x, y=y, name=options[self.irf_candidate])
+        self.reader.instrument_response_function = DataCurve(
+            x=x, y=y, name=options[self.irf_candidate]
+        )
         self.preview = None
         self.status = ""
 
@@ -156,17 +174,23 @@ class SimulatorSettingsModel:
         if self.preview is None:
             im.text_wrapped(tr("Press Simulate to preview the decay."))
             return
-        if implot.begin_plot(tr("Simulated TCSPC decay") + "##simulator-decay", (width, section.get("height", 420))):
+        if implot.begin_plot(
+            tr("Simulated TCSPC decay") + "##simulator-decay", (width, section.get("height", 420))
+        ):
             implot.setup_axes(tr("Time [ns]"), tr("Counts"))
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             maximum = max(float(np.max(curve.y)) for curve in self.preview)
-            implot.setup_axis_limits(implot.AXIS_Y1, .1, max(1., maximum * 1.1))
+            implot.setup_axis_limits(implot.AXIS_Y1, 0.1, max(1.0, maximum * 1.1))
             for curve in self.preview:
                 implot.plot_line(curve.name, curve.x, np.where(curve.y > 0, curve.y, np.nan))
             first = self.preview[0]
-            irf = resolve_irf(first.x, self.reader.instrument_response_function,
-                              mean=self.reader.irf_mean, sigma=self.reader.irf_sigma)
+            irf = resolve_irf(
+                first.x,
+                self.reader.instrument_response_function,
+                mean=self.reader.irf_mean,
+                sigma=self.reader.irf_sigma,
+            )
             irf = irf * (maximum / float(np.max(irf))) if np.any(irf > 0) else irf
             implot.plot_line(tr("IRF"), first.x, np.where(irf > 0, irf, np.nan))
             implot.end_plot()
@@ -174,7 +198,9 @@ class SimulatorSettingsModel:
     def draw_anisotropy(self, section, model, state, width):
         """Draw the reader's ideal anisotropy on its own linear axis in both modes."""
         x, y = self.reader.simulate_aniso()
-        if implot.begin_plot(tr("Anisotropy r(t)") + "##simulator-anisotropy", (width, section.get("height", 190))):
+        if implot.begin_plot(
+            tr("Anisotropy r(t)") + "##simulator-anisotropy", (width, section.get("height", 190))
+        ):
             implot.setup_axes(tr("Time [ns]"), tr("r(t)"))
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             implot.plot_line(tr("r(t)"), x, y)
@@ -190,7 +216,11 @@ class SimulatorSettingsApp(ReaderSettingsApp):
 
     def _used(self, name):
         """Commit the nested file field through its owner before changing tabs."""
-        if not self.closed and name in {"simulator.decay", "simulator.anisotropy", "simulator.preview"}:
+        if not self.closed and name in {
+            "simulator.decay",
+            "simulator.anisotropy",
+            "simulator.preview",
+        }:
             for source in self.sources.values():
                 if source.options.get("read_only"):
                     continue

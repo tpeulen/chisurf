@@ -125,7 +125,10 @@ def quest_spec() -> dict:
         panel["sections"] = [s for s in panel["sections"] if s.get("type") != "table"]
         panel["collapsible"] = True
         # The fold header is a control: it carries the tooltip the spec's title alone does not.
-        panel.setdefault("description", f"Show or hide the {str(panel.get('title', 'section')).lower()} settings.")
+        panel.setdefault(
+            "description",
+            f"Show or hide the {str(panel.get('title', 'section')).lower()} settings.",
+        )
         for sec in panel["sections"]:
             if sec.get("attr") == "pdb":
                 sec["kind"] = "str"
@@ -469,7 +472,9 @@ class QuestCard(CardShell):
                     "label": action_caption("cancel"),
                     "key": "cancel",
                     "enabled": running,
-                    "tip": action_tooltip("cancel", "Ask the run to stop; its result is discarded."),
+                    "tip": action_tooltip(
+                        "cancel", "Ask the run to stop; its result is discarded."
+                    ),
                 },
                 {
                     "label": "Load PDB...",
@@ -514,8 +519,10 @@ class QuestCard(CardShell):
         im.text(tr("QuEst cannot start here"))
         im.separator()
         im.text_wrapped(
-            tr("QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
-            "does not provide. The reason it reported:")
+            tr(
+                "QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
+                "does not provide. The reason it reported:"
+            )
         )
         im.text_wrapped(self.session.error)
         self.remember("unavailable")
@@ -571,7 +578,9 @@ class QuestCard(CardShell):
     def _draw_plots(self) -> None:
         series = self.session.series()
         if not any(series.values()):
-            im.text_wrapped(tr("No result yet: set the structure and the dye, then press Simulate."))
+            im.text_wrapped(
+                tr("No result yet: set the structure and the dye, then press Simulate.")
+            )
             self.remember("empty_plots")
             return
         height = max(90.0, (im.get_content_region_avail()[1] - 16.0) / 3.0)
@@ -644,7 +653,9 @@ class QuestCard(CardShell):
                 )
             implot3d.end_plot()
             im.set_item_tooltip(
-                tr("The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites.")
+                tr(
+                    "The CA / P trace of the structure with the donor (blue) and acceptor (red) attachment sites."
+                )
             )
             self.remember("structure_plot")
 

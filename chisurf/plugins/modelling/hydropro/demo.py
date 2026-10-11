@@ -96,9 +96,8 @@ def _cache_is_good(folder: Path) -> bool:
     """Require matching parameters, intact files and an executable stand-in."""
     try:
         side = json.loads((folder / f"{STEM}.json").read_text(encoding="utf-8"))
-        return (
-            side == {"demo": DEMO, "sha256": _digest(folder)}
-            and os.access(folder / EXE_NAME, os.X_OK)
+        return side == {"demo": DEMO, "sha256": _digest(folder)} and os.access(
+            folder / EXE_NAME, os.X_OK
         )
     except (OSError, ValueError):
         return False
@@ -131,9 +130,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     pdb.write_text(_pdb_text(), encoding="ascii")
     exe = folder / EXE_NAME
-    exe.write_text(
-        STANDIN % {"spacing": DEMO["spacing_A"], "kb": KB_ERG_PER_K}, encoding="utf-8"
-    )
+    exe.write_text(STANDIN % {"spacing": DEMO["spacing_A"], "kb": KB_ERG_PER_K}, encoding="utf-8")
     exe.chmod(exe.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     (folder / f"{STEM}.json").write_text(
         json.dumps({"demo": DEMO, "sha256": _digest(folder)}, sort_keys=True), encoding="utf-8"

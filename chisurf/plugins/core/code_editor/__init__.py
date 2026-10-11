@@ -24,10 +24,14 @@ def __getattr__(attribute):
     import importlib
 
     modules = {
-        "CodeEditor": "editor", "CodeEditorWindow": "window",
-        "NotebookEditor": "notebook_editor", "shipped_notebooks": "notebook_editor",
-        "JSONHighlighter": "text_editor", "PythonHighlighter": "text_editor",
-        "SyntaxHighlighter": "text_editor", "TextEditor": "text_editor",
+        "CodeEditor": "editor",
+        "CodeEditorWindow": "window",
+        "NotebookEditor": "notebook_editor",
+        "shipped_notebooks": "notebook_editor",
+        "JSONHighlighter": "text_editor",
+        "PythonHighlighter": "text_editor",
+        "SyntaxHighlighter": "text_editor",
+        "TextEditor": "text_editor",
         "YAMLHighlighter": "text_editor",
     }
     module = modules.get(attribute)
@@ -36,6 +40,7 @@ def __getattr__(attribute):
     value = getattr(importlib.import_module(f"{__name__}.{module}"), attribute)
     globals()[attribute] = value
     return value
+
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -57,7 +62,6 @@ def load_emtk():
     from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
 
     return CodeEditorEmtkTool()
-
 
 
 __all__ = [

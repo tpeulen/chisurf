@@ -108,7 +108,7 @@ def test_dragging_a_badge_bends_its_arrow(canvas):
 def test_the_wheel_zooms_about_the_pointer(canvas):
     x, y = _centre(canvas, 1)
     canvas.hover(x, y)
-    canvas.scroll(-3)          # one notch up
+    canvas.scroll(-3)  # one notch up
     assert canvas.zoom > 1.0
     assert _centre(canvas, 1) == pytest.approx((x, y)), "the node under the pointer moved"
 

@@ -317,9 +317,12 @@ def _window_worker(payload):
             mt = mt[0]
         # Unstacked (per-frame) stack for the movie dock — computed here in the
         # worker so the movie never rebuilds a CLSM on the UI/pipeline thread.
-        mt_frames = np.maximum(np.nan_to_num(
-            np.asarray(clsm.get_mean_micro_time(tttr, res_ns, n_ph, False), dtype=float)
-        ), 0.0)
+        mt_frames = np.maximum(
+            np.nan_to_num(
+                np.asarray(clsm.get_mean_micro_time(tttr, res_ns, n_ph, False), dtype=float)
+            ),
+            0.0,
+        )
         return {
             "intensity": stack.sum(axis=0),
             # tttrlib uses -1 for below-threshold pixels; imaging tools have

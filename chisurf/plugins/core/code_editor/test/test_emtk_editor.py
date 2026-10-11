@@ -139,8 +139,11 @@ def test_project_file_right_click_exposes_actions(tmp_path):
     with im.frame(painter, (0, 0, 320, 500), storage=storage):
         gui._draw_file_tree((0, 0, 320, 500))
     file_text = next(text for text in painter.texts if "script.py" in text[5])
-    io = IO(mouse_pos=(file_text[0] + 8, file_text[1] + 8),
-            mouse_clicked=[False, True, False], mouse_down=[False, True, False])
+    io = IO(
+        mouse_pos=(file_text[0] + 8, file_text[1] + 8),
+        mouse_clicked=[False, True, False],
+        mouse_down=[False, True, False],
+    )
     painter.texts.clear()
     with im.frame(painter, (0, 0, 320, 500), io=io, storage=storage):
         gui._draw_file_tree((0, 0, 320, 500))
@@ -161,7 +164,9 @@ def test_modified_close_requires_choice(tmp_path, monkeypatch, action):
     # The toolbar's Close is a regular-height labelled button; pressing it is
     # simulated by answering button the way the click would. The popup's own
     # buttons have distinct labels, so the patch cannot hit them.
-    monkeypatch.setattr(im, "button", lambda label, size=None: "Close" in label and "Save and close" not in label)
+    monkeypatch.setattr(
+        im, "button", lambda label, size=None: "Close" in label and "Save and close" not in label
+    )
     with im.frame(painter, (0, 0, 900, 600), storage=storage):
         gui._draw_editor_tabs((0, 0, 900, 600))
     assert active in model.documents
@@ -169,7 +174,9 @@ def test_modified_close_requires_choice(tmp_path, monkeypatch, action):
 
     if action == "Save and close":
         monkeypatch.setattr(model, "save_document", lambda index=None: False)
-    monkeypatch.setattr(im, "button", lambda label, size=None: label.split("###")[0].split("  ")[-1] == action)
+    monkeypatch.setattr(
+        im, "button", lambda label, size=None: label.split("###")[0].split("  ")[-1] == action
+    )
     with im.frame(painter, (0, 0, 900, 600), storage=storage):
         gui._draw_editor_tabs((0, 0, 900, 600))
     if action == "Discard changes":
@@ -187,7 +194,6 @@ def test_modified_close_requires_choice(tmp_path, monkeypatch, action):
         assert not any("Save changes to main.py" in text[5] for text in painter.texts)
 
 
-
 def test_pure_emtk_no_qt():
     """Verify code editor and chat widgets operate in pure EMTK without any Qt."""
     import sys
@@ -196,7 +202,10 @@ def test_pure_emtk_no_qt():
     from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
 
     # Ensure acp_client does not import qtpy or PyQt5/PySide
-    assert "qtpy" not in sys.modules or "QtCore" not in sys.modules["chisurf.plugins.core.code_editor.acp_client"].__dict__
+    assert (
+        "qtpy" not in sys.modules
+        or "QtCore" not in sys.modules["chisurf.plugins.core.code_editor.acp_client"].__dict__
+    )
 
     # Pure EMTK apps construct and draw without Qt
     p = RecordingPainter()
@@ -231,7 +240,9 @@ def test_document_tab_close_and_context_menu(tmp_path):
     assert len(crosses) == 2
     cross = crosses[0]
     position = (cross[0] + 3, cross[1] + 6)
-    draw(IO(mouse_pos=position, mouse_clicked=[True, False, False], mouse_down=[True, False, False]))
+    draw(
+        IO(mouse_pos=position, mouse_clicked=[True, False, False], mouse_down=[True, False, False])
+    )
     draw(IO(mouse_pos=position, mouse_released=[True, False, False]))
     assert [doc.name for doc in model.documents] == ["second.py"]
     assert model.active_doc is active
@@ -244,7 +255,9 @@ def test_document_tab_close_and_context_menu(tmp_path):
     item = next(t for t in painter.texts if t[5].strip() == "Close document")
     position = (item[0] + 12, item[1] + 6)
     draw(IO(mouse_pos=position))
-    draw(IO(mouse_pos=position, mouse_clicked=[True, False, False], mouse_down=[True, False, False]))
+    draw(
+        IO(mouse_pos=position, mouse_clicked=[True, False, False], mouse_down=[True, False, False])
+    )
     draw(IO(mouse_pos=position, mouse_released=[True, False, False]))
     assert not model.documents
 
@@ -267,9 +280,18 @@ def test_chat_failure_survives_delayed_event_processing(monkeypatch):
     def fail(*args, **kwargs):
         raise RuntimeError("provider unavailable")
 
-    monkeypatch.setitem(sys.modules, "chisurf.core.agent", types.SimpleNamespace(
-        AgentConfig=fail, AgentSession=fail, LLMClient=fail, AgentContext=fail, ToolRegistry=fail,
-        LLMSettings=types.SimpleNamespace(from_provider=fail)))
+    monkeypatch.setitem(
+        sys.modules,
+        "chisurf.core.agent",
+        types.SimpleNamespace(
+            AgentConfig=fail,
+            AgentSession=fail,
+            LLMClient=fail,
+            AgentContext=fail,
+            ToolRegistry=fail,
+            LLMSettings=types.SimpleNamespace(from_provider=fail),
+        ),
+    )
     model = ChatModel()
     model._run_in_process_prompt("Hello")
     model.process_events()
@@ -328,8 +350,14 @@ def test_chat_permission_requires_ui_choice():
 
     model = ChatModel()
     responses = []
-    thread = threading.Thread(target=lambda: responses.append(model._handle_permission_request(
-        {"title": "Write a file"}, [{"optionId": "allow_once", "name": "Allow once"}])), daemon=True)
+    thread = threading.Thread(
+        target=lambda: responses.append(
+            model._handle_permission_request(
+                {"title": "Write a file"}, [{"optionId": "allow_once", "name": "Allow once"}]
+            )
+        ),
+        daemon=True,
+    )
     thread.start()
     deadline = time.monotonic() + 2
     while model.event_queue.empty() and time.monotonic() < deadline:
@@ -385,6 +413,7 @@ def test_file_chooser_cancel_preserves_unsaved_buffer(tmp_path, monkeypatch):
 
 def test_script_stop_finishes_process(tmp_path):
     import time
+
     model = EditorModel(tmp_path)
     model.active_doc.text = "import time\nprint('started', flush=True)\ntime.sleep(60)"
     model.run_active_script()
@@ -444,10 +473,13 @@ def test_native_symbols_follow_unsaved_source_and_jump(tmp_path):
 
 def test_native_ruff_uses_unsaved_source_and_reports_errors(tmp_path, monkeypatch):
     from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
+
     seen = {}
+
     def check(self, path, content, **kwargs):
         seen.update(path=path, content=content)
         return {"ok": False, "error": "Ruff executable unavailable", "diagnostics": []}
+
     monkeypatch.setattr(RuffRunner, "check", check)
     model = EditorModel(tmp_path)
     model.active_doc.text = "import os\n"
@@ -460,8 +492,12 @@ def test_native_ruff_uses_unsaved_source_and_reports_errors(tmp_path, monkeypatc
 
 def test_native_ruff_fix_preserves_unsaved_modification(tmp_path, monkeypatch):
     from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
-    monkeypatch.setattr(RuffRunner, "fix", lambda *args, **kwargs: {"ok": True,
-        "fixed_content": "value = 1\n", "diagnostics": []})
+
+    monkeypatch.setattr(
+        RuffRunner,
+        "fix",
+        lambda *args, **kwargs: {"ok": True, "fixed_content": "value = 1\n", "diagnostics": []},
+    )
     model = EditorModel(tmp_path)
     model.active_doc.text = "import os\nvalue = 1\n"
     result = model.run_ruff(fix=True)
@@ -473,6 +509,7 @@ def test_native_ruff_fix_preserves_unsaved_modification(tmp_path, monkeypatch):
 
 def test_native_console_mode_runs_in_chisurf_namespace(tmp_path):
     import chisurf
+
     model = EditorModel(tmp_path)
     model.run_endpoint = "console"
     model.active_doc.text = "print('console output')\nchisurf._emtk_editor_marker = 27\n"
@@ -497,7 +534,9 @@ def test_native_ruff_does_not_apply_stale_fixes(tmp_path):
     model = EditorModel(tmp_path)
     doc = model.active_doc
     doc.text = "changed during check"
-    model._apply_ruff(doc, "before check", {"ok": True, "fixed_content": "fixed", "diagnostics": []}, True)
+    model._apply_ruff(
+        doc, "before check", {"ok": True, "fixed_content": "fixed", "diagnostics": []}, True
+    )
     assert doc.text == "changed during check"
     assert any("changed during" in line for line in model.output_logs)
 
@@ -506,8 +545,10 @@ def test_native_ruff_async_error_returns_to_ui(tmp_path, monkeypatch):
     import time
 
     from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
+
     def fail(*args, **kwargs):
         raise RuntimeError("runner failed")
+
     monkeypatch.setattr(RuffRunner, "check", fail)
     model = EditorModel(tmp_path)
     model.start_ruff()
@@ -530,6 +571,7 @@ def test_native_apps_keep_frames_running_during_background_work():
     chat.chat_gui.model.is_generating = True
     assert chat.animating()
     from chisurf.plugins.core.help.gui.help_app import make_help_app
+
     help_app = make_help_app()
     help_app.model.is_asking = True
     assert help_app.animating()
@@ -537,17 +579,44 @@ def test_native_apps_keep_frames_running_during_background_work():
 
 def _write_native_notebook(path):
     import json
-    data = {"nbformat": 4, "nbformat_minor": 5, "metadata": {"custom": {"keep": 1}},
-        "cells": [{"id": "code-one", "cell_type": "code", "metadata": {"tags": ["keep"]},
-            "source": ["value = 21\n", "print(value)\n"], "outputs": [], "execution_count": None},
-            {"id": "code-two", "cell_type": "code", "metadata": {}, "source": "value + 1", "outputs": [], "execution_count": None},
-            {"id": "markdown", "cell_type": "markdown", "metadata": {}, "source": "# Heading", "attachments": {"keep": {"text/plain": "attached"}}}]}
+
+    data = {
+        "nbformat": 4,
+        "nbformat_minor": 5,
+        "metadata": {"custom": {"keep": 1}},
+        "cells": [
+            {
+                "id": "code-one",
+                "cell_type": "code",
+                "metadata": {"tags": ["keep"]},
+                "source": ["value = 21\n", "print(value)\n"],
+                "outputs": [],
+                "execution_count": None,
+            },
+            {
+                "id": "code-two",
+                "cell_type": "code",
+                "metadata": {},
+                "source": "value + 1",
+                "outputs": [],
+                "execution_count": None,
+            },
+            {
+                "id": "markdown",
+                "cell_type": "markdown",
+                "metadata": {},
+                "source": "# Heading",
+                "attachments": {"keep": {"text/plain": "attached"}},
+            },
+        ],
+    }
     path.write_text(json.dumps(data))
     return data
 
 
 def test_native_notebook_roundtrip_preserves_metadata_and_cells(tmp_path):
     import json
+
     path = tmp_path / "example.ipynb"
     original = _write_native_notebook(path)
     model = EditorModel(tmp_path)
@@ -579,13 +648,17 @@ def test_native_notebook_shared_shell_execution_restart_and_errors(tmp_path):
     assert any("22" in output.get("data", {}).get("text/plain", "") for output in second.outputs)
     notebook.restart_shell()
     notebook.run_cell(1)
-    assert any(output.get("output_type") == "error" and output["ename"] == "NameError" for output in second.outputs)
+    assert any(
+        output.get("output_type") == "error" and output["ename"] == "NameError"
+        for output in second.outputs
+    )
     notebook.clear_outputs()
     assert not any(cell.outputs for cell in notebook.cells)
 
 
 def test_native_notebook_cell_add_move_delete_and_terminal(tmp_path):
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     notebook = NativeNotebook.new()
     code = notebook.add_cell("code", "x = 5")
     markdown = notebook.add_cell("markdown", "# Last")
@@ -628,6 +701,7 @@ def test_invalid_native_notebook_falls_back_to_raw_editor(tmp_path):
 def test_native_app_close_releases_registries_and_background_state(tmp_path):
     from chisurf.emtk.code_links import _ACTIVE_EMTK_EDITORS
     from chisurf.plugins.core.help.gui.help_app import _ACTIVE_HELP_INSTANCES, make_help_app
+
     editor = CodeEditorApp(tmp_path)
     chat = ChatApp()
     help_app = make_help_app()
@@ -651,20 +725,25 @@ def test_native_chat_provider_uses_real_session_contract(monkeypatch):
     import types
 
     import chisurf.core.agent as agent
+
     calls = []
     settings = types.SimpleNamespace(validate=lambda: None)
     monkeypatch.setattr(agent.LLMSettings, "from_provider", lambda *args, **kwargs: settings)
     monkeypatch.setattr(agent, "LLMClient", lambda value: value)
+
     class Session:
         def __init__(self, llm, **kwargs):
             assert llm is settings
             self.context = kwargs["context"]
             calls.append(self)
+
         def ask(self, prompt):
             self.context.emit("message.completed", {"content": "response to " + prompt})
             return types.SimpleNamespace(stop_reason="answer", error=None)
+
         def cancel(self):
             pass
+
     monkeypatch.setattr(agent, "AgentSession", Session)
     model = ChatModel()
     model.provider = "openai"
@@ -673,7 +752,10 @@ def test_native_chat_provider_uses_real_session_contract(monkeypatch):
     model._run_in_process_prompt("second")
     model.process_events()
     assert len(calls) == 1
-    assert [message.content for message in model.history.messages] == ["response to first", "response to second"]
+    assert [message.content for message in model.history.messages] == [
+        "response to first",
+        "response to second",
+    ]
     model.close()
 
 
@@ -684,11 +766,16 @@ def test_native_notebook_saved_images_render_and_remain_roundtrippable():
     from PIL import Image
 
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     buffer = io.BytesIO()
     Image.new("RGBA", (8, 4), "blue").save(buffer, format="PNG")
     payload = base64.b64encode(buffer.getvalue()).decode()
     notebook = NativeNotebook.new()
-    output = {"output_type": "display_data", "data": {"image/png": payload, "text/plain": "figure"}, "metadata": {"image/png": {"width": 8}}}
+    output = {
+        "output_type": "display_data",
+        "data": {"image/png": payload, "text/plain": "figure"},
+        "metadata": {"image/png": {"width": 8}},
+    }
     notebook.active_cell.outputs.append(output)
     with im.frame(RecordingPainter(), (0, 0, 900, 600)):
         notebook.draw(900, 600)
@@ -701,8 +788,11 @@ def test_native_notebook_inline_figure_is_saved_as_image():
     import json
 
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     notebook = NativeNotebook.new()
-    notebook.active_cell.editor.set_text("import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\nfig, ax = plt.subplots()\nax.plot([1, 2], [3, 4])\nfig")
+    notebook.active_cell.editor.set_text(
+        "import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\nfig, ax = plt.subplots()\nax.plot([1, 2], [3, 4])\nfig"
+    )
     notebook.run_cell(0)
     outputs = notebook.active_cell.outputs
     assert any("image/png" in output.get("data", {}) for output in outputs)
@@ -743,7 +833,9 @@ def test_native_notebook_binary_display_payload_is_json_serializable():
 
 def test_native_editor_process_sets_file_and_import_path(tmp_path):
     model = EditorModel(tmp_path)
-    model.active_doc.text = "import os\nprint(os.path.basename(__file__))\nprint(len(__import__('sys').argv))"
+    model.active_doc.text = (
+        "import os\nprint(os.path.basename(__file__))\nprint(len(__import__('sys').argv))"
+    )
     model.run_active_script()
     model._script_thread.join(timeout=5)
     assert not model.is_running_script
@@ -755,6 +847,7 @@ def test_native_notebook_svg_uses_existing_qt_free_renderer():
     import shutil
 
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     if not shutil.which("rsvg-convert"):
         pytest.skip("Qt-free SVG renderer is not installed")
     notebook = NativeNotebook.new()
@@ -770,7 +863,7 @@ def test_native_notebook_svg_uses_existing_qt_free_renderer():
 
 
 def _fake_native_lsp_server(path):
-    path.write_text('''import json, sys
+    path.write_text("""import json, sys
 
 def send(value):
     body = json.dumps(value).encode()
@@ -803,17 +896,25 @@ while True:
         send({"jsonrpc": "2.0", "id": message["id"], "result": [{"uri": message["params"]["textDocument"]["uri"], "range": {"start": {"line": 0, "character": 1}, "end": {"line": 0, "character": 2}}}]})
     elif "id" in message:
         send({"jsonrpc": "2.0", "id": message["id"], "result": None})
-''')
+""")
 
 
 def test_native_lsp_frames_fragmentation_unicode_and_invalid_headers(tmp_path):
     import json
 
     from chisurf.plugins.core.code_editor.gui.native_lsp import NativeLspClient
+
     client = NativeLspClient(tmp_path)
     seen = []
     client.diagnostics_received.connect(lambda uri, values: seen.append((uri, values)))
-    body = json.dumps({"jsonrpc": "2.0", "method": "textDocument/publishDiagnostics", "params": {"uri": "file:///é.py", "diagnostics": [{"message": "é"}]}}, ensure_ascii=False).encode()
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "method": "textDocument/publishDiagnostics",
+            "params": {"uri": "file:///é.py", "diagnostics": [{"message": "é"}]},
+        },
+        ensure_ascii=False,
+    ).encode()
     frame = f"Content-Length: {len(body)}\r\n\r\n".encode() + body
     client.feed_data(frame[:11])
     assert not seen
@@ -828,6 +929,7 @@ def test_native_lsp_frames_fragmentation_unicode_and_invalid_headers(tmp_path):
 def test_native_lsp_server_completions_diagnostics_and_draw(tmp_path):
     import sys
     import time
+
     server = tmp_path / "fake_lsp.py"
     _fake_native_lsp_server(server)
     app = CodeEditorApp(tmp_path)
@@ -871,9 +973,12 @@ def test_native_lsp_server_completions_diagnostics_and_draw(tmp_path):
 def test_native_lsp_missing_server_explains_optional_dependency(tmp_path, monkeypatch):
     import importlib.util
     import shutil
+
     monkeypatch.setattr(shutil, "which", lambda name: None)
     original = importlib.util.find_spec
-    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None if name == "pylsp" else original(name))
+    monkeypatch.setattr(
+        importlib.util, "find_spec", lambda name: None if name == "pylsp" else original(name)
+    )
     model = EditorModel(tmp_path)
     assert not model.start_lsp()
     model.process_events()
@@ -904,6 +1009,7 @@ def test_native_notebook_background_input_prompt_resumes_execution():
     import time
 
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     notebook = NativeNotebook.new()
     notebook.active_cell.editor.set_text("name = input('Your name: ')\nprint('Hello ' + name)")
     assert notebook.start_cell(0)
@@ -924,6 +1030,7 @@ def test_native_notebook_close_cancels_waiting_input():
     import time
 
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     notebook = NativeNotebook.new()
     notebook.active_cell.editor.set_text("input('Waiting: ')")
     notebook.start_cell(0)
@@ -941,9 +1048,20 @@ def test_native_completion_utf16_ranges_additional_edits_and_snippets(tmp_path):
     model = EditorModel(tmp_path)
     doc = model.active_doc
     doc.text = "😀foo\n"
-    item = {"label": "foobar", "insertTextFormat": 2, "textEdit": {"range": {
-        "start": {"line": 0, "character": 2}, "end": {"line": 0, "character": 5}}, "newText": "foobar(${1:x})$0"},
-        "additionalTextEdits": [{"range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 0}}, "newText": "import thing\n"}]}
+    item = {
+        "label": "foobar",
+        "insertTextFormat": 2,
+        "textEdit": {
+            "range": {"start": {"line": 0, "character": 2}, "end": {"line": 0, "character": 5}},
+            "newText": "foobar(${1:x})$0",
+        },
+        "additionalTextEdits": [
+            {
+                "range": {"start": {"line": 0, "character": 0}, "end": {"line": 0, "character": 0}},
+                "newText": "import thing\n",
+            }
+        ],
+    }
     assert model.apply_completion(item)
     assert doc.text == "import thing\n😀foobar(x)\n"
     assert doc.editor.cursors.main.end.line == 1
@@ -984,9 +1102,16 @@ def test_native_save_as_reuses_chooser_overwrite_confirmation(tmp_path, monkeypa
 
 def test_native_notebook_rich_html_tables_render_instead_of_plain_fallback():
     from chisurf.plugins.core.code_editor.gui.notebook_app import NativeNotebook
+
     notebook = NativeNotebook.new()
-    output = {"output_type": "display_data", "metadata": {}, "data": {
-        "text/plain": "PLAIN FALLBACK", "text/html": '<style>hidden css</style><h2>Measurements</h2><table><tr><th>State</th><th>Value</th></tr><tr><td>Open</td><td><b>42</b></td></tr></table>'}}
+    output = {
+        "output_type": "display_data",
+        "metadata": {},
+        "data": {
+            "text/plain": "PLAIN FALLBACK",
+            "text/html": "<style>hidden css</style><h2>Measurements</h2><table><tr><th>State</th><th>Value</th></tr><tr><td>Open</td><td><b>42</b></td></tr></table>",
+        },
+    }
     notebook.active_cell.outputs.append(output)
     painter = RecordingPainter()
     with im.frame(painter, (0, 0, 1000, 720)):
@@ -1005,6 +1130,7 @@ def test_native_notebook_rich_html_tables_render_instead_of_plain_fallback():
 def test_acp_buffer_operations_are_queued_to_native_render_thread(tmp_path):
     import threading
     import time
+
     model = EditorModel(tmp_path)
     path = tmp_path / "buffer.py"
     path.write_text("disk content")
@@ -1013,12 +1139,19 @@ def test_acp_buffer_operations_are_queued_to_native_render_thread(tmp_path):
     main_thread = threading.get_ident()
     threads = []
     original = model.set_file_content
+
     def write(path, content):
         threads.append(threading.get_ident())
         return original(path, content)
+
     model.set_file_content = write
     result = []
-    worker = threading.Thread(target=lambda: (chat._handle_write_file(str(path), "unsaved RPC content"), result.append(chat._handle_read_file(str(path)))))
+    worker = threading.Thread(
+        target=lambda: (
+            chat._handle_write_file(str(path), "unsaved RPC content"),
+            result.append(chat._handle_read_file(str(path))),
+        )
+    )
     worker.start()
     deadline = time.monotonic() + 3
     while worker.is_alive() and time.monotonic() < deadline:
@@ -1036,6 +1169,7 @@ def test_native_editor_rpc_store_updates_uuid_and_keeps_other_owners(tmp_path):
     import uuid
 
     from chisurf.plugins.core.code_editor.backend import services
+
     first = EditorModel(tmp_path)
     other = EditorModel(tmp_path)
     doc = first.active_doc
@@ -1044,8 +1178,14 @@ def test_native_editor_rpc_store_updates_uuid_and_keeps_other_owners(tmp_path):
     payload = services.dispatch("editor.document.get", {"document_id": doc.document_id})
     assert payload["ok"]
     revision = payload["document"]["revision"]
-    result = services.dispatch("editor.document.set", {"document_id": doc.document_id,
-        "content": "RPC changed source", "expected_revision": revision})
+    result = services.dispatch(
+        "editor.document.set",
+        {
+            "document_id": doc.document_id,
+            "content": "RPC changed source",
+            "expected_revision": revision,
+        },
+    )
     assert result["ok"]
     first.process_events()
     assert doc.text == "RPC changed source"
@@ -1085,14 +1225,17 @@ def test_native_editor_preferences_restore_only_declared_metadata(tmp_path):
 def test_native_editor_close_releases_queued_rpc_without_late_writes(tmp_path):
     import threading
     import time
+
     model = EditorModel(tmp_path)
     errors = []
     writes = []
+
     def call():
         try:
             model.invoke(lambda: writes.append("written"))
         except RuntimeError as error:
             errors.append(str(error))
+
     worker = threading.Thread(target=call)
     worker.start()
     deadline = time.monotonic() + 2
@@ -1107,12 +1250,19 @@ def test_native_editor_close_releases_queued_rpc_without_late_writes(tmp_path):
 
 def test_native_editor_rpc_and_local_conflict_keeps_both_versions(tmp_path):
     from chisurf.plugins.core.code_editor.backend import services
+
     model = EditorModel(tmp_path)
     doc = model.active_doc
     snapshot = services.STORE.get(document_id=doc.document_id)
     doc.text = "local unsynced source"
-    result = services.dispatch("editor.document.set", {"document_id": doc.document_id,
-        "content": "remote source", "expected_revision": snapshot.revision})
+    result = services.dispatch(
+        "editor.document.set",
+        {
+            "document_id": doc.document_id,
+            "content": "remote source",
+            "expected_revision": snapshot.revision,
+        },
+    )
     assert result["ok"]
     model.process_events()
     assert doc.text == "local unsynced source"
@@ -1128,10 +1278,11 @@ def test_native_acp_conversation_handshake_and_buffer_rpc(tmp_path, monkeypatch)
 
     from chisurf.plugins.core.code_editor.acp_client import AcpClient
     from chisurf.plugins.core.code_editor.backend import services
+
     path = tmp_path / "buffer.py"
     path.write_text("disk source")
     server = tmp_path / "fake_acp.py"
-    server.write_text('''import json, sys
+    server.write_text("""import json, sys
 prompt_id = None
 for line in sys.stdin.buffer:
     message = json.loads(line)
@@ -1152,10 +1303,14 @@ for line in sys.stdin.buffer:
         assert "error" not in message
         send({"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "session_test", "update": {"sessionUpdate": "agent_message_chunk", "content": {"type": "text", "text": "Updated your buffer"}}}})
         send({"jsonrpc": "2.0", "id": prompt_id, "result": {"stopReason": "end_turn"}})
-''')
+""")
     module = importlib.import_module("chisurf.plugins.core.code_editor.gui.chat_app")
     original = AcpClient
-    monkeypatch.setattr(module, "AcpClient", lambda **kwargs: original(command=[sys.executable, str(server), str(path)], **kwargs))
+    monkeypatch.setattr(
+        module,
+        "AcpClient",
+        lambda **kwargs: original(command=[sys.executable, str(server), str(path)], **kwargs),
+    )
     editor = EditorModel(tmp_path)
     doc = editor.open_file(path)
     chat = ChatModel(editor_ref=editor)
@@ -1176,15 +1331,18 @@ for line in sys.stdin.buffer:
 
 def test_native_chat_cancel_blocks_overlap_and_discards_late_response(monkeypatch):
     import threading
+
     model = ChatModel()
     model.provider = "openai"
     started = threading.Event()
     release = threading.Event()
+
     def prompt(text):
         started.set()
         release.wait(timeout=3)
         model._on_runtime_event("message.completed", {"content": "late response"})
         model._on_acp_prompt_finished("", "cancelled")
+
     monkeypatch.setattr(model, "_run_in_process_prompt", prompt)
     model.send_prompt("first")
     assert started.wait(timeout=1)
@@ -1201,7 +1359,13 @@ def test_native_chat_cancel_blocks_overlap_and_discards_late_response(monkeypatc
 
 def test_native_long_permission_details_keep_action_buttons_visible():
     model = ChatModel()
-    model.pending_permission = {"title": "A long tool argument " * 200, "options": [{"optionId": "allow_once", "name": "Allow once"}, {"optionId": "deny_once", "name": "Deny"}]}
+    model.pending_permission = {
+        "title": "A long tool argument " * 200,
+        "options": [
+            {"optionId": "allow_once", "name": "Allow once"},
+            {"optionId": "deny_once", "name": "Deny"},
+        ],
+    }
     painter = RecordingPainter()
     with im.frame(painter, (0, 0, 300, 600)):
         ChatGui(model)._draw_permission_banner()
@@ -1215,6 +1379,7 @@ def test_native_editor_external_rpc_wakes_idle_host(tmp_path):
     import time
 
     from chisurf.plugins.core.code_editor.backend import services
+
     app = CodeEditorApp(tmp_path)
     wakes = []
     app.set_frame_request_callback(lambda: wakes.append("wake"))
@@ -1227,7 +1392,10 @@ def test_native_editor_external_rpc_wakes_idle_host(tmp_path):
     app.model.process_events()
     worker.join(timeout=1)
     wakes.clear()
-    services.dispatch("editor.document.set", {"document_id": app.model.active_doc.document_id, "content": "external source"})
+    services.dispatch(
+        "editor.document.set",
+        {"document_id": app.model.active_doc.document_id, "content": "external source"},
+    )
     assert wakes
     app.model.process_events()
     assert app.model.active_doc.text == "external source"
@@ -1250,10 +1418,12 @@ def test_native_editor_real_rpc_transport_updates_buffer_and_stops(tmp_path):
     import socket
 
     from chisurf.server.transport.zmq import ZmqClient
+
     def free_port():
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             return sock.getsockname()[1]
+
     cmd, pub = free_port(), free_port()
     while pub == cmd:
         pub = free_port()
@@ -1262,7 +1432,10 @@ def test_native_editor_real_rpc_transport_updates_buffer_and_stops(tmp_path):
     try:
         assert app.model.start_rpc(cmd_port=cmd, pub_port=pub)
         client = ZmqClient(cmd_port=cmd, pub_port=pub, timeout_ms=2000)
-        response = client.call("editor.document.set", {"document_id": app.model.active_doc.document_id, "content": "real transport source"})
+        response = client.call(
+            "editor.document.set",
+            {"document_id": app.model.active_doc.document_id, "content": "real transport source"},
+        )
         assert response["result"]["ok"], response
         app.model.process_events()
         assert app.model.active_doc.text == "real transport source"
@@ -1276,8 +1449,10 @@ def test_native_editor_real_rpc_transport_updates_buffer_and_stops(tmp_path):
 
 def test_native_editor_rpc_bind_failure_returns_actionable_error(tmp_path, monkeypatch):
     from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
+
     def fail(self):
         raise OSError("port already occupied")
+
     monkeypatch.setattr(EditorRpcServer, "start", fail)
     model = EditorModel(tmp_path)
     assert not model.start_rpc()
@@ -1288,13 +1463,29 @@ def test_native_editor_rpc_bind_failure_returns_actionable_error(tmp_path, monke
 
 def test_native_editor_full_color_and_lint_preferences_apply_and_roundtrip(tmp_path, monkeypatch):
     from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
+
     model = EditorModel(tmp_path)
     from chisurf.plugins.core.code_editor.gui.editor_preferences import font_choices
+
     family = font_choices()[-1]
-    model.restore_settings({"color_scheme": "Light", "paper_color": "#eeeeee", "default_color": "#112233",
-        "margins_background_color": "#dddddd", "marker_background_color": "#778899", "caret_line_background_color": "#abcdee",
-        "caret_line_visible": False, "font_family": family, "font_size": 14, "language": "JSON", "enable_ruff": True,
-        "run_ruff_on_save": True, "ruff_timeout_ms": 3210, "ruff_extra_args": ["--select", "F"]})
+    model.restore_settings(
+        {
+            "color_scheme": "Light",
+            "paper_color": "#eeeeee",
+            "default_color": "#112233",
+            "margins_background_color": "#dddddd",
+            "marker_background_color": "#778899",
+            "caret_line_background_color": "#abcdee",
+            "caret_line_visible": False,
+            "font_family": family,
+            "font_size": 14,
+            "language": "JSON",
+            "enable_ruff": True,
+            "run_ruff_on_save": True,
+            "ruff_timeout_ms": 3210,
+            "ruff_extra_args": ["--select", "F"],
+        }
+    )
     doc = model.active_doc
     model.apply_editor_preferences(doc.editor)
     assert doc.editor.config.background_color[:3] == (238, 238, 238)
@@ -1302,7 +1493,13 @@ def test_native_editor_full_color_and_lint_preferences_apply_and_roundtrip(tmp_p
     assert not doc.editor.config.highlight_current_line
     assert doc.editor.language_name == "JSON"
     calls = []
-    monkeypatch.setattr(RuffRunner, "check", lambda self, path, content, **kwargs: calls.append(kwargs) or {"ok": True, "diagnostics": []})
+    monkeypatch.setattr(
+        RuffRunner,
+        "check",
+        lambda self, path, content, **kwargs: (
+            calls.append(kwargs) or {"ok": True, "diagnostics": []}
+        ),
+    )
     model.run_ruff()
     assert calls[-1]["timeout_ms"] == 3210
     assert calls[-1]["extra_args"] == ["--select", "F"]
@@ -1324,7 +1521,11 @@ def test_native_editor_settings_controls_apply_real_colors(tmp_path, monkeypatch
     tooltips = []
     monkeypatch.setattr(im, "set_item_tooltip", lambda text: tooltips.append(text))
     original = im.color_edit3
-    monkeypatch.setattr(im, "color_edit3", lambda label, color: (True, (40, 50, 60)) if label == "Paper" else original(label, color))
+    monkeypatch.setattr(
+        im,
+        "color_edit3",
+        lambda label, color: (True, (40, 50, 60)) if label == "Paper" else original(label, color),
+    )
     with im.frame(RecordingPainter(), (0, 0, 800, 1200)):
         gui._draw_settings_panel()
     model.apply_editor_preferences(model.active_doc.editor)
@@ -1336,10 +1537,15 @@ def test_native_editor_settings_controls_apply_real_colors(tmp_path, monkeypatch
 
 def test_native_chat_provider_setup_rejects_invalid_acp_command():
     import types
+
     model = ChatModel()
     errors = []
-    settings = types.SimpleNamespace(provider="acp", command='agent "unclosed', temperature=0.4,
-        _set_status=lambda text, color: errors.append(text))
+    settings = types.SimpleNamespace(
+        provider="acp",
+        command='agent "unclosed',
+        temperature=0.4,
+        _set_status=lambda text, color: errors.append(text),
+    )
     original = list(model.acp_client.command)
     assert not model.use_provider_settings(settings)
     assert model.acp_client.command == original

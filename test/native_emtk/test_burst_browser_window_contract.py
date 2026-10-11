@@ -82,8 +82,16 @@ def test_default_preserves_real_burst_gating_histogram_and_exports(tmp_path, mon
             assert app.browser_gui.docks.window(key) is not None
             app.browser_gui.docks.focus(key)
             driver.draw(2)
-        assert {"open_folder", "open_file", "export_gated", "export_selected", "detector",
-                "hist_column", "table", "browser_histogram"} <= app.item_rects.keys()
+        assert {
+            "open_folder",
+            "open_file",
+            "export_gated",
+            "export_selected",
+            "detector",
+            "hist_column",
+            "table",
+            "browser_histogram",
+        } <= app.item_rects.keys()
         for key, value in {"e_min": 0.5, "e_max": 0.9, "s_min": 0.3, "s_max": 0.7}.items():
             setattr(model, key, value)
         model.hist_column = "E"
@@ -132,8 +140,8 @@ def test_every_measurement_column_is_reachable_without_moving_toolbar(tmp_path, 
         for _ in range(len(column_names(app.model.table)) + 1):
             driver.wheel(0, at=(x + width / 2, y + height / 2), dx=-1)
             visible = any(
-                t[5] == last and t[2] > 0 and x <= t[0] < x + width
-                and y <= t[1] < y + height for t in driver.painter.visible_texts
+                t[5] == last and t[2] > 0 and x <= t[0] < x + width and y <= t[1] < y + height
+                for t in driver.painter.visible_texts
             )
             if visible:
                 break
@@ -161,7 +169,10 @@ def test_padded_gate_limits_are_visible_and_rendering_does_not_clamp_science(tmp
         assert "-0.250" in painter.strings
         assert "1.250" in painter.strings
         assert (app.model.e_min, app.model.e_max, app.model.s_min, app.model.s_max) == (
-            -0.125, 1.125, -0.25, 1.25
+            -0.125,
+            1.125,
+            -0.25,
+            1.25,
         )
     finally:
         app.close()

@@ -43,26 +43,73 @@ TOPOLOGY_SUFFIXES = (".pdb", ".ent", ".cif")
 
 #: ``(key, caption, attr, dialog title, filters, tooltip, browse tooltip, placeholder)`` of the file rows, in order.
 PATH_ROWS = (
-    ("trajectory", "Trajectory", "trajectory", "Open Trajectory", TRAJ_FILTER,
-     "The trajectory to select pairs from. Choose it with ... or drop it on the window.",
-     "Choose the trajectory file.", "Drop a trajectory here or browse..."),
-    ("topology", "Topology (optional)", "topology", "Open Topology", TOP_FILTER,
-     "The PDB that names the atoms; a DCD stores coordinates only, so it needs one.",
-     "Choose the topology PDB.", "PDB naming the atoms (needed for a DCD)"),
-    ("fps_json", "FPS JSON (optional)", "fps_json", "Open FPS JSON", FPS_FILTER,
-     "Labelling positions and distances: when given they are the candidate sites and pairs "
-     "(the residue fields are then not used).",
-     "Choose the FPS JSON file.", "Candidate pairs from an fps.json (optional)"),
+    (
+        "trajectory",
+        "Trajectory",
+        "trajectory",
+        "Open Trajectory",
+        TRAJ_FILTER,
+        "The trajectory to select pairs from. Choose it with ... or drop it on the window.",
+        "Choose the trajectory file.",
+        "Drop a trajectory here or browse...",
+    ),
+    (
+        "topology",
+        "Topology (optional)",
+        "topology",
+        "Open Topology",
+        TOP_FILTER,
+        "The PDB that names the atoms; a DCD stores coordinates only, so it needs one.",
+        "Choose the topology PDB.",
+        "PDB naming the atoms (needed for a DCD)",
+    ),
+    (
+        "fps_json",
+        "FPS JSON (optional)",
+        "fps_json",
+        "Open FPS JSON",
+        FPS_FILTER,
+        "Labelling positions and distances: when given they are the candidate sites and pairs "
+        "(the residue fields are then not used).",
+        "Choose the FPS JSON file.",
+        "Candidate pairs from an fps.json (optional)",
+    ),
 )
 
-RESULT_TABLE = {"sections": [{
-    "type": "custom", "key": "data_table",
-    "description": "The chosen pairs in the order they were added, with the mean RMSD after each.",
-    "options": {"source": "result_rows", "height": 190, "row_key": "number",
-                "columns": [{"key": "number", "title": "#", "width": 50, "description": "Order in which the pair was added."},
-                            {"key": "pair", "title": "Pair", "description": "The two residues: chain:name+number - chain:name+number."},
-                            {"key": "rmsd", "title": "<<RMSD>> (A)", "width": 120, "format": "%.2f",
-                             "description": "Mean RMSD between the conformations the pairs chosen so far cannot distinguish."}]}}]}
+RESULT_TABLE = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "The chosen pairs in the order they were added, with the mean RMSD after each.",
+            "options": {
+                "source": "result_rows",
+                "height": 190,
+                "row_key": "number",
+                "columns": [
+                    {
+                        "key": "number",
+                        "title": "#",
+                        "width": 50,
+                        "description": "Order in which the pair was added.",
+                    },
+                    {
+                        "key": "pair",
+                        "title": "Pair",
+                        "description": "The two residues: chain:name+number - chain:name+number.",
+                    },
+                    {
+                        "key": "rmsd",
+                        "title": "<<RMSD>> (A)",
+                        "width": 120,
+                        "format": "%.2f",
+                        "description": "Mean RMSD between the conformations the pairs chosen so far cannot distinguish.",
+                    },
+                ],
+            },
+        }
+    ]
+}
 
 
 @dataclass
@@ -109,7 +156,9 @@ class PairSession(PairParams):
         self.running = True
         self.say("Running the pair selection...")
         params = self.params()
-        self._thread = threading.Thread(target=self._work, args=(params,), daemon=True, name="pair-selection")
+        self._thread = threading.Thread(
+            target=self._work, args=(params,), daemon=True, name="pair-selection"
+        )
         self._thread.start()
         return True
 
@@ -137,7 +186,9 @@ class PairSession(PairParams):
                 self.on_message("FRET pair selection failed", payload)
             else:
                 self.result = payload
-                self.rows = [{"number": n, "pair": pair, "rmsd": rmsd} for n, pair, rmsd in payload.rows()]
+                self.rows = [
+                    {"number": n, "pair": pair, "rmsd": rmsd} for n, pair, rmsd in payload.rows()
+                ]
                 self.say(f"{len(self.rows)} pairs chosen.")
                 for text in payload.warnings:
                     self.on_message("AV backend unavailable", text)
@@ -217,7 +268,7 @@ class PairSelectionCard(CardShell):
     def set_path(self, attr: str, path: str) -> None:
         setattr(self.session, attr, str(path))
         self.used(attr)
-        self.used(f"{attr}_browse")                  # the tour's await steps name the button
+        self.used(f"{attr}_browse")  # the tour's await steps name the button
         # The first tour card is naturally placed beside the trajectory row.  In
         # this two-dock layout that puts its navigation buttons over the results
         # table, whose input wins the click.  Once the awaited browse action is
@@ -240,8 +291,13 @@ class PairSelectionCard(CardShell):
             self.session.say("Nothing to export: run the selection first.", True)
             return
         directory = os.path.dirname(self.session.trajectory) if self.session.trajectory else ""
-        self.save_file("Export pair selection", EXPORT_FILTER, self._export, filename="pair_selection.txt",
-                       directory=directory)
+        self.save_file(
+            "Export pair selection",
+            EXPORT_FILTER,
+            self._export,
+            filename="pair_selection.txt",
+            directory=directory,
+        )
 
     def _export(self, path: str) -> None:
         self.session.export(str(path))
@@ -254,10 +310,18 @@ class PairSelectionCard(CardShell):
             if not os.path.isfile(path):
                 continue
             low = path.lower()
-            attr = "topology" if low.endswith(TOPOLOGY_SUFFIXES) else "fps_json" if low.endswith(".json") else "trajectory"
+            attr = (
+                "topology"
+                if low.endswith(TOPOLOGY_SUFFIXES)
+                else "fps_json"
+                if low.endswith(".json")
+                else "trajectory"
+            )
             setattr(self.session, attr, path)
             taken = True
-        self.session.say("Dropped files taken." if taken else "No file among the dropped paths.", not taken)
+        self.session.say(
+            "Dropped files taken." if taken else "No file among the dropped paths.", not taken
+        )
         return taken
 
     # -- frame ----------------------------------------------------------------------------------------------- #
@@ -274,7 +338,9 @@ class PairSelectionCard(CardShell):
 
     def label_column(self) -> float:
         if not self.labels.ready:
-            captions = [r[1] for r in PATH_ROWS] + [s["label"] for s in labelled(self.spec["sections"])]
+            captions = [r[1] for r in PATH_ROWS] + [
+                s["label"] for s in labelled(self.spec["sections"])
+            ]
             self.labels.measure(captions)
             self.labels.pad(self.spec["sections"])
         return self.labels.x
@@ -287,8 +353,13 @@ class PairSelectionCard(CardShell):
             im.text(caption)
             im.same_line(label_w)
             im.set_next_item_width(max(80.0, width - label_w - button_w - 8.0))
-            im.input_text(f"##{key}", getattr(self.session, attr) or "", hint=hint,
-                          flags=im.InputTextFlags.READ_ONLY, elide_start=True)
+            im.input_text(
+                f"##{key}",
+                getattr(self.session, attr) or "",
+                hint=hint,
+                flags=im.InputTextFlags.READ_ONLY,
+                elide_start=True,
+            )
             im.set_item_tooltip(tip)
             self.remember(key)
             im.same_line()
@@ -299,15 +370,32 @@ class PairSelectionCard(CardShell):
 
     def _draw_inputs(self, box) -> None:
         s = self.session
-        pressed = self.toolbar([
-            {"label": "Run selection", "key": "run", "enabled": not s.running,
-             "tip": "Compute the efficiencies and choose the most informative pairs."},
-            {"label": action_caption("export"), "key": "export", "enabled": s.result is not None and not s.running,
-             "tip": action_tooltip("export", "Write the chosen pairs and their <<RMSD>> to a text file.")},
-            *self.help_buttons(),
-        ])
-        {None: lambda: None, "run": self.run, "export": self.export, "guide": self.start_guide,
-         "help": self.show_help}[pressed]()
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Run selection",
+                    "key": "run",
+                    "enabled": not s.running,
+                    "tip": "Compute the efficiencies and choose the most informative pairs.",
+                },
+                {
+                    "label": action_caption("export"),
+                    "key": "export",
+                    "enabled": s.result is not None and not s.running,
+                    "tip": action_tooltip(
+                        "export", "Write the chosen pairs and their <<RMSD>> to a text file."
+                    ),
+                },
+                *self.help_buttons(),
+            ]
+        )
+        {
+            None: lambda: None,
+            "run": self.run,
+            "export": self.export,
+            "guide": self.start_guide,
+            "help": self.show_help,
+        }[pressed]()
         if s.running:
             im.text_disabled(tr("Working..."))
             self.remember("working")
@@ -332,7 +420,11 @@ class PairSelectionCard(CardShell):
             implot.set_next_line_style((31, 119, 180, 255), 2.0)
             implot.plot_line("<<RMSD>>", np.arange(1, len(decay) + 1, dtype=float), decay)
             implot.end_plot()
-            im.set_item_tooltip(tr("The mean RMSD against the number of pairs chosen: how fast the conformations become distinguishable."))
+            im.set_item_tooltip(
+                tr(
+                    "The mean RMSD against the number of pairs chosen: how fast the conformations become distinguishable."
+                )
+            )
             self.remember("decay_plot")
 
     def export_settings(self) -> dict:
@@ -345,7 +437,11 @@ class PairSelectionCard(CardShell):
 
 def _spin(sections) -> None:
     for section in sections:
-        if section.get("type") == "value" and section.get("kind") in ("int", "float") and not section.get("read_only"):
+        if (
+            section.get("type") == "value"
+            and section.get("kind") in ("int", "float")
+            and not section.get("read_only")
+        ):
             section["style"] = "spin"
             section.setdefault("step", 1)
         _spin(section.get("sections", []))

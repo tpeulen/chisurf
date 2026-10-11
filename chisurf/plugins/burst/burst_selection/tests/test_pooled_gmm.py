@@ -29,7 +29,12 @@ def _bare_fit(pr, n):
     from chisurf.core.ml import GaussianMixture
 
     gm = GaussianMixture(
-        n_components=n, covariance_type="full", random_state=42, max_iter=300, n_init=10, tol=1e-3,
+        n_components=n,
+        covariance_type="full",
+        random_state=42,
+        max_iter=300,
+        n_init=10,
+        tol=1e-3,
         reg_covar=1e-6,
     ).fit(pr.reshape(-1, 1))
     order = np.argsort(gm.means_.ravel())
@@ -72,7 +77,16 @@ def test_guide_29_numbers_on_the_ten_repeats(tmp_path, monkeypatch):
     folder.mkdir()
     for spc in sorted(DATA.glob("m00*.spc")):
         shutil.copy(spc, folder)
-    det = lambda chs: {"chs": chs, "micro_time_ranges": [[0, 4096]], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}  # noqa: E731
+
+    def det(chs):
+        return {
+            "chs": chs,
+            "micro_time_ranges": [[0, 4096]],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        }
+
     save_setup(
         "guide29",
         {

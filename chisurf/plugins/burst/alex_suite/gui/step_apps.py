@@ -83,7 +83,9 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
     """Burst Analysis's data step, proceeding to the alternation step, with the demo measurement below."""
 
     PROCEED_LABEL = "Proceed to 3. Alternation"
-    PROCEED_TIP = "Go on to 3. Alternation with these files (µs-ALEX data is converted there on arrival)."
+    PROCEED_TIP = (
+        "Go on to 3. Alternation with these files (µs-ALEX data is converted there on arrival)."
+    )
 
     def load_example(self, folder: Path | None = None) -> Path:
         """Write the simulated µs-ALEX measurement (:mod:`..demo`) into the plugin cache and add it to the files."""
@@ -91,7 +93,9 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
 
         path = make_demo(folder)
         self.source.add_paths([path])
-        self.message = f"Demo µs-ALEX measurement written to {path} (simulated; the answer is known)."
+        self.message = (
+            f"Demo µs-ALEX measurement written to {path} (simulated; the answer is known)."
+        )
         if self.selected_index is None:
             self.selected_index = 0
         return path
@@ -106,8 +110,10 @@ class AlexDataSelectionApp(BurstDataSelectionApp):
             except Exception as exc:  # noqa: BLE001 - shown in the window
                 self.message = f"Could not write the demo data: {exc}"
         im.set_item_tooltip(
-            tr("Write a simulated µs-ALEX measurement (100 µs alternation, donor channel 0, acceptor channel 1; low FRET, "
-            "high FRET, donor-only and acceptor-only molecules) into this plugin’s generated-data folder and add it.")
+            tr(
+                "Write a simulated µs-ALEX measurement (100 µs alternation, donor channel 0, acceptor channel 1; low FRET, "
+                "high FRET, donor-only and acceptor-only molecules) into this plugin’s generated-data folder and add it."
+            )
         )
         self.remember("load_example")
 
@@ -168,8 +174,13 @@ class TitrationStep:
     def export_csv(self, path: str | None = None) -> Path | None:
         """Write the result to *path*; without one, ask where (the file chooser in save mode)."""
         if path is None:
-            self.dialog.open("Export titration", "save", lambda p: self.export_csv(p[0]),
-                             filters=[("CSV", ["*.csv"])], filename="titration.csv")
+            self.dialog.open(
+                "Export titration",
+                "save",
+                lambda p: self.export_csv(p[0]),
+                filters=[("CSV", ["*.csv"])],
+                filename="titration.csv",
+            )
             return None
         try:
             written = self.model.export_csv(path)

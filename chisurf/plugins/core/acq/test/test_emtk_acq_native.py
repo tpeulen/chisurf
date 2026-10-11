@@ -481,7 +481,9 @@ class FakeBHSetupAdapter:
     def set_parameter(self, module, parameter, value):
         from chisurf.plugins.core.acq.gui.setup_models import BH_PARAMETER_IDS
 
-        name = next(name for name, identifier in BH_PARAMETER_IDS.items() if identifier == parameter)
+        name = next(
+            name for name, identifier in BH_PARAMETER_IDS.items() if identifier == parameter
+        )
         self.calls.append(("set_parameter", module, name, value))
         self.values[module, name] = value
 
@@ -520,7 +522,11 @@ def test_device_setup_real_native_click_path_opens_and_cancels_for_all_devices()
     try:
         ui = Driver(app, (1200, 800))
         ui.draw(3)
-        for label, kind in (("Simulation", "SIMULATION"), ("Becker-Hickl", "BH_SPC"), ("PicoQuant", "PICOQUANT")):
+        for label, kind in (
+            ("Simulation", "SIMULATION"),
+            ("Becker-Hickl", "BH_SPC"),
+            ("PicoQuant", "PICOQUANT"),
+        ):
             ui.click("device_type")
             ui.click_text(label, last=True)
             ui.click("open_device_setup")

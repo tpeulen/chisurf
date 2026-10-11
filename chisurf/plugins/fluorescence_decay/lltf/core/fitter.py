@@ -634,9 +634,13 @@ class Decay:
             raise ValueError("maximum_number_of_lifetimes must be positive")
         if fixed is not None:
             if len(fixed) < 5 or (len(fixed) - 3) % 2:
-                raise ValueError("fixed must contain amplitude/lifetime pairs and three nuisance flags")
+                raise ValueError(
+                    "fixed must contain amplitude/lifetime pairs and three nuisance flags"
+                )
             if any(fixed[:-3]):
-                raise ValueError("Lifetime-specific fixed flags are unsupported in a lifetime-count scan")
+                raise ValueError(
+                    "Lifetime-specific fixed flags are unsupported in a lifetime-count scan"
+                )
         nuisance_fixed = list(fixed[-3:]) if fixed is not None else [False] * 3
 
         # Initialize arrays to store results
@@ -669,8 +673,8 @@ class Decay:
                     lifetime_spectrum=initial_spectrum.tolist(),
                     dof=(self.stop - self.start) - (2 * n + 3) + sum(nuisance_fixed),
                 )
-                embedded_result["reduced_chi_square"] = (
-                    embedded_result["chi_square"] / max(1, embedded_result["dof"])
+                embedded_result["reduced_chi_square"] = embedded_result["chi_square"] / max(
+                    1, embedded_result["dof"]
                 )
                 largest = int(np.argmax(spectrum[::2]))
                 lifetime = spectrum[2 * largest + 1]
@@ -708,11 +712,18 @@ class Decay:
                     optimizer_source="embedded_smaller_model",
                     optimizer_attempt={
                         name: current_result.get(name)
-                        for name in ("optimizer_status", "converged", "optimizer_message", "optimizer_source")
+                        for name in (
+                            "optimizer_status",
+                            "converged",
+                            "optimizer_message",
+                            "optimizer_source",
+                        )
                     },
                     embedded_from_n_lifetimes=n - 1,
                 )
-                self.lifetime_spectrum = np.asarray(embedded_result["lifetime_spectrum"], dtype=float)
+                self.lifetime_spectrum = np.asarray(
+                    embedded_result["lifetime_spectrum"], dtype=float
+                )
                 for name in ("irf_shift", "irf_background", "decay_background"):
                     setattr(self, name, previous[name])
                 self.calculate_model_decay()
@@ -724,10 +735,14 @@ class Decay:
             chi_squares.append(current_result["chi_square"])
             dofs.append(current_result["dof"])
             model_results.append(dict(current_result))
-            optimizer_results.append({
-                name: value for name, value in current_result.items()
-                if name.startswith("optimizer_") or name in ("converged", "embedded_from_n_lifetimes")
-            })
+            optimizer_results.append(
+                {
+                    name: value
+                    for name, value in current_result.items()
+                    if name.startswith("optimizer_")
+                    or name in ("converged", "embedded_from_n_lifetimes")
+                }
+            )
             best_params.append(
                 {
                     "lifetime_spectrum": self.lifetime_spectrum.copy(),
@@ -1020,9 +1035,7 @@ class Decay:
                 },
             }
 
-            self.fit_result.update(
-                optimal_result["optimizer_results"][optimal_result["best_idx"]]
-            )
+            self.fit_result.update(optimal_result["optimizer_results"][optimal_result["best_idx"]])
 
             if verbose:
                 print("Fit results:")
@@ -1053,7 +1066,9 @@ class Decay:
                 or np.any(spectrum[1::2] < 0)
                 or np.any(spectrum[1::2] > 10)
             ):
-                raise ValueError("initial_lifetime_spectrum must contain valid amplitude/lifetime pairs")
+                raise ValueError(
+                    "initial_lifetime_spectrum must contain valid amplitude/lifetime pairs"
+                )
             self.lifetime_spectrum = spectrum.copy()
             self.lifetime_spectrum[::2] /= self.lifetime_spectrum[::2].sum()
         elif randomize_initial_values:
@@ -1236,8 +1251,12 @@ class Decay:
         sl = slice(self.start, self.stop)
         ax.line(self.time_axis, np.clip(self.decay, 1e-9, None), color="b", label="Data")
         if self.model_decay is not None:
-            ax.line(self.time_axis[sl], np.clip(self.model_decay[sl], 1e-9, None), color="r",
-                    label="Fit")
+            ax.line(
+                self.time_axis[sl],
+                np.clip(self.model_decay[sl], 1e-9, None),
+                color="r",
+                label="Fit",
+            )
         if self.irf is not None:
             # Scaled to the maximum of the decay data in the fit range
             scaled = self.irf * np.max(self.decay[sl]) / np.max(self.irf)
@@ -1332,8 +1351,9 @@ class Decay:
         # The residuals are read against the decay: one time axis for both.
         span = float(self.time_axis[-1] - self.time_axis[0]) or 1.0
         for panel in figure.axes:
-            panel.set_xlim(float(self.time_axis[0]) - 0.02 * span,
-                           float(self.time_axis[-1]) + 0.02 * span)
+            panel.set_xlim(
+                float(self.time_axis[0]) - 0.02 * span, float(self.time_axis[-1]) + 0.02 * span
+            )
         self.figures["decay_curve"] = figure
         return figure
 

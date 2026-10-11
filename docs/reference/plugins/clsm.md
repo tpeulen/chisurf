@@ -21,7 +21,7 @@ Create CLSM-TTTR image representations, select pixels interactively, and export 
 | Menu path | Spectroscopy → Imaging → **CLSM-Draw** |
 | Categories | Spectroscopy, Imaging, Lifetime |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `clsm_draw` |
 
 ## Parameters

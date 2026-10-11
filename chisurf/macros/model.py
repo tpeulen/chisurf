@@ -164,8 +164,12 @@ def remove_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> Non
 
 
 def _resolve_selected_curve(
-    dataset_idx: int, curve_name: str, selector: typing.Any = None, *,
-    dataset_uid: str | None = None, member_uid: str | None = None,
+    dataset_idx: int,
+    curve_name: str,
+    selector: typing.Any = None,
+    *,
+    dataset_uid: str | None = None,
+    member_uid: str | None = None,
 ) -> cs.core.curve.Curve | None:
     """Resolve the curve a data-selector picked, by index then by name.
 
@@ -231,8 +235,14 @@ def _resolve_selected_curve(
     return None
 
 
-def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGroup = None, *,
-               dataset_uid: str | None = None, member_uid: str | None = None) -> None:
+def change_irf(
+    dataset_idx: int,
+    irf_name: str,
+    fit: cs.core.fitting.fit.FitGroup = None,
+    *,
+    dataset_uid: str | None = None,
+    member_uid: str | None = None,
+) -> None:
     """Attach the selected IRF, retaining optional stable parent/member identities."""
     if fit is None:
         gui = cs.cs
@@ -242,8 +252,11 @@ def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGrou
         dataset_idx,
         irf_name,
         selector=getattr(getattr(fit.model, "convolve", None), "irf_select", None),
-        **({"dataset_uid": dataset_uid, "member_uid": member_uid}
-           if dataset_uid is not None or member_uid is not None else {}),
+        **(
+            {"dataset_uid": dataset_uid, "member_uid": member_uid}
+            if dataset_uid is not None or member_uid is not None
+            else {}
+        ),
     )
 
     if irf_curve is None:
@@ -251,7 +264,8 @@ def change_irf(dataset_idx: int, irf_name: str, fit: cs.core.fitting.fit.FitGrou
 
     for f in fit[fit.selected_fit_index :]:
         f.model.convolve._irf = cs.core.data.DataCurve(
-            x=irf_curve.x, y=irf_curve.y, name=getattr(irf_curve, "name", None) or irf_name)
+            x=irf_curve.x, y=irf_curve.y, name=getattr(irf_curve, "name", None) or irf_name
+        )
 
     fit.update()
     _sync_editors(fit)

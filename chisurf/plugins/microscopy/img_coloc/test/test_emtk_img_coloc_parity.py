@@ -39,6 +39,8 @@ PLUGIN = HERE.parent
 EMTK_SPEC = json.loads((PLUGIN / "gui" / "coloc_emtk.view.json").read_text(encoding="utf-8"))
 QT_SPEC = json.loads((PLUGIN / "gui" / "coloc.view.json").read_text(encoding="utf-8"))
 BIG = (1200, 800)
+
+
 def persistent_settings_state(root=None):
     """Snapshot persistent files while ignoring only root logs and generated caches."""
     import os
@@ -49,7 +51,9 @@ def persistent_settings_state(root=None):
         if Path(directory) == root:
             dirs[:] = [name for name in dirs if name not in {"logs", "cache"}]
         for name in files:
-            if name.endswith(("-wal", "-shm")):  # a running ChiSurf rewrites the MMFDB's SQLite journal
+            if name.endswith(
+                ("-wal", "-shm")
+            ):  # a running ChiSurf rewrites the MMFDB's SQLite journal
                 continue
             path = Path(directory) / name
             stat = path.stat()

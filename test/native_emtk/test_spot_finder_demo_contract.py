@@ -99,7 +99,9 @@ def test_region_mle_loads_the_matching_explicit_irf(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("overwrite", [False, True])
-def test_existing_cache_overwrite_changes_the_actual_photon_streams(tmp_path, monkeypatch, overwrite):
+def test_existing_cache_overwrite_changes_the_actual_photon_streams(
+    tmp_path, monkeypatch, overwrite
+):
     """Changing a declared seed replaces both existing streams, not just their sidecar."""
     import numpy as np
     import tttrlib
@@ -115,10 +117,14 @@ def test_existing_cache_overwrite_changes_the_actual_photon_streams(tmp_path, mo
     after = [np.asarray(tttrlib.TTTR(str(p), "PTU").micro_times).copy() for p in (sample, irf)]
     assert all(not np.array_equal(a, b) for a, b in zip(before, after))
     reference = demo.make_demo(tmp_path / "fresh")
-    for actual_path, fresh_path in zip((sample, irf), (reference, reference.with_name(demo.IRF_FILENAME))):
+    for actual_path, fresh_path in zip(
+        (sample, irf), (reference, reference.with_name(demo.IRF_FILENAME))
+    ):
         actual, fresh = (tttrlib.TTTR(str(p), "PTU") for p in (actual_path, fresh_path))
         for attr in ("macro_times", "micro_times", "routing_channels"):
-            assert np.array_equal(np.asarray(getattr(actual, attr)), np.asarray(getattr(fresh, attr)))
+            assert np.array_equal(
+                np.asarray(getattr(actual, attr)), np.asarray(getattr(fresh, attr))
+            )
         assert actual.header.micro_time_resolution == fresh.header.micro_time_resolution
         assert actual.header.macro_time_resolution == fresh.header.macro_time_resolution
     assert json.loads(sample.with_suffix(".json").read_text()) == demo.DEMO

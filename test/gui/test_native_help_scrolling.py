@@ -12,11 +12,15 @@ from emtk.testing import Driver
 from chisurf.emtk.help_guide import EmTkHelpWindow, resolve_resource_file
 from chisurf.plugins.emtk_layout import action_caption
 
-RESOURCE = Path(__file__).resolve().parents[2] / "chisurf/plugins/tttr/microtime_histogram/gui/help.md"
+RESOURCE = (
+    Path(__file__).resolve().parents[2] / "chisurf/plugins/tttr/microtime_histogram/gui/help.md"
+)
 
 
 @pytest.mark.parametrize("module_file", [None, "", "owner.py"])
-def test_resource_module_file_preserves_none_empty_and_truthy_lookup(tmp_path, monkeypatch, module_file):
+def test_resource_module_file_preserves_none_empty_and_truthy_lookup(
+    tmp_path, monkeypatch, module_file
+):
     """A missing/empty module origin is ignored; a real origin resolves its sibling help."""
     monkeypatch.chdir(tmp_path)
     package = tmp_path / "package"
@@ -32,8 +36,12 @@ def test_resource_module_file_preserves_none_empty_and_truthy_lookup(tmp_path, m
 
 def _help_driver(size=(600, 400), guide=None):
     """Open the actual shipped Microtime documentation through the native host contract."""
-    window = EmTkHelpWindow(title="Micro-time histogram — Help", resource=RESOURCE,
-                            size=(700, 520), on_start_guide=guide)
+    window = EmTkHelpWindow(
+        title="Micro-time histogram — Help",
+        resource=RESOURCE,
+        size=(700, 520),
+        on_start_guide=guide,
+    )
     app = ImApp(lambda: window.draw((0, 0, *size)))
     window.show()
     driver = Driver(app, size)
@@ -68,7 +76,11 @@ def test_all_help_can_scroll_to_real_document_links_without_moving_footer(monkey
     driver.wheel(-100, at=(dx + dw / 2, dy + dh / 2))
     driver.frame(3)
     assert driver.rect("Close Help") == footer
-    link = next(t[:4] for t in driver.painter.texts if "TCSPC lifetime fitting" in t[5] and t[5].startswith("↗"))
+    link = next(
+        t[:4]
+        for t in driver.painter.texts
+        if "TCSPC lifetime fitting" in t[5] and t[5].startswith("↗")
+    )
     x, y, w, h = link
     assert dy <= y and y + h <= footer[1]
     driver.click(link)
@@ -91,7 +103,9 @@ def test_moving_the_modal_preserves_the_current_reading_position():
     driver.frame(2)
     driver.surface.on_pointer_release(dx + 220, dy + 30, LEFT_BUTTON, 0)
     driver.frame(3)
-    second = next(t[:4] for t in driver.painter.texts if t[5].startswith("↗ TCSPC lifetime fitting"))
+    second = next(
+        t[:4] for t in driver.painter.texts if t[5].startswith("↗ TCSPC lifetime fitting")
+    )
     assert second[0] == first[0] + 40 and second[1] == first[1] + 20
     assert second[1] + second[3] <= driver.rect("Close Help")[1]
 

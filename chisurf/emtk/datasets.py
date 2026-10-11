@@ -77,9 +77,7 @@ def _apply_g_factor_to_fit(fit_group, g_factor: float) -> None:
     _apply_anisotropy_calibration_to_fit(fit_group, {"g_factor": g_factor})
 
 
-def _apply_anisotropy_calibration_to_fit(
-    fit_group, calibration: dict[str, typing.Any]
-) -> None:
+def _apply_anisotropy_calibration_to_fit(fit_group, calibration: dict[str, typing.Any]) -> None:
     if not isinstance(calibration, dict):
         return
 

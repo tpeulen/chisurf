@@ -210,8 +210,10 @@ class LLTFApp(TourTarget, ImApp):
         if im.button(tr("▶  Fit")):
             self.error(self.start)
         im.set_item_tooltip(
-            tr("Run the LLTF command line in a background process with these inputs and options; "
-            "needs a decay and an IRF.")
+            tr(
+                "Run the LLTF command line in a background process with these inputs and options; "
+                "needs a decay and an IRF."
+            )
         )
         self.remember("Fit")
         im.end_disabled()
@@ -302,7 +304,9 @@ class LLTFApp(TourTarget, ImApp):
                     self.tab = tab
                     if tab == "Information":
                         im.text_wrapped(
-                            tr("Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model.")
+                            tr(
+                                "Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model."
+                            )
                         )
                     elif tab == "Analysis Output":
                         if im.button(tr("Clear output")):
@@ -402,7 +406,9 @@ class LLTFApp(TourTarget, ImApp):
             im.same_line()
             if im.button(tr("Close editor")) or pressed == "close":
                 self.config_open = False
-            im.set_item_tooltip(tr("Close the editor; unsaved edits remain available to the next run."))
+            im.set_item_tooltip(
+                tr("Close the editor; unsaved edits remain available to the next run.")
+            )
             self.config_window.end()
         if self.dialog is not None:
             pressed = self.file_window.begin(box)

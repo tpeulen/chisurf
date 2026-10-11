@@ -569,7 +569,10 @@ class AgentPanelWidget(QtWidgets.QWidget):
         mode = self._current_mode()
         self._update_mode_status(mode)
         self._check_provider_status()
-        if getattr(self, "_active_acp_client", None) is not None and self._active_acp_client.session_id:
+        if (
+            getattr(self, "_active_acp_client", None) is not None
+            and self._active_acp_client.session_id
+        ):
             try:
                 self._active_acp_client.set_mode(mode.value)
             except Exception:
@@ -1108,9 +1111,13 @@ updated: 2026-06-09
     def _on_acp_chunk(self, session_id: str, chunk: str) -> None:
         """Handle streaming assistant message chunk from ACP."""
         if not self._acp_msg_header_added:
-            self.transcript.append('<span style="color: #9ece6a; font-weight: bold;">AI (ACP):</span>')
+            self.transcript.append(
+                '<span style="color: #9ece6a; font-weight: bold;">AI (ACP):</span>'
+            )
             self._acp_msg_header_added = True
-            self.transcript.append(f'<div style="margin-left: 12px; margin-bottom: 4px;">{chunk}</div>')
+            self.transcript.append(
+                f'<div style="margin-left: 12px; margin-bottom: 4px;">{chunk}</div>'
+            )
         else:
             cursor = self.transcript.textCursor()
             cursor.movePosition(QtGui.QTextCursor.End)

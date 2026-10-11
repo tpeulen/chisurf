@@ -80,5 +80,9 @@ def test_no_new_plugin_imports_qt():
 
 def test_the_allowlist_only_shrinks():
     """An allow-list entry that no longer imports Qt (or is gone) must be struck."""
-    stale = sorted(a for a in _allowlist() if not (_ROOT / a).is_file() or not _imports_qt(_ROOT / a))
-    assert not stale, "strike from test/plugin_qt_allowlist.txt (no longer imports Qt):\n  " + "\n  ".join(stale)
+    stale = sorted(
+        a for a in _allowlist() if not (_ROOT / a).is_file() or not _imports_qt(_ROOT / a)
+    )
+    assert not stale, (
+        "strike from test/plugin_qt_allowlist.txt (no longer imports Qt):\n  " + "\n  ".join(stale)
+    )

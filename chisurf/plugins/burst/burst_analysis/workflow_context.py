@@ -75,7 +75,9 @@ def folder_from_result(result: object) -> Path | None:
     return None
 
 
-def materialize_handoff(context: BurstWorkflowContext, frames_by_file: Mapping[Any, Any]) -> Path | None:
+def materialize_handoff(
+    context: BurstWorkflowContext, frames_by_file: Mapping[Any, Any]
+) -> Path | None:
     """Give the later steps something to read the bursts from when the search wrote no folder.
 
     For a `.pto` source that is the container itself: it already holds the bursts, beside the photons they were
@@ -123,7 +125,9 @@ def materialize_handoff(context: BurstWorkflowContext, frames_by_file: Mapping[A
 
     payload = context.to_payload()
     payload["raw_files"] = [str(path) for path in raw_files]
-    (output_folder / "burst_analysis_handoff.json").write_text(json.dumps(payload, indent=2, default=str))
+    (output_folder / "burst_analysis_handoff.json").write_text(
+        json.dumps(payload, indent=2, default=str)
+    )
     return output_folder
 
 

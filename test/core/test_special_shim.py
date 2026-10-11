@@ -39,12 +39,16 @@ def test_logsumexp_matches_scipy(axis):
     a[0, 0] = -np.inf
     b = RNG.uniform(0, 2, (5, 7))
     b[1, :] = 0.0
-    np.testing.assert_allclose(sp.logsumexp(a, axis=axis), special.logsumexp(a, axis=axis), rtol=1e-15)
+    np.testing.assert_allclose(
+        sp.logsumexp(a, axis=axis), special.logsumexp(a, axis=axis), rtol=1e-15
+    )
     np.testing.assert_allclose(
         sp.logsumexp(a, axis=axis, b=b), special.logsumexp(a, axis=axis, b=b), rtol=1e-14
     )
     allneg = np.full((3, 4), -np.inf)
-    np.testing.assert_array_equal(sp.logsumexp(allneg, axis=axis), special.logsumexp(allneg, axis=axis))
+    np.testing.assert_array_equal(
+        sp.logsumexp(allneg, axis=axis), special.logsumexp(allneg, axis=axis)
+    )
 
 
 def test_xlogy_zero_times_log_zero_is_zero():
@@ -65,7 +69,9 @@ def test_distributions_match_scipy():
     np.testing.assert_allclose(sp.t.sf(np.abs(x), 7.0), stats.t.sf(np.abs(x), 7.0), rtol=1e-12)
     k = np.arange(41)[None, :]
     p = RNG.uniform(0, 1, 6)[:, None]
-    np.testing.assert_allclose(sp.binom.pmf(k, 40, p), stats.binom.pmf(k, 40, p), rtol=1e-12, atol=1e-300)
+    np.testing.assert_allclose(
+        sp.binom.pmf(k, 40, p), stats.binom.pmf(k, 40, p), rtol=1e-12, atol=1e-300
+    )
     kk = RNG.integers(0, 60, 300)
     mu = RNG.uniform(0.1, 40, 300)
     np.testing.assert_allclose(sp.poisson.logpmf(kk, mu), stats.poisson.logpmf(kk, mu), rtol=1e-13)

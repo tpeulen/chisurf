@@ -16,9 +16,18 @@ from chisurf.plugins.core.acq.pipeline import AcquisitionPipeline, PipelineConfi
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 SIM = {
-    "N_ph_max": 6000, "N_channels": 2, "M": [10.0], "D": [3.0], "q": [300.0, 225.0],
-    "dt": 0.01, "psf_type": "analytic_gaussian3d", "analytic_excitation": True,
-    "rmt1seed": 43, "rmt2seed": 44, "N_tac_channels": 4096, "tac_dt": 0.004069,
+    "N_ph_max": 6000,
+    "N_channels": 2,
+    "M": [10.0],
+    "D": [3.0],
+    "q": [300.0, 225.0],
+    "dt": 0.01,
+    "psf_type": "analytic_gaussian3d",
+    "analytic_excitation": True,
+    "rmt1seed": 43,
+    "rmt2seed": 44,
+    "N_tac_channels": 4096,
+    "tac_dt": 0.004069,
     "decay_lifetimes": [[[1.0, 3.2]]],
 }
 
@@ -30,8 +39,18 @@ class PlotsApp(ImApp):
         self.model = plots
         self.events: queue.Queue = queue.Queue()
         self.form, self.item_rects = FormState(), {}
-        self.form.custom.update({k: plots.draw_plot for k in (
-            "live_decay", "live_correlation", "live_count_rate", "live_mcs", "live_macrotime")})
+        self.form.custom.update(
+            {
+                k: plots.draw_plot
+                for k in (
+                    "live_decay",
+                    "live_correlation",
+                    "live_count_rate",
+                    "live_mcs",
+                    "live_macrotime",
+                )
+            }
+        )
         self.job = type("J", (), {"busy": False})()
         super().__init__(self.render, continuous=False)
 
@@ -138,7 +157,11 @@ def test_correlation_of_poisson_stream_is_flat_and_pairs_follow_controls():
             n = len(words)
             macro = np.cumsum(rng.exponential(200.0, n)).astype(np.uint64) + self.t
             self.t = int(macro[-1])
-            return macro, rng.integers(0, 4000, n).astype(np.uint16), rng.choice([8, 9], n).astype(np.int32)
+            return (
+                macro,
+                rng.integers(0, 4000, n).astype(np.uint16),
+                rng.choice([8, 9], n).astype(np.int32),
+            )
 
         t = 0
 

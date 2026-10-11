@@ -24,7 +24,9 @@ from typing import Any
 
 import yaml
 
-RESULT_COLUMNS = yaml.safe_load(Path(__file__).with_name("result_columns.yaml").read_text())["columns"]
+RESULT_COLUMNS = yaml.safe_load(Path(__file__).with_name("result_columns.yaml").read_text())[
+    "columns"
+]
 
 __all__ = ["write_fcs_container", "write_fcs_results"]
 
@@ -37,7 +39,6 @@ FCS_COLUMN_UNITS: dict[str, str] = {"Burst Index": "dimensionless"}
 for _feature in RESULT_COLUMNS:
     for _name in (_feature["column"], _feature["source"]):
         FCS_COLUMN_UNITS[_name] = _feature["unit"]
-
 
 
 def _units_for(columns) -> dict[str, str]:
@@ -115,7 +116,6 @@ def write_fcs_container(
     )
 
 
-
 def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None):
     """Publish indexed FCS results into each measurement's container.
 
@@ -153,6 +153,7 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
         source = Path(row["First File"])
         root = Path(row.get("Burst Folder", source.parent))
         groups.setdefault((root, source), []).append(row)
+
     def fingerprint(path):
         if not path.exists():
             return None
@@ -183,7 +184,9 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
             count = burst_counts.get((str(root), source.stem))
             if count is None:
                 count = ids[-1] + 1
-                logging.warning("Missing burst count for %s; inferring %s from results", source, count)
+                logging.warning(
+                    "Missing burst count for %s; inferring %s from results", source, count
+                )
             if any(bid < 0 or bid >= count for bid in ids):
                 raise ValueError("A result lies outside the declared input burst grid")
             sparse = {"Burst Index": np.asarray(ids, dtype=float)}
@@ -191,7 +194,9 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
                 sparse[name] = np.asarray([values.get(bid, np.nan) for bid in ids])
             # Copy an existing PTO before extending it: all scientific lineage
             # survives, and a failed/cancelled run leaves its original untouched.
-            stage = Path(stack.enter_context(TemporaryDirectory(prefix=".burst-fcs-", dir=source.parent)))
+            stage = Path(
+                stack.enter_context(TemporaryDirectory(prefix=".burst-fcs-", dir=source.parent))
+            )
             target = container_for(source)
             original.setdefault(target, fingerprint(target))
             staged_source = staged_containers.get(target, source)
@@ -200,8 +205,11 @@ def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None)
                     shutil.copy2(target, stage / target.name)
                 if source.suffix == ".pto":
                     staged_source = stage / source.name
-            written = Path(write_fcs_container(staged_source, store_from_arrays(sparse),
-                                               parameters=parameters, out_dir=stage))
+            written = Path(
+                write_fcs_container(
+                    staged_source, store_from_arrays(sparse), parameters=parameters, out_dir=stage
+                )
+            )
             if target not in staged_containers:
                 staged_containers[target] = written
                 prepared.append((written, target))

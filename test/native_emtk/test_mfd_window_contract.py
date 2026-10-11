@@ -49,7 +49,10 @@ def test_measured_preparation_survives_default_and_narrow():
     for size in [(1100, 720), (736, 552)]:
         Driver(app, size).draw(3)
         assert before == (
-            model.report, model.detector_rows(), model.source_rows(), model.summary_rows()
+            model.report,
+            model.detector_rows(),
+            model.source_rows(),
+            model.summary_rows(),
         )
         assert {"browse", "prepare", "report"} <= app.item_rects.keys()
 
@@ -97,6 +100,6 @@ def test_actual_prepare_button_publishes_measured_results():
         assert not app.model.error
         assert app.model.result["n_bursts"] == 152
         assert app.model.result["total_photons"] == 17282
-        assert app.model.result["count_agreement"] == {"green": 1., "red": 1., "yellow": 1.}
+        assert app.model.result["count_agreement"] == {"green": 1.0, "red": 1.0, "yellow": 1.0}
     finally:
         app.close()

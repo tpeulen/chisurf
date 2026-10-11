@@ -150,7 +150,6 @@ def _candidate_data_files() -> list[pathlib.Path]:
     return [path for path in found if path not in ignored]
 
 
-
 @cache
 def _packaging_config() -> dict:
     """Read the release selection policy used by setuptools itself."""
@@ -165,21 +164,31 @@ def _selected_packages() -> tuple[str, ...]:
     finder = find_namespace_packages if find.get("namespaces", True) else find_packages
     result = []
     for where in find.get("where", ["."]):
-        result.extend(finder(str(ROOT / where), include=find.get("include", ["*"]),
-                             exclude=find.get("exclude", [])))
+        result.extend(
+            finder(
+                str(ROOT / where),
+                include=find.get("include", ["*"]),
+                exclude=find.get("exclude", []),
+            )
+        )
     return tuple(result)
 
 
 def _build_command():
     """Configure real build_py selection without running a native build or egg_info."""
     config = _packaging_config()
-    distribution = Distribution({
-        "name": "release-data-probe", "version": "0",
-        "packages": list(_selected_packages()),
-        "include_package_data": config.get("include-package-data", False),
-        "package_data": canonic_package_data(dict(config.get("package-data", {}))),
-        "exclude_package_data": canonic_package_data(dict(config.get("exclude-package-data", {}))),
-    })
+    distribution = Distribution(
+        {
+            "name": "release-data-probe",
+            "version": "0",
+            "packages": list(_selected_packages()),
+            "include_package_data": config.get("include-package-data", False),
+            "package_data": canonic_package_data(dict(config.get("package-data", {}))),
+            "exclude_package_data": canonic_package_data(
+                dict(config.get("exclude-package-data", {}))
+            ),
+        }
+    )
     command = distribution.get_command_obj("build_py")
     command.ensure_finalized()
     return command
@@ -188,14 +197,15 @@ def _build_command():
 def _shipped_data_files() -> list[pathlib.Path]:
     """Runtime data candidates, before positive extension globs can silently drop them."""
     command = _build_command()
-    packages = {pathlib.Path(command.get_package_dir(name)): name
-                for name in _selected_packages()}
+    packages = {pathlib.Path(command.get_package_dir(name)): name for name in _selected_packages()}
     found = []
     for path in _candidate_data_files():
         parent = path.parent
         while parent not in packages and parent != pathlib.Path("."):
             parent = parent.parent
-        if parent in packages and command.exclude_data_files(packages[parent], str(parent), [str(path)]):
+        if parent in packages and command.exclude_data_files(
+            packages[parent], str(parent), [str(path)]
+        ):
             found.append(path)
     return found
 
@@ -206,8 +216,16 @@ def _manifest_files(source_files: list[pathlib.Path]) -> list[str]:
     files.allfiles = [str(path) for path in source_files]
     # A VCS plugin or an old SOURCES.txt can contribute any of these files.
     files.files = list(files.allfiles)
-    with closing(TextFile(str(ROOT / "MANIFEST.in"), strip_comments=True, skip_blanks=True,
-                          join_lines=True, lstrip_ws=True, rstrip_ws=True)) as template:
+    with closing(
+        TextFile(
+            str(ROOT / "MANIFEST.in"),
+            strip_comments=True,
+            skip_blanks=True,
+            join_lines=True,
+            lstrip_ws=True,
+            rstrip_ws=True,
+        )
+    ) as template:
         for line in template.readlines():
             files.process_template_line(line)
     return files.files
@@ -216,19 +234,26 @@ def _manifest_files(source_files: list[pathlib.Path]) -> list[str]:
 def test_namespace_discovery_does_not_install_test_packages():
     """Development packages are absent from real setuptools namespace discovery."""
     assert any(path.name in {"test", "tests"} for path in PACKAGE.rglob("*") if path.is_dir())
-    assert not [name for name in _selected_packages() if {"test", "tests"}.intersection(name.split("."))]
+    assert not [
+        name for name in _selected_packages() if {"test", "tests"}.intersection(name.split("."))
+    ]
 
 
 def test_sdist_and_wheel_data_selection_exclude_test_trees(tmp_path, monkeypatch):
     """Manifest pruning and build_py both exclude fixtures without dropping runtime data."""
     monkeypatch.chdir(ROOT)
-    source_files = [path.relative_to(ROOT) for base in (PACKAGE, ROOT / "test")
-                    for path in base.rglob("*")
-                    if path.is_file() and not IGNORED_PARTS.intersection(path.parts)]
+    source_files = [
+        path.relative_to(ROOT)
+        for base in (PACKAGE, ROOT / "test")
+        for path in base.rglob("*")
+        if path.is_file() and not IGNORED_PARTS.intersection(path.parts)
+    ]
     test_files = [path for path in source_files if {"test", "tests"}.intersection(path.parts)]
     assert test_files, "the actual fixture census must not be vacuous"
     manifest = _manifest_files(source_files)
-    assert not [path for path in manifest if {"test", "tests"}.intersection(pathlib.Path(path).parts)]
+    assert not [
+        path for path in manifest if {"test", "tests"}.intersection(pathlib.Path(path).parts)
+    ]
     command = _build_command()
     egg_info = tmp_path / "probe.egg-info"
     egg_info.mkdir()
@@ -237,8 +262,11 @@ def test_sdist_and_wheel_data_selection_exclude_test_trees(tmp_path, monkeypatch
     command.existing_egg_info_dir = str(egg_info)
     command.build_lib = str(tmp_path / "build")
     with warnings.catch_warnings(record=True) as messages:
-        selected = {pathlib.Path(directory) / name
-                    for _, directory, _, names in command._get_data_files() for name in names}
+        selected = {
+            pathlib.Path(directory) / name
+            for _, directory, _, names in command._get_data_files()
+            for name in names
+        }
     # The deliberately stale manifest can produce setuptools' excluded-package
     # diagnostic before exclude-package-data filters it. Capture only that case.
     for message in messages:

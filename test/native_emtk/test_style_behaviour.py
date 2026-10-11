@@ -49,7 +49,8 @@ def test_style_new_creates_the_qss_file_like_qt(style_app):
     app, styles_dir = style_app
     ok = app.model.new("session", discard=True)
     assert ok is not False
-    assert (styles_dir / "session.qss").exists(), "new() must create the .qss file like the Qt dialog flow"
+    assert (styles_dir / "session.qss").exists(), (
+        "new() must create the .qss file like the Qt dialog flow"
+    )
     # Recreating over an existing file is guarded, exactly like Qt's existence check.
     assert app.model.new("session", discard=False) is False
-

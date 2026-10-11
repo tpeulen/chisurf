@@ -72,8 +72,11 @@ def test_real_menu_and_ribbon_actions_toggle_main_and_save_preference(main_windo
     main = main_window
     assert main._ribbon_integration is None
     before_children = dict(getattr(main, "_plugin_windows", {}))
-    menu_actions = [action for action in main.findChildren(QtWidgets.QAction)
-                    if action.text().split(" (")[0] == "Menu Switch"]
+    menu_actions = [
+        action
+        for action in main.findChildren(QtWidgets.QAction)
+        if action.text().split(" (")[0] == "Menu Switch"
+    ]
     assert menu_actions, "Production plugin discovery must expose the host action in its menu."
     menu_actions[0].trigger()
     qapp.processEvents()
@@ -81,8 +84,11 @@ def test_real_menu_and_ribbon_actions_toggle_main_and_save_preference(main_windo
     assert preference(tmp_path) is True
     assert dict(getattr(main, "_plugin_windows", {})) == before_children
     ribbon = main._ribbon_integration.ribbon_bar
-    buttons = [button for button in ribbon.findChildren(QtWidgets.QToolButton)
-               if button.text().split(" (")[0] == "Menu Switch"]
+    buttons = [
+        button
+        for button in ribbon.findChildren(QtWidgets.QToolButton)
+        if button.text().split(" (")[0] == "Menu Switch"
+    ]
     assert buttons, "The same declared action must be discoverable from the ribbon."
     button = buttons[0]
     category = button.parent()

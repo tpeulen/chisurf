@@ -28,7 +28,9 @@ def test_an_administrator_needs_at_least_medium_strength(qapp, qtbot, monkeypatc
     from chisurf.gui.password_dialog import PasswordChangeDialog
 
     asked = []
-    monkeypatch.setattr(password_dialog.dialogs, "warning", lambda *args, **kw: asked.append(args[2]))
+    monkeypatch.setattr(
+        password_dialog.dialogs, "warning", lambda *args, **kw: asked.append(args[2])
+    )
     dialog = PasswordChangeDialog(user_id="root", is_admin=True)
     qtbot.addWidget(dialog)
     dialog.edit_password.setText("abc")

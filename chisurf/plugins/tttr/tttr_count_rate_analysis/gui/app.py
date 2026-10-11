@@ -317,7 +317,9 @@ class CountRateGui(TourTarget):
         if callable(refresh):
             if im.button(tr("Refresh saved setups")):
                 refresh()
-            im.set_item_tooltip(tr("Read authoritative Detector Definition setups from MMFDB or JSON."))
+            im.set_item_tooltip(
+                tr("Read authoritative Detector Definition setups from MMFDB or JSON.")
+            )
         editor = getattr(tool, "edit_setup", None)
         if callable(editor):
             if im.button(tr("Edit detector setup…")):
@@ -327,7 +329,9 @@ class CountRateGui(TourTarget):
         if callable(browse):
             if im.button(tr("Open setup library…")):
                 browse()
-            im.set_item_tooltip(tr("Read detector definitions from another setup library JSON file."))
+            im.set_item_tooltip(
+                tr("Read detector definitions from another setup library JSON file.")
+            )
         setups = tool.available_setups()
         names = list(setups.keys())
         if tool.selected_setup not in names:
@@ -342,8 +346,10 @@ class CountRateGui(TourTarget):
                 else "not loaded — press Refresh"
             )
             im.set_item_tooltip(
-                tr("No detector setups are saved yet — define one in the "
-                "Detector Configuration wizard and it appears here.")
+                tr(
+                    "No detector setups are saved yet — define one in the "
+                    "Detector Configuration wizard and it appears here."
+                )
             )
             im.end_disabled()
             return
@@ -351,8 +357,10 @@ class CountRateGui(TourTarget):
         im.set_next_item_width(-1.0)
         changed, new_idx = im.combo("##setup_source", idx, names)
         im.set_item_tooltip(
-            tr("The saved detector setup whose detectors and micro-time windows "
-            "define the channels this analysis reports.")
+            tr(
+                "The saved detector setup whose detectors and micro-time windows "
+                "define the channels this analysis reports."
+            )
         )
         if changed and 0 <= new_idx < len(names):
             tool.selected_setup = names[new_idx]
@@ -457,7 +465,9 @@ class CountRateApp(ImApp):
         on_add_files: Callable[[], None] | None = None,
         on_clear: Callable[[], None] | None = None,
     ) -> None:
-        spec = json.loads(Path(__file__).with_name("count_rate.view.json").read_text(encoding="utf-8"))
+        spec = json.loads(
+            Path(__file__).with_name("count_rate.view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(spec, (1100, 720))
         self.tool = tool
         self.count_rate_gui = CountRateGui(

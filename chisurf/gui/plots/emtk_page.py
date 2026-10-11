@@ -150,7 +150,9 @@ def _declared_stack(page, declared: list, body: PageBody) -> Any:
 def _collect_refreshables(page: Any, body: PageBody) -> None:
     """Gather everything of *page* that repaints through ``set_refresh_target``."""
     candidates: list[Any] = [page]
-    candidates += [getattr(item, "canvas", None) for item in getattr(page, "panel_items", None) or []]
+    candidates += [
+        getattr(item, "canvas", None) for item in getattr(page, "panel_items", None) or []
+    ]
     candidates += [panel.control() for panel, _ in getattr(page, "emtk_panels", None) or []]
     candidates += list(getattr(page, "refreshables", lambda: [])())
     for target in candidates:

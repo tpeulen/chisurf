@@ -93,7 +93,9 @@ def photon_times_ms() -> np.ndarray:
         }
     )
     engine.run()
-    t = np.asarray(engine.macro_window()).astype(np.float64) * dt + np.asarray(engine.arrival_time())
+    t = np.asarray(engine.macro_window()).astype(np.float64) * dt + np.asarray(
+        engine.arrival_time()
+    )
     micro = np.asarray(engine.micro_time()).astype(np.uint16)
     order = np.argsort(t, kind="stable")
     return t[order], micro[order]

@@ -36,8 +36,9 @@ def test_no_cancel_preserves_fit_parameters_likelihood_and_decoding(accelerate):
 def test_cancel_interrupts_em_maps_and_squarem_without_another_estep(monkeypatch, accelerate):
     """An event set during one E-step prevents any subsequent EM map."""
     requested = Event()
-    model = GaussianHMM(2, covariance_type="diag", n_iter=100, tol=0,
-                        accelerate=accelerate, random_state=9)
+    model = GaussianHMM(
+        2, covariance_type="diag", n_iter=100, tol=0, accelerate=accelerate, random_state=9
+    )
     original = model._do_estep
     calls = []
 

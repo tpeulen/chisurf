@@ -10,12 +10,15 @@ from chisurf.plugins.fret_line.gui.app import FRETLineApp
 from chisurf.plugins.fret_line.gui.model import FretLineModel
 
 
-def test_fret_line_is_visible_in_the_fret_menu():
-    """The existing native tool is discoverable through its declared FRET menu."""
+def test_fret_line_is_reached_through_the_calculator_hub():
+    """The native tool lives in the Calculator hub, so the FRET menu does not list it a second time."""
     path = Path(__file__).resolve().parents[2] / "chisurf/plugins/fret_line/manifest.json"
     manifest = json.loads(path.read_text())
-    assert manifest["menu_hidden"] is False
+    assert manifest["menu_hidden"] is True
     assert manifest["display_name"] == "Spectroscopy:FRET:FRET Line Generator"
+    from chisurf.plugins.calculator.hub.core.registry import default_calculators
+
+    assert any(entry.id == "fret_line" for entry in default_calculators())
 
 
 def test_your_dyes_is_the_first_default_view(tmp_path, monkeypatch):
@@ -25,7 +28,13 @@ def test_your_dyes_is_the_first_default_view(tmp_path, monkeypatch):
     try:
         Driver(app, (640, 480)).draw(3)
         assert app.docks.is_shown("your_dyes")
-        assert {"dye_pair", "pair_tau", "pair_r0", "apply_pair", "load_example"} <= app.form.rects.keys()
+        assert {
+            "dye_pair",
+            "pair_tau",
+            "pair_r0",
+            "apply_pair",
+            "load_example",
+        } <= app.form.rects.keys()
         for key in ["components", "sweep", "lines", "editor"]:
             app.show_advanced(key)
             Driver(app, (640, 480)).draw(3)
@@ -74,7 +83,7 @@ def test_custom_pair_matches_fixed_distance_physics():
         model.apply_dye_pair()
         find_parameter(model.selected["model"], "fret.kappa2").value = 2 / 3
         model._select_default_sweep()
-        model.minimum, model.maximum, model.n_points = 40., 80., 5
+        model.minimum, model.maximum, model.n_points = 40.0, 80.0, 5
         line = model.add_line()
         assert line is not None, model.message
         result = line["result"]
@@ -91,10 +100,11 @@ def test_multiexponential_donor_is_rejected_atomically():
     """The starter does not damage a spectrum edited in Advanced."""
     model = FretLineModel()
     try:
-        model.apply_donor_reference({("amplitude", 0): .4, ("tau", 0): 2.,
-                                     ("amplitude", 1): .6, ("tau", 1): 5.})
+        model.apply_donor_reference(
+            {("amplitude", 0): 0.4, ("tau", 0): 2.0, ("amplitude", 1): 0.6, ("tau", 1): 5.0}
+        )
         before = {p.canonical_id: p.value for p in model.selected["model"].parameters_all}
-        model.pair_tau, model.pair_r0 = 3., 60.
+        model.pair_tau, model.pair_r0 = 3.0, 60.0
         with pytest.raises(ValueError, match="multiexponential"):
             model.apply_dye_pair()
         assert {p.canonical_id: p.value for p in model.selected["model"].parameters_all} == before
@@ -132,14 +142,18 @@ def test_linked_pair_input_is_rejected_before_any_component_changes():
         first = model.components[0]["model"]
         model.add_component()
         second = model.components[1]["model"]
-        find_parameter(second, "fret.forster_radius").link = find_parameter(first, "fret.forster_radius")
-        before = [{p.canonical_id: p.value for p in c["model"].parameters_all}
-                  for c in model.components]
-        model.pair_tau, model.pair_r0 = 3., 60.
+        find_parameter(second, "fret.forster_radius").link = find_parameter(
+            first, "fret.forster_radius"
+        )
+        before = [
+            {p.canonical_id: p.value for p in c["model"].parameters_all} for c in model.components
+        ]
+        model.pair_tau, model.pair_r0 = 3.0, 60.0
         with pytest.raises(ValueError, match="linked"):
             model.apply_dye_pair()
-        assert [{p.canonical_id: p.value for p in c["model"].parameters_all}
-                for c in model.components] == before
+        assert [
+            {p.canonical_id: p.value for p in c["model"].parameters_all} for c in model.components
+        ] == before
     finally:
         model.close()
 
@@ -187,7 +201,7 @@ def test_gui_validation_uses_the_existing_notice():
     try:
         driver = Driver(app, (640, 480))
         driver.draw(3)
-        app.model.pair_tau = -1.
+        app.model.pair_tau = -1.0
         driver.click("apply_pair")
         painter = driver.draw(3)
         assert app.model.dialog_title == "Dye pair"

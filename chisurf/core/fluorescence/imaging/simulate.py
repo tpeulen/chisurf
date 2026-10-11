@@ -488,7 +488,6 @@ def clsm_from_scan(tttr, n_pixel: int, channels=(0, 1)):
     return clsm
 
 
-
 def clsm_from_file(tttr, path, channels=(0, 1)):
     """Reconstruct a stream using declared scanner metadata when available.
 

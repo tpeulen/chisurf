@@ -42,7 +42,11 @@ def setup_context(setup_name: str, setups: dict) -> tuple[dict, dict]:
     detectors = setup.get("detectors", {}) if isinstance(setup, dict) else {}
     windows = setup.get("windows", {}) if isinstance(setup, dict) else {}
     channels = build_channels_from_setup(windows or {}, detectors or {})
-    return {"setup_name": setup_name or "", "detectors": detectors or {}, "tttr_reading": {}}, channels
+    return {
+        "setup_name": setup_name or "",
+        "detectors": detectors or {},
+        "tttr_reading": {},
+    }, channels
 
 
 def filter_step_allowed(files) -> bool:
@@ -59,7 +63,9 @@ class FcsWorkflow:
     # ── inputs ────────────────────────────────────────────────────────────
 
     def set_setup(self, setup_name: str, setups: dict) -> None:
-        self.context.detector_settings, self.context.channel_defs = setup_context(setup_name, setups)
+        self.context.detector_settings, self.context.channel_defs = setup_context(
+            setup_name, setups
+        )
 
     def set_files(self, checked: list, use_filter: bool, use_merger: bool) -> None:
         self.context.file_paths = [pathlib.Path(p) for p in checked]
@@ -90,7 +96,9 @@ class FcsWorkflow:
     @property
     def file_type(self) -> str:
         """The container type of the detector step (``tttr_reading.file_type``), empty to auto-detect."""
-        return str(self.context.detector_settings.get("tttr_reading", {}).get("file_type", "") or "")
+        return str(
+            self.context.detector_settings.get("tttr_reading", {}).get("file_type", "") or ""
+        )
 
     def lut_open_kwargs(self) -> dict:
         """LUT/shift ``open_tttr`` kwargs for the currently selected setup."""
@@ -190,7 +198,11 @@ class FcsWorkflow:
         if self.context.channel_defs:
             model._channel_defs = self.context.channel_defs
         settings = self.context.detector_settings
-        dets = {k: v for k, v in (settings.get("detectors", {}) or {}).items() if isinstance(k, str) and k.strip()}
+        dets = {
+            k: v
+            for k, v in (settings.get("detectors", {}) or {}).items()
+            if isinstance(k, str) and k.strip()
+        }
         model.load_fcs_presets(settings.get("setup_name", ""), dets)
         expanded = self.expanded_files()
         if expanded:

@@ -40,7 +40,7 @@ class CardShell(TourTarget, ImApp):
     def __init__(self, title: str, folder: Path, key: str) -> None:
         self.title = title
         self.folder = Path(folder)
-        self.card_key = key      # not `key`: that name is the host's keyboard entry point (ImApp.key)
+        self.card_key = key  # not `key`: that name is the host's keyboard entry point (ImApp.key)
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.status = ""
         self.status_error = False
@@ -56,12 +56,17 @@ class CardShell(TourTarget, ImApp):
         self.docks = self.build_docks()
         self.native_layouts = {"main": self.docks}
         self.help_window = EmTkHelpWindow(
-            title=f"{title} — Help", resource=self.folder / "help.md", owner=self,
-            on_start_guide=self.start_guide, size=(680.0, 500.0),
+            title=f"{title} — Help",
+            resource=self.folder / "help.md",
+            owner=self,
+            on_start_guide=self.start_guide,
+            size=(680.0, 500.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=self.folder / "guide.json", get_target_rect=lambda k: self.item_rects.get(k),
-            owner=self, wait_for_controls=True,
+            steps=self.folder / "guide.json",
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self,
+            wait_for_controls=True,
         )
         super().__init__(gui=self.render, continuous=False)
 
@@ -90,30 +95,65 @@ class CardShell(TourTarget, ImApp):
 
     # ── dialogs ───────────────────────────────────────────────────────────
 
-    def choose_file(self, dialog: FileDialog, on_pick: Callable[[str], Any],
-                    on_cancel: Callable[[], Any] | None = None) -> None:
+    def choose_file(
+        self,
+        dialog: FileDialog,
+        on_pick: Callable[[str], Any],
+        on_cancel: Callable[[], Any] | None = None,
+    ) -> None:
         """Open *dialog* over the card; ``on_pick(path)`` gets the choice."""
         self.dialog, self._on_pick, self._on_cancel = dialog, on_pick, on_cancel
         self.dialog_window.title = dialog.title
         self.dialog_window.show()
         self.request_frame()
 
-    def open_file(self, title: str, filters: str, on_pick: Callable[[str], Any], current: str = "",
-                  folder: bool = False) -> None:
+    def open_file(
+        self,
+        title: str,
+        filters: str,
+        on_pick: Callable[[str], Any],
+        current: str = "",
+        folder: bool = False,
+    ) -> None:
         """Ask for an existing file (or folder), starting where *current* is."""
-        start = current if folder and os.path.isdir(current or "") else os.path.dirname(current or "")
-        self.choose_file(FileDialog(title, mode="folder" if folder else "open", filters=filters,
-                                    directory=start or None), on_pick)
+        start = (
+            current if folder and os.path.isdir(current or "") else os.path.dirname(current or "")
+        )
+        self.choose_file(
+            FileDialog(
+                title, mode="folder" if folder else "open", filters=filters, directory=start or None
+            ),
+            on_pick,
+        )
 
-    def save_file(self, title: str, filters: str, on_pick: Callable[[str], Any], filename: str = "",
-                  directory: str = "") -> None:
+    def save_file(
+        self,
+        title: str,
+        filters: str,
+        on_pick: Callable[[str], Any],
+        filename: str = "",
+        directory: str = "",
+    ) -> None:
         """Ask where to write (an existing file is only replaced after the dialog's own question)."""
-        self.choose_file(FileDialog(title, mode="save", filters=filters, directory=directory or None,
-                                    filename=filename), on_pick)
+        self.choose_file(
+            FileDialog(
+                title, mode="save", filters=filters, directory=directory or None, filename=filename
+            ),
+            on_pick,
+        )
 
-    def ask(self, title: str, text: str, on_yes: Callable[[], Any], yes: str = "Yes", no: str = "No") -> None:
+    def ask(
+        self, title: str, text: str, on_yes: Callable[[], Any], yes: str = "Yes", no: str = "No"
+    ) -> None:
         """A question with a default of *no*: nothing happens unless the user presses *yes*."""
-        self.modal = {"kind": "ask", "title": title, "text": text, "yes": yes, "no": no, "on_yes": on_yes}
+        self.modal = {
+            "kind": "ask",
+            "title": title,
+            "text": text,
+            "yes": yes,
+            "no": no,
+            "on_yes": on_yes,
+        }
         self.modal_window.title = title
         self.modal_window.show()
         self.request_frame()
@@ -125,14 +165,24 @@ class CardShell(TourTarget, ImApp):
         self.modal_window.show()
         self.request_frame()
 
-    def prompt(self, title: str, label: str, on_ok: Callable[[str], Any], initial: str = "") -> None:
+    def prompt(
+        self, title: str, label: str, on_ok: Callable[[str], Any], initial: str = ""
+    ) -> None:
         """A one-line text prompt; OK hands over the stripped text (an empty one is refused)."""
-        self.modal = {"kind": "prompt", "title": title, "text": label, "value": initial, "on_ok": on_ok}
+        self.modal = {
+            "kind": "prompt",
+            "title": title,
+            "text": label,
+            "value": initial,
+            "on_ok": on_ok,
+        }
         self.modal_window.title = title
         self.modal_window.show()
         self.request_frame()
 
-    def open_database(self, kinds: Sequence[str], on_paths: Callable[[list[Path]], Any], client: Any = None) -> Any:
+    def open_database(
+        self, kinds: Sequence[str], on_paths: Callable[[list[Path]], Any], client: Any = None
+    ) -> Any:
         """Open the MMFDB dataset picker over the card, filtered to *kinds*; ``on_paths`` gets the local files.
 
         *client* is the database client (the session's own when None); a tool that hosts the card in a test passes a stub.
@@ -148,8 +198,11 @@ class CardShell(TourTarget, ImApp):
     @property
     def blocked(self) -> bool:
         """Whether a dialog is over the card (the card behind it takes no input)."""
-        return (self.dialog is not None or self.modal is not None
-                or any(p.is_open for p in self.pickers))
+        return (
+            self.dialog is not None
+            or self.modal is not None
+            or any(p.is_open for p in self.pickers)
+        )
 
     # ── host ──────────────────────────────────────────────────────────────
 
@@ -175,7 +228,10 @@ class CardShell(TourTarget, ImApp):
             # A fixed strip above the windows (toolbar, status): the windows below can be rearranged by the user.
             im.set_next_window_pos((box[0], box[1]), im.Cond.ALWAYS)
             im.set_next_window_size((box[2], top), im.Cond.ALWAYS)
-            if im.begin(f"##{self.card_key}-toolbar", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+            if im.begin(
+                f"##{self.card_key}-toolbar",
+                flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE,
+            ):
                 im.set_cursor_pos((box[0] + 6.0, box[1] + 4.0))  # the dock windows' content padding
                 im.indent(6.0)
                 self.draw_toolbar((box[0], box[1], box[2], top))
@@ -229,8 +285,11 @@ class CardShell(TourTarget, ImApp):
             if not modal.get("focused"):  # typed into at once, as Qt's input dialog is
                 im.set_keyboard_focus_here()
                 modal["focused"] = True
-            entered, value = im.input_text(f"##{self.card_key}-prompt", modal["value"],
-                                           flags=im.InputTextFlags.ENTER_RETURNS_TRUE)
+            entered, value = im.input_text(
+                f"##{self.card_key}-prompt",
+                modal["value"],
+                flags=im.InputTextFlags.ENTER_RETURNS_TRUE,
+            )
             modal["value"] = value
             self.remember("prompt", im.get_item_rect())
             im.set_item_tooltip(tr("The name; press OK or Enter."))
@@ -238,12 +297,19 @@ class CardShell(TourTarget, ImApp):
                 im.text_wrapped(modal["error"])
         im.new_line()
         buttons = {
-            "ask": [{"label": modal.get("yes", "Yes"), "key": "yes", "tip": "Do it."},
-                    {"label": modal.get("no", "No"), "key": "no", "tip": "Leave everything as it is."}],
+            "ask": [
+                {"label": modal.get("yes", "Yes"), "key": "yes", "tip": "Do it."},
+                {"label": modal.get("no", "No"), "key": "no", "tip": "Leave everything as it is."},
+            ],
             "notify": [{"label": "OK", "key": "no", "tip": "Close this message."}],
-            "prompt": [{"label": "OK", "key": "yes", "tip": "Accept the name."},
-                       {"label": action_caption("cancel"), "key": "no",
-                        "tip": action_tooltip("cancel", "Close without adding anything.")}],
+            "prompt": [
+                {"label": "OK", "key": "yes", "tip": "Accept the name."},
+                {
+                    "label": action_caption("cancel"),
+                    "key": "no",
+                    "tip": action_tooltip("cancel", "Close without adding anything."),
+                },
+            ],
         }[modal["kind"]]
         choice = button_row(buttons, remember=lambda name: self.remember(f"modal_{name}"))
         self.modal_window.end()

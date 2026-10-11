@@ -1,4 +1,5 @@
 """Tetris rules shared by Qt and EMTK, with no GUI or GPU imports."""
+
 from __future__ import annotations
 
 import random
@@ -35,6 +36,7 @@ SQUARE = 3
 
 #: Points per number of lines cleared at once, indexed by count.
 LINE_SCORE = [0, 100, 300, 500, 800]
+
 
 def rotated(coords: list[tuple[int, int]]) -> list[tuple[int, int]]:
     """Rotate a piece a quarter turn.
@@ -160,13 +162,13 @@ class TetrisModel:
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
-        if keys.just_pressed('menu'):
+        if keys.just_pressed("menu"):
             self.paused = not self.paused
-        if keys.just_pressed('cancel'):
+        if keys.just_pressed("cancel"):
             self.restart()
             return
         if self.over:
-            if keys.just_pressed('confirm') or keys.just_pressed('shoulder_r'):
+            if keys.just_pressed("confirm") or keys.just_pressed("shoulder_r"):
                 self.restart()
             return
         if self.paused:
@@ -174,11 +176,11 @@ class TetrisModel:
 
         self._handle_steering(dt, keys)
 
-        if keys.just_pressed('shoulder_r'):
+        if keys.just_pressed("shoulder_r"):
             self.drop_down()
             return
 
-        interval = SOFT_DROP_INTERVAL if keys.is_held('down') else self.fall_interval
+        interval = SOFT_DROP_INTERVAL if keys.is_held("down") else self.fall_interval
         self._fall_timer += dt
         while self._fall_timer >= interval and not self.over:
             self._fall_timer -= interval
@@ -197,10 +199,10 @@ class TetrisModel:
         keys : chisurf.gui.chigame.input.InputMap
             Controller state.
         """
-        if keys.just_pressed('confirm') and self.shape != SQUARE:
+        if keys.just_pressed("confirm") and self.shape != SQUARE:
             self.try_move(rotated(self.coords), self.x, self.y)
 
-        for action, step in (('left', -1), ('right', 1)):
+        for action, step in (("left", -1), ("right", 1)):
             if keys.just_pressed(action):
                 self.try_move(self.coords, self.x + step, self.y)
                 self._repeat_action = action
@@ -246,4 +248,3 @@ class TetrisModel:
         self.score += LINE_SCORE[min(cleared, 4)] * self.level
         self.level = 1 + self.lines // 10
         self._sfx("clear", 700.0 + 80.0 * cleared)
-

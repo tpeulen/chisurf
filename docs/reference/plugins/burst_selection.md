@@ -21,26 +21,12 @@ Burst selection and FRET analysis for single-molecule fluorescence data.
 | Menu path | Spectroscopy → Single-Molecule → **Burst Selection** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 2.1.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `burst_selection` |
 
 ## Parameters
 
 Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
-
-### Display
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| All photons | `show_all_photons` | bool |  |  | Show the diagnostic layers computed from every photon in the range. |
-| Selected photons | `show_selected_photons` | bool |  |  | Show the diagnostic layers computed from the photons the burst search kept. |
-| First photon | `photon_first` | int |  | 0 … 99999999 | First photon index to process. 0 is the start of the file. Set by the visible-window slider above; type here for an exact range. |
-| Last photon | `photon_last` | int |  | 0 … 99999999 | Last photon index to process. The default is the end of the file. Set by the visible-window slider above; type here for an exact range. |
-| Window start | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file. The plots and the preview are computed for this slice only. |
-| Window length | `window_length_s` | float |  | 0.0 … 100000.0 | Length of the visible window; 0 shows the whole file. |
-| MCS bin width | `trace_bin_ms` | float |  | 0.05 … 9999.0 | Bin width of the count-rate trace. |
-| Decay coarsening | `decay_bins` | int |  | 1 … 9999 | Micro-time channels summed per decay bin. |
-| Burst bins | `burst_bins` | int |  | 3 … 999 | Bins of the burst-duration histogram. |
 
 ### Output
 
@@ -83,6 +69,19 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Invert | `invert` | bool |  |  | Invert the filter selection. |
 | Min photons | `min_photons` | int |  | 2 … 1000000 | A burst with fewer photons is dropped after the search (every search). It names the output folder. |
 | Count-rate photons | `photon_window` | int |  | 2 … 999 | Photons used to compute a count rate (recorded with the run). |
+
+### Display
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| All photons | `show_all_photons` | bool |  |  | Draw the layers computed from every photon in the visible window. |
+| Selected photons | `show_selected_photons` | bool |  |  | Draw the layers computed from the photons the search kept. |
+| Window start | `window_start_s` | float |  | 0.0 … 100000.0 | Start of the visible window in the active file. The plots and the preview are computed for this slice only. |
+| Window length | `window_length_s` | float |  | 0.0 … 100000.0 | Length of the visible window; 0 shows the whole file. |
+| MCS bin width | `trace_bin_ms` | float |  | 0.05 … 9999.0 | Bin width of the count-rate trace. |
+| Decay coarsening | `decay_bins` | int |  | 1 … 9999 | Micro-time channels summed per decay bin. |
+| Burst bins | `burst_bins` | int |  | 3 … 999 | Bins of the burst-duration histogram. |
+| Pool all files | `pool_files` | bool |  |  | The burst table, histogram, scatter and summary show the bursts of every searched file together instead of the active file only. The diagnostic plots always show the active file. |
 
 ### Histogram
 
@@ -140,5 +139,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 - Plugin package: `chisurf/plugins/burst/burst_selection/`
 - Manifest: {src}`chisurf/plugins/burst/burst_selection/manifest.json`
-- UI spec: {src}`chisurf/plugins/burst/burst_selection/gui/burst_display.view.json`
 - UI spec: {src}`chisurf/plugins/burst/burst_selection/gui/native.view.json`

@@ -61,7 +61,12 @@ REF = json.loads((pathlib.Path(__file__).parent / "qt_reference.json").read_text
 def sig(a):
     """The signature recorded for an array (see ``qt_reference.json``)."""
     flat = np.asarray(a, dtype=float).ravel()
-    return flat.sum(), flat.max(), int(flat.argmax()), flat[np.linspace(0, flat.size - 1, 16).astype(int)]
+    return (
+        flat.sum(),
+        flat.max(),
+        int(flat.argmax()),
+        flat[np.linspace(0, flat.size - 1, 16).astype(int)],
+    )
 
 
 def assert_sig(array, ref):

@@ -187,8 +187,7 @@ class HelpTextureManager:
         try:
             from emtk import render_math_to_texture
 
-            tex = render_math_to_texture(normalise_latex(raw), colour=colour,
-                                         font_size=font_size)
+            tex = render_math_to_texture(normalise_latex(raw), colour=colour, font_size=font_size)
         except Exception as e:
             _LOGGER.debug("emtk.render_math_to_texture failed for %r: %s", raw, e)
             tex = None
@@ -1507,7 +1506,9 @@ class HelpGui:
         changed, new_q = im.input_text(
             "##doc_search", self.model.search_query, hint=tr("Search documentation...")
         )
-        im.set_item_tooltip(_with_shortcut(tr("Search documentation titles and text"), "Ctrl/Cmd+F"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Search documentation titles and text"), "Ctrl/Cmd+F")
+        )
         if changed:
             self.model.update_search(new_q)
 
@@ -1730,13 +1731,17 @@ class HelpGui:
         if im.button(mode_btn_label):
             self.model.edit_mode = not self.model.edit_mode
         im.set_item_tooltip(
-            tr("Switch between reading the document and editing its source; the virtual Home page has no source file")
+            tr(
+                "Switch between reading the document and editing its source; the virtual Home page has no source file"
+            )
         )
         im.end_disabled()
 
         if self.model.edit_mode:
             im.same_line()
-            if action_button("save", tooltip=tr("Save changes to the current documentation source")):
+            if action_button(
+                "save", tooltip=tr("Save changes to the current documentation source")
+            ):
                 self.model.save_current_page()
 
         im.same_line()
@@ -1747,7 +1752,9 @@ class HelpGui:
         im.same_line()
         if im.small_button("A−"):
             self.model.zoom(-1)
-        im.set_item_tooltip(_with_shortcut(tr("Reduce document text by half a point"), "Ctrl/Cmd+-"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Reduce document text by half a point"), "Ctrl/Cmd+-")
+        )
         im.same_line()
         if im.small_button("Reset zoom"):
             self.model.reset_zoom()
@@ -1767,7 +1774,9 @@ class HelpGui:
         )
         changed_authoring, authoring = im.checkbox(tr("Authoring tools"), self.model.authoring_mode)
         im.set_item_tooltip(
-            tr("Show human and AI review sign-off actions, status filters and manual review summary")
+            tr(
+                "Show human and AI review sign-off actions, status filters and manual review summary"
+            )
         )
         if changed_authoring:
             self.model.authoring_mode = authoring
@@ -1777,7 +1786,9 @@ class HelpGui:
                 self.model.review_filter = "all"
         if self.model.authoring_mode:
             im.same_line()
-            changed_dev, include_dev = im.checkbox(tr("Developer docs"), self.model.include_development)
+            changed_dev, include_dev = im.checkbox(
+                tr("Developer docs"), self.model.include_development
+            )
             im.set_item_tooltip(
                 tr("Also list architecture notes and the bundled modules' documentation.")
             )
@@ -1795,12 +1806,16 @@ class HelpGui:
                     if im.small_button(label):
                         self.model.set_review_status(status)
                     im.set_item_tooltip(
-                        tr("Record this saved page's review status; later edits make the sign-off stale")
+                        tr(
+                            "Record this saved page's review status; later edits make the sign-off stale"
+                        )
                     )
                     im.same_line()
                 im.text_disabled("")
             else:
-                im.text_disabled(tr("Review sign-off is available for tracked documentation pages."))
+                im.text_disabled(
+                    tr("Review sign-off is available for tracked documentation pages.")
+                )
             im.text_wrapped(self.model.review_summary)
         crumbs = self.model.breadcrumb()
         if crumbs:
@@ -1840,7 +1855,9 @@ class HelpGui:
             curr_v_y = im.get_cursor_screen_pos()[1]
             rem_h = max(20.0, box[1] + box[3] - curr_v_y)
             im.text_editor("##doc_source_viewer", self.model.source_editor, (avail_w, rem_h))
-            im.set_item_tooltip(tr("Read the referenced source; open the full code editor to edit it"))
+            im.set_item_tooltip(
+                tr("Read the referenced source; open the full code editor to edit it")
+            )
             return
 
         if self.model.edit_mode:
@@ -2051,7 +2068,9 @@ class HelpGui:
                 lang_tag = f" [{block.arg}]" if block.arg else ""
                 im.text_disabled(f"Code{lang_tag}")
                 im.same_line()
-                if action_button("copy", id=f"cp_{idx}", tooltip=tr("Copy this code block to the clipboard")):
+                if action_button(
+                    "copy", id=f"cp_{idx}", tooltip=tr("Copy this code block to the clipboard")
+                ):
                     try:
                         from emtk.clipboard import set_clipboard_text
 
@@ -2241,7 +2260,9 @@ class HelpApp(ImApp):
     """Standalone pure EMTK Application for the ChiSurf Help Browser."""
 
     def __init__(self) -> None:
-        spec = json.loads(pathlib.Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8"))
+        spec = json.loads(
+            pathlib.Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(spec, (800, 600))
         self.model = HelpModel()
         self.help_gui = HelpGui(model=self.model)

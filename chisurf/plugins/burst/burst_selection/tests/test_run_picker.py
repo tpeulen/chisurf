@@ -10,7 +10,9 @@ import pandas as pd
 import pytest
 import tttrlib
 
-SPC = Path(__file__).resolve().parents[5] / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+SPC = (
+    Path(__file__).resolve().parents[5] / "test" / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+)
 RUN = "countrate_All 0.1000#60"
 
 pytestmark = pytest.mark.skipif(not SPC.exists(), reason="no instrument test data")

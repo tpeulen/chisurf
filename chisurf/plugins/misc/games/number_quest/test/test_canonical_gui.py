@@ -35,6 +35,7 @@ def test_canonical_factory_and_resources_use_the_rich_contract():
 @pytest.mark.parametrize("size", [(560, 420), (360, 420)])
 def test_rich_pointer_inventory_and_optional_audio_survive_move(size, monkeypatch):
     """Exercise the real plot, guidance, footer halves and supplied sound control."""
+
     class Audio:
         """Record the explicit optional host interface without starting playback."""
 

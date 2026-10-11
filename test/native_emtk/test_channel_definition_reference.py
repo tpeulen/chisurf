@@ -1,4 +1,5 @@
 """The shared detector row launches full native reference calibration without altering preview data."""
+
 from __future__ import annotations
 
 import copy
@@ -61,9 +62,15 @@ def test_full_native_child_pointer_apply_and_once_publication(editor, tmp_path, 
     from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
 
     archived: list[dict] = []
+
     def archive(self, **kwargs):
         archived.append(kwargs)
-        return {"ok": True, "reference_decay_id": "new-reference-id", "calibration_id": "new-calibration-id"}
+        return {
+            "ok": True,
+            "reference_decay_id": "new-reference-id",
+            "calibration_id": "new-calibration-id",
+        }
+
     monkeypatch.setattr(VvVhGFactorClient, "archive_g_factor", archive)
     original_preview = app.model.preview
     original_reading = copy.deepcopy(app.model.data["tttr_reading"])
@@ -82,7 +89,13 @@ def test_full_native_child_pointer_apply_and_once_publication(editor, tmp_path, 
     while child.job.running and time.monotonic() < deadline:
         ui.draw(1)
         time.sleep(0.01)
-    assert child.model.manual_l and child.model.l_override == 0.0, {"manual_rect": app.item_rects.get("reference.manual_l"), "window": app.page.reference_window.content_box, "parent_pointer": app.io.mouse_pos, "child_pointer": child.io.mouse_pos, "job_running": child.job.running}
+    assert child.model.manual_l and child.model.l_override == 0.0, {
+        "manual_rect": app.item_rects.get("reference.manual_l"),
+        "window": app.page.reference_window.content_box,
+        "parent_pointer": app.io.mouse_pos,
+        "child_pointer": child.io.mouse_pos,
+        "job_running": child.job.running,
+    }
     ui.click("calibration_apply")
     ui.draw(4)
     child.close()
@@ -100,12 +113,15 @@ def test_full_native_child_pointer_apply_and_once_publication(editor, tmp_path, 
     assert np.array_equal(app.model.preview[0], original_preview[0])
 
 
-def test_headless_archive_failure_and_cancel_leave_all_previous_calibration(editor, tmp_path, monkeypatch):
+def test_headless_archive_failure_and_cancel_leave_all_previous_calibration(
+    editor, tmp_path, monkeypatch
+):
     app, ui, notices, path = editor
     from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
 
     def failed(self, **kwargs):
         return {"ok": False, "error": "controlled archive failure"}
+
     monkeypatch.setattr(VvVhGFactorClient, "archive_g_factor", failed)
     open_real_reference(app, ui, tmp_path)
     previous = copy.deepcopy(app.model.data)
@@ -184,7 +200,10 @@ def test_parent_drop_is_captured_by_child_without_replacing_parent(editor, tmp_p
     from chisurf.core.fio import write_vv_vh
 
     app, ui, notices, _ = editor
-    original_instance_hooks = {name: app.__dict__.get(name) for name in ("files_dropped", "on_files_dropped", "on_paths_dropped")}
+    original_instance_hooks = {
+        name: app.__dict__.get(name)
+        for name in ("files_dropped", "on_files_dropped", "on_paths_dropped")
+    }
     open_real_reference(app, ui, tmp_path)
     before = copy.deepcopy(app.model.data)
     ui.click("calibration_interactive")
@@ -200,10 +219,14 @@ def test_parent_drop_is_captured_by_child_without_replacing_parent(editor, tmp_p
     assert child.model.fast_file == str(replacement)
     assert app.model.data == before and not notices
     ui.click("calibration_cancel")
-    assert {name: app.__dict__.get(name) for name in original_instance_hooks} == original_instance_hooks
+    assert {
+        name: app.__dict__.get(name) for name in original_instance_hooks
+    } == original_instance_hooks
 
 
-def test_closed_parent_cleans_late_preparation_and_never_requests_a_frame(editor, tmp_path, monkeypatch):
+def test_closed_parent_cleans_late_preparation_and_never_requests_a_frame(
+    editor, tmp_path, monkeypatch
+):
     """Close after real preparation but before future delivery; its scratch resource must disappear."""
     import shutil
     from pathlib import Path
@@ -214,16 +237,23 @@ def test_closed_parent_cleans_late_preparation_and_never_requests_a_frame(editor
     target = tmp_path / "late.spc"
     shutil.copy2(source, target)
     app.model.data["detectors"]["donor"].update(chs=[8, 0, 3], g_factor_channels=[850, 1850])
-    app.page._reference_context = {"name": "donor", "channels": [8, 0, 3], "definition": app.model.data, "setup_name": app.model.current_name}
+    app.page._reference_context = {
+        "name": "donor",
+        "channels": [8, 0, 3],
+        "definition": app.model.data,
+        "setup_name": app.model.current_name,
+    }
     original = app.page._prepare_reference
     ready, release = Event(), Event()
     resources = []
+
     def delayed(*args):
         result = original(*args)
         resources.append(Path(result[1].name))
         ready.set()
         assert release.wait(10)
         return result
+
     monkeypatch.setattr(app.page, "_prepare_reference", delayed)
     frames = []
     monkeypatch.setattr(app, "request_frame", lambda: frames.append(app.page._closing))
@@ -236,6 +266,7 @@ def test_closed_parent_cleans_late_preparation_and_never_requests_a_frame(editor
     future.result(timeout=10)
     # The future's actual completion callbacks dispose the late result without poll().
     import time
+
     deadline = time.monotonic() + 5
     while resources[0].exists() and time.monotonic() < deadline:
         time.sleep(0.01)
@@ -257,7 +288,9 @@ def reveal_reference(ui, page, name):
     raise AssertionError((name, rectangle, box))
 
 
-def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_batch_are_reachable(editor, tmp_path, monkeypatch):
+def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_batch_are_reachable(
+    editor, tmp_path, monkeypatch
+):
     import time
 
     from emtk.events import CONTROL_MODIFIER
@@ -266,9 +299,15 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
 
     app, ui, notices, _ = editor
     records = []
+
     def archive(self, **kwargs):
         records.append(kwargs)
-        return {"ok": True, "reference_decay_id": "pending-reference", "calibration_id": "pending-calibration"}
+        return {
+            "ok": True,
+            "reference_decay_id": "pending-reference",
+            "calibration_id": "pending-calibration",
+        }
+
     monkeypatch.setattr(VvVhGFactorClient, "archive_g_factor", archive)
     open_real_reference(app, ui, tmp_path)
     ui.click("calibration_interactive")
@@ -277,8 +316,12 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
     ui.click("reference.help")
     assert child.help.open
     # Escape closes the nested help, not the full calibration/parent.
-    ui.hover((child.help.dlg.box[0] + 20 + app.page.reference_window.content_box[0],
-              child.help.dlg.box[1] + 40 + app.page.reference_window.content_box[1]))
+    ui.hover(
+        (
+            child.help.dlg.box[0] + 20 + app.page.reference_window.content_box[0],
+            child.help.dlg.box[1] + 40 + app.page.reference_window.content_box[1],
+        )
+    )
     ui.escape()
     assert not child.help.open and app.page.reference_app is child and not records
     ui.click("reference.guide")
@@ -286,7 +329,9 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
     ui.escape()
     # Use the tour's real close caption so it does not cover editing controls.
     if child.guide.active:
-        close_text = next(entry[:4] for entry in reversed(ui.painter.texts) if entry[5] in {"Close", "×"})
+        close_text = next(
+            entry[:4] for entry in reversed(ui.painter.texts) if entry[5] in {"Close", "×"}
+        )
         ui.click(close_text)
     assert app.page.reference_app is child and not records
     ui.click("Batch anisotropy")
@@ -306,7 +351,17 @@ def test_pending_keyboard_mixing_applies_after_compute_and_nested_help_guide_bat
     while app.page.reference_app is not None and time.monotonic() < deadline:
         ui.draw(1)
         time.sleep(0.01)
-    assert app.page.reference_app is None, {"apply": app.page._reference_apply_requested, "guide": child.guide.active, "running": child.job.running, "mixing": child.model.l_override, "buffers": child.forms["controls"].buffers if "controls" in child.forms else {key: value.buffers for key, value in child.forms.items()}, "footer": ui.rect("calibration_apply"), "window": app.page.reference_window.content_box}
+    assert app.page.reference_app is None, {
+        "apply": app.page._reference_apply_requested,
+        "guide": child.guide.active,
+        "running": child.job.running,
+        "mixing": child.model.l_override,
+        "buffers": child.forms["controls"].buffers
+        if "controls" in child.forms
+        else {key: value.buffers for key, value in child.forms.items()},
+        "footer": ui.rect("calibration_apply"),
+        "window": app.page.reference_window.content_box,
+    }
     assert len(records) == len(notices) == 1
     assert records[0]["parameters"]["l1"] == records[0]["parameters"]["l2"] == 0.12
 
@@ -340,12 +395,22 @@ def test_real_headless_archive_persists_actor_uuid_sd_and_lineage(editor, tmp_pa
     assert json.loads(path.read_text())["setups"]["Validation"]["detectors"]["donor"] == detector
     with MFDatabase(str(database)) as db:
         source, calibration = db.get_artifact(source_id), db.get_artifact(calibration_id)
-        assert source["created_by_user_id"] == calibration["created_by_user_id"] == "validation-owner"
+        assert (
+            source["created_by_user_id"] == calibration["created_by_user_id"] == "validation-owner"
+        )
         assert json.loads(source["metadata_json"])["active_user"] == "validation-owner"
         payload = read_result(db, calibration_id)
         assert payload is not None and payload.data["g_factor_stddev"][0] == expected_sd
         assert payload.data["l1"][0] == 0.05 and payload.data["l2"][0] == 0.02
-        edge = db.conn.execute("SELECT relationship_type FROM mmfdb_edge WHERE source_node_id=? AND target_node_id=?", (calibration_id, source_id)).fetchone()
+        edge = db.conn.execute(
+            "SELECT relationship_type FROM mmfdb_edge WHERE source_node_id=? AND target_node_id=?",
+            (calibration_id, source_id),
+        ).fetchone()
         assert edge is not None and edge[0] == "derived_from"
-        actors = {row[0] for row in db.conn.execute("SELECT created_by_user_id FROM mmfdb_artifact WHERE deleted_at IS NULL")}
+        actors = {
+            row[0]
+            for row in db.conn.execute(
+                "SELECT created_by_user_id FROM mmfdb_artifact WHERE deleted_at IS NULL"
+            )
+        }
         assert actors == {"validation-owner"}

@@ -100,8 +100,10 @@ def measure():
             if p is None:
                 continue
             entry = {}
-            for k, f in (("plot", getattr(p, "get_state", None)),
-                         ("controller", getattr(p, "get_settings_state", None))):
+            for k, f in (
+                ("plot", getattr(p, "get_state", None)),
+                ("controller", getattr(p, "get_settings_state", None)),
+            ):
                 if callable(f):
                     try:
                         entry[k] = f()

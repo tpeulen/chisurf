@@ -130,7 +130,14 @@ def test_residuals_can_be_formed_from_data_and_model():
 
 
 #: The Qt-free sources that fit, plot and export (the retired wizard's duties).
-SOURCES = ("engine.py", "state_split.py", "hpo.py", "fit_display.py", "gui/model.py", "gui/native.py")
+SOURCES = (
+    "engine.py",
+    "state_split.py",
+    "hpo.py",
+    "fit_display.py",
+    "gui/model.py",
+    "gui/native.py",
+)
 
 
 def _sources():

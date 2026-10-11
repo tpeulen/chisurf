@@ -72,9 +72,7 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
             self._k_quench_scale.description = tr(
                 "Multiplier applied to the quenching rates assigned to each residue type."
             )
-        self._k_quench_editor = make_fitting_parameter_widget(
-            self._k_quench_scale, label_text="kQ"
-        )
+        self._k_quench_editor = make_fitting_parameter_widget(self._k_quench_scale, label_text="kQ")
 
         self.groupBox = QtWidgets.QGroupBox()
         self.groupBox.setCheckable(True)
@@ -82,8 +80,10 @@ class ProteinQuenchingWidget(ProteinQuenching, QtWidgets.QGroupBox):
         self.all_atoms_quench = self._all_atoms_quench
         self.groupBox.setTitle("Exclude atoms")
         self.groupBox.setToolTip(
-            tr("Checked: use CB atoms. Unchecked: use all atoms except the exclusions "
-               "in the selected residue types.")
+            tr(
+                "Checked: use CB atoms. Unchecked: use all atoms except the exclusions "
+                "in the selected residue types."
+            )
         )
         layout.addWidget(self._k_quench_editor, 0, 0, 1, 2)
         layout.addWidget(self.lineEdit_3, 1, 1)

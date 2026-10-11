@@ -314,7 +314,10 @@ def test_load_spectrum_errors_equal_the_qt_tool(app, tmp_path):
     bad.write_text("a,b\nx,y\n")
     negative = tmp_path / "negative.csv"
     np.savetxt(negative, [[1.0, -2.0]], delimiter=",")
-    for path, status in ((bad, "Load failed: "), (negative, "Invalid lifetime spectrum: lifetimes must be positive")):
+    for path, status in (
+        (bad, "Load failed: "),
+        (negative, "Invalid lifetime spectrum: lifetimes must be positive"),
+    ):
         app.model.load_spectrum(str(path))
         assert app.model.spectrum_rows == [{"amp": 1.0, "tau": 1.2}, {"amp": 1.0, "tau": 4.0}]
         assert app.model.status_text().startswith(status)

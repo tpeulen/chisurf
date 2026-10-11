@@ -102,9 +102,14 @@ STRINGS = {
         "Перейти к следующему шагу обучения.",
     ),
     "Guided Tour": ("Anleitung", "Visite guidée", "Visita guiada", "Visita guiada", "Обучение"),
-    "drag here to move": ("Hier ziehen", "Déplacer ici", "Arrastrar aquí", "Arrastar aqui", "Перетащить"),
+    "drag here to move": (
+        "Hier ziehen",
+        "Déplacer ici",
+        "Arrastrar aquí",
+        "Arrastar aqui",
+        "Перетащить",
+    ),
     "💡 {hint}": ("💡 {hint}", "💡 {hint}", "💡 {hint}", "💡 {hint}", "💡 {hint}"),
-
 }
 
 

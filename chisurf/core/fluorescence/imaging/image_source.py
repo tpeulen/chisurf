@@ -242,9 +242,7 @@ def _stack_from_tttr(path: str, channels, windows) -> tuple[np.ndarray, list[str
         tags = tttr.header.tags
         tags = tags() if callable(tags) else tags
         expected = next(
-            int(tag["value"])
-            for tag in tags
-            if tag.get("name") == "ChiSurf_DemoFrames"
+            int(tag["value"]) for tag in tags if tag.get("name") == "ChiSurf_DemoFrames"
         )
         if expected == stack.shape[0] + 1 and stack.shape[0] > 0:
             stack = np.concatenate((stack, stack[-1:, ...]), axis=0)

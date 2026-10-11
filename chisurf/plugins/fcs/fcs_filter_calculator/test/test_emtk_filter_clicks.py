@@ -78,7 +78,10 @@ def test_compute_filters_reports_success_and_equals_the_models_filters(drv):
     before = model(drv)._result.filters.copy()
     drv.click("compute")
     drv.settle()
-    assert model(drv).message == "Filters computed successfully." and "Filters computed successfully." in drv.draw(2).strings
+    assert (
+        model(drv).message == "Filters computed successfully."
+        and "Filters computed successfully." in drv.draw(2).strings
+    )
     assert np.array_equal(model(drv)._result.filters, before)
 
 
@@ -103,7 +106,9 @@ def test_the_example_button_restores_the_example_after_a_change(drv):
     drv.settle()  # the change recomputes; a button pressed while the worker runs is greyed
     drv.click("example")
     drv.settle()
-    assert len(model(drv).components) == 2 and model(drv).total_label.startswith("Convolved example")
+    assert len(model(drv).components) == 2 and model(drv).total_label.startswith(
+        "Convolved example"
+    )
 
 
 def test_save_project_dialog_writes_the_project_and_load_project_restores_it(drv, tmp_path):
@@ -151,7 +156,9 @@ def test_stop_is_greyed_when_idle_and_a_click_does_nothing(drv):
 def test_guide_help_buttons_and_the_tour(drv):
     drv.click("help")
     window = drv.app.help
-    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
+        drv.draw(2).strings
+    )
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
@@ -203,8 +210,12 @@ def test_every_guide_target_is_a_drawn_control(drv):
 
 
 def test_the_input_checkboxes_are_clicked_and_recompute(drv):
-    for name, getter in (("fit_background", lambda m: m.options_model.fit_background), ("scatter_irf", lambda m: m.options_model.scatter_irf),
-                         ("stacked", lambda m: m.stacked), ("polarized", lambda m: m.polarized)):
+    for name, getter in (
+        ("fit_background", lambda m: m.options_model.fit_background),
+        ("scatter_irf", lambda m: m.options_model.scatter_irf),
+        ("stacked", lambda m: m.stacked),
+        ("polarized", lambda m: m.polarized),
+    ):
         before = getter(model(drv))
         drv.click(name)
         assert getter(model(drv)) is (not before), name
@@ -224,9 +235,17 @@ def test_removing_the_afterpulse_and_scatter_filters_changes_the_number_of_filte
     assert len(model(drv)._result.filters) == 2
 
 
-@pytest.mark.parametrize("name, text, expected", [("fit_start", "20", (20, 254)), ("fit_stop", "200", (10, 200)), ("fit_start", "9999", (253, 254)),
-                                                  ("fit_stop", "0", (10, 11)), ("fit_start", "abc", (10, 254)),
-                                                  ("fit_start", "-5", (0, 254))])
+@pytest.mark.parametrize(
+    "name, text, expected",
+    [
+        ("fit_start", "20", (20, 254)),
+        ("fit_stop", "200", (10, 200)),
+        ("fit_start", "9999", (253, 254)),
+        ("fit_stop", "0", (10, 11)),
+        ("fit_start", "abc", (10, 254)),
+        ("fit_start", "-5", (0, 254)),
+    ],
+)
 def test_the_fit_range_is_typed_clamped_and_recomputes(drv, name, text, expected):
     drv.type_into(name, text)
     assert model(drv)._fit_bounds == expected
@@ -248,7 +267,10 @@ def test_the_fit_range_arrows_and_the_wheel(drv):
 
 
 def test_the_fit_range_follows_the_qt_tools_default_for_the_example(drv):
-    assert model(drv)._fit_bounds == (10, 254)  # peak + 1 % of the bins to 1 % short of the end, as the Qt tool initialises it
+    assert model(drv)._fit_bounds == (
+        10,
+        254,
+    )  # peak + 1 % of the bins to 1 % short of the end, as the Qt tool initialises it
 
 
 # -- the mixed decay ----------------------------------------------------------------------------------------------------- #
@@ -262,7 +284,11 @@ def test_the_mixed_dialog_loads_a_decay_file_and_names_it(drv, tmp_path):
     drv.click_text(path.name)
     drv.click_text("Open", last=True)
     drv.settle()
-    assert model(drv)._total_paths == [path] and path.name in drv.draw(2).strings[0:200].__str__() or str(path) in model(drv).total_label
+    assert (
+        model(drv)._total_paths == [path]
+        and path.name in drv.draw(2).strings[0:200].__str__()
+        or str(path) in model(drv).total_label
+    )
     assert model(drv)._current_n_bins() == 128
 
 
@@ -286,12 +312,16 @@ def test_a_dropped_decay_file_is_loaded_and_a_dropped_project_is_restored(drv, t
 def test_from_correlator_without_a_correlator_says_so(drv):
     drv.click("from_correlator")
     assert model(drv).message == "No files are loaded in the Correlator (Files & Steps) step yet."
-    assert "No files are loaded in the Correlator" in " ".join(drv.draw(2).strings)  # the line wraps
+    assert "No files are loaded in the Correlator" in " ".join(
+        drv.draw(2).strings
+    )  # the line wraps
 
 
 def test_from_correlator_adopts_the_correlators_files(tmp_path):
     path = decay_file(tmp_path, "corr.txt")
-    context = type("Ctx", (), {"expanded_files": [path], "file_paths": [path], "microtime_binning": 2})()
+    context = type(
+        "Ctx", (), {"expanded_files": [path], "file_paths": [path], "microtime_binning": 2}
+    )()
     app = create_app(workflow_context=context)
     d = FilterDriver(app, BIG)
     try:
@@ -314,7 +344,10 @@ def test_a_component_is_ticked_off_by_a_click_and_renamed_by_typing(drv):
     drv.click_cell("component_rows", 0, "enabled")
     drv.settle()
     assert edit(drv, "component_rows", 1, "name", "Renamed species")
-    assert model(drv).components[1].name == "Renamed species" and model(drv).components[1].source["name"] == "Renamed species"
+    assert (
+        model(drv).components[1].name == "Renamed species"
+        and model(drv).components[1].source["name"] == "Renamed species"
+    )
     assert "Renamed species" in drv.draw(2).strings
 
 
@@ -322,12 +355,24 @@ def test_the_definition_column_is_read_only(drv):
     assert not edit(drv, "component_rows", 0, "kind", "x")
 
 
-@pytest.mark.parametrize("button, model_name", [("add_lifetime", "lifetime"), ("add_spectrum", "lifetime_spectrum"), ("add_fret", "fret_species"),
-                                                ("add_lifetime_distribution", "gaussian_lifetime"), ("add_distance_distribution", "gaussian_distance")])
-def test_each_add_button_opens_the_form_of_its_model_and_apply_adds_the_component(drv, button, model_name):
+@pytest.mark.parametrize(
+    "button, model_name",
+    [
+        ("add_lifetime", "lifetime"),
+        ("add_spectrum", "lifetime_spectrum"),
+        ("add_fret", "fret_species"),
+        ("add_lifetime_distribution", "gaussian_lifetime"),
+        ("add_distance_distribution", "gaussian_distance"),
+    ],
+)
+def test_each_add_button_opens_the_form_of_its_model_and_apply_adds_the_component(
+    drv, button, model_name
+):
     drv.click(button)
     assert drv.app.editor is not None and drv.app.editor["model"] == model_name
-    assert "Component name" in drv.draw(3).strings and {"Apply", action_caption("cancel")} <= set(drv.painter.strings)
+    assert "Component name" in drv.draw(3).strings and {"Apply", action_caption("cancel")} <= set(
+        drv.painter.strings
+    )
     drv.click_text("Apply")
     drv.settle()
     assert len(model(drv).components) == 3 and drv.app.editor is None
@@ -365,14 +410,21 @@ def test_the_spectrum_form_adds_rows_and_edits_them(drv):
     drv.draw(3)
     n = len(drv.app.editor["lifetimes"])
     drv.click_text("Add spectrum row")
-    assert len(drv.app.editor["lifetimes"]) == n + 1 and f"Lifetime {n + 1} (ns)" in drv.draw(3).strings
+    assert (
+        len(drv.app.editor["lifetimes"]) == n + 1
+        and f"Lifetime {n + 1} (ns)" in drv.draw(3).strings
+    )
 
 
 def test_select_a_component_then_edit_duplicate_and_remove_it(drv):
     drv.click_cell("component_rows", 0, "kind")
     assert drv.app.selected_component == 0
     drv.click("edit_component")
-    assert drv.app.editor is not None and drv.app.editor["name"] == "Fast example" and drv.app.editor_index == 0
+    assert (
+        drv.app.editor is not None
+        and drv.app.editor["name"] == "Fast example"
+        and drv.app.editor_index == 0
+    )
     drv.draw(3)
     drv.click_text(action_caption("cancel"))
     drv.click("duplicate_component")
@@ -552,8 +604,16 @@ def test_a_new_detector_from_the_shared_editor_reaches_the_calculator(drv):
 # -- the tabs, the plots ------------------------------------------------------------------------------------------------ #
 
 
-@pytest.mark.parametrize("tab, marker", [("Sources", "Components"), ("Detector setup", "TTTR Reading routine"), ("Auto-fit", "Type"),
-                                         ("Instrument", "Periodic convolution"), ("Info", "Information")])
+@pytest.mark.parametrize(
+    "tab, marker",
+    [
+        ("Sources", "Components"),
+        ("Detector setup", "TTTR Reading routine"),
+        ("Auto-fit", "Type"),
+        ("Instrument", "Periodic convolution"),
+        ("Info", "Information"),
+    ],
+)
 def test_each_control_tab_is_clicked_and_shows_its_panel(drv, tab, marker):
     drv.tab("Info" if tab != "Info" else "Sources")
     assert any(s == marker or s.endswith(" " + marker) for s in drv.tab(tab).strings), marker
@@ -579,7 +639,11 @@ def test_the_fit_range_lines_of_the_reconstruction_plot_are_dragged(drv):
     painter = drv.draw(3)
     lo, hi = model(drv)._fit_bounds
     # the plot's x axis runs 0..256 over the plot width: find the reconstruction window's plot area from the tick labels
-    xs = [(t[0] + t[2] / 2, float(t[5])) for t in painter.texts if t[5] in ("0", "50", "100", "150", "200", "250") and 560 < t[1] < 580]
+    xs = [
+        (t[0] + t[2] / 2, float(t[5]))
+        for t in painter.texts
+        if t[5] in ("0", "50", "100", "150", "200", "250") and 560 < t[1] < 580
+    ]
     assert len(xs) >= 4
     (x0, v0), (x1, v1) = xs[0], xs[-1]
     px = lambda v: x0 + (v - v0) * (x1 - x0) / (v1 - v0)  # noqa: E731

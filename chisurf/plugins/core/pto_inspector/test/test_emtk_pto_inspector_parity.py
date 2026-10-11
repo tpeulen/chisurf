@@ -245,7 +245,9 @@ def test_a_broken_file_reports_what_the_qt_tool_reports(tmp_path):
     app = make_app()
     try:
         app.model.set_filename(str(bad))
-        assert app.model.status.startswith("Cannot open broken.pto: ")  # the Qt status bar said the same
+        assert app.model.status.startswith(
+            "Cannot open broken.pto: "
+        )  # the Qt status bar said the same
         assert app.model.inspection is None and app.artifacts.control.records == []
         strings = " ".join(draw(app).strings)
         assert "No container open" in strings and "not a PTO" in strings.replace("PTO.MFDB", "PTO")

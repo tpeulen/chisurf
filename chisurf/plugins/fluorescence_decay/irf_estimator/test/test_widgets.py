@@ -9,7 +9,9 @@ def test_irf_estimator_app_creation(tmp_path, monkeypatch):
     try:
         form = app.form_model
         # estimate / save / transfer exist and are disabled until a decay is loaded
-        assert [form.enabled(n) for n in ("request_estimate", "request_save", "request_transfer")] == [
+        assert [
+            form.enabled(n) for n in ("request_estimate", "request_save", "request_transfer")
+        ] == [
             False,
             False,
             False,

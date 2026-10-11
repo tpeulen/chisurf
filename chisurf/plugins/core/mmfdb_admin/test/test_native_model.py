@@ -50,8 +50,14 @@ def test_a_wrong_password_keeps_the_login_dialog_open_with_the_reason(admin):  #
 
 
 def test_a_non_administrator_is_refused(admin, client):  # noqa: F811
-    client.save_user({"user_id": "plain", "display_name": "Plain", "password": "Plain#123x",
-                      "requester_id": "admin"})
+    client.save_user(
+        {
+            "user_id": "plain",
+            "display_name": "Plain",
+            "password": "Plain#123x",
+            "requester_id": "admin",
+        }
+    )
     admin.logout()
     admin.client.token = None
     admin.user, admin.password = "plain", "Plain#123x"
@@ -100,7 +106,9 @@ def test_a_committed_field_is_saved(admin, client):  # noqa: F811
     panel.select_row(rows_by_id(panel)["dev_gui"])
     panel.form.location = "Lab 2"
     assert "Saved device" in admin.status
-    assert next(d for d in client.list_devices() if d["device_id"] == "dev_gui")["location"] == "Lab 2"
+    assert (
+        next(d for d in client.list_devices() if d["device_id"] == "dev_gui")["location"] == "Lab 2"
+    )
     assert rows_by_id(panel)["dev_gui"]["location"] == "Lab 2"
 
 
@@ -343,17 +351,30 @@ def test_spectra_list_select_overlay_and_curate(admin, client):  # noqa: F811
 def test_spectra_component_types(admin):  # noqa: F811
     panel = admin.select("spectra")
     assert [k for k, _ in panel.component_options()] == [
-        "fluorophore", "filter", "dichroic", "detector", "light_source"]
+        "fluorophore",
+        "filter",
+        "dichroic",
+        "detector",
+        "light_source",
+    ]
     panel.component = "filter"
     panel.set_component("filter")
-    assert [c["key"] for c in panel.table_columns()][1:4] == ["probe_id", "chromophore_name", "type_name"]
+    assert [c["key"] for c in panel.table_columns()][1:4] == [
+        "probe_id",
+        "chromophore_name",
+        "type_name",
+    ]
 
 
 def test_find_duplicates_and_merge(admin, client):  # noqa: F811
     panel = admin.select("spectra")
     panel.find_duplicates()
     dialog = admin.dialog
-    group = next(g for g in dialog.groups if {p["chromophore_name"] for p in g["probes"]} >= {"Donor GUI", "Donor-GUI"})
+    group = next(
+        g
+        for g in dialog.groups
+        if {p["chromophore_name"] for p in g["probes"]} >= {"Donor GUI", "Donor-GUI"}
+    )
     name = group["norm_name"]
     rows = dialog.tree_rows()
     assert any(r["_row"] == f"g:{name}" for r in rows)
@@ -429,7 +450,9 @@ def test_lifecycle_load_and_transition(admin):  # noqa: F811
     panel.entity_type, panel.entity_id = "sample", "sample_gui"
     panel.load()
     assert panel.state_text() == "Current state: measured"
-    assert [h["to_state"] for h in panel.history][:2] == ["registered", "measured"] or len(panel.history) == 2
+    assert [h["to_state"] for h in panel.history][:2] == ["registered", "measured"] or len(
+        panel.history
+    ) == 2
     assert panel.next_states()
     panel.to_state = panel.next_states()[0]
     panel.reason = "checked"
@@ -458,7 +481,13 @@ def test_reagent_lots_filter_detail_and_create(admin):  # noqa: F811
     panel.set_filter("buffer")
     assert [r["name"] for r in panel.lots] == ["PBS"]
     panel.select_lot(panel.lots[0])
-    assert {d["field"] for d in panel.detail_rows()} >= {"kind", "name", "lot_number", "vendor", "expiry"}
+    assert {d["field"] for d in panel.detail_rows()} >= {
+        "kind",
+        "name",
+        "lot_number",
+        "vendor",
+        "expiry",
+    }
     panel.new_kind, panel.new_name, panel.new_expiry = "buffer", "Tris", "2030-02-02"
     panel.create_lot()
     assert panel.message == "Created lot Tris."

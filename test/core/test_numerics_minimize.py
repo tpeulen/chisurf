@@ -74,7 +74,11 @@ def test_nelder_mead_matches_scipy_exactly():
     s = so.minimize(rosen, X0, method="Nelder-Mead", bounds=bounds, options=opts)
     np.testing.assert_array_equal(r.x, s.x)
     assert (r.fun, r.nit, r.nfev, r.status, r.message) == (
-        s.fun, s.nit, s.nfev, s.status, s.message,
+        s.fun,
+        s.nit,
+        s.nfev,
+        s.status,
+        s.message,
     )
     np.testing.assert_array_equal(r.final_simplex[0], s.final_simplex[0])
 
@@ -83,8 +87,9 @@ def test_args_reach_the_objective():
     def f(x, a, b):
         return float(np.sum((x - a) ** 2) + b)
 
-    r = minimize(f, np.zeros(2), args=(np.array([1.0, -2.0]), 3.0), method="L-BFGS-B",
-                 bounds=[(-5, 5)] * 2)
+    r = minimize(
+        f, np.zeros(2), args=(np.array([1.0, -2.0]), 3.0), method="L-BFGS-B", bounds=[(-5, 5)] * 2
+    )
     np.testing.assert_allclose(r.x, [1.0, -2.0], atol=1e-6)
     assert abs(r.fun - 3.0) < 1e-10
 

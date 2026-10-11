@@ -615,8 +615,13 @@ def test_independent_fit_guard_rejects_wrong_displayed_curve(app):
     """A changed fitted curve cannot hide behind the conditioned optimizer precision envelope."""
     shown = next(s for s in app.model.fcs_curves_series if s["name"] == "1-component Gaussian fit")
     with pytest.raises(AssertionError):
-        assert_saturation_series(app.model, "fcs_curves_series", shown["name"],
-                                 np.asarray(shown["y"]) * 1.0001, shown["y"])
+        assert_saturation_series(
+            app.model,
+            "fcs_curves_series",
+            shown["name"],
+            np.asarray(shown["y"]) * 1.0001,
+            shown["y"],
+        )
     tau, target, _, _, reference, minimum, budget, _, _ = saturation_fit_reference(app.model)
     wrong = independent_gaussian(tau, reference + np.array([1e-4, 0.0]))[0]
     residual = wrong - target

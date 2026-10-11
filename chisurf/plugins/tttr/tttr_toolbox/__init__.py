@@ -24,4 +24,3 @@ _manifest = (
     json.loads(_manifest_path.read_text(encoding="utf-8")) if _manifest_path.exists() else {}
 )
 name = _manifest.get("display_name", "Tools:Photon data:TTTR Tools")
-

@@ -232,7 +232,9 @@ class EmTkHelpWindow:
                     im.push_style_color(Col.BUTTON, (40, 90, 180, 255))
                 if im.button(f" {c} ##filter_{c}"):
                     self.active_category = c
-                im.set_item_tooltip("Show all help sections." if c == "All" else f"Show the {c} help section.")
+                im.set_item_tooltip(
+                    "Show all help sections." if c == "All" else f"Show the {c} help section."
+                )
                 if is_sel:
                     im.pop_style_color()
             im.separator()
@@ -242,7 +244,8 @@ class EmTkHelpWindow:
         footer_height = im.get_frame_height() + 3 * im.get_style().item_spacing[1] + 1.0
         im.begin_child(
             (*im.get_cursor_screen_pos(), max(1.0, avail_w), max(1.0, avail_h - footer_height)),
-            child_id=(self.dlg.key, self.active_category, "body"), clip=True,
+            child_id=(self.dlg.key, self.active_category, "body"),
+            clip=True,
         )
 
         for heading, lines in self.sections:
@@ -285,9 +288,7 @@ class TourTarget:
 
     item_rects: dict[str, tuple[float, float, float, float]]
 
-    def remember(
-        self, name: str, rect: tuple[float, float, float, float] | None = None
-    ) -> None:
+    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
         """Store the last item's frame under *name*, or an explicit *rect*."""
         r = rect if rect is not None else self._current_item_rect()
         if r is not None:
@@ -299,8 +300,9 @@ class TourTarget:
         return _im.get_item_rect()
 
 
-def place_tour_card(target_rect, width: float, height: float, card_w: float, card_h: float,
-                    margin: float = 14.0) -> tuple[float, float]:
+def place_tour_card(
+    target_rect, width: float, height: float, card_w: float, card_h: float, margin: float = 14.0
+) -> tuple[float, float]:
     """Choose where the tour card goes so that it does not cover the control it points at.
 
     Candidates (right of, below, above, left of the target, then the four corners) are tried in
@@ -308,6 +310,7 @@ def place_tour_card(target_rect, width: float, height: float, card_w: float, car
     target the card sits in the bottom-right corner instead of the middle, where it hid whatever the
     user was about to touch. The user can still drag the card away from the result.
     """
+
     def clamp(x, y):
         return (max(8.0, min(x, width - card_w - 8.0)), max(8.0, min(y, height - card_h - 8.0)))
 
@@ -316,10 +319,14 @@ def place_tour_card(target_rect, width: float, height: float, card_w: float, car
     tx, ty, tw, th = target_rect
     box = (tx - margin, ty - margin, tx + tw + margin, ty + th + margin)
     cands = [
-        (tx + tw + margin + 2.0, ty), (tx, ty + th + margin + 2.0), (tx, ty - card_h - margin - 2.0),
+        (tx + tw + margin + 2.0, ty),
+        (tx, ty + th + margin + 2.0),
+        (tx, ty - card_h - margin - 2.0),
         (tx - card_w - margin - 2.0, ty),
-        (width - card_w - 16.0, height - card_h - 16.0), (16.0, height - card_h - 16.0),
-        (width - card_w - 16.0, 40.0), (16.0, 40.0),
+        (width - card_w - 16.0, height - card_h - 16.0),
+        (16.0, height - card_h - 16.0),
+        (width - card_w - 16.0, 40.0),
+        (16.0, 40.0),
     ]
     for x, y in cands:
         cx, cy = clamp(x, y)
@@ -403,13 +410,25 @@ class EmTkGuidedTour:
         if isinstance(target, str):
             return target
         if isinstance(target, dict):
-            return next((str(target[key]) for key in ("name", "action", "key", "attr", "tab", "title", "panel") if target.get(key)), "")
+            return next(
+                (
+                    str(target[key])
+                    for key in ("name", "action", "key", "attr", "tab", "title", "panel")
+                    if target.get(key)
+                ),
+                "",
+            )
         return ""
 
     @property
     def awaiting(self) -> bool:
         """Whether an opted-in tour is waiting for its actual target control."""
-        return bool(self.wait_for_controls and self.active and self.steps[self.step_idx].get("await") and not self._step_used)
+        return bool(
+            self.wait_for_controls
+            and self.active
+            and self.steps[self.step_idx].get("await")
+            and not self._step_used
+        )
 
     def notify_used(self, name: str) -> None:
         """Receive FormState.on_used or a real action notification from the host."""
@@ -454,7 +473,9 @@ class EmTkGuidedTour:
         per_line = max(20.0, (card_w - 28.0) / 7.4)
         body = _clean_html_text(tr(str(step.get("text", ""))))
         lines = sum(max(1, int(len(part) / per_line) + 1) for part in body.split("\n"))
-        hint = step.get("hint") or (step.get("await", {}).get("hint") if isinstance(step.get("await"), dict) else None)
+        hint = step.get("hint") or (
+            step.get("await", {}).get("hint") if isinstance(step.get("await"), dict) else None
+        )
         hint = tr(str(hint)) if hint else None
         lines += (int(len(str(hint)) / per_line) + 2) if hint else 0
         title_text = tr("Step {step} of {total}: {title}").format(
@@ -462,8 +483,8 @@ class EmTkGuidedTour:
         )
         title_lines = max(1, int(len(title_text) / per_line) + 1)
         header_height = 26.0
-        card_h = header_height + 16.0 * (title_lines - 1) + max(
-            120.0, min(260.0, 78.0 + 16.0 * lines)
+        card_h = (
+            header_height + 16.0 * (title_lines - 1) + max(120.0, min(260.0, 78.0 + 16.0 * lines))
         )
 
         if target_rect:
@@ -512,14 +533,22 @@ class EmTkGuidedTour:
             thickness=1.5,
         )
 
-        ctx.draw.add_rect_filled((cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), (60, 90, 160, 200), rounding=3.0)
-        ctx.draw.add_text((cx + card_w - 128.0, cy + 8.0), (120, 130, 150, 255), tr("drag here to move"))
+        ctx.draw.add_rect_filled(
+            (cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), (60, 90, 160, 200), rounding=3.0
+        )
+        ctx.draw.add_text(
+            (cx + card_w - 128.0, cy + 8.0), (120, 130, 150, 255), tr("drag here to move")
+        )
 
         # 4. Content Area with Native Word Wrapping
         content_margin = 14.0
         im.begin_child(
-            (cx + content_margin, cy + header_height + 10.0,
-             card_w - 2 * content_margin, card_h - header_height - 48.0),
+            (
+                cx + content_margin,
+                cy + header_height + 10.0,
+                card_w - 2 * content_margin,
+                card_h - header_height - 48.0,
+            ),
             clip=True,
         )
         im.push_style_color(Col.TEXT, ACCENT_BLUE)
@@ -549,7 +578,11 @@ class EmTkGuidedTour:
             im.begin_disabled()
             im.button(tr("◄ Prev") + "##tour_prev")
             im.end_disabled()
-        im.set_item_tooltip(tr("Go to the previous tour step.") if self.step_idx > 0 else tr("This is the first tour step."))
+        im.set_item_tooltip(
+            tr("Go to the previous tour step.")
+            if self.step_idx > 0
+            else tr("This is the first tour step.")
+        )
 
         im.same_line()
         is_last = self.step_idx == len(self.steps) - 1
@@ -558,7 +591,11 @@ class EmTkGuidedTour:
         im.begin_disabled(self.awaiting)
         if im.button(next_label):
             self.next()
-        im.set_item_tooltip(tr("Use the highlighted control to continue.") if self.awaiting else (tr("Finish the guided tour.") if is_last else tr("Go to the next tour step.")))
+        im.set_item_tooltip(
+            tr("Use the highlighted control to continue.")
+            if self.awaiting
+            else (tr("Finish the guided tour.") if is_last else tr("Go to the next tour step."))
+        )
         im.end_disabled()
         im.pop_style_color()
 

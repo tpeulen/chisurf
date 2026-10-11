@@ -110,7 +110,9 @@ class FitTablePlotEmtk(plotbase.Plot):
         self._hidden_empty: set[str] = set()
         self._tips = {
             id(self.btn_show_model): "Edit the model's parameters for this fit.",
-            id(self.btn_copy): "Copy the visible rows and columns to the clipboard (tab separated).",
+            id(
+                self.btn_copy
+            ): "Copy the visible rows and columns to the clipboard (tab separated).",
             id(self.btn_columns): "Choose which columns are shown (also: right-click the header).",
             id(self.btn_empty): "Hide columns that contain no values; press again to show them.",
             id(self.btn_shade): "Shade numeric cells by their value.",
@@ -203,8 +205,15 @@ class FitTablePlotEmtk(plotbase.Plot):
         self._draw_column_picker()
 
     def _buttons(self) -> tuple:
-        return (self.btn_show_model, self.btn_copy, self.btn_columns, self.btn_empty,
-                self.btn_shade, self.btn_scope, self.btn_export)
+        return (
+            self.btn_show_model,
+            self.btn_copy,
+            self.btn_columns,
+            self.btn_empty,
+            self.btn_shade,
+            self.btn_scope,
+            self.btn_export,
+        )
 
     def _draw_column_picker(self) -> None:
         """The column list, while it is open, on the surface drawing this page."""
@@ -238,7 +247,9 @@ class FitTablePlotEmtk(plotbase.Plot):
             self.table.colour_values = None if self.table.colour_values else "column"
         elif btn is self.btn_scope:
             if self.table.colour_values:
-                self.table.colour_values = "column" if self.table.colour_values == "table" else "table"
+                self.table.colour_values = (
+                    "column" if self.table.colour_values == "table" else "table"
+                )
         elif btn is self.btn_export:
             self.export_csv()
         self._request_repaint()
@@ -288,7 +299,9 @@ class FitTablePlotEmtk(plotbase.Plot):
             from emtk.file_dialog import FileDialog
 
             self._csv_dialog = FileDialog(
-                "Export data table", mode="save", filters="CSV files (*.csv)",
+                "Export data table",
+                mode="save",
+                filters="CSV files (*.csv)",
                 filename="data_table.csv",
             )
             self._request_repaint()

@@ -43,6 +43,7 @@ def session_client() -> Any:
     if not token:
         try:
             from mmfdb.security.credentials import load_runtime_session_token
+
             token = load_runtime_session_token(client.host, client.cmd_port, config["username"])
         except Exception:
             token = None
@@ -75,8 +76,11 @@ def _display_name(dataset: dict) -> str:
             metadata = json.loads(metadata)
         except ValueError:
             metadata = {}
-    for candidate in (dataset.get("file_path"), dataset.get("folder_path"),
-                      metadata.get("path") if isinstance(metadata, dict) else None):
+    for candidate in (
+        dataset.get("file_path"),
+        dataset.get("folder_path"),
+        metadata.get("path") if isinstance(metadata, dict) else None,
+    ):
         if candidate:
             return Path(str(candidate).rstrip("/\\")).name
     return str(dataset.get("artifact_id", "Dataset"))
@@ -85,10 +89,16 @@ def _display_name(dataset: dict) -> str:
 class DatasetPicker:
     """Frame-rendered picker; selection and resolved-path callbacks are optional."""
 
-    def __init__(self, *, client: Any = None, kinds: Sequence[str] | None = None,
-                 formats: Sequence[str] | None = None, scope: str = "all",
-                 on_selected: Callable[[DatasetSelection], None] | None = None,
-                 on_paths: Callable[[list[Path]], None] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        client: Any = None,
+        kinds: Sequence[str] | None = None,
+        formats: Sequence[str] | None = None,
+        scope: str = "all",
+        on_selected: Callable[[DatasetSelection], None] | None = None,
+        on_paths: Callable[[list[Path]], None] | None = None,
+    ) -> None:
         self.client = client
         self.kinds = list(DEFAULT_KINDS if kinds is None else kinds)
         self.formats = list(formats) if formats is not None else None
@@ -162,11 +172,20 @@ class DatasetPicker:
         try:
             if self.client is None:
                 self.client = session_client()
-            result = self.client.call("mmfdb.datasets.browse", {
-                "scope": self.scope, "query": self.query.strip() or None,
-                "kinds": self.kinds, "formats": self.formats,
-                "limit": self.page_size, "offset": self.page * self.page_size,
-            }) or {}
+            result = (
+                self.client.call(
+                    "mmfdb.datasets.browse",
+                    {
+                        "scope": self.scope,
+                        "query": self.query.strip() or None,
+                        "kinds": self.kinds,
+                        "formats": self.formats,
+                        "limit": self.page_size,
+                        "offset": self.page * self.page_size,
+                    },
+                )
+                or {}
+            )
             self.datasets = result.get("datasets", [])
             self.total = int(result.get("total", len(self.datasets)))
             return True
@@ -182,9 +201,12 @@ class DatasetPicker:
             self.selection = None
             return None
         self.selection = DatasetSelection(
-            artifact_id=artifact_id, artifact_kind=dataset.get("artifact_kind", ""),
-            data_format=dataset.get("data_format"), label=_display_name(dataset),
-            metadata=dataset, member_count=int(dataset.get("member_count", 0) or 0),
+            artifact_id=artifact_id,
+            artifact_kind=dataset.get("artifact_kind", ""),
+            data_format=dataset.get("data_format"),
+            label=_display_name(dataset),
+            metadata=dataset,
+            member_count=int(dataset.get("member_count", 0) or 0),
         )
         return self.selection
 
@@ -214,16 +236,25 @@ class DatasetPicker:
 
         self._poll()
         if self._dialog is None:
-            self._dialog = DialogWindow("Select MMFDB dataset", size=(760, 540), key=f"dataset_{id(self)}")
+            self._dialog = DialogWindow(
+                "Select MMFDB dataset", size=(760, 540), key=f"dataset_{id(self)}"
+            )
         pressed = self._dialog.begin(frame)
         if self._pending is not None:
             self._request_completion_frame()
-            im.text_wrapped("Loading datasets…" if self._pending_kind == "browse" else "Opening dataset…")
-            if action_button(
-                "cancel",
-                tooltip=tr("Close the picker; the database operation can finish in the background."),
-                id="dataset_pending_cancel",
-            ) or pressed == "close":
+            im.text_wrapped(
+                "Loading datasets…" if self._pending_kind == "browse" else "Opening dataset…"
+            )
+            if (
+                action_button(
+                    "cancel",
+                    tooltip=tr(
+                        "Close the picker; the database operation can finish in the background."
+                    ),
+                    id="dataset_pending_cancel",
+                )
+                or pressed == "close"
+            ):
                 self.close()
             self._dialog.end()
             return
@@ -240,19 +271,30 @@ class DatasetPicker:
             self.page = 0
         if im.button(tr("Refresh") + "##dataset_refresh"):
             self._request_refresh()
-        im.set_item_tooltip(tr("Reload datasets with the current scope, search, kind and format filters."))
-        im.text_wrapped("Kinds: " + ", ".join(self.kinds) + " | Formats: " + ", ".join(self.formats or ["all"]))
+        im.set_item_tooltip(
+            tr("Reload datasets with the current scope, search, kind and format filters.")
+        )
+        im.text_wrapped(
+            "Kinds: " + ", ".join(self.kinds) + " | Formats: " + ", ".join(self.formats or ["all"])
+        )
         if self.error:
             im.text_wrapped("Database error: " + self.error)
         ctx = im.get_current_context()
         width, height = ctx.layout.avail()
-        im.begin_child((*im.get_cursor_screen_pos(), max(100, width), max(80, height - 100)), clip=True)
+        im.begin_child(
+            (*im.get_cursor_screen_pos(), max(100, width), max(80, height - 100)), clip=True
+        )
         for dataset in self.datasets:
             artifact_id = str(dataset.get("artifact_id", ""))
             label = f"{_display_name(dataset)} [{dataset.get('artifact_kind', '')}] ({dataset.get('data_format') or 'unknown format'})"
-            if im.selectable(f"{label}##dataset_{artifact_id}", selected=bool(self.selection and self.selection.artifact_id == artifact_id)):
+            if im.selectable(
+                f"{label}##dataset_{artifact_id}",
+                selected=bool(self.selection and self.selection.artifact_id == artifact_id),
+            ):
                 self.select(artifact_id)
-            im.set_item_tooltip(f"Select dataset {artifact_id}; sample: {dataset.get('sample_name') or dataset.get('sample_id') or 'unspecified'}.")
+            im.set_item_tooltip(
+                f"Select dataset {artifact_id}; sample: {dataset.get('sample_name') or dataset.get('sample_id') or 'unspecified'}."
+            )
         if not self.datasets and not self.error:
             im.text_wrapped(tr("No datasets match these filters."))
         im.end_child()
@@ -280,7 +322,9 @@ class DatasetPicker:
                 self._pending = _EXECUTOR.submit(resolve_local_path, self.client, self.selection)
                 self._pending_frame_hooked = False
                 self._request_completion_frame()
-        im.set_item_tooltip(tr("Open the selected dataset in this tool; remote objects are downloaded by MMFDB."))
+        im.set_item_tooltip(
+            tr("Open the selected dataset in this tool; remote objects are downloaded by MMFDB.")
+        )
         im.end_disabled()
         im.same_line()
         if action_button(

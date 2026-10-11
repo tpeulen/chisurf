@@ -94,7 +94,9 @@ class RegionControls:
         m = self.model
         expanded = im.collapsing_header("Analysis regions", 0)
         im.set_item_tooltip(
-            tr("Restrict detection to named regions; empty or disabled regions use the entire frame.")
+            tr(
+                "Restrict detection to named regions; empty or disabled regions use the entire frame."
+            )
         )
         if not expanded:
             return
@@ -107,7 +109,9 @@ class RegionControls:
             "Combine regions", COMBINE_OPS.index(collection.combine), list(COMBINE_OPS)
         )
         im.set_item_tooltip(
-            tr("AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions.")
+            tr(
+                "AND intersects, OR unions and XOR keeps pixels included by an odd number of enabled regions."
+            )
         )
         if changed:
             collection.combine = COMBINE_OPS[index]
@@ -118,11 +122,15 @@ class RegionControls:
             if im.selectable(name, self.selected == name):
                 self.selected = name
             im.set_item_tooltip(
-                tr("Select this analysis region for renaming, geometry edits, duplication or removal.")
+                tr(
+                    "Select this analysis region for renaming, geometry edits, duplication or removal."
+                )
             )
             changed, value = im.checkbox(tr("Enabled"), entry.enabled)
             im.set_item_tooltip(
-                tr("Include this region in detection; disabled entries remain available for later use.")
+                tr(
+                    "Include this region in detection; disabled entries remain available for later use."
+                )
             )
             if changed:
                 entry.enabled = value
@@ -189,7 +197,9 @@ class RegionControls:
                     )
             if im.button(tr("Duplicate region")):
                 self.duplicate()
-            im.set_item_tooltip(tr("Copy the selected region including its enabled/inverted state."))
+            im.set_item_tooltip(
+                tr("Copy the selected region including its enabled/inverted state.")
+            )
             if im.button(tr("Remove region")):
                 collection.remove(self.selected)
                 self.selected = ""

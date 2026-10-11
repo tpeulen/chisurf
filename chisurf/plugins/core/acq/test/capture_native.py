@@ -159,7 +159,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
-    for path in [*capture(args.out), *capture_fake_device(args.out), *capture_setup_cards(args.out)]:
+    for path in [
+        *capture(args.out),
+        *capture_fake_device(args.out),
+        *capture_setup_cards(args.out),
+    ]:
         print(path)
 
 

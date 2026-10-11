@@ -19,12 +19,12 @@ import pytest
 #: Handler name -> how many positional arguments (beyond ``self``) the host
 #: passes. An override must accept at least these, positionally.
 HOST_PROTOCOL = {
-    "pointer_press": 5,      # x, y, button, modifiers, clicks
-    "pointer_release": 4,    # x, y, button, modifiers
-    "pointer_move": 4,       # x, y, buttons, modifiers
-    "wheel": 4,              # x, y, steps, modifiers
-    "scroll": 1,             # rows (notches)
-    "key": 3,                # key, text, modifiers
+    "pointer_press": 5,  # x, y, button, modifiers, clicks
+    "pointer_release": 4,  # x, y, button, modifiers
+    "pointer_move": 4,  # x, y, buttons, modifiers
+    "wheel": 4,  # x, y, steps, modifiers
+    "scroll": 1,  # rows (notches)
+    "key": 3,  # key, text, modifiers
 }
 
 _APP_GLOBS = ("chisurf/plugins/**/app.py", "chisurf/plugins/**/gui/app.py")
@@ -69,8 +69,10 @@ def test_host_event_overrides_accept_host_arity():
                 continue
             checked += 1
             if not _accepts(node, bound):
-                bad.append(f"{path.relative_to(pathlib.Path.cwd())}:{node.lineno} "
-                           f"def {node.name}(...) must accept {bound} positional args")
+                bad.append(
+                    f"{path.relative_to(pathlib.Path.cwd())}:{node.lineno} "
+                    f"def {node.name}(...) must accept {bound} positional args"
+                )
     assert checked > 50, f"sweep found only {checked} handlers; the glob broke"
     assert not bad, "event handlers that reject the Qt host's call shape:\n" + "\n".join(bad)
 
@@ -85,8 +87,16 @@ def test_protocol_names_exist_on_imapp(name):
     method = getattr(ImApp, name, None)
     assert method is not None, f"ImApp lost {name!r}; update HOST_PROTOCOL"
     sig = inspect.signature(method)
-    positional = len([p for p in sig.parameters.values()
-                      if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)]) - 1
+    positional = (
+        len(
+            [
+                p
+                for p in sig.parameters.values()
+                if p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+            ]
+        )
+        - 1
+    )
     assert positional == HOST_PROTOCOL[name], (
         f"ImApp.{name} takes {positional} args; HOST_PROTOCOL says {HOST_PROTOCOL[name]}"
     )

@@ -30,6 +30,7 @@ if TYPE_CHECKING:
 
 HERE = Path(__file__).parent
 
+
 class ChimolHostApp(ImApp):
     """Run ChiMOL inside an EMTK surface."""
 
@@ -175,7 +176,9 @@ class ChimolHostApp(ImApp):
         self._adopt_start()
         if self._chimol_app is None and not self._error and not self.starting:
             surface = self._surface
-            self._starter.start({"chimol": lambda: self._start(surface)}, name="chisurf-chimol-start")
+            self._starter.start(
+                {"chimol": lambda: self._start(surface)}, name="chisurf-chimol-start"
+            )
         elif self._chimol_app is not None:
             self._resize(self._chimol_app, *self._surface)
             frame = self._chimol_app.renderer.draw_frame()

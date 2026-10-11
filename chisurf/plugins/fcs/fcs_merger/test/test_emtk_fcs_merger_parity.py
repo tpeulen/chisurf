@@ -29,7 +29,6 @@ from make_chunks import build  # noqa: E402
 SPEC = json.loads((HERE.parent / "gui" / "fcs_merger_emtk.view.json").read_text(encoding="utf-8"))
 
 
-
 @pytest.fixture(scope="module")
 def chunks(tmp_path_factory):
     pytest.importorskip("tttrlib")
@@ -44,9 +43,13 @@ def qt(chunks):
     inventory = json.loads(path.with_name("merger-loaded-six-repeats.json").read_text())
     table = next(row for row in inventory if row["class"] == "QTableWidget")
     rows = [[value.strip() for value in row[1:5]] for row in table["data"]]
-    return {"rows": rows, "tips": [str(chunks / (row[0] + ".cor")) for row in rows],
-            "target": str(chunks.parent / "BH_SPC132.cor"), "mean": facts["mean"],
-            "saved": facts["saved"]}
+    return {
+        "rows": rows,
+        "tips": [str(chunks / (row[0] + ".cor")) for row in rows],
+        "target": str(chunks.parent / "BH_SPC132.cor"),
+        "mean": facts["mean"],
+        "saved": facts["saved"],
+    }
 
 
 @pytest.fixture

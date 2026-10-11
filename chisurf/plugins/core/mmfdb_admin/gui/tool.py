@@ -1438,9 +1438,7 @@ class MMFDBWidget(NavigationPanelTool):
         # The dialog takes no client (it used to be passed one, which raised a
         # TypeError on every click); it returns the password and this saves it.
         row = dock._row_cache.get(user_id, {}) if isinstance(dock, EntityDock) else {}
-        dlg = PasswordChangeDialog(
-            user_id=user_id, is_admin=bool(row.get("is_admin")), parent=self
-        )
+        dlg = PasswordChangeDialog(user_id=user_id, is_admin=bool(row.get("is_admin")), parent=self)
         if dlg.exec() != QtWidgets.QDialog.Accepted:
             return
         try:

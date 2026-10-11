@@ -93,7 +93,9 @@ class RicsPrecisionApp(ImApp):
         self.docks.add_window(
             "settings", tr("Settings"), self.draw_settings, dock="settings", closable=False
         )
-        self.docks.add_window("plot", tr("Error vs dwell"), self.draw_plot, dock="plot", closable=False)
+        self.docks.add_window(
+            "plot", tr("Error vs dwell"), self.draw_plot, dock="plot", closable=False
+        )
         self.docks.add_window(
             "numbers", tr("Numbers"), self.draw_numbers, dock="numbers", closable=False
         )
@@ -192,7 +194,9 @@ class RicsPrecisionApp(ImApp):
                         continue
                     for index, (rx, ry) in enumerate(finite_runs(xs, ys)):
                         label = (
-                            tr(item.get("name", "predicted error")) if index == 0 else f"##run{index}"
+                            tr(item.get("name", "predicted error"))
+                            if index == 0
+                            else f"##run{index}"
                         )
                         implot.set_next_line_style(CURVE_COLOUR, 2.0)
                         implot.set_next_marker_style(implot.MARKER_CIRCLE, 4.0, CURVE_COLOUR)
@@ -201,9 +205,11 @@ class RicsPrecisionApp(ImApp):
                 implot.plot_dummy(tr("press Predict to sweep the dwell time"))
             implot.end_plot()
         im.set_item_tooltip(
-            tr("Predicted relative error on D against pixel dwell time (log axes), with your own "
-            "setting marked. Both ends rise: too fast and the molecule has not moved between "
-            "pixels, too slow and it has already decorrelated.")
+            tr(
+                "Predicted relative error on D against pixel dwell time (log axes), with your own "
+                "setting marked. Both ends rise: too fast and the molecule has not moved between "
+                "pixels, too slow and it has already decorrelated."
+            )
         )
         self.item_rects["plot"] = im.get_item_rect()
 

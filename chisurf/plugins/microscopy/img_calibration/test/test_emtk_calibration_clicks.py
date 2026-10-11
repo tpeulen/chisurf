@@ -120,7 +120,9 @@ def test_refresh_bins_the_histograms_again(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click(drv.rect("help"))
-    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(
+        drv.draw(2).strings
+    )
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
@@ -221,9 +223,7 @@ def test_a_click_on_a_row_selects_it_remove_removes_it_and_clear_empties_the_lis
     drv.click(drv.rect("remove_irf"))  # nothing selected: nothing removed
     assert m(drv).sel_irf_files == [spc]
     drv.click(drv.rect("clear_irf"))
-    assert (
-        m(drv).sel_irf_files == [] and "No IRF: using raw data" in drv.draw(2).strings
-    )
+    assert m(drv).sel_irf_files == [] and "No IRF: using raw data" in drv.draw(2).strings
 
 
 def test_database_button_opens_the_dataset_picker_and_cancel_closes_it(drv):

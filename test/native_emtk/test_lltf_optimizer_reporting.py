@@ -12,8 +12,11 @@ def test_completed_process_reports_optimizer_outcome(tmp_path, converged):
 
     model = LLTFModel()
     output = tmp_path / "fit.json"
-    result = {"converged": converged, "optimizer_status": 1 if converged else 5,
-              "optimizer_message": "Converged." if converged else "Iteration limit reached."}
+    result = {
+        "converged": converged,
+        "optimizer_status": 1 if converged else 5,
+        "optimizer_message": "Converged." if converged else "Iteration limit reached.",
+    }
     output.write_text(json.dumps(result))
     model.output_file = str(output)
 
@@ -39,8 +42,12 @@ def test_results_summary_exposes_optimizer_outcome(converged):
     from chisurf.plugins.fluorescence_decay.lltf.gui.model import LLTFModel
 
     model = LLTFModel()
-    model.result = {"chi_square": 12.0, "reduced_chi_square": 1.2, "converged": converged,
-                    "optimizer_message": "Iteration limit reached."}
+    model.result = {
+        "chi_square": 12.0,
+        "reduced_chi_square": 1.2,
+        "converged": converged,
+        "optimizer_message": "Iteration limit reached.",
+    }
     text = model.results_summary()
     assert "Chi-square: 12.000" in text
     assert "Reduced chi-square: 1.200" in text

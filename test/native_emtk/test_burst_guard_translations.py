@@ -73,7 +73,9 @@ def test_h2mm_tuple_help_is_translated_at_actual_controls_without_changing_fit_o
 
     from emtk import im_widgets
 
-    translations, observed = translated_tooltip_sink(monkeypatch, SimpleNamespace(im=im_widgets), sources)
+    translations, observed = translated_tooltip_sink(
+        monkeypatch, SimpleNamespace(im=im_widgets), sources
+    )
     # The spec is translated when the app loads it, so the app is built after the locale is set.
     app = owner.H2mmNativeApp()
     before = tuple(getattr(app.model, name) for name in names)

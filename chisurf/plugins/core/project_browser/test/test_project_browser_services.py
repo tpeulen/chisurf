@@ -593,7 +593,9 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
         for local in restored_group.grouped_fits
     )
     assert session.ui_state["current_fit_uid"] == "global-fit"
-    assert session.ui_state["layout"] == ui["layout"]  # toolkit-neutral; any front end restores from it
+    assert (
+        session.ui_state["layout"] == ui["layout"]
+    )  # toolkit-neutral; any front end restores from it
     assert session.ui_state["backend"] == ui["backend"]
 
 

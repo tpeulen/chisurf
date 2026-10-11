@@ -52,8 +52,22 @@ SETTING_ATTRS: dict[str, tuple[type, bool]] = {
 
 #: The per-detector settings "Save fit" stores on the detector setup (the keys the wizard stored).
 SETUP_KEYS = (
-    "micro_time_start", "micro_time_stop", "irf_threshold_vv", "irf_threshold_vh", "shift", "shift_sp", "shift_ss",
-    "irf_start", "irf_stop", "p2s_twoIstar", "BIFL_scatter", "fix_tau", "fix_gamma", "fix_r0", "fix_rho", "min_photons",
+    "micro_time_start",
+    "micro_time_stop",
+    "irf_threshold_vv",
+    "irf_threshold_vh",
+    "shift",
+    "shift_sp",
+    "shift_ss",
+    "irf_start",
+    "irf_stop",
+    "p2s_twoIstar",
+    "BIFL_scatter",
+    "fix_tau",
+    "fix_gamma",
+    "fix_r0",
+    "fix_rho",
+    "min_photons",
 )
 
 #: Values of the settings file this app writes and reads.
@@ -255,12 +269,18 @@ class MleViewModel(RunPickerMixin):
         det = self.session.current_detector
         name = getattr(definition, "current_name", "")
         if not name or name not in definition.setups:
-            self.status_text = str(tr("No detector setup selected: pick or save a setup in the Detector setup tab first."))
+            self.status_text = str(
+                tr(
+                    "No detector setup selected: pick or save a setup in the Detector setup tab first."
+                )
+            )
             return self.status_text
         setup = definition.setups[name]
         detectors = setup.get("detectors") or {}
         if det not in detectors:
-            self.status_text = str(tr("Detector {detector} is not in setup {setup}.")).format(detector=det, setup=name)
+            self.status_text = str(tr("Detector {detector} is not in setup {setup}.")).format(
+                detector=det, setup=name
+            )
             return self.status_text
         settings = self.session.settings
         params = {key: SETTING_ATTRS[key][0](getattr(settings, key)) for key in SETUP_KEYS}
@@ -270,7 +290,9 @@ class MleViewModel(RunPickerMixin):
         detectors[det]["mle_settings"] = merged
         definition._persist()
         self.session.detectors.setdefault(det, {})["mle_settings"] = dict(merged)
-        self.status_text = str(tr("MLE settings of detector {detector} saved to setup {setup}.")).format(detector=det, setup=name)
+        self.status_text = str(
+            tr("MLE settings of detector {detector} saved to setup {setup}.")
+        ).format(detector=det, setup=name)
         return self.status_text
 
     # -- files ----------------------------------------------------------------------------------------------- #
@@ -391,7 +413,7 @@ class MleViewModel(RunPickerMixin):
 
         self._ensure_editable()
         path = make_demo()
-        self.session = engine.MleSession(template=engine.MleSettings(gamma=0., r0=0.))
+        self.session = engine.MleSession(template=engine.MleSettings(gamma=0.0, r0=0.0))
         self.session.set_definition(SETUP)
         self.session.add_burst_files([path])
         self.session.build_decay()
@@ -399,7 +421,11 @@ class MleViewModel(RunPickerMixin):
         self.auto_patterns = False
         self.nav_burst = 0
         self.detector_editor_data = self.session.definition_payload()
-        self.status_text = str(tr("Synthetic demo: 16 bursts, 1000 photons each; input lifetime 2 ns. Press Auto IRF/background to fit."))
+        self.status_text = str(
+            tr(
+                "Synthetic demo: 16 bursts, 1000 photons each; input lifetime 2 ns. Press Auto IRF/background to fit."
+            )
+        )
         self.notify("files")
 
     def enabled(self, name: str) -> bool:
@@ -459,7 +485,9 @@ class MleViewModel(RunPickerMixin):
         try:
             self.session.refresh_pattern_files()
         except Exception as exc:
-            self.status_text = str(tr("Could not re-read the measured IRF / background files: {error}")).format(error=exc)
+            self.status_text = str(
+                tr("Could not re-read the measured IRF / background files: {error}")
+            ).format(error=exc)
 
     @property
     def irf_one_for_all(self) -> bool:
@@ -519,7 +547,10 @@ class MleViewModel(RunPickerMixin):
 
     def _pattern_rows(self, files: dict) -> list[dict]:
         det = self.session.current_detector
-        return [{"file": Path(p).name, "folder": str(Path(p).parent), "path": str(p)} for p in files.get(det, [])]
+        return [
+            {"file": Path(p).name, "folder": str(Path(p).parent), "path": str(p)}
+            for p in files.get(det, [])
+        ]
 
     def irf_file_rows(self) -> list[dict]:
         """The measured IRF files of the current detector."""
@@ -537,12 +568,16 @@ class MleViewModel(RunPickerMixin):
         new = [Path(p) for p in paths if Path(p).is_file() and Path(p) not in current]
         label = "IRF" if kind == "irf" else "background"
         if not new:
-            self.status_text = str(tr("No new {kind} file among the given paths.")).format(kind=label)
+            self.status_text = str(tr("No new {kind} file among the given paths.")).format(
+                kind=label
+            )
             return 0
         try:
             done = self.session.set_pattern_files(kind, det, current + new)
         except Exception as exc:
-            self.status_text = str(tr("Could not read the {kind} file: {error}")).format(kind=label, error=exc)
+            self.status_text = str(tr("Could not read the {kind} file: {error}")).format(
+                kind=label, error=exc
+            )
             return 0
         self.status_text = str(tr("{count} measured {kind} file(s) for {detectors}.")).format(
             count=len(current) + len(new), kind=label, detectors=", ".join(done)
@@ -593,7 +628,9 @@ class MleViewModel(RunPickerMixin):
         self._ensure_editable()
         self.session.clear_pattern_files(kind, self.session.current_detector)
         self.session.outcome = None
-        self.status_text = str(tr("Measured {kind} files cleared.")).format(kind="IRF" if kind == "irf" else "background")
+        self.status_text = str(tr("Measured {kind} files cleared.")).format(
+            kind="IRF" if kind == "irf" else "background"
+        )
         self.notify("fit")
 
     # -- hyperparameter optimisation ------------------------------------------------------------------------ #
@@ -611,17 +648,25 @@ class MleViewModel(RunPickerMixin):
         self._cancel.clear()
 
         def progress(done, total):
-            self.status_text = str(tr("Optimising ... {done}/{total} fits")).format(done=done, total=total)
+            self.status_text = str(tr("Optimising ... {done}/{total} fits")).format(
+                done=done, total=total
+            )
             self.notify("progress")
 
         try:
             result = hpo.optimize_hyperparameters(
-                self.session, self.opt_iterations, seed=0, should_stop=self._cancel.is_set, progress=progress
+                self.session,
+                self.opt_iterations,
+                seed=0,
+                should_stop=self._cancel.is_set,
+                progress=progress,
             )
             if result["stopped"]:
                 self.status_text = str(tr("Optimisation stopped; settings restored."))
             else:
-                self.status_text = str(tr("Opt: 2I* {before:.3g} to {after:.3g} in {count} fits.")).format(
+                self.status_text = str(
+                    tr("Opt: 2I* {before:.3g} to {after:.3g} in {count} fits.")
+                ).format(
                     before=result["start_loss"], after=result["loss"], count=result["evaluations"]
                 )
             self.notify("fit")
@@ -679,7 +724,8 @@ class MleViewModel(RunPickerMixin):
             return str(tr("No fit result yet."))
         if self.fit_model == engine.TAIL_MODEL:
             return str(tr("Tail lifetimes: {lifetimes} ns; score: {score:.4g}.")).format(
-                lifetimes=" / ".join(f"{float(v):.4g}" for v in outcome.x[1:]), score=outcome.two_istar
+                lifetimes=" / ".join(f"{float(v):.4g}" for v in outcome.x[1:]),
+                score=outcome.two_istar,
             )
         text = str(tr("Primary lifetime: {tau:.4g} ns; 2I*: {score:.4g}.")).format(
             tau=self.tau_result, score=outcome.two_istar
@@ -769,7 +815,9 @@ class MleViewModel(RunPickerMixin):
         for i, name in enumerate(names):
             result = self._result(name)
             if self.fit_model == "fit25" and name.startswith("tau"):
-                result = float(values[i])  # Candidates stay inputs; the winner is shown as tau_result.
+                result = float(
+                    values[i]
+                )  # Candidates stay inputs; the winner is shown as tau_result.
             rows.append(
                 {
                     "name": name,
@@ -816,7 +864,8 @@ class MleViewModel(RunPickerMixin):
         det = self.session.current_detector
         needs_irf = self.session.settings.model != engine.TAIL_MODEL
         ready = det in self.session.bg_np and (
-            not needs_irf or (det in self.session.irf_np and np.asarray(self.session.irf_np[det]).size > 0)
+            not needs_irf
+            or (det in self.session.irf_np and np.asarray(self.session.irf_np[det]).size > 0)
         )
         return bool(ready), len(self.session.bur_files)
 
@@ -942,8 +991,16 @@ class MleViewModel(RunPickerMixin):
         """The spec's values as a throw-away object: edits made while a job runs go nowhere."""
         ns = SimpleNamespace(**{name: getattr(self, name) for name in SETTING_ATTRS})
         for name in (
-            "binning", "current_detector", "current_file", "nav_burst", "fit_model", "irf_model", "irf_one_for_all",
-            "bg_one_for_all", "save_vv_vhs", "opt_iterations",
+            "binning",
+            "current_detector",
+            "current_file",
+            "nav_burst",
+            "fit_model",
+            "irf_model",
+            "irf_one_for_all",
+            "bg_one_for_all",
+            "save_vv_vhs",
+            "opt_iterations",
         ):
             setattr(ns, name, getattr(self, name))
         for method in (

@@ -308,7 +308,10 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     app.kappa2_gui.tour.stop()
     for closer in ("Close Help", action_caption("close")):
         press_text(app, "Help")
-        click(app, text_rect(draw(app), closer, last=False if closer == action_caption("close") else True))
+        click(
+            app,
+            text_rect(draw(app), closer, last=False if closer == action_caption("close") else True),
+        )
         assert not window.open, closer
     press_text(app, "Help")
     app.key(keys.KEY_ESCAPE, "")

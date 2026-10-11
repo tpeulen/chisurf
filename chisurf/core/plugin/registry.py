@@ -106,14 +106,17 @@ class PluginRegistry:
                     if preferred != resolved:
                         _log.warning(
                             "Shadowed plugin module %r at %s ignored; Python selects %s",
-                            ".".join(module_parts), plugin_dir,
+                            ".".join(module_parts),
+                            plugin_dir,
                             preferred or packages.parent_locations(module_parts),
                         )
                         continue
                 if module_parts in seen_modules:
                     _log.warning(
                         "Duplicate plugin module %r at %s ignored; using %s",
-                        ".".join(module_parts), plugin_dir, seen_modules[module_parts],
+                        ".".join(module_parts),
+                        plugin_dir,
+                        seen_modules[module_parts],
                     )
                     continue
                 seen_modules[module_parts] = plugin_dir
@@ -269,7 +272,8 @@ class PluginRegistry:
                 if isinstance(commands, dict) and cmd_name in commands:
                     _log.warning(
                         "Plugin %r CLI %r ignored; command is already registered",
-                        manifest.id, cmd_name,
+                        manifest.id,
+                        cmd_name,
                     )
                     continue
                 cli_obj = self._loader.load(target)
@@ -295,24 +299,43 @@ class PluginRegistry:
 
         """
         for manifest in self._manifests.values():
-            if not (manifest.entrypoints.gui or manifest.entrypoints.emtk or manifest.entrypoints.action) or manifest.menu_hidden:
+            if (
+                not (
+                    manifest.entrypoints.gui
+                    or manifest.entrypoints.emtk
+                    or manifest.entrypoints.action
+                )
+                or manifest.menu_hidden
+            ):
                 continue
             try:
                 action = menu.addAction(manifest.display_name or manifest.id)
                 if manifest.entrypoints.action is not None:
                     declaration = manifest.entrypoints.action
-                    available = not declaration.requires_main_window or getattr(context, "main_window", None) is not None
-                    action.setToolTip(declaration.description if available else declaration.description + " " + _action_unavailable())
+                    available = (
+                        not declaration.requires_main_window
+                        or getattr(context, "main_window", None) is not None
+                    )
+                    action.setToolTip(
+                        declaration.description
+                        if available
+                        else declaration.description + " " + _action_unavailable()
+                    )
                     action.setEnabled(available)
                     action.triggered.connect(
                         lambda checked=False, manifest=manifest: execute_plugin_action(
-                            manifest, context, loader=self._loader,
+                            manifest,
+                            context,
+                            loader=self._loader,
                         )
                     )
                 else:
                     action.triggered.connect(
                         lambda checked=False, manifest=manifest: _show_plugin(
-                            None, manifest, loader=self._loader, windows=self._gui_windows,
+                            None,
+                            manifest,
+                            loader=self._loader,
+                            windows=self._gui_windows,
                         )
                     )
                 _log.info("Registered GUI for plugin %r", manifest.id)
@@ -360,7 +383,9 @@ def _action_unavailable() -> str:
     return tr("This action requires an open ChiSurf main window.")
 
 
-def execute_plugin_action(manifest: PluginManifest, context: Any = None, *, loader: _EntrypointLoader | None = None) -> dict[str, Any]:
+def execute_plugin_action(
+    manifest: PluginManifest, context: Any = None, *, loader: _EntrypointLoader | None = None
+) -> dict[str, Any]:
     """Invoke one declared action through the existing non-replayable action dispatcher."""
     from chisurf.core.api.context import PluginContext
 
@@ -381,19 +406,30 @@ def execute_plugin_action(manifest: PluginManifest, context: Any = None, *, load
         target = (loader or _DefaultLoader()).load(declaration.target)
         if not callable(target):
             raise TypeError(f"Plugin action {declaration.target!r} is not callable")
-        action_registry.register(ActionSpec(
-            name=name, schema={"context": PluginContext}, replayable=False,
-            side_effect_class="ui", handler=target,
-        ))
+        action_registry.register(
+            ActionSpec(
+                name=name,
+                schema={"context": PluginContext},
+                replayable=False,
+                side_effect_class="ui",
+                handler=target,
+            )
+        )
         result = ActionDispatcher(action_registry, history_provider=lambda: None).execute(
-            name, payload={"context": context}, summary=declaration.description,
+            name,
+            payload={"context": context},
+            summary=declaration.description,
         )
         if not isinstance(result, dict) or type(result.get("ok")) is not bool:
             raise TypeError("Plugin actions must return a result dictionary with boolean 'ok'")
         return result
     except Exception as error:
         _log.exception("Plugin action %r failed", manifest.id)
-        return {"ok": False, "available": True, "error": f"Plugin action {manifest.id!r} failed: {error}"}
+        return {
+            "ok": False,
+            "available": True,
+            "error": f"Plugin action {manifest.id!r} failed: {error}",
+        }
 
 
 def select_gui_entrypoint(manifest: PluginManifest, mode: str = "auto") -> tuple[str, str] | None:
@@ -431,6 +467,7 @@ def build_plugin_widget(
     mode = "auto"
     try:
         import chisurf as cs
+
         mode = str(cs.core.settings.cs_settings.get("plugins", {}).get("gui_mode", "auto")).lower()
     except Exception:
         pass
@@ -442,6 +479,7 @@ def build_plugin_widget(
     if kind == "emtk":
         factory = entrypoint_loader.load(spec)
         from emtk.qt_host import ControlHost
+
         widget = ControlHost(factory())
         widget.is_emtk_native_host = True
         widget.setWindowTitle(manifest.display_name or manifest.id)
@@ -470,9 +508,7 @@ def _show_plugin(
             widget.setAttribute(Qt.WA_DeleteOnClose)
             key = id(widget)
             windows[key] = widget
-            widget.destroyed.connect(
-                lambda _object=None, key=key: windows.pop(key, None)
-            )
+            widget.destroyed.connect(lambda _object=None, key=key: windows.pop(key, None))
         widget.show()
         widget.raise_()
         widget.activateWindow()
@@ -486,7 +522,9 @@ def _show_plugin(
             try:
                 widget.deleteLater()
             except Exception:
-                _log.debug("Failed to dispose plugin %r after launch failure", manifest.id, exc_info=True)
+                _log.debug(
+                    "Failed to dispose plugin %r after launch failure", manifest.id, exc_info=True
+                )
         _log.exception("Failed to show plugin %r", manifest.id)
         return None
 

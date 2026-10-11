@@ -129,7 +129,9 @@ class BurstBvaGui:
         for role in ("donor", "acceptor"):
             detectors[role] = {
                 "chs": list(getattr(self.model, f"{role}_channels")),
-                "micro_time_ranges": [list(r) for r in getattr(self.model, f"{role}_micro_time_ranges")],
+                "micro_time_ranges": [
+                    list(r) for r in getattr(self.model, f"{role}_micro_time_ranges")
+                ],
                 "g_factor": 1.0,
                 "l1": 0.0,
                 "l2": 0.0,
@@ -162,7 +164,9 @@ class BurstBvaGui:
             json.dumps(settings.get("detectors"), sort_keys=True, default=str),
             (settings.get("tttr_reading") or {}).get("file_type"),
         )
-        self.donor_detector, self.acceptor_detector = self._default_pair(list(settings["detectors"]))
+        self.donor_detector, self.acceptor_detector = self._default_pair(
+            list(settings["detectors"])
+        )
 
     @staticmethod
     def _default_pair(names: list[str]) -> tuple[str, str]:
@@ -242,7 +246,9 @@ class BurstBvaGui:
             # Tab bar for settings
             if im.begin_tab_bar("bva_settings_tabs"):
                 opened = im.begin_tab_item("BVA Settings")
-                im.set_item_tooltip(tr("Adjust analysis and display parameters."))  # selected or not
+                im.set_item_tooltip(
+                    tr("Adjust analysis and display parameters.")
+                )  # selected or not
                 if opened:
                     self.selected_settings_tab = "BVA Settings"
                     self.remember("BVA Settings")
@@ -263,7 +269,9 @@ class BurstBvaGui:
 
                 opened = im.begin_tab_item("Detectors")
                 im.set_item_tooltip(
-                    tr("The shared detector editor: setups, reading routine, PIE windows and detectors.")
+                    tr(
+                        "The shared detector editor: setups, reading routine, PIE windows and detectors."
+                    )
                 )
                 if opened:
                     self.selected_settings_tab = "Detectors"
@@ -292,7 +300,9 @@ class BurstBvaGui:
             if im.begin_tab_bar("bva_plot_tabs"):
                 opened = im.begin_tab_item("Plot")
                 im.set_item_tooltip(
-                    tr("Std of the proximity ratio per burst against its mean, with the static line.")
+                    tr(
+                        "Std of the proximity ratio per burst against its mean, with the static line."
+                    )
                 )
                 if opened:
                     self.remember("Plot")
@@ -559,7 +569,9 @@ class BurstBvaGui:
         im.text(tr("Setup:"))
         changed, picked = im.combo("##bva_setup", index, setups)
         im.set_item_tooltip(
-            tr("Choose a saved detector setup; its detectors become the donor and acceptor choices.")
+            tr(
+                "Choose a saved detector setup; its detectors become the donor and acceptor choices."
+            )
         )
         self.remember("bva_setup")
         if changed:
@@ -568,8 +580,16 @@ class BurstBvaGui:
             self.track("bva_setup")
         names = list(self.editor.model.get_settings().get("detectors") or {})
         for role, label, tip in (
-            ("donor", "Donor detector:", "The detector whose photons are the donor channel (I_DD, I_DA)."),
-            ("acceptor", "Acceptor detector:", "The detector whose photons are the acceptor channel."),
+            (
+                "donor",
+                "Donor detector:",
+                "The detector whose photons are the donor channel (I_DD, I_DA).",
+            ),
+            (
+                "acceptor",
+                "Acceptor detector:",
+                "The detector whose photons are the acceptor channel.",
+            ),
         ):
             current = getattr(self, f"{role}_detector")
             im.text(tr(label))
@@ -589,7 +609,11 @@ class BurstBvaGui:
         self._draw_pair_assignment()
         im.spacing()
         opened = im.collapsing_header(tr("Manual routing"), im.TreeNodeFlags.DEFAULT_OPEN)
-        im.set_item_tooltip(tr("Type the donor and acceptor routing channels by hand instead of picking a detector pair."))
+        im.set_item_tooltip(
+            tr(
+                "Type the donor and acceptor routing channels by hand instead of picking a detector pair."
+            )
+        )
         self.remember("manual_routing")
         if not opened:
             return
@@ -628,7 +652,9 @@ class BurstBvaGui:
                 typed = self._microtime_text[name] = ", ".join(f"{lo}:{hi}" for lo, hi in ranges)
             changed, text = im.input_text(f"##{name}_microtime", typed, hint="0:32768")
             im.set_item_tooltip(
-                tr("Microtime gates in channel bins, written as start:end pairs separated by commas.")
+                tr(
+                    "Microtime gates in channel bins, written as start:end pairs separated by commas."
+                )
             )
             self.remember(f"{name}_microtime")
             if changed:
@@ -749,7 +775,9 @@ class BurstBvaApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
-        primary = json.loads(Path(__file__).with_name("window.view.json").read_text(encoding="utf-8"))
+        primary = json.loads(
+            Path(__file__).with_name("window.view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(primary, (1100, 720))
         self.controller = None
         if all(callback is None for callback in (on_run, on_restart, on_stop, on_browse, on_clear)):

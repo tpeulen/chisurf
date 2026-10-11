@@ -21,7 +21,7 @@ def database(tmp_path, monkeypatch):
         name="Analytic spectrum fixture",
         source="fpbase",
         kind="fluorescent_protein",
-        spectra={"emission": (np.array([400., 500., 600.]), np.array([0., 1., 0.]))},
+        spectra={"emission": (np.array([400.0, 500.0, 600.0]), np.array([0.0, 1.0, 0.0]))},
     )
     yield db
     db.close()
@@ -107,6 +107,6 @@ def test_stacked_spectrum_is_reachable_with_wheel(database):
             assert after[1] < before[1]
             assert after[1] >= 0
             assert after[1] + after[3] <= size[1] - 30
-            assert app.model.detail["spectra"][0]["intensity"] == [0., 1., 0.]
+            assert app.model.detail["spectra"][0]["intensity"] == [0.0, 1.0, 0.0]
         finally:
             app.close()

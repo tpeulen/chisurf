@@ -64,8 +64,11 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     if not overwrite and path.is_file() and sidecar.is_file():
         try:
             receipt = json.loads(sidecar.read_text())
-            if (isinstance(receipt, dict) and receipt.get("parameters") == DEMO
-                    and receipt.get("sha256") == hashlib.sha256(path.read_bytes()).hexdigest()):
+            if (
+                isinstance(receipt, dict)
+                and receipt.get("parameters") == DEMO
+                and receipt.get("sha256") == hashlib.sha256(path.read_bytes()).hexdigest()
+            ):
                 return path
         except (OSError, ValueError):
             pass
@@ -80,7 +83,10 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
         model.write_csv(path)
     finally:
         model.close()
-    sidecar.write_text(json.dumps({"parameters": DEMO,
-                                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest()},
-                                 indent=2) + "\n")
+    sidecar.write_text(
+        json.dumps(
+            {"parameters": DEMO, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}, indent=2
+        )
+        + "\n"
+    )
     return path

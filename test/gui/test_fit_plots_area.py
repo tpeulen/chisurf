@@ -95,8 +95,12 @@ def test_a_layout_from_the_qt_dock_area_is_ignored(qapp, qtbot):
     area = FitPlotsArea()
     qtbot.addWidget(area)
     area.addTab(QtWidgets.QLabel("Fit"), "Fit")
-    old = {"type": "emtk_fit_plots_area", "version": 1, "root": {"type": "tab", "tabs": []},
-           "current_index": 0}
+    old = {
+        "type": "emtk_fit_plots_area",
+        "version": 1,
+        "root": {"type": "tab", "tabs": []},
+        "current_index": 0,
+    }
     assert not area.set_layout_state(old)
     assert area.count() == 1
 

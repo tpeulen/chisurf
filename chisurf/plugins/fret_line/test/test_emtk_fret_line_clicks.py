@@ -346,9 +346,7 @@ def test_the_filter_narrows_the_vary_list_and_the_choice_is_clicked(drv):
     drv.click("sweep_filter", fx=0.3)
     drv.select_all()
     drv.key(keys.KEY_BACKSPACE)
-    drv.click(
-        "minimum"
-    )  # Moving focus also commits the empty filter.
+    drv.click("minimum")  # Moving focus also commits the empty filter.
     assert m.sweep_filter == "" and len(m.sweep_labels()) > 10
 
 
@@ -612,7 +610,14 @@ def test_every_guide_target_is_a_drawn_control(drv):
                 break
         else:
             raise AssertionError(f"{step['title']}: {key} is not drawn on any tab")
-    assert {"dye_pair", "load_example", "add_line", "Advanced.fold", "show_components", "save_csv"} <= seen
+    assert {
+        "dye_pair",
+        "load_example",
+        "add_line",
+        "Advanced.fold",
+        "show_components",
+        "save_csv",
+    } <= seen
 
 
 def test_the_tour_card_does_not_cover_the_control_a_step_points_at(drv):

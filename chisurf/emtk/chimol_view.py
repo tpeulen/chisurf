@@ -114,7 +114,9 @@ class ChimolView:
         """Start chimol on a worker thread (no-op once started); *wake* is called when it has started."""
         if self.app is None and not self.error and not self._starter.busy:
             self._starter.wake = wake
-            self._starter.start({"chimol": lambda: self._make(warm=True)}, name="chisurf-chimol-view")
+            self._starter.start(
+                {"chimol": lambda: self._make(warm=True)}, name="chisurf-chimol-view"
+            )
 
     @property
     def starting(self) -> bool:
@@ -191,7 +193,9 @@ class ChimolView:
         self._resize(int(round(w * k)), int(round(h * k)))
         renderer = self.app.renderer
         update = getattr(renderer, "update_count", None)
-        if not (self.skip_idle_frames and self.frame is not None and update == self._painted_update):
+        if not (
+            self.skip_idle_frames and self.frame is not None and update == self._painted_update
+        ):
             frame = renderer.draw_frame()
             if frame is not None:
                 self.frame = frame

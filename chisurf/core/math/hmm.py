@@ -671,8 +671,13 @@ class GaussianHMM:
 
     # -- fitting ------------------------------------------------------------
 
-    def fit(self, X: np.ndarray, lengths: Sequence[int] | None = None, *,
-            cancel: Callable[[], bool] | None = None) -> GaussianHMM:
+    def fit(
+        self,
+        X: np.ndarray,
+        lengths: Sequence[int] | None = None,
+        *,
+        cancel: Callable[[], bool] | None = None,
+    ) -> GaussianHMM:
         """Estimate the model parameters from one or more observation sequences.
 
         Parameters

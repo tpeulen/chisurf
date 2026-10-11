@@ -64,7 +64,6 @@ class FileCategoryMixin:
             except Exception:
                 pass
 
-
         # Create panels and add buttons iteratively
         for panel_name, actions in FILE_ACTION_GROUPS.items():
             panel = category.addPanel(panel_name, showPanelOptionButton=False)

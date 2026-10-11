@@ -166,9 +166,12 @@ class FitCodeFace:
     # -- navigation history -------------------------------------------------- #
     def _record(self, path: str, line: int) -> None:
         entry = (str(path), int(line))
-        if 0 <= self.history_index < len(self.history) and self.history[self.history_index] == entry:
+        if (
+            0 <= self.history_index < len(self.history)
+            and self.history[self.history_index] == entry
+        ):
             return
-        del self.history[self.history_index + 1:]
+        del self.history[self.history_index + 1 :]
         self.history.append(entry)
         self.history_index = len(self.history) - 1
 
@@ -258,9 +261,15 @@ class FitCodeFace:
     def busy(self) -> bool:
         """Whether the assistant is working (the surface keeps drawing frames)."""
         model = self._chat_model
-        return bool(model is not None and self.agent_open and (
-            getattr(model, "is_generating", False)
-            or getattr(model, "event_queue", None) is not None and not model.event_queue.empty()))
+        return bool(
+            model is not None
+            and self.agent_open
+            and (
+                getattr(model, "is_generating", False)
+                or getattr(model, "event_queue", None) is not None
+                and not model.event_queue.empty()
+            )
+        )
 
     def close(self) -> None:
         """Stop the assistant, if it was started."""
@@ -282,8 +291,12 @@ class FitCodeFace:
         from emtk import im
 
         x, y, w, h = box
-        flags = (im.WindowFlags.NO_DECORATION | im.WindowFlags.NO_MOVE
-                 | im.WindowFlags.NO_SCROLLBAR | im.WindowFlags.NO_SAVED_SETTINGS)
+        flags = (
+            im.WindowFlags.NO_DECORATION
+            | im.WindowFlags.NO_MOVE
+            | im.WindowFlags.NO_SCROLLBAR
+            | im.WindowFlags.NO_SAVED_SETTINGS
+        )
         im.begin("##fit-code-face", (x, y, w, h), flags=flags)
         try:
             self._draw_toolbar()
@@ -428,7 +441,7 @@ class FitCodeFace:
                         self.refresh_symbols()
                     self._remember(f"tab:{doc.name}")
                     io = im.get_io()
-                    definition = (io.mouse_clicked[0] and (io.key_ctrl or io.key_super))
+                    definition = io.mouse_clicked[0] and (io.key_ctrl or io.key_super)
                     im.text_editor(f"##editor-{doc.path}", doc.editor)
                     self._remember("editor")
                     if definition and im.is_item_hovered():

@@ -46,7 +46,9 @@ def _gate_estep(monkeypatch):
 
 
 @pytest.mark.parametrize("action", ["request_bic", "request_hmm"])
-def test_cancel_button_returns_busy_demo_to_idle_and_keeps_previous_results(app, monkeypatch, action):
+def test_cancel_button_returns_busy_demo_to_idle_and_keeps_previous_results(
+    app, monkeypatch, action
+):
     """Both actual compute buttons preserve the previous complete result on cancel."""
     old_curve = [(1, 123.0)]
     old_states = np.zeros(len(app.model.counts), dtype=int)
@@ -98,8 +100,11 @@ def test_app_close_cancels_scan_and_bounds_cleanup(app, monkeypatch):
 def test_model_cancellation_keeps_previous_hmm_results():
     """The model never commits a partial fit when estimation is cancelled."""
     previous_states, previous_matrix = np.zeros(10, dtype=int), np.ones((1, 1))
-    model = IntensityTraceModel(counts=np.arange(20, dtype=float).reshape(10, 2),
-                                states=previous_states, transmat=previous_matrix)
+    model = IntensityTraceModel(
+        counts=np.arange(20, dtype=float).reshape(10, 2),
+        states=previous_states,
+        transmat=previous_matrix,
+    )
     with pytest.raises(CancelledError):
         model.run_hmm(cancel=lambda: True)
     assert model.states is previous_states and model.transmat is previous_matrix

@@ -18,12 +18,20 @@ def test_acquisition_plugin_opens_a_fit_window_with_four_populated_docks(tmp_pat
     out = tmp_path / "out"
     out.mkdir()
     environment = dict(
-        os.environ, QT_QPA_PLATFORM="offscreen", MPLBACKEND="Agg", IMP_BFF_GPU="off",
-        CHISURF_SETTINGS_DIR=str(tmp_path / "settings"), MMFDB_SETTINGS_DIR=str(tmp_path / "mmfdb"),
+        os.environ,
+        QT_QPA_PLATFORM="offscreen",
+        MPLBACKEND="Agg",
+        IMP_BFF_GPU="off",
+        CHISURF_SETTINGS_DIR=str(tmp_path / "settings"),
+        MMFDB_SETTINGS_DIR=str(tmp_path / "mmfdb"),
     )
     run = subprocess.run(
         [sys.executable, "-m", "test.gui.acquisition_fit_window_probe", str(out)],
-        cwd=ROOT, env=environment, capture_output=True, text=True, timeout=240,
+        cwd=ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=240,
     )
     report = json.loads((out / "report.json").read_text())
     assert not report["errors"], report["errors"][0] + run.stderr[-2000:]

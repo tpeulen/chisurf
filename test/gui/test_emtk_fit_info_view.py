@@ -154,6 +154,14 @@ def test_the_settings_tabs_draw_every_control(plain_fit, qapp):
             qapp.processEvents()
             host.host.repaint()
     drawn = set(info.settings_form.rects)
-    assert {"metadata_rows", "detail_key", "add_row", "delete_row", "external_rows",
-            "export_full_preview", "export_copy", "export_save"} <= drawn
+    assert {
+        "metadata_rows",
+        "detail_key",
+        "add_row",
+        "delete_row",
+        "external_rows",
+        "export_full_preview",
+        "export_copy",
+        "export_save",
+    } <= drawn
     host.close()

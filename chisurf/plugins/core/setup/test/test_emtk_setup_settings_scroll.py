@@ -54,13 +54,17 @@ def visible(drv, label, region):
 
 def scrollbar_track(painter, region):
     x, y, w, h = region
-    return [f for f in painter.fills if f[2] == 8.0 and abs(f[0] - (x + w - 10.0)) < 0.5 and f[1] >= y - 0.5]
+    return [
+        f
+        for f in painter.fills
+        if f[2] == 8.0 and abs(f[0] - (x + w - 10.0)) < 0.5 and f[1] >= y - 0.5
+    ]
 
 
 def test_the_fields_overflow_into_a_scrollbar_and_the_wheel_brings_hidden_rows_into_view(hub):
     painter = hub.draw(2)
     region = body(hub)
-    labels = [k[len("field:"):] for k in hub.app.child.item_rects if k.startswith("field:")]
+    labels = [k[len("field:") :] for k in hub.app.child.item_rects if k.startswith("field:")]
     below = [lb for lb in labels if label_y(hub, lb) > region[1] + region[3]]
     assert below, "nothing below the fold: the test needs an overflowing settings document"
     assert scrollbar_track(painter, region), "the overflowing field region draws no scrollbar"
@@ -82,14 +86,18 @@ def test_a_setting_is_one_row_its_key_beside_the_field(hub):
     painter = hub.draw(2)
     _, fy, _, fh = field(hub, "correlator.split")
     keys = [t for t in painter.texts if t[5] == "split"]
-    assert keys and any(fy - 2 <= t[1] <= fy + fh for t in keys), "the key is not on its field's row"
-    assert not any(t[5] == "correlator.split" for t in painter.texts)  # the full name is the tooltip
+    assert keys and any(fy - 2 <= t[1] <= fy + fh for t in keys), (
+        "the key is not on its field's row"
+    )
+    assert not any(
+        t[5] == "correlator.split" for t in painter.texts
+    )  # the full name is the tooltip
 
 
 def test_dragging_the_scrollbar_to_the_bottom_shows_the_last_setting(hub):
     _painter = hub.draw(2)
     region = body(hub)
-    labels = [k[len("field:"):] for k in hub.app.child.item_rects if k.startswith("field:")]
+    labels = [k[len("field:") :] for k in hub.app.child.item_rects if k.startswith("field:")]
     last = max(labels, key=lambda lb: label_y(hub, lb))
     assert not visible(hub, last, region)
     x, y, w, h = region
@@ -155,5 +163,7 @@ def test_save_pressed_straight_after_typing_writes_the_typed_number(hub):
     bx = hub.app.child_box[0]
     save = [t for t in hub.draw(2).texts if t[5] == "Save" and t[0] >= bx][-1]
     hub.click(save[:4])
-    written = yaml.safe_load((Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text())
+    written = yaml.safe_load(
+        (Path(os.environ["CHISURF_SETTINGS_DIR"]) / "settings_chisurf.yaml").read_text()
+    )
     assert written["gui"]["plot"]["font_size"] == 17

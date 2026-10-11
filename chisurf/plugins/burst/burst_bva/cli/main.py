@@ -92,7 +92,9 @@ def compute(
     n_valid = int((numeric_column(df_v, "Proximity Ratio Std") > 0.0).sum())
     click.echo(f"Valid bursts (Std > 0): {n_valid} / {row_count(df_v)} total")
 
-    click.echo(f"Writing the BVA result into the measurement containers (from {out_dir.parent}) ...")
+    click.echo(
+        f"Writing the BVA result into the measurement containers (from {out_dir.parent}) ..."
+    )
     write_bva_container(df_v, analysis_folder=out_dir.parent)
 
     if save_settings:

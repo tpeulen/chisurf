@@ -77,7 +77,9 @@ def _set_model(model, s):
 
 
 # 1. r(t), r-infinity and the saved files equal the values recorded from the Qt tool, for the same input and settings
-@pytest.mark.parametrize("index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"])
+@pytest.mark.parametrize(
+    "index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"]
+)
 def test_trace_rinf_and_files_equal_the_recorded_qt_tool(files, tmp_path, index):
     settings, ref = SETTINGS[index], QT_REFERENCE["trace"][index]
     a, _ = files
@@ -121,7 +123,9 @@ def test_shifted_decays_are_written_and_read_back(files, tmp_path):
 
 
 # 3. the batch rows equal the Qt batch window's recorded rows, for the same snapshot
-@pytest.mark.parametrize("index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"])
+@pytest.mark.parametrize(
+    "index", range(len(SETTINGS)), ids=["plain", "bg+shift", "flip+negative-shift"]
+)
 def test_batch_rows_equal_the_recorded_qt_batch_window(files, index):
     settings = SETTINGS[index]
     snap_in = {
@@ -459,7 +463,9 @@ def test_labels_have_no_pictograms(app, files):
 
     shared = {action_caption(key) for key in ACTIONS}  # the shared vocabulary draws its own icons
     assert [
-        s for s in painter.strings if s not in shared and re.search("[\U0001f000-\U0001ffff☀-➿⛔️]", s)
+        s
+        for s in painter.strings
+        if s not in shared and re.search("[\U0001f000-\U0001ffff☀-➿⛔️]", s)
     ] == []
 
 

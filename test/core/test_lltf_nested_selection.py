@@ -1,4 +1,5 @@
 """Scientific regression oracles for lifetime-count scans."""
+
 from __future__ import annotations
 
 import json
@@ -34,8 +35,11 @@ def _scan_with_records(monkeypatch, records, **kwargs):
 
     monkeypatch.setattr(decay, "fit", types.MethodType(fit, decay))
     result = decay.find_optimal_lifetime_spectrum(
-        maximum_number_of_lifetimes=len(records), plot_probabilities=False,
-        plot_weighted_residuals=False, save_intermediate_results=False, **kwargs,
+        maximum_number_of_lifetimes=len(records),
+        plot_probabilities=False,
+        plot_weighted_residuals=False,
+        save_intermediate_results=False,
+        **kwargs,
     )
     return result, calls
 
@@ -64,8 +68,10 @@ def test_nonimproving_fit_has_zero_improvement_confidence(monkeypatch):
 def test_scan_maps_nuisance_flags_and_seed_to_every_count(monkeypatch):
     """The tail nuisance flags retain their identities as the spectrum grows."""
     _, calls = _scan_with_records(
-        monkeypatch, [(40.0, 30), (20.0, 28), (19.0, 26)],
-        fixed=[False, False, True, True, False], seed=17,
+        monkeypatch,
+        [(40.0, 30), (20.0, 28), (19.0, 26)],
+        fixed=[False, False, True, True, False],
+        seed=17,
     )
     assert [c["fixed"] for c in calls] == [
         [False] * 2 + [True, True, False],
@@ -78,13 +84,18 @@ def test_scan_maps_nuisance_flags_and_seed_to_every_count(monkeypatch):
 def test_scan_rejects_lifetime_specific_fixed_flags():
     """A changing-count scan cannot silently reinterpret a fixed lifetime slot."""
     with pytest.raises(ValueError, match="lifetime.*fixed|fixed.*lifetime"):
-        _decay().fit(find_optimal=True, fixed=[True, False, False, False, False],
-                     plot_probabilities=False, plot_weighted_residuals=False,
-                     save_intermediate_results=False)
+        _decay().fit(
+            find_optimal=True,
+            fixed=[True, False, False, False, False],
+            plot_probabilities=False,
+            plot_weighted_residuals=False,
+            save_intermediate_results=False,
+        )
 
 
 def test_nested_scan_retains_exact_embedding_when_optimizer_worsens(monkeypatch, tmp_path):
     """The smaller fitted decay remains representable in every larger model."""
+
     def bad_optimizer(objective, params, **kwargs):
         result = params.copy()
         if len(params) > 5:
@@ -95,8 +106,11 @@ def test_nested_scan_retains_exact_embedding_when_optimizer_worsens(monkeypatch,
     monkeypatch.setattr(fitter, "minimize", bad_optimizer)
     decay = _decay()
     result = decay.find_optimal_lifetime_spectrum(
-        maximum_number_of_lifetimes=3, min_lifetime=2, max_lifetime=2,
-        plot_probabilities=False, plot_weighted_residuals=False,
+        maximum_number_of_lifetimes=3,
+        min_lifetime=2,
+        max_lifetime=2,
+        plot_probabilities=False,
+        plot_weighted_residuals=False,
         save_intermediate_results=True,
         intermediate_results_base_filename=str(tmp_path / "nested"),
     )
@@ -108,8 +122,12 @@ def test_nested_scan_retains_exact_embedding_when_optimizer_worsens(monkeypatch,
         for name in ("irf_shift", "irf_background", "decay_background"):
             setattr(independent, name, stored[name])
         independent.calculate_model_decay()
-        residual = (independent.decay - independent.model_decay)[independent.start:independent.stop]
-        weights = 1 / np.sqrt(np.maximum(independent.decay[independent.start:independent.stop], 1))
+        residual = (independent.decay - independent.model_decay)[
+            independent.start : independent.stop
+        ]
+        weights = 1 / np.sqrt(
+            np.maximum(independent.decay[independent.start : independent.stop], 1)
+        )
         recomputed_chi = float(np.sum((residual * weights) ** 2))
         assert recomputed_chi == pytest.approx(stored_chi, rel=1e-12, abs=1e-12)
         np.testing.assert_array_equal(independent.model_decay, decay.model_decay)
@@ -122,6 +140,7 @@ def test_nested_scan_retains_exact_embedding_when_optimizer_worsens(monkeypatch,
 
 def test_explicit_initial_spectrum_preserves_nuisance_fixed_values(monkeypatch):
     """A warm fit starts from the supplied physical spectrum and fixed nuisance."""
+
     def unchanged(objective, params, **kwargs):
         objective(params)
         return params, 1
@@ -129,11 +148,14 @@ def test_explicit_initial_spectrum_preserves_nuisance_fixed_values(monkeypatch):
     monkeypatch.setattr(fitter, "minimize", unchanged)
     decay = _decay()
     decay.irf_background = 0.25
-    result = decay.fit(n_lifetimes=2, initial_lifetime_spectrum=[0.7, 1.5, 0.3, 4.0],
-                       fixed=[False] * 4 + [False, True, False])
+    result = decay.fit(
+        n_lifetimes=2,
+        initial_lifetime_spectrum=[0.7, 1.5, 0.3, 4.0],
+        fixed=[False] * 4 + [False, True, False],
+    )
     assert result["lifetime_spectrum"] == pytest.approx([0.7, 1.5, 0.3, 4.0])
     assert result["irf_background"] == 0.25
-    assert result["dof"] == len(decay.decay[decay.start:decay.stop]) - 6
+    assert result["dof"] == len(decay.decay[decay.start : decay.stop]) - 6
 
 
 def test_api_routes_config_seed_and_fixed_irf_background(tmp_path, monkeypatch):
@@ -150,17 +172,23 @@ def test_api_routes_config_seed_and_fixed_irf_background(tmp_path, monkeypatch):
         return {"n_lifetimes": kwargs["n_lifetimes"]}
 
     monkeypatch.setattr(fitter.Decay, "fit", capture)
-    fitter.fit_lifetime(str(data), str(irf), n_lifetimes=2, config={
-        "estimate_background_parameter": {"enabled": False, "fit_irf_background": False},
-        "estimate_irf_shift_parameters": {"enabled": False},
-        "lifetime_fit_parameter": {"randomize_initial_values": {"enabled": True, "seed": 23}},
-    })
+    fitter.fit_lifetime(
+        str(data),
+        str(irf),
+        n_lifetimes=2,
+        config={
+            "estimate_background_parameter": {"enabled": False, "fit_irf_background": False},
+            "estimate_irf_shift_parameters": {"enabled": False},
+            "lifetime_fit_parameter": {"randomize_initial_values": {"enabled": True, "seed": 23}},
+        },
+    )
     assert seen["seed"] == 23
     assert seen["fixed"] == [False] * 5 + [True, False]
 
 
 def test_selected_result_counts_only_the_fixed_nuisance_slots(monkeypatch):
     """The selected scan result uses its own expanded nuisance-mask dof."""
+
     def unchanged(objective, params, **kwargs):
         objective(params)
         return params, 1
@@ -168,11 +196,15 @@ def test_selected_result_counts_only_the_fixed_nuisance_slots(monkeypatch):
     monkeypatch.setattr(fitter, "minimize", unchanged)
     decay = _decay()
     decay.irf_background = 0.25
-    result = decay.fit(find_optimal=True, n_lifetimes=1,
-                       fixed=[False, False, True, True, True],
-                       maximum_number_of_lifetimes=3,
-                       plot_probabilities=False, plot_weighted_residuals=False,
-                       save_intermediate_results=False)
+    result = decay.fit(
+        find_optimal=True,
+        n_lifetimes=1,
+        fixed=[False, False, True, True, True],
+        maximum_number_of_lifetimes=3,
+        plot_probabilities=False,
+        plot_weighted_residuals=False,
+        save_intermediate_results=False,
+    )
     expected = (decay.stop - decay.start) - 2 * result["n_lifetimes"]
     assert result["dof"] == expected
     assert result["irf_background"] == 0.25
@@ -190,10 +222,17 @@ def test_actual_scan_recovers_biexponential_with_fixed_nuisance():
     counts, irf, times = _bi_exponential_decay()
     decay = fitter.Decay(counts, irf, times)
     decay.set_analysis_range(20, 900)
-    result = decay.fit(find_optimal=True, fixed=[False, False, True, True, True],
-                       maximum_number_of_lifetimes=3, min_lifetime=0.2, max_lifetime=6,
-                       plot_probabilities=False, plot_weighted_residuals=False,
-                       save_intermediate_results=False, seed=29)
+    result = decay.fit(
+        find_optimal=True,
+        fixed=[False, False, True, True, True],
+        maximum_number_of_lifetimes=3,
+        min_lifetime=0.2,
+        max_lifetime=6,
+        plot_probabilities=False,
+        plot_weighted_residuals=False,
+        save_intermediate_results=False,
+        seed=29,
+    )
     assert result["n_lifetimes"] == 2
     assert sorted(result["lifetime_spectrum"][1::2]) == pytest.approx([0.5, 4.0], rel=0.03)
     assert result["irf_shift"] == result["irf_background"] == result["decay_background"] == 0

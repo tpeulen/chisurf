@@ -30,7 +30,13 @@ WHITE, RED, YELLOW = (255, 255, 255, 255), (230, 40, 40, 255), (250, 204, 21, 25
 #: Width the controls get at least in a narrow window.
 MIN_CONTROLS = 430.0
 DIALOGS = {
-    "files": ("Open BUR/BST/PTO files", "open", True, "BUR/BST/PTO (*.bur *.bst *.pto);;All files (*)", ""),
+    "files": (
+        "Open BUR/BST/PTO files",
+        "open",
+        True,
+        "BUR/BST/PTO (*.bur *.bst *.pto);;All files (*)",
+        "",
+    ),
     "folder": ("Add analysis folder", "folder", True, "", ""),
     "load_settings": ("Load settings", "open", False, "Settings (*.json)", ""),
     "save_settings": (
@@ -300,8 +306,12 @@ class BurstFcsApp(TourTarget, ImApp):
                 plot_y = implot.get_plot_pos()[1]
                 plot_h = implot.get_plot_size()[1]
                 for key, value in (("fit_min_line", lo), ("fit_max_line", hi)):
-                    self.item_rects[key] = (implot.plot_to_pixels(value, 0.0)[0] - 5.0,
-                                            plot_y, 10.0, plot_h)
+                    self.item_rects[key] = (
+                        implot.plot_to_pixels(value, 0.0)[0] - 5.0,
+                        plot_y,
+                        10.0,
+                        plot_h,
+                    )
                 if not self.controller.running and (left.modified or right.modified):
                     a, b = sorted((max(float(left.value), 0.0), max(float(right.value), 0.0)))
                     m.tmin_fit, m.tmax_fit = a, b
@@ -311,14 +321,17 @@ class BurstFcsApp(TourTarget, ImApp):
                 implot.plot_text("Run FCS, then select a curve", 1e-1, 0.5)
             implot.end_plot()
             im.set_item_tooltip(
-                tr("The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms.")
+                tr(
+                    "The selected burst's correlation curve (white) and its fit (red). Drag the two vertical lines to set the fit window t_min and t_max; the wheel zooms."
+                )
             )
 
     def draw_distribution(self, box):
         series = self.controller._model.dist_plot_series()
         self.item_rects["distribution_plot"] = self._plot_box()
-        if implot.begin_plot("##distribution", im.get_content_region_avail(),
-                             0 if series else implot.FLAGS_NO_LEGEND):
+        if implot.begin_plot(
+            "##distribution", im.get_content_region_avail(), 0 if series else implot.FLAGS_NO_LEGEND
+        ):
             implot.setup_axes("Diffusion time tau_D (ms)", "P")
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             if series:
@@ -337,7 +350,9 @@ class BurstFcsApp(TourTarget, ImApp):
                 implot.plot_text("MaxEnt mode only", 1e-3, 0.5)
             implot.end_plot()
             im.set_item_tooltip(
-                tr("Simple fitted diffusion time: one estimate point. MaxEnt mode shows the diffusion-time distribution P(tau_D).")
+                tr(
+                    "Simple fitted diffusion time: one estimate point. MaxEnt mode shows the diffusion-time distribution P(tau_D)."
+                )
             )
 
     @staticmethod

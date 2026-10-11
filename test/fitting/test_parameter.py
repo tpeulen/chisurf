@@ -149,13 +149,22 @@ class Tests(unittest.TestCase):
     def test_dict(self):
         """Runtime dictionaries retain objects; portable state preserves public scalar fields."""
         parameter = chisurf.core.parameter.Parameter(
-            name="scale", value=2.0, bounds_on=True, lb=1.0, ub=2.5,
+            name="scale",
+            value=2.0,
+            bounds_on=True,
+            lb=1.0,
+            ub=2.5,
             description="Rate multiplier",
             unique_identifier="b671b0b3-3009-42df-824a-6d690c2b3e54",
         )
         parameter.fixed = True
-        expected = {"value": 2.0, "bounds_on": True, "bounds": [1.0, 2.5],
-                    "fixed": True, "description": "Rate multiplier"}
+        expected = {
+            "value": 2.0,
+            "bounds_on": True,
+            "bounds": [1.0, 2.5],
+            "fixed": True,
+            "description": "Rate multiplier",
+        }
         state = json.loads(json.dumps(parameter.get_state()))
         self.assertEqual(state, expected)
         restored = chisurf.core.parameter.Parameter()
@@ -174,8 +183,13 @@ class Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             filename = str(pathlib.Path(directory) / "parameter.json")
             parameter = chisurf.core.parameter.Parameter(
-                name="scale", value=2.0, bounds_on=True, lb=1.0, ub=2.5,
-                description="Rate multiplier", meta_data={"source": "measurement"},
+                name="scale",
+                value=2.0,
+                bounds_on=True,
+                lb=1.0,
+                ub=2.5,
+                description="Rate multiplier",
+                meta_data={"source": "measurement"},
             )
             parameter.fixed = True
             parameter.save(filename, file_type="json")

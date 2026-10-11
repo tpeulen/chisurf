@@ -74,7 +74,13 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
     acceptor_chs = [int(c) for c in acceptor]
 
     def detector(chs, window):
-        return {"chs": list(chs), "micro_time_ranges": [list(window)], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+        return {
+            "chs": list(chs),
+            "micro_time_ranges": [list(window)],
+            "g_factor": 1.0,
+            "l1": 0.0,
+            "l2": 0.0,
+        }
 
     return {
         "setup_name": SETUP_NAME,
@@ -84,7 +90,11 @@ def build_setup(windows: dict, donor, acceptor, period: int) -> dict:
             "red": detector(acceptor_chs, prompt),
             "yellow": detector(acceptor_chs, delayed),
         },
-        "tttr_reading": {"file_type": "PTO", "micro_time_binning": 1, "excitation_period": int(period)},
+        "tttr_reading": {
+            "file_type": "PTO",
+            "micro_time_binning": 1,
+            "excitation_period": int(period),
+        },
     }
 
 
@@ -118,7 +128,9 @@ def needs_conversion(path: Path) -> bool:
     try:
         micro_times = np.asarray(open_tttr(str(path)).micro_times)
     except Exception as exc:  # noqa: BLE001 - unknown is not "needs folding"
-        logger.warning(f"ALEX Suite: could not read {Path(path).name} to decide whether it needs converting - {exc}")
+        logger.warning(
+            f"ALEX Suite: could not read {Path(path).name} to decide whether it needs converting - {exc}"
+        )
         return False
     return not (micro_times.size and int(micro_times.max()) > 0)
 
@@ -273,8 +285,14 @@ class AlexAlternationModel:
                 self._outcome = ("failed", exc)
 
         self._outcome = None
-        self.status_text = "Converting with the detection on screen..." if reuse else (
-            "Detecting the alternation and converting..." if convert else "Detecting the alternation..."
+        self.status_text = (
+            "Converting with the detection on screen..."
+            if reuse
+            else (
+                "Detecting the alternation and converting..."
+                if convert
+                else "Detecting the alternation..."
+            )
         )
         self._thread = threading.Thread(target=work, name="alex-alternation", daemon=True)
         self._thread.start()
@@ -304,7 +322,10 @@ class AlexAlternationModel:
                 self._apply_detection(*payload)
             changed = True
             self.notify("updated")
-        if self._gate_edit_at is not None and time.monotonic() - self._gate_edit_at >= GATE_SETTLE_S:
+        if (
+            self._gate_edit_at is not None
+            and time.monotonic() - self._gate_edit_at >= GATE_SETTLE_S
+        ):
             self._gate_edit_at = None
             self.apply_gates()
             changed = True
@@ -329,18 +350,28 @@ class AlexAlternationModel:
         self.acceptor_text = ", ".join(str(c) for c in acceptor)
         period = int(outcome["period"])
         self.period = period
-        self.windows = {name: [int(round(b[0])), int(round(b[1]))] for name, b in outcome["windows"].items()}
+        self.windows = {
+            name: [int(round(b[0])), int(round(b[1]))] for name, b in outcome["windows"].items()
+        }
         folded = outcome.get("folded")
         if folded is not None:
             self.phase_hist = phase_histogram(folded, period, donor, acceptor)
-        self._report(period, outcome["confidence"], outcome["windows"], folded, outcome.get("channel_contrast"))
+        self._report(
+            period,
+            outcome["confidence"],
+            outcome["windows"],
+            folded,
+            outcome.get("channel_contrast"),
+        )
         if not convert:
             self.status_text = (
                 f"Detected from {self.files[0].name}. Check the plot and the gates, then press Detect alternation "
                 "and convert."
             )
             return
-        self._finish_conversion(list(outcome.get("converted") or []), list(outcome.get("failed") or []), None)
+        self._finish_conversion(
+            list(outcome.get("converted") or []), list(outcome.get("failed") or []), None
+        )
 
     def _finish_conversion(self, converted: list[Path], failed: list, windows: dict | None) -> None:
         self.converted = [Path(p) for p in converted]

@@ -572,7 +572,9 @@ class RegionMleViewModel(MleObserverMixin):
             except Exception:
                 logger.debug("joint TSV export failed", exc_info=True)
 
-        self.status_text = failure  # a file that failed stays reported, not wiped by the end of the run
+        self.status_text = (
+            failure  # a file that failed stays reported, not wiped by the end of the run
+        )
         self.notify("done")
 
     @staticmethod

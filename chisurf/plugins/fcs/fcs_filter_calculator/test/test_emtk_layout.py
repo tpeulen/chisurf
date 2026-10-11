@@ -109,7 +109,6 @@ def test_native_compute_caption_and_residual_axis_fit_real_dock(width):
         app.close()
 
 
-
 def test_narrow_sources_scroll_reaches_actual_component_action(tmp_path):
     """A new toolbar row retains lower component controls through real window scrolling."""
     import shutil

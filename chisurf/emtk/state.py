@@ -43,8 +43,10 @@ def _window_position(pos, screen=None):
     if not (
         isinstance(pos, (list, tuple))
         and len(pos) == 2
-        and all(isinstance(value, (int, float)) and not isinstance(value, bool)
-                and math.isfinite(value) for value in pos)
+        and all(
+            isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+            for value in pos
+        )
     ):
         return None
     x, y = (int(value) for value in pos)
@@ -134,11 +136,14 @@ def attach_native_state(plugin_id: str, app):
                     prior_close()
             finally:
                 pos = _window_position(app.window_pos, getattr(app, "window_screen", None))
-                save_states({
-                    "size": list(app.window_size),
-                    "pos": list(pos) if pos is not None else None,
-                    "docks": {name: docks.state() for name, docks in layouts.items()},
-                }, _path(plugin_id, "window"))
+                save_states(
+                    {
+                        "size": list(app.window_size),
+                        "pos": list(pos) if pos is not None else None,
+                        "docks": {name: docks.state() for name, docks in layouts.items()},
+                    },
+                    _path(plugin_id, "window"),
+                )
                 for docks in layouts.values():
                     docks.save()
 

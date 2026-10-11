@@ -203,4 +203,7 @@ def test_six_locales_tooltips_and_responsive_board():
 
 def test_manifest_factory():
     manifest = json.loads((Path(__file__).parents[1] / "manifest.json").read_text())
-    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.misc.games.number_quest.gui.app:make_app"
+    assert (
+        manifest["entrypoints"]["emtk"]
+        == "chisurf.plugins.misc.games.number_quest.gui.app:make_app"
+    )

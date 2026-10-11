@@ -77,8 +77,12 @@ def _surface_class():
             self._selected: dict[str, Any] = {}
             self.on_current_changed = on_current_changed
             self.on_layout_changed = on_layout_changed
-            self.docks = DockManager(Region("center", keep=True), on_change=self._docks_changed,
-                                     snapping=True, name="fitwin")
+            self.docks = DockManager(
+                Region("center", keep=True),
+                on_change=self._docks_changed,
+                snapping=True,
+                name="fitwin",
+            )
             self.code_face = None
             self.show_code = False
             self._menu_panel = None
@@ -90,8 +94,14 @@ def _surface_class():
             index = len(self.pages)
             page = _Page(key=str(key), title=str(title), provider=provider)
             self.pages.append(page)
-            self.docks.add_window(page.key, page.title, lambda box, i=index: self._draw_page(i, box),
-                                  dock="center", closable=False, scrollable=False)
+            self.docks.add_window(
+                page.key,
+                page.title,
+                lambda box, i=index: self._draw_page(i, box),
+                dock="center",
+                closable=False,
+                scrollable=False,
+            )
             if self.current < 0:
                 self.current = 0
                 self.docks.focus(page.key)
@@ -124,8 +134,11 @@ def _surface_class():
 
         def _docks_changed(self, manager) -> None:
             selected = dict(manager.selected)
-            newly = [key for region, key in selected.items()
-                     if key is not None and self._selected.get(region) != key]
+            newly = [
+                key
+                for region, key in selected.items()
+                if key is not None and self._selected.get(region) != key
+            ]
             self._selected = selected
             if newly:
                 index = self.index_of_key(newly[-1])
@@ -169,8 +182,10 @@ def _surface_class():
                 self._draw_panel_menu(page)
                 return
             if body is not None and body.missing:
-                im.text_colored((220, 90, 90),
-                                f"{page.title}: {', '.join(body.missing)} declares nothing to draw.")
+                im.text_colored(
+                    (220, 90, 90),
+                    f"{page.title}: {', '.join(body.missing)} declares nothing to draw.",
+                )
                 return
             if body is None or body.control is None:
                 im.text_disabled(f"{page.title}: nothing to show yet.")
@@ -304,8 +319,11 @@ class FitPlotsArea(QtWidgets.QWidget):
         """The pages in view: the current one and the front tab of every region."""
         surface = self.surface
         shown = {surface.index_of_key(key) for key in surface.docks.selected.values() if key}
-        shown.update(surface.index_of_key(key) for key in surface.docks.floating()
-                     if surface.docks.is_visible(key))
+        shown.update(
+            surface.index_of_key(key)
+            for key in surface.docks.floating()
+            if surface.docks.is_visible(key)
+        )
         if surface.current >= 0:
             shown.add(surface.current)
         return sorted(i for i in shown if i >= 0)
@@ -344,8 +362,9 @@ class FitPlotsArea(QtWidgets.QWidget):
             "current_index": int(self.currentIndex()),
         }
 
-    def set_layout_state(self, state: dict, key_func: Callable | None = None,
-                         emit_change: bool = True) -> bool:
+    def set_layout_state(
+        self, state: dict, key_func: Callable | None = None, emit_change: bool = True
+    ) -> bool:
         """Restore a layout from :meth:`get_layout_state`.
 
         Returns False, changing nothing, for any other layout -- a Qt dock
@@ -365,7 +384,10 @@ class FitPlotsArea(QtWidgets.QWidget):
             surface.docks.restore(state["docks"])
             # A page a newer build added is not in an older layout: dock it home.
             for page in surface.pages:
-                if surface.docks.region_of(page.key) is None and page.key not in surface.docks.floating():
+                if (
+                    surface.docks.region_of(page.key) is None
+                    and page.key not in surface.docks.floating()
+                ):
                     surface.docks.dock(page.key, "center")
         finally:
             surface._suppress_layout_signal = False

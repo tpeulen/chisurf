@@ -208,7 +208,9 @@ class PluginManifest:
                 target=action_data["target"],
                 description=tr(action_data["description"]),
                 requires_main_window=action_data["requires_main_window"],
-            ) if action_data is not None else None,
+            )
+            if action_data is not None
+            else None,
         )
 
         methods = [
@@ -288,7 +290,9 @@ class PluginManifest:
                 "services": self.entrypoints.services,
                 "script": self.entrypoints.script,
                 "emtk": self.entrypoints.emtk,
-                "action": dataclasses.asdict(self.entrypoints.action) if self.entrypoints.action else None,
+                "action": dataclasses.asdict(self.entrypoints.action)
+                if self.entrypoints.action
+                else None,
             },
             "rpc_methods": [
                 {
@@ -420,7 +424,10 @@ def build_manifest_schema() -> dict:
         "type": "object",
         "properties": {
             **_props(PluginActionEntrypoint),
-            "target": {"type": "string", "pattern": r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$"},
+            "target": {
+                "type": "string",
+                "pattern": r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$",
+            },
             "description": {"type": "string", "pattern": r"\S"},
         },
         "required": ["target", "description", "requires_main_window"],
@@ -429,10 +436,14 @@ def build_manifest_schema() -> dict:
     entrypoints_def["properties"]["action"] = {
         "anyOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]
     }
-    entrypoints_def["allOf"] = [{
-        "if": {"required": ["action"], "properties": {"action": {"type": "object"}}},
-        "then": {"properties": {kind: {"enum": [None, ""]} for kind in ("gui", "emtk", "script")}},
-    }]
+    entrypoints_def["allOf"] = [
+        {
+            "if": {"required": ["action"], "properties": {"action": {"type": "object"}}},
+            "then": {
+                "properties": {kind: {"enum": [None, ""]} for kind in ("gui", "emtk", "script")}
+            },
+        }
+    ]
     window_state_def = {
         "type": "object",
         "properties": _props(PluginWindowState),
@@ -794,11 +805,7 @@ def _validate_entrypoints(data: dict[str, Any]) -> list[str]:
         return ["field 'entrypoints' must be an object"]
 
     allowed = {field.name for field in dataclasses.fields(PluginEntrypoints)}
-    errors = [
-        f"unknown entrypoints field: {key!r}"
-        for key in entrypoints
-        if key not in allowed
-    ]
+    errors = [f"unknown entrypoints field: {key!r}" for key in entrypoints if key not in allowed]
     errors.extend(
         f"entrypoints field {key!r} must be a string or null"
         for key, value in entrypoints.items()
@@ -813,9 +820,13 @@ def _validate_entrypoints(data: dict[str, Any]) -> list[str]:
         else:
             fields = {field.name for field in dataclasses.fields(PluginActionEntrypoint)}
             if set(action) != fields:
-                errors.append("entrypoints.action requires only target, description and requires_main_window")
+                errors.append(
+                    "entrypoints.action requires only target, description and requires_main_window"
+                )
             target = action.get("target")
-            if not isinstance(target, str) or not re.fullmatch(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*", target):
+            if not isinstance(target, str) or not re.fullmatch(
+                r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*", target
+            ):
                 errors.append("entrypoints.action.target must be module:callable")
             description = action.get("description")
             if not isinstance(description, str) or not description.strip():
@@ -844,11 +855,7 @@ def _validate_rpc_methods(data: dict[str, Any]) -> list[str]:
         if not isinstance(method, dict):
             errors.append(f"{prefix} must be an object")
             continue
-        errors.extend(
-            f"{prefix}: unknown field {key!r}"
-            for key in method
-            if key not in allowed
-        )
+        errors.extend(f"{prefix}: unknown field {key!r}" for key in method if key not in allowed)
         name = method.get("name")
         if not isinstance(name, str) or not name:
             errors.append(f"{prefix} must have a non-empty 'name'")
@@ -856,8 +863,10 @@ def _validate_rpc_methods(data: dict[str, Any]) -> list[str]:
             if key in method and not isinstance(method[key], str):
                 errors.append(f"{prefix}.{key} must be a string")
         for key in ("params_schema", "result_schema"):
-            if key in method and method[key] is not None and not isinstance(
-                method[key], (dict, str)
+            if (
+                key in method
+                and method[key] is not None
+                and not isinstance(method[key], (dict, str))
             ):
                 errors.append(f"{prefix}.{key} must be an object, string, or null")
         for key in ("long_running", "cancelable"):
@@ -878,8 +887,13 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
         for key, value in data.items()
         if value is None and key not in nullable_fields
     ]
-    for key in ("display_name", "description", "state_namespace", "experimental_message",
-                "deprecation_message"):
+    for key in (
+        "display_name",
+        "description",
+        "state_namespace",
+        "experimental_message",
+        "deprecation_message",
+    ):
         value = data.get(key)
         if value is not None and not isinstance(value, str):
             errors.append(f"field {key!r} must be a string or null")
@@ -899,8 +913,10 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
         value = data.get(key)
         if value is not None and (
             not isinstance(value, dict)
-            or any(not isinstance(name, str) or not isinstance(spec, str)
-                   for name, spec in value.items())
+            or any(
+                not isinstance(name, str) or not isinstance(spec, str)
+                for name, spec in value.items()
+            )
         ):
             errors.append(f"field {key!r} must be an object mapping names to strings")
     for key in ("library", "experimental", "menu_hidden", "deprecated", "demo"):

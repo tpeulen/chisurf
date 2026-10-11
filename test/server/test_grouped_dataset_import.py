@@ -37,8 +37,12 @@ class _ProtocolTransport:
         method, params, request_id = protocol.decode_request(request)
         result = self.server._zmq_dispatch(method, params)
         if result.get("ok") is False:
-            return protocol.encode_error(-32000, result["error"], request_id=request_id,
-                                          data={"error_code": result.get("error_code")})
+            return protocol.encode_error(
+                -32000,
+                result["error"],
+                request_id=request_id,
+                data={"error_code": result.get("error_code")},
+            )
         return json.loads(json.dumps(protocol.encode_response(result, request_id)))
 
 
@@ -54,8 +58,15 @@ def preview(monkeypatch):
     """Produce one real cached polarized simulation with non-default calibration."""
     monkeypatch.setattr(cs.core.base.Base, "_uuid_index", dict(cs.core.base.Base._uuid_index))
     experiment = Experiment(name="Lifetime")
-    reader = TCSPCSimulatorSetup(experiment=experiment, n_tac=64, dt=0.1, p0=2500, add_noise=False,
-                                 lifetime_spectrum=[1.0, 3.2], polarization="vv/vh")
+    reader = TCSPCSimulatorSetup(
+        experiment=experiment,
+        n_tac=64,
+        dt=0.1,
+        p0=2500,
+        add_noise=False,
+        lifetime_spectrum=[1.0, 3.2],
+        polarization="vv/vh",
+    )
     reader.g_factor, reader.l1, reader.l2, reader.vh_shift = 1.42, 0.04, 0.11, 0.7
     reader.rotation_spectrum = np.array([0.2, 1.3])
     irf = DataCurve(x=np.arange(64) * 0.1, y=np.eye(1, 64, 3).ravel(), name="measured IRF")
@@ -63,13 +74,18 @@ def preview(monkeypatch):
     group = reader.read(name="cached")
     group.name = "cached pair"
     group.current_dataset = 1
-    group.meta_data.update(note="cached without regeneration", axes=("time", "channel"),
-                           calibration=np.array([reader.g_factor, reader.l1, reader.l2]))
+    group.meta_data.update(
+        note="cached without regeneration",
+        axes=("time", "channel"),
+        calibration=np.array([reader.g_factor, reader.l1, reader.l2]),
+    )
     for index, member in enumerate(group):
         member.meta_data["channel"] = index
+
     def forbidden(*args, **kwargs):
         """No Add path may re-read the already cached photon/count realization."""
         raise AssertionError("cached preview was regenerated")
+
     monkeypatch.setattr(reader, "read", forbidden)
     monkeypatch.setattr(reader, "get_data", forbidden)
     return reader, group
@@ -83,7 +99,9 @@ def _assert_pair(actual, expected):
     assert actual.experiment.unique_identifier == expected.experiment.unique_identifier
     assert actual.experiment.name == expected.experiment.name
     assert actual.meta_data["axes"] == ("time", "channel")
-    np.testing.assert_array_equal(actual.meta_data["calibration"], expected.meta_data["calibration"])
+    np.testing.assert_array_equal(
+        actual.meta_data["calibration"], expected.meta_data["calibration"]
+    )
     for got, original in zip(actual, expected):
         assert got.experiment.unique_identifier == original.experiment.unique_identifier
         assert got.data_reader.experiment is got.experiment
@@ -93,8 +111,10 @@ def _assert_pair(actual, expected):
         assert got.meta_data["channel"] == original.meta_data["channel"]
         for field in ("g_factor", "l1", "l2", "vh_shift", "polarization", "is_vv_vh", "dt"):
             assert getattr(got.data_reader, field) == getattr(original.data_reader, field)
-        np.testing.assert_array_equal(got.data_reader.instrument_response_function.y,
-                                      original.data_reader.instrument_response_function.y)
+        np.testing.assert_array_equal(
+            got.data_reader.instrument_response_function.y,
+            original.data_reader.instrument_response_function.y,
+        )
 
 
 def test_cached_pair_imports_once_through_actual_generated_client_and_service(preview):
@@ -118,7 +138,9 @@ def test_cached_group_needs_no_reader_argument_to_cross_the_api(preview):
     _assert_pair(state.datasets[0], group)
 
 
-def test_explicit_local_state_receives_cached_pair_and_globals_remain_unchanged(preview, monkeypatch):
+def test_explicit_local_state_receives_cached_pair_and_globals_remain_unchanged(
+    preview, monkeypatch
+):
     """An injected isolated state owns its import instead of the live global container."""
     reader, group = preview
     globals_before = [DataCurve(x=np.arange(3), y=np.ones(3), name="unrelated")]
@@ -188,12 +210,15 @@ def test_invalid_cached_group_never_falls_back_to_reader_regeneration(preview):
     reader, group = preview
     group[1].y = np.full_like(group[1].y, np.nan)
     state = SessionState()
-    result = ChiSurfAPI(mode="local", state=state).load_dataset(experiment_reader=reader, dataset=group)
+    result = ChiSurfAPI(mode="local", state=state).load_dataset(
+        experiment_reader=reader, dataset=group
+    )
     assert result["ok"] is False and not state.datasets
 
 
-@pytest.mark.parametrize("fault", ["duplicate_uid", "metadata", "reader", "dependency",
-                                  "reader_state", "irf_array"])
+@pytest.mark.parametrize(
+    "fault", ["duplicate_uid", "metadata", "reader", "dependency", "reader_state", "irf_array"]
+)
 def test_malformed_group_identity_or_metadata_leaves_session_unchanged(preview, fault, monkeypatch):
     """Bad scientific identities/configuration are rejected before any object is imported."""
     _, group = preview
@@ -212,7 +237,9 @@ def test_malformed_group_identity_or_metadata_leaves_session_unchanged(preview, 
         payload["members"][1].pop("reader_inputs")
         reader["irf_array"] = {"dtype": "float64", "values": [[1.0]]}
     else:
-        payload["members"][1]["reader_inputs"]["instrument_response_function"]["arrays"]["y"]["values"][0] = 17.0
+        payload["members"][1]["reader_inputs"]["instrument_response_function"]["arrays"]["y"][
+            "values"
+        ][0] = 17.0
     from chisurf.server.services import datasets
 
     constructed = []
@@ -239,7 +266,9 @@ def test_explicit_state_rejects_an_empty_reader_result():
 
     state = SessionState()
     reader = SimpleNamespace(get_data=lambda **kwargs: None)
-    assert ChiSurfAPI(mode="local", state=state).load_dataset(experiment_reader=reader)["ok"] is False
+    assert (
+        ChiSurfAPI(mode="local", state=state).load_dataset(experiment_reader=reader)["ok"] is False
+    )
     assert not state.datasets
 
 
@@ -252,7 +281,9 @@ def test_cached_actual_structure_group_keeps_local_owning_import(preview, monkey
     from chisurf.core.experiments.modelling.reader import StructureReader
 
     reader = StructureReader(experiment=Experiment(name="Structure"), record_provenance=False)
-    group = reader.get_data(filename=str(Path("test/data/atomic_coordinates/pdb_files/148l.pdb").resolve()))
+    group = reader.get_data(
+        filename=str(Path("test/data/atomic_coordinates/pdb_files/148l.pdb").resolve())
+    )
     assert isinstance(group, ExperimentDataGroup)
     structure = group[0]
     atoms = structure.atoms.copy()
@@ -292,8 +323,9 @@ def test_cached_non_curve_group_is_explicitly_unsupported_by_curve_transport():
 def test_actual_cached_simulation_preserves_boolean_masks(polarization, monkeypatch):
     """DataCurve boolean selection masks survive cached VM and paired imports exactly."""
     monkeypatch.setattr(cs.core.base.Base, "_uuid_index", dict(cs.core.base.Base._uuid_index))
-    reader = TCSPCSimulatorSetup(n_tac=64, dt=0.1, add_noise=False,
-                                 lifetime_spectrum=[1.0, 3.0], polarization=polarization)
+    reader = TCSPCSimulatorSetup(
+        n_tac=64, dt=0.1, add_noise=False, lifetime_spectrum=[1.0, 3.0], polarization=polarization
+    )
     group = reader.read(name="masked preview")
     for index, member in enumerate(group):
         member.mask = (np.arange(len(member.y)) % (index + 2)) != 0
@@ -306,7 +338,8 @@ def test_actual_cached_simulation_preserves_boolean_masks(polarization, monkeypa
     monkeypatch.setattr(reader, "get_data", forbidden)
     state = SessionState()
     result = ChiSurfAPI(client=_client(state), mode="server").load_dataset(
-        experiment_reader=reader, dataset=group)
+        experiment_reader=reader, dataset=group
+    )
     assert result["ok"] and len(state.datasets) == 1
     assert len(state.datasets[0]) == len(group)
     for restored, original in zip(state.datasets[0], group):

@@ -31,14 +31,20 @@ def test_demo_primary_path_cache_and_explicit_overwrite(module_name, tmp_path, m
     assert module.demo_folder() == tmp_path / "settings" / "demos" / module_name.split(".")[-2]
     path = module.make_demo()
     assert isinstance(path, Path) and path.is_file()
-    assert path.name == (module.TABLE_NAME if hasattr(module, "TABLE_NAME") else module.SPC_FILENAME)
+    assert path.name == (
+        module.TABLE_NAME if hasattr(module, "TABLE_NAME") else module.SPC_FILENAME
+    )
     directory = path.parent
     originals = {name: (directory / name).read_bytes() for name in module.MEMBERS}
     record = json.loads((directory / "demo.json").read_text())
     assert record["parameters"] == module.DEMO
-    assert record["sha256"] == {name: hashlib.sha256(data).hexdigest() for name, data in originals.items()}
+    assert record["sha256"] == {
+        name: hashlib.sha256(data).hexdigest() for name, data in originals.items()
+    }
     saved = module.photon_stream
-    monkeypatch.setattr(module, "photon_stream", lambda *a, **k: pytest.fail("valid cache regenerated"))
+    monkeypatch.setattr(
+        module, "photon_stream", lambda *a, **k: pytest.fail("valid cache regenerated")
+    )
     assert module.make_demo() == path
     monkeypatch.setattr(module, "photon_stream", saved)
     unrelated = directory / "measurement-not-part-of-demo.txt"
@@ -50,7 +56,9 @@ def test_demo_primary_path_cache_and_explicit_overwrite(module_name, tmp_path, m
 
 
 @pytest.mark.parametrize("module_name", MODULES)
-def test_demo_cache_rejects_changed_parameters_missing_and_corrupted_members(module_name, tmp_path, monkeypatch):
+def test_demo_cache_rejects_changed_parameters_missing_and_corrupted_members(
+    module_name, tmp_path, monkeypatch
+):
     """Cache identity covers effective physical parameters and every emitted data member."""
     module = importlib.import_module(module_name)
     path = module.make_demo(tmp_path / "demo")
@@ -99,7 +107,9 @@ def test_demo_physical_events_match_declared_generator(module_name, tmp_path):
     path = module.make_demo(tmp_path / "demo")
     expected = module.photon_stream(module.DEMO["seed"])
     stream = tttrlib.TTTR(str(path.parent / module.SPC_FILENAME))
-    for getter, values in zip(("get_macro_times", "get_micro_times", "get_routing_channel"), expected[:3]):
+    for getter, values in zip(
+        ("get_macro_times", "get_micro_times", "get_routing_channel"), expected[:3]
+    ):
         np.testing.assert_array_equal(getattr(stream, getter)(), values)
     assert stream.header.macro_time_resolution == pytest.approx(module.DEMO["macro_resolution_s"])
     assert stream.header.micro_time_resolution == pytest.approx(module.DEMO["micro_resolution_s"])
@@ -116,6 +126,7 @@ def test_load_example_tour_awaits_actual_button_release(burst):
 
         app = create_app()
         driver = BurstDriver(app)
+
         def get_paths():
             return app.controller.files
     else:
@@ -124,8 +135,10 @@ def test_load_example_tour_awaits_actual_button_release(burst):
 
         app = make_app()
         driver = Hub(app)
+
         def get_paths():
             return app.files_step.checked_files
+
     try:
         app.tour.start(1)
         driver.draw(3)

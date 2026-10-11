@@ -152,9 +152,7 @@ def test_loaded_state_equals_the_qt_widget(env, qt_ref):
     assert model.info_text == meta["A"]["info"]
     assert model.ws.compute.available_channels == meta["A"]["channels"] == [0, 1, 8, 9]
     assert model.channel == meta["A"]["channel"] == "0"
-    np.testing.assert_array_equal(
-        model.ws.compute.current_table["NTAC_fract"], arrays["A_ntac"]
-    )
+    np.testing.assert_array_equal(model.ws.compute.current_table["NTAC_fract"], arrays["A_ntac"])
 
 
 def test_hand_tuned_region_normalize_threshold_and_wrap_equal_the_qt_widget(env, qt_ref):
@@ -175,9 +173,7 @@ def test_hand_tuned_region_normalize_threshold_and_wrap_equal_the_qt_widget(env,
     np.testing.assert_array_equal(model.corrected_plot()[1], after)
     assert len(after) == 2048
     assert model.info_text == meta["B"]["info"]
-    np.testing.assert_array_equal(
-        model.ws.compute.current_table["NTAC_fract"], arrays["B_ntac"]
-    )
+    np.testing.assert_array_equal(model.ws.compute.current_table["NTAC_fract"], arrays["B_ntac"])
 
 
 def test_every_channel_selected_gives_the_qt_lut(env, qt_ref):

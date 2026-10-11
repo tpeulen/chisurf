@@ -4,6 +4,7 @@ Run selected plugin ids with pytest ``-k``. Workers always leave a JSON result,
 including failed control names and traceback, beside their PNG in ``renders/e2e``.
 No plugin is silently skipped when its factory, tour, or tooltip inventory fails.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,21 +34,31 @@ if str(REPO) not in sys.path:
 
 if __name__ != "__main__":
     from chisurf.emtk.plugins import manifests
+
     CATALOG = manifests()
 else:
     # The worker installs scratch paths before importing ChiSurf settings.
     CATALOG = {}
 IDS_EMTK = sorted(i for i, m in CATALOG.items() if m.get("entrypoints", {}).get("emtk"))
-IDS_QT = sorted(i for i, m in CATALOG.items()
-                if m.get("entrypoints", {}).get("gui") and not m.get("entrypoints", {}).get("emtk"))
-IDS_ACTION = sorted(i for i, m in CATALOG.items()
-                    if m.get("entrypoints", {}).get("action")
-                    and not (m["entrypoints"].get("gui") or m["entrypoints"].get("emtk")))
+IDS_QT = sorted(
+    i
+    for i, m in CATALOG.items()
+    if m.get("entrypoints", {}).get("gui") and not m.get("entrypoints", {}).get("emtk")
+)
+IDS_ACTION = sorted(
+    i
+    for i, m in CATALOG.items()
+    if m.get("entrypoints", {}).get("action")
+    and not (m["entrypoints"].get("gui") or m["entrypoints"].get("emtk"))
+)
 SIZE = (1100, 720)
 HARNESS_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 # The documented baseline remains recognizable; extra exclusions protect real
 # accounts, remote jobs and hardware even when a plugin calls them "Run".
-SKIP = re.compile(r"(open|load_file|save|browse|export|import|choose|folder|quit|close_window|close_about|close_app|close_host|delete)", re.I)
+SKIP = re.compile(
+    r"(open|load_file|save|browse|export|import|choose|folder|quit|close_window|close_about|close_app|close_host|delete)",
+    re.I,
+)
 EXTERNAL = re.compile(
     r"(oauth|auth|login|logout|signin|account|credential|token|connect|disconnect|"
     r"upload|download|publish|deploy|submit|remote|server|hardware|device|acquire|"
@@ -55,12 +66,32 @@ EXTERNAL = re.compile(
     r"remove|clear|reset_database|drop|erase|terminate|install|uninstall|archive|"
     r"sync|execute|send|commit|apply|activate|generate|train|retrain|optimize|"
     r"measure|capture|stream|emit|laser|shutter|update|user[ _-]*editor|switch[ _-]*user|"
-    r"lsp|editor[ _-]*rpc|enable_rpc|python_lsp|show[ _-]*(key|token|secret)|reveal)", re.I,
+    r"lsp|editor[ _-]*rpc|enable_rpc|python_lsp|show[ _-]*(key|token|secret)|reveal)",
+    re.I,
 )
-CLICKABLE = frozenset({"button", "small_button", "checkbox", "radio_button", "selectable",
-                       "combo", "input_text", "input_text_multiline", "input_float", "input_int",
-                       "input_double", "slider_float", "slider_int", "drag_float", "drag_int",
-                       "color_edit3", "color_edit4", "menu_item", "collapsing_header"})
+CLICKABLE = frozenset(
+    {
+        "button",
+        "small_button",
+        "checkbox",
+        "radio_button",
+        "selectable",
+        "combo",
+        "input_text",
+        "input_text_multiline",
+        "input_float",
+        "input_int",
+        "input_double",
+        "slider_float",
+        "slider_int",
+        "drag_float",
+        "drag_int",
+        "color_edit3",
+        "color_edit4",
+        "menu_item",
+        "collapsing_header",
+    }
+)
 CLICKABLE |= {"begin_tab_item", "tree_node", "list_box", "input_scalar"}
 CLICKABLE |= {"autoform_fold"}
 
@@ -110,21 +141,48 @@ def _isolated(plugin_id, mode):
     directory.mkdir(parents=True, exist_ok=True)
     result_path = directory / f"{artifact_stem(plugin_id)}.json"
     (directory / f"{artifact_stem(plugin_id)}.png").unlink(missing_ok=True)
-    result_path.write_text(json.dumps({"plugin": plugin_id, "mode": mode, "status": "running",
-                                      "errors": ["worker did not finish"]}, indent=2), encoding="utf-8")
+    result_path.write_text(
+        json.dumps(
+            {
+                "plugin": plugin_id,
+                "mode": mode,
+                "status": "running",
+                "errors": ["worker did not finish"],
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
     env = dict(os.environ)
-    env.update(QT_QPA_PLATFORM="offscreen", MPLBACKEND="Agg", PYTHONUNBUFFERED="1",
-               CHISURF_E2E_DIR=str(directory))
-    sources = [str(REPO), str(REPO / "test"), str(REPO / "modules" / "chinet"),
-               str(REPO / "modules" / "imp-tricks" / "src"), str(REPO / "modules" / "mmfdb" / "src")]
+    env.update(
+        QT_QPA_PLATFORM="offscreen",
+        MPLBACKEND="Agg",
+        PYTHONUNBUFFERED="1",
+        CHISURF_E2E_DIR=str(directory),
+    )
+    sources = [
+        str(REPO),
+        str(REPO / "test"),
+        str(REPO / "modules" / "chinet"),
+        str(REPO / "modules" / "imp-tricks" / "src"),
+        str(REPO / "modules" / "mmfdb" / "src"),
+    ]
     if env.get("PYTHONPATH"):
         sources.append(env["PYTHONPATH"])
     env["PYTHONPATH"] = os.pathsep.join(sources)
     timeout = float(os.environ.get("CHISURF_E2E_TIMEOUT", "120"))
-    command = [sys.executable, str(Path(__file__).resolve()), "--run-one", plugin_id, "--mode", mode]
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--run-one",
+        plugin_id,
+        "--mode",
+        mode,
+    ]
     try:
-        completed = subprocess.run(command, cwd=REPO, env=env, capture_output=True,
-                                   text=True, timeout=timeout)
+        completed = subprocess.run(
+            command, cwd=REPO, env=env, capture_output=True, text=True, timeout=timeout
+        )
         output = completed.stdout + completed.stderr
     except subprocess.TimeoutExpired as exc:
         output = str(exc.stdout or "") + str(exc.stderr or "")
@@ -135,8 +193,17 @@ def _isolated(plugin_id, mode):
         pytest.fail(f"{plugin_id}: worker exceeded {timeout:g}s; {result_path}")
     (directory / f"{artifact_stem(plugin_id)}.log").write_text(output, encoding="utf-8")
     if not result_path.exists():
-        result_path.write_text(json.dumps({"plugin": plugin_id, "mode": mode, "status": "failed",
-                              "errors": [f"worker exited {completed.returncode} without result"]}, indent=2))
+        result_path.write_text(
+            json.dumps(
+                {
+                    "plugin": plugin_id,
+                    "mode": mode,
+                    "status": "failed",
+                    "errors": [f"worker exited {completed.returncode} without result"],
+                },
+                indent=2,
+            )
+        )
     result = json.loads(result_path.read_text(encoding="utf-8"))
     if completed.returncode and result.get("status") in ("passed", "running"):
         result["status"] = "failed"
@@ -171,6 +238,7 @@ def test_action_plugin_resolves_to_a_callable(plugin_id):
     classified as an action and resolved, never driven as a window.
     """
     import importlib
+
     action = CATALOG[plugin_id]["entrypoints"]["action"]
     module, attribute = action["target"].split(":", 1)
     assert callable(getattr(importlib.import_module(module), attribute))
@@ -187,26 +255,38 @@ def _guards(stack, result):
 
     from chisurf.gui.dialogs import ChiSurfMessageBox, auto_answer
 
-    for method, answer in (("getOpenFileName", ("", "")), ("getOpenFileNames", ([], "")),
-                           ("getSaveFileName", ("", "")), ("getExistingDirectory", "")):
+    for method, answer in (
+        ("getOpenFileName", ("", "")),
+        ("getOpenFileNames", ([], "")),
+        ("getSaveFileName", ("", "")),
+        ("getExistingDirectory", ""),
+    ):
         stack.enter_context(patch.object(QtWidgets.QFileDialog, method, return_value=answer))
-    stack.enter_context(auto_answer(question=ChiSurfMessageBox.No, warning=None,
-                                   critical=None, information=None, about=None))
+    stack.enter_context(
+        auto_answer(
+            question=ChiSurfMessageBox.No, warning=None, critical=None, information=None, about=None
+        )
+    )
+
     def reject_modal(dialog, *args, **kwargs):
         """Construct real dialogs, but reject synchronous modal execution."""
         result["dialogs_closed"] += 1
         result.setdefault("cancelled_modals", []).append(type(dialog).__name__)
         dialog.reject()
         return QtWidgets.QDialog.Rejected
+
     for method in ("exec", "exec_"):
         if hasattr(QtWidgets.QDialog, method):
             stack.enter_context(patch.object(QtWidgets.QDialog, method, reject_modal))
     for method in ("question", "warning", "critical", "information", "about", "aboutQt"):
-        stack.enter_context(patch.object(QtWidgets.QMessageBox, method, return_value=QtWidgets.QMessageBox.No))
+        stack.enter_context(
+            patch.object(QtWidgets.QMessageBox, method, return_value=QtWidgets.QMessageBox.No)
+        )
     stack.enter_context(patch.object(webbrowser, "open", return_value=False))
     stack.enter_context(patch.object(webbrowser, "open_new", return_value=False))
     stack.enter_context(patch.object(webbrowser, "open_new_tab", return_value=False))
     stack.enter_context(patch.object(QtGui.QDesktopServices, "openUrl", return_value=False))
+
     def feed_file_dialog(dialog, *args, **kwargs):
         """Open/folder dialogs take the plugin's demo; save dialogs and demo-less ones cancel."""
         result["dialogs_closed"] += 1
@@ -218,50 +298,72 @@ def _guards(stack, result):
             result.setdefault("demo_fed", []).append(chosen[0])
             return chosen
         return False
+
     stack.enter_context(patch.object(FileDialog, "draw", feed_file_dialog))
     for method, many in (("getOpenFileName", False), ("getOpenFileNames", True)):
+
         def qt_open(*args, _many=many, **kwargs):
             """Qt open dialogs get the same demo file the native dialog would."""
             chosen = demo_choice(result.get("demo_dir"), "open", ())
             if chosen:
                 result.setdefault("demo_fed", []).append(chosen[0])
             return (chosen if _many else (chosen[0] if chosen else ""), "")
+
         stack.enter_context(patch.object(QtWidgets.QFileDialog, method, qt_open))
+
     def qt_folder(*args, **kwargs):
         """A directory chooser gets the demo folder, if the plugin shipped one."""
         return str(result.get("demo_dir") or "")
+
     stack.enter_context(patch.object(QtWidgets.QFileDialog, "getExistingDirectory", qt_folder))
     connect = socket.socket.connect
+
     def local_only(sock, address):
         """Prevent plugin side effects through any IPv4/IPv6 service."""
         if sock.family in (socket.AF_INET, socket.AF_INET6):
             result["blocked_actions"].append("socket.connect")
             raise Blocked("E2E blocks network/service connections")
         return connect(sock, address)
+
     stack.enter_context(patch.object(socket.socket, "connect", local_only))
     stack.enter_context(patch.object(socket.socket, "connect_ex", local_only))
     import zmq
+
     def no_zmq_connection(sock, address):
         """Keep C-level ZeroMQ sockets away from the user's actual daemons."""
-        result["blocked_actions"].append({"operation": "zmq.Socket.connect",
-                                        "phase": result.get("phase"),
-                                        "control": result.get("current_control")})
+        result["blocked_actions"].append(
+            {
+                "operation": "zmq.Socket.connect",
+                "phase": result.get("phase"),
+                "control": result.get("current_control"),
+            }
+        )
         raise Blocked("E2E blocks real ZeroMQ service connections")
+
     stack.enter_context(patch.object(zmq.Socket, "connect", no_zmq_connection))
     stack.enter_context(patch.object(zmq.Socket, "bind", no_zmq_connection))
+
     def no_zmq_io(*args, **kwargs):
         """Fail offline RPC immediately rather than blocking on an unconnected socket."""
         raise Blocked("E2E ZeroMQ service I/O is offline")
+
     for method in ("send", "recv", "send_multipart", "recv_multipart"):
         stack.enter_context(patch.object(zmq.Socket, method, no_zmq_io))
+
     def no_external_process(*args, **kwargs):
         """Do not launch language servers, installers, or user tools from controls."""
-        result["blocked_actions"].append({"operation": "external process",
-                                        "phase": result.get("phase"),
-                                        "control": result.get("current_control")})
+        result["blocked_actions"].append(
+            {
+                "operation": "external process",
+                "phase": result.get("phase"),
+                "control": result.get("current_control"),
+            }
+        )
         raise Blocked("E2E blocks external process launch")
+
     stack.enter_context(patch.object(subprocess, "Popen", no_external_process))
     from qtpy.QtCore import QProcess
+
     for method in ("start", "startDetached", "execute"):
         stack.enter_context(patch.object(QProcess, method, no_external_process))
     for method in dir(os):
@@ -288,6 +390,7 @@ def demo_choice(demo_dir, mode, filters):
         One path, or an empty list when there is nothing to offer.
     """
     import fnmatch
+
     if not demo_dir or mode == "save" or not Path(demo_dir).is_dir():
         return []
     root = Path(demo_dir)
@@ -303,11 +406,16 @@ def demo_choice(demo_dir, mode, filters):
 
 
 #: Smallest valid text for formats a plugin can read when it ships no demo of its own.
-STUBS = {".pdb": "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N\n"
-                 "ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00  0.00           C\n"
-                 "ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00  0.00           C\nEND\n",
-         ".csv": "x,y\n1,2\n2,4\n3,6\n", ".txt": "1 2\n2 4\n3 6\n", ".dat": "1 2\n2 4\n3 6\n",
-         ".json": "{}\n", ".xy": "1 2\n2 4\n3 6\n"}
+STUBS = {
+    ".pdb": "ATOM      1  N   ALA A   1       0.000   0.000   0.000  1.00  0.00           N\n"
+    "ATOM      2  CA  ALA A   1       1.458   0.000   0.000  1.00  0.00           C\n"
+    "ATOM      3  C   ALA A   1       2.009   1.420   0.000  1.00  0.00           C\nEND\n",
+    ".csv": "x,y\n1,2\n2,4\n3,6\n",
+    ".txt": "1 2\n2 4\n3 6\n",
+    ".dat": "1 2\n2 4\n3 6\n",
+    ".json": "{}\n",
+    ".xy": "1 2\n2 4\n3 6\n",
+}
 
 
 def stub_file(directory, filters):
@@ -362,12 +470,17 @@ def provision_demo(plugin_id, scratch, result=None):
     import importlib
 
     from chisurf.emtk.plugins import manifests
+
     # CATALOG is empty inside the worker (it must install scratch paths before importing).
     target = ((manifests().get(plugin_id) or {}).get("entrypoints") or {}).get("emtk") or ""
     parts = target.split(":")[0].split(".")
-    candidates = [("demo", ("make_demo", "make_example", "write_demo", "write_example")),
-                  ("test.demo_data", ("build",)), ("tests.demo_data", ("build",)),
-                  ("test.demo_folder", ("build",)), ("tests.demo_folder", ("build",))]
+    candidates = [
+        ("demo", ("make_demo", "make_example", "write_demo", "write_example")),
+        ("test.demo_data", ("build",)),
+        ("tests.demo_data", ("build",)),
+        ("test.demo_folder", ("build",)),
+        ("tests.demo_folder", ("build",)),
+    ]
     for end in range(len(parts), 2, -1):
         package = ".".join(parts[:end])
         for suffix, names in candidates:
@@ -401,20 +514,28 @@ def control_tags(spec, control):
     for section in walk(spec):
         candidates = [section, *(section.get("buttons") or [])]
         for item in candidates:
-            if isinstance(item, dict) and name in (item.get("attr"), item.get("target"),
-                                                  item.get("key"), item.get("action")):
+            if isinstance(item, dict) and name in (
+                item.get("attr"),
+                item.get("target"),
+                item.get("key"),
+                item.get("action"),
+            ):
                 declared = item.get("tags", [])
                 tags.update([declared] if isinstance(declared, str) else declared)
-                tags.update(key for key in ("modal", "file", "dangerous", "external", "hardware")
-                            if item.get(key) is True)
+                tags.update(
+                    key
+                    for key in ("modal", "file", "dangerous", "external", "hardware")
+                    if item.get(key) is True
+                )
     return tags
 
 
 def dialog_open(app):
     """Recognize native modal/file state without opening or selecting a resource."""
     for owner in (app, getattr(app, "model", None)):
-        if owner is not None and any(getattr(owner, name, None) not in (None, False)
-                                     for name in ("dialog", "file_dialog")):
+        if owner is not None and any(
+            getattr(owner, name, None) not in (None, False) for name in ("dialog", "file_dialog")
+        ):
             return True
     return bool(getattr(getattr(app, "picker", None), "is_open", False))
 
@@ -427,8 +548,11 @@ def tour_for(app):
         if owner is not None:
             owners.append(owner)
     # Calculator ImApps compose a stored phasor_gui/fcs_gui/etc. renderer.
-    owners.extend(owner for name, owner in getattr(app, "__dict__", {}).items()
-                  if name.endswith("_gui") and owner not in owners)
+    owners.extend(
+        owner
+        for name, owner in getattr(app, "__dict__", {}).items()
+        if name.endswith("_gui") and owner not in owners
+    )
     for owner in owners:
         for name in ("tour", "guide"):
             tour = getattr(owner, name, None)
@@ -456,13 +580,16 @@ def visible_rectangle(row, size):
     left, top = max(rect[0], clip[0], 0), max(rect[1], clip[1], 0)
     right = min(rect[0] + rect[2], clip[0] + clip[2], size[0])
     bottom = min(rect[1] + rect[3], clip[1] + clip[3], size[1])
-    return (left, top, right - left, bottom - top) if right - left > 2 and bottom - top > 2 else None
+    return (
+        (left, top, right - left, bottom - top) if right - left > 2 and bottom - top > 2 else None
+    )
 
 
 def painter_rectangle(painter, rect):
     """Apply actual painter adapter geometry to produce host-global coordinates."""
     from emtk.offset_painter import OffsetPainter
     from emtk.scaled_painter import ScaledPainter
+
     if rect is None:
         return None
     x, y, w, h = rect
@@ -487,7 +614,9 @@ def reveal_control(driver, recorder, visit_id):
         visible = visible_rectangle(row, driver.size)
         if visible is not None:
             return row, visible
-        assert row.get("scrollable"), f"coverage: offscreen control {row['id']!r} has no scroll/reveal route"
+        assert row.get("scrollable"), (
+            f"coverage: offscreen control {row['id']!r} has no scroll/reveal route"
+        )
         clip = row["clip_rect"]
         area = visible_rectangle({"rect": clip, "clip_rect": clip}, driver.size)
         assert area is not None, f"coverage: scrolling region for {row['id']!r} is not visible"
@@ -505,16 +634,23 @@ def reveal_control(driver, recorder, visit_id):
 def resolved_tour_control(rows, target, rect):
     """Resolve the authoritative global target geometry before consulting duplicate labels."""
     unique = list({row["visit_id"]: row for row in rows}.values())
-    exact = [row for row in unique if row.get("rect") is not None
-             and all(abs(a - b) < 0.5 for a, b in zip(row["rect"], rect))]
+    exact = [
+        row
+        for row in unique
+        if row.get("rect") is not None and all(abs(a - b) < 0.5 for a, b in zip(row["rect"], rect))
+    ]
     if exact:
         matches = exact
     else:
         named = [row for row in unique if row["id"].split("##")[-1] == target]
         px, py = rect[0] + rect[2] / 2, rect[1] + rect[3] / 2
-        matches = [row for row in (named or unique) if row.get("rect") is not None
-                   and row["rect"][0] <= px <= row["rect"][0] + row["rect"][2]
-                   and row["rect"][1] <= py <= row["rect"][1] + row["rect"][3]]
+        matches = [
+            row
+            for row in (named or unique)
+            if row.get("rect") is not None
+            and row["rect"][0] <= px <= row["rect"][0] + row["rect"][2]
+            and row["rect"][1] <= py <= row["rect"][1] + row["rect"][3]
+        ]
     assert len(matches) <= 1, f"coverage: guide target {target!r} is ambiguous across contexts"
     return matches[0] if matches else None
 
@@ -528,12 +664,15 @@ def dock_managers(root, depth=3):
         if obj is None or id(obj) in seen or level > depth:
             return
         seen.add(id(obj))
-        if callable(getattr(obj, "tab_rect", None)) and isinstance(getattr(obj, "tabs", None), dict):
+        if callable(getattr(obj, "tab_rect", None)) and isinstance(
+            getattr(obj, "tabs", None), dict
+        ):
             found.append(obj)
             return
         for value in list(getattr(obj, "__dict__", {}).values()):
             if not isinstance(value, (str, bytes, int, float, bool)):
                 scan(value, level + 1)
+
     scan(root, 0)
     return found
 
@@ -550,19 +689,24 @@ def drawn_target_rect(driver, tour, recorder, target, result):
     tuple or None
         The target rectangle, or None when no tab shows it.
     """
+
     def lookup():
         """Resolve the rectangle from the driver, then the tour's own registry."""
         try:
             return driver.rect(target)
         except LookupError:
             return tour.get_target_rect(target) if callable(tour.get_target_rect) else None
+
     rect = lookup()
     if rect is not None:
         return rect
     recorder.rows.clear()
     driver.frame()
-    tabs = [(row["id"], visible_rectangle(row, getattr(driver, "size", SIZE)))
-            for row in recorder.rows if row["kind"] == "begin_tab_item" and row.get("rect")]
+    tabs = [
+        (row["id"], visible_rectangle(row, getattr(driver, "size", SIZE)))
+        for row in recorder.rows
+        if row["kind"] == "begin_tab_item" and row.get("rect")
+    ]
     # Dock regions draw their own tab strip; their DockManager reports each tab's rectangle.
     for owner in dock_managers(CURRENT_APP):
         for keys in owner.tabs.values():
@@ -586,7 +730,9 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
     before = tour.step_idx
     result.setdefault("tour_indices", [before])
     if tour.steps[before].get("await"):
-        assert tour.wait_for_controls, "coverage: awaited tour is not wired to real control notifications"
+        assert tour.wait_for_controls, (
+            "coverage: awaited tour is not wired to real control notifications"
+        )
         target = tour._target_key(tour.steps[before].get("target"))
         result["tour_await_target"] = target
         # The guards (_guards) already neutralise files, browsers, network, processes
@@ -594,7 +740,8 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
         # control the spec itself tags as hardware/dangerous stays off-limits.
         declared = {str(t).lower() for t in control_tags(spec, target)}
         assert not declared & {"hardware", "dangerous"}, (
-            f"tour awaits unsafe control {target!r}: declared {sorted(declared)}")
+            f"tour awaits unsafe control {target!r}: declared {sorted(declared)}"
+        )
         rect = drawn_target_rect(driver, tour, recorder, target, result)
         assert rect is not None, f"awaited guide target {target!r} is not drawn"
         chosen = resolved_tour_control(recorder.rows, target, rect)
@@ -610,16 +757,19 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
             assert rect is not None, f"coverage: awaited target {target!r} is offscreen"
         value = recorder.input_values.get(matches[-1]["visit_id"]) if matches else None
         from chisurf.gui.dialogs import ChiSurfMessageBox, auto_answer
+
         # A tour's own example confirms its question boxes; the general sweep declines them.
         with auto_answer(question=ChiSurfMessageBox.Yes):
             driver.click(rect)
         if matches and matches[-1]["kind"] == "combo":
             from emtk import keys
+
             driver.press(keys.KEY_DOWN)
             driver.press(keys.KEY_RETURN)
         elif matches and matches[-1]["kind"] == "input_text" and value is not None:
             from emtk import keys
             from emtk.events import CONTROL_MODIFIER
+
             assert not re.search(r"(url|token|credential|secret)", target, re.I), (
                 f"tour requires unsafe text edit {target!r}"
             )
@@ -635,7 +785,9 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
             else:
                 if re.search(r"(file|path|folder|directory)", named, re.I):
                     # No demo: a path that does not exist, inside the scratch workspace.
-                    driver.type(str(Path(tempfile.gettempdir()) / "chisurf-e2e-missing" / "input.dat"))
+                    driver.type(
+                        str(Path(tempfile.gettempdir()) / "chisurf-e2e-missing" / "input.dat")
+                    )
                 else:
                     # Whitespace changes the real field; numeric parsing preserves its value.
                     driver.type(str(value) + " ")
@@ -672,6 +824,7 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
         if tour.awaiting and matches == [] and callable(getattr(driver, "press", None)):
             # An untracked drop-down (``choose …``): open it and step through its entries.
             from emtk import keys
+
             for _ in range(6):
                 if not tour.awaiting:
                     break
@@ -686,13 +839,17 @@ def operate_awaited_tour_step(driver, tour, result, recorder, spec=None):
     tour.next()
     driver.frame(2)
     if tour.active:
-        assert tour.step_idx == before + 1, f"guided tour did not advance: {before} -> {tour.step_idx}"
+        assert tour.step_idx == before + 1, (
+            f"guided tour did not advance: {before} -> {tour.step_idx}"
+        )
         result["tour_indices"].append(tour.step_idx)
     else:
         assert before == len(tour.steps) - 1, "guided tour ended before its final real example"
         result["tour_completed"] = True
     result["tour_await_exercised"] = True
-    result["tour_steps"] = len(result["tour_indices"]) - 1 + int(result.get("tour_completed", False))
+    result["tour_steps"] = (
+        len(result["tour_indices"]) - 1 + int(result.get("tour_completed", False))
+    )
 
 
 def advance_tour(driver, tour, result, recorder, spec=None):
@@ -717,15 +874,19 @@ def settle_with_cancel(driver, recorder, result):
     except TimeoutError as exc:
         recorder.rows.clear()
         driver.frame()
-        stops = [row for row in recorder.rows
-                 if row["kind"] in ("button", "small_button", "menu_item")
-                 and row.get("enabled", True)
-                 and re.search(r"(^|[^a-z])(cancel|stop)([^a-z]|$)", row["id"], re.I)]
+        stops = [
+            row
+            for row in recorder.rows
+            if row["kind"] in ("button", "small_button", "menu_item")
+            and row.get("enabled", True)
+            and re.search(r"(^|[^a-z])(cancel|stop)([^a-z]|$)", row["id"], re.I)
+        ]
         if not stops:
             raise TimeoutError("job exceeded 30s and has no enabled Cancel/Stop control") from exc
         stop = stops[0]
-        result.setdefault("job_cancellations", []).append({"job_control": result.get("current_control"),
-                                                          "cancel_control": stop["id"]})
+        result.setdefault("job_cancellations", []).append(
+            {"job_control": result.get("current_control"), "cancel_control": stop["id"]}
+        )
         result["phase"] = "cancel"
         checkpoint(result)
         driver.click(stop["rect"])
@@ -751,6 +912,7 @@ def _native(plugin_id, result, png_path):
 
     class Recorder(ControlRecorder):
         """Associate every measured control with its real submitted rectangle."""
+
         def __init__(self):
             """Keep editable field text privately, never in PNG/JSON inventories."""
             super().__init__()
@@ -761,34 +923,42 @@ def _native(plugin_id, result, png_path):
         def capture(self, kind):
             """Record the actual item geometry, clipping, and enabled state."""
             from emtk.im_core import ItemFlags
+
             ctx = im.get_current_context()
             row = self.rows[-1]
             rect = im.get_item_rect()
             identity = f"{id(ctx.storage)}:{im.get_item_id()!r}"
-            row.update(rect=painter_rectangle(ctx.p, rect),
-                       visit_id=f"{kind}:{identity}",
-                       engine_id=identity, clip_rect=painter_rectangle(ctx.p, ctx.clip_rect),
-                       enabled=not bool(ctx.item_flags & ItemFlags.DISABLED),
-                       scrollable=any(len(child) > 6 and child[6] for child in ctx._child))
+            row.update(
+                rect=painter_rectangle(ctx.p, rect),
+                visit_id=f"{kind}:{identity}",
+                engine_id=identity,
+                clip_rect=painter_rectangle(ctx.p, ctx.clip_rect),
+                enabled=not bool(ctx.item_flags & ItemFlags.DISABLED),
+                scrollable=any(len(child) > 6 and child[6] for child in ctx._child),
+            )
 
         @contextmanager
         def installed(self):
             """Observe real item delivery and AutoForm's direct fold controls."""
             from emtk import view_form
             from emtk.im_core import Context
+
             behavior, item_add, fold = Context.button_behavior, Context.item_add, view_form._fold
+
             def observe_behavior(ctx, box, item_id, flags=0):
                 """Keep the original behavior and observe its real press result."""
                 response = behavior(ctx, box, item_id, flags)
                 if response[2]:
                     self.pressed_ids.add(f"{id(ctx.storage)}:{item_id!r}")
                 return response
+
             def observe_item(ctx, box, item_id=None):
                 """Record only actual hovered mouse-down delivery."""
                 hovered = item_add(ctx, box, item_id)
                 if hovered and ctx.io.mouse_clicked[0] and not ctx._last_item_disabled:
                     self.contact_ids.add(f"{id(ctx.storage)}:{item_id!r}")
                 return hovered
+
             def observe_fold(section, state):
                 """Let the real fold render, toggle, and assign its real tooltip."""
                 title = str(section.get("title", ""))
@@ -797,12 +967,18 @@ def _native(plugin_id, result, png_path):
                 self.capture("autoform_fold")
                 self.rows[-1]["expanded"] = opened
                 return opened
-            with super().installed(), patch.object(Context, "button_behavior", observe_behavior), \
-                    patch.object(Context, "item_add", observe_item), patch.object(view_form, "_fold", observe_fold):
+
+            with (
+                super().installed(),
+                patch.object(Context, "button_behavior", observe_behavior),
+                patch.object(Context, "item_add", observe_item),
+                patch.object(view_form, "_fold", observe_fold),
+            ):
                 yield self
 
         def _wrap(self, kind, func):
             wrapped = super()._wrap(kind, func)
+
             def record(*args, **kwargs):
                 """Record only the outer control, after its real widget has drawn."""
                 outer = self._depth == 0
@@ -814,6 +990,7 @@ def _native(plugin_id, result, png_path):
                     if kind in ("collapsing_header", "tree_node"):
                         self.rows[-1]["expanded"] = bool(value)
                 return value
+
             return record
 
     result["phase"] = "factory"
@@ -834,7 +1011,9 @@ def _native(plugin_id, result, png_path):
             result["first_frame_ms"] = samples[0]
             result["steady_frame_ms"] = statistics.median(samples[2:])
             result["frame_samples_ms"] = samples
-            controls = {row["visit_id"]: dict(row) for row in recorder.rows if row["kind"] in CLICKABLE}
+            controls = {
+                row["visit_id"]: dict(row) for row in recorder.rows if row["kind"] in CLICKABLE
+            }
             pending = sorted(controls)
             visited = set()
             repeats, sampled_out = {}, set()
@@ -849,7 +1028,9 @@ def _native(plugin_id, result, png_path):
                 if budget and len(visited) - len(sampled_out) > budget:
                     result["inventory_bounded"] = budget
                     break
-                assert len(visited) - len(sampled_out) <= 512, "control inventory did not stabilize within 512 targets"
+                assert len(visited) - len(sampled_out) <= 512, (
+                    "control inventory did not stabilize within 512 targets"
+                )
                 control = controls[name]
                 raw_name = control["id"]
                 # A documentation browser re-creates the same per-block button (Copy, ...) on every
@@ -860,19 +1041,27 @@ def _native(plugin_id, result, png_path):
                     key = ("repeat", control["kind"], control["label"])
                     repeats[key] = repeats.get(key, 0) + 1
                     if repeats[key] > 3:
-                        result["skipped"].append({"control": name,
-                                                  "reason": "repeat of an already exercised per-page control"})
+                        result["skipped"].append(
+                            {
+                                "control": name,
+                                "reason": "repeat of an already exercised per-page control",
+                            }
+                        )
                         sampled_out.add(name)
                         continue
-                reason = skip_reason(raw_name + " " + control["label"],
-                                     control_tags(getattr(app, "spec", {}), raw_name))
+                reason = skip_reason(
+                    raw_name + " " + control["label"],
+                    control_tags(getattr(app, "spec", {}), raw_name),
+                )
                 if reason:
                     result["skipped"].append({"control": name, "reason": reason})
                     continue
                 revealed = reveal_control(driver, recorder, name)
                 if revealed is None:
                     visited.remove(name)
-                    result["skipped"].append({"control": name, "reason": "no longer drawn after prior control"})
+                    result["skipped"].append(
+                        {"control": name, "reason": "no longer drawn after prior control"}
+                    )
                     continue
                 current, click_box = revealed
                 if not current["enabled"]:
@@ -885,9 +1074,19 @@ def _native(plugin_id, result, png_path):
                 recorder.pressed_ids.clear()
                 recorder.contact_ids.clear()
                 driver.click(click_box)
-                proof = (recorder.pressed_ids if control["kind"] in
-                         {"button", "small_button", "radio_button", "selectable", "menu_item", "autoform_fold"}
-                         else recorder.pressed_ids | recorder.contact_ids)
+                proof = (
+                    recorder.pressed_ids
+                    if control["kind"]
+                    in {
+                        "button",
+                        "small_button",
+                        "radio_button",
+                        "selectable",
+                        "menu_item",
+                        "autoform_fold",
+                    }
+                    else recorder.pressed_ids | recorder.contact_ids
+                )
                 if current["engine_id"] not in proof:
                     # A control that a background job removes mid-click (a "pending" Cancel whose
                     # database call just failed) is gone, not unclickable; anything still drawn must have been hit.
@@ -895,7 +1094,12 @@ def _native(plugin_id, result, png_path):
                     driver.frame()
                     if not any(row["visit_id"] == name for row in recorder.rows):
                         visited.remove(name)
-                        result["skipped"].append({"control": name, "reason": "withdrawn by a background job during the click"})
+                        result["skipped"].append(
+                            {
+                                "control": name,
+                                "reason": "withdrawn by a background job during the click",
+                            }
+                        )
                         continue
                     # A floating window a previous control opened (a preview) may sit over the target.
                     # Escape closes the window under the pointer, so a user parks it there and presses Esc.
@@ -909,10 +1113,22 @@ def _native(plugin_id, result, png_path):
                         recorder.pressed_ids.clear()
                         recorder.contact_ids.clear()
                         driver.click(click_box)
-                        proof = (recorder.pressed_ids if control["kind"] in
-                                 {"button", "small_button", "radio_button", "selectable", "menu_item", "autoform_fold"}
-                                 else recorder.pressed_ids | recorder.contact_ids)
-                assert current["engine_id"] in proof, f"coverage: visible {raw_name!r} did not receive an actual click"
+                        proof = (
+                            recorder.pressed_ids
+                            if control["kind"]
+                            in {
+                                "button",
+                                "small_button",
+                                "radio_button",
+                                "selectable",
+                                "menu_item",
+                                "autoform_fold",
+                            }
+                            else recorder.pressed_ids | recorder.contact_ids
+                        )
+                assert current["engine_id"] in proof, (
+                    f"coverage: visible {raw_name!r} did not receive an actual click"
+                )
                 if current.get("expanded"):
                     # An already open group must stay reachable for its child controls.
                     driver.click(click_box)
@@ -945,7 +1161,9 @@ def _native(plugin_id, result, png_path):
             result["controls"] = list(controls.values())
             for section in walk(getattr(app, "spec", {})):
                 if section.get("type") == "choice":
-                    name = str(section.get("attr") or section.get("target") or section.get("key") or "")
+                    name = str(
+                        section.get("attr") or section.get("target") or section.get("key") or ""
+                    )
                     if name and name in driver.ids() and not skip_reason(name):
                         driver.click(name)
                         driver.escape()
@@ -970,9 +1188,14 @@ def _native(plugin_id, result, png_path):
             driver.frame()
         inventory = emtk_inventory(app, SIZE)
         result["inventory"] = inventory
-        missing = sorted(set(inventory["controls_without_tooltip"]) |
-                         {f"{row['kind']}: {row['label'] or row['id']}" for row in controls.values()
-                          if not row["tooltip"]})
+        missing = sorted(
+            set(inventory["controls_without_tooltip"])
+            | {
+                f"{row['kind']}: {row['label'] or row['id']}"
+                for row in controls.values()
+                if not row["tooltip"]
+            }
+        )
         result["controls_without_tooltip"] = missing
         if missing:
             result["errors"].append("controls without tooltip: " + ", ".join(missing))
@@ -998,8 +1221,11 @@ def _qt(plugin_id, result, png_path, qapp):
     from chisurf.core.plugin.registry import build_plugin_widget
     from chisurf.core.settings import cs_settings
 
-    path = next(p for p in (REPO / "chisurf" / "plugins").rglob("manifest.json")
-                if json.loads(p.read_text(encoding="utf-8")).get("id") == plugin_id)
+    path = next(
+        p
+        for p in (REPO / "chisurf" / "plugins").rglob("manifest.json")
+        if json.loads(p.read_text(encoding="utf-8")).get("id") == plugin_id
+    )
     cs_settings.setdefault("plugins", {})["gui_mode"] = "qt"
     result["phase"] = "factory"
     checkpoint(result)
@@ -1036,18 +1262,33 @@ def run_one(plugin_id, mode):
     directory = artifact_dir()
     directory.mkdir(parents=True, exist_ok=True)
     stem = artifact_stem(plugin_id)
-    result = {"plugin": plugin_id, "mode": mode, "status": "running", "size": list(SIZE),
-              "harness_sha256": HARNESS_SHA256,
-              "python": sys.version, "machine": platform.machine(), "clicked": [], "skipped": [],
-              "dialogs_closed": 0, "combos": [], "tabs": [], "tour_steps": 0,
-              "errors": [], "blocked_actions": []}
+    result = {
+        "plugin": plugin_id,
+        "mode": mode,
+        "status": "running",
+        "size": list(SIZE),
+        "harness_sha256": HARNESS_SHA256,
+        "python": sys.version,
+        "machine": platform.machine(),
+        "clicked": [],
+        "skipped": [],
+        "dialogs_closed": 0,
+        "combos": [],
+        "tabs": [],
+        "tour_steps": 0,
+        "errors": [],
+        "blocked_actions": [],
+    }
     with tempfile.TemporaryDirectory(prefix="chisurf-e2e-") as scratch:
-        env = {"CHISURF_SETTINGS_DIR": str(Path(scratch) / "settings"),
-               "MMFDB_SETTINGS_DIR": str(Path(scratch) / "mmfdb"),
-               "MMFDB_DATABASE_PATH": str(Path(scratch) / "mmfdb.sqlite"),
-               "MMFDB_OBJECT_STORE_ROOT": str(Path(scratch) / "objects"),
-               "XDG_CACHE_HOME": str(Path(scratch) / "cache"),
-               "LUMIS_QUEST_HOME": str(Path(scratch) / "lumis"), "QT_QPA_PLATFORM": "offscreen"}
+        env = {
+            "CHISURF_SETTINGS_DIR": str(Path(scratch) / "settings"),
+            "MMFDB_SETTINGS_DIR": str(Path(scratch) / "mmfdb"),
+            "MMFDB_DATABASE_PATH": str(Path(scratch) / "mmfdb.sqlite"),
+            "MMFDB_OBJECT_STORE_ROOT": str(Path(scratch) / "objects"),
+            "XDG_CACHE_HOME": str(Path(scratch) / "cache"),
+            "LUMIS_QUEST_HOME": str(Path(scratch) / "lumis"),
+            "QT_QPA_PLATFORM": "offscreen",
+        }
         with patch.dict(os.environ, env), ExitStack() as stack:
             try:
                 if plugin_id == "code_editor":
@@ -1063,6 +1304,7 @@ def run_one(plugin_id, mode):
                 from qtpy.QtWidgets import QApplication
 
                 from test.e2e.conftest import close_created_plots
+
                 MFDatabase(env["MMFDB_DATABASE_PATH"]).close()
                 qapp = QApplication.instance() or QApplication([])
                 demo_dir = provision_demo(plugin_id, scratch, result) if mode == "emtk" else None
@@ -1085,8 +1327,11 @@ def run_one(plugin_id, mode):
                 result["exception_type"] = type(exc).__name__
                 if isinstance(exc, ModuleNotFoundError):
                     origin = traceback.extract_tb(exc.__traceback__)[-1]
-                    result["dependency"] = {"module": exc.name, "source": origin.filename,
-                                            "line": origin.lineno}
+                    result["dependency"] = {
+                        "module": exc.name,
+                        "source": origin.filename,
+                        "line": origin.lineno,
+                    }
                 result["errors"].append(traceback.format_exc())
             finally:
                 if "qapp" in locals():
@@ -1099,7 +1344,9 @@ def run_one(plugin_id, mode):
                     qapp.processEvents()
                 if result["status"] == "running":
                     result["status"] = "failed"
-                (directory / f"{stem}.json").write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")
+                (directory / f"{stem}.json").write_text(
+                    json.dumps(result, indent=2, default=str), encoding="utf-8"
+                )
     return 0 if result["status"] == "passed" else 1
 
 

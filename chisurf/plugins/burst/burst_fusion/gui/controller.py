@@ -248,13 +248,17 @@ class FusionController:
         im.set_next_item_width(TEXT_WIDTH / 2)
         changed, file_type = im.input_text("##fusion_type", self.model.settings.file_type)
         im.set_item_tooltip(
-            tr("Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence.")
+            tr(
+                "Use auto for header detection or specify SPC-130, PTU, HT3 or HDF; a source manifest takes precedence."
+            )
         )
         if changed:
             self.model.settings.file_type = file_type
         expanded = im.collapsing_header("Detector definitions")
         im.set_item_tooltip(
-            tr("Define detector routing and PIE windows when a legacy source folder has no reading manifest.")
+            tr(
+                "Define detector routing and PIE windows when a legacy source folder has no reading manifest."
+            )
         )
         if expanded:
             changed, text = im.input_text_multiline(

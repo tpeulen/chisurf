@@ -154,7 +154,9 @@ def test_the_map_colormap_control_recolours_both_maps(app_driver):
     assert model.colormap == "magma"
     driver.click("2D residual")
     driver.frame(3)
-    assert "magma" in shown(driver), "the residual map follows the colormap chosen on the spectrum map"
+    assert "magma" in shown(driver), (
+        "the residual map follows the colormap chosen on the spectrum map"
+    )
     assert {c.colormap for c in app.canvases.values()} == {"magma"}
     driver.click("Reset view")
     driver.frame(2)

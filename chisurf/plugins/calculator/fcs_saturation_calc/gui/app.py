@@ -324,10 +324,14 @@ class SaturationApp(TourTarget, ImApp):
                     implot.plot_line(tr(item.get("name", "")), x, y)
             implot.end_plot()
             im.set_item_tooltip(
-                tr(re_plain(
-                    section.get("description")
-                    or tr("{title}: prediction from the current scheme and optics.").format(title=title)
-                ))
+                tr(
+                    re_plain(
+                        section.get("description")
+                        or tr("{title}: prediction from the current scheme and optics.").format(
+                            title=title
+                        )
+                    )
+                )
             )
 
     @staticmethod
@@ -374,9 +378,13 @@ class SaturationApp(TourTarget, ImApp):
         total = im.get_content_region_avail()[1]
         optics_h = ROW_H * 12 + 14.0 + NOTE_H
         self._diagram(max(total - optics_h - 28.0, 140.0))
-        if im.collapsing_header(tr("Optics and measurement") + "##optics", im.TreeNodeFlags.DEFAULT_OPEN):
+        if im.collapsing_header(
+            tr("Optics and measurement") + "##optics", im.TreeNodeFlags.DEFAULT_OPEN
+        ):
             im.set_item_tooltip(
-                tr("Power, wavelength, extinction, beam waists, diffusion and the measurement settings.")
+                tr(
+                    "Power, wavelength, extinction, beam waists, diffusion and the measurement settings."
+                )
             )
             SPEC["optics"]["sections"][0]["height"] = optics_h
             self._form("optics")
@@ -435,8 +443,10 @@ class SaturationApp(TourTarget, ImApp):
                 implot.plot_text(str(label), float(pos[i, 0]), float(pos[i, 1]), (0.0, 0.0))
             implot.end_plot()
             im.set_item_tooltip(
-                tr("The scheme: states as circles, dark transitions (orange, rate in the units of K_dark) and excitation "
-                "transitions (pink, sigma relative to the peak rate) as arrows. Edit the rates in the tables on the left.")
+                tr(
+                    "The scheme: states as circles, dark transitions (orange, rate in the units of K_dark) and excitation "
+                    "transitions (pink, sigma relative to the peak rate) as arrows. Edit the rates in the tables on the left."
+                )
             )
         self.item_rects["rate_matrix"] = self.item_rects.get(
             "k_dark_header", self.item_rects["state_scheme"]

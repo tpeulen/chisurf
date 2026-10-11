@@ -49,7 +49,9 @@ def test_a_row_click_opens_the_record_and_a_typed_field_is_saved(driver, app, cl
     panel = app.model.current
     assert panel.selected_id == "dev_gui"
     driver.type_into_name("location", "Lab 9")
-    assert next(d for d in client.list_devices() if d["device_id"] == "dev_gui")["location"] == "Lab 9"
+    assert (
+        next(d for d in client.list_devices() if d["device_id"] == "dev_gui")["location"] == "Lab 9"
+    )
     assert "Saved device" in app.model.status
 
 
@@ -144,7 +146,9 @@ def test_help_and_guide(driver, app):  # noqa: F811
 def test_the_guide_waits_for_the_rail_click(driver, app):  # noqa: F811
     app.tour.start()
     driver.draw(2)
-    while app.tour.active and app.tour.steps[app.tour.step_idx]["target"].get("name") != "nav.sample":
+    while (
+        app.tour.active and app.tour.steps[app.tour.step_idx]["target"].get("name") != "nav.sample"
+    ):
         app.tour.next()
         driver.draw(2)
     assert app.tour.awaiting
@@ -194,7 +198,11 @@ def test_everything_reachable_at_800x600(app):  # noqa: F811
 def test_the_menus_offer_every_qt_menu_action(driver, app):  # noqa: F811
     expected = {
         "File": [
-            "Import...", "Export selected sample...", "Backup database...", action_caption("reset"), "Close",
+            "Import...",
+            "Export selected sample...",
+            "Backup database...",
+            action_caption("reset"),
+            "Close",
         ],
         "Settings": ["Reset window layout"],
         "Help": ["Help...", "Guide", "About mmfdb-admin"],

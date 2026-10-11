@@ -64,7 +64,9 @@ def test_the_filtered_decay_equals_the_retired_generate_decay_tool(invert):
     model.compute()
     got = np.asarray(model.cumulative_parallel)
     size = max(len(got), len(expected))
-    np.testing.assert_array_equal(np.pad(got, (0, size - len(got))), np.pad(expected, (0, size - len(expected))))
+    np.testing.assert_array_equal(
+        np.pad(got, (0, size - len(got))), np.pad(expected, (0, size - len(expected)))
+    )
     assert 0 < got.sum() < selected.sum()
 
 

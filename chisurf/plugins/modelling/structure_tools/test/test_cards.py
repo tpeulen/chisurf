@@ -35,7 +35,9 @@ def inputs(tmp_path):
         shutil.copy(EXAMPLE / name, tmp_path / name)
     payload = json.loads((EXAMPLE / "hiv_rt.fps.json").read_text())
     for pos in payload["Positions"].values():
-        pos["pdb_path"] = str(tmp_path / ("dna.pdb" if pos["chain_identifier"] == "P" else "protein_1R0A.pdb"))
+        pos["pdb_path"] = str(
+            tmp_path / ("dna.pdb" if pos["chain_identifier"] == "P" else "protein_1R0A.pdb")
+        )
     names = list(payload["Distances"])
     payload["χ²"] = {"all": {"distances": names}}
     fps = tmp_path / "x.fps.json"
@@ -78,10 +80,15 @@ def test_draft_row_is_named_from_chain_and_residue_and_av_is_computed(inputs, tm
     ed = FpsEditor()
     rid = ed.add_position_row()
     ed.set_position(rid, "pdb_path", str(tmp_path / "protein_1R0A.pdb"))
-    assert list(ed.doc.positions) == ["A1"]            # named from the first chain and residue of the structure
+    assert list(ed.doc.positions) == [
+        "A1"
+    ]  # named from the first chain and residue of the structure
     ed.set_position("A1", "chain_identifier", "B")
     ed.set_position("A1", "residue_seq_number", "173")
-    assert ed.doc.positions["A1"]["chain_identifier"] == "B" and ed.doc.positions["A1"]["residue_seq_number"] == 173
+    assert (
+        ed.doc.positions["A1"]["chain_identifier"] == "B"
+        and ed.doc.positions["A1"]["residue_seq_number"] == 173
+    )
     assert ed.wait(120)
     assert ed.av_cache
 
@@ -112,7 +119,8 @@ def test_flexfit_and_json_update(inputs):
     ed.edit_flexfit_residue(0, "chain", "A")
     ed.edit_flexfit_residue(0, "residue", "7")
     assert ed.doc.extra_sections["FlexFit"]["s"]["Flexible residues"] == [
-        {"chain_identifier": "A", "residue_seq_number": 7}]
+        {"chain_identifier": "A", "residue_seq_number": 7}
+    ]
     ed.json_text = "{not json"
     assert not ed.apply_json_text() and ed.status_error
     ed.json_text = json.dumps({"Positions": {}, "Distances": {}})
@@ -143,7 +151,7 @@ def test_fps_card_clicks_load_tabs_clear_and_drop(inputs):
     ui.click("tab_Positions")
     ui.click("add_row")
     assert len(app.editor.pos_drafts) == 1
-    ui.click("clear")                       # the question: Keep first
+    ui.click("clear")  # the question: Keep first
     assert ui.app.modal is not None
     ui.press_text("Keep")
     assert len(app.editor.doc.positions) == 11
@@ -229,7 +237,9 @@ def test_docking_runs_and_lists_the_result(inputs, tmp_path):
     assert s.running
     assert s.poll_wait(120)
     ui.draw(3)
-    assert len(s.rows) == 1 and s.rows[0]["score"] > 0 and (tmp_path / "out" / "docked.pdb").exists()
+    assert (
+        len(s.rows) == 1 and s.rows[0]["score"] > 0 and (tmp_path / "out" / "docked.pdb").exists()
+    )
     app.close()
 
 
@@ -247,7 +257,11 @@ def test_docking_missing_input_and_drop(inputs, tmp_path):
     ui = Ui(app, (800, 600))
     ui.click("run")
     assert ui.shown("Add at least one PDB file")
-    assert ui.drop(tmp_path / "dna.pdb", inputs) and app.session.pdb_files and app.session.fps_json == str(inputs)
+    assert (
+        ui.drop(tmp_path / "dna.pdb", inputs)
+        and app.session.pdb_files
+        and app.session.fps_json == str(inputs)
+    )
     app.close()
 
 

@@ -17,7 +17,8 @@ def test_dialog_applies_the_calculator_mean_to_the_model(qapp):
     QtCore.QTimer.singleShot(
         1000,
         lambda: [
-            w.accept() for w in QtWidgets.QApplication.topLevelWidgets()
+            w.accept()
+            for w in QtWidgets.QApplication.topLevelWidgets()
             if isinstance(w, QtWidgets.QDialog)
         ],
     )

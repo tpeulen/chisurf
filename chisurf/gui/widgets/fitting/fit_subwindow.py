@@ -456,8 +456,7 @@ class FitSubWindow(CustomMdiSubWindow):
         if plot is None:
             return
         host = self.plot_settings
-        if host is not None and (host.owner is self or host.owner_gone()
-                                 or self.isActiveWindow()):
+        if host is not None and (host.owner is self or host.owner_gone() or self.isActiveWindow()):
             self.show_plot_settings()
         # Ensure the newly visible plot refreshes its content; we defer the
         # heavy update to the next event-loop turn to avoid deep re-entrancy

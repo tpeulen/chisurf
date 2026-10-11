@@ -111,7 +111,12 @@ def _prepare_arrangement(main_window: typing.Any, state: dict) -> typing.Callabl
         if backend is not None and backend.apply_arrangement is not None:
             backend.apply_arrangement(
                 main_window,
-                {"stacking": stacking, "active": active, "window_states": states, "view_mode": view_mode},
+                {
+                    "stacking": stacking,
+                    "active": active,
+                    "window_states": states,
+                    "view_mode": view_mode,
+                },
                 windows,
             )
 
@@ -332,7 +337,9 @@ def get_active_tab_titles(main_window: typing.Any) -> dict[str, str]:
     return titles
 
 
-def set_active_tabs(main_window: typing.Any, tabs: dict[str, int], titles: dict[str, str] | None = None) -> None:
+def set_active_tabs(
+    main_window: typing.Any, tabs: dict[str, int], titles: dict[str, str] | None = None
+) -> None:
     """Set active tabs of the main panels: by saved title where the panel has that tab, else by index."""
     if main_window is None:
         return

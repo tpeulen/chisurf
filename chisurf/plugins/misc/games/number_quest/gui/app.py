@@ -37,18 +37,18 @@ class NumberQuestApp(GameApp):
     HELP_DIR = Path(__file__).parent
 
     BINDINGS = (
-        (KEY_LEFT, 'left'),
-        (KEY_DOWN, 'left'),
-        (KEY_RIGHT, 'right'),
-        (KEY_UP, 'right'),
-        (KEY_ENTER, 'confirm'),
-        (KEY_RETURN, 'confirm'),
-        (KEY_ESCAPE, 'restart'),
-        ('q', 'coarse_left'),
-        ('e', 'coarse_right'),
-        ('r', 'restart'),
-        (' ', 'confirm'),
-        ('m', 'sound'),
+        (KEY_LEFT, "left"),
+        (KEY_DOWN, "left"),
+        (KEY_RIGHT, "right"),
+        (KEY_UP, "right"),
+        (KEY_ENTER, "confirm"),
+        (KEY_RETURN, "confirm"),
+        (KEY_ESCAPE, "restart"),
+        ("q", "coarse_left"),
+        ("e", "coarse_right"),
+        ("r", "restart"),
+        (" ", "confirm"),
+        ("m", "sound"),
     )
 
     def __init__(self, audio=None, clock=time.monotonic):
@@ -116,7 +116,6 @@ class NumberQuestApp(GameApp):
         if self.audio is not None and self.sound_enabled:
             self.audio.sfx("guess", 880 if self.game.status is GuessStatus.WON else 520)
         self.request_frame()
-
 
     def key(self, key, text="", modifiers=0):
         if self.overlay_active:

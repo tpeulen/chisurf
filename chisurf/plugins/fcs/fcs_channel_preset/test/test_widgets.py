@@ -23,7 +23,9 @@ def test_view_model_add_and_collect() -> None:
     assert pairs[1]["name"].endswith("_ACF")
 
 
-def test_the_qt_embed_hosts_the_emtk_app(qapp, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_qt_embed_hosts_the_emtk_app(
+    qapp, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Qt surfaces that embed the editor get a QWidget around the emtk app, nothing of their own."""
     pytest.importorskip("qtpy.QtWidgets")
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))

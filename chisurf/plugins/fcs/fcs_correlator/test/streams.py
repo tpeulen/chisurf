@@ -23,13 +23,17 @@ def write_spc(folder: Path, name: str, macro, micro, routing) -> Path:
     return path
 
 
-def diffusion_spc(folder: Path, name: str, *, rate_hz: float, duration_s: float = 2.0, seed: int = 7) -> Path:
+def diffusion_spc(
+    folder: Path, name: str, *, rate_hz: float, duration_s: float = 2.0, seed: int = 7
+) -> Path:
     """Molecules crossing the focus at ``rate_hz`` (the demo's crossing, shorter run)."""
     config = dict(DEMO, molecule_rate_hz=rate_hz, duration_s=duration_s)
     return write_spc(folder, name, *photon_stream(seed, config=config))
 
 
-def poisson_spc(folder: Path, name: str, *, rate_hz: float = 60000.0, duration_s: float = 2.0, seed: int = 3) -> Path:
+def poisson_spc(
+    folder: Path, name: str, *, rate_hz: float = 60000.0, duration_s: float = 2.0, seed: int = 3
+) -> Path:
     """A constant-rate Poisson stream split at random over two detectors: G must be 1 at every lag."""
     rng = np.random.default_rng(seed)
     times = np.sort(rng.uniform(0.0, duration_s, rng.poisson(rate_hz * duration_s)))

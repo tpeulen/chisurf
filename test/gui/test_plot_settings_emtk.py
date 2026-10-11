@@ -55,8 +55,17 @@ def test_a_page_is_not_a_widget():
 def test_the_lineplot_settings_are_drawn_from_its_spec(lineplot_dock):
     plot, host = lineplot_dock
     rects = plot.settings_form.rects
-    for name in ("log_x", "log_y", "is_density", "display_group", "reference_mode",
-                 "xmin_enabled", "xmax_value", "x_shift", "y_shift"):
+    for name in (
+        "log_x",
+        "log_y",
+        "is_density",
+        "display_group",
+        "reference_mode",
+        "xmin_enabled",
+        "xmax_value",
+        "x_shift",
+        "y_shift",
+    ):
         assert name in rects, f"{name} was not drawn"
     assert host.surface.last_error is None
 

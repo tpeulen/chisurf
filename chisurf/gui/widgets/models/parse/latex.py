@@ -27,8 +27,14 @@ def expression_preview_png(expression: str, font_size: float = 13.0) -> bytes | 
         from emtk.tex import render_rgba
 
         tex = sanitize_latex_for_mathtext(convert_python_expression_to_latex(expression))
-        w, h, rgba, _ = render_rgba(tex, font_size * 100.0 / 72.0, colour=(0, 0, 0, 255),
-                                    pad=5, background=(255, 255, 255, 255), sans=True)
+        w, h, rgba, _ = render_rgba(
+            tex,
+            font_size * 100.0 / 72.0,
+            colour=(0, 0, 0, 255),
+            pad=5,
+            background=(255, 255, 255, 255),
+            sans=True,
+        )
         return png_encode(w, h, rgba)
     except Exception:  # noqa: BLE001 - a preview is best effort
         return None

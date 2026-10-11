@@ -14,8 +14,12 @@ from qtpy import QtWidgets
 @pytest.fixture(autouse=True)
 def isolated(tmp_path, monkeypatch):
     """Keep all settings/stores scratch and reject external service connections."""
-    for name, suffix in {"CHISURF_SETTINGS_DIR": "settings", "MMFDB_SETTINGS_DIR": "mmfdb",
-                         "MMFDB_DATABASE_PATH": "mmfdb.sqlite", "MMFDB_OBJECT_STORE_ROOT": "objects"}.items():
+    for name, suffix in {
+        "CHISURF_SETTINGS_DIR": "settings",
+        "MMFDB_SETTINGS_DIR": "mmfdb",
+        "MMFDB_DATABASE_PATH": "mmfdb.sqlite",
+        "MMFDB_OBJECT_STORE_ROOT": "objects",
+    }.items():
         monkeypatch.setenv(name, str(tmp_path / suffix))
     monkeypatch.chdir(tmp_path)
     from chisurf.core import settings, setup_channel_definition
@@ -42,18 +46,37 @@ def definition(tmp_path):
     """A complete portable detector definition with scientific metadata and physical timing."""
     from chisurf.core.setup_channel_definition import ChannelDefinition
 
-    return ChannelDefinition({
-        "detectors": {"green": {"chs": [8, 0], "micro_time_ranges": [[0, 4095]],
-            "g_factor": 1.25, "l1": .05, "l2": .02, "g_factor_channels": [850, 1850],
-            "g_factor_decay_uuid": "reference-id", "g_factor_calibration_id": "calibration-id",
-            "unknown_detector": {"keep": [1, 2]}}},
-        "windows": {"prompt": [700, 2000]},
-        "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 13.5,
-                         "micro_time_resolution": 3.2958984375, "micro_time_binning": 2},
-        "channel_luts": {"0": [0., 1., 2.]}, "channel_shifts": {"1": 2},
-        "channel_lut_sources": {"0": "validation.lut"}, "apply_lut": True,
-        "optical_config": {"unknown_optical": {"keep": True}}, "unknown_setup": {"keep": 7},
-    }, file_path=str(tmp_path / "library.json"))
+    return ChannelDefinition(
+        {
+            "detectors": {
+                "green": {
+                    "chs": [8, 0],
+                    "micro_time_ranges": [[0, 4095]],
+                    "g_factor": 1.25,
+                    "l1": 0.05,
+                    "l2": 0.02,
+                    "g_factor_channels": [850, 1850],
+                    "g_factor_decay_uuid": "reference-id",
+                    "g_factor_calibration_id": "calibration-id",
+                    "unknown_detector": {"keep": [1, 2]},
+                }
+            },
+            "windows": {"prompt": [700, 2000]},
+            "tttr_reading": {
+                "file_type": "SPC-130",
+                "macro_time_resolution": 13.5,
+                "micro_time_resolution": 3.2958984375,
+                "micro_time_binning": 2,
+            },
+            "channel_luts": {"0": [0.0, 1.0, 2.0]},
+            "channel_shifts": {"1": 2},
+            "channel_lut_sources": {"0": "validation.lut"},
+            "apply_lut": True,
+            "optical_config": {"unknown_optical": {"keep": True}},
+            "unknown_setup": {"keep": 7},
+        },
+        file_path=str(tmp_path / "library.json"),
+    )
 
 
 def _page(qtbot, **kwargs):
@@ -97,7 +120,9 @@ def test_semantic_changes_noops_and_binning_signal_once(qapp, qtbot, definition)
         assert page.update_detector("green", {"g_factor": 1.25}) is False
         assert changed == []
         assert page.update_detector("green", {"g_factor": 1.7}) is True
-        assert changed == [True] and definition.data["detectors"]["green"]["unknown_detector"] == {"keep": [1, 2]}
+        assert changed == [True] and definition.data["detectors"]["green"]["unknown_detector"] == {
+            "keep": [1, 2]
+        }
         page.micro_time_binning = 4
         assert bins == [4] and changed == [True]
         page.micro_time_binning = 4
@@ -129,14 +154,19 @@ def test_full_definition_and_preview_roundtrip_with_callback_once(qapp, qtbot, d
             assert page.get_settings()[key] == before[key]
         page.set_microtime_per_channel_data({8: [2, 4, 6], 0: [1, 2, 3]}, "actual-reference.spc")
         assert np.array_equal(page.get_preview()[8], [2, 4, 6])
-        assert page.get_settings()["_microtime_per_channel_decay"]["file_path"] == "actual-reference.spc"
+        assert (
+            page.get_settings()["_microtime_per_channel_decay"]["file_path"]
+            == "actual-reference.spc"
+        )
     finally:
         page.close()
     definition.changed()
     assert len(callbacks) == 3 and len(notices) == 2
 
 
-def test_json_working_file_is_distinct_from_named_library_and_parent_forms(qapp, qtbot, definition, tmp_path):
+def test_json_working_file_is_distinct_from_named_library_and_parent_forms(
+    qapp, qtbot, definition, tmp_path
+):
     """A standalone definition loads without overwriting or being replaced by its setup store."""
     raw = tmp_path / "working.json"
     raw.write_text(json.dumps(definition.get_settings()))
@@ -251,21 +281,46 @@ def test_visibility_flags_hide_real_declared_controls(qapp, qtbot, definition):
     """Old constructor flags act on the native page rather than being ignored kwargs."""
     from emtk.testing import Driver
 
-    page = _page(qtbot, model=definition, show_edit_json=False, show_save=False,
-                 show_setups_file=False, show_setup_selection=False, show_help=False,
-                 show_tttr_reading=False, show_tables=False, show_add_inputs=False)
+    page = _page(
+        qtbot,
+        model=definition,
+        show_edit_json=False,
+        show_save=False,
+        show_setups_file=False,
+        show_setup_selection=False,
+        show_help=False,
+        show_tttr_reading=False,
+        show_tables=False,
+        show_add_inputs=False,
+    )
     try:
         driver = Driver(page.app, (800, 700))
         driver.frame(3)
-        assert not {"edit_json", "save_definition", "import_setups", "export_setups",
-                    "setup_choice", "save", "rename", "delete", "help", "page_help",
-                    "section_reading", "section_windows", "section_detectors", "add_window", "add_detector"} & set(driver.ids())
+        assert not {
+            "edit_json",
+            "save_definition",
+            "import_setups",
+            "export_setups",
+            "setup_choice",
+            "save",
+            "rename",
+            "delete",
+            "help",
+            "page_help",
+            "section_reading",
+            "section_windows",
+            "section_detectors",
+            "add_window",
+            "add_detector",
+        } & set(driver.ids())
         assert page.model is definition
     finally:
         page.close()
 
 
-def test_complete_definition_export_preserves_metadata_and_named_unknown_fields(definition, tmp_path):
+def test_complete_definition_export_preserves_metadata_and_named_unknown_fields(
+    definition, tmp_path
+):
     """The portable writer exports complete state and merges an owned named setup losslessly."""
     from chisurf.core.fio import setup_store
 
@@ -283,7 +338,9 @@ def test_complete_definition_export_preserves_metadata_and_named_unknown_fields(
     assert saved["detectors"]["green"]["g_factor_calibration_id"] == "calibration-id"
 
 
-def test_named_definition_export_preserves_remaining_metadata_without_resurrecting_deleted_detector(definition, tmp_path):
+def test_named_definition_export_preserves_remaining_metadata_without_resurrecting_deleted_detector(
+    definition, tmp_path
+):
     """The working detector key set is authoritative even when its store has older rows."""
     from chisurf.core.fio import setup_store
 
@@ -325,7 +382,9 @@ def test_definition_export_rejects_its_named_library_target_before_writing(defin
     assert library.read_bytes() == before
 
 
-def test_actual_definition_picker_cancel_failure_and_success_control_finish(qapp, qtbot, definition, tmp_path, monkeypatch):
+def test_actual_definition_picker_cancel_failure_and_success_control_finish(
+    qapp, qtbot, definition, tmp_path, monkeypatch
+):
     """Finish follows a completed real save, never merely opening or cancelling its picker."""
     from emtk.testing import Driver
 
@@ -357,12 +416,17 @@ def test_actual_definition_picker_cancel_failure_and_success_control_finish(qapp
         driver.frame(2)
         driver.click([text[:4] for text in driver.painter.texts if text[5] == "Save"][-1])
         assert page.isComplete() and finished == [True]
-        assert json.loads((tmp_path / "detector_definition.json").read_text()) == definition.get_settings()
+        assert (
+            json.loads((tmp_path / "detector_definition.json").read_text())
+            == definition.get_settings()
+        )
     finally:
         page.close()
 
 
-def test_named_save_failure_leaves_finish_false_and_preserves_library(qapp, qtbot, definition, tmp_path, monkeypatch):
+def test_named_save_failure_leaves_finish_false_and_preserves_library(
+    qapp, qtbot, definition, tmp_path, monkeypatch
+):
     """A complete exported file alone cannot claim the requested named update succeeded."""
     from emtk.testing import Driver
 
@@ -397,7 +461,9 @@ def test_named_save_failure_leaves_finish_false_and_preserves_library(qapp, qtbo
         page.close()
 
 
-def test_supplied_filtered_preview_does_not_reread_existing_measurement(qapp, qtbot, definition, tmp_path, monkeypatch):
+def test_supplied_filtered_preview_does_not_reread_existing_measurement(
+    qapp, qtbot, definition, tmp_path, monkeypatch
+):
     """A scientific caller's filtered histograms cannot be replaced by another file read."""
     import shutil
 
@@ -449,12 +515,29 @@ def test_rejected_wizard_close_preserves_native_surface(qapp, qtbot):
         wizard.close()
 
 
-@pytest.mark.parametrize("flags,present,absent", [
-    ({"show_edit_json": True, "show_help": False, "show_setup_selection": False}, {"edit_json"}, {"help", "page_help", "setup_choice"}),
-    ({"show_save": True, "show_setup_selection": False}, {"save_definition"}, {"setup_choice", "save"}),
-    ({"show_add_inputs": False, "show_tables": True}, {"section_detectors"}, {"add_window", "add_detector"}),
-])
-def test_mixed_positive_visibility_flags_are_independent(qapp, qtbot, definition, flags, present, absent):
+@pytest.mark.parametrize(
+    "flags,present,absent",
+    [
+        (
+            {"show_edit_json": True, "show_help": False, "show_setup_selection": False},
+            {"edit_json"},
+            {"help", "page_help", "setup_choice"},
+        ),
+        (
+            {"show_save": True, "show_setup_selection": False},
+            {"save_definition"},
+            {"setup_choice", "save"},
+        ),
+        (
+            {"show_add_inputs": False, "show_tables": True},
+            {"section_detectors"},
+            {"add_window", "add_detector"},
+        ),
+    ],
+)
+def test_mixed_positive_visibility_flags_are_independent(
+    qapp, qtbot, definition, flags, present, absent
+):
     """Independent constructor flags cannot hide an unrelated declared action or section."""
     from emtk.testing import Driver
 
@@ -487,13 +570,19 @@ def test_retained_lut_shift_stays_numeric_and_painted_after_narrow_resize(qapp, 
                     break
                 x += cell_width
             y = control._body_box[1] + control.order().index(index) * control._row_h
-            assert any(text[5] == "2" and x <= text[0] < x + cell_width and y <= text[1] < y + control._row_h
-                       for text in driver.painter.texts)
+            assert any(
+                text[5] == "2"
+                and x <= text[0] < x + cell_width
+                and y <= text[1] < y + control._row_h
+                for text in driver.painter.texts
+            )
     finally:
         page.close()
 
 
-def test_reentrant_detector_notice_close_does_not_request_another_frame(qapp, qtbot, definition, monkeypatch):
+def test_reentrant_detector_notice_close_does_not_request_another_frame(
+    qapp, qtbot, definition, monkeypatch
+):
     """A caller closing its real page from a signal ends subsequent native dispatch."""
     page = _page(qtbot, model=definition)
     frames = []

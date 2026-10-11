@@ -97,8 +97,13 @@ def test_the_thread_runner_runs_calls_in_order_off_the_drawing_thread():
     seen, done, errors = [], [], []
     try:
         for i in range(5):
-            runner.submit(Call(f"c{i}", lambda i=i: (seen.append((i, threading.get_ident())), i)[1],
-                               done=done.append))
+            runner.submit(
+                Call(
+                    f"c{i}",
+                    lambda i=i: (seen.append((i, threading.get_ident())), i)[1],
+                    done=done.append,
+                )
+            )
         runner.submit(Call("bad", lambda: 1 / 0, failed=errors.append))
         import time
 

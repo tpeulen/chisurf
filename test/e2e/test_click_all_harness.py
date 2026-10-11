@@ -1,4 +1,5 @@
 """Prove discovery, side-effect exclusions, and subprocess failure reporting."""
+
 import json
 from types import SimpleNamespace
 
@@ -9,17 +10,39 @@ from . import test_click_all_plugins as harness
 
 def test_discovery_covers_every_gui_manifest_exactly_once():
     """Native factories take precedence over the shrinking Qt fallback."""
-    declared = {key for key, manifest in harness.CATALOG.items()
-                if manifest.get("entrypoints", {}).get("gui") or manifest.get("entrypoints", {}).get("emtk")}
+    declared = {
+        key
+        for key, manifest in harness.CATALOG.items()
+        if manifest.get("entrypoints", {}).get("gui") or manifest.get("entrypoints", {}).get("emtk")
+    }
     assert set(harness.IDS_EMTK).isdisjoint(harness.IDS_QT)
     assert set(harness.IDS_EMTK) | set(harness.IDS_QT) == declared
     assert len(harness.IDS_EMTK) > 100
 
 
-@pytest.mark.parametrize("name", ["open_file", "save", "delete_record", "oauth", "account",
-                                  "connect", "upload", "acquire", "run_remote", "start_hardware",
-                                  "Update Now", "User Editor", "Enable Python LSP", "Enable editor RPC",
-                                  "×", "× ×", "＋ ＋", "↑ Parent"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "open_file",
+        "save",
+        "delete_record",
+        "oauth",
+        "account",
+        "connect",
+        "upload",
+        "acquire",
+        "run_remote",
+        "start_hardware",
+        "Update Now",
+        "User Editor",
+        "Enable Python LSP",
+        "Enable editor RPC",
+        "×",
+        "× ×",
+        "＋ ＋",
+        "↑ Parent",
+    ],
+)
 def test_side_effect_actions_have_an_explicit_exclusion(name):
     """Control exclusions cover files, user accounts, jobs, and equipment."""
     assert harness.skip_reason(name)
@@ -33,19 +56,24 @@ def test_bounded_job_operates_real_cancel_and_checks_idle(tmp_path, monkeypatch)
     monkeypatch.setenv("CHISURF_E2E_DIR", str(tmp_path))
     recorder = SimpleNamespace(rows=[])
     idle = False
+
     def settle(timeout):
         """Represent the job's pending and then cancelled state."""
         if not idle:
             raise TimeoutError()
         return "idle"
+
     def frame():
         """Expose the actual cancellation control on the busy frame."""
-        recorder.rows.append({"id": "Cancel##cancel", "kind": "button", "enabled": True,
-                              "rect": (1, 1, 10, 10)})
+        recorder.rows.append(
+            {"id": "Cancel##cancel", "kind": "button", "enabled": True, "rect": (1, 1, 10, 10)}
+        )
+
     def click(rect):
         """Only a real click, rather than private job state mutation, cancels it."""
         nonlocal idle
         idle = True
+
     driver = SimpleNamespace(settle=settle, frame=frame, click=click)
     result = {"plugin": "fixture", "current_control": "Calculate"}
     assert harness.settle_with_cancel(driver, recorder, result) == "idle"
@@ -54,9 +82,20 @@ def test_bounded_job_operates_real_cancel_and_checks_idle(tmp_path, monkeypatch)
 
 def test_tags_and_nested_choices_are_read_from_the_actual_spec():
     """Metadata is considered even when the visible caption sounds safe."""
-    spec = {"sections": [{"type": "panel", "sections": [
-        {"type": "button_row", "buttons": [{"action": "proceed", "tags": ["external"]}]},
-        {"type": "choice", "attr": "mode"}]}]}
+    spec = {
+        "sections": [
+            {
+                "type": "panel",
+                "sections": [
+                    {
+                        "type": "button_row",
+                        "buttons": [{"action": "proceed", "tags": ["external"]}],
+                    },
+                    {"type": "choice", "attr": "mode"},
+                ],
+            }
+        ]
+    }
     assert harness.control_tags(spec, "Proceed##proceed") == {"external"}
     assert [s["attr"] for s in harness.walk(spec) if s["type"] == "choice"] == ["mode"]
 
@@ -64,9 +103,12 @@ def test_tags_and_nested_choices_are_read_from_the_actual_spec():
 def test_tour_owner_adapters_preserve_real_tours():
     """Existing guide aliases and header-editor composition are supported."""
     tour = SimpleNamespace(start=lambda: None, next=lambda: None, stop=lambda: None)
-    for app in (SimpleNamespace(tour=tour), SimpleNamespace(guide=tour),
-                SimpleNamespace(header_gui=SimpleNamespace(tour=tour)),
-                SimpleNamespace(phasor_gui=SimpleNamespace(tour=tour))):
+    for app in (
+        SimpleNamespace(tour=tour),
+        SimpleNamespace(guide=tour),
+        SimpleNamespace(header_gui=SimpleNamespace(tour=tour)),
+        SimpleNamespace(phasor_gui=SimpleNamespace(tour=tour)),
+    ):
         assert harness.tour_for(app) is tour
     assert harness.tour_for(SimpleNamespace()) is None
 
@@ -76,8 +118,11 @@ def test_worker_crash_cannot_reuse_an_earlier_passing_result(tmp_path, monkeypat
     monkeypatch.setenv("CHISURF_E2E_DIR", str(tmp_path))
     path = tmp_path / "example.json"
     path.write_text(json.dumps({"status": "passed"}))
-    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k:
-                        SimpleNamespace(returncode=-11, stdout="", stderr="native crash"))
+    monkeypatch.setattr(
+        harness.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(returncode=-11, stdout="", stderr="native crash"),
+    )
     with pytest.raises(AssertionError, match="worker exit -11"):
         harness._isolated("example", "emtk")
     assert json.loads(path.read_text())["status"] != "passed"
@@ -88,16 +133,20 @@ def test_worker_timeout_is_an_explicit_failure_artifact(tmp_path, monkeypatch):
     """A stuck plugin reports its bounded timeout instead of a test skip."""
     monkeypatch.setenv("CHISURF_E2E_DIR", str(tmp_path))
     monkeypatch.setenv("CHISURF_E2E_TIMEOUT", "2")
+
     def timeout(*args, **kwargs):
         """Pretend the isolated worker did not complete."""
         raise harness.subprocess.TimeoutExpired(args[0], kwargs["timeout"])
+
     monkeypatch.setattr(harness.subprocess, "run", timeout)
     with pytest.raises(pytest.fail.Exception, match="exceeded 2s"):
         harness._isolated("example", "emtk")
     assert json.loads((tmp_path / "example.json").read_text())["errors"] == ["worker exceeded 2s"]
 
 
-def test_native_scenario_visits_each_tab_and_keeps_expanded_children_reachable(tmp_path, monkeypatch):
+def test_native_scenario_visits_each_tab_and_keeps_expanded_children_reachable(
+    tmp_path, monkeypatch
+):
     """A tab switch or header click must not silently hide untested safe actions."""
     from emtk import im
     from emtk.app import ImApp
@@ -106,6 +155,7 @@ def test_native_scenario_visits_each_tab_and_keeps_expanded_children_reachable(t
     from chisurf.emtk.help_guide import EmTkGuidedTour
 
     used = []
+
     def gui():
         """Draw two real tabs with actions sorting after their tab captions."""
         if im.begin_tab_bar("pages"):
@@ -127,14 +177,25 @@ def test_native_scenario_visits_each_tab_and_keeps_expanded_children_reachable(t
             im.end_tab_bar()
 
     app = ImApp(gui)
-    app.tour = EmTkGuidedTour([{"title": "First", "text": "First step."},
-                              {"title": "Gain", "target": "gain", "await": True}],
-                             wait_for_controls=True)
+    app.tour = EmTkGuidedTour(
+        [
+            {"title": "First", "text": "First step."},
+            {"title": "Gain", "target": "gain", "await": True},
+        ],
+        wait_for_controls=True,
+    )
     monkeypatch.setattr(chisurf.emtk.plugins, "load_plugin", lambda *a, **k: app)
     monkeypatch.setattr(harness, "SIZE", (420, 320))
     monkeypatch.setenv("CHISURF_E2E_DIR", str(tmp_path))
-    result = {"plugin": "fixture", "clicked": [], "skipped": [], "combos": [], "tabs": [],
-              "dialogs_closed": 0, "errors": []}
+    result = {
+        "plugin": "fixture",
+        "clicked": [],
+        "skipped": [],
+        "combos": [],
+        "tabs": [],
+        "dialogs_closed": 0,
+        "errors": [],
+    }
     harness._native("fixture", result, tmp_path / "fixture.png")
     assert used[:2] == ["Alpha", "Beta"] and len(used) == 3
     assert set(result["tabs"]) == {"Alpha", "Beta"}
@@ -147,13 +208,19 @@ def test_native_scenario_visits_each_tab_and_keeps_expanded_children_reachable(t
 def test_tour_next_cannot_report_progress_while_awaiting(tmp_path):
     """Await remains unsatisfied until a real target interaction notifies the tour."""
     from chisurf.emtk.help_guide import EmTkGuidedTour
-    tour = EmTkGuidedTour([{"title": "Click", "target": "confirm", "await": True},
-                          {"title": "Done"}], wait_for_controls=True)
+
+    tour = EmTkGuidedTour(
+        [{"title": "Click", "target": "confirm", "await": True}, {"title": "Done"}],
+        wait_for_controls=True,
+    )
     tour.start()
     calls = []
-    driver = SimpleNamespace(rect=lambda _: (1, 1, 10, 10),
-                             click=lambda rect: calls.append(rect), frame=lambda n: None,
-                             settle=lambda **kwargs: None)
+    driver = SimpleNamespace(
+        rect=lambda _: (1, 1, 10, 10),
+        click=lambda rect: calls.append(rect),
+        frame=lambda n: None,
+        settle=lambda **kwargs: None,
+    )
     result = {}
     with pytest.raises(AssertionError, match="did not satisfy tour await"):
         harness.advance_tour(driver, tour, result, SimpleNamespace(rows=[], input_values={}))
@@ -167,18 +234,27 @@ def test_tour_next_cannot_report_progress_while_awaiting(tmp_path):
 def test_pre_satisfied_await_still_requires_a_fresh_real_target_interaction():
     """Prior inventory state must not replace exercising the guided example."""
     from chisurf.emtk.help_guide import EmTkGuidedTour
-    tour = EmTkGuidedTour([{"title": "Confirm", "target": "confirm", "await": True},
-                          {"title": "Done"}], wait_for_controls=True)
+
+    tour = EmTkGuidedTour(
+        [{"title": "Confirm", "target": "confirm", "await": True}, {"title": "Done"}],
+        wait_for_controls=True,
+    )
     tour.start()
     tour.notify_used("confirm")  # represents a real earlier interaction
     assert not tour.awaiting
     calls = []
+
     def click(rect):
         """Represent the fresh production handler, distinct from pre-satisfaction."""
         calls.append(rect)
         tour.notify_used("confirm")
-    driver = SimpleNamespace(rect=lambda _: (1, 1, 10, 10), click=click,
-                             frame=lambda n: None, settle=lambda **kwargs: None)
+
+    driver = SimpleNamespace(
+        rect=lambda _: (1, 1, 10, 10),
+        click=click,
+        frame=lambda n: None,
+        settle=lambda **kwargs: None,
+    )
     result = {}
     harness.advance_tour(driver, tour, result, SimpleNamespace(rows=[], input_values={}))
     assert calls == [(1, 1, 10, 10)]
@@ -187,8 +263,10 @@ def test_pre_satisfied_await_still_requires_a_fresh_real_target_interaction():
 
 def test_overlapping_guide_targets_are_explicitly_ambiguous():
     """Identical labels and geometry in two contexts require an owner-specific target."""
-    rows = [{"id": "Gain##gain", "visit_id": context, "rect": (10, 20, 40, 20)}
-            for context in ("first-context", "second-context")]
+    rows = [
+        {"id": "Gain##gain", "visit_id": context, "rect": (10, 20, 40, 20)}
+        for context in ("first-context", "second-context")
+    ]
     with pytest.raises(AssertionError, match="ambiguous across contexts"):
         harness.resolved_tour_control(rows, "gain", (10, 20, 40, 20))
 
@@ -210,6 +288,7 @@ def test_native_and_qt_dialog_guards_cancel_without_selecting_files(qapp):
         assert QFileDialog.getOpenFileName() == ("", "")
         assert FileDialog().draw() is False
         import zmq
+
         socket = zmq.Context.instance().socket(zmq.REQ)
         with pytest.raises(RuntimeError, match="ZeroMQ"):
             socket.connect("tcp://127.0.0.1:8765")
@@ -223,6 +302,7 @@ def test_native_and_qt_dialog_guards_cancel_without_selecting_files(qapp):
         with pytest.raises(RuntimeError, match="external process"):
             harness.subprocess.Popen(["must-not-run"])
         import os
+
         with pytest.raises(RuntimeError, match="external process"):
             os.system("must-not-run")
         dialog.deleteLater()
@@ -233,11 +313,19 @@ def test_native_and_qt_dialog_guards_cancel_without_selecting_files(qapp):
 def run_fixture(app, tmp_path, monkeypatch):
     """Exercise a real ImApp with the same native scenario as a manifest worker."""
     import chisurf.emtk.plugins
+
     monkeypatch.setattr(chisurf.emtk.plugins, "load_plugin", lambda *a, **k: app)
     monkeypatch.setattr(harness, "SIZE", (420, 320))
     monkeypatch.setenv("CHISURF_E2E_DIR", str(tmp_path))
-    result = {"plugin": "fixture", "clicked": [], "skipped": [], "combos": [], "tabs": [],
-              "dialogs_closed": 0, "errors": []}
+    result = {
+        "plugin": "fixture",
+        "clicked": [],
+        "skipped": [],
+        "combos": [],
+        "tabs": [],
+        "dialogs_closed": 0,
+        "errors": [],
+    }
     harness._native("fixture", result, tmp_path / "fixture.png")
     return result
 
@@ -250,6 +338,7 @@ def test_offscreen_buttons_are_explicit_coverage_failure(tmp_path, monkeypatch):
     from chisurf.emtk.help_guide import EmTkGuidedTour
 
     used = []
+
     def gui():
         """Submit overflow controls inside the real window clip."""
         im.begin("review-clip", (0, 0, 420, 140))
@@ -258,6 +347,7 @@ def test_offscreen_buttons_are_explicit_coverage_failure(tmp_path, monkeypatch):
                 used.append(index)
             im.set_item_tooltip("Exercise an in-memory action.")
         im.end()
+
     app = ImApp(gui)
     app.tour = EmTkGuidedTour([{"title": "Intro"}, {"title": "Next"}])
     with pytest.raises(AssertionError, match="coverage.*(visible|offscreen|reveal)"):
@@ -274,15 +364,36 @@ def test_collapsed_autoform_fold_reveals_and_exercises_hidden_action(tmp_path, m
 
     used = []
     form = FormState()
-    spec = {"sections": [{"type": "panel", "title": "Advanced", "description": "Advanced fields.",
-                          "collapsible": True, "collapsed": True, "sections": [
-        {"type": "button_row", "buttons": [{"action": "gain", "label": "Gain",
-         "description": "An in-memory action."}]}]}]}
+    spec = {
+        "sections": [
+            {
+                "type": "panel",
+                "title": "Advanced",
+                "description": "Advanced fields.",
+                "collapsible": True,
+                "collapsed": True,
+                "sections": [
+                    {
+                        "type": "button_row",
+                        "buttons": [
+                            {
+                                "action": "gain",
+                                "label": "Gain",
+                                "description": "An in-memory action.",
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
     model = SimpleNamespace(gain=lambda: used.append("gain"))
     app = ImApp(lambda: draw_form(spec, model, form))
     app.form, app.spec = form, spec
-    app.tour = EmTkGuidedTour([{"title": "Intro"}, {"title": "Gain", "target": "gain", "await": True}],
-                             wait_for_controls=True)
+    app.tour = EmTkGuidedTour(
+        [{"title": "Intro"}, {"title": "Gain", "target": "gain", "await": True}],
+        wait_for_controls=True,
+    )
     form.on_used = app.tour.notify_used
     result = run_fixture(app, tmp_path, monkeypatch)
     assert used and "Gain##gain" in result["clicked"]
@@ -300,6 +411,7 @@ def test_intro_tour_exercises_first_real_await_target(tmp_path, monkeypatch):
 
     used = []
     app = ImApp(lambda: None)
+
     def gui():
         """Notify the real tour only when the real button handler runs."""
         if im.button("Gain##gain"):
@@ -307,9 +419,12 @@ def test_intro_tour_exercises_first_real_await_target(tmp_path, monkeypatch):
             app.tour.notify_used("gain")
         im.set_item_tooltip("Perform the guided in-memory action.")
         app.remember("gain")
+
     app.gui = gui
-    app.tour = EmTkGuidedTour([{"title": "Intro"}, {"title": "Gain", "target": "gain", "await": True},
-                              {"title": "Done"}], wait_for_controls=True)
+    app.tour = EmTkGuidedTour(
+        [{"title": "Intro"}, {"title": "Gain", "target": "gain", "await": True}, {"title": "Done"}],
+        wait_for_controls=True,
+    )
     result = run_fixture(app, tmp_path, monkeypatch)
     assert result.get("tour_await_target") == "gain"
     assert used == ["gain", "gain"]
@@ -326,6 +441,7 @@ def test_scrollable_overflow_delivers_all_eighteen_real_callbacks(tmp_path, monk
 
     used = []
     app = ImApp(lambda: None)
+
     def gui():
         """Draw a real scrollable child with more actions than fit."""
         im.begin("scrolling", (0, 0, 420, 320))
@@ -338,9 +454,12 @@ def test_scrollable_overflow_delivers_all_eighteen_real_callbacks(tmp_path, monk
             app.remember(f"gain{index}")
         im.end_child()
         im.end()
+
     app.gui = gui
-    app.tour = EmTkGuidedTour([{"title": "Intro"}, {"title": "Gain", "target": "gain0", "await": True}],
-                             wait_for_controls=True)
+    app.tour = EmTkGuidedTour(
+        [{"title": "Intro"}, {"title": "Gain", "target": "gain0", "await": True}],
+        wait_for_controls=True,
+    )
     result = run_fixture(app, tmp_path, monkeypatch)
     assert set(used) == set(range(18))
     assert len(used) == 19  # all eighteen controls, then the real guided example
@@ -353,8 +472,11 @@ def test_worker_factory_failure_discards_stale_png(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_E2E_DIR", str(tmp_path))
     png = tmp_path / "example.png"
     png.write_bytes(b"previous run")
-    monkeypatch.setattr(harness.subprocess, "run", lambda *a, **k:
-                        SimpleNamespace(returncode=1, stdout="", stderr="factory failed"))
+    monkeypatch.setattr(
+        harness.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(returncode=1, stdout="", stderr="factory failed"),
+    )
     with pytest.raises(AssertionError):
         harness._isolated("example", "emtk")
     assert not png.exists()
@@ -370,14 +492,20 @@ def test_translated_independent_contexts_deliver_same_named_buttons(tmp_path, mo
     from chisurf.emtk.help_guide import EmTkGuidedTour
 
     used = []
+
     class Parent(ImApp):
         """Host two real local-coordinate child apps through the public draw_child API."""
+
         def __init__(self):
             super().__init__(self.render)
             self.boxes = [(10, 20, 80, 60), (110, 20, 80, 60)]
-            self.children = [ImApp(lambda index=index: self.render_child(index)) for index in range(2)]
-            self.tour = EmTkGuidedTour([{"title": "Intro"}, {"title": "Gain", "target": "gain", "await": True}],
-                                     wait_for_controls=True)
+            self.children = [
+                ImApp(lambda index=index: self.render_child(index)) for index in range(2)
+            ]
+            self.tour = EmTkGuidedTour(
+                [{"title": "Intro"}, {"title": "Gain", "target": "gain", "await": True}],
+                wait_for_controls=True,
+            )
             self.child_focus = None
 
         def render_child(self, index):
@@ -429,7 +557,9 @@ def test_translated_independent_contexts_deliver_same_named_buttons(tmp_path, mo
             super().pointer_release(x, y, button, modifiers)
             if self.child_focus is not None:
                 bx, by, _, _ = self.boxes[self.child_focus]
-                self.children[self.child_focus].pointer_release(x / scale - bx, y / scale - by, button, modifiers)
+                self.children[self.child_focus].pointer_release(
+                    x / scale - bx, y / scale - by, button, modifiers
+                )
 
     result = run_fixture(Parent(), tmp_path, monkeypatch)
     assert set(used[:2]) == {0, 1}
@@ -458,9 +588,12 @@ def test_demo_choice_feeds_matching_file_and_folder_never_save(tmp_path):
 def test_tour_await_on_tagged_hardware_stays_refused():
     """The name-based exclusion is gone, but a declared hardware tag still blocks."""
     from chisurf.emtk.help_guide import EmTkGuidedTour
+
     tour = EmTkGuidedTour([{"title": "Go", "target": "go", "await": True}], wait_for_controls=True)
     tour.start()
-    spec = {"sections": [{"type": "button_row", "buttons": [{"action": "go", "tags": ["hardware"]}]}]}
+    spec = {
+        "sections": [{"type": "button_row", "buttons": [{"action": "go", "tags": ["hardware"]}]}]
+    }
     driver = SimpleNamespace(rect=lambda _: (1, 1, 10, 10))
     with pytest.raises(AssertionError, match="unsafe control"):
         harness.advance_tour(driver, tour, {}, SimpleNamespace(rows=[], input_values={}), spec)

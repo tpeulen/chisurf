@@ -262,10 +262,13 @@ def test_draws_empty_and_populated(root, size):
         table = app.browser_gui._burst_table.control
         assert [column.key for column in table.columns] == column_names(app.model.table)
         assert len(table._widths) == len(table.columns)
-        assert all(width > painter.text_width(column.title)
-                   for column, width in zip(table.columns, table._widths))
+        assert all(
+            width > painter.text_width(column.title)
+            for column, width in zip(table.columns, table._widths)
+        )
     finally:
         app.close()
+
 
 # 6/7. no Qt, tooltips
 def test_port_is_qt_free():

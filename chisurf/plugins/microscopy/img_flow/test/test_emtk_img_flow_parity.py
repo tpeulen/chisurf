@@ -273,7 +273,9 @@ def test_the_demo_is_loaded_and_mapped_as_the_qt_tool_did(app, drv, with_demo):
     drv.click("load_example")
     drv.settle(timeout=300)
     m = app.model
-    assert m.status_line == qt["status"] and "frames of 64x64, 1 channel(s). Ready." in m.status_line
+    assert (
+        m.status_line == qt["status"] and "frames of 64x64, 1 channel(s). Ready." in m.status_line
+    )
     assert Path(m.filename) == with_demo
     for k, v in qt["timing"].items():
         assert getattr(m, k) == pytest.approx(v), k

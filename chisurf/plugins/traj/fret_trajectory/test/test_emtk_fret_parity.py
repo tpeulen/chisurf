@@ -148,7 +148,11 @@ def test_nothing_chosen_and_a_cancel_preserve_the_legacy_answer(legacy, tmp_path
     app = FretTrajectoryApp()
     try:
         app.begin_save()
-        assert [app.status] == [text for _title, text in legacy["told"]] == ["Open a trajectory first."]
+        assert (
+            [app.status]
+            == [text for _title, text in legacy["told"]]
+            == ["Open a trajectory first."]
+        )
         app.close()
         app = _loaded()
         app.begin_save()

@@ -99,7 +99,11 @@ class PositionsView(_View):
 
     def picked_ids(self) -> list[str]:
         """The rows of the selection that still exist, in table order."""
-        return [r["row"] for r in self.picked_rows if isinstance(r, dict) and self.ed._pos(r["row"]) is not None]
+        return [
+            r["row"]
+            for r in self.picked_rows
+            if isinstance(r, dict) and self.ed._pos(r["row"]) is not None
+        ]
 
     # table callbacks
     def select_row(self, record) -> None:
@@ -258,7 +262,11 @@ class DistancesView(_View):
 
     def picked_ids(self) -> list[str]:
         """The restraints of the selection that still exist, in table order."""
-        return [r["row"] for r in self.picked_rows if isinstance(r, dict) and self.ed._dist(r["row"]) is not None]
+        return [
+            r["row"]
+            for r in self.picked_rows
+            if isinstance(r, dict) and self.ed._dist(r["row"]) is not None
+        ]
 
     def delete_row(self, record) -> None:
         if not isinstance(record, dict):
@@ -508,7 +516,9 @@ class FpsJsonCard(CardShell):
         names = self.targets()
         dropped = self.editor.delete_avs(names)
         self.say(
-            f"Deleted {dropped} computed accessible volume(s)." if dropped else "None of the selected rows has a computed AV.",
+            f"Deleted {dropped} computed accessible volume(s)."
+            if dropped
+            else "None of the selected rows has a computed AV.",
             not dropped,
         )
 
@@ -710,7 +720,9 @@ class FpsJsonCard(CardShell):
                 {
                     "label": action_caption("save"),
                     "key": "save",
-                    "tip": action_tooltip("save", "Save the whole configuration as an fps.json file."),
+                    "tip": action_tooltip(
+                        "save", "Save the whole configuration as an fps.json file."
+                    ),
                 },
                 {
                     "label": "Update",
@@ -893,7 +905,9 @@ class FpsJsonCard(CardShell):
             if im.button(tr("Load DA Distribution...")):
                 self.load_distribution()
             im.set_item_tooltip(
-                tr("A file with R_DA in the first column and p(R_DA) in the second; one header line.")
+                tr(
+                    "A file with R_DA in the first column and p(R_DA) in the second; one header line."
+                )
             )
             self.remember("load_distribution")
 
@@ -1021,8 +1035,10 @@ class FpsJsonCard(CardShell):
         scene = self.editor.scene3d()
         if not scene["structures"] and not scene["avs"]:
             im.text_wrapped(
-                tr("Nothing to show: give a position a structure (Positions tab, PDB file or ID), and compute its "
-                "accessible volume with Compute AVs.")
+                tr(
+                    "Nothing to show: give a position a structure (Positions tab, PDB file or ID), and compute its "
+                    "accessible volume with Compute AVs."
+                )
             )
             self.remember("empty_3d")
             return
@@ -1049,9 +1065,11 @@ class FpsJsonCard(CardShell):
         self._follow_selection(viewer)
         self.chimol.draw(enabled=not self.blocked)
         im.set_item_tooltip(
-            tr("The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the "
-            "distance lines; the selected position's attachment atom is the white sphere. Drag to rotate, wheel to "
-            "zoom; click an atom to attach the selected position to it, click a mean sphere to select its position.")
+            tr(
+                "The structures as cartoon, the accessible volumes as surfaces with their mean positions, and the "
+                "distance lines; the selected position's attachment atom is the white sphere. Drag to rotate, wheel to "
+                "zoom; click an atom to attach the selected position to it, click a mean sphere to select its position."
+            )
         )
         self.remember("plot3d")
 
@@ -1217,8 +1235,10 @@ class FpsJsonCard(CardShell):
                 )
             implot3d.end_plot()
             im.set_item_tooltip(
-                tr("Accessible volumes (points), mean positions and distance lines; "
-                "drag to rotate, wheel to zoom.")
+                tr(
+                    "Accessible volumes (points), mean positions and distance lines; "
+                    "drag to rotate, wheel to zoom."
+                )
             )
             self.remember("plot3d")
 

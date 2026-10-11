@@ -106,8 +106,9 @@ class ConditionalScanPlot(Plot):
             im.next_cell()
             im.text("at")
             im.next_cell()
-            changed, z = im.slider_float("##what-if-held", self.held_z, -SCAN_SPAN, SCAN_SPAN,
-                                         "%+.2f sd")
+            changed, z = im.slider_float(
+                "##what-if-held", self.held_z, -SCAN_SPAN, SCAN_SPAN, "%+.2f sd"
+            )
             im.set_item_tooltip("Where to hold it, in its own standard deviations.")
             if changed:
                 self.set_held(z)
@@ -176,7 +177,9 @@ class ConditionalScanPlot(Plot):
             return
 
         self._engine = engine
-        current = self.parameters[self.parameter] if self.parameter < len(self._full_names) else None
+        current = (
+            self.parameters[self.parameter] if self.parameter < len(self._full_names) else None
+        )
         self._full_names = [str(n) for n in form.get_names()]
         # The same parameter stays held when the fit changes under it.
         self.parameter = self.parameters.index(current) if current in self.parameters else 0

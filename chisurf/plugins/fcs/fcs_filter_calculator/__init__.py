@@ -69,7 +69,7 @@ __all__ = [
     "FilterResultMFD",
     "UnmixResult",
     "DetectionMode",
-        "FilterCalcClient",
+    "FilterCalcClient",
     "menu_hidden",
     "name",
 ]

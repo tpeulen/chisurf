@@ -65,10 +65,15 @@ class StructureToolsHubApp(ImApp):
         self._prebuilt: dict[str, tuple] = {}
         if self.GUIDE_FILE is not None:
             self.tour = EmTkGuidedTour(
-                self.GUIDE_FILE, get_target_rect=self.item_rects.get, owner=self, wait_for_controls=True
+                self.GUIDE_FILE,
+                get_target_rect=self.item_rects.get,
+                owner=self,
+                wait_for_controls=True,
             )
             self.help_window = EmTkHelpWindow(
-                title=f"{self.TITLE} - Help", resource=self.HELP_FILE, owner=self,
+                title=f"{self.TITLE} - Help",
+                resource=self.HELP_FILE,
+                owner=self,
                 on_start_guide=self.tour.start,
             )
         super().__init__(self.render)
@@ -122,7 +127,9 @@ class StructureToolsHubApp(ImApp):
         self.children.clear()
 
     def animating(self):
-        return super().animating() or self._builder.busy or bool(self.child and self.child.animating())
+        return (
+            super().animating() or self._builder.busy or bool(self.child and self.child.animating())
+        )
 
     def next_frame_in(self):
         values = [super().next_frame_in()]
@@ -139,8 +146,10 @@ class StructureToolsHubApp(ImApp):
                 if self.selected in self._prebuilt or not entry["emtk"]:
                     self.select(self.selected)
                 elif not self._builder.busy:
-                    self._builder.start({self.selected: lambda f=entry["emtk"]: self._make(f)},
-                                        name="chisurf-structure-tools")
+                    self._builder.start(
+                        {self.selected: lambda f=entry["emtk"]: self._make(f)},
+                        name="chisurf-structure-tools",
+                    )
             super().draw(painter, x, y, w, h)
         finally:
             self._painter = None
@@ -150,7 +159,11 @@ class StructureToolsHubApp(ImApp):
         needle = self.search.strip().lower()
         if not needle:
             return list(self.entries)
-        return [e for e in self.entries if needle in e["name"].lower() or needle in e["description"].lower()]
+        return [
+            e
+            for e in self.entries
+            if needle in e["name"].lower() or needle in e["description"].lower()
+        ]
 
     def step(self, direction: int):
         """The Back / Next buttons: the neighbouring tool of the list (the ends stay where they are)."""
@@ -174,7 +187,9 @@ class StructureToolsHubApp(ImApp):
                 if changed:
                     self.search = value
                 self.remember("tool_search")
-                im.set_item_tooltip(tr("Type to list only the tools whose name or description matches."))
+                im.set_item_tooltip(
+                    tr("Type to list only the tools whose name or description matches.")
+                )
                 im.separator()
             shown = self.visible_entries()
             last_group = None
@@ -209,7 +224,9 @@ class StructureToolsHubApp(ImApp):
 
         im.set_next_window_pos((nav_width, 0), im.Cond.ALWAYS)
         im.set_next_window_size((max(1.0, width - nav_width), 86), im.Cond.ALWAYS)
-        if im.begin("Tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Tool description", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             im.heading(tr(entry["name"]), level=2)
             im.push_text_wrap_pos()
             im.text_wrapped(tr(entry["description"]))
@@ -232,8 +249,12 @@ class StructureToolsHubApp(ImApp):
             draw_opening(tr(self.selected), self.child_box, "Structure tool opening")
         else:
             im.set_next_window_pos((nav_width + 16, 102), im.Cond.ALWAYS)
-            im.set_next_window_size((max(1.0, width - nav_width - 32), max(1.0, height - 118)), im.Cond.ALWAYS)
-            if im.begin("Tool status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+            im.set_next_window_size(
+                (max(1.0, width - nav_width - 32), max(1.0, height - 118)), im.Cond.ALWAYS
+            )
+            if im.begin(
+                "Tool status", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+            ):
                 im.heading(tr("Tool unavailable"), level=2)
                 im.text_wrapped(self.error)
                 self.remember("tool_error")
@@ -276,7 +297,11 @@ class StructureToolsHubApp(ImApp):
         return bool(handler(paths)) if callable(handler) else False
 
     def key(self, key, text="", modifiers=0):
-        return self.child.key(key, text, modifiers) if self.child else super().key(key, text, modifiers)
+        return (
+            self.child.key(key, text, modifiers)
+            if self.child
+            else super().key(key, text, modifiers)
+        )
 
     def key_release(self, key, text="", modifiers=0):
         handler = getattr(self.child, "key_release", None)

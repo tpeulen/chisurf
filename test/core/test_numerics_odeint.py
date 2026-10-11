@@ -43,8 +43,11 @@ def _scheme(rate_pairs, c0):
     rs = ReactionSystem()
     for educts, products, es, ps, k in rate_pairs:
         rs.add_reaction(
-            educts=educts, products=products, educt_stoichiometry=es,
-            product_stoichometry=ps, rate=k,
+            educts=educts,
+            products=products,
+            educt_stoichiometry=es,
+            product_stoichometry=ps,
+            rate=k,
         )
     rs.initial_concentrations = c0
     return rs
@@ -53,11 +56,18 @@ def _scheme(rate_pairs, c0):
 @pytest.mark.parametrize(
     "reactions, c0, t",
     [
-        ([([0], [1], [1], [1], 1.0), ([1], [0], [1], [1], 0.1)], [1.0, 0.0], np.linspace(0, 60, 600)),
+        (
+            [([0], [1], [1], [1], 1.0), ([1], [0], [1], [1], 0.1)],
+            [1.0, 0.0],
+            np.linspace(0, 60, 600),
+        ),
         (
             # A + B <-> C fast, C -> D slow: stiff.
-            [([0, 1], [2], [1, 1], [1], 1e4), ([2], [0, 1], [1], [1, 1], 1e3),
-             ([2], [3], [1], [1], 1e-2)],
+            [
+                ([0, 1], [2], [1, 1], [1], 1e4),
+                ([2], [0, 1], [1], [1, 1], 1e3),
+                ([2], [3], [1], [1], 1e-2),
+            ],
             [1.0, 1.0, 0.0, 0.0],
             np.linspace(0, 300, 1000),
         ),
@@ -68,8 +78,11 @@ def test_reaction_system_integrates_like_scipy(reactions, c0, t):
     rs.times = t
     rs.calc()
     ys = integrate.odeint(
-        rs.rate_equation, rs.initial_concentrations.flatten(), t,
-        args=(rs.reactions,), mxstep=15000000,
+        rs.rate_equation,
+        rs.initial_concentrations.flatten(),
+        t,
+        args=(rs.reactions,),
+        mxstep=15000000,
     )
     np.testing.assert_allclose(rs.concentrations, ys, rtol=1e-6, atol=1e-9)
 
@@ -78,11 +91,13 @@ def test_a_failure_warns_like_scipy():
     t = np.logspace(-6, 6, 61)
 
     def robertson(y, tt):
-        return np.array([
-            -0.04 * y[0] + 1e4 * y[1] * y[2],
-            0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2,
-            3e7 * y[1] ** 2,
-        ])
+        return np.array(
+            [
+                -0.04 * y[0] + 1e4 * y[1] * y[2],
+                0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2,
+                3e7 * y[1] ** 2,
+            ]
+        )
 
     with pytest.warns(ODEintWarning, match="Excess work done"):
         y = odeint(robertson, [1.0, 0.0, 0.0], t, mxstep=5)

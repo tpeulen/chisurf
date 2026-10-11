@@ -198,5 +198,3 @@ def test_residuals_sit_inside_the_fit_range_only():
     plot.fit = fit
     _x, _y, _ym, wres, _mask, _support = plot._get_arrays()
     assert np.isnan(wres[0]) and wres[1] == 0.5
-
-

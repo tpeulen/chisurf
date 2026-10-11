@@ -124,16 +124,18 @@ def header_time_ns(tttr: Any, binning: int) -> tuple[float, float] | None:
     return micro_s * 1e9 * max(1, int(binning)), n_chan * micro_s * 1e9
 
 
-def effective_timing_ns(tttr: Any, binning: int, reading: dict) -> tuple[float | None, float | None]:
+def effective_timing_ns(
+    tttr: Any, binning: int, reading: dict
+) -> tuple[float | None, float | None]:
     """Use per-file physical timing unless an explicit ps/ns calibration overrides it."""
     physical = header_time_ns(tttr, binning)
     dt, period = physical if physical is not None else (None, None)
     if reading.get("override_timing") or physical is None:
-        micro = float(reading.get("micro_time_resolution", 0.) or 0.)
-        macro = float(reading.get("macro_time_resolution", 0.) or 0.)
-        if micro > 0.:
+        micro = float(reading.get("micro_time_resolution", 0.0) or 0.0)
+        macro = float(reading.get("macro_time_resolution", 0.0) or 0.0)
+        if micro > 0.0:
             dt = micro * 1e-3 * max(1, int(binning))
-        if macro > 0.:
+        if macro > 0.0:
             period = macro
     return dt, period
 
@@ -500,7 +502,9 @@ def write_b4_tables(
     return written_files, by_stem, written_dirs
 
 
-def write_container_tables(results, det_meta, parameters, *, state_rows=None, experiment=None, tick=None):
+def write_container_tables(
+    results, det_meta, parameters, *, state_rows=None, experiment=None, tick=None
+):
     """Write the per-burst fits of measurements that live in a ``.pto`` into that container.
 
     The container twin of :func:`write_b4_tables`: no ``b?4`` folder, no ``channel_settings.json`` -- one object per
@@ -538,7 +542,9 @@ def write_container_tables(results, det_meta, parameters, *, state_rows=None, ex
         meta = det_meta.get(det)
         if meta is not None:
             cols = meta[2]
-            arr = np.array([[coerce_float(row.get(c)) for c in cols] for row in rows_g], dtype=float)
+            arr = np.array(
+                [[coerce_float(row.get(c)) for c in cols] for row in rows_g], dtype=float
+            )
             tables.setdefault(container, {})[det] = store_from_arrays(
                 {c: arr[:, i] for i, c in enumerate(cols)}
             )
@@ -548,7 +554,11 @@ def write_container_tables(results, det_meta, parameters, *, state_rows=None, ex
     return [
         Path(
             write_mle_container(
-                container, by_det, state_rows=state_rows, experiment=experiment, parameters=parameters
+                container,
+                by_det,
+                state_rows=state_rows,
+                experiment=experiment,
+                parameters=parameters,
             )
         )
         for container, by_det in tables.items()
@@ -715,13 +725,20 @@ def model_availability() -> str:
     for name, spec in specs.items():
         if name not in available:
             if spec.get("n_patterns", 0):
-                reason = str(tr("requires {count} reference patterns")).format(count=spec["n_patterns"])
+                reason = str(tr("requires {count} reference patterns")).format(
+                    count=spec["n_patterns"]
+                )
             else:
                 properties = spec.get("params_schema", {}).get("properties", {})
-                inputs = [str(tr(item.get("title", key))) for key, item in properties.items()
-                          if item.get("type") == "array"]
+                inputs = [
+                    str(tr(item.get("title", key)))
+                    for key, item in properties.items()
+                    if item.get("type") == "array"
+                ]
                 reason = str(tr("requires {inputs}")).format(inputs=" / ".join(inputs))
-            lines.append(str(tr("{name}: unavailable here ({reason}).")).format(name=name, reason=reason))
+            lines.append(
+                str(tr("{name}: unavailable here ({reason}).")).format(name=name, reason=reason)
+            )
     return "\n".join(lines)
 
 
@@ -777,7 +794,9 @@ class LazyTTTRs(collections.abc.MutableMapping):
         if key not in self.paths:
             matches = [identity for identity, path in self.paths.items() if path.stem == key]
             if len(matches) != 1:
-                raise KeyError(f"Measurement {key!r} is missing or ambiguous; use its complete path.")
+                raise KeyError(
+                    f"Measurement {key!r} is missing or ambiguous; use its complete path."
+                )
             key = matches[0]
         if key not in self._cache:
             path = self.paths[key]
@@ -836,7 +855,11 @@ class MleSettings:
         from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
 
         name = validate_fit_model(self.model)
-        names = list(TAIL_SCHEMA["properties"]) if name == TAIL_MODEL else list(parameter_names_of(name))
+        names = (
+            list(TAIL_SCHEMA["properties"])
+            if name == TAIL_MODEL
+            else list(parameter_names_of(name))
+        )
         if name == "fit23":
             values = [getattr(self, key) for key in names]
             fixed = [getattr(self, f"fix_{key}") for key in names]
@@ -844,10 +867,14 @@ class MleSettings:
             properties = fit_model_specs()[name]["params_schema"]["properties"]
             saved_values = self.model_values.setdefault(name, {})
             saved_fixed = self.model_fixed.setdefault(name, {})
-            values = [saved_values.get(key, properties[key].get("default", 0.)) for key in names]
-            fixed = [saved_fixed.get(key, properties[key].get("fixed_default", False)) for key in names]
+            values = [saved_values.get(key, properties[key].get("default", 0.0)) for key in names]
+            fixed = [
+                saved_fixed.get(key, properties[key].get("fixed_default", False)) for key in names
+            ]
             if name == "fit25":
-                fixed = [True if key.startswith("tau") else value for key, value in zip(names, fixed)]
+                fixed = [
+                    True if key.startswith("tau") else value for key, value in zip(names, fixed)
+                ]
         return names, np.asarray(values, dtype=float), np.asarray(fixed, dtype=np.int32)
 
     def edit_parameter(self, name: str, value: Any, *, fixed: bool = False) -> None:
@@ -864,7 +891,11 @@ class MleSettings:
         else:
             spec = fit_model_specs()[self.model]["params_schema"]["properties"][name]
             value = float(value)
-            if not np.isfinite(value) or value < spec.get("minimum", -np.inf) or value > spec.get("maximum", np.inf):
+            if (
+                not np.isfinite(value)
+                or value < spec.get("minimum", -np.inf)
+                or value > spec.get("maximum", np.inf)
+            ):
                 raise ValueError(f"Parameter {name!r} is outside its declared bounds.")
             self.model_values.setdefault(self.model, {})[name] = value
 
@@ -941,7 +972,9 @@ class MleSession:
     def set_model(self, name: str) -> None:
         """Select one validated model for all detectors, retaining each model's edits."""
         validate_fit_model(name)
-        if self.template.model == name and all(st.model == name for st in self.det_settings.values()):
+        if self.template.model == name and all(
+            st.model == name for st in self.det_settings.values()
+        ):
             return
         self.template.model = name
         for settings in self.det_settings.values():
@@ -1053,9 +1086,13 @@ class MleSession:
         if self.df_bursts is None or "_measurement_path" not in column_names(self.df_bursts):
             return {p.stem: p for p in self.bur_files}
         selected = {str(path.resolve()) for path in self.bur_files}
-        return {str(raw): Path(burst) for raw, burst in zip(
-            self.df_bursts["_measurement_path"], self.df_bursts["_burst_path"]
-        ) if str(burst) in selected}
+        return {
+            str(raw): Path(burst)
+            for raw, burst in zip(
+                self.df_bursts["_measurement_path"], self.df_bursts["_burst_path"]
+            )
+            if str(burst) in selected
+        }
 
     def state_arrays_by_measurement(self) -> tuple[dict, int, str]:
         """Resolve H2MM states within each analysis, then retain complete raw-file identities."""
@@ -1066,10 +1103,13 @@ class MleSession:
             path.parent.parent.resolve() for path in self.bur_files if not _is_container(path)
         )
         for root in roots:
-            selected = np.array([Path(str(path)).parent.parent == root
-                                 for path in self.df_bursts["_burst_path"]])
-            identities = dict.fromkeys(str(value) for value in np.asarray(
-                self.df_bursts["_measurement_path"], dtype=object)[selected])
+            selected = np.array(
+                [Path(str(path)).parent.parent == root for path in self.df_bursts["_burst_path"]]
+            )
+            identities = dict.fromkeys(
+                str(value)
+                for value in np.asarray(self.df_bursts["_measurement_path"], dtype=object)[selected]
+            )
             scoped = {Path(identity).stem: self.tttrs[identity] for identity in identities}
             states, n_states, message = state_split.load_state_arrays(root, scoped)
             for identity in identities:
@@ -1500,8 +1540,11 @@ class MleSession:
             (int(np.max(info["chs"])) for info in self.detectors.values() if info.get("chs")),
             default=0,
         )
-        identity_column = ("_measurement_path" if "_measurement_path" in column_names(self.df_bursts)
-                           else "First File")
+        identity_column = (
+            "_measurement_path"
+            if "_measurement_path" in column_names(self.df_bursts)
+            else "First File"
+        )
         first_file = np.array([str(v) for v in self.df_bursts[identity_column]], dtype=object)
         fp = numeric_column(self.df_bursts, "First Photon")
         lp = numeric_column(self.df_bursts, "Last Photon")
@@ -1519,7 +1562,9 @@ class MleSession:
         blocks, jobs = [], []
         try:
             for fname, bursts in groups.items():
-                tttr = self.tttrs.get(fname if identity_column == "_measurement_path" else Path(fname).stem)
+                tttr = self.tttrs.get(
+                    fname if identity_column == "_measurement_path" else Path(fname).stem
+                )
                 if tttr is None:
                     jobs.append(
                         (
@@ -1560,9 +1605,16 @@ class MleSession:
                 if states_full is not None and n_states > 0:
                     states_full = np.ascontiguousarray(states_full, dtype=np.int8)
                     st_shm = shared_memory.SharedMemory(create=True, size=states_full.nbytes)
-                    np.ndarray(states_full.shape, dtype=states_full.dtype, buffer=st_shm.buf)[:] = states_full
+                    np.ndarray(states_full.shape, dtype=states_full.dtype, buffer=st_shm.buf)[:] = (
+                        states_full
+                    )
                     blocks.append(st_shm)
-                    state_info = (st_shm.name, states_full.shape, str(states_full.dtype), int(n_states))
+                    state_info = (
+                        st_shm.name,
+                        states_full.shape,
+                        str(states_full.dtype),
+                        int(n_states),
+                    )
                 rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
                 perdet = {}
                 for det in det_order:
@@ -1758,8 +1810,11 @@ class MleSession:
         if not 0 <= idx < n:
             return {}
         names = column_names(self.df_bursts)
-        key = (str(self.df_bursts["_measurement_path"][idx]) if "_measurement_path" in names
-               else Path(str(self.df_bursts["First File"][idx])).stem)
+        key = (
+            str(self.df_bursts["_measurement_path"][idx])
+            if "_measurement_path" in names
+            else Path(str(self.df_bursts["First File"][idx])).stem
+        )
         tttr = self.tttrs.get(key)
         if tttr is None:
             return {}

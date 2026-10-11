@@ -1,4 +1,5 @@
 """The existing admin handler describes and displays its real synthetic table seed."""
+
 from __future__ import annotations
 
 import copy
@@ -18,9 +19,12 @@ def demo_widget(tmp_path, monkeypatch, qapp):
     from chisurf.plugins.core.mmfdb_admin.test import seeded_admin as sa
 
     sa.use_folder(tmp_path, monkeypatch)
-    configure_runtime(settings_dir=tmp_path, database_path=tmp_path / "mmfdb.db",
-                      source_database_path=tmp_path / "missing.db",
-                      object_store_root=tmp_path / "objects")
+    configure_runtime(
+        settings_dir=tmp_path,
+        database_path=tmp_path / "mmfdb.db",
+        source_database_path=tmp_path / "missing.db",
+        object_store_root=tmp_path / "objects",
+    )
 
     def no_connect(*args, **kwargs):
         raise AssertionError("caption test attempted an external socket connection")
@@ -40,6 +44,7 @@ def demo_widget(tmp_path, monkeypatch, qapp):
 
     class ReplayClient:
         """Delegate reads locally and return the already verified owned seed on demand."""
+
         def __getattr__(self, name):
             return getattr(local, name)
 
@@ -62,8 +67,13 @@ def demo_widget(tmp_path, monkeypatch, qapp):
 
 def click_header(widget):
     """Deliver the real handler's ten left-click events without inventing a control."""
-    event = QtGui.QMouseEvent(QtCore.QEvent.MouseButtonPress, QtCore.QPointF(1, 1),
-                             QtCore.Qt.LeftButton, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    event = QtGui.QMouseEvent(
+        QtCore.QEvent.MouseButtonPress,
+        QtCore.QPointF(1, 1),
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     for _ in range(10):
         widget._on_header_label_clicked(event)
 

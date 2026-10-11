@@ -18,14 +18,16 @@ def _overlaps(card, target):
     return not (cx + CARD[0] <= tx or cx >= tx + tw or cy + CARD[1] <= ty or cy >= ty + th)
 
 
-@pytest.mark.parametrize("tx,ty", list(itertools.product((10, 300, 600, 1000), (10, 300, 600, 740))))
+@pytest.mark.parametrize(
+    "tx,ty", list(itertools.product((10, 300, 600, 1000), (10, 300, 600, 740)))
+)
 def test_the_card_never_covers_its_target(tx, ty):
     target = (tx, ty, 120.0, 26.0)
     assert not _overlaps(place_tour_card(target, *VIEW, *CARD), target)
 
 
 def test_a_wide_target_still_gets_an_uncovered_card():
-    target = (0.0, 380.0, 1200.0, 40.0)          # a toolbar across the whole width
+    target = (0.0, 380.0, 1200.0, 40.0)  # a toolbar across the whole width
     assert not _overlaps(place_tour_card(target, *VIEW, *CARD), target)
 
 
@@ -39,7 +41,9 @@ def _drawn_tour(rects):
     from emtk.app import ImApp
     from emtk.testing import RecordingPainter
 
-    tour = EmTkGuidedTour([{"title": "t", "text": "x", "target": "add"}], get_target_rect=lambda k: rects.get(k))
+    tour = EmTkGuidedTour(
+        [{"title": "t", "text": "x", "target": "add"}], get_target_rect=lambda k: rects.get(k)
+    )
     tour.start()
     app = ImApp(lambda: (im.begin("W", (0, 0, 1200, 800)), tour.draw(1200, 800), im.end()))
     return tour, app, RecordingPainter
@@ -54,7 +58,7 @@ def test_the_user_can_drag_the_card_and_it_stays_there():
     app.draw(Painter(), 0, 0, 1200, 800)
     app.press(x0 + 100, y0 + 10)
     app.draw(Painter(), 0, 0, 1200, 800)
-    app.hover(x0 + 100 - 60, y0 + 10 + 90)       # drag by (-60, +90)
+    app.hover(x0 + 100 - 60, y0 + 10 + 90)  # drag by (-60, +90)
     app.draw(Painter(), 0, 0, 1200, 800)
     app.release()
     for _ in range(2):

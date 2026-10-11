@@ -1,4 +1,5 @@
 """Confirmed click-all callbacks use the public native event contracts."""
+
 from types import SimpleNamespace
 
 from emtk import im
@@ -18,15 +19,23 @@ def test_global_refresh_toggle_accepts_the_value_delivered_by_a_form():
     model.rebuild = lambda **kwargs: calls.append(kwargs)
     model._update_status = lambda: None
     state = FormState()
-    spec = {"sections": [{"type": "toggle", "attr": "auto_refresh",
-                         "call": "auto_refresh_changed", "description": "Refresh changed fits."}]}
+    spec = {
+        "sections": [
+            {
+                "type": "toggle",
+                "attr": "auto_refresh",
+                "call": "auto_refresh_changed",
+                "description": "Refresh changed fits.",
+            }
+        ]
+    }
     app = ImApp(lambda: draw_form(spec, model, state))
     app.form = state
     driver = Driver(app, (360, 200))
     driver.frame(2)
-    driver.click('auto_refresh')
+    driver.click("auto_refresh")
     assert model.auto_refresh is True
-    assert calls == [{'force': True}]
+    assert calls == [{"force": True}]
     model.auto_refresh_changed()  # Existing direct model callers remain valid.
 
 
@@ -35,13 +44,13 @@ def test_hub_key_release_supports_optional_child_event_hooks():
     from chisurf.plugins.modelling.structure_tools.app import StructureToolsHubApp
 
     app = StructureToolsHubApp.__new__(StructureToolsHubApp)
-    app.selected = 'Test'
-    app.children = {'Test': SimpleNamespace(key=lambda *args: True)}
+    app.selected = "Test"
+    app.children = {"Test": SimpleNamespace(key=lambda *args: True)}
     assert app.key_release(1) is False
     calls = []
     app.child.key_release = lambda *args: calls.append(args) or True
-    assert app.key_release(2, '', 3)
-    assert calls == [(2, '', 3)]
+    assert app.key_release(2, "", 3)
+    assert calls == [(2, "", 3)]
 
 
 def test_pto_picker_is_drawn_through_its_actual_render_contract():

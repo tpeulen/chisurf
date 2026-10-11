@@ -13,23 +13,58 @@ from chisurf.core.dataspec import load_view_spec
 def _reader(typed=False):
     """A declared form with real value callbacks, choices and model actions."""
     spec = {
-        "sections": [{"type": "panel", "title": "Acquisition", "sections": [
-            {"type": "value", "attr": "gain", "label": "Gain", "kind": "float",
-             "minimum": 0, "maximum": 100, "call": "gain_changed",
-             "description": "Acquisition gain."},
-            {"type": "toggle", "attr": "enabled", "label": "Enabled",
-             "description": "Enable acquisition."},
-            {"type": "choice", "attr": "mode", "label": "Mode",
-             "options_source": "modes", "description": "Acquisition mode."},
-            {"type": "button_row", "buttons": [{"label": "Apply", "action": "apply",
-             "description": "Apply the current reader settings."}]},
-        ]}]
+        "sections": [
+            {
+                "type": "panel",
+                "title": "Acquisition",
+                "sections": [
+                    {
+                        "type": "value",
+                        "attr": "gain",
+                        "label": "Gain",
+                        "kind": "float",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "call": "gain_changed",
+                        "description": "Acquisition gain.",
+                    },
+                    {
+                        "type": "toggle",
+                        "attr": "enabled",
+                        "label": "Enabled",
+                        "description": "Enable acquisition.",
+                    },
+                    {
+                        "type": "choice",
+                        "attr": "mode",
+                        "label": "Mode",
+                        "options_source": "modes",
+                        "description": "Acquisition mode.",
+                    },
+                    {
+                        "type": "button_row",
+                        "buttons": [
+                            {
+                                "label": "Apply",
+                                "action": "apply",
+                                "description": "Apply the current reader settings.",
+                            }
+                        ],
+                    },
+                ],
+            }
+        ]
     }
     events = []
     model = SimpleNamespace(
-        gain=3.25, enabled=False, mode="second", name="Native reader",
-        modes=lambda: ["first", "second"], gain_changed=lambda value: events.append(value),
-        apply=lambda: events.append("apply"), view_spec=lambda: load_view_spec(spec) if typed else spec,
+        gain=3.25,
+        enabled=False,
+        mode="second",
+        name="Native reader",
+        modes=lambda: ["first", "second"],
+        gain_changed=lambda value: events.append(value),
+        apply=lambda: events.append("apply"),
+        view_spec=lambda: load_view_spec(spec) if typed else spec,
     )
     return model, spec, events
 
@@ -76,11 +111,14 @@ def test_typed_conversion_preserves_nested_type_and_callback_metadata():
     assert panel["sections"][3]["buttons"][0]["action"] == "apply"
 
 
-@pytest.mark.parametrize("section", [
-    {"type": "custom", "key": "unregistered"},
-    {"type": "curve_input", "attr": "response"},
-    {"type": "plot", "source": "series"},
-])
+@pytest.mark.parametrize(
+    "section",
+    [
+        {"type": "custom", "key": "unregistered"},
+        {"type": "curve_input", "attr": "response"},
+        {"type": "plot", "source": "series"},
+    ],
+)
 def test_unsupported_declarations_fail_before_a_partial_form_is_built(section):
     """An unimplemented browse, dataset or custom field cannot disappear quietly."""
     from chisurf.emtk.reader_settings import ReaderSettingsApp
@@ -102,8 +140,18 @@ def test_raw_native_metadata_is_preserved_without_mutating_the_declaration():
     """Native layout fields never pass through the legacy dataclass loader."""
     from chisurf.emtk.reader_settings import native_reader_spec
 
-    raw = {"sections": [{"type": "value", "attr": "gain", "kind": "float",
-                         "weight": 2, "min_chars": 9, "wrap_before": True}]}
+    raw = {
+        "sections": [
+            {
+                "type": "value",
+                "attr": "gain",
+                "kind": "float",
+                "weight": 2,
+                "min_chars": 9,
+                "wrap_before": True,
+            }
+        ]
+    }
     converted = native_reader_spec(raw)
     assert converted == raw
     converted["sections"][0]["weight"] = 5
@@ -120,11 +168,18 @@ def _file_reader(typed=False, callback=False):
         reader.changed.append(path)
 
     reader.selected = selected
-    section = {"type": "value", "attr": "filename", "kind": "file", "label": "Measurement",
-               "description": "Input measurement file."}
+    section = {
+        "type": "value",
+        "attr": "filename",
+        "kind": "file",
+        "label": "Measurement",
+        "description": "Input measurement file.",
+    }
     if callback:
         section["call"] = "selected"
-    reader.view_spec = lambda: load_view_spec({"sections": [section]}) if typed else {"sections": [section]}
+    reader.view_spec = lambda: (
+        load_view_spec({"sections": [section]}) if typed else {"sections": [section]}
+    )
     return reader
 
 
@@ -165,16 +220,36 @@ def test_data_source_database_uses_the_existing_materialization_contract(tmp_pat
             """Provide one registered measurement and materialize its real local file."""
             calls.append((method, params))
             if method == "mmfdb.datasets.browse":
-                return {"datasets": [{"artifact_id": "measurement", "original_filename": "stored.txt",
-                                      "artifact_kind": "raw_measurement", "data_format": "txt"}],
-                        "total": 1}
+                return {
+                    "datasets": [
+                        {
+                            "artifact_id": "measurement",
+                            "original_filename": "stored.txt",
+                            "artifact_kind": "raw_measurement",
+                            "data_format": "txt",
+                        }
+                    ],
+                    "total": 1,
+                }
             assert method == "mmfdb.datasets.open"
             return {"local_path": str(source)}
 
     reader = _file_reader(callback=True)
-    reader.view_spec = lambda: {"sections": [{"type": "custom", "key": "data_source",
-        "options": {"attr": "filename", "call": "selected", "label": "Measurement",
-                    "description": "Registered measurement.", "mmfdb_kinds": ["raw_measurement"]}}]}
+    reader.view_spec = lambda: {
+        "sections": [
+            {
+                "type": "custom",
+                "key": "data_source",
+                "options": {
+                    "attr": "filename",
+                    "call": "selected",
+                    "label": "Measurement",
+                    "description": "Registered measurement.",
+                    "mmfdb_kinds": ["raw_measurement"],
+                },
+            }
+        ]
+    }
     app = ReaderSettingsApp(reader, dataset_client=Client())
     driver = Driver(app, (920, 640))
     driver.frame(2)
@@ -198,9 +273,16 @@ def test_directory_input_has_a_native_folder_dialog_and_preserves_cancel(tmp_pat
     """A typed directory field remains a folder chooser rather than a plain text box."""
     from chisurf.emtk.reader_settings import ReaderSettingsApp
 
-    reader = SimpleNamespace(folder=str(tmp_path), view_spec=lambda: load_view_spec({"sections": [
-        {"type": "value", "kind": "directory", "attr": "folder", "label": "Folder"}
-    ]}))
+    reader = SimpleNamespace(
+        folder=str(tmp_path),
+        view_spec=lambda: load_view_spec(
+            {
+                "sections": [
+                    {"type": "value", "kind": "directory", "attr": "folder", "label": "Folder"}
+                ]
+            }
+        ),
+    )
     app = ReaderSettingsApp(reader)
     driver = Driver(app, (920, 640))
     driver.frame(2)
@@ -234,8 +316,15 @@ def test_source_drop_filters_do_not_reject_materialized_paths_or_clearing_the_in
     from chisurf.emtk.reader_settings import ReaderSettingsApp
 
     reader = _file_reader(callback=True)
-    reader.view_spec = lambda: {"sections": [{"type": "custom", "key": "data_source",
-        "options": {"attr": "filename", "call": "selected", "extensions": ["txt"]}}]}
+    reader.view_spec = lambda: {
+        "sections": [
+            {
+                "type": "custom",
+                "key": "data_source",
+                "options": {"attr": "filename", "call": "selected", "extensions": ["txt"]},
+            }
+        ]
+    }
     app = ReaderSettingsApp(reader)
     assert not app.on_files_dropped([str(tmp_path / "unexpected.bin")])
     app.sources["filename"].path = str(tmp_path / "materialized-object-sha256")
@@ -251,8 +340,15 @@ def test_read_only_source_disables_browse_database_and_drop_without_changing_its
 
     reader = _file_reader(callback=True)
     reader.filename = "measured.txt"
-    reader.view_spec = lambda: {"sections": [{"type": "custom", "key": "data_source",
-        "options": {"attr": "filename", "call": "selected", "read_only": True}}]}
+    reader.view_spec = lambda: {
+        "sections": [
+            {
+                "type": "custom",
+                "key": "data_source",
+                "options": {"attr": "filename", "call": "selected", "read_only": True},
+            }
+        ]
+    }
     app = ReaderSettingsApp(reader)
     driver = Driver(app, (760, 480))
     driver.frame(2)

@@ -1026,7 +1026,9 @@ class CodeEditor(QtWidgets.QWidget):
             self._acp_client.start()
         return self._acp_client
 
-    def _handle_acp_read_file(self, path: str, line: int | None = None, limit: int | None = None) -> str:
+    def _handle_acp_read_file(
+        self, path: str, line: int | None = None, limit: int | None = None
+    ) -> str:
         """Handle fs/read_text_file from ACP agent by checking open tabs first."""
         target_path = pathlib.Path(path)
         if not target_path.is_absolute():
@@ -1081,7 +1083,9 @@ class CodeEditor(QtWidgets.QWidget):
         else:
             self.open_file(target_str)
 
-    def _handle_acp_permission(self, tool_call: dict[str, Any], options: list[dict[str, Any]]) -> str:
+    def _handle_acp_permission(
+        self, tool_call: dict[str, Any], options: list[dict[str, Any]]
+    ) -> str:
         """Handle session/request_permission by prompting the user in ChiSurf."""
         tool_name = tool_call.get("name", "tool")
         arguments = tool_call.get("rawInput", {})

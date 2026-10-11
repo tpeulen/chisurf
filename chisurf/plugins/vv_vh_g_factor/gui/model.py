@@ -23,6 +23,7 @@ from ..core.calculations import (
 
 def _bound(index: int, attr: str) -> property:
     """Expose one region coordinate without copying the model's mutable list."""
+
     def get(model: GFactorModel) -> float:
         """Read the coordinate as the scalar form value."""
         return float(getattr(model, attr)[index])
@@ -437,7 +438,9 @@ class GFactorModel:
             value = self.fp_result.get(key)
             if self.manual_l:
                 value = self.l_override
-            parameters[key] = float(value) if value is not None and np.isfinite(value) else float(prior)
+            parameters[key] = (
+                float(value) if value is not None and np.isfinite(value) else float(prior)
+            )
         parameters.update(
             g_factor_uncorrected=self.result.get("g_factor_uncorrected"),
             g_factor_corrected=self.result.get("g_factor_corrected"),

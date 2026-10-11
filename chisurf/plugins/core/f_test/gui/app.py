@@ -141,7 +141,9 @@ class FTestApp(ImApp):
         for form in self.forms:
             form.buffers.clear()
         taus = ", ".join(f"{t:.2f}" for t in stats["complex"]["lifetimes_ns"])
-        self.status = f"Example: decay simulated with two lifetimes; the two-exponential fit finds {taus} ns."
+        self.status = (
+            f"Example: decay simulated with two lifetimes; the two-exponential fit finds {taus} ns."
+        )
         self.tour.notify_used("load_example")
 
     def on_paths_dropped(self, paths) -> None:
@@ -178,7 +180,9 @@ class FTestApp(ImApp):
         im.set_item_tooltip(
             action_tooltip(
                 "example",
-                tr("Load the statistics of a one- and a two-exponential fit to a simulated two-lifetime decay."),
+                tr(
+                    "Load the statistics of a one- and a two-exponential fit to a simulated two-lifetime decay."
+                ),
             )
         )
         self.item_rects["load_example"] = im.get_item_rect()
@@ -189,7 +193,9 @@ class FTestApp(ImApp):
         im.same_line()
         if im.button("?"):
             self.help_window.show()
-        im.set_item_tooltip(tr("Explain the F-test, confidence threshold and chi-square upper limit."))
+        im.set_item_tooltip(
+            tr("Explain the F-test, confidence threshold and chi-square upper limit.")
+        )
         self.item_rects["help"] = im.get_item_rect()
         im.end_menu_bar()
         if self.status:

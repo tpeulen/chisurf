@@ -345,7 +345,9 @@ class ImagingToolsApp(CalculatorHubApp):
     def _apply_pipeline_quietly(self, role, child):
         """Hand a child the source and HDF5; the analysis steps are *selected*, the precompute queue runs them one by one."""
         model = getattr(child, "model", None)
-        idle = not (getattr(getattr(child, "job", None), "busy", False) or getattr(model, "busy", False))
+        idle = not (
+            getattr(getattr(child, "job", None), "busy", False) or getattr(model, "busy", False)
+        )
         if (
             idle
             and role in self.ANALYSIS_ROLES
@@ -394,9 +396,7 @@ class ImagingToolsApp(CalculatorHubApp):
                     child.model.busy = job.busy
 
     def animating(self):
-        return bool(
-            super().animating() or self._precompute_queue or self._precomputing
-        )
+        return bool(super().animating() or self._precompute_queue or self._precomputing)
 
     def _precompute_tick(self):
         """Start the next queued step when no tool is computing."""
@@ -566,10 +566,16 @@ class ImagingToolsApp(CalculatorHubApp):
             self._prebuilt.update(built)
         if self._builder.busy:
             return False
-        roles = (["setup"] if not self.setup and "setup" not in self.children else []) + [self.selected]
-        missing = [r for r in dict.fromkeys(roles) if r not in self.children and r not in self._prebuilt]
-        return not self._builder.start({r: (lambda r=r: self._construct_child(r)) for r in missing},
-                                       name="chisurf-imaging-tools")
+        roles = (["setup"] if not self.setup and "setup" not in self.children else []) + [
+            self.selected
+        ]
+        missing = [
+            r for r in dict.fromkeys(roles) if r not in self.children and r not in self._prebuilt
+        ]
+        return not self._builder.start(
+            {r: (lambda r=r: self._construct_child(r)) for r in missing},
+            name="chisurf-imaging-tools",
+        )
 
     def draw(self, painter, x, y, w, h):
         self._painter = painter

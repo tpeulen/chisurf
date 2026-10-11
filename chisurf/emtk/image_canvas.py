@@ -157,15 +157,23 @@ class ImageCanvas:
             "##Display gamma", self.gamma, minimum=0.1, maximum=5.0, step=0.1
         )
         im.set_item_tooltip(
-            tr("Lift dim structures with gamma above one; display changes do not affect detection or fitting.")
+            tr(
+                "Lift dim structures with gamma above one; display changes do not affect detection or fitting."
+            )
         )
         _, self.auto_levels = im.checkbox(tr("Automatic levels"), self.auto_levels)
-        im.set_item_tooltip(tr("Map the minimum and maximum finite image values to the color range."))
+        im.set_item_tooltip(
+            tr("Map the minimum and maximum finite image values to the color range.")
+        )
         if not self.auto_levels:
             _, self.low = im.input_float("Display minimum", self.low, step=1.0)
-            im.set_item_tooltip(tr("Set the lower display level without changing stored pixel values."))
+            im.set_item_tooltip(
+                tr("Set the lower display level without changing stored pixel values.")
+            )
             _, self.high = im.input_float("Display maximum", self.high, step=1.0)
-            im.set_item_tooltip(tr("Set the upper display level without changing stored pixel values."))
+            im.set_item_tooltip(
+                tr("Set the upper display level without changing stored pixel values.")
+            )
         if im.button(tr("Reset view")):
             self._reset_axes = True
         im.set_item_tooltip(tr("Restore the full-image view after zooming or panning."))
@@ -393,7 +401,9 @@ class ImageCanvas:
                 self.rect = (*pos, *size)
                 implot.end_plot()
                 im.set_item_tooltip(
-                    tr("Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results.")
+                    tr(
+                        "Click a bead/spot to fit it. Drag to pan, scroll to zoom; blue handles edit analysis regions. Found and picked outlines are measured results."
+                    )
                 )
         finally:
             input_map.pan, input_map.fit = previous_pan, previous_fit

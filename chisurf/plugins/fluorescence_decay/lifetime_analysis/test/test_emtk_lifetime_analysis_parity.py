@@ -34,7 +34,9 @@ def snapshot_real():
     return {
         str(p): p.stat().st_mtime_ns
         for p in REAL_CHISURF.rglob("*")
-        if p.is_file() and not {"cache", "logs"} & set(p.parts) and not p.name.endswith(SQLITE_SIDECARS)
+        if p.is_file()
+        and not {"cache", "logs"} & set(p.parts)
+        and not p.name.endswith(SQLITE_SIDECARS)
     }
 
 
@@ -354,8 +356,14 @@ def test_every_hub_control_has_a_tooltip(ui):
     hub = [
         r
         for r in inventory["interactive"]
-        if r["id"] in ("##search_tools", "Back", "Next",
-                       f"{action_caption('help')}##help", f"{action_caption('guide')}##guide")
+        if r["id"]
+        in (
+            "##search_tools",
+            "Back",
+            "Next",
+            f"{action_caption('help')}##help",
+            f"{action_caption('guide')}##guide",
+        )
         or r["label"].startswith(("1.", "2.", "3.", "4.", "5."))
     ]
     assert hub and all(r.get("tooltip") for r in hub), [r for r in hub if not r.get("tooltip")]

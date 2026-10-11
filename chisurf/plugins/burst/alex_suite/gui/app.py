@@ -74,7 +74,13 @@ def _make_tour(widget: Any, item_rects: dict) -> EmTkGuidedTour:
 def _typed_number(gui: Any, key: str, label: str, value, minimum, maximum, integer: bool = True):
     """A typed number field of *gui* (rect remembered as *key*); the committed number, else *value*."""
     committed, _ = typed_number_field(
-        key, value, gui._number_buffers, integer=integer, minimum=minimum, maximum=maximum, label=label
+        key,
+        value,
+        gui._number_buffers,
+        integer=integer,
+        minimum=minimum,
+        maximum=maximum,
+        label=label,
     )
     gui.remember(key)
     return value if committed is None else committed
@@ -138,9 +144,11 @@ class LegacyExportGui(TourTarget):
             im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE | im.WindowFlags.NO_MOVE,
         ):
             im.text_wrapped(
-                tr("The five CSV files the old ALEX-Suite wrote — for scripts "
-                "built on that layout. The analysis itself stays in the "
-                ".pto container and the burst companions beside it.")
+                tr(
+                    "The five CSV files the old ALEX-Suite wrote — for scripts "
+                    "built on that layout. The analysis itself stays in the "
+                    ".pto container and the burst companions beside it."
+                )
             )
             im.separator()
 
@@ -150,7 +158,9 @@ class LegacyExportGui(TourTarget):
                     self.selected_index = len(files) - 1
                 im.set_next_item_width(-160.0)
                 changed, new_idx = im.combo("##BurstFile", self.selected_index, files)
-                im.set_item_tooltip(tr("Burst file (from the burst search) whose data is exported."))
+                im.set_item_tooltip(
+                    tr("Burst file (from the burst search) whose data is exported.")
+                )
                 if changed:
                     self.selected_index = new_idx
                 self.remember("burst_file")
@@ -379,7 +389,9 @@ class TitrationGui(TourTarget):
         im.spacing()
         if im.collapsing_header("Fit", im.TreeNodeFlags.DEFAULT_OPEN):
             im.set_item_tooltip(tr("Configure fit model and parameters."))
-            model.n_populations = _typed_number(self, "n_populations", "Populations", model.n_populations, 1, 6)
+            model.n_populations = _typed_number(
+                self, "n_populations", "Populations", model.n_populations, 1, 6
+            )
             im.set_item_tooltip(tr("Number of FRET populations fitted in each histogram."))
             options = model.binding_model_options()
             idx = options.index(model.binding_model) if model.binding_model in options else 0
@@ -401,15 +413,23 @@ class TitrationGui(TourTarget):
         im.set_item_tooltip(tr("Configure photon and stoichiometry filters."))
         if filters_open:
             # Ranges of the Qt form (titration.view.json).
-            model.min_photons = _typed_number(self, "min_photons", "Min. photons", model.min_photons, 0, 100000)
+            model.min_photons = _typed_number(
+                self, "min_photons", "Min. photons", model.min_photons, 0, 100000
+            )
             im.set_item_tooltip(tr("Minimum photons per burst included in the histograms."))
             model.bins = _typed_number(self, "bins", "E bins", model.bins, 11, 501)
             im.set_item_tooltip(tr("Number of bins of the FRET efficiency histograms."))
-            model.s_low = _typed_number(self, "s_low", "S gate from", model.s_low, -1.0, 2.0, integer=False)
+            model.s_low = _typed_number(
+                self, "s_low", "S gate from", model.s_low, -1.0, 2.0, integer=False
+            )
             im.set_item_tooltip(tr("Lower stoichiometry gate applied before fitting."))
-            model.s_high = _typed_number(self, "s_high", "S gate to", model.s_high, -1.0, 2.0, integer=False)
+            model.s_high = _typed_number(
+                self, "s_high", "S gate to", model.s_high, -1.0, 2.0, integer=False
+            )
             im.set_item_tooltip(tr("Upper stoichiometry gate applied before fitting."))
-            model.gamma = _typed_number(self, "gamma", "gamma", model.gamma, 0.0, 100.0, integer=False)
+            model.gamma = _typed_number(
+                self, "gamma", "gamma", model.gamma, 0.0, 100.0, integer=False
+            )
             im.set_item_tooltip(tr("Gamma detection-efficiency correction used by the fit."))
             model.beta = _typed_number(self, "beta", "beta", model.beta, 0.0, 100.0, integer=False)
             im.set_item_tooltip(tr("Beta direct-excitation correction used by the fit."))
@@ -569,8 +589,10 @@ class AlexAlternationGui(TourTarget):
         panel = self.panel
 
         im.text_wrapped(
-            tr("µs-ALEX only — already PIE / ns-ALEX? Skip this step; the setup "
-            "step already has your detector definition.")
+            tr(
+                "µs-ALEX only — already PIE / ns-ALEX? Skip this step; the setup "
+                "step already has your detector definition."
+            )
         )
         im.separator()
 
@@ -593,7 +615,9 @@ class AlexAlternationGui(TourTarget):
         if im.button(tr("🚦 Detect alternation and convert")):
             panel.run(convert=True)
         im.set_item_tooltip(
-            tr("Detect the µs-ALEX period and fold the photons into donor/acceptor excitation periods.")
+            tr(
+                "Detect the µs-ALEX period and fold the photons into donor/acceptor excitation periods."
+            )
         )
         im.pop_style_color(3)
         self.remember("run")
@@ -620,9 +644,13 @@ class AlexAlternationGui(TourTarget):
         enabled = panel.period > 0
         if enabled:
             # Ranges of the Qt spin boxes: the period up to 1e8, each gate edge inside the period.
-            panel.period = _typed_number(self, "period", "Period (units)", panel.period, 0, 100_000_000)
+            panel.period = _typed_number(
+                self, "period", "Period (units)", panel.period, 0, 100_000_000
+            )
             im.set_item_tooltip(
-                tr("ALEX alternation period in macro-time units; leave 0 to measure it from the data.")
+                tr(
+                    "ALEX alternation period in macro-time units; leave 0 to measure it from the data."
+                )
             )
             windows = panel.windows or {}
             for name, label in (("green", "Donor excitation"), ("red", "Acceptor excitation")):
@@ -741,15 +769,21 @@ class AlexAlternationState:
         if self.windows is None:
             self.windows = {}
         self.windows[name] = [int(lo), int(hi)]
-        self.status_text = f"Gates updated: green {self.windows.get('green')}, red {self.windows.get('red')}."
+        self.status_text = (
+            f"Gates updated: green {self.windows.get('green')}, red {self.windows.get('red')}."
+        )
 
     def run(self, *, convert: bool = True) -> None:
         if not self._files:
             self.status_text = "No files loaded — drop TTTR files (.sm, .ptu) first."
             return
         try:
-            donor = [int(c.strip()) for c in self.donor_text.split(",") if c.strip().isdigit()] or None
-            acceptor = [int(c.strip()) for c in self.acceptor_text.split(",") if c.strip().isdigit()] or None
+            donor = [
+                int(c.strip()) for c in self.donor_text.split(",") if c.strip().isdigit()
+            ] or None
+            acceptor = [
+                int(c.strip()) for c in self.acceptor_text.split(",") if c.strip().isdigit()
+            ] or None
         except Exception as exc:
             self.status_text = f"Invalid channels: {exc}"
             return

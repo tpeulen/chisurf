@@ -54,7 +54,9 @@ def run(tmp_path: Path):
 
 def _expected_photons(raw: Path, first, last, keep, channels) -> int:
     chan = np.asarray(tttrlib.TTTR(str(raw), "SPC-130").routing_channels)
-    return int(sum(np.isin(chan[f : l + 1], channels).sum() for f, l, k in zip(first, last, keep) if k))
+    return int(
+        sum(np.isin(chan[f : l + 1], channels).sum() for f, l, k in zip(first, last, keep) if k)
+    )
 
 
 def test_the_histogram_sums_to_the_selected_photon_count(run):
@@ -62,7 +64,9 @@ def test_the_histogram_sums_to_the_selected_photon_count(run):
     keep = np.array([True, False, True, True, False, False])
     stream = {"channels": [0, 1]}
     decay = sub_ensemble_decay(path, stream, mask=keep)
-    assert numeric_column(decay, "Counts").sum() == _expected_photons(raw, first, last, keep, [0, 1])
+    assert numeric_column(decay, "Counts").sum() == _expected_photons(
+        raw, first, last, keep, [0, 1]
+    )
     everything = sub_ensemble_decay(path, stream)
     assert numeric_column(everything, "Counts").sum() == _expected_photons(
         raw, first, last, np.ones(6, bool), [0, 1]
@@ -89,7 +93,9 @@ def test_the_decay_reads_back_and_chains_to_its_selection(run):
     path, raw, *_ = run
     keep = np.array([True, True, False, False, True, False])
     decay = sub_ensemble_decay(path, [0, 1], mask=keep)
-    container = write_sub_ensemble_decay(path, decay, {"channels": "0,1", "selected": keep.tolist()})
+    container = write_sub_ensemble_decay(
+        path, decay, {"channels": "0,1", "selected": keep.tolist()}
+    )
     back = read_tables(path)[DECAY_NAME]
     np.testing.assert_allclose(numeric_column(back, "Counts"), numeric_column(decay, "Counts"))
     with Measurement.open(container) as m:

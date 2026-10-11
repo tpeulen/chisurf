@@ -915,7 +915,9 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     self.auto_align()
             implot.end_plot()
         im.set_item_tooltip(
-            tr("Drag green target-bin and yellow threshold lines; align on release. Log Y uses actual count units.")
+            tr(
+                "Drag green target-bin and yellow threshold lines; align on release. Log Y uses actual count units."
+            )
         )
         self.remember("histogram")
 
@@ -1025,8 +1027,10 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                     "##sample-json", self.sample_definition, (-1, 150)
                 )
                 im.set_item_tooltip(
-                    tr("Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
-                    "temperature and external-reference annotations.")
+                    tr(
+                        "Complete sample schema: name, description, entities, probes, FRET pairs, buffer, pH, "
+                        "temperature and external-reference annotations."
+                    )
                 )
             im.end_child()
             self.button(

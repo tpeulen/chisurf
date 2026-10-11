@@ -196,7 +196,9 @@ def test_the_database_button_opens_the_picker_and_closes_again(ui):
     ui.click("photon_database")
     assert ui.app.dataset_picker.is_open
     ui.draw(3)
-    ui.press_text(action_caption("cancel")) if ui.shown(action_caption("cancel")) else ui.press_text(action_caption("close"))
+    ui.press_text(action_caption("cancel")) if ui.shown(
+        action_caption("cancel")
+    ) else ui.press_text(action_caption("close"))
     assert not ui.app.dataset_picker.is_open
 
 
@@ -427,8 +429,10 @@ def plot_ticks(ui):
 
 def test_the_wheel_over_the_plot_zooms(computed):
     x, y, w, h = computed.app.item_rects["plot"]
+
     def ticks():
         return plot_ticks(computed)
+
     before = ticks()
     computed.draw(3)
     assert ticks() == before  # stable without input

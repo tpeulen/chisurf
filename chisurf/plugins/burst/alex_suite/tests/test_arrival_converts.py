@@ -58,7 +58,9 @@ def test_an_unreadable_file_is_not_converted(monkeypatch):
 def test_arrival_converts_alex_and_leaves_pie_alone(monkeypatch):
     """Arrival runs the conversion for µs-ALEX data and only reports for PIE data."""
     started = []
-    monkeypatch.setattr(AlexAlternationModel, "run", lambda self, convert=True: started.append(convert) or True)
+    monkeypatch.setattr(
+        AlexAlternationModel, "run", lambda self, convert=True: started.append(convert) or True
+    )
     monkeypatch.setattr(alternation_model, "needs_conversion", lambda _p: True)
     model = AlexAlternationModel()
     model.set_files(["/data/a.sm"])

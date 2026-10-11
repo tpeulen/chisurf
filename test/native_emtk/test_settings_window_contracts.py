@@ -53,13 +53,27 @@ def settings_tools(tmp_path, monkeypatch):
         },
     }
     detectors.write_text(json.dumps({"setups": {"bench": setup}}))
-    presets.write_text(json.dumps({
-        "last_used_setup": "bench",
-        "setups": {"bench": {"pairs": [{
-            "name": "GR", "channel_a": "green", "channel_b": "red",
-            "n_bins": 8, "n_casc": 12, "make_fine": False,
-        }]}},
-    }))
+    presets.write_text(
+        json.dumps(
+            {
+                "last_used_setup": "bench",
+                "setups": {
+                    "bench": {
+                        "pairs": [
+                            {
+                                "name": "GR",
+                                "channel_a": "green",
+                                "channel_b": "red",
+                                "n_bins": 8,
+                                "n_casc": 12,
+                                "make_fine": False,
+                            }
+                        ]
+                    }
+                },
+            }
+        )
+    )
     return {
         "ai_settings": make_ai_settings_app,
         "fcs_channel_preset": lambda: create_app(detector_file=detectors, preset_file=presets),
@@ -67,7 +81,9 @@ def settings_tools(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("plugin_id", ["ai_settings", "fcs_channel_preset"])
-def test_declared_factory_default_reaches_state_and_preserves_configuration(settings_tools, plugin_id):
+def test_declared_factory_default_reaches_state_and_preserves_configuration(
+    settings_tools, plugin_id
+):
     """Standalone construction and persistence use the declared tool-family size."""
     factories, paths = settings_tools
     before = [path.read_bytes() for path in paths]
@@ -114,10 +130,13 @@ def test_saved_geometry_and_dock_configuration_override_factory_defaults(setting
         reopened.close()
 
 
-@pytest.mark.parametrize("plugin_id,spec", [
-    ("ai_settings", "ai_settings/gui/ai_settings_emtk.view.json"),
-    ("fcs_channel_preset", "fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json"),
-])
+@pytest.mark.parametrize(
+    "plugin_id,spec",
+    [
+        ("ai_settings", "ai_settings/gui/ai_settings_emtk.view.json"),
+        ("fcs_channel_preset", "fcs/fcs_channel_preset/gui/fcs_channel_preset.view.json"),
+    ],
+)
 def test_existing_primary_spec_drives_factory_size(settings_tools, monkeypatch, plugin_id, spec):
     """Changing the loaded declaration changes construction without a new literal default."""
     import chisurf.plugins.ai_settings.gui.app as ai_app

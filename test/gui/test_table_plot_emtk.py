@@ -220,8 +220,15 @@ def test_the_model_editor_writes_the_parameters(emtk_plot):
     from types import SimpleNamespace
 
     plot, client = emtk_plot
-    param = SimpleNamespace(name="a", value=1.0, fixed=False, bounds=(0.0, 2.0),
-                            bounds_on=False, is_linked=False, link=None)
+    param = SimpleNamespace(
+        name="a",
+        value=1.0,
+        fixed=False,
+        bounds=(0.0, 2.0),
+        bounds_on=False,
+        is_linked=False,
+        link=None,
+    )
     plot.fit.model.parameters_all_dict = {"a": param}
     plot.on_show_model()
     records, _params, table, message = plot.parameter_editor
@@ -229,7 +236,11 @@ def test_the_model_editor_writes_the_parameters(emtk_plot):
     records[0]["value"] = 1.5
     plot.apply_parameter_editor()
     assert plot.parameter_editor is None
-    assert ("set_parameter_value", ("a", 1.5), {"fit_uid": "test-uid", "fit_index": 0}) in client.calls
+    assert (
+        "set_parameter_value",
+        ("a", 1.5),
+        {"fit_uid": "test-uid", "fit_index": 0},
+    ) in client.calls
 
 
 def _press_button(plot, button):
@@ -243,8 +254,13 @@ def test_the_qt_pages_table_tools_are_all_here(emtk_plot):
     """Columns, Hide empty, Shade, its scope and Export: the Qt page had all five."""
     plot, _ = emtk_plot
     _draw_once(plot)
-    for button in (plot.btn_columns, plot.btn_empty, plot.btn_shade, plot.btn_scope,
-                   plot.btn_export):
+    for button in (
+        plot.btn_columns,
+        plot.btn_empty,
+        plot.btn_shade,
+        plot.btn_scope,
+        plot.btn_export,
+    ):
         assert id(button) in plot._btn_boxes
         x, y, w, h = plot._btn_boxes[id(button)]
         assert plot.tooltip_at(x + 2, y + 2), f"{button.label} has no tooltip"

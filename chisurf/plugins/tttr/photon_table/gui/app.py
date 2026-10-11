@@ -56,11 +56,19 @@ class PhotonTableApp(ImApp):
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(Split("h", 0.34, Region("file"), Region("photons")))
         self.docks.add_window(
-            "file", "TTTR file", self.draw_file, dock="file", closable=True,
+            "file",
+            "TTTR file",
+            self.draw_file,
+            dock="file",
+            closable=True,
             tooltip=str(self.panels["file"].get("description", "")),
         )
         self.docks.add_window(
-            "photons", "Photons", self.draw_photons, dock="photons", closable=True,
+            "photons",
+            "Photons",
+            self.draw_photons,
+            dock="photons",
+            closable=True,
             tooltip=str(self.panels["photons"].get("description", "")),
         )
         super().__init__(self.render, continuous=True)

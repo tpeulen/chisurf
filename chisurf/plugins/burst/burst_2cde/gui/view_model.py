@@ -92,7 +92,11 @@ class TwoCdeViewModel:
         found = fret_detectors(settings)
         for role in ("donor", "acceptor"):
             if role in found:
-                setattr(self, f"{role}_channels_text", ",".join(str(c) for c in found[role].get("chs", [])))
+                setattr(
+                    self,
+                    f"{role}_channels_text",
+                    ",".join(str(c) for c in found[role].get("chs", [])),
+                )
         file_type = ((settings or {}).get("tttr_reading") or {}).get("file_type")
         if file_type:
             self.file_type = file_type

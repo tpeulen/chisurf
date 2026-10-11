@@ -1,4 +1,5 @@
 """Complete native JSON edits preserve portable settings and never write a saved setup implicitly."""
+
 from __future__ import annotations
 
 import copy
@@ -11,13 +12,17 @@ import pytest
 @pytest.fixture
 def editor(tmp_path, monkeypatch):
     """Use the actual native host app over a scratch definition and isolated stores."""
-    for key, path in {"CHISURF_SETTINGS_DIR": tmp_path / "settings",
-                      "MMFDB_SETTINGS_DIR": tmp_path / "mmfdb",
-                      "MMFDB_DATABASE_PATH": tmp_path / "db.sqlite",
-                      "MMFDB_OBJECT_STORE": tmp_path / "objects"}.items():
+    for key, path in {
+        "CHISURF_SETTINGS_DIR": tmp_path / "settings",
+        "MMFDB_SETTINGS_DIR": tmp_path / "mmfdb",
+        "MMFDB_DATABASE_PATH": tmp_path / "db.sqlite",
+        "MMFDB_OBJECT_STORE": tmp_path / "objects",
+    }.items():
         monkeypatch.setenv(key, str(path))
+
     def forbidden(*args, **kwargs):
         raise AssertionError("Native JSON editor attempted an external connection")
+
     monkeypatch.setattr(socket.socket, "connect", forbidden)
     monkeypatch.setattr(socket, "create_connection", forbidden)
     from emtk.testing import Driver
@@ -28,22 +33,42 @@ def editor(tmp_path, monkeypatch):
     from chisurf.plugins.core.setup_channel_definition.gui.app import SetupChannelDefinitionApp
 
     monkeypatch.setattr(setup_store, "resolve_active_user_id", lambda: "validation-owner")
-    settings = {"setup_name": "Validation", "_owner": "validation-owner", "_is_public": False,
-                "detectors": {"donor": {"chs": [0, 1], "micro_time_ranges": [[0, 32]],
-                    "g_factor": 1.25, "l1": 0.05, "l2": 0.02, "g_factor_channels": [7, 20],
-                    "g_factor_decay_uuid": "b04555d2-22f2-4a73-8fca-c47627d21131",
-                    "g_factor_calibration_id": "db530c47-e9c7-41bb-ad9b-f145838e6cde",
-                    "future_detector_metadata": {"untouched": [1, 2]}}},
-                "windows": {"prompt": [0, 32]},
-                "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 25.0,
-                                 "micro_time_resolution": 50.0, "micro_time_binning": 2},
-                "channel_luts": {"0": [0, 1, 2, 3]}, "channel_shifts": {"0": 2},
-                "channel_lut_sources": {"0": "validation-lut.dat"}, "apply_lut": False,
-                "optical_config": {"unknown_optical_metadata": {"preserve": True}},
-                "future_metadata": {"version": 7},
-                "_microtime_per_channel_decay": {"file_path": "validation-preview.spc",
-                                                 "channels": {"0": [2, 4, 6], "1": [1, 2, 3]}},
-                "_raw_microtime_per_channel_decay": {"channels": {"0": [2, 4, 6]}}}
+    settings = {
+        "setup_name": "Validation",
+        "_owner": "validation-owner",
+        "_is_public": False,
+        "detectors": {
+            "donor": {
+                "chs": [0, 1],
+                "micro_time_ranges": [[0, 32]],
+                "g_factor": 1.25,
+                "l1": 0.05,
+                "l2": 0.02,
+                "g_factor_channels": [7, 20],
+                "g_factor_decay_uuid": "b04555d2-22f2-4a73-8fca-c47627d21131",
+                "g_factor_calibration_id": "db530c47-e9c7-41bb-ad9b-f145838e6cde",
+                "future_detector_metadata": {"untouched": [1, 2]},
+            }
+        },
+        "windows": {"prompt": [0, 32]},
+        "tttr_reading": {
+            "file_type": "SPC-130",
+            "macro_time_resolution": 25.0,
+            "micro_time_resolution": 50.0,
+            "micro_time_binning": 2,
+        },
+        "channel_luts": {"0": [0, 1, 2, 3]},
+        "channel_shifts": {"0": 2},
+        "channel_lut_sources": {"0": "validation-lut.dat"},
+        "apply_lut": False,
+        "optical_config": {"unknown_optical_metadata": {"preserve": True}},
+        "future_metadata": {"version": 7},
+        "_microtime_per_channel_decay": {
+            "file_path": "validation-preview.spc",
+            "channels": {"0": [2, 4, 6], "1": [1, 2, 3]},
+        },
+        "_raw_microtime_per_channel_decay": {"channels": {"0": [2, 4, 6]}},
+    }
     path = tmp_path / "setups.json"
     path.write_text(json.dumps({"setups": {"Validation": settings}, "last_used": "Validation"}))
     model = ChannelDefinition(settings, file_path=path)
@@ -80,7 +105,12 @@ def test_live_complete_definition_json_control_is_reachable(editor):
 
 def test_real_json_apply_preserves_metadata_ids_stores_and_refreshes_cells(editor):
     app, ui, notices, path = editor
-    model, data, setups, original_file = app.model, app.model.data, app.model.setups, path.read_bytes()
+    model, data, setups, original_file = (
+        app.model,
+        app.model.data,
+        app.model.setups,
+        path.read_bytes(),
+    )
     before = model.get_settings()
     app.page.detector_rows()
     edited = copy.deepcopy(before)
@@ -99,8 +129,15 @@ def test_real_json_apply_preserves_metadata_ids_stores_and_refreshes_cells(edito
     assert detector["g_factor_channels"] == [8, 18]
     for key in ("g_factor_decay_uuid", "g_factor_calibration_id", "future_detector_metadata"):
         assert detector[key] == before["detectors"]["donor"][key]
-    for key in ("_owner", "_is_public", "channel_luts", "channel_lut_sources", "optical_config",
-                "_microtime_per_channel_decay", "_raw_microtime_per_channel_decay"):
+    for key in (
+        "_owner",
+        "_is_public",
+        "channel_luts",
+        "channel_lut_sources",
+        "optical_config",
+        "_microtime_per_channel_decay",
+        "_raw_microtime_per_channel_decay",
+    ):
         assert model.get_settings()[key] == before[key]
     assert model.get_settings()["future_metadata"]["user_edit"] == "kept"
     assert model.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == 100.0
@@ -108,12 +145,17 @@ def test_real_json_apply_preserves_metadata_ids_stores_and_refreshes_cells(edito
     assert [row["l1"], row["l2"], row["gch"]] == ["0.071", "0.042", "8-18"]
 
 
-@pytest.mark.parametrize("text", ['{"detectors":', '[]', '{"windows": {"broken": []}}',
-                                  '{"tttr_reading": "broken"}'])
+@pytest.mark.parametrize(
+    "text", ['{"detectors":', "[]", '{"windows": {"broken": []}}', '{"tttr_reading": "broken"}']
+)
 def test_invalid_json_keeps_draft_error_and_entire_previous_definition(editor, text):
     app, ui, notices, path = editor
-    previous = {"data": copy.deepcopy(app.model.data), "last_used": app.model.last_used,
-                "preview_path": app.model.preview_path, "preview": app.model.preview}
+    previous = {
+        "data": copy.deepcopy(app.model.data),
+        "last_used": app.model.last_used,
+        "preview_path": app.model.preview_path,
+        "preview": app.model.preview,
+    }
     file_bytes = path.read_bytes()
     ui.click("edit_json")
     replace_json(app, ui, text)
@@ -136,7 +178,7 @@ def test_cancel_reopen_and_readonly_never_apply_a_draft(editor):
     ui.click("edit_json")
     assert json.loads(app.page.json_text) == previous
     app.page.read_only = True
-    replace_json(app, ui, '{}')
+    replace_json(app, ui, "{}")
     ui.click("apply_json")
     assert app.model.get_settings() == previous and not notices
     ui.click("cancel_json")

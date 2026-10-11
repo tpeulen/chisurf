@@ -49,7 +49,6 @@ STEPS = [
 ]
 
 
-
 @pytest.fixture(scope="module")
 def qt():
     """What the Qt ConfocalCalcWidget reported for STEPS, recorded before it was retired."""

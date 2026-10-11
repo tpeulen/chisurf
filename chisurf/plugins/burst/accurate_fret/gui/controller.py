@@ -39,7 +39,8 @@ class AccurateFretController:
         self.dialog = None
         self.dialog_action = "load"
         self.channel_definition = ChannelDefinitionWidget(
-            model=setup_model, on_changed=self.apply_setup,
+            model=setup_model,
+            on_changed=self.apply_setup,
             host_app=None,
         )
         self.datasets = DatasetPicker(

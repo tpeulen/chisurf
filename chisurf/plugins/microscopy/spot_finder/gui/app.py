@@ -520,8 +520,11 @@ class SpotFinderApp(ImApp):
         pressed = button_row(
             [
                 {
-                    "label": action_caption("example") if l == "load_example"
-                    else action_caption("export") if l == "Export" else l,
+                    "label": action_caption("example")
+                    if l == "load_example"
+                    else action_caption("export")
+                    if l == "Export"
+                    else l,
                     "key": l,
                     "keys": ("Load demo",) if l == "load_example" else (),
                     "tip": tr(t) if l == "load_example" else t,
@@ -568,7 +571,9 @@ class SpotFinderApp(ImApp):
             changed, index = im.combo("##selected_region", current, labels)
             self.remember("selected_region")
             im.set_item_tooltip(
-                tr("Browse each found region across all input files and inspect its measured geometry.")
+                tr(
+                    "Browse each found region across all input files and inspect its measured geometry."
+                )
             )
             if changed:
                 self.model.current_region = displayed[index]["id"]

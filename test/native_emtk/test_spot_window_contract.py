@@ -103,10 +103,13 @@ def test_real_example_await_preview_detect_and_resize_keep_detection_science(app
     assert np.asarray(reference.intensity).dtype == np.uint32
     np.testing.assert_array_equal(reference.intensity, wide)
     assert int(wide.sum()) == 390384
-    indices = np.concatenate([
-        np.asarray(reference[0][row][col].get_tttr_indices(), dtype=np.int64)
-        for row in range(48) for col in range(48)
-    ])
+    indices = np.concatenate(
+        [
+            np.asarray(reference[0][row][col].get_tttr_indices(), dtype=np.int64)
+            for row in range(48)
+            for col in range(48)
+        ]
+    )
     assert len(indices) == len(np.unique(indices)) == int(wide.sum())
     assert np.all((indices >= 0) & (indices < len(stream)))
     np.testing.assert_array_equal(app.model.detection_image(), wide.sum(axis=0))

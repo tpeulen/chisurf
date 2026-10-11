@@ -945,6 +945,7 @@ class PlotAPI:
         """The backend plot object (escape hatch; avoid in new code)."""
         return self._canvas.native
 
+
 class Plot(PlotAPI, QtWidgets.QWidget):
     """A single plot panel with a verb-first drawing API.
 
@@ -1193,6 +1194,7 @@ class Grid(QtWidgets.QWidget):
     def native(self):
         """The backend grid object (escape hatch; avoid in new code)."""
         return self._grid.native
+
 
 class VolumeView(QtWidgets.QWidget):
     """3-D volume viewer: orbit a translucent ``(nz, ny, nx)`` scalar volume.
@@ -1888,6 +1890,7 @@ class ImageView(QtWidgets.QWidget):
     def native(self):
         """The backend image-view object (escape hatch; avoid in new code)."""
         return self._iv.native
+
 
 class PanelPlot(Plot):
     """A :class:`Plot` bound to an existing grid-panel canvas.

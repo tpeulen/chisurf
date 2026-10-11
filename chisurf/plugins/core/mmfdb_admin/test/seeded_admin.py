@@ -268,7 +268,9 @@ def seed(folder: Path, client=None) -> dict:
     client.create_protocol("TCSPC acquisition", "measurement", description="Standard IRF + decay")
     client.create_protocol("Burst selection", "processing", operation_type="filtering")
     client.create_reagent_lot("fluorophore", "Alexa 488", lot_number="A488-42", vendor="Thermo")
-    client.create_reagent_lot("buffer", "PBS", lot_number="PBS-7", vendor="Sigma", expiry="2031-01-01")
+    client.create_reagent_lot(
+        "buffer", "PBS", lot_number="PBS-7", vendor="Sigma", expiry="2031-01-01"
+    )
     client.lifecycle_transition("sample", "sample_gui", "registered", reason="received")
     client.lifecycle_transition("sample", "sample_gui", "measured", reason="TCSPC done")
     return {"sample_id": "sample_gui", "study_id": study_id, "donor": donor, "acceptor": acceptor}

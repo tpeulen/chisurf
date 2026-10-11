@@ -18,15 +18,18 @@ from chisurf.core.structure.cluster import cluster
 sh = pytest.importorskip("scipy.cluster.hierarchy")
 
 
-@pytest.mark.parametrize("criterion,threshold", [("maxclust", 3), ("maxclust", 5000), ("distance", 1.5)])
+@pytest.mark.parametrize(
+    "criterion,threshold", [("maxclust", 3), ("maxclust", 5000), ("distance", 1.5)]
+)
 def test_cluster_from_distances_matches_scipy(criterion, threshold):
     rng = np.random.default_rng(7)
     n = 25
     distances = rng.random(n * (n - 1) // 2) * 4.0
     distances[::5] = np.round(distances[::5])  # tied distances: merge order must still agree
 
-    Z, clusters, assignments, _ = cluster([None] * n, threshold=threshold, criterion=criterion,
-                                          distances=distances)
+    Z, clusters, assignments, _ = cluster(
+        [None] * n, threshold=threshold, criterion=criterion, distances=distances
+    )
 
     z_ref = sh.linkage(distances, method="average")
     np.testing.assert_array_equal(Z, z_ref)

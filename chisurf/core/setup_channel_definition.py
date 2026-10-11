@@ -257,7 +257,9 @@ class ChannelDefinition:
         target = Path(path).expanduser()
         library = Path(self.file_path or CONFIG.canonical_file).expanduser()
         if target.resolve() == library.resolve():
-            raise ValueError("Choose a different file for the working definition and named setup library.")
+            raise ValueError(
+                "Choose a different file for the working definition and named setup library."
+            )
         data = self.get_settings()
         named = None
         if update_named:
@@ -282,8 +284,13 @@ class ChannelDefinition:
         target.parent.mkdir(parents=True, exist_ok=True)
         temporary = None
         try:
-            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=target.parent,
-                                             prefix=f".{target.name}.", delete=False) as stream:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=target.parent,
+                prefix=f".{target.name}.",
+                delete=False,
+            ) as stream:
                 temporary = Path(stream.name)
                 stream.write(content)
                 stream.flush()
@@ -493,8 +500,17 @@ class ChannelDefinition:
         self.changed()
         return result
 
-    def archive_reference_g(self, name, reference, *, client=None, micro_time_resolution=None,
-                            binning=1, source_measurement="", save_named=False):
+    def archive_reference_g(
+        self,
+        name,
+        reference,
+        *,
+        client=None,
+        micro_time_resolution=None,
+        binning=1,
+        source_measurement="",
+        save_named=False,
+    ):
         """Archive a completed native reference result before updating one detector.
 
         The reference uses binned histogram coordinates; the working detector keeps raw
@@ -515,19 +531,28 @@ class ChannelDefinition:
         bounds = sorted(int(float(bound) * max(1, int(binning))) for bound in reference.region)
         client = client or VvVhGFactorClient()
         archived = client.archive_g_factor(
-            file_path=reference.fast_file, parameters=parameters,
+            file_path=reference.fast_file,
+            parameters=parameters,
             active_user=store.resolve_active_user_id(),
         )
-        if (not isinstance(archived, dict) or not archived.get("ok", True)
-                or not archived.get("reference_decay_id") or not archived.get("calibration_id")):
+        if (
+            not isinstance(archived, dict)
+            or not archived.get("ok", True)
+            or not archived.get("reference_decay_id")
+            or not archived.get("calibration_id")
+        ):
             error = archived.get("error") if isinstance(archived, dict) else None
             raise OSError(error or "Reference calibration archival returned no identifiers.")
         previous = copy.deepcopy(detector)
         updated = copy.deepcopy(detector)
-        updated.update(g_factor=float(value), l1=parameters["l1"], l2=parameters["l2"],
-                       g_factor_channels=bounds,
-                       g_factor_decay_uuid=archived["reference_decay_id"],
-                       g_factor_calibration_id=archived["calibration_id"])
+        updated.update(
+            g_factor=float(value),
+            l1=parameters["l1"],
+            l2=parameters["l2"],
+            g_factor_channels=bounds,
+            g_factor_decay_uuid=archived["reference_decay_id"],
+            g_factor_calibration_id=archived["calibration_id"],
+        )
         self.data["detectors"][name] = updated
         try:
             if save_named:

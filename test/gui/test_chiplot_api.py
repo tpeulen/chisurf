@@ -873,11 +873,11 @@ def test_image_restyles_without_reuploading_data(qapp):
     assert img.get_levels() == pytest.approx((-0.5, 0.5))
 
     img.set_colormap("RdBu")
-    assert img.native["colormap"] == "RdBu" or getattr(img.native["colormap"], "name", None) == "RdBu"
+    assert (
+        img.native["colormap"] == "RdBu" or getattr(img.native["colormap"], "name", None) == "RdBu"
+    )
     img.set_colormap(None)  # back to the default ramp
     assert img.native["colormap"] is None
 
     # the data itself is untouched by either restyle
     assert np.array_equal(img.get_image(), data)
-
-

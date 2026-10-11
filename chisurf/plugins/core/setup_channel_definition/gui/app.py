@@ -53,8 +53,13 @@ class SetupChannelDefinitionApp(ImApp):
                 default_settings() if settings is None else settings, file_path=file_path, db=db
             )
         self._on_changed = on_changed
-        self.page = ChannelDefinitionWidget(model=model, on_changed=self._model_changed, host_app=self,
-                                             visibility=visibility, on_definition_saved=on_definition_saved)
+        self.page = ChannelDefinitionWidget(
+            model=model,
+            on_changed=self._model_changed,
+            host_app=self,
+            visibility=visibility,
+            on_definition_saved=on_definition_saved,
+        )
         self.model = self.page.model
         #: Rectangles of the named controls (tests, guided tours, embedding hosts): the page's and this app's.
         self.item_rects: dict[str, tuple] = self.page.item_rects

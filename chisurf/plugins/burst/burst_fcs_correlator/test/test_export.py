@@ -25,9 +25,16 @@ def source(tmp_path):
 
 
 def rows(source, value=0.5):
-    return [{"First File": str(source), "Burst Folder": str(source.parent),
-             "Burst Index": 2, "pair_name": "green_ACF", "td_mean_ms": value,
-             "td_peak_ms": value}]
+    return [
+        {
+            "First File": str(source),
+            "Burst Folder": str(source.parent),
+            "Burst Index": 2,
+            "pair_name": "green_ACF",
+            "td_mean_ms": value,
+            "td_peak_ms": value,
+        }
+    ]
 
 
 def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
@@ -52,7 +59,9 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
         assert series[0]["x"] == [selected["td_mean"]]
         assert series[0]["y"] == [1.0] and series[0]["marker"]
         assert series[0]["name"] == "Simple fit"
-        facts = json.loads((REPO / "okf/validation/release-readiness-w1/fcs-before/burst-facts.json").read_text())
+        facts = json.loads(
+            (REPO / "okf/validation/release-readiness-w1/fcs-before/burst-facts.json").read_text()
+        )
         expected = next(iter(facts["td4_files"].values()))
         assert not (source.parent / "td4").exists()  # a companion is an explicit export
         # The frozen real grid (what the legacy writer put on disk) is reproduced
@@ -87,7 +96,9 @@ def test_cancellation_during_staging_preserves_existing_outputs(source):
             raise CancelledError()
 
     with pytest.raises(CancelledError):
-        write_fcs_results(rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=cancel)
+        write_fcs_results(
+            rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=cancel
+        )
     assert {p: p.read_bytes() for p in paths} == before
     assert not list(source.parent.glob(".burst-fcs-*"))
 
@@ -124,10 +135,11 @@ def test_concurrent_output_change_is_preserved_and_rejected(source):
             paths[0].write_text("external analysis")
 
     with pytest.raises(RuntimeError, match="changed while"):
-        write_fcs_results(rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=external_write)
+        write_fcs_results(
+            rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=external_write
+        )
     assert paths[0].read_text() == "external analysis"
     assert original_pto != b"external analysis"
-
 
 
 def test_selected_analysis_root_keeps_bid_output_beside_burst_folder(source):
@@ -144,7 +156,6 @@ def test_selected_analysis_root_keeps_bid_output_beside_burst_folder(source):
         app.close()
 
 
-
 def test_two_analysis_folders_of_one_measurement_publish_together(source):
     """The shared measurement container is staged once while both positional grids survive."""
     first = source.parent / "analysis-a"
@@ -159,7 +170,6 @@ def test_two_analysis_folders_of_one_measurement_publish_together(source):
     with Measurement.open(source.with_suffix(".pto")) as measurement:
         table = measurement.get_store("burst fcs")
         assert numeric_column(table, "td_mean__green_ACF")[0] == pytest.approx(0.7)
-
 
 
 def test_publication_uses_worker_and_gui_frames_remain_responsive_on_cancel(source, monkeypatch):
@@ -241,13 +251,17 @@ def test_cancellation_after_first_publish_rolls_back_previous_outputs(source):
             raise CancelledError()
 
     with pytest.raises(CancelledError):
-        write_fcs_results(rows(source, 1), {(str(source.parent), source.stem): 4},
-                          cancel_check=cancel_after_container)
+        write_fcs_results(
+            rows(source, 1),
+            {(str(source.parent), source.stem): 4},
+            cancel_check=cancel_after_container,
+        )
     assert {p: p.read_bytes() for p in paths} == before
 
 
-
-def test_native_maxent_preset_fields_are_actual_effective_grid_and_auto_is_explicit(source, tmp_path):
+def test_native_maxent_preset_fields_are_actual_effective_grid_and_auto_is_explicit(
+    source, tmp_path
+):
     """The GUI exposes the legacy fixed grid while zero remains an explicit automatic API request."""
     from emtk.testing import Driver
 

@@ -205,7 +205,9 @@ def test_write_result_goes_into_the_container_not_a_companion(tmp_path):
         pytest.skip("no instrument test data")
     raw = tmp_path / "m000.ptu"
     shutil.copy(ptu, raw)
-    frame = pd.DataFrame({"First File": [str(raw)] * 5, core.COLUMN_FRET_2CDE: np.linspace(1, 5, 5)})
+    frame = pd.DataFrame(
+        {"First File": [str(raw)] * 5, core.COLUMN_FRET_2CDE: np.linspace(1, 5, 5)}
+    )
     written = core.write_2cde_container(frame, "fret", analysis_folder=tmp_path)
     assert written == [str(container_for(raw))]
     assert not (tmp_path / "2c4").exists()

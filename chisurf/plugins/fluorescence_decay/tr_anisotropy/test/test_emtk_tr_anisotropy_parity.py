@@ -138,7 +138,10 @@ def test_a_crossed_region_is_swapped_where_the_qt_wizard_silently_skipped_the_su
     np.testing.assert_allclose(native.data["irf_vv_bg_norm"].y, swapped)
     skipped = QT_REFERENCE["regions"]["200,100"]
     qt_vv, _ = core_irf.correct_irfs(
-        np.asarray(QT_REFERENCE["load"]["irf_vv"]), np.asarray(QT_REFERENCE["load"]["irf_vh"]), 200, 100
+        np.asarray(QT_REFERENCE["load"]["irf_vv"]),
+        np.asarray(QT_REFERENCE["load"]["irf_vh"]),
+        200,
+        100,
     )
     np.testing.assert_allclose(skipped["irf_vv_bg_norm"], qt_vv)
 
@@ -162,7 +165,11 @@ def test_corrections_defaults_and_spectra_files_equal_the_qt_wizard(tmp_path):
     native = (
         make_app().model
     )  # a fresh window starts from the same stored defaults the Qt wizard read
-    assert (native.g_factor, native.l1, native.l2) == (qt["defaults"]["g"], qt["defaults"]["l1"], qt["defaults"]["l2"])
+    assert (native.g_factor, native.l1, native.l2) == (
+        qt["defaults"]["g"],
+        qt["defaults"]["l1"],
+        qt["defaults"]["l2"],
+    )
     assert (native.g_factor, native.l1, native.l2) == (1.16, 0.12, 0.44)
     assert native.lifetime_spectrum == qt["lifetime_default"]
     assert native.rotation_spectrum == qt["rotation_default"]

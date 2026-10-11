@@ -73,8 +73,6 @@ def _read(path):
     return md.load(str(path), top=TOP)
 
 
-
-
 @pytest.fixture(scope="module")
 def qt():
     """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""

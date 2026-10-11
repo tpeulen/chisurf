@@ -397,7 +397,9 @@ def view_frame(drv):
 def test_the_3d_view_is_a_chimol_picture_with_shells(drv):
     frame = view_frame(drv)
     assert drv.app.volume_view.error == ""
-    assert frame.ndim == 3 and (frame[:, :, :3] != frame[0, 0, :3]).any(), "the isosurfaces are drawn"
+    assert frame.ndim == 3 and (frame[:, :, :3] != frame[0, 0, :3]).any(), (
+        "the isosurfaces are drawn"
+    )
     assert "volume_view" in drv.app.item_rects
 
 

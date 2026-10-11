@@ -11,7 +11,9 @@ import json
 from pathlib import Path
 
 #: Recorded from the retired Qt shell's ALEX_PANELS before deletion.
-ALEX_PANELS = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))["ALEX_PANELS"]
+ALEX_PANELS = json.loads(
+    (Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8")
+)["ALEX_PANELS"]
 
 
 def _numbered() -> list[str]:

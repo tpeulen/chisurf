@@ -215,8 +215,9 @@ def _ordering(model: GaussianHMM) -> np.ndarray:
     return np.argsort(model.means_.sum(axis=1))
 
 
-def fit_traces(traces, settings: HmmSettings | None = None, *,
-               cancel: Callable[[], bool] | None = None) -> HmmFit:
+def fit_traces(
+    traces, settings: HmmSettings | None = None, *, cancel: Callable[[], bool] | None = None
+) -> HmmFit:
     """Fit a Gaussian HMM to one or more binned traces and summarise it.
 
     Parameters
@@ -335,8 +336,12 @@ def transition_rates(transmat, time_step: float = 1.0) -> np.ndarray:
 
 
 def scan_state_counts(
-    traces, settings: HmmSettings | None = None, min_states: int = 1, max_states: int = 6,
-    *, cancel: Callable[[], bool] | None = None,
+    traces,
+    settings: HmmSettings | None = None,
+    min_states: int = 1,
+    max_states: int = 6,
+    *,
+    cancel: Callable[[], bool] | None = None,
 ) -> StateScan:
     """Fit a range of state counts and score each by AIC and BIC.
 

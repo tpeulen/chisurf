@@ -72,7 +72,9 @@ class LegacyExportModel:
             return []
         self.written = [Path(p) for p in written]
         folder = self.written[0].parent if self.written else path.parent
-        self.status_text = f"Wrote {len(self.written)} file(s) in {folder}: " + ", ".join(p.name for p in self.written)
+        self.status_text = f"Wrote {len(self.written)} file(s) in {folder}: " + ", ".join(
+            p.name for p in self.written
+        )
         logger.info(f"ALEX-Suite export: {len(self.written)} file(s) in {folder}")
         return self.written
 
@@ -85,7 +87,13 @@ def _export_stem(path: Path) -> Path:
     """
     for parent in [path, *path.parents]:
         if parent.suffix.lower() == ".pto":
-            run = path.relative_to(parent).as_posix().replace("/", "_").replace(" ", "_").replace("#", "_")
+            run = (
+                path.relative_to(parent)
+                .as_posix()
+                .replace("/", "_")
+                .replace(" ", "_")
+                .replace("#", "_")
+            )
             return parent.parent / (parent.stem + (f"_{run}" if run and run != "." else ""))
     return path.with_suffix("")
 

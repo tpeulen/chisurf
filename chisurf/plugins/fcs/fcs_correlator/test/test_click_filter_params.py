@@ -17,7 +17,9 @@ CHANGE_POINT_FOLD = "Change-point parameters (BOCPD / Kalman / CUSUM).fold"
 
 @pytest.fixture(scope="module")
 def stream(tmp_path_factory):
-    return diffusion_spc(tmp_path_factory.mktemp("filter"), "bursts.spc", rate_hz=200.0, duration_s=1.0, seed=11)
+    return diffusion_spc(
+        tmp_path_factory.mktemp("filter"), "bursts.spc", rate_hz=200.0, duration_s=1.0, seed=11
+    )
 
 
 def _filter_step(stream):
@@ -52,7 +54,9 @@ def test_every_filter_mode_selects_a_different_subset(stream):
         kept[mode] = _kept(hub)
     assert all(0 <= n <= total for n in kept.values()), kept
     assert len(set(kept.values())) >= 4, kept
-    assert kept["kalman"] < kept["burst"], "the change-point detector rejects background the burst window keeps"
+    assert kept["kalman"] < kept["burst"], (
+        "the change-point detector rejects background the burst window keeps"
+    )
     hub.app.close()
 
 
@@ -121,7 +125,9 @@ def test_macro_time_interval_limits_drop_photons(stream):
     hub.type_into("min_dmt", "0.01")
     assert model.use_min and model.min_dmt == 0.01
     window = _kept(hub)
-    assert 0 < window < len(model._tttr) - upper + 1  # photons wider apart than 10 us, closer than 1.5 ms
+    assert (
+        0 < window < len(model._tttr) - upper + 1
+    )  # photons wider apart than 10 us, closer than 1.5 ms
     hub.app.close()
 
 

@@ -54,8 +54,13 @@ def test_failed_partial_copy_preserves_original_tree(tmp_path, monkeypatch, exis
     assert set(user_root.iterdir()) == ({unrelated, destination} if existing else {unrelated})
 
 
-@pytest.mark.parametrize("source_kind", ["folder", "wrapped-zip", "flat-zip", "distribution-wrapper", "flat-distribution"])
-def test_install_preserves_package_name_distinct_from_manifest_id(tmp_path, monkeypatch, source_kind):
+@pytest.mark.parametrize(
+    "source_kind",
+    ["folder", "wrapped-zip", "flat-zip", "distribution-wrapper", "flat-distribution"],
+)
+def test_install_preserves_package_name_distinct_from_manifest_id(
+    tmp_path, monkeypatch, source_kind
+):
     import importlib
     import sys
     import zipfile
@@ -65,13 +70,17 @@ def test_install_preserves_package_name_distinct_from_manifest_id(tmp_path, monk
 
     user_root = tmp_path / "user"
     source = _plugin(tmp_path / "source", name="integrity_sample", plugin_id="different_plugin_id")
-    (source / "__init__.py").write_text("def factory(): return 'working entrypoint'\n", encoding="utf-8")
+    (source / "__init__.py").write_text(
+        "def factory(): return 'working entrypoint'\n", encoding="utf-8"
+    )
     manifest_path = source / "manifest.json"
     data = json.loads(manifest_path.read_text(encoding="utf-8"))
     data["entrypoints"] = {"emtk": "chisurf.plugins.integrity_sample:factory"}
     manifest_path.write_text(json.dumps(data), encoding="utf-8")
     if source_kind != "folder":
-        archive = tmp_path / ("release-bundle.zip" if source_kind == "flat-distribution" else "integrity_sample.zip")
+        archive = tmp_path / (
+            "release-bundle.zip" if source_kind == "flat-distribution" else "integrity_sample.zip"
+        )
         with zipfile.ZipFile(archive, "w") as zf:
             for path in source.iterdir():
                 prefix = Path("integrity_sample") if source_kind == "wrapped-zip" else Path()
@@ -99,8 +108,21 @@ def test_install_preserves_package_name_distinct_from_manifest_id(tmp_path, monk
     assert not installed.exists()
 
 
-@pytest.mark.parametrize("boundary", ["outside", "symlink-destination", "symlink-source", "self-copy", "invalid-name", "stale-manifest", "new-destination"])
-def test_install_revalidates_plan_and_paths_before_mutating_existing_tree(tmp_path, monkeypatch, boundary):
+@pytest.mark.parametrize(
+    "boundary",
+    [
+        "outside",
+        "symlink-destination",
+        "symlink-source",
+        "self-copy",
+        "invalid-name",
+        "stale-manifest",
+        "new-destination",
+    ],
+)
+def test_install_revalidates_plan_and_paths_before_mutating_existing_tree(
+    tmp_path, monkeypatch, boundary
+):
     user_root = tmp_path / "user"
     user_root.mkdir()
     source = _plugin(tmp_path / "source")
@@ -162,7 +184,21 @@ def test_staged_manifest_is_validated_before_replacing_old_plugin(tmp_path, monk
     assert set(user_root.iterdir()) == {destination}
 
 
-@pytest.mark.parametrize("unsafe_name", ["../escape.py", "/absolute.py", "..\\escape.py", "C:/escape.py", "sample_tool/./alias.py", "sample_tool//alias.py", "sample_tool/file:stream", "sample_tool/trailing.", "sample_tool/trailing ", "sample_tool/CON.py"])
+@pytest.mark.parametrize(
+    "unsafe_name",
+    [
+        "../escape.py",
+        "/absolute.py",
+        "..\\escape.py",
+        "C:/escape.py",
+        "sample_tool/./alias.py",
+        "sample_tool//alias.py",
+        "sample_tool/file:stream",
+        "sample_tool/trailing.",
+        "sample_tool/trailing ",
+        "sample_tool/CON.py",
+    ],
+)
 def test_unsafe_archive_paths_are_rejected_portably(tmp_path, monkeypatch, unsafe_name):
     import zipfile
 
@@ -308,7 +344,9 @@ def test_zip_source_symlink_is_rejected(tmp_path, monkeypatch, stage):
 
 @pytest.mark.parametrize("spellings", [("data", "data"), ("data", "DATA"), ("café", "cafe\u0301")])
 @pytest.mark.parametrize("reverse", [False, True])
-def test_file_directory_zip_identity_conflict_is_rejected_before_extraction(tmp_path, spellings, reverse):
+def test_file_directory_zip_identity_conflict_is_rejected_before_extraction(
+    tmp_path, spellings, reverse
+):
     import zipfile
 
     archive = tmp_path / "sample_tool.zip"
@@ -322,7 +360,6 @@ def test_file_directory_zip_identity_conflict_is_rejected_before_extraction(tmp_
     with zipfile.ZipFile(archive) as zf:
         with pytest.raises(ValueError, match="file.*directory|directory.*file"):
             installer._safe_members(zf)
-
 
 
 def test_interrupt_after_old_tree_move_restores_original(tmp_path, monkeypatch):
@@ -347,7 +384,6 @@ def test_interrupt_after_old_tree_move_restores_original(tmp_path, monkeypatch):
         installer.install(plan)
     assert (destination / "old.txt").read_bytes() == b"original"
     assert set(user_root.iterdir()) == {destination}
-
 
 
 def test_zip_directory_mode_without_slash_uses_actual_extraction_identity(tmp_path):

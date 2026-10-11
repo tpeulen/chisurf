@@ -428,7 +428,9 @@ def test_a_transform_barely_changes_the_surface_area(session):
     cmd.do("get_area resn NAG")
     after = float(messages[-1].split()[1])
 
-    assert after == pytest.approx(before, rel=0.05)  # within the sampling error (3.1% at the default density)
+    assert after == pytest.approx(
+        before, rel=0.05
+    )  # within the sampling error (3.1% at the default density)
     assert after != before  # ...and not bit-identical
 
     # The error is the sampling's: a dense sampling leaves nothing of it.

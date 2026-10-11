@@ -32,30 +32,104 @@ PROJECT_FILTER = "Docking project (*.json);;All files (*)"
 FPS_FILTER = "FPS labelling (*.json *.txt);;All files (*)"
 TABS = ("Results", "Score", "Structure")
 #: The colour of each score curve (data colours).
-CURVE_COLOURS = [(31, 119, 180, 255), (255, 127, 14, 255), (44, 160, 44, 255), (214, 39, 40, 255),
-                 (148, 103, 189, 255), (140, 86, 75, 255), (227, 119, 194, 255), (127, 127, 127, 255)]
+CURVE_COLOURS = [
+    (31, 119, 180, 255),
+    (255, 127, 14, 255),
+    (44, 160, 44, 255),
+    (214, 39, 40, 255),
+    (148, 103, 189, 255),
+    (140, 86, 75, 255),
+    (227, 119, 194, 255),
+    (127, 127, 127, 255),
+]
 
-PDB_TABLE = {"sections": [{
-    "type": "custom", "key": "data_table",
-    "description": "The structures to dock, one per rigid body; the row number is the body id. The same file twice is a "
-                   "homodimer. Delete removes the selected row.",
-    "options": {"source": "pdb_rows", "height": 110, "row_key": "body", "selected_call": "select_pdb",
+PDB_TABLE = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "The structures to dock, one per rigid body; the row number is the body id. The same file twice is a "
+            "homodimer. Delete removes the selected row.",
+            "options": {
+                "source": "pdb_rows",
+                "height": 110,
+                "row_key": "body",
+                "selected_call": "select_pdb",
                 "delete_call": "delete_pdb",
-                "columns": [{"key": "body", "title": "Body", "width": 54, "description": "The body id of the structure."},
-                            {"key": "file", "title": "Structure", "description": "File name; the full path is in the tooltip."},
-                            {"key": "folder", "title": "Folder", "description": "The folder the file is in."}]}}]}
+                "columns": [
+                    {
+                        "key": "body",
+                        "title": "Body",
+                        "width": 54,
+                        "description": "The body id of the structure.",
+                    },
+                    {
+                        "key": "file",
+                        "title": "Structure",
+                        "description": "File name; the full path is in the tooltip.",
+                    },
+                    {
+                        "key": "folder",
+                        "title": "Folder",
+                        "description": "The folder the file is in.",
+                    },
+                ],
+            },
+        }
+    ]
+}
 
-RESULT_TABLE = {"sections": [{
-    "type": "custom", "key": "data_table",
-    "description": "One row per result; runs accumulate until Clear. Click a header to sort (best score first); "
-                   "select a row to show that structure.",
-    "options": {"source": "result_rows", "expand": True, "reserve": 4, "row_key": "key", "selected_call": "select_result",
-                "sort": {"key": "score", "descending": False}, "status": True,
-                "columns": [{"key": "trial", "title": "Trial", "width": 48, "description": "Trial number of a repeated run."},
-                            {"key": "type", "title": "Type", "width": 52, "description": "dock, mc or refine."},
-                            {"key": "score", "title": "Score", "width": 66, "format": "%.2f", "description": "The restraint score; lower is better."},
-                            {"key": "distances", "title": "Distances", "width": 76, "description": "Number of distance restraints scored."},
-                            {"key": "best_pdb", "title": "Best PDB", "description": "The docked structure of the result."}]}}]}
+RESULT_TABLE = {
+    "sections": [
+        {
+            "type": "custom",
+            "key": "data_table",
+            "description": "One row per result; runs accumulate until Clear. Click a header to sort (best score first); "
+            "select a row to show that structure.",
+            "options": {
+                "source": "result_rows",
+                "expand": True,
+                "reserve": 4,
+                "row_key": "key",
+                "selected_call": "select_result",
+                "sort": {"key": "score", "descending": False},
+                "status": True,
+                "columns": [
+                    {
+                        "key": "trial",
+                        "title": "Trial",
+                        "width": 48,
+                        "description": "Trial number of a repeated run.",
+                    },
+                    {
+                        "key": "type",
+                        "title": "Type",
+                        "width": 52,
+                        "description": "dock, mc or refine.",
+                    },
+                    {
+                        "key": "score",
+                        "title": "Score",
+                        "width": 66,
+                        "format": "%.2f",
+                        "description": "The restraint score; lower is better.",
+                    },
+                    {
+                        "key": "distances",
+                        "title": "Distances",
+                        "width": 76,
+                        "description": "Number of distance restraints scored.",
+                    },
+                    {
+                        "key": "best_pdb",
+                        "title": "Best PDB",
+                        "description": "The docked structure of the result.",
+                    },
+                ],
+            },
+        }
+    ]
+}
 
 
 class DockingView:
@@ -70,8 +144,12 @@ class DockingView:
     def pdb_rows(self):
         from .fps_model import Rows
 
-        rows = Rows([{"body": i, "file": Path(p).name, "folder": str(Path(p).parent), "path": p}
-                     for i, p in enumerate(self.session.pdb_files)])
+        rows = Rows(
+            [
+                {"body": i, "file": Path(p).name, "folder": str(Path(p).parent), "path": p}
+                for i, p in enumerate(self.session.pdb_files)
+            ]
+        )
         rows.revision = hash(tuple(self.session.pdb_files))
         return rows
 
@@ -135,7 +213,12 @@ class DockingCard(CardShell):
         self.request_frame()
 
     def load_project(self) -> None:
-        self.open_file("Load docking project", PROJECT_FILTER, self._load_project, current=self.session.fps_json)
+        self.open_file(
+            "Load docking project",
+            PROJECT_FILTER,
+            self._load_project,
+            current=self.session.fps_json,
+        )
 
     def _load_project(self, path: str) -> None:
         if self.session.load_project(path):
@@ -144,8 +227,13 @@ class DockingCard(CardShell):
 
     def save_project(self) -> None:
         directory = os.path.dirname(self.session.fps_json) if self.session.fps_json else ""
-        self.save_file("Save docking project", PROJECT_FILTER, self._save_project, filename="docking_project.json",
-                       directory=directory)
+        self.save_file(
+            "Save docking project",
+            PROJECT_FILTER,
+            self._save_project,
+            filename="docking_project.json",
+            directory=directory,
+        )
 
     def _save_project(self, path: str) -> None:
         if not str(path).endswith(".json"):
@@ -154,7 +242,12 @@ class DockingCard(CardShell):
         self.sync()
 
     def pick_fps(self) -> None:
-        self.open_file("Select fps.json or FPS LPs .txt", FPS_FILTER, self._set_fps, current=self.session.fps_json)
+        self.open_file(
+            "Select fps.json or FPS LPs .txt",
+            FPS_FILTER,
+            self._set_fps,
+            current=self.session.fps_json,
+        )
 
     def _set_fps(self, path: str) -> None:
         self.session.fps_json = path
@@ -162,7 +255,13 @@ class DockingCard(CardShell):
         self.sync()
 
     def pick_output(self) -> None:
-        self.open_file("Output directory", "All files (*)", self._set_output, current=self.session.output_dir, folder=True)
+        self.open_file(
+            "Output directory",
+            "All files (*)",
+            self._set_output,
+            current=self.session.output_dir,
+            folder=True,
+        )
 
     def _set_output(self, path: str) -> None:
         self.session.output_dir = path
@@ -170,12 +269,18 @@ class DockingCard(CardShell):
         self.sync()
 
     def add_pdbs(self) -> None:
-        self.open_file("Add PDB file", PDB_FILTER, lambda p: self._add_pdb([p]),
-                       current=self.session.pdb_files[-1] if self.session.pdb_files else "")
+        self.open_file(
+            "Add PDB file",
+            PDB_FILTER,
+            lambda p: self._add_pdb([p]),
+            current=self.session.pdb_files[-1] if self.session.pdb_files else "",
+        )
 
     def _add_pdb(self, paths: list[str]) -> None:
         self.session.add_pdbs(paths)
-        self.session.say(f"Added {len(paths)} structure(s): {len(self.session.pdb_files)} rigid bodies.")
+        self.session.say(
+            f"Added {len(paths)} structure(s): {len(self.session.pdb_files)} rigid bodies."
+        )
         self.used("pdb")
         self.sync()
 
@@ -201,8 +306,12 @@ class DockingCard(CardShell):
                 else:
                     self.session.fps_json = path
                     taken = True
-        self.session.say("Dropped files taken." if taken else "No PDB, fps.json or project file among the dropped paths.",
-                         not taken)
+        self.session.say(
+            "Dropped files taken."
+            if taken
+            else "No PDB, fps.json or project file among the dropped paths.",
+            not taken,
+        )
         self.sync()
         return taken
 
@@ -233,34 +342,103 @@ class DockingCard(CardShell):
     def _draw_inputs(self, box) -> None:
         s = self.session
         running = s.running
-        pressed = self.toolbar([
-            {"label": "Project", "key": "project", "enabled": not running, "tip": "Load a docking project (.json): PDBs, fps.json and parameters."},
-            {"label": action_caption("save"), "key": "save", "enabled": not running,
-             "tip": action_tooltip("save", "Save the current inputs and parameters as a docking project.")},
-            {"label": "fps.json", "key": "fps_pick", "enabled": not running, "tip": "Choose the labelling/distance fps.json (or FPS LPs .txt) file."},
-            {"label": "Output", "key": "out_pick", "enabled": not running, "tip": "Choose the output directory."},
-            {"label": action_caption("run"), "key": "run", "enabled": not running,
-             "tip": action_tooltip("run", "Run the selected operation; results are appended to the table.")},
-            {"label": "Stop", "key": "stop", "enabled": running, "tip": "Stop the run (a docking process is terminated)."},
-            {"label": "Clear", "key": "clear", "enabled": not running, "tip": "Clear the results table and the score plot."},
-            *self.help_buttons(),
-        ])
-        {None: lambda: None, "project": self.load_project, "save": self.save_project, "fps_pick": self.pick_fps,
-         "out_pick": self.pick_output, "run": self.run, "stop": s.stop, "clear": self.clear,
-         "guide": self.start_guide, "help": self.show_help}[pressed]()
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Project",
+                    "key": "project",
+                    "enabled": not running,
+                    "tip": "Load a docking project (.json): PDBs, fps.json and parameters.",
+                },
+                {
+                    "label": action_caption("save"),
+                    "key": "save",
+                    "enabled": not running,
+                    "tip": action_tooltip(
+                        "save", "Save the current inputs and parameters as a docking project."
+                    ),
+                },
+                {
+                    "label": "fps.json",
+                    "key": "fps_pick",
+                    "enabled": not running,
+                    "tip": "Choose the labelling/distance fps.json (or FPS LPs .txt) file.",
+                },
+                {
+                    "label": "Output",
+                    "key": "out_pick",
+                    "enabled": not running,
+                    "tip": "Choose the output directory.",
+                },
+                {
+                    "label": action_caption("run"),
+                    "key": "run",
+                    "enabled": not running,
+                    "tip": action_tooltip(
+                        "run", "Run the selected operation; results are appended to the table."
+                    ),
+                },
+                {
+                    "label": "Stop",
+                    "key": "stop",
+                    "enabled": running,
+                    "tip": "Stop the run (a docking process is terminated).",
+                },
+                {
+                    "label": "Clear",
+                    "key": "clear",
+                    "enabled": not running,
+                    "tip": "Clear the results table and the score plot.",
+                },
+                *self.help_buttons(),
+            ]
+        )
+        {
+            None: lambda: None,
+            "project": self.load_project,
+            "save": self.save_project,
+            "fps_pick": self.pick_fps,
+            "out_pick": self.pick_output,
+            "run": self.run,
+            "stop": s.stop,
+            "clear": self.clear,
+            "guide": self.start_guide,
+            "help": self.show_help,
+        }[pressed]()
         if running:
             im.progress_bar(s.progress, (-1, 0), s.progress_text or "running...")
             self.remember("progress")
         self.status_line()
         im.separator()
         im.text(tr("PDB rigid bodies (one per body)"))
-        pressed = self.toolbar([
-            {"label": "Add Files", "key": "add_pdb", "enabled": not running, "tip": "Add a structure file as the next rigid body (a dropped .pdb does the same)."},
-            {"label": "Database", "key": "database_pdb", "enabled": not running,
-             "tip": "Add a structure from the MMFDB database as the next rigid body."},
-            {"label": "Remove", "key": "remove_pdb", "enabled": self.view.pdb_selected >= 0 and not running, "tip": "Remove the selected rigid body."},
-            {"label": "Clear List", "key": "clear_pdb", "enabled": bool(s.pdb_files) and not running, "tip": "Remove every rigid body."},
-        ])
+        pressed = self.toolbar(
+            [
+                {
+                    "label": "Add Files",
+                    "key": "add_pdb",
+                    "enabled": not running,
+                    "tip": "Add a structure file as the next rigid body (a dropped .pdb does the same).",
+                },
+                {
+                    "label": "Database",
+                    "key": "database_pdb",
+                    "enabled": not running,
+                    "tip": "Add a structure from the MMFDB database as the next rigid body.",
+                },
+                {
+                    "label": "Remove",
+                    "key": "remove_pdb",
+                    "enabled": self.view.pdb_selected >= 0 and not running,
+                    "tip": "Remove the selected rigid body.",
+                },
+                {
+                    "label": "Clear List",
+                    "key": "clear_pdb",
+                    "enabled": bool(s.pdb_files) and not running,
+                    "tip": "Remove every rigid body.",
+                },
+            ]
+        )
         if pressed == "add_pdb":
             self.add_pdbs()
         elif pressed == "database_pdb":
@@ -295,17 +473,25 @@ class DockingCard(CardShell):
                 self.tab = tab
             if selected:
                 im.pop_style_color(1)
-            im.set_item_tooltip({"Results": "One row per docking result; click a header to sort.",
-                                 "Score": "The restraint score against the step of the run, one curve per trial.",
-                                 "Structure": "A 3D trace of the selected structure."}[tab])
+            im.set_item_tooltip(
+                {
+                    "Results": "One row per docking result; click a header to sort.",
+                    "Score": "The restraint score against the step of the run, one curve per trial.",
+                    "Structure": "A 3D trace of the selected structure.",
+                }[tab]
+            )
             self.remember(f"tab_{tab}")
         im.separator()
-        {"Results": self._draw_table, "Score": self._draw_score, "Structure": self._draw_structure}[self.tab]()
+        {"Results": self._draw_table, "Score": self._draw_score, "Structure": self._draw_structure}[
+            self.tab
+        ]()
 
     def _draw_table(self) -> None:
         self.result_form.rects.clear()
         if not self.session.rows:
-            im.text_wrapped(tr("No results yet: add the structures and the fps.json, then press Run."))
+            im.text_wrapped(
+                tr("No results yet: add the structures and the fps.json, then press Run.")
+            )
             self.remember("empty_results")
         draw_form(RESULT_TABLE, self.view, self.result_form)
         self.item_rects.update(self.result_form.rects)
@@ -322,9 +508,13 @@ class DockingCard(CardShell):
             for i, (path, (frames, scores)) in enumerate(sorted(curves.items())):
                 label = Path(path).parent.name if "trial_" in path else "score"
                 implot.set_next_line_style(CURVE_COLOURS[i % len(CURVE_COLOURS)], 2.0)
-                implot.plot_line(label, np.asarray(frames, dtype=float), np.asarray(scores, dtype=float))
+                implot.plot_line(
+                    label, np.asarray(frames, dtype=float), np.asarray(scores, dtype=float)
+                )
             implot.end_plot()
-            im.set_item_tooltip(tr("Total restraint score against the step of the run (CG iteration or MC frame)."))
+            im.set_item_tooltip(
+                tr("Total restraint score against the step of the run (CG iteration or MC frame).")
+            )
             self.remember("score_plot")
 
     def _draw_structure(self) -> None:
@@ -358,7 +548,9 @@ class DockingCard(CardShell):
             im.set_item_tooltip(tr("The structure as cartoon; drag to rotate, wheel to zoom."))
             self.remember("structure_plot")
             return
-        im.text_wrapped(f"The molecular viewer could not start ({self.chimol.error}); showing the CA / P trace.")
+        im.text_wrapped(
+            f"The molecular viewer could not start ({self.chimol.error}); showing the CA / P trace."
+        )
         back = s.backbone(path)
         if back is None:
             im.text_wrapped(tr("The structure could not be read."))
@@ -369,10 +561,19 @@ class DockingCard(CardShell):
             for i, chain in enumerate(dict.fromkeys(chains)):
                 pts = xyz[chains == chain]
                 colour = tuple(c / 255 for c in CURVE_COLOURS[i % len(CURVE_COLOURS)])
-                implot3d.plot_line(f"chain {chain}", pts[:, 0], pts[:, 1], pts[:, 2],
-                                   spec=implot3d.Spec(line_color=colour))
+                implot3d.plot_line(
+                    f"chain {chain}",
+                    pts[:, 0],
+                    pts[:, 1],
+                    pts[:, 2],
+                    spec=implot3d.Spec(line_color=colour),
+                )
             implot3d.end_plot()
-            im.set_item_tooltip(tr("The CA / P trace of the structure, one colour per chain; drag to rotate, wheel to zoom."))
+            im.set_item_tooltip(
+                tr(
+                    "The CA / P trace of the structure, one colour per chain; drag to rotate, wheel to zoom."
+                )
+            )
             self.remember("structure_plot")
 
     # ── persistence ───────────────────────────────────────────────────────
@@ -394,7 +595,11 @@ class DockingCard(CardShell):
 
 def _spin(sections) -> None:
     for section in sections:
-        if section.get("type") == "value" and section.get("kind") in ("int", "float") and not section.get("read_only"):
+        if (
+            section.get("type") == "value"
+            and section.get("kind") in ("int", "float")
+            and not section.get("read_only")
+        ):
             section["style"] = "spin"
         _spin(section.get("sections", []))
 

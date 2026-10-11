@@ -189,7 +189,8 @@ def test_insert_between_reorders_cells(app):
     assert [c for c in nb_ed.cells()] == [initial, inserted, first, last]
     QtWidgets.QApplication.processEvents()
     inserts = [
-        b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
+        b
+        for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
         if not b.isHidden()
     ]
     assert len(inserts) == 3
@@ -197,7 +198,8 @@ def test_insert_between_reorders_cells(app):
     assert [c for c in nb_ed.cells()] == [initial, first, last]
     QtWidgets.QApplication.processEvents()
     inserts = [
-        b for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
+        b
+        for b in nb_ed.container.findChildren(QtWidgets.QToolButton, "notebook_insert_button")
         if not b.isHidden()
     ]
     assert len(inserts) == 2

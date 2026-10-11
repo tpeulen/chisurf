@@ -93,7 +93,11 @@ class EditorDocument:
         self.notebook: NativeNotebook | None = None
         if pathlib.Path(self.name).suffix.lower() == ".ipynb":
             try:
-                self.notebook = NativeNotebook.from_json(content, self.path) if content.strip() else NativeNotebook.new()
+                self.notebook = (
+                    NativeNotebook.from_json(content, self.path)
+                    if content.strip()
+                    else NativeNotebook.new()
+                )
             except (ValueError, TypeError, KeyError):
                 pass  # Corrupt notebooks remain recoverable in the raw JSON editor.
         self.diagnostics: list[dict[str, Any]] = []
@@ -174,6 +178,7 @@ class EditorModel:
         self._completion_document: EditorDocument | None = None
         self._completion_source = ""
         from chisurf.plugins.core.code_editor.backend.services import STORE
+
         self.document_store = STORE
         self.document_store.changed.connect(self._on_store_changed)
         self._store_revisions: dict[str, int] = {}
@@ -210,7 +215,9 @@ class EditorModel:
             pass
 
         # Open a default initial buffer
-        self.new_document("main.py", "# Welcome to ChiSurf EMTK Code Editor\nprint('Hello from ChiSurf!')\n")
+        self.new_document(
+            "main.py", "# Welcome to ChiSurf EMTK Code Editor\nprint('Hello from ChiSurf!')\n"
+        )
 
     @property
     def active_doc(self) -> EditorDocument | None:
@@ -269,17 +276,29 @@ class EditorModel:
             except Exception as e:
                 self.log_output(f"Failed to position cursor at line {line}: {e}")
 
-        self.recent_files = [str(resolved)] + [path for path in self.recent_files if path != str(resolved)]
+        self.recent_files = [str(resolved)] + [
+            path for path in self.recent_files if path != str(resolved)
+        ]
         self.recent_files = self.recent_files[:20]
         self._sync_document_store(activate=True)
         return target_doc
 
-    def save_document(self, index: int | None = None, path: str | pathlib.Path | None = None, *, overwrite: bool = False) -> bool:
+    def save_document(
+        self,
+        index: int | None = None,
+        path: str | pathlib.Path | None = None,
+        *,
+        overwrite: bool = False,
+    ) -> bool:
         idx = self.active_index if index is None else index
         if not (0 <= idx < len(self.documents)):
             return False
         doc = self.documents[idx]
-        destination = pathlib.Path(path).resolve() if path is not None else (pathlib.Path(doc.path) if doc.path else None)
+        destination = (
+            pathlib.Path(path).resolve()
+            if path is not None
+            else (pathlib.Path(doc.path) if doc.path else None)
+        )
         if destination is None:
             self.log_output("Choose a destination with Save As before saving an unnamed document.")
             return False
@@ -296,7 +315,9 @@ class EditorModel:
                 doc.editor.set_language(_detect_language(doc.name))
             doc.mark_saved()
             self.log_output(f"Saved {doc.path}")
-            self.recent_files = [doc.path] + [path for path in self.recent_files if path != doc.path]
+            self.recent_files = [doc.path] + [
+                path for path in self.recent_files if path != doc.path
+            ]
             self.recent_files = self.recent_files[:20]
             self._sync_document_store()
             if self.enable_ruff and self.run_ruff_on_save:
@@ -330,7 +351,9 @@ class EditorModel:
             self.log_output(f"Failed to reload {doc.path}: {error}")
             return False
 
-    def export_notebook(self, path: str | pathlib.Path, index: int | None = None, *, overwrite: bool = False) -> bool:
+    def export_notebook(
+        self, path: str | pathlib.Path, index: int | None = None, *, overwrite: bool = False
+    ) -> bool:
         index = self.active_index if index is None else index
         if not 0 <= index < len(self.documents):
             return False
@@ -401,9 +424,12 @@ class EditorModel:
             doc.editor.clipboard = code
             doc.editor.paste()
 
-    def start_rpc(self, host: str | None = None, cmd_port: int | None = None, pub_port: int | None = None) -> bool:
+    def start_rpc(
+        self, host: str | None = None, cmd_port: int | None = None, pub_port: int | None = None
+    ) -> bool:
         """Enable the existing Qt-free loopback transport for live native buffers."""
         from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
+
         self.stop_rpc()
         if host is not None:
             self.rpc_host = host
@@ -412,11 +438,19 @@ class EditorModel:
         if pub_port is not None:
             self.rpc_pub_port = pub_port
         try:
-            if not (1 <= self.rpc_cmd_port <= 65535 and 1 <= self.rpc_pub_port <= 65535) or self.rpc_cmd_port == self.rpc_pub_port:
+            if (
+                not (1 <= self.rpc_cmd_port <= 65535 and 1 <= self.rpc_pub_port <= 65535)
+                or self.rpc_cmd_port == self.rpc_pub_port
+            ):
                 raise ValueError("Choose two distinct RPC ports between 1 and 65535")
             self._rpc_runner = CancellableRuffRunner()
-            server = EditorRpcServer(host=self.rpc_host, cmd_port=self.rpc_cmd_port, pub_port=self.rpc_pub_port,
-                store=self.document_store, runner=self._rpc_runner)
+            server = EditorRpcServer(
+                host=self.rpc_host,
+                cmd_port=self.rpc_cmd_port,
+                pub_port=self.rpc_pub_port,
+                store=self.document_store,
+                runner=self._rpc_runner,
+            )
             server.start()
             self._rpc_server = server
             self.enable_rpc = True
@@ -441,7 +475,10 @@ class EditorModel:
         self.rpc_status = "Editor RPC disabled"
 
     def _on_store_changed(self, snapshot) -> None:
-        if not self._closed and (snapshot is None or any(doc.document_id == snapshot.document_id for doc in self.documents)):
+        if not self._closed and (
+            snapshot is None
+            or any(doc.document_id == snapshot.document_id for doc in self.documents)
+        ):
             if self.request_frame is not None:
                 self.request_frame()
 
@@ -454,35 +491,57 @@ class EditorModel:
             snapshot = self.document_store.get(document_id=doc.document_id)
             known_revision = self._store_revisions.get(doc.document_id)
             source = doc.text
-            if snapshot is not None and known_revision is not None and snapshot.revision != known_revision:
+            if (
+                snapshot is not None
+                and known_revision is not None
+                and snapshot.revision != known_revision
+            ):
                 if doc.notebook is not None and doc.notebook.is_running:
                     continue
-                if source != self._store_sources.get(doc.document_id) and source != snapshot.content:
-                    conflict = EditorDocument(name=f"RPC_conflict_{doc.name}", content=snapshot.content)
+                if (
+                    source != self._store_sources.get(doc.document_id)
+                    and source != snapshot.content
+                ):
+                    conflict = EditorDocument(
+                        name=f"RPC_conflict_{doc.name}", content=snapshot.content
+                    )
                     conflict._initial_text = ""
                     self.documents.append(conflict)
-                    self.log_output(f"Concurrent RPC and local changes: kept local {doc.name} and opened the RPC version in {conflict.name}.")
+                    self.log_output(
+                        f"Concurrent RPC and local changes: kept local {doc.name} and opened the RPC version in {conflict.name}."
+                    )
                 else:
                     if doc.notebook is not None:
                         doc.text = snapshot.content
                     else:
                         from emtk.widgets.text_editor import Pos
+
                         previous = doc.editor.cursors.main.end
-                        end = Pos(doc.editor.line_count - 1, len(doc.editor.document.lines[-1].text))
+                        end = Pos(
+                            doc.editor.line_count - 1, len(doc.editor.document.lines[-1].text)
+                        )
                         doc.editor.replace_section(Pos(0, 0), end, snapshot.content)
                         doc.editor.set_cursor(previous)
                     source = doc.text
             try:
-                updated = self.document_store.upsert(document_id=doc.document_id, path=doc.path or "", name=doc.name,
+                updated = self.document_store.upsert(
+                    document_id=doc.document_id,
+                    path=doc.path or "",
+                    name=doc.name,
                     language="Notebook" if doc.notebook is not None else doc.editor.language_name,
-                    content=source, modified=doc.is_modified,
-                    expected_revision=snapshot.revision if snapshot else None)
+                    content=source,
+                    modified=doc.is_modified,
+                    expected_revision=snapshot.revision if snapshot else None,
+                )
             except ValueError:
                 continue  # Another RPC arrived; apply it on the next render instead of overwriting it.
             self._store_revisions[doc.document_id] = updated.revision
             self._store_sources[doc.document_id] = source
-        if self.active_doc is not None and (activate or self.document_store.active_document_id is None
-            or self.document_store.active_document_id in owned):
+        if self.active_doc is not None and (
+            activate
+            or self.document_store.active_document_id is None
+            or self.document_store.active_document_id in owned
+        ):
             self.document_store.active_document_id = self.active_doc.document_id
 
     def set_color_scheme(self, name: str) -> None:
@@ -527,16 +586,31 @@ class EditorModel:
 
     def export_settings(self) -> dict:
         """Export declared preferences only; buffer content and secrets stay in memory."""
-        return {"recent_files": list(self.recent_files[:20]), "project_root": str(self.project_root),
-            "run_endpoint": self.run_endpoint, "font_scale": self.font_scale,
-            "show_line_numbers": self.show_line_numbers, "show_whitespace": self.show_whitespace,
-            "tab_size": self.tab_size, "insert_spaces": self.insert_spaces, "enable_lsp": self.enable_lsp,
-            "enable_rpc": self.enable_rpc, "rpc_host": self.rpc_host,
-            "rpc_cmd_port": self.rpc_cmd_port, "rpc_pub_port": self.rpc_pub_port,
-            "font_family": self.font_family, "font_size": self.font_size, "language": self.language,
-            "color_scheme": self.color_scheme, **self.display_colors, "caret_line_visible": self.caret_line_visible,
-            "enable_ruff": self.enable_ruff, "run_ruff_on_save": self.run_ruff_on_save,
-            "ruff_timeout_ms": self.ruff_timeout_ms, "ruff_extra_args": list(self.ruff_extra_args)}
+        return {
+            "recent_files": list(self.recent_files[:20]),
+            "project_root": str(self.project_root),
+            "run_endpoint": self.run_endpoint,
+            "font_scale": self.font_scale,
+            "show_line_numbers": self.show_line_numbers,
+            "show_whitespace": self.show_whitespace,
+            "tab_size": self.tab_size,
+            "insert_spaces": self.insert_spaces,
+            "enable_lsp": self.enable_lsp,
+            "enable_rpc": self.enable_rpc,
+            "rpc_host": self.rpc_host,
+            "rpc_cmd_port": self.rpc_cmd_port,
+            "rpc_pub_port": self.rpc_pub_port,
+            "font_family": self.font_family,
+            "font_size": self.font_size,
+            "language": self.language,
+            "color_scheme": self.color_scheme,
+            **self.display_colors,
+            "caret_line_visible": self.caret_line_visible,
+            "enable_ruff": self.enable_ruff,
+            "run_ruff_on_save": self.run_ruff_on_save,
+            "ruff_timeout_ms": self.ruff_timeout_ms,
+            "ruff_extra_args": list(self.ruff_extra_args),
+        }
 
     def restore_settings(self, settings: dict) -> None:
         if settings.get("color_scheme") in COLOR_SCHEMES:
@@ -548,7 +622,9 @@ class EditorModel:
         if family in font_choices():
             self.font_family = family
         elif family is not None:
-            self.log_output(f"Font family {family!r} is unavailable; keeping the native monospaced default.")
+            self.log_output(
+                f"Font family {family!r} is unavailable; keeping the native monospaced default."
+            )
         size = settings.get("font_size")
         if isinstance(size, int) and not isinstance(size, bool) and 0 <= size <= 72:
             self.font_size = size
@@ -566,7 +642,9 @@ class EditorModel:
                 setattr(self, name, settings[name])
         paths = settings.get("recent_files", [])
         if isinstance(paths, list):
-            self.recent_files = list(dict.fromkeys(path for path in paths if isinstance(path, str)))[:20]
+            self.recent_files = list(
+                dict.fromkeys(path for path in paths if isinstance(path, str))
+            )[:20]
         root = settings.get("project_root")
         if isinstance(root, str) and pathlib.Path(root).is_dir():
             self.project_root = pathlib.Path(root)
@@ -616,6 +694,7 @@ class EditorModel:
             if self._closed:
                 raise RuntimeError("The editor is closed")
             self._queued_calls[ready] = result
+
         def execute() -> None:
             if result.get("cancelled"):
                 return
@@ -627,6 +706,7 @@ class EditorModel:
                 result["error"] = error
             finally:
                 ready.set()
+
         self.event_queue.put(execute)
         if self.request_frame is not None:
             self.request_frame()
@@ -659,6 +739,7 @@ class EditorModel:
             self._ruff_runner.cancel()
         self._ruff_running = False
         from chisurf.emtk.code_links import unregister_emtk_editor
+
         unregister_emtk_editor(self)
         while not self.event_queue.empty():
             try:
@@ -690,7 +771,9 @@ class EditorModel:
 
     @staticmethod
     def _lsp_index(line: str, character: int) -> int:
-        return len(line.encode("utf-16-le")[:max(0, character) * 2].decode("utf-16-le", errors="ignore"))
+        return len(
+            line.encode("utf-16-le")[: max(0, character) * 2].decode("utf-16-le", errors="ignore")
+        )
 
     def _lsp_path(self, doc: EditorDocument) -> str:
         return doc.path or str(self.project_root / ".chisurf-unsaved" / f"{id(doc)}_{doc.name}")
@@ -708,10 +791,19 @@ class EditorModel:
         self.enable_lsp = True
         client = NativeLspClient(self.project_root, command)
         self.lsp_client = client
+
         def status(text):
-            self._queue_lsp(lambda: setattr(self, "lsp_status", text) if self.lsp_client is client else None)
+            self._queue_lsp(
+                lambda: setattr(self, "lsp_status", text) if self.lsp_client is client else None
+            )
+
         def diagnostics(uri, values):
-            self._queue_lsp(lambda: self._set_lsp_diagnostics(uri, values) if self.lsp_client is client else None)
+            self._queue_lsp(
+                lambda: (
+                    self._set_lsp_diagnostics(uri, values) if self.lsp_client is client else None
+                )
+            )
+
         client.status_changed.connect(status)
         client.diagnostics_received.connect(diagnostics)
         return client.start()
@@ -729,8 +821,11 @@ class EditorModel:
         client = self.lsp_client
         if client is None or not client.is_ready:
             return
-        documents = {self._lsp_path(doc): doc for doc in self.documents
-            if doc.notebook is None and pathlib.Path(doc.name).suffix.lower() in (".py", ".pyw")}
+        documents = {
+            self._lsp_path(doc): doc
+            for doc in self.documents
+            if doc.notebook is None and pathlib.Path(doc.name).suffix.lower() in (".py", ".pyw")
+        }
         for path in self._lsp_documents.keys() - documents.keys():
             client.close_document(path)
         self._lsp_documents = documents
@@ -747,42 +842,67 @@ class EditorModel:
         for item in values:
             position = item.get("range", {}).get("start", {})
             line = max(0, min(position.get("line", 0), len(lines) - 1))
-            normalized.append({**item, "line": line + 1,
-                "column": self._lsp_index(lines[line], position.get("character", 0)), "source": "LSP"})
+            normalized.append(
+                {
+                    **item,
+                    "line": line + 1,
+                    "column": self._lsp_index(lines[line], position.get("character", 0)),
+                    "source": "LSP",
+                }
+            )
         doc.lsp_diagnostics = normalized
 
     def request_lsp(self, action: str) -> None:
         doc = self.active_doc
         client = self.lsp_client
-        if (doc is None or doc.notebook is not None or pathlib.Path(doc.name).suffix.lower() not in (".py", ".pyw")
-            or client is None or not client.is_ready):
-            self.lsp_status = "Enable an available Python LSP server and select a Python document first"
+        if (
+            doc is None
+            or doc.notebook is not None
+            or pathlib.Path(doc.name).suffix.lower() not in (".py", ".pyw")
+            or client is None
+            or not client.is_ready
+        ):
+            self.lsp_status = (
+                "Enable an available Python LSP server and select a Python document first"
+            )
             return
         self._sync_lsp_documents()
         source = doc.text
         cursor = doc.editor.cursors.main.end
         lines = source.split("\n")
         line = max(0, min(cursor.line, len(lines) - 1))
-        character = len(lines[line][:cursor.index].encode("utf-16-le")) // 2
+        character = len(lines[line][: cursor.index].encode("utf-16-le")) // 2
+
         def receive(result):
             def apply():
                 if doc not in self.documents or self.active_doc is not doc or doc.text != source:
                     return
                 if action == "completion":
-                    self.completions = result.get("items", []) if isinstance(result, dict) else (result or [])
+                    self.completions = (
+                        result.get("items", []) if isinstance(result, dict) else (result or [])
+                    )
                     self._completion_document = doc
                     self._completion_source = source
                 elif action == "hover":
                     contents = result.get("contents", "") if isinstance(result, dict) else ""
                     if isinstance(contents, list):
-                        self.hover_text = "\n\n".join(str(value.get("value", "")) if isinstance(value, dict) else str(value) for value in contents)
+                        self.hover_text = "\n\n".join(
+                            str(value.get("value", "")) if isinstance(value, dict) else str(value)
+                            for value in contents
+                        )
                     else:
-                        self.hover_text = str(contents.get("value", "")) if isinstance(contents, dict) else str(contents)
+                        self.hover_text = (
+                            str(contents.get("value", ""))
+                            if isinstance(contents, dict)
+                            else str(contents)
+                        )
                 elif action == "definition":
                     location = result[0] if isinstance(result, list) and result else result
                     if isinstance(location, dict):
                         uri = location.get("uri") or location.get("targetUri")
-                        position = location.get("range", location.get("targetSelectionRange", {})).get("start", {})
+                        position = location.get(
+                            "range", location.get("targetSelectionRange", {})
+                        ).get("start", {})
                         if uri and urlparse(uri).scheme == "file":
                             target_path = str(pathlib.Path(unquote(urlparse(uri).path)).resolve())
                             target = self._lsp_documents.get(target_path)
@@ -794,29 +914,44 @@ class EditorModel:
                             if target:
                                 target_lines = target.text.splitlines() or [""]
                                 number = max(0, min(position.get("line", 0), len(target_lines) - 1))
-                                self.goto_line(number + 1, self._lsp_index(target_lines[number], position.get("character", 0)), record=False)
+                                self.goto_line(
+                                    number + 1,
+                                    self._lsp_index(
+                                        target_lines[number], position.get("character", 0)
+                                    ),
+                                    record=False,
+                                )
                                 self.nav_commit(mark)
                         else:
                             self.lsp_status = "No file definition location was returned"
                     else:
                         self.lsp_status = "No definition was found"
+
             self._queue_lsp(apply)
+
         client.at_position(action, self._lsp_path(doc), line, character, receive)
 
     def apply_completion(self, item: dict) -> bool:
         from emtk.widgets.text_editor import Pos
+
         doc = self.active_doc
-        if doc is None or (self._completion_document is not None and (
-            doc is not self._completion_document or doc.text != self._completion_source)):
+        if doc is None or (
+            self._completion_document is not None
+            and (doc is not self._completion_document or doc.text != self._completion_source)
+        ):
             self.lsp_status = "Completion discarded because the document changed"
             return False
         source = doc.text
         lines = source.splitlines(keepends=True) or [""]
         if source.endswith("\n"):
             lines.append("")
+
         def offset(position):
             line = max(0, min(position.get("line", 0), len(lines) - 1))
-            return sum(len(value) for value in lines[:line]) + self._lsp_index(lines[line].rstrip("\r\n"), position.get("character", 0))
+            return sum(len(value) for value in lines[:line]) + self._lsp_index(
+                lines[line].rstrip("\r\n"), position.get("character", 0)
+            )
+
         edit = item.get("textEdit", {})
         value = edit.get("newText", item.get("insertText", item.get("label", "")))
         if item.get("insertTextFormat") == 2:
@@ -827,20 +962,34 @@ class EditorModel:
         if range_:
             start, end = offset(range_["start"]), offset(range_["end"])
         else:
-            end = sum(len(line) for line in lines[:cursor.line]) + cursor.index
+            end = sum(len(line) for line in lines[: cursor.line]) + cursor.index
             start = end
             while start > 0 and (source[start - 1].isalnum() or source[start - 1] == "_"):
                 start -= 1
         edits = [(start, end, value)]
         for extra in item.get("additionalTextEdits", []):
-            edits.append((offset(extra["range"]["start"]), offset(extra["range"]["end"]), extra.get("newText", "")))
+            edits.append(
+                (
+                    offset(extra["range"]["start"]),
+                    offset(extra["range"]["end"]),
+                    extra.get("newText", ""),
+                )
+            )
         result = source
         for lower, upper, replacement in sorted(edits, reverse=True):
             result = result[:lower] + replacement + result[upper:]
-        caret = start + len(value) + sum(len(replacement) - (upper - lower) for lower, upper, replacement in edits[1:] if upper <= start)
+        caret = (
+            start
+            + len(value)
+            + sum(
+                len(replacement) - (upper - lower)
+                for lower, upper, replacement in edits[1:]
+                if upper <= start
+            )
+        )
         end_position = Pos(doc.editor.line_count - 1, len(doc.editor.document.lines[-1].text))
         doc.editor.replace_section(Pos(0, 0), end_position, result)
-        before = result[:max(0, caret)]
+        before = result[: max(0, caret)]
         doc.editor.set_cursor(Pos(before.count("\n"), len(before.rsplit("\n", 1)[-1])))
         self.completions.clear()
         return True
@@ -857,6 +1006,7 @@ class EditorModel:
 
     def goto_line(self, line: int, column: int = 0, record: bool = True) -> None:
         from emtk.widgets.text_editor import Pos
+
         doc = self.active_doc
         if doc is not None:
             mark = self.nav_mark()
@@ -880,7 +1030,7 @@ class EditorModel:
         here = self.nav_mark()
         if mark is None or here is None or (mark[0] is here[0] and mark[1] == here[1]):
             return
-        del self._nav[self._nav_index + 1:]
+        del self._nav[self._nav_index + 1 :]
         if not self._nav or self._nav[-1] != mark:
             self._nav.append(mark)
         self._nav.append(here)
@@ -888,6 +1038,7 @@ class EditorModel:
 
     def _nav_goto(self, place: tuple[EditorDocument, int, int]) -> None:
         from emtk.widgets.text_editor import Pos
+
         doc, line, column = place
         if doc not in self.documents:
             return
@@ -900,7 +1051,11 @@ class EditorModel:
         if self._nav_index > 0:
             return True
         here = self.nav_mark()
-        return bool(self._nav) and self._nav_index == len(self._nav) - 1 and here not in (None, self._nav[-1])
+        return (
+            bool(self._nav)
+            and self._nav_index == len(self._nav) - 1
+            and here not in (None, self._nav[-1])
+        )
 
     @property
     def can_nav_forward(self) -> bool:
@@ -909,8 +1064,15 @@ class EditorModel:
     def nav_back(self) -> bool:
         """Return to the previous recorded caret position."""
         here = self.nav_mark()
-        if self._nav and here is not None and self._nav_index == len(self._nav) - 1 and here != self._nav[-1]:
-            self._nav.append(here)  # the caret moved on since the last jump: keep that spot for Forward
+        if (
+            self._nav
+            and here is not None
+            and self._nav_index == len(self._nav) - 1
+            and here != self._nav[-1]
+        ):
+            self._nav.append(
+                here
+            )  # the caret moved on since the last jump: keep that spot for Forward
             self._nav_index += 1
         if self._nav_index <= 0:
             return False
@@ -941,7 +1103,9 @@ class EditorModel:
                 if doc.text == original:
                     doc.text = fixed
                 else:
-                    self.log_output("Ruff fixes were not applied because the document changed during the check.")
+                    self.log_output(
+                        "Ruff fixes were not applied because the document changed during the check."
+                    )
             self.log_output(f"Ruff: {len(doc.diagnostics)} diagnostic(s) for {doc.name}")
         return result
 
@@ -955,7 +1119,12 @@ class EditorModel:
         original = doc.text
         runner = RuffRunner()
         action = runner.fix if fix else runner.check
-        result = action(doc.path or str(self.project_root / doc.name), original, timeout_ms=self.ruff_timeout_ms, extra_args=self.ruff_extra_args)
+        result = action(
+            doc.path or str(self.project_root / doc.name),
+            original,
+            timeout_ms=self.ruff_timeout_ms,
+            extra_args=self.ruff_extra_args,
+        )
         return self._apply_ruff(doc, original, result, fix)
 
     def start_ruff(self, fix: bool = False) -> None:
@@ -973,15 +1142,20 @@ class EditorModel:
 
         def check() -> None:
             try:
-                result = (runner.fix if fix else runner.check)(path, original, timeout_ms=self.ruff_timeout_ms, extra_args=self.ruff_extra_args)
+                result = (runner.fix if fix else runner.check)(
+                    path, original, timeout_ms=self.ruff_timeout_ms, extra_args=self.ruff_extra_args
+                )
             except Exception as error:
                 result = {"ok": False, "error": str(error), "diagnostics": []}
+
             def finish() -> None:
                 self._ruff_running = False
                 self._ruff_runner = None
                 self._apply_ruff(doc, original, result, fix)
+
             if not self._closed:
                 self.event_queue.put(finish)
+
         threading.Thread(target=check, daemon=True).start()
 
     def _run_console(self, code: str, filename: str) -> None:
@@ -993,22 +1167,38 @@ class EditorModel:
         import chisurf
         from chisurf.core.console.history import HistoryManager
         from chisurf.core.console.shell import Shell
+
         if not SHELL_EXECUTION_LOCK.acquire(blocking=False):
             self.is_running_script = False
-            self.log_output("An in-process notebook command is running; wait or stop it before running a console macro.")
+            self.log_output(
+                "An in-process notebook command is running; wait or stop it before running a console macro."
+            )
             return
         try:
-            shell = Shell(user_ns={"__name__": "__main__", "__file__": filename,
-                "chisurf": chisurf, "cs": chisurf.cs, "np": __import__("numpy"), "os": os, "sys": sys},
+            shell = Shell(
+                user_ns={
+                    "__name__": "__main__",
+                    "__file__": filename,
+                    "chisurf": chisurf,
+                    "cs": chisurf.cs,
+                    "np": __import__("numpy"),
+                    "os": os,
+                    "sys": sys,
+                },
                 write=lambda stream, text: self.log_output(text.rstrip()),
                 display=lambda data, meta, kind, count: self.log_output(data.get("text/plain", "")),
-                history=HistoryManager(path=False))
+                history=HistoryManager(path=False),
+            )
             shell.run_cell(code, store_history=False, filename=filename)
         except Exception as error:
             self.log_output(f"Console execution error: {error}")
         finally:
             import builtins
-            if "shell" in locals() and getattr(getattr(builtins, "get_ipython", None), "__self__", None) is shell:
+
+            if (
+                "shell" in locals()
+                and getattr(getattr(builtins, "get_ipython", None), "__self__", None) is shell
+            ):
                 del builtins.get_ipython
             SHELL_EXECUTION_LOCK.release()
             self.is_running_script = False
@@ -1037,11 +1227,16 @@ class EditorModel:
         def _execute():
             try:
                 proc = subprocess.Popen(
-                    [sys.executable, "-u", "-c",
+                    [
+                        sys.executable,
+                        "-u",
+                        "-c",
                         "import os, sys; filename, source = sys.argv[1:3]; "
                         "sys.argv = [filename]; sys.path.insert(0, os.path.dirname(filename)); "
                         "exec(compile(source, filename, 'exec'), {'__name__': '__main__', '__file__': filename, '__package__': None})",
-                        doc.path or str(self.project_root / doc.name), code],
+                        doc.path or str(self.project_root / doc.name),
+                        code,
+                    ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
@@ -1161,17 +1356,64 @@ class CodeEditorGui:
             0.21,
             Region("files"),
             Split(
-                "v", 0.80, Region("editor"), Region("output"),
+                "v",
+                0.80,
+                Region("editor"),
+                Region("output"),
             ),
         )
         self.docks = DockManager(layout)
-        self.docks.add_window("files", "📁 Project", self._draw_file_tree, dock="files", closable=True, scrollable=False)
-        self.docks.add_window("editor", "📝 Editor", self._draw_editor_tabs, dock="editor", closable=True, scrollable=False)
-        self.docks.add_window("output", "🖥️ Output", self._draw_output_console, dock="output", closable=True, scrollable=False)
-        self.docks.add_window("agent", "🤖 AI Assistant", self._draw_agent_panel, dock="files", closable=True, scrollable=False)
-        self.docks.add_window("diagnostics", "Diagnostics", self._draw_diagnostics, dock="output", closable=True, scrollable=False)
-        self.docks.add_window("language", "Python", self._draw_lsp, dock="files", closable=True, scrollable=True)
-        self.docks.add_window("editor_settings", "⚙️ Editor settings", self._draw_settings_content, dock="editor", closable=True, scrollable=True)
+        self.docks.add_window(
+            "files",
+            "📁 Project",
+            self._draw_file_tree,
+            dock="files",
+            closable=True,
+            scrollable=False,
+        )
+        self.docks.add_window(
+            "editor",
+            "📝 Editor",
+            self._draw_editor_tabs,
+            dock="editor",
+            closable=True,
+            scrollable=False,
+        )
+        self.docks.add_window(
+            "output",
+            "🖥️ Output",
+            self._draw_output_console,
+            dock="output",
+            closable=True,
+            scrollable=False,
+        )
+        self.docks.add_window(
+            "agent",
+            "🤖 AI Assistant",
+            self._draw_agent_panel,
+            dock="files",
+            closable=True,
+            scrollable=False,
+        )
+        self.docks.add_window(
+            "diagnostics",
+            "Diagnostics",
+            self._draw_diagnostics,
+            dock="output",
+            closable=True,
+            scrollable=False,
+        )
+        self.docks.add_window(
+            "language", "Python", self._draw_lsp, dock="files", closable=True, scrollable=True
+        )
+        self.docks.add_window(
+            "editor_settings",
+            "⚙️ Editor settings",
+            self._draw_settings_content,
+            dock="editor",
+            closable=True,
+            scrollable=True,
+        )
         self.docks.hide("editor_settings")
 
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
@@ -1284,7 +1526,11 @@ class CodeEditorGui:
             return False
         editor.set_find_text(self.find_text, self.find_case, self.find_whole)
         selected = editor.selected_text() if editor.cursors.any_has_selection else ""
-        same = selected == self.find_text if self.find_case else selected.lower() == self.find_text.lower()
+        same = (
+            selected == self.find_text
+            if self.find_case
+            else selected.lower() == self.find_text.lower()
+        )
         if not same and not self.find_next():
             return False
         editor.replace_current(self.replace_text)
@@ -1310,21 +1556,29 @@ class CodeEditorGui:
         if self._find_focus:
             from emtk.im_core import get_current_context
 
-            get_current_context().state(("focus",)).pop("id", None)  # the editor lets go of the keyboard
+            get_current_context().state(("focus",)).pop(
+                "id", None
+            )  # the editor lets go of the keyboard
             im.set_keyboard_focus_here()
             self._find_focus = False
-        entered, self.find_text = im.input_text("##find_text", self.find_text, "text to find", flags)
+        entered, self.find_text = im.input_text(
+            "##find_text", self.find_text, "text to find", flags
+        )
         im.set_item_tooltip(tr("Text to find in the active document; Enter selects the next match"))
         if entered:
             self.find_next()
         im.same_line()
         if im.button(tr("Prev")):
             self.find_previous()
-        im.set_item_tooltip(_with_shortcut(tr("Select the previous match (wraps around at the start)"), "Shift+F3"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Select the previous match (wraps around at the start)"), "Shift+F3")
+        )
         im.same_line()
         if im.button(tr("Next")):
             self.find_next()
-        im.set_item_tooltip(_with_shortcut(tr("Select the next match (wraps around at the end)"), "F3"))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Select the next match (wraps around at the end)"), "F3")
+        )
         im.same_line()
         if im.button(tr("All")):
             self.find_all()
@@ -1360,9 +1614,13 @@ class CodeEditorGui:
         self._dialog_document = None
         self._dialog_operation = "open"
         self._dialog_error = ""
-        self._file_dialog = FileDialog("Open document", directory=str(self.model.project_root), multiselect=True)
+        self._file_dialog = FileDialog(
+            "Open document", directory=str(self.model.project_root), multiselect=True
+        )
 
-    def _request_save(self, doc: EditorDocument | None, *, save_as: bool = False, close_after: bool = False) -> None:
+    def _request_save(
+        self, doc: EditorDocument | None, *, save_as: bool = False, close_after: bool = False
+    ) -> None:
         if doc not in self.model.documents:
             return
         if doc.path and not save_as:
@@ -1374,7 +1632,12 @@ class CodeEditorGui:
         self._dialog_close_after = close_after
         self._dialog_error = ""
         self._overwrite_path = None
-        self._file_dialog = FileDialog("Save document", mode="save", directory=str(pathlib.Path(doc.path).parent if doc.path else self.model.project_root), filename=doc.name)
+        self._file_dialog = FileDialog(
+            "Save document",
+            mode="save",
+            directory=str(pathlib.Path(doc.path).parent if doc.path else self.model.project_root),
+            filename=doc.name,
+        )
 
     def _request_export_notebook(self, doc: EditorDocument) -> None:
         self._dialog_document = doc
@@ -1382,8 +1645,13 @@ class CodeEditorGui:
         self._dialog_close_after = False
         self._dialog_error = ""
         self._overwrite_path = None
-        self._file_dialog = FileDialog("Export notebook Python source", mode="save", directory=str(self.model.project_root),
-            filename=str(pathlib.Path(doc.name).with_suffix(".py")), filters="Python (*.py)")
+        self._file_dialog = FileDialog(
+            "Export notebook Python source",
+            mode="save",
+            directory=str(self.model.project_root),
+            filename=str(pathlib.Path(doc.name).with_suffix(".py")),
+            filters="Python (*.py)",
+        )
 
     def _request_reload(self, doc: EditorDocument) -> None:
         if doc.path is None:
@@ -1400,7 +1668,9 @@ class CodeEditorGui:
             if doc in self.model.documents:
                 im.text_wrapped(f"Discard unsaved changes and reload {doc.name}?")
                 if im.button(tr("Reload and discard")):
-                    if self.model.reload_document(self.model.documents.index(doc), discard_changes=True):
+                    if self.model.reload_document(
+                        self.model.documents.index(doc), discard_changes=True
+                    ):
                         im.close_current_popup()
                 im.set_item_tooltip(tr("Replace this buffer with the file on disk"))
                 if im.button(tr("Cancel reload")):
@@ -1414,8 +1684,14 @@ class CodeEditorGui:
             self._file_dialog = None
             return
         index = self.model.documents.index(doc)
-        overwrite = bool(getattr(self._file_dialog, "overwrite_confirmed", False) or self._overwrite_path == path)
-        saved = self.model.export_notebook(path, index, overwrite=overwrite) if self._dialog_operation == "export" else self.model.save_document(index, path=path, overwrite=overwrite)
+        overwrite = bool(
+            getattr(self._file_dialog, "overwrite_confirmed", False) or self._overwrite_path == path
+        )
+        saved = (
+            self.model.export_notebook(path, index, overwrite=overwrite)
+            if self._dialog_operation == "export"
+            else self.model.save_document(index, path=path, overwrite=overwrite)
+        )
         if saved:
             if self._dialog_close_after:
                 self.model.close_document(self.model.documents.index(doc))
@@ -1452,8 +1728,18 @@ class CodeEditorGui:
                         path = original_path
                         if self._dialog_operation == "export":
                             path = path.with_suffix(".py")
-                        confirmed = getattr(self._file_dialog, "overwrite_confirmed", False) and path == original_path
-                        if path.exists() and not confirmed and (self._dialog_operation == "export" or str(path) != self._dialog_document.path):
+                        confirmed = (
+                            getattr(self._file_dialog, "overwrite_confirmed", False)
+                            and path == original_path
+                        )
+                        if (
+                            path.exists()
+                            and not confirmed
+                            and (
+                                self._dialog_operation == "export"
+                                or str(path) != self._dialog_document.path
+                            )
+                        ):
                             self._overwrite_path = path
                         else:
                             self._finish_save(path)
@@ -1490,7 +1776,7 @@ class CodeEditorGui:
         if im.menu_item("Save document"):
             self._request_save(doc)
             self._tab_context = None
-        im.set_item_tooltip(tr('Save document'))
+        im.set_item_tooltip(tr("Save document"))
         if im.menu_item("Save document as…"):
             self._request_save(doc, save_as=True)
             self._tab_context = None
@@ -1498,11 +1784,11 @@ class CodeEditorGui:
         if im.menu_item("Close document"):
             self._request_close(doc)
             self._tab_context = None
-        im.set_item_tooltip(tr('Close document'))
+        im.set_item_tooltip(tr("Close document"))
         if im.menu_item("Copy file path", enabled=bool(doc.path)):
             im.set_clipboard_text(doc.path)
             self._tab_context = None
-        im.set_item_tooltip(tr('Copy file path'))
+        im.set_item_tooltip(tr("Copy file path"))
         ctx.end()
 
     def _draw_file_tree(self, box: tuple[float, float, float, float]) -> None:
@@ -1523,11 +1809,13 @@ class CodeEditorGui:
         if self.model.project_root.parent != self.model.project_root:
             if im.small_button("↑ Parent"):
                 self.model.project_root = self.model.project_root.parent
-            im.set_item_tooltip(tr('↑ Parent'))
+            im.set_item_tooltip(tr("↑ Parent"))
 
         avail_w = box[2]
         im.set_next_item_width(avail_w)
-        _, self.file_filter = im.input_text("##file_filter", self.file_filter, hint=tr("🔍 Filter files..."))
+        _, self.file_filter = im.input_text(
+            "##file_filter", self.file_filter, hint=tr("🔍 Filter files...")
+        )
         im.set_item_tooltip(tr("Filter project files by name"))
         im.separator()
 
@@ -1558,8 +1846,7 @@ class CodeEditorGui:
                     self._project_context_menu(entry)
                     # Double-click promotes the folder to the project root,
                     # matching the context-menu action.
-                    double_clicked = (im.is_item_hovered()
-                                      and im.is_mouse_double_clicked(0))
+                    double_clicked = im.is_item_hovered() and im.is_mouse_double_clicked(0)
                     if expanded:
                         draw_directory(entry)
                         im.tree_pop()
@@ -1589,31 +1876,36 @@ class CodeEditorGui:
             entries = sorted(directory.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
         except OSError:
             return []
-        return [entry for entry in entries if not entry.name.startswith(".") and (
-            not query or query in entry.name.lower() or (
-                entry.is_dir() and not entry.is_symlink() and self._project_entries(entry)
+        return [
+            entry
+            for entry in entries
+            if not entry.name.startswith(".")
+            and (
+                not query
+                or query in entry.name.lower()
+                or (entry.is_dir() and not entry.is_symlink() and self._project_entries(entry))
             )
-        )]
+        ]
 
     def _project_context_menu(self, entry: pathlib.Path) -> None:
         if im.begin_popup_context_item(f"project_context_{entry}"):
             if entry.is_file() and im.menu_item("Open in editor"):
                 self.model.open_file(entry)
                 im.close_current_popup()
-            im.set_item_tooltip(tr('Open in editor'))
+            im.set_item_tooltip(tr("Open in editor"))
             if entry.is_dir() and im.menu_item("Use as project root"):
                 self.model.project_root = entry
                 self.file_filter = ""
                 im.close_current_popup()
-            im.set_item_tooltip(tr('Use as project root'))
+            im.set_item_tooltip(tr("Use as project root"))
             if im.menu_item("Copy full path"):
                 im.set_clipboard_text(str(entry.resolve()))
                 im.close_current_popup()
-            im.set_item_tooltip(tr('Copy full path'))
+            im.set_item_tooltip(tr("Copy full path"))
             if im.menu_item("Copy relative path"):
                 im.set_clipboard_text(os.path.relpath(entry, self.model.project_root))
                 im.close_current_popup()
-            im.set_item_tooltip(tr('Copy relative path'))
+            im.set_item_tooltip(tr("Copy relative path"))
             im.end_popup()
 
     @staticmethod
@@ -1632,11 +1924,17 @@ class CodeEditorGui:
         # Clicking this dock makes its selected document the public active buffer.
         io = im.get_io()
         mx, my = io.mouse_pos
-        if io.mouse_clicked[0] and box[0] <= mx < box[0] + box[2] and box[1] <= my < box[1] + box[3]:
+        if (
+            io.mouse_clicked[0]
+            and box[0] <= mx < box[0] + box[2]
+            and box[1] <= my < box[1] + box[3]
+        ):
             self.model._sync_document_store(activate=True)
         # Menu bar: full commands; the icon row below stays one line tall.
         active_doc = self.model.active_doc
-        notebook_running = any(doc.notebook is not None and doc.notebook.is_running for doc in self.model.documents)
+        notebook_running = any(
+            doc.notebook is not None and doc.notebook.is_running for doc in self.model.documents
+        )
         if im.begin_main_menu_bar():
             if im.begin_menu("File"):
                 if im.menu_item("New"):
@@ -1664,7 +1962,9 @@ class CodeEditorGui:
                 im.separator()
                 if im.menu_item("Go back", nav_shortcuts()[0], enabled=self.model.can_nav_back):
                     self.model.nav_back()
-                if im.menu_item("Go forward", nav_shortcuts()[1], enabled=self.model.can_nav_forward):
+                if im.menu_item(
+                    "Go forward", nav_shortcuts()[1], enabled=self.model.can_nav_forward
+                ):
                     self.model.nav_forward()
                 im.end_menu()
             if im.begin_menu("Run"):
@@ -1729,7 +2029,10 @@ class CodeEditorGui:
         im.set_item_tooltip(tr("Save As… — save the active document under a chosen name"))
         if self.model.documents:
             self._same_line_or_wrap(box, im.calc_text_size("✖ Close")[0] + 14.0)
-            if action_button("close", tooltip=tr("Close — close the active document; ask before discarding changes")):
+            if action_button(
+                "close",
+                tooltip=tr("Close — close the active document; ask before discarding changes"),
+            ):
                 self._request_close(self.model.active_doc)
         self._same_line_or_wrap(box, 70.0)
         if self.model.is_running_script or notebook_running:
@@ -1740,36 +2043,58 @@ class CodeEditorGui:
             im.pop_style_color()
         else:
             im.push_style_color(Col.BUTTON, (46, 140, 67, 255))
-            if action_button("run", tooltip=tr("Run Script — run the active Python document and display its output")):
+            if action_button(
+                "run",
+                tooltip=tr("Run Script — run the active Python document and display its output"),
+            ):
                 self.model.run_active_script()
             self.item_rects["run"] = im.get_item_rect()
             im.pop_style_color()
         self._same_line_or_wrap(box, 150.0)
         im.set_next_item_width(150.0)
-        changed, endpoint = im.combo("##run_endpoint", 1 if self.model.run_endpoint == "console" else 0,
-            ["Separate process", "In ChiSurf console"])
+        changed, endpoint = im.combo(
+            "##run_endpoint",
+            1 if self.model.run_endpoint == "console" else 0,
+            ["Separate process", "In ChiSurf console"],
+        )
         self.item_rects["run_endpoint"] = im.get_item_rect()
-        im.set_item_tooltip(tr("Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction."))
+        im.set_item_tooltip(
+            tr(
+                "Process: isolated, stoppable execution. Console: main-thread macros with access to ChiSurf state; long macros block interaction."
+            )
+        )
         if changed:
             self.model.run_endpoint = "console" if endpoint == 1 else "process"
         self._same_line_or_wrap(box, im.calc_text_size("🧹 Check")[0] + 14.0)
         if im.button(tr("🧹 Check")):
             self.model.start_ruff()
         self.item_rects["check"] = im.get_item_rect()
-        im.set_item_tooltip(tr("Ruff Check — check the unsaved Python buffer using the optional Ruff executable"))
+        im.set_item_tooltip(
+            tr("Ruff Check — check the unsaved Python buffer using the optional Ruff executable")
+        )
         self._same_line_or_wrap(box, im.calc_text_size("🛠 Fix")[0] + 14.0)
         if im.button(tr("🛠 Fix")):
             self.model.start_ruff(fix=True)
-        im.set_item_tooltip(tr("Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards"))
+        im.set_item_tooltip(
+            tr(
+                "Ruff Fix — apply Ruff's safe fixes to the unsaved buffer; save explicitly afterwards"
+            )
+        )
         self._same_line_or_wrap(box, im.calc_text_size("📓 Notebook")[0] + 14.0)
         if im.button(tr("📓 Notebook")):
             self.model.new_document("Untitled.ipynb")
-        im.set_item_tooltip(tr("New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell"))
+        im.set_item_tooltip(
+            tr(
+                "New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell"
+            )
+        )
         self._same_line_or_wrap(box, im.calc_text_size("⚙ Settings")[0] + 14.0)
         if im.button(tr("⚙ Settings")):
             self.settings_open = True
             self.docks.focus("editor_settings")
-        im.set_item_tooltip(tr("Settings… — open the native editor appearance and diagnostics settings"))
+        im.set_item_tooltip(
+            tr("Settings… — open the native editor appearance and diagnostics settings")
+        )
         self._same_line_or_wrap(box, 70.0)
         if action_button("guide"):
             self.tour.start()
@@ -1781,9 +2106,15 @@ class CodeEditorGui:
         symbols = self.model.document_symbols()
         if symbols:
             im.set_next_item_width(max(120.0, box[2]))
-            changed, selected = im.combo("##python_symbol", 0, ["Jump to symbol…"] +
-                [f"{symbol.display_name} · line {symbol.line}" for symbol in symbols])
-            im.set_item_tooltip(tr("Jump to a class, function, method or section in the unsaved Python source"))
+            changed, selected = im.combo(
+                "##python_symbol",
+                0,
+                ["Jump to symbol…"]
+                + [f"{symbol.display_name} · line {symbol.line}" for symbol in symbols],
+            )
+            im.set_item_tooltip(
+                tr("Jump to a class, function, method or section in the unsaved Python source")
+            )
             if changed and selected > 0:
                 symbol = symbols[selected - 1]
                 self.model.goto_line(symbol.line, symbol.column)
@@ -1796,11 +2127,11 @@ class CodeEditorGui:
                 if im.button(tr("Save and close")):
                     self._request_save(pending, close_after=True)
                     im.close_current_popup()
-                im.set_item_tooltip(tr('Save and close'))
+                im.set_item_tooltip(tr("Save and close"))
                 if im.button(tr("Discard changes")):
                     self.model.close_document(index)
                     im.close_current_popup()
-                im.set_item_tooltip(tr('Discard changes'))
+                im.set_item_tooltip(tr("Discard changes"))
                 if action_button("cancel", id="cancel_close_doc"):
                     im.close_current_popup()
             im.end_popup()
@@ -1819,8 +2150,14 @@ class CodeEditorGui:
             for doc in list(self.model.documents):
                 modified_marker = "*" if doc.is_modified else ""
                 tab_title = f"  {doc.name}{modified_marker}  ###tab_{id(doc)}"
-                flags = im.TabItemFlags.SET_SELECTED if request_activation and doc is requested_doc else 0
-                if im.begin_tab_item(tab_title, flags=flags, on_close=lambda doc=doc: self._request_close(doc)):
+                flags = (
+                    im.TabItemFlags.SET_SELECTED
+                    if request_activation and doc is requested_doc
+                    else 0
+                )
+                if im.begin_tab_item(
+                    tab_title, flags=flags, on_close=lambda doc=doc: self._request_close(doc)
+                ):
                     if doc in self.model.documents:
                         self.model.active_index = self.model.documents.index(doc)
                     im.end_tab_item()
@@ -1839,26 +2176,37 @@ class CodeEditorGui:
             curr_y = im.get_cursor_screen_pos()[1]
             status_bar_h = 22.0
             editor_h = max(60.0, box[1] + box[3] - curr_y - status_bar_h)
-            self.model.apply_editor_preferences(active.editor, apply_language=active.notebook is None)
+            self.model.apply_editor_preferences(
+                active.editor, apply_language=active.notebook is None
+            )
             im.push_font({"family": self.model.font_family, "size": self.model.font_size})
             im.push_font_scale(self.model.font_scale * CODE_EDITOR_UI_SCALE)
             if active.notebook is not None:
                 for cell in active.notebook.cells:
                     self.model.apply_editor_preferences(cell.editor, apply_language=False)
-                active.notebook.draw(avail_w, editor_h,
+                active.notebook.draw(
+                    avail_w,
+                    editor_h,
                     on_reload=lambda: self._request_reload(active),
                     on_export=lambda: self._request_export_notebook(active),
                     ui_scale=CODE_EDITOR_UI_SCALE * self.model.font_scale,
                 )
             else:
                 im.text_editor(f"##editor_{id(active)}", active.editor, (avail_w, editor_h))
-                im.set_item_tooltip(tr("Edit the active document; use standard keyboard shortcuts for editing"))
+                im.set_item_tooltip(
+                    tr("Edit the active document; use standard keyboard shortcuts for editing")
+                )
                 self.item_rects["editor_text"] = im.get_item_rect()
                 # A click far from the previous caret is a jump: Back returns to where it was.
                 here = self.model.nav_mark()
                 seen = self._nav_seen
-                if (io.mouse_clicked[0] and here is not None and seen is not None and seen[0] is here[0]
-                    and abs(here[1] - seen[1]) >= FAR_CLICK_LINES):
+                if (
+                    io.mouse_clicked[0]
+                    and here is not None
+                    and seen is not None
+                    and seen[0] is here[0]
+                    and abs(here[1] - seen[1]) >= FAR_CLICK_LINES
+                ):
                     self.model.nav_commit(seen)
                 self._nav_seen = here
             im.pop_font_scale()
@@ -1888,11 +2236,12 @@ class CodeEditorGui:
         """Render the execution logs and output terminal."""
         if im.button(tr("🗑 Clear")):
             self.model.output_logs.clear()
-        im.set_item_tooltip(tr('🗑 Clear'))
+        im.set_item_tooltip(tr("🗑 Clear"))
         im.same_line()
         if action_button("copy", tooltip=tr("Copy the output log to the clipboard")):
             try:
                 from emtk.clipboard import set_clipboard_text
+
                 set_clipboard_text("\n".join(self.model.output_logs))
             except Exception:
                 pass
@@ -1953,7 +2302,11 @@ class CodeEditorGui:
                 self.settings_status = "Editor settings saved."
             else:
                 self.settings_status = "Could not save editor settings."
-        im.set_item_tooltip(tr("Apply and persist the declared editor preferences; no buffers or credentials are saved"))
+        im.set_item_tooltip(
+            tr(
+                "Apply and persist the declared editor preferences; no buffers or credentials are saved"
+            )
+        )
         im.same_line()
         if im.button(tr("Close settings")):
             self.settings_open = False
@@ -1962,21 +2315,31 @@ class CodeEditorGui:
         im.set_item_tooltip(tr("Close this configuration panel"))
         if self.settings_status:
             im.text_wrapped(self.settings_status)
-        im.begin_child((*im.get_cursor_screen_pos(), *im.get_content_region_avail()), child_id="editor_settings_fields")
+        im.begin_child(
+            (*im.get_cursor_screen_pos(), *im.get_content_region_avail()),
+            child_id="editor_settings_fields",
+        )
         self._draw_settings_panel()
         im.end_child()
 
-
     def _draw_settings_panel(self) -> None:
         languages = list(LANGUAGES)
-        changed, selected = im.combo("Syntax language", languages.index(self.model.language), languages)
-        im.set_item_tooltip(tr("Choose highlighting or Auto to follow each document's file extension"))
+        changed, selected = im.combo(
+            "Syntax language", languages.index(self.model.language), languages
+        )
+        im.set_item_tooltip(
+            tr("Choose highlighting or Auto to follow each document's file extension")
+        )
         if changed:
             self.model.language = languages[selected]
         families = list(font_choices())
-        family_index = families.index(self.model.font_family) if self.model.font_family in families else 0
+        family_index = (
+            families.index(self.model.font_family) if self.model.font_family in families else 0
+        )
         changed, selected = im.combo("Font family", family_index, families)
-        im.set_item_tooltip(tr("Select an available monospaced font supported by the native renderer"))
+        im.set_item_tooltip(
+            tr("Select an available monospaced font supported by the native renderer")
+        )
         if changed:
             self.model.font_family = families[selected]
         changed, size = im.slider_int("Font size (pt)", self.model.font_size, 0, 72)
@@ -1984,17 +2347,33 @@ class CodeEditorGui:
         if changed:
             self.model.font_size = size
         schemes = list(COLOR_SCHEMES)
-        changed, selected = im.combo("Color scheme", schemes.index(self.model.color_scheme), schemes)
-        im.set_item_tooltip(tr("Apply a preset editor palette, background, margins, selection and current-line colors"))
+        changed, selected = im.combo(
+            "Color scheme", schemes.index(self.model.color_scheme), schemes
+        )
+        im.set_item_tooltip(
+            tr(
+                "Apply a preset editor palette, background, margins, selection and current-line colors"
+            )
+        )
         if changed:
             self.model.set_color_scheme(schemes[selected])
-        for name, label in [("paper_color", "Paper"), ("default_color", "Text"), ("margins_background_color", "Margins"),
-            ("marker_background_color", "Selection / marker"), ("caret_line_background_color", "Current line")]:
+        for name, label in [
+            ("paper_color", "Paper"),
+            ("default_color", "Text"),
+            ("margins_background_color", "Margins"),
+            ("marker_background_color", "Selection / marker"),
+            ("caret_line_background_color", "Current line"),
+        ]:
             color = rgba(self.model.display_colors[name])
             changed, value = im.color_edit3(label, color[:3])
-            im.set_item_tooltip(tr("Choose the editor color without changing the application's global theme"))
+            im.set_item_tooltip(
+                tr("Choose the editor color without changing the application's global theme")
+            )
             if changed:
-                self.model.set_display_color(name, "#" + "".join(f"{max(0, min(255, int(channel))):02x}" for channel in value[:3]))
+                self.model.set_display_color(
+                    name,
+                    "#" + "".join(f"{max(0, min(255, int(channel))):02x}" for channel in value[:3]),
+                )
         changed, value = im.checkbox(tr("Highlight current line"), self.model.caret_line_visible)
         im.set_item_tooltip(tr("Show or hide the configured background behind the caret's line"))
         if changed:
@@ -2007,11 +2386,15 @@ class CodeEditorGui:
         im.set_item_tooltip(tr("Check the active document asynchronously after a successful save"))
         if changed:
             self.model.run_ruff_on_save = enabled
-        changed, timeout = im.slider_int("Ruff timeout (ms)", self.model.ruff_timeout_ms, 1000, 60000)
+        changed, timeout = im.slider_int(
+            "Ruff timeout (ms)", self.model.ruff_timeout_ms, 1000, 60000
+        )
         im.set_item_tooltip(tr("Maximum time allowed for the optional Ruff subprocess"))
         if changed:
             self.model.ruff_timeout_ms = timeout
-        changed, arguments = im.input_text("Ruff extra arguments", shlex.join(self.model.ruff_extra_args))
+        changed, arguments = im.input_text(
+            "Ruff extra arguments", shlex.join(self.model.ruff_extra_args)
+        )
         im.set_item_tooltip(tr("Extra Ruff command arguments; quoted values are supported"))
         if changed:
             try:
@@ -2023,7 +2406,11 @@ class CodeEditorGui:
         im.set_item_tooltip(tr("Adjust editor text size; saved as a native preference"))
         if changed:
             self.model.font_scale = scale
-        for label, name in [("Line numbers", "show_line_numbers"), ("Show whitespace", "show_whitespace"), ("Spaces for tabs", "insert_spaces")]:
+        for label, name in [
+            ("Line numbers", "show_line_numbers"),
+            ("Show whitespace", "show_whitespace"),
+            ("Spaces for tabs", "insert_spaces"),
+        ]:
             changed, value = im.checkbox(label, getattr(self.model, name))
             im.set_item_tooltip(tr("Configure how editor source is displayed and indented"))
             if changed:
@@ -2042,7 +2429,12 @@ class CodeEditorGui:
         ):
             # Typed, in the Qt preferences' range of unprivileged ports.
             port, _ = typed_number_field(
-                name, getattr(self.model, name), self._number_buffers, minimum=1024, maximum=65535, label=label
+                name,
+                getattr(self.model, name),
+                self._number_buffers,
+                minimum=1024,
+                maximum=65535,
+                label=label,
             )
             self.item_rects[name] = im.get_item_rect()
             im.set_item_tooltip(tip)
@@ -2050,7 +2442,9 @@ class CodeEditorGui:
                 setattr(self.model, name, port)
         im.end_disabled()
         changed, enabled = im.checkbox(tr("Enable editor RPC"), self.model.enable_rpc)
-        im.set_item_tooltip(tr("Expose open-buffer operations through the existing local ZeroMQ service"))
+        im.set_item_tooltip(
+            tr("Expose open-buffer operations through the existing local ZeroMQ service")
+        )
         if changed:
             self.model.start_rpc() if enabled else self.model.stop_rpc()
         im.text_wrapped(self.model.rpc_status)
@@ -2060,33 +2454,66 @@ class CodeEditorGui:
         if im.button(tr("Editor settings…")):
             self.settings_open = True
             self.docks.focus("editor_settings")
-        im.set_item_tooltip(tr("Configure font, colors, language, editing behavior, Ruff and the editor RPC service"))
+        im.set_item_tooltip(
+            tr(
+                "Configure font, colors, language, editing behavior, Ruff and the editor RPC service"
+            )
+        )
         im.text_wrapped(self.model.lsp_status)
         if self.model.lsp_client is None:
             if im.button(tr("Enable Python LSP")):
                 self.model.start_lsp()
-            im.set_item_tooltip(tr("Start an installed optional python-lsp-server; no packages are installed automatically"))
+            im.set_item_tooltip(
+                tr(
+                    "Start an installed optional python-lsp-server; no packages are installed automatically"
+                )
+            )
         else:
             if im.button(tr("Disable Python LSP")):
                 self.model.stop_lsp()
             im.set_item_tooltip(tr("Stop the language server and close its document sessions"))
         for action, label, tip, key in [
-            ("completion", "Complete", "Ask for completions at the active editor cursor", "Ctrl/Cmd+Space"),
-            ("definition", "Go to definition", "Open the Python definition at the active cursor", "F12"),
-            ("hover", "Documentation", "Show language-server documentation for the active cursor", None)]:
+            (
+                "completion",
+                "Complete",
+                "Ask for completions at the active editor cursor",
+                "Ctrl/Cmd+Space",
+            ),
+            (
+                "definition",
+                "Go to definition",
+                "Open the Python definition at the active cursor",
+                "F12",
+            ),
+            (
+                "hover",
+                "Documentation",
+                "Show language-server documentation for the active cursor",
+                None,
+            ),
+        ]:
             if im.button(label):
                 self.model.request_lsp(action)
             im.set_item_tooltip(_with_shortcut(tip, key) if key else tip)
         im.begin_disabled(not self.model.can_nav_back)
         if im.button(tr("Back")):
             self.model.nav_back()
-        im.set_item_tooltip(_with_shortcut(tr("Return to the previous caret position (after a jump to a definition, a match or a far click)"), nav_shortcuts()[0]))
+        im.set_item_tooltip(
+            _with_shortcut(
+                tr(
+                    "Return to the previous caret position (after a jump to a definition, a match or a far click)"
+                ),
+                nav_shortcuts()[0],
+            )
+        )
         im.end_disabled()
         im.same_line()
         im.begin_disabled(not self.model.can_nav_forward)
         if im.button(tr("Forward")):
             self.model.nav_forward()
-        im.set_item_tooltip(_with_shortcut(tr("Go forward again after going back"), nav_shortcuts()[1]))
+        im.set_item_tooltip(
+            _with_shortcut(tr("Go forward again after going back"), nav_shortcuts()[1])
+        )
         im.end_disabled()
         if self.model.hover_text:
             im.markdown(self.model.hover_text, max_width=box[2])
@@ -2094,7 +2521,11 @@ class CodeEditorGui:
             if im.selectable(f"{item.get('label', '')}##completion_{index}"):
                 self.model.apply_completion(item)
             documentation = item.get("documentation", item.get("detail", "Apply this completion"))
-            im.set_item_tooltip(documentation.get("value", "") if isinstance(documentation, dict) else str(documentation))
+            im.set_item_tooltip(
+                documentation.get("value", "")
+                if isinstance(documentation, dict)
+                else str(documentation)
+            )
 
     def _draw_agent_panel(self, box: tuple[float, float, float, float]) -> None:
         """Render embedded EMTK AI Assistant chat panel."""
@@ -2105,7 +2536,9 @@ class CodeEditorApp(ImApp):
     """EMTK Application for the complete Code Editor."""
 
     def __init__(self, project_root: str | pathlib.Path | None = None) -> None:
-        spec = json.loads(pathlib.Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8"))
+        spec = json.loads(
+            pathlib.Path(__file__).with_suffix(".view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(spec, (1200, 800))
         self.model = EditorModel(project_root=project_root)
         self.editor_gui = CodeEditorGui(model=self.model)
@@ -2155,7 +2588,11 @@ class CodeEditorApp(ImApp):
         if mac_behaviors():
             if modifiers & CONTROL_MODIFIER and (key in (ord("["), ord("]")) or text in ("[", "]")):
                 nav_key = "back" if key == ord("[") or text == "[" else "forward"
-        elif modifiers & ALT_MODIFIER and not modifiers & CONTROL_MODIFIER and key in (KEY_LEFT, KEY_RIGHT):
+        elif (
+            modifiers & ALT_MODIFIER
+            and not modifiers & CONTROL_MODIFIER
+            and key in (KEY_LEFT, KEY_RIGHT)
+        ):
             nav_key = "back" if key == KEY_LEFT else "forward"
         if key == KEY_F3 and doc is not None and doc.notebook is None:
             action = gui.find_previous if modifiers & SHIFT_MODIFIER else gui.find_next
@@ -2187,10 +2624,16 @@ class CodeEditorApp(ImApp):
 
     def save_preferences(self) -> bool:
         from chisurf.emtk.state import save_settings
-        return save_settings(getattr(self, "_native_state_id", "code_editor"), self.export_settings())
+
+        return save_settings(
+            getattr(self, "_native_state_id", "code_editor"), self.export_settings()
+        )
 
     def export_settings(self) -> dict:
-        return {**self.model.export_settings(), "assistant": self.editor_gui.chat_model.export_settings()}
+        return {
+            **self.model.export_settings(),
+            "assistant": self.editor_gui.chat_model.export_settings(),
+        }
 
     def restore_settings(self, settings: dict) -> None:
         self.model.restore_settings(settings)
@@ -2206,11 +2649,21 @@ class CodeEditorApp(ImApp):
     def animating(self) -> bool:
         if self.model._closed:
             return False
-        return (super().animating() or self.model.is_running_script or self.model._ruff_running
-            or not self.model.event_queue.empty() or self.editor_gui.chat_model.is_generating
+        return (
+            super().animating()
+            or self.model.is_running_script
+            or self.model._ruff_running
+            or not self.model.event_queue.empty()
+            or self.editor_gui.chat_model.is_generating
             or not self.editor_gui.chat_model.event_queue.empty()
-            or any(doc.notebook is not None and doc.notebook.is_running for doc in self.model.documents)
-            or (self.editor_gui.chat_gui.provider_settings is not None and self.editor_gui.chat_gui.provider_settings.busy))
+            or any(
+                doc.notebook is not None and doc.notebook.is_running for doc in self.model.documents
+            )
+            or (
+                self.editor_gui.chat_gui.provider_settings is not None
+                and self.editor_gui.chat_gui.provider_settings.busy
+            )
+        )
 
     def next_frame_in(self) -> float | None:
         delay = super().next_frame_in()
@@ -2240,7 +2693,14 @@ def main() -> None:
     """Run Code Editor directly via pure EMTK without Qt."""
     from emtk.native import main as emtk_main
 
-    emtk_main(["--app", "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app", "--size", "1200x800"])
+    emtk_main(
+        [
+            "--app",
+            "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app",
+            "--size",
+            "1200x800",
+        ]
+    )
 
 
 if __name__ == "__main__":

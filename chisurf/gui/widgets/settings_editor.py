@@ -1480,8 +1480,13 @@ class SettingsEditor(QtWidgets.QWidget):
 
             # Reuse a singleton window attached to the cs module
             window = getattr(cs, "_settings_help_window", None)
-            help_cls = getattr(help_plugin, "HelpEmtkTool", getattr(help_plugin, "HelpWidget", None))
-            if window is None or not isinstance(window, (getattr(help_plugin, "HelpEmtkTool", ()), getattr(help_plugin, "HelpWidget", ()))):
+            help_cls = getattr(
+                help_plugin, "HelpEmtkTool", getattr(help_plugin, "HelpWidget", None)
+            )
+            if window is None or not isinstance(
+                window,
+                (getattr(help_plugin, "HelpEmtkTool", ()), getattr(help_plugin, "HelpWidget", ())),
+            ):
                 window = help_cls()
                 try:
                     window.destroyed.connect(

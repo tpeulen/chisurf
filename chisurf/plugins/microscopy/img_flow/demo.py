@@ -320,9 +320,8 @@ def _cache_is_good(target: pathlib.Path, cfg: dict[str, Any]) -> bool:
     import hashlib
 
     checksum = stored.get("sha256")
-    return (
-        str(stored.get("fingerprint", "")) == _fingerprint(cfg)
-        and (checksum is None or checksum == hashlib.sha256(target.read_bytes()).hexdigest())
+    return str(stored.get("fingerprint", "")) == _fingerprint(cfg) and (
+        checksum is None or checksum == hashlib.sha256(target.read_bytes()).hexdigest()
     )
 
 

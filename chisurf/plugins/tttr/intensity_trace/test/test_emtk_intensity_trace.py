@@ -129,13 +129,20 @@ def test_the_model_reproduces_the_qt_tools_trace_hmm_and_outputs(spc):
     assert np.bincount(m.states).tolist() == qt["state_counts"]
     assert np.allclose(np.asarray(m.transmat), qt["transmat"], atol=1e-4)
     base = m.export()
-    assert sorted(p.name for p in base.rglob("*") if p.is_file()) == sorted(Path(p).name for p in qt["outputs"])
+    assert sorted(p.name for p in base.rglob("*") if p.is_file()) == sorted(
+        Path(p).name for p in qt["outputs"]
+    )
 
 
 def test_without_a_setup_every_channel_the_file_uses_is_offered(spc):
     m = IntensityTraceModel()
     m.load(spc)
-    assert m.choices() == ["routing_0", "routing_1", "routing_8", "routing_9"]  # Qt offered 0-7 only
+    assert m.choices() == [
+        "routing_0",
+        "routing_1",
+        "routing_8",
+        "routing_9",
+    ]  # Qt offered 0-7 only
     assert m.labels == ["Ch0", "Ch1", "Ch8", "Ch9"]
 
 
@@ -168,8 +175,11 @@ def test_example_hmm_and_results_by_pointer_and_keyboard(size):
     assert ui.shown("Written to intensity_trace_demo_HMM#2_5ms/")
     fret = sorted(float(np.mean(v)) for v in m.fret_by_state().values())
     assert fret[0] == pytest.approx(0.3, abs=0.05) and fret[1] == pytest.approx(0.7, abs=0.05)
-    for button, result in (("request_dwell", "Dwell Times"), ("request_matrix", "HMM Matrix"),
-                           ("request_fret", "FRET Distributions")):
+    for button, result in (
+        ("request_dwell", "Dwell Times"),
+        ("request_matrix", "HMM Matrix"),
+        ("request_fret", "FRET Distributions"),
+    ):
         ui.click(button)
         assert ui.app.result == result
     ui.click("result.Dwell Times")
@@ -220,8 +230,12 @@ def test_load_dialog_drop_and_setup_choice(spc, monkeypatch):
     other.wait()
     assert other.model.loaded
     # a detector setup: green = 0, 8; red = 1, 9
-    setup = {"detectors": {"green": {"chs": [0, 8], "micro_time_ranges": []},
-                           "red": {"chs": [1, 9], "micro_time_ranges": []}}}
+    setup = {
+        "detectors": {
+            "green": {"chs": [0, 8], "micro_time_ranges": []},
+            "red": {"chs": [1, 9], "micro_time_ranges": []},
+        }
+    }
     ui.app.setups = {"setups": {"Bench": setup}}
     ui.click("setup_name")
     ui.press_text("Bench")
@@ -240,8 +254,12 @@ def test_edit_setups_opens_the_shared_detector_editor_and_a_change_rebins(spc):
     ui.click("request_edit_setup")
     assert ui.app.docks.selected["results"] == "setup"
     assert ui.shown("PIE windows") or ui.shown("Detectors")  # the shared editor is drawn
-    setup = {"detectors": {"green": {"chs": [0, 8], "micro_time_ranges": []},
-                           "red": {"chs": [1, 9], "micro_time_ranges": []}}}
+    setup = {
+        "detectors": {
+            "green": {"chs": [0, 8], "micro_time_ranges": []},
+            "red": {"chs": [1, 9], "micro_time_ranges": []},
+        }
+    }
     ui.app.setup_edited(setup)  # what the editor calls on every change
     ui.settle()
     assert ui.app.model.labels == ["green", "red"]
@@ -272,8 +290,15 @@ def test_help_and_the_tour_waits_for_the_user():
 def test_the_native_app_loads_without_qt():
     import subprocess
 
-    code = ("import sys; import chisurf.plugins.tttr.intensity_trace.gui.app; "
-            "print(any(m.split('.')[0] in ('qtpy', 'PyQt5') for m in sys.modules))")
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=REPO,
-                         env={**__import__("os").environ}).stdout.strip()
+    code = (
+        "import sys; import chisurf.plugins.tttr.intensity_trace.gui.app; "
+        "print(any(m.split('.')[0] in ('qtpy', 'PyQt5') for m in sys.modules))"
+    )
+    out = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env={**__import__("os").environ},
+    ).stdout.strip()
     assert out == "False"

@@ -480,4 +480,3 @@ def test_make_app_draws_and_a_second_draw_adds_no_frames_request():
     draw(app)
     assert not app.animating()
     app.close()
-

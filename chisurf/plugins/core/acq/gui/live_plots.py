@@ -56,8 +56,13 @@ for _i in range(N_CURVES):
     DEFAULTS[f"rate_ch{_i}"] = -1 if _i == 0 else _DEFAULT_CHANNELS[_i]
     DEFAULTS[f"rate_show{_i}"] = _i == 0
 
-_COLOURS = [(0.12, 0.47, 0.71, 1.0), (0.84, 0.15, 0.16, 1.0), (0.17, 0.63, 0.17, 1.0),
-            (0.58, 0.40, 0.74, 1.0), (0.2, 0.2, 0.2, 1.0)]
+_COLOURS = [
+    (0.12, 0.47, 0.71, 1.0),
+    (0.84, 0.15, 0.16, 1.0),
+    (0.17, 0.63, 0.17, 1.0),
+    (0.58, 0.40, 0.74, 1.0),
+    (0.2, 0.2, 0.2, 1.0),
+]
 
 
 def _coerce(name: str, value: Any) -> Any:
@@ -188,9 +193,13 @@ class LivePlots:
         self.snapshot = snapshot
         self.serial += 1
         self._fp = self._fingerprint()
-        for name, every in (("decay", self.decay_every), ("correlation", self.corr_every),
-                            ("rate", self.rate_every), ("mcs", self.mcs_every),
-                            ("macro", self.macro_every)):
+        for name, every in (
+            ("decay", self.decay_every),
+            ("correlation", self.corr_every),
+            ("rate", self.rate_every),
+            ("mcs", self.mcs_every),
+            ("macro", self.macro_every),
+        ):
             if name not in self.series or self.serial % max(1, int(every)) == 0:
                 self.series[name] = getattr(self, f"_build_{name}")(snapshot)
                 self._seen[name] = self.serial
@@ -212,12 +221,16 @@ class LivePlots:
         for i, decay in enumerate(snap.get("decay_data", [])[:N_CURVES]):
             if getattr(self, f"decay_show{i}"):
                 y = np.asarray(decay, dtype=float)
-                out.append((f"ch {self._config_channels[i]}", np.arange(len(y)) * self.tac_dt_ns, y))
+                out.append(
+                    (f"ch {self._config_channels[i]}", np.arange(len(y)) * self.tac_dt_ns, y)
+                )
         return out
 
     def _build_correlation(self, snap: dict) -> list:
         out = []
-        for result, pair in zip(snap.get("correlation_results", []), snap.get("correlation_pairs", [])):
+        for result, pair in zip(
+            snap.get("correlation_results", []), snap.get("correlation_pairs", [])
+        ):
             if result is None:
                 continue
             idx, a, b = pair
@@ -239,8 +252,11 @@ class LivePlots:
         t = np.asarray(snap.get("count_rate_times", []), dtype=float)
         data = snap.get("count_rate_data", [])
         out = []
-        wanted = [(i, int(getattr(self, f"rate_ch{i}"))) for i in range(N_CURVES)
-                  if getattr(self, f"rate_show{i}")]
+        wanted = [
+            (i, int(getattr(self, f"rate_ch{i}")))
+            for i in range(N_CURVES)
+            if getattr(self, f"rate_show{i}")
+        ]
         if self.rate_all_show:
             wanted.append((4, -1))
         for i, channel in wanted:
@@ -258,7 +274,11 @@ class LivePlots:
 
     def _build_mcs(self, snap: dict) -> list:
         trace = snap.get("mcs_trace")
-        return [] if trace is None else [("MCS", np.asarray(trace[0], float), np.asarray(trace[1], float))]
+        return (
+            []
+            if trace is None
+            else [("MCS", np.asarray(trace[0], float), np.asarray(trace[1], float))]
+        )
 
     def _build_macro(self, snap: dict) -> list:
         if not self.macro_show:
@@ -279,10 +299,21 @@ class LivePlots:
         spec = {
             "live_decay": ("decay", "Time (ns)", "Counts", False, self.decay_log_y),
             "live_correlation": ("correlation", "Lag (ms)", "G", self.corr_log_x, False),
-            "live_count_rate": ("rate", "Macro time (s)", "Count rate (cps)", False, self.rate_log_y),
+            "live_count_rate": (
+                "rate",
+                "Macro time (s)",
+                "Count rate (cps)",
+                False,
+                self.rate_log_y,
+            ),
             "live_mcs": ("mcs", "Time (ms)", "Counts", False, False),
-            "live_macrotime": ("macro", "Time (s)" if self.macro_type == "dt" else "Photon index",
-                               "dt (s)" if self.macro_type == "dt" else "Macro time (s)", False, False),
+            "live_macrotime": (
+                "macro",
+                "Time (s)" if self.macro_type == "dt" else "Photon index",
+                "dt (s)" if self.macro_type == "dt" else "Macro time (s)",
+                False,
+                False,
+            ),
         }[name]
         key, xl, yl, logx, logy = spec
         series = self.series.get(key, [])
@@ -295,8 +326,9 @@ class LivePlots:
             if logy:
                 implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             if key == "mcs" and self.mcs_manual_y:
-                implot.setup_axis_limits(implot.AXIS_Y1, self.mcs_y_min, self.mcs_y_max,
-                                         implot.COND_ALWAYS)
+                implot.setup_axis_limits(
+                    implot.AXIS_Y1, self.mcs_y_min, self.mcs_y_max, implot.COND_ALWAYS
+                )
             for label, x, y in series:
                 if len(x) and len(y):
                     if logy:
@@ -304,8 +336,11 @@ class LivePlots:
                     implot.plot_line(label, x, y)
             if key == "rate":
                 for index, mean in self.mean_lines.items():
-                    implot.plot_inf_lines(f"mean {self._rate_label(index)}", [mean],
-                                          flags=implot.INF_LINES_FLAGS_HORIZONTAL)
+                    implot.plot_inf_lines(
+                        f"mean {self._rate_label(index)}",
+                        [mean],
+                        flags=implot.INF_LINES_FLAGS_HORIZONTAL,
+                    )
             implot.end_plot()
 
 
@@ -317,8 +352,16 @@ def _bin(x: np.ndarray, y: np.ndarray, size: int) -> tuple[np.ndarray, np.ndarra
     return x[:n].reshape(-1, size).mean(axis=1), y[:n].reshape(-1, size).mean(axis=1)
 
 
-def stream_words(pipeline: Any, words: Any, events: Any, *, every: int = 8, chunk: int = 64,
-                 cancel: Any = None, pause_s: float = 0.0) -> None:
+def stream_words(
+    pipeline: Any,
+    words: Any,
+    events: Any,
+    *,
+    every: int = 8,
+    chunk: int = 64,
+    cancel: Any = None,
+    pause_s: float = 0.0,
+) -> None:
     """Push *words* through *pipeline* and publish a snapshot every *every* chunks.
 
     Runs on the worker thread (the pipeline is single-threaded); ``pipeline.snapshot()``

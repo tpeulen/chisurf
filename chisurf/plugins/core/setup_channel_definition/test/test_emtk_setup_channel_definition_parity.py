@@ -139,7 +139,9 @@ def test_save_stores_every_edit_equal_frozen_original(legacy, data_app, setups_f
     assert stored_emtk(setups_file)["Edited"]["detectors"]["red"]["g_factor"] == 2.5
 
 
-def test_public_flag_is_saved_like_frozen_original_and_survives_rename(legacy, data_app, setups_file):
+def test_public_flag_is_saved_like_frozen_original_and_survives_rename(
+    legacy, data_app, setups_file
+):
     """Native persistence retains the original public flag and its corrected rename behavior."""
     bar = data_app.toolbar
     assert not bar.can_public()
@@ -167,7 +169,9 @@ def test_public_is_available_only_to_the_owner(data_app):
     assert bar.can_public()
 
 
-def test_rename_overwrite_matches_frozen_original_confirmation_states(legacy, data_app, setups_file):
+def test_rename_overwrite_matches_frozen_original_confirmation_states(
+    legacy, data_app, setups_file
+):
     """Decline and acceptance retain the original separate confirmation semantics."""
     bar = data_app.toolbar
     for name in ("One", "Two"):
@@ -329,6 +333,7 @@ def test_native_holds_frozen_original_detectors_windows_and_timing(legacy, data_
 def test_reading_the_physical_bh_sample_matches_frozen_original(legacy, data_app, measurement):
     """The real measurement's header and every routing histogram equal the original Qt output."""
     import hashlib
+
     expected = legacy["reading"]
     assert hashlib.sha256(measurement.read_bytes()).hexdigest() == expected["source_sha256"]
     driver.populate(data_app, measurement)
@@ -340,7 +345,9 @@ def test_reading_the_physical_bh_sample_matches_frozen_original(legacy, data_app
         np.testing.assert_array_equal(data_app.model.preview[int(channel)], counts)
     assert sum(float(c.sum()) for c in data_app.model.preview.values()) > 1000
     settings = data_app.get_settings()["tttr_reading"]
-    assert settings["effective_micro_time_resolution"] == pytest.approx(expected["effective"], rel=1e-5)
+    assert settings["effective_micro_time_resolution"] == pytest.approx(
+        expected["effective"], rel=1e-5
+    )
     assert settings["excitation_period"] == pytest.approx(13.5)
     assert data_app.page.status == "Header timing and per-routing-channel decay histograms loaded."
 
@@ -348,7 +355,9 @@ def test_reading_the_physical_bh_sample_matches_frozen_original(legacy, data_app
 def test_binning_scales_effective_tick_like_frozen_original(legacy, data_app):
     """The original four-fold binning value is retained without any Qt combo adapter."""
     data_app.model.data["tttr_reading"]["micro_time_binning"] = 4
-    assert data_app.get_settings()["tttr_reading"]["effective_micro_time_resolution"] == pytest.approx(legacy["binning4_effective"], rel=1e-6)
+    assert data_app.get_settings()["tttr_reading"][
+        "effective_micro_time_resolution"
+    ] == pytest.approx(legacy["binning4_effective"], rel=1e-6)
 
 
 def test_reading_something_that_is_not_a_measurement_reports_and_keeps_the_timing(
@@ -408,13 +417,18 @@ def _lut_file(tmp_path):
 def test_assigned_lut_and_gate_equal_frozen_original(legacy, data_app, measurement, tmp_path):
     """The actual LUT file, routing rows and enable rule preserve the original values."""
     from chisurf.core.fio.lut_context import get_active_setup_lut
+
     expected = legacy["assigned_lut"]
     lut = _lut_file(tmp_path)
     channel = expected["channel"]
     data_app.model.assign_lut(channel, str(lut))
     assert data_app.model.data["apply_lut"] is expected["apply"] is True
-    np.testing.assert_array_equal(data_app.model.data["channel_luts"][str(channel)], expected["values"])
-    assert expected["rows"] == sorted({c for d in data_app.model.data["detectors"].values() for c in d["chs"]})
+    np.testing.assert_array_equal(
+        data_app.model.data["channel_luts"][str(channel)], expected["values"]
+    )
+    assert expected["rows"] == sorted(
+        {c for d in data_app.model.data["detectors"].values() for c in d["chs"]}
+    )
     luts, _shifts, apply = get_active_setup_lut()
     assert apply and channel in {int(k) for k in luts}
 

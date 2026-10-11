@@ -843,8 +843,13 @@ def legacy_reference():
 
 def _legacy_detector(expected):
     """Normalize frozen Qt tuples and nullable ranges into the portable scientific shape."""
-    return {"chs": expected["chs"], "micro_time_ranges": expected["micro_time_ranges"],
-            "g_factor": expected["g_factor"], "l1": expected["l1"], "l2": expected["l2"]}
+    return {
+        "chs": expected["chs"],
+        "micro_time_ranges": expected["micro_time_ranges"],
+        "g_factor": expected["g_factor"],
+        "l1": expected["l1"],
+        "l2": expected["l2"],
+    }
 
 
 def test_every_cell_text_gives_the_same_detector_as_the_frozen_qt_table(make, legacy_reference):
@@ -866,7 +871,11 @@ def test_every_cell_text_gives_the_same_detector_as_the_frozen_qt_table(make, le
 def test_window_start_and_end_texts_give_the_same_windows_as_frozen_qt(make, legacy_reference):
     """The original Qt three-edit window result remains independent of native parsing."""
     app, ui = make()
-    for name, text, key in (("prompt", "10", "start"), ("prompt", "300", "end"), ("delayed", "2100", "start")):
+    for name, text, key in (
+        ("prompt", "10", "start"),
+        ("prompt", "300", "end"),
+        ("delayed", "2100", "start"),
+    ):
         record = next(r for r in app.page.window_rows() if r["id"] == name)
         app.page.edit_window(record, key, text)
     assert app.model.data["windows"] == legacy_reference["window_edits"]
@@ -875,11 +884,14 @@ def test_window_start_and_end_texts_give_the_same_windows_as_frozen_qt(make, leg
 def test_native_offers_the_frozen_original_file_types_and_binnings(make, legacy_reference):
     """Supported choices cannot silently shrink when the legacy renderer disappears."""
     from chisurf.emtk.channel_definition import BINNINGS, FILE_TYPES
+
     assert list(FILE_TYPES) == legacy_reference["file_types"]
     assert list(BINNINGS) == legacy_reference["binnings"]
 
 
-def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_page(make, legacy_reference):
+def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_page(
+    make, legacy_reference
+):
     """Data-driven inventory: each text the Qt page shows is drawn by the emtk page (section open, a measurement read)."""
     app, ui = make()
     app.page.open_sections["windows"] = True
@@ -914,6 +926,7 @@ def test_every_label_button_header_and_check_box_of_the_qt_page_is_on_the_emtk_p
 def test_the_last_used_setup_is_written_and_opened_like_frozen_qt(make, legacy_reference, tmp_path):
     """Actual combo input preserves original last-used storage and native reopening behavior."""
     from chisurf.plugins.core.setup_channel_definition.gui.app import make_app
+
     assert legacy_reference["last_used"]["raw"]["last_used"] == "A"
     app, ui = make()
     app.toolbar.save("A")

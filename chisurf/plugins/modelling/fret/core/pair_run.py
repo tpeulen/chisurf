@@ -63,8 +63,10 @@ class PairResult:
 
     def rows(self) -> list[tuple[int, str, float]]:
         """``(number, pair, <<RMSD>>)`` per chosen pair, as the Qt table lists them."""
-        return [(i + 1, self.pair_names[int(self.selected[i])], float(self.decay[i]))
-                for i in range(int(self.selected.shape[0]))]
+        return [
+            (i + 1, self.pair_names[int(self.selected[i])], float(self.decay[i]))
+            for i in range(int(self.selected.shape[0]))
+        ]
 
     def export_text(self) -> str:
         """The text file the Qt Export button writes."""
@@ -80,7 +82,7 @@ def load_trajectory(params: PairParams) -> md.Trajectory:
     """Read the trajectory (with the topology when it exists), every ``stride``-th frame."""
     traj_text = params.trajectory.strip()
     traj_path = Path(traj_text)
-    if not traj_text or not traj_path.exists():       # Path("") is the working directory, which exists
+    if not traj_text or not traj_path.exists():  # Path("") is the working directory, which exists
         raise ValueError("Trajectory file does not exist")
     top_text = params.topology.strip()
     top_path = Path(top_text) if top_text else None
@@ -90,7 +92,9 @@ def load_trajectory(params: PairParams) -> md.Trajectory:
     return md.load(str(traj_path), stride=stride)
 
 
-def run_pair_selection(params: PairParams, warn: Callable[[str, str], None] | None = None) -> PairResult:
+def run_pair_selection(
+    params: PairParams, warn: Callable[[str, str], None] | None = None
+) -> PairResult:
     """Run the selection; *warn(title, text)* hears of the AV backend falling back to attachment-atom distances."""
     warnings: list[str] = []
     traj = load_trajectory(params)
@@ -103,17 +107,25 @@ def run_pair_selection(params: PairParams, warn: Callable[[str, str], None] | No
         if len(positions) < 2:
             raise ValueError("fps.json did not yield at least 2 valid labeling positions")
         atom_pairs, pair_names, r0s, pair_position_names = candidate_pairs_from_fps_json(
-            positions=positions, fps=fps, default_r0_angstrom=default_r0)
+            positions=positions, fps=fps, default_r0_angstrom=default_r0
+        )
         if atom_pairs.shape[0] == 0:
             raise ValueError("No candidate pairs found in fps.json")
         if params.use_av:
             try:
                 effs = compute_efficiencies_from_fps_av(
-                    traj=traj, fps=fps, pair_position_names=pair_position_names, r0s_angstrom=r0s,
-                    n_samples=int(params.av_samples), max_points_per_av=int(params.av_max_points))
+                    traj=traj,
+                    fps=fps,
+                    pair_position_names=pair_position_names,
+                    r0s_angstrom=r0s,
+                    n_samples=int(params.av_samples),
+                    max_points_per_av=int(params.av_max_points),
+                )
             except Exception as av_exc:  # noqa: BLE001 - the Qt tool falls back the same way
-                text = ("Failed to compute AV-based efficiencies (falling back to attachment-atom distances)."
-                        f"\n\n{av_exc}")
+                text = (
+                    "Failed to compute AV-based efficiencies (falling back to attachment-atom distances)."
+                    f"\n\n{av_exc}"
+                )
                 warnings.append(text)
                 if warn is not None:
                     warn("AV backend unavailable", text)
@@ -125,8 +137,13 @@ def run_pair_selection(params: PairParams, warn: Callable[[str, str], None] | No
         if not residue_numbers:
             raise ValueError("No residues specified")
         atom_name = str(params.atom)
-        sites = build_sites(traj, chain_spec=params.chain.strip(), residue_numbers=residue_numbers,
-                            atom_name=atom_name, fallback_atom_name="CA" if atom_name == "CB" else None)
+        sites = build_sites(
+            traj,
+            chain_spec=params.chain.strip(),
+            residue_numbers=residue_numbers,
+            atom_name=atom_name,
+            fallback_atom_name="CA" if atom_name == "CB" else None,
+        )
         if len(sites) < 2:
             raise ValueError("Need at least 2 valid residues with an attachment atom")
         atom_pairs, pair_names = build_atom_pairs(sites)
@@ -134,8 +151,12 @@ def run_pair_selection(params: PairParams, warn: Callable[[str, str], None] | No
 
     rmsds = rmsd_matrix(traj, atom_selection=params.rmsd_selection.strip() or None)
     selected, decay = select_informative_pairs(
-        effs=effs, rmsds=rmsds, err=float(params.err), max_pairs=int(params.max_pairs),
-        unique_only=bool(params.unique_only))
+        effs=effs,
+        rmsds=rmsds,
+        err=float(params.err),
+        max_pairs=int(params.max_pairs),
+        unique_only=bool(params.unique_only),
+    )
     return PairResult(list(pair_names), selected, decay, warnings)
 
 

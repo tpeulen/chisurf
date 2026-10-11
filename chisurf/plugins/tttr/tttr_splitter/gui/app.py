@@ -109,7 +109,9 @@ class SplitterGui(TourTarget):
 
     # ── one picker row: caption + field + browse button ───────────────────
 
-    def _picker_row(self, caption: str, value: str, hint: str, on_browse: Callable, target: str) -> str:
+    def _picker_row(
+        self, caption: str, value: str, hint: str, on_browse: Callable, target: str
+    ) -> str:
         im.text(f"{caption}:")
         im.same_line()
         browse_w = im.calc_text_size("…")[0] + 28.0
@@ -142,8 +144,10 @@ class SplitterGui(TourTarget):
                 self.on_run()
                 self.tour.notify_used("run")
         im.set_item_tooltip(
-            tr("Split the loaded TTTR file into the output folder, one file per "
-            "photon chunk, converting the container format when it differs.")
+            tr(
+                "Split the loaded TTTR file into the output folder, one file per "
+                "photon chunk, converting the container format when it differs."
+            )
         )
         im.pop_style_color(3)
         self.remember("run")
@@ -205,8 +209,10 @@ class SplitterGui(TourTarget):
             idx = in_opts.index(m.input_format) if m.input_format in in_opts else 0
             changed, new_idx = im.combo("Input format", idx, in_opts)
             im.set_item_tooltip(
-                tr("How to read the input file. Auto detects the container from its "
-                "content; pick the vendor format when the extension lies.")
+                tr(
+                    "How to read the input file. Auto detects the container from its "
+                    "content; pick the vendor format when the extension lies."
+                )
             )
             if changed and 0 <= new_idx < len(in_opts):
                 m.input_format = in_opts[new_idx]
@@ -214,8 +220,10 @@ class SplitterGui(TourTarget):
             idx = out_opts.index(m.output_format) if m.output_format in out_opts else 0
             changed, new_idx = im.combo("Output format", idx, out_opts)
             im.set_item_tooltip(
-                tr("Container the output files are written in — the same format "
-                "when it matches the input, a transcode otherwise.")
+                tr(
+                    "Container the output files are written in — the same format "
+                    "when it matches the input, a transcode otherwise."
+                )
             )
             if changed and 0 <= new_idx < len(out_opts):
                 m.output_format = out_opts[new_idx]
@@ -228,8 +236,10 @@ class SplitterGui(TourTarget):
         if split_open:
             changed_k, v = im.input_int("Photons per file [k]", m.photons_per_file_k, step=100)
             im.set_item_tooltip(
-                tr("Chunk size in thousands of photons when Split into files is enabled "
-                "(at least 100 k).")
+                tr(
+                    "Chunk size in thousands of photons when Split into files is enabled "
+                    "(at least 100 k)."
+                )
             )
             # The Qt spin box bounded what a user commits (100 k) while letting "3" through on the way to "300".
             if changed_k:
@@ -239,7 +249,9 @@ class SplitterGui(TourTarget):
             bin_opts = ["1", "2", "4", "8", "16"]
             idx = bin_opts.index(m.microtime_binning) if m.microtime_binning in bin_opts else 0
             changed, new_idx = im.combo("Micro time binning", idx, bin_opts)
-            im.set_item_tooltip(tr("Divide the micro-time resolution of the output by this factor."))
+            im.set_item_tooltip(
+                tr("Divide the micro-time resolution of the output by this factor.")
+            )
             if changed and 0 <= new_idx < len(bin_opts):
                 m.microtime_binning = bin_opts[new_idx]
             for attr, label, tip in (

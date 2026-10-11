@@ -19,7 +19,12 @@ SAMPLE = {
         "trusted": True,
     },
     "cells": [
-        {"id": "a1b2c3d4", "cell_type": "markdown", "metadata": {}, "source": ["# Title\n", "Ünïcode text"]},
+        {
+            "id": "a1b2c3d4",
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": ["# Title\n", "Ünïcode text"],
+        },
         {
             "id": "e5f6a7b8",
             "cell_type": "code",
@@ -38,7 +43,11 @@ SAMPLE = {
                         "application/vnd.custom+json": {"k": "v"},
                     },
                 },
-                {"output_type": "display_data", "metadata": {}, "data": {"image/png": "iVBORw0KGgo=\n"}},
+                {
+                    "output_type": "display_data",
+                    "metadata": {},
+                    "data": {"image/png": "iVBORw0KGgo=\n"},
+                },
             ],
         },
         {"id": "c9d0e1f2", "cell_type": "raw", "metadata": {}, "source": "raw text"},

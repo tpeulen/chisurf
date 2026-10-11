@@ -110,7 +110,9 @@ class BurstGsViewModel:
         found = fret_detectors(settings)
         for role in ("donor", "acceptor"):
             if role in found:
-                setattr(self, f"{role}_channels", ", ".join(str(c) for c in found[role].get("chs", [])))
+                setattr(
+                    self, f"{role}_channels", ", ".join(str(c) for c in found[role].get("chs", []))
+                )
         file_type = ((settings or {}).get("tttr_reading") or {}).get("file_type")
         if file_type in self.file_type_options:
             self.file_type = file_type

@@ -28,7 +28,10 @@ from chisurf.plugins.vv_vh_g_factor.gui.client import VvVhGFactorClient
 from chisurf.plugins.vv_vh_g_factor.gui.model import GFactorModel
 
 PLUGIN = Path(__file__).parent.parent
-ORACLE_PATH = PLUGIN.parents[2] / "okf/validation/release-readiness-w1/gfactor-before/numerical-control-freeze.json"
+ORACLE_PATH = (
+    PLUGIN.parents[2]
+    / "okf/validation/release-readiness-w1/gfactor-before/numerical-control-freeze.json"
+)
 
 REAL_CHISURF = Path(pwd.getpwuid(os.getuid()).pw_dir) / ".chisurf"
 
@@ -43,7 +46,9 @@ def snapshot_real():
     return {
         str(p): p.stat().st_mtime_ns
         for p in REAL_CHISURF.rglob("*")
-        if p.is_file() and not {"cache", "logs"} & set(p.parts) and not p.name.endswith(SQLITE_SIDECARS)
+        if p.is_file()
+        and not {"cache", "logs"} & set(p.parts)
+        and not p.name.endswith(SQLITE_SIDECARS)
     }
 
 
@@ -168,7 +173,10 @@ def legacy_oracle():
 def test_seeded_physical_files_equal_the_immutable_capture(files, legacy_oracle):
     """Regenerated physical data must match the source the frozen answers belong to."""
     for name, path in files.items():
-        assert hashlib.sha256(Path(path).read_bytes()).hexdigest() == legacy_oracle["files"][name]["sha256"]
+        assert (
+            hashlib.sha256(Path(path).read_bytes()).hexdigest()
+            == legacy_oracle["files"][name]["sha256"]
+        )
 
 
 @pytest.mark.parametrize("state", ["defaults", "existing_reference", "no-background", "background"])
@@ -204,11 +212,18 @@ def test_g_factor_mixing_defaults_and_reference_equal_frozen_qt(state, files, le
     before_native = record["native"]["result"]
     # The old UI never wired SD to its scalar; captured owner output preserves the real uncertainty.
     assert frozen["g_factor_stddev"] is None
-    assert native.result["g_factor_stddev_uncorrected"] == pytest.approx(before_native["g_factor_stddev_uncorrected"])
+    assert native.result["g_factor_stddev_uncorrected"] == pytest.approx(
+        before_native["g_factor_stddev_uncorrected"]
+    )
     if state == "background":
         assert native.result["g_factor_corrected"] == pytest.approx(frozen["g_factor_corrected"])
-        assert native.result["g_factor_stddev_corrected"] == pytest.approx(before_native["g_factor_stddev_corrected"])
-        for key, display in (("bg_parallel_avg", "bg_parallel_text"), ("bg_perpendicular_avg", "bg_perpendicular_text")):
+        assert native.result["g_factor_stddev_corrected"] == pytest.approx(
+            before_native["g_factor_stddev_corrected"]
+        )
+        for key, display in (
+            ("bg_parallel_avg", "bg_parallel_text"),
+            ("bg_perpendicular_avg", "bg_perpendicular_text"),
+        ):
             assert native.result[key] == pytest.approx(float(frozen[display]), abs=1e-3)
     assert native.fp_result["tau_estimate_ns"] == pytest.approx(frozen["fp_tau_estimate_ns"])
     assert native.fp_result["r_expected"] == pytest.approx(frozen["fp_rs_expected"])
@@ -258,7 +273,9 @@ def test_batch_results_equal_frozen_qt_batch_window(files, legacy_oracle):
     for row, expected in zip(native.batch_rows(), frozen["results"]):
         assert row["file"] == expected[0]
         assert list(map(float, row["region"].split("-"))) == expected[2:4]
-        assert float(row["r_inf"]) == pytest.approx(native.batch_results[native.batch_rows().index(row)]["r_inf"], abs=1e-4)
+        assert float(row["r_inf"]) == pytest.approx(
+            native.batch_results[native.batch_rows().index(row)]["r_inf"], abs=1e-4
+        )
         assert float(row["g_factor"]) == pytest.approx(expected[6], abs=5e-5)
         assert [float(row["bg_vv"]), float(row["bg_vh"])] == pytest.approx(expected[4:6], rel=1e-5)
     snapshot = native.batch_snapshot()
@@ -580,6 +597,7 @@ def open_batch(ui):
 
 def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_path):
     """Drive the three formerly missing actions without using a user's MMFDB service."""
+
     class Catalogue:
         def __init__(self):
             self.calls = []
@@ -587,8 +605,17 @@ def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_p
         def call(self, method, params):
             self.calls.append((method, params))
             if method == "mmfdb.datasets.browse":
-                return {"datasets": [{"artifact_id": "batch-1", "original_filename": "batch1.dat",
-                                       "artifact_kind": "raw_data", "data_format": "vv_vh"}], "total": 1}
+                return {
+                    "datasets": [
+                        {
+                            "artifact_id": "batch-1",
+                            "original_filename": "batch1.dat",
+                            "artifact_kind": "raw_data",
+                            "data_format": "vv_vh",
+                        }
+                    ],
+                    "total": 1,
+                }
             assert method == "mmfdb.datasets.open" and params == {"artifact_id": "batch-1"}
             return {"local_path": files["batch1"]}
 
@@ -599,8 +626,15 @@ def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_p
         ui.draw()
         open_batch(ui)
         # All seven actions captured in the legacy batch window have real native hit rectangles.
-        for name in ("batch_files.add", "batch_files.folder", "batch_files.database",
-                     "batch_files.remove", "batch_files.clear", "run", "save"):
+        for name in (
+            "batch_files.add",
+            "batch_files.folder",
+            "batch_files.database",
+            "batch_files.remove",
+            "batch_files.clear",
+            "run",
+            "save",
+        ):
             assert ui.rect(name)[2] > 0, name
         folder = tmp_path / "batch-folder"
         nested = folder / "nested"
@@ -631,7 +665,9 @@ def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_p
         ui.click_text("Choose")
         assert app.model.batch_files == [str(first), str(second)]
         ui.click_name("batch_files.remove")
-        assert app.model.batch_files == [str(second)]  # Clear reset the former second-row selection.
+        assert app.model.batch_files == [
+            str(second)
+        ]  # Clear reset the former second-row selection.
         ui.click_name("batch_files.clear")
         ui.click_name("batch_files.database")
         deadline = time.monotonic() + 5
@@ -646,7 +682,10 @@ def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_p
             ui.draw()
         assert not app.dataset_picker.is_open and not app.dataset_picker.error
         assert app.model.batch_files == [files["batch1"]]
-        assert [method for method, _ in catalogue.calls] == ["mmfdb.datasets.browse", "mmfdb.datasets.open"]
+        assert [method for method, _ in catalogue.calls] == [
+            "mmfdb.datasets.browse",
+            "mmfdb.datasets.open",
+        ]
     finally:
         app.close()
 
@@ -681,7 +720,10 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     )
     shown = {t[5] for t in ui.draw().texts}
     assert f"{m.batch_results[0]['r_inf']:.5g}" in shown
-    assert {"bg VV", "bg VH"} <= shown  # The two backgrounds remain distinguishable in the narrow pane.
+    assert {
+        "bg VV",
+        "bg VH",
+    } <= shown  # The two backgrounds remain distinguishable in the narrow pane.
     ui.app.last_dir = str(tmp_path)
     ui.click_name("save")
     ui.click_text("batch_anisotropy.tsv", last=False, fx=0.3)
@@ -690,9 +732,11 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     ui.click_text("Save")
     ui.settle()
     lines = (tmp_path / "table.tsv").read_text().splitlines()
-    assert lines[0].split("\t") == [
-        "file", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "error"
-    ] and len(lines) == 3
+    assert (
+        lines[0].split("\t")
+        == ["file", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "error"]
+        and len(lines) == 3
+    )
     rows = list(csv.DictReader(lines, delimiter="\t"))
     for row, result in zip(rows, m.batch_results):
         assert row["file"] == result["file"]

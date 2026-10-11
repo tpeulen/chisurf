@@ -97,21 +97,38 @@ def test_long_permission_error_and_readiness_text_fit_inside_narrow_dock(tmp_pat
         app.job.error = str(PermissionError(1, "Operation not permitted", "/psm_0123456789abcdef"))
         driver = Driver(app, size=(900, 650))
         painter = driver.draw(3)
-        colored = [(text, meta) for text, meta in zip(painter.texts, painter.text_metadata)
-                   if text[6][0] > text[6][1] * 1.5]
+        colored = [
+            (text, meta)
+            for text, meta in zip(painter.texts, painter.text_metadata)
+            if text[6][0] > text[6][1] * 1.5
+        ]
         assert colored
-        assert "".join(text[5].replace(" ", "") for text, _ in colored) == app.job.error.replace(" ", "")
+        assert "".join(text[5].replace(" ", "") for text, _ in colored) == app.job.error.replace(
+            " ", ""
+        )
         for _, meta in colored:
             assert meta["visible_bounds"][2] >= meta["measured_bounds"][2] - 0.5
             assert meta["visible_bounds"][3] >= meta["measured_bounds"][3] - 0.5
         # A long real detector name exercises the unavailable-input readiness branch.
         app.job.error = ""
-        app.model.session.set_detectors({"a_detector_with_a_long_measurement_name": {
-            "chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0,
-        }}, "PTU")
+        app.model.session.set_detectors(
+            {
+                "a_detector_with_a_long_measurement_name": {
+                    "chs": [0, 1],
+                    "micro_time_ranges": [],
+                    "g_factor": 1.0,
+                    "l1": 0.0,
+                    "l2": 0.0,
+                }
+            },
+            "PTU",
+        )
         painter = driver.draw(3)
-        yellow = [(text, meta) for text, meta in zip(painter.texts, painter.text_metadata)
-                  if text[6][0] == text[6][1] and text[6][0] > text[6][2]]
+        yellow = [
+            (text, meta)
+            for text, meta in zip(painter.texts, painter.text_metadata)
+            if text[6][0] == text[6][1] and text[6][0] > text[6][2]
+        ]
         assert yellow
         for _, meta in yellow:
             assert meta["visible_bounds"][2] >= meta["measured_bounds"][2] - 0.5
@@ -136,8 +153,10 @@ def test_real_demo_pooled_fit_preserves_photons_models_and_settings(tmp_path, mo
         # The first view consumes the queued detector-definition normalization once.
         Driver(app, size=(1100, 720)).draw(3)
         session = app.model.session
-        photons = {key: (np.asarray(raw.micro_times).copy(), np.asarray(raw.routing_channels).copy())
-                   for key, raw in session.tttrs.items()}
+        photons = {
+            key: (np.asarray(raw.micro_times).copy(), np.asarray(raw.routing_channels).copy())
+            for key, raw in session.tttrs.items()
+        }
         baseline = copy.deepcopy(session.outcome)
         settings = copy.deepcopy(session.settings_payload())
         for size in ((1100, 720), (900, 650)):

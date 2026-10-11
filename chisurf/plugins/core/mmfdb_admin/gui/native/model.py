@@ -120,8 +120,16 @@ def _special(key: str) -> type[Panel]:
 
 
 #: How the transports report that nobody answered (``ZmqClient`` / the HTTP client).
-_TRANSPORT_PREFIXES = ("timeout", "send failed", "poll failed", "recv failed", "this client is closed",
-                       "connection refused", "failed to connect", "urlopen error")
+_TRANSPORT_PREFIXES = (
+    "timeout",
+    "send failed",
+    "poll failed",
+    "recv failed",
+    "this client is closed",
+    "connection refused",
+    "failed to connect",
+    "urlopen error",
+)
 
 
 def is_transport_error(exc: BaseException) -> bool:
@@ -154,8 +162,14 @@ class AdminModel:
 
             config = client_config(cs_settings.cs_settings.get("mmfdb", {}))
         except Exception:  # noqa: BLE001 - settings unreadable: the defaults
-            config = {"mode": "embedded", "host": "127.0.0.1", "cmd_port": 8765,
-                      "pub_port": 8766, "base_url": "", "username": "admin"}
+            config = {
+                "mode": "embedded",
+                "host": "127.0.0.1",
+                "cmd_port": 8765,
+                "pub_port": 8766,
+                "base_url": "",
+                "username": "admin",
+            }
         self.remote = config.get("mode") == "remote"
         self.host = str(config.get("base_url") if self.remote else config.get("host", "127.0.0.1"))
         self.port = int(config.get("cmd_port", 8765))
@@ -411,18 +425,33 @@ class AdminModel:
 
     def login(self) -> None:
         """Toolbar Login: connect to the endpoint above and sign in."""
-        self._connect(self.host.strip() or "127.0.0.1", int(self.port), int(self.port) + 1,
-                      self.user.strip(), self.password)
+        self._connect(
+            self.host.strip() or "127.0.0.1",
+            int(self.port),
+            int(self.port) + 1,
+            self.user.strip(),
+            self.password,
+        )
         self.password = ""
 
     def start(self) -> None:
         """The first frame: connect as the configured user without asking, if that is possible."""
         if self.connection == "disconnected":
-            self._connect(self.host.strip() or "127.0.0.1", int(self.port), int(self.pub_port),
-                          self.user.strip(), None)
+            self._connect(
+                self.host.strip() or "127.0.0.1",
+                int(self.port),
+                int(self.pub_port),
+                self.user.strip(),
+                None,
+            )
 
     def _connect(
-        self, host: str, port: int, pub_port: int, user: str, password: str | None,
+        self,
+        host: str,
+        port: int,
+        pub_port: int,
+        user: str,
+        password: str | None,
         dialog: ConnectionDialog | None = None,
     ) -> None:
         self.connection = "connecting"
@@ -449,7 +478,11 @@ class AdminModel:
                 elif outcome.get("need_password"):
                     self.ask_login(user or self.user)
                 else:
-                    self.show(MessageDialog("MMFDB login failed", reason or "Invalid credentials. Please try again."))
+                    self.show(
+                        MessageDialog(
+                            "MMFDB login failed", reason or "Invalid credentials. Please try again."
+                        )
+                    )
                 self.set_status("Not logged in.")
                 return
             if dialog is not None:
@@ -486,22 +519,31 @@ class AdminModel:
         from ..session import cache_session, cached_token, cached_user
 
         if getattr(client, "token", None):
-            return {"ok": True, "user": getattr(client, "_auth_user_id", None) or user or cached_user() or ""}
+            return {
+                "ok": True,
+                "user": getattr(client, "_auth_user_id", None) or user or cached_user() or "",
+            }
         host, cmd, pub = self._endpoint(client)
         token = cached_token(host, cmd, pub)
         if token:
             client.token = token
             try:
                 me = client.me(quiet=True) or {}
-                who = str((me.get("user") or {}).get("user_id") or me.get("user_id") or cached_user() or "")
+                who = str(
+                    (me.get("user") or {}).get("user_id")
+                    or me.get("user_id")
+                    or cached_user()
+                    or ""
+                )
                 return {"ok": True, "user": who or user}
             except Exception:  # noqa: BLE001 - a stale token: sign in again
                 client.token = None
         if not user:
             return {"ok": False, "need_password": True}
         try:
-            result = client.login(user_id=user, password=password or "",
-                                  client_metadata=CLIENT_METADATA, quiet=True)
+            result = client.login(
+                user_id=user, password=password or "", client_metadata=CLIENT_METADATA, quiet=True
+            )
         except Exception as exc:
             # The server refusing the login raises too; only a transport failure (no
             # answer) is reported as one -- a refusal asks for the password.
@@ -536,7 +578,9 @@ class AdminModel:
             self.port = int(values["cmd_port"])
             self.pub_port = int(values["pub_port"])
             self.user = values["user"] or self.user
-            self._connect(self.host, self.port, self.pub_port, self.user, values["password"], dialog)
+            self._connect(
+                self.host, self.port, self.pub_port, self.user, values["password"], dialog
+            )
 
         dialog = ConnectionDialog(user or self.user, self.host, self.port, self.pub_port, go)
         self.show(dialog)
@@ -589,8 +633,12 @@ class AdminModel:
                 model.loaded = key == self.selected
             self.current.refresh()
 
-        self.run("Refresh", lambda: self.client.status() or {}, done,
-                 lambda error: self.set_status(f"MMFDB transport unavailable: {error}"))
+        self.run(
+            "Refresh",
+            lambda: self.client.status() or {},
+            done,
+            lambda error: self.set_status(f"MMFDB transport unavailable: {error}"),
+        )
 
     def enabled(self, name: str) -> bool:
         if name in ("login", "more_options"):
@@ -613,19 +661,30 @@ class AdminModel:
         sample_id = self.selected_sample_id()
         if not sample_id:
             self.set_status("Select a sample to export")
-            self.show(MessageDialog("Export selected sample", "Select a sample in the Samples panel first."))
+            self.show(
+                MessageDialog(
+                    "Export selected sample", "Select a sample in the Samples panel first."
+                )
+            )
             return
 
         def save(path: str) -> None:
             self.run(
                 "Export sample",
                 lambda: self.client.export_sample(sample_id, output_path=path),
-                lambda result: self.set_status(f"Exported {(result or {}).get('output_path', path)}"),
+                lambda result: self.set_status(
+                    f"Exported {(result or {}).get('output_path', path)}"
+                ),
             )
 
         def ask_path() -> None:
-            self.request_file("Export FLR CIF", "save", f"{sample_id}.cif",
-                              "CIF files (*.cif *.mmcif);;All files (*)", save)
+            self.request_file(
+                "Export FLR CIF",
+                "save",
+                f"{sample_id}.cif",
+                "CIF files (*.cif *.mmcif);;All files (*)",
+                save,
+            )
 
         def validated(result: dict) -> None:
             result = result or {}
@@ -633,35 +692,45 @@ class AdminModel:
                 ask_path()
                 return
             warnings = "\n".join(f"- {w}" for w in result.get("warnings", []))
-            self.show(ConfirmDialog(
-                "Export validation warnings",
-                f"The following issues were found:\n\n{warnings}\n\nExport anyway?",
-                ask_path,
-            ))
+            self.show(
+                ConfirmDialog(
+                    "Export validation warnings",
+                    f"The following issues were found:\n\n{warnings}\n\nExport anyway?",
+                    ask_path,
+                )
+            )
 
-        self.run("Validate export", lambda: self.client.validate_sample_export(sample_id),
-                 validated, lambda _e: ask_path())
+        self.run(
+            "Validate export",
+            lambda: self.client.validate_sample_export(sample_id),
+            validated,
+            lambda _e: ask_path(),
+        )
 
     def backup_database(self) -> None:
-        self.run("Backup", lambda: self.client.backup(),
-                 lambda path: self.set_status(f"Backup: {path}"))
+        self.run(
+            "Backup", lambda: self.client.backup(), lambda path: self.set_status(f"Backup: {path}")
+        )
 
     def reset_database(self) -> None:
         """Replace the user database with the curated source (a backup is written first)."""
+
         def done(result: dict) -> None:
             admin_user = (result or {}).get("admin_user")
             hint = f" Log in as {admin_user}." if admin_user else ""
             self.set_status(f"Reset complete. Backup: {(result or {}).get('backup_path')}.{hint}")
             self.refresh()
 
-        self.show(ConfirmDialog(
-            "Reset database",
-            "Replace the user database with the curated source database?\n\n"
-            "Samples, projects and user accounts are replaced. A backup is written first, and the "
-            "default administrator is restored so the workspace stays loginable.",
-            lambda: self.run("Reset", lambda: self.client.reset_from_source(), done),
-            yes_label="Reset",
-        ))
+        self.show(
+            ConfirmDialog(
+                "Reset database",
+                "Replace the user database with the curated source database?\n\n"
+                "Samples, projects and user accounts are replaced. A backup is written first, and the "
+                "default administrator is restored so the workspace stays loginable.",
+                lambda: self.run("Reset", lambda: self.client.reset_from_source(), done),
+                yes_label="Reset",
+            )
+        )
 
     def about_text(self) -> str:
         return (

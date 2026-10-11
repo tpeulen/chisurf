@@ -98,14 +98,46 @@ def type_into_child(app, rect, text, size=SIZE):
 #: (id, list row text, tooltip == header subtitle) of the eight rows of the Qt ``CalculatorHub``; the Qt header title
 #: equalled the row text, the first row was selected at start.
 QT_HUB = [
-    ("fret_calculator", "FRET / homoFRET", "Combined heteroFRET and homoFRET parameter calculator — convert between distance, efficiency, lifetime and rate."),
-    ("fret_line", "FRET line", "Compute static, dynamic, WLC and mixture FRET lines for parameter ranges, ready to overlay on smFRET 2D histograms."),
-    ("rics_precision", "RICS precision", "Predict how precisely a raster scan would measure a diffusion coefficient, and sweep the pixel dwell time to find the one that measures it best — from the intended settings, before acquiring."),
-    ("phasor", "Phasor plot", "Interactive phasor plot — universal semicircle with a reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line."),
-    ("kappa2_dist", "κ² distribution", "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, diffusion-with-traps and isotropic models with apparent-distance error."),
-    ("f_test", "F-test / χ²-max", "Compare two nested model fits (confidence ↔ χ² threshold) and compute the χ²-max upper limit of a single fit at a confidence level."),
-    ("fcs_saturation", "FCS Saturation", "Numerical calculation of excitation saturation and effective volume expansion in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5)."),
-    ("psf_calculator", "PSF calculator", "Compute a 3-D point-spread function and view it as a volume: vectorial Richards-Wolf, scalar Airy or Gaussian, with the polarization entering the objective pupil."),
+    (
+        "fret_calculator",
+        "FRET / homoFRET",
+        "Combined heteroFRET and homoFRET parameter calculator — convert between distance, efficiency, lifetime and rate.",
+    ),
+    (
+        "fret_line",
+        "FRET line",
+        "Compute static, dynamic, WLC and mixture FRET lines for parameter ranges, ready to overlay on smFRET 2D histograms.",
+    ),
+    (
+        "rics_precision",
+        "RICS precision",
+        "Predict how precisely a raster scan would measure a diffusion coefficient, and sweep the pixel dwell time to find the one that measures it best — from the intended settings, before acquiring.",
+    ),
+    (
+        "phasor",
+        "Phasor plot",
+        "Interactive phasor plot — universal semicircle with a reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line.",
+    ),
+    (
+        "kappa2_dist",
+        "κ² distribution",
+        "Orientation-factor distribution p(κ²) for FRET — wobbling-in-cone, diffusion-with-traps and isotropic models with apparent-distance error.",
+    ),
+    (
+        "f_test",
+        "F-test / χ²-max",
+        "Compare two nested model fits (confidence ↔ χ² threshold) and compute the χ²-max upper limit of a single fit at a confidence level.",
+    ),
+    (
+        "fcs_saturation",
+        "FCS Saturation",
+        "Numerical calculation of excitation saturation and effective volume expansion in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5).",
+    ),
+    (
+        "psf_calculator",
+        "PSF calculator",
+        "Compute a 3-D point-spread function and view it as a volume: vectorial Richards-Wolf, scalar Airy or Gaussian, with the polarization entering the objective pupil.",
+    ),
 ]
 #: The Qt error page for a calculator that cannot be built, and the Qt prompt for an empty catalogue.
 QT_BROKEN_PAGE = "Could not load 'Broken one':\nNo module named 'chisurf.nowhere'"

@@ -82,7 +82,9 @@ def test_the_rail_is_the_legacy_panel_table():
 
     from chisurf.plugins.burst.alex_suite.gui.native import STEPS
 
-    recorded = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
+    recorded = json.loads(
+        (Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8")
+    )
     legacy = [
         ("setup" if p["role"] == "channels" else p["role"])
         for p in recorded["ALEX_PANELS"]
@@ -134,9 +136,13 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     assert alternation.phase_hist["donor"].sum() > 0
     ctx = hub.context
     assert ctx.setup_name == "ALEX Suite (auto)"
-    assert [p.suffix for p in ctx.raw_files] == [".pto"], "the later steps analyse the converted container"
-    assert ctx.channel_settings["windows"] == {"prompt": alternation.windows["green"],
-                                               "delayed": alternation.windows["red"]}
+    assert [p.suffix for p in ctx.raw_files] == [".pto"], (
+        "the later steps analyse the converted container"
+    )
+    assert ctx.channel_settings["windows"] == {
+        "prompt": alternation.windows["green"],
+        "delayed": alternation.windows["red"],
+    }
     assert data.model.paths() == demo, "the files step keeps the measurement the user chose"
 
     press_next(drv)  # -> 4. Burst search (holds the container and the ALEX setup)
@@ -183,7 +189,9 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     drv.draw(2)
     export = hub.children["legacy_export"]
     assert len(export.model.bur_files) == 1
-    written = export.model.run_export(str(export.model.bur_files[0]), "demo", "TE", dict(export.export_gui.parts))
+    written = export.model.run_export(
+        str(export.model.bur_files[0]), "demo", "TE", dict(export.export_gui.parts)
+    )
     assert len(written) == 4 and all(p.is_file() and p.parent == demo[0].parent for p in written)
     hub.select("browser")
     settle(drv)
@@ -244,14 +252,18 @@ def test_guide_steps_point_at_real_controls(hub):
         hub.select(where.get(key, hub.selected))
         drv.draw(2)
         assert hub._target_rect(key), key
-    assert sum(1 for s in steps if s.get("await")) >= 8, "the tour waits for the user at the real buttons"
+    assert sum(1 for s in steps if s.get("await")) >= 8, (
+        "the tour waits for the user at the real buttons"
+    )
 
 
 def test_the_guide_waits_for_the_real_next_button(hub):
     drv = Driver(hub, (1200, 800))
     drv.draw(2)
     hub.tour.start()
-    first = next(i for i, s in enumerate(hub.tour.steps) if hub.tour._target_key(s.get("target")) == "next")
+    first = next(
+        i for i, s in enumerate(hub.tour.steps) if hub.tour._target_key(s.get("target")) == "next"
+    )
     hub.tour.step_idx = first
     hub.tour._step_used = False
     drv.draw(1)
@@ -322,7 +334,9 @@ hub.close()
 print('QT-FREE OK')
 """
     env = dict(os.environ)
-    done = subprocess.run([sys.executable, "-c", script], cwd=repo, env=env, capture_output=True, text=True)
+    done = subprocess.run(
+        [sys.executable, "-c", script], cwd=repo, env=env, capture_output=True, text=True
+    )
     assert done.returncode == 0 and "QT-FREE OK" in done.stdout, (done.stdout + done.stderr)[-3000:]
 
 

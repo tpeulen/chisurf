@@ -35,7 +35,7 @@ def test_measured_chunk_lag_uses_raw_ticks_header_and_canonical_ms(tmp_path):
     raw = tttrlib.Correlator(n_bins=7, n_casc=25)
     raw.set_macrotimes(stream.macro_times, stream.macro_times)
     ch = np.asarray(stream.routing_channels)
-    raw.set_weights(np.isin(ch, [0,1]).astype(float), np.isin(ch, [8,9]).astype(float))
+    raw.set_weights(np.isin(ch, [0, 1]).astype(float), np.isin(ch, [8, 9]).astype(float))
     expected = np.asarray(raw.x_axis) * stream.header.macro_time_resolution * 1000
     expected = expected[expected > 0]
     # The fixture writer intentionally emits five significant digits.
@@ -50,7 +50,7 @@ def test_writer_reader_and_fit_preserve_physical_milliseconds(tmp_path):
     import tttrlib
 
     stream = tttrlib.TTTR(str(REPO / "test/data/tttr/BH/132/BH_SPC132.spc"), "SPC-130")
-    lag = tttrlib.Correlator(tttr=stream, channels=([0,1],[8,9]), n_bins=7, n_casc=25).x_axis
+    lag = tttrlib.Correlator(tttr=stream, channels=([0, 1], [8, 9]), n_bins=7, n_casc=25).x_axis
     tau = np.asarray(lag, float) * 1000
     expected_td_ms = 0.8
     y = 1 + 0.3 / (1 + tau / expected_td_ms) / np.sqrt(1 + tau / (expected_td_ms * 3.5**2))
@@ -71,10 +71,10 @@ def test_merger_axis_declares_canonical_ms_and_legacy_inputs_are_not_reinterpret
         app.load_folder(folder)
         app.job.future.result(timeout=10)
         app.job.poll()
-        driver = Driver(app, size=(1200,800))
+        driver = Driver(app, size=(1200, 800))
         painter = driver.draw(3)
         assert "Lag time (ms)" in [call[6] for call in painter.calls if call[0] == "text"]
         on_disk = np.loadtxt(folder / "chnk-0000.cor")
-        np.testing.assert_array_equal(app.model.correlations[0]["x"], on_disk[:,0])
+        np.testing.assert_array_equal(app.model.correlations[0]["x"], on_disk[:, 0])
     finally:
         app.close()

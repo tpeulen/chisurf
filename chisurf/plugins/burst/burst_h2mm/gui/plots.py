@@ -58,8 +58,10 @@ class ResultPlots:
         points = result_view.transition_points(ana)
         if points is None:
             im.text_wrapped(
-                tr("No transition density yet: it shows the FRET efficiency before and after every decoded "
-                "transition once an H2MM fit has finished.")
+                tr(
+                    "No transition density yet: it shows the FRET efficiency before and after every decoded "
+                    "transition once an H2MM fit has finished."
+                )
             )
         elif implot.begin_plot("Transition density (E before vs E after)", (-1, -1)):
             implot.setup_axes("E before", "E after")
@@ -126,7 +128,9 @@ class ResultPlots:
             return
         if not histograms:
             im.text_wrapped(
-                tr("No state has a dwell that ended inside a burst, so there is no dwell-time distribution.")
+                tr(
+                    "No state has a dwell that ended inside a burst, so there is no dwell-time distribution."
+                )
             )
             return
         if implot.begin_plot("Dwell times (burst-edge dwells excluded)", (-1, -1)):
@@ -189,7 +193,9 @@ class ResultPlots:
         sel = result_view.model_selection(ana)
         if sel is None:
             im.text_wrapped(
-                tr("No model selection yet: BIC and ICL of every fitted state count appear here after a fit.")
+                tr(
+                    "No model selection yet: BIC and ICL of every fitted state count appear here after a fit."
+                )
             )
             return
         ns, bic, icl = sel
@@ -206,7 +212,9 @@ class ResultPlots:
         path = result_view.burst_path(ana, data, burst)
         if path is None:
             im.text_wrapped(
-                tr("No state path yet: after a fit, pick a burst to see its photons coloured by decoded state.")
+                tr(
+                    "No state path yet: after a fit, pick a burst to see its photons coloured by decoded state."
+                )
             )
             return
         if implot.begin_plot("State path", (-1, -1)):
@@ -224,7 +232,9 @@ class ResultPlots:
         """Per-state decays by detection colour (the photons of one colour only)."""
         if decays is None:
             im.text_wrapped(
-                tr("No per-state decays: they need the photons' micro times, which a fit of this folder did not carry.")
+                tr(
+                    "No per-state decays: they need the photons' micro times, which a fit of this folder did not carry."
+                )
             )
             return
         x = decays.centers_ns()

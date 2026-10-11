@@ -412,6 +412,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
             return
 
         common_wl = np.linspace(wl_min, wl_max, 1000)
+
         # scipy.interpolate.interp1d (linear, fill 0) is np.interp with the
         # range pre-clamped: np.interp fills out-of-range with the edge
         # values, so values at/beyond the data edges are zeroed first.
@@ -421,6 +422,7 @@ class ForsterCalculatorWidget(QtWidgets.QWidget):
                 out = np.zeros_like(x, dtype=float)
                 out[inside] = np.interp(x[inside], xp, fp)
                 return out
+
             return _f
 
         donor_interp = _interp_fill0(donor_em["wavelengths"], donor_em["intensity"])

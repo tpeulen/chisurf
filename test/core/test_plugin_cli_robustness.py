@@ -32,7 +32,8 @@ def _package(root, name, *, plugin_id=None, entrypoint=None, manifest=None, sour
     directory = root / name
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "__init__.py").write_text(
-        source or 'raise RuntimeError("discovery imported fixture")\n', encoding="utf-8",
+        source or 'raise RuntimeError("discovery imported fixture")\n',
+        encoding="utf-8",
     )
     if plugin_id is not None:
         data = {"id": plugin_id, "version": "1.0", "display_name": f"Tools:{plugin_id}"}
@@ -87,10 +88,14 @@ def test_duplicate_manifest_ids_keep_first_owner(roots, caplog):
     assert str(chosen) in caplog.text and str(ignored) in caplog.text
 
 
-@pytest.mark.parametrize("invalid", [{"version": []}, {"version": None}, {"id": []}, {"requires": []}])
+@pytest.mark.parametrize(
+    "invalid", [{"version": []}, {"version": None}, {"id": []}, {"requires": []}]
+)
 def test_invalid_manifest_cli_does_not_bypass_shared_validation(roots, invalid, caplog):
     first, _ = roots
-    broken = _package(first, "broken", plugin_id="broken", entrypoint="broken=fixture:cli", manifest=invalid)
+    broken = _package(
+        first, "broken", plugin_id="broken", entrypoint="broken=fixture:cli", manifest=invalid
+    )
     _package(first, "healthy", plugin_id="healthy", entrypoint="healthy=fixture:cli")
     assert [r["plugin_id"] for r in cli_module._discover_plugin_metadata()] == ["healthy"]
     assert str(broken) in caplog.text
@@ -99,8 +104,13 @@ def test_invalid_manifest_cli_does_not_bypass_shared_validation(roots, invalid, 
 @pytest.mark.parametrize("entrypoints", [{}, {"cli": None}])
 def test_valid_manifest_without_cli_suppresses_stale_legacy_command(roots, entrypoints):
     first, _ = roots
-    _package(first, "one", plugin_id="same", manifest={"entrypoints": entrypoints},
-             source='name = "Tools:Legacy"\ncli_entrypoint = "stale=fixture:cli"\n')
+    _package(
+        first,
+        "one",
+        plugin_id="same",
+        manifest={"entrypoints": entrypoints},
+        source='name = "Tools:Legacy"\ncli_entrypoint = "stale=fixture:cli"\n',
+    )
     _package(first, "two", plugin_id="same", entrypoint="other=fixture:cli")
     records = list(cli_module._discover_plugin_metadata())
     assert len(records) == 1
@@ -120,13 +130,19 @@ def invoke_plugin(monkeypatch):
         def group():
             pass
 
-        @group.command("public", context_settings={
-            "ignore_unknown_options": True, "allow_extra_args": True, "help_option_names": [],
-        })
+        @group.command(
+            "public",
+            context_settings={
+                "ignore_unknown_options": True,
+                "allow_extra_args": True,
+                "help_option_names": [],
+            },
+        )
         @click.pass_context
         def lazy(ctx):
-            cli_module._forward_plugin_cli(ctx, module_path=module.__name__,
-                                           attr_name="command", command_name="public")
+            cli_module._forward_plugin_cli(
+                ctx, module_path=module.__name__, attr_name="command", command_name="public"
+            )
 
         return CliRunner().invoke(group, ["public", *args], **kwargs)
 
@@ -147,7 +163,6 @@ def test_click_exit_status_is_preserved(invoke_plugin, status):
     assert "exited with status" not in result.output
 
 
-
 def test_click_group_inherits_host_context_and_public_command_path(invoke_plugin):
     closed = []
 
@@ -162,12 +177,15 @@ def test_click_group_inherits_host_context_and_public_command_path(invoke_plugin
         ctx.call_on_close(lambda: closed.append(value))
         click.echo(f"{ctx.obj['session']}|{ctx.command_path}|{value}")
 
-    result = invoke_plugin(command, ["child"], obj={"session": "host-session"},
-                           default_map={"public": {"child": {"value": "inherited-default"}}})
+    result = invoke_plugin(
+        command,
+        ["child"],
+        obj={"session": "host-session"},
+        default_map={"public": {"child": {"value": "inherited-default"}}},
+    )
     assert result.exit_code == 0, repr(result.exception)
     assert result.output == "host-session|group public child|inherited-default\n"
     assert closed == ["inherited-default"]
-
 
 
 @pytest.mark.parametrize("args", [[], ["--help"]])
@@ -258,7 +276,9 @@ def test_non_callable_target_has_actionable_failure(invoke_plugin):
 @pytest.mark.parametrize("contents", [b"{", b"[]", b"\xff"])
 def test_invalid_manifest_keeps_explicit_legacy_fallback(roots, contents):
     first, _ = roots
-    directory = _package(first, "legacy", source='name = "Tools:Legacy"\ncli_entrypoint = "legacy=fixture:cli"\n')
+    directory = _package(
+        first, "legacy", source='name = "Tools:Legacy"\ncli_entrypoint = "legacy=fixture:cli"\n'
+    )
     (directory / "manifest.json").write_bytes(contents)
     records = list(cli_module._discover_plugin_metadata())
     assert len(records) == 1
@@ -301,7 +321,6 @@ def test_valid_manifest_selection_agrees_with_registry(roots):
     assert {r["plugin_id"] for r in records} == {m.id for m in registry.all_manifests}
 
 
-
 def test_fresh_top_level_help_is_plugin_and_toolkit_import_free():
     import os
     import subprocess
@@ -319,7 +338,12 @@ heavy = [name for name in sys.modules if name.split(".")[0] in {"jsonschema", "q
 assert not heavy, heavy
 print("HELP_IMPORT_FREE_OK")
 """
-    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True,
-                            env=dict(os.environ), timeout=30)
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        text=True,
+        env=dict(os.environ),
+        timeout=30,
+    )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "HELP_IMPORT_FREE_OK" in result.stdout

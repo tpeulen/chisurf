@@ -70,7 +70,12 @@ def test_ptu_roundtrip_retains_calibrated_axes_and_events(producer, tmp_path, dt
     """Writing the scan preserves event identities and physical arrival delays."""
     simulation = producer.simulate_molecule_mixture(
         [producer.Blob(2, 2, 0.6, brightness=20000.0)],
-        n_pixel=4, n_micro=n_micro, dt=dt, dwell=2.0, psf_w0=0.5, seed=7
+        n_pixel=4,
+        n_micro=n_micro,
+        dt=dt,
+        dwell=2.0,
+        psf_w0=0.5,
+        seed=7,
     )
     path = tmp_path / "sample.ptu"
     producer.write_mixture_ptu(simulation, path)
@@ -134,7 +139,10 @@ def test_header_derived_lifetime_matches_explicit_physical_reference(producer, t
 
     sample = producer.simulate_molecule_mixture(
         [producer.Blob(2, 2, 0.6, brightness=20000.0)],
-        n_pixel=4, dwell=2.0, psf_w0=0.5, seed=7,
+        n_pixel=4,
+        dwell=2.0,
+        psf_w0=0.5,
+        seed=7,
     )
     irf = producer.simulate_irf_measurement(
         n_pixel=4, dwell=2.0, psf_w0=0.5, brightness=20000.0, seed=11
@@ -145,12 +153,21 @@ def test_header_derived_lifetime_matches_explicit_physical_reference(producer, t
     instrument = tttrlib.TTTR(str(tmp_path / "irf.ptu"))
     clsm = producer.clsm_from_scan(stream, 4)
     response, background = build_irf_vv_vh(
-        instrument, detector_chs=[0, 1], micro_time_range=(0, 128), micro_time_binning=1,
+        instrument,
+        detector_chs=[0, 1],
+        micro_time_range=(0, 128),
+        micro_time_binning=1,
     )
     settings = RegionMleSettings(
-        detector_chs=[0, 1], micro_time_range=(0, 128),
-        irf=response, background=background, regions=np.ones((4, 4), dtype=np.int32),
-        min_photons=100, fix_r0=True, fix_rho=True, p2s_twoIstar=True,
+        detector_chs=[0, 1],
+        micro_time_range=(0, 128),
+        irf=response,
+        background=background,
+        regions=np.ones((4, 4), dtype=np.int32),
+        min_photons=100,
+        fix_r0=True,
+        fix_rho=True,
+        p2s_twoIstar=True,
     )
     actual = fit_regions(stream, settings, clsm=clsm, keep_curves=True)
     expected = fit_regions(stream, settings, clsm=clsm, dt=0.064, period=8.192, keep_curves=True)
@@ -159,7 +176,9 @@ def test_header_derived_lifetime_matches_explicit_physical_reference(producer, t
     for index, _name in enumerate(column_names(actual.dataframe)):
         np.testing.assert_allclose(
             column_values(actual.dataframe, index),
-            column_values(expected.dataframe, index), rtol=1e-8, atol=1e-8,
+            column_values(expected.dataframe, index),
+            rtol=1e-8,
+            atol=1e-8,
         )
     tau = column_values(actual.dataframe, column_names(actual.dataframe).index("tau"))[0]
     assert tau == pytest.approx(0.6, rel=0.12)

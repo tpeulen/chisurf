@@ -263,7 +263,8 @@ def _discover_plugin_metadata() -> Iterable[dict[str, object]]:
             if preferred != resolved:
                 _LOG.warning(
                     "Shadowed plugin module %r at %s ignored; Python selects %s",
-                    module_name, init_py.parent,
+                    module_name,
+                    init_py.parent,
                     preferred or packages.parent_locations(parts),
                 )
                 continue
@@ -274,7 +275,9 @@ def _discover_plugin_metadata() -> Iterable[dict[str, object]]:
                 if plugin_id in seen_ids:
                     _LOG.warning(
                         "Duplicate plugin id %r at %s ignored; using %s",
-                        plugin_id, init_py.parent, seen_ids[plugin_id],
+                        plugin_id,
+                        init_py.parent,
+                        seen_ids[plugin_id],
                     )
                     continue
                 seen_ids[plugin_id] = init_py.parent

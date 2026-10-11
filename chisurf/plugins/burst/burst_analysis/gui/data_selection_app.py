@@ -237,7 +237,10 @@ class BurstDataSelectionModel:
     def restore_settings(self, state: dict[str, Any] | None) -> None:
         paths = [p for p in (state or {}).get("paths", []) if Path(p).exists()]
         if paths:
-            auto, self.auto_import = self.auto_import, False  # restored files were registered when first added
+            auto, self.auto_import = (
+                self.auto_import,
+                False,
+            )  # restored files were registered when first added
             try:
                 self.add_paths(paths)
             finally:
@@ -311,12 +314,20 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         )
         self.form.on_used = self.tour.notify_used
         self.docks = DockManager(
-            Split("h", 0.62, Region("files"), Split("v", 0.55, Region("details"), Region("summary"))),
+            Split(
+                "h", 0.62, Region("files"), Split("v", 0.55, Region("details"), Region("summary"))
+            ),
             name="burst_data_selection",
         )
-        self.docks.add_window("files", "TTTR data files", self._draw_files, dock="files", closable=False)
-        self.docks.add_window("details", "File details", self._draw_details, dock="details", closable=False)
-        self.docks.add_window("summary", "Summary", self._draw_summary, dock="summary", closable=False)
+        self.docks.add_window(
+            "files", "TTTR data files", self._draw_files, dock="files", closable=False
+        )
+        self.docks.add_window(
+            "details", "File details", self._draw_details, dock="details", closable=False
+        )
+        self.docks.add_window(
+            "summary", "Summary", self._draw_summary, dock="summary", closable=False
+        )
         super().__init__(gui=self._render, continuous=False)
 
     # -- tour / help ---------------------------------------------------------------------------------------- #
@@ -402,7 +413,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         except Exception as exc:  # noqa: BLE001 - shown in the window
             self.message = f"Could not add: {exc}"
             return
-        self.message = "" if added is None or added else "Nothing new to add (already in the list, or no TTTR files)."
+        self.message = (
+            ""
+            if added is None or added
+            else "Nothing new to add (already in the list, or no TTTR files)."
+        )
         if self.selected_index is None and self._paths():
             self.selected_index = 0
 
@@ -450,17 +465,36 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         selected = self.selected_index is not None and 0 <= self.selected_index < len(paths)
         pressed = button_row(
             [
-                {"label": "Add files", "key": "add_files", "keys": ["toolAction_add"],
-                 "tip": "Choose TTTR measurement files to add to the workflow."},
-                {"label": "Add folder", "key": "add_folder",
-                 "tip": "Add every TTTR file directly inside a folder."},
-                {"label": "Database (MMFDB)", "key": "database",
-                 "tip": "Choose raw data registered in MMFDB; the file is resolved to a local path."},
-                {"label": "Remove", "key": "remove", "enabled": selected,
-                 "tip": "Remove the selected file from the list." if selected
-                 else "Select a file in the table first."},
-                {"label": "Clear", "key": "clear", "enabled": bool(paths),
-                 "tip": "Remove every file from the list." if paths else "No files to remove."},
+                {
+                    "label": "Add files",
+                    "key": "add_files",
+                    "keys": ["toolAction_add"],
+                    "tip": "Choose TTTR measurement files to add to the workflow.",
+                },
+                {
+                    "label": "Add folder",
+                    "key": "add_folder",
+                    "tip": "Add every TTTR file directly inside a folder.",
+                },
+                {
+                    "label": "Database (MMFDB)",
+                    "key": "database",
+                    "tip": "Choose raw data registered in MMFDB; the file is resolved to a local path.",
+                },
+                {
+                    "label": "Remove",
+                    "key": "remove",
+                    "enabled": selected,
+                    "tip": "Remove the selected file from the list."
+                    if selected
+                    else "Select a file in the table first.",
+                },
+                {
+                    "label": "Clear",
+                    "key": "clear",
+                    "enabled": bool(paths),
+                    "tip": "Remove every file from the list." if paths else "No files to remove.",
+                },
                 {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
                 {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
             ],
@@ -486,7 +520,9 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         im.text(tr("Filter"))
         im.same_line()
         im.set_next_item_width(min(260.0, max(120.0, im.get_content_region_avail()[0] - 10.0)))
-        _changed, self.filter_text = im.input_text("##data_filter", self.filter_text, hint=tr("file name contains"))
+        _changed, self.filter_text = im.input_text(
+            "##data_filter", self.filter_text, hint=tr("file name contains")
+        )
         im.set_item_tooltip(tr("Show only files whose name contains this text."))
         self.remember("filter")
         if self.message:
@@ -495,7 +531,9 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if "data_table" in self.form.rects:
             self.item_rects["files"] = tuple(self.form.rects["data_table"])
         if not paths:
-            im.text_disabled(tr("No files yet: add TTTR files or a folder, or drop them on this window."))
+            im.text_disabled(
+                tr("No files yet: add TTTR files or a folder, or drop them on this window.")
+            )
 
     def _draw_details(self, box=None) -> None:
         paths = self._paths()
@@ -528,7 +566,9 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         if im.button(label + "##data_import"):
             self.track("import")
             self.source.import_path(path)
-        im.set_item_tooltip(tr("Store this file in the MMFDB object store and register it as raw TTTR data."))
+        im.set_item_tooltip(
+            tr("Store this file in the MMFDB object store and register it as raw TTTR data.")
+        )
         self.remember("import")
 
     def _draw_summary(self, box=None) -> None:

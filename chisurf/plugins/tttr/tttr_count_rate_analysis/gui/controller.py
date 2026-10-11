@@ -33,7 +33,8 @@ class CountRateController:
         if self.selected_setup:
             initial["setup_name"] = self.selected_setup
         self.channel_editor = ChannelDefinitionWidget(
-            settings=initial, on_changed=self.on_definition_changed,
+            settings=initial,
+            on_changed=self.on_definition_changed,
             host_app=None,
         )
         self.channel_editor.model.setups = deepcopy(self._setups)
@@ -339,7 +340,9 @@ class _StandaloneApp(CountRateApp):
                     "Definition", self.tool.setup_editor, (-1, 300)
                 )
                 im.set_item_tooltip(
-                    tr("Define detector routing channels, inclusive micro-time gates and excitation-window ranges.")
+                    tr(
+                        "Define detector routing channels, inclusive micro-time gates and excitation-window ranges."
+                    )
                 )
                 if im.button(tr("Apply setup")):
                     self.tool.apply_setup()

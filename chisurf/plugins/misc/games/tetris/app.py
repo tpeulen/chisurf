@@ -1,4 +1,5 @@
 """Standalone EMTK Tetris, driven by the same rules as the retained Qt view."""
+
 from __future__ import annotations
 
 import json
@@ -42,19 +43,30 @@ class TetrisApp(GameApp):
     HELP_DIR = Path(__file__).parent / "gui"
 
     BINDINGS = (
-        (KEY_ENTER, 'confirm'),
-        (KEY_RETURN, 'confirm'),
-        (KEY_ESCAPE, 'cancel'),
-        (KEY_LEFT, 'left'),
-        (KEY_RIGHT, 'right'),
-        (KEY_DOWN, 'down'),
-        (KEY_UP, 'confirm'),
-        ('p', 'menu'),
-        ('r', 'cancel'),
-        (' ', 'shoulder_r'),
-        ('m', 'shoulder_l'),
+        (KEY_ENTER, "confirm"),
+        (KEY_RETURN, "confirm"),
+        (KEY_ESCAPE, "cancel"),
+        (KEY_LEFT, "left"),
+        (KEY_RIGHT, "right"),
+        (KEY_DOWN, "down"),
+        (KEY_UP, "confirm"),
+        ("p", "menu"),
+        ("r", "cancel"),
+        (" ", "shoulder_r"),
+        ("m", "shoulder_l"),
     )
-    FIELDS = ('shape', 'x', 'y', 'score', 'lines', 'level', 'paused', 'muted', 'over', '_fall_timer')
+    FIELDS = (
+        "shape",
+        "x",
+        "y",
+        "score",
+        "lines",
+        "level",
+        "paused",
+        "muted",
+        "over",
+        "_fall_timer",
+    )
 
     window_size = (520, 620)
 
@@ -83,9 +95,8 @@ class TetrisApp(GameApp):
     def advance(self, dt):
         if self.closed:
             return
-        self.game.update(min(max(float(dt), 0), .1), self.keys)
+        self.game.update(min(max(float(dt), 0), 0.1), self.keys)
         self.keys.end_frame()
-
 
     def key(self, key, text="", modifiers=0):
         if self.overlay_active:
@@ -127,9 +138,12 @@ class TetrisApp(GameApp):
         self.request_frame()
 
     def export_settings(self):
-        return {"game": self.export_fields(),
-                "well": [list(row) for row in self.game.well], "coords": [list(c) for c in self.game.coords],
-                "sound_enabled": self.sound_enabled}
+        return {
+            "game": self.export_fields(),
+            "well": [list(row) for row in self.game.well],
+            "coords": [list(c) for c in self.game.coords],
+            "sound_enabled": self.sound_enabled,
+        }
 
     def validate_state(self, state):
         """Prepare a validated round without replacing live game state."""
@@ -141,20 +155,37 @@ class TetrisApp(GameApp):
                 if not isinstance(value, bool):
                     raise ValueError("invalid round flag")
             elif name == "_fall_timer":
-                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                if (
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(value)
+                    or value < 0
+                ):
                     raise ValueError("invalid fall timer")
             elif isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError("invalid round integer")
             setattr(candidate, name, value)
-        if not 0 <= candidate.shape < len(SHAPES) or min(candidate.score, candidate.lines) < 0 or candidate.level != 1 + candidate.lines // 10:
+        if (
+            not 0 <= candidate.shape < len(SHAPES)
+            or min(candidate.score, candidate.lines) < 0
+            or candidate.level != 1 + candidate.lines // 10
+        ):
             raise ValueError("invalid score or piece")
         well = state["well"]
         if len(well) != BOARD_H or any(len(row) != BOARD_W for row in well):
             raise ValueError("invalid well dimensions")
-        if any(c is not None and (isinstance(c, bool) or not isinstance(c, int) or not 0 <= c < len(SHAPES)) for row in well for c in row):
+        if any(
+            c is not None
+            and (isinstance(c, bool) or not isinstance(c, int) or not 0 <= c < len(SHAPES))
+            for row in well
+            for c in row
+        ):
             raise ValueError("invalid well cell")
         coords = state["coords"]
-        if len(coords) != 4 or any(len(c) != 2 or any(isinstance(v, bool) or not isinstance(v, int) for v in c) for c in coords):
+        if len(coords) != 4 or any(
+            len(c) != 2 or any(isinstance(v, bool) or not isinstance(v, int) for v in c)
+            for c in coords
+        ):
             raise ValueError("invalid piece coordinates")
         rotations = [list(SHAPES[candidate.shape])]
         for _ in range(3):
@@ -163,7 +194,10 @@ class TetrisApp(GameApp):
         if candidate.coords not in rotations:
             raise ValueError("invalid piece rotation")
         candidate.well = [list(row) for row in well]
-        if not all(0 <= candidate.x + dx < BOARD_W and 0 <= candidate.y + dy < BOARD_H for dx, dy in candidate.coords):
+        if not all(
+            0 <= candidate.x + dx < BOARD_W and 0 <= candidate.y + dy < BOARD_H
+            for dx, dy in candidate.coords
+        ):
             raise ValueError("piece outside well")
         if not candidate.over and not candidate.fits(candidate.coords, candidate.x, candidate.y):
             raise ValueError("piece intersects well")
@@ -190,70 +224,94 @@ class TetrisApp(GameApp):
         w, h = viewport.size
         im.begin("##tetris", (x, y, w, h))
         draw = im.get_window_draw_list()
-        draw.add_rect_filled((x, y), (x+w, y+h), (8, 9, 11, 255))
-        im.set_cursor_screen_pos((x+4, y+2))
+        draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
+        im.set_cursor_screen_pos((x + 4, y + 2))
         # Greyed without an audio backend: emtk plays no sound (the Qt game's
         # chigame audio is QtMultimedia).
         if sound_toggle(self.sound_enabled, available=self.audio is not None, shortcut="M"):
             self.set_sound()
-        scale = min(max(w, 1)/420, max(h-37, 1)/588)
-        ox, oy = x+w/2-210*scale, y+37+(h-37-588*scale)/2+8*scale
+        scale = min(max(w, 1) / 420, max(h - 37, 1) / 588)
+        ox, oy = x + w / 2 - 210 * scale, y + 37 + (h - 37 - 588 * scale) / 2 + 8 * scale
         self.board = ox, oy, scale
+
         def at(xx, yy):
-            return ox+xx*scale, oy+yy*scale
-        def text(label, xx, yy, height, colour=(255,255,255,255), align="center", max_width=None):
+            return ox + xx * scale, oy + yy * scale
+
+        def text(
+            label, xx, yy, height, colour=(255, 255, 255, 255), align="center", max_width=None
+        ):
             translated = tr(label)
-            font_height = height*scale
+            font_height = height * scale
             if max_width is not None:
                 measured = text_width(draw, translated, font_height)
                 if measured > max_width:
-                    font_height *= max_width/measured
-            pixel_text(draw, translated, at(xx,yy), font_height, colour, align)
+                    font_height *= max_width / measured
+            pixel_text(draw, translated, at(xx, yy), font_height, colour, align)
+
         g = self.game
-        draw.add_rect_filled(at(37,27), at(263,517), (33,37,43,255), rounding=2*scale)
+        draw.add_rect_filled(at(37, 27), at(263, 517), (33, 37, 43, 255), rounding=2 * scale)
+
         def cell(col, row, shape, live=False):
-            xx, yy = 40+(col+.5)*22, 30+(row+.5)*22
+            xx, yy = 40 + (col + 0.5) * 22, 30 + (row + 0.5) * 22
             nm = SHAPE_NM[shape]
-            colour = tuple(round(c*255) for c in wavelength_to_srgb(nm))
+            colour = tuple(round(c * 255) for c in wavelength_to_srgb(nm))
             if live:
                 for radius in range(16, 0, -2):
-                    draw.add_circle_filled(at(xx,yy), radius*scale, colour+(round(45*(1-radius/18)**2),))
-            energy = min(max((1/nm-1/680)/(1/405-1/680),0),1)
-            colour = tuple(round(c*(.78+.22*energy)) for c in colour)
-            draw.add_rect_filled(at(xx-9.5,yy-9.5), at(xx+9.5,yy+9.5), colour+(255,), rounding=2.85*scale)
+                    draw.add_circle_filled(
+                        at(xx, yy), radius * scale, colour + (round(45 * (1 - radius / 18) ** 2),)
+                    )
+            energy = min(max((1 / nm - 1 / 680) / (1 / 405 - 1 / 680), 0), 1)
+            colour = tuple(round(c * (0.78 + 0.22 * energy)) for c in colour)
+            draw.add_rect_filled(
+                at(xx - 9.5, yy - 9.5),
+                at(xx + 9.5, yy + 9.5),
+                colour + (255,),
+                rounding=2.85 * scale,
+            )
+
         for row in range(BOARD_H):
             for col in range(BOARD_W):
                 if g.well[row][col] is not None:
-                    cell(col,row,g.well[row][col])
+                    cell(col, row, g.well[row][col])
         if not g.over:
-            for dx,dy in g.coords:
-                cell(g.x+dx,g.y+dy,g.shape,True)
-        dim = (112,122,140,255)
-        for label, value, top, baseline, height in (("COUNTS",g.score,60,84,24), ("LINES",g.lines,124,146,20), ("GAIN",g.level,184,206,20)):
-            text(label,330,top,13,dim,max_width=110*scale)
-            text(str(value),330,baseline,height,max_width=110*scale)
+            for dx, dy in g.coords:
+                cell(g.x + dx, g.y + dy, g.shape, True)
+        dim = (112, 122, 140, 255)
+        for label, value, top, baseline, height in (
+            ("COUNTS", g.score, 60, 84, 24),
+            ("LINES", g.lines, 124, 146, 20),
+            ("GAIN", g.level, 184, 206, 20),
+        ):
+            text(label, 330, top, 13, dim, max_width=110 * scale)
+            text(str(value), 330, baseline, height, max_width=110 * scale)
         if g.paused:
-            text("HELD",150,272,36,(89,217,204,255),max_width=210*scale)
+            text("HELD", 150, 272, 36, (89, 217, 204, 255), max_width=210 * scale)
         if g.over:
-            draw.add_rect_filled(at(38,224),at(262,320),(26,28,33,255))
-            text("Channel full",150,260,24,(230,82,77,255),max_width=210*scale)
-            text("Confirm to reset",150,290,14,max_width=210*scale)
-            im.set_cursor_screen_pos(at(38,224))
-            if im.invisible_button("##restart-overlay",(224*scale,96*scale)):
+            draw.add_rect_filled(at(38, 224), at(262, 320), (26, 28, 33, 255))
+            text("Channel full", 150, 260, 24, (230, 82, 77, 255), max_width=210 * scale)
+            text("Confirm to reset", 150, 290, 14, max_width=210 * scale)
+            im.set_cursor_screen_pos(at(38, 224))
+            if im.invisible_button("##restart-overlay", (224 * scale, 96 * scale)):
                 self.control("confirm")
             im.set_item_tooltip(tr("Restart after game over (Enter/Space, Up or R)."))
         controls = (
-            (528,"Move  Confirm rotate  Down soft  R drop","Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop."),
-            (544,"Menu hold  Cancel reset","P: pause/resume. R: restart. M: mute."),
+            (
+                528,
+                "Move  Confirm rotate  Down soft  R drop",
+                "Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop.",
+            ),
+            (544, "Menu hold  Cancel reset", "P: pause/resume. R: restart. M: mute."),
         )
-        for yy,label,tip in controls:
-            text(label,180,yy,11,dim,max_width=w-16)
-            im.set_cursor_screen_pos((x+8,at(0,yy)[1]-9*scale))
-            im.invisible_button("##control-"+str(yy),(w-16,18*scale))
+        for yy, label, tip in controls:
+            text(label, 180, yy, 11, dim, max_width=w - 16)
+            im.set_cursor_screen_pos((x + 8, at(0, yy)[1] - 9 * scale))
+            im.invisible_button("##control-" + str(yy), (w - 16, 18 * scale))
             im.set_item_tooltip(tr(tip))
-        im.set_cursor_screen_pos(at(37,27))
-        im.invisible_button("##well",(226*scale,490*scale))
-        im.set_item_tooltip(tr("Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop."))
+        im.set_cursor_screen_pos(at(37, 27))
+        im.invisible_button("##well", (226 * scale, 490 * scale))
+        im.set_item_tooltip(
+            tr("Left/Right: move. Up/Enter: rotate. Down: soft drop. Space: hard drop.")
+        )
         im.end()
 
 
@@ -262,6 +320,7 @@ def make_app(audio=None):
     from chisurf.emtk.i18n import install
 
     from .translations import install_translations
+
     install()
     install_translations()
     return TetrisApp(audio=audio)

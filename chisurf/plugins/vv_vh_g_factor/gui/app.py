@@ -51,14 +51,21 @@ class GFactorApp(ImApp):
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
         self.dataset_picker = DatasetPicker(client=dataset_client, on_paths=self.add_batch)
-        self.path_list = PathListView(self, actions={
-            "add": lambda: self.choose(tr("Batch VV/VH decays"), self.add_batch, multiple=True),
-            "folder": lambda: self.choose(tr("Batch VV/VH folder"), self.add_batch_folder, mode="folder"),
-            "database": self.dataset_picker.open,
-            "remove": lambda path: self.model.remove_batch({"path": path}),
-            "clear": self.clear_batch,
-        })
-        self.forms["batch"].custom["path_list"] = lambda section, model, state, width: self.path_list.draw(section, model, state)
+        self.path_list = PathListView(
+            self,
+            actions={
+                "add": lambda: self.choose(tr("Batch VV/VH decays"), self.add_batch, multiple=True),
+                "folder": lambda: self.choose(
+                    tr("Batch VV/VH folder"), self.add_batch_folder, mode="folder"
+                ),
+                "database": self.dataset_picker.open,
+                "remove": lambda path: self.model.remove_batch({"path": path}),
+                "clear": self.clear_batch,
+            },
+        )
+        self.forms["batch"].custom["path_list"] = lambda section, model, state, width: (
+            self.path_list.draw(section, model, state)
+        )
         self.labels = {n: LabelColumn() for n in panels}
         self.help = EmTkHelpWindow(
             title="VV/VH G-factor: Help", resource=HERE / "help.md", owner=self
@@ -123,7 +130,14 @@ class GFactorApp(ImApp):
     def remember(self, name):
         self.item_rects[name] = im.get_item_rect()
 
-    def choose(self, title, callback: Callable[[list[str]], object], mode="open", multiple=False, filename=""):
+    def choose(
+        self,
+        title,
+        callback: Callable[[list[str]], object],
+        mode="open",
+        multiple=False,
+        filename="",
+    ):
         if self.job.running:
             return
         self.dialog = FileDialog(
@@ -209,8 +223,12 @@ class GFactorApp(ImApp):
 
     def add_batch_folder(self, folders):
         """Queue the same supported VV/VH files as the legacy recursive folder picker."""
-        self.add_batch(str(path) for folder in folders for path in sorted(Path(folder).rglob("*"))
-                       if path.is_file() and path.suffix.lower() in {".dat", ".txt", ".csv"})
+        self.add_batch(
+            str(path)
+            for folder in folders
+            for path in sorted(Path(folder).rglob("*"))
+            if path.is_file() and path.suffix.lower() in {".dat", ".txt", ".csv"}
+        )
 
     def clear_batch(self):
         self.model.batch_files = []
@@ -343,7 +361,9 @@ class GFactorApp(ImApp):
             )
         if not m.batch_files:
             im.text_wrapped(
-                tr("No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration.")
+                tr(
+                    "No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration."
+                )
             )
         self.form("batch", m)
 
@@ -536,9 +556,13 @@ class GFactorApp(ImApp):
         if self._closed:
             return
         self._closed = True
-        publish = (not self.job.running and not self.model.message.startswith("Error:")
-                   and self.model.g_factor is not None and np.isfinite(self.model.g_factor)
-                   and self.model.g_factor > 0)
+        publish = (
+            not self.job.running
+            and not self.model.message.startswith("Error:")
+            and self.model.g_factor is not None
+            and np.isfinite(self.model.g_factor)
+            and self.model.g_factor > 0
+        )
         snapshot = self.model.snapshot() if publish else None
         self.job.close()
         self.dataset_picker.close()

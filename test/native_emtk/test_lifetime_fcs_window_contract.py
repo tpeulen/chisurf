@@ -76,8 +76,15 @@ def test_actual_worker_curves_survive_resize_and_equal_independent_native_refere
     from chisurf.core.fluorescence.fcs.simulate import simulate_lifetime_fcs
     from chisurf.plugins.fcs.fcs_correlator.core import filtered_correlation_datasets
 
-    settings = {"tau1_ns": 1.0, "tau2_ns": 4.0, "d1_um2_ms": 2.0, "d2_um2_ms": 2.0,
-                "exchange_rate_ms": 5.0, "n_photons": 60000, "seed": 7}
+    settings = {
+        "tau1_ns": 1.0,
+        "tau2_ns": 4.0,
+        "d1_um2_ms": 2.0,
+        "d2_um2_ms": 2.0,
+        "exchange_rate_ms": 5.0,
+        "n_photons": 60000,
+        "seed": 7,
+    }
     for name, value in settings.items():
         setattr(app.model, name, value)
     driver = Driver(app, (1100, 720))
@@ -86,17 +93,35 @@ def test_actual_worker_curves_survive_resize_and_equal_independent_native_refere
     if app._future is not None:
         app._future.result(timeout=120)
     app.poll()
-    before = [(data["name"], data["species_a"], data["species_b"],
-               np.asarray(data["x"]).copy(), np.asarray(data["y"]).copy())
-              for data in app.model.datasets]
+    before = [
+        (
+            data["name"],
+            data["species_a"],
+            data["species_b"],
+            np.asarray(data["x"]).copy(),
+            np.asarray(data["y"]).copy(),
+        )
+        for data in app.model.datasets
+    ]
     assert len(before) == 3
     condition = app.model.condition_number
-    simulation = simulate_lifetime_fcs(lifetimes_ns=(1.0, 4.0), diffusion_um2_ms=(2.0, 2.0),
-                                      exchange_rate_ms=5.0, n_photons=60000, seed=7)
+    simulation = simulate_lifetime_fcs(
+        lifetimes_ns=(1.0, 4.0),
+        diffusion_um2_ms=(2.0, 2.0),
+        exchange_rate_ms=5.0,
+        n_photons=60000,
+        seed=7,
+    )
     filters, _, _ = calc_ffcs_filters(simulation.total_decay, simulation.reference_decays)
-    reference = filtered_correlation_datasets(simulation.macro_times, simulation.micro_times,
-                                             filters, simulation.macro_time_resolution_s,
-                                             n_bins=8, n_casc=25, labels=["τ=1 ns", "τ=4 ns"])
+    reference = filtered_correlation_datasets(
+        simulation.macro_times,
+        simulation.micro_times,
+        filters,
+        simulation.macro_time_resolution_s,
+        n_bins=8,
+        n_casc=25,
+        labels=["τ=1 ns", "τ=4 ns"],
+    )
     assert condition == filter_condition_number(simulation.total_decay, simulation.reference_decays)
     driver.draw(3, size=(1390, 910))
     for saved, actual, expected in zip(before, app.model.datasets, reference, strict=True):

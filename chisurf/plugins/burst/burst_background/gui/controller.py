@@ -251,7 +251,9 @@ class BackgroundController:
             if callable(callback):
                 callback()
         im.set_item_tooltip(
-            tr("Open the complete detector setup, timing, calibration, PIE, TAC and optical editor.")
+            tr(
+                "Open the complete detector setup, timing, calibration, PIE, TAC and optical editor."
+            )
         )
         if remember is not None:
             remember("bg_channels")

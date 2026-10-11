@@ -84,6 +84,7 @@ def _drop_former_defaults(user: dict) -> dict:
 
 def _migrate_plugin_addresses(settings: dict) -> dict:
     """Move stored menu-address preferences to the current spectroscopy hierarchy."""
+
     def address(value):
         if not isinstance(value, str):
             return value
@@ -93,7 +94,7 @@ def _migrate_plugin_addresses(settings: dict) -> dict:
             ("Spectroscopy:Fluorescence decay:", "Spectroscopy:Decay:"),
         ):
             if value.startswith(old):
-                return new + value[len(old):]
+                return new + value[len(old) :]
         return value
 
     def keyed(mapping):
@@ -162,7 +163,9 @@ def get_chisurf_settings(setting_file: pathlib.Path, use_source_folder: bool = F
     if not (isinstance(defaults, dict) and isinstance(user, dict)):
         return user if user else defaults
     if setting_file.name == "settings_chisurf.yaml":
-        migrated = prune_defaults(_drop_former_defaults(_migrate_plugin_addresses(copy.deepcopy(user))), defaults)
+        migrated = prune_defaults(
+            _drop_former_defaults(_migrate_plugin_addresses(copy.deepcopy(user))), defaults
+        )
         if migrated != user:
             try:
                 with open(setting_file, "w", encoding="utf-8") as fh:

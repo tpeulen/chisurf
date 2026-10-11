@@ -21,7 +21,13 @@ def test_factory_manifest_and_all_routes():
     assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.misc.games.gui.app:make_app"
     app = make_app()
     assert isinstance(app, GamesHubApp)
-    assert [item["name"] for item in GAME_PANELS] == ["Number Quest", "Minesweeper", "Tetris", "Pong", "Breakout"]
+    assert [item["name"] for item in GAME_PANELS] == [
+        "Number Quest",
+        "Minesweeper",
+        "Tetris",
+        "Pong",
+        "Breakout",
+    ]
     for name in ("Number Quest", "Minesweeper", "Tetris", "Pong"):
         child = app.select(name)
         assert child is not None and hasattr(child, "draw")
@@ -42,11 +48,11 @@ def test_render_pending_and_populated_child_with_tooltips(monkeypatch):
     app.draw(painter, 0, 0, 1060, 730)
     assert any("Number Quest" in value for value in painter.strings)
     assert any("Breakout" in value for value in painter.strings)
-    assert not any("not available" in value for value in painter.strings)      # every game is playable
+    assert not any("not available" in value for value in painter.strings)  # every game is playable
     assert any("Guess the hidden number" in value for value in tips)
     app.select("Tetris")
     app.draw(painter, 0, 0, 1060, 730)
-    assert any("Left/Right move" in value for value in painter.strings)      # the keys line
+    assert any("Left/Right move" in value for value in painter.strings)  # the keys line
     app.select("Minesweeper")
     app.draw(painter, 0, 0, 720, 680)
     assert app.child.game is not None
@@ -127,5 +133,5 @@ def test_hub_keyboard_game_switching():
     assert app.selected == "Minesweeper"
     assert app.key(k.KEY_3, "3") is True
     assert app.selected == "Tetris"
-    assert app.key(k.KEY_ENTER, "") is True   # Enter lands in Tetris!
+    assert app.key(k.KEY_ENTER, "") is True  # Enter lands in Tetris!
     assert app.key_release(k.KEY_ENTER, "") is True

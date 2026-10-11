@@ -29,7 +29,6 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 POTENTIALS = [("Radius of Gyration", 1.0), ("Clash potential", 0.5)]
 
 
-
 @pytest.fixture(scope="module")
 def trajectory(tmp_path_factory):
     pytest.importorskip("IMP.cgmol")

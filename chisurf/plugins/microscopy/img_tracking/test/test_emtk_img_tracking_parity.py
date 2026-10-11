@@ -145,7 +145,9 @@ def assert_msd_minimum(fit, frame_interval):
     residual = 4.0 * fit.diffusion_coefficient * tau**fit.alpha + offset - msd
     roundoff = 64.0 * np.finfo(float).eps * float(msd @ msd)
     assert float(residual @ residual) <= minimum + roundoff
-    assert fit.localisation_error == pytest.approx(np.sqrt(max(offset, 0.0) / 4.0), abs=np.sqrt(roundoff))
+    assert fit.localisation_error == pytest.approx(
+        np.sqrt(max(offset, 0.0) / 4.0), abs=np.sqrt(roundoff)
+    )
     return parameters
 
 
@@ -328,7 +330,9 @@ def test_typed_extremes_are_clamped_to_the_range_the_qt_spin_box_enforced(app, d
             if fold in app.form.rects:
                 drv.click(fold)
     for qt_value, qt_result in QT_REF["clamp"][attr].items():
-        drv.type_into(attr, qt_value)  # incl. sim_diffusion: the Qt box shows 4 decimals and rounds its minimum 1e-06 to 0.0, and so does the emtk field
+        drv.type_into(
+            attr, qt_value
+        )  # incl. sim_diffusion: the Qt box shows 4 decimals and rounds its minimum 1e-06 to 0.0, and so does the emtk field
         assert getattr(app.model, attr) == pytest.approx(qt_result, rel=1e-9), (attr, qt_value)
 
 
@@ -1131,8 +1135,15 @@ def test_independent_msd_oracle_rejects_wrong_transport_parameters():
 
     tau = np.arange(1.0, 10.0)
     msd = 4.0 * 0.6 * tau**1.2 + 0.4
-    fit = SimpleNamespace(lags=tau, msd=msd, alpha_fixed=False, success=True,
-                          diffusion_coefficient=0.6, alpha=1.2, localisation_error=np.sqrt(0.1))
+    fit = SimpleNamespace(
+        lags=tau,
+        msd=msd,
+        alpha_fixed=False,
+        success=True,
+        diffusion_coefficient=0.6,
+        alpha=1.2,
+        localisation_error=np.sqrt(0.1),
+    )
     assert_msd_minimum(fit, 1.0)
     fit.diffusion_coefficient = 0.6001
     with pytest.raises(AssertionError):

@@ -257,7 +257,9 @@ class SavedChooser(_Modal):
         im.set_item_tooltip(tr("Load the selected simulation: its graph and its numerical result."))
         im.end_disabled()
         im.same_line()
-        if action_button("cancel", id="cancel_list", tooltip=tr("Close this list without loading anything.")):
+        if action_button(
+            "cancel", id="cancel_list", tooltip=tr("Close this list without loading anything.")
+        ):
             panel.want_list = False
             self.finished = True
 
@@ -452,8 +454,10 @@ class LightPathApp(TourTarget, ImApp):
             # A right press on the canvas asks for the component menu (the node under it is resolved on the next draw).
             self.graph_control.context = ("pending", px, py)
         im.set_item_tooltip(
-            tr("Drag nodes to arrange; drag pins to connect; wheel zooms; right-click for the component menu; "
-            "select items and use Delete Selected to remove them.")
+            tr(
+                "Drag nodes to arrange; drag pins to connect; wheel zooms; right-click for the component menu; "
+                "select items and use Delete Selected to remove them."
+            )
         )
         self.item_rects["graph"] = canvas
 
@@ -504,7 +508,9 @@ class LightPathApp(TourTarget, ImApp):
             im.text_wrapped(status)
         if not controller.result and not controller.running:
             im.text_wrapped(
-                tr("Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs.")
+                tr(
+                    "Press Calculate Emission Intensity to simulate the light path; the results appear in these tabs."
+                )
             )
         if im.begin_tab_bar("lightpath_results"):
             for title in self.panel.TABS:

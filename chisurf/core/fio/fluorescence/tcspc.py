@@ -381,8 +381,12 @@ def read_tcspc_csv(
     if supplied_ex is not None:
         ex = np.sqrt(np.square(supplied_ex * dt).reshape(-1, rebin_y).sum(axis=1)) / rebin_y**2
     if supplied_ey is not None and rebin_x != 1:
-        ey = np.asarray([np.sqrt(np.square(ey[i:i + rebin_x]).sum(axis=0))
-                         for i in range(0, ey.shape[0], rebin_x)])
+        ey = np.asarray(
+            [
+                np.sqrt(np.square(ey[i : i + rebin_x]).sum(axis=0))
+                for i in range(0, ey.shape[0], rebin_x)
+            ]
+        )
 
     # Create descriptive names based on polarization type
     if is_vv_vh and polarization == "vv/vh":

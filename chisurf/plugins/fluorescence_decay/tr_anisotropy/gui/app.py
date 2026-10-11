@@ -240,7 +240,9 @@ class AnisotropyApp(ImApp):
         im.set_item_tooltip(
             action_tooltip(
                 "example",
-                tr("Fill in four simulated files (one lifetime, one rotation, known r0) and matching reader settings."),
+                tr(
+                    "Fill in four simulated files (one lifetime, one rotation, known r0) and matching reader settings."
+                ),
             )
         )
         self.item_rects["load_example"] = im.get_item_rect()
@@ -342,8 +344,10 @@ class AnisotropyApp(ImApp):
     def corrections_step(self):
         self.form("corrections")
         im.text_wrapped(
-            tr("g scales every anisotropy: a 10 % error in g is about 10 % in r(t). l1 and l2 compensate the "
-            "polarization mixing of a high-aperture objective (zero on a low-NA setup).")
+            tr(
+                "g scales every anisotropy: a 10 % error in g is about 10 % in r(t). l1 and l2 compensate the "
+                "polarization mixing of a high-aperture objective (zero on a low-NA setup)."
+            )
         )
 
     def components_step(self):

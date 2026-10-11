@@ -1062,8 +1062,7 @@ class BurstSelectionModel(RunPickerMixin):
     def _refresh_display_frame(self) -> None:
         if self._pool_files:
             stacked = [
-                (index, self.frames_by_file.get(str(path)))
-                for index, path in enumerate(self.files)
+                (index, self.frames_by_file.get(str(path))) for index, path in enumerate(self.files)
             ]
             stacked = [(i, f) for i, f in stacked if f is not None and row_count(f)]
             if stacked:
@@ -1512,25 +1511,34 @@ class BurstSelectionModel(RunPickerMixin):
         if not run_path:
             rows = self.run_rows()
             if not rows:
-                self.status_text = "No run to take a decay from: run a burst search into a .pto first."
+                self.status_text = (
+                    "No run to take a decay from: run a burst search into a .pto first."
+                )
                 self.notify("status")
                 return self.status_text
             self.select_run(rows[-1])
             run_path = self.run_path
         try:
             mask = self.decay_selection(run_path)
-            stream = {"channels": self.channels or list(range(64)),
-                      "micro_time_ranges": [list(r) for r in self.microtime_ranges]}
-            out = write_decay(run_path, mask, self.decay_bins, stream=stream,
-                              parameters={"feature": self.hist_feature,
-                                          "range": [self.hist_min, self.hist_max]})
+            stream = {
+                "channels": self.channels or list(range(64)),
+                "micro_time_ranges": [list(r) for r in self.microtime_ranges],
+            }
+            out = write_decay(
+                run_path,
+                mask,
+                self.decay_bins,
+                stream=stream,
+                parameters={"feature": self.hist_feature, "range": [self.hist_min, self.hist_max]},
+            )
         except Exception as exc:  # noqa: BLE001 - the verdict is the point; say why there is no decay
             self.status_text = f"Decay from selected bursts failed: {exc}"
         else:
             n = out["bursts"] if out["bursts"] is not None else "all"
             self.status_text = (
                 f"Decay of {n} bursts ({out['photons']:.0f} photons) written beside "
-                f"{Path(run_path).name}" + ("; registered as a dataset" if out["dataset_index"] is not None else "")
+                f"{Path(run_path).name}"
+                + ("; registered as a dataset" if out["dataset_index"] is not None else "")
             )
         self.notify("status")
         return self.status_text

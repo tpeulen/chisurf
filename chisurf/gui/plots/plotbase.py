@@ -149,7 +149,9 @@ class Plot:
 
     def has_settings(self) -> bool:
         """Whether the page shows anything in the *Plot settings* dock."""
-        return self.settings_spec() is not None or type(self).draw_settings is not Plot.draw_settings
+        return (
+            self.settings_spec() is not None or type(self).draw_settings is not Plot.draw_settings
+        )
 
     def draw_settings(self) -> None:
         """Draw the page's settings into the current emtk window."""

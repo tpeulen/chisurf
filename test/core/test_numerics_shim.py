@@ -99,8 +99,9 @@ def test_least_squares_args_and_active_bound():
     def fun(p, target, *, scale):
         return scale * (p - target)
 
-    r = numerics.least_squares(fun, [0.5, 0.5], bounds=(0.0, 1.0), args=(np.array([2.0, 0.3]),),
-                               kwargs={"scale": 3.0})
+    r = numerics.least_squares(
+        fun, [0.5, 0.5], bounds=(0.0, 1.0), args=(np.array([2.0, 0.3]),), kwargs={"scale": 3.0}
+    )
     # A parameter pinned at its bound dominates the cost, so the relative
     # ftol stop fires while the free one is still ~1e-5 out -- MINPACK with
     # the leastsqbound transform, as chisurf's fitter always behaved; scipy's
@@ -126,7 +127,9 @@ def test_curve_fit_matches_scipy_including_pcov():
             return a * np.exp(-x / tau) + c
 
         for absolute in (False, True):
-            popt, pcov = numerics.curve_fit(f, t, y, p0=[1, 1, 0.1], sigma=sigma, absolute_sigma=absolute)
+            popt, pcov = numerics.curve_fit(
+                f, t, y, p0=[1, 1, 0.1], sigma=sigma, absolute_sigma=absolute
+            )
             ps, cs = so.curve_fit(f, t, y, p0=[1, 1, 0.1], sigma=sigma, absolute_sigma=absolute)
             np.testing.assert_allclose(popt, ps, rtol=1e-4, atol=1e-6)
             np.testing.assert_allclose(pcov, cs, rtol=2e-2, atol=1e-12)
@@ -230,7 +233,10 @@ def test_root_scalar_is_scipys_brentq():
 
     from chisurf.core.math.numerics import root_scalar
 
-    for fn, a, b in [(lambda x, k: x**3 - 2 * x - k, 2.0, 3.0), (lambda x, k: np.cos(x) - k * x, 0.0, 1.0)]:
+    for fn, a, b in [
+        (lambda x, k: x**3 - 2 * x - k, 2.0, 3.0),
+        (lambda x, k: np.cos(x) - k * x, 0.0, 1.0),
+    ]:
         r = root_scalar(fn, args=(5.0 if a == 2.0 else 1.0,), bracket=[a, b])
         s = so.root_scalar(fn, args=(5.0 if a == 2.0 else 1.0,), bracket=[a, b])
         assert (r.root, r.iterations, r.function_calls, r.converged) == (

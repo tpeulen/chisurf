@@ -78,8 +78,10 @@ def test_resize_preserves_real_filters_reconstruction_residuals_and_settings(app
     state = app.model.export_state()
     fingerprint = app.settings_fingerprint()
     result = app.model.results()[0]["result"]
-    arrays = {name: np.asarray(getattr(result, name)).copy()
-              for name in ("filters", "reconstruction", "weighted_residuals", "total_decay")}
+    arrays = {
+        name: np.asarray(getattr(result, name)).copy()
+        for name in ("filters", "reconstruction", "weighted_residuals", "total_decay")
+    }
     irfs = {name: np.asarray(value).copy() for name, value in app.model._irf_by_detector.items()}
     assert arrays["filters"].shape[0] == 4
     assert int(arrays["total_decay"].sum()) > 90000
@@ -101,10 +103,13 @@ def test_initial_clamped_legend_fits_and_hover_exposes_original_identity(app):
     """Every long legend caption stays visible and offers the full original label on hover."""
     driver = Driver(app, (736, 552))
     painter = driver.draw(3)
-    entry = next(record for record in painter.texts if "green" in record[5] and "Scatter" in record[5])
+    entry = next(
+        record for record in painter.texts if "green" in record[5] and "Scatter" in record[5]
+    )
     x, y, _, height, _, text, *_ = entry
     assert x + painter.text_width(text) < 736
     import time
+
     driver.hover((x + 6, y + height / 2))
     driver.draw(2)
     time.sleep(0.65)
@@ -131,7 +136,9 @@ def test_legend_visibility_survives_resize_with_complete_original_identity(app):
     """Toggling a shortened legend entry keeps the same curve hidden after resize."""
     driver = Driver(app, (736, 552))
     painter = driver.draw(3)
-    entry = next(record for record in painter.texts if "green" in record[5] and "Scatter" in record[5])
+    entry = next(
+        record for record in painter.texts if "green" in record[5] and "Scatter" in record[5]
+    )
     x, y, _, height, _, caption, colour, *_ = entry
     driver.click((x - 6, y + height / 2))
     toggled = next(record for record in driver.draw(3).texts if record[5] == caption)

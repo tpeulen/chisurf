@@ -67,6 +67,7 @@ def _panel(ax: Any, size: tuple[int, int]) -> Any:
 
     return Figure(size=size).ax()
 
+
 # Burst-search method name -> (BurstFilterMode value, filter_active).
 _SEARCH_METHODS = {
     "burst": ("burst", True),  # Seidel sliding-window search (honours min_photons)
@@ -607,7 +608,9 @@ class IrfBackground:
         ax = _panel(ax, (600, 400))
         for d in self.per_detector.values():
             if d.irf.sum() > 0:
-                ax.line(d.time_ns, d.irf, width=1.5, label=f"{d.name} (bg {d.background_khz:.2f} kHz)")
+                ax.line(
+                    d.time_ns, d.irf, width=1.5, label=f"{d.name} (bg {d.background_khz:.2f} kHz)"
+                )
         ax.set_labels(x="Micro time (ns)", y="IRF (normalised)")
         ax.set_title("Non-burst IRF & background")
         ax.legend()

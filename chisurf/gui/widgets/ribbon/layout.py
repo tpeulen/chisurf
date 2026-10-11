@@ -35,8 +35,17 @@ TAB_ORDER = ("File", "Main", "Spectroscopy", "Structure", "Tools")
 #: A group not named here follows the named ones in order of first appearance.
 GROUP_ORDER = {
     "File": ("Setup", "Data"),
-    "Spectroscopy": ("Decay", "Correlation", "Single-Molecule", "FRET", "Kinetics",
-                     "Imaging", "Imaging › Lifetime", "Imaging › Tools", "Imaging › Simulate"),
+    "Spectroscopy": (
+        "Decay",
+        "Correlation",
+        "Single-Molecule",
+        "FRET",
+        "Kinetics",
+        "Imaging",
+        "Imaging › Lifetime",
+        "Imaging › Tools",
+        "Imaging › Simulate",
+    ),
     "Tools": ("Photon data", "Calculators", "Views", "System"),
 }
 

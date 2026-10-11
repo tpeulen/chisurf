@@ -515,7 +515,9 @@ class FpsEditor:
             for cache in (self.av_cache, self.av_signatures, self.av_state):
                 cache.pop(rid, None)
             dropped += int(had)
-        self.av_message = f"AV: deleted {dropped} computed volume(s)." if dropped else "AV: Not computed"
+        self.av_message = (
+            f"AV: deleted {dropped} computed volume(s)." if dropped else "AV: Not computed"
+        )
         self.sync(json_text=False)
         self.on_change()
         return dropped

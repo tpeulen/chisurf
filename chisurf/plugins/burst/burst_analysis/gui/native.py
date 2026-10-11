@@ -177,10 +177,23 @@ class BurstAnalysisHubApp(ToolHubApp):
             for p in (STEPS if steps is None else steps)
         ]
         for panel in panels:
-            if panel.get("role") in {"selection", "mle", "segment_mle", "background", "irf_bg", "h2mm", "accurate_fret", "burst_fcs"}:
+            if panel.get("role") in {
+                "selection",
+                "mle",
+                "segment_mle",
+                "background",
+                "irf_bg",
+                "h2mm",
+                "accurate_fret",
+                "burst_fcs",
+            }:
                 panel["uses_setup"] = True
         super().__init__(
-            title, panels, help_resource=HERE / "help.md", guide=HERE / "guide.json", initial="setup"
+            title,
+            panels,
+            help_resource=HERE / "help.md",
+            guide=HERE / "guide.json",
+            initial="setup",
         )
         self._base_names = {p["role"]: p["name"] for p in self.tools}
 
@@ -263,7 +276,9 @@ class BurstAnalysisHubApp(ToolHubApp):
         artifacts = result.get("mmfdb_artifacts") or {}
         if artifacts:
             self.context.mmfdb_artifacts = dict(artifacts)
-        folder = folder_from_result(result) or materialize_handoff(self.context, model.frames_by_file)
+        folder = folder_from_result(result) or materialize_handoff(
+            self.context, model.frames_by_file
+        )
         # A fresh burst search supersedes any fusion of the previous one.
         self._fusion_source = self._fused_folder = None
         if folder is not None:
@@ -291,7 +306,9 @@ class BurstAnalysisHubApp(ToolHubApp):
         for role in MLE_ROLES:
             child = self.children.get(role)
             if child is not None:
-                applied = max(applied, self._patterns_to_mle(child, self.context.irf_background_patterns))
+                applied = max(
+                    applied, self._patterns_to_mle(child, self.context.irf_background_patterns)
+                )
         return applied or len(patterns or {})
 
     # -- the hand-off ------------------------------------------------------------------------------------ #
@@ -355,7 +372,11 @@ class BurstAnalysisHubApp(ToolHubApp):
         if settings and self._changed("bva", "setup", settings):
             child.model.apply_channel_settings(settings)
         folder = analysis_path(self.context)
-        if folder is not None and child.controller is not None and child.model.analysis_folder != folder:
+        if (
+            folder is not None
+            and child.controller is not None
+            and child.model.analysis_folder != folder
+        ):
             child.controller.set_folder(folder)
 
     def _to_two_cde(self, child) -> None:
@@ -503,7 +524,9 @@ class BurstAnalysisHubApp(ToolHubApp):
             if payload.get("burst_folder") is not None:
                 payload["burst_folder"] = Path(payload["burst_folder"])
             names = {field.name for field in fields(BurstWorkflowContext)}
-            self.context = BurstWorkflowContext(**{key: value for key, value in payload.items() if key in names})
+            self.context = BurstWorkflowContext(
+                **{key: value for key, value in payload.items() if key in names}
+            )
         self._fusion_source = Path(state["fusion_source"]) if state.get("fusion_source") else None
         self._fused_folder = Path(state["fused_folder"]) if state.get("fused_folder") else None
         super().restore_settings(state)

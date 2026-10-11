@@ -594,7 +594,9 @@ class HistogramApp(TourTarget, ImApp):
             "Burst selections (BID/BUR)", 32 if self.model.bid_files else 0
         )
         im.set_item_tooltip(
-            tr("Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds).")
+            tr(
+                "Restrict the photons to bursts: queue .bst/.bur photon-index files (inclusive bounds)."
+            )
         )
         self.remember("burst_header")
         if open_bursts:

@@ -46,12 +46,18 @@ def burst_windows() -> list[tuple[float, float]]:
 def photon_stream(seed: int = DEMO["seed"]):
     """Return time-ordered arrival times (s), micro times and routing channels."""
     rng = np.random.default_rng(seed)
-    times = [rng.uniform(0.0, DEMO["duration_s"], rng.poisson(DEMO["background_hz"] * DEMO["duration_s"]))]
+    times = [
+        rng.uniform(
+            0.0, DEMO["duration_s"], rng.poisson(DEMO["background_hz"] * DEMO["duration_s"])
+        )
+    ]
     for start, end in burst_windows():
         times.append(rng.uniform(start, end, rng.poisson(DEMO["burst_rate_hz"] * (end - start))))
     t = np.sort(np.concatenate(times))
     micro = np.clip(
-        rng.exponential(DEMO["lifetime_s"] / DEMO["micro_resolution_s"], len(t)), 0, DEMO["n_micro"] - 1
+        rng.exponential(DEMO["lifetime_s"] / DEMO["micro_resolution_s"], len(t)),
+        0,
+        DEMO["n_micro"] - 1,
     ).astype(np.uint16)
     routing = rng.integers(0, 2, len(t)).astype(np.int8)
     return t, micro, routing
@@ -117,7 +123,9 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     if not stream.write(str(spc), DEMO["file_type"], header):
         raise OSError(f"could not write {spc}")
     np.savetxt(path, selection(t), fmt="%d")
-    path.with_suffix(".json").write_text(json.dumps(DEMO, sort_keys=True, indent=2), encoding="utf-8")
+    path.with_suffix(".json").write_text(
+        json.dumps(DEMO, sort_keys=True, indent=2), encoding="utf-8"
+    )
     data = spc.read_bytes() + path.read_bytes()
     path.with_suffix(".sha256").write_text(
         f"{len(data)} {hashlib.sha256(data).hexdigest()}\n", encoding="ascii"

@@ -36,12 +36,20 @@ def default_bounds(session: Any) -> dict[str, tuple[float, float, str]]:
     n_bins = max(4, int(np.asarray(irf).size // 2)) if irf is not None else 64
     peak = 0
     if irf is not None and np.asarray(irf).size:
-        half = np.asarray(irf, dtype=float)[: n_bins]
+        half = np.asarray(irf, dtype=float)[:n_bins]
         peak = int(np.argmax(half))
     start_cur = int(s.irf_start)
     stop_cur = int(s.irf_stop)
-    start = (0, max(0, peak)) if start_cur < 0 else (max(0, start_cur - 10), min(n_bins - 2, start_cur + 10))
-    stop = (min(n_bins - 1, peak + 1), n_bins - 1) if stop_cur < 0 else (max(1, stop_cur - 10), min(n_bins - 1, stop_cur + 10))
+    start = (
+        (0, max(0, peak))
+        if start_cur < 0
+        else (max(0, start_cur - 10), min(n_bins - 2, start_cur + 10))
+    )
+    stop = (
+        (min(n_bins - 1, peak + 1), n_bins - 1)
+        if stop_cur < 0
+        else (max(1, stop_cur - 10), min(n_bins - 1, stop_cur + 10))
+    )
     shift = int(s.shift)
     return {
         "shift": (shift - 5, shift + 5, "int"),
@@ -165,7 +173,11 @@ def optimize_hyperparameters(
         cfg = {}
         for j, k in enumerate(keys):
             lo, hi, kind = use[k]
-            cfg[k] = lo + int(np.floor(row[j] * (hi - lo + 1))) if kind == "int" else lo + row[j] * (hi - lo)
+            cfg[k] = (
+                lo + int(np.floor(row[j] * (hi - lo + 1)))
+                if kind == "int"
+                else lo + row[j] * (hi - lo)
+            )
         evaluate(cfg)
     step = {k: 1 if use[k][2] == "int" else 0.25 * (use[k][1] - use[k][0]) for k in keys}
     quiet = 0
@@ -191,9 +203,19 @@ def optimize_hyperparameters(
         session.fit()
         if not state["stopped"]:
             raise ValueError("No valid configuration: every trial diverged; settings restored.")
-        return {"config": None, "loss": float("nan"), "start_loss": start_loss,
-                "evaluations": len(cache), "stopped": True}
+        return {
+            "config": None,
+            "loss": float("nan"),
+            "start_loss": start_loss,
+            "evaluations": len(cache),
+            "stopped": True,
+        }
     _apply(session, best["cfg"])
     session.fit()
-    return {"config": best["cfg"], "loss": best["loss"], "start_loss": start_loss,
-            "evaluations": len(cache), "stopped": False}
+    return {
+        "config": best["cfg"],
+        "loss": best["loss"],
+        "start_loss": start_loss,
+        "evaluations": len(cache),
+        "stopped": False,
+    }

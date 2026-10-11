@@ -43,16 +43,23 @@ class EditorRpcServer:
         import threading
 
         self._startup_error = None
+
         def serve() -> None:
             try:
                 self._server.serve_forever()
             except Exception as error:
                 self._startup_error = error
                 self._server._cleanup()
+
         self._thread = threading.Thread(target=serve, daemon=True)
         self._thread.start()
         deadline = time.monotonic() + 1.5
-        while self._thread.is_alive() and not self._server._running and self._startup_error is None and time.monotonic() < deadline:
+        while (
+            self._thread.is_alive()
+            and not self._server._running
+            and self._startup_error is None
+            and time.monotonic() < deadline
+        ):
             time.sleep(0.005)
         if self._startup_error is not None or not self._server._running:
             error = self._startup_error or RuntimeError("Editor RPC startup timed out")

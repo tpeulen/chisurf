@@ -397,7 +397,13 @@ def test_the_panel_displays_each_detectors_g_factor_l1_l2_and_switching_does_not
     from chisurf.plugins.burst.burst_mle_analysis.gui.model import MleViewModel
 
     channels = {
-        "green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.15, "l1": 0.0308, "l2": 0.0368},
+        "green": {
+            "chs": [0, 1],
+            "micro_time_ranges": [],
+            "g_factor": 1.15,
+            "l1": 0.0308,
+            "l2": 0.0368,
+        },
         "red": {"chs": [8, 9], "micro_time_ranges": [], "g_factor": 0.92, "l1": 0.05, "l2": 0.06},
     }
     model = MleViewModel()

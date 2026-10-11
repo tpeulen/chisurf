@@ -86,7 +86,9 @@ class BackgroundBuild:
         self._thread.start()
         return True
 
-    def collect(self, wait: bool = False) -> dict[Hashable, tuple[Any, BaseException | None]] | None:
+    def collect(
+        self, wait: bool = False
+    ) -> dict[Hashable, tuple[Any, BaseException | None]] | None:
         """The finished batch (``None`` while it runs, unless *wait*), cleared so it is adopted once."""
         thread = self._thread
         if thread is None or (thread.is_alive() and not wait):

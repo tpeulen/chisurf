@@ -137,7 +137,8 @@ def _plugin_root(tree: pathlib.Path) -> pathlib.Path | None:
     if (tree / "__init__.py").is_file():
         return tree
     candidates = [
-        child for child in sorted(tree.iterdir())
+        child
+        for child in sorted(tree.iterdir())
         if child.is_dir() and (child / "__init__.py").is_file()
     ]
     if len(candidates) > 1:
@@ -164,7 +165,9 @@ def inspect_source(source: str | pathlib.Path) -> InstallPlan:
 
     if source.is_symlink():
         return InstallPlan(
-            source, "", destination_root,
+            source,
+            "",
+            destination_root,
             problems=["plugin source must not be a symbolic link"],
         )
     if not source.exists():
@@ -193,15 +196,17 @@ def _archive_package_name(tree: pathlib.Path, candidate: str) -> str:
         return candidate
     names: set[str] = set()
     for entrypoint in (
-        manifest.entrypoints.gui, manifest.entrypoints.cli,
-        manifest.entrypoints.services, manifest.entrypoints.emtk,
+        manifest.entrypoints.gui,
+        manifest.entrypoints.cli,
+        manifest.entrypoints.services,
+        manifest.entrypoints.emtk,
     ):
         if not entrypoint:
             continue
         module = entrypoint.split("=", 1)[-1].split(":", 1)[0].strip()
         prefix = "chisurf.plugins."
         if module.startswith(prefix):
-            name = module[len(prefix):].split(".", 1)[0]
+            name = module[len(prefix) :].split(".", 1)[0]
             if name.isidentifier() and not keyword.iskeyword(name):
                 names.add(name)
     if len(names) > 1:
@@ -232,7 +237,9 @@ def _inspect_archive(source: pathlib.Path, destination_root: pathlib.Path) -> In
                 package_name = _archive_package_name(root, candidate)
                 plan = _inspect_folder(root, package_name, destination_root)
                 if package_name != candidate:
-                    plan.warnings.append(f"distribution wrapper {candidate!r} installs as package {package_name!r}")
+                    plan.warnings.append(
+                        f"distribution wrapper {candidate!r} installs as package {package_name!r}"
+                    )
                 # The temporary tree is about to vanish; the caller re-extracts.
                 plan.source = source
                 return plan
@@ -253,7 +260,9 @@ def _inspect_folder(
     )
 
     if not plugin_name.isidentifier() or keyword.iskeyword(plugin_name):
-        plan.problems.append("plugin package name must be a Python identifier, not a manifest id or path")
+        plan.problems.append(
+            "plugin package name must be a Python identifier, not a manifest id or path"
+        )
         return plan
     if tree.is_symlink() or any(path.is_symlink() for path in tree.rglob("*")):
         plan.problems.append("plugin source must not contain symbolic links")
@@ -300,7 +309,9 @@ def _validate_destination(destination: pathlib.Path, package_name: str) -> None:
         or destination.is_symlink()
         or (destination.exists() and not destination.is_dir())
     ):
-        raise ValueError("destination must be a real package directory directly inside the user plugin directory")
+        raise ValueError(
+            "destination must be a real package directory directly inside the user plugin directory"
+        )
 
 
 def install(plan: InstallPlan) -> pathlib.Path:
@@ -384,7 +395,9 @@ def _replace(source: pathlib.Path, destination: pathlib.Path) -> None:
                 backup.rename(destination)
             except BaseException as exc:
                 preserve_backup = True
-                raise OSError(f"Plugin rollback failed; original tree retained at {backup}") from exc
+                raise OSError(
+                    f"Plugin rollback failed; original tree retained at {backup}"
+                ) from exc
         raise
     finally:
         if not preserve_backup:

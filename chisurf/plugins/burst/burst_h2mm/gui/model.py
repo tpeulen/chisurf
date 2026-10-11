@@ -273,9 +273,10 @@ class H2mmViewModel(RunPickerMixin):
         """
         from chisurf.core.fio.analysis_path import split_container_path
 
-        if self.run_path and split_container_path(self.run_path)[0] == split_container_path(
-            self.data_folder
-        )[0]:
+        if (
+            self.run_path
+            and split_container_path(self.run_path)[0] == split_container_path(self.data_folder)[0]
+        ):
             return self.run_path
         return str(self.data_folder)
 

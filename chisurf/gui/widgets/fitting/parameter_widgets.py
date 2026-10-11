@@ -1226,9 +1226,9 @@ class ParameterActionsMixin:
     ) -> None:
         """Populate one fit's (or member fit's) submenu with link targets."""
         targets = [
-            p for p in parameters
-            if str(p.get("uid", "") or "") != source_uid
-            and p.get("active_in_structure", True)
+            p
+            for p in parameters
+            if str(p.get("uid", "") or "") != source_uid and p.get("active_in_structure", True)
         ]
         if not targets:
             # An empty popup reads as a broken menu. Say which it is.
@@ -2307,7 +2307,6 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 error_color_large = parameter_settings.get("error_color_large", "magenta")
                 error_threshold_small = parameter_settings.get("error_threshold_small", 20)
                 error_threshold_large = parameter_settings.get("error_threshold_large", 100)
-
 
                 # Normalize error value: error_threshold_small -> error_color_small, error_threshold_large -> error_color_large
                 error_range = error_threshold_large - error_threshold_small

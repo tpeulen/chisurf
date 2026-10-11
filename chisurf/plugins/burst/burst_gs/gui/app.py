@@ -259,7 +259,9 @@ class BurstGsGui:
             tr("Use Simulation Mode"), self.model.use_simulation
         )
         im.set_item_tooltip(
-            tr("Generate simulated burst trains instead of reading .bur files, to test the fitting.")
+            tr(
+                "Generate simulated burst trains instead of reading .bur files, to test the fitting."
+            )
         )
         self.remember("use_simulation")
         if toggled:
@@ -419,7 +421,9 @@ class BurstGsApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
-        primary = json.loads(Path(__file__).with_name("burst_gs.view.json").read_text(encoding="utf-8"))
+        primary = json.loads(
+            Path(__file__).with_name("burst_gs.view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(primary, (1100, 720))
         if model is None:
             from .view_model import BurstGsViewModel

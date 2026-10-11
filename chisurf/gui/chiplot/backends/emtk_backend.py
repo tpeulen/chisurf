@@ -197,29 +197,41 @@ def _draw_symbol(painter, x, y, symbol, size, brush, pen, width) -> None:
         if symbol == "+":
             spans = [((x - half, y), (x + half, y)), ((x, y - half), (x, y + half))]
         else:
-            spans = [((x - half, y - half), (x + half, y + half)),
-                     ((x - half, y + half), (x + half, y - half))]
+            spans = [
+                ((x - half, y - half), (x + half, y + half)),
+                ((x - half, y + half), (x + half, y - half)),
+            ]
         for a, b in spans:
             _stroke_segment(painter, a, b, max(width, 1.0), colour)
         return
     if symbol == "s":
-        outline = [(x - half, y - half), (x + half, y - half), (x + half, y + half),
-                   (x - half, y + half)]
+        outline = [
+            (x - half, y - half),
+            (x + half, y - half),
+            (x + half, y + half),
+            (x - half, y + half),
+        ]
     elif symbol == "t":
         outline = [(x, y - half), (x + half, y + half), (x - half, y + half)]
     elif symbol == "d":
         outline = [(x, y - half), (x + half, y), (x, y + half), (x - half, y)]
     else:  # "o" and anything unknown: a circle
         steps = 20
-        outline = [(x + half * math.cos(2.0 * math.pi * k / steps),
-                    y + half * math.sin(2.0 * math.pi * k / steps)) for k in range(steps)]
+        outline = [
+            (
+                x + half * math.cos(2.0 * math.pi * k / steps),
+                y + half * math.sin(2.0 * math.pi * k / steps),
+            )
+            for k in range(steps)
+        ]
     if brush is not None:
         for index in range(1, len(outline) - 1):
             painter.fill_triangle(outline[0], outline[index], outline[index + 1], brush)
     if pen is not None:
         for index, point in enumerate(outline):
-            _stroke_segment(painter, point, outline[(index + 1) % len(outline)],
-                            max(width, 1.0), pen)
+            _stroke_segment(
+                painter, point, outline[(index + 1) % len(outline)], max(width, 1.0), pen
+            )
 
 
 def _lut(colormap, size: int = 256) -> np.ndarray:
@@ -846,7 +858,9 @@ class EmtkCanvas(base.Canvas):
                         -90.0,
                     )
                 else:
-                    painter.text(x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, self._label_text)
+                    painter.text(
+                        x + 2.0, by, bx - x - 4.0, row, ALIGN_VCENTER, label, self._label_text
+                    )
         if self._axis_visible["bottom"]:
             ticks = plot._x_axis.ticks(plot.x_tick_target)
             tick_text, label = self._axis_display("bottom", ticks, plot._x_axis.range)
@@ -1194,10 +1208,12 @@ class EmtkCanvas(base.Canvas):
         }
         entry.state["_grips"] = grips
         for gx, gy in grips.values():
-            painter.fill_rect(gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP,
-                              (*colour, 255))
-            painter.stroke_rect(gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP,
-                                (20, 22, 28, 255))
+            painter.fill_rect(
+                gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP, (*colour, 255)
+            )
+            painter.stroke_rect(
+                gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP, (20, 22, 28, 255)
+            )
 
     def _draw_arrow(self, painter, plot, entry: _Entry) -> None:
         """A filled head with its tip at ``pos``, sized in pixels.
@@ -1674,7 +1690,9 @@ class EmtkCanvas(base.Canvas):
             symbol=symbol,
         )
 
-    def add_marks(self, x, y, *, symbol="o", size=7.0, pen=None, brush=None, width=1.0) -> H.Scatter:
+    def add_marks(
+        self, x, y, *, symbol="o", size=7.0, pen=None, brush=None, width=1.0
+    ) -> H.Scatter:
         """Draw a set of symbols over the plot area and return its handle.
 
         Unlike :meth:`add_scatter` these are drawn after the images, shapes and
@@ -2031,8 +2049,9 @@ class EmtkCanvas(base.Canvas):
         else:
             w, h = 800, 500
         scale = float(width) / max(w, 1) if width else 1.0
-        image = QtGui.QImage(max(int(w * scale), 1), max(int(h * scale), 1),
-                             QtGui.QImage.Format_ARGB32)
+        image = QtGui.QImage(
+            max(int(w * scale), 1), max(int(h * scale), 1), QtGui.QImage.Format_ARGB32
+        )
         image.fill(QtGui.QColor(*self._background))
         painter = QtGui.QPainter(image)
         try:
@@ -2150,9 +2169,7 @@ class EmtkCanvas(base.Canvas):
         """
         shape = str(getattr(kind, "value", kind)).lower()
         if shape not in ("rect", "rectangle", "ellipse", "circle", "polygon", "polyline"):
-            raise NotImplementedError(
-                f"emtk: a {shape!r} region of interest is not drawn yet"
-            )
+            raise NotImplementedError(f"emtk: a {shape!r} region of interest is not drawn yet")
         shape = {"rectangle": "rect", "circle": "ellipse"}.get(shape, shape)
         vertices = [(float(x), float(y)) for x, y in (points or [])]
         origin = (
@@ -2289,7 +2306,10 @@ class EmtkImageView(base.ImageViewCanvas):
             self._image = self._canvas.add_image(frame, colormap=self._colormap, rect=rect)
             first = True
         else:
-            first = self._image.state.get("rect") != rect or self._image.get_image().shape != frame.shape
+            first = (
+                self._image.state.get("rect") != rect
+                or self._image.get_image().shape != frame.shape
+            )
             self._image.set_image(frame)
             self._image.set_rect(*rect)
         if auto_levels:

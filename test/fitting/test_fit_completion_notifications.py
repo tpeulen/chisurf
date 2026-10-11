@@ -45,7 +45,9 @@ def events(monkeypatch):
 
 @pytest.mark.parametrize("grouped", [False, True])
 @pytest.mark.parametrize("notify", [False, True])
-def test_graph_result_notifies_without_a_second_model_evaluation(events, monkeypatch, grouped, notify):
+def test_graph_result_notifies_without_a_second_model_evaluation(
+    events, monkeypatch, grouped, notify
+):
     """The real C++ graph writes back once even when display events are enabled."""
     import chisurf.core.fitting.minimizer as minimizer
 
@@ -88,7 +90,8 @@ def test_global_fit_update_notifies_exact_member_owners(events):
         fit.model.append_fit(member)
     fit.update()
     assert {payload["fit_uid"] for topic, payload in events if topic == "fit.updated"} == {
-        fit.unique_identifier, *(member.unique_identifier for member in members)
+        fit.unique_identifier,
+        *(member.unique_identifier for member in members),
     }
 
 
@@ -101,6 +104,8 @@ def test_global_update_notifies_group_and_leaf_owners_once(events):
     fit.update()
     uids = [payload["fit_uid"] for topic, payload in events if topic == "fit.updated"]
     assert set(uids) == {
-        fit.unique_identifier, member.unique_identifier, member.grouped_fits[0].unique_identifier
+        fit.unique_identifier,
+        member.unique_identifier,
+        member.grouped_fits[0].unique_identifier,
     }
     assert len(uids) == len(set(uids))

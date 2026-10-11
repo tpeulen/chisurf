@@ -37,10 +37,16 @@ class GamesHubApp(ImApp):
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         gui_dir = Path(__file__).parent
         self.tour = EmTkGuidedTour(
-            gui_dir / "guide.json", get_target_rect=self.item_rects.get, owner=self, wait_for_controls=True
+            gui_dir / "guide.json",
+            get_target_rect=self.item_rects.get,
+            owner=self,
+            wait_for_controls=True,
         )
         self.help_window = EmTkHelpWindow(
-            title="Games - Help", resource=gui_dir / "help.md", owner=self, on_start_guide=self.tour.start
+            title="Games - Help",
+            resource=gui_dir / "help.md",
+            owner=self,
+            on_start_guide=self.tour.start,
         )
         super().__init__(self.render)
         # The game shown on first open must exist at once: it used to be built only when its list
@@ -104,7 +110,7 @@ class GamesHubApp(ImApp):
 
     def render(self):
         width, height = im.get_main_viewport().size
-        nav_width = min(self.NAV_WIDTH, max(150.0, width * .26))
+        nav_width = min(self.NAV_WIDTH, max(150.0, width * 0.26))
         entry = next(item for item in self.entries if item["name"] == self.selected)
         flags = im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
 
@@ -118,7 +124,11 @@ class GamesHubApp(ImApp):
             im.separator()
             for panel in self.entries:
                 im.dummy(0.0, 4.0)
-                label = tr(panel["name"]) if panel["emtk"] else f"{tr(panel['name'])} ({tr('not available')})"
+                label = (
+                    tr(panel["name"])
+                    if panel["emtk"]
+                    else f"{tr(panel['name'])} ({tr('not available')})"
+                )
                 if im.selectable(
                     label + "##game-" + panel["name"],
                     self.selected == panel["name"],
@@ -204,6 +214,7 @@ class GamesHubApp(ImApp):
         if self.child and self.child.key(key, text, modifiers):
             return True
         from emtk import keys as k
+
         if not modifiers:
             if key in {k.KEY_1, k.KEY_2, k.KEY_3, k.KEY_4, k.KEY_5}:
                 idx = key - k.KEY_1
@@ -211,7 +222,9 @@ class GamesHubApp(ImApp):
                     self.select(self.entries[idx]["name"])
                     return True
             if key == k.KEY_TAB:
-                cur_idx = next((i for i, item in enumerate(self.entries) if item["name"] == self.selected), 0)
+                cur_idx = next(
+                    (i for i, item in enumerate(self.entries) if item["name"] == self.selected), 0
+                )
                 next_idx = (cur_idx + 1) % len(self.entries)
                 self.select(self.entries[next_idx]["name"])
                 return True
@@ -222,6 +235,7 @@ class GamesHubApp(ImApp):
         if callable(release) and release(key, text, modifiers):
             return True
         from emtk import keys as k
+
         if not modifiers and (key in {k.KEY_1, k.KEY_2, k.KEY_3, k.KEY_4, k.KEY_5, k.KEY_TAB}):
             return True
         return False

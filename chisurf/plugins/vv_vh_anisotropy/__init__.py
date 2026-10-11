@@ -13,4 +13,3 @@ deprecation_message = (_manifest.deprecation_message if _manifest is not None el
     "VV/VH Anisotropy Decay is deprecated/obsolete. "
     "Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
 )
-

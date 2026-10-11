@@ -53,10 +53,26 @@ def test_load_manifest_rejects_malformed_shapes(tmp_path: Path, document, caplog
 
 @pytest.mark.parametrize(
     "field",
-    ["authors", "categories", "operation_types", "events", "dependencies",
-     "requires", "optional_requires", "entrypoints", "statefulness",
-     "display_name", "description", "experimental_message", "deprecation_message",
-     "library", "experimental", "menu_hidden", "deprecated", "demo"],
+    [
+        "authors",
+        "categories",
+        "operation_types",
+        "events",
+        "dependencies",
+        "requires",
+        "optional_requires",
+        "entrypoints",
+        "statefulness",
+        "display_name",
+        "description",
+        "experimental_message",
+        "deprecation_message",
+        "library",
+        "experimental",
+        "menu_hidden",
+        "deprecated",
+        "demo",
+    ],
 )
 def test_load_manifest_rejects_null_non_nullable_fields(tmp_path, field):
     """An explicit null is not the same as an absent defaulted collection/flag."""

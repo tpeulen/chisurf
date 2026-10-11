@@ -49,7 +49,9 @@ def streams(tmp_path_factory):
 def test_poisson_light_is_flat_at_one_and_diffusion_has_amplitude_one_over_n(streams):
     hub = _open(streams["poisson"])
     x, y, _ = _curve(hub)
-    window = (x > 0.05) & (x < 20.0)  # shorter lags hold too few photon pairs to be flat by noise alone
+    window = (x > 0.05) & (
+        x < 20.0
+    )  # shorter lags hold too few photon pairs to be flat by noise alone
     assert window.sum() > 10
     assert np.max(np.abs(y[window] - 1.0)) < 0.08, "Poisson light must correlate to G = 1"
     assert abs(np.mean(y[window]) - 1.0) < 0.01
@@ -66,7 +68,9 @@ def test_poisson_light_is_flat_at_one_and_diffusion_has_amplitude_one_over_n(str
     x, y, _ = _curve(hub)
     dilute = _amplitude(x, y)
     assert dilute == pytest.approx(expected_amplitude(250.0), rel=0.25)
-    assert dilute / dense == pytest.approx(4.0, rel=0.3)  # a quarter of the molecules, four times the amplitude
+    assert dilute / dense == pytest.approx(
+        4.0, rel=0.3
+    )  # a quarter of the molecules, four times the amplitude
     hub.app.close()
 
 
@@ -118,7 +122,9 @@ def test_method_choice_reaches_the_curve(streams):
     x, y, result = _curve(hub)
     assert result["correlation_settings"]["method"] == "wahl"
     assert len(x) == len(base_x) and not np.allclose(y, base_y)  # same lags, other normalisation
-    assert _amplitude(x, y) > 0.5  # still correlated; Wahl's normalisation just reads a higher amplitude
+    assert (
+        _amplitude(x, y) > 0.5
+    )  # still correlated; Wahl's normalisation just reads a higher amplitude
     assert _amplitude(base_x, base_y) == pytest.approx(expected_amplitude(1000.0), rel=0.1)
     hub.app.close()
 

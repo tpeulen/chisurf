@@ -18,9 +18,7 @@ import yaml
 _PATTERNS = ("*_features.yaml", "result_columns.yaml", "*_columns.yaml")
 # Discovered by glob, never hand-kept: a new declaration file is guarded the
 # moment it exists.
-yaml_files = sorted(
-    {p for pattern in _PATTERNS for p in pathlib.Path("chisurf").rglob(pattern)}
-)
+yaml_files = sorted({p for pattern in _PATTERNS for p in pathlib.Path("chisurf").rglob(pattern)})
 
 
 def test_declaration_files_are_discovered():

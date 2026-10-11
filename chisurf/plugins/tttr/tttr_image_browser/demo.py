@@ -25,6 +25,12 @@ def make_demo(folder: str | Path) -> Path:
 
     folder = Path(folder)
     for index, seed in enumerate((7, 11), start=1):
-        simulate(folder, filename=f"scan_{index}.ptu", n_pixel=32, n_frames=6,
-                 n_molecules=300.0, seed=seed)
+        simulate(
+            folder,
+            filename=f"scan_{index}.ptu",
+            n_pixel=32,
+            n_frames=6,
+            n_molecules=300.0,
+            seed=seed,
+        )
     return folder

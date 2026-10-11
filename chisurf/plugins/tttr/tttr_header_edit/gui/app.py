@@ -88,7 +88,6 @@ class HeaderEditorGui(TourTarget):
     def show_help(self) -> None:
         self.help_window.show()
 
-
     def draw(self, w: float = 0.0, h: float = 0.0) -> None:
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 860.0)
@@ -169,8 +168,10 @@ class HeaderEditorGui(TourTarget):
                 self.on_save()
                 self.tour.notify_used("save")
         im.set_item_tooltip(
-            tr("Write the edited header to a new PTU file — the source's photon "
-            "data is copied verbatim.")
+            tr(
+                "Write the edited header to a new PTU file — the source's photon "
+                "data is copied verbatim."
+            )
         )
         im.pop_style_color(3)
         self.remember("save")

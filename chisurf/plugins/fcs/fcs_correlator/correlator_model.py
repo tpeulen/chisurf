@@ -78,7 +78,9 @@ class CorrelatorSettingsModel:
         #: The tttrlib correlation algorithm. ``laurence`` (symmetric, Schätzel normalization) is
         #: the default: it normalizes each lag by the count rate in the overlapping sub-intervals,
         #: which removes the long-lag upturn near the chunk duration.
-        self.method = str(cs.core.settings.cs_settings.get("correlator", {}).get("method", "laurence"))
+        self.method = str(
+            cs.core.settings.cs_settings.get("correlator", {}).get("method", "laurence")
+        )
         self.microtime_binning = int(
             cs.core.settings.cs_settings.get("correlator", {}).get("microtime_binning", 1)
         )
@@ -107,7 +109,6 @@ class CorrelatorSettingsModel:
         self._filter_source: str = ""
         self._species_a: int = 0
         self._species_b: int = 0
-
 
     @property
     def filter_mode(self) -> bool:
@@ -344,7 +345,9 @@ class CorrelatorSettingsModel:
 
         correlator = tttrlib.Correlator(**settings)
         if self.method not in METHODS:
-            raise ValueError(f"Unknown correlation method {self.method!r}; choose one of {', '.join(METHODS)}.")
+            raise ValueError(
+                f"Unknown correlation method {self.method!r}; choose one of {', '.join(METHODS)}."
+            )
         correlator.method = self.method
         correlator.set_macrotimes(t, t)
         correlator.set_weights(w1, w2)
@@ -465,7 +468,11 @@ def preset_names(model: CorrelatorSettingsModel) -> list[str]:
     names = []
     for p in model._fcs_presets:
         try:
-            cha, chb, nm = str(p.get("channel_a", "")), str(p.get("channel_b", "")), str(p.get("name", ""))
+            cha, chb, nm = (
+                str(p.get("channel_a", "")),
+                str(p.get("channel_b", "")),
+                str(p.get("name", "")),
+            )
         except Exception:  # noqa: BLE001 - a malformed preset is skipped, as in the Qt combo
             continue
         names.append(nm or (f"{cha}x{chb}" if cha != chb else f"{cha}_ACF" if cha else "(unnamed)"))

@@ -62,8 +62,10 @@ def test_a_fresh_cmd_carries_every_builtin_plugin():
     # labelizer) come with the checkout and the machine: the built-ins are exactly these, whatever else was found.
     loaded = cmd.plugins.loaded
     builtin = {name for name, entry in loaded.items() if entry.source == "builtin"}
-    assert builtin == expected, (builtin ^ expected)
-    assert set(loaded) - builtin <= {n for n, e in loaded.items() if e.source in ("in-tree", "drop-in", "entry_point")}
+    assert builtin == expected, builtin ^ expected
+    assert set(loaded) - builtin <= {
+        n for n, e in loaded.items() if e.source in ("in-tree", "drop-in", "entry_point")
+    }
     assert cmd.plugins.failed == {}
     for plugin, name in ONE_COMMAND_PER_PLUGIN.items():
         spec = cmd._registry.resolve(name)

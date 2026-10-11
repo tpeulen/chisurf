@@ -409,8 +409,10 @@ class TTTRImageBrowserApp(ImApp):
         if im.button(tr("Use setup and continue")):
             self.use_setup()
         im.set_item_tooltip(
-            tr("Use these detector routing, PIE window, reading and calibration settings for the mosaics of the "
-            "browser, then show the browser.")
+            tr(
+                "Use these detector routing, PIE window, reading and calibration settings for the mosaics of the "
+                "browser, then show the browser."
+            )
         )
         self.item_rects["use_setup"] = im.get_item_rect()
         im.same_line()
@@ -517,7 +519,9 @@ class TTTRImageBrowserApp(ImApp):
         im.begin_disabled(path is None)
         changed, text = im.input_text_multiline("##annotation", self.note_text, (0.0, NOTE_H))
         im.set_item_tooltip(
-            tr("A note for the file shown. It is saved at once beside the data in .image_browser_meta.json.")
+            tr(
+                "A note for the file shown. It is saved at once beside the data in .image_browser_meta.json."
+            )
         )
         self.item_rects["annotation"] = im.get_item_rect()
         im.end_disabled()
@@ -616,8 +620,10 @@ class TTTRImageBrowserApp(ImApp):
             )
             implot.end_plot()
         im.set_item_tooltip(
-            tr("The detector-window mosaic of the selected file. Scroll the mouse wheel to zoom, drag to pan, "
-            "Reset view to see it all.")
+            tr(
+                "The detector-window mosaic of the selected file. Scroll the mouse wheel to zoom, drag to pan, "
+                "Reset view to see it all."
+            )
         )
 
     def _draw_levels(self, width: float, height: float) -> None:
@@ -648,8 +654,10 @@ class TTTRImageBrowserApp(ImApp):
             self.item_rects["levels"] = (*implot.get_plot_pos(), *implot.get_plot_size())
             implot.end_plot()
         im.set_item_tooltip(
-            tr("Histogram of the mosaic's pixel values (logarithmic counts). The two lines are the display levels: "
-            "drag them to change Min and Max (Auto levels switches off).")
+            tr(
+                "Histogram of the mosaic's pixel values (logarithmic counts). The two lines are the display levels: "
+                "drag them to change Min and Max (Auto levels switches off)."
+            )
         )
 
     # -- file dialogs ------------------------------------------------------------------------------------------ #

@@ -104,7 +104,9 @@ class ProvenancePanel(Panel):
             label,
             lambda: fn(seed_type, seed_id),
             self._show,
-            lambda error: self.admin.show(MessageDialog("Trace Failed", f"{label} failed:\n{error}")),
+            lambda error: self.admin.show(
+                MessageDialog("Trace Failed", f"{label} failed:\n{error}")
+            ),
         )
 
     def load_upstream(self) -> None:
@@ -181,14 +183,20 @@ class ProvenancePanel(Panel):
             self.run(
                 "Export JSON",
                 call,
-                lambda p: self.admin.show(MessageDialog("Export Complete", f"Exported successfully to:\n{p}")),
+                lambda p: self.admin.show(
+                    MessageDialog("Export Complete", f"Exported successfully to:\n{p}")
+                ),
                 lambda error: self.admin.show(
                     MessageDialog("Export Failed", f"Failed to export provenance JSON:\n{error}")
                 ),
             )
 
         self.admin.request_file(
-            "Export Provenance JSON", "save", f"{seed_id}_provenance.json", "JSON Files (*.json)", write
+            "Export Provenance JSON",
+            "save",
+            f"{seed_id}_provenance.json",
+            "JSON Files (*.json)",
+            write,
         )
 
     def export_zip(self) -> None:
@@ -210,14 +218,20 @@ class ProvenancePanel(Panel):
             self.run(
                 "Export ZIP",
                 call,
-                lambda p: self.admin.show(MessageDialog("Export Complete", f"Exported successfully to:\n{p}")),
+                lambda p: self.admin.show(
+                    MessageDialog("Export Complete", f"Exported successfully to:\n{p}")
+                ),
                 lambda error: self.admin.show(
                     MessageDialog("Export Failed", f"Failed to export zip archive:\n{error}")
                 ),
             )
 
         self.admin.request_file(
-            "Export Provenance ZIP Archive", "save", f"{seed_id}_provenance.zip", "ZIP Archives (*.zip)", write
+            "Export Provenance ZIP Archive",
+            "save",
+            f"{seed_id}_provenance.zip",
+            "ZIP Archives (*.zip)",
+            write,
         )
 
     def status_line(self) -> str:

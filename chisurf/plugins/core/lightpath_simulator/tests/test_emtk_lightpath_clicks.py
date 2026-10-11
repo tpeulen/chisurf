@@ -67,7 +67,9 @@ def in_window(drv, name, label):
 
 def dialog_open(drv):
     strings = drv.draw(1).strings
-    return ("Cancel" in strings or action_caption("cancel") in strings) and drv.app.dialog is not None
+    return (
+        "Cancel" in strings or action_caption("cancel") in strings
+    ) and drv.app.dialog is not None
 
 
 def message(drv):

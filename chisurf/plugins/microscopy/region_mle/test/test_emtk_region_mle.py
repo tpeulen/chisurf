@@ -17,7 +17,12 @@ GUI = HERE.parent / "gui"
 #: finished in the 8.2 ns excitation period). Taken from the legacy tool's
 #: RegionMleViewModel.run() on the same demo, pasted with a tolerance.
 REFERENCE_TAU = [1.00002, 3.30177, 2.08438, 0.60221]
-REFERENCE_PHOTONS = [57492, 57190, 129646, 140486]  # first two regions lost ~2.7k photons to the corrected region geometry; lifetimes unchanged
+REFERENCE_PHOTONS = [
+    57492,
+    57190,
+    129646,
+    140486,
+]  # first two regions lost ~2.7k photons to the corrected region geometry; lifetimes unchanged
 
 
 # ── the demo, made once, read through a shim ───────────────────────────

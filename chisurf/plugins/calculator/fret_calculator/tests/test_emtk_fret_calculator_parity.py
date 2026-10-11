@@ -791,8 +791,8 @@ def test_the_app_runs_on_the_same_models_as_the_backend():
     app.hetero.model.R = 55.0
     app.hetero._compute_forward()
     assert app.hetero.model.E == pytest.approx(
-        services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)[
-            "result"
-        ]["E"],
+        services.fret_compute_handler(R=55.0, R0=52.0, tau0=4.0, kappa2=0.667, sigma=6.0)["result"][
+            "E"
+        ],
         abs=5e-7,
     )

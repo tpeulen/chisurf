@@ -18,6 +18,7 @@ reason, not a stop for the rest of the walk. Gaps are recorded in
 
 Run: ``QT_QPA_PLATFORM=offscreen python -m pytest -q -p no:cacheprovider test/e2e/test_release_scenario.py``.
 """
+
 from __future__ import annotations
 
 import json
@@ -250,7 +251,9 @@ class Scenario:
         model.max_states = 2
         assert model.can_run() == "", model.can_run()
         model.compute()
-        assert model.result is not None and model.result.n_bursts == demo.N_BURSTS, model.status_text
+        assert model.result is not None and model.result.n_bursts == demo.N_BURSTS, (
+            model.status_text
+        )
         tables = self._tables(operation="photon_hmm")
         assert tables and all(rows == demo.N_BURSTS for rows in tables.values()), tables
         return {"status": model.status_text, "tables": tables}
@@ -323,7 +326,10 @@ class Scenario:
         # sub-ensemble decay sits under the search it was selected from.
         assert len(rows) == 4, f"the picker lists {len(rows)} runs: {observed['rows']}"
         assert operations >= {
-            "burst_selection", "burst_lifetime_fitting", "photon_hmm", "burst_correlation"
+            "burst_selection",
+            "burst_lifetime_fitting",
+            "photon_hmm",
+            "burst_correlation",
         }, operations
         assert all(r["run_name"] for r in rows), observed["rows"]  # no "(top level)" row
         for name, chain in lineage.items():
@@ -349,7 +355,8 @@ class Scenario:
         )
         window = self.wait_for(
             lambda: [w for w in gui.mdiarea.subWindowList() if isinstance(w, FitSubWindow)],
-            30, "the fit window",
+            30,
+            "the fit window",
         )[-1]
         fit = window.fit
         ctrl = gui.findChildren(FittingControllerWidget)[-1]
@@ -379,8 +386,12 @@ class Scenario:
         assert shape[0] == SAMPLING["n_runs"] and shape[1] >= 8, shape
         assert list(target.glob("*/diagnostics.json")), "no diagnostics.json on disk"
         self.state.update(chain=chain["chains"].copy(), names=list(chain["parameter_names"]))
-        return {"chi2r": float(fit.chi2r), "chain_shape": shape,
-                "parameters": list(chain["parameter_names"]), "png": png}
+        return {
+            "chi2r": float(fit.chi2r),
+            "chain_shape": shape,
+            "parameters": list(chain["parameter_names"]),
+            "png": png,
+        }
 
     def diagnostics_page(self):
         """Clicking the Chain-diagnostics tab draws the chain, not a reason why it cannot."""
@@ -391,8 +402,11 @@ class Scenario:
         names = [str(n).split(":")[-1] for n in self.state["names"]]
         assert list(page.parameters) == names, (page.parameters, names)
         self.state["page"] = page
-        return {"state": page.state, "parameters": list(page.parameters),
-                "png": self.grab("02_chain_diagnostics")}
+        return {
+            "state": page.state,
+            "parameters": list(page.parameters),
+            "png": self.grab("02_chain_diagnostics"),
+        }
 
     def autosave(self):
         """The project is written beside the working folder by the timer, with no dialog."""
@@ -402,12 +416,17 @@ class Scenario:
         gui = self.state["gui"]
         visible = {id(w) for w in QApplication.topLevelWidgets() if w.isVisible()}
         found = self.wait_for(
-            lambda: sorted((self.scratch / "work").rglob("*.autosave.cs.pto")), 30, "the autosave file"
+            lambda: sorted((self.scratch / "work").rglob("*.autosave.cs.pto")),
+            30,
+            "the autosave file",
         )
         self.pump(1.5)  # one more tick, so the file holds the state after sampling
         assert QApplication.activeModalWidget() is None, "autosave raised a modal dialog"
-        dialogs = [w for w in QApplication.topLevelWidgets()
-                   if w.isVisible() and id(w) not in visible and isinstance(w, QDialog)]
+        dialogs = [
+            w
+            for w in QApplication.topLevelWidgets()
+            if w.isVisible() and id(w) not in visible and isinstance(w, QDialog)
+        ]
         assert not dialogs, f"new dialogs: {dialogs}"
         from chisurf.core.project import storage
         from chisurf.core.project.lifecycle import snapshot_fingerprint
@@ -484,8 +503,13 @@ class Scenario:
         hosts = [w for w in QApplication.topLevelWidgets() if w.isVisible() and id(w) not in shown]
         assert hosts, "ndX opened no window"
         host = max(hosts, key=lambda w: w.width() * w.height())
-        return {"path": str(app.model.path), "rows": source.size, "columns": columns,
-                "window": host.windowTitle(), "png": self.grab("03_ndx_chain", host)}
+        return {
+            "path": str(app.model.path),
+            "rows": source.size,
+            "columns": columns,
+            "window": host.windowTitle(),
+            "png": self.grab("03_ndx_chain", host),
+        }
 
     def legacy_export(self):
         """The container unpacks to a folder the legacy readers open: ``.bur`` plus ``.bg4``."""
@@ -517,7 +541,9 @@ class Scenario:
         with Measurement.open(self.state["pto"]) as m:
             for obj in m.artifacts():
                 op = str(m.tag(obj.uid, "_mmfdb_operation.operation_type"))
-                if (operation and op == operation) or (name and str(obj.name).rpartition("/")[2] == name):
+                if (operation and op == operation) or (
+                    name and str(obj.name).rpartition("/")[2] == name
+                ):
                     out[str(obj.name)] = int(getattr(obj, "rows", 0) or 0)
         return out
 
@@ -565,18 +591,30 @@ def scenario(tmp_path_factory) -> dict:
     RESULT.unlink(missing_ok=True)
     scratch = tmp_path_factory.mktemp("release-scenario")
     env = dict(os.environ)
-    sources = [str(REPO), str(REPO / "modules" / "chinet"), str(REPO / "modules" / "imp-tricks" / "src"),
-               str(REPO / "modules" / "mmfdb" / "src")]
+    sources = [
+        str(REPO),
+        str(REPO / "modules" / "chinet"),
+        str(REPO / "modules" / "imp-tricks" / "src"),
+        str(REPO / "modules" / "mmfdb" / "src"),
+    ]
     if env.get("PYTHONPATH"):
         sources.append(env["PYTHONPATH"])
-    env.update(PYTHONPATH=os.pathsep.join(sources), PYTHONUNBUFFERED="1", QT_QPA_PLATFORM="offscreen")
+    env.update(
+        PYTHONPATH=os.pathsep.join(sources), PYTHONUNBUFFERED="1", QT_QPA_PLATFORM="offscreen"
+    )
     # Under the e2e task's per-test --timeout=300; the walk takes about 30 s.
     timeout = float(os.environ.get("CHISURF_RELEASE_SCENARIO_TIMEOUT", "240"))
     log = OUT / "worker.log"
     with open(log, "w", encoding="utf-8") as handle:
         try:
-            subprocess.run([sys.executable, str(Path(__file__).resolve()), "--worker", str(scratch)],
-                           cwd=REPO, env=env, stdout=handle, stderr=subprocess.STDOUT, timeout=timeout)
+            subprocess.run(
+                [sys.executable, str(Path(__file__).resolve()), "--worker", str(scratch)],
+                cwd=REPO,
+                env=env,
+                stdout=handle,
+                stderr=subprocess.STDOUT,
+                timeout=timeout,
+            )
         except subprocess.TimeoutExpired:
             pass  # the record says how far it got
     if not RESULT.exists():
@@ -595,7 +633,9 @@ def _param(step: str):
 def test_release_scenario(scenario, step):
     """Each step of the walk passed in the real app."""
     record = scenario.get(step)
-    assert record is not None, f"the worker never reached {step!r} (timed out or crashed; see worker.log)"
+    assert record is not None, (
+        f"the worker never reached {step!r} (timed out or crashed; see worker.log)"
+    )
     detail = record.get("traceback") or record.get("error") or record.get("observed")
     assert record["status"] == "passed", f"{step}: {record['status']}\n{detail}"
 

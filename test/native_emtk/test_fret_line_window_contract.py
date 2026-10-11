@@ -140,7 +140,8 @@ def test_compact_parameter_editor_select_all_commits_value(app):
     driver.type("70")
     driver.press(keys.KEY_ENTER)
     parameter = next(
-        item for item in app.model.selected["model"].parameters_all
+        item
+        for item in app.model.selected["model"].parameters_all
         if item.canonical_id == "distance.mean.0"
     )
     assert parameter.value == 70.0

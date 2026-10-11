@@ -129,7 +129,9 @@ app.close()
 def test_apply_restyles_the_running_application_with_the_shared_widget_fragments(tmp_path):
     m = model(tmp_path)
     (m.package_dir / "widgets").mkdir()
-    (m.package_dir / "widgets" / "buttons.qss").write_text("/* shared */ QPushButton { padding: 3px; }")
+    (m.package_dir / "widgets" / "buttons.qss").write_text(
+        "/* shared */ QPushButton { padding: 3px; }"
+    )
     m.editor.set_text("QWidget { background-color: #abcdef; }")
     seen = []
     m.application_callback = lambda text: seen.append(text) or True

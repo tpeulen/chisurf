@@ -135,6 +135,7 @@ def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discover
     """The committed Qt capture (``qt_rows_listed.json``) is the independent reference for the Depends-on cells."""
     baseline = json.loads((EVIDENCE / "qt_rows_listed.json").read_text())["rows"]
     rows = PluginCheckModel(*discovered).check_rows()
+
     # The menu path (``Category:Group:Leaf``) is the registry's to reorganise, so the rows are matched by leaf
     # caption (unique ones only); the optional-dependency *count* of a hub plugin follows the hubs' members.
     def leaf(name):
@@ -188,7 +189,11 @@ def test_the_details_equal_the_qt_details_pane(discovered):
         if info.get("description"):
             assert blocks["Description"] == info["description"].strip()
         # the Qt pane's captions are a subset of the native blocks (the real registry may have moved on)
-        assert {"Plugin", "Module", "Source"} <= set(qt_captions) <= set(blocks) | {"Status", "Features"}
+        assert (
+            {"Plugin", "Module", "Source"}
+            <= set(qt_captions)
+            <= set(blocks) | {"Status", "Features"}
+        )
         compared += 1
     assert compared == 5
 
@@ -264,7 +269,9 @@ def test_safe_sweep_checks_the_first_ten_plugins_like_the_qt_tool(discovered, mo
     assert model.test_safe()
     model._thread.join(10)
     model.poll()
-    qt_first = [r["plugin"] for r in model.check_rows()[:SAFE_COUNT]]  # the tree's first ten, in its order
+    qt_first = [
+        r["plugin"] for r in model.check_rows()[:SAFE_COUNT]
+    ]  # the tree's first ten, in its order
     assert model.total == SAFE_COUNT == 10 and sorted(model.results) == sorted(
         k for k in model.catalog if model.name_of(k) in qt_first
     )
@@ -521,7 +528,9 @@ def test_every_control_has_a_tooltip():
     inventory = emtk_inventory(build_emtk_app("plugin_check"))
     assert inventory["controls_without_tooltip"] == [], inventory["controls_without_tooltip"]
     names = {c["name"] if isinstance(c, dict) else c for c in inventory.get("controls", [])}
-    assert {action_caption("help"), action_caption("guide")} <= {str(n) for n in names} or inventory["controls"]
+    assert {action_caption("help"), action_caption("guide")} <= {
+        str(n) for n in names
+    } or inventory["controls"]
 
 
 def test_the_port_is_qt_free():

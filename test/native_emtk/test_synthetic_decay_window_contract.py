@@ -29,7 +29,9 @@ def test_primary_metadata_reaches_constructor_before_control_spec_slicing(app):
     assert "window" not in app.spec
     attach_native_state("synthetic-decay", app)
     assert app.window_size == (1100, 720)
-    assert "generate" in Driver(app, app.window_size).draw(3).strings or "generate" in app.item_rects
+    assert (
+        "generate" in Driver(app, app.window_size).draw(3).strings or "generate" in app.item_rects
+    )
 
 
 def test_primary_reader_uses_raw_declaration(app, monkeypatch):
@@ -121,16 +123,28 @@ def test_real_measured_irf_physical_outputs_survive_resize(app, mode):
     driver.click("generate")
     settings = model.export_settings()
     arrays = {name: np.array(getattr(model, name)) for name in ("_x", "_y", "_vv", "_vh", "_r")}
-    common = dict(amplitudes=[1, 1], bin_width=0.008, irf=measured[:, -1],
-                  normalize=False, photon_count=120000, seed=17)
+    common = dict(
+        amplitudes=[1, 1],
+        bin_width=0.008,
+        irf=measured[:, -1],
+        normalize=False,
+        photon_count=120000,
+        seed=17,
+    )
     if mode == "vm":
         expected = synthetic_decay(len(measured), [1.2, 4.0], **common)
         np.testing.assert_array_equal(model._y, expected)
         count = np.sum(model._y)
     else:
-        expected = synthetic_aniso_decay(len(measured), [1.2, 4.0],
-                                        anisotropy_spectrum=[0.22, 1.4, 0.08, 8.0],
-                                        g_factor=1.3, l1=0.02, l2=0.05, **common)
+        expected = synthetic_aniso_decay(
+            len(measured),
+            [1.2, 4.0],
+            anisotropy_spectrum=[0.22, 1.4, 0.08, 8.0],
+            g_factor=1.3,
+            l1=0.02,
+            l2=0.05,
+            **common,
+        )
         np.testing.assert_array_equal(model._vv, expected[0])
         np.testing.assert_array_equal(model._vh, expected[1])
         count = np.sum(model._vv) + np.sum(model._vh)
@@ -145,9 +159,18 @@ def test_real_measured_irf_physical_outputs_survive_resize(app, mode):
         np.testing.assert_array_equal(getattr(model, name), expected)
 
 
-@pytest.mark.parametrize("option", ["polarization.0", "polarization.1"])
-def test_mode_options_expose_real_scientific_tooltips(app, option):
-    """Both native radio options reveal their existing physical description on actual hover."""
+@pytest.mark.parametrize(
+    "option,expected",
+    [
+        ("polarization.0", "Magic-angle decay; carries no anisotropy."),
+        (
+            "polarization.1",
+            "Parallel and perpendicular channels generated from the rotation spectrum.",
+        ),
+    ],
+)
+def test_mode_options_expose_real_scientific_tooltips(app, option, expected):
+    """Both native radio options reveal their own physical description on actual hover."""
     import time
 
     driver = Driver(app, (736, 552))
@@ -156,5 +179,4 @@ def test_mode_options_expose_real_scientific_tooltips(app, option):
     driver.draw(2)
     time.sleep(0.65)
     text = " ".join(driver.draw(2).strings)
-    assert "VM: magic angle" in text
-    assert "VV/VH: parallel and perpendicular" in text
+    assert expected in text

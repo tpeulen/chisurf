@@ -27,8 +27,17 @@ from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow  # noqa: E402
 
 #: Pages of the TCSPC fit window, all of which must draw entirely in emtk.
 #: The model's pages, then the fit-level ones every fit window carries.
-TCSPC_PAGES = ["Fit", "Data table", "Info", "Parameter scan", "Distribution", "Residuals",
-               "Posterior graph", "Chain diagnostics", "What-if"]
+TCSPC_PAGES = [
+    "Fit",
+    "Data table",
+    "Info",
+    "Parameter scan",
+    "Distribution",
+    "Residuals",
+    "Posterior graph",
+    "Chain diagnostics",
+    "What-if",
+]
 
 
 def _decay_fit():
@@ -96,8 +105,13 @@ def _move(win, point: QtCore.QPoint, buttons=QtCore.Qt.NoButton) -> None:
     """A pointer move delivered as Qt delivers it (QTest.mouseMove crashes offscreen)."""
     from qtpy import QtGui
 
-    event = QtGui.QMouseEvent(QtCore.QEvent.MouseMove, QtCore.QPointF(point),
-                              QtCore.Qt.NoButton, buttons, QtCore.Qt.NoModifier)
+    event = QtGui.QMouseEvent(
+        QtCore.QEvent.MouseMove,
+        QtCore.QPointF(point),
+        QtCore.Qt.NoButton,
+        buttons,
+        QtCore.Qt.NoModifier,
+    )
     QtWidgets.QApplication.sendEvent(_host(win), event)
 
 
@@ -161,9 +175,14 @@ def _wheel_event(widget, pos, delta):
 
     global_pos = widget.mapToGlobal(pos)
     return QtGui.QWheelEvent(
-        QtCore.QPointF(pos), QtCore.QPointF(global_pos), QtCore.QPoint(0, 0),
-        QtCore.QPoint(0, delta), QtCore.Qt.NoButton, QtCore.Qt.NoModifier,
-        QtCore.Qt.NoScrollPhase, False,
+        QtCore.QPointF(pos),
+        QtCore.QPointF(global_pos),
+        QtCore.QPoint(0, 0),
+        QtCore.QPoint(0, delta),
+        QtCore.Qt.NoButton,
+        QtCore.Qt.NoModifier,
+        QtCore.Qt.NoScrollPhase,
+        False,
     )
 
 
@@ -194,7 +213,9 @@ def test_dragging_the_fit_range_edge_moves_the_range(window, qapp):
     _frames(qapp, window, 1)
     _move(window, start + QtCore.QPoint(80, 0), QtCore.Qt.LeftButton)
     _frames(qapp, window, 1)
-    QTest.mouseRelease(host, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, start + QtCore.QPoint(80, 0))
+    QTest.mouseRelease(
+        host, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, start + QtCore.QPoint(80, 0)
+    )
     _frames(qapp, window)
     assert moved, "dragging the fit-range edge did not move the range"
     assert moved[-1][0] > 20
@@ -212,7 +233,9 @@ def test_dragging_the_bar_over_the_decay_resizes_and_is_saved(window, qapp):
     _frames(qapp, window, 1)
     _move(window, start + QtCore.QPoint(0, 60), QtCore.Qt.LeftButton)
     _frames(qapp, window, 1)
-    QTest.mouseRelease(host, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, start + QtCore.QPoint(0, 60))
+    QTest.mouseRelease(
+        host, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, start + QtCore.QPoint(0, 60)
+    )
     _frames(qapp, window)
     assert stack._pane_boxes[2][3] < data_before - 40
     assert stack.user_sized
@@ -355,8 +378,9 @@ def test_a_read_only_model_source_is_saved_as_a_startup_override(window, tmp_pat
     code = f"{model_class.__name__} = _readonly_original\n"
     monkeypatch.setattr("chisurf.gui.widgets.fitting.fit_subwindow.os.access", lambda *a: False)
     monkeypatch.setattr("chisurf.core.settings.path_utils.get_path", lambda *_: tmp_path)
-    with patch("inspect.getsourcefile", return_value=str(source)), patch(
-        "chisurf.gui.widgets.fitting.fit_subwindow.get_fitting_client", return_value=None
+    with (
+        patch("inspect.getsourcefile", return_value=str(source)),
+        patch("chisurf.gui.widgets.fitting.fit_subwindow.get_fitting_client", return_value=None),
     ):
         status = window.save_model_code(str(source), code)
     written = list((tmp_path / "models").glob("*.py"))
@@ -406,6 +430,10 @@ def test_no_page_leaves_a_panel_as_a_top_level_widget(window, qapp):
     for index in range(area.count()):
         window.ensure_plot_created(index)
     _frames(qapp, window)
-    stray = [w for w in QtWidgets.QApplication.topLevelWidgets() if isinstance(w, Plot)
-             and any(w in getattr(p, "_panels", ()) for p in window._plots_all if p is not None)]
+    stray = [
+        w
+        for w in QtWidgets.QApplication.topLevelWidgets()
+        if isinstance(w, Plot)
+        and any(w in getattr(p, "_panels", ()) for p in window._plots_all if p is not None)
+    ]
     assert stray == []

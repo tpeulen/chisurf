@@ -193,9 +193,7 @@ class _StandaloneApp(SplitterApp):
                 self.tool.message = (
                     "Stopping after the current chunk or file. Completed output remains."
                 )
-            im.set_item_tooltip(
-                tr("Stop between chunks or files; retain output already written.")
-            )
+            im.set_item_tooltip(tr("Stop between chunks or files; retain output already written."))
         if self.tool.message:
             im.text_wrapped(self.tool.message)
 

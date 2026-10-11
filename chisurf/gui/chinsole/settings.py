@@ -119,7 +119,9 @@ def _without_absent_matplotlib(source: str) -> str:
             return source
     except (ImportError, ValueError):
         pass
-    pattern = re.compile(r"^\s*(%matplotlib\b|%pylab\b|import\s+(pylab|matplotlib)\b|from\s+(pylab|matplotlib)\b)")
+    pattern = re.compile(
+        r"^\s*(%matplotlib\b|%pylab\b|import\s+(pylab|matplotlib)\b|from\s+(pylab|matplotlib)\b)"
+    )
     return "\n".join(line for line in source.splitlines() if not pattern.match(line))
 
 

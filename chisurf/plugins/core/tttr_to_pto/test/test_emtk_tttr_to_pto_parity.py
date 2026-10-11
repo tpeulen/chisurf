@@ -87,7 +87,9 @@ def test_pack_and_unpack_equal_the_qt_tool(tmp_path):
         app.close()
 
     # the rows say what the Qt list said
-    assert QT["pack_row"] == f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
+    assert (
+        QT["pack_row"] == f"{pack['files']} → {pack['result']}" == "m000.spc, m001.spc → m000.pto"
+    )
     assert QT["unpack_row"] == f"m000.pto → {unpack['result']}"
     assert (pack["status"], pack["action"], unpack["status"], unpack["action"]) == (
         "Verified",
@@ -390,7 +392,12 @@ def test_every_control_has_a_tooltip():
         app.close()
     assert inventory["controls_without_tooltip"] == []
     labels = {row["label"] for row in inventory["interactive"]}
-    assert {"Add files...", "Clear history", action_caption("guide"), action_caption("help")} <= labels
+    assert {
+        "Add files...",
+        "Clear history",
+        action_caption("guide"),
+        action_caption("help"),
+    } <= labels
     spec = json.loads(SPEC_FILE.read_text())
     for section in _walk(spec["sections"]):
         if section.get("type") in ("custom", "info", "button_row"):

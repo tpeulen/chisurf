@@ -246,7 +246,12 @@ def test_draws_empty_and_populated(size):
     app = _app()
     try:
         strings = _draw(app, size).strings
-        assert {"Simulate + Correlate", action_caption("guide"), action_caption("help"), "lag time (ms)"} <= set(strings)
+        assert {
+            "Simulate + Correlate",
+            action_caption("guide"),
+            action_caption("help"),
+            "lag time (ms)",
+        } <= set(strings)
         app.simulate()
         _settle(app)
         strings = _draw(app, size).strings

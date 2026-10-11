@@ -124,6 +124,7 @@ def _has_fit_context(text: str) -> bool:
     """Return True if the module source can reach a chisurf fit object."""
     return bool(FIT_CONTEXT.search(text))
 
+
 FIT_METHOD_CALLS = re.compile(
     r"(?<!self\.)fit\.run\s*\("
     r"|(?!\.scan|\.adaptive_scan)fit\.update\s*\("

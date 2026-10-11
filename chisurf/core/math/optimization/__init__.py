@@ -21,6 +21,7 @@ class OptimizationCancelled(Exception):
     errors.
     """
 
+
 # ``nnls.solve_nnls`` (an amplitude-Tikhonov wrapper around
 # ``scipy.optimize.nnls``, on the *normal* equations rather than the augmented
 # system) used to live here. Removed 2026-09-02: zero callers anywhere in the

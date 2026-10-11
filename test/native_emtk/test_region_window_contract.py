@@ -86,9 +86,11 @@ def test_region_filter_and_selector_labels_fit_the_dock(tmp_path, monkeypatch):
         driver.draw(3)
         for label in ("Filter regions", "Region"):
             records = [
-                metadata for text, metadata in zip(
+                metadata
+                for text, metadata in zip(
                     driver.painter.texts, driver.painter.text_metadata, strict=True
-                ) if text[5] == label
+                )
+                if text[5] == label
             ]
             assert records, label
             assert all(r["visible_bounds"] == r["measured_bounds"] for r in records), label

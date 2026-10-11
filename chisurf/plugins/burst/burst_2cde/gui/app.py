@@ -106,7 +106,7 @@ class BurstTwoCdeGui:
         """Record usage of a named control (a guided tour awaits it by that name)."""
         self.tour.notify_used(name)
         if name.startswith("toolAction_"):
-            self.tour.notify_used(name[len("toolAction_"):])
+            self.tour.notify_used(name[len("toolAction_") :])
         if callable(self.on_used):
             self.on_used(name)
 
@@ -180,7 +180,8 @@ class BurstTwoCdeGui:
         im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
         im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
         if action_button(
-            "run", tooltip=tr("Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE.")
+            "run",
+            tooltip=tr("Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE."),
         ):
             self.track("toolAction_run")
             if not locked and callable(self.on_run):
@@ -195,7 +196,8 @@ class BurstTwoCdeGui:
             im.push_style_color(Col.BUTTON, (200, 120, 20, 255))
             im.push_style_color(Col.BUTTON_HOVERED, (220, 140, 40, 255))
         if action_button(
-            "restart", tooltip=tr("Reset the analysis state and recompute the 2CDE values from scratch.")
+            "restart",
+            tooltip=tr("Reset the analysis state and recompute the 2CDE values from scratch."),
         ):
             self.track("toolAction_restart")
             if not self.model.is_running and callable(self.on_restart):
@@ -245,7 +247,9 @@ class BurstTwoCdeGui:
         im.text(tr("Analysis folder:"))
         changed, text = im.input_text("##folder_path", self.model.folder, hint=tr("Burst folder …"))
         im.set_item_tooltip(
-            tr("Path to the folder with the bursts to analyze; type a path or use Folder to browse.")
+            tr(
+                "Path to the folder with the bursts to analyze; type a path or use Folder to browse."
+            )
         )
         if changed:
             self.model.set_folder(text)
@@ -278,7 +282,9 @@ class BurstTwoCdeGui:
                     self.model.notify("kernel")
                 im.set_item_tooltip(tr("Choose this smoothing kernel."))
             im.end_combo()
-        im.set_item_tooltip(tr("Smoothing kernel applied to the 2CDE values (laplace or gaussian)."))
+        im.set_item_tooltip(
+            tr("Smoothing kernel applied to the 2CDE values (laplace or gaussian).")
+        )
         self.remember("twocde_kernel")
 
         # tau

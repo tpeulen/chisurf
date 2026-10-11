@@ -9,12 +9,18 @@ def switch_interface(context: PluginContext) -> dict:
     window = context.main_window
     toggle = getattr(window, "toggle_ribbon_interface", None)
     if window is None or not callable(toggle):
-        return {"ok": False, "available": False,
-                "error": tr("Open Menu Switch from a ChiSurf main window to change its interface.")}
+        return {
+            "ok": False,
+            "available": False,
+            "error": tr("Open Menu Switch from a ChiSurf main window to change its interface."),
+        }
     before = getattr(window, "_ribbon_integration", None) is not None
     toggle(not before)
     enabled = getattr(window, "_ribbon_integration", None) is not None
     if enabled == before:
-        return {"ok": False, "available": True,
-                "error": tr("The ChiSurf interface did not change. Check the host log for details.")}
+        return {
+            "ok": False,
+            "available": True,
+            "error": tr("The ChiSurf interface did not change. Check the host log for details."),
+        }
     return {"ok": True, "available": True, "ribbon_enabled": enabled}

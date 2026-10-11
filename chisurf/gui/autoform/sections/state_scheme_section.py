@@ -714,12 +714,16 @@ class StateSchemePlot(_plot_base()):
         from emtk.file_dialog import FileDialog
 
         if save:
-            self._dialog = FileDialog("Save kinetics scheme", mode="save",
-                                      filename="custom_scheme.json",
-                                      filters="JSON files (*.json)")
+            self._dialog = FileDialog(
+                "Save kinetics scheme",
+                mode="save",
+                filename="custom_scheme.json",
+                filters="JSON files (*.json)",
+            )
         else:
-            self._dialog = FileDialog("Load kinetics scheme", mode="open",
-                                      filters="JSON files (*.json);;All files (*)")
+            self._dialog = FileDialog(
+                "Load kinetics scheme", mode="open", filters="JSON files (*.json);;All files (*)"
+            )
         self._dialog_saves = bool(save)
         self.request_redraw()
 
@@ -795,10 +799,20 @@ class StateSchemePlot(_plot_base()):
         # field does not show through it.
         draw = im.get_window_draw_list()
         height = im.get_frame_height()
-        draw.add_rect_filled((ax - 48.0, ay - height / 2 - 3.0), (ax + 48.0, ay + height / 2 + 3.0),
-                             (26, 26, 26, 255), 4.0)
-        draw.add_rect((ax - 48.0, ay - height / 2 - 3.0), (ax + 48.0, ay + height / 2 + 3.0),
-                      (255, 51, 51, 255), 4.0, 0, 2.0)
+        draw.add_rect_filled(
+            (ax - 48.0, ay - height / 2 - 3.0),
+            (ax + 48.0, ay + height / 2 + 3.0),
+            (26, 26, 26, 255),
+            4.0,
+        )
+        draw.add_rect(
+            (ax - 48.0, ay - height / 2 - 3.0),
+            (ax + 48.0, ay + height / 2 + 3.0),
+            (255, 51, 51, 255),
+            4.0,
+            0,
+            2.0,
+        )
         im.set_cursor_screen_pos((ax - 45.0, ay - height / 2))
         im.set_next_item_width(90.0)
         entered, self._edit_text = im.input_text(

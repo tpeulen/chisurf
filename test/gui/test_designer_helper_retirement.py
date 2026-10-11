@@ -22,17 +22,20 @@ def test_real_drop_mutates_original_target_before_one_callback(qapp, tmp_path, s
     """Real Qt MIME/drop delivery preserves supplied list identity and first-file display."""
     widget = QtWidgets.QLineEdit()
     target, notices = [], []
-    injector = lineEdit_dragFile_injector(widget, target=target, sorted=sort_paths,
-                                        call=lambda: notices.append(list(target)))
+    injector = lineEdit_dragFile_injector(
+        widget, target=target, sorted=sort_paths, call=lambda: notices.append(list(target))
+    )
     paths = [tmp_path / "z.spc", tmp_path / "a.spc"]
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(path)) for path in paths])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(5, 5), QtCore.Qt.CopyAction, mime,
-                                  QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(5, 5), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier
+    )
     widget.dragEnterEvent(enter)
     assert enter.isAccepted()
-    drop = QtGui.QDropEvent(QtCore.QPointF(5, 5), QtCore.Qt.CopyAction, mime,
-                            QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    drop = QtGui.QDropEvent(
+        QtCore.QPointF(5, 5), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier
+    )
     widget.dropEvent(drop)
     expected = sorted(map(str, paths)) if sort_paths else list(map(str, paths))
     assert injector.target is target and target == expected and notices == [expected]
@@ -50,8 +53,9 @@ def test_nonfile_drag_is_rejected(qapp):
     lineEdit_dragFile_injector(widget)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl("https://example.invalid/data.spc")])
-    event = QtGui.QDragEnterEvent(QtCore.QPoint(5, 5), QtCore.Qt.CopyAction, mime,
-                                  QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    event = QtGui.QDragEnterEvent(
+        QtCore.QPoint(5, 5), QtCore.Qt.CopyAction, mime, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier
+    )
     widget.dragEnterEvent(event)
     assert not event.isAccepted() and widget.text() == ""
     widget.close()

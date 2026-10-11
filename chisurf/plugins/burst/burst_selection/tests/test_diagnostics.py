@@ -52,7 +52,9 @@ def test_macro_time_offsets_accumulate_over_three_files() -> None:
     With the raw end, ten 642 s files showed as 126 s and files 2-10 overlapped;
     two identical files cannot tell the difference.
     """
-    diagnostics = [{"tttr": _Tttr([10, 15, 30]), "selected": np.ones(3, dtype=bool)} for _ in range(3)]
+    diagnostics = [
+        {"tttr": _Tttr([10, 15, 30]), "selected": np.ones(3, dtype=bool)} for _ in range(3)
+    ]
     assert diag.macro_time_offsets_ms(diagnostics) == [0.0, 20.0, 40.0]
 
 
@@ -100,7 +102,10 @@ def test_histogram_data_uses_computed_proximity_ratio() -> None:
 
 def test_burst_durations_use_macro_time_resolution_ms() -> None:
     """Burst duration values should be reported in milliseconds."""
-    entry = {"tttr": _Tttr([0, 5, 8, 20], resolution=0.002), "start_stop": np.array([[0, 1], [1, 3]])}
+    entry = {
+        "tttr": _Tttr([0, 5, 8, 20], resolution=0.002),
+        "start_stop": np.array([[0, 1], [1, 3]]),
+    }
     assert diag.burst_durations_ms(entry).tolist() == [10.0, 30.0]
     assert diag.burst_durations_ms({}).size == 0
 
@@ -140,7 +145,9 @@ def test_a_windowed_trace_does_not_start_with_the_empty_run_in_front() -> None:
 
     time_s, rate = diag.trace_rate_hz(Slice(), 1.0, 1000.0, 0.0)
     assert rate.tolist() == [4.0, 5.0, 6.0]
-    assert time_s.tolist() == [5.0, 6.0, 7.0], "the trace stays where it belongs on the file's clock"
+    assert time_s.tolist() == [5.0, 6.0, 7.0], (
+        "the trace stays where it belongs on the file's clock"
+    )
 
 
 def test_the_destination_follows_the_input() -> None:
@@ -172,6 +179,10 @@ def test_the_gate_mismatch_is_named() -> None:
 
 
 def test_normalised_file_types_and_the_setup_summary() -> None:
-    assert diag.normalize_filetype("auto") is None or isinstance(diag.normalize_filetype("auto"), str)
+    assert diag.normalize_filetype("auto") is None or isinstance(
+        diag.normalize_filetype("auto"), str
+    )
     assert diag.normalize_filetype(None) is None
-    assert "SPC-130" in diag.setup_summary("probe", "SPC-130") and "probe" in diag.setup_summary("probe", "SPC-130")
+    assert "SPC-130" in diag.setup_summary("probe", "SPC-130") and "probe" in diag.setup_summary(
+        "probe", "SPC-130"
+    )

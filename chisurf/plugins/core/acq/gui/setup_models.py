@@ -17,12 +17,29 @@ from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import bu
 # Keeping this tiny immutable table here avoids importing its QObject-based
 # wrapper merely to render a Qt-free factory.
 BH_PARAMETER_IDS = {
-    "CFD_LIMIT_LOW": 0, "CFD_LIMIT_HIGH": 1, "CFD_ZC_LEVEL": 2, "CFD_HOLDOFF": 3,
-    "SYNC_ZC_LEVEL": 4, "SYNC_FREQ_DIV": 5, "SYNC_HOLDOFF": 6, "SYNC_THRESHOLD": 7,
-    "TAC_RANGE": 8, "TAC_GAIN": 9, "TAC_OFFSET": 10, "TAC_LIMIT_LOW": 11,
-    "TAC_LIMIT_HIGH": 12, "ADC_RESOLUTION": 13, "COLLECT_TIME": 15,
-    "DISPLAY_TIME": 16, "REPEAT_TIME": 17, "STOP_ON_TIME": 18, "STOP_ON_OVFL": 19,
-    "ROUTING_MODE": 25, "TAC_ENABLE_HOLD": 26, "MODE": 27, "RATE_COUNT_TIME": 40,
+    "CFD_LIMIT_LOW": 0,
+    "CFD_LIMIT_HIGH": 1,
+    "CFD_ZC_LEVEL": 2,
+    "CFD_HOLDOFF": 3,
+    "SYNC_ZC_LEVEL": 4,
+    "SYNC_FREQ_DIV": 5,
+    "SYNC_HOLDOFF": 6,
+    "SYNC_THRESHOLD": 7,
+    "TAC_RANGE": 8,
+    "TAC_GAIN": 9,
+    "TAC_OFFSET": 10,
+    "TAC_LIMIT_LOW": 11,
+    "TAC_LIMIT_HIGH": 12,
+    "ADC_RESOLUTION": 13,
+    "COLLECT_TIME": 15,
+    "DISPLAY_TIME": 16,
+    "REPEAT_TIME": 17,
+    "STOP_ON_TIME": 18,
+    "STOP_ON_OVFL": 19,
+    "ROUTING_MODE": 25,
+    "TAC_ENABLE_HOLD": 26,
+    "MODE": 27,
+    "RATE_COUNT_TIME": 40,
     "MACRO_TIME_CLK": 41,
 }
 
@@ -61,14 +78,39 @@ BH_PARAMETERS = (
     BHParameterSpec("STOP_ON_TIME", "Stop on Time", "Timing", 0, 1, True, {0: "No", 1: "Yes"}),
     BHParameterSpec("STOP_ON_OVFL", "Stop on Overflow", "Timing", 0, 1, True, {0: "No", 1: "Yes"}),
     BHParameterSpec("RATE_COUNT_TIME", "Rate Count Time (s)", "Timing", 0.001, 10),
-    BHParameterSpec("MACRO_TIME_CLK", "Macro Time Clock", "Timing", 0, 7, True,
-                    {0: "25 ns", 1: "50 ns", 2: "100 ns", 3: "200 ns", 4: "400 ns", 5: "800 ns", 6: "1.6 µs", 7: "3.2 µs"}),
-    BHParameterSpec("MODE", "Mode", "Mode", 0, 3, True,
-                    {0: "Histogramming", 1: "FIFO", 2: "Scan", 3: "Imaging"}),
-    BHParameterSpec("ROUTING_MODE", "Routing Mode", "Mode", 0, 2, True,
-                    {0: "Off", 1: "4 Bits", 2: "16 Bits"}),
-    BHParameterSpec("ADC_RESOLUTION", "ADC Resolution", "Mode", 6, 16, True,
-                    {6: "6 Bits", 8: "8 Bits", 10: "10 Bits", 12: "12 Bits", 14: "14 Bits", 16: "16 Bits"}),
+    BHParameterSpec(
+        "MACRO_TIME_CLK",
+        "Macro Time Clock",
+        "Timing",
+        0,
+        7,
+        True,
+        {
+            0: "25 ns",
+            1: "50 ns",
+            2: "100 ns",
+            3: "200 ns",
+            4: "400 ns",
+            5: "800 ns",
+            6: "1.6 µs",
+            7: "3.2 µs",
+        },
+    ),
+    BHParameterSpec(
+        "MODE", "Mode", "Mode", 0, 3, True, {0: "Histogramming", 1: "FIFO", 2: "Scan", 3: "Imaging"}
+    ),
+    BHParameterSpec(
+        "ROUTING_MODE", "Routing Mode", "Mode", 0, 2, True, {0: "Off", 1: "4 Bits", 2: "16 Bits"}
+    ),
+    BHParameterSpec(
+        "ADC_RESOLUTION",
+        "ADC Resolution",
+        "Mode",
+        6,
+        16,
+        True,
+        {6: "6 Bits", 8: "8 Bits", 10: "10 Bits", 12: "12 Bits", 14: "14 Bits", 16: "16 Bits"},
+    ),
 )
 
 
@@ -130,7 +172,9 @@ class BHSetupModel:
     def save_json(self, path: str | Path) -> bool:
         """Save editable BH values only; saving never writes a device."""
         try:
-            Path(path).with_suffix(".json").write_text(json.dumps(self.values, indent=2), encoding="utf-8")
+            Path(path).with_suffix(".json").write_text(
+                json.dumps(self.values, indent=2), encoding="utf-8"
+            )
         except OSError as exc:
             self.status = f"Save failed: {exc}"
             return False
@@ -143,7 +187,9 @@ class BHSetupModel:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
             for spec in BH_PARAMETERS:
                 if spec.name in data:
-                    self.values[spec.name] = int(data[spec.name]) if spec.integer else float(data[spec.name])
+                    self.values[spec.name] = (
+                        int(data[spec.name]) if spec.integer else float(data[spec.name])
+                    )
         except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
             self.status = f"Load failed: {exc}"
             return False
@@ -166,14 +212,20 @@ class PicoQuantSetupModel:
         """Query a supplied API when available, without fabricating a connection result."""
         api = getattr(self.device, "api", None) if self.device is not None else None
         if api is None:
-            self.status = "No initialized PicoQuant API was supplied; no physical device status was checked."
+            self.status = (
+                "No initialized PicoQuant API was supplied; no physical device status was checked."
+            )
             return
         try:
             devices = list(api.detect_devices())
         except Exception as exc:
             self.status = f"PicoQuant status query failed: {exc}"
             return
-        self.status = "No PicoQuant devices detected." if not devices else f"PicoQuant API reports {len(devices)} device(s): {devices}"
+        self.status = (
+            "No PicoQuant devices detected."
+            if not devices
+            else f"PicoQuant API reports {len(devices)} device(s): {devices}"
+        )
 
     def apply(self, acquisition: Any) -> bool:
         """Map the retained maximum-photons setting to the native global stop limit."""
@@ -251,7 +303,9 @@ class SimulationSetupModel:
     def __init__(self, parameters: dict[str, Any]) -> None:
         self.before = json.dumps(parameters, indent=2, sort_keys=True)
         self.text = self.before
-        self.status = "Full current simulator parameter dictionary; Apply validates the production engine."
+        self.status = (
+            "Full current simulator parameter dictionary; Apply validates the production engine."
+        )
 
     def apply(self) -> dict[str, Any] | None:
         """Parse and validate complete current settings with ``build_engine``."""

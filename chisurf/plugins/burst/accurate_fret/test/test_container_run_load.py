@@ -27,4 +27,6 @@ def test_a_container_run_is_loaded_and_a_missing_file_is_not(tmp_path):
     controller.load(str(run))
     assert started == [("load", str(run))]
     controller.load(str(tmp_path / "missing.bur"))
-    assert started == [("load", str(run))] and controller.status.startswith("Burst table does not exist")
+    assert started == [("load", str(run))] and controller.status.startswith(
+        "Burst table does not exist"
+    )

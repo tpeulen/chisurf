@@ -594,8 +594,9 @@ def test_the_one_component_fit_checkbox_adds_and_removes_the_fit_and_the_residua
     drv.click("show_gaussian_fit")
     assert "1-component Gaussian fit" in series(drv)
     for name, y in golden_y("default", "fcs_residual_series").items():
-        assert_saturation_series(model(drv), "fcs_residual_series", name,
-                                 series(drv, "fcs_residual_series")[name], y)
+        assert_saturation_series(
+            model(drv), "fcs_residual_series", name, series(drv, "fcs_residual_series")[name], y
+        )
 
 
 def test_the_three_profile_checkboxes_remove_and_restore_their_curves(drv):

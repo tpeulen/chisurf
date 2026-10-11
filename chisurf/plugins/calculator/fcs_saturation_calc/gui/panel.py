@@ -84,11 +84,15 @@ class SaturationPanel:
         """
         now = time.monotonic()
         cached = getattr(self, "_dye_options", None)
-        if (cached is None or now - cached[0] > DYE_REFRESH_S) and not getattr(self, "_dye_loading", False):
+        if (cached is None or now - cached[0] > DYE_REFRESH_S) and not getattr(
+            self, "_dye_loading", False
+        ):
             self._dye_loading = True
             from chisurf.emtk.background_build import track
 
-            self._dye_thread = track(threading.Thread(target=self._read_dyes, name="saturation-dyes", daemon=True))
+            self._dye_thread = track(
+                threading.Thread(target=self._read_dyes, name="saturation-dyes", daemon=True)
+            )
             self._dye_thread.start()
         if cached is None:
             current = str(self.app.model.dye or "")
@@ -105,8 +109,10 @@ class SaturationPanel:
         """Worker: re-read the dye list, then ask for a frame to show it."""
         try:
             names = list(self.app.model.dye_names())
-            self._dye_options = (time.monotonic(),
-                                 [("", "(none, type the extinction)")] + [(n, n) for n in names if n])
+            self._dye_options = (
+                time.monotonic(),
+                [("", "(none, type the extinction)")] + [(n, n) for n in names if n],
+            )
         except Exception:  # noqa: BLE001 - no database: the combo keeps offering a typed-in extinction
             self._dye_options = (time.monotonic(), [("", "(none, type the extinction)")])
         finally:

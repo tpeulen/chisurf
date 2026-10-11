@@ -272,9 +272,7 @@ def write_decay(
     if stream is None:
         stream = {"channels": list(range(64))}
     store = sub_ensemble_decay(run_path, stream, n_bins=n_bins, mask=mask)
-    selection = (
-        "all" if mask is None else np.flatnonzero(np.asarray(mask, dtype=bool)).tolist()
-    )
+    selection = "all" if mask is None else np.flatnonzero(np.asarray(mask, dtype=bool)).tolist()
     identity = {"stream": str(stream), "n_bins": int(n_bins), "bursts": str(selection)}
     identity.update(parameters or {})
     container = write_sub_ensemble_decay(run_path, store, identity)

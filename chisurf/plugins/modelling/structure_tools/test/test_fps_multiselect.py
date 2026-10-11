@@ -30,7 +30,9 @@ def inputs(tmp_path):
         shutil.copy(EXAMPLE / name, tmp_path / name)
     payload = json.loads((EXAMPLE / "hiv_rt.fps.json").read_text())
     for pos in payload["Positions"].values():
-        pos["pdb_path"] = str(tmp_path / ("dna.pdb" if pos["chain_identifier"] == "P" else "protein_1R0A.pdb"))
+        pos["pdb_path"] = str(
+            tmp_path / ("dna.pdb" if pos["chain_identifier"] == "P" else "protein_1R0A.pdb")
+        )
     fps = tmp_path / "x.fps.json"
     fps.write_text(json.dumps(payload))
     return fps
@@ -116,13 +118,20 @@ def test_delete_avs_and_save_selected_avs_as_mrc(ui, tmp_path):
     assert a in names(app) and b in names(app)
 
 
-def test_distances_ctrl_and_shift_click_select_restraints_and_delete_removes_them_after_one_question(ui):
+def test_distances_ctrl_and_shift_click_select_restraints_and_delete_removes_them_after_one_question(
+    ui,
+):
     app = ui.app
     view = app.views["distances"]
     ui.click("tab_Distances")
     ui.draw(3)
     ids = list(app.editor.doc.distances)
-    first, second, third, fourth = "p66_T27C_p_1bp", "p66_T27C_p_19bp", "p66_E194C_p_1bp", "p66_E194C_p_19bp"
+    first, second, third, fourth = (
+        "p66_T27C_p_1bp",
+        "p66_T27C_p_19bp",
+        "p66_E194C_p_1bp",
+        "p66_E194C_p_19bp",
+    )
     assert {first, second, third, fourth} <= set(ids)
     click_row(ui, first)
     click_row(ui, third, CTRL)

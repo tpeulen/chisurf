@@ -83,7 +83,11 @@ def test_saved_geometry_and_existing_controller_defaults_win(tmp_path, monkeypat
     other = attach_native_state("bva_saved", create_app())
     try:
         assert other.window_size == (1330, 870)
-        assert (other.model.photons_per_slice, other.model.bins_x, other.model.bins_y) == (12, 31, 37)
+        assert (other.model.photons_per_slice, other.model.bins_x, other.model.bins_y) == (
+            12,
+            31,
+            37,
+        )
         assert other.model.df is None
         other.draw(RecordingPainter(), 0, 0, 900, 650)
         assert other.window_size == (1330, 870)
@@ -121,13 +125,17 @@ def test_actual_worker_rows_static_line_and_photons_survive_host_views(tmp_path,
                 driver.draw(3)
                 driver.click(tab)
                 driver.draw(2)
-            np.testing.assert_array_equal(numeric_column(app.model.df, "Proximity Ratio Mean"), mean)
+            np.testing.assert_array_equal(
+                numeric_column(app.model.df, "Proximity Ratio Mean"), mean
+            )
             np.testing.assert_array_equal(numeric_column(app.model.df, "Proximity Ratio Std"), sd)
             np.testing.assert_array_equal(raw.micro_times, micro)
             np.testing.assert_array_equal(raw.routing_channels, channels)
             assert app.model.bva_settings() == settings
         plot = app.model.get_plot_data()
-        np.testing.assert_allclose(plot["static_y"], np.sqrt(plot["static_x"] * (1 - plot["static_x"]) / 10))
+        np.testing.assert_allclose(
+            plot["static_y"], np.sqrt(plot["static_x"] * (1 - plot["static_x"]) / 10)
+        )
         assert sd[np.arange(60) % 4 == 3].mean() > sd[np.arange(60) % 4 != 3].mean() + 0.1
     finally:
         app.close()

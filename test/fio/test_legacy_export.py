@@ -195,8 +195,13 @@ def test_the_companion_values_read_back_from_the_container(measurement: Path, tm
     from chisurf.core.fio.pto import Measurement
 
     values = np.linspace(0, 1, N)
-    _write(measurement, "bva", {"Proximity Ratio Mean": values}, "burst_variance_analysis",
-           parameters={"window": 5})
+    _write(
+        measurement,
+        "bva",
+        {"Proximity Ratio Mean": values},
+        "burst_variance_analysis",
+        parameters={"window": 5},
+    )
     with Measurement.open(container_for(measurement)) as m:
         stored = numeric_column(m.get_store("bva"), "Proximity Ratio Mean")
     written = export_legacy(container_for(measurement), tmp_path / "legacy")
@@ -217,11 +222,17 @@ def test_mle_h2mm_fcs_are_runs_of_their_own_derived_from_the_burst_table(
     box = container_for(measurement)
     green = store_from_arrays({"Tau (green)": np.linspace(1.0, 4.0, N)})
     write_mle_container(box, {"green": green}, parameters={"model": "a"})
-    write_h2mm_container(box, store_from_arrays({"H2MM State": np.arange(N, dtype=float)}),
-                         None, parameters={"states": 2})
-    write_fcs_container(box, store_from_arrays({"Burst Index": np.array([0.0, 5.0]),
-                                                "td_a": np.array([1.0, 2.0])}),
-                        parameters={"pairs": "a"})
+    write_h2mm_container(
+        box,
+        store_from_arrays({"H2MM State": np.arange(N, dtype=float)}),
+        None,
+        parameters={"states": 2},
+    )
+    write_fcs_container(
+        box,
+        store_from_arrays({"Burst Index": np.array([0.0, 5.0]), "td_a": np.array([1.0, 2.0])}),
+        parameters={"pairs": "a"},
+    )
 
     rows = run_rows_for(box, operation="")
     assert len(rows) == 4 and all(r["run_name"] for r in rows), rows

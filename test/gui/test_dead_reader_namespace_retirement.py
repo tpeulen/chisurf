@@ -88,7 +88,15 @@ print(json.dumps(owners))
     [
         ("chisurf.gui.widgets.fluorescence.av", ["AVProperties"]),
         ("chisurf.plugins.burst.burst_fcs_correlator", ["BurstWiseFCSWizard"]),
-        ("chisurf.gui.widgets.wizard", ["WizardTTTRFileFormat", "FileFormatSettings", "WizardFcsMerger", "WizardTTTRCorrelator"]),
+        (
+            "chisurf.gui.widgets.wizard",
+            [
+                "WizardTTTRFileFormat",
+                "FileFormatSettings",
+                "WizardFcsMerger",
+                "WizardTTTRCorrelator",
+            ],
+        ),
     ],
 )
 def test_dead_loader_classes_are_absent_from_fresh_public_namespaces(tmp_path, module, retired):
@@ -143,14 +151,14 @@ print(json.dumps({{'available': spec is not None}}))
         "chisurf/gui/widgets/wizard/tttr_fileformat/__init__.py",
         "chisurf/gui/widgets/wizard/tttr_fileformat/tttr_file_format.py",
         "chisurf/gui/widgets/wizard/tttr_fileformat/tttr_file_format.ui",
-        'chisurf/gui/widgets/wizard/fcs_merger/__init__.py',
-        'chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py',
-        'chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.ui',
-        'chisurf/gui/widgets/wizard/fcs_merger/fcs_merger_ui.py',
-        'chisurf/gui/widgets/wizard/tttr_correlator/__init__.py',
-        'chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.py',
-        'chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.ui',
-        'chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator_ui.py',
+        "chisurf/gui/widgets/wizard/fcs_merger/__init__.py",
+        "chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py",
+        "chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.ui",
+        "chisurf/gui/widgets/wizard/fcs_merger/fcs_merger_ui.py",
+        "chisurf/gui/widgets/wizard/tttr_correlator/__init__.py",
+        "chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.py",
+        "chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.ui",
+        "chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator_ui.py",
     ],
 )
 def test_retired_source_and_designer_files_are_not_shipped(relative):

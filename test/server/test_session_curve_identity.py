@@ -17,9 +17,16 @@ from chisurf.server.session import SessionState
 def curves(monkeypatch):
     """Two curves deliberately share names and filenames but have distinct UIDs."""
     monkeypatch.setattr(cs.core.base.Base, "_uuid_index", dict(cs.core.base.Base._uuid_index))
-    members = [DataCurve(x=np.arange(3), y=np.full(3, value), name="same.dat", filename="same.dat",
-                         unique_identifier=f"session-child-{index}")
-               for index, value in enumerate((2.0, 9.0))]
+    members = [
+        DataCurve(
+            x=np.arange(3),
+            y=np.full(3, value),
+            name="same.dat",
+            filename="same.dat",
+            unique_identifier=f"session-child-{index}",
+        )
+        for index, value in enumerate((2.0, 9.0))
+    ]
     group = ExperimentDataCurveGroup(members, name="IRF group", unique_identifier="session-parent")
     group.current_dataset = 0
     unrelated = DataCurve(x=np.arange(3), y=np.full(3, 77.0), unique_identifier="unrelated-global")
@@ -41,8 +48,12 @@ def test_group_summaries_retain_outer_index_and_all_direct_members(curves, count
     children = local[0]["members"]
     assert len(children) == count
     assert [child["member_index"] for child in children] == list(range(count))
-    assert [child["uid"] for child in children] == [member.unique_identifier for member in members[:count]]
-    assert all(child["index"] == 0 and child["parent_uid"] == "session-parent" for child in children)
+    assert [child["uid"] for child in children] == [
+        member.unique_identifier for member in members[:count]
+    ]
+    assert all(
+        child["index"] == 0 and child["parent_uid"] == "session-parent" for child in children
+    )
     assert all(child["name"] == "same.dat" for child in children)
 
 
@@ -78,10 +89,16 @@ def test_child_uid_resolves_exact_curve_without_changing_active_member(curves):
 
 @pytest.mark.parametrize("owner", ["api", "service"])
 @pytest.mark.parametrize("method", ["get_dataset_info", "get_dataset_curve_data"])
-@pytest.mark.parametrize(("parent", "member"), [
-    ("gone-parent", "session-child-1"), ("session-parent", "gone-member"),
-])
-def test_stale_parent_or_member_uid_never_falls_back_to_valid_index(curves, owner, method, parent, member):
+@pytest.mark.parametrize(
+    ("parent", "member"),
+    [
+        ("gone-parent", "session-child-1"),
+        ("session-parent", "gone-member"),
+    ],
+)
+def test_stale_parent_or_member_uid_never_falls_back_to_valid_index(
+    curves, owner, method, parent, member
+):
     """Unknown explicit identities fail even when index zero is still valid."""
     group, _ = curves
     state = SessionState(datasets=[group])
@@ -98,8 +115,9 @@ def test_uid_lookup_reports_actual_outer_index_when_callers_index_is_stale(curve
     group, _ = curves
     other = DataCurve(x=np.arange(3), y=np.ones(3), unique_identifier="first-other")
     state = SessionState(datasets=[other, group])
-    info = datasets.get_dataset_info(state, dataset_index=0, dataset_uid="session-parent",
-                                     member_uid="session-child-1")
+    info = datasets.get_dataset_info(
+        state, dataset_index=0, dataset_uid="session-parent", member_uid="session-child-1"
+    )
     assert info["dataset"]["index"] == 1
     assert info["dataset"]["member_index"] == 1
 
@@ -116,5 +134,11 @@ def test_generated_client_accepts_and_forwards_optional_member_uid(method):
         return {"ok": True, "dataset": {"uid": "session-child-1"}}
 
     client.call = call
-    getattr(client, method)(dataset_index=0, dataset_uid="session-parent", member_uid="session-child-1")
-    assert calls[0][1] == {"dataset_index": 0, "dataset_uid": "session-parent", "member_uid": "session-child-1"}
+    getattr(client, method)(
+        dataset_index=0, dataset_uid="session-parent", member_uid="session-child-1"
+    )
+    assert calls[0][1] == {
+        "dataset_index": 0,
+        "dataset_uid": "session-parent",
+        "member_uid": "session-child-1",
+    }

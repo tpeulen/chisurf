@@ -177,7 +177,12 @@ _CUSTOM_OPTION_KEYS: dict[str, set[str]] = {
         "guards",
         "max_height",
         "title",
-        "target", "empty", "single", "add_tip", "add", "database",
+        "target",
+        "empty",
+        "single",
+        "add_tip",
+        "add",
+        "database",
     },
     "lcurve": {
         "compute_action",
@@ -248,13 +253,18 @@ def build_view_schema() -> dict:
 
         # Native controls are declared by their readers, not copied into Qt
         # dataclasses just to make the editor schema accept their declarations.
-        for key in sorted(COMMON_KEYS | dialect.get(name, frozenset()) | LAYOUT_KEYS
-                          | APP_SECTION_KEYS.get(name, frozenset())):
+        for key in sorted(
+            COMMON_KEYS
+            | dialect.get(name, frozenset())
+            | LAYOUT_KEYS
+            | APP_SECTION_KEYS.get(name, frozenset())
+        ):
             properties.setdefault(key, {})
         for key in CURVE_SECTION_KEYS:
             properties[key] = {"type": "boolean"}
         if name == "custom":
             from emtk.view_form import TABLE_KEYS
+
             for key in TABLE_KEYS | {"x_label", "y_label", "log_x"}:
                 properties.setdefault(key, {})
         if name == "panel":
@@ -313,30 +323,52 @@ def build_view_schema() -> dict:
         top_level.setdefault(key, {})
     top_level["_columns"] = {"type": "array", "items": {"type": "object"}}
     top_level["entity_actions"] = {
-        "type": "object", "additionalProperties": {
-            "type": "array", "items": {"type": "object"},
+        "type": "object",
+        "additionalProperties": {
+            "type": "array",
+            "items": {"type": "object"},
         },
     }
     # Applications name their form regions (toolbar, files, results, ...).
     # Their names are dynamic; their values still obey the declared form/table
     # shapes. This does not make scalar typos or empty unknown objects valid.
-    group_properties = {key: value for key, value in top_level.items()
-                        if key not in {"panels", "_columns", "entity_actions"}}
+    group_properties = {
+        key: value
+        for key, value in top_level.items()
+        if key not in {"panels", "_columns", "entity_actions"}
+    }
     table_properties: dict[str, dict[str, Any]] = {key: {} for key in COMMON_KEYS | TABLE_KEYS}
-    group = {"anyOf": [
-        {"type": "array", "items": {"$ref": "#/$defs/section"}},
-        {"type": "object", "properties": group_properties, "required": ["sections"],
-         "additionalProperties": False},
-        {"allOf": [{"$ref": "#/$defs/section"}, {"required": ["type"]}]},
-        {"type": "object", "properties": table_properties, "required": ["source"],
-         "additionalProperties": False},
-        {"type": "object", "minProperties": 1,
-         "additionalProperties": {"$ref": "#/$defs/native_group"}},
-    ]}
-    top_level["panels"] = {"type": "object", "additionalProperties": {"$ref": "#/$defs/native_group"}}
+    group = {
+        "anyOf": [
+            {"type": "array", "items": {"$ref": "#/$defs/section"}},
+            {
+                "type": "object",
+                "properties": group_properties,
+                "required": ["sections"],
+                "additionalProperties": False,
+            },
+            {"allOf": [{"$ref": "#/$defs/section"}, {"required": ["type"]}]},
+            {
+                "type": "object",
+                "properties": table_properties,
+                "required": ["source"],
+                "additionalProperties": False,
+            },
+            {
+                "type": "object",
+                "minProperties": 1,
+                "additionalProperties": {"$ref": "#/$defs/native_group"},
+            },
+        ]
+    }
+    top_level["panels"] = {
+        "type": "object",
+        "additionalProperties": {"$ref": "#/$defs/native_group"},
+    }
     reserved = "|".join(re.escape(key) for key in sorted(top_level))
-    named_regions = {rf"^(?!(?:{reserved})$)[A-Za-z][A-Za-z0-9_]*$": {
-        "$ref": "#/$defs/native_group"}}
+    named_regions = {
+        rf"^(?!(?:{reserved})$)[A-Za-z][A-Za-z0-9_]*$": {"$ref": "#/$defs/native_group"}
+    }
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "$id": "https://chisurf.org/schemas/view.schema.json",

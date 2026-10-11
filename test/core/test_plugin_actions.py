@@ -11,17 +11,27 @@ from chisurf.core.plugin.registry import PluginRegistry, execute_plugin_action
 
 def declaration(**overrides):
     """Declare a generic action with explicit host ownership and explanatory metadata."""
-    action = {"target": "example.action:run", "description": "Update the supplied host preference.",
-              "requires_main_window": True}
+    action = {
+        "target": "example.action:run",
+        "description": "Update the supplied host preference.",
+        "requires_main_window": True,
+    }
     action.update(overrides)
     return {"id": "host_action", "version": "1.0", "entrypoints": {"action": action}}
 
 
-@pytest.mark.parametrize("field,value", [
-    ("target", ""), ("target", "example"), ("target", 7),
-    ("description", " "), ("description", None),
-    ("requires_main_window", "true"), ("requires_main_window", None),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("target", ""),
+        ("target", "example"),
+        ("target", 7),
+        ("description", " "),
+        ("description", None),
+        ("requires_main_window", "true"),
+        ("requires_main_window", None),
+    ],
+)
 def test_action_metadata_rejects_invalid_contract_fields(field, value):
     """Both lightweight discovery and generated schema reject malformed actions."""
     data = declaration(**{field: value})
@@ -66,7 +76,9 @@ class Loader:
 def test_missing_required_host_returns_unavailable_before_loading():
     """Standalone invocation has a useful failure and imports no action code."""
     loader = Loader(lambda context: pytest.fail("unavailable action ran"))
-    result = execute_plugin_action(PluginManifest.from_dict(declaration()), PluginContext(), loader=loader)
+    result = execute_plugin_action(
+        PluginManifest.from_dict(declaration()), PluginContext(), loader=loader
+    )
     assert result["ok"] is False and result["available"] is False
     assert "main window" in result["error"]
     assert loader.loaded == []
@@ -114,12 +126,16 @@ def test_registry_qaction_is_lazy_and_creates_no_window(qapp):
 
 def test_action_runtime_failure_is_reported_without_legacy_fallback(caplog):
     """A raised action is a reported failure rather than an exception escaping a Qt slot."""
+
     def fail(context):
         """Expose a genuine handler failure after host validation."""
         raise RuntimeError("expected backend refusal")
 
-    result = execute_plugin_action(PluginManifest.from_dict(declaration()),
-                                   PluginContext(main_window=object()), loader=Loader(fail))
+    result = execute_plugin_action(
+        PluginManifest.from_dict(declaration()),
+        PluginContext(main_window=object()),
+        loader=Loader(fail),
+    )
     assert result["ok"] is False and "expected backend refusal" in result["error"]
     assert "host_action" in caplog.text
 

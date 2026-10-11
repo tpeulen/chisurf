@@ -1,4 +1,5 @@
 """Native detector calibration metadata and close callbacks preserve scientific state."""
+
 from __future__ import annotations
 
 import pytest
@@ -10,10 +11,15 @@ def model():
     """Return a measured result snapshot without replacing any calculation algorithm."""
     result = GFactorModel()
     result.fast_file = "reference.dat"
-    result.result = {"g_factor": 1.25, "g_factor_uncorrected": 1.2,
-                     "g_factor_corrected": 1.25, "g_factor_stddev_uncorrected": 0.1,
-                     "g_factor_stddev_corrected": 0.12, "bg_parallel_avg": 3.0,
-                     "bg_perpendicular_avg": 4.0}
+    result.result = {
+        "g_factor": 1.25,
+        "g_factor_uncorrected": 1.2,
+        "g_factor_corrected": 1.25,
+        "g_factor_stddev_uncorrected": 0.1,
+        "g_factor_stddev_corrected": 0.12,
+        "bg_parallel_avg": 3.0,
+        "bg_perpendicular_avg": 4.0,
+    }
     result.background = True
     result.region = [400.0, 300.0]
     result.background_region = [10.0, 20.0]
@@ -24,8 +30,9 @@ def model():
 def test_detector_parameters_preserve_existing_mixing_and_use_real_sd(mix):
     snapshot = model()
     snapshot.fp_result = {"l1": mix, "l2": mix}
-    parameters = snapshot.detector_parameters(prior_l1=0.17, prior_l2=0.23,
-                                             micro_time_resolution=50.0)
+    parameters = snapshot.detector_parameters(
+        prior_l1=0.17, prior_l2=0.23, micro_time_resolution=50.0
+    )
     assert parameters["l1"] == 0.17 and parameters["l2"] == 0.23
     assert parameters["g_factor_stddev"] == 0.12
     assert parameters["g_factor_uncorrected"] == 1.2

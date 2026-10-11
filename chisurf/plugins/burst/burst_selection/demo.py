@@ -60,18 +60,26 @@ def photon_stream(seed: int = DEMO["seed"]):
     """Return time-ordered arrival times (s), micro times and routing channels."""
     cfg = DEMO
     rng = np.random.default_rng(seed)
-    parts = [rng.uniform(0.0, cfg["duration_s"], rng.poisson(cfg["background_hz"] * cfg["duration_s"]))]
+    parts = [
+        rng.uniform(0.0, cfg["duration_s"], rng.poisson(cfg["background_hz"] * cfg["duration_s"]))
+    ]
     chans = [np.where(rng.random(parts[0].size) < 0.5, cfg["green_channel"], cfg["red_channel"])]
     for centre in burst_centres_s():
         t = rng.normal(centre, cfg["burst_sigma_ms"] * 1e-3, cfg["photons_per_burst"])
         parts.append(t)
-        chans.append(np.where(rng.random(t.size) < cfg["red_fraction"], cfg["red_channel"], cfg["green_channel"]))
+        chans.append(
+            np.where(
+                rng.random(t.size) < cfg["red_fraction"], cfg["red_channel"], cfg["green_channel"]
+            )
+        )
     t = np.concatenate(parts)
     c = np.concatenate(chans).astype(np.int8)
     order = np.argsort(t, kind="stable")
     t, c = t[order], c[order]
     micro = np.clip(
-        rng.exponential(cfg["lifetime_s"] / cfg["micro_resolution_s"], t.size), 0, cfg["n_micro"] - 1
+        rng.exponential(cfg["lifetime_s"] / cfg["micro_resolution_s"], t.size),
+        0,
+        cfg["n_micro"] - 1,
     ).astype(np.uint16)
     return t, micro, c
 
@@ -129,6 +137,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> Path:
     if not stream.write(str(path), DEMO["file_type"], header):
         raise OSError(f"could not write {path}")
     path.with_suffix(".json").write_text(
-        json.dumps({"demo": DEMO, "sha256": _digest(path)}, sort_keys=True, indent=2), encoding="utf-8"
+        json.dumps({"demo": DEMO, "sha256": _digest(path)}, sort_keys=True, indent=2),
+        encoding="utf-8",
     )
     return path

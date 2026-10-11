@@ -125,7 +125,9 @@ class ConfocalApp(ImApp):
         try:
             self.model.import_json(path)
         except Exception as exc:  # noqa: BLE001
-            self.model.error = tr("Loading {name} failed: {error}").format(name=Path(path).name, error=exc)
+            self.model.error = tr("Loading {name} failed: {error}").format(
+                name=Path(path).name, error=exc
+            )
         return True
 
     def close(self):

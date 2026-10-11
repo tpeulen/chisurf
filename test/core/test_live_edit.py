@@ -17,8 +17,9 @@ from chisurf.core.api import (
 
 
 def _param(**kw):
-    return types.SimpleNamespace(value=1.0, fixed=False, bounds=(None, None), bounds_on=False,
-                                 link=None, **kw)
+    return types.SimpleNamespace(
+        value=1.0, fixed=False, bounds=(None, None), bounds_on=False, link=None, **kw
+    )
 
 
 def test_edit_parameter_writes_each_field():

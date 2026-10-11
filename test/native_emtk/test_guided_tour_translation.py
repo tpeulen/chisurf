@@ -34,11 +34,19 @@ class TourApp(ImApp):
     def __init__(self):
         self.actions = 0
         self.target = None
-        self.tour = help_guide.EmTkGuidedTour([
-            {"title": "First task", "text": "Read this.", "target": "action",
-             "await": {"hint": "Press Action."}},
-            {"title": "Second task", "text": "Ready."},
-        ], get_target_rect=lambda name: self.target, wait_for_controls=True)
+        self.tour = help_guide.EmTkGuidedTour(
+            [
+                {
+                    "title": "First task",
+                    "text": "Read this.",
+                    "target": "action",
+                    "await": {"hint": "Press Action."},
+                },
+                {"title": "Second task", "text": "Ready."},
+            ],
+            get_target_rect=lambda name: self.target,
+            wait_for_controls=True,
+        )
         super().__init__(self.render)
         self.io.wall_clock = False
         self.tour.start()

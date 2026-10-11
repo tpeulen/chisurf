@@ -62,7 +62,7 @@ def test_dock_addresses_remain_available(tmp_path, monkeypatch):
     app = attach_native_state("microtime_shifter_docks", create_app())
     try:
         driver = Driver(app, size=(1100, 720))
-        for key in ('files', 'controls', 'histogram', 'status'):
+        for key in ("files", "controls", "histogram", "status"):
             assert app.docks.window(key) is not None
             app.docks.focus(key)
             driver.draw(2)

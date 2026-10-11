@@ -141,19 +141,26 @@ def test_lut_normalize_caption_is_visible_and_real_toggle_round_trip_preserves_a
         app.model.load_files_job([str(sample)])
         app.model.preview_photons = 1000
         app.model.param_changed()
-        table = {key: np.asarray(value).copy() for key, value in app.model.ws.compute.current_table.items()}
+        table = {
+            key: np.asarray(value).copy()
+            for key, value in app.model.ws.compute.current_table.items()
+        }
         corrected = tuple(np.asarray(value).copy() for value in app.model.corrected_plot())
         driver = Driver(app, size)
         driver.draw(3)
         index = next(i for i, row in enumerate(driver.painter.texts) if row[5] == "Normalize")
         metrics = driver.painter.text_metadata[index]
-        assert metrics["visible_bounds"] == metrics["measured_bounds"], "The caption must not be clipped"
+        assert metrics["visible_bounds"] == metrics["measured_bounds"], (
+            "The caption must not be clipped"
+        )
         assert "normalize" in driver.ids()
         before = app.model.normalize
         driver.click("normalize")
         assert app.model.normalize is not before
         np.testing.assert_array_equal(corrected[0], app.model.corrected_plot()[0])
-        assert not np.array_equal(table["NTAC_fract"], app.model.ws.compute.current_table["NTAC_fract"])
+        assert not np.array_equal(
+            table["NTAC_fract"], app.model.ws.compute.current_table["NTAC_fract"]
+        )
         assert not np.array_equal(corrected[1], app.model.corrected_plot()[1])
         driver.click("normalize")
         assert app.model.normalize is before
@@ -180,8 +187,17 @@ def test_normalize_help_describes_threshold_masking_and_correction_effect(filena
             for value in node:
                 yield from controls(value)
 
-    normalize = next(node for node in controls(json.loads(spec.read_text())) if node.get("attr") == "normalize")
+    normalize = next(
+        node for node in controls(json.loads(spec.read_text())) if node.get("attr") == "normalize"
+    )
     help_text = normalize["description"].lower()
-    for concept in ("region mean", "before comparing", "threshold", "masked", "lut", "corrected preview"):
+    for concept in (
+        "region mean",
+        "before comparing",
+        "threshold",
+        "masked",
+        "lut",
+        "corrected preview",
+    ):
         assert concept in help_text
     assert "display only" not in help_text

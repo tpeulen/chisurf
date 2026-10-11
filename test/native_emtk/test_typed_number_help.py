@@ -77,10 +77,13 @@ def test_caller_authored_help_uses_translation_and_overrides_fallback(monkeypatc
     assert app.context.tooltip == translated
 
 
-@pytest.mark.parametrize("integer,text,commit,expected", [
-    (True, "12", "enter", 10),
-    (False, "-2.5", "click", 0),
-])
+@pytest.mark.parametrize(
+    "integer,text,commit,expected",
+    [
+        (True, "12", "enter", 10),
+        (False, "-2.5", "click", 0),
+    ],
+)
 def test_hover_metadata_preserves_real_entry_and_clamp(integer, text, commit, expected):
     """Typing stays buffered until the established Enter or click-away commit."""
     app = FieldApp(integer=integer, minimum=0, maximum=10)
@@ -107,11 +110,14 @@ def test_fractional_integer_remains_rejected_after_help_is_added():
     assert app.value == 3 and "whole number" in app.error
 
 
-@pytest.mark.parametrize("options,expected", [
-    ({"minimum": 2}, "Values below 2 are clamped to 2."),
-    ({"maximum": 8}, "Values above 8 are clamped to 8."),
-    ({}, "Enter a whole number. Press Enter or click elsewhere to commit."),
-])
+@pytest.mark.parametrize(
+    "options,expected",
+    [
+        ({"minimum": 2}, "Values below 2 are clamped to 2."),
+        ({"maximum": 8}, "Values above 8 are clamped to 8."),
+        ({}, "Enter a whole number. Press Enter or click elsewhere to commit."),
+    ],
+)
 def test_intrinsic_help_describes_only_the_supplied_bounds(options, expected):
     """Unbounded and one-sided fields do not invent constraints."""
     app = FieldApp(**options)
@@ -124,10 +130,8 @@ def test_intrinsic_help_describes_only_the_supplied_bounds(options, expected):
 def test_intrinsic_help_translates_templates_before_formatting_bounds(monkeypatch):
     """Numeric bounds remain data inside a translated explanatory sentence."""
     translations = {
-        "Enter a whole number. Press Enter or click elsewhere to commit.":
-            "Saisissez un entier. Validez avec Entrée ou en cliquant ailleurs.",
-        "Values are clamped between {minimum} and {maximum}.":
-            "Les valeurs sont limitées entre {minimum} et {maximum}.",
+        "Enter a whole number. Press Enter or click elsewhere to commit.": "Saisissez un entier. Validez avec Entrée ou en cliquant ailleurs.",
+        "Values are clamped between {minimum} and {maximum}.": "Les valeurs sont limitées entre {minimum} et {maximum}.",
     }
     monkeypatch.setattr(typed_field, "tr", lambda text: translations.get(text, text))
     app = FieldApp(minimum=0, maximum=10)

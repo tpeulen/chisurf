@@ -140,9 +140,7 @@ def qt_module():
 
     ref = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
     return SimpleNamespace(
-        IMAGING_PANELS=[
-            {k: v for k, v in p.items() if v is not None} for p in ref["panels"]
-        ],
+        IMAGING_PANELS=[{k: v for k, v in p.items() if v is not None} for p in ref["panels"]],
         ImagingToolsTool=SimpleNamespace(
             PIPELINE_ORDER=tuple(ref["pipeline_order"]),
             ANALYSIS_ROLES=tuple(ref["analysis_roles"]),

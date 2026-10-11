@@ -48,9 +48,13 @@ _HELPER = _SOURCE / "plugins" / "emtk_layout.py"
 
 #: Caption (normalised: no icon, no ``##id``, no trailing ellipsis, case-folded) -> action key.
 SYNONYMS = {
-    "help": "help", "tool help": "help", "open help": "help",
-    "guide": "guide", "tour": "guide",
-    "sound": "sound", "mute": "sound",
+    "help": "help",
+    "tool help": "help",
+    "open help": "help",
+    "guide": "guide",
+    "tour": "guide",
+    "sound": "sound",
+    "mute": "sound",
     "restart": "restart",
     "run": "run",
     "cancel": "cancel",
@@ -61,7 +65,10 @@ SYNONYMS = {
     "export": "export",
     "copy": "copy",
     "close": "close",
-    "load example": "example", "example": "example", "demo": "example", "load demo": "example",
+    "load example": "example",
+    "example": "example",
+    "demo": "example",
+    "load demo": "example",
 }
 
 #: Files held by another lane while this vocabulary landed: path -> why it still differs.
@@ -121,11 +128,18 @@ def python_findings(path: pathlib.Path) -> list[str]:
     found = []
     for node in ast.walk(tree):
         caption = None
-        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr in _WIDGETS and node.args):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in _WIDGETS
+            and node.args
+        ):
             caption = _literal(node.args[0])
-        elif (isinstance(node, ast.Tuple) and len(node.elts) >= 2
-              and isinstance(node.elts[1], (ast.Attribute, ast.Lambda))):
+        elif (
+            isinstance(node, ast.Tuple)
+            and len(node.elts) >= 2
+            and isinstance(node.elts[1], (ast.Attribute, ast.Lambda))
+        ):
             # (caption, self.callback, tip, key) rows a window loops over to draw its buttons.
             # A row that leads with a key instead is not recognised (the key is often also a
             # tour target, so its spelling must not be forced): such rows are migrated by hand.
@@ -135,12 +149,17 @@ def python_findings(path: pathlib.Path) -> list[str]:
         elif isinstance(node, ast.Dict):
             keys = {k.value for k in node.keys if isinstance(k, ast.Constant)}
             if "label" in keys and keys & {"tip", "key", "action", "enabled"}:
-                caption = _literal(node.values[[getattr(k, "value", None) for k in node.keys].index("label")])
+                caption = _literal(
+                    node.values[[getattr(k, "value", None) for k in node.keys].index("label")]
+                )
         if caption is not None and normalise(caption) in SYNONYMS:
             action = SYNONYMS[normalise(caption)]
-            found.append(f"{_rel(path)}:{node.lineno}: {caption!r} drawn by hand; "
-                         f"use action_button({action!r})" if action != "sound" else
-                         f"{_rel(path)}:{node.lineno}: {caption!r} drawn by hand; use sound_toggle()")
+            found.append(
+                f"{_rel(path)}:{node.lineno}: {caption!r} drawn by hand; "
+                f"use action_button({action!r})"
+                if action != "sound"
+                else f"{_rel(path)}:{node.lineno}: {caption!r} drawn by hand; use sound_toggle()"
+            )
     return found
 
 
@@ -221,20 +240,23 @@ def test_held_files_still_need_their_edit():
     assert not stale, f"migrated, remove from HELD: {stale}"
 
 
-@pytest.mark.parametrize("source, expected", [
-    ('im.button(tr("❓  Help"))', 1),
-    ('im.button("📖 Guide##g")', 1),
-    ('im.checkbox(tr("Sound") + "##sound", on)', 1),
-    ('im.small_button(icon_label("💾", tr("Save")))', 1),
-    ('button_row([{"label": tr("Browse..."), "key": "browse"}])', 1),
-    ('im.button(tr("Save JSON")); im.button(tr("Export CSV")); im.text(tr("Help"))', 0),
-    ('action_button("help"); sound_toggle(on)', 0),
-    ('rows = [("Guide", self.start_guide, tip, "guide")]', 1),
-    ('pairs = [("Help", "help"), ("Save", 3)]', 0),
-    ('rows = [("Save", lambda: save(), tip)]', 1),
-    ('rows = [("guide", self.start_guide)]', 0),
-    ('from qtpy import QtWidgets\nQtWidgets.QPushButton("Help"); im.button("Help")', 0),
-])
+@pytest.mark.parametrize(
+    "source, expected",
+    [
+        ('im.button(tr("❓  Help"))', 1),
+        ('im.button("📖 Guide##g")', 1),
+        ('im.checkbox(tr("Sound") + "##sound", on)', 1),
+        ('im.small_button(icon_label("💾", tr("Save")))', 1),
+        ('button_row([{"label": tr("Browse..."), "key": "browse"}])', 1),
+        ('im.button(tr("Save JSON")); im.button(tr("Export CSV")); im.text(tr("Help"))', 0),
+        ('action_button("help"); sound_toggle(on)', 0),
+        ('rows = [("Guide", self.start_guide, tip, "guide")]', 1),
+        ('pairs = [("Help", "help"), ("Save", 3)]', 0),
+        ('rows = [("Save", lambda: save(), tip)]', 1),
+        ('rows = [("guide", self.start_guide)]', 0),
+        ('from qtpy import QtWidgets\nQtWidgets.QPushButton("Help"); im.button("Help")', 0),
+    ],
+)
 def test_python_scan_sees_hand_drawn_variants(tmp_path, source, expected):
     """The scan catches each variant that shipped, and leaves compound captions and helpers alone."""
     probe = tmp_path / "probe.py"
@@ -244,11 +266,23 @@ def test_python_scan_sees_hand_drawn_variants(tmp_path, source, expected):
 
 def test_json_scan_checks_label_icon_and_fixed_tooltip(tmp_path):
     """A declared Help must use the canonical label, icon and tooltip; a Save may explain itself."""
-    spec = {"sections": [{"type": "button_row", "buttons": [
-        {"action": "help", "label": "❓ Help", "description": "Explain this."},
-        {"action": "save", "label": "Save", "icon": ACTIONS["save"].icon, "description": "Save the fit."},
-        {"action": "export_csv", "label": "Export CSV", "description": "CSV."},
-    ]}]}
+    spec = {
+        "sections": [
+            {
+                "type": "button_row",
+                "buttons": [
+                    {"action": "help", "label": "❓ Help", "description": "Explain this."},
+                    {
+                        "action": "save",
+                        "label": "Save",
+                        "icon": ACTIONS["save"].icon,
+                        "description": "Save the fit.",
+                    },
+                    {"action": "export_csv", "label": "Export CSV", "description": "CSV."},
+                ],
+            }
+        ]
+    }
     probe = tmp_path / "probe.view.json"
     probe.write_text(json.dumps(spec), encoding="utf-8")
     hits = json_findings(probe)
@@ -271,10 +305,20 @@ def test_icons_are_the_canonical_glyphs():
     from chisurf.gui.glyphs import Glyphs
 
     expected = {
-        "help": Glyphs.HELP, "guide": Glyphs.BOOK, "sound": Glyphs.SOUND, "restart": Glyphs.RESTART,
-        "close": Glyphs.CLOSE, "cancel": Glyphs.CLOSE, "run": Glyphs.RUN, "reset": Glyphs.RESET,
-        "save": Glyphs.SAVE, "open": Glyphs.OPEN, "browse": Glyphs.OPEN, "export": Glyphs.EXPORT,
-        "copy": Glyphs.COPY, "example": Glyphs.TEST,
+        "help": Glyphs.HELP,
+        "guide": Glyphs.BOOK,
+        "sound": Glyphs.SOUND,
+        "restart": Glyphs.RESTART,
+        "close": Glyphs.CLOSE,
+        "cancel": Glyphs.CLOSE,
+        "run": Glyphs.RUN,
+        "reset": Glyphs.RESET,
+        "save": Glyphs.SAVE,
+        "open": Glyphs.OPEN,
+        "browse": Glyphs.OPEN,
+        "export": Glyphs.EXPORT,
+        "copy": Glyphs.COPY,
+        "example": Glyphs.TEST,
     }
     assert {key: action.icon for key, action in ACTIONS.items()} == expected
     from chisurf.plugins.emtk_layout import SOUND_OFF_ICON

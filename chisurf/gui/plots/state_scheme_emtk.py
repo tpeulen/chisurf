@@ -57,11 +57,18 @@ def _align():
 
 def _hex(colour: str) -> tuple[int, int, int]:
     colour = colour.lstrip("#")
-    return tuple(int(colour[i:i + 2], 16) for i in (0, 2, 4))
+    return tuple(int(colour[i : i + 2], 16) for i in (0, 2, 4))
 
 
-def edge_route(p_i: Point, p_j: Point, *, r_from: float = NODE_RADIUS,
-               r_to: float = NODE_RADIUS, two_way: bool = False, bow: float | None = None):
+def edge_route(
+    p_i: Point,
+    p_j: Point,
+    *,
+    r_from: float = NODE_RADIUS,
+    r_to: float = NODE_RADIUS,
+    two_way: bool = False,
+    bow: float | None = None,
+):
     """Route a curved edge from circle *p_i* to circle *p_j*.
 
     The same geometry as :func:`chisurf.gui.widgets.graph_canvas.edge_path`:
@@ -137,8 +144,14 @@ class SchemeBinding:
         Called after a rate, preset or file changed the model.
     """
 
-    def __init__(self, model, target: str = "saturation", labels_attr: str = "state_names",
-                 excitation_edge=None, on_changed: Callable[[], None] | None = None) -> None:
+    def __init__(
+        self,
+        model,
+        target: str = "saturation",
+        labels_attr: str = "state_names",
+        excitation_edge=None,
+        on_changed: Callable[[], None] | None = None,
+    ) -> None:
         self.model = model
         self.target = target or "saturation"
         self.labels_attr = labels_attr
@@ -275,13 +288,21 @@ def default_layout(n: int, width: float, height: float) -> dict[int, Point]:
     if n == 3:
         return {0: (w * 0.25, h * 0.72), 1: (w * 0.50, h * 0.25), 2: (w * 0.75, h * 0.72)}
     if n == 4:
-        return {0: (w * 0.25, h * 0.72), 1: (w * 0.25, h * 0.25),
-                2: (w * 0.75, h * 0.25), 3: (w * 0.75, h * 0.72)}
+        return {
+            0: (w * 0.25, h * 0.72),
+            1: (w * 0.25, h * 0.25),
+            2: (w * 0.75, h * 0.25),
+            3: (w * 0.75, h * 0.72),
+        }
     cx, cy = w / 2.0, h / 2.0
     radius = min(w, h) / 2.0 - 55.0
-    return {i: (cx + radius * math.cos(2.0 * math.pi * i / max(n, 1) - math.pi / 2.0),
-                cy + radius * math.sin(2.0 * math.pi * i / max(n, 1) - math.pi / 2.0))
-            for i in range(n)}
+    return {
+        i: (
+            cx + radius * math.cos(2.0 * math.pi * i / max(n, 1) - math.pi / 2.0),
+            cy + radius * math.sin(2.0 * math.pi * i / max(n, 1) - math.pi / 2.0),
+        )
+        for i in range(n)
+    }
 
 
 class SchemeCanvas:
@@ -334,7 +355,11 @@ class SchemeCanvas:
         if n != self._n or len(self.coords) != n:
             self.arranged = False
             self.bows = {}
-        if n != self._n or len(self.coords) != n or (not self.arranged and size != self._laid_out_for):
+        if (
+            n != self._n
+            or len(self.coords) != n
+            or (not self.arranged and size != self._laid_out_for)
+        ):
             self.coords = default_layout(n, self._box[2], self._box[3])
             self._laid_out_for = size
             self._n = n
@@ -390,8 +415,15 @@ class SchemeCanvas:
         dl.add_rect((x, y), (x + w, y + h), (50, 50, 50))
         n = self.ensure_layout()
         if n <= 0:
-            p.text(x + 12, y + 12, w - 24, p.line_height(), 0,
-                   "This model has no rate scheme to draw.", (170, 170, 170))
+            p.text(
+                x + 12,
+                y + 12,
+                w - 24,
+                p.line_height(),
+                0,
+                "This model has no rate scheme to draw.",
+                (170, 170, 170),
+            )
             return
         p.push_clip(x, y, w, h)
         try:
@@ -410,8 +442,14 @@ class SchemeCanvas:
         dl.add_bezier_cubic(p0, p1, p2, p3, edge.colour, width, 24)
         angle = math.atan2(p3[1] - p2[1], p3[0] - p2[0])
         size = (10.0 + edge.width * 0.5) * self.zoom
-        left = (p3[0] - size * math.cos(angle - math.pi / 6), p3[1] - size * math.sin(angle - math.pi / 6))
-        right = (p3[0] - size * math.cos(angle + math.pi / 6), p3[1] - size * math.sin(angle + math.pi / 6))
+        left = (
+            p3[0] - size * math.cos(angle - math.pi / 6),
+            p3[1] - size * math.sin(angle - math.pi / 6),
+        )
+        right = (
+            p3[0] - size * math.cos(angle + math.pi / 6),
+            p3[1] - size * math.sin(angle + math.pi / 6),
+        )
         dl.add_triangle_filled(p3, left, right, edge.colour)
         text_w = p.text_width(edge.label)
         bw, bh = max(40.0, text_w + 12.0), max(20.0, p.line_height() + 6.0)
@@ -421,7 +459,9 @@ class SchemeCanvas:
             fill = (90, 20, 20, 240)
         dl.add_rect_filled((bx, by), (bx + bw, by + bh), fill, 6.0)
         dl.add_rect((bx, by), (bx + bw, by + bh), edge.colour, 6.0, 0, 1.2)
-        p.text(bx + (bw - text_w) / 2.0, by, text_w + 2.0, bh, _align(), edge.label, (255, 255, 255))
+        p.text(
+            bx + (bw - text_w) / 2.0, by, text_w + 2.0, bh, _align(), edge.label, (255, 255, 255)
+        )
         self._badges[(edge.i, edge.j)] = (bx, by, bw, bh)
 
     def _draw_node(self, dl, p, i: int, label: str) -> None:
@@ -440,8 +480,16 @@ class SchemeCanvas:
         rim = (255, 235, 59) if dragged else (240, 240, 240)
         dl.add_circle((cx, cy), r, rim, 32, 3.0 if dragged else 2.0)
         tw = p.text_width(label)
-        p.text(cx - tw / 2.0, cy - p.line_height() / 2.0, tw + 2.0, p.line_height(), _align(),
-               label, (255, 255, 255), True)
+        p.text(
+            cx - tw / 2.0,
+            cy - p.line_height() / 2.0,
+            tw + 2.0,
+            p.line_height(),
+            _align(),
+            label,
+            (255, 255, 255),
+            True,
+        )
 
     # -- gestures ------------------------------------------------------ #
     def press(self, px, py, x=0.0, y=0.0, w=0.0, h=0.0, modifiers=0, clicks=1):

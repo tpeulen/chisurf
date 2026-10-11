@@ -56,7 +56,9 @@ def test_the_grammar_knows_the_models():
         "rotamer_library=lib.pdb simulation_type=rotamer anchor_atoms=SG,CB,CA fluorophore_atom=F"
     )
     assert p["anchor_atoms"] == "SG,CB,CA" and p["fluorophore_atom"] == "F"
-    assert parse_dye_spec("Cy5")["simulation_type"] == "AV3"  # the library presets are AV3 (reference geometry)
+    assert (
+        parse_dye_spec("Cy5")["simulation_type"] == "AV3"
+    )  # the library presets are AV3 (reference geometry)
 
 
 def test_a_library_loads_and_conformers_are_placed_and_clash_filtered(tmp_path):
@@ -304,7 +306,9 @@ def test_switch_model_rotamer_or_av_default(qapp):
     assert p_kw["rotamer_library"] == "Lumiprobe Cy5 C2R"
 
     p_mode = parse_dye_spec("Cy5 mode=av")
-    assert p_mode["simulation_type"] == "AV3"  # "av" selects the accessible-volume model; the library geometry is three radii
+    assert (
+        p_mode["simulation_type"] == "AV3"
+    )  # "av" selects the accessible-volume model; the library geometry is three radii
 
     # 2. Dye mapping helpers
     assert find_rotamer_library_for_dye("Alexa488") == "AlexaFluor 488 C1R"
@@ -364,7 +368,9 @@ def test_switch_model_rotamer_or_av_default(qapp):
     av_default = next(
         e.state.av for e in viewer.objects.values() if getattr(e.state, "av", None) is not None
     )
-    assert av_default.params["simulation_type"] == "AV3"  # the library presets are AV3 (reference geometry)
+    assert (
+        av_default.params["simulation_type"] == "AV3"
+    )  # the library presets are AV3 (reference geometry)
 
     cmd.do("add_dye resi 127 and name CA, Alexa488, model=rotamer")
     assert errors == [], errors

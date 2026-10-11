@@ -24,8 +24,10 @@ def test_hidden_identity_does_not_push_fitting_buttons_to_another_row():
             for label in labels:
                 widths[label] = button_width(label)
             pressed = button_row(
-                [{"label": labels[0], "key": "run", "tip": "Run."},
-                 {"label": labels[1], "key": "stop", "tip": "Stop."}],
+                [
+                    {"label": labels[0], "key": "run", "tip": "Run."},
+                    {"label": labels[1], "key": "stop", "tip": "Stop."},
+                ],
                 width=110,
                 remember=remember,
             )

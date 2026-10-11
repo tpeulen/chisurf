@@ -720,7 +720,9 @@ class NativeNotebook:
             if im.button(tr("Export Python")):
                 on_export()
             im.set_item_tooltip(
-                tr("Export cell source to a Python script without changing the notebook's save path")
+                tr(
+                    "Export cell source to a Python script without changing the notebook's save path"
+                )
             )
         if self.error:
             im.text_wrapped(self.error)
@@ -764,7 +766,9 @@ class NativeNotebook:
                 size=(146.0 * ui_scale, 0.0),
             ):
                 self.start_cell(index)
-            im.set_item_tooltip(tr("Execute this cell; Shift+Enter runs it and moves to the next cell"))
+            im.set_item_tooltip(
+                tr("Execute this cell; Shift+Enter runs it and moves to the next cell")
+            )
             im.same_line()
             if im.button("↑"):
                 self.move_cell(index, -1)
@@ -842,11 +846,15 @@ class NativeNotebook:
             _, self.terminal_input = im.input_text(
                 "##notebook_terminal", self.terminal_input, hint=tr("Python command…")
             )
-            im.set_item_tooltip(tr("Enter a Python command using the same variables as notebook cells"))
+            im.set_item_tooltip(
+                tr("Enter a Python command using the same variables as notebook cells")
+            )
             if im.button(tr("Run command")):
                 self.start_terminal(self.terminal_input)
                 self.terminal_input = ""
-            im.set_item_tooltip(tr("Execute the terminal command in the notebook's persistent shell"))
+            im.set_item_tooltip(
+                tr("Execute the terminal command in the notebook's persistent shell")
+            )
         im.end_child()
         if self.pending_input is not None:
             request = self.pending_input

@@ -1,4 +1,5 @@
 """About ChiSurf using the same identity content and logo as the Qt dialog."""
+
 import json
 from pathlib import Path
 
@@ -32,13 +33,19 @@ class AboutApp(ImApp):
         self.form = FormState()
         self.copy_status = ""
         self.help_window = EmTkHelpWindow(
-            title=tr("About ChiSurf — Help"), resource=HERE / "help.md", owner=self,
+            title=tr("About ChiSurf — Help"),
+            resource=HERE / "help.md",
+            owner=self,
         )
         self.tour = EmTkGuidedTour(
-            HERE / "guide.json", owner=self, wait_for_controls=True,
+            HERE / "guide.json",
+            owner=self,
+            wait_for_controls=True,
             get_target_rect=lambda name: self.form.rects.get(name),
         )
-        self._copy_step = next(step for step in self.tour.steps if step["target"]["name"] == "copy_details")
+        self._copy_step = next(
+            step for step in self.tour.steps if step["target"]["name"] == "copy_details"
+        )
         self._copy_instruction = self._copy_step["text"]
         self.form.on_used = self._used
         self.logo = None
@@ -78,13 +85,16 @@ class AboutApp(ImApp):
 
     def details_text(self):
         """Return the displayed identity details without including user analysis data."""
-        return "\n".join((
-            "ChiSurf", tr("Fluorescence Data Analysis"),
-            tr("Version: {version}").format(version=__version__),
-            tr("Development: Thomas-Otavio Peulen"),
-            "thomas.peulen@tu-dortmund.de",
-            tr("Repository: github.com/fluorescence-tools/chisurf"),
-        ))
+        return "\n".join(
+            (
+                "ChiSurf",
+                tr("Fluorescence Data Analysis"),
+                tr("Version: {version}").format(version=__version__),
+                tr("Development: Thomas-Otavio Peulen"),
+                "thomas.peulen@tu-dortmund.de",
+                tr("Repository: github.com/fluorescence-tools/chisurf"),
+            )
+        )
 
     def copy_details(self):
         """Copy through the host-aware system clipboard and report its result."""
@@ -95,7 +105,9 @@ class AboutApp(ImApp):
             self._copy_step["text"] = self._copy_instruction
             self.tour.notify_used("copy_details")
         else:
-            self.copy_status = "Clipboard unavailable. Try another host or copy the displayed details."
+            self.copy_status = (
+                "Clipboard unavailable. Try another host or copy the displayed details."
+            )
             self._copy_step["text"] = self.copy_status
         self.request_frame()
 
@@ -157,10 +169,19 @@ class AboutApp(ImApp):
         # A narrow window or a long locale wraps the buttons onto further lines; the child must be as tall as the
         # lines the previous frame drew, or the wrapped buttons sit outside it and cannot be pressed.
         rows_height = row_height * lines
-        height = max(rows_height, viewport.size[1] - (y - viewport.pos[1]) - 8) if self.copy_status else rows_height
+        height = (
+            max(rows_height, viewport.size[1] - (y - viewport.pos[1]) - 8)
+            if self.copy_status
+            else rows_height
+        )
         im.begin_child((x, y, max(viewport.size[0] - 16, 1), height), scrollable=False)
         try:
-            draw_sections([{**section, "buttons": buttons}, *self.spec["sections"][1:]], self, self.form, titles=False)
+            draw_sections(
+                [{**section, "buttons": buttons}, *self.spec["sections"][1:]],
+                self,
+                self.form,
+                titles=False,
+            )
         finally:
             im.end_child()
         im.set_cursor_screen_pos((x, y + rows_height + 4))

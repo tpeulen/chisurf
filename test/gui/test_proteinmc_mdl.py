@@ -393,17 +393,28 @@ def test_trajectory_settings_hide_panels_and_keep_the_old_keys(qapp):
     """The four curve toggles choose the panels drawn; their state uses the old keys."""
     from chisurf.gui.plots.proteinMC import ProteinMCPlot
 
-    model = SimpleNamespace(rmsd=[1.0, 2.0], drmsd=[0.5, 0.4], energy=[3.0, 2.0],
-                            chi2r=[1.0, 0.9], current_frame_index=1)
+    model = SimpleNamespace(
+        rmsd=[1.0, 2.0],
+        drmsd=[0.5, 0.4],
+        energy=[3.0, 2.0],
+        chi2r=[1.0, 0.9],
+        current_frame_index=1,
+    )
     plot = ProteinMCPlot(SimpleNamespace(model=model, name="fit"))
     plot.update()
     assert plot._grid() is not None and len(plot._grid_key) == 4
     plot.show_energy = False
     plot.show_fret = False
     assert plot._grid() is not None and plot._grid_key == (
-        id(plot.panel_items[0]), id(plot.panel_items[1]))
+        id(plot.panel_items[0]),
+        id(plot.panel_items[1]),
+    )
     assert plot.get_settings_state() == {
-        "show_rmsd": True, "show_drmsd": True, "show_energy": False, "show_fret": False}
+        "show_rmsd": True,
+        "show_drmsd": True,
+        "show_energy": False,
+        "show_fret": False,
+    }
     plot.set_settings_state({"show_rmsd": False, "show_drmsd": False})
     assert plot._grid() is None
     plot.autoscale()

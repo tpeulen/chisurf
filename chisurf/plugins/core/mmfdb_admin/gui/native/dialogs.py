@@ -338,7 +338,13 @@ class AnalysisDetailsDialog(Dialog):
     spec = "analysis_details"
     size = (760.0, 440.0)
 
-    PRODUCT_KEYS = ("processed_data_id", "product_type", "storage_mode", "validation_status", "file_path")
+    PRODUCT_KEYS = (
+        "processed_data_id",
+        "product_type",
+        "storage_mode",
+        "validation_status",
+        "file_path",
+    )
 
     def __init__(self, analysis_id: str, detail: dict) -> None:
         super().__init__(f"Analysis details: {analysis_id}")

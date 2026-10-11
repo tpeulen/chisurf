@@ -15,4 +15,3 @@ if _manifest is not None:
     name = _manifest.display_name
 else:
     name = "Spectroscopy:Fluorescence decay:Anisotropy-Wizard"
-

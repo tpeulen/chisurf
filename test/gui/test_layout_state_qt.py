@@ -29,7 +29,10 @@ def _window():
     win = QtWidgets.QMainWindow()
     win.mdiarea = QtWidgets.QMdiArea()
     win.setCentralWidget(win.mdiarea)
-    for name, area in (("datasets", QtCore.Qt.LeftDockWidgetArea), ("analysis", QtCore.Qt.RightDockWidgetArea)):
+    for name, area in (
+        ("datasets", QtCore.Qt.LeftDockWidgetArea),
+        ("analysis", QtCore.Qt.RightDockWidgetArea),
+    ):
         dock = QtWidgets.QDockWidget(name)
         dock.setObjectName(name)
         dock.setWidget(QtWidgets.QLabel(name))
@@ -54,15 +57,24 @@ def test_neutral_layout_round_trips_on_a_fresh_qt_window(qapp):
     qapp.processEvents()
     state = ui_layout.capture(src)
     layout = state["layout"]
-    assert layout["docks"]["analysis"]["area"] == "bottom" and not layout["docks"]["datasets"]["visible"]
-    assert {v["uid"]: v["state"] for v in layout["views"]} == {"fit-a": "normal", "fit-b": "minimized"}
+    assert (
+        layout["docks"]["analysis"]["area"] == "bottom"
+        and not layout["docks"]["datasets"]["visible"]
+    )
+    assert {v["uid"]: v["state"] for v in layout["views"]} == {
+        "fit-a": "normal",
+        "fit-b": "minimized",
+    }
     assert set(state["backend"]["qt"]) == {"geometry", "dock_state"}
 
     # a project written by another front end: only the neutral layout is there
     dst = _window()
     assert ui_layout.restore(dst, {"layout": layout, "backend": {"emtk": {"docks": "x"}}}) == []
     qapp.processEvents()
-    assert dst.dockWidgetArea(dst.findChild(QtWidgets.QDockWidget, "analysis")) == QtCore.Qt.BottomDockWidgetArea
+    assert (
+        dst.dockWidgetArea(dst.findChild(QtWidgets.QDockWidget, "analysis"))
+        == QtCore.Qt.BottomDockWidgetArea
+    )
     assert not dst.findChild(QtWidgets.QDockWidget, "datasets").isVisible()
     d_subs = {s.fit.unique_identifier: s for s in dst.mdiarea.subWindowList()}
     assert d_subs["fit-b"].isMinimized()
@@ -75,20 +87,32 @@ def test_neutral_layout_round_trips_on_a_fresh_qt_window(qapp):
 def test_a_pre_neutral_project_still_restores_through_its_qt_bytes(qapp):
     src = _window()
     src.addDockWidget(QtCore.Qt.TopDockWidgetArea, src.findChild(QtWidgets.QDockWidget, "datasets"))
-    old_state = {"geometry": bytes(src.saveGeometry()).hex(), "dock_state": bytes(src.saveState()).hex()}
+    old_state = {
+        "geometry": bytes(src.saveGeometry()).hex(),
+        "dock_state": bytes(src.saveState()).hex(),
+    }
     dst = _window()
     assert ui_layout.restore(dst, old_state) == []
     qapp.processEvents()
-    assert dst.dockWidgetArea(dst.findChild(QtWidgets.QDockWidget, "datasets")) == QtCore.Qt.TopDockWidgetArea
+    assert (
+        dst.dockWidgetArea(dst.findChild(QtWidgets.QDockWidget, "datasets"))
+        == QtCore.Qt.TopDockWidgetArea
+    )
     for w in (src, dst):
         w.close()
 
 
 def test_a_dock_or_view_this_window_lacks_is_reported_and_the_rest_applied(qapp):
     win = _window()
-    missed = ui_layout.restore(win, {"layout": {
-        "docks": {"gone": {"visible": True}, "datasets": {"visible": False}},
-        "views": [{"uid": "fit-zz", "state": "normal"}]}})
+    missed = ui_layout.restore(
+        win,
+        {
+            "layout": {
+                "docks": {"gone": {"visible": True}, "datasets": {"visible": False}},
+                "views": [{"uid": "fit-zz", "state": "normal"}],
+            }
+        },
+    )
     assert sorted(missed) == ["dock gone", "view fit-zz"]
     assert not win.findChild(QtWidgets.QDockWidget, "datasets").isVisible()
     win.close()

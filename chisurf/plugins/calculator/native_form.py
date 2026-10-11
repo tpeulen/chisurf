@@ -102,7 +102,9 @@ def parameter_field(parameter, label=None):
     if expanded:
         changed, fixed = im.checkbox(tr("Fixed"), bool(parameter.fixed))
         im.set_item_tooltip(
-            tr("Hold this parameter constant during fitting; its manually entered value remains editable.")
+            tr(
+                "Hold this parameter constant during fitting; its manually entered value remains editable."
+            )
         )
         if changed:
             parameter.fixed = fixed

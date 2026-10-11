@@ -95,8 +95,10 @@ def main() -> None:
                 if hasattr(page, "series_key"):
                     live = page.live()
                     pages[title] = {
-                        "series": [(label, int(len(x))) for label, x, _y in
-                                   live.series.get(page.series_key, [])],
+                        "series": [
+                            (label, int(len(x)))
+                            for label, x, _y in live.series.get(page.series_key, [])
+                        ],
                         "state": page.state,
                     }
                     sub.grab().save(str(out / f"page_{index}_{title.replace(' ', '_')}.png"))

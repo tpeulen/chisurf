@@ -155,7 +155,9 @@ def real_settings_state() -> dict:
             if pathlib.Path(dirpath) == root:
                 dirs[:] = [d for d in dirs if d not in {"logs", "cache"}]
             for name in files:
-                if name.endswith(("-wal", "-shm")):  # a running ChiSurf rewrites the MMFDB's SQLite journal
+                if name.endswith(
+                    ("-wal", "-shm")
+                ):  # a running ChiSurf rewrites the MMFDB's SQLite journal
                     continue
                 f = pathlib.Path(dirpath) / name
                 try:

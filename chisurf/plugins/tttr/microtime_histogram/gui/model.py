@@ -71,7 +71,6 @@ def shift_histogram(values, offset):
     return out
 
 
-
 def gap_selection(selected, macro_times, gap_ticks, invert=False):
     """Narrow *selected* to the photons whose next selected photon follows within *gap_ticks*.
 
@@ -104,6 +103,7 @@ def gap_selection(selected, macro_times, gap_ticks, invert=False):
     keep = gaps >= int(gap_ticks) if invert else gaps <= int(gap_ticks)
     out[index[:-1][keep]] = True
     return out
+
 
 class HistogramModel:
     def __init__(self):
@@ -307,7 +307,9 @@ class HistogramModel:
                 else list(dict.fromkeys(self.parallel + self.perpendicular))
             )
             for channels in (vv_channels, self.perpendicular if self.polarized else []):
-                selected = mask & np.isin(routing, channels) if channels else np.zeros(len(micro), bool)
+                selected = (
+                    mask & np.isin(routing, channels) if channels else np.zeros(len(micro), bool)
+                )
                 if macro is not None:
                     selected = gap_selection(selected, macro, self.gap_ticks, self.gap_invert)
                 indices = binned[selected]

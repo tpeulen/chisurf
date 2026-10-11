@@ -32,12 +32,15 @@ class PresetApp(ImApp):
         self.dialog_action = ""
         self.drafts = {}
         self.item_rects = {}
-        spec = json.loads(Path(__file__).with_name("fcs_channel_preset.view.json").read_text(encoding="utf-8"))
+        spec = json.loads(
+            Path(__file__).with_name("fcs_channel_preset.view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(spec, (1100, 720))
         root = Path(__file__).parents[1]
         self.help = EmTkHelpWindow(title="FCS channel definitions", resource=root / "help.md")
-        self.tour = EmTkGuidedTour(steps=root / "guide.json", get_target_rect=self.item_rects.get,
-            wait_for_controls=True)
+        self.tour = EmTkGuidedTour(
+            steps=root / "guide.json", get_target_rect=self.item_rects.get, wait_for_controls=True
+        )
         self.docks = DockManager(Split("h", 0.34, Region("setup"), Region("pairs")))
         self.docks.add_window("setup", tr("Detector setup"), self.draw_setup, dock="setup")
         self.docks.add_window("pairs", tr("Channel pairs"), self.draw_pairs, dock="pairs")
@@ -191,7 +194,9 @@ class PresetApp(ImApp):
         )
         im.end_disabled()
         im.separator()
-        self.action("save", "Save", self.save, "Validate and persist pairs for this detector setup.")
+        self.action(
+            "save", "Save", self.save, "Validate and persist pairs for this detector setup."
+        )
         self.button(
             "Apply",
             "Save as the active preset and notify a connected correlator when provided.",

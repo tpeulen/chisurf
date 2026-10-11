@@ -30,10 +30,19 @@ def test_real_add_keeps_cached_simulation_in_its_owning_session(mode, polarizati
     source = TCSPCReader(experiment=experiment, skiprows=10, record_provenance=False)
     irf = source.read(filename=str(PROMPT))[0]
     reader = TCSPCSimulatorSetup(
-        experiment=experiment, sample_name="Cached native preview", n_tac=1024,
-        lifetime_spectrum=[.4, 1.1, .6, 4.1], rotation_spectrum=[.2, 1],
-        polarization=polarization, instrument_response_function=irf,
-        g_factor=1.42, l1=.04, l2=.11, vh_shift=.7, seed=154, record_provenance=False,
+        experiment=experiment,
+        sample_name="Cached native preview",
+        n_tac=1024,
+        lifetime_spectrum=[0.4, 1.1, 0.6, 4.1],
+        rotation_spectrum=[0.2, 1],
+        polarization=polarization,
+        instrument_response_function=irf,
+        g_factor=1.42,
+        l1=0.04,
+        l2=0.11,
+        vh_shift=0.7,
+        seed=154,
+        record_provenance=False,
     )
     state = SessionState(datasets=[irf], fits=[])
     client = _client(state) if mode == "server" else None
@@ -48,16 +57,24 @@ def test_real_add_keeps_cached_simulation_in_its_owning_session(mode, polarizati
         expected_count = 1 if polarization == "vm" else 2
         assert len(cached) == expected_count
         cached.current_dataset = expected_count - 1
-        cached.meta_data.update(note="native cached preview", axes=("time", "channel"),
-                                calibration=np.array([reader.g_factor, reader.l1, reader.l2]))
+        cached.meta_data.update(
+            note="native cached preview",
+            axes=("time", "channel"),
+            calibration=np.array([reader.g_factor, reader.l1, reader.l2]),
+        )
         expected = []
         for index, member in enumerate(cached):
             member.meta_data["channel"] = index
-            expected.append({
-                "uid": member.unique_identifier, "name": member.name,
-                "arrays": {field: np.asarray(getattr(member, field)).copy()
-                           for field in ("x", "y", "ex", "ey", "mask")},
-            })
+            expected.append(
+                {
+                    "uid": member.unique_identifier,
+                    "name": member.name,
+                    "arrays": {
+                        field: np.asarray(getattr(member, field)).copy()
+                        for field in ("x", "y", "ex", "ey", "mask")
+                    },
+                }
+            )
         uid, current = cached.unique_identifier, cached._current_dataset
 
         def forbidden(*args, **kwargs):
@@ -77,7 +94,7 @@ def test_real_add_keeps_cached_simulation_in_its_owning_session(mode, polarizati
         assert imported.experiment.name == experiment.name
         assert imported.meta_data["note"] == "native cached preview"
         assert imported.meta_data["axes"] == ("time", "channel")
-        np.testing.assert_array_equal(imported.meta_data["calibration"], [1.42, .04, .11])
+        np.testing.assert_array_equal(imported.meta_data["calibration"], [1.42, 0.04, 0.11])
         for index, (actual, original) in enumerate(zip(imported, expected)):
             assert actual.unique_identifier == original["uid"] and actual.name == original["name"]
             assert actual.meta_data["channel"] == index
@@ -86,8 +103,20 @@ def test_real_add_keeps_cached_simulation_in_its_owning_session(mode, polarizati
                 np.testing.assert_array_equal(getattr(actual, field), value)
             restored = actual.data_reader
             assert restored.experiment is actual.experiment
-            for field in ("g_factor", "l1", "l2", "vh_shift", "polarization", "is_vv_vh",
-                          "dt", "rep_rate", "seed", "add_noise", "n_tac", "p0"):
+            for field in (
+                "g_factor",
+                "l1",
+                "l2",
+                "vh_shift",
+                "polarization",
+                "is_vv_vh",
+                "dt",
+                "rep_rate",
+                "seed",
+                "add_noise",
+                "n_tac",
+                "p0",
+            ):
                 assert getattr(restored, field) == getattr(reader, field)
             np.testing.assert_array_equal(restored.lifetime_spectrum, reader.lifetime_spectrum)
             np.testing.assert_array_equal(restored.rotation_spectrum, reader.rotation_spectrum)
@@ -95,12 +124,19 @@ def test_real_add_keeps_cached_simulation_in_its_owning_session(mode, polarizati
             assert restored_irf.unique_identifier == irf.unique_identifier
             assert restored_irf.name == irf.name and restored_irf.filename == irf.filename
             for field in ("x", "y", "ex", "ey", "mask"):
-                assert np.asarray(getattr(restored_irf, field)).dtype == np.asarray(getattr(irf, field)).dtype
+                assert (
+                    np.asarray(getattr(restored_irf, field)).dtype
+                    == np.asarray(getattr(irf, field)).dtype
+                )
                 np.testing.assert_array_equal(getattr(restored_irf, field), getattr(irf, field))
         if mode == "local":
             assert imported is cached
         else:
-            imports = [request for request in client._client.requests if request["method"] == "dataset.load"]
+            imports = [
+                request
+                for request in client._client.requests
+                if request["method"] == "dataset.load"
+            ]
             assert len(imports) == 1
         assert cs.imported_datasets is global_datasets and cs.fits is global_fits
         assert tuple(global_datasets) == datasets_before and tuple(global_fits) == fits_before

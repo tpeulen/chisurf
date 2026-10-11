@@ -27,10 +27,13 @@ def test_explicit_page_reveals_real_target_without_pressing():
     """An awaited child action can route its page while keeping its wait intact."""
     child = ExampleApp()
     other = ExampleApp()
-    hub = ToolHubApp("Example", [
-        {"name": "Files", "role": "files", "factory": lambda: child},
-        {"name": "Compute", "role": "compute", "factory": lambda: other},
-    ])
+    hub = ToolHubApp(
+        "Example",
+        [
+            {"name": "Files", "role": "files", "factory": lambda: child},
+            {"name": "Compute", "role": "compute", "factory": lambda: other},
+        ],
+    )
     try:
         hub.select("compute")
         hub._tour_step(1, {"page": "files", "target": {"name": "load_example"}, "await": True})

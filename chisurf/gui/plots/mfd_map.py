@@ -55,9 +55,7 @@ class MfdMapPlot(plotbase.Plot):
         self.colormaps = list(COLORMAPS) if default in COLORMAPS else [default, *COLORMAPS]
         self.colormap = self._read_attr(options.get("colormap_attr"), default)
         self.panel = cp.Panel()
-        self.panel.set_labels(
-            bottom=options.get("x_label", "x"), left=options.get("y_label", "y")
-        )
+        self.panel.set_labels(bottom=options.get("x_label", "x"), left=options.get("y_label", "y"))
         from chisurf.gui.plots.emtk_page import PanelItem
 
         self.panel_items = [PanelItem(self.panel, self.panel._canvas)]
@@ -132,9 +130,7 @@ class MfdMapPlot(plotbase.Plot):
         if levels[1] <= levels[0]:
             levels = (levels[0], levels[0] + 1.0)
         if self._image is None:
-            self._image = self.panel.image(
-                data, colormap=self.colormap, levels=levels, rect=rect
-            )
+            self._image = self.panel.image(data, colormap=self.colormap, levels=levels, rect=rect)
         else:
             self._image.set_image(data)
             self._image.set_levels(*levels)

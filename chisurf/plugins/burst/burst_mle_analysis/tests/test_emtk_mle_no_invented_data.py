@@ -163,7 +163,9 @@ def test_the_app_source_cannot_make_data_up():
     tree = ast.parse((GUI / "native.py").read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            assert "random" not in {a.name.split(".")[0] for a in node.names}, "the app imports random"
+            assert "random" not in {a.name.split(".")[0] for a in node.names}, (
+                "the app imports random"
+            )
         if isinstance(node, ast.ImportFrom) and node.module:
             assert node.module.split(".")[0] != "random"
         if isinstance(node, ast.Attribute) and node.attr == "random":

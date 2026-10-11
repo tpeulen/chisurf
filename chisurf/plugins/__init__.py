@@ -204,7 +204,11 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
 
     return {
         "plugin_name": manifest.display_name or manifest.id,
-        "description": (manifest.entrypoints.action.description if manifest.entrypoints.action else manifest.description or legacy_description or "No description available."),
+        "description": (
+            manifest.entrypoints.action.description
+            if manifest.entrypoints.action
+            else manifest.description or legacy_description or "No description available."
+        ),
         "cli_entrypoint": cli_entrypoint,
         # A tool is CLI-only when it offers no way in from a menu. That is *not*
         # the same as having no ``gui`` entrypoint: the older tools are entered by
@@ -212,7 +216,10 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
         # names. Deriving this from ``gui`` alone dropped every script-launched
         # tool out of the menus the moment it gained a manifest.
         "cli_only": not (
-            manifest.entrypoints.gui or manifest.entrypoints.emtk or manifest.entrypoints.script or manifest.entrypoints.action
+            manifest.entrypoints.gui
+            or manifest.entrypoints.emtk
+            or manifest.entrypoints.script
+            or manifest.entrypoints.action
         ),
         "menu_hidden": bool(manifest.menu_hidden),
         "manifest_id": manifest.id,
@@ -352,8 +359,10 @@ def _iter_plugins_uncached():
 
         for root, dirs, files in os.walk(str(base_path)):
             dirs[:] = sorted(
-                directory for directory in dirs
-                if not directory.startswith(".") and directory != "__pycache__"
+                directory
+                for directory in dirs
+                if not directory.startswith(".")
+                and directory != "__pycache__"
                 and "{{" not in directory
             )
             try:
@@ -387,13 +396,17 @@ def _iter_plugins_uncached():
                 if preferred != package_dir.resolve():
                     _log.warning(
                         "Shadowed plugin module %r at %s ignored; Python selects %s",
-                        module_path, package_dir, preferred or packages.parent_locations(parts),
+                        module_path,
+                        package_dir,
+                        preferred or packages.parent_locations(parts),
                     )
                     continue
                 if module_path in seen_modules:
                     _log.warning(
                         "Duplicate plugin module %r at %s ignored; using %s",
-                        module_path, package_dir, seen_modules[module_path],
+                        module_path,
+                        package_dir,
+                        seen_modules[module_path],
                     )
                     continue
                 # A real Python package shadows later roots even without metadata.
@@ -437,7 +450,9 @@ def _iter_plugins_uncached():
                 if manifest_id and manifest_id in seen_ids:
                     _log.warning(
                         "Duplicate plugin id %r at %s ignored; using %s",
-                        manifest_id, package_dir, seen_ids[manifest_id],
+                        manifest_id,
+                        package_dir,
+                        seen_ids[manifest_id],
                     )
                     continue
                 if manifest_id:

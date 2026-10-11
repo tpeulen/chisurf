@@ -65,8 +65,13 @@ def test_tool_hub_first_frame_shows_a_placeholder_and_adopts_the_tool_later():
     from chisurf.emtk.tool_hub import ToolHubApp
 
     gate, made = threading.Event(), []
-    hub = ToolHubApp("Hub", [{"name": "First tool", "role": "first", "factory": gated(gate, made)},
-                             {"name": "Second", "role": "second", "factory": Tool}])
+    hub = ToolHubApp(
+        "Hub",
+        [
+            {"name": "First tool", "role": "first", "factory": gated(gate, made)},
+            {"name": "Second", "role": "second", "factory": Tool},
+        ],
+    )
     try:
         shown = strings(hub)
         assert hub.building and hub.child is None and hub.animating()
@@ -119,8 +124,11 @@ def test_setup_store_is_read_off_the_first_frame_and_a_newer_read_wins(tmp_path,
     gate = threading.Event()
     model = ChannelDefinition()
     monkeypatch.setattr(model, "db", None, raising=False)
-    monkeypatch.setattr(model, "read_setups_payload",
-                        lambda: gate.wait(30) and {"setups": {"old": {}}, "last_used": "old"})
+    monkeypatch.setattr(
+        model,
+        "read_setups_payload",
+        lambda: gate.wait(30) and {"setups": {"old": {}}, "last_used": "old"},
+    )
     page = type("Page", (), {"model": model, "status": ""})()
     bar = SetupToolbar(page)
     bar.reload_async()
@@ -129,7 +137,9 @@ def test_setup_store_is_read_off_the_first_frame_and_a_newer_read_wins(tmp_path,
     gate.set()
     bar.wait()
     bar.poll()
-    assert not bar.loading and sorted(model.setups) == ["new"]  # the stale background read is dropped
+    assert not bar.loading and sorted(model.setups) == [
+        "new"
+    ]  # the stale background read is dropped
 
 
 def test_registry_prefetch_reports_ready_once_read():
@@ -144,7 +154,9 @@ def test_plugin_manifests_are_read_once_and_handed_out_as_copies(monkeypatch):
     from chisurf.emtk import plugins
 
     first = plugins.manifests()
-    monkeypatch.setattr(plugins, "_read_manifests", lambda root: pytest.fail("the shipped tree was walked again"))
+    monkeypatch.setattr(
+        plugins, "_read_manifests", lambda root: pytest.fail("the shipped tree was walked again")
+    )
     second = plugins.manifests()
     assert first == second and first is not second
     second[next(iter(second))]["id"] = "changed"
@@ -155,7 +167,9 @@ def test_i18n_catalogs_are_parsed_once(monkeypatch):
     from chisurf.emtk import i18n
 
     i18n.install()
-    monkeypatch.setattr(i18n, "read_catalog", lambda *a, **k: pytest.fail("a catalog was parsed again"))
+    monkeypatch.setattr(
+        i18n, "read_catalog", lambda *a, **k: pytest.fail("a catalog was parsed again")
+    )
     i18n.install()
 
 
@@ -182,6 +196,8 @@ def test_chimol_view_starts_in_the_background_and_says_so(monkeypatch):
     painter = driver.frame()
     assert view.starting and view.app is None
     assert any("Starting ChiMOL" in s for s in painter.strings)
-    assert view.screen_points([[0.0, 0.0, 0.0]])[0].size == 0  # per-frame queries never wait for the start
+    assert (
+        view.screen_points([[0.0, 0.0, 0.0]])[0].size == 0
+    )  # per-frame queries never wait for the start
     gate.set()
     assert view.ensure() and view.app is fake and not view.starting  # joins the start

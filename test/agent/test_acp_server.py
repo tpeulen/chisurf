@@ -20,7 +20,9 @@ class FakeLLMClient(LLMClient):
 
     def complete(self, messages, tools=None):
         self.turns.append({"messages": messages, "tools": tools})
-        return LLMResponse(text=self.answer, raw_message={"role": "assistant", "content": self.answer})
+        return LLMResponse(
+            text=self.answer, raw_message={"role": "assistant", "content": self.answer}
+        )
 
 
 class TestAcpServer:
@@ -73,7 +75,9 @@ class TestAcpServer:
         session = server.sessions[sid]
         session.llm = FakeLLMClient("Hello from ChiSurf ACP!")
 
-        server._run_prompt_worker(42, {"sessionId": sid, "prompt": [{"type": "text", "text": "help me"}]})
+        server._run_prompt_worker(
+            42, {"sessionId": sid, "prompt": [{"type": "text", "text": "help me"}]}
+        )
 
         out.seek(0)
         lines = [json.loads(line.decode("utf-8")) for line in out if line.strip()]
@@ -84,7 +88,8 @@ class TestAcpServer:
 
         # Check session/update notification with message chunk
         chunk_notif = next(
-            m for m in lines
+            m
+            for m in lines
             if m.get("method") == "session/update"
             and m.get("params", {}).get("update", {}).get("sessionUpdate") == "agent_message_chunk"
         )
@@ -137,13 +142,16 @@ def test_acp_stdio_entrypoint_never_bootstraps_qt(monkeypatch):
     import builtins
 
     from chisurf.core.agent import acp_server
+
     original = builtins.__import__
     attempts = []
+
     def no_gui(name, *args, **kwargs):
         if name.split(".")[0] in {"qtpy", "PyQt5", "PyQt6", "PySide2", "PySide6"}:
             attempts.append(name)
             raise AssertionError("GUI dependency: " + name)
         return original(name, *args, **kwargs)
+
     monkeypatch.setattr(builtins, "__import__", no_gui)
     monkeypatch.setattr(acp_server.AcpServer, "run", lambda self: None)
     assert acp_server.run_acp_server() == 0
@@ -154,12 +162,19 @@ def test_acp_entrypoint_uses_injected_pure_presenter(monkeypatch):
     """An embedding view supplies scheduling without a view import in core."""
     from chisurf.core.agent import acp_server
     from chisurf.core.runtime import presentation
+
     calls = []
     prior = presentation.get_presenter()
+
     def presenter(callback, *args, **kwargs):
         calls.append(threading.get_ident())
         return callback(*args, **kwargs)
-    monkeypatch.setattr(acp_server.AcpServer, "run", lambda self: presentation.notify(lambda: calls.append("notified")))
+
+    monkeypatch.setattr(
+        acp_server.AcpServer,
+        "run",
+        lambda self: presentation.notify(lambda: calls.append("notified")),
+    )
     try:
         assert acp_server.run_acp_server(presenter=presenter) == 0
         assert calls[-1] == "notified"
@@ -170,14 +185,20 @@ def test_acp_entrypoint_uses_injected_pure_presenter(monkeypatch):
 def test_acp_server_uses_http_delegate_for_transport_provider(monkeypatch):
     from chisurf.core.agent import acp_server
     from chisurf.core.settings import ai_settings
+
     providers = []
-    monkeypatch.setattr(ai_settings, "get_api_settings", lambda provider=None: {"acp_backend_provider": "local"})
+    monkeypatch.setattr(
+        ai_settings, "get_api_settings", lambda provider=None: {"acp_backend_provider": "local"}
+    )
     monkeypatch.setattr(ai_settings, "get_provider", lambda: "acp")
+
     class Server:
         def __init__(self, **kwargs):
             providers.append(kwargs["provider"])
+
         def run(self):
             pass
+
     monkeypatch.setattr(acp_server, "AcpServer", Server)
     assert acp_server.run_acp_server(provider="acp") == 0
     assert providers == ["local"]

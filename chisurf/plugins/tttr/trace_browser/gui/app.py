@@ -699,9 +699,11 @@ class TraceBrowserApp(ImApp):
                 implot.end_plot()
             implot.end_subplots()
         im.set_item_tooltip(
-            tr("Counts per time bin of the selected file, one line per series and their sum. "
-            "Scroll to zoom, drag to pan, double click to fit. The histogram on the right counts "
-            "how many bins hold each count.")
+            tr(
+                "Counts per time bin of the selected file, one line per series and their sum. "
+                "Scroll to zoom, drag to pan, double click to fit. The histogram on the right counts "
+                "how many bins hold each count."
+            )
         )
 
     def _draw_notes(self, current: Any) -> None:
@@ -720,9 +722,11 @@ class TraceBrowserApp(ImApp):
         if disabled:
             im.end_disabled()
         im.set_item_tooltip(
-            tr("Free text about the selected file. It is the Notes column of the table: both show and "
-            "edit the same text, saved beside the data in the folder's .trace_browser_meta.json "
-            "shortly after you stop typing.")
+            tr(
+                "Free text about the selected file. It is the Notes column of the table: both show and "
+                "edit the same text, saved beside the data in the folder's .trace_browser_meta.json "
+                "shortly after you stop typing."
+            )
         )
         self.item_rects["annotation"] = im.get_item_rect()
         if changed and not disabled:
@@ -802,13 +806,17 @@ class TraceBrowserApp(ImApp):
             if im.button(str(pending["yes"]) + "##confirm_yes"):
                 self.model.confirm_yes()
             im.set_item_tooltip(
-                tr("Move the listed files to the .trash folder of the opened folder. "
-                "They are not deleted for good.")
+                tr(
+                    "Move the listed files to the .trash folder of the opened folder. "
+                    "They are not deleted for good."
+                )
             )
             self.item_rects["confirm_yes"] = im.get_item_rect()
             im.same_line()
             if action_button(
-                "cancel", tooltip=tr("Keep the files where they are. Nothing changes."), id="confirm_no"
+                "cancel",
+                tooltip=tr("Keep the files where they are. Nothing changes."),
+                id="confirm_no",
             ):
                 self.model.confirm_no()
             self.item_rects["confirm_no"] = im.get_item_rect()

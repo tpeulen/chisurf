@@ -33,8 +33,12 @@ def container(sample_copy: Path) -> Path:
     table = read_bur_file(sample_copy / BURST_TABLE)
     raw = sample_copy / "m000.spc"
     write_container(raw, table, parameters={"run": 1}, run=BIG)
-    write_container(raw, take_where(table, np.arange(row_count(table)) < SMALL_N),
-                    parameters={"run": 2}, run=SMALL_RUN)
+    write_container(
+        raw,
+        take_where(table, np.arange(row_count(table)) < SMALL_N),
+        parameters={"run": 2},
+        run=SMALL_RUN,
+    )
     return sample_copy / "m000.pto"
 
 
@@ -94,7 +98,9 @@ def test_the_view_spec_has_the_run_picker_once(model):
 
     from chisurf.plugins.burst.burst_mle_analysis.gui import native
 
-    spec = json.loads((Path(native.__file__).parent / "mle_native.view.json").read_text(encoding="utf-8"))
+    spec = json.loads(
+        (Path(native.__file__).parent / "mle_native.view.json").read_text(encoding="utf-8")
+    )
     assert with_run_picker(spec) == spec
 
 

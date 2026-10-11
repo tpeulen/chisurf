@@ -45,8 +45,12 @@ def _surface_class():
         def _render(self) -> None:
             vp = im.get_main_viewport()
             width, height = float(vp.size[0]), float(vp.size[1])
-            flags = (im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
-                     | im.WindowFlags.NO_MOVE | im.WindowFlags.NO_COLLAPSE)
+            flags = (
+                im.WindowFlags.NO_TITLE_BAR
+                | im.WindowFlags.NO_RESIZE
+                | im.WindowFlags.NO_MOVE
+                | im.WindowFlags.NO_COLLAPSE
+            )
             pad = 6.0  # the form's inset from the dock's edges
             im.begin("##plot-settings", (pad, pad, width - 2 * pad, height - 2 * pad), flags=flags)
             page = self.page

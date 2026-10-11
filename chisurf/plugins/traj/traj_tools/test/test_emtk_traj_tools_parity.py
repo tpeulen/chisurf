@@ -21,7 +21,16 @@ REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists()
 DCD = REPO / "test/data/atomic_coordinates/trajectory/hgbp1/hgbp1_transition.dcd"
 BIG, SMALL = (1200, 800), (800, 600)
 #: What the retired Qt workspace answered, recorded before it was deleted.
-QT_TABS = ["Align", "Convert", "Energy Calc", "FRET", "Join", "Remove Clashed", "Rot Translate", "Save Topol"]
+QT_TABS = [
+    "Align",
+    "Convert",
+    "Energy Calc",
+    "FRET",
+    "Join",
+    "Remove Clashed",
+    "Rot Translate",
+    "Save Topol",
+]
 
 
 def test_the_list_is_the_qt_tabs_in_the_same_order():

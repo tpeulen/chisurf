@@ -92,7 +92,11 @@ def test_native_correlator_host_matches_frozen_real_measurement(tmp_path):
         model.channel_a, model.channel_b, model.n_splits = "0,1", "8,9", 2
         assert len(model._tttr) == 183657
         model.correlate_data()
-        facts = json.loads((root / "okf/validation/release-readiness-w1/fcs-before/correlator-facts.json").read_text())
+        facts = json.loads(
+            (
+                root / "okf/validation/release-readiness-w1/fcs-before/correlator-facts.json"
+            ).read_text()
+        )
         assert len(model._correlations) == len(facts["correlations"]) == 2
         for measured, frozen in zip(model._correlations, facts["correlations"]):
             for quantity in ("x", "y"):

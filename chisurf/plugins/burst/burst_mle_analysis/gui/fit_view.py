@@ -45,7 +45,9 @@ def burst_lifetimes(rows: list[dict] | None) -> dict[str, np.ndarray]:
             series.setdefault(key, []).append(number)
     # Sorted by series: the batch rows arrive in worker order; the plot must not depend on it.
     return {
-        key: np.asarray(values, dtype=np.float64) for key, values in sorted(series.items()) if values
+        key: np.asarray(values, dtype=np.float64)
+        for key, values in sorted(series.items())
+        if values
     }
 
 

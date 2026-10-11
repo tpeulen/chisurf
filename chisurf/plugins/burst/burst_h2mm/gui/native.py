@@ -99,7 +99,9 @@ class H2mmNativeApp(TourTarget, ImApp):
         self._dialog_window: DialogWindow | None = None
         self.nano_colours: set[str] | None = None
         self.nano_states: set[int] | None = None
-        self.editor = ChannelDefinitionWidget(self.model.setup, on_changed=self.model.set_setup, host_app=self)
+        self.editor = ChannelDefinitionWidget(
+            self.model.setup, on_changed=self.model.set_setup, host_app=self
+        )
         self.help_window = EmTkHelpWindow(
             title="Photon-by-Photon HMM (H2MM) - Help & Reference",
             resource=HERE / "help.md",
@@ -215,7 +217,10 @@ class H2mmNativeApp(TourTarget, ImApp):
             "save_plot": "h2mm.png",
         }.get(action, "")
         self.dialog = FileDialog(
-            title, mode=mode, filename=filename, directory=directory,
+            title,
+            mode=mode,
+            filename=filename,
+            directory=directory,
             filters=filters or [("All files", ["*"])],
         )
         self.dialog_action = action
@@ -445,7 +450,9 @@ class H2mmNativeApp(TourTarget, ImApp):
         im.text_wrapped(self.model.status_text)
         if self.model.analysis is None:
             im.text_wrapped(
-                tr("No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM.")
+                tr(
+                    "No H2MM fit yet. Select a burst folder, define the detectors and press Run H2MM."
+                )
             )
             return
         draw_sections(self.tables, self.model, self.form)

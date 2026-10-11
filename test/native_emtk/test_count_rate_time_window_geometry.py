@@ -48,7 +48,11 @@ def test_saved_custom_geometry_and_dock_placement_win(tools, plugin_id):
     app.close()
     reopened = attach_native_state(plugin_id, tools[plugin_id]())
     try:
-        gui = reopened.count_rate_gui if plugin_id == "tttr_count_rate_analysis" else reopened.time_window_gui
+        gui = (
+            reopened.count_rate_gui
+            if plugin_id == "tttr_count_rate_analysis"
+            else reopened.time_window_gui
+        )
         assert reopened.window_size == (1390, 910)
         assert gui.docks.state()["layout"] == saved["layout"]
         assert gui.docks.state()["windows"] == saved["windows"]
@@ -91,7 +95,10 @@ def test_real_calculate_process_and_resize_preserve_science_and_output(tools, tm
     tttr = open_tttr(sample)
     assert len(tttr) == 6714549
     channels = [int(ch) for ch in tttr.get_used_routing_channels()]
-    setup = {"detectors": {"all": {"chs": channels, "micro_time_ranges": []}}, "windows": {"": None}}
+    setup = {
+        "detectors": {"all": {"chs": channels, "micro_time_ranges": []}},
+        "windows": {"": None},
+    }
     rate = rate_app(setups={"Leica all": setup})
     try:
         rate.tool.add_paths([sample])
@@ -102,8 +109,15 @@ def test_real_calculate_process_and_resize_preserve_science_and_output(tools, tm
             rate.tool.job.future.result(timeout=30)
         rate.tool.job.poll()
         rows = rate.tool._model.results_rows()
-        assert rows == [{"channel": "all", "mean_khz": 44.72292671613037, "std_khz": 0.0,
-                         "photons": 6714549, "time_s": 150.13661879999998}]
+        assert rows == [
+            {
+                "channel": "all",
+                "mean_khz": 44.72292671613037,
+                "std_khz": 0.0,
+                "photons": 6714549,
+                "time_s": 150.13661879999998,
+            }
+        ]
         driver.draw(3, size=(1390, 910))
         assert rate.tool._model.results_rows() == rows
     finally:
@@ -124,7 +138,10 @@ def test_real_calculate_process_and_resize_preserve_science_and_output(tools, tm
         output = next((tmp_path / "output").rglob("*.bst"))
         data = output.read_bytes()
         assert len(data) == 246 and len(data.splitlines()) == 16
-        assert hashlib.sha256(data).hexdigest() == "4e4d0add2e46ce4f0623bb98a2d5f6bda9a872a33af9eae9b0ccb984d6a7a2ad"
+        assert (
+            hashlib.sha256(data).hexdigest()
+            == "4e4d0add2e46ce4f0623bb98a2d5f6bda9a872a33af9eae9b0ccb984d6a7a2ad"
+        )
         driver.draw(3, size=(1390, 910))
         assert output.read_bytes() == data
         assert hashlib.sha256(sample.read_bytes()).hexdigest() == source_hash

@@ -73,7 +73,16 @@ class PathListView:
             ),
         ]
         if "folder" in self.actions:
-            buttons.insert(1, ("folder", tr("Folder"), tr("Add supported files from a folder recursively."), False, self.actions["folder"]))
+            buttons.insert(
+                1,
+                (
+                    "folder",
+                    tr("Folder"),
+                    tr("Add supported files from a folder recursively."),
+                    False,
+                    self.actions["folder"],
+                ),
+            )
         for key, label, tip, needs_files, act in buttons:
             label, tip = tr(label), tr(tip)
             width = im.calc_text_size(label)[0] + 16.0

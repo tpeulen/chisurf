@@ -654,7 +654,8 @@ def _curve_record(curve: Any) -> dict[str, Any]:
     if any(array.ndim != 1 for array in arrays.values()):
         raise SessionCodecError(f"dataset {_uid(curve, 'dataset')} must contain 1D arrays")
     if any(
-        not np.issubdtype(array.dtype, np.number) and not (key == "mask" and array.dtype.kind == "b")
+        not np.issubdtype(array.dtype, np.number)
+        and not (key == "mask" and array.dtype.kind == "b")
         for key, array in arrays.items()
     ):
         raise SessionCodecError(f"dataset {_uid(curve, 'dataset')} must contain numeric arrays")
@@ -1225,7 +1226,9 @@ def _validate_project_graph(project: Project) -> None:
                 if (
                     mask_array.ndim != 1
                     or len(mask_array) != size
-                    or not (np.issubdtype(mask_array.dtype, np.number) or mask_array.dtype.kind == "b")
+                    or not (
+                        np.issubdtype(mask_array.dtype, np.number) or mask_array.dtype.kind == "b"
+                    )
                     or not np.all(np.isfinite(mask_array))
                 ):
                     raise SessionCodecError(f"invalid fit mask for {member_uid!r}")
@@ -1537,7 +1540,9 @@ def restore_session(
             )
             if set(arrays) != expected_arrays or any(
                 a.ndim != 1
-                or not (np.issubdtype(a.dtype, np.number) or (key == "mask" and a.dtype.kind == "b"))
+                or not (
+                    np.issubdtype(a.dtype, np.number) or (key == "mask" and a.dtype.kind == "b")
+                )
                 or not np.all(np.isfinite(a))
                 for key, a in arrays.items()
             ):

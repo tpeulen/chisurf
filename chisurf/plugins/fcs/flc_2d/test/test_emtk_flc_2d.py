@@ -86,6 +86,7 @@ def long_app():
 
 # 1. the model does the science without any GUI
 
+
 def _assert_optional_mem_quality(model, monkeypatch):
     """Check the measured MEM spectrum and its optimized objective, independent of scale."""
     from chisurf.core.math import numerics
@@ -111,17 +112,23 @@ def _assert_optional_mem_quality(model, monkeypatch):
 
     resolution = model.tttr.micro_time_resolution_ns
     fdc = api.one_d_fdc(
-        model.tttr.macro_times, model.tttr.micro_times,
+        model.tttr.macro_times,
+        model.tttr.micro_times,
         tMin=max(1, int(round(model.tmin_ns / resolution))),
-        tMax=int(round(model.tmax_ns / resolution)), max_bins=400,
+        tMax=int(round(model.tmax_ns / resolution)),
+        max_bins=400,
     )
     with monkeypatch.context() as context:
         context.setattr(numerics, "minimize", measured_minimize)
         result = api.lifetime_spectrum_mem(
-            fdc["lin"], fdc["lin_t"].astype(float) * resolution,
-            tau_range=(model.tau_min_ns, model.tau_max_ns), n_components=model.n_components,
-            irf=model.irf, irf_time_ns=model.irf_time_ns,
-            reg=model.mem_reg, mi_type=int(model.mem_mi_type),
+            fdc["lin"],
+            fdc["lin_t"].astype(float) * resolution,
+            tau_range=(model.tau_min_ns, model.tau_max_ns),
+            n_components=model.n_components,
+            irf=model.irf,
+            irf_time_ns=model.irf_time_ns,
+            reg=model.mem_reg,
+            mi_type=int(model.mem_mi_type),
         )
     np.testing.assert_array_equal(result.amplitudes, amp)
     assert len(calls) == 12
@@ -132,10 +139,12 @@ def _assert_optional_mem_quality(model, monkeypatch):
     # must improve the data-driven objective, rather than merely return finite A.
     assert q < fun(calls[0][1], *problem)[0]
     h = 1e-6
-    numerical = np.array([
-        (fun(fit.x + h * axis, *problem)[0] - fun(fit.x - h * axis, *problem)[0]) / (2 * h)
-        for axis in np.eye(fit.x.size)
-    ])
+    numerical = np.array(
+        [
+            (fun(fit.x + h * axis, *problem)[0] - fun(fit.x - h * axis, *problem)[0]) / (2 * h)
+            for axis in np.eye(fit.x.size)
+        ]
+    )
     np.testing.assert_allclose(gradient, numerical, rtol=2e-4, atol=1e-7)
 
 

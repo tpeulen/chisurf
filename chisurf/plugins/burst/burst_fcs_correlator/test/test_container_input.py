@@ -38,7 +38,11 @@ def burst_table(ranges) -> pd.DataFrame:
     """A burst table as the container stores it: zero rows between the bursts, as a ``.bur`` has them."""
     n = len(ranges)
     table = pd.DataFrame(
-        {"First Photon": np.zeros(2 * n + 1), "Last Photon": np.zeros(2 * n + 1), "First File": ["0"] * (2 * n + 1)}
+        {
+            "First Photon": np.zeros(2 * n + 1),
+            "Last Photon": np.zeros(2 * n + 1),
+            "First File": ["0"] * (2 * n + 1),
+        }
     )
     table.loc[1::2, "First Photon"] = [a for a, _ in ranges]
     table.loc[1::2, "Last Photon"] = [b for _, b in ranges]
@@ -102,7 +106,9 @@ def test_the_view_spec_has_the_run_picker_once():
 
     from chisurf.plugins.burst.burst_fcs_correlator.gui import app
 
-    section = json.loads((Path(app.__file__).parent / "burst_fcs_emtk.view.json").read_text(encoding="utf-8"))["files"]
+    section = json.loads(
+        (Path(app.__file__).parent / "burst_fcs_emtk.view.json").read_text(encoding="utf-8")
+    )["files"]
     assert with_run_picker(section) == section
 
 

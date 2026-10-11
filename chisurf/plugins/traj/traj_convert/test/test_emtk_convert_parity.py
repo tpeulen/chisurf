@@ -84,8 +84,6 @@ def _read(path, top=TOP):
     return np.asarray(md.load(str(path), top=top).xyz)
 
 
-
-
 @pytest.fixture(scope="module")
 def qt():
     """The retired Qt widget's answers, recorded before it was deleted (qt_reference.json)."""

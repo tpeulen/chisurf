@@ -61,7 +61,9 @@ def _micro_and_channel(rng, tau_ns: np.ndarray):
     r = c["r0"] * np.exp(-emission / c["rho_ns"])
     to_parallel = rng.random(tau_ns.size) < (1.0 + 2.0 * r) / (2.0 + r)
     micro = np.floor(np.mod(t, period) / c["micro_resolution_ns"]).astype(np.uint16)
-    channel = np.where(to_parallel, c["parallel_channel"], c["perpendicular_channel"]).astype(np.int8)
+    channel = np.where(to_parallel, c["parallel_channel"], c["perpendicular_channel"]).astype(
+        np.int8
+    )
     return micro, channel
 
 
@@ -83,14 +85,19 @@ def _image_stream():
     rng = np.random.default_rng(c["seed"])
     n, frames = c["n_pixel"], c["n_frames"]
     counts = rng.poisson(c["photons_per_pixel_frame"], size=(frames, n, n))
-    tau_per_photon = np.repeat(np.broadcast_to(lifetime_map(), counts.shape).reshape(-1), counts.reshape(-1))
+    tau_per_photon = np.repeat(
+        np.broadcast_to(lifetime_map(), counts.shape).reshape(-1), counts.reshape(-1)
+    )
     scan = counts_to_tttr(counts, c["pixel_dwell_s"], c["seed"])
     photon = np.asarray(scan.event_types) == 0
     micro = np.asarray(scan.micro_times).astype(np.uint16).copy()
     channel = np.asarray(scan.routing_channels).astype(np.int8).copy()
     micro[photon], channel[photon] = _micro_and_channel(rng, tau_per_photon)
     stream = tttrlib.TTTR(
-        np.asarray(scan.macro_times, dtype=np.uint64), micro, channel, np.asarray(scan.event_types, dtype=np.int8)
+        np.asarray(scan.macro_times, dtype=np.uint64),
+        micro,
+        channel,
+        np.asarray(scan.event_types, dtype=np.int8),
     )
     _timing(stream.header, 0.5 * c["pixel_dwell_s"])
     for name, value in (
@@ -122,7 +129,9 @@ def _irf_stream():
     period = c["n_micro"] * c["micro_resolution_ns"]
     t = c["irf_center_ns"] + rng.normal(0.0, c["irf_sigma_ns"], n)
     micro = np.floor(np.mod(t, period) / c["micro_resolution_ns"]).astype(np.uint16)
-    channel = np.where(rng.random(n) < 0.5, c["parallel_channel"], c["perpendicular_channel"]).astype(np.int8)
+    channel = np.where(
+        rng.random(n) < 0.5, c["parallel_channel"], c["perpendicular_channel"]
+    ).astype(np.int8)
     macro = np.arange(1, n + 1, dtype=np.uint64) * 3
     stream = tttrlib.TTTR(macro, micro, channel, np.zeros(n, dtype=np.int8))
     _timing(stream.header, 1.0e-7)

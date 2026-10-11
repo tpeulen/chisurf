@@ -14,7 +14,14 @@ from pathlib import Path
 
 from chisurf.emtk.tool_hub import HEADER, PLUGINS, ToolHubApp
 
-__all__ = ["HEADER", "TttrToolboxApp", "load_panels", "make_app", "manifest_path", "resolve_factory"]
+__all__ = [
+    "HEADER",
+    "TttrToolboxApp",
+    "load_panels",
+    "make_app",
+    "manifest_path",
+    "resolve_factory",
+]
 
 RESOURCES = Path(__file__).parent
 

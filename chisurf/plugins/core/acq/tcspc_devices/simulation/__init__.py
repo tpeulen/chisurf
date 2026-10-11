@@ -20,5 +20,7 @@ def __getattr__(name: str) -> Any:
     if name in {"BurbulatorSimulator", "SimulationDevice"}:
         from .wrapper import BurbulatorSimulator, SimulationDevice
 
-        return {"BurbulatorSimulator": BurbulatorSimulator, "SimulationDevice": SimulationDevice}[name]
+        return {"BurbulatorSimulator": BurbulatorSimulator, "SimulationDevice": SimulationDevice}[
+            name
+        ]
     raise AttributeError(name)

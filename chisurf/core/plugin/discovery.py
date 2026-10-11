@@ -37,7 +37,8 @@ class PackageResolver:
             )
             self._directories[prefix] = (
                 pathlib.Path(spec.origin).parent.resolve()
-                if spec is not None and spec.origin is not None else None
+                if spec is not None and spec.origin is not None
+                else None
             )
         return self._directories.get(parts)
 

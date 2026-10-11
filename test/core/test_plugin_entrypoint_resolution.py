@@ -30,11 +30,23 @@ ENTRYPOINT_KINDS = ("gui", "cli", "services", "emtk")
 @pytest.mark.parametrize(
     "source,expected",
     [
-        ('def __getattr__(name):\n    if name == "Tool":\n        from example import Tool\n        return Tool\n    raise AttributeError(name)\n', True),
-        ('def __getattr__(name):\n    if name == "Tool":\n        class Tool: pass\n        return Tool\n    raise AttributeError(name)\n', True),
-        ('def __getattr__(name):\n    if name == "Other":\n        from example import Tool\n        return Tool\n    raise AttributeError(name)\n', False),
-        ('def __getattr__(name):\n    if name == "Tool":\n        return Missing\n    raise AttributeError(name)\n', False),
-        ('def local():\n    from example import Tool\n    return Tool\n', False),
+        (
+            'def __getattr__(name):\n    if name == "Tool":\n        from example import Tool\n        return Tool\n    raise AttributeError(name)\n',
+            True,
+        ),
+        (
+            'def __getattr__(name):\n    if name == "Tool":\n        class Tool: pass\n        return Tool\n    raise AttributeError(name)\n',
+            True,
+        ),
+        (
+            'def __getattr__(name):\n    if name == "Other":\n        from example import Tool\n        return Tool\n    raise AttributeError(name)\n',
+            False,
+        ),
+        (
+            'def __getattr__(name):\n    if name == "Tool":\n        return Missing\n    raise AttributeError(name)\n',
+            False,
+        ),
+        ("def local():\n    from example import Tool\n    return Tool\n", False),
     ],
     ids=["lazy-import", "lazy-class", "wrong-guard", "unbound-return", "unrelated-function"],
 )
@@ -50,18 +62,18 @@ def test_export_scan_resolves_lazy_forwarding(tmp_path):
     (tmp_path / "delegate.py").write_text("class Tool: pass\n")
     module = tmp_path / "__init__.py"
     module.write_text(
-        'import importlib\ndef __getattr__(name):\n'
+        "import importlib\ndef __getattr__(name):\n"
         '    module = importlib.import_module(".delegate", __name__)\n'
-        '    return getattr(module, name)\n'
+        "    return getattr(module, name)\n"
     )
     assert _binds_name(module, "Tool")
     assert not _binds_name(module, "Missing")
     module.write_text(
-        'def __getattr__(name):\n'
+        "def __getattr__(name):\n"
         '    if name in {"Tool"}:\n'
-        '        from . import delegate\n'
-        '        return getattr(delegate, name)\n'
-        '    raise AttributeError(name)\n'
+        "        from . import delegate\n"
+        "        return getattr(delegate, name)\n"
+        "    raise AttributeError(name)\n"
     )
     assert _binds_name(module, "Tool")
     assert not _binds_name(module, "Missing")
@@ -115,7 +127,9 @@ def _module_file(module_path: str) -> pathlib.Path | None:
 
 
 def _binds_name(
-    path: pathlib.Path, name: str, visited: set[pathlib.Path] | None = None,
+    path: pathlib.Path,
+    name: str,
+    visited: set[pathlib.Path] | None = None,
 ) -> bool:
     """Return whether a module file binds *name* at module level.
 
@@ -164,7 +178,9 @@ def _binds_name(
                     value = test.comparators[0]
                     if isinstance(test.ops[0], ast.Eq) and isinstance(value, ast.Constant):
                         matches = value.value == name
-                    elif isinstance(test.ops[0], ast.In) and isinstance(value, (ast.Set, ast.Tuple, ast.List)):
+                    elif isinstance(test.ops[0], ast.In) and isinstance(
+                        value, (ast.Set, ast.Tuple, ast.List)
+                    ):
                         if not all(isinstance(item, ast.Constant) for item in value.elts):
                             continue
                         matches = name in {item.value for item in value.elts}
@@ -198,7 +214,9 @@ def _binds_name(
         for stmt in statements:
             if isinstance(stmt, ast.ImportFrom) and stmt.module is None and stmt.level:
                 for alias in stmt.names:
-                    delegates[alias.asname or alias.name] = source_file("." * stmt.level + alias.name)
+                    delegates[alias.asname or alias.name] = source_file(
+                        "." * stmt.level + alias.name
+                    )
             elif isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Call):
                 call = stmt.value
                 if (

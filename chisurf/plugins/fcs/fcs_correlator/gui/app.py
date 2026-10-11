@@ -25,32 +25,70 @@ PLUGINS = PLUGIN.parents[1]
 
 STEP_ROLES = ("channel_def", "files", "filter", "correlator", "merger")
 
+
 class FcsHubApp(ToolHubApp):
     """The correlator workflow (+ *tools* below it); the steps share one :class:`FcsWorkflow`."""
 
-    def __init__(self, title: str = "FCS Correlator", tools: list | None = None, *,
-                 help_resource: Path | None = None, guide: Path | None = None) -> None:
+    def __init__(
+        self,
+        title: str = "FCS Correlator",
+        tools: list | None = None,
+        *,
+        help_resource: Path | None = None,
+        guide: Path | None = None,
+    ) -> None:
         self.workflow = FcsWorkflow()
         self.filter_model = FilterSettingsModel()
         self.correlator_model = CorrelatorSettingsModel()
         self._setup_seen: str | None = None
         steps = [
             {"name": "Correlator", "separator": True},
-            {"name": "1. Channel Definitions", "icon": "🎚️", "role": "channel_def", "plugin": "fcs/fcs_channel_preset",
-             "description": "Choose the detector setup and its correlation channel pairs (ACF/CCF presets)."},
-            {"name": "2. Files & Steps", "icon": "📂", "role": "files", "factory": self._make_files,
-             "help": str(PLUGIN / "README.md"),
-             "description": "Add TTTR files and choose the optional steps (photon filter, FCS merger)."},
-            {"name": "3. Photon / Burst Filter", "icon": "🔍", "role": "filter", "factory": self._make_filter,
-             "description": "Filter photons by count rate or burst selection before correlating."},
-            {"name": "4. Correlator", "icon": "📊", "role": "correlator", "factory": self._make_correlator,
-             "description": "Configure channels / micro-time windows and compute the correlation."},
-            {"name": "5. FCS Merger", "icon": "🔗", "role": "merger", "plugin": "fcs/fcs_merger",
-             "description": "Screen and merge the computed correlation curves."},
+            {
+                "name": "1. Channel Definitions",
+                "icon": "🎚️",
+                "role": "channel_def",
+                "plugin": "fcs/fcs_channel_preset",
+                "description": "Choose the detector setup and its correlation channel pairs (ACF/CCF presets).",
+            },
+            {
+                "name": "2. Files & Steps",
+                "icon": "📂",
+                "role": "files",
+                "factory": self._make_files,
+                "help": str(PLUGIN / "README.md"),
+                "description": "Add TTTR files and choose the optional steps (photon filter, FCS merger).",
+            },
+            {
+                "name": "3. Photon / Burst Filter",
+                "icon": "🔍",
+                "role": "filter",
+                "factory": self._make_filter,
+                "description": "Filter photons by count rate or burst selection before correlating.",
+            },
+            {
+                "name": "4. Correlator",
+                "icon": "📊",
+                "role": "correlator",
+                "factory": self._make_correlator,
+                "description": "Configure channels / micro-time windows and compute the correlation.",
+            },
+            {
+                "name": "5. FCS Merger",
+                "icon": "🔗",
+                "role": "merger",
+                "plugin": "fcs/fcs_merger",
+                "description": "Screen and merge the computed correlation curves.",
+            },
         ]
         panels = steps + ([{"name": "Tools", "separator": True}, *tools] if tools else [])
-        super().__init__(title, panels, help_resource=help_resource or PLUGIN / "help.md",
-                         guide=guide or PLUGIN / "guide.json", initial="files", steps=True)
+        super().__init__(
+            title,
+            panels,
+            help_resource=help_resource or PLUGIN / "help.md",
+            guide=guide or PLUGIN / "guide.json",
+            initial="files",
+            steps=True,
+        )
 
     # step factories (the steps the workflow owns the models of)
     def _make_files(self):
@@ -60,7 +98,9 @@ class FcsHubApp(ToolHubApp):
         return FilterStepApp(self.filter_model, on_used=self.tour.notify_used)
 
     def _make_correlator(self):
-        return CorrelatorStepApp(self.correlator_model, open_tool=self._open_tool, on_used=self.tour.notify_used)
+        return CorrelatorStepApp(
+            self.correlator_model, open_tool=self._open_tool, on_used=self.tour.notify_used
+        )
 
     def _open_tool(self, role: str) -> None:
         if any(p["role"] == role for p in self.tools):
@@ -124,7 +164,6 @@ class FcsHubApp(ToolHubApp):
             elif folder is not None and Path(folder).is_dir():
                 child.model.folder = str(folder)
                 child.load_folder(folder)
-
 
     def _hand_to_filter_calc(self, child) -> None:
         """The Filter Calculator reads the correlator's files as its mixed decay (with the correlator's micro-time

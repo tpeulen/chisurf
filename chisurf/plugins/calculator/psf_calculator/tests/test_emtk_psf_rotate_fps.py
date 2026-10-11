@@ -47,7 +47,9 @@ def test_rotating_a_64_cubed_volume_runs_at_30_fps():
             drv.draw(1)
             frames.append(time.perf_counter() - start)
         app.release()
-        assert statistics.median(frames) < FRAME_BUDGET_S, f"median {statistics.median(frames) * 1000:.1f} ms"
+        assert statistics.median(frames) < FRAME_BUDGET_S, (
+            f"median {statistics.median(frames) * 1000:.1f} ms"
+        )
     finally:
         app.close()
         app._executor.shutdown(wait=True)

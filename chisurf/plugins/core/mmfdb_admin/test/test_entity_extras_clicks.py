@@ -32,8 +32,11 @@ def _row(driver, text):
 
 
 def _versions(client, project_id):  # noqa: F811
-    return [p for p in client._call("mmfdb.projects.list", None)["projects"]
-            if p["project_id"] == project_id]
+    return [
+        p
+        for p in client._call("mmfdb.projects.list", None)["projects"]
+        if p["project_id"] == project_id
+    ]
 
 
 def _save_versions(client):  # noqa: F811
@@ -52,8 +55,12 @@ def _save_versions(client):  # noqa: F811
 
 def test_experiment_data_subtable_lists_adds_saves_and_deletes(driver, app, client, tmp_path):  # noqa: F811
     client.save_experiment_data(
-        {"experiment_id": "exp_gui", "data_type": "tttr", "storage_mode": "link",
-         "file_path": "/tmp/seed.ptu"}
+        {
+            "experiment_id": "exp_gui",
+            "data_type": "tttr",
+            "storage_mode": "link",
+            "file_path": "/tmp/seed.ptu",
+        }
     )
     open_panel(driver, "experiment", "Experiments")
     driver.click(_row(driver, "exp_gui"))
@@ -117,7 +124,7 @@ def test_restore_returns_the_archived_version_content(driver, app, client):  # n
     driver.click(_row(driver, v1["version_id"]))
     assert panel.version_selected == first["version_id"]
     driver.click_name("x_restore_version")
-    (pid, vid, payload), = app.model.restored
+    ((pid, vid, payload),) = app.model.restored
     assert vid == v1["version_id"] and pid == v1["project_id"]
     assert payload["project_payload"] == v1["project_payload"]  # content equal
     assert payload["project_payload"]["ui"] != v2["project_payload"]["ui"]
@@ -165,8 +172,15 @@ def test_row_context_menu_copies_and_ticks(driver, app):  # noqa: F811
     cell = _row(driver, "dev_gui")
     _right_click(driver, cell)
     shown = driver.draw(2).strings
-    assert {"Copy row", "Copy selected cell", "Copy checked IDs", "Select all rows",
-            "Check all", "Uncheck all", "Invert checks"} <= set(shown)
+    assert {
+        "Copy row",
+        "Copy selected cell",
+        "Copy checked IDs",
+        "Select all rows",
+        "Check all",
+        "Uncheck all",
+        "Invert checks",
+    } <= set(shown)
     _pick(driver, "Copy selected cell")
     assert copied[-1] == "dev_gui"
     _right_click(driver, _row(driver, "dev_gui"))

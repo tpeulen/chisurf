@@ -69,14 +69,21 @@ def _resolve_dataset_member(dataset: Any, member_uid: str | None = None) -> tupl
     members = _dataset_members(dataset)
     if members is None:
         return None, None
-    matches = [(member, index) for index, member in enumerate(members)
-               if str(getattr(member, "unique_identifier", "")) == member_uid]
+    matches = [
+        (member, index)
+        for index, member in enumerate(members)
+        if str(getattr(member, "unique_identifier", "")) == member_uid
+    ]
     return matches[0] if len(matches) == 1 else (None, None)
 
 
 def _dataset_dto(
-    dataset: Any, index: int | None, *, include_length: bool = False,
-    parent_uid: str | None = None, member_index: int | None = None,
+    dataset: Any,
+    index: int | None,
+    *,
+    include_length: bool = False,
+    parent_uid: str | None = None,
+    member_index: int | None = None,
 ) -> dict[str, Any]:
     """Build a serialisable summary dict for a dataset.
 
@@ -101,18 +108,26 @@ def _dataset_dto(
         "uid": str(getattr(dataset, "unique_identifier", "") or ""),
         "name": str(getattr(dataset, "name", "") or ""),
         "type": type(dataset).__name__,
-        "experiment": "" if empty_group else str(getattr(getattr(dataset, "experiment", None), "name", "") or ""),
+        "experiment": ""
+        if empty_group
+        else str(getattr(getattr(dataset, "experiment", None), "name", "") or ""),
         "filename": str(getattr(dataset, "filename", "") or ""),
     }
     if include_length:
-        dto["length"] = None if empty_group else (
-            int(len(getattr(dataset, "y", []))) if hasattr(dataset, "y") else None)
+        dto["length"] = (
+            None
+            if empty_group
+            else (int(len(getattr(dataset, "y", []))) if hasattr(dataset, "y") else None)
+        )
     if parent_uid is not None:
         dto.update(parent_uid=parent_uid, member_index=member_index)
     elif members is not None:
-        dto["members"] = [_dataset_dto(member, index, include_length=True,
-                                       parent_uid=dto["uid"], member_index=position)
-                          for position, member in enumerate(members)]
+        dto["members"] = [
+            _dataset_dto(
+                member, index, include_length=True, parent_uid=dto["uid"], member_index=position
+            )
+            for position, member in enumerate(members)
+        ]
     return dto
 
 
@@ -223,9 +238,15 @@ def get_dataset_info(
         return service_error("dataset not found", error_code=NOT_FOUND)
     return {
         "ok": True,
-        "dataset": _dataset_dto(d, index, include_length=True,
-                                 parent_uid=str(getattr(parent, "unique_identifier", ""))
-                                 if member_uid is not None else None, member_index=member_index),
+        "dataset": _dataset_dto(
+            d,
+            index,
+            include_length=True,
+            parent_uid=str(getattr(parent, "unique_identifier", ""))
+            if member_uid is not None
+            else None,
+            member_index=member_index,
+        ),
     }
 
 
@@ -254,7 +275,10 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
         seen[uid] = encoded
     if kind == "group":
         if payload.get("group_type") not in {
-            "DataGroup", "DataCurveGroup", "ExperimentDataGroup", "ExperimentDataCurveGroup",
+            "DataGroup",
+            "DataCurveGroup",
+            "ExperimentDataGroup",
+            "ExperimentDataCurveGroup",
         }:
             raise ValueError("unsupported cached group type")
         members = payload.get("members")
@@ -299,7 +323,11 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
                 continue
             array = np.asarray(values, dtype=float)
         allowed_kinds = "biuf" if field == "mask" else "iuf"
-        if array.dtype.kind not in allowed_kinds or array.ndim != 1 or not np.all(np.isfinite(array)):
+        if (
+            array.dtype.kind not in allowed_kinds
+            or array.ndim != 1
+            or not np.all(np.isfinite(array))
+        ):
             raise ValueError("cached arrays must be finite numeric vectors")
         arrays[field] = array.copy()
     if len({len(array) for array in arrays.values()}) != 1:
@@ -324,8 +352,12 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
         if reader_fields is None:
             raise ValueError("cached reader type is not trusted")
         state = reader.get("state")
-        if (not isinstance(reader.get("uid"), str) or not reader["uid"]
-                or not isinstance(state, dict) or set(state) - {*reader_fields, *_COMMON_READER_FIELDS}):
+        if (
+            not isinstance(reader.get("uid"), str)
+            or not reader["uid"]
+            or not isinstance(state, dict)
+            or set(state) - {*reader_fields, *_COMMON_READER_FIELDS}
+        ):
             raise ValueError("invalid cached reader state")
         identity = _scientific_value({"reader": reader, "experiment": payload.get("experiment")})
         if reader["uid"] in seen and seen[reader["uid"]] != identity:
@@ -338,7 +370,8 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
             raise ValueError("invalid cached reader dependencies")
         if dependencies or irf_array is not None:
             if (reader["module"], reader["class"]) != (
-                "chisurf.core.experiments.tcspc.simulator", "TCSPCSimulatorSetup",
+                "chisurf.core.experiments.tcspc.simulator",
+                "TCSPCSimulatorSetup",
             ) or (dependencies and irf_array is not None):
                 raise ValueError("invalid cached reader IRF ownership")
         if irf_array is not None:
@@ -352,8 +385,10 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
         if set(inputs) - {"instrument_response_function"}:
             raise ValueError("unsupported cached reader input")
         inputs = {role: _prepare_cached_dataset(value, seen) for role, value in inputs.items()}
-        if any(value.get("uid") != dependencies[role] or value["kind"] != "curve"
-               for role, value in inputs.items()):
+        if any(
+            value.get("uid") != dependencies[role] or value["kind"] != "curve"
+            for role, value in inputs.items()
+        ):
             raise ValueError("cached reader dependency identity differs")
     elif inputs:
         raise ValueError("cached reader inputs have no owning reader")
@@ -364,15 +399,25 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
         from chisurf.core.experiments.core.experiment import Experiment
         from chisurf.core.project.session import _resolve_model
 
-        if (not isinstance(experiment, dict) or experiment.get("kind") != "experiment"
-                or (experiment.get("module"), experiment.get("class")) != (Experiment.__module__, Experiment.__name__)
-                or not isinstance(experiment.get("uid"), str) or not experiment["uid"]
-                or not isinstance(experiment.get("models", []), list)):
+        if (
+            not isinstance(experiment, dict)
+            or experiment.get("kind") != "experiment"
+            or (experiment.get("module"), experiment.get("class"))
+            != (Experiment.__module__, Experiment.__name__)
+            or not isinstance(experiment.get("uid"), str)
+            or not experiment["uid"]
+            or not isinstance(experiment.get("models", []), list)
+        ):
             raise ValueError("unsupported cached experiment descriptor")
         for model_state in experiment.get("models", []):
             _resolve_model(model_state)
-    return {**copy.deepcopy(payload), "kind": kind, "arrays": arrays,
-            "metadata": metadata, "reader_inputs": inputs}
+    return {
+        **copy.deepcopy(payload),
+        "kind": kind,
+        "arrays": arrays,
+        "metadata": metadata,
+        "reader_inputs": inputs,
+    }
 
 
 def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
@@ -395,10 +440,15 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
         """Restore the known curve/group and reader-IRF edges without reading data."""
         if record["kind"] == "group":
             members = [construct(member) for member in record["members"]]
-            group_class = {"DataGroup": DataGroup, "DataCurveGroup": DataCurveGroup,
-                           "ExperimentDataGroup": ExperimentDataGroup,
-                           "ExperimentDataCurveGroup": ExperimentDataCurveGroup}[record["group_type"]]
-            group = group_class(members, name=record.get("name", ""), unique_identifier=record["uid"])
+            group_class = {
+                "DataGroup": DataGroup,
+                "DataCurveGroup": DataCurveGroup,
+                "ExperimentDataGroup": ExperimentDataGroup,
+                "ExperimentDataCurveGroup": ExperimentDataCurveGroup,
+            }[record["group_type"]]
+            group = group_class(
+                members, name=record.get("name", ""), unique_identifier=record["uid"]
+            )
             group.meta_data.update(record["metadata"])
             group.current_dataset = record["selected"]
             group.data_reader = getattr(members[0], "data_reader", None)
@@ -410,9 +460,14 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
         experiment = None
         state = record.get("experiment")
         if state is not None:
-            if (not isinstance(state, dict) or state.get("kind") != "experiment"
-                    or (state.get("module"), state.get("class")) != (Experiment.__module__, Experiment.__name__)
-                    or not isinstance(state.get("uid"), str) or not state["uid"]):
+            if (
+                not isinstance(state, dict)
+                or state.get("kind") != "experiment"
+                or (state.get("module"), state.get("class"))
+                != (Experiment.__module__, Experiment.__name__)
+                or not isinstance(state.get("uid"), str)
+                or not state["uid"]
+            ):
                 raise ValueError("unsupported cached experiment descriptor")
             if state["uid"] not in experiments:
                 experiment = Experiment(name=state.get("name", ""), unique_identifier=state["uid"])
@@ -424,8 +479,14 @@ def _restore_cached_dataset(prepared: dict[str, Any]) -> Any:
         reader = _restore_reader(record.get("reader"), experiment, readers)
         for role, source in record["reader_inputs"].items():
             setattr(reader, role, construct(source))
-        curve = DataCurve(**record["arrays"], name=record.get("name", "dataset"),
-                          unique_identifier=uid, experiment=experiment, data_reader=reader, setup=reader)
+        curve = DataCurve(
+            **record["arrays"],
+            name=record.get("name", "dataset"),
+            unique_identifier=uid,
+            experiment=experiment,
+            data_reader=reader,
+            setup=reader,
+        )
         curve.filename = record.get("filename", "")
         curve.meta_data.update(record["metadata"])
         if uid:
@@ -442,8 +503,9 @@ def _normalize_cached_group(dataset: Any) -> Any:
     from chisurf.core.data import DataGroup, ExperimentDataCurveGroup, ExperimentDataGroup
 
     if isinstance(dataset, DataGroup) and not isinstance(dataset, ExperimentDataGroup):
-        group = ExperimentDataCurveGroup(list(dataset), name=dataset.name,
-                                         unique_identifier=dataset.unique_identifier)
+        group = ExperimentDataCurveGroup(
+            list(dataset), name=dataset.name, unique_identifier=dataset.unique_identifier
+        )
         group.meta_data.update(copy.deepcopy(dataset.meta_data))
         group.current_dataset = dataset._current_dataset
         group.data_reader = getattr(dataset, "data_reader", None)
@@ -494,10 +556,16 @@ def add_dataset(
             index = len(state.datasets) - 1
             if event_bus is not None and not _from_controller:
                 event_bus.publish("dataset.added", {"dataset_index": index, "name": str(ds.name)})
-            return {"ok": True, "uid": str(ds.unique_identifier), "name": str(ds.name),
-                    "dataset_index": index}
+            return {
+                "ok": True,
+                "uid": str(ds.unique_identifier),
+                "name": str(ds.name),
+                "dataset_index": index,
+            }
         except (TypeError, ValueError, KeyError, AttributeError) as error:
-            return service_error(f"invalid cached dataset: {error}", error_code=INVALID_INPUT, exception=error)
+            return service_error(
+                f"invalid cached dataset: {error}", error_code=INVALID_INPUT, exception=error
+            )
     if reader is None and reader_name and filename:
         try:
             import pathlib
@@ -838,8 +906,12 @@ def get_dataset_curve_data(
         result["ex"] = _sanitize_float_list(getattr(d, "ex", None))
         result["ey"] = _sanitize_float_list(getattr(d, "ey", None))
         if member_uid is not None:
-            result.update(dataset_index=index, dataset_uid=str(getattr(parent, "unique_identifier", "")),
-                          member_index=member_index, member_uid=str(getattr(d, "unique_identifier", "")))
+            result.update(
+                dataset_index=index,
+                dataset_uid=str(getattr(parent, "unique_identifier", "")),
+                member_index=member_index,
+                member_uid=str(getattr(d, "unique_identifier", "")),
+            )
         return result
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)

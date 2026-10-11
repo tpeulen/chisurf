@@ -18,7 +18,9 @@ def _table(path, e_true, n=150, seed=0):
         "Number of Photons (yellow)": total - green,
         "Duration (ms)": np.full(n, 1.0),
     }
-    lines = ["\t".join(cols)] + ["\t".join(f"{v:.10g}" for v in row) for row in np.column_stack(list(cols.values()))]
+    lines = ["\t".join(cols)] + [
+        "\t".join(f"{v:.10g}" for v in row) for row in np.column_stack(list(cols.values()))
+    ]
     path.write_text("\n".join(lines) + "\n")
     return path
 
@@ -44,7 +46,9 @@ def test_titration_is_seeded_once_and_takes_the_corrections(tmp_path):
     step.set_burst_files([tmp_path / "a.bur"])
     step.model.rows[0]["concentration"] = 5.0
     step.set_burst_files([tmp_path / "b.bur"])
-    assert [r["name"] for r in step.model.rows] == ["a.bur"], "typed concentrations are never replaced"
+    assert [r["name"] for r in step.model.rows] == ["a.bur"], (
+        "typed concentrations are never replaced"
+    )
     step.set_corrections(gamma=0.9, beta=1.2)
     assert (step.model.gamma, step.model.beta) == (0.9, 1.2)
 

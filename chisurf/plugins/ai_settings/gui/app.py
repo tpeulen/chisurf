@@ -60,11 +60,19 @@ class AISettingsApp(ImApp):
         # so the buttons and the answer are never scrolled out of sight.
         self.docks = DockManager(Split("v", 0.78, Region("settings"), Region("actions")))
         self.docks.add_window(
-            "settings", "AI Settings", self.draw_settings, dock="settings", closable=False,
+            "settings",
+            "AI Settings",
+            self.draw_settings,
+            dock="settings",
+            closable=False,
             tooltip=str(self.panels["settings"].get("description", "")),
         )
         self.docks.add_window(
-            "actions", "Test / Save / Reset", self.draw_actions, dock="actions", closable=False,
+            "actions",
+            "Test / Save / Reset",
+            self.draw_actions,
+            dock="actions",
+            closable=False,
             tooltip=str(self.panels["actions"].get("description", "")),
         )
         super().__init__(self.render, continuous=True)

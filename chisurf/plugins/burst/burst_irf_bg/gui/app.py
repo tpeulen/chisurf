@@ -400,7 +400,9 @@ class BurstIrfBackgroundApp(ImApp):
         on_help: Callable[[], None] | None = None,
         mle_receiver=None,
     ) -> None:
-        primary = json.loads(Path(__file__).with_name("irf_bg.view.json").read_text(encoding="utf-8"))
+        primary = json.loads(
+            Path(__file__).with_name("irf_bg.view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(primary, (1100, 720))
         self.controller = None
         if on_compute is None:

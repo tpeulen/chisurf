@@ -241,7 +241,9 @@ def test_the_database_button_opens_the_dataset_picker_and_closes_again(ui):
     ui.click("add_database")
     assert ui.app.dataset_picker.is_open
     ui.draw(3)
-    ui.press_text(action_caption("cancel")) if ui.shown(action_caption("cancel")) else ui.press_text(action_caption("close"))
+    ui.press_text(action_caption("cancel")) if ui.shown(
+        action_caption("cancel")
+    ) else ui.press_text(action_caption("close"))
     assert not ui.app.dataset_picker.is_open
 
 

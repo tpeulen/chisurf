@@ -70,7 +70,9 @@ def test_setup_combo_lists_the_saved_setups_and_picking_one_sets_donor_and_accep
     assert gui.editor.model.current_name == "lab_alex"
     assert (gui.donor_detector, gui.acceptor_detector) == ("green", "red")
     assert model.donor_channels == [0, 8] and model.acceptor_channels == [1, 9]
-    assert model.donor_micro_time_ranges == [(0, 2000)] and model.acceptor_micro_time_ranges == [(100, 4000)]
+    assert model.donor_micro_time_ranges == [(0, 2000)] and model.acceptor_micro_time_ranges == [
+        (100, 4000)
+    ]
     assert model.file_type == "PTU"
     assert {"green", "red"} <= set(draw(app).strings)
 

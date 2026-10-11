@@ -26,7 +26,9 @@ def test_a_model_scalar_is_typed_including_a_negative_value(drv):
     tab(drv, "Live model editor")
     drv.click(drv.text_rect("> Model settings"))
     drv.draw(2)
-    for _ in range(12):  # the editor window is 384 px tall: wheel it until the scalar is inside its content
+    for _ in range(
+        12
+    ):  # the editor window is 384 px tall: wheel it until the scalar is inside its content
         x, y, w, h = drv.rect("scalar.amplitude_threshold")
         if y + h <= 400:
             break

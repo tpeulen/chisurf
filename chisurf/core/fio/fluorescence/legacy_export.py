@@ -331,11 +331,7 @@ def export_legacy(
                 + [b for b in reversed(bursts) if b["uid"] not in parent_uids]
             )
             grid = next(
-                (
-                    b
-                    for b in ordered
-                    if key is not None or row_count(b["store"]) == n_rows
-                ),
+                (b for b in ordered if key is not None or row_count(b["store"]) == n_rows),
                 None,
             )
             if grid is None and bursts:

@@ -20,18 +20,16 @@ def _workflow(name):
 def _checkout(steps, module):
     """Find the source checkout that supplies one module's sibling symlink."""
     return next(
-        step for step in steps
-        if "git clone" in step.get("run", "")
-        and f'"$GITHUB_WORKSPACE/../{module}"' in step["run"]
+        step
+        for step in steps
+        if "git clone" in step.get("run", "") and f'"$GITHUB_WORKSPACE/../{module}"' in step["run"]
     )
 
 
 def test_release_readiness_checks_run_on_pushes_and_pull_requests():
     """The programme branch and review events must reach the test workflow."""
     events = _workflow("test-coverage.yml")["on"]
-    assert {"mcts-native-baseline", "development", "main"} <= set(
-        events["push"]["branches"]
-    )
+    assert {"mcts-native-baseline", "development", "main"} <= set(events["push"]["branches"])
     assert "pull_request" in events
     assert "workflow_dispatch" in events
 
@@ -44,11 +42,11 @@ def test_e2e_renders_are_uploaded_even_when_a_plugin_fails():
     assert not job.get("needs")
     steps = job["steps"]
     assert any(
-        step.get("run") == "xvfb-run -a pixi run --environment test test-e2e"
-        for step in steps
+        step.get("run") == "xvfb-run -a pixi run --environment test test-e2e" for step in steps
     )
     artifact = next(
-        step for step in steps
+        step
+        for step in steps
         if step.get("uses", "").startswith("actions/upload-artifact@")
         and step["with"].get("name") == "e2e-renders"
     )
@@ -62,10 +60,7 @@ def test_e2e_uses_the_same_module_sources_as_unit_tests():
     regular, e2e = jobs["tests"]["steps"], jobs["e2e"]["steps"]
     for module in ("mmfdb", "tttrlib", "quest", "chimol"):
         assert _checkout(e2e, module)["run"] == _checkout(regular, module)["run"]
-    assert any(
-        "xvfb" in step.get("run", "") and "libgl1-mesa-dev" in step["run"]
-        for step in e2e
-    )
+    assert any("xvfb" in step.get("run", "") and "libgl1-mesa-dev" in step["run"] for step in e2e)
 
 
 @pytest.mark.parametrize("name", PRIVATE_MODULE_WORKFLOWS)
@@ -76,7 +71,8 @@ def test_missing_private_module_key_fails_with_an_actionable_error(name, tmp_pat
     for job in jobs.values():
         steps = job.get("steps", [])
         agents = [
-            step for step in steps
+            step
+            for step in steps
             if step.get("uses", "").startswith("webfactory/ssh-agent@")
             and "CHIMOL_DEPLOY_KEY" in step.get("with", {}).get("ssh-private-key", "")
         ]
@@ -109,11 +105,13 @@ def test_every_packaging_platform_runs_smoke_checks_first():
     )
     assert {"build", "test"} <= set(setup["with"]["environments"].split())
     package = next(
-        index for index, step in enumerate(steps)
+        index
+        for index, step in enumerate(steps)
         if "pixi run -e build build-installer" in step.get("run", "")
     )
     smoke = [
-        (index, step) for index, step in enumerate(steps)
+        (index, step)
+        for index, step in enumerate(steps)
         if "pixi run --environment test test-smoke" in step.get("run", "")
     ]
     assert smoke

@@ -276,13 +276,17 @@ class ProjectBrowserApp(ImApp):
             self.item_rects["versions"] = self.item_rects["tree_rows"]
         if not self.model.projects and not self.jobs.future:
             im.text_wrapped(
-                tr("No matching projects. Refresh, save the current session or import a project archive.")
+                tr(
+                    "No matching projects. Refresh, save the current session or import a project archive."
+                )
             )
 
     def details(self, box):
         if self.model.selected is None:
             im.text_wrapped(
-                tr("Select a project to restore its latest version, or expand it to select an exact version.")
+                tr(
+                    "Select a project to restore its latest version, or expand it to select an exact version."
+                )
             )
             return
         if im.begin_tab_bar("project_details"):
@@ -302,7 +306,9 @@ class ProjectBrowserApp(ImApp):
                             "graph": "graph",
                         }[key],
                     ):
-                        im.text_disabled(tr("Press Inspect Stored Version to load this information."))
+                        im.text_disabled(
+                            tr("Press Inspect Stored Version to load this information.")
+                        )
                     else:
                         self._form("details", SPEC["details"][key])
                     im.end_tab_item()
@@ -413,7 +419,9 @@ class ProjectBrowserApp(ImApp):
             self.modal = ""
 
     def _cancel_button(self):
-        pressed = action_button("cancel", tooltip=tr("Close this confirmation without changing the database."))
+        pressed = action_button(
+            "cancel", tooltip=tr("Close this confirmation without changing the database.")
+        )
         self.item_rects["cancel_dialog"] = im.get_item_rect()
         return pressed
 

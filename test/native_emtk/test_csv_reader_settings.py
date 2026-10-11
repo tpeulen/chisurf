@@ -16,10 +16,34 @@ def test_full_native_csv_view_renders_every_meaningful_legacy_control():
     app = ReaderSettingsApp(reader)
     driver = Driver(app, (900, 1050))
     driver.frame(2)
-    assert {'filename', 'reading_routine', 'colspecs', 'delimiter', 'skiprows', 'use_header',
-            'x_on', 'col_x', 'col_y', 'error_x_on', 'error_y_on', 'col_ex', 'col_ey', 'dt',
-            'dt_scaled', 'rebin_x_key', 'rebin_y_key', 'rep_rate', 'is_vv_vh', 'polarization',
-            'g_factor', 'l1', 'l2', 'link_l1_l2', 'vh_shift', 'open_gfactor'} <= set(driver.ids())
+    assert {
+        "filename",
+        "reading_routine",
+        "colspecs",
+        "delimiter",
+        "skiprows",
+        "use_header",
+        "x_on",
+        "col_x",
+        "col_y",
+        "error_x_on",
+        "error_y_on",
+        "col_ex",
+        "col_ey",
+        "dt",
+        "dt_scaled",
+        "rebin_x_key",
+        "rebin_y_key",
+        "rep_rate",
+        "is_vv_vh",
+        "polarization",
+        "g_factor",
+        "l1",
+        "l2",
+        "link_l1_l2",
+        "vh_shift",
+        "open_gfactor",
+    } <= set(driver.ids())
     app.close()
 
 
@@ -28,17 +52,17 @@ def test_standard_leakage_controls_keep_the_declared_link():
     from emtk.events import CONTROL_MODIFIER
     from emtk.keys import KEY_A, KEY_RETURN
 
-    reader = TCSPCReader(l1=.1, l2=.2, record_provenance=False)
+    reader = TCSPCReader(l1=0.1, l2=0.2, record_provenance=False)
     app = ReaderSettingsApp(reader)
     driver = Driver(app, (900, 1050))
     driver.frame(2)
-    driver.click('link_l1_l2')
-    assert reader.link_l1_l2 and reader.l2 == .1
-    driver.click('l1')
+    driver.click("link_l1_l2")
+    assert reader.link_l1_l2 and reader.l2 == 0.1
+    driver.click("l1")
     driver.key(KEY_A, modifiers=CONTROL_MODIFIER)
-    driver.type('0.3')
+    driver.type("0.3")
     driver.key(KEY_RETURN)
-    assert reader.l1 == reader.l2 == .3
+    assert reader.l1 == reader.l2 == 0.3
     app.close()
 
 
@@ -51,22 +75,22 @@ def test_g_factor_action_opens_real_native_inspector_and_applies_completed_value
 
         def calculate(self, *args, **kwargs):
             """The unopened inspector never performs a calculation in this test."""
-            raise AssertionError('unexpected compute')
+            raise AssertionError("unexpected compute")
 
-    reader = TCSPCReader(dt=.02, l1=.1, l2=.2, record_provenance=False)
+    reader = TCSPCReader(dt=0.02, l1=0.1, l2=0.2, record_provenance=False)
     app = ReaderSettingsApp(reader, g_factor_factory=lambda: GFactorApp(client=Client()))
     driver = Driver(app, (900, 1050))
     driver.frame(2)
-    driver.click('open_gfactor')
+    driver.click("open_gfactor")
     host = app.calibration_host
     assert host is not None and host.isVisible()
     assert host.control.model.fp_dt_ns == reader.effective_dt
-    host.control.model.result = {'g_factor': 1.7}
+    host.control.model.result = {"g_factor": 1.7}
     host.control.model.shift = 2.6
-    host.control.model.fp_result = {'l1': .12, 'l2': .23}
+    host.control.model.fp_result = {"l1": 0.12, "l2": 0.23}
     host.close()
     assert reader.g_factor == 1.7 and reader.vh_shift == 3
-    assert reader.l1 == .12 and reader.l2 == .23
+    assert reader.l1 == 0.12 and reader.l2 == 0.23
     app.close()
 
 
@@ -78,8 +102,8 @@ def test_closing_reader_cancels_owned_inspector_without_applying_late_results(qa
     app = ReaderSettingsApp(reader, g_factor_factory=lambda: GFactorApp(client=SimpleNamespace()))
     driver = Driver(app, (900, 1050))
     driver.frame(2)
-    driver.click('open_gfactor')
+    driver.click("open_gfactor")
     host = app.calibration_host
-    host.control.model.result = {'g_factor': 1.7}
+    host.control.model.result = {"g_factor": 1.7}
     app.close()
     assert not host.isVisible() and reader.g_factor == 1.2

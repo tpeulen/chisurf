@@ -64,7 +64,9 @@ class ConfigurationApp(ImApp):
         self._invalid_fields = {}
         self._draft_source = self.document.text
         self.item_rects = {}
-        self.help = EmTkHelpWindow(title="ChiSurf Settings - Help", resource=HERE / "settings_help.md", owner=self)
+        self.help = EmTkHelpWindow(
+            title="ChiSurf Settings - Help", resource=HERE / "settings_help.md", owner=self
+        )
         super().__init__(self.render, continuous=False)
 
     def language(self):
@@ -98,9 +100,13 @@ class ConfigurationApp(ImApp):
         im.text_unformatted("Language:")
         im.same_line()
         im.set_next_item_width(180)
-        changed, index = im.combo("##Language", codes.index(self.language()), [n for _, n in LANGUAGES])
+        changed, index = im.combo(
+            "##Language", codes.index(self.language()), [n for _, n in LANGUAGES]
+        )
         im.set_item_tooltip(
-            tr("UI language. Applies to newly opened tools immediately; restart to fully retranslate open windows.")
+            tr(
+                "UI language. Applies to newly opened tools immediately; restart to fully retranslate open windows."
+            )
         )
         self.item_rects["language"] = im.get_item_rect()
         if changed:
@@ -198,13 +204,17 @@ class ConfigurationApp(ImApp):
                     "##Configuration", self.document.text, size=(-1, max(150.0, avail_h - status_h))
                 )
                 im.set_item_tooltip(
-                    tr("YAML or JSON source. Comments and exact string/list types are preserved when saving. Invalid content cannot replace the existing file.")
+                    tr(
+                        "YAML or JSON source. Comments and exact string/list types are preserved when saving. Invalid content cannot replace the existing file."
+                    )
                 )
             else:
                 self.draw_search()
                 # A window does not scroll in emtk, a child does: the fields scroll with the wheel and a scrollbar.
                 avail_w, avail_h = im.get_content_region_avail()
-                im.begin_child("##settings_body", (float(avail_w), max(60.0, float(avail_h) - status_h)))
+                im.begin_child(
+                    "##settings_body", (float(avail_w), max(60.0, float(avail_h) - status_h))
+                )
                 self.structured_fields()
                 self.item_rects["settings_body"] = im.end_child()
             im.text_wrapped(self.error or self.status)
@@ -380,7 +390,9 @@ class ConfigurationApp(ImApp):
                     im.pop_id()
             else:
                 im.text_wrapped(
-                    tr("This document has a list at its root; use Edit source to edit list records.")
+                    tr(
+                        "This document has a list at its root; use Edit source to edit list records."
+                    )
                 )
 
         draw_values(data)
@@ -422,7 +434,10 @@ class UnavailablePanel(ImApp):
         vp = im.get_main_viewport()
         im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
         im.set_next_window_size(vp.size, im.Cond.ALWAYS)
-        if im.begin(self.panel.label + " unavailable", flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            self.panel.label + " unavailable",
+            flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE,
+        ):
             im.heading(self.panel.label, level=2)
             im.text_wrapped(tr("This settings panel could not be opened."))
             im.text_wrapped(self.error)
@@ -445,7 +460,11 @@ class UnifiedSettingsApp(ImApp):
             settings_dir = get_path("settings")
         self.settings_dir = Path(settings_dir)
         self.panels = list(PANELS if panels is None else panels)
-        self.selected = DEFAULT_PANEL if any(p.key == DEFAULT_PANEL for p in self.panels) else self.panels[0].key
+        self.selected = (
+            DEFAULT_PANEL
+            if any(p.key == DEFAULT_PANEL for p in self.panels)
+            else self.panels[0].key
+        )
         self.children = {}
         self.routes = {}
         self.errors = {}
@@ -543,7 +562,9 @@ class UnifiedSettingsApp(ImApp):
                 self.errors[key] = str(exc) or type(exc).__name__
                 self.error = "Cannot load " + panel.label + ": " + self.errors[key]
                 self.status = self.error
-                self.children[key] = UnavailablePanel(panel, self.errors[key], lambda k=key: self.retry(k))
+                self.children[key] = UnavailablePanel(
+                    panel, self.errors[key], lambda k=key: self.retry(k)
+                )
                 self.routes[key] = "unavailable"
         return self.child
 
@@ -583,7 +604,7 @@ class UnifiedSettingsApp(ImApp):
             self._stop_fast_forward("Fast-forward stopped - finishing this step")
             return
         keys = [p.key for p in self.panels]
-        self._ff_queue = keys[keys.index(self.selected):]
+        self._ff_queue = keys[keys.index(self.selected) :]
         if not self._ff_queue:
             return
         self._ff_total = len(self._ff_queue)
@@ -619,7 +640,9 @@ class UnifiedSettingsApp(ImApp):
                 self.select(self.selected)
             elif not self._builder.busy:
                 panel = self.panel_of(self.selected)
-                self._builder.start({panel.key: lambda: self._make(panel)}, name="chisurf-settings-" + panel.key)
+                self._builder.start(
+                    {panel.key: lambda: self._make(panel)}, name="chisurf-settings-" + panel.key
+                )
         super().draw(painter, x, y, w, h)
         self._painter = None
 
@@ -638,7 +661,9 @@ class UnifiedSettingsApp(ImApp):
         im.set_next_window_size((left, body), im.Cond.ALWAYS)
         if im.begin("Settings destinations", flags=flags):
             im.set_next_item_width(-1)
-            changed, self.filter = im.input_text_with_hint("##Find settings", self.filter, "Search...")
+            changed, self.filter = im.input_text_with_hint(
+                "##Find settings", self.filter, "Search..."
+            )
             im.set_item_tooltip(tr("Filter the destinations by name."))
             self.item_rects["search"] = im.get_item_rect()
             if changed and self.filter:
@@ -676,7 +701,9 @@ class UnifiedSettingsApp(ImApp):
             im.same_line()
             if im.button(tr("?") + "##settings_help", size=(28, 0)):
                 self.help.show()
-            im.set_item_tooltip(tr("Read how the Settings hub, its destinations and its stepper work."))
+            im.set_item_tooltip(
+                tr("Read how the Settings hub, its destinations and its stepper work.")
+            )
             self.item_rects["help"] = im.get_item_rect()
         im.end()
 
@@ -812,8 +839,12 @@ class UnifiedSettingsApp(ImApp):
 
     def animating(self):
         child = self.child
-        return (super().animating() or self.fast_forward or self._builder.busy
-                or (child is not None and child.animating()))
+        return (
+            super().animating()
+            or self.fast_forward
+            or self._builder.busy
+            or (child is not None and child.animating())
+        )
 
     def next_frame_in(self):
         values = [super().next_frame_in(), getattr(self.child, "next_frame_in", lambda: None)()]

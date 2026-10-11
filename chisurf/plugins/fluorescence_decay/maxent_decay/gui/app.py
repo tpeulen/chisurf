@@ -277,7 +277,9 @@ class MaxentApp(ImApp):
                     "Live fit", self.fit_index, [getattr(f, "name", "Fit") for f in self.fits]
                 )
                 im.set_item_tooltip(
-                    tr("Choose a fit for the observed data, the fit range and the instrument values.")
+                    tr(
+                        "Choose a fit for the observed data, the fit range and the instrument values."
+                    )
                 )
                 self.buttons(
                     [
@@ -345,7 +347,9 @@ class MaxentApp(ImApp):
         self.form("period")
         self.form("instrument")
         opened = im.collapsing_header("L-curve span and sampling")
-        im.set_item_tooltip(tr("The decades the L-curve sweep covers and the Q-MCMC sampling options."))
+        im.set_item_tooltip(
+            tr("The decades the L-curve sweep covers and the Q-MCMC sampling options.")
+        )
         if opened:
             self.form("lcurve")
             self.form("sampling")
@@ -421,9 +425,11 @@ class MaxentApp(ImApp):
             if arrays:
                 implot.plot_line("MEM", arrays["axis"], arrays["p"])
                 if implot.is_legend_entry_hovered("MEM"):
-                    im.set_tooltip(tr(
-                        "Unnormalized amplitudes of the decay basis; these coefficients reconstruct the fitted signal."
-                    ))
+                    im.set_tooltip(
+                        tr(
+                            "Unnormalized amplitudes of the decay basis; these coefficients reconstruct the fitted signal."
+                        )
+                    )
             stats = self.model.samples
             if stats is not None:
                 for key, label in (
@@ -518,7 +524,9 @@ class MaxentApp(ImApp):
                 "JSON preferences", self.settings_text, size=(-1.0, 400.0)
             )
             im.set_item_tooltip(
-                tr("Edit declared grids, nuisance controls, regularization and sampling preferences; live arrays are not persisted.")
+                tr(
+                    "Edit declared grids, nuisance controls, regularization and sampling preferences; live arrays are not persisted."
+                )
             )
             if im.button(tr("Apply settings")):
                 self.error(lambda: self.model.restore_preferences(json.loads(self.settings_text)))

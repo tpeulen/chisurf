@@ -212,7 +212,9 @@ class BidToAnalysisApp(ImApp, TourTarget):
         im.begin_disabled(self.running)
         if action_button(
             "example",
-            tooltip=tr("Queue a simulated photon stream with six known bursts and its BID selection."),
+            tooltip=tr(
+                "Queue a simulated photon stream with six known bursts and its BID selection."
+            ),
         ):
             self.load_example()
             self.tour.notify_used("load_example")
@@ -266,7 +268,9 @@ class BidToAnalysisApp(ImApp, TourTarget):
             im.same_line()
         im.separator()
         changed, self.unique_folder = im.checkbox(tr("Unique output folder"), self.unique_folder)
-        im.set_item_tooltip(tr("Add a numeric suffix instead of reusing an existing output folder."))
+        im.set_item_tooltip(
+            tr("Add a numeric suffix instead of reusing an existing output folder.")
+        )
         changed, self.zip_output = im.checkbox(tr("ZIP output"), self.zip_output)
         im.set_item_tooltip(tr("Archive generated analysis files while keeping the output folder."))
         im.text(tr("Output folder (empty: beside each measurement):"))
@@ -304,7 +308,9 @@ class BidToAnalysisApp(ImApp, TourTarget):
         im.end_disabled()
         if action_button(
             "cancel",
-            tooltip=tr("Stop before the next file; let the current conversion finish consistently."),
+            tooltip=tr(
+                "Stop before the next file; let the current conversion finish consistently."
+            ),
         ):
             self.cancel.set()
         im.same_line()

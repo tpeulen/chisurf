@@ -289,8 +289,16 @@ class ChannelDefinitionWidget:
         Disable working-definition edits, including JSON application.
     """
 
-    def __init__(self, settings=None, model=None, on_changed=None, read_only=False, host_app=None,
-                 visibility=None, on_definition_saved=None):
+    def __init__(
+        self,
+        settings=None,
+        model=None,
+        on_changed=None,
+        read_only=False,
+        host_app=None,
+        visibility=None,
+        on_definition_saved=None,
+    ):
         from emtk.dialog_window import DialogWindow
 
         self.model = model or ChannelDefinition(settings)
@@ -301,13 +309,17 @@ class ChannelDefinitionWidget:
         self._hosted_pending = None
         self._hosted_can_apply = None
         self._hosted_form = FormState(on_used=self._item_used)
-        self._hosted_spec = json.loads(Path(__file__).with_name("channel_definition_hosted.view.json").read_text())
+        self._hosted_spec = json.loads(
+            Path(__file__).with_name("channel_definition_hosted.view.json").read_text()
+        )
         self.status = ""
         self.read_only = bool(read_only)
         self.host_app = host_app
         self.visibility = dict(visibility or {})
         self.on_definition_saved = on_definition_saved
-        self._io_view = json.loads(Path(__file__).with_name("channel_definition_io.view.json").read_text())
+        self._io_view = json.loads(
+            Path(__file__).with_name("channel_definition_io.view.json").read_text()
+        )
         self._io_state = FormState()
         self.reference_app = None
         self.reference_info = ""
@@ -335,10 +347,14 @@ class ChannelDefinitionWidget:
         self.selected_channel = None
         self._preview_detector = None
         self.dialog = None
-        self.json_window = DialogWindow(tr("Edit JSON definition"), size=(820.0, 560.0), key="channel_json")
+        self.json_window = DialogWindow(
+            tr("Edit JSON definition"), size=(820.0, 560.0), key="channel_json"
+        )
         self.json_text = ""
         self.json_error = ""
-        self._json_view = json.loads(Path(__file__).with_name("channel_definition_json.view.json").read_text())["panels"]
+        self._json_view = json.loads(
+            Path(__file__).with_name("channel_definition_json.view.json").read_text()
+        )["panels"]
         for section in self._json_view["toolbar"]["sections"]:
             for button in section.get("buttons", []):
                 if button["action"] == "edit_json":
@@ -349,9 +365,18 @@ class ChannelDefinitionWidget:
         self._json_state = FormState()
         self._json_toolbar_state.on_used = self._used
         self._json_state.on_used = self._used
-        self.reference_window = DialogWindow(tr("Reference G-factor calibration"), size=(1100.0, 780.0), key="channel_reference")
-        self.reference_prompt = DialogWindow(tr("Use the saved calibration tail?"), size=(720.0, 180.0), key="channel_reference_prompt", fit_height=True)
-        self._reference_view = json.loads(Path(__file__).with_name("channel_definition_calibration.view.json").read_text())["panels"]
+        self.reference_window = DialogWindow(
+            tr("Reference G-factor calibration"), size=(1100.0, 780.0), key="channel_reference"
+        )
+        self.reference_prompt = DialogWindow(
+            tr("Use the saved calibration tail?"),
+            size=(720.0, 180.0),
+            key="channel_reference_prompt",
+            fit_height=True,
+        )
+        self._reference_view = json.loads(
+            Path(__file__).with_name("channel_definition_calibration.view.json").read_text()
+        )["panels"]
         self._reference_state = FormState()
         self.action = "measurement"
         self._future = None
@@ -579,9 +604,20 @@ class ChannelDefinitionWidget:
     def enabled(self, name):
         """JSON editing is unavailable for a read-only page or during calibration reading."""
         if name in {"edit_json", "json_text", "apply_json"}:
-            return not self.read_only and self._future is None and self._reference_future is None and self.reference_app is None
+            return (
+                not self.read_only
+                and self._future is None
+                and self._reference_future is None
+                and self.reference_app is None
+            )
         if name == "preview_g":
-            return not self.read_only and self._future is None and self._reference_future is None and self.reference_app is None and bool(self.model.preview)
+            return (
+                not self.read_only
+                and self._future is None
+                and self._reference_future is None
+                and self.reference_app is None
+                and bool(self.model.preview)
+            )
         if name in {"calibration_headless", "calibration_interactive"}:
             return not self.read_only and self._reference_model is not None
         if name == "calibration_apply":
@@ -1210,10 +1246,16 @@ class ChannelDefinitionWidget:
         name = record["id"]
         detector = self.model.data["detectors"][name]
         if len(detector.get("chs", [])) < 2:
-            self.status = tr("Reference calibration needs parallel and perpendicular routing channels.")
+            self.status = tr(
+                "Reference calibration needs parallel and perpendicular routing channels."
+            )
             return
-        self._reference_context = {"name": name, "channels": list(detector["chs"]),
-                                   "definition": self.model.data, "setup_name": self.model.current_name}
+        self._reference_context = {
+            "name": name,
+            "channels": list(detector["chs"]),
+            "definition": self.model.data,
+            "setup_name": self.model.current_name,
+        }
         self._capture_reference_drops()
         self.browse("reference_calibration")
 
@@ -1222,7 +1264,11 @@ class ChannelDefinitionWidget:
         if not self.enabled("preview_g"):
             return
         detectors = self.model.data["detectors"]
-        name = self._preview_detector if self._preview_detector in detectors else next(iter(detectors), None)
+        name = (
+            self._preview_detector
+            if self._preview_detector in detectors
+            else next(iter(detectors), None)
+        )
         if name is not None and self._call(self.model.calculate_g, name) is not None:
             self._refresh_rows()
 
@@ -1235,12 +1281,16 @@ class ChannelDefinitionWidget:
         cancelled = self._reference_cancel
         name = self._reference_context["name"]
         self.status = tr("Reading independent calibration reference ...")
-        self._reference_future = self._executor.submit(self._prepare_reference, snapshot, path, name, cancelled)
+        self._reference_future = self._executor.submit(
+            self._prepare_reference, snapshot, path, name, cancelled
+        )
+
         def completed(future):
             if self._closing or cancelled.is_set():
                 self._discard_prepared_reference(future)
             else:
                 self.host_app.request_frame()
+
         self._reference_future.add_done_callback(completed)
 
     def _prepare_reference(self, snapshot, path, name, cancelled=None):
@@ -1250,7 +1300,11 @@ class ChannelDefinitionWidget:
 
         cancelled = self._reference_cancel if cancelled is None else cancelled
         if Path(path).suffix.lower() == ".set":
-            raise ValueError(tr("Choose a TTTR measurement, not a timing-only SET header, for reference calibration."))
+            raise ValueError(
+                tr(
+                    "Choose a TTTR measurement, not a timing-only SET header, for reference calibration."
+                )
+            )
         snapshot.preview, snapshot.raw_preview, snapshot.preview_path = {}, {}, ""
         snapshot.data.pop("_microtime_per_channel_decay", None)
         snapshot.data.pop("_raw_microtime_per_channel_decay", None)
@@ -1261,12 +1315,21 @@ class ChannelDefinitionWidget:
         if not snapshot.preview or snapshot.preview_path != str(path):
             raise ValueError(tr("The reference contains no newly read detector histograms."))
         shape = next(iter(snapshot.preview.values()))
-        parallel = sum((snapshot.preview[ch] for ch in channels[::2] if ch in snapshot.preview), start=np.zeros_like(shape))
-        perpendicular = sum((snapshot.preview[ch] for ch in channels[1::2] if ch in snapshot.preview), start=np.zeros_like(shape))
+        parallel = sum(
+            (snapshot.preview[ch] for ch in channels[::2] if ch in snapshot.preview),
+            start=np.zeros_like(shape),
+        )
+        perpendicular = sum(
+            (snapshot.preview[ch] for ch in channels[1::2] if ch in snapshot.preview),
+            start=np.zeros_like(shape),
+        )
         binning = max(1, int(snapshot.data["tttr_reading"].get("micro_time_binning", 1)))
         if binning > 1:
             indices = np.arange(0, len(parallel), binning)
-            parallel, perpendicular = np.add.reduceat(parallel, indices), np.add.reduceat(perpendicular, indices)
+            parallel, perpendicular = (
+                np.add.reduceat(parallel, indices),
+                np.add.reduceat(perpendicular, indices),
+            )
         temporary = tempfile.TemporaryDirectory(prefix="chisurf-reference-calibration-")
         try:
             filename = Path(temporary.name) / "reference_vv_vh.dat"
@@ -1284,8 +1347,17 @@ class ChannelDefinitionWidget:
             reference.compute()
             if cancelled.is_set():
                 raise InterruptedError(tr("Reference calibration cancelled."))
-            return reference, temporary, {"path": str(path), "binning": binning, "timing": timing,
-                                           "saved_tail": saved_tail, "prepared_file": str(filename)}
+            return (
+                reference,
+                temporary,
+                {
+                    "path": str(path),
+                    "binning": binning,
+                    "timing": timing,
+                    "saved_tail": saved_tail,
+                    "prepared_file": str(filename),
+                },
+            )
         except Exception:
             temporary.cleanup()
             raise
@@ -1302,7 +1374,9 @@ class ChannelDefinitionWidget:
             if self._reference_cancel.is_set() or self.read_only or self._closing:
                 self.calibration_cancel()
                 return
-            self.reference_info = tr("Reference: {path}\nDetector: {name}. Use the stored tail headlessly, or inspect the full calculator.").format(path=context["path"], name=self._reference_context["name"])
+            self.reference_info = tr(
+                "Reference: {path}\nDetector: {name}. Use the stored tail headlessly, or inspect the full calculator."
+            ).format(path=context["path"], name=self._reference_context["name"])
             if context["saved_tail"]:
                 self.reference_prompt.show()
             else:
@@ -1340,18 +1414,33 @@ class ChannelDefinitionWidget:
             return
         name = self._reference_context["name"]
         try:
-            if (self.model.data is not self._reference_context["definition"]
-                    or self.model.current_name != self._reference_context["setup_name"]):
-                raise ValueError(tr("The active definition changed during calibration; start a new Calc G reference."))
+            if (
+                self.model.data is not self._reference_context["definition"]
+                or self.model.current_name != self._reference_context["setup_name"]
+            ):
+                raise ValueError(
+                    tr(
+                        "The active definition changed during calibration; start a new Calc G reference."
+                    )
+                )
             if reference.fast_file != self._reference_context["prepared_file"]:
-                raise ValueError(tr("The fast reference changed. Start a new Calc G TTTR workflow to establish its raw-channel and timing provenance."))
+                raise ValueError(
+                    tr(
+                        "The fast reference changed. Start a new Calc G TTTR workflow to establish its raw-channel and timing provenance."
+                    )
+                )
             if self.model.data["detectors"][name].get("chs") != self._reference_context["channels"]:
                 raise ValueError(tr("Detector routing channels changed during calibration."))
-            self.model.archive_reference_g(name, reference,
+            self.model.archive_reference_g(
+                name,
+                reference,
                 micro_time_resolution=self._reference_context["timing"],
                 binning=self._reference_context["binning"],
                 source_measurement=self._reference_context["path"],
-                save_named=bool(self.model.current_name in self.model.setups and self.toolbar.is_owner()))
+                save_named=bool(
+                    self.model.current_name in self.model.setups and self.toolbar.is_owner()
+                ),
+            )
             self._refresh_rows()
             self.status = tr("Reference calibration archived and detector updated.")
         except Exception as exc:
@@ -1398,7 +1487,10 @@ class ChannelDefinitionWidget:
         if self._reference_drop_hooks:
             return
         for name in ("files_dropped", "on_files_dropped", "on_paths_dropped"):
-            self._reference_drop_hooks[name] = (name in self.host_app.__dict__, self.host_app.__dict__.get(name))
+            self._reference_drop_hooks[name] = (
+                name in self.host_app.__dict__,
+                self.host_app.__dict__.get(name),
+            )
             setattr(self.host_app, name, self._reference_drop)
 
     def _release_reference_drops(self):
@@ -1428,15 +1520,25 @@ class ChannelDefinitionWidget:
         x, y, width, height = box
         px, py = io.mouse_pos
         inside = x <= px < x + width and y <= py < y + height
-        modifiers = ((SHIFT_MODIFIER if io.key_shift else 0) | (CONTROL_MODIFIER if io.key_ctrl else 0)
-                     | (ALT_MODIFIER if io.key_alt else 0) | (META_MODIFIER if io.key_super else 0))
+        modifiers = (
+            (SHIFT_MODIFIER if io.key_shift else 0)
+            | (CONTROL_MODIFIER if io.key_ctrl else 0)
+            | (ALT_MODIFIER if io.key_alt else 0)
+            | (META_MODIFIER if io.key_super else 0)
+        )
         buttons = sum((1 << index) for index, down in enumerate(io.mouse_down) if down)
         child.pointer_move(px - x, py - y, buttons, modifiers)
         for index in range(3):
             if io.mouse_clicked[index]:
                 self._reference_focus = inside
                 self._reference_capture = inside
-                child.pointer_press(px - x, py - y, 1 << index, modifiers, 2 if io.mouse_double_clicked[index] else 1)
+                child.pointer_press(
+                    px - x,
+                    py - y,
+                    1 << index,
+                    modifiers,
+                    2 if io.mouse_double_clicked[index] else 1,
+                )
             if io.mouse_released[index]:
                 child.pointer_release(px - x, py - y, 1 << index, modifiers)
                 self._reference_capture = False
@@ -1461,7 +1563,12 @@ class ChannelDefinitionWidget:
         child = self.reference_app
         if child is None:
             return
-        self.reference_window.escape_closes = not (child.dialog is not None or child.help.open or child.guide.active or child.dataset_picker.is_open)
+        self.reference_window.escape_closes = not (
+            child.dialog is not None
+            or child.help.open
+            or child.guide.active
+            or child.dataset_picker.is_open
+        )
         pressed = self.reference_window.begin(frame)
         draw_form(self._reference_view["calibration_footer"], self, self._reference_state)
         self.item_rects.update(self._reference_state.rects)
@@ -1476,12 +1583,24 @@ class ChannelDefinitionWidget:
         self.host_app.draw_child(im.get_current_context().p, child, *box, local_coordinates=True)
         for key, rectangle in child.item_rects.items():
             if rectangle:
-                self.item_rects["reference." + key] = (rectangle[0] + x, rectangle[1] + y, *rectangle[2:])
+                self.item_rects["reference." + key] = (
+                    rectangle[0] + x,
+                    rectangle[1] + y,
+                    *rectangle[2:],
+                )
         for state in child.forms.values():
             for key, rectangle in state.rects.items():
-                self.item_rects["reference." + key] = (rectangle[0] + x, rectangle[1] + y, *rectangle[2:])
+                self.item_rects["reference." + key] = (
+                    rectangle[0] + x,
+                    rectangle[1] + y,
+                    *rectangle[2:],
+                )
         self.reference_window.end()
-        if pressed == "close" or child.close_requested or (self._reference_apply_requested and not child.job.running):
+        if (
+            pressed == "close"
+            or child.close_requested
+            or (self._reference_apply_requested and not child.job.running)
+        ):
             child.close()
             self.reference_app = None
             self.reference_window.hide()
@@ -1677,7 +1796,14 @@ class ChannelDefinitionWidget:
         from emtk import im
 
         self.poll()
-        im.begin_disabled(self._future is not None or self._reference_future is not None or self.reference_app is not None or self.reference_prompt.open or self.read_only or self.json_window.open)
+        im.begin_disabled(
+            self._future is not None
+            or self._reference_future is not None
+            or self.reference_app is not None
+            or self.reference_prompt.open
+            or self.read_only
+            or self.json_window.open
+        )
         self._setup_row()
         for key, title, _opened in SECTIONS:
             if key == "reading" and not self.is_visible("tttr_reading"):
@@ -1913,7 +2039,11 @@ class ChannelDefinitionWidget:
         from emtk import im
 
         im.text_wrapped(HELP_TEXT)
-        im.text_wrapped(tr("Edit JSON opens the complete working definition, including calibration identifiers and metadata not shown in the tables. Apply validates the draft and refreshes the page; Cancel keeps the previous definition. Derived channel and timing fields are regenerated. Save the named setup separately."))
+        im.text_wrapped(
+            tr(
+                "Edit JSON opens the complete working definition, including calibration identifiers and metadata not shown in the tables. Apply validates the draft and refreshes the page; Cancel keeps the previous definition. Derived channel and timing fields are regenerated. Save the named setup separately."
+            )
+        )
 
     def _lut_tools_body(self):
         from emtk import im
@@ -1922,7 +2052,9 @@ class ChannelDefinitionWidget:
 
         channels = self.used_channels()
         if not channels:
-            im.text_wrapped(tr("Define detectors or read a measurement to discover routing channels."))
+            im.text_wrapped(
+                tr("Define detectors or read a measurement to discover routing channels.")
+            )
             return
         self.lut_channel()
         im.text(tr("Routing channel:"))
@@ -1931,7 +2063,9 @@ class ChannelDefinitionWidget:
         changed, index = im.combo(
             "##lut_channel", channels.index(self.selected_channel), [str(c) for c in channels]
         )
-        im.set_item_tooltip(tr("Routing channel whose LUT is computed, assigned, exported or removed."))
+        im.set_item_tooltip(
+            tr("Routing channel whose LUT is computed, assigned, exported or removed.")
+        )
         if changed:
             self.selected_channel = channels[index]
         key = str(self.selected_channel)
@@ -2055,7 +2189,9 @@ class ChannelDefinitionWidget:
             self.shift_window.hide()
         im.set_item_tooltip(tr("Keep the shifts shown."))
         im.same_line()
-        if action_button("cancel", tooltip=tr("Close without changing the shifts."), id="shift_cancel"):
+        if action_button(
+            "cancel", tooltip=tr("Close without changing the shifts."), id="shift_cancel"
+        ):
             self.shift_window.hide()
 
     def _preview_body(self):
@@ -2096,8 +2232,13 @@ class ChannelDefinitionWidget:
                     elif self.action == "export_lut":
                         self.model.export_lut(self.selected_channel, result[0])
                     elif self.action == "save_definition":
-                        self.model.export_definition(result[0], update_named=bool(
-                            self.model.current_name in self.model.setups and self.toolbar.is_owner()))
+                        self.model.export_definition(
+                            result[0],
+                            update_named=bool(
+                                self.model.current_name in self.model.setups
+                                and self.toolbar.is_owner()
+                            ),
+                        )
                         self.status = tr("Complete detector definition saved.")
                         if callable(self.on_definition_saved):
                             self.on_definition_saved(result[0])
@@ -2219,8 +2360,13 @@ class ChannelDefinitionWidget:
             "Detector setup / calibration file",
             mode=mode,
             filters=[("All supported files", patterns)],
-            filename=("tac_lut.json" if action == "export_lut" else
-                      "detector_definition.json" if action == "save_definition" else "detector_setups.json")
+            filename=(
+                "tac_lut.json"
+                if action == "export_lut"
+                else "detector_definition.json"
+                if action == "save_definition"
+                else "detector_setups.json"
+            )
             if mode == "save"
             else None,
         )

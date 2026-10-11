@@ -79,7 +79,9 @@ def test_open_in_ndx_sends_the_runs_output_folder(app, files, monkeypatch):  # n
     from chisurf.plugins.ndxplorer import mmfdb_launcher
 
     opened = []
-    monkeypatch.setattr(mmfdb_launcher, "open_path_in_ndxplorer", lambda path: opened.append(path) or object())
+    monkeypatch.setattr(
+        mmfdb_launcher, "open_path_in_ndxplorer", lambda path: opened.append(path) or object()
+    )
     drv = Driver(app, (1200, 800))
     drv.drop(*files)
     drv.draw(2)
@@ -113,7 +115,11 @@ def test_ndx_from_mmfdb_opens_the_picker(app):  # noqa: F811
     drv = Driver(app, (1200, 800))
     drv.click_name("ndx_mmfdb")
     drv.draw(2)
-    assert app.picker is not None and app.picker.is_open or "MMFDB is not available" in app.model.status_text
+    assert (
+        app.picker is not None
+        and app.picker.is_open
+        or "MMFDB is not available" in app.model.status_text
+    )
 
 
 def test_fit_gmm_button_fits_the_requested_components(app, files):  # noqa: F811
@@ -141,7 +147,9 @@ def test_fit_gmm_button_fits_the_requested_components(app, files):  # noqa: F811
     drv.type_into_name("gmm_components", "0")
     drv.click_name("fit_gmm")
     drv.draw(2)
-    assert app.model.status_text == "GMM fitting skipped: not enough data points or zero components."
+    assert (
+        app.model.status_text == "GMM fitting skipped: not enough data points or zero components."
+    )
 
 
 def test_auto_components_choose_the_count_by_bic_and_settings_dialog_refits(app, files):  # noqa: F811

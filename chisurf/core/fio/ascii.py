@@ -543,7 +543,9 @@ class Csv:
             # for the delimiter sniffer to discover. Honor their explicit layout.
             self.directory = os.path.dirname(filename)
             self._filename = filename
-            specs = ast.literal_eval(self.colspecs) if isinstance(self.colspecs, str) else self.colspecs
+            specs = (
+                ast.literal_eval(self.colspecs) if isinstance(self.colspecs, str) else self.colspecs
+            )
             if isinstance(specs, int):
                 specs = (specs,)
             specs = tuple(specs or ())
@@ -585,10 +587,17 @@ class Csv:
                     line = _decode(stream.readline())
                 self._header = [line[start:stop].strip() for start, stop in bounds]
                 skipped += 1
-            self._data = np.atleast_2d(np.genfromtxt(
-                fname=filename, delimiter=tuple(widths), skip_header=skipped,
-                usecols=columns, autostrip=True, invalid_raise=True, **kwargs,
-            ))
+            self._data = np.atleast_2d(
+                np.genfromtxt(
+                    fname=filename,
+                    delimiter=tuple(widths),
+                    skip_header=skipped,
+                    usecols=columns,
+                    autostrip=True,
+                    invalid_raise=True,
+                    **kwargs,
+                )
+            )
             return
 
         if os.path.isfile(filename):

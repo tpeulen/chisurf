@@ -114,7 +114,9 @@ def layout_problems(painter, size, ignore=()):
             problems.append(f"outside the window: {s!r} {tuple(round(v) for v in rect)}")
         visible.append((rect, s))
     for i, (a, sa) in enumerate(visible):
-        for b, sb in visible[i + 1:]:
+        for b, sb in visible[i + 1 :]:
             if overlaps(a, b, 2.0):
-                problems.append(f"overlap: {sa!r} {tuple(round(v) for v in a)} with {sb!r} {tuple(round(v) for v in b)}")
+                problems.append(
+                    f"overlap: {sa!r} {tuple(round(v) for v in a)} with {sb!r} {tuple(round(v) for v in b)}"
+                )
     return problems

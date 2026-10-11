@@ -231,7 +231,9 @@ def test_a_tool_without_a_native_declaration_says_pending_and_the_rest_works():
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click_text(action_caption("help"))
-    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(drv.draw(2).strings)
+    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(
+        drv.draw(2).strings
+    )
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
@@ -295,7 +297,8 @@ def test_the_hub_draws_without_clipped_or_overlapping_text_around_a_child(size):
     painter = draw_clip(app, size, frames=3)
     left, top = app.child_box[0], app.child_box[1]
     hub = [
-        fragment for fragment in painter.visible_text_fragments()
+        fragment
+        for fragment in painter.visible_text_fragments()
         if fragment[0][0][0] < left or fragment[0][0][1] < top
     ]
     holder = type("P", (), {"visible_text_fragments": lambda _self: iter(hub)})()

@@ -68,9 +68,9 @@ def test_model_produces_the_reference_result():
     # Species labels are interchangeable; brightness and occupancy must remain paired.
     np.testing.assert_allclose(
         sorted(zip(fit.epsilons, fit.avg_Ns)),
-        [(0.058043027099024654, 8.750137325612235),
-         (8.28225986388613, 0.021963498790065913)],
-        rtol=1e-4, atol=0,
+        [(0.058043027099024654, 8.750137325612235), (8.28225986388613, 0.021963498790065913)],
+        rtol=1e-4,
+        atol=0,
     )
     assert fit.chi2 == pytest.approx(1018.399056377842, rel=1e-4)
     assert fit.dof == 21
@@ -251,9 +251,9 @@ def test_main_action_end_to_end(tmp_path):
     assert model.fit_result.chi2 == pytest.approx(1018.399056377842, rel=1e-4)
     np.testing.assert_allclose(
         sorted((row["epsilon"], row["n_mean"]) for row in model.species),
-        [(0.058043027099024654, 8.750137325612235),
-         (8.28225986388613, 0.021963498790065913)],
-        rtol=1e-4, atol=0,
+        [(0.058043027099024654, 8.750137325612235), (8.28225986388613, 0.021963498790065913)],
+        rtol=1e-4,
+        atol=0,
     )
 
     # Save Results opens the save dialog; choosing a name writes the files
@@ -281,8 +281,18 @@ def test_every_control_has_a_tooltip():
     assert inv["controls_without_tooltip"] == []
     labelled = {row["label"] for row in inv["interactive"]}
     assert labelled == {
-        action_caption("help"), action_caption("guide"), action_caption("example"), "Load TTTR", "Compute PCH", "Fit Model", "Save Results",
-        "filename", "channels", "bin_time_us", "micro_time_min", "micro_time_max",
+        action_caption("help"),
+        action_caption("guide"),
+        action_caption("example"),
+        "Load TTTR",
+        "Compute PCH",
+        "Fit Model",
+        "Save Results",
+        "filename",
+        "channels",
+        "bin_time_us",
+        "micro_time_min",
+        "micro_time_max",
         "n_components",
     }
 

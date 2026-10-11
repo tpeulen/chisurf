@@ -17,8 +17,9 @@ from chisurf.core.project import Project, SessionCodecError, capture_session, re
 @pytest.mark.parametrize("polarization", ["vm", "vv/vh"])
 def test_actual_simulator_curve_and_fit_boolean_masks_roundtrip(polarization):
     """JSON snapshots restore real count arrays, boolean selections and model predictions."""
-    reader = TCSPCSimulatorSetup(n_tac=64, dt=0.1, add_noise=False,
-                                 lifetime_spectrum=[1.0, 3.0], polarization=polarization)
+    reader = TCSPCSimulatorSetup(
+        n_tac=64, dt=0.1, add_noise=False, lifetime_spectrum=[1.0, 3.0], polarization=polarization
+    )
     group = reader.read(name="masked simulation")
     for index, curve in enumerate(group):
         curve.mask = (np.arange(len(curve.y)) % (index + 2)) != 0
@@ -37,7 +38,9 @@ def test_actual_simulator_curve_and_fit_boolean_masks_roundtrip(polarization):
             np.testing.assert_array_equal(getattr(actual, field), getattr(original, field))
     assert restored.fits[0].mask.dtype == fit.mask.dtype == np.dtype(bool)
     np.testing.assert_array_equal(restored.fits[0].mask, fit.mask)
-    np.testing.assert_allclose(restored.fits[0].model.y, expected_prediction, rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(
+        restored.fits[0].model.y, expected_prediction, rtol=1e-12, atol=1e-12
+    )
 
 
 @pytest.mark.parametrize("field", ["x", "y", "ex", "ey"])

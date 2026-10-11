@@ -199,8 +199,7 @@ def _kahn(hard: dict[str, set[str]], report: DependencyReport) -> list[str]:
         components.append(sorted(members))
 
     report.cycles = sorted(
-        members for members in components
-        if len(members) > 1 or members[0] in hard[members[0]]
+        members for members in components if len(members) > 1 or members[0] in hard[members[0]]
     )
     prerequisites = [set() for _ in components]
     followers = [set() for _ in components]

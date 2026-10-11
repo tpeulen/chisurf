@@ -121,7 +121,9 @@ class PhasorForm:
 
     def effective_text(self) -> str:
         m = self._gui.model
-        return tr("Effective f = {frequency:g} MHz").format(frequency=float(m.frequency) * int(m.harmonic))
+        return tr("Effective f = {frequency:g} MHz").format(
+            frequency=float(m.frequency) * int(m.harmonic)
+        )
 
     def reference_rows(self) -> list[dict]:
         return [{"tau": tau, "g": g, "s": s} for tau, g, s in self._gui._rows()]
@@ -162,7 +164,9 @@ class PhasorGui(TourTarget):
         self.docks.add_window(
             "results", tr("Reference lifetimes"), self._draw_results, dock="results", closable=False
         )
-        self.docks.add_window("plot", tr("Phasor plot"), self._draw_plot, dock="plot", closable=False)
+        self.docks.add_window(
+            "plot", tr("Phasor plot"), self._draw_plot, dock="plot", closable=False
+        )
 
         self.help_window = EmTkHelpWindow(
             title=tr("Phasor calculator - Help & Reference"),
@@ -304,9 +308,11 @@ class PhasorGui(TourTarget):
                         implot.plot_text(str(text), float(lx), float(ly), (9, -13))
             implot.end_plot()
             im.set_item_tooltip(
-                tr("The universal semicircle with the selected reference geometry: "
-                   "a single exponential of lifetime τ sits on the semicircle, a "
-                   "mixture inside on the chord between its components.")
+                tr(
+                    "The universal semicircle with the selected reference geometry: "
+                    "a single exponential of lifetime τ sits on the semicircle, a "
+                    "mixture inside on the chord between its components."
+                )
             )
         self.remember("plot", tuple(box))  # the window's content: the plot fills it
         self.remember(

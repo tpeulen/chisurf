@@ -164,9 +164,7 @@ SCENARIOS = {
 
 
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(
-    app, drv, tiff, scenario
-):
+def test_the_recorded_qt_results_and_the_emtk_app_agree_on_every_scenario(app, drv, tiff, scenario):
     settings = SCENARIOS[scenario]
     qt = QT_REF["scenarios"][scenario]
     m = measured(app, drv, tiff)

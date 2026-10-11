@@ -69,7 +69,9 @@ def test_foldable_boxes_and_lut_box_present(qapp, lut_setup):
     try:
         ui = native_driver(page)
         ui.draw(2)
-        assert {"section_reading", "section_windows", "section_detectors", "section_lut"} <= set(ui.ids())
+        assert {"section_reading", "section_windows", "section_detectors", "section_lut"} <= set(
+            ui.ids()
+        )
         assert "file_type" in ui.ids()
         ui.click("section_reading")
         assert "file_type" not in ui.ids()
@@ -106,6 +108,7 @@ def test_get_settings_round_trips_lut_keys(qapp, lut_setup):
 def _wait_preview(page, ui):
     """Wait only for this actual editor's preview worker and render its completed result."""
     import time
+
     deadline = time.monotonic() + 15
     while page.editor._future is not None and time.monotonic() < deadline:
         ui.draw(1)
@@ -117,15 +120,21 @@ def _wait_preview(page, ui):
 def test_microtime_preview_applies_lut(qapp, tmp_path):
     """The physical preview follows the actual LUT gate and returns exactly to raw counts."""
     from chisurf.plugins.tttr.tttr_lut_tools.api import compute
-    data = {"windows": {"p": [0, 2048]}, "detectors": {"g": {"chs": [0]}},
-            "tttr_reading": {"file_type": "SPC-130"}}
+
+    data = {
+        "windows": {"p": [0, 2048]},
+        "detectors": {"g": {"chs": [0]}},
+        "tttr_reading": {"file_type": "SPC-130"},
+    }
     setup = tmp_path / "s.json"
     setup.write_text(json.dumps(data))
     page = _page(str(setup))
     try:
         page.model.read_tttr(str(_SPC))
         raw = page.model.preview[0].copy()
-        table = compute.compute_lut_from_files([str(_SPC)], channel=0, linear_start=1500, linear_stop=3000)
+        table = compute.compute_lut_from_files(
+            [str(_SPC)], channel=0, linear_start=1500, linear_stop=3000
+        )
         correction = tmp_path / "computed.npy"
         np.save(correction, table["NTAC_fract"])
         page.model.assign_lut(0, correction)
@@ -162,12 +171,22 @@ def test_shift_dialog_loads_lut_corrected_and_round_trips(qapp, tmp_path):
     """The real native shift modal edits corrected physical histograms and persists its draft."""
     from emtk.events import CONTROL_MODIFIER
     from emtk.keys import KEY_RETURN
+
     setup = tmp_path / "s.json"
-    setup.write_text(json.dumps({"detectors": {"g": {"chs": [0, 1]}},
-                                "tttr_reading": {"file_type": "SPC-130"},
-                                "channel_luts": {"0": np.linspace(0, 4096, 4096).tolist(),
-                                                 "1": np.linspace(0, 4096, 4096).tolist()},
-                                "channel_shifts": {"0": 5}, "apply_lut": True}))
+    setup.write_text(
+        json.dumps(
+            {
+                "detectors": {"g": {"chs": [0, 1]}},
+                "tttr_reading": {"file_type": "SPC-130"},
+                "channel_luts": {
+                    "0": np.linspace(0, 4096, 4096).tolist(),
+                    "1": np.linspace(0, 4096, 4096).tolist(),
+                },
+                "channel_shifts": {"0": 5},
+                "apply_lut": True,
+            }
+        )
+    )
     page = _page(str(setup))
     try:
         page.model.read_tttr(str(_SPC))

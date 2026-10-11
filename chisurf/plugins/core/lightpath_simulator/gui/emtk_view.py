@@ -243,7 +243,9 @@ class BeampathContent(NodeContentRenderer):
         """
         edited, value = im.input_text("name", str(node.config.get("detector_name", "Detector")))
         im.set_item_tooltip(
-            tr("Name of this optical detector; it labels the calculated signal and crosstalk columns.")
+            tr(
+                "Name of this optical detector; it labels the calculated signal and crosstalk columns."
+            )
         )
         if edited and not read_only:
             node.config["detector_name"] = value
@@ -273,7 +275,9 @@ class BeampathContent(NodeContentRenderer):
         index = next((i for i, (_, pid) in enumerate(options) if pid == current), 0)
 
         moved, chosen = im.combo("component", index, labels)
-        im.set_item_tooltip(tr("Choose the measured optical component spectrum assigned to this node."))
+        im.set_item_tooltip(
+            tr("Choose the measured optical component spectrum assigned to this node.")
+        )
         if moved and not read_only:
             node.config["probe_id"] = options[chosen][1]
             # The two keys are alternatives, and leaving the old one behind
@@ -402,7 +406,9 @@ class BeampathContent(NodeContentRenderer):
 
         shown = node.id not in self.hidden_plots
         toggled, shown = im.checkbox(tr("spectrum"), shown)
-        im.set_item_tooltip(tr("Show or hide this node’s input, output and characteristic spectra."))
+        im.set_item_tooltip(
+            tr("Show or hide this node’s input, output and characteristic spectra.")
+        )
         if toggled:
             self.hidden_plots.discard(node.id) if shown else self.hidden_plots.add(node.id)
         if not shown:

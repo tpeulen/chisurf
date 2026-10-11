@@ -244,7 +244,9 @@ class StyleManagerModel:
         try:
             import chisurf as cs
 
-            cs.core.settings.style_sheet = qss_text  # what the startup compares against to skip a re-apply
+            cs.core.settings.style_sheet = (
+                qss_text  # what the startup compares against to skip a re-apply
+            )
         except Exception:  # noqa: BLE001 - the sheet is applied; only the cache of it is missing
             pass
         return True
@@ -302,7 +304,9 @@ class StyleManagerModel:
 
 class StyleManagerApp(ImApp):
     def __init__(self, model=None):
-        spec = json.loads((pathlib.Path(__file__).with_name("app.view.json")).read_text(encoding="utf-8"))
+        spec = json.loads(
+            (pathlib.Path(__file__).with_name("app.view.json")).read_text(encoding="utf-8")
+        )
         self.window_size = window_size(spec, (1200, 800))
         self.model = model or StyleManagerModel()
         self.file_dialog = None
@@ -413,7 +417,9 @@ class StyleManagerApp(ImApp):
         im.same_line()
         if action_button(
             "open",
-            tooltip=tr("Choose a style sheet from another directory; unsaved changes require confirmation"),
+            tooltip=tr(
+                "Choose a style sheet from another directory; unsaved changes require confirmation"
+            ),
         ):
             self.request_file("open")
         im.same_line()
@@ -434,7 +440,9 @@ class StyleManagerApp(ImApp):
             if m.apply():
                 self.tour.notify_used("apply")
         im.set_item_tooltip(
-            tr("Save and apply supported palette rules to this native window; Qt-only rules remain in the file")
+            tr(
+                "Save and apply supported palette rules to this native window; Qt-only rules remain in the file"
+            )
         )
         self._remember("apply")
         im.same_line()
@@ -455,7 +463,9 @@ class StyleManagerApp(ImApp):
             if im.collapsing_header(f"Qt-only declarations ({len(m.ignored_rules)})"):
                 im.text_wrapped(", ".join(dict.fromkeys(m.ignored_rules)))
             im.set_item_tooltip(
-                tr("Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim")
+                tr(
+                    "Native widgets use palette roles; Qt selectors, images, dimensions and gradients cannot be applied verbatim"
+                )
             )
         im.text_wrapped(m.status)
         im.text_editor(
@@ -498,7 +508,9 @@ class StyleManagerApp(ImApp):
             if im.begin("New style"):
                 _, self.new_name = im.input_text("File name", self.new_name)
                 im.set_item_tooltip(
-                    tr("Enter a file name; .qss is added automatically and directory components are rejected")
+                    tr(
+                        "Enter a file name; .qss is added automatically and directory components are rejected"
+                    )
                 )
                 if im.button(tr("Create style")) and self.model.new(self.new_name):
                     self.new_visible = False

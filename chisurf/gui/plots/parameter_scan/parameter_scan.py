@@ -195,8 +195,13 @@ class ParameterScanPlot(plotbase.Plot):
             return
         if state.get("parameter") in self._parameter_names:
             self._parameter_name = state["parameter"]
-        for key, kind in (("scan_lower", float), ("scan_upper", float), ("scan_steps", int),
-                          ("p_values", str), ("bound_range", bool)):
+        for key, kind in (
+            ("scan_lower", float),
+            ("scan_upper", float),
+            ("scan_steps", int),
+            ("p_values", str),
+            ("bound_range", bool),
+        ):
             if key in state:
                 setattr(self, key, kind(state[key]))
         self.update()
@@ -210,7 +215,10 @@ class ParameterScanPlot(plotbase.Plot):
             return
         n_steps = int(self.scan_steps)
         value = float(p.value)
-        scan_range = ((1.0 - float(self.scan_lower)) * value, (1.0 + float(self.scan_upper)) * value)
+        scan_range = (
+            (1.0 - float(self.scan_lower)) * value,
+            (1.0 + float(self.scan_upper)) * value,
+        )
 
         fc = get_fitting_client()
         if fc is not None:

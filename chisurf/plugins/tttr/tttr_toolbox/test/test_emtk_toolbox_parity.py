@@ -63,7 +63,9 @@ class Child(ImApp):
         from chisurf.emtk.channel_definition import ChannelDefinitionWidget
 
         self.calls, self.value, self.dropped = [], 1, []
-        self.channel_editor = ChannelDefinitionWidget()  # a setup-using tool hosts the shared editor
+        self.channel_editor = (
+            ChannelDefinitionWidget()
+        )  # a setup-using tool hosts the shared editor
 
     def pointer_press(self, *a):
         self.calls.append(("press", a))

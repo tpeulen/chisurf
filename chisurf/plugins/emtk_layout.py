@@ -27,8 +27,9 @@ LAYOUT_KEYS = frozenset({"name", "dock", "tab", "window", "page", "panels"})
 #: Native plotting apps read their raw plot declarations before drawing them.
 #: FCS saturation (_plot_sections/_plot) and FLC2D (_draw_series) share these.
 APP_SECTION_KEYS = {
-    "plot": frozenset({"source", "title", "description", "x_label", "y_label",
-                       "log_x", "log_y", "legend"}),
+    "plot": frozenset(
+        {"source", "title", "description", "x_label", "y_label", "log_x", "log_y", "legend"}
+    ),
 }
 
 from dataclasses import dataclass
@@ -44,7 +45,6 @@ CHOICE_WIDTH = 170.0
 TEXT_WIDTH = 320.0
 #: Between a colour pictogram and its caption (the glyph is drawn wider than the font measures it).
 ICON_GAP = "  "
-
 
 
 def window_size(spec: dict, default: tuple[int, int]) -> tuple[int, int]:
@@ -70,11 +70,14 @@ def window_size(spec: dict, default: tuple[int, int]) -> tuple[int, int]:
     if "window" not in spec:
         return default
     declaration = spec["window"]
-    if (not isinstance(declaration, dict)
-            or set(declaration) != {"width", "height"}
-            or any(type(declaration[key]) is not int
-                   or not 120 <= declaration[key] <= 8192
-                   for key in ("width", "height"))):
+    if (
+        not isinstance(declaration, dict)
+        or set(declaration) != {"width", "height"}
+        or any(
+            type(declaration[key]) is not int or not 120 <= declaration[key] <= 8192
+            for key in ("width", "height")
+        )
+    ):
         raise ValueError("window requires integer width and height between 120 and 8192")
     return declaration["width"], declaration["height"]
 
@@ -111,10 +114,19 @@ class Action:
 #: out because importing ``chisurf.gui`` loads Qt, and ``test/test_ui_vocabulary.py`` pins them equal.
 ACTIONS: dict[str, Action] = {
     "help": Action("❓", "Help", "Open the help for this window.", fixed_tooltip=True),
-    "guide": Action("📖", "Guide", "Start a step-by-step tour that points at the real controls.",
-                    fixed_tooltip=True),
-    "sound": Action("🔊", "Sound", "Music and sound effects (off by default).", kind="toggle",
-                    fixed_tooltip=True),
+    "guide": Action(
+        "📖",
+        "Guide",
+        "Start a step-by-step tour that points at the real controls.",
+        fixed_tooltip=True,
+    ),
+    "sound": Action(
+        "🔊",
+        "Sound",
+        "Music and sound effects (off by default).",
+        kind="toggle",
+        fixed_tooltip=True,
+    ),
     "restart": Action("🔁", "Restart", "Start over from the beginning."),
     "close": Action("✕", "Close", "Close this window."),
     "run": Action("▶\ufe0f", "Run", "Run with the current settings."),
@@ -229,7 +241,9 @@ def sound_toggle(enabled: bool, *, available: bool = True, shortcut: str | None 
     clicked, _ = im.toggle_button(f"{action_caption('sound', icon)}###sound", bool(enabled))
     if not available:
         im.end_disabled()
-    im.set_item_tooltip(action_tooltip("sound", shortcut=shortcut) if available else tr(SOUND_UNAVAILABLE))
+    im.set_item_tooltip(
+        action_tooltip("sound", shortcut=shortcut) if available else tr(SOUND_UNAVAILABLE)
+    )
     return clicked and available
 
 
@@ -242,8 +256,12 @@ def action_item(key: str, action: str, description: str | None = None) -> dict:
     entry = ACTIONS[key]
     if description and entry.fixed_tooltip:
         raise ValueError(f"the {key!r} tooltip is shared by every window and cannot be replaced")
-    return {"action": action, "label": entry.label, "icon": entry.icon,
-            "description": description or entry.tooltip}
+    return {
+        "action": action,
+        "label": entry.label,
+        "icon": entry.icon,
+        "description": description or entry.tooltip,
+    }
 
 
 def labelled(sections: Sequence[dict]) -> Iterator[dict]:
@@ -371,7 +389,9 @@ class LabelColumn:
 
 def button_width(label: str) -> float:
     """The width ``im.button(label)`` takes."""
-    return im.calc_text_size(label, hide_double_hash=True)[0] + 2.0 * im.get_style().frame_padding[0]
+    return (
+        im.calc_text_size(label, hide_double_hash=True)[0] + 2.0 * im.get_style().frame_padding[0]
+    )
 
 
 def same_line_or_wrap(label: str) -> None:

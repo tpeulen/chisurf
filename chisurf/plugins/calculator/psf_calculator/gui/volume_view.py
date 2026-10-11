@@ -62,7 +62,9 @@ class PSFVolumeView:
 
     def __init__(self) -> None:
         # scale_factor 1.0: world units are nanometres here, and chimol's default scale is for Angstrom.
-        self.view = ChimolView(min_size=(320, 240), viewer_options={"scale_factor": 1.0}, skip_idle_frames=True)
+        self.view = ChimolView(
+            min_size=(320, 240), viewer_options={"scale_factor": 1.0}, skip_idle_frames=True
+        )
         self._volume_key = None
         self._look_key = None
         self._object_id = None
@@ -131,13 +133,17 @@ class PSFVolumeView:
         shape_xyz = np.array(volume.shape[::-1], dtype=float)
         lo_xyz = np.array([box[2].start, box[1].start, box[0].start], dtype=float)
         origin = (lo_xyz - (shape_xyz - 1) / 2.0) * step  # nm, centred on the volume's middle voxel
-        grid = VolumeGrid.from_array(np.transpose(crop, (2, 1, 0)), origin=origin, step=step, name="PSF")
+        grid = VolumeGrid.from_array(
+            np.transpose(crop, (2, 1, 0)), origin=origin, step=step, name="PSF"
+        )
         if self._object_id is not None:
             viewer.remove_object(self._object_id)
         viewer.clear_annotations()
         levels = shell_levels(model.threshold, model.gamma, self._colormap(model), peak)
         self._object_id = viewer.add_volume(grid, name="PSF", levels=levels)
-        for command in OBLIQUE_VIEW:  # look at the focus from the side and above, so its length shows
+        for (
+            command
+        ) in OBLIQUE_VIEW:  # look at the focus from the side and above, so its length shows
             self.view.app.cmd.do(command)
         if model.show_polarization and model.model == "vectorial":
             self._add_polarization(model, grid, shape_xyz, step)
@@ -151,7 +157,9 @@ class PSFVolumeView:
         low, high = grid.extent()
         centre = (np.asarray(low) + np.asarray(high)) / 2.0
         half_xy = max(float(high[0] - low[0]), float(high[1] - low[1])) / 2.0
-        ring_nm = 0.38 * min(shape_xyz[0], shape_xyz[1]) * step[0]  # the ring radius polarization_segments draws
+        ring_nm = (
+            0.38 * min(shape_xyz[0], shape_xyz[1]) * step[0]
+        )  # the ring radius polarization_segments draws
         scale = 0.9 * half_xy / max(ring_nm, 1e-9)
         z_ring = float(high[2]) - 0.05 * float(high[2] - low[2])
         mid = (shape_xyz - 1) / 2.0
@@ -162,7 +170,9 @@ class PSFVolumeView:
             points[:, 0] = centre[0] + scale * nm[:, 0]
             points[:, 1] = centre[1] + scale * nm[:, 1]
             points[:, 2] = z_ring
-            viewer.add_annotation("line", points, color=(0.45, 0.8, 1.0, 1.0), width=2.0, name="polarization")
+            viewer.add_annotation(
+                "line", points, color=(0.45, 0.8, 1.0, 1.0), width=2.0, name="polarization"
+            )
 
     def _recolour(self, model) -> None:
         """New threshold-free look (gamma, colormap): re-contour at the new colours without moving the camera."""

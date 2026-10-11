@@ -1,4 +1,5 @@
 """Compatibility alias for the headless graph schema."""
+
 import sys
 
 from chisurf.core import graph_definition as _module

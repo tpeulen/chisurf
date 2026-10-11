@@ -19,4 +19,3 @@ if _manifest is not None:
     name = _manifest.display_name
 else:
     name = "Tools:Calculators:Calculators"
-

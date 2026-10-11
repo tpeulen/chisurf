@@ -20,7 +20,9 @@ def catalog_directory() -> Path:
     return Path(__file__).resolve().parents[1] / "gui" / "i18n"
 
 
-def read_catalog(path: str | Path, *, include_unfinished: bool = False) -> dict[str, dict[str, str]]:
+def read_catalog(
+    path: str | Path, *, include_unfinished: bool = False
+) -> dict[str, dict[str, str]]:
     """Read singular translations; optionally retain unfinished source entries for audits."""
     root = ET.parse(path).getroot()
     contexts: dict[str, dict[str, str]] = {}
@@ -33,7 +35,9 @@ def read_catalog(path: str | Path, *, include_unfinished: bool = False) -> dict[
             if not source or translation is None:
                 continue
             status = translation.get("type")
-            if status in {"obsolete", "vanished"} or (status == "unfinished" and not include_unfinished):
+            if status in {"obsolete", "vanished"} or (
+                status == "unfinished" and not include_unfinished
+            ):
                 continue
             # Plurals require count-aware selection and must not become concatenated text.
             if message.get("numerus") == "yes" or translation.find("numerusform") is not None:
@@ -81,7 +85,9 @@ def install(locale: str | None = None, directory: str | Path | None = None) -> s
         toolkit_i18n.add_translations(language, default, context="default")
     # A language already switched live (set_locale, not persisted) must survive a child tool's install().
     live = toolkit_i18n.get_locale() != "en"
-    selected = locale or (toolkit_i18n.get_locale() if (_installed or live) else core_i18n.get_locale())
+    selected = locale or (
+        toolkit_i18n.get_locale() if (_installed or live) else core_i18n.get_locale()
+    )
     toolkit_i18n.set_locale(selected)
     _installed = True
     core_i18n.set_translation_backend(lambda context, text: toolkit_i18n.tr(text, context=context))

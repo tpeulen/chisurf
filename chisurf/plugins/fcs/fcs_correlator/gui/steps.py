@@ -31,8 +31,16 @@ HERE = Path(__file__).resolve().parents[1]
 TTTR_FILTER = "TTTR files (" + " ".join(f"*{e}" for e in FILE_EXTENSIONS) + ");;All files (*)"
 LIFETIME_FILTER = "Lifetime filters (*.json *.npy *.npz);;All files (*)"
 #: Correlation curve colours (one per chunk / species), RGBA.
-CURVES = [(228, 26, 28, 255), (255, 221, 0, 255), (55, 126, 184, 255), (77, 175, 74, 255),
-          (152, 78, 163, 255), (255, 127, 0, 255), (166, 86, 40, 255), (247, 129, 191, 255)]
+CURVES = [
+    (228, 26, 28, 255),
+    (255, 221, 0, 255),
+    (55, 126, 184, 255),
+    (77, 175, 74, 255),
+    (152, 78, 163, 255),
+    (255, 127, 0, 255),
+    (166, 86, 40, 255),
+    (247, 129, 191, 255),
+]
 SELECTED, REMOVED = (0, 220, 220, 255), (230, 200, 0, 255)
 
 
@@ -87,8 +95,12 @@ class _Dialogs:
 class FilesStepApp(ImApp):
     """The checked file list (Files..., Folder..., Database, All, None, Remove, Clear) and the optional steps."""
 
-    def __init__(self, on_change: Callable[[], Any] | None = None, client: Any = None,
-                 on_used: Callable[[str], Any] | None = None) -> None:
+    def __init__(
+        self,
+        on_change: Callable[[], Any] | None = None,
+        client: Any = None,
+        on_used: Callable[[str], Any] | None = None,
+    ) -> None:
         self.on_used = on_used or (lambda _name: None)
         self.paths: list[str] = []
         self.checked: set[str] = set()
@@ -123,7 +135,9 @@ class FilesStepApp(ImApp):
         added = 0
         for p in paths:
             p = str(Path(str(p)).resolve())
-            if p not in self.paths and (Path(p).is_dir() or Path(p).suffix.lower() in FILE_EXTENSIONS):
+            if p not in self.paths and (
+                Path(p).is_dir() or Path(p).suffix.lower() in FILE_EXTENSIONS
+            ):
                 self.paths.append(p)
                 self.checked.add(p)
                 added += 1
@@ -161,8 +175,12 @@ class FilesStepApp(ImApp):
         return self.add_paths(paths) > 0
 
     def export_settings(self) -> dict:
-        return {"paths": list(self.paths), "checked": self.checked_files, "use_filter": self.use_filter,
-                "use_merger": self.use_merger}
+        return {
+            "paths": list(self.paths),
+            "checked": self.checked_files,
+            "use_filter": self.use_filter,
+            "use_merger": self.use_merger,
+        }
 
     def restore_settings(self, state: dict) -> None:
         self.paths = [p for p in state.get("paths", []) if Path(p).exists()]
@@ -185,11 +203,15 @@ class FilesStepApp(ImApp):
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, w, h)
         blocked = self.dialogs.dialog is not None or bool(self.picker and self.picker.is_open)
-        if im.begin("Files & Steps", frame, flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Files & Steps", frame, flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE
+        ):
             _body("files_body")
             im.begin_disabled(blocked)
             im.text(tr("Files:"))
-            im.set_item_tooltip(tr("TTTR files (or folders of them) to correlate; only the ticked ones are used."))
+            im.set_item_tooltip(
+                tr("TTTR files (or folders of them) to correlate; only the ticked ones are used.")
+            )
             x, y = im.get_cursor_screen_pos()
             list_h = max(80.0, im.get_content_region_avail()[1] - 90.0)
             im.begin_child("files_list", (im.get_content_region_avail()[0], list_h))
@@ -212,18 +234,61 @@ class FilesStepApp(ImApp):
             self.item_rects["files"] = (x, y, im.get_content_region_avail()[0], list_h)
             used = 0.0
             for label, key, tip, enabled, act in (
-                ("Files...", "add_files", "Add TTTR files.", True,
-                 lambda: self.dialogs.ask("Add TTTR files", "open", TTTR_FILTER, self.add_paths, multiselect=True)),
-                ("Folder...", "add_folder", "Add a folder: its TTTR files are correlated.", True,
-                 lambda: self.dialogs.ask("Add a folder", "folder", "All files (*)", self.add_paths)),
-                ("Database", "database", "Add a TTTR dataset registered in the database.", True, self.open_database),
-                (action_caption("example"), "load_example", "Add a simulated FCS measurement (molecules crossing the focus in about "
-                 "0.25 ms) to try the workflow on data whose answer is known.", True, self.load_example),
+                (
+                    "Files...",
+                    "add_files",
+                    "Add TTTR files.",
+                    True,
+                    lambda: self.dialogs.ask(
+                        "Add TTTR files", "open", TTTR_FILTER, self.add_paths, multiselect=True
+                    ),
+                ),
+                (
+                    "Folder...",
+                    "add_folder",
+                    "Add a folder: its TTTR files are correlated.",
+                    True,
+                    lambda: self.dialogs.ask(
+                        "Add a folder", "folder", "All files (*)", self.add_paths
+                    ),
+                ),
+                (
+                    "Database",
+                    "database",
+                    "Add a TTTR dataset registered in the database.",
+                    True,
+                    self.open_database,
+                ),
+                (
+                    action_caption("example"),
+                    "load_example",
+                    "Add a simulated FCS measurement (molecules crossing the focus in about "
+                    "0.25 ms) to try the workflow on data whose answer is known.",
+                    True,
+                    self.load_example,
+                ),
                 ("All", "all", "Tick every file.", bool(self.paths), lambda: self.set_all(True)),
-                ("None", "none", "Untick every file.", bool(self.paths), lambda: self.set_all(False)),
-                ("Remove", "remove", "Remove the highlighted file from the list (the file is kept).",
-                 0 <= self.current < len(self.paths), self.remove_current),
-                ("Clear", "clear", "Empty the list (no file is deleted).", bool(self.paths), self.clear),
+                (
+                    "None",
+                    "none",
+                    "Untick every file.",
+                    bool(self.paths),
+                    lambda: self.set_all(False),
+                ),
+                (
+                    "Remove",
+                    "remove",
+                    "Remove the highlighted file from the list (the file is kept).",
+                    0 <= self.current < len(self.paths),
+                    self.remove_current,
+                ),
+                (
+                    "Clear",
+                    "clear",
+                    "Empty the list (no file is deleted).",
+                    bool(self.paths),
+                    self.clear,
+                ),
             ):
                 used = _same_line_if_fits(label, used)
                 if self._button(label, key, tip, enabled):
@@ -237,8 +302,11 @@ class FilesStepApp(ImApp):
                 self.use_filter = value
                 self.on_used("use_filter")
                 self.changed()
-            im.set_item_tooltip("Correlate only the photons a count-rate or burst filter keeps (step 3)."
-                                if self.filter_allowed else "Disabled when Burst-ID (.bst) files are selected.")
+            im.set_item_tooltip(
+                "Correlate only the photons a count-rate or burst filter keeps (step 3)."
+                if self.filter_allowed
+                else "Disabled when Burst-ID (.bst) files are selected."
+            )
             self.item_rects["use_filter"] = im.get_item_rect()
             im.same_line()
             changed, value = im.checkbox(tr("FCS merger"), self.use_merger)
@@ -246,7 +314,9 @@ class FilesStepApp(ImApp):
                 self.use_merger = value
                 self.on_used("use_merger")
                 self.changed()
-            im.set_item_tooltip(tr("Screen and merge the correlation curves after correlating (step 5)."))
+            im.set_item_tooltip(
+                tr("Screen and merge the correlation curves after correlating (step 5).")
+            )
             self.item_rects["use_merger"] = im.get_item_rect()
             im.end_disabled()
             im.end_child()
@@ -262,8 +332,9 @@ class FilesStepApp(ImApp):
 class FilterStepApp(ImApp):
     """The filter parameters (mode-pruned spec), the kept-photon count and the dT / count-rate plots."""
 
-    def __init__(self, model: FilterSettingsModel | None = None,
-                 on_used: Callable[[str], Any] | None = None) -> None:
+    def __init__(
+        self, model: FilterSettingsModel | None = None, on_used: Callable[[str], Any] | None = None
+    ) -> None:
         self.model = model or FilterSettingsModel()
         self.form = FormState(on_used=on_used)
         self.form.custom["filter_info"] = self._draw_info
@@ -306,7 +377,9 @@ class FilterStepApp(ImApp):
                 self.model.use_min = self.model.use_max = True
                 self.model.on_param_changed()
             implot.end_plot()
-        im.set_item_tooltip(tr("dT between consecutive photons; drag the blue lines to set min / max dMT."))
+        im.set_item_tooltip(
+            tr("dT between consecutive photons; drag the blue lines to set min / max dMT.")
+        )
         self.item_rects["filter_dt_plot"] = im.get_item_rect()
 
     def _draw_cr(self, section, model, state, width) -> None:
@@ -322,8 +395,11 @@ class FilterStepApp(ImApp):
 
     def render(self) -> None:
         w, h = im.get_main_viewport().size
-        if im.begin("Photon / Burst Filter", (0.0, 0.0, w, h),
-                    flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE):
+        if im.begin(
+            "Photon / Burst Filter",
+            (0.0, 0.0, w, h),
+            flags=im.WindowFlags.NO_TITLE_BAR | im.WindowFlags.NO_RESIZE,
+        ):
             _body("filter_body")
             if self.model._tttr is None:
                 im.text_wrapped(tr("No photons: tick files in Files & Steps first."))
@@ -340,9 +416,12 @@ class FilterStepApp(ImApp):
 class CorrelatorStepApp(ImApp):
     """Correlation channels and settings (left), the correlation curves (right); Correlate runs on a worker."""
 
-    def __init__(self, model: CorrelatorSettingsModel | None = None,
-                 open_tool: Callable[[str], Any] | None = None,
-                 on_used: Callable[[str], Any] | None = None) -> None:
+    def __init__(
+        self,
+        model: CorrelatorSettingsModel | None = None,
+        open_tool: Callable[[str], Any] | None = None,
+        on_used: Callable[[str], Any] | None = None,
+    ) -> None:
         self.on_used = on_used or (lambda _name: None)
         self.model = model or CorrelatorSettingsModel()
         self.open_tool = open_tool
@@ -360,15 +439,21 @@ class CorrelatorStepApp(ImApp):
         self.controls_spec = {"sections": controls["sections"]}
         self.plot_section = next(s for s in _walk(dock["sections"]) if s.get("type") == "plot")
         self.form = FormState(on_used=self.on_used)
-        self.form.custom.update({
-            "fcs_presets": self._draw_presets,
-            "lifetime_filter_controls": self._draw_filter_controls,
-            "channel_combos": self._draw_channel_combos,
-            "correlate_controls": self._draw_correlate,
-        })
+        self.form.custom.update(
+            {
+                "fcs_presets": self._draw_presets,
+                "lifetime_filter_controls": self._draw_filter_controls,
+                "channel_combos": self._draw_channel_combos,
+                "correlate_controls": self._draw_correlate,
+            }
+        )
         self.docks = DockManager(Split("h", 0.42, Region("controls"), Region("plot")))
-        self.docks.add_window("controls", "Controls", self._draw_controls, dock="controls", closable=False)
-        self.docks.add_window("plot", "FCS Correlation", self._draw_plot, dock="plot", closable=False)
+        self.docks.add_window(
+            "controls", "Controls", self._draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "plot", "FCS Correlation", self._draw_plot, dock="plot", closable=False
+        )
         self.native_layouts = {"main": self.docks}
         super().__init__(gui=self.render, continuous=False)
 
@@ -434,34 +519,52 @@ class CorrelatorStepApp(ImApp):
         if changed:
             self.preset = names[new]
             self.model.apply_preset(new)
-        im.set_item_tooltip(tr("A correlation pair of the detector setup's FCS presets (step 1): fills the channels, "
-                            "micro-time ranges and correlator settings."))
+        im.set_item_tooltip(
+            tr(
+                "A correlation pair of the detector setup's FCS presets (step 1): fills the channels, "
+                "micro-time ranges and correlator settings."
+            )
+        )
         self.item_rects["fcs_preset"] = im.get_item_rect()
 
     def _draw_filter_controls(self, section, model, state, width) -> None:
         if im.button(tr("Load filters...")):
-            self.dialogs.ask("Load lifetime filters", "open", LIFETIME_FILTER, lambda p: self.load_filters(p[0]))
-        im.set_item_tooltip(tr("Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a .npy/.npz filter "
-                            "matrix. Correlation then gives species auto-/cross-correlations; A/B pick species."))
+            self.dialogs.ask(
+                "Load lifetime filters", "open", LIFETIME_FILTER, lambda p: self.load_filters(p[0])
+            )
+        im.set_item_tooltip(
+            tr(
+                "Load lifetime (FLCS) filters from a Filter-Calculator JSON, or a .npy/.npz filter "
+                "matrix. Correlation then gives species auto-/cross-correlations; A/B pick species."
+            )
+        )
         self.item_rects["load_filters"] = im.get_item_rect()
-        used = _same_line_if_fits("Unload", im.calc_text_size("Load filters...")[0] + 2 * im.get_style().frame_padding[0])
+        used = _same_line_if_fits(
+            "Unload", im.calc_text_size("Load filters...")[0] + 2 * im.get_style().frame_padding[0]
+        )
         im.begin_disabled(not self.model.filter_mode)
         if im.button(tr("Unload")):
             self.model.clear_lifetime_filter()
             self.filter_status = ""
         im.end_disabled()
-        im.set_item_tooltip(tr("Remove the lifetime filters and return to detector-channel correlation."))
+        im.set_item_tooltip(
+            tr("Remove the lifetime filters and return to detector-channel correlation.")
+        )
         self.item_rects["unload_filters"] = im.get_item_rect()
         _same_line_if_fits("Filter Calc...", used)
         im.begin_disabled(self.open_tool is None)
         if im.button(tr("Filter Calc...")):
             self.open_tool("filter_calc")
         im.end_disabled()
-        im.set_item_tooltip(tr("Open the fFCS Filter Calculator to compute lifetime filters from decay patterns."))
+        im.set_item_tooltip(
+            tr("Open the fFCS Filter Calculator to compute lifetime filters from decay patterns.")
+        )
         self.item_rects["filter_calc"] = im.get_item_rect()
         if self.model.filter_mode:
             src = self.model._filter_source or "filters"
-            im.text_wrapped(f"Species mode: {src} ({len(self.model._filter_labels or [])} species).")
+            im.text_wrapped(
+                f"Species mode: {src} ({len(self.model._filter_labels or [])} species)."
+            )
         elif self.filter_status:
             im.text_wrapped(self.filter_status)
 
@@ -486,9 +589,12 @@ class CorrelatorStepApp(ImApp):
                 else:
                     setattr(self, f"_combo_{side}", new)
                     apply_channel_key(m, side, names[new])
-            im.set_item_tooltip("The species (filter row) to correlate." if species else
-                                "A logical channel of the detector setup: fills the routing channels and "
-                                "micro-time ranges below.")
+            im.set_item_tooltip(
+                "The species (filter row) to correlate."
+                if species
+                else "A logical channel of the detector setup: fills the routing channels and "
+                "micro-time ranges below."
+            )
             self.item_rects[f"combo_{side}"] = im.get_item_rect()
 
     def _draw_correlate(self, section, model, state, width) -> None:
@@ -501,7 +607,9 @@ class CorrelatorStepApp(ImApp):
             im.push_style_color(im.Col.BUTTON, (31, 122, 31, 255))
             pressed = im.button(tr("Correlate"))
             im.pop_style_color(1)
-            im.set_item_tooltip(tr("Correlate the photons of the ticked files (or the filtered photons)."))
+            im.set_item_tooltip(
+                tr("Correlate the photons of the ticked files (or the filtered photons).")
+            )
             self.item_rects["correlate"] = im.get_item_rect()
             if pressed:
                 self.on_used("correlate")
@@ -523,7 +631,9 @@ class CorrelatorStepApp(ImApp):
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             for i, c in enumerate(self.model.correlation_series()):
                 implot.set_next_line_style(CURVES[i % len(CURVES)], 1.5)
-                implot.plot_line(f"{c['name']}##{i}", np.asarray(c["x"], float), np.asarray(c["y"], float))
+                implot.plot_line(
+                    f"{c['name']}##{i}", np.asarray(c["x"], float), np.asarray(c["y"], float)
+                )
             implot.end_plot()
         im.set_item_tooltip(s.get("description", ""))
         self.item_rects["plot"] = tuple(box)

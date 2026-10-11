@@ -689,8 +689,10 @@ def test_the_wheel_over_the_image_zooms_in_and_out_about_the_pointer(app, drv, s
     assert span(app)[0] > zoomed[0] * 1.1
     # zooming about the pointer: the image pixel under it keeps its place
     rx, ry, rw, rh = app.item_rects["image"]
+
     def under():
         return app.view_limits[0] + (cx - rx) / rw * span(app)[0]
+
     before = under()
     notches(drv, cx, cy, 3)
     assert under() == pytest.approx(before, abs=2.0)

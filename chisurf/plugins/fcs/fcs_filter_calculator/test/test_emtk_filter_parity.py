@@ -182,9 +182,7 @@ def test_the_port_is_qt_free():
     assert verdict["ok"], verdict["output"]
 
 
-@pytest.mark.parametrize(
-    "size, tab", [(s, t) for s in (BIG, SMALL) for t in TABS]
-)
+@pytest.mark.parametrize("size, tab", [(s, t) for s in (BIG, SMALL) for t in TABS])
 def test_every_tab_draws_and_the_layout_is_clean(drv, size, tab):
     drv.size = size
     drv.settle()

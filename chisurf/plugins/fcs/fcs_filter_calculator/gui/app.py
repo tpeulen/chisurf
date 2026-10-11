@@ -27,13 +27,31 @@ HERE = Path(__file__).parent
 SPEC = json.loads((HERE / "filter_emtk.view.json").read_text(encoding="utf-8"))
 #: The guide's and the tests' names for the tables (a form records a table under its source).
 #: The names the shared guide.json gives the toolbar actions.
-TOUR_NAMES = {"load_mixed": "Mixed", "autofit": "Auto-fit", "unmix": "Unmix", "save_project": "Project"}
-ALIASES = {"component_rows": "components", "detector_rows": "detectors", "instrument_rows": "instrument", "range_rows": "ranges", "parameter_rows": "fit_parameters"}
+TOUR_NAMES = {
+    "load_mixed": "Mixed",
+    "autofit": "Auto-fit",
+    "unmix": "Unmix",
+    "save_project": "Project",
+}
+ALIASES = {
+    "component_rows": "components",
+    "detector_rows": "detectors",
+    "instrument_rows": "instrument",
+    "range_rows": "ranges",
+    "parameter_rows": "fit_parameters",
+}
 
 
 #: Lowest count drawn on the logarithmic decay axis: an IRF tail of 1e-298 would otherwise stretch the view over 300 decades.
 FLOOR = 0.5
-COMPONENT_COLOURS = ((56, 189, 248, 255), (251, 113, 133, 255), (74, 222, 128, 255), (250, 204, 21, 255), (192, 132, 252, 255), (251, 146, 60, 255))
+COMPONENT_COLOURS = (
+    (56, 189, 248, 255),
+    (251, 113, 133, 255),
+    (74, 222, 128, 255),
+    (250, 204, 21, 255),
+    (192, 132, 252, 255),
+    (251, 146, 60, 255),
+)
 #: Width the controls dock gets at least in a narrow window (its five tabs and the tables need it).
 MIN_CONTROLS = 420.0
 
@@ -58,16 +76,32 @@ class FilterApp(TourTarget, ImApp):
         self.selected_parameter = None
         self.component_panel = None
         self.component_spec = None
-        self.file_window = DialogWindow("Choose input or output", size=(560.0, 420.0), key="filter_files")
-        self.component_window = DialogWindow("Component definition", size=(520.0, 560.0), key="component_definition")
+        self.file_window = DialogWindow(
+            "Choose input or output", size=(560.0, 420.0), key="filter_files"
+        )
+        self.component_window = DialogWindow(
+            "Component definition", size=(520.0, 560.0), key="component_definition"
+        )
         self.item_rects = {}
         self.forms = {}
         self.panel = FilterPanel(self)
-        self.setup = ChannelDefinitionWidget(settings=self.model._detector_settings, on_changed=self._setup_changed, host_app=self)
+        self.setup = ChannelDefinitionWidget(
+            settings=self.model._detector_settings, on_changed=self._setup_changed, host_app=self
+        )
         self._setup_pending = None
         base = Path(__file__).parents[1] / "gui_parts"
-        self.help = EmTkHelpWindow(title="Filtered FCS help", resource=base / "help.md", owner=self, on_start_guide=lambda: self.tour.start())
-        self.tour = EmTkGuidedTour(steps=base / "guide.json", get_target_rect=self.item_rects.get, owner=self, wait_for_controls=True)
+        self.help = EmTkHelpWindow(
+            title="Filtered FCS help",
+            resource=base / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+        )
+        self.tour = EmTkGuidedTour(
+            steps=base / "guide.json",
+            get_target_rect=self.item_rects.get,
+            owner=self,
+            wait_for_controls=True,
+        )
         self.docks = DockManager(
             Split(
                 "h",
@@ -125,8 +159,16 @@ class FilterApp(TourTarget, ImApp):
         )
 
     #: What a plain recompute hands back to the live model (the inputs stay the live ones, edited while it ran).
-    RESULT_FIELDS = ("_result", "_result_anisotropy", "_result_multi_detector", "_result_multi_anisotropy", "_unmix_result",
-                     "_irf_by_detector", "_synthetic_scatter_fits", "message")
+    RESULT_FIELDS = (
+        "_result",
+        "_result_anisotropy",
+        "_result_multi_detector",
+        "_result_multi_anisotropy",
+        "_unmix_result",
+        "_irf_by_detector",
+        "_synthetic_scatter_fits",
+        "message",
+    )
 
     @property
     def editing_blocked(self):
@@ -172,7 +214,9 @@ class FilterApp(TourTarget, ImApp):
     ):
         if self.job.running:
             return
-        self.dialog = FileDialog(title, mode=mode, multiselect=multiple, filters=filters, filename=filename)
+        self.dialog = FileDialog(
+            title, mode=mode, multiselect=multiple, filters=filters, filename=filename
+        )
         self.file_window.title = title
         self.file_window.show()
         self.dialog_callback = callback
@@ -340,7 +384,11 @@ class FilterApp(TourTarget, ImApp):
     def edit_selected_component(self):
         i = self.selected_component
         if 0 <= i < len(self.model.components):
-            self.editor = json.loads(json.dumps(self.model.components[i].source)) if isinstance(self.model.components[i].source, dict) else None
+            self.editor = (
+                json.loads(json.dumps(self.model.components[i].source))
+                if isinstance(self.model.components[i].source, dict)
+                else None
+            )
             self.editor_index = i
             self.refresh_component_spec()
 
@@ -386,7 +434,11 @@ class FilterApp(TourTarget, ImApp):
         import chisurf
 
         for fit in list(getattr(chisurf, "fits", []) or []):
-            self.button(f"Read fit: {getattr(fit, 'name', 'Open fit')}", "Adopt the open fit's lifetime spectrum and detector-convolved patterns.", lambda fit=fit: self.read_fit(fit))
+            self.button(
+                f"Read fit: {getattr(fit, 'name', 'Open fit')}",
+                "Adopt the open fit's lifetime spectrum and detector-convolved patterns.",
+                lambda fit=fit: self.read_fit(fit),
+            )
         self.remember("sources", tuple(box))
         self.item_rects["Decay sources"] = tuple(box)
 
@@ -446,7 +498,9 @@ class FilterApp(TourTarget, ImApp):
                         except Exception as exc:
                             self.model.message = str(exc)
                     im.set_item_tooltip(
-                        tr("Follow this live parameter value; recursive links are rejected by the core model.")
+                        tr(
+                            "Follow this live parameter value; recursive links are rejected by the core model."
+                        )
                     )
             self.button(
                 "Cancel link",
@@ -542,7 +596,11 @@ class FilterApp(TourTarget, ImApp):
                 if signature != getattr(self, "_recon_signature", None):
                     self._recon_signature = signature
                     implot.setup_axes_limits(
-                        0, self.model._current_n_bins(), 1, max(max(peaks) * 1.2, 2), implot.COND_ALWAYS
+                        0,
+                        self.model._current_n_bins(),
+                        1,
+                        max(max(peaks) * 1.2, 2),
+                        implot.COND_ALWAYS,
                     )
             for entry in self.model.results():
                 for role in ("", "par", "perp"):
@@ -562,7 +620,9 @@ class FilterApp(TourTarget, ImApp):
                     if irf is not None and np.max(irf) > 0:
                         implot.set_next_line_style((0, 200, 230, 255), 1.5)
                         self.plot_line(
-                            label + " IRF", np.arange(len(irf)), np.clip(irf / np.max(irf) * np.max(total), FLOOR, None)
+                            label + " IRF",
+                            np.arange(len(irf)),
+                            np.clip(irf / np.max(irf) * np.max(total), FLOOR, None),
                         )
             lo, hi = self.model._fit_bounds
             left = implot.drag_line_x(101, float(lo))
@@ -571,7 +631,9 @@ class FilterApp(TourTarget, ImApp):
                 self.model._fit_bounds = (max(0, int(left.value)), max(1, int(right.value)))
             implot.end_plot()
         im.set_item_tooltip(
-            tr("Drag the vertical lines to edit the fitted TAC range; Compute applies the new range.")
+            tr(
+                "Drag the vertical lines to edit the fitted TAC range; Compute applies the new range."
+            )
         )
 
     def draw_residuals(self, box):

@@ -1486,9 +1486,7 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
             from chisurf.plugins.core import boarding as _boarding
 
             # kept on the package: an unreferenced host would be collected and close
-            cs.__init_chisurf_wizard__ = open_native_plugin(
-                pathlib.Path(_boarding.__file__).parent
-            )
+            cs.__init_chisurf_wizard__ = open_native_plugin(pathlib.Path(_boarding.__file__).parent)
         except Exception as e:
             try:
                 logging.debug(f"Failed to open onboarding wizard: {e}")

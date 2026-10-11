@@ -78,7 +78,9 @@ def test_native_renders_hub_and_first_child():
     app = make_app()
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 900, 640)
-    assert app.building  # the first frame does not wait for the first tool: it is made in the background
+    assert (
+        app.building
+    )  # the first frame does not wait for the first tool: it is made in the background
     join_all()
     painter = RecordingPainter()
     app.draw(painter, 0, 0, 900, 640)

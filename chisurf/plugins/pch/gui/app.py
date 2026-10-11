@@ -159,8 +159,10 @@ class PchApp(ImApp):
                     self.tour.notify_used("region")
             implot.end_plot()
         im.set_item_tooltip(
-            tr("Drag the two vertical lines to choose the k range of the fit; "
-            "the χ² of an existing fit is recomputed over it.")
+            tr(
+                "Drag the two vertical lines to choose the k range of the fit; "
+                "the χ² of an existing fit is recomputed over it."
+            )
         )
         self.item_rects["region"] = im.get_item_rect()
 

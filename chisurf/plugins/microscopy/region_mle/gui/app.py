@@ -426,7 +426,9 @@ class RegionMleApp(ImApp):
                 implot.end_plot()
             self.item_rects["Decay"] = state.rects["current_region_curves"] = im.get_item_rect()
             im.set_item_tooltip(
-                tr("Weighted residuals of the fit; a systematic trend lines up with the channel below.")
+                tr(
+                    "Weighted residuals of the fit; a systematic trend lines up with the channel below."
+                )
             )
             if implot.begin_plot("##decay", (-1.0, height * 0.68)):
                 implot.setup_axes(x_label, "Intensity")

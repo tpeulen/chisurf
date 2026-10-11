@@ -119,7 +119,8 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self._signature = None
         self.message = ""
         self.editor = ChannelDefinitionWidget(
-            self._editor_settings(), on_changed=self._setup_changed,
+            self._editor_settings(),
+            on_changed=self._setup_changed,
             host_app=self,
         )
         if self.model.setup_name:
@@ -562,8 +563,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             except Exception as exc:  # noqa: BLE001 - shown in the status line
                 m.status_text = f"Error: {exc}"
         im.set_item_tooltip(
-            tr("Store the current filter and search as the defaults of the selected detector setup "
-            "(read again whenever the setup is chosen).")
+            tr(
+                "Store the current filter and search as the defaults of the selected detector setup "
+                "(read again whenever the setup is chosen)."
+            )
         )
         self.remember("save_defaults")
         draw_sections(self.filter_sections, target, self.form)
@@ -578,7 +581,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         m = self.model
         if not m.has_processed and m.display_frame is None:
             im.text_wrapped(
-                tr("No search yet: add TTTR files and press Run. The key figures of the run appear here.")
+                tr(
+                    "No search yet: add TTTR files and press Run. The key figures of the run appear here."
+                )
             )
             return
         draw_sections(self.summary_table, m, self.form)

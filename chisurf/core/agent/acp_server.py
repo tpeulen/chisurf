@@ -101,7 +101,9 @@ class AcpServer:
 
     # ── Protocol Framing & IO ──────────────────────────────────────────
 
-    def send_response(self, request_id: Any, result: Any = None, error: dict[str, Any] | None = None) -> None:
+    def send_response(
+        self, request_id: Any, result: Any = None, error: dict[str, Any] | None = None
+    ) -> None:
         """Send a JSON-RPC 2.0 response."""
         payload: dict[str, Any] = {"jsonrpc": "2.0", "id": request_id}
         if error is not None:
@@ -115,7 +117,9 @@ class AcpServer:
         payload: dict[str, Any] = {"jsonrpc": "2.0", "method": method, "params": params or {}}
         self._send_raw(payload)
 
-    def send_request(self, method: str, params: dict[str, Any] | None = None, timeout: float = 30.0) -> Any:
+    def send_request(
+        self, method: str, params: dict[str, Any] | None = None, timeout: float = 30.0
+    ) -> Any:
         """Send a JSON-RPC 2.0 request to the client and wait for response."""
         with self._write_lock:
             req_id = self._next_request_id
@@ -577,10 +581,12 @@ def run_acp_server(
     # existing scheduler through the pure presentation seam.
     if presenter is not None:
         from chisurf.core.runtime import presentation
+
         presentation.set_presenter(presenter)
 
     if provider is None or provider == "acp":
         from chisurf.core.settings import ai_settings
+
         transport = ai_settings.get_api_settings("acp")
         delegate = transport.get("acp_backend_provider")
         provider = delegate or ai_settings.get_provider()
@@ -601,7 +607,9 @@ def main() -> int:
     parser.add_argument("--directory", "-C", default=None, help="Working directory")
     parser.add_argument("--safety", default=SAFETY_WRITE, help="Default safety tier")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
-    parser.add_argument("--no-qt", action="store_true", help="Compatibility flag: the ACP server is always headless")
+    parser.add_argument(
+        "--no-qt", action="store_true", help="Compatibility flag: the ACP server is always headless"
+    )
     args, _ = parser.parse_known_args()
 
     return run_acp_server(

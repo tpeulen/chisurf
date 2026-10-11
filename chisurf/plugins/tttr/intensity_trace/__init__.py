@@ -23,7 +23,9 @@ def __getattr__(attr):
     raise AttributeError(attr)
 
 
-if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+if (
+    __name__ == "plugin"
+):  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
     from emtk.qt_host import ControlHost
 
     from chisurf.plugins.tttr.intensity_trace.gui.app import make_app

@@ -43,9 +43,9 @@ def test_shared_canvas_translates_axis_and_map_labels_in_all_six_locales():
             set_locale(locale)
             painter = RecordingPainter()
             with im.frame(painter, (0, 0, 800, 600)):
-                ImageCanvas(
-                    "mean_micro_time", image_label="Mean micro-time", image_unit="ns"
-                ).draw(np.ones((3, 3)))
+                ImageCanvas("mean_micro_time", image_label="Mean micro-time", image_unit="ns").draw(
+                    np.ones((3, 3))
+                )
             assert label in painter.strings
     finally:
         set_locale(previous)

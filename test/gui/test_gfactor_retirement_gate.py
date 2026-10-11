@@ -3,6 +3,7 @@
 The lifetime factory and shared detector launcher must construct the native host
 without an obsolete Qt calculator import.
 """
+
 from __future__ import annotations
 
 import socket
@@ -23,9 +24,12 @@ def isolated_gfactor_callers(tmp_path, monkeypatch):
         "MMFDB_OBJECT_STORE": tmp_path / "objects",
     }.items():
         monkeypatch.setenv(key, str(path))
-    configure_runtime(settings_dir=tmp_path / "mmfdb", database_path=tmp_path / "mmfdb.db",
-                      source_database_path=tmp_path / "missing.db",
-                      object_store_root=tmp_path / "objects")
+    configure_runtime(
+        settings_dir=tmp_path / "mmfdb",
+        database_path=tmp_path / "mmfdb.db",
+        source_database_path=tmp_path / "missing.db",
+        object_store_root=tmp_path / "objects",
+    )
 
     def forbidden_connection(*args, **kwargs):
         raise AssertionError("G-factor caller attempted an external connection")
@@ -36,7 +40,6 @@ def isolated_gfactor_callers(tmp_path, monkeypatch):
         yield
     finally:
         reset_runtime_config()
-
 
 
 @pytest.fixture
@@ -53,7 +56,10 @@ def native_host_type(qapp):
         probe.close()
         qapp.processEvents()
 
-def test_lifetime_factory_hosts_existing_native_app_and_preserves_qwidget_parent(qapp, native_host_type):
+
+def test_lifetime_factory_hosts_existing_native_app_and_preserves_qwidget_parent(
+    qapp, native_host_type
+):
     """The Qt-embeddable host wraps GFactorApp instead of constructing the retired UI."""
     from chisurf.plugins.vv_vh_g_factor.gui.app import GFactorApp, create_host
 

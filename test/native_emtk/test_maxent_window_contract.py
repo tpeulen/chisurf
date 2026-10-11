@@ -161,7 +161,7 @@ def test_actual_measured_worker_result_and_objective_survive_resize(app, mode):
     fit = basis @ result["p"] + result["fit_additive"]
     residual = (result["y"] - fit) / result["sigma"]
     assert np.mean(residual**2) == pytest.approx(result["chisq"], rel=1e-10)
-    assert np.mean((result["y"] - fit)**2 / np.maximum(fit, 1.0)) == pytest.approx(
+    assert np.mean((result["y"] - fit) ** 2 / np.maximum(fit, 1.0)) == pytest.approx(
         result["chisq_pearson"], rel=1e-10
     )
     np.testing.assert_allclose(result["H"], 2 / len(fit) * result["Fi"].T @ result["Fi"])

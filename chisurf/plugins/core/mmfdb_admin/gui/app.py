@@ -81,7 +81,9 @@ class ProvenanceContent(NodeContentRenderer):
 
     def node_style(self, node):
         kind = node.config.get("node_type", "")
-        colour = {"artifact": (70, 130, 175), "operation": (175, 120, 60)}.get(kind, (110, 140, 110))
+        colour = {"artifact": (70, 130, 175), "operation": (175, 120, 60)}.get(
+            kind, (110, 140, 110)
+        )
         return (*colour, 255)
 
     def port_label(self, node, port, is_output):
@@ -96,6 +98,7 @@ class MMFDBAdminApp(ImApp):
     """The MMFDB Admin window."""
 
     window_title = "MMFDB Admin"
+
     def __init__(
         self,
         model: AdminModel | None = None,
@@ -117,14 +120,18 @@ class MMFDBAdminApp(ImApp):
         self.top_h = 64.0
         #: Fraction of an entity panel (and of the Spectra panel) given to the table.
         self.splits = {"entity": 0.5, "spectra": 0.42, "spectra_plot": 0.45, "provenance": 0.62}
-        self.graph = GraphControl(read_only=True, content=ProvenanceContent(), on_select=self._graph_selected)
+        self.graph = GraphControl(
+            read_only=True, content=ProvenanceContent(), on_select=self._graph_selected
+        )
         self.graph._box = (0.0, 0.0, 0.0, 0.0)
         self._graph_revision = -1
         self._graph_focus = False
         self._entity_buttons: dict[str, dict] = {}
         self._last_panel = ""
         self._last_selected: dict[str, str] = {}
-        self.help_window = EmTkHelpWindow(title="MMFDB Admin — Help", resource=HERE / "help.md", owner=self)
+        self.help_window = EmTkHelpWindow(
+            title="MMFDB Admin — Help", resource=HERE / "help.md", owner=self
+        )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
             owner=self,
@@ -191,14 +198,26 @@ class MMFDBAdminApp(ImApp):
         if im.begin_main_menu_bar():
             if im.begin_menu("File"):
                 for label, action, tip in (
-                    ("Import...", model.import_file,
-                     "Import a PDBx / PDB-IHM / FLR CIF file into the MMFDB."),
-                    ("Export selected sample...", model.export_selected_sample,
-                     "Export the sample selected in Samples as an FLR CIF file (validated first)."),
-                    ("Backup database...", model.backup_database,
-                     "Write a backup copy of the active MMFDB database."),
-                    (action_caption("reset"), model.reset_database,
-                     "Replace the user database with the curated source (asks first; a backup is written)."),
+                    (
+                        "Import...",
+                        model.import_file,
+                        "Import a PDBx / PDB-IHM / FLR CIF file into the MMFDB.",
+                    ),
+                    (
+                        "Export selected sample...",
+                        model.export_selected_sample,
+                        "Export the sample selected in Samples as an FLR CIF file (validated first).",
+                    ),
+                    (
+                        "Backup database...",
+                        model.backup_database,
+                        "Write a backup copy of the active MMFDB database.",
+                    ),
+                    (
+                        action_caption("reset"),
+                        model.reset_database,
+                        "Replace the user database with the curated source (asks first; a backup is written).",
+                    ),
                 ):
                     if im.menu_item(label, enabled=model.connected):
                         action()
@@ -219,14 +238,24 @@ class MMFDBAdminApp(ImApp):
                 im.set_item_tooltip(tr("Read how MMFDB Admin works."))
                 if im.menu_item("Guide"):
                     self.tour.start()
-                im.set_item_tooltip(tr("A step-by-step walk through signing in, picking a panel and editing a record."))
+                im.set_item_tooltip(
+                    tr(
+                        "A step-by-step walk through signing in, picking a panel and editing a record."
+                    )
+                )
                 if im.menu_item("About mmfdb-admin"):
                     model.show_about()
                 im.set_item_tooltip(tr("The version, the connection and the database in use."))
                 im.end_menu()
             im.end_main_menu_bar()
-        draw_sections(self.shell["toolbar"]["sections"], model, self.form("toolbar"),
-                      n_col=5, titles=False, indent_wraps=False)
+        draw_sections(
+            self.shell["toolbar"]["sections"],
+            model,
+            self.form("toolbar"),
+            n_col=5,
+            titles=False,
+            indent_wraps=False,
+        )
         im.same_line()
         self._draw_dot()
         # The database actions and Help / Guide follow on the same line when they fit.
@@ -237,7 +266,9 @@ class MMFDBAdminApp(ImApp):
         im.same_line()
         if im.get_content_region_avail()[0] < needed:
             im.new_line()
-        draw_sections(self.shell["database_actions"]["sections"], model, self.form("database"), titles=False)
+        draw_sections(
+            self.shell["database_actions"]["sections"], model, self.form("database"), titles=False
+        )
         im.same_line()
         if action_button("help"):
             self.help_window.show()
@@ -286,7 +317,11 @@ class MMFDBAdminApp(ImApp):
             if kind == "group":
                 im.text_disabled(value)
                 continue
-            if im.selectable(f"{model.panel_name(value)}##nav_{value}", model.selected == value, size=(w - 24.0, 24.0)):
+            if im.selectable(
+                f"{model.panel_name(value)}##nav_{value}",
+                model.selected == value,
+                size=(w - 24.0, 24.0),
+            ):
                 model.select(value)
                 self.tour.notify_used("nav." + value)
             im.set_item_tooltip(model.panel_description(value))
@@ -321,8 +356,10 @@ class MMFDBAdminApp(ImApp):
         summary = model.current.status_line() or model.database_summary
         shown = self._fit(summary, im.get_content_region_avail()[0])
         im.text_unformatted(shown)
-        im.set_item_tooltip("\n".join(t for t in (summary, model.database_summary) if t)
-                            or "The open panel's state.")
+        im.set_item_tooltip(
+            "\n".join(t for t in (summary, model.database_summary) if t)
+            or "The open panel's state."
+        )
         self.remember_item("summary")
         im.end()
 
@@ -379,7 +416,9 @@ class MMFDBAdminApp(ImApp):
     def _bar(self, name: str, box_top, total: tuple) -> None:
         x, y, w, h = total
         im.set_cursor_screen_pos((x, box_top[1] + box_top[3]))
-        moved, top, _rest = im.splitter(f"##bar_{name}", im.Axis.Y, 8.0, w, box_top[3], h - box_top[3] - 8.0, 60.0, 60.0)
+        moved, top, _rest = im.splitter(
+            f"##bar_{name}", im.Axis.Y, 8.0, w, box_top[3], h - box_top[3] - 8.0, 60.0, 60.0
+        )
         if moved and h > 0:
             self.splits[name] = top / h
 
@@ -416,7 +455,9 @@ class MMFDBAdminApp(ImApp):
         self._bar("entity", top, area)
         im.begin_child(f"##entity_form_{panel.key}", bottom)
         if not panel.selected_id:
-            im.text_disabled("Pick a row to see and edit its fields." if panel.rows else "No records.")
+            im.text_disabled(
+                "Pick a row to see and edit its fields." if panel.rows else "No records."
+            )
         draw_sections(panel.form_sections(), panel.form, state, n_col=2, titles=False)
         im.end_child()
 
@@ -450,7 +491,9 @@ class MMFDBAdminApp(ImApp):
         state = self.form("spectra")
         sections = self.panel_specs["spectra"]["sections"]
         x, y, w, h = box
-        head = [s for s in sections if s.get("type") != "custom" and s.get("source") != "items_text"]
+        head = [
+            s for s in sections if s.get("type") != "custom" and s.get("source") != "items_text"
+        ]
         table = next(s for s in sections if s.get("key") == "data_table")
         draw_sections(head, panel, state, titles=False)
         cx, cy = im.get_cursor_screen_pos()
@@ -462,16 +505,33 @@ class MMFDBAdminApp(ImApp):
         self._bar("spectra", top, area)
         plot_h = max(90.0, bottom[3] * self.splits["spectra_plot"])
         im.set_cursor_screen_pos((bottom[0], bottom[1]))
-        self.plot("spectra_plot", panel.traces, (bottom[0], bottom[1], w, plot_h),
-                  "Wavelength (nm)", "Normalized", "Pick a component to see its spectra.")
-        im.begin_child("##spectra_form", (bottom[0], bottom[1] + plot_h + 4.0, w, max(30.0, bottom[3] - plot_h - 4.0)))
-        draw_sections(panel.form_spec()["sections"], panel.values, self.form("spectra_form"), n_col=2, titles=False)
+        self.plot(
+            "spectra_plot",
+            panel.traces,
+            (bottom[0], bottom[1], w, plot_h),
+            "Wavelength (nm)",
+            "Normalized",
+            "Pick a component to see its spectra.",
+        )
+        im.begin_child(
+            "##spectra_form",
+            (bottom[0], bottom[1] + plot_h + 4.0, w, max(30.0, bottom[3] - plot_h - 4.0)),
+        )
+        draw_sections(
+            panel.form_spec()["sections"],
+            panel.values,
+            self.form("spectra_form"),
+            n_col=2,
+            titles=False,
+        )
         im.end_child()
         im.set_cursor_screen_pos((x, area[1] + area[3] + 2.0))
         im.text_unformatted(panel.items_text())
         im.set_item_tooltip(tr("How many items are listed (of how many in the database)."))
 
-    def plot(self, name: str, traces: list[dict], box, x_label: str, y_label: str, empty: str) -> None:
+    def plot(
+        self, name: str, traces: list[dict], box, x_label: str, y_label: str, empty: str
+    ) -> None:
         """Spectrum traces in a plot filling *box* (the hand-drawn part of the Spectra panel)."""
         x, y, w, h = box
         im.set_cursor_screen_pos((x, y))
@@ -481,18 +541,25 @@ class MMFDBAdminApp(ImApp):
             draw.add_rect((x, y), (x + w, y + h), (140, 140, 140, 120))
             tw = im.calc_text_size(empty)[0]
             draw.add_text((x + (w - tw) / 2, y + h / 2 - 8), (130, 130, 130, 255), empty)
-            im.set_item_tooltip(tr("The spectra plot: pick a row, or tick several to overlay them."))
+            im.set_item_tooltip(
+                tr("The spectra plot: pick a row, or tick several to overlay them.")
+            )
             self.item_rects[name] = (x, y, w, h)
             return
         if implot.begin_plot(f"##{name}", size=(w, h)):
             implot.setup_axes(x_label, y_label)
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             for trace in traces:
-                implot.set_next_line_style(rgba(trace.get("color", (128, 128, 128))),
-                                           float(trace.get("width", 2)),
-                                           DASHES.get(str(trace.get("style", "solid"))))
-                implot.plot_line(str(trace.get("name", "")), np.asarray(trace["x"], float),
-                                 np.asarray(trace["y"], float))
+                implot.set_next_line_style(
+                    rgba(trace.get("color", (128, 128, 128))),
+                    float(trace.get("width", 2)),
+                    DASHES.get(str(trace.get("style", "solid"))),
+                )
+                implot.plot_line(
+                    str(trace.get("name", "")),
+                    np.asarray(trace["x"], float),
+                    np.asarray(trace["y"], float),
+                )
             implot.end_plot()
         self.item_rects[name] = (x, y, w, h)
 
@@ -529,7 +596,9 @@ class MMFDBAdminApp(ImApp):
         if hovered is not None:
             node = self.graph.document.node_for_number(hovered)
             if node is not None:
-                im.get_current_context().set_tooltip(f"{node.title}\n{node.id}", owner=("mmfdb_node", node.id))
+                im.get_current_context().set_tooltip(
+                    f"{node.title}\n{node.id}", owner=("mmfdb_node", node.id)
+                )
         elif self._inside(gbox, *self.io.mouse_pos):
             im.get_current_context().set_tooltip(
                 "The provenance graph: click a node to see its record; the wheel zooms, Alt-drag pans.",
@@ -557,7 +626,9 @@ class MMFDBAdminApp(ImApp):
             window = self.windows.get(id(dialog))
             if window is None:
                 window = self.windows[id(dialog)] = DialogWindow(
-                    dialog.title, size=dialog.size, key=f"mmfdb_{id(dialog)}",
+                    dialog.title,
+                    size=dialog.size,
+                    key=f"mmfdb_{id(dialog)}",
                     fit_height=dialog.spec not in ("duplicates", "analysis_details"),
                 )
                 window.show()
@@ -566,7 +637,12 @@ class MMFDBAdminApp(ImApp):
             state = self.form(f"dialog:{id(dialog)}")
             if dialog.spec == "duplicates":
                 state.custom["duplicates_body"] = self._draw_duplicates_body
-            draw_sections(self.shell[dialog.spec]["sections"], dialog, state, titles=dialog.spec == "analysis_details")
+            draw_sections(
+                self.shell[dialog.spec]["sections"],
+                dialog,
+                state,
+                titles=dialog.spec == "analysis_details",
+            )
             window.end()
             for name, rect in state.rects.items():
                 self.item_rects[f"dialog.{name}"] = rect
@@ -579,8 +655,20 @@ class MMFDBAdminApp(ImApp):
         left_w = width * 0.45
         im.begin_child("##dup_tree", (x, y, left_w, avail_h), scrollable=False)
         tree = dict(self.shell["duplicates_tree"])
-        draw_sections([{"type": "custom", "key": "data_table", "title": "",
-                        "description": "The duplicate groups.", "options": tree}], dialog, state, titles=False)
+        draw_sections(
+            [
+                {
+                    "type": "custom",
+                    "key": "data_table",
+                    "title": "",
+                    "description": "The duplicate groups.",
+                    "options": tree,
+                }
+            ],
+            dialog,
+            state,
+            titles=False,
+        )
         im.end_child()
         rx = x + left_w + 8.0
         rw = width - left_w - 8.0
@@ -593,7 +681,9 @@ class MMFDBAdminApp(ImApp):
             # The caption names the plot under it (drawn after, it read as the next plot's title).
             im.text_unformatted(f"{stype.title()} Spectrum")
             px, py = im.get_cursor_screen_pos()
-            self.plot(f"dup_{stype}", traces, (px, py, rw - 12.0, 170.0), "Wavelength", "Intensity", "")
+            self.plot(
+                f"dup_{stype}", traces, (px, py, rw - 12.0, 170.0), "Wavelength", "Intensity", ""
+            )
         im.separator()
         im.text_unformatted(dialog.metadata_text())
         im.end_child()
@@ -633,7 +723,8 @@ class MMFDBAdminApp(ImApp):
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         super().pointer_press(x, y, button, modifiers, clicks)
         self._graph_focus = (
-            self.model.selected == "provenance" and self._inside(self.graph._box, x, y)
+            self.model.selected == "provenance"
+            and self._inside(self.graph._box, x, y)
             and not self._over_window()
         )
         if self._graph_focus and button == 1:
@@ -656,8 +747,13 @@ class MMFDBAdminApp(ImApp):
     def export_settings(self) -> dict:
         """What is remembered: the open panel and the splits (never a password)."""
         model = self.model
-        return {"selected": model.selected, "splits": dict(self.splits),
-                "host": model.host, "port": model.port, "user": model.user}
+        return {
+            "selected": model.selected,
+            "splits": dict(self.splits),
+            "host": model.host,
+            "port": model.port,
+            "user": model.user,
+        }
 
     def restore_settings(self, settings: dict) -> None:
         settings = settings or {}

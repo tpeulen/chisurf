@@ -98,7 +98,10 @@ def test_one_for_all_sets_every_detector_and_per_detector_sets_one(inputs):
         }
     )
     session.set_binning(1)
-    assert sorted(session.set_pattern_files("irf", "synthetic", [inputs["irf"]])) == ["second", "synthetic"]
+    assert sorted(session.set_pattern_files("irf", "synthetic", [inputs["irf"]])) == [
+        "second",
+        "synthetic",
+    ]
     np.testing.assert_array_equal(session.irf_np["second"], session.irf_np["synthetic"])
     session.clear_pattern_files("irf", "synthetic")
     assert not session.irf_files and not session.irf_np
@@ -170,7 +173,9 @@ def test_the_irf_model_changes_the_estimated_irf(inputs):
     assert not np.array_equal(patterns["gaussian"], patterns["experimental"])
     assert not np.array_equal(patterns["gaussian"], patterns["skewed"])
     for irf in patterns.values():
-        assert int(np.argmax(irf[: irf.size // 2])) in range(17, 24), "every model finds the planted prompt"
+        assert int(np.argmax(irf[: irf.size // 2])) in range(17, 24), (
+            "every model finds the planted prompt"
+        )
 
 
 # -- hyperparameter optimisation -------------------------------------------------------------------------------- #
@@ -195,7 +200,9 @@ def test_opt_recovers_a_planted_shift(inputs):
     assert not result["stopped"] and result["start_loss"] == pytest.approx(before)
     assert result["loss"] < 1.0 < before
     assert session.outcome.x[0] == pytest.approx(reference, rel=0.02)
-    assert session.settings.shift_ss == pytest.approx(-3.0, abs=0.75), "the VH IRF was displaced by +3 bins"
+    assert session.settings.shift_ss == pytest.approx(-3.0, abs=0.75), (
+        "the VH IRF was displaced by +3 bins"
+    )
 
 
 def test_opt_that_is_stopped_restores_the_settings(inputs):
@@ -240,7 +247,9 @@ def test_the_search_budget_the_caller_asks_for_is_the_budget_it_gets(monkeypatch
 
         monkeypatch.setattr(hpo, "_loss", loss)
         hpo.optimize_hyperparameters(session, budget, seed=0)
-        assert len(calls) <= budget + 1, f"n_iter={budget} evaluated {len(calls)}"  # +1: the final refit
+        assert len(calls) <= budget + 1, (
+            f"n_iter={budget} evaluated {len(calls)}"
+        )  # +1: the final refit
 
 
 def test_an_improvement_is_recognised_as_one(monkeypatch):
@@ -390,11 +399,15 @@ def test_the_new_controls_are_drawn_at_the_small_size(app, inputs):
 def test_the_tour_step_for_measured_files_shows_the_files_tab_and_points_at_its_button(app, inputs):
     drv = open_demo(app, inputs)
     steps = json.loads((Path(__file__).parents[1] / "gui" / "guide.json").read_text())["steps"]
-    index = next(i for i, s in enumerate(steps) if (s.get("target") or {}).get("name") == "add_irf_files")
+    index = next(
+        i for i, s in enumerate(steps) if (s.get("target") or {}).get("name") == "add_irf_files"
+    )
     app.tour.start(index)  # the host callback shows the tab of the step's target
     drv.draw(3)
     assert "add_irf_files" in app.item_rects
-    optimise = next(i for i, s in enumerate(steps) if (s.get("target") or {}).get("name") == "optimize")
+    optimise = next(
+        i for i, s in enumerate(steps) if (s.get("target") or {}).get("name") == "optimize"
+    )
     app.tour.start(optimise)
     drv.draw(3)
     assert "optimize" in app.item_rects

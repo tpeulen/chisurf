@@ -259,7 +259,12 @@ def test_saved_burst_ids_are_recorded_against_the_mmfdb_product(qapp, embedded_m
     from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
     mfd = (
-        PLUGIN_DIR.parents[2] / "modules" / "ndxplorer" / "tests" / "mfd" / "burstwise_All 0.1500#30"
+        PLUGIN_DIR.parents[2]
+        / "modules"
+        / "ndxplorer"
+        / "tests"
+        / "mfd"
+        / "burstwise_All 0.1500#30"
     )
     if not mfd.exists():
         pytest.skip("ndX's MFD fixture folder is missing")

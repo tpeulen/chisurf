@@ -80,7 +80,9 @@ class Values:
 class SpectraPanel(Panel):
     key = "spectra"
     name = "Spectra"
-    description = "Curate fluorophores, filters, dichroics, detectors and light sources, with their spectra."
+    description = (
+        "Curate fluorophores, filters, dichroics, detectors and light sources, with their spectra."
+    )
 
     def __init__(self, admin: Any) -> None:
         super().__init__(admin)
@@ -146,7 +148,9 @@ class SpectraPanel(Panel):
             column = {"key": key, "title": title, "tooltip": f"{title} ({key})."}
             if key == "verification_status":
                 column["background"] = dict(STATUS_COLOURS)
-                column["tooltip"] = "Curation status: approved, unverified, rejected or needs_review."
+                column["tooltip"] = (
+                    "Curation status: approved, unverified, rejected or needs_review."
+                )
             columns.append(column)
         return columns
 
@@ -288,7 +292,9 @@ class SpectraPanel(Panel):
 
         self.run(
             f"{verb} {probe_id}",
-            lambda: self.client._call(method, {"probe_id": int(probe_id), "verified_by": verified_by}),
+            lambda: self.client._call(
+                method, {"probe_id": int(probe_id), "verified_by": verified_by}
+            ),
             done,
             self.failed(what),
         )
@@ -337,7 +343,9 @@ class SpectraPanel(Panel):
 
         def done(groups: list | None) -> None:
             if groups is None:
-                self.admin.show(MessageDialog("Find Duplicates", "No probes found for the active category."))
+                self.admin.show(
+                    MessageDialog("Find Duplicates", "No probes found for the active category.")
+                )
                 self.say("No probes found")
                 return
             if not groups:
@@ -494,7 +502,9 @@ class DuplicatesDialog(Dialog):
         probes = group["probes"]
         palette = [(230, 200, 0), (0, 190, 210), (210, 0, 210), (0, 170, 0), (220, 60, 60)]
         spectra = [
-            s for s in self.spectra.get(self.current, []) if s.get("wavelengths") and s.get("intensity_values")
+            s
+            for s in self.spectra.get(self.current, [])
+            if s.get("wavelengths") and s.get("intensity_values")
         ]
         out = []
         for stype in sorted({s["spectrum_type"] for s in spectra}):
@@ -511,7 +521,9 @@ class DuplicatesDialog(Dialog):
                         "name": f"ID {pid} - {probe.get('chromophore_name') if probe else ''}",
                         "x": s["wavelengths"],
                         "y": s["intensity_values"],
-                        "color": palette[index % len(palette)] if picked in (None, pid) else (150, 150, 150),
+                        "color": palette[index % len(palette)]
+                        if picked in (None, pid)
+                        else (150, 150, 150),
                         "width": 3 if picked == pid else (2 if picked is None else 1),
                         "style": "solid" if picked in (None, pid) else "dash",
                     }
@@ -526,7 +538,9 @@ class DuplicatesDialog(Dialog):
         lines = []
         for p in group["probes"]:
             lines.append(f"ID {p['probe_id']} - {p.get('chromophore_name', '')}")
-            lines.append(f"  Category: {p.get('category', '')}   Source: {p.get('source', '') or ''}")
+            lines.append(
+                f"  Category: {p.get('category', '')}   Source: {p.get('source', '') or ''}"
+            )
             for name, value in (p.get("optical_properties") or {}).items():
                 lines.append(f"  {name.replace('_', ' ').title()}: {value}")
         return "\n".join(lines)
@@ -567,7 +581,9 @@ class DuplicatesDialog(Dialog):
             merged, errors = [], 0
             for name, primary, duplicates in jobs:
                 try:
-                    client._call("fluorophores.merge", {"primary_id": primary, "duplicate_ids": duplicates})
+                    client._call(
+                        "fluorophores.merge", {"primary_id": primary, "duplicate_ids": duplicates}
+                    )
                     merged.append(name)
                 except Exception:  # noqa: BLE001 - counted and reported
                     errors += 1
@@ -581,7 +597,9 @@ class DuplicatesDialog(Dialog):
                 self.current = ""
             admin = self.panel.admin
             if merged:
-                admin.show(MessageDialog("Merge Complete", f"Successfully merged {len(merged)} group(s)."))
+                admin.show(
+                    MessageDialog("Merge Complete", f"Successfully merged {len(merged)} group(s).")
+                )
             if errors:
                 admin.show(MessageDialog("Merge Errors", f"Failed to merge {errors} group(s)."))
             if not self.groups:

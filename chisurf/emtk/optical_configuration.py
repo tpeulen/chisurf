@@ -241,7 +241,9 @@ class OpticalConfigurationWidget:
             "##optical_lasers", self.config.get("lasers", "488:1.0, 640:1.0")
         )
         im.set_item_tooltip(
-            tr("Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0.")
+            tr(
+                "Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0."
+            )
         )
         if changed:
             self.config["lasers"] = value
@@ -258,7 +260,9 @@ class OpticalConfigurationWidget:
                 maximum,
             )
             im.set_item_tooltip(
-                tr("Parameter used in the Förster-radius calculation for the selected fluorophores.")
+                tr(
+                    "Parameter used in the Förster-radius calculation for the selected fluorophores."
+                )
             )
             if changed:
                 self.config[key] = value
@@ -343,9 +347,13 @@ class OpticalConfigurationWidget:
                 lambda i=index: self._remove_detector(i),
             )
             im.pop_id()
-        changed, value = im.checkbox(tr("Auto recalculate") + "##optical_auto", self.auto_recalculate)
+        changed, value = im.checkbox(
+            tr("Auto recalculate") + "##optical_auto", self.auto_recalculate
+        )
         im.set_item_tooltip(
-            tr("Re-run the simulation shortly after any input changes; off, only the button below recalculates.")
+            tr(
+                "Re-run the simulation shortly after any input changes; off, only the button below recalculates."
+            )
         )
         if changed:
             self.auto_recalculate = value

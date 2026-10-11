@@ -3,6 +3,7 @@
 The glyph JSON is the ASCII string art from chigame/pixelfont.py. Keeping the
 asset here avoids importing the Qt-bearing legacy GUI package in a native app.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,9 +26,16 @@ REPEAT_RATE = 0.07
 
 GLYPHS = json.loads(Path(__file__).with_name("glyphs.json").read_text())
 CELL = 26.0
-COLOURS = [(255, 32, 30, 255), (255, 110, 0, 255), (210, 195, 0, 255),
-           (40, 220, 90, 255), (0, 190, 220, 255), (20, 110, 255, 255),
-           (100, 60, 245, 255), (190, 60, 240, 255)]
+COLOURS = [
+    (255, 32, 30, 255),
+    (255, 110, 0, 255),
+    (210, 195, 0, 255),
+    (40, 220, 90, 255),
+    (0, 190, 220, 255),
+    (20, 110, 255, 255),
+    (100, 60, 245, 255),
+    (190, 60, 240, 255),
+]
 
 
 def tr(text):
@@ -77,16 +85,16 @@ class MinesweeperApp(GameApp):
         (KEY_DOWN, (1, 0)),
         (KEY_LEFT, (0, -1)),
         (KEY_RIGHT, (0, 1)),
-        (KEY_ENTER, 'reveal'),
-        (KEY_RETURN, 'reveal'),
-        (32, 'reveal'),
-        (' ', 'reveal'),
-        ('f', 'flag'),
-        (KEY_ESCAPE, 'restart'),
-        ('r', 'restart'),
-        ('q', 'previous_difficulty'),
-        ('e', 'next_difficulty'),
-        ('m', 'sound'),
+        (KEY_ENTER, "reveal"),
+        (KEY_RETURN, "reveal"),
+        (32, "reveal"),
+        (" ", "reveal"),
+        ("f", "flag"),
+        (KEY_ESCAPE, "restart"),
+        ("r", "restart"),
+        ("q", "previous_difficulty"),
+        ("e", "next_difficulty"),
+        ("m", "sound"),
     )
 
     def __init__(self, game=None, audio_callback=None, clock=time.monotonic):
@@ -180,7 +188,14 @@ class MinesweeperApp(GameApp):
         if step is not None:
             return self.held.pop(step, None) is not None
         letter = (text or (chr(key) if 32 <= key < 127 else "")).lower()
-        if key in {KEY_ENTER, KEY_RETURN, KEY_ESCAPE, 32} or letter in {" ", "f", "r", "q", "e", "m"}:
+        if key in {KEY_ENTER, KEY_RETURN, KEY_ESCAPE, 32} or letter in {
+            " ",
+            "f",
+            "r",
+            "q",
+            "e",
+            "m",
+        }:
             return True
         return False
 
@@ -202,12 +217,28 @@ class MinesweeperApp(GameApp):
         self.held.clear()
 
     def export_settings(self):
-        return {"rows": self.game.rows, "columns": self.game.columns, "mines": self.game.mines,
-                "difficulty_index": self.difficulty_index, "cursor": [self.cursor_row, self.cursor_col],
-                "status": self.game.status.value, "message": self.message,
-                "sound_enabled": self.sound_enabled,
-                "board": [[{"mine": c.mine, "revealed": c.revealed, "flagged": c.flagged,
-                            "adjacent_mines": c.adjacent_mines} for c in row] for row in self.game.board]}
+        return {
+            "rows": self.game.rows,
+            "columns": self.game.columns,
+            "mines": self.game.mines,
+            "difficulty_index": self.difficulty_index,
+            "cursor": [self.cursor_row, self.cursor_col],
+            "status": self.game.status.value,
+            "message": self.message,
+            "sound_enabled": self.sound_enabled,
+            "board": [
+                [
+                    {
+                        "mine": c.mine,
+                        "revealed": c.revealed,
+                        "flagged": c.flagged,
+                        "adjacent_mines": c.adjacent_mines,
+                    }
+                    for c in row
+                ]
+                for row in self.game.board
+            ],
+        }
 
     def validate_state(self, state):
         """Prepare a validated round without replacing live game state."""
@@ -259,7 +290,9 @@ class MinesweeperApp(GameApp):
         draw = im.get_window_draw_list()
         draw.add_rect_filled((x, y), (x + w, y + h), (8, 9, 11, 255))
         im.set_cursor_screen_pos((x + 4, y + 2))
-        if sound_toggle(self.sound_enabled, available=self.audio_callback is not None, shortcut="M"):
+        if sound_toggle(
+            self.sound_enabled, available=self.audio_callback is not None, shortcut="M"
+        ):
             self.sound_enabled = not self.sound_enabled
             self.audio_callback("enabled", self.sound_enabled)
         width, height = self.game.columns * CELL, self.game.rows * CELL
@@ -273,13 +306,22 @@ class MinesweeperApp(GameApp):
             left, top = ox + col * pitch, oy + row * pitch
             center = (left + pitch / 2, top + pitch / 2)
             colour = (26, 28, 33, 255) if cell.revealed else (48, 54, 64, 255)
-            draw.add_rect_filled((left + scale, top + scale), (left + pitch - scale, top + pitch - scale), colour)
+            draw.add_rect_filled(
+                (left + scale, top + scale), (left + pitch - scale, top + pitch - scale), colour
+            )
             if cell.flagged and not cell.revealed:
                 draw.add_circle_filled(center, pitch * 0.17, (40, 204, 196, 255))
             elif cell.revealed and cell.mine:
                 draw.add_circle_filled(center, pitch / 4, (235, 48, 40, 255))
             elif cell.revealed and cell.adjacent_mines:
-                pixel_text(draw, str(cell.adjacent_mines), center, pitch * .62, COLOURS[cell.adjacent_mines - 1], "center")
+                pixel_text(
+                    draw,
+                    str(cell.adjacent_mines),
+                    center,
+                    pitch * 0.62,
+                    COLOURS[cell.adjacent_mines - 1],
+                    "center",
+                )
             im.set_cursor_screen_pos((left, top))
             if im.invisible_button(f"##cell-{row}-{col}", (pitch, pitch)):
                 self.cursor_row, self.cursor_col = row, col
@@ -287,13 +329,32 @@ class MinesweeperApp(GameApp):
             if im.is_item_hovered() and im.is_mouse_clicked(1):
                 self.cursor_row, self.cursor_col = row, col
                 self.flag()
-            im.set_item_tooltip(tr("Left click: scan. Right click: flag. Arrow keys: move. Enter/Space: scan. F: flag."))
-        center = (ox + (self.cursor_col + .5) * pitch, oy + (self.cursor_row + .5) * pitch)
-        draw.add_circle(center, pitch * .47, (55, 208, 196, 255), thickness=max(2, pitch * .13))
+            im.set_item_tooltip(
+                tr(
+                    "Left click: scan. Right click: flag. Arrow keys: move. Enter/Space: scan. F: flag."
+                )
+            )
+        center = (ox + (self.cursor_col + 0.5) * pitch, oy + (self.cursor_row + 0.5) * pitch)
+        draw.add_circle(center, pitch * 0.47, (55, 208, 196, 255), thickness=max(2, pitch * 0.13))
         dim = (112, 122, 140, 255)
-        pixel_text(draw, tr("Hot pixels: {count}").format(count=self.game.flags_remaining), (ox, oy - 34 * scale), 13 * scale, (199, 209, 224, 255), max_width=width * scale * .58)
+        pixel_text(
+            draw,
+            tr("Hot pixels: {count}").format(count=self.game.flags_remaining),
+            (ox, oy - 34 * scale),
+            13 * scale,
+            (199, 209, 224, 255),
+            max_width=width * scale * 0.58,
+        )
         preset = list(DIFFICULTIES)[self.difficulty_index]
-        pixel_text(draw, tr(preset), (ox + width * scale, oy - 34 * scale), 13 * scale, dim, "right", width * scale * .40)
+        pixel_text(
+            draw,
+            tr(preset),
+            (ox + width * scale, oy - 34 * scale),
+            13 * scale,
+            dim,
+            "right",
+            width * scale * 0.40,
+        )
         if self.game.status is GameStatus.WON:
             banner, tint = tr("Array mapped"), (89, 217, 204, 255)
         elif self.game.status is GameStatus.LOST:
@@ -301,10 +362,28 @@ class MinesweeperApp(GameApp):
         else:
             banner, tint = tr(self.message), dim
         if banner:
-            pixel_text(draw, banner, (x + w / 2, oy + (height + 22) * scale), 16 * scale, tint, "center", w - 16)
+            pixel_text(
+                draw,
+                banner,
+                (x + w / 2, oy + (height + 22) * scale),
+                16 * scale,
+                tint,
+                "center",
+                w - 16,
+            )
         for offset, label, tip, action in (
-            (44, "Move   Confirm scan   Menu flag", "Scan the selected cell (Enter/Space). Flag it with F or right click.", self.reveal),
-            (62, "Cancel reset   L/R preset", "Restart with R. Change board size with Q/E or click the difficulty name.", self.restart),
+            (
+                44,
+                "Move   Confirm scan   Menu flag",
+                "Scan the selected cell (Enter/Space). Flag it with F or right click.",
+                self.reveal,
+            ),
+            (
+                62,
+                "Cancel reset   L/R preset",
+                "Restart with R. Change board size with Q/E or click the difficulty name.",
+                self.restart,
+            ),
         ):
             yy = oy + (height + offset) * scale
             pixel_text(draw, tr(label), (x + w / 2, yy), 12 * scale, dim, "center", w - 16)
@@ -322,6 +401,7 @@ class MinesweeperApp(GameApp):
 def make_app(audio_callback=None):
     """The game; *audio_callback(name, value)* plays effects and switches sound (none in emtk yet)."""
     from chisurf.emtk.i18n import install
+
     install()
     install_translations()
     return MinesweeperApp(audio_callback=audio_callback)

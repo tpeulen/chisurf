@@ -141,15 +141,19 @@ class CalculatorHubApp(ImApp):
         if self._collect_build() and self.selected in self.children:
             self.select(self.selected)
         if self.selected and self.child is None and not self.error and not self.building:
-            self._builder.start({self.selected: lambda id=self.selected: self.make_child(id)},
-                                name=f"chisurf-hub-{self.selected}")
+            self._builder.start(
+                {self.selected: lambda id=self.selected: self.make_child(id)},
+                name=f"chisurf-hub-{self.selected}",
+            )
         return self.building
 
     def draw_opening(self):
         """The "Opening" placeholder in the tool area, while the shown entry is made."""
         if self.building and self.child is None:
             entry = next((e for e in self.entries if e.id == self.selected), None)
-            draw_opening(entry.label if entry else str(self.selected), self.child_box, "Hub opening")
+            draw_opening(
+                entry.label if entry else str(self.selected), self.child_box, "Hub opening"
+            )
 
     def close(self):
         self._collect_build(wait=True)
@@ -181,7 +185,11 @@ class CalculatorHubApp(ImApp):
 
     # -- frames --------------------------------------------------------------------------------- #
     def animating(self):
-        return super().animating() or self.building or bool(self.child is not None and self.child.animating())
+        return (
+            super().animating()
+            or self.building
+            or bool(self.child is not None and self.child.animating())
+        )
 
     def next_frame_in(self):
         own, child = (

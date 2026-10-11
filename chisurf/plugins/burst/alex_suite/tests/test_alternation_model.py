@@ -33,7 +33,10 @@ def test_arrival_detects_and_converts_the_demo(stream):
     assert model.running or model.result is not None
     model.wait()
     assert model.period == demo.PERIOD
-    assert (model.donor_text, model.acceptor_text) == (str(demo.DONOR_CHANNEL), str(demo.ACCEPTOR_CHANNEL))
+    assert (model.donor_text, model.acceptor_text) == (
+        str(demo.DONOR_CHANNEL),
+        str(demo.ACCEPTOR_CHANNEL),
+    )
     green, red = model.windows["green"], model.windows["red"]
     assert demo.DONOR_GATE[0] <= green[0] < green[1] <= demo.DONOR_GATE[1]
     assert demo.ACCEPTOR_GATE[0] <= red[0] < red[1] <= demo.ACCEPTOR_GATE[1]

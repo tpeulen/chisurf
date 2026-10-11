@@ -76,9 +76,7 @@ CASES = (
 
 def run(cases=CASES):
     """Measure every case and print a markdown table."""
-    records = [
-        {"points": n, "log_y": log_y, "seconds": _bench(n, log_y)} for n, log_y in cases
-    ]
+    records = [{"points": n, "log_y": log_y, "seconds": _bench(n, log_y)} for n, log_y in cases]
     print("| points | log y | s/repaint |")
     print("|---:|:---:|---:|")
     for r in records:

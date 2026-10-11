@@ -34,11 +34,18 @@ STREAM_NAME = "fcs_demo.spc"
 SPC_FILENAME = STREAM_NAME
 MEMBERS = (SPC_FILENAME,)
 DEMO = {
-    "seed": SEED, "duration_s": DURATION_S, "molecule_rate_hz": MOLECULE_RATE,
-    "transit_s": TRANSIT_S, "photons_per_transit": PHOTONS_PER_TRANSIT,
-    "background_hz": BACKGROUND_HZ, "macro_resolution_s": MACRO_RES,
-    "micro_resolution_s": MICRO_RES, "micro_channels": N_MICRO,
-    "lifetime_s": LIFETIME_S, "routing_channels": 2, "format": "SPC-130",
+    "seed": SEED,
+    "duration_s": DURATION_S,
+    "molecule_rate_hz": MOLECULE_RATE,
+    "transit_s": TRANSIT_S,
+    "photons_per_transit": PHOTONS_PER_TRANSIT,
+    "background_hz": BACKGROUND_HZ,
+    "macro_resolution_s": MACRO_RES,
+    "micro_resolution_s": MICRO_RES,
+    "micro_channels": N_MICRO,
+    "lifetime_s": LIFETIME_S,
+    "routing_channels": 2,
+    "format": "SPC-130",
 }
 
 
@@ -50,11 +57,17 @@ def photon_stream(seed: int = SEED, *, config: dict | None = None):
     centres = rng.uniform(0.0, values["duration_s"], n_mol)
     counts = rng.poisson(values["photons_per_transit"], n_mol)
     times = np.repeat(centres, counts) + rng.normal(0.0, values["transit_s"], int(counts.sum()))
-    background = rng.uniform(0.0, values["duration_s"], rng.poisson(values["background_hz"] * values["duration_s"]))
+    background = rng.uniform(
+        0.0, values["duration_s"], rng.poisson(values["background_hz"] * values["duration_s"])
+    )
     times = np.sort(np.concatenate([times, background]))
     times = times[(times >= 0.0) & (times < values["duration_s"])]
     macro = np.round(times / values["macro_resolution_s"]).astype(np.uint64)
-    micro = np.clip(rng.exponential(values["lifetime_s"] / values["micro_resolution_s"], len(macro)), 0, values["micro_channels"] - 1).astype(np.uint16)
+    micro = np.clip(
+        rng.exponential(values["lifetime_s"] / values["micro_resolution_s"], len(macro)),
+        0,
+        values["micro_channels"] - 1,
+    ).astype(np.uint16)
     routing = rng.integers(0, values["routing_channels"], len(macro)).astype(np.int8)
     return macro, micro, routing
 
@@ -70,10 +83,15 @@ def _cache_is_good(folder: Path, config: dict) -> bool:
     """Reuse only a complete artifact set with matching parameters and byte hashes."""
     try:
         record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
-        return record["parameters"] == config and set(record["sha256"]) == set(MEMBERS) and all(
-            (folder / name).is_file()
-            and hashlib.sha256((folder / name).read_bytes()).hexdigest() == record["sha256"][name]
-            for name in MEMBERS
+        return (
+            record["parameters"] == config
+            and set(record["sha256"]) == set(MEMBERS)
+            and all(
+                (folder / name).is_file()
+                and hashlib.sha256((folder / name).read_bytes()).hexdigest()
+                == record["sha256"][name]
+                for name in MEMBERS
+            )
         )
     except (OSError, ValueError, KeyError, TypeError):
         return False
@@ -113,9 +131,12 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
         header.set_micro_time_resolution(config["micro_resolution_s"])
         if not stream.write(str(staged / SPC_FILENAME), config["format"], header):
             raise OSError(f"could not write {staged / SPC_FILENAME}")
-        record = {"parameters": config, "sha256": {
-            name: hashlib.sha256((staged / name).read_bytes()).hexdigest() for name in MEMBERS
-        }}
+        record = {
+            "parameters": config,
+            "sha256": {
+                name: hashlib.sha256((staged / name).read_bytes()).hexdigest() for name in MEMBERS
+            },
+        }
         (staged / "demo.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
         for name in (*MEMBERS, "demo.json"):
             os.replace(staged / name, folder / name)

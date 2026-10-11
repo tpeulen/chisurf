@@ -23,13 +23,32 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 REPO = next(path for path in Path(__file__).parents if (path / "pyproject.toml").exists())
 EXAMPLE = REPO / "chisurf/plugins/modelling/fret/examples/fps_hiv_rt"
 CANVAS = (1600, 1200)
-INPUT_TOOLBAR = frozenset({"project", "save", "fps_pick", "out_pick", "run", "stop", "clear", "guide", "help"})
+INPUT_TOOLBAR = frozenset(
+    {"project", "save", "fps_pick", "out_pick", "run", "stop", "clear", "guide", "help"}
+)
 RIGID_BODY_TOOLBAR = frozenset({"add_pdb", "database_pdb", "remove_pdb", "clear_pdb"})
-FORM_CONTROLS = frozenset({
-    "fps_json", "output_dir", "operation", "method", "score_set", "n_repeats", "n_frames", "ev_weight",
-    "refine_av_cycles", "fixed_body", "sigma_da", "av_backend", "save_distributions", "save_trajectory",
-    "continue_from_poses", "mc_steps", "n_best", "simulated_annealing",
-})
+FORM_CONTROLS = frozenset(
+    {
+        "fps_json",
+        "output_dir",
+        "operation",
+        "method",
+        "score_set",
+        "n_repeats",
+        "n_frames",
+        "ev_weight",
+        "refine_av_cycles",
+        "fixed_body",
+        "sigma_da",
+        "av_backend",
+        "save_distributions",
+        "save_trajectory",
+        "continue_from_poses",
+        "mc_steps",
+        "n_best",
+        "simulated_annealing",
+    }
+)
 RESULT_TABS = frozenset({"tab_Results", "tab_Score", "tab_Structure"})
 RESULT_HEADERS = frozenset({"trial", "type", "score", "distances", "best_pdb"})
 
@@ -47,8 +66,12 @@ def hermetic_settings(tmp_path, monkeypatch):
 def inputs(tmp_path):
     """Local PDBs, two restraint files, folders, and a portable docking project."""
     pdbs = []
-    for source, name in (("protein_1R0A.pdb", "protein.pdb"), ("dna.pdb", "dna.pdb"),
-                         ("protein_1R0A.pdb", "extra.pdb"), ("dna.pdb", "database.pdb")):
+    for source, name in (
+        ("protein_1R0A.pdb", "protein.pdb"),
+        ("dna.pdb", "dna.pdb"),
+        ("protein_1R0A.pdb", "extra.pdb"),
+        ("dna.pdb", "database.pdb"),
+    ):
         target = tmp_path / name
         shutil.copy(EXAMPLE / source, target)
         pdbs.append(target)
@@ -64,11 +87,20 @@ def inputs(tmp_path):
     output_b.mkdir()
     project = tmp_path / "load-me.json"
     save_docking_project(
-        str(project), pdb_paths=[str(pdbs[0]), str(pdbs[1])], fps_json=str(fps_a),
-        output_dir=str(tmp_path), params={"n_frames": 5},
+        str(project),
+        pdb_paths=[str(pdbs[0]), str(pdbs[1])],
+        fps_json=str(fps_a),
+        output_dir=str(tmp_path),
+        params={"n_frames": 5},
     )
-    return {"pdbs": pdbs, "fps_a": fps_a, "fps_b": fps_b, "output_a": output_a,
-            "output_b": output_b, "project": project}
+    return {
+        "pdbs": pdbs,
+        "fps_a": fps_a,
+        "fps_b": fps_b,
+        "output_a": output_a,
+        "output_b": output_b,
+        "project": project,
+    }
 
 
 class OfflineStructureClient:
@@ -81,10 +113,17 @@ class OfflineStructureClient:
     def call(self, method, params):
         self.calls.append((method, params))
         if method == "mmfdb.datasets.browse":
-            return {"total": 1, "datasets": [
-                {"artifact_id": "local-pdb", "artifact_kind": "structure", "data_format": "pdb",
-                 "original_filename": self.path.name},
-            ]}
+            return {
+                "total": 1,
+                "datasets": [
+                    {
+                        "artifact_id": "local-pdb",
+                        "artifact_kind": "structure",
+                        "data_format": "pdb",
+                        "original_filename": self.path.name,
+                    },
+                ],
+            }
         if method == "mmfdb.datasets.open":
             return {"local_path": str(self.path)}
         raise AssertionError(method)
@@ -152,28 +191,40 @@ def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
         rendered = set(app.item_rects)
         assert INPUT_TOOLBAR <= rendered and RIGID_BODY_TOOLBAR <= rendered
         ui.click("project")
-        assert (ui.dialog_open and ui.shown("Load docking project")
-                and app.dialog.directory == str(inputs["project"].parent))
+        assert (
+            ui.dialog_open
+            and ui.shown("Load docking project")
+            and app.dialog.directory == str(inputs["project"].parent)
+        )
         ui.dialog_pick(inputs["project"].name)
         assert session.pdb_files == [str(inputs["pdbs"][0]), str(inputs["pdbs"][1])]
 
         saved = inputs["project"].parent / "saved-from-toolbar.json"
         ui.click("save")
-        assert (ui.dialog_open and ui.shown("Save docking project")
-                and app.dialog.directory == str(inputs["project"].parent))
+        assert (
+            ui.dialog_open
+            and ui.shown("Save docking project")
+            and app.dialog.directory == str(inputs["project"].parent)
+        )
         ui.save_dialog_type_name(str(saved))
         ui.press_text("Save")
         assert saved.exists() and session.status == f"saved {saved.name}"
 
         ui.click("fps_pick")
-        assert (ui.dialog_open and ui.shown("Select fps.json or FPS LPs .txt")
-                and app.dialog.directory == str(inputs["fps_b"].parent))
+        assert (
+            ui.dialog_open
+            and ui.shown("Select fps.json or FPS LPs .txt")
+            and app.dialog.directory == str(inputs["fps_b"].parent)
+        )
         ui.dialog_pick(inputs["fps_b"].name)
         assert session.fps_json == str(inputs["fps_b"])
 
         ui.click("out_pick")
-        assert (ui.dialog_open and ui.shown("Output directory")
-                and app.dialog.directory == str(inputs["output_b"].parent))
+        assert (
+            ui.dialog_open
+            and ui.shown("Output directory")
+            and app.dialog.directory == str(inputs["output_b"].parent)
+        )
         ui.dialog_pick(f"[{inputs['output_b'].name}]", action="Choose")
         assert session.output_dir == str(inputs["output_b"])
 
@@ -185,29 +236,42 @@ def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
         assert not session.running and session.status == "stopped"
 
         ui.click("add_pdb")
-        assert (ui.dialog_open and ui.shown("Add PDB file")
-                and app.dialog.directory == str(inputs["pdbs"][2].parent))
+        assert (
+            ui.dialog_open
+            and ui.shown("Add PDB file")
+            and app.dialog.directory == str(inputs["pdbs"][2].parent)
+        )
         ui.dialog_pick(inputs["pdbs"][2].name)
         assert str(inputs["pdbs"][2]) in session.pdb_files
 
         ui.click("database_pdb")
         _wait_for(
             ui,
-            lambda: app.pickers and app.pickers[0]._pending is None
-            and ui.shown(f"{inputs['pdbs'][3].name} [structure] (pdb)"),
+            lambda: (
+                app.pickers
+                and app.pickers[0]._pending is None
+                and ui.shown(f"{inputs['pdbs'][3].name} [structure] (pdb)")
+            ),
         )
         ui.press_text(f"{inputs['pdbs'][3].name} [structure] (pdb)")
         assert app.pickers[0].selection is not None
         ui.press_text("Open selected")
         _wait_for(ui, lambda: not app.pickers)
         assert session.pdb_files == [str(path) for path in inputs["pdbs"]]
-        assert [call[0] for call in client.calls] == ["mmfdb.datasets.browse", "mmfdb.datasets.open"]
+        assert [call[0] for call in client.calls] == [
+            "mmfdb.datasets.browse",
+            "mmfdb.datasets.open",
+        ]
 
         pdb_table = app.pdb_form.tables["pdb_rows"].control
         _click_first_table_row(ui, pdb_table)
         assert app.view.pdb_selected == 0
         ui.key(keys.KEY_DELETE)
-        assert session.pdb_files == [str(inputs["pdbs"][1]), str(inputs["pdbs"][2]), str(inputs["pdbs"][3])]
+        assert session.pdb_files == [
+            str(inputs["pdbs"][1]),
+            str(inputs["pdbs"][2]),
+            str(inputs["pdbs"][3]),
+        ]
         assert app.view.pdb_selected == -1
 
         ui.draw(2)
@@ -265,8 +329,12 @@ def test_every_fret_dock_form_control_changes_session_after_real_input(inputs):
         assert session.score_set == "all"
 
         for attr, text, expected in (
-            ("n_repeats", "2", 2), ("n_frames", "100000", 100000), ("ev_weight", "2.5", 2.5),
-            ("refine_av_cycles", "1", 1), ("fixed_body", "1", 1), ("sigma_da", "4.5", 4.5),
+            ("n_repeats", "2", 2),
+            ("n_frames", "100000", 100000),
+            ("ev_weight", "2.5", 2.5),
+            ("refine_av_cycles", "1", 1),
+            ("fixed_body", "1", 1),
+            ("sigma_da", "4.5", 4.5),
         ):
             ui.type_into(attr, text)
             assert getattr(session, attr) == pytest.approx(expected)
@@ -294,10 +362,13 @@ def test_results_controls_click_tabs_headers_rows_preview_and_clear(inputs):
     session = app.session
     try:
         assert RESULT_TABS <= set(app.item_rects)
-        session.add_rows([
-            (0, 3.0, 4, str(inputs["pdbs"][0])),
-            (1, 1.0, 4, str(inputs["pdbs"][1])),
-        ], "dock")
+        session.add_rows(
+            [
+                (0, 3.0, 4, str(inputs["pdbs"][0])),
+                (1, 1.0, 4, str(inputs["pdbs"][1])),
+            ],
+            "dock",
+        )
         session.curves = {"trace.csv": ([0, 1], [3.0, 1.0])}
         ui.draw(3)
 
@@ -312,7 +383,9 @@ def test_results_controls_click_tabs_headers_rows_preview_and_clear(inputs):
             assert table.sort_key_name == column.key
 
         _click_first_table_row(ui, table)
-        assert session.selected_row in (0, 1) and session.preview == [session.rows[session.selected_row]["path"]]
+        assert session.selected_row in (0, 1) and session.preview == [
+            session.rows[session.selected_row]["path"]
+        ]
 
         ui.click("tab_Score")
         assert app.tab == "Score" and ui.shown("Step") and ui.shown("Total score")

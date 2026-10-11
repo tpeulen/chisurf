@@ -1,4 +1,5 @@
 """Real GPU screenshots of declared native factories; workflow parity is separate."""
+
 from __future__ import annotations
 
 import logging
@@ -11,8 +12,7 @@ import pytest
 from chisurf.emtk.plugins import load_plugin, manifests
 
 CATALOG = manifests()
-NATIVE = sorted(key for key, value in CATALOG.items()
-                if value.get("entrypoints", {}).get("emtk"))
+NATIVE = sorted(key for key, value in CATALOG.items() if value.get("entrypoints", {}).get("emtk"))
 
 
 @pytest.fixture(scope="module")
@@ -45,11 +45,16 @@ def test_native_plugin_desktop_render(plugin_id, gpu_device, caplog):
             pixels = np.asarray(host.draw_frame())
             assert pixels.shape[:2] == (800, 1200)
             assert len(np.unique(pixels[..., :3].reshape(-1, 3), axis=0)) > 10
-            failures = [record.getMessage() for record in caplog.records
-                        if record.levelno >= logging.ERROR]
+            failures = [
+                record.getMessage() for record in caplog.records if record.levelno >= logging.ERROR
+            ]
             assert not failures, failures
-            save_png(output / f"{plugin_id}.png", pixels.shape[1], pixels.shape[0],
-                     np.ascontiguousarray(pixels).reshape(-1).tobytes())
+            save_png(
+                output / f"{plugin_id}.png",
+                pixels.shape[1],
+                pixels.shape[0],
+                np.ascontiguousarray(pixels).reshape(-1).tobytes(),
+            )
     finally:
         if host is not None:
             host.close()
@@ -63,7 +68,10 @@ def test_native_help_rich_document_gpu(gpu_device, caplog):
     from emtk.native import NativeHost
     from emtk.testing import save_png
 
-    source = Path(__file__).resolve().parents[2] / "okf/plugins/emtk-references/help-rich-document/fixture/feature_reference.md"
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "okf/plugins/emtk-references/help-rich-document/fixture/feature_reference.md"
+    )
     assert source.is_file()
     app = load_plugin("help", locale="en", persist=False)
     assert app.model.open_page(source)
@@ -75,7 +83,11 @@ def test_native_help_rich_document_gpu(gpu_device, caplog):
             pixels = np.asarray(host.draw_frame())
             host.draw_frame()
         assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
-        save_png(output / "help-rich-document.png", 1280, 900,
-                 np.ascontiguousarray(pixels).reshape(-1).tobytes())
+        save_png(
+            output / "help-rich-document.png",
+            1280,
+            900,
+            np.ascontiguousarray(pixels).reshape(-1).tobytes(),
+        )
     finally:
         host.close()

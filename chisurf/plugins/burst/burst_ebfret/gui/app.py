@@ -583,11 +583,15 @@ class App:
         self.on_exit = on_exit
         self.actions_spec = load_view_spec(SPECS / "example_actions.view.json")
         self.tour = EmTkGuidedTour(
-            steps=SPECS / "guide.json", owner=gui, wait_for_controls=True,
+            steps=SPECS / "guide.json",
+            owner=gui,
+            wait_for_controls=True,
             get_target_rect=lambda key: gui.item_rects.get(TOUR_TARGETS.get(key or "", key or "")),
         )
         self.help = EmTkHelpWindow(
-            title=tr("ebFRET — Help"), resource=SPECS / "help.md", owner=gui,
+            title=tr("ebFRET — Help"),
+            resource=SPECS / "help.md",
+            owner=gui,
             on_start_guide=self.start_guide,
         )
         self.actions_state = FormState(on_used=self.tour.notify_used)
@@ -733,8 +737,11 @@ class App:
         modal = self.modal()
         with emtk.frame(painter, (x, y, w, h), io=self.io, storage=self.storage):
             self.actions_state.rects.clear()
-            im.begin("##example-actions", (x + 6, y + MENU_H, w - 12, ACTIONS_H),
-                     im.WindowFlags.NO_TITLE_BAR)
+            im.begin(
+                "##example-actions",
+                (x + 6, y + MENU_H, w - 12, ACTIONS_H),
+                im.WindowFlags.NO_TITLE_BAR,
+            )
             draw_form(self.actions_spec, self, self.actions_state, titles=False)
             im.end()
             g.item_rects.update(self.actions_state.rects)

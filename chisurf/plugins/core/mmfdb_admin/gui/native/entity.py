@@ -166,11 +166,7 @@ class EntityPanel(ExtrasMixin, Panel):
                 "key": key,
                 "title": label,
                 "tooltip": (getattr(fs, "tooltip", "") or label)
-                + (
-                    " Double-click to open the record it names."
-                    if self.fk_target(key)
-                    else ""
-                ),
+                + (" Double-click to open the record it names." if self.fk_target(key) else ""),
             }
             if self.fk_target(key):
                 column["display"] = "link"
@@ -265,9 +261,7 @@ class EntityPanel(ExtrasMixin, Panel):
         rid = self.selected_id
 
         def fetch():
-            result = self.client._call(
-                f"mmfdb.{self.entity.rpc}.get", {self.entity.id_field: rid}
-            )
+            result = self.client._call(f"mmfdb.{self.entity.rpc}.get", {self.entity.id_field: rid})
             return (result or {}).get(self.entity.item_key) or {}
 
         def got(record: dict) -> None:
@@ -503,9 +497,10 @@ class EntityPanel(ExtrasMixin, Panel):
         if not artifact_id:
             self.admin.show(MessageDialog("No artifact selected", "Select an artifact row first."))
             return
-        label = {"raw_data": "raw-data artifact", "processed_product": "processed-data artifact"}.get(
-            self.key, "artifact"
-        )
+        label = {
+            "raw_data": "raw-data artifact",
+            "processed_product": "processed-data artifact",
+        }.get(self.key, "artifact")
 
         def call():
             self.client.delete_artifact(artifact_id)

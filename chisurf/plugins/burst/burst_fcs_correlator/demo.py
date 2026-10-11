@@ -32,13 +32,23 @@ TABLE_NAME = "burst_fcs_demo.spc.bst"
 SPC_FILENAME = STREAM_NAME
 MEMBERS = (SPC_FILENAME, TABLE_NAME)
 DEMO = {
-    "seed": SEED, "n_bursts": N_BURSTS, "photons_per_burst": PHOTONS_PER_BURST,
-    "macro_resolution_s": MACRO_RES, "micro_resolution_s": MICRO_RES,
-    "micro_channels": N_MICRO, "lifetime_s": LIFETIME_S,
-    "initial_ticks": 5000000, "centre_ticks": 370000, "width_ticks": 74000,
-    "width_base": 0.7, "width_range": 0.6, "signal_fraction": 0.8,
-    "burst_span_ticks": 740000, "gap_ticks": 3700000,
-    "routing_channels": 2, "format": "SPC-130",
+    "seed": SEED,
+    "n_bursts": N_BURSTS,
+    "photons_per_burst": PHOTONS_PER_BURST,
+    "macro_resolution_s": MACRO_RES,
+    "micro_resolution_s": MICRO_RES,
+    "micro_channels": N_MICRO,
+    "lifetime_s": LIFETIME_S,
+    "initial_ticks": 5000000,
+    "centre_ticks": 370000,
+    "width_ticks": 74000,
+    "width_base": 0.7,
+    "width_range": 0.6,
+    "signal_fraction": 0.8,
+    "burst_span_ticks": 740000,
+    "gap_ticks": 3700000,
+    "routing_channels": 2,
+    "format": "SPC-130",
 }
 
 
@@ -49,21 +59,31 @@ def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS, *, config: dict | 
     macro, micro, routing, ranges = [], [], [], []
     t0, index = values["initial_ticks"], 0
     for _ in range(n_bursts):
-        centre = t0 + values["centre_ticks"]  # a burst 10 ms (370 000 ticks) long, its envelope 1 ms wide
-        width = values["width_ticks"] * (values["width_base"] + values["width_range"] * rng.random())
+        centre = (
+            t0 + values["centre_ticks"]
+        )  # a burst 10 ms (370 000 ticks) long, its envelope 1 ms wide
+        width = values["width_ticks"] * (
+            values["width_base"] + values["width_range"] * rng.random()
+        )
         n = values["photons_per_burst"]
         times = np.sort(
             np.concatenate(
                 [
                     rng.normal(centre, width, int(values["signal_fraction"] * n)),
-                    rng.uniform(t0, t0 + values["burst_span_ticks"], n - int(values["signal_fraction"] * n)),
+                    rng.uniform(
+                        t0, t0 + values["burst_span_ticks"], n - int(values["signal_fraction"] * n)
+                    ),
                 ]
             )
         )
         times = np.clip(times, t0, t0 + values["burst_span_ticks"]).astype(np.uint64)
         macro.append(times)
         micro.append(
-            np.clip(rng.exponential(values["lifetime_s"] / values["micro_resolution_s"], n), 0, values["micro_channels"] - 1).astype(np.uint16)
+            np.clip(
+                rng.exponential(values["lifetime_s"] / values["micro_resolution_s"], n),
+                0,
+                values["micro_channels"] - 1,
+            ).astype(np.uint16)
         )
         routing.append(rng.integers(0, values["routing_channels"], n).astype(np.int8))
         ranges.append((index, index + n - 1))
@@ -83,10 +103,15 @@ def _cache_is_good(folder: Path, config: dict) -> bool:
     """Reuse only a complete artifact set with matching parameters and byte hashes."""
     try:
         record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
-        return record["parameters"] == config and set(record["sha256"]) == set(MEMBERS) and all(
-            (folder / name).is_file()
-            and hashlib.sha256((folder / name).read_bytes()).hexdigest() == record["sha256"][name]
-            for name in MEMBERS
+        return (
+            record["parameters"] == config
+            and set(record["sha256"]) == set(MEMBERS)
+            and all(
+                (folder / name).is_file()
+                and hashlib.sha256((folder / name).read_bytes()).hexdigest()
+                == record["sha256"][name]
+                for name in MEMBERS
+            )
         )
     except (OSError, ValueError, KeyError, TypeError):
         return False
@@ -118,7 +143,9 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
     # the previously usable input; no unrelated folder members are removed.
     with tempfile.TemporaryDirectory(prefix=".demo-", dir=folder) as staging:
         staged = Path(staging)
-        macro, micro, routing, ranges = photon_stream(config["seed"], config["n_bursts"], config=config)
+        macro, micro, routing, ranges = photon_stream(
+            config["seed"], config["n_bursts"], config=config
+        )
         stream = tttrlib.TTTR()
         stream.append_events(macro, micro, routing, np.zeros(len(macro), dtype=np.int8))
         header = stream.header
@@ -127,9 +154,12 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
         if not stream.write(str(staged / SPC_FILENAME), config["format"], header):
             raise OSError(f"could not write {staged / SPC_FILENAME}")
         (staged / TABLE_NAME).write_text("".join(f"{a} {b}\n" for a, b in ranges), encoding="utf-8")
-        record = {"parameters": config, "sha256": {
-            name: hashlib.sha256((staged / name).read_bytes()).hexdigest() for name in MEMBERS
-        }}
+        record = {
+            "parameters": config,
+            "sha256": {
+                name: hashlib.sha256((staged / name).read_bytes()).hexdigest() for name in MEMBERS
+            },
+        }
         (staged / "demo.json").write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
         for name in (*MEMBERS, "demo.json"):
             os.replace(staged / name, folder / name)

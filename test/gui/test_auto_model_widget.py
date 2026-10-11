@@ -410,7 +410,7 @@ def test_plots_come_only_from_the_view_spec(qapp):
     assert resolved, "the lifetime model declares plots but none resolved"
     # the model's own, then only the fit-level pages every fit window carries
     assert len(resolved) <= len(declared) + len(FIT_PLOT_KEYS)
-    fit_level = [cls.__name__ for cls, _ in resolved[len(declared):]]
+    fit_level = [cls.__name__ for cls, _ in resolved[len(declared) :]]
     assert fit_level == ["PosteriorGraphPlot", "SamplingDiagnosticsPlot", "ConditionalScanPlot"]
     assert not hasattr(model, "plot_classes")
 

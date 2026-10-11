@@ -103,7 +103,9 @@ def test_same_bursts_as_the_qt_tool(hermetic, qt_reference):
     for key, value in qt_reference["photon_filter"].items():
         got = pm[key]
         # JSON has no tuples and no enum members
-        assert json.loads(json.dumps(got, default=lambda o: getattr(o, "value", str(o)))) == value, key
+        assert (
+            json.loads(json.dumps(got, default=lambda o: getattr(o, "value", str(o)))) == value
+        ), key
     assert ms.burst_detection.min_photons == qt_reference["min_photons"] == 60
     assert ms.output_formats == qt_reference["output_formats"] == ["bur"]
     assert m.prepare_run() is None

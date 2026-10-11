@@ -71,7 +71,9 @@ def test_qt_host_resolves_declared_tool_size_on_an_adequate_screen(qapp, tmp_pat
 
 
 @pytest.mark.parametrize("size", [(1100, 720), (800, 600)])
-def test_result_selector_wraps_with_complete_labels_and_pointer_reachability(tmp_path, monkeypatch, size):
+def test_result_selector_wraps_with_complete_labels_and_pointer_reachability(
+    tmp_path, monkeypatch, size
+):
     """Every real selector retains its hidden ID and reaches its result inside the dock."""
     from emtk import im
     from emtk.testing import Driver

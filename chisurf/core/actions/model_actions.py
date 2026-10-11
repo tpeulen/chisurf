@@ -171,16 +171,26 @@ def absolute_model_amplitudes(fit_index: typing.Optional[int] = None):
 
 
 @action("model.set_dataset", schema={"slot": str, "idx": int, "name": str})
-def set_model_dataset(slot: str, idx: int, name: str, fit_index: typing.Optional[int] = None, *,
-                      dataset_uid: str | None = None, member_uid: str | None = None):
+def set_model_dataset(
+    slot: str,
+    idx: int,
+    name: str,
+    fit_index: typing.Optional[int] = None,
+    *,
+    dataset_uid: str | None = None,
+    member_uid: str | None = None,
+):
     """Bind a loaded curve to one measurement slot of a described model."""
     from chisurf.macros.model import _resolve_selected_curve
 
     fit = _resolve_fit(fit_index)
     if fit is None:
         return {}
-    identity = ({"dataset_uid": dataset_uid, "member_uid": member_uid}
-                if dataset_uid is not None or member_uid is not None else {})
+    identity = (
+        {"dataset_uid": dataset_uid, "member_uid": member_uid}
+        if dataset_uid is not None or member_uid is not None
+        else {}
+    )
     curve = _resolve_selected_curve(int(idx), str(name), **identity)
     if curve is None:
         return {}
@@ -203,8 +213,14 @@ def unset_model_dataset(slot: str, fit_index: typing.Optional[int] = None):
 
 
 @action("model.change_irf", schema={"irf_idx": int, "irf_name": str})
-def change_model_irf(irf_idx: int, irf_name: str, fit_index: typing.Optional[int] = None, *,
-                     dataset_uid: str | None = None, member_uid: str | None = None):
+def change_model_irf(
+    irf_idx: int,
+    irf_name: str,
+    fit_index: typing.Optional[int] = None,
+    *,
+    dataset_uid: str | None = None,
+    member_uid: str | None = None,
+):
     """Change the IRF used by the model."""
     from chisurf.macros import model as model_macros
 
@@ -212,8 +228,9 @@ def change_model_irf(irf_idx: int, irf_name: str, fit_index: typing.Optional[int
     if fit is None:
         return {}
     if dataset_uid is not None or member_uid is not None:
-        return model_macros.change_irf(int(irf_idx), str(irf_name), fit=fit,
-                                       dataset_uid=dataset_uid, member_uid=member_uid)
+        return model_macros.change_irf(
+            int(irf_idx), str(irf_name), fit=fit, dataset_uid=dataset_uid, member_uid=member_uid
+        )
     return model_macros.change_irf(int(irf_idx), str(irf_name), fit=fit)
 
 

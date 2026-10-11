@@ -1,4 +1,5 @@
 """The viewer's runtime demos use its packaged resources, without test fixtures."""
+
 from pathlib import Path
 
 import pytest

@@ -116,7 +116,9 @@ class LifetimeAnalysisApp(CalculatorHubApp):
         return self.children.get(id)
 
     def make_child(self, id):
-        return load_plugin(id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False))
+        return load_plugin(
+            id, locale=get_locale(), persist=getattr(self, "_native_state_bound", False)
+        )
 
     def load_error(self, id, exc):
         return f"Native tool could not open: {exc}"
@@ -159,7 +161,9 @@ class LifetimeAnalysisApp(CalculatorHubApp):
             first = _last = None
             for entry in self.visible_entries():
                 mark = " *" if self.experimental_message(entry.id) else ""
-                if im.selectable(entry.label + mark, selected=self.selected == entry.id, icon=entry.icon):
+                if im.selectable(
+                    entry.label + mark, selected=self.selected == entry.id, icon=entry.icon
+                ):
                     self.select(entry.id)
                 im.set_item_tooltip(
                     entry.description

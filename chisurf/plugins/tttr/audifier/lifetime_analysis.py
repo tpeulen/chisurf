@@ -245,8 +245,13 @@ def _waterfall_panel(ax, A, macro_t_s, tau, *, log_tau, levels=None, colorbar=No
     tau = np.asarray(tau, dtype=float)
     x0, x1 = (np.log10(tau[0]), np.log10(tau[-1])) if log_tau else (tau[0], tau[-1])
     # (left, right, bottom, top): the first macro-time bin at the top.
-    ax.heatmap(A, colormap="viridis", extent=(x0, x1, macro_t_s[-1], macro_t_s[0]),
-               levels=levels, colorbar=colorbar)
+    ax.heatmap(
+        A,
+        colormap="viridis",
+        extent=(x0, x1, macro_t_s[-1], macro_t_s[0]),
+        levels=levels,
+        colorbar=colorbar,
+    )
     if log_tau:
         decades = np.arange(np.ceil(x0), np.floor(x1) + 1)
         ax.set_xticks(decades, [f"1e{int(d)}" for d in decades])
@@ -418,8 +423,15 @@ def plot_lifetime_waterfall_multichannel(
             continue
         A, macro_t_s, tau = data_tuple
         # One shared colour scale, its bar beside every panel (all identical).
-        _waterfall_panel(ax, np.log1p(A), macro_t_s, tau, log_tau=True, levels=(0.0, vmax),
-                         colorbar="ln(1 + counts)")
+        _waterfall_panel(
+            ax,
+            np.log1p(A),
+            macro_t_s,
+            tau,
+            log_tau=True,
+            levels=(0.0, vmax),
+            colorbar="ln(1 + counts)",
+        )
         ax.set_title(f"Ch {ch}")
         ax.set_labels(y="Macro time (s)")
     fig.ax(n_channels - 1, 0).set_labels(x="Lifetime τ (s)")

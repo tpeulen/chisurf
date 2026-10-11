@@ -62,7 +62,7 @@ def test_dock_addresses_remain_available(tmp_path, monkeypatch):
     app = attach_native_state("audifier_docks", create_app())
     try:
         driver = Driver(app, size=(1100, 720))
-        for key in ('setup', 'audio', 'waterfall_parameters', 'waterfall', 'mixer', 'notes'):
+        for key in ("setup", "audio", "waterfall_parameters", "waterfall", "mixer", "notes"):
             assert app.docks.window(key) is not None
             app.docks.focus(key)
             driver.draw(2)

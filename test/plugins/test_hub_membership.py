@@ -37,8 +37,18 @@ SHARED = {
 #: The ALEX Suite is the burst workflow in the old ALEX-Suite program's order: these steps are Burst Analysis's own
 #: native apps, opened from the same plugin entry (one implementation, two rails), not copies.
 _ALEX_REUSES = "The ALEX Suite walks the burst pipeline in ALEX-Suite's order with Burst Analysis's own step app."
-SHARED.update({pid: _ALEX_REUSES for pid in ("burst_selection", "burst_background", "accurate_fret",
-                                              "burst_browser", "burst_bva")})
+SHARED.update(
+    {
+        pid: _ALEX_REUSES
+        for pid in (
+            "burst_selection",
+            "burst_background",
+            "accurate_fret",
+            "burst_browser",
+            "burst_bva",
+        )
+    }
+)
 
 #: Hosted plugins that keep their own ribbon button, with the reason.
 VISIBLE_CHILDREN = {
@@ -148,7 +158,8 @@ def test_hosted_tools_have_no_ribbon_button_of_their_own():
         f"{child} (in {hub})"
         for hub, children in hub_children().items()
         for child in children
-        if child not in VISIBLE_CHILDREN and not manifests()[child][1].get("menu_hidden")
+        if child not in VISIBLE_CHILDREN
+        and not manifests()[child][1].get("menu_hidden")
         and child not in hub_children()  # a hub inside a hub keeps its own visibility rule
     )
     assert not shown, f"hosted by a hub but still a ribbon button: {shown}"
@@ -163,7 +174,9 @@ def test_no_tool_lives_in_two_hubs():
     assert not doubled, f"hosted by more than one hub: {doubled}"
 
 
-@pytest.mark.parametrize("table", [SHARED, VISIBLE_CHILDREN, UNHOSTED], ids=["shared", "visible", "unhosted"])
+@pytest.mark.parametrize(
+    "table", [SHARED, VISIBLE_CHILDREN, UNHOSTED], ids=["shared", "visible", "unhosted"]
+)
 def test_every_exception_is_still_needed(table):
     """An allow-list line whose reason no longer holds is deleted, not kept."""
     homes = [c for children in hub_children().values() for c in children]

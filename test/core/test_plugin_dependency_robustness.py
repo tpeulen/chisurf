@@ -7,39 +7,45 @@ from chisurf.core.plugin.dependencies import ordered_manifests, resolve
 
 def test_cycle_dependants_follow_the_actual_component():
     """Only mutually dependent plugins form a cycle; their tail follows them."""
-    report = resolve([
-        {"id": "x", "requires": {"y": "*"}},
-        {"id": "y", "requires": {"x": "*"}},
-        {"id": "a", "requires": {"x": "*"}},
-        {"id": "z", "requires": {"a": "*"}},
-    ])
+    report = resolve(
+        [
+            {"id": "x", "requires": {"y": "*"}},
+            {"id": "y", "requires": {"x": "*"}},
+            {"id": "a", "requires": {"x": "*"}},
+            {"id": "z", "requires": {"a": "*"}},
+        ]
+    )
     assert report.cycles == [["x", "y"]]
     assert report.order == ["x", "y", "a", "z"]
 
 
 def test_duplicate_ids_use_the_first_declaration():
     """Discovery's first declaration supplies both requirements and version."""
-    report = resolve([
-        {"id": "x", "version": "1.0", "requires": {"y": "*"}},
-        {"id": "x", "version": "2.0", "requires": {"absent": "*"}},
-        {"id": "y", "version": "1.0"},
-        {"id": "z", "requires": {"x": "<2"}},
-    ])
+    report = resolve(
+        [
+            {"id": "x", "version": "1.0", "requires": {"y": "*"}},
+            {"id": "x", "version": "2.0", "requires": {"absent": "*"}},
+            {"id": "y", "version": "1.0"},
+            {"id": "z", "requires": {"x": "<2"}},
+        ]
+    )
     assert report.ok
     assert report.order == ["y", "x", "z"]
 
 
 def test_separate_and_self_cycles_keep_their_blocked_tails():
     """Distinct SCCs remain separate, including a self-dependent singleton."""
-    report = resolve([
-        {"id": "x", "requires": {"y": "*"}},
-        {"id": "y", "requires": {"x": "*"}},
-        {"id": "p", "requires": {"q": "*"}},
-        {"id": "q", "requires": {"p": "*"}},
-        {"id": "s", "requires": {"s": "*"}},
-        {"id": "a", "requires": {"x": "*", "s": "*"}},
-        {"id": "b", "requires": {"a": "*", "p": "*"}},
-    ])
+    report = resolve(
+        [
+            {"id": "x", "requires": {"y": "*"}},
+            {"id": "y", "requires": {"x": "*"}},
+            {"id": "p", "requires": {"q": "*"}},
+            {"id": "q", "requires": {"p": "*"}},
+            {"id": "s", "requires": {"s": "*"}},
+            {"id": "a", "requires": {"x": "*", "s": "*"}},
+            {"id": "b", "requires": {"a": "*", "p": "*"}},
+        ]
+    )
     assert report.cycles == [["p", "q"], ["s"], ["x", "y"]]
     assert report.order == ["p", "q", "s", "x", "y", "a", "b"]
 
@@ -88,10 +94,12 @@ def test_sorting_retains_duplicates_and_empty_ids():
 
 def test_optional_bounds_report_without_constraining_order():
     """Optional coupling validates versions but never introduces ordering edges."""
-    report = resolve([
-        {"id": "a", "optional_requires": {"z": ">=2", "missing": "*"}},
-        {"id": "z", "version": "1.0", "requires": {"a": "*"}},
-    ])
+    report = resolve(
+        [
+            {"id": "a", "optional_requires": {"z": ">=2", "missing": "*"}},
+            {"id": "z", "version": "1.0", "requires": {"a": "*"}},
+        ]
+    )
     assert report.order == ["a", "z"]
     assert report.cycles == []
     assert report.missing == {}
@@ -114,13 +122,14 @@ def test_cycle_order_and_diagnostics_are_permutation_invariant():
         assert [item["id"] for item in ordered] == report.order
 
 
-
 def test_cycle_message_reports_members_not_an_invented_edge_path():
-    report = resolve([
-        {"id": "a", "requires": {"b": "*", "c": "*"}},
-        {"id": "b", "requires": {"a": "*"}},
-        {"id": "c", "requires": {"a": "*"}},
-    ])
+    report = resolve(
+        [
+            {"id": "a", "requires": {"b": "*", "c": "*"}},
+            {"id": "b", "requires": {"a": "*"}},
+            {"id": "c", "requires": {"a": "*"}},
+        ]
+    )
     assert report.cycles == [["a", "b", "c"]]
     # This component has no b->c edge, nor a cycle visiting every node once.
     assert report.problems() == ["dependency cycle involving: a, b, c"]

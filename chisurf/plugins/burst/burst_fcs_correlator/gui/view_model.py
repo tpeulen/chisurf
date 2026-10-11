@@ -76,8 +76,15 @@ class _BurstFcsModel:
         if c.get("fit_mode") == "simple" and not td:
             estimate = float(c.get("td_mean", float("nan")))
             if math.isfinite(estimate) and estimate > 0:
-                return [{"x": [estimate], "y": [1.0], "name": "Simple fit",
-                         "color": "y", "marker": True}]
+                return [
+                    {
+                        "x": [estimate],
+                        "y": [1.0],
+                        "name": "Simple fit",
+                        "color": "y",
+                        "marker": True,
+                    }
+                ]
         if len(td) and len(td) == len(p):
             return [{"x": td, "y": p, "name": "P(τ_D)", "color": "y", "width": 2}]
         return []

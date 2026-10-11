@@ -29,44 +29,64 @@ RECORDED = json.loads((pathlib.Path(__file__).parent / "qt_feature_surface.json"
 #: panel key -> (Qt widget module, Qt class name, native app module, native class)
 PANELS = {
     "boarding": (
-        "chisurf/plugins/core/boarding/wizard.py", "BoardingAssistantWidget",
-        "chisurf/plugins/core/boarding/app.py", "BoardingApp",
+        "chisurf/plugins/core/boarding/wizard.py",
+        "BoardingAssistantWidget",
+        "chisurf/plugins/core/boarding/app.py",
+        "BoardingApp",
     ),
     "style": (
-        "chisurf/plugins/core/style_manager/gui/tool.py", "StyleManagerWidget",
-        "chisurf/plugins/core/style_manager/gui/app.py", "StyleManagerApp",
+        "chisurf/plugins/core/style_manager/gui/tool.py",
+        "StyleManagerWidget",
+        "chisurf/plugins/core/style_manager/gui/app.py",
+        "StyleManagerApp",
     ),
     "plots": (
-        "chisurf/plugins/core/plot_settings/gui/tool.py", "PlotSettingsWidget",
-        "chisurf/plugins/core/plot_settings/gui/app.py", "PlotSettingsApp",
+        "chisurf/plugins/core/plot_settings/gui/tool.py",
+        "PlotSettingsWidget",
+        "chisurf/plugins/core/plot_settings/gui/app.py",
+        "PlotSettingsApp",
     ),
     "models": (
-        "chisurf/plugins/core/model_manager/gui/tool.py", "ModelManagerWidget",
-        "chisurf/plugins/core/model_manager/gui/app.py", "ModelManagerApp",
+        "chisurf/plugins/core/model_manager/gui/tool.py",
+        "ModelManagerWidget",
+        "chisurf/plugins/core/model_manager/gui/app.py",
+        "ModelManagerApp",
     ),
     "users": (
-        "chisurf/plugins/core/user_editor/gui/tool.py", "UserEditorWidget",
-        "chisurf/plugins/core/user_editor/gui/app.py", "UserEditorApp",
+        "chisurf/plugins/core/user_editor/gui/tool.py",
+        "UserEditorWidget",
+        "chisurf/plugins/core/user_editor/gui/app.py",
+        "UserEditorApp",
     ),
     "ai": (
-        "chisurf/plugins/ai_settings/gui/tool.py", "AISettingsWidget",
-        "chisurf/plugins/ai_settings/gui/app.py", "AISettingsApp",
+        "chisurf/plugins/ai_settings/gui/tool.py",
+        "AISettingsWidget",
+        "chisurf/plugins/ai_settings/gui/app.py",
+        "AISettingsApp",
     ),
     "plugins": (
-        "chisurf/plugins/core/plugin_manager/gui/tool.py", "PluginManagerWidget",
-        "chisurf/plugins/core/plugin_manager/gui/app.py", "PluginManagerApp",
+        "chisurf/plugins/core/plugin_manager/gui/tool.py",
+        "PluginManagerWidget",
+        "chisurf/plugins/core/plugin_manager/gui/app.py",
+        "PluginManagerApp",
     ),
     "channels": (
-        "chisurf/plugins/core/setup_channel_definition/gui/tool.py", "SetupChannelDefinitionWidget",
-        "chisurf/plugins/core/setup_channel_definition/gui/app.py", None,
+        "chisurf/plugins/core/setup_channel_definition/gui/tool.py",
+        "SetupChannelDefinitionWidget",
+        "chisurf/plugins/core/setup_channel_definition/gui/app.py",
+        None,
     ),
     "lut": (
-        "chisurf/plugins/tttr/tttr_lut_tools/gui/tool.py", "TTTRLUTSettingsPanel",
-        "chisurf/plugins/tttr/tttr_lut_tools/gui/app.py", None,
+        "chisurf/plugins/tttr/tttr_lut_tools/gui/tool.py",
+        "TTTRLUTSettingsPanel",
+        "chisurf/plugins/tttr/tttr_lut_tools/gui/app.py",
+        None,
     ),
     "check": (
-        "chisurf/plugins/core/plugin_check/gui/tool.py", "PluginCheckTool",
-        "chisurf/plugins/core/plugin_check/gui/app.py", "PluginCheckApp",
+        "chisurf/plugins/core/plugin_check/gui/tool.py",
+        "PluginCheckTool",
+        "chisurf/plugins/core/plugin_check/gui/app.py",
+        "PluginCheckApp",
     ),
 }
 
@@ -74,8 +94,19 @@ PANELS = {
 #: (persistence goes through export/restore_settings; the wizard shell lives
 #: in the hub).
 QT_PLUMBING = {
-    "init", "setup_ui", "setupui", "retranslateui", "showevent", "closeevent", "event",
-    "oncurrentchanged", "resizeevent", "paintevent", "show", "hide", "close",
+    "init",
+    "setup_ui",
+    "setupui",
+    "retranslateui",
+    "showevent",
+    "closeevent",
+    "event",
+    "oncurrentchanged",
+    "resizeevent",
+    "paintevent",
+    "show",
+    "hide",
+    "close",
 }
 
 #: Feature-name synonyms: a Qt method counts as covered when the native module
@@ -120,7 +151,6 @@ def _covered(qt_name: str, native_defs: set[str]) -> bool:
     stem = qt_name.removeprefix("on_").replace("_", "")
     candidates = SYNONYMS.get(stem, {stem}) | {qt_name}
     return any(c in native_defs for c in candidates)
-
 
 
 #: Panels whose Qt features exist in the native app as UI labels or model

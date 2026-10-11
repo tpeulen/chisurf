@@ -26,7 +26,8 @@ class DetectorEditorMixin:
         ):  # the editor is optional: the tool computes the channel-0 window without it
             return
         self.editor = ChannelDefinitionWidget(
-            model=ChannelDefinition(self._editor_settings()), on_changed=self._editor_changed,
+            model=ChannelDefinition(self._editor_settings()),
+            on_changed=self._editor_changed,
             host_app=self,
         )
         self.editor.on_used = self.tour.notify_used

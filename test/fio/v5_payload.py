@@ -30,9 +30,7 @@ class TwoParameterModel(ModelCurve):
         self.y = self.amplitude.value * self.x + self.offset.value
 
 
-def make_curve(
-    uid: str, offset: float = 0.0, n: int = 8, filename: str = "", **meta
-) -> DataCurve:
+def make_curve(uid: str, offset: float = 0.0, n: int = 8, filename: str = "", **meta) -> DataCurve:
     """Return a real curve with errors and a stable UID."""
     x = np.arange(float(n))
     curve = DataCurve(
@@ -55,7 +53,9 @@ def make_curves() -> tuple[DataCurve, DataCurve]:
 
 def make_global_group(first: DataCurve, second: DataCurve, uid: str = "fit_001") -> FitGroup:
     """Global fit over two curves with a cross-member parameter link."""
-    group = FitGroup(DataCurveGroup([first, second], name="measurements"), model_class=TwoParameterModel)
+    group = FitGroup(
+        DataCurveGroup([first, second], name="measurements"), model_class=TwoParameterModel
+    )
     group.unique_identifier = uid
     source, target = group.grouped_fits
     source.model.amplitude.value = 5.0
@@ -75,6 +75,4 @@ def make_single_fit(curve: DataCurve, uid: str = "fit_002") -> Fit:
 
 def v5_payload(datasets=(), fits=(), *, name: str = "test_project", ui_state=None) -> dict:
     """Return ``capture_session(...).to_dict()`` for explicit runtime objects."""
-    return capture_session(
-        list(datasets), list(fits), name=name, ui_state=ui_state or {}
-    ).to_dict()
+    return capture_session(list(datasets), list(fits), name=name, ui_state=ui_state or {}).to_dict()

@@ -81,8 +81,14 @@ def test_real_histograms_background_apply_and_resize_preserve_data(app, tmp_path
     rng = np.random.default_rng(7)
     micro = rng.integers(0, 4096, 4000, dtype=np.uint16)
     routing = np.resize(np.array([0, 8], dtype=np.int8), len(micro))
-    stream.append_events(np.arange(1, len(micro) + 1, dtype=np.uint64), micro, routing,
-                         np.zeros(len(micro), dtype=np.int8), False, 0)
+    stream.append_events(
+        np.arange(1, len(micro) + 1, dtype=np.uint64),
+        micro,
+        routing,
+        np.zeros(len(micro), dtype=np.int8),
+        False,
+        0,
+    )
     stream.header.set_macro_time_resolution(12.5e-9)
     stream.header.set_micro_time_resolution(12.5e-9 / 4096)
     sample = tmp_path / "calibration.spc"
@@ -102,8 +108,10 @@ def test_real_histograms_background_apply_and_resize_preserve_data(app, tmp_path
     app.model.set_conv_range(500, 3000)
     app.model.set_irf_range(550, 700)
     app.model.set_bg_range(0, 400)
-    data = {key: value.copy() if isinstance(value, np.ndarray) else value
-            for key, value in app.model.decay_data().items()}
+    data = {
+        key: value.copy() if isinstance(value, np.ndarray) else value
+        for key, value in app.model.decay_data().items()
+    }
     for channel, actual in ((0, app.model.sel_bg_vv), (8, app.model.sel_bg_vh)):
         bins = np.asarray(parsed.micro_times)[np.asarray(parsed.routing_channels) == channel]
         assert actual == np.bincount(bins, minlength=4096)[:400].mean()
@@ -134,7 +142,9 @@ def test_empty_irf_note_is_visible_after_real_clear_action(app, tmp_path, size):
     driver.draw(3)
     driver.click("clear_irf")
     assert app.model.sel_irf_files == []
-    index = next(i for i, text in enumerate(driver.painter.texts) if text[5] == "No IRF: using raw data")
+    index = next(
+        i for i, text in enumerate(driver.painter.texts) if text[5] == "No IRF: using raw data"
+    )
     metrics = driver.painter.text_metadata[index]
     assert metrics["visible_bounds"] == metrics["measured_bounds"]
     for key in ("open_source", "add_irf", "clear_irf", "apply"):

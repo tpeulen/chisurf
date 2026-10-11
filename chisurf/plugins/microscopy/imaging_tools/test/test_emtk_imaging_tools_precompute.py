@@ -41,7 +41,9 @@ def test_a_new_source_precomputes_every_step_and_a_setup_change_recomputes_them(
     drv = HubDriver(app, BIG)
     drv.draw(3)
     try:
-        assert not app.children.keys() & set(STEPS)  # nothing built yet: lazy until a source is known
+        assert not app.children.keys() & set(
+            STEPS
+        )  # nothing built yet: lazy until a source is known
         app.set_pipeline(source=str(source))
         assert app.precompute_pending() == list(STEPS)
         settle(drv)

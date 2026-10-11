@@ -1,4 +1,5 @@
 """Optimizer convergence is provenance, independent of a valid fit/export."""
+
 from __future__ import annotations
 
 import importlib
@@ -24,6 +25,7 @@ def _small_decay():
 @pytest.mark.parametrize("status", [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 99])
 def test_optimizer_status_is_machine_readable_and_exported(monkeypatch, status):
     """Only MINPACK statuses 1 through 4 claim convergence."""
+
     def report_status(objective, params, **kwargs):
         objective(params)
         return params, status
@@ -57,10 +59,15 @@ def test_selected_scan_and_intermediate_json_keep_actual_optimizer_status(monkey
     counts, irf, time = _bi_exponential_decay()
     decay = fitter.Decay(counts, irf, time)
     decay.set_analysis_range(20, 900)
-    result = decay.fit(find_optimal=True, maximum_number_of_lifetimes=2,
-                       min_lifetime=0.2, max_lifetime=6,
-                       plot_probabilities=False, plot_weighted_residuals=False,
-                       intermediate_results_base_filename=str(tmp_path / "scan"))
+    result = decay.fit(
+        find_optimal=True,
+        maximum_number_of_lifetimes=2,
+        min_lifetime=0.2,
+        max_lifetime=6,
+        plot_probabilities=False,
+        plot_weighted_residuals=False,
+        intermediate_results_base_filename=str(tmp_path / "scan"),
+    )
     assert result["n_lifetimes"] == 2
     intermediate = json.loads((tmp_path / "scan_n2.json").read_text())
     for record in (result, intermediate, json.loads(decay.to_json())):
@@ -72,6 +79,7 @@ def test_selected_scan_and_intermediate_json_keep_actual_optimizer_status(monkey
 
 def test_exact_embedding_reports_no_new_convergence_and_keeps_attempt(monkeypatch, tmp_path):
     """An exact nested fallback is not the solution returned by its optimizer."""
+
     def worse(objective, params, **kwargs):
         fitted = params.copy()
         if len(params) > 5:
@@ -82,8 +90,11 @@ def test_exact_embedding_reports_no_new_convergence_and_keeps_attempt(monkeypatc
     monkeypatch.setattr(fitter, "minimize", worse)
     decay = _small_decay()
     decay.find_optimal_lifetime_spectrum(
-        maximum_number_of_lifetimes=2, min_lifetime=2, max_lifetime=2,
-        plot_probabilities=False, plot_weighted_residuals=False,
+        maximum_number_of_lifetimes=2,
+        min_lifetime=2,
+        max_lifetime=2,
+        plot_probabilities=False,
+        plot_weighted_residuals=False,
         intermediate_results_base_filename=str(tmp_path / "fallback"),
     )
     record = json.loads((tmp_path / "fallback_n2.json").read_text())
@@ -101,10 +112,16 @@ def test_exact_embedding_reports_no_new_convergence_and_keeps_attempt(monkeypatc
 def test_cli_completion_text_respects_convergence(monkeypatch, tmp_path, converged):
     """A completed calculation/export may still carry an optimizer warning."""
     module = importlib.import_module("chisurf.plugins.fluorescence_decay.lltf.core.cli")
-    record = {"n_lifetimes": 1, "lifetime_spectrum": [1, 2], "irf_shift": 0,
-              "decay_background": 0, "reduced_chi_square": 1,
-              "optimizer_status": 1 if converged else 5,
-              "converged": converged, "optimizer_message": "Reached maxfev=1200"}
+    record = {
+        "n_lifetimes": 1,
+        "lifetime_spectrum": [1, 2],
+        "irf_shift": 0,
+        "decay_background": 0,
+        "reduced_chi_square": 1,
+        "optimizer_status": 1 if converged else 5,
+        "converged": converged,
+        "optimizer_message": "Reached maxfev=1200",
+    }
     monkeypatch.setattr(module, "fit_lifetime", lambda **kwargs: record)
     data = tmp_path / "data.dat"
     data.touch()
@@ -124,9 +141,13 @@ def test_actual_shipped_file_numerics_do_not_depend_on_reported_status(monkeypat
     config = yaml.safe_load((example / "config.yml").read_text())
     config["verbose"] = False
     config["lifetime_fit_parameter"]["find_optimal"] = False
-    kwargs = {"decay_file": str(example / "5-44_D0.dat"),
-              "irf_file": str(example / "IRF_D0.dat"), "n_lifetimes": 2,
-              "config": config, "save_intermediate_results": False}
+    kwargs = {
+        "decay_file": str(example / "5-44_D0.dat"),
+        "irf_file": str(example / "IRF_D0.dat"),
+        "n_lifetimes": 2,
+        "config": config,
+        "save_intermediate_results": False,
+    }
     original = fitter.minimize
     first = fitter.fit_lifetime(**kwargs, output_file=str(tmp_path / "actual.json"))
 
@@ -137,6 +158,7 @@ def test_actual_shipped_file_numerics_do_not_depend_on_reported_status(monkeypat
     monkeypatch.setattr(fitter, "minimize", change_only_status)
     second = fitter.fit_lifetime(**kwargs, output_file=str(tmp_path / "reported.json"))
     excluded = {"optimizer_status", "converged", "optimizer_message", "optimizer_source"}
+
     def numeric(record):
         """Remove only explicitly additive optimizer provenance."""
         return {key: value for key, value in record.items() if key not in excluded}

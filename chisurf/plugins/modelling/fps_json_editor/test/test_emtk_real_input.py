@@ -42,11 +42,17 @@ def fps(tmp_path):
         shutil.copy(EXAMPLE / name, tmp_path / name)
     payload = json.loads((EXAMPLE / "hiv_rt.fps.json").read_text())
     for pos in payload["Positions"].values():
-        pos["pdb_path"] = str(tmp_path / ("dna.pdb" if pos["chain_identifier"] == "P" else "protein_1R0A.pdb"))
+        pos["pdb_path"] = str(
+            tmp_path / ("dna.pdb" if pos["chain_identifier"] == "P" else "protein_1R0A.pdb")
+        )
     names = list(payload["Distances"])
     payload["χ²"] = {"all": {"distances": names}}
-    payload["FlexFit"] = {"set_1": {"Flexible residues": [{"chain_identifier": "A", "residue_seq_number": 6}],
-                                    "Bonds": []}}
+    payload["FlexFit"] = {
+        "set_1": {
+            "Flexible residues": [{"chain_identifier": "A", "residue_seq_number": 6}],
+            "Bonds": [],
+        }
+    }
     path = tmp_path / "hiv_rt.fps.json"
     path.write_text(json.dumps(payload))
     return path
@@ -84,7 +90,9 @@ def _reveal(ui, key):
             return rect
         # Over the control's own column at the window's edge it moves towards: over the form, not the table (a
         # wheel over the table scrolls the table) and inside the view that holds it (views sit side by side).
-        below = y + h > ui.size[1] - 2  # the same limit as the test above, or it wheels back and forth
+        below = (
+            y + h > ui.size[1] - 2
+        )  # the same limit as the test above, or it wheels back and forth
         px, py = x + 4, (ui.size[1] - 12 if below else 90)
         ui.app.pointer_move(px, py)
         ui.draw(1)
@@ -168,7 +176,9 @@ def test_rows_are_added_and_removed_behind_the_question(fps):
     assert ed.selected_pos == "p51_E194C"
     n_dist = len(ed.doc.distances)
     ui.click("delete_row")
-    assert ui.app.modal is not None and ui.shown("Remove p51_E194C and every distance that uses it?")
+    assert ui.app.modal is not None and ui.shown(
+        "Remove p51_E194C and every distance that uses it?"
+    )
     ui.press_text("Keep")
     assert "p51_E194C" in ed.doc.positions
     ui.click("delete_row")
@@ -198,7 +208,9 @@ def test_save_through_the_dialog_round_trips(fps, tmp_path):
     assert saved["Positions"]["p51_K173C"]["linker_length"] == pytest.approx(33.0)
     ui.app.close()
     again = _open(out)
-    assert again.app.editor.position_field("p51_K173C", "linker_length", None) == pytest.approx(33.0)
+    assert again.app.editor.position_field("p51_K173C", "linker_length", None) == pytest.approx(
+        33.0
+    )
     again.app.close()
 
 
@@ -207,8 +219,10 @@ def test_update_reads_the_json_tab(fps):
     ui.click("tab_JSON")
     assert ui.app.tab == "JSON" and ui.shown('"Distances"')
     ui.click("json_text", fx=0.5, fy=0.2)
-    ui.type_text('{"Positions": {"typed_site": {"chain_identifier": "A", "residue_seq_number": 6, '
-                 '"atom_name": "CB"}}, "Distances": {}}')
+    ui.type_text(
+        '{"Positions": {"typed_site": {"chain_identifier": "A", "residue_seq_number": 6, '
+        '"atom_name": "CB"}}, "Distances": {}}'
+    )
     ui.click("update")
     assert list(ui.app.editor.doc.positions) == ["typed_site"] and not ui.app.editor.doc.distances
     ui.click("tab_Positions")
@@ -225,11 +239,18 @@ def test_distance_form_and_scoring_groups(fps):
     ui.click("tab_Distances")
     _click_row(ui, "dist_rows", 0)
     assert ed.selected_dist
-    for key, text, value in (("distance", "51.5", 51.5), ("error_neg", "2.5", 2.5), ("error_pos", "3", 3.0),
-                             ("Forster_radius", "54", 54.0), ("distance", "-4", 0.0)):
+    for key, text, value in (
+        ("distance", "51.5", 51.5),
+        ("error_neg", "2.5", 2.5),
+        ("error_pos", "3", 3.0),
+        ("Forster_radius", "54", 54.0),
+        ("distance", "-4", 0.0),
+    ):
         _type_field(ui, key, text)
         assert ed._dist(ed.selected_dist)[key] == pytest.approx(value), key
-    ui.app.wheel(20, 500, 10)  # typing scrolled the view down to the form; the toolbar row is back at the top
+    ui.app.wheel(
+        20, 500, 10
+    )  # typing scrolled the view down to the form; the toolbar row is back at the top
     ui.draw(2)
     ui.click("add_set")
     assert ui.app.modal is not None
@@ -379,7 +400,9 @@ def test_3d_view_shows_cartoon_av_surfaces_means_and_distance_lines(view3d):
     assert sum(k.startswith("mean_") for k in overlays) == 11
     assert sum(k.startswith("dist_line_") for k in viewer.measurements) == 20
     frame = view3d.app.chimol.frame
-    assert frame is not None and frame.ndim == 3 and frame[..., :3].std() > 5  # a picture, not a blank canvas
+    assert (
+        frame is not None and frame.ndim == 3 and frame[..., :3].std() > 5
+    )  # a picture, not a blank canvas
     # hiding a position takes its volume out of the view, as in Qt
     view3d.app.editor.set_position("p66_Q6C", "visible", False)
     view3d.draw(2)
@@ -403,7 +426,9 @@ def test_3d_view_drag_rotates_and_wheel_zooms(view3d):
     assert np.abs(rotated.astype(int) - before.astype(int)).mean() > 1.0, "a drag did not rotate"
     view3d.app.wheel(cx, cy, -3)
     view3d.draw(2)
-    assert np.abs(view3d.app.chimol.frame.astype(int) - rotated.astype(int)).mean() > 1.0, "the wheel did not zoom"
+    assert np.abs(view3d.app.chimol.frame.astype(int) - rotated.astype(int)).mean() > 1.0, (
+        "the wheel did not zoom"
+    )
 
 
 def test_clicking_an_atom_attaches_the_selected_position(view3d):
@@ -426,7 +451,13 @@ def test_clicking_an_atom_attaches_the_selected_position(view3d):
     for i in order:
         picks.clear()
         view3d.click_at(rx + sx[i] * rw / fw, ry + sy[i] * rh / fh)
-        if picks and picks[-1] and app._chimol_objects.get(viewer.get_active_object_id(), "").endswith("protein_1R0A.pdb"):
+        if (
+            picks
+            and picks[-1]
+            and app._chimol_objects.get(viewer.get_active_object_id(), "").endswith(
+                "protein_1R0A.pdb"
+            )
+        ):
             picked = struct.atoms[picks[-1][0]]
             break
     assert picked is not None, "no protein atom answered a click"
@@ -467,7 +498,10 @@ def test_a_view_dragged_out_splits_the_window_and_both_stay_live(fps):
     """The Qt editor's views were dock widgets the user could rearrange; here a dragged tab splits the window."""
     ui = _open(fps)
     docks = ui.app.docks
-    assert {k for k in docks.selected.values() if k} == {"positions", "view3d"}  # the tables, the 3D View beside
+    assert {k for k in docks.selected.values() if k} == {
+        "positions",
+        "view3d",
+    }  # the tables, the 3D View beside
     _drag_tab_to_right_pad(ui, "Distances")
     shown = {k for k in docks.selected.values() if k}
     assert shown == {"positions", "distances", "view3d"}, docks.selected
@@ -494,7 +528,10 @@ def test_the_arrangement_is_kept_and_an_old_single_window_layout_is_ignored(fps,
     ui = Ui(app, (1200, 800))
     assert ui.drop(fps)
     ui.draw(2)
-    assert all(app.docks.windows[k].visible for k in ("positions", "distances", "flexfit", "json", "view3d"))
+    assert all(
+        app.docks.windows[k].visible
+        for k in ("positions", "distances", "flexfit", "json", "view3d")
+    )
     _drag_tab_to_right_pad(ui, "Distances")
     split = dict(app.docks.selected)
     app.close()
@@ -519,8 +556,9 @@ def test_the_residue_buttons_walk_the_selected_position_along_its_chain(fps):
     ui.click("res_prev")
     ui.click("res_prev")
     assert ed.position_field("p51_E194C", "residue_seq_number") == residues[at - 1]
-    assert ed.position_field("p51_E194C", "atom_name") in ed.atoms(ed.position_field("p51_E194C", "pdb_path"),
-                                                                   chain, residues[at - 1])
+    assert ed.position_field("p51_E194C", "atom_name") in ed.atoms(
+        ed.position_field("p51_E194C", "pdb_path"), chain, residues[at - 1]
+    )
     ui.app.close()
 
 
@@ -538,14 +576,18 @@ def test_fetch_pdb_downloads_an_id_into_a_new_row(fps, tmp_path):
     _settle(ui)
     assert asked == ["1r0a"]
     new = [p for p in ed.doc.positions.values() if p.get("pdb_path") == "1r0a"]
-    assert len(ed.doc.positions) == n + 1 and new and new[0]["chain_identifier"] in ed.chains("1r0a")
+    assert (
+        len(ed.doc.positions) == n + 1 and new and new[0]["chain_identifier"] in ed.chains("1r0a")
+    )
     ui.app.close()
 
 
 def test_the_selected_volume_stands_out_and_the_others_are_muted(view3d):
     overlays = view3d.app.chimol.viewer._point_overlays
     selected = overlays["av_p51_E194C"]["color"][3]
-    others = [o["color"][3] for k, o in overlays.items() if k.startswith("av_") and k != "av_p51_E194C"]
+    others = [
+        o["color"][3] for k, o in overlays.items() if k.startswith("av_") and k != "av_p51_E194C"
+    ]
     assert selected >= 0.45 and max(others) < selected / 2
     assert "attachment_selected" in overlays
 
@@ -563,7 +605,9 @@ def test_clicking_a_mean_sphere_selects_its_position(view3d):
     assert view3d.shown("p_10bp selected")
 
 
-def test_a_pick_with_nothing_selected_starts_a_position_and_one_on_the_other_structure_moves_it(fps, tmp_path):
+def test_a_pick_with_nothing_selected_starts_a_position_and_one_on_the_other_structure_moves_it(
+    fps, tmp_path
+):
     from chisurf.plugins.modelling.structure_tools.cards.fps_model import FpsEditor
 
     ed = FpsEditor()
@@ -571,8 +615,13 @@ def test_a_pick_with_nothing_selected_starts_a_position_and_one_on_the_other_str
     assert ed.load(str(fps))
     protein = ed.position_field("p51_E194C", "pdb_path")
     struct = ed.structure(protein)
-    index = int(np.flatnonzero((struct.atoms["chain"] == "A") & (struct.atoms["res_id"] == 100)
-                               & (struct.atoms["atom_name"] == "CA"))[0])
+    index = int(
+        np.flatnonzero(
+            (struct.atoms["chain"] == "A")
+            & (struct.atoms["res_id"] == 100)
+            & (struct.atoms["atom_name"] == "CA")
+        )[0]
+    )
     ed.selected_pos = ""
     n = len(ed.doc.positions)
     assert ed.pick_atom(protein, index)

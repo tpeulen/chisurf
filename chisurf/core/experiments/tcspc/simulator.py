@@ -370,8 +370,10 @@ class TCSPCSimulatorSetup(TCSPCReader):
     @staticmethod
     def _parse_spectrum(text: str) -> np.ndarray:
         """Parse paired values, including rise amplitudes and zero lifetimes."""
-        values = np.asarray([float(value) for value in re.split(r"[\s,;]+", str(text).strip())
-                             if value], dtype=np.float64)
+        values = np.asarray(
+            [float(value) for value in re.split(r"[\s,;]+", str(text).strip()) if value],
+            dtype=np.float64,
+        )
         if values.size % 2 or not np.all(np.isfinite(values)):
             raise ValueError("A spectrum needs finite amplitude/time pairs")
         return values
@@ -421,9 +423,15 @@ class TCSPCSimulatorSetup(TCSPCReader):
         def translate(value):
             """Translate declared display strings while retaining bindings and values."""
             if isinstance(value, dict):
-                return {key: [tr(label) for label in item] if key == "labels" else
-                        tr(item) if key in {"title", "label", "description", "text", "filter"}
-                        and isinstance(item, str) else translate(item) for key, item in value.items()}
+                return {
+                    key: [tr(label) for label in item]
+                    if key == "labels"
+                    else tr(item)
+                    if key in {"title", "label", "description", "text", "filter"}
+                    and isinstance(item, str)
+                    else translate(item)
+                    for key, item in value.items()
+                }
             if isinstance(value, list):
                 return [translate(item) for item in value]
             return value

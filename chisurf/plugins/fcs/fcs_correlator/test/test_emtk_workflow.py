@@ -156,7 +156,11 @@ def test_example_correlate_and_merge(size):
     hub.type_into("channel_a", "0")
     hub.type_into("channel_b", "1")
     hub.type_into("n_splits", "3")
-    assert (hub.child.model.channel_a, hub.child.model.channel_b, hub.child.model.n_splits) == ("0", "1", 3)
+    assert (hub.child.model.channel_a, hub.child.model.channel_b, hub.child.model.n_splits) == (
+        "0",
+        "1",
+        3,
+    )
     hub.click("correlate")
     hub.wait_correlated()
     assert len(hub.child.model._correlations) == 3 and hub.shown("3 chunk(s) correlated.")
@@ -248,10 +252,16 @@ def test_bst_files_switch_the_filter_off(tmp_path):
 def test_lifetime_filters_presets_and_filter_calc(tmp_path):
     nbins = 32
     payload = {
-        "mode": "single", "metadata": {"species_labels": ["Fast", "Slow"]}, "total_path": None,
-        "species_patterns": None, "nuisance_count": 1, "nuisance_labels": ["BG"],
+        "mode": "single",
+        "metadata": {"species_labels": ["Fast", "Slow"]},
+        "total_path": None,
+        "species_patterns": None,
+        "nuisance_count": 1,
+        "nuisance_labels": ["BG"],
         "filters": np.random.default_rng(1).random((3, nbins)).tolist(),
-        "reconstruction": [0.0] * nbins, "weighted_residuals": [0.0] * nbins, "total_decay": [0.0] * nbins,
+        "reconstruction": [0.0] * nbins,
+        "weighted_residuals": [0.0] * nbins,
+        "total_decay": [0.0] * nbins,
         "species_decays": [[0.0] * nbins] * 2,
     }
     (tmp_path / "filters.json").write_text(json.dumps(payload))
@@ -301,7 +311,9 @@ def test_spc_correlates_like_the_qt_tool():
     flow.apply_to_correlator(ref)
     ref.n_splits = 2
     ref.correlate_data()
-    assert len(native) == 2 and all(np.allclose(a, np.asarray(b["y"])) for a, b in zip(native, ref._correlations))
+    assert len(native) == 2 and all(
+        np.allclose(a, np.asarray(b["y"])) for a, b in zip(native, ref._correlations)
+    )
     hub.app.close()
 
 
@@ -320,7 +332,12 @@ def test_every_step_and_tool_opens_and_its_controls_are_inside(size):
             for key, (x, y, w, h) in hub.child.item_rects.items():
                 if key.startswith(("row.", "check.", "plot", "files")):
                     continue
-                assert x + w <= bw + 1 and y + h <= bh + 1, (panel["role"], key, (x, y, w, h), (bw, bh))
+                assert x + w <= bw + 1 and y + h <= bh + 1, (
+                    panel["role"],
+                    key,
+                    (x, y, w, h),
+                    (bw, bh),
+                )
     hub.app.close()
 
 
@@ -374,7 +391,13 @@ def test_help_guide_and_the_tour_waits_for_the_user():
 
 def test_the_correlator_entry_is_the_workflow_without_the_tools():
     hub = _hub(correlator_only=True)
-    assert [p["role"] for p in hub.app.tools] == ["channel_def", "files", "filter", "correlator", "merger"]
+    assert [p["role"] for p in hub.app.tools] == [
+        "channel_def",
+        "files",
+        "filter",
+        "correlator",
+        "merger",
+    ]
     assert hub.app.title == "FCS Correlator"
     hub.app.close()
 
@@ -390,7 +413,10 @@ def test_filter_calc_reads_the_correlator_files_and_tools_carry_their_maturity_f
         if getattr(calc.model, "_total_paths", None):
             break
         time.sleep(0.02)
-    assert [p.name for p in calc.model._total_paths] == ["fcs_demo.spc"], (calc.model.message, calc.job.running)
+    assert [p.name for p in calc.model._total_paths] == ["fcs_demo.spc"], (
+        calc.model.message,
+        calc.job.running,
+    )
     assert hub.shown("2D-FLCS ⚠") and hub.shown("Filter Calc ⚠")
     assert hub.shown("experimental")  # the banner of the open (experimental) tool
     hub.app.close()

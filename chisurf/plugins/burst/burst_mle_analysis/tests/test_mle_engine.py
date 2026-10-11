@@ -74,7 +74,9 @@ def test_auto_extract_equals_the_wizards_one_click(session, qt_reference):
     np.testing.assert_array_equal(session.background(), _a(ref["bg"]))
     # the fit: same optimum, same displayed curves
     assert session.outcome.names[0] == "tau"
-    assert session.outcome.x[0] == pytest.approx(ref["tau"], abs=6e-4)  # the wizard showed 3 decimals
+    assert session.outcome.x[0] == pytest.approx(
+        ref["tau"], abs=6e-4
+    )  # the wizard showed 3 decimals
     assert session.outcome.two_istar == pytest.approx(ref["twoIstar"], abs=6e-4)
     for field in ("data", "model", "irf", "background", "residuals"):
         np.testing.assert_allclose(
@@ -162,16 +164,23 @@ def test_the_batch_rows_equal_the_wizards_process_bursts(sample_copy, tmp_path, 
             mine[key], _a(ref["columns"][key]), rtol=1e-9, atol=1e-12, equal_nan=True, err_msg=key
         )
     # the batch fitted the detector on screen with its live window (it used the 0..128 seed before the fix)
-    assert session.settings_of("red").micro_time_start == ref["red_micro_time_start_in_channel_settings"]
-    assert session.settings_of("red").micro_time_start == ref["wizard_micro_time_start"] != 0
     assert (
-        len(session.burst_results) == ref["n_rows"] == 2 * engine.row_count(session.df_bursts)
+        session.settings_of("red").micro_time_start
+        == ref["red_micro_time_start_in_channel_settings"]
     )
+    assert session.settings_of("red").micro_time_start == ref["wizard_micro_time_start"] != 0
+    assert len(session.burst_results) == ref["n_rows"] == 2 * engine.row_count(session.df_bursts)
     assert seen and seen[-1][0] == seen[-1][1] == engine.row_count(session.df_bursts)
     # the exported b?4 tables: the same files, the same header and the same number of lines
     written = session.export_results()
-    assert written and all(p.suffix in (".bg4", ".br4") for p in written if p.suffix.startswith(".b"))
-    tables = {p.relative_to(own / BURST_TABLE.parent.parent).as_posix(): p for p in written if p.suffix in (".bg4", ".br4")}
+    assert written and all(
+        p.suffix in (".bg4", ".br4") for p in written if p.suffix.startswith(".b")
+    )
+    tables = {
+        p.relative_to(own / BURST_TABLE.parent.parent).as_posix(): p
+        for p in written
+        if p.suffix in (".bg4", ".br4")
+    }
     assert sorted(tables) == sorted(ref["exports"])
     for name, path in tables.items():
         lines = path.read_text().splitlines()

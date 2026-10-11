@@ -39,6 +39,7 @@ def _unknown(name: str) -> KeyError:
         return KeyError(f"chiplot backend {name!r}: {_REMOVED[name]}")
     return KeyError(f"unknown chiplot backend {name!r}; registered: {sorted(_REGISTRY)}")
 
+
 _active: base.Backend | None = None
 
 

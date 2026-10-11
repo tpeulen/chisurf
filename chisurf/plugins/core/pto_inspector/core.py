@@ -582,9 +582,7 @@ RUN_PICKER_SECTION: dict[str, Any] = {
     "type": "custom",
     "key": "data_table",
     "title": "Runs",
-    "description": (
-        "The analyses stored in the container; pick the one the next step reads."
-    ),
+    "description": ("The analyses stored in the container; pick the one the next step reads."),
     "options": {
         "source": "run_rows",
         "row_key": "run",
@@ -592,18 +590,37 @@ RUN_PICKER_SECTION: dict[str, Any] = {
         "editable": False,
         "height": 120,
         "columns": [
-            {"key": "run", "title": "Run", "width": 230,
-             "tooltip": "The analysis' name inside the container; the settings are part of it."},
-            {"key": "operation", "title": "Operation", "width": 110,
-             "tooltip": "What produced the burst table of this run."},
-            {"key": "algorithm", "title": "Algorithm", "width": 100,
-             "tooltip": "The estimator or search that produced it, when recorded."},
-            {"key": "rows", "title": "Rows", "width": 60,
-             "tooltip": "Bursts in the run's table."},
-            {"key": "settings_hash", "title": "Settings", "width": 80,
-             "tooltip": "Hash of the run's settings: the same settings always give the same one."},
-            {"key": "created", "title": "Order", "width": 50,
-             "tooltip": "Position in the container's write order; the last one is the newest."},
+            {
+                "key": "run",
+                "title": "Run",
+                "width": 230,
+                "tooltip": "The analysis' name inside the container; the settings are part of it.",
+            },
+            {
+                "key": "operation",
+                "title": "Operation",
+                "width": 110,
+                "tooltip": "What produced the burst table of this run.",
+            },
+            {
+                "key": "algorithm",
+                "title": "Algorithm",
+                "width": 100,
+                "tooltip": "The estimator or search that produced it, when recorded.",
+            },
+            {"key": "rows", "title": "Rows", "width": 60, "tooltip": "Bursts in the run's table."},
+            {
+                "key": "settings_hash",
+                "title": "Settings",
+                "width": 80,
+                "tooltip": "Hash of the run's settings: the same settings always give the same one.",
+            },
+            {
+                "key": "created",
+                "title": "Order",
+                "width": 50,
+                "tooltip": "Position in the container's write order; the last one is the newest.",
+            },
         ],
     },
 }

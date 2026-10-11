@@ -89,9 +89,14 @@ def test_true_known_calibration_and_corrected_bursts_survive_resize(app, tmp_pat
 
     dd, da, aa, tau = _simulate(n=900)
     path = tmp_path / "known-calibration.csv"
-    np.savetxt(path, np.column_stack([dd, da, aa, tau]), delimiter=",",
-               header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
-               comments="", fmt="%.17g")
+    np.savetxt(
+        path,
+        np.column_stack([dd, da, aa, tau]),
+        delimiter=",",
+        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+        comments="",
+        fmt="%.17g",
+    )
     app.model.n_bootstrap = 0
     app.model.use_priors = False
     app.controller.load(path)
@@ -112,14 +117,21 @@ def test_true_known_calibration_and_corrected_bursts_survive_resize(app, tmp_pat
     assert f["delta"] == pytest.approx(DELTA, abs=0.006)
     corrected = da - f["alpha"] * dd - f["delta"] * aa
     denominator = corrected + f["gamma"] * dd
-    expected_e = np.divide(corrected, denominator, out=np.zeros_like(denominator),
-                           where=denominator > 0)
-    expected_s = np.divide(denominator, denominator + aa / f["beta"],
-                           out=np.zeros_like(denominator), where=(denominator + aa / f["beta"]) != 0)
+    expected_e = np.divide(
+        corrected, denominator, out=np.zeros_like(denominator), where=denominator > 0
+    )
+    expected_s = np.divide(
+        denominator,
+        denominator + aa / f["beta"],
+        out=np.zeros_like(denominator),
+        where=(denominator + aa / f["beta"]) != 0,
+    )
     np.testing.assert_allclose(result.efficiency, expected_e, rtol=1e-12, atol=1e-12)
     np.testing.assert_allclose(result.stoichiometry, expected_s, rtol=1e-12, atol=1e-12)
-    original = {name: np.asarray(getattr(result, name)).copy()
-                for name in ("efficiency", "stoichiometry", "labels", "distance")}
+    original = {
+        name: np.asarray(getattr(result, name)).copy()
+        for name in ("efficiency", "stoichiometry", "labels", "distance")
+    }
     settings = app.export_settings()
     driver = Driver(app, (1100, 720))
     for size in ((736, 552), (800, 600), (1330, 870)):

@@ -68,9 +68,17 @@ def test_the_parameter_scan_settings_drive_the_scan(qapp, quadratic_fit):
     page = module.ParameterScanPlot(quadratic_fit)
     assert page.parameter_names() and page.parameter_name in page.parameter_names()
     fields = _draw_settings(page)
-    assert {"parameter_name", "scan_lower", "scan_upper", "scan_steps", "p_values",
-            "bound_range", "scan_parameter", "smart_scan_parameter",
-            "refresh_parameters"} <= fields
+    assert {
+        "parameter_name",
+        "scan_lower",
+        "scan_upper",
+        "scan_steps",
+        "p_values",
+        "bound_range",
+        "scan_parameter",
+        "smart_scan_parameter",
+        "refresh_parameters",
+    } <= fields
     page.parameter_name = "a"
     page.scan_steps = 7
     page.scan_parameter()
@@ -91,9 +99,11 @@ def test_the_distribution_options_are_a_generated_form(qapp):
     import chisurf.gui.plots.distribution as module
 
     _no_qt(module)
-    data = {"attribute": "fit", "accessor_kwargs": {"sort": False},
-            "curve_options": {"stepMode": False, "connect": "all", "symbol": ["o", "x"],
-                              "width": 2.0}}
+    data = {
+        "attribute": "fit",
+        "accessor_kwargs": {"sort": False},
+        "curve_options": {"stepMode": False, "connect": "all", "symbol": ["o", "x"], "width": 2.0},
+    }
     changed = []
     form = module.OptionsForm(data, lambda: changed.append(1))
     assert "curve_options.stepMode" in str(form.spec())
@@ -119,10 +129,16 @@ def test_the_distribution_page_reads_its_settings(qapp):
     page.update()
     fields = _draw_settings(page)
     assert {"distribution_type", "show_gaussians"} <= fields
-    assert any(name.startswith("accessor_kwargs.") or name.startswith("curve_options.")
-               or name == "attribute" for name in fields)
-    assert page.options["attribute"] == options["distribution_options"][page.distribution_type][
-        "attribute"]
+    assert any(
+        name.startswith("accessor_kwargs.")
+        or name.startswith("curve_options.")
+        or name == "attribute"
+        for name in fields
+    )
+    assert (
+        page.options["attribute"]
+        == options["distribution_options"][page.distribution_type]["attribute"]
+    )
     page.show_gaussians = False
     state = page.get_settings_state()
     assert state == {"distribution_type": page.distribution_type, "show_components": False}

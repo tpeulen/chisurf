@@ -21,7 +21,7 @@ Fuse bursts the same molecule produced, using the recurrence same-molecule proba
 | Menu path | Spectroscopy → Single-Molecule → **Burst Fusion** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `burst_fusion` |
 
 ## Parameters

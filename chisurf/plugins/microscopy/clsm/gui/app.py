@@ -423,7 +423,9 @@ class ClsmApp(ImApp):
         changed, index = im.combo("##Setup preset", index, names)
         self.remember("setup_preset")
         im.set_item_tooltip(
-            tr("Restore scanner markers, file type and reading routine from a named acquisition preset.")
+            tr(
+                "Restore scanner markers, file type and reading routine from a named acquisition preset."
+            )
         )
         if changed:
             self.model.apply_preset(names[index])
@@ -506,7 +508,9 @@ class ClsmApp(ImApp):
         _, self.paint = im.checkbox(tr("Paint selection"), self.paint)
         self.remember("paint")
         im.set_item_tooltip(
-            tr("Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan.")
+            tr(
+                "Reserve left-mouse dragging for selecting/erasing pixels; use the middle button to pan."
+            )
         )
         pressed = button_row(
             [
@@ -604,7 +608,9 @@ class ClsmApp(ImApp):
             implot.end_plot()
             self.remember("decay_plot")
             im.set_item_tooltip(
-                tr("Photon histograms from saved regions and the current selected pixels; time is calibrated from the TTTR header.")
+                tr(
+                    "Photon histograms from saved regions and the current selected pixels; time is calibrated from the TTTR header."
+                )
             )
 
     def apply_setup_settings(self, payload):

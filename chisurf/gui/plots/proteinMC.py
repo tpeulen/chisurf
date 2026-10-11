@@ -93,18 +93,26 @@ class ProteinMCPlot(Plot):
         self._shown[id(panel)] = bool(shown)
         self.request_redraw()
 
-    show_rmsd = property(lambda self: self._is_shown(self.rmsd_plot),
-                         lambda self, v: self._set_shown(self.rmsd_plot, v),
-                         doc="Whether the RMSD panel is shown.")
-    show_drmsd = property(lambda self: self._is_shown(self.drmsd_plot),
-                          lambda self, v: self._set_shown(self.drmsd_plot, v),
-                          doc="Whether the dRMSD panel is shown.")
-    show_energy = property(lambda self: self._is_shown(self.energy_plot),
-                           lambda self, v: self._set_shown(self.energy_plot, v),
-                           doc="Whether the energy panel is shown.")
-    show_fret = property(lambda self: self._is_shown(self.fret_plot),
-                         lambda self, v: self._set_shown(self.fret_plot, v),
-                         doc="Whether the labeling (FRET) panel is shown.")
+    show_rmsd = property(
+        lambda self: self._is_shown(self.rmsd_plot),
+        lambda self, v: self._set_shown(self.rmsd_plot, v),
+        doc="Whether the RMSD panel is shown.",
+    )
+    show_drmsd = property(
+        lambda self: self._is_shown(self.drmsd_plot),
+        lambda self, v: self._set_shown(self.drmsd_plot, v),
+        doc="Whether the dRMSD panel is shown.",
+    )
+    show_energy = property(
+        lambda self: self._is_shown(self.energy_plot),
+        lambda self, v: self._set_shown(self.energy_plot, v),
+        doc="Whether the energy panel is shown.",
+    )
+    show_fret = property(
+        lambda self: self._is_shown(self.fret_plot),
+        lambda self, v: self._set_shown(self.fret_plot, v),
+        doc="Whether the labeling (FRET) panel is shown.",
+    )
 
     def autoscale(self) -> None:
         """Fit every panel's axes to its curve."""
@@ -147,7 +155,7 @@ class ProteinMCPlot(Plot):
                 from emtk.flags import Axis
                 from emtk.widgets.pane_stack import PaneStack
 
-                rows = [shown[k:k + 2] for k in range(0, len(shown), 2)]
+                rows = [shown[k : k + 2] for k in range(0, len(shown), 2)]
                 stacks = [r[0] if len(r) == 1 else PaneStack(r, axis=Axis.X) for r in rows]
                 self._grid_body = stacks[0] if len(stacks) == 1 else PaneStack(stacks, axis=Axis.Y)
         return self._grid_body
@@ -487,8 +495,6 @@ class ProteinMCStructurePlot(_FramePlayback, Plot):
         self.update_all(*args, **kwargs)
 
 
-
-
 class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
     """Circular FPS distance-network plot for the selected ProteinMC frame."""
 
@@ -656,8 +662,6 @@ class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
         """Refresh the circular network plot."""
         super().update(*args, **kwargs)
         self.update_all(*args, **kwargs)
-
-
 
 
 def _load_labeling_payload(filename: str) -> dict:

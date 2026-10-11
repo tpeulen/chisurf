@@ -84,7 +84,11 @@ def backend_for(window: typing.Any) -> LayoutBackend | None:
 
 
 def _rect(value) -> list[int] | None:
-    if isinstance(value, (list, tuple)) and len(value) == 4 and all(isinstance(v, (int, float)) for v in value):
+    if (
+        isinstance(value, (list, tuple))
+        and len(value) == 4
+        and all(isinstance(v, (int, float)) for v in value)
+    ):
         return [int(v) for v in value]
     return None
 
@@ -96,15 +100,24 @@ def normalize(layout: typing.Any) -> dict:
     out: dict = {"schema": SCHEMA}
     window = layout.get("window")
     if isinstance(window, dict):
-        w = {k: int(window[k]) for k in ("x", "y", "width", "height") if isinstance(window.get(k), (int, float))}
+        w = {
+            k: int(window[k])
+            for k in ("x", "y", "width", "height")
+            if isinstance(window.get(k), (int, float))
+        }
         if len(w) == 4 and w["width"] > 0 and w["height"] > 0:
             w["maximized"] = bool(window.get("maximized", False))
             out["window"] = w
     docks = {}
-    for name, dock in (layout.get("docks") or {}).items() if isinstance(layout.get("docks"), dict) else ():
+    for name, dock in (
+        (layout.get("docks") or {}).items() if isinstance(layout.get("docks"), dict) else ()
+    ):
         if not isinstance(name, str) or not name or not isinstance(dock, dict):
             continue
-        d = {"visible": bool(dock.get("visible", True)), "floating": bool(dock.get("floating", False))}
+        d = {
+            "visible": bool(dock.get("visible", True)),
+            "floating": bool(dock.get("floating", False)),
+        }
         if dock.get("area") in DOCK_AREAS:
             d["area"] = dock["area"]
         if _rect(dock.get("rect")):
@@ -116,8 +129,11 @@ def normalize(layout: typing.Any) -> dict:
     for view in layout.get("views") or [] if isinstance(layout.get("views"), list) else []:
         if not isinstance(view, dict) or not isinstance(view.get("uid"), str) or not view["uid"]:
             continue
-        v = {"kind": str(view.get("kind") or "fit"), "uid": view["uid"],
-             "state": view.get("state") if view.get("state") in VIEW_STATES else "normal"}
+        v = {
+            "kind": str(view.get("kind") or "fit"),
+            "uid": view["uid"],
+            "state": view.get("state") if view.get("state") in VIEW_STATES else "normal",
+        }
         if _rect(view.get("rect")):
             v["rect"] = _rect(view["rect"])
         views.append(v)
@@ -187,4 +203,12 @@ def restore(window: typing.Any, state: dict) -> list[str]:
         return [str(exc)]
 
 
-__all__ = ["LayoutBackend", "backend_for", "backend_hint", "capture", "normalize", "register_backend", "restore"]
+__all__ = [
+    "LayoutBackend",
+    "backend_for",
+    "backend_hint",
+    "capture",
+    "normalize",
+    "register_backend",
+    "restore",
+]

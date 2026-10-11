@@ -27,9 +27,20 @@ def _main(qtbot, reader):
 def _reader():
     """A null-controller reader declaring its own native settings."""
     return SimpleNamespace(
-        name="Declared reader", controller=None, gain=3.25,
-        view_spec=lambda: {"sections": [{"type": "value", "attr": "gain", "kind": "float",
-                                          "label": "Gain", "description": "Acquisition gain."}]},
+        name="Declared reader",
+        controller=None,
+        gain=3.25,
+        view_spec=lambda: {
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "gain",
+                    "kind": "float",
+                    "label": "Gain",
+                    "description": "Acquisition gain.",
+                }
+            ]
+        },
     )
 
 

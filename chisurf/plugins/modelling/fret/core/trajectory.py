@@ -83,7 +83,9 @@ def _chain_residues(top, chain):
     own = getattr(chain, "residues", None)
     if own is not None:
         return list(own)
-    return [r for r in top.residues if getattr(getattr(r, "chain", None), "index", None) == chain.index]
+    return [
+        r for r in top.residues if getattr(getattr(r, "chain", None), "index", None) == chain.index
+    ]
 
 
 def _residue_index(top) -> dict[int, list]:
@@ -111,7 +113,11 @@ def find_residue(chain, resseq: int, top=None):
 
 
 def pick_atom_index(
-    residue, atom_name: str, fallback_atom_name: str | None = None, top=None, index: dict[int, list] | None = None
+    residue,
+    atom_name: str,
+    fallback_atom_name: str | None = None,
+    top=None,
+    index: dict[int, list] | None = None,
 ) -> tuple[int, str] | None:
     atoms = _residue_atoms(top, residue, index) if top is not None else residue.atoms
     for at in atoms:
@@ -358,7 +364,9 @@ def positions_from_fps_json(traj: md.Trajectory, fps: dict) -> list[LabelPositio
                     continue
                 if resname_cfg and str(res.name) != resname_cfg:
                     continue
-                picked = pick_atom_index(res, atom_name, fallback_atom_name="CA", top=traj.topology, index=index)
+                picked = pick_atom_index(
+                    res, atom_name, fallback_atom_name="CA", top=traj.topology, index=index
+                )
                 if picked is None:
                     continue
                 atom_index, used_atom_name = picked

@@ -25,27 +25,31 @@ class TestAcpClient:
             req_id = payload.get("id")
             method = payload.get("method")
             if method == "initialize":
-                client.handle_incoming_message({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "protocolVersion": 1,
-                        "agentInfo": {"name": "Test Agent", "version": "1.0"},
-                        "agentCapabilities": {},
-                    },
-                })
-            elif method == "session/new":
-                client.handle_incoming_message({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "sessionId": "sess_123",
-                        "modes": {
-                            "currentModeId": "chisurf_tools",
-                            "availableModes": [{"id": "chisurf_tools", "name": "Tools"}],
+                client.handle_incoming_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "protocolVersion": 1,
+                            "agentInfo": {"name": "Test Agent", "version": "1.0"},
+                            "agentCapabilities": {},
                         },
-                    },
-                })
+                    }
+                )
+            elif method == "session/new":
+                client.handle_incoming_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {
+                            "sessionId": "sess_123",
+                            "modes": {
+                                "currentModeId": "chisurf_tools",
+                                "availableModes": [{"id": "chisurf_tools", "name": "Tools"}],
+                            },
+                        },
+                    }
+                )
 
         client = AcpClient(transport=mock_transport)
         client.start()
@@ -83,58 +87,66 @@ class TestAcpClient:
         client.mode_changed.connect(lambda s, m: modes.append((s, m)))
 
         # Agent message chunk
-        client.handle_incoming_message({
-            "jsonrpc": "2.0",
-            "method": "session/update",
-            "params": {
-                "sessionId": "sess_123",
-                "update": {
-                    "sessionUpdate": "agent_message_chunk",
-                    "content": {"type": "text", "text": "Analyzing data..."},
+        client.handle_incoming_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "session/update",
+                "params": {
+                    "sessionId": "sess_123",
+                    "update": {
+                        "sessionUpdate": "agent_message_chunk",
+                        "content": {"type": "text", "text": "Analyzing data..."},
+                    },
                 },
-            },
-        })
+            }
+        )
 
         # Agent thought chunk
-        client.handle_incoming_message({
-            "jsonrpc": "2.0",
-            "method": "session/update",
-            "params": {
-                "sessionId": "sess_123",
-                "update": {
-                    "sessionUpdate": "agent_thought_chunk",
-                    "content": {"type": "text", "text": "Plan: fit lifetime"},
+        client.handle_incoming_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "session/update",
+                "params": {
+                    "sessionId": "sess_123",
+                    "update": {
+                        "sessionUpdate": "agent_thought_chunk",
+                        "content": {"type": "text", "text": "Plan: fit lifetime"},
+                    },
                 },
-            },
-        })
+            }
+        )
 
         # Tool call
-        client.handle_incoming_message({
-            "jsonrpc": "2.0",
-            "method": "session/update",
-            "params": {
-                "sessionId": "sess_123",
-                "update": {
-                    "sessionUpdate": "tool_call",
-                    "toolCallId": "c1",
-                    "name": "load_data",
-                    "status": "in_progress",
+        client.handle_incoming_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "session/update",
+                "params": {
+                    "sessionId": "sess_123",
+                    "update": {
+                        "sessionUpdate": "tool_call",
+                        "toolCallId": "c1",
+                        "name": "load_data",
+                        "status": "in_progress",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         # Mode update
-        client.handle_incoming_message({
-            "jsonrpc": "2.0",
-            "method": "session/update",
-            "params": {
-                "sessionId": "sess_123",
-                "update": {
-                    "sessionUpdate": "current_mode_update",
-                    "currentModeId": "full_control",
+        client.handle_incoming_message(
+            {
+                "jsonrpc": "2.0",
+                "method": "session/update",
+                "params": {
+                    "sessionId": "sess_123",
+                    "update": {
+                        "sessionUpdate": "current_mode_update",
+                        "currentModeId": "full_control",
+                    },
                 },
-            },
-        })
+            }
+        )
 
         assert chunks == [("sess_123", "Analyzing data...")]
         assert thoughts == [("sess_123", "Plan: fit lifetime")]
@@ -166,12 +178,14 @@ class TestAcpClient:
         )
 
         # Agent requests file read
-        client.handle_incoming_message({
-            "jsonrpc": "2.0",
-            "id": 99,
-            "method": "fs/read_text_file",
-            "params": {"path": "analysis.py", "line": 0, "limit": 10},
-        })
+        client.handle_incoming_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 99,
+                "method": "fs/read_text_file",
+                "params": {"path": "analysis.py", "line": 0, "limit": 10},
+            }
+        )
         QtWidgets.QApplication.processEvents()
 
         assert read_calls == [("analysis.py", 0, 10)]
@@ -180,12 +194,14 @@ class TestAcpClient:
         assert sent_responses[0]["result"]["content"] == "content_of_analysis.py"
 
         # Agent requests file write
-        client.handle_incoming_message({
-            "jsonrpc": "2.0",
-            "id": 100,
-            "method": "fs/write_text_file",
-            "params": {"path": "fit.py", "content": "print('fitted')"},
-        })
+        client.handle_incoming_message(
+            {
+                "jsonrpc": "2.0",
+                "id": 100,
+                "method": "fs/write_text_file",
+                "params": {"path": "fit.py", "content": "print('fitted')"},
+            }
+        )
         QtWidgets.QApplication.processEvents()
 
         assert written_files.get("fit.py") == "print('fitted')"
@@ -251,37 +267,45 @@ class TestAgentPanelAcpFlow:
             req_id = payload.get("id")
             method = payload.get("method")
             if method == "initialize":
-                panel._acp_client.handle_incoming_message({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"protocolVersion": 1, "agentInfo": {}, "agentCapabilities": {}},
-                })
+                panel._acp_client.handle_incoming_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {"protocolVersion": 1, "agentInfo": {}, "agentCapabilities": {}},
+                    }
+                )
             elif method == "session/new":
-                panel._acp_client.handle_incoming_message({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"sessionId": "s_acp_1", "modes": {}},
-                })
+                panel._acp_client.handle_incoming_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {"sessionId": "s_acp_1", "modes": {}},
+                    }
+                )
             elif method == "session/prompt":
                 sent_prompts.append(payload)
                 # Stream chunk
-                panel._acp_client.handle_incoming_message({
-                    "jsonrpc": "2.0",
-                    "method": "session/update",
-                    "params": {
-                        "sessionId": "s_acp_1",
-                        "update": {
-                            "sessionUpdate": "agent_message_chunk",
-                            "content": {"type": "text", "text": "Fit complete with chi2=1.01"},
+                panel._acp_client.handle_incoming_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "method": "session/update",
+                        "params": {
+                            "sessionId": "s_acp_1",
+                            "update": {
+                                "sessionUpdate": "agent_message_chunk",
+                                "content": {"type": "text", "text": "Fit complete with chi2=1.01"},
+                            },
                         },
-                    },
-                })
+                    }
+                )
                 # End turn
-                panel._acp_client.handle_incoming_message({
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {"stopReason": "end_turn"},
-                })
+                panel._acp_client.handle_incoming_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {"stopReason": "end_turn"},
+                    }
+                )
 
         from chisurf.plugins.core.code_editor.acp_client import AcpClient
 
@@ -336,4 +360,3 @@ class TestAgentPanelAcpFlow:
         assert client.current_mode_id == "full_control"
 
         client.stop()
-

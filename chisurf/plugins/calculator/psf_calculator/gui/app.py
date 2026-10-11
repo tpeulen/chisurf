@@ -100,7 +100,9 @@ class PSFApp(TourTarget, ImApp):
         self.docks.add_window(
             "controls", tr("Parameters"), self._draw_controls, dock="controls", closable=False
         )
-        self.docks.add_window("volume", tr("3-D PSF"), self._draw_volume, dock="volume", closable=False)
+        self.docks.add_window(
+            "volume", tr("3-D PSF"), self._draw_volume, dock="volume", closable=False
+        )
         self.docks.add_window(
             "slice", tr("Orthogonal Slice"), self._draw_slice, dock="slice", closable=False
         )
@@ -190,7 +192,9 @@ class PSFApp(TourTarget, ImApp):
         self._form("parameters", SPEC["parameters"])
         if self.model.volume is None:
             im.text_wrapped(
-                tr("Not computed yet.") if not self.error else tr("No volume: see the message above.")
+                tr("Not computed yet.")
+                if not self.error
+                else tr("No volume: see the message above.")
             )
         else:
             self._form("result", SPEC["result"])
@@ -200,12 +204,16 @@ class PSFApp(TourTarget, ImApp):
         volume = self.model.volume
         if volume is None:
             im.text_wrapped(
-                tr("Waiting for the first PSF calculation.") if not self.error else tr("No volume to show.")
+                tr("Waiting for the first PSF calculation.")
+                if not self.error
+                else tr("No volume to show.")
             )
             return
         if not self.volume_view.sync(self.model) or not self.volume_view.draw():
             im.text_wrapped(
-                tr("The 3-D view needs a WebGPU adapter: {error}").format(error=self.volume_view.error)
+                tr("The 3-D view needs a WebGPU adapter: {error}").format(
+                    error=self.volume_view.error
+                )
             )
             self.remember("volume", tuple(box))
             return
@@ -231,11 +239,23 @@ class PSFApp(TourTarget, ImApp):
         px, dz = float(self.model.pixel_size_nm), float(self.model.z_step_nm)
         axis = self.slice_plane
         if axis == "XY":
-            plane, (u, v), labels = volume[nz // 2], (nx * px, ny * px), (tr("x [nm]"), tr("y [nm]"))
+            plane, (u, v), labels = (
+                volume[nz // 2],
+                (nx * px, ny * px),
+                (tr("x [nm]"), tr("y [nm]")),
+            )
         elif axis == "XZ":
-            plane, (u, v), labels = volume[:, ny // 2, :], (nx * px, nz * dz), (tr("x [nm]"), tr("z [nm]"))
+            plane, (u, v), labels = (
+                volume[:, ny // 2, :],
+                (nx * px, nz * dz),
+                (tr("x [nm]"), tr("z [nm]")),
+            )
         else:
-            plane, (u, v), labels = volume[:, :, nx // 2], (ny * px, nz * dz), (tr("y [nm]"), tr("z [nm]"))
+            plane, (u, v), labels = (
+                volume[:, :, nx // 2],
+                (ny * px, nz * dz),
+                (tr("y [nm]"), tr("z [nm]")),
+            )
         plane = np.asarray(plane)[
             ::-1
         ]  # the heatmap puts row 0 on top: flip so y and z grow upwards
@@ -270,7 +290,9 @@ class PSFApp(TourTarget, ImApp):
     # -- export ----------------------------------------------------------------------------------------------- #
     def begin_export(self, suffix: str) -> None:
         if self.model.volume is None:
-            self.error = tr("Error: The PSF has not been computed yet -- wait for the view to fill in.")
+            self.error = tr(
+                "Error: The PSF has not been computed yet -- wait for the view to fill in."
+            )
             return
         self.dialog_suffix = suffix
         title = tr("Export PSF as {suffix}").format(suffix=suffix)

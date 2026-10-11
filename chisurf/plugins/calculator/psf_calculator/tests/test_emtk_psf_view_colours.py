@@ -28,8 +28,12 @@ def _computed_app():
     while time.monotonic() < end:
         app.draw(RecordingPainter(), 0, 0, 1200, 800)
         # ... and the 3-D view's chimol has started (in the background, on the first frame with a volume)
-        if (app.model.volume is not None and not app.busy and not app.model.is_stale
-                and not app.volume_view.view.starting):
+        if (
+            app.model.volume is not None
+            and not app.busy
+            and not app.model.is_stale
+            and not app.volume_view.view.starting
+        ):
             break
         time.sleep(0.02)
     assert app.model.volume is not None, "the PSF was not computed"
@@ -54,8 +58,10 @@ def test_the_shells_are_coloured_by_intensity_and_follow_the_colormap():
     app.model.colormap = "viridis"
     app.draw(RecordingPainter(), 0, 0, 1200, 800)
     again = view.view.viewer.get_volume_levels(view._object_id)
-    core = colormaps.get("viridis")(COLOUR_FLOOR + (1 - COLOUR_FLOOR) * 0.85 ** app.model.gamma)[:3]
-    assert tuple(round(c, 4) for c in again[-1]["color"][:3]) == tuple(round(float(c), 4) for c in core)
+    core = colormaps.get("viridis")(COLOUR_FLOOR + (1 - COLOUR_FLOOR) * 0.85**app.model.gamma)[:3]
+    assert tuple(round(c, 4) for c in again[-1]["color"][:3]) == tuple(
+        round(float(c), 4) for c in core
+    )
 
 
 @pytest.mark.parametrize("plane, extent", [("XY", "nxy"), ("XZ", "nz")])
@@ -83,7 +89,9 @@ def test_the_slice_shows_the_whole_section(monkeypatch, plane, extent):
     half = (model.nz * model.z_step_nm if extent == "nz" else model.nxy * model.pixel_size_nm) / 2
     assert "y" in seen, "the slice plot was not drawn"
     low, high = seen["y"]
-    assert low <= -half * 0.98 and high >= half * 0.98, f"{plane} cropped to {seen['y']}, half {half}"
+    assert low <= -half * 0.98 and high >= half * 0.98, (
+        f"{plane} cropped to {seen['y']}, half {half}"
+    )
 
 
 def test_the_slice_uses_the_display_colormap():

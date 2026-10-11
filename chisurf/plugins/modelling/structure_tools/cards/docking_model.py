@@ -148,12 +148,21 @@ class DockingSession:
         op = self.operation
         if op == "dock":
             req = {
-                "pdb_paths": self.pdb_list(), "fps_json": self.fps_json, "output_dir": self.output_dir,
-                "n_frames": self.n_frames, "mc_steps": self.mc_steps, "n_best": self.n_best,
-                "fixed_body": self.fixed_body, "sigma_da": self.sigma_da,
-                "simulated_annealing": self.simulated_annealing, "score_set": self.score_set,
-                "method": self.method, "refine_av_cycles": self.refine_av_cycles, "ev_weight": self.ev_weight,
-                "save_distributions": self.save_distributions, "av_backend": self.av_backend,
+                "pdb_paths": self.pdb_list(),
+                "fps_json": self.fps_json,
+                "output_dir": self.output_dir,
+                "n_frames": self.n_frames,
+                "mc_steps": self.mc_steps,
+                "n_best": self.n_best,
+                "fixed_body": self.fixed_body,
+                "sigma_da": self.sigma_da,
+                "simulated_annealing": self.simulated_annealing,
+                "score_set": self.score_set,
+                "method": self.method,
+                "refine_av_cycles": self.refine_av_cycles,
+                "ev_weight": self.ev_weight,
+                "save_distributions": self.save_distributions,
+                "av_backend": self.av_backend,
                 "save_trajectory": self.save_trajectory,
             }
             if int(self.n_repeats) > 1:
@@ -163,13 +172,28 @@ class DockingSession:
                 req["initial_poses"] = list(self.poses)
             return op, req
         if op == "refine":
-            return op, {"pdb_paths": self.pdb_list(), "fps_json": self.fps_json, "output_dir": self.output_dir,
-                        "score_set": self.score_set}
+            return op, {
+                "pdb_paths": self.pdb_list(),
+                "fps_json": self.fps_json,
+                "output_dir": self.output_dir,
+                "score_set": self.score_set,
+            }
         if op == "screen":
-            return op, {"pdb_inputs": self.pdb_list(), "fps_json": self.fps_json, "score_set": self.score_set,
-                        "output_csv": str(pathlib.Path(self.output_dir) / "screen.csv") if self.output_dir else None}
-        return op, {"pdb_paths": self.pdb_list(), "fps_json": self.fps_json, "score_set": self.score_set,
-                    "mean_position_restraint": True, "sigma_da": self.sigma_da}
+            return op, {
+                "pdb_inputs": self.pdb_list(),
+                "fps_json": self.fps_json,
+                "score_set": self.score_set,
+                "output_csv": str(pathlib.Path(self.output_dir) / "screen.csv")
+                if self.output_dir
+                else None,
+            }
+        return op, {
+            "pdb_paths": self.pdb_list(),
+            "fps_json": self.fps_json,
+            "score_set": self.score_set,
+            "mean_position_restraint": True,
+            "sigma_da": self.sigma_da,
+        }
 
     def say(self, text: str, error: bool = False) -> None:
         self.status, self.status_error = text, error
@@ -207,7 +231,9 @@ class DockingSession:
         self.pose_score = (proj.pose_meta or {}).get("score")
         self.continue_from_poses = bool(self.poses)
         name = pathlib.Path(path).name
-        self.say(f"loaded {name} ({len(self.poses)} docked bodies)" if self.poses else f"loaded {name}")
+        self.say(
+            f"loaded {name} ({len(self.poses)} docked bodies)" if self.poses else f"loaded {name}"
+        )
         return True
 
     def save_project(self, path: str) -> bool:
@@ -215,16 +241,30 @@ class DockingSession:
             from chisurf.plugins.modelling.fret.api.project import save_docking_project
 
             save_docking_project(
-                path, pdb_paths=self.pdb_list(), fps_json=self.fps_json, output_dir=self.output_dir,
-                operation=self.operation, method=self.method, score_set=self.score_set,
-                params={"n_frames": self.n_frames, "mc_steps": self.mc_steps, "n_best": self.n_best,
-                        "n_repeats": self.n_repeats,
-                        "refine_av_cycles": self.refine_av_cycles,
-                        "fixed_body": self.fixed_body, "sigma_da": self.sigma_da,
-                        "ev_weight": self.ev_weight, "simulated_annealing": self.simulated_annealing,
-                        "save_distributions": self.save_distributions, "av_backend": self.av_backend,
-                        "save_trajectory": self.save_trajectory},
-                poses=self.poses or None, pose_score=self.pose_score, pose_method=self.method,
+                path,
+                pdb_paths=self.pdb_list(),
+                fps_json=self.fps_json,
+                output_dir=self.output_dir,
+                operation=self.operation,
+                method=self.method,
+                score_set=self.score_set,
+                params={
+                    "n_frames": self.n_frames,
+                    "mc_steps": self.mc_steps,
+                    "n_best": self.n_best,
+                    "n_repeats": self.n_repeats,
+                    "refine_av_cycles": self.refine_av_cycles,
+                    "fixed_body": self.fixed_body,
+                    "sigma_da": self.sigma_da,
+                    "ev_weight": self.ev_weight,
+                    "simulated_annealing": self.simulated_annealing,
+                    "save_distributions": self.save_distributions,
+                    "av_backend": self.av_backend,
+                    "save_trajectory": self.save_trajectory,
+                },
+                poses=self.poses or None,
+                pose_score=self.pose_score,
+                pose_method=self.method,
             )
         except Exception as exc:  # noqa: BLE001
             self.say(f"Failed to save the project: {exc}", True)
@@ -275,9 +315,16 @@ class DockingSession:
         """Append ``(trial, score, n_distances, pdb)`` rows; runs accumulate until Clear."""
         records = list(self.rows)
         for trial, score, n_dist, pdb in rows:
-            records.append({"trial": int(trial), "type": kind, "score": float(score) if score == score else float("nan"),
-                            "distances": int(n_dist), "best_pdb": pathlib.Path(pdb).name if pdb else "",
-                            "path": str(pdb) if pdb else ""})
+            records.append(
+                {
+                    "trial": int(trial),
+                    "type": kind,
+                    "score": float(score) if score == score else float("nan"),
+                    "distances": int(n_dist),
+                    "best_pdb": pathlib.Path(pdb).name if pdb else "",
+                    "path": str(pdb) if pdb else "",
+                }
+            )
         new = Rows(sorted(records, key=lambda r: (r["score"] != r["score"], r["score"])))
         new.revision = self.rows.revision + 1
         self.rows = new
@@ -302,8 +349,10 @@ class DockingSession:
         n_trials = max(1, int(self.n_repeats)) if op == "errors" else 1
         self._total = max(1, int(self.n_frames)) * n_trials
         out = self.output_dir
-        if out:   # stale trace files would make the progress jump to 100% at once
-            for path in glob.glob(str(pathlib.Path(out) / "**" / self.trace_name()), recursive=True):
+        if out:  # stale trace files would make the progress jump to 100% at once
+            for path in glob.glob(
+                str(pathlib.Path(out) / "**" / self.trace_name()), recursive=True
+            ):
                 try:
                     pathlib.Path(path).unlink()
                 except OSError:
@@ -330,7 +379,9 @@ class DockingSession:
             elif op == "errors":
                 result = ops.estimate_errors(params, stop_check=self.stop_event.is_set)
             else:
-                result = {"refine": ops.refine, "screen": ops.screen, "score": ops.score}[op](params)
+                result = {"refine": ops.refine, "screen": ops.screen, "score": ops.score}[op](
+                    params
+                )
             self._push(("ok", result))
         except Exception:  # noqa: BLE001
             self._push(("err", traceback.format_exc()))
@@ -349,7 +400,7 @@ class DockingSession:
         os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
         try:
             ctx = mp.get_context("fork")
-        except ValueError:                      # no fork (Windows): inline, no cancel
+        except ValueError:  # no fork (Windows): inline, no cancel
             return ops.dock(params, stop_check=self.stop_event.is_set)
         q = ctx.Queue()
         proc = ctx.Process(target=_run_op_child, args=("dock", params, q), daemon=True)
@@ -442,7 +493,14 @@ class DockingSession:
         rows = []
         for i, score in enumerate(scores):
             pdb = os.path.join(str(dirs[i]), "docked.pdb") if i < len(dirs) else ""
-            rows.append((i, score, int(data.get("n_distances") or 0), pdb if pdb and os.path.exists(pdb) else None))
+            rows.append(
+                (
+                    i,
+                    score,
+                    int(data.get("n_distances") or 0),
+                    pdb if pdb and os.path.exists(pdb) else None,
+                )
+            )
         self.add_rows(rows, kind_name)
         if rows:
             self.score = float(min(scores))
@@ -455,7 +513,11 @@ class DockingSession:
             spread = f": mean {float(extra['score_mean']):.1f} ± {float(extra.get('score_std') or 0.0):.1f}"
         unc = data.get("uncertainty") or {}
         rmsf = unc.get("mobile_rmsf_mean")
-        precision = f"; precision {rmsf:.1f} Å" if rmsf == rmsf and rmsf is not None and unc.get("n_models", 0) >= 2 else ""
+        precision = (
+            f"; precision {rmsf:.1f} Å"
+            if rmsf == rmsf and rmsf is not None and unc.get("n_models", 0) >= 2
+            else ""
+        )
         self.say(head + spread + precision)
         models = [r[3] for r in rows if r[3]]
         if models:
@@ -473,7 +535,11 @@ class DockingSession:
     # ── structure preview ─────────────────────────────────────────────────
 
     def show_structures(self, paths) -> None:
-        models = [str(paths)] if isinstance(paths, (str, pathlib.Path)) else [str(p) for p in paths or []]
+        models = (
+            [str(paths)]
+            if isinstance(paths, (str, pathlib.Path))
+            else [str(p) for p in paths or []]
+        )
         if models != self.preview:
             self.preview = models
             self.preview_index = 0
@@ -503,9 +569,27 @@ class DockingSession:
 
     # ── persistence ───────────────────────────────────────────────────────
 
-    FIELDS = ("pdb_files", "fps_json", "output_dir", "operation", "method", "score_set", "n_frames", "mc_steps",
-              "n_best", "n_repeats", "refine_av_cycles", "fixed_body", "sigma_da", "ev_weight",
-              "simulated_annealing", "save_distributions", "av_backend", "save_trajectory", "continue_from_poses")
+    FIELDS = (
+        "pdb_files",
+        "fps_json",
+        "output_dir",
+        "operation",
+        "method",
+        "score_set",
+        "n_frames",
+        "mc_steps",
+        "n_best",
+        "n_repeats",
+        "refine_av_cycles",
+        "fixed_body",
+        "sigma_da",
+        "ev_weight",
+        "simulated_annealing",
+        "save_distributions",
+        "av_backend",
+        "save_trajectory",
+        "continue_from_poses",
+    )
 
     def export_settings(self) -> dict:
         state = {name: getattr(self, name) for name in self.FIELDS}

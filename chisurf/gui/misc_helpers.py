@@ -392,7 +392,8 @@ def _show_manifest_gui(main_window, plugin_dir) -> bool:
         if not isinstance(context, PluginContext) or context.main_window is not main_window:
             context = PluginContext(
                 api=getattr(context, "api", getattr(main_window, "api", None)),
-                client=getattr(context, "client", None), main_window=main_window,
+                client=getattr(context, "client", None),
+                main_window=main_window,
             )
         try:
             result = execute_plugin_action(manifest, context)
@@ -406,7 +407,9 @@ def _show_manifest_gui(main_window, plugin_dir) -> bool:
             cs.logging.exception("Could not execute plugin action %r", manifest.id)
         # Recognized actions never fall through to legacy script execution.
         return True
-    if not manifest or not (getattr(entrypoints, "gui", None) or getattr(entrypoints, "emtk", None)):
+    if not manifest or not (
+        getattr(entrypoints, "gui", None) or getattr(entrypoints, "emtk", None)
+    ):
         return False
 
     try:

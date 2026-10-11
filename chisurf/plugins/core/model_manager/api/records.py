@@ -119,15 +119,16 @@ def collect_model_rows(
     if experiments is None:
         import chisurf.core.experiments as experiments_module
 
-        if ensure_registered and not any(
-            getattr(e, "model_classes", []) for e in experiments_module.types.values()
-        ):
+        if ensure_registered:
+            # Forced: a plugin that registers one model of its own (acquisition does) makes the registry
+            # non-empty without it being complete, and the manager would then list only that one.
+            # Registration is idempotent, so running it again only adds what is missing.
             try:
                 from chisurf.core.experiments.bootstrap import (
                     ensure_experiments_registered,
                 )
 
-                ensure_experiments_registered()
+                ensure_experiments_registered(force=True)
             except Exception:  # pragma: no cover - registration is best-effort
                 pass
         experiments = experiments_module.types

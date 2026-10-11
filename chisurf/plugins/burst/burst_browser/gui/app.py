@@ -91,7 +91,9 @@ class BurstBrowserGui:
             size=(700.0, 520.0),
         )
         self.tour = EmTkGuidedTour(
-            steps=guide_resource, get_target_rect=lambda k: self.item_rects.get(k), owner=self.model,
+            steps=guide_resource,
+            get_target_rect=lambda k: self.item_rects.get(k),
+            owner=self.model,
             wait_for_controls=True,
         )
         self.on_used = self.tour.notify_used  # an action step waits for its control
@@ -235,14 +237,20 @@ class BurstBrowserGui:
         # E Range
         if self.model.have_E:
             im.text(tr("E Range:"))
-            gate_lo, gate_hi = self._gate_bounds(self.model._col_E, self.model.e_min, self.model.e_max)
+            gate_lo, gate_hi = self._gate_bounds(
+                self.model._col_E, self.model.e_min, self.model.e_max
+            )
             im.set_next_item_width(half_w)
-            ch_lo, new_e_lo = im.slider_float("##e_min", float(self.model.e_min), gate_lo, gate_hi, "%.3f")
+            ch_lo, new_e_lo = im.slider_float(
+                "##e_min", float(self.model.e_min), gate_lo, gate_hi, "%.3f"
+            )
             im.set_item_tooltip(tr("Lower FRET-efficiency gate; bursts below it are hidden."))
             self.remember("e_range")
             im.same_line()
             im.set_next_item_width(half_w)
-            ch_hi, new_e_hi = im.slider_float("##e_max", float(self.model.e_max), gate_lo, gate_hi, "%.3f")
+            ch_hi, new_e_hi = im.slider_float(
+                "##e_max", float(self.model.e_max), gate_lo, gate_hi, "%.3f"
+            )
             im.set_item_tooltip(tr("Upper FRET-efficiency gate; bursts above it are hidden."))
             if ch_lo or ch_hi:
                 self.track("e_range")
@@ -255,13 +263,19 @@ class BurstBrowserGui:
         # S Range
         if self.model.have_S:
             im.text(tr("S Range:"))
-            gate_lo, gate_hi = self._gate_bounds(self.model._col_S, self.model.s_min, self.model.s_max)
+            gate_lo, gate_hi = self._gate_bounds(
+                self.model._col_S, self.model.s_min, self.model.s_max
+            )
             im.set_next_item_width(half_w)
-            ch_lo, new_s_lo = im.slider_float("##s_min", float(self.model.s_min), gate_lo, gate_hi, "%.3f")
+            ch_lo, new_s_lo = im.slider_float(
+                "##s_min", float(self.model.s_min), gate_lo, gate_hi, "%.3f"
+            )
             im.set_item_tooltip(tr("Lower stoichiometry gate; bursts below it are hidden."))
             im.same_line()
             im.set_next_item_width(half_w)
-            ch_hi, new_s_hi = im.slider_float("##s_max", float(self.model.s_max), gate_lo, gate_hi, "%.3f")
+            ch_hi, new_s_hi = im.slider_float(
+                "##s_max", float(self.model.s_max), gate_lo, gate_hi, "%.3f"
+            )
             im.set_item_tooltip(tr("Upper stoichiometry gate; bursts above it are hidden."))
             if ch_lo or ch_hi:
                 self.model.s_min = min(new_s_lo, new_s_hi)
@@ -298,7 +312,9 @@ class BurstBrowserGui:
             im.text_disabled(tr("Size Range (not available)"))
 
         im.spacing()
-        ch_sel, new_use_sel = im.checkbox(tr("Use table selection for hist"), self.model.use_selection)
+        ch_sel, new_use_sel = im.checkbox(
+            tr("Use table selection for hist"), self.model.use_selection
+        )
         im.set_item_tooltip(tr("Histogram only the rows currently selected in the bursts table."))
         if ch_sel:
             self.model.use_selection = new_use_sel
@@ -396,28 +412,36 @@ class BurstBrowserGui:
         """Return typed values and stable source identities for the current page."""
         names = column_names(self.model.table)
         indices = self.model.masked_row_indices()
-        visible = indices[self.page * self.page_size:(self.page + 1) * self.page_size]
+        visible = indices[self.page * self.page_size : (self.page + 1) * self.page_size]
         token = (id(self.model.table), tuple(names), tuple(int(i) for i in visible))
         if token != self._table_token:
             columns = [column_values(self.model.table, i) for i in range(len(names))]
             self._table_rows = [
-                {"_burst_index": int(row), **{
-                    name: None if is_missing(values[int(row)]) else values[int(row)]
-                    for name, values in zip(names, columns)
-                }} for row in visible
+                {
+                    "_burst_index": int(row),
+                    **{
+                        name: None if is_missing(values[int(row)]) else values[int(row)]
+                        for name, values in zip(names, columns)
+                    },
+                }
+                for row in visible
             ]
             self._table_token = token
         return self._table_rows
 
     def burst_table_columns(self) -> list[dict]:
         """Declare readable, described columns from the loaded measurement vocabulary."""
-        return [{
-            "key": name, "label": name,
-            "format": "%.4g" if column_values(self.model.table, i).dtype.kind == "f" else "",
-            "width": max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0,
-            "min_width": max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0,
-            "description": tr("Recorded {column} value for this burst.").format(column=name),
-        } for i, name in enumerate(column_names(self.model.table))]
+        return [
+            {
+                "key": name,
+                "label": name,
+                "format": "%.4g" if column_values(self.model.table, i).dtype.kind == "f" else "",
+                "width": max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0,
+                "min_width": max(im.calc_text_size(name)[0], im.calc_text_size("0.0000")[0]) + 14.0,
+                "description": tr("Recorded {column} value for this burst.").format(column=name),
+            }
+            for i, name in enumerate(column_names(self.model.table))
+        ]
 
     def toggle_burst_row(self, record) -> None:
         """Toggle the original burst identity without changing the gated source table."""

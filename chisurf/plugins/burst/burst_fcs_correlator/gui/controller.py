@@ -293,16 +293,24 @@ class BurstFcsController(RunPickerMixin):
             from ..core.export import RESULT_COLUMNS
 
             for curve in produced:
-                rows.append({
-                    "First File": str(raw), "Burst Folder": str(root),
-                    "Burst Index": curve["burst_index"], "pair_name": curve["pair_name"],
-                    **{feature["source"]: curve.get(feature["curve"], float("nan"))
-                       for feature in RESULT_COLUMNS},
-                })
+                rows.append(
+                    {
+                        "First File": str(raw),
+                        "Burst Folder": str(root),
+                        "Burst Index": curve["burst_index"],
+                        "pair_name": curve["pair_name"],
+                        **{
+                            feature["source"]: curve.get(feature["curve"], float("nan"))
+                            for feature in RESULT_COLUMNS
+                        },
+                    }
+                )
         self.check_cancel()
         from ..core.export import write_fcs_results
 
-        paths = write_fcs_results(rows, counts, parameters=parameters, cancel_check=self.check_cancel)
+        paths = write_fcs_results(
+            rows, counts, parameters=parameters, cancel_check=self.check_cancel
+        )
         self.progress = 1.0
         return curves, paths
 
@@ -342,15 +350,25 @@ class BurstFcsController(RunPickerMixin):
         self.status = "Computing burst FCS …"
         self._run_parameters = settings.to_dict()
         self._run_parameters["pairs"] = [
-            {"name": p.pair_name, "chs_a": p.chs_a, "chs_b": p.chs_b,
-             "micro_a": p.micro_a, "micro_b": p.micro_b,
-             "n_bins": settings.n_bins, "n_casc": settings.n_casc,
-             "make_fine": settings.make_fine}
+            {
+                "name": p.pair_name,
+                "chs_a": p.chs_a,
+                "chs_b": p.chs_b,
+                "micro_a": p.micro_a,
+                "micro_b": p.micro_b,
+                "n_bins": settings.n_bins,
+                "n_casc": settings.n_casc,
+                "make_fine": settings.make_fine,
+            }
             for p in pairs
         ]
         self._future = self._executor.submit(
-            self._compute, files, copy.deepcopy(pairs), settings, list(self._resolved_roots),
-            copy.deepcopy(self._run_parameters)
+            self._compute,
+            files,
+            copy.deepcopy(pairs),
+            settings,
+            list(self._resolved_roots),
+            copy.deepcopy(self._run_parameters),
         )
 
     def poll(self):

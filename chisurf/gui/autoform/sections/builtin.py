@@ -2130,6 +2130,7 @@ class ImageMapWidget(QtWidgets.QWidget):
       detector and useless for a map whose axes carry the quantities being fitted.
     * ``x_label`` / ``y_label`` (str) — axis labels, used with ``axes_visible``.
     """
+
     #: marker so :meth:`AutoForm.refresh_plots` re-reads this widget.
     AUTOFORM_REFRESH = True
 
@@ -2518,9 +2519,7 @@ class ImageMapWidget(QtWidgets.QWidget):
                 ys = [int(p[1]) for p in pts if int(p[0]) == z]
                 if xs:
                     self._marker_items.append(
-                        view.marks(
-                            xs, ys, symbol="s", size=8, pen="g", brush=(0, 255, 0, 120), z=5
-                        )
+                        view.marks(xs, ys, symbol="s", size=8, pen="g", brush=(0, 255, 0, 120), z=5)
                     )
 
         # free text labels (e.g. mosaic tile names) on the current slice

@@ -38,12 +38,18 @@ def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".
                 start_idx = indices[i]
         bursts.append((start_idx, indices[-1]))
         burst_ids[state] = bursts
-        name = f"{pathlib.Path(file_path).stem}_state_{state}.bst" if file_path else f"burst_ids_state_{state}.bst"
+        name = (
+            f"{pathlib.Path(file_path).stem}_state_{state}.bst"
+            if file_path
+            else f"burst_ids_state_{state}.bst"
+        )
         resolution = tttr_obj.header.macro_time_resolution
         with open(pathlib.Path(output_dir) / name, "w") as f:
             for start_bin, stop_bin in bursts:
                 start = np.searchsorted(tttr_obj.macro_times, time_axis[start_bin] / resolution)
-                stop = np.searchsorted(tttr_obj.macro_times, (time_axis[stop_bin] + time_window_s) / resolution)
+                stop = np.searchsorted(
+                    tttr_obj.macro_times, (time_axis[stop_bin] + time_window_s) / resolution
+                )
                 # .bst rows are first/last photon, both inclusive; searchsorted's stop is the first photon after the run
                 if stop > start:
                     f.write(f"{start}\t{stop - 1}\n")
@@ -69,7 +75,9 @@ def compute_dwell_times(state_sequence, time_step=1.0):
     return dwell_times(state_sequence, time_step)
 
 
-def dwell_histograms(dwell: dict, lo_ms: float, hi_ms: float, n_bins: int, normalize: bool = False) -> dict:
+def dwell_histograms(
+    dwell: dict, lo_ms: float, hi_ms: float, n_bins: int, normalize: bool = False
+) -> dict:
     """Per state ``(centres_ms, counts, (A, tau_ms) or None)``: the histogram and its single-exponential fit."""
     from chisurf.core.math.numerics import curve_fit
 
@@ -89,8 +97,12 @@ def dwell_histograms(dwell: dict, lo_ms: float, hi_ms: float, n_bins: int, norma
         mask = y > 0
         if mask.sum() >= 2:
             try:
-                popt, _ = curve_fit(lambda t, a, tau: a * np.exp(-t / tau), centres[mask], y[mask],
-                                    p0=(y.max(), (centres * y).sum() / y.sum()))
+                popt, _ = curve_fit(
+                    lambda t, a, tau: a * np.exp(-t / tau),
+                    centres[mask],
+                    y[mask],
+                    p0=(y.max(), (centres * y).sum() / y.sum()),
+                )
                 fit = (float(popt[0]), float(popt[1]))
             except Exception:  # noqa: BLE001 - a histogram the exponential does not fit has no fit
                 fit = None
@@ -161,9 +173,13 @@ class IntensityTraceModel:
             tttr = tttrlib.TTTR(str(path))  # read once: the channels it uses and the binning
             if detectors:
                 selected = [s for s in self.selected if s in detectors] or None
-                t, counts, labels = bin_trace(tttr, window_s, detectors=detectors, selected=selected)
+                t, counts, labels = bin_trace(
+                    tttr, window_s, detectors=detectors, selected=selected
+                )
             else:
-                channels = [int(s.split("_", 1)[1]) for s in self.selected if s.startswith("routing_")] or None
+                channels = [
+                    int(s.split("_", 1)[1]) for s in self.selected if s.startswith("routing_")
+                ] or None
                 t, counts, labels = bin_trace(tttr, window_s, channels=channels)
         except Exception as exc:  # noqa: BLE001 - shown in the status line
             self.message = f"Could not read {path.name}: {exc}"
@@ -172,11 +188,18 @@ class IntensityTraceModel:
             # a new file: offer the channels it uses (Qt offered 0-7, so channels 8+ could not be chosen)
             self.available = [f"routing_{int(c)}" for c in sorted(tttr.get_used_routing_channels())]
         self.path = str(path)
-        self.time_axis, self.counts, self.labels = np.asarray(t), np.asarray(counts, float), list(labels)
+        self.time_axis, self.counts, self.labels = (
+            np.asarray(t),
+            np.asarray(counts, float),
+            list(labels),
+        )
         self.states = self.transmat = None
         n = self.counts.shape[0]
-        self.message = (f"{path.name}: {n} bins of {self.window_ms:g} ms, {', '.join(self.labels)}"
-                        if n else f"{path.name}: no photons in the selected detectors")
+        self.message = (
+            f"{path.name}: {n} bins of {self.window_ms:g} ms, {', '.join(self.labels)}"
+            if n
+            else f"{path.name}: no photons in the selected detectors"
+        )
         return n > 0
 
     def reload(self) -> bool:
@@ -207,8 +230,10 @@ class IntensityTraceModel:
 
     def histograms(self) -> list[tuple[str, Any]]:
         """``(label, (centres, counts) or None)`` per channel, then the sum."""
-        rows = [(label, histogram(self.counts[:, i], self.n_bins, self.hist_min, self.hist_max))
-                for i, label in enumerate(self.labels)]
+        rows = [
+            (label, histogram(self.counts[:, i], self.n_bins, self.hist_min, self.hist_max))
+            for i, label in enumerate(self.labels)
+        ]
         rows.append(("Sum", histogram(self.total, self.n_bins, self.hist_min, self.hist_max)))
         return rows
 
@@ -221,35 +246,54 @@ class IntensityTraceModel:
         from chisurf.plugins.core.hmm.api import HmmSettings
         from chisurf.plugins.core.hmm.core import fit_traces
 
-        fit = fit_traces(self.counts, HmmSettings(n_states=int(self.n_states), covariance_type="full", n_iter=1000),
-                         cancel=cancel)
+        fit = fit_traces(
+            self.counts,
+            HmmSettings(n_states=int(self.n_states), covariance_type="full", n_iter=1000),
+            cancel=cancel,
+        )
         if cancel is not None and cancel():
             raise CancelledError()
         self.states, self.transmat = np.asarray(fit.state_array), np.asarray(fit.transmat)
         occupancy = np.bincount(self.states, minlength=int(self.n_states))
         self.message = f"HMM of {self.n_states} states: " + ", ".join(
-            f"state {i} {n} bins" for i, n in enumerate(occupancy))
+            f"state {i} {n} bins" for i, n in enumerate(occupancy)
+        )
         return self.message
 
     def dwell_times(self) -> dict:
-        return compute_dwell_times(self.states, float(self.window_ms) / 1000.0) if self.states is not None else {}
+        return (
+            compute_dwell_times(self.states, float(self.window_ms) / 1000.0)
+            if self.states is not None
+            else {}
+        )
 
     def bic_curve(self, max_states: int = STATES[1], *, cancel: Callable[[], bool] | None = None):
         """Return the state-count criteria, forwarding an optional cancellation callback."""
-        return compute_bic_curve(self.counts, max_states=max_states, cancel=cancel) if self.loaded else []
+        return (
+            compute_bic_curve(self.counts, max_states=max_states, cancel=cancel)
+            if self.loaded
+            else []
+        )
 
     # ── files ─────────────────────────────────────────────────────────────
 
     def trace_table(self) -> tuple[np.ndarray, str, list[str]]:
         """``(data, header, formats)`` of the traces CSV: time, one column per channel, the state if there is one."""
-        labels = list(self.labels) if len(self.labels) == self.counts.shape[1] else [
-            f"ch{i}" for i in range(self.counts.shape[1])]
+        labels = (
+            list(self.labels)
+            if len(self.labels) == self.counts.shape[1]
+            else [f"ch{i}" for i in range(self.counts.shape[1])]
+        )
         with_states = self.states is not None and len(self.states) == len(self.time_axis)
         cols = [self.time_axis, *(self.counts[:, i] for i in range(self.counts.shape[1]))]
         if with_states:
             cols.append(np.asarray(self.states, dtype=int))
         header = ",".join(["time_s", *labels, *(["HMM_State"] if with_states else [])])
-        return np.column_stack(cols), header, ["%.6f"] * (1 + self.counts.shape[1]) + (["%d"] if with_states else [])
+        return (
+            np.column_stack(cols),
+            header,
+            ["%.6f"] * (1 + self.counts.shape[1]) + (["%d"] if with_states else []),
+        )
 
     def save_traces(self, path) -> pathlib.Path:
         data, header, fmts = self.trace_table()
@@ -268,24 +312,55 @@ class IntensityTraceModel:
         bst, traces, hists = base / "bst", base / "traces", base / "hist"
         for d in (base, bst, traces, hists):
             d.mkdir(parents=True, exist_ok=True)
-        save_burst_ids(self.states, self.time_axis, self.window_ms / 1000.0, tttrlib.TTTR(str(src)),
-                       output_dir=str(bst), file_path=self.path)
+        save_burst_ids(
+            self.states,
+            self.time_axis,
+            self.window_ms / 1000.0,
+            tttrlib.TTTR(str(src)),
+            output_dir=str(bst),
+            file_path=self.path,
+        )
         self.save_traces(traces / f"{stem}_traces.csv")
         if self.states is not None:
-            np.savetxt(str(traces / f"{stem}_state_traj.csv"),
-                       np.column_stack([self.time_axis, np.asarray(self.states, int)]), delimiter=",",
-                       header="time_s,HMM_State", comments="", fmt=["%.6f", "%d"])
+            np.savetxt(
+                str(traces / f"{stem}_state_traj.csv"),
+                np.column_stack([self.time_axis, np.asarray(self.states, int)]),
+                delimiter=",",
+                header="time_s,HMM_State",
+                comments="",
+                fmt=["%.6f", "%d"],
+            )
         fret = self.fret
         if fret is not None:
-            np.savetxt(str(traces / f"{stem}_fret_traj.csv"), np.column_stack([self.time_axis, fret]), delimiter=",",
-                       header="time_s,FRET_efficiency", comments="", fmt=["%.6f", "%.6f"])
+            np.savetxt(
+                str(traces / f"{stem}_fret_traj.csv"),
+                np.column_stack([self.time_axis, fret]),
+                delimiter=",",
+                header="time_s,FRET_efficiency",
+                comments="",
+                fmt=["%.6f", "%.6f"],
+            )
         for label, hist in self.histograms():
             if hist is not None:
                 name = "sum" if label == "Sum" else label
-                np.savetxt(str(hists / f"{stem}_hist_{name}.csv"), np.column_stack(hist), delimiter=",",
-                           header="bin_center,counts", comments="", fmt=["%.6f", "%d"])
+                np.savetxt(
+                    str(hists / f"{stem}_hist_{name}.csv"),
+                    np.column_stack(hist),
+                    delimiter=",",
+                    header="bin_center,counts",
+                    comments="",
+                    fmt=["%.6f", "%d"],
+                )
         if fret is not None:
-            h, edges = np.histogram(fret[np.isfinite(fret)], bins=np.linspace(0.0, 1.0, 51), density=True)
-            np.savetxt(str(hists / f"{stem}_fret_hist.csv"), np.column_stack([0.5 * (edges[:-1] + edges[1:]), h]),
-                       delimiter=",", header="fret_bin_center,density", comments="", fmt=["%.6f", "%.6f"])
+            h, edges = np.histogram(
+                fret[np.isfinite(fret)], bins=np.linspace(0.0, 1.0, 51), density=True
+            )
+            np.savetxt(
+                str(hists / f"{stem}_fret_hist.csv"),
+                np.column_stack([0.5 * (edges[:-1] + edges[1:]), h]),
+                delimiter=",",
+                header="fret_bin_center,density",
+                comments="",
+                fmt=["%.6f", "%.6f"],
+            )
         return base

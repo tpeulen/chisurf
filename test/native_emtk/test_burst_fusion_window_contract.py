@@ -118,7 +118,14 @@ def test_real_fragment_demo_worker_maps_and_curves_survive_views(tmp_path, monke
         statistics = copy.deepcopy(analysis.statistics)
         for size in ((1100, 720), (900, 650)):
             driver = Driver(app, size=size)
-            for tab in ("P(same)", "Proximity ratio", "Photons", "Duration", "Fragments", "All plots"):
+            for tab in (
+                "P(same)",
+                "Proximity ratio",
+                "Photons",
+                "Duration",
+                "Fragments",
+                "All plots",
+            ):
                 driver.draw(3)
                 driver.click(tab)
                 driver.draw(2)

@@ -90,9 +90,7 @@ def test_roundtrip_large_arrays(tmp_path) -> None:
     curve.y = np.random.default_rng(42).poisson(100, 4096).astype(float)
     payload = v5_payload([curve], [])
     db, restored, _, _ = _archive_and_restore(tmp_path, payload)
-    np.testing.assert_array_equal(
-        restored["datasets"]["big"]["arrays"]["y"]["values"], curve.y
-    )
+    np.testing.assert_array_equal(restored["datasets"]["big"]["arrays"]["y"]["values"], curve.y)
     db.close()
 
 

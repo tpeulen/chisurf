@@ -256,7 +256,14 @@ def test_every_control_has_a_tooltip(setups_file):
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
-        assert {"Continue", action_caption("save"), "Rename", "Delete", "Read", "Optical Setup..."} <= labels
+        assert {
+            "Continue",
+            action_caption("save"),
+            "Rename",
+            "Delete",
+            "Read",
+            "Optical Setup...",
+        } <= labels
         app.continue_to_browser()
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []

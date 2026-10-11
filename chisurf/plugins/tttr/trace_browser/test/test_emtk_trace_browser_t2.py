@@ -622,7 +622,13 @@ def test_every_control_has_a_tooltip(data_dir):
         inv = emtk_inventory(app)
         assert inv["controls_without_tooltip"] == []
         labels = {row["label"] for row in inv["interactive"]}
-        assert {"← Select setup", action_caption("open"), "Clear", "Clear caches", "Include subfolders"} <= labels
+        assert {
+            "← Select setup",
+            action_caption("open"),
+            "Clear",
+            "Clear caches",
+            "Include subfolders",
+        } <= labels
         app.model.request("open_folder", data_dir)
         settle(app)
         inv = emtk_inventory(app)

@@ -50,8 +50,11 @@ def native_reader_spec(view: ModelView | Mapping) -> dict:
                 raise ValueError(f"unsupported reader section {type(value).__name__}")
             return {
                 "type": kind,
-                **{field.name: convert(getattr(value, field.name))
-                   for field in dataclasses.fields(value) if getattr(value, field.name) is not None},
+                **{
+                    field.name: convert(getattr(value, field.name))
+                    for field in dataclasses.fields(value)
+                    if getattr(value, field.name) is not None
+                },
             }
         if isinstance(value, Mapping):
             return {key: convert(item) for key, item in value.items()}
@@ -85,14 +88,27 @@ class _DataSource:
         browse = action_item("browse", "browse", tr("Choose an input from disk."))
         buttons = [{**browse, "label": tr(browse["label"])}]
         if self.options.get("mmfdb", True) and self.options.get("mode") != "folder":
-            buttons.append({"label": tr("Database"), "action": "database",
-                            "description": tr("Choose a dataset from the database.")})
-        self.spec = {"sections": [
-            {"type": "value", "attr": "path", "kind": "str", "label": label,
-             "description": tip, "placeholder": self.options.get("placeholder", ""),
-             "read_only": self.options.get("read_only", False)},
-            {"type": "button_row", "buttons": buttons},
-        ]}
+            buttons.append(
+                {
+                    "label": tr("Database"),
+                    "action": "database",
+                    "description": tr("Choose a dataset from the database."),
+                }
+            )
+        self.spec = {
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "path",
+                    "kind": "str",
+                    "label": label,
+                    "description": tip,
+                    "placeholder": self.options.get("placeholder", ""),
+                    "read_only": self.options.get("read_only", False),
+                },
+                {"type": "button_row", "buttons": buttons},
+            ]
+        }
 
     @property
     def path(self) -> str:
@@ -124,7 +140,8 @@ class _DataSource:
         directory = current if current and mode == "folder" else current.parent if current else None
         self.app.file_source = self
         self.app.file_dialog = FileDialog(
-            tr("Choose input"), mode=mode,
+            tr("Choose input"),
+            mode=mode,
             filters=self.options.get("filter", "All files (*)"),
             directory=str(directory) if directory else None,
         )
@@ -155,8 +172,9 @@ class ReaderSettingsApp(ImApp):
         Existing MMFDB client; resolved lazily by DatasetPicker when omitted.
     """
 
-    def __init__(self, reader: Any, *, dataset_client: Any = None,
-                 g_factor_factory: Any = None) -> None:
+    def __init__(
+        self, reader: Any, *, dataset_client: Any = None, g_factor_factory: Any = None
+    ) -> None:
         self.model = reader
         self.dataset_client = dataset_client
         self.form = FormState()
@@ -238,8 +256,11 @@ class ReaderSettingsApp(ImApp):
     @property
     def primary_sources(self) -> dict[str, _DataSource]:
         """Return measurement inputs, excluding declared auxiliary settings files."""
-        return {name: source for name, source in self.sources.items()
-                if source.options.get("primary", True)}
+        return {
+            name: source
+            for name, source in self.sources.items()
+            if source.options.get("primary", True)
+        }
 
     def choose_input(self, on_selected=None) -> None:
         """Use the existing declared source picker for the shell's import action."""
@@ -260,15 +281,21 @@ class ReaderSettingsApp(ImApp):
             kind = section.get("type")
             if kind == "value" and section.get("kind") in {"file", "directory"}:
                 options = {
-                    "attr": section.get("attr"), "call": section.get("call"),
-                    "label": section.get("label"), "description": section.get("description"),
+                    "attr": section.get("attr"),
+                    "call": section.get("call"),
+                    "label": section.get("label"),
+                    "description": section.get("description"),
                     "placeholder": section.get("placeholder", ""),
                     "read_only": section.get("read_only", False),
                     "mode": "folder" if section["kind"] == "directory" else "open",
                 }
                 section.update(type="custom", key="data_source", options=options)
                 kind = "custom"
-            if kind not in SECTION_KEYS or section.get("set_action") or section.get("collapsed_when"):
+            if (
+                kind not in SECTION_KEYS
+                or section.get("set_action")
+                or section.get("collapsed_when")
+            ):
                 raise ValueError(f"unsupported reader section {kind!r}")
             if kind == "custom":
                 key = section.get("key")
@@ -281,7 +308,9 @@ class ReaderSettingsApp(ImApp):
                     source = _DataSource(self, section)
                     if not source.attr or not hasattr(source.target, source.attr):
                         raise ValueError("data_source requires a declared reader attribute")
-                    if options.get("call") and not callable(getattr(source.target, options["call"], None)):
+                    if options.get("call") and not callable(
+                        getattr(source.target, options["call"], None)
+                    ):
                         raise ValueError("data_source requires a callable declared setter")
                     if source.name in self.sources:
                         raise ValueError(f"duplicate reader input {source.name!r}")

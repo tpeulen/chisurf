@@ -514,7 +514,10 @@ def write_burst_states(
         )
         written.append(
             write_h2mm_container(
-                container if container is not None else resolve_source(name, search_from), frame, None, parameters=parameters
+                container if container is not None else resolve_source(name, search_from),
+                frame,
+                None,
+                parameters=parameters,
             )
         )
     return written

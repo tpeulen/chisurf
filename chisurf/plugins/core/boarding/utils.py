@@ -211,7 +211,10 @@ def _user_settings_cells(path) -> dict:
     if path.is_file():
         return _status_cells("settings_chisurf.yaml", "OK", _OK_COLOR, str(path))
     return _status_cells(
-        "settings_chisurf.yaml", "defaults", _NEUTRAL_COLOR, "release defaults in use; no overrides yet"
+        "settings_chisurf.yaml",
+        "defaults",
+        _NEUTRAL_COLOR,
+        "release defaults in use; no overrides yet",
     )
 
 

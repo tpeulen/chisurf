@@ -20,7 +20,7 @@ import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 
-_PROBE = r'''
+_PROBE = r"""
 import json, sys
 
 class BlockQt:
@@ -42,7 +42,7 @@ for module_name, attribute in spec:
     except Exception as exc:
         failures[f"{module_name}:{attribute}"] = f"{type(exc).__name__}: {exc}"
 print(json.dumps(failures))
-'''
+"""
 
 
 def _factories() -> list[tuple[str, str]]:

@@ -281,7 +281,6 @@ class _SampleComboBridge:
         return self._combo.text
 
 
-
 class _UuidLabelBridge:
     """The sample-UUID line: Qt's ``setText``/``text`` on the form's caption."""
 
@@ -485,7 +484,9 @@ class FitInfo(plotbase.Plot):
         )
         # Bridges: every existing reader/writer keeps its vocabulary.
         self.analysis_id_edit = _ReadOnlyBridge(self.analysis_form, "analysis_id")
-        self.method_edit = _LineBridge(self.analysis_form, "method", self.analysis_form.method_value)
+        self.method_edit = _LineBridge(
+            self.analysis_form, "method", self.analysis_form.method_value
+        )
         self.sample_combo = _SampleComboBridge(self)
         self.sample_uuid_label = _UuidLabelBridge(self.analysis_form)
         self.sample_details_edit = _DetailBridge(self.analysis_form.sample_details)

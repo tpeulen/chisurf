@@ -104,7 +104,11 @@ def test_the_search_reproduces_the_metadata_of_the_frozen_run(models):
 
 def test_the_selected_traces_and_the_decays_are_bit_identical(models):
     searched, _ = models
-    mcs, dt, decay = REFERENCE["panes"]["mcs"], REFERENCE["panes"]["dt"], REFERENCE["panes"]["decay"]
+    mcs, dt, decay = (
+        REFERENCE["panes"]["mcs"],
+        REFERENCE["panes"]["dt"],
+        REFERENCE["panes"]["decay"],
+    )
     trace = searched.trace_curves()["selected"]
     assert _same(trace[0], mcs["items"][1]["x"]) and _same(trace[1], mcs["items"][1]["y"])
     inter = searched.dt_curves()["selected"]

@@ -107,12 +107,19 @@ def test_cusum_and_kalman_parameters_reach_the_search(model):  # noqa: F811
     model.search.alpha, model.search.beta = "0.02", "0.03"
     p = model.analysis_settings().photon_filter.tttrlib_search
     assert p.algorithm == "cusum_sprt"
-    assert (p.parameters["background_cps"], p.parameters["signal_to_background_ratio"]) == (3210.0, 12.5)
+    assert (p.parameters["background_cps"], p.parameters["signal_to_background_ratio"]) == (
+        3210.0,
+        12.5,
+    )
     assert (p.parameters["alpha"], p.parameters["beta"]) == (0.02, 0.03)
     model.set_algorithm("kalman")
     model.search.r_scale, model.search.z_thresh, model.search.min_len = "0.25", "4.5", "6"
     p = model.analysis_settings().photon_filter.tttrlib_search
-    assert (p.parameters["r_scale"], p.parameters["z_thresh"], p.parameters["min_len"]) == (0.25, 4.5, 6)
+    assert (p.parameters["r_scale"], p.parameters["z_thresh"], p.parameters["min_len"]) == (
+        0.25,
+        4.5,
+        6,
+    )
 
 
 def test_every_search_is_selectable_and_reported(model):  # noqa: F811
@@ -153,7 +160,11 @@ def test_all_means_no_selection(model):  # noqa: F811
     assert model.detector_options()[0] == "All" and model.window_options()[0] == "All"
     # the options follow the detector setup
     model.set_setup(
-        {"detectors": {"x": {"chs": [3]}}, "windows": {"w": [0, 10]}, "tttr_reading": {"file_type": "SPC-130"}}
+        {
+            "detectors": {"x": {"chs": [3]}},
+            "windows": {"w": [0, 10]},
+            "tttr_reading": {"file_type": "SPC-130"},
+        }
     )
     assert model.detector_options() == ["All", "x"] and model.window_options() == ["All", "w"]
     assert model.detector == "All", "a selection that left the setup falls back to All"
@@ -224,7 +235,11 @@ def _database(tmp_path, user):
     return db, session_from_auth(db, {"token": token})
 
 
-def test_mmfdb_output_needs_a_sample_and_registers_the_raw_files_to_it(model, tmp_path, monkeypatch):  # noqa: F811
+def test_mmfdb_output_needs_a_sample_and_registers_the_raw_files_to_it(
+    model,
+    tmp_path,
+    monkeypatch,  # noqa: F811
+):  # noqa: F811
     """MMFDB output binds the raw content to the sample, with the detector setup, and says when there is no sample."""
     from mmfdb.models import SampleDefinition
     from mmfdb.samples.sample_manager import create_sample
@@ -257,7 +272,10 @@ def test_mmfdb_output_needs_a_sample_and_registers_the_raw_files_to_it(model, tm
     # once registered the content knows its sample: no Sample field is needed any more
     model.sample_id = ""
     again = model.mmfdb_context()
-    assert again["sample_id"] == sample_id and again["source_artifact_ids"] == context["source_artifact_ids"]
+    assert (
+        again["sample_id"] == sample_id
+        and again["source_artifact_ids"] == context["source_artifact_ids"]
+    )
 
 
 def test_mmfdb_only_output_runs_the_batch_analysis(model, monkeypatch):  # noqa: F811
@@ -325,7 +343,9 @@ def test_a_preview_still_shows_the_table_it_already_has(model):  # noqa: F811
     table = model.display_frame
     model.load_diagnostics()
     assert model.has_processed and not model.preview
-    assert model.display_frame is table, "the searched table is not replaced by the window's preview"
+    assert model.display_frame is table, (
+        "the searched table is not replaced by the window's preview"
+    )
 
 
 def test_frames_stay_paired_with_their_files(model):  # noqa: F811
@@ -456,7 +476,10 @@ def _diagnostic(model, tttr, selected):  # noqa: F811
     }
 
 
-def test_the_count_rate_trace_draws_all_before_selected_and_respects_the_toggles(model, monkeypatch):  # noqa: F811
+def test_the_count_rate_trace_draws_all_before_selected_and_respects_the_toggles(
+    model,
+    monkeypatch,  # noqa: F811
+):  # noqa: F811
     """The selected trace is last (drawn on top) and a disabled trace is not even computed."""
     _Trace.calls.clear()
     _diagnostic(model, _Trace(), [False, False, True, False, True])
@@ -488,7 +511,9 @@ def test_the_dt_curves_are_thinned_for_a_large_measurement(model, monkeypatch): 
     n = 2_000_000
     tttr = _Trace(n=n)
     tttr.macro_times = np.arange(n, dtype=np.int64)
-    tttr.macro_times[1_000_000:1_000_050] += np.arange(50) * 0  # a stretch of equal times: a dense burst
+    tttr.macro_times[1_000_000:1_000_050] += (
+        np.arange(50) * 0
+    )  # a stretch of equal times: a dense burst
     _diagnostic(model, tttr, np.ones(n, dtype=bool))
     model.window_length_s = 0.0
     budget = 10_000
@@ -536,7 +561,11 @@ def test_the_burst_durations_histogram_is_in_milliseconds(model):  # noqa: F811
     tttr = _Trace(n=4)
     tttr.header = _Header(0.002)
     tttr.macro_times = np.array([0, 5, 8, 20])
-    model.diagnostic = {"tttr": tttr, "start_stop": np.array([[0, 1], [1, 3]]), "selected": np.ones(4, bool)}
+    model.diagnostic = {
+        "tttr": tttr,
+        "start_stop": np.array([[0, 1], [1, 3]]),
+        "selected": np.ones(4, bool),
+    }
     model.burst_bins = 3
     centres, counts, width = model.duration_histogram()
     assert counts.sum() == 2 and 10.0 <= centres.min() and centres.max() <= 30.0
@@ -575,14 +604,24 @@ def test_the_gmm_settings_reach_the_estimator(model):  # noqa: F811
 
     assert model.gmm_settings == dict(DEFAULT_GMM_SETTINGS)
     assert set(DEFAULT_GMM_SETTINGS) == {
-        "covariance_type", "random_state", "max_iter", "n_init", "tol", "max_components", "reg_covar",
+        "covariance_type",
+        "random_state",
+        "max_iter",
+        "n_init",
+        "tol",
+        "max_components",
+        "reg_covar",
     }
     model.gmm.covariance_type = "diag"
     model.gmm.max_iter = "123"
     model.gmm.random_state = 7
     assert model.gmm_settings["covariance_type"] == "diag" and model.gmm_settings["max_iter"] == 123
     estimator = model._gmm(2)
-    assert estimator.covariance_type == "diag" and estimator.max_iter == 123 and estimator.random_state == 7
+    assert (
+        estimator.covariance_type == "diag"
+        and estimator.max_iter == 123
+        and estimator.random_state == 7
+    )
     with pytest.raises(AttributeError):
         model.gmm.not_a_setting = 1
     # a round trip through the settings file is loss-less
@@ -624,7 +663,12 @@ def test_pooling_the_files_stacks_every_files_bursts_for_the_histogram_and_the_t
     model.run()
     assert model.pool_files is False
     assert len(model.burst_rows()) == 71 and model.histogram() is not None
-    model.hist_feature, model.hist_bins, model.hist_min, model.hist_max = "Proximity Ratio", 61, 0.0, 1.0
+    model.hist_feature, model.hist_bins, model.hist_min, model.hist_max = (
+        "Proximity Ratio",
+        61,
+        0.0,
+        1.0,
+    )
     single = model.histogram()[1].sum()
     model.pool_files = True
     assert len(model.burst_rows()) == 198
@@ -647,7 +691,12 @@ def test_the_summary_reports_the_mean_photons_per_burst_in_each_detector(model):
     """The Qt info box listed ``Mean ph (green)`` and ``Mean ph (red)`` beside the overall means."""
     model.run()
     rows = {r["key"]: r["value"] for r in model.summary_rows()}
-    assert {"Mean photons", "Mean duration (ms)", "Mean photons (green)", "Mean photons (red)"} <= set(rows)
+    assert {
+        "Mean photons",
+        "Mean duration (ms)",
+        "Mean photons (green)",
+        "Mean photons (red)",
+    } <= set(rows)
     frame = model.display_frame
     from chisurf.core.datastore import numeric_column
 

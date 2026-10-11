@@ -57,7 +57,9 @@ def settle(ui, limit=60.0):
     """Frames until the running job is done, as the host draws them."""
     tool = ui.app.tool
     t0 = time.time()
-    while (tool.job.running or tool.job.future is not None or tool.process_pending) and time.time() - t0 < limit:
+    while (
+        tool.job.running or tool.job.future is not None or tool.process_pending
+    ) and time.time() - t0 < limit:
         if tool.job.future is not None:
             try:
                 tool.job.future.result(timeout=0.5)
@@ -93,7 +95,9 @@ def test_files_button_opens_the_dialog_cancel_closes_it_and_open_queues_the_pick
     queue_both(ui)
     assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu", "b.ptu"]
     assert ui.drawn("a.ptu") and ui.drawn("b.ptu") and not ui.drawn("No files queued.")
-    assert ui.app.time_window_gui.preview_index == 0 and ui.app.tool.preview_data is not None   # the first is previewed
+    assert (
+        ui.app.time_window_gui.preview_index == 0 and ui.app.tool.preview_data is not None
+    )  # the first is previewed
 
 
 def test_the_file_dialog_closes_with_its_x_and_with_escape(ui):
@@ -139,7 +143,7 @@ def test_clicking_a_file_row_previews_that_file(ui):
 
 
 def test_remove_button_takes_the_previewed_file_off_the_queue(ui):
-    ui.click("− Remove")                                                       # nothing queued: nothing happens
+    ui.click("− Remove")  # nothing queued: nothing happens
     assert ui.app.tool._file_paths == []
     queue_both(ui)
     ui.click("b.ptu")
@@ -147,7 +151,7 @@ def test_remove_button_takes_the_previewed_file_off_the_queue(ui):
     ui.click("− Remove")
     settle(ui)
     assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu"] and not ui.drawn("b.ptu")
-    assert ui.app.time_window_gui.preview_index == 0                           # the neighbour is previewed now
+    assert ui.app.time_window_gui.preview_index == 0  # the neighbour is previewed now
 
 
 def test_clear_button_empties_the_queue_the_preview_and_the_log(ui):
@@ -156,8 +160,16 @@ def test_clear_button_empties_the_queue_the_preview_and_the_log(ui):
     settle(ui)
     assert ui.app.tool._log_lines
     ui.click("Clear")
-    assert ui.app.tool._file_paths == [] and ui.app.tool._log_lines == [] and ui.app.tool.preview_data is None
-    assert ui.drawn("No files queued.") and ui.drawn("Cleared") and ui.drawn("Processing log will appear here…")
+    assert (
+        ui.app.tool._file_paths == []
+        and ui.app.tool._log_lines == []
+        and ui.app.tool.preview_data is None
+    )
+    assert (
+        ui.drawn("No files queued.")
+        and ui.drawn("Cleared")
+        and ui.drawn("Processing log will appear here…")
+    )
 
 
 # -- the duration and output fields ----------------------------------------------------------------------
@@ -166,7 +178,7 @@ def test_time_window_field_takes_typed_text_and_the_preview_follows(ui):
     ui.client.previews = []
     set_time_window(ui, "25")
     assert ui.app.tool.time_window_ms == 25.0 and ui.drawn("25.000")
-    set_time_window(ui, "0")                                                    # the Qt spin box's range
+    set_time_window(ui, "0")  # the Qt spin box's range
     assert ui.app.tool.time_window_ms == 0.001
     set_time_window(ui, "99999999")
     assert ui.app.tool.time_window_ms == 3_600_000.0
@@ -183,11 +195,11 @@ def test_time_window_arrows_step_by_one_millisecond(ui):
 
 
 def test_output_folder_field_takes_typed_text(ui):
-    ui.click("Auto (derived from first fil…")                                 # the field's hint
+    ui.click("Auto (derived from first fil…")  # the field's hint
     ui.type("results")
     ui.enter()
     assert ui.app.tool.output_dir_text == "results" and ui.drawn("results")
-    ui.key(0x01000003)                                                          # Backspace
+    ui.key(0x01000003)  # Backspace
     assert ui.app.tool.output_dir_text == "result"
 
 
@@ -216,11 +228,17 @@ def test_process_button_runs_the_analysis_with_the_typed_settings_and_logs_the_w
     ui.click("Process")
     settle(ui)
     files, window, output = ui.client.analyzed[-1]
-    assert [p.name for p in files] == ["a.ptu", "b.ptu"] and window == 25.0 and output == folder / "out"
+    assert (
+        [p.name for p in files] == ["a.ptu", "b.ptu"]
+        and window == 25.0
+        and output == folder / "out"
+    )
     assert ui.app.tool.message == "Processing complete"
-    assert any(line.startswith("Done: 2 file(s), 3 total windows") for line in ui.app.tool._log_lines)
+    assert any(
+        line.startswith("Done: 2 file(s), 3 total windows") for line in ui.app.tool._log_lines
+    )
     assert ui.drawn("Processing complete") and ui.drawn("3 windows total")
-    assert any("Done:" in s for s in ui.strings)                                # the log window shows it
+    assert any("Done:" in s for s in ui.strings)  # the log window shows it
 
 
 def test_a_failing_process_is_shown_on_the_status_line_after_the_click(folder):
@@ -242,12 +260,14 @@ def test_stop_button_discards_the_running_job(folder):
     ui.click("Process")
     assert client.started.wait(30)
     ui.frame(3)
-    assert ui.drawn("Working…") and ui.drawn("Stop")                            # the job window
+    assert ui.drawn("Working…") and ui.drawn("Stop")  # the job window
     ui.click("Stop")
     assert app.tool.message.startswith("Stopped publication.")
     client.gate.set()
     settle(ui)
-    assert app.tool._last_result is None and not any(l.startswith("Done:") for l in app.tool._log_lines)
+    assert app.tool._last_result is None and not any(
+        l.startswith("Done:") for l in app.tool._log_lines
+    )
     app.close()
 
 
@@ -264,18 +284,18 @@ def test_guide_button_starts_the_tour_which_waits_for_each_control(ui):
     tour = ui.app.time_window_gui.tour
     ui.click(action_caption("guide"))
     assert tour.active and ui.drawn("Step 1 of 5: Queue the files") and tour.awaiting
-    ui.click("Files")                                                           # the awaited button
+    ui.click("Files")  # the awaited button
     assert not tour.awaiting
     ui.click("Cancel")
     tour.start(1)
     ui.frame(2)
     assert tour.awaiting
-    set_time_window(ui, "12")                                                   # the awaited field
+    set_time_window(ui, "12")  # the awaited field
     assert not tour.awaiting
     tour.start(4)
     ui.frame(2)
     assert tour.awaiting
-    ui.click("Process")                                                         # the awaited button
+    ui.click("Process")  # the awaited button
     assert not tour.awaiting
     ui.click("Close Tour")
     assert not tour.active
@@ -303,12 +323,22 @@ def test_a_drop_reaches_the_native_and_the_qt_host(ui, folder, qapp):
     host.resize(1200, 800)
     mime = QtCore.QMimeData()
     mime.setUrls([QtCore.QUrl.fromLocalFile(str(folder / "b.ptu"))])
-    enter = QtGui.QDragEnterEvent(QtCore.QPoint(10, 10), QtCore.Qt.CopyAction, mime,
-                                  QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    enter = QtGui.QDragEnterEvent(
+        QtCore.QPoint(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dragEnterEvent(enter)
     assert enter.isAccepted()
-    drop = QtGui.QDropEvent(QtCore.QPointF(10, 10), QtCore.Qt.CopyAction, mime,
-                            QtCore.Qt.LeftButton, QtCore.Qt.NoModifier)
+    drop = QtGui.QDropEvent(
+        QtCore.QPointF(10, 10),
+        QtCore.Qt.CopyAction,
+        mime,
+        QtCore.Qt.LeftButton,
+        QtCore.Qt.NoModifier,
+    )
     host.dropEvent(drop)
     assert drop.isAccepted() and [p.name for p in other.tool._file_paths] == ["b.ptu"]
     other.close()

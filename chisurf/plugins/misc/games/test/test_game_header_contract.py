@@ -18,8 +18,13 @@ from .test_game_lifecycle_contract import (
     press_direction,
 )
 
-NARROW = {"pong": (560, 420), "breakout": (560, 480), "tetris": (400, 480),
-          "number": (400, 320), "mines": (400, 400)}
+NARROW = {
+    "pong": (560, 420),
+    "breakout": (560, 480),
+    "tetris": (400, 480),
+    "number": (400, 320),
+    "mines": (400, 400),
+}
 ACTIONS = {"open_help", "restart_game", "start_guide"}
 
 
@@ -170,8 +175,10 @@ def test_header_translation_preserves_single_row(monkeypatch):
     app = make_game("number")
     try:
         painter = Driver(app, NARROW["number"]).draw(2)
-        captions = {icon_caption(b["icon"], translations[b["label"]])
-                    for b in app.header_spec["sections"][0]["buttons"]}
+        captions = {
+            icon_caption(b["icon"], translations[b["label"]])
+            for b in app.header_spec["sections"][0]["buttons"]
+        }
         assert captions <= set(painter.strings)
         assert len({rect[1] for rect in app.header_form.rects.values()}) == 1
         assert all(rect[1] + rect[3] <= 34 for rect in app.header_form.rects.values())

@@ -141,7 +141,12 @@ def test_draws_home_and_page_without_pictograms(app, size):
     app.model.open_page(PAGE)
     painter = _draw(app, size)
     assert any("Förster resonance energy transfer" in s for s in painter.strings)
-    pictured = sorted({s for s in painter.strings if EMOJI.search(s)})
+    # The only pictograms are the shared action vocabulary's own (Help, Guide, ...): the same action looks the
+    # same in every window; labels of the documentation itself carry none.
+    from chisurf.plugins.emtk_layout import action_caption
+
+    canonical = {action_caption(key) for key in ("help", "guide", "close", "copy", "open", "save")}
+    pictured = sorted({s for s in painter.strings if EMOJI.search(s)} - canonical)
     assert pictured == []
 
 

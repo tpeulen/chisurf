@@ -133,7 +133,10 @@ def test_splitter_tour_waits_for_both_pickers_and_run_without_changing_events(so
         tool._model.reset_macro_times = False
         next_step(driver, gui.tour)
         driver.draw(2)
-        assert (gui.tour.step_idx, gui.tour.awaiting) == (2, False), (gui.tour.step_idx, gui.tour.awaiting)
+        assert (gui.tour.step_idx, gui.tour.awaiting) == (2, False), (
+            gui.tour.step_idx,
+            gui.tour.awaiting,
+        )
         next_step(driver, gui.tour)
         driver.draw(2)
         assert gui.tour.step_idx == 3, gui.tour.step_idx

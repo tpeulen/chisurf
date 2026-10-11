@@ -1,4 +1,5 @@
 """Compatibility alias for the canonical native document module."""
+
 import sys
 
 from chisurf.emtk.node_editor import document as _module

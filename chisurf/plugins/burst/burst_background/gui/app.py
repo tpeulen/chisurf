@@ -216,7 +216,9 @@ class BurstBackgroundGui:
         im.text(tr("Min counts / bin:"))
         im.set_next_item_width(avail_w)
         ch_cnt, new_cnt = im.drag_int("##min_cnt", int(self.model.min_counts), 1, 0, 1000)
-        im.set_item_tooltip(tr("Bins with fewer counts than this are ignored when fitting the tail."))
+        im.set_item_tooltip(
+            tr("Bins with fewer counts than this are ignored when fitting the tail.")
+        )
         if ch_cnt and new_cnt >= 0:
             self.model.min_counts = int(new_cnt)
             self.model.update()
@@ -246,7 +248,9 @@ class BurstBackgroundGui:
         self.remember("toolAction_run")
         self.remember("bg_run")
         im.set_item_tooltip(
-            tr("Fit the tail of the inter-photon-time distribution to get the per-detector background rates.")
+            tr(
+                "Fit the tail of the inter-photon-time distribution to get the per-detector background rates."
+            )
         )
         im.pop_style_color(3)
 

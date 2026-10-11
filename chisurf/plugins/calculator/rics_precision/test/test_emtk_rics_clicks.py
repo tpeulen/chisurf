@@ -26,7 +26,7 @@ from chisurf.plugins.emtk_layout import action_caption
 @pytest.fixture
 def ui():
     app = RicsPrecisionApp()
-    app.model.n_repeats, app.model.n_images = 10, 20                    # a small estimator, as in the baseline
+    app.model.n_repeats, app.model.n_images = 10, 20  # a small estimator, as in the baseline
     pointer = Pointer(app)
     yield pointer
     app.close()
@@ -63,14 +63,14 @@ def unfold(ui, title):
 def test_predict_button_runs_the_sweep_and_the_table_and_verdict_appear(ui):
     assert ui.drawn(ui.app.model.status) and not ui.drawn("314.8")
     ui.click("Predict")
-    assert ui.app.job.busy or ui.app.model.sweep is not None                         # started by the click
+    assert ui.app.job.busy or ui.app.model.sweep is not None  # started by the click
     finish(ui)
     assert ui.app.model.sweep_rows() == QT_ROWS
-    assert ui.drawn(QT_STATUS)                                                       # the verdict line
-    for row in QT_ROWS:                                                              # every table cell
+    assert ui.drawn(QT_STATUS)  # the verdict line
+    for row in QT_ROWS:  # every table cell
         for key in ("dwell", "line", "frame", "error"):
             assert ui.drawn(row[key]), (row, key)
-    assert not ui.drawn("press Predict to sweep the dwell time")                     # the plot has its curve
+    assert not ui.drawn("press Predict to sweep the dwell time")  # the plot has its curve
 
 
 def test_predict_is_greyed_while_the_sweep_runs_and_inputs_cannot_be_typed(ui, monkeypatch):
@@ -92,13 +92,13 @@ def test_predict_is_greyed_while_the_sweep_runs_and_inputs_cannot_be_typed(ui, m
         time.sleep(0.05)
         ui.frame()
     assert ui.drawn("Sweeping (25 %)")
-    ui.click("Predict")                                                              # greyed: no second sweep
+    ui.click("Predict")  # greyed: no second sweep
     before = ui.app.model.diffusion_coefficient
     ui.click(center(ui, "diffusion_coefficient"))
     ui.key(ord("A"), "a", CONTROL_MODIFIER)
     ui.type("77")
     ui.enter()
-    assert ui.app.model.diffusion_coefficient == before                              # the inputs are greyed too
+    assert ui.app.model.diffusion_coefficient == before  # the inputs are greyed too
     gate.set()
     finish(ui)
     assert ui.app.model.sweep_rows() == QT_ROWS
@@ -114,14 +114,18 @@ def test_a_failing_prediction_shows_the_message_and_clears_the_curve(ui):
     ui.click("Predict")
     finish(ui)
     assert ui.app.model.status == QT_FAILURE
-    assert any(QT_FAILURE.split(":")[0] in s for s in ui.strings) and ui.drawn("press Predict to sweep the dwell time")
-    assert not ui.drawn("314.8")                                                     # no stale table row
-    ui.click("Export CSV")                                                           # nothing to export now
+    assert any(QT_FAILURE.split(":")[0] in s for s in ui.strings) and ui.drawn(
+        "press Predict to sweep the dwell time"
+    )
+    assert not ui.drawn("314.8")  # no stale table row
+    ui.click("Export CSV")  # nothing to export now
     assert ui.app.dialog is None and ui.drawn("Predict something first.")
 
 
 # -- Export CSV ------------------------------------------------------------------------------------
-def test_export_csv_before_a_prediction_says_so_and_after_writes_the_file(ui, tmp_path, monkeypatch):
+def test_export_csv_before_a_prediction_says_so_and_after_writes_the_file(
+    ui, tmp_path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
     ui.click("Export CSV")
     assert ui.app.dialog is None and ui.drawn("Predict something first.")
@@ -132,17 +136,22 @@ def test_export_csv_before_a_prediction_says_so_and_after_writes_the_file(ui, tm
     ui.click("Cancel")
     assert ui.app.dialog is None and not list(tmp_path.iterdir())
     ui.click("Export CSV")
-    ui.click("Save")                                                                 # the dialog's own default name
+    ui.click("Save")  # the dialog's own default name
     assert (tmp_path / "rics_precision.csv").read_text() == QT_CSV
-    assert any(t.startswith("Wrote") for t in ui.strings) and ui.app.notice == f"Wrote {tmp_path / 'rics_precision.csv'}"
+    assert (
+        any(t.startswith("Wrote") for t in ui.strings)
+        and ui.app.notice == f"Wrote {tmp_path / 'rics_precision.csv'}"
+    )
 
 
-def test_export_csv_name_typed_without_a_suffix_gets_csv_and_the_dialog_x_closes_it(ui, tmp_path, monkeypatch):
+def test_export_csv_name_typed_without_a_suffix_gets_csv_and_the_dialog_x_closes_it(
+    ui, tmp_path, monkeypatch
+):
     monkeypatch.chdir(tmp_path)
     ui.click("Predict")
     finish(ui)
     ui.click("Export CSV")
-    ui.click("rics_precision.csv")                                                   # the name field holds the default
+    ui.click("rics_precision.csv")  # the name field holds the default
     ui.key(ord("A"), "a", CONTROL_MODIFIER)
     ui.type("plan")
     ui.click("Save")
@@ -168,7 +177,9 @@ def test_export_to_an_unwritable_place_is_reported(ui, tmp_path, monkeypatch):
     ui.type("blocker/out")
     ui.click("Save")
     assert ui.app.notice.startswith("Could not write out.csv:")
-    assert any(t.startswith("Could not write out.csv:") for t in ui.strings)         # on the status line (wrapped)
+    assert any(
+        t.startswith("Could not write out.csv:") for t in ui.strings
+    )  # on the status line (wrapped)
 
 
 # -- the fields ----------------------------------------------------------------------------------------
@@ -212,16 +223,16 @@ def test_each_field_has_working_arrows(ui, name):
     ui.frame(2)
     x, y, w, h = ui.app.form.rects[f"{name}.stepper"]
     start = getattr(ui.app.model, name)
-    ui.click((x + w / 2, y + h * 0.25))                                              # up
+    ui.click((x + w / 2, y + h * 0.25))  # up
     up = getattr(ui.app.model, name)
-    ui.click((x + w / 2, y + h * 0.75))                                              # down
+    ui.click((x + w / 2, y + h * 0.75))  # down
     ui.click((x + w / 2, y + h * 0.75))
     down = getattr(ui.app.model, name)
     assert up > start and down < up, (name, start, up, down)
 
 
 def test_typed_values_reach_the_next_prediction(ui):
-    set_field(ui, "pixel_time_us", "15.8")                                           # the dwell the Qt run found best
+    set_field(ui, "pixel_time_us", "15.8")  # the dwell the Qt run found best
     ui.click("Predict")
     finish(ui)
     assert ui.app.model.pixel_time_us == 15.8
@@ -235,7 +246,7 @@ def test_membrane_checkbox_switches_the_2d_geometry(ui):
     ui.click("Predict")
     finish(ui)
     membrane_rows = ui.app.model.sweep_rows()
-    assert membrane_rows != QT_ROWS                                                  # another geometry, other numbers
+    assert membrane_rows != QT_ROWS  # another geometry, other numbers
     ui.click(center(ui, "two_d"))
     assert ui.app.model.two_d is False
     ui.click("Predict")
@@ -244,9 +255,15 @@ def test_membrane_checkbox_switches_the_2d_geometry(ui):
 
 
 # -- the panels --------------------------------------------------------------------------------------------
-@pytest.mark.parametrize(("title", "field", "open_at_first"), [
-    ("Sample", "D [µm²/s]", True), ("Optics", "w_r [µm]", True), ("Scan", "Pixel dwell [µs]", True),
-    ("Estimator", "Lags fitted", False)])
+@pytest.mark.parametrize(
+    ("title", "field", "open_at_first"),
+    [
+        ("Sample", "D [µm²/s]", True),
+        ("Optics", "w_r [µm]", True),
+        ("Scan", "Pixel dwell [µs]", True),
+        ("Estimator", "Lags fitted", False),
+    ],
+)
 def test_panel_headers_fold_and_unfold(ui, title, field, open_at_first):
     assert ui.drawn(field) is open_at_first
     ui.click(title)
@@ -265,17 +282,21 @@ def test_help_button_opens_and_closes_the_help_window(ui):
 
 def test_guide_button_starts_the_tour_and_it_waits_for_the_controls(ui):
     ui.click(action_caption("guide"))
-    assert ui.app.tour.active and ui.drawn("Step 1 of 6: The one tool here you use before the measurement")
+    assert ui.app.tour.active and ui.drawn(
+        "Step 1 of 6: The one tool here you use before the measurement"
+    )
     ui.app.tour.start(1)
     ui.frame(2)
     assert ui.app.tour.awaiting and ui.drawn("Step 2 of 6: Start from the D you expect")
-    set_field(ui, "diffusion_coefficient", "30")                                     # the highlighted field
+    set_field(ui, "diffusion_coefficient", "30")  # the highlighted field
     assert not ui.app.tour.awaiting
-    predict_step = next(i for i, s in enumerate(ui.app.tour.steps) if s["target"] == {"action": "request_predict"})
+    predict_step = next(
+        i for i, s in enumerate(ui.app.tour.steps) if s["target"] == {"action": "request_predict"}
+    )
     ui.app.tour.start(predict_step)
     ui.frame(2)
     assert ui.app.tour.awaiting
-    ui.click("Predict")                                                              # the highlighted button
+    ui.click("Predict")  # the highlighted button
     assert not ui.app.tour.awaiting
     finish(ui)
     ui.click("Close Tour")
@@ -296,9 +317,11 @@ def test_the_plot_takes_the_wheel_and_a_drag_without_losing_the_curve(ui):
     ui.click("Predict")
     finish(ui)
     px, py, pw, ph = ui.app.item_rects["plot"]
-    ui.wheel((px + pw / 2, py + ph / 2), 3)                                          # zoom in
-    ui.drag((px + pw * 0.5, py + ph * 0.5), (px + pw * 0.4, py + ph * 0.5))          # pan
-    assert ui.app.model.sweep_rows() == QT_ROWS and not ui.drawn("press Predict to sweep the dwell time")
+    ui.wheel((px + pw / 2, py + ph / 2), 3)  # zoom in
+    ui.drag((px + pw * 0.5, py + ph * 0.5), (px + pw * 0.4, py + ph * 0.5))  # pan
+    assert ui.app.model.sweep_rows() == QT_ROWS and not ui.drawn(
+        "press Predict to sweep the dwell time"
+    )
 
 
 def test_clicking_a_table_header_sorts_the_rows_by_that_column(ui):
@@ -306,12 +329,12 @@ def test_clicking_a_table_header_sorts_the_rows_by_that_column(ui):
     finish(ui)
     first = [t for t in ui.painter.texts if t[5] in ("0.5", "500")]
     assert first, "the dwell cells are drawn"
-    ui.click("Error [%]")                                                            # ascending: the smallest first
+    ui.click("Error [%]")  # ascending: the smallest first
     assert ui.drawn("▴ Error [%]")
     ys = {t[5]: t[1] for t in ui.painter.texts if t[5] in ("314.8", "4.5")}
     assert ys["4.5"] < ys["314.8"]
-    ui.click("▴ Error [%]")                                                          # again: descending
+    ui.click("▴ Error [%]")  # again: descending
     ui.frame(3)
     assert ui.drawn("▾ Error [%]")
     ys = {t[5]: t[1] for t in ui.painter.texts if t[5] in ("314.8", "4.5")}
-    assert ys["314.8"] < ys["4.5"]                                                   # the largest error is the first row
+    assert ys["314.8"] < ys["4.5"]  # the largest error is the first row

@@ -40,7 +40,8 @@ def explicit_reference(model):
     settings = dataclasses.replace(model.settings)
     irf = tttrlib.TTTR(model.irf_files[0])
     settings.irf, settings.background = build_irf_vv_vh(
-        irf, detector_chs=settings.detector_chs,
+        irf,
+        detector_chs=settings.detector_chs,
         micro_time_range=settings.micro_time_range,
         micro_time_binning=settings.micro_time_binning,
     )
@@ -73,8 +74,10 @@ def test_real_filepath_fit23_matches_explicit_scanner(measured_demo):
 
     _, _, reference = explicit_reference(measured_demo)
     actual = fit_regions_from_files(
-        measured_demo.files[0], measured_demo.irf_files[0],
-        dataclasses.replace(measured_demo.settings), keep_curves=True,
+        measured_demo.files[0],
+        measured_demo.irf_files[0],
+        dataclasses.replace(measured_demo.settings),
+        keep_curves=True,
     )
     assert actual.n_molecules == reference.n_molecules == 4
     np.testing.assert_array_equal(actual.intensity_image, reference.intensity_image)
@@ -82,8 +85,11 @@ def test_real_filepath_fit23_matches_explicit_scanner(measured_demo):
     np.testing.assert_array_equal(actual.centroids, reference.centroids)
     assert rows_from_table(actual.dataframe) == rows_from_table(reference.dataframe)
     for data, expected, curve, expected_curve in zip(
-        actual.vv_vh_vectors, reference.vv_vh_vectors,
-        actual.model_curves, reference.model_curves, strict=True,
+        actual.vv_vh_vectors,
+        reference.vv_vh_vectors,
+        actual.model_curves,
+        reference.model_curves,
+        strict=True,
     ):
         np.testing.assert_array_equal(data, expected)
         np.testing.assert_array_equal(curve, expected_curve)
@@ -121,15 +127,25 @@ def test_invalid_recognized_scanner_grid_is_rejected(measured_demo, tmp_path, pi
     from chisurf.core.fluorescence.imaging.simulate import clsm_from_file
 
     path = tmp_path / "scan.ptu"
-    path.with_suffix(".json").write_text(json.dumps({
-        "scan_layout": {"kind": "chisurf-simulated-raster", "n_pixel_per_line": pixels}
-    }))
+    path.with_suffix(".json").write_text(
+        json.dumps(
+            {"scan_layout": {"kind": "chisurf-simulated-raster", "n_pixel_per_line": pixels}}
+        )
+    )
     with pytest.raises(ValueError, match="positive integer"):
         clsm_from_file(tttrlib.TTTR(measured_demo.files[0]), path)
 
 
-@pytest.mark.parametrize("sidecar", [None, "broken{", "[]", '{"scan_layout": []}',
-                                      '{"scan_layout": {"kind": "vendor", "n_pixel_per_line": 48}}'])
+@pytest.mark.parametrize(
+    "sidecar",
+    [
+        None,
+        "broken{",
+        "[]",
+        '{"scan_layout": []}',
+        '{"scan_layout": {"kind": "vendor", "n_pixel_per_line": 48}}',
+    ],
+)
 def test_ordinary_hardware_keeps_canonical_auto_detection(tmp_path, sidecar):
     """A real Leica measurement is unchanged by absent, unreadable or unrelated sidecars."""
     import tttrlib

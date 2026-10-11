@@ -718,12 +718,16 @@ class IRFEstimator:
         fig, ax = self._channel_panels(ax, (self.data, self.data_fit))
         for c in range(self.num_channels):
             first = c == 0
-            ax[c].scatter(self.time, self.data[:, c], color="k", size=1.5,
-                          label="Raw" if first else None)
-            ax[c].line(self.time, self.data_fit[:, c], color="r",
-                       label="Fit" if first else None)
-            ax[c].vline(float(self.time[int(self.t0[c])]), color=(0.5, 0.5, 0.5, 0.5), dash="--",
-                        label="Fitting interval" if first else None)
+            ax[c].scatter(
+                self.time, self.data[:, c], color="k", size=1.5, label="Raw" if first else None
+            )
+            ax[c].line(self.time, self.data_fit[:, c], color="r", label="Fit" if first else None)
+            ax[c].vline(
+                float(self.time[int(self.t0[c])]),
+                color=(0.5, 0.5, 0.5, 0.5),
+                dash="--",
+                label="Fitting interval" if first else None,
+            )
             ax[c].vline(float(self.time[int(self.t1[c])]), color=(0.5, 0.5, 0.5, 0.5), dash="--")
         ax[0].legend()
         return fig, ax
@@ -759,8 +763,9 @@ class IRFEstimator:
         fig, ax = self._channel_panels(ax, (self.data, forward))
         for c in range(self.num_channels):
             first = c == 0
-            ax[c].scatter(self.time, self.data[:, c], color="k", size=1.5,
-                          label="Measured" if first else None)
+            ax[c].scatter(
+                self.time, self.data[:, c], color="k", size=1.5, label="Measured" if first else None
+            )
             ax[c].line(self.time, forward[:, c], color="g", label="IRF ⊗ Exp" if first else None)
         ax[0].legend()
         return fig, ax

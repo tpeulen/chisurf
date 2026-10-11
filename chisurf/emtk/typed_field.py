@@ -35,8 +35,9 @@ def parse_number(text, integer=True, minimum=None, maximum=None):
     return value
 
 
-def typed_number_field(key, value, buffers, integer=True, minimum=None, maximum=None, label="",
-                       description=""):
+def typed_number_field(
+    key, value, buffers, integer=True, minimum=None, maximum=None, label="", description=""
+):
     """Draw the field for *value*; return ``(committed, error)``.
 
     ``committed`` is the parsed, clamped number when the user pressed Enter or clicked away after typing, else
@@ -50,17 +51,23 @@ def typed_number_field(key, value, buffers, integer=True, minimum=None, maximum=
     if description and str(description).strip():
         tooltip = tr(str(description))
     else:
-        tooltip = tr("Enter a whole number. Press Enter or click elsewhere to commit.") if integer else tr(
-            "Enter a number. Press Enter or click elsewhere to commit."
+        tooltip = (
+            tr("Enter a whole number. Press Enter or click elsewhere to commit.")
+            if integer
+            else tr("Enter a number. Press Enter or click elsewhere to commit.")
         )
         if minimum is not None and maximum is not None:
             tooltip += " " + tr("Values are clamped between {minimum} and {maximum}.").format(
                 minimum=minimum, maximum=maximum
             )
         elif minimum is not None:
-            tooltip += " " + tr("Values below {minimum} are clamped to {minimum}.").format(minimum=minimum)
+            tooltip += " " + tr("Values below {minimum} are clamped to {minimum}.").format(
+                minimum=minimum
+            )
         elif maximum is not None:
-            tooltip += " " + tr("Values above {maximum} are clamped to {maximum}.").format(maximum=maximum)
+            tooltip += " " + tr("Values above {maximum} are clamped to {maximum}.").format(
+                maximum=maximum
+            )
     im.set_item_tooltip(tooltip)
     if typed != shown:
         buffers[key] = typed

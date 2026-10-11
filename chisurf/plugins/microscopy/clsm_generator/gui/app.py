@@ -410,7 +410,9 @@ class ClsmGeneratorApp(ImApp):
         self.output_format = FORMATS[index]
         self.remember("output_format")
         im.set_item_tooltip(
-            tr("PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers.")
+            tr(
+                "PTO preserves the measurement and embedded intensity; NPZ exports photon arrays. Other formats use tttrlib writers."
+            )
         )
         im.end_disabled()
         if self.job.busy:
@@ -419,7 +421,9 @@ class ClsmGeneratorApp(ImApp):
                 if im.button(tr("Cancel generation")):
                     self.job.cancel()
                 im.set_item_tooltip(
-                    tr("Discard the running simulation's result; the C++ calculation finishes safely in the background.")
+                    tr(
+                        "Discard the running simulation's result; the C++ calculation finishes safely in the background."
+                    )
                 )
                 self.remember("Cancel generation")
         else:

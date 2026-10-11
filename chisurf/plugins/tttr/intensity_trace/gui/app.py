@@ -34,8 +34,16 @@ PLUGIN = HERE.parent
 ROUTING = "Routing channels"
 TTTR_FILTER = "TTTR files (*.ptu *.ht3 *.spc *.hdf *.h5 *.hdf5 *.pto);;All files (*)"
 CSV_FILTER = "CSV files (*.csv);;All files (*)"
-STATE_COLOURS = [(0, 114, 178, 255), (230, 159, 0, 255), (0, 158, 115, 255), (204, 121, 167, 255),
-                 (86, 180, 233, 255), (213, 94, 0, 255), (240, 228, 66, 255), (120, 120, 120, 255)]
+STATE_COLOURS = [
+    (0, 114, 178, 255),
+    (230, 159, 0, 255),
+    (0, 158, 115, 255),
+    (204, 121, 167, 255),
+    (86, 180, 233, 255),
+    (213, 94, 0, 255),
+    (240, 228, 66, 255),
+    (120, 120, 120, 255),
+]
 RESULTS = ("BIC Elbow", "Dwell Times", "HMM Matrix", "FRET Distributions")
 
 
@@ -106,7 +114,9 @@ class _Form:
         self._app.docks.focus("setup")
 
     def request_save_traces(self):
-        self._app.ask("Save Traces", "save", CSV_FILTER, lambda p: self._app.save_traces(p[0]), "traces.csv")
+        self._app.ask(
+            "Save Traces", "save", CSV_FILTER, lambda p: self._app.save_traces(p[0]), "traces.csv"
+        )
 
     def request_hmm(self):
         self._app.compute_hmm()
@@ -128,8 +138,13 @@ class _Form:
         self._app.show_result("FRET Distributions")
 
     def request_save_dwell(self):
-        self._app.ask("Save Dwell Time Histograms and Fits", "save", CSV_FILTER,
-                      lambda p: self._app.save_dwell(p[0]), "dwell_times.csv")
+        self._app.ask(
+            "Save Dwell Time Histograms and Fits",
+            "save",
+            CSV_FILTER,
+            lambda p: self._app.save_dwell(p[0]),
+            "dwell_times.csv",
+        )
 
     def request_help(self):
         self._app.help.show()
@@ -146,7 +161,12 @@ class IntensityTraceApp(ImApp):
         last = self.setups.get("last_used") or ""
         if last in self.setups.get("setups", {}):
             self.use_setup(last, rebin=False)
-        self.dwell_min, self.dwell_max, self.dwell_bins, self.dwell_normalize = 0.0, 1000.0, 31, False
+        self.dwell_min, self.dwell_max, self.dwell_bins, self.dwell_normalize = (
+            0.0,
+            1000.0,
+            31,
+            False,
+        )
         self.bics: list = []
         self.status = "Load a TTTR file."
         self.tab = "Processing"
@@ -165,19 +185,36 @@ class IntensityTraceApp(ImApp):
         self.form_model = _Form(self)
         self.forms = {name: FormState(on_used=self._used) for name in self.spec}
         self.forms["processing"].custom["detectors"] = self._draw_detectors
-        self.help = EmTkHelpWindow(title="Intensity trace — Help", resource=PLUGIN / "help.md", owner=self,
-                                   on_start_guide=lambda: self.tour.start())
-        self.tour: EmTkGuidedTour = EmTkGuidedTour(steps=PLUGIN / "guide.json", owner=self, wait_for_controls=True,
-                                   get_target_rect=self.item_rects.get)
-        self.docks = DockManager(Split("v", 0.40, Region("controls"), Split("h", 0.66, Region("traces"),
-                                                                              Region("results"))))
-        self.docks.add_window("controls", "Controls", self._draw_controls, dock="controls", closable=False)
+        self.help = EmTkHelpWindow(
+            title="Intensity trace — Help",
+            resource=PLUGIN / "help.md",
+            owner=self,
+            on_start_guide=lambda: self.tour.start(),
+        )
+        self.tour: EmTkGuidedTour = EmTkGuidedTour(
+            steps=PLUGIN / "guide.json",
+            owner=self,
+            wait_for_controls=True,
+            get_target_rect=self.item_rects.get,
+        )
+        self.docks = DockManager(
+            Split(
+                "v", 0.40, Region("controls"), Split("h", 0.66, Region("traces"), Region("results"))
+            )
+        )
+        self.docks.add_window(
+            "controls", "Controls", self._draw_controls, dock="controls", closable=False
+        )
         self.docks.add_window("traces", "Traces", self._draw_traces, dock="traces", closable=False)
-        self.docks.add_window("results", "Results", self._draw_results, dock="results", closable=False)
+        self.docks.add_window(
+            "results", "Results", self._draw_results, dock="results", closable=False
+        )
         # The Qt tool's Setup dialog: the shared detector-setup editor, a tab beside the results.
         self.editor = ChannelDefinitionWidget(on_changed=self.setup_edited, host_app=self)
         self.editor.on_used = self._used
-        self.docks.add_window("setup", "Detector Setup", self._draw_setup, dock="results", closable=False)
+        self.docks.add_window(
+            "setup", "Detector Setup", self._draw_setup, dock="results", closable=False
+        )
         self.docks.focus("results")
         self.native_layouts = {"main": self.docks}
         super().__init__(gui=self.render, continuous=False)
@@ -225,8 +262,9 @@ class IntensityTraceApp(ImApp):
             self._worker.join(timeout)
 
     def animating(self):
-        return not self._closed and (self.busy or getattr(self.editor, "_future", None) is not None
-                                     or super().animating())
+        return not self._closed and (
+            self.busy or getattr(self.editor, "_future", None) is not None or super().animating()
+        )
 
     def use_setup(self, name: str, rebin: bool = True) -> None:
         if name not in self.setups.get("setups", {}) and name != ROUTING and self.model.setup:
@@ -253,7 +291,9 @@ class IntensityTraceApp(ImApp):
         self.item_rects["setup_editor"] = tuple(box)
 
     def open_file(self, path: str) -> None:
-        self._run(lambda: self.model.load(path) and self.model.message, f"Reading {Path(path).name}...")
+        self._run(
+            lambda: self.model.load(path) and self.model.message, f"Reading {Path(path).name}..."
+        )
 
     def rebin(self) -> None:
         if self.model.path:
@@ -283,7 +323,9 @@ class IntensityTraceApp(ImApp):
             if self._cancel_event.is_set():
                 raise CancelledError()
             self.bics = bics
-            best = min((b for b in self.bics if np.isfinite(b[1])), key=lambda b: b[1], default=None)
+            best = min(
+                (b for b in self.bics if np.isfinite(b[1])), key=lambda b: b[1], default=None
+            )
             return f"BIC of 1-{len(self.bics)} states" + (f"; lowest at {best[0]}" if best else "")
 
         self.show_result("BIC Elbow")
@@ -302,8 +344,13 @@ class IntensityTraceApp(ImApp):
     def save_dwell(self, path: str) -> None:
         if not str(path).endswith(".csv"):
             path = f"{path}.csv"
-        hists = dwell_histograms(self.model.dwell_times(), self.dwell_min, self.dwell_max, self.dwell_bins,
-                                 self.dwell_normalize)
+        hists = dwell_histograms(
+            self.model.dwell_times(),
+            self.dwell_min,
+            self.dwell_max,
+            self.dwell_bins,
+            self.dwell_normalize,
+        )
         with open(path, "w") as f:
             f.write("State,BinCenter,Count\n")
             for state, (x, y, _fit) in hists.items():
@@ -369,8 +416,12 @@ class IntensityTraceApp(ImApp):
                 self._used(f"tab_{tab}")
             if selected:
                 im.pop_style_color(1)
-            im.set_item_tooltip({"Processing": "Time window, detector selection and histogram settings.",
-                                 "HMM": "Fit a hidden Markov model and show its results."}[tab])
+            im.set_item_tooltip(
+                {
+                    "Processing": "Time window, detector selection and histogram settings.",
+                    "HMM": "Fit a hidden Markov model and show its results.",
+                }[tab]
+            )
             self.item_rects[f"tab_{tab}"] = im.get_item_rect()
         im.separator()
         self._form("processing" if self.tab == "Processing" else "hmm")
@@ -387,7 +438,9 @@ class IntensityTraceApp(ImApp):
             return
         rows = [(label, m.counts[:, i]) for i, label in enumerate(m.labels)] + [("Sum", m.total)]
         hists = dict(m.histograms())
-        im.text_disabled(f"Counts per {m.window_ms:g} ms bin; right: how often each count occurs (log).")
+        im.text_disabled(
+            f"Counts per {m.window_ms:g} ms bin; right: how often each count occurs (log)."
+        )
         w, h = im.get_content_region_avail()
         extra = (m.states is not None) + (m.states is not None and m.fret is not None)
         h_rows = h * len(rows) / (len(rows) + 1.3 * extra) if extra else h
@@ -398,11 +451,20 @@ class IntensityTraceApp(ImApp):
         # user's zoom on this one is kept).
         rev = id(m.counts)
         t_max = float(m.time_axis[-1]) if len(m.time_axis) else 1.0
-        h_max = max((float(np.max(hist[1])) for hist in hists.values() if hist is not None), default=1.0)
+        h_max = max(
+            (float(np.max(hist[1])) for hist in hists.values() if hist is not None), default=1.0
+        )
         # the last row also carries the axis labels: give it that room
         ratios = [1.0] * (len(rows) - 1) + [1.8]
-        if implot.begin_subplots(f"##traces{rev}", len(rows), 2, (w, h_rows), flags, row_ratios=ratios,
-                                 col_ratios=[2.0, 1.0]):
+        if implot.begin_subplots(
+            f"##traces{rev}",
+            len(rows),
+            2,
+            (w, h_rows),
+            flags,
+            row_ratios=ratios,
+            col_ratios=[2.0, 1.0],
+        ):
             for k, (label, values) in enumerate(rows):
                 last = k == len(rows) - 1
                 if implot.begin_plot(f"{label}##trace", (-1, -1), plain):
@@ -416,21 +478,34 @@ class IntensityTraceApp(ImApp):
                     implot.setup_axis_limits(implot.AXIS_X1, 0.5, h_max * 2.0)
                     hist = hists.get(label)
                     if hist is not None:
-                        implot.plot_line(f"{label} histogram", np.asarray(hist[1], float) + 0.5, hist[0])
+                        implot.plot_line(
+                            f"{label} histogram", np.asarray(hist[1], float) + 0.5, hist[0]
+                        )
                     implot.end_plot()
             implot.end_subplots()
         if extra:
             w, h = im.get_content_region_avail()
-            if implot.begin_subplots("##states", extra, 2, (w, h), implot.SUBPLOT_FLAGS_NO_TITLE,
-                                     row_ratios=[1.4] * (extra - 1) + [1.8], col_ratios=[2.0, 1.0]):
+            if implot.begin_subplots(
+                "##states",
+                extra,
+                2,
+                (w, h),
+                implot.SUBPLOT_FLAGS_NO_TITLE,
+                row_ratios=[1.4] * (extra - 1) + [1.8],
+                col_ratios=[2.0, 1.0],
+            ):
                 if implot.begin_plot("Hidden States##states", (-1, -1), plain):
-                    implot.setup_axes("Time (s)" if extra == 1 else "", "State", 0 if extra == 1 else hidden_x)
+                    implot.setup_axes(
+                        "Time (s)" if extra == 1 else "", "State", 0 if extra == 1 else hidden_x
+                    )
                     implot.plot_stairs("state", m.time_axis, np.asarray(m.states, float))
                     implot.end_plot()
                 if implot.begin_plot("State Counts##statebars", (-1, -1), plain):
                     implot.setup_axes("State (sorted)", "Bins")
                     counts = np.bincount(m.states, minlength=int(m.n_states)).astype(float)
-                    implot.plot_bars("bins per state", np.arange(len(counts), dtype=float), counts, bar_size=0.8)
+                    implot.plot_bars(
+                        "bins per state", np.arange(len(counts), dtype=float), counts, bar_size=0.8
+                    )
                     implot.end_plot()
                 if extra == 2:
                     if implot.begin_plot("FRET##fret", (-1, -1), plain):
@@ -439,8 +514,12 @@ class IntensityTraceApp(ImApp):
                         implot.end_plot()
                     self._fret_hist_plot("FRET Hist per State##frethist")
                 implot.end_subplots()
-        im.set_item_tooltip(tr("Each detector's trace with its count histogram, the sum, and after Compute HMM the "
-                            "hidden states and FRET efficiency."))
+        im.set_item_tooltip(
+            tr(
+                "Each detector's trace with its count histogram, the sum, and after Compute HMM the "
+                "hidden states and FRET efficiency."
+            )
+        )
         self.item_rects["traces"] = tuple(box)
 
     def _fret_hist_plot(self, title: str, size=(-1, -1)) -> None:
@@ -464,13 +543,20 @@ class IntensityTraceApp(ImApp):
             "FRET Distributions": tr("FRET efficiency of the bins in each state."),
         }
         style = im.get_style()
-        selected_colours = tuple(style.color(col) for col in (
-            im.Col.TAB_SELECTED, im.Col.BUTTON_HOVERED, im.Col.BUTTON_ACTIVE
-        ))
+        selected_colours = tuple(
+            style.color(col)
+            for col in (im.Col.TAB_SELECTED, im.Col.BUTTON_HOVERED, im.Col.BUTTON_ACTIVE)
+        )
         pressed = button_row(
-            [{"label": f"{tr(name)}##result_{i}", "key": name, "tip": tips[name],
-              "colours": selected_colours if name == self.result else None}
-             for i, name in enumerate(RESULTS)],
+            [
+                {
+                    "label": f"{tr(name)}##result_{i}",
+                    "key": name,
+                    "tip": tips[name],
+                    "colours": selected_colours if name == self.result else None,
+                }
+                for i, name in enumerate(RESULTS)
+            ],
             remember=lambda name: self.item_rects.__setitem__(f"result.{name}", im.get_item_rect()),
         )
         if pressed is not None:
@@ -479,7 +565,9 @@ class IntensityTraceApp(ImApp):
         if self.result == "BIC Elbow":
             if not self.bics:
                 im.text_wrapped(tr("Press BIC Elbow (HMM tab) to fit models of 1 to 15 states."))
-            elif implot.begin_plot("BIC vs Number of States##bic", (-1, -1), implot.FLAGS_NO_LEGEND):
+            elif implot.begin_plot(
+                "BIC vs Number of States##bic", (-1, -1), implot.FLAGS_NO_LEGEND
+            ):
                 implot.setup_axes("Number of States", "BIC (lower is better)")
                 pts = [(s, b) for s, b in self.bics if np.isfinite(b)]
                 if pts:
@@ -491,10 +579,17 @@ class IntensityTraceApp(ImApp):
             im.text_wrapped(tr("Compute the HMM (HMM tab) to see its results here."))
         elif self.result == "Dwell Times":
             self._form("dwell")
-            hists = dwell_histograms(m.dwell_times(), self.dwell_min, self.dwell_max, self.dwell_bins,
-                                     self.dwell_normalize)
+            hists = dwell_histograms(
+                m.dwell_times(),
+                self.dwell_min,
+                self.dwell_max,
+                self.dwell_bins,
+                self.dwell_normalize,
+            )
             if implot.begin_plot("Dwell Time Distributions##dwell", (-1, -1)):
-                implot.setup_axes("Dwell Time (ms)", "Fraction" if self.dwell_normalize else "Count")
+                implot.setup_axes(
+                    "Dwell Time (ms)", "Fraction" if self.dwell_normalize else "Count"
+                )
                 for state, (x, y, fit) in hists.items():
                     colour = STATE_COLOURS[state % len(STATE_COLOURS)]
                     implot.set_next_line_style(colour, 1.5)
@@ -511,8 +606,17 @@ class IntensityTraceApp(ImApp):
             if implot.begin_plot("Transition Matrix##matrix", (-1, -1), implot.FLAGS_NO_LEGEND):
                 implot.setup_axes("From State", "To State")
                 # row r of the heatmap is drawn at the top: to-state k-1 first, so P(i -> j) sits at (i, j)
-                implot.plot_heatmap("P", t.T[::-1].ravel(), k, k, 0.0, float(t.max()), "%.3f",
-                                    (-0.5, -0.5), (k - 0.5, k - 0.5))
+                implot.plot_heatmap(
+                    "P",
+                    t.T[::-1].ravel(),
+                    k,
+                    k,
+                    0.0,
+                    float(t.max()),
+                    "%.3f",
+                    (-0.5, -0.5),
+                    (k - 0.5, k - 0.5),
+                )
                 implot.end_plot()
         elif self.result == "FRET Distributions":
             if m.fret is None:
@@ -543,8 +647,16 @@ class IntensityTraceApp(ImApp):
 
     def export_settings(self) -> dict:
         m = self.model
-        return {"path": m.path, "window_ms": m.window_ms, "n_bins": m.n_bins, "hist_min": m.hist_min,
-                "hist_max": m.hist_max, "n_states": m.n_states, "setup": self.setup_name, "selected": m.selected}
+        return {
+            "path": m.path,
+            "window_ms": m.window_ms,
+            "n_bins": m.n_bins,
+            "hist_min": m.hist_min,
+            "hist_max": m.hist_max,
+            "n_states": m.n_states,
+            "setup": self.setup_name,
+            "selected": m.selected,
+        }
 
     def restore_settings(self, state: dict) -> None:
         m = self.model

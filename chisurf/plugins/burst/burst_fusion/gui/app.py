@@ -460,7 +460,9 @@ class BurstFusionApp(ImApp):
         on_guide: Callable[[], None] | None = None,
         on_help: Callable[[], None] | None = None,
     ) -> None:
-        primary = json.loads((pathlib.Path(__file__).parent / "fusion.view.json").read_text(encoding="utf-8"))
+        primary = json.loads(
+            (pathlib.Path(__file__).parent / "fusion.view.json").read_text(encoding="utf-8")
+        )
         self.window_size = window_size(primary, (1100, 720))
         from .controller import FusionController
 

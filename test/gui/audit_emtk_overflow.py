@@ -44,13 +44,22 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 #: Local sources that are not installed packages; added to the path of this process and the workers.
-_LOCAL_PATHS = [str(REPO / p) for p in ("modules/chimol", "modules/mmfdb/src", "modules/chinet",
-                                        "modules/imp-tricks/src", ".")]
+_LOCAL_PATHS = [
+    str(REPO / p)
+    for p in (
+        "modules/chimol",
+        "modules/mmfdb/src",
+        "modules/chinet",
+        "modules/imp-tricks/src",
+        ".",
+    )
+]
 for _p in reversed(_LOCAL_PATHS):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 os.environ["PYTHONPATH"] = os.pathsep.join(
-    _LOCAL_PATHS + [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p])
+    _LOCAL_PATHS + [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p]
+)
 SIZES = ((1200, 800), (800, 600))
 RENDER_GUARD_S = 20
 PLUGIN_TIMEOUT_S = 150
@@ -74,8 +83,12 @@ def dual_plugins() -> list[dict]:
             continue
         entry = data.get("entrypoints") or {}
         if entry.get("gui") and entry.get("emtk"):
-            found[data["id"]] = {"id": data["id"], "emtk": entry["emtk"], "gui": entry["gui"],
-                                 "dir": str(path.parent)}
+            found[data["id"]] = {
+                "id": data["id"],
+                "emtk": entry["emtk"],
+                "gui": entry["gui"],
+                "dir": str(path.parent),
+            }
     return [found[k] for k in sorted(found)]
 
 
@@ -93,6 +106,7 @@ def _gui_sources(plugin: dict) -> list[pathlib.Path]:
     entry_file = REPO / (module.replace(".", "/") + ".py")
     if entry_file.is_file():
         files.add(entry_file)
+
     def inside(f: pathlib.Path) -> bool:
         try:
             return "/test" not in str(f.relative_to(root))
@@ -120,9 +134,13 @@ def drag_only_fields(plugin: dict) -> tuple[int, list[str]]:
 
         def visit_Call(self, node):
             f = node.func
-            if (isinstance(f, ast.Attribute) and f.attr in _NUMERIC_CALLS
-                    and isinstance(f.value, ast.Name) and f.value.id == "im"
-                    and not any("typed" in name for name in self.stack)):
+            if (
+                isinstance(f, ast.Attribute)
+                and f.attr in _NUMERIC_CALLS
+                and isinstance(f.value, ast.Name)
+                and f.value.id == "im"
+                and not any("typed" in name for name in self.stack)
+            ):
                 hits.append(f"{self.path}:{node.lineno}")
             self.generic_visit(node)
 
@@ -172,9 +190,13 @@ class _Spy:
                 scrollable = entry[6] if len(entry) > 6 else True
                 content_h = float(this.layout.content_height())
                 if content_h > float(box[3]) + 1.0:
-                    spy.children.append({"box": [round(float(v), 1) for v in box],
-                                         "content_h": round(content_h, 1),
-                                         "scrollable": bool(scrollable)})
+                    spy.children.append(
+                        {
+                            "box": [round(float(v), 1) for v in box],
+                            "content_h": round(content_h, 1),
+                            "scrollable": bool(scrollable),
+                        }
+                    )
             except Exception:  # noqa: BLE001 -- a spy must never change behaviour
                 pass
             return orig_end_child(this, *args, **kwargs)
@@ -186,9 +208,13 @@ class _Spy:
                     content_h = float(this.layout.content_height())
                     box_h = float(window.box[3])
                     if content_h > box_h + 1.0 and not getattr(window, "auto_resize", False):
-                        spy.windows.append({"name": str(getattr(window, "name", "?")),
-                                            "box_h": round(box_h, 1),
-                                            "content_h": round(content_h, 1)})
+                        spy.windows.append(
+                            {
+                                "name": str(getattr(window, "name", "?")),
+                                "box_h": round(box_h, 1),
+                                "content_h": round(content_h, 1),
+                            }
+                        )
             except Exception:  # noqa: BLE001
                 pass
             return orig_end(this, *args, **kwargs)
@@ -203,12 +229,19 @@ class _Spy:
 def _measure(painter, size) -> dict:
     _w, h = size
     ys = [float(t[1]) for t in painter.texts]
-    bars = [c for c in painter.calls
-            if c[0] == "fill_rect" and abs(float(c[3]) - 8.0) < 1e-6 and float(c[4]) > SCROLLBAR_MIN_H]
+    bars = [
+        c
+        for c in painter.calls
+        if c[0] == "fill_rect" and abs(float(c[3]) - 8.0) < 1e-6 and float(c[4]) > SCROLLBAR_MIN_H
+    ]
     max_y = max(ys) if ys else 0.0
-    return {"max_text_y": round(max_y, 1), "viewport_h": h, "has_scrollbar": bool(bars),
-            "painted_strings": len(painter.strings),
-            "overflow_no_scrollbar": bool(max_y > h and not bars)}
+    return {
+        "max_text_y": round(max_y, 1),
+        "viewport_h": h,
+        "has_scrollbar": bool(bars),
+        "painted_strings": len(painter.strings),
+        "overflow_no_scrollbar": bool(max_y > h and not bars),
+    }
 
 
 def run_one(plugin_id: str) -> dict:
@@ -260,7 +293,8 @@ def run_one(plugin_id: str) -> dict:
                 row[f"overflow_{tag}"] = m["overflow_no_scrollbar"]
                 # last frame only: the spy saw 3 frames, keep the distinct boxes
                 row[f"clipped_children_{tag}"] = _dedupe(
-                    [c for c in spy.children if not c["scrollable"]])
+                    [c for c in spy.children if not c["scrollable"]]
+                )
                 row[f"window_overflow_{tag}"] = _dedupe(spy.windows)
             except BaseException as exc:  # noqa: BLE001
                 signal.alarm(0)
@@ -307,22 +341,36 @@ def _spawn(plugin_id: str, settings_dir: str) -> dict:
     env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=settings_dir)
     with tempfile.NamedTemporaryFile("r", suffix=".json", delete=False) as fh:
         result_path = fh.name
-    cmd = [sys.executable, "-m", "test.gui.audit_emtk_overflow", "--worker", plugin_id,
-           "--result", result_path]
+    cmd = [
+        sys.executable,
+        "-m",
+        "test.gui.audit_emtk_overflow",
+        "--worker",
+        plugin_id,
+        "--result",
+        result_path,
+    ]
     t0 = time.monotonic()
     try:
-        proc = subprocess.run(cmd, cwd=REPO, env=env, capture_output=True, text=True,
-                              timeout=PLUGIN_TIMEOUT_S)
+        proc = subprocess.run(
+            cmd, cwd=REPO, env=env, capture_output=True, text=True, timeout=PLUGIN_TIMEOUT_S
+        )
         text = pathlib.Path(result_path).read_text() if os.path.getsize(result_path) else ""
         if text:
             row = json.loads(text)
         else:
             tail = "\n".join((proc.stderr or proc.stdout or "").strip().splitlines()[-8:])
-            row = {"id": plugin_id, "instantiate_ok": False,
-                   "error": f"worker exited {proc.returncode} without a result:\n{tail}"}
+            row = {
+                "id": plugin_id,
+                "instantiate_ok": False,
+                "error": f"worker exited {proc.returncode} without a result:\n{tail}",
+            }
     except subprocess.TimeoutExpired:
-        row = {"id": plugin_id, "instantiate_ok": False,
-               "error": f"worker timed out after {PLUGIN_TIMEOUT_S} s"}
+        row = {
+            "id": plugin_id,
+            "instantiate_ok": False,
+            "error": f"worker timed out after {PLUGIN_TIMEOUT_S} s",
+        }
     finally:
         try:
             os.unlink(result_path)
@@ -373,16 +421,23 @@ def _severity(r: dict) -> tuple:
 
 def summary(rows: list[dict]) -> dict:
     inst_fail = [r for r in rows if not r["instantiate_ok"]]
-    render_fail = [r for r in rows if r["instantiate_ok"]
-                   and not (r["render_ok_1200"] and r["render_ok_800"])]
+    render_fail = [
+        r for r in rows if r["instantiate_ok"] and not (r["render_ok_1200"] and r["render_ok_800"])
+    ]
     overflow = [r for r in rows if r["overflow_no_scrollbar"]]
     drag = [r for r in rows if r["drag_only_fields"]]
     click = [r for r in rows if r["instantiate_ok"] and not r["click_smoke_ok"]]
     bad = {r["id"] for r in inst_fail + render_fail + overflow + drag + click}
-    return {"total": len(rows), "ok": len(rows) - len(bad), "overflow_no_scrollbar": len(overflow),
-            "instantiate_fail": len(inst_fail), "render_fail": len(render_fail),
-            "drag_only_affected": len(drag), "drag_only_calls": sum(r["drag_only_fields"] for r in rows),
-            "click_fail": len(click)}
+    return {
+        "total": len(rows),
+        "ok": len(rows) - len(bad),
+        "overflow_no_scrollbar": len(overflow),
+        "instantiate_fail": len(inst_fail),
+        "render_fail": len(render_fail),
+        "drag_only_affected": len(drag),
+        "drag_only_calls": sum(r["drag_only_fields"] for r in rows),
+        "click_fail": len(click),
+    }
 
 
 def _first_line(err: str | None) -> str:
@@ -395,7 +450,10 @@ def _first_line(err: str | None) -> str:
 
 def _win(r: dict) -> str:
     """Windows whose laid-out content outgrew their box at 800x600 (a stricter, per-window signal)."""
-    return ", ".join(f"{w['name'][:24]} {w['content_h']:.0f}>{w['box_h']:.0f}" for w in r["window_overflow_800"][:2])
+    return ", ".join(
+        f"{w['name'][:24]} {w['content_h']:.0f}>{w['box_h']:.0f}"
+        for w in r["window_overflow_800"][:2]
+    )
 
 
 def write_markdown(rows: list[dict], path: pathlib.Path) -> None:
@@ -445,7 +503,9 @@ def write_markdown(rows: list[dict], path: pathlib.Path) -> None:
     if drags:
         out += ["", "## Drag-only call sites", ""]
         for r in sorted(drags, key=lambda r: -r["drag_only_fields"]):
-            out.append(f"- `{r['id']}` ({r['drag_only_fields']}): " + ", ".join(r["drag_only_where"]))
+            out.append(
+                f"- `{r['id']}` ({r['drag_only_fields']}): " + ", ".join(r["drag_only_where"])
+            )
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
@@ -477,15 +537,19 @@ def main(argv: list[str] | None = None) -> int:
         row = _finalise(_spawn(plugin["id"], settings_dir), plugin)
         rows.append(row)
         flag = "OVERFLOW" if row["overflow_no_scrollbar"] else ("FAIL" if row["error"] else "ok")
-        print(f"[{i:3d}/{len(plugins)}] {plugin['id']:<28} {flag:<8} "
-              f"y800={row['max_text_y_800']} drag={row['drag_only_fields']} {row['seconds']}s",
-              flush=True)
+        print(
+            f"[{i:3d}/{len(plugins)}] {plugin['id']:<28} {flag:<8} "
+            f"y800={row['max_text_y_800']} drag={row['drag_only_fields']} {row['seconds']}s",
+            flush=True,
+        )
         args.out.write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
     args.out.write_text(json.dumps(rows, indent=1, default=str), encoding="utf-8")
     write_markdown(rows, args.out.with_suffix(".md"))
     print(json.dumps(summary(rows), indent=1))
-    print(f"settings written by plugins (scratch): {settings_dir} "
-          f"-> {sorted(p.name for p in pathlib.Path(settings_dir).rglob('*'))[:20]}")
+    print(
+        f"settings written by plugins (scratch): {settings_dir} "
+        f"-> {sorted(p.name for p in pathlib.Path(settings_dir).rglob('*'))[:20]}"
+    )
     return 0
 
 

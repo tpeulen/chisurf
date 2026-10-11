@@ -102,13 +102,25 @@ def test_real_known_irf_worker_patterns_and_handoff_survive_all_views(tmp_path, 
 
     path = build(tmp_path / "measurement", seed=4)
     received = []
-    app = create_app(mle_receiver=lambda patterns: received.append(copy.deepcopy(patterns)) or len(patterns))
+    app = create_app(
+        mle_receiver=lambda patterns: received.append(copy.deepcopy(patterns)) or len(patterns)
+    )
     try:
-        clean = {"detectors": {"green": {"chs": [0], "micro_time_ranges": []},
-                                "red": {"chs": [1], "micro_time_ranges": []}},
-                 "windows": {}, "tttr_reading": {"file_type": "SPC-130", "override_timing": False,
-                                                   "micro_time_binning": 1},
-                 "apply_lut": False, "channel_luts": {}, "channel_shifts": {}}
+        clean = {
+            "detectors": {
+                "green": {"chs": [0], "micro_time_ranges": []},
+                "red": {"chs": [1], "micro_time_ranges": []},
+            },
+            "windows": {},
+            "tttr_reading": {
+                "file_type": "SPC-130",
+                "override_timing": False,
+                "micro_time_binning": 1,
+            },
+            "apply_lut": False,
+            "channel_luts": {},
+            "channel_shifts": {},
+        }
         app.controller.channel_definition.load_definition(clean)
         assert app.files_dropped([str(path)])
         app.controller.run()

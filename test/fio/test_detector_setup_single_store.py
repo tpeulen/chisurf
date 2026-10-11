@@ -16,8 +16,10 @@ def db_path(tmp_path, monkeypatch):
     return path
 
 
-SETUP = {"detectors": {"green": {"chs": [0, 2], "micro_time_ranges": [[0, 4096]]}},
-         "windows": {"prompt": [0, 2048]}}
+SETUP = {
+    "detectors": {"green": {"chs": [0, 2], "micro_time_ranges": [[0, 4096]]}},
+    "windows": {"prompt": [0, 2048]},
+}
 
 
 def test_rpc_save_is_visible_in_the_picker_loader(db_path):

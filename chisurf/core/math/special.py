@@ -315,7 +315,6 @@ def rankdata(a) -> np.ndarray:
     return 0.5 * (count[dense] + count[dense - 1] + 1)
 
 
-
 class _Norm:
     """``scipy.stats.norm``: ``pdf``, ``cdf``, ``sf`` with ``loc``/``scale``."""
 
@@ -411,7 +410,9 @@ class _Poisson:
 
     @staticmethod
     def logpmf(k, mu):
-        k, mu = np.broadcast_arrays(np.asarray(k, dtype=np.float64), np.asarray(mu, dtype=np.float64))
+        k, mu = np.broadcast_arrays(
+            np.asarray(k, dtype=np.float64), np.asarray(mu, dtype=np.float64)
+        )
         out = np.asarray(xlogy(k, mu) - gammaln(k + 1.0) - mu, dtype=np.float64)
         outside = (k < 0) | (k != np.floor(k))
         if np.any(outside):

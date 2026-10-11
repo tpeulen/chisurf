@@ -72,7 +72,9 @@ def _mixed_identity_pair(tmp_path, first_kind):
     second = _plugin(tmp_path / "second", "original", "second")
     if first_kind == "manifest":
         (second / "manifest.json").unlink()
-        (second / "__init__.py").write_text('name = "Second legacy"\nraise RuntimeError("imported")\n')
+        (second / "__init__.py").write_text(
+            'name = "Second legacy"\nraise RuntimeError("imported")\n'
+        )
     else:
         (first / "manifest.json").unlink()
         prefix = 'name = "First legacy"\n' if first_kind == "legacy" else ""
@@ -85,7 +87,9 @@ def test_registry_collisions_cover_all_package_kinds(tmp_path, caplog, first_kin
     first, second = _mixed_identity_pair(tmp_path, first_kind)
     registry = PluginRegistry()
     manifests = registry.discover([first.parent, second.parent])
-    assert [manifest.id for manifest in manifests] == (["first"] if first_kind == "manifest" else [])
+    assert [manifest.id for manifest in manifests] == (
+        ["first"] if first_kind == "manifest" else []
+    )
     assert len(registry._legacy_plugins) == (1 if first_kind == "legacy" else 0)
     assert str(first) in caplog.text
     assert str(second) in caplog.text
@@ -109,7 +113,9 @@ def test_menu_collisions_cover_all_package_kinds(tmp_path, monkeypatch, caplog, 
 
 @pytest.mark.parametrize("scanner", ["registry", "menu"])
 @pytest.mark.parametrize("parent_kind", ["regular-first", "namespace-first", "namespaces"])
-def test_nested_discovery_matches_python_package_precedence(tmp_path, monkeypatch, scanner, parent_kind):
+def test_nested_discovery_matches_python_package_precedence(
+    tmp_path, monkeypatch, scanner, parent_kind
+):
     from chisurf import plugins
 
     first_root = tmp_path / "first"
@@ -120,8 +126,11 @@ def test_nested_discovery_matches_python_package_precedence(tmp_path, monkeypatc
         (early.parent / "__init__.py").write_text('raise AssertionError("parent imported")\n')
     if parent_kind != "namespaces":
         (late.parent / "__init__.py").write_text('raise AssertionError("parent imported")\n')
-    expected = {"regular-first": ["early"], "namespace-first": ["late"],
-                "namespaces": ["early", "late"]}[parent_kind]
+    expected = {
+        "regular-first": ["early"],
+        "namespace-first": ["late"],
+        "namespaces": ["early", "late"],
+    }[parent_kind]
 
     if scanner == "registry":
         records = PluginRegistry().discover([first_root, second_root])
@@ -152,7 +161,9 @@ def test_fresh_discovery_refreshes_stale_package_finders(tmp_path, monkeypatch, 
     else:
         monkeypatch.setattr(plugins, "__path__", [str(root)])
         monkeypatch.setattr(plugins, "user_plugins_dir", root)
-        assert [record["manifest_id"] for record in plugins._iter_plugins_uncached()] == ["installed"]
+        assert [record["manifest_id"] for record in plugins._iter_plugins_uncached()] == [
+            "installed"
+        ]
 
 
 def test_menu_discovery_ignores_invalid_root_entries(tmp_path, monkeypatch):
@@ -289,9 +300,15 @@ def test_registry_gui_registration_is_lazy_and_includes_native_only(tmp_path, qa
             self.loaded.append(entrypoint)
             raise AssertionError("menu construction imported plugin code")
 
-    _plugin(tmp_path, "dual", "dual", entrypoints={
-        "gui": "unavailable.qt:Tool", "emtk": "native.app:make_app",
-    })
+    _plugin(
+        tmp_path,
+        "dual",
+        "dual",
+        entrypoints={
+            "gui": "unavailable.qt:Tool",
+            "emtk": "native.app:make_app",
+        },
+    )
     _plugin(tmp_path, "native", "native", entrypoints={"emtk": "native.app:make_app"})
     loader = NeverImportLoader()
     registry = PluginRegistry(loader=loader)
@@ -432,9 +449,15 @@ def test_registry_gui_mode_is_resolved_at_click_time(tmp_path, qapp, monkeypatch
 
     gui_settings = {"gui_mode": "qt"}
     monkeypatch.setitem(settings.cs_settings, "plugins", gui_settings)
-    _plugin(tmp_path, "dual", "dual", entrypoints={
-        "gui": "unavailable:Widget", "emtk": "native:Factory",
-    })
+    _plugin(
+        tmp_path,
+        "dual",
+        "dual",
+        entrypoints={
+            "gui": "unavailable:Widget",
+            "emtk": "native:Factory",
+        },
+    )
     loader = Loader()
     registry = PluginRegistry(loader=loader)
     registry.discover([tmp_path])
@@ -460,9 +483,14 @@ def test_registry_native_action_opens_real_host(tmp_path, qapp, monkeypatch):
     from chisurf.core import settings
 
     monkeypatch.setitem(settings.cs_settings, "plugins", {"gui_mode": "auto"})
-    _plugin(tmp_path, "native", "native", entrypoints={
-        "emtk": "chisurf.plugins.core.about.gui.app:make_app",
-    })
+    _plugin(
+        tmp_path,
+        "native",
+        "native",
+        entrypoints={
+            "emtk": "chisurf.plugins.core.about.gui.app:make_app",
+        },
+    )
     registry = PluginRegistry()
     registry.discover([tmp_path])
     menu = QtWidgets.QMenu()

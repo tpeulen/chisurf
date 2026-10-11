@@ -156,9 +156,7 @@ class CategoryMethodsMixin:
                     # Make icon smaller if it exists
                     if action.icon():
                         btn.setMaximumIconSize(14)
-                    self.logger.info(
-                        f"Added remaining action '{action.text()}' to Window panel"
-                    )
+                    self.logger.info(f"Added remaining action '{action.text()}' to Window panel")
 
         else:
             # Fallback: add basic actions without toolbar

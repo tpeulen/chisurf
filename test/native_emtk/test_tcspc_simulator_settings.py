@@ -10,19 +10,33 @@ from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
 
 def test_array_spectrum_constructs_and_view_never_changes_supplied_values():
     """User-provided arrays and calibration survive frontend construction."""
-    setup = TCSPCSimulatorSetup(lifetime_spectrum=np.array([0.7, 3.1, 0.3, 1.2]),
-                                rotation_spectrum=np.array([0.31, 2.4]), seed=154,
-                                sample_name="Supplied", g_factor=1.7, l1=.05, l2=.08,
-                                irf_mean=2.3, irf_sigma=.16, record_provenance=False)
+    setup = TCSPCSimulatorSetup(
+        lifetime_spectrum=np.array([0.7, 3.1, 0.3, 1.2]),
+        rotation_spectrum=np.array([0.31, 2.4]),
+        seed=154,
+        sample_name="Supplied",
+        g_factor=1.7,
+        l1=0.05,
+        l2=0.08,
+        irf_mean=2.3,
+        irf_sigma=0.16,
+        record_provenance=False,
+    )
     from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
+
     before = (setup.lifetime_spectrum.copy(), setup.rotation_spectrum.copy())
     app = SimulatorSettingsApp(setup, context=SimpleNamespace(api=None))
     try:
         np.testing.assert_array_equal(setup.lifetime_spectrum, before[0])
         np.testing.assert_array_equal(setup.rotation_spectrum, before[1])
         assert (setup.sample_name, setup.g_factor, setup.l1, setup.l2, setup.seed) == (
-            "Supplied", 1.7, .05, .08, 154)
-        assert (setup.irf_mean, setup.irf_sigma) == (2.3, .16)
+            "Supplied",
+            1.7,
+            0.05,
+            0.08,
+            154,
+        )
+        assert (setup.irf_mean, setup.irf_sigma) == (2.3, 0.16)
     finally:
         app.close()
 
@@ -34,13 +48,13 @@ def test_lifetime_file_and_text_preserve_interleaved_values(tmp_path, contents):
     path = tmp_path / "spectrum.txt"
     path.write_text(contents)
     setup.load_lifetime_spectrum_file(str(path))
-    np.testing.assert_array_equal(setup.lifetime_spectrum, [.4, 1.1, .6, 4.1])
+    np.testing.assert_array_equal(setup.lifetime_spectrum, [0.4, 1.1, 0.6, 4.1])
     assert setup.lifetime_spectrum_file == str(path)
     setup.lifetime_spectrum_text = "-0.2; 0; 1.2; 3.5"
-    np.testing.assert_array_equal(setup.lifetime_spectrum, [-.2, 0, 1.2, 3.5])
+    np.testing.assert_array_equal(setup.lifetime_spectrum, [-0.2, 0, 1.2, 3.5])
     with pytest.raises(ValueError):
         setup.lifetime_spectrum_text = "1, invalid"
-    np.testing.assert_array_equal(setup.lifetime_spectrum, [-.2, 0, 1.2, 3.5])
+    np.testing.assert_array_equal(setup.lifetime_spectrum, [-0.2, 0, 1.2, 3.5])
 
 
 @pytest.mark.parametrize("mode", ["vm", "vv/vh"])
@@ -50,9 +64,15 @@ def test_preview_is_reader_output_and_add_uses_the_exact_cached_group(mode, seed
     from chisurf.core.api.context import PluginContext
     from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
 
-    setup = TCSPCSimulatorSetup(lifetime_spectrum=[.4, 1.1, .6, 4.1],
-                                rotation_spectrum=[.2, 1], polarization=mode,
-                                n_tac=512, seed=seed, add_noise=noise, record_provenance=False)
+    setup = TCSPCSimulatorSetup(
+        lifetime_spectrum=[0.4, 1.1, 0.6, 4.1],
+        rotation_spectrum=[0.2, 1],
+        polarization=mode,
+        n_tac=512,
+        seed=seed,
+        add_noise=noise,
+        record_provenance=False,
+    )
     submitted = []
     api = SimpleNamespace(load_dataset=lambda **kw: submitted.append(kw) or {"ok": True})
     context = PluginContext(api=api)
@@ -79,10 +99,19 @@ def test_session_irf_uses_selected_member_uid_and_unload_restores_gaussian():
 
     calls = []
     api = SimpleNamespace(
-        list_datasets=lambda: [{"uid": "group", "name": "Group", "members": [
-            {"uid": "first", "name": "same", "length": 3},
-            {"uid": "second", "name": "same", "length": 3}]}],
-        get_dataset_curve_data=lambda **kw: calls.append(kw) or {"ok": True, "x": [0, 1, 2], "y": [0, 9, 0]},
+        list_datasets=lambda: [
+            {
+                "uid": "group",
+                "name": "Group",
+                "members": [
+                    {"uid": "first", "name": "same", "length": 3},
+                    {"uid": "second", "name": "same", "length": 3},
+                ],
+            }
+        ],
+        get_dataset_curve_data=lambda **kw: (
+            calls.append(kw) or {"ok": True, "x": [0, 1, 2], "y": [0, 9, 0]}
+        ),
     )
     setup = TCSPCSimulatorSetup(record_provenance=False)
     app = SimulatorSettingsApp(setup, context=SimpleNamespace(api=api))
@@ -106,14 +135,17 @@ def test_real_api_group_member_selection_preserves_active_member():
     from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
     from chisurf.server.session import SessionState
 
-    first = DataCurve(x=np.arange(4.), y=np.array([0., 1., 0., 0.]), name="same")
-    second = DataCurve(x=np.arange(4.), y=np.array([0., 0., 9., 0.]), name="same")
+    first = DataCurve(x=np.arange(4.0), y=np.array([0.0, 1.0, 0.0, 0.0]), name="same")
+    second = DataCurve(x=np.arange(4.0), y=np.array([0.0, 0.0, 9.0, 0.0]), name="same")
     group = DataCurveGroup([first, second], name="Measured responses")
     api = ChiSurfAPI(state=SessionState(datasets=[group], fits=[]))
-    app = SimulatorSettingsApp(TCSPCSimulatorSetup(record_provenance=False), context=PluginContext(api=api))
+    app = SimulatorSettingsApp(
+        TCSPCSimulatorSetup(record_provenance=False), context=PluginContext(api=api)
+    )
     try:
-        selected = [value for value, label in app.model.irf_options()
-                    if second.unique_identifier in value]
+        selected = [
+            value for value, label in app.model.irf_options() if second.unique_identifier in value
+        ]
         assert len(selected) == 1
         app.model.irf_candidate = selected[0]
         app.model.select_irf()
@@ -155,9 +187,16 @@ def test_native_tabs_reveal_real_controls_and_simulate_add_callbacks():
     from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
 
     submitted = []
-    api = SimpleNamespace(list_datasets=lambda: [], load_dataset=lambda **kw: submitted.append(kw) or {"ok": True})
-    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1, 4], rotation_spectrum=[.2, 1],
-                                seed=154, n_tac=512, record_provenance=False)
+    api = SimpleNamespace(
+        list_datasets=lambda: [], load_dataset=lambda **kw: submitted.append(kw) or {"ok": True}
+    )
+    reader = TCSPCSimulatorSetup(
+        lifetime_spectrum=[1, 4],
+        rotation_spectrum=[0.2, 1],
+        seed=154,
+        n_tac=512,
+        record_provenance=False,
+    )
     app = SimulatorSettingsApp(reader, context=PluginContext(api=api))
     try:
         driver = Driver(app, size=(900, 760))
@@ -186,7 +225,7 @@ def test_tab_switch_commits_typed_spectrum_file_once(tmp_path, monkeypatch):
 
     path = tmp_path / "spectrum.txt"
     path.write_text(".25 1\n.75 8\n")
-    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1,4], seed=154, record_provenance=False)
+    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1, 4], seed=154, record_provenance=False)
     load = reader.load_lifetime_spectrum_file
     loaded = []
 
@@ -198,12 +237,12 @@ def test_tab_switch_commits_typed_spectrum_file_once(tmp_path, monkeypatch):
     monkeypatch.setattr(reader, "load_lifetime_spectrum_file", record)
     app = SimulatorSettingsApp(reader, context=SimpleNamespace(api=None))
     try:
-        driver = Driver(app, size=(900,760))
+        driver = Driver(app, size=(900, 760))
         driver.draw()
         driver.click("lifetime_spectrum_file")
         driver.type(str(path))
         driver.click("simulator.preview")
-        np.testing.assert_array_equal(reader.lifetime_spectrum, [.25,1,.75,8])
+        np.testing.assert_array_equal(reader.lifetime_spectrum, [0.25, 1, 0.75, 8])
         assert reader.lifetime_spectrum_file == str(path)
         assert loaded == [str(path)]
         driver.click("simulate_preview")
@@ -221,16 +260,16 @@ def test_invalid_pending_source_survives_switch_without_mutating_reader(tmp_path
 
     from chisurf.emtk.tcspc_simulator import SimulatorSettingsApp
 
-    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1,4], record_provenance=False)
+    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1, 4], record_provenance=False)
     app = SimulatorSettingsApp(reader, context=SimpleNamespace(api=None))
     missing = str(tmp_path / "missing.txt")
     try:
-        driver = Driver(app, size=(900,760))
+        driver = Driver(app, size=(900, 760))
         driver.draw()
         driver.click("lifetime_spectrum_file")
         driver.type(missing)
         driver.click("simulator.preview")
-        np.testing.assert_array_equal(reader.lifetime_spectrum, [1,4])
+        np.testing.assert_array_equal(reader.lifetime_spectrum, [1, 4])
         source = app.sources["lifetime_spectrum_file"]
         assert source.state.buffers["path"] == missing
         assert reader.lifetime_spectrum_file == "" and app.model.status
@@ -245,7 +284,7 @@ def test_pending_source_flush_respects_closed_and_read_only_state(tmp_path, clos
 
     path = tmp_path / "spectrum.txt"
     path.write_text(".25 1\n.75 8\n")
-    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1,4], record_provenance=False)
+    reader = TCSPCSimulatorSetup(lifetime_spectrum=[1, 4], record_provenance=False)
     app = SimulatorSettingsApp(reader, context=SimpleNamespace(api=None))
     source = app.sources["lifetime_spectrum_file"]
     source.state.buffers["path"] = str(path)
@@ -255,7 +294,7 @@ def test_pending_source_flush_respects_closed_and_read_only_state(tmp_path, clos
         source.options["read_only"] = True
     try:
         app._used("simulator.preview")
-        np.testing.assert_array_equal(reader.lifetime_spectrum, [1,4])
+        np.testing.assert_array_equal(reader.lifetime_spectrum, [1, 4])
         assert reader.lifetime_spectrum_file == ""
         assert source.state.buffers["path"] == str(path)
     finally:

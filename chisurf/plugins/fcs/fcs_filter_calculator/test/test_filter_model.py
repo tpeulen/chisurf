@@ -140,7 +140,13 @@ def test_model_unmixes_total_with_synthetic_components(tmp_path):
     model.set_total_paths([total_path])
     for name, tau in (("fast", 1.0), ("slow", 4.0)):
         model.add_component(
-            {"type": "synthetic", "model": "lifetime", "name": name, "lifetime": tau, "bin_width": 0.1}
+            {
+                "type": "synthetic",
+                "model": "lifetime",
+                "name": name,
+                "lifetime": tau,
+                "bin_width": 0.1,
+            }
         )
     model.unmix()
 
@@ -510,7 +516,12 @@ def test_auto_fit_fits_irf_when_no_measured_irf():
     for name in names:
         assert model._measured_irf_vector(name) is None
     before = {n: model.detectors.width(n) for n in names}
-    model._auto_fit_settings = {"kind": "lifetime", "n_components": 2, "tau_min": 0.2, "tau_max": 8.0}
+    model._auto_fit_settings = {
+        "kind": "lifetime",
+        "n_components": 2,
+        "tau_min": 0.2,
+        "tau_max": 8.0,
+    }
     model._auto_fit_components(n_components=2)
     after = {n: model.detectors.width(n) for n in names}
     assert any(abs(after[n] - before[n]) > 1e-4 for n in names), "IRF width was not fitted"
@@ -558,9 +569,9 @@ def test_fret_autofit_creates_fret_species():
 
 
 def test_auto_fit_settings_drive_kind_and_bounds(tmp_path):
-    total = 60000.0 * synthetic_decay(1024, 1.5, bin_width=0.05, normalize=True) + 40000.0 * synthetic_decay(
-        1024, 4.5, bin_width=0.05, normalize=True
-    )
+    total = 60000.0 * synthetic_decay(
+        1024, 1.5, bin_width=0.05, normalize=True
+    ) + 40000.0 * synthetic_decay(1024, 4.5, bin_width=0.05, normalize=True)
     path = tmp_path / "mix.txt"
     np.savetxt(path, total)
     model = FilterModel(example=False)

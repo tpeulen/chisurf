@@ -30,7 +30,12 @@ def _create_gfactor_host(parent=None, on_close=None):
 
 def _publish_gfactor_result(page, model, detector_info, client=None):
     """Persist one valid native result using the detector's context and model metadata."""
-    if model is None or model.g_factor is None or not np.isfinite(model.g_factor) or model.g_factor <= 0:
+    if (
+        model is None
+        or model.g_factor is None
+        or not np.isfinite(model.g_factor)
+        or model.g_factor <= 0
+    ):
         return False
     if getattr(page, "read_only", False) or not page.detectors_form.isEnabled():
         return False
@@ -48,7 +53,8 @@ def _publish_gfactor_result(page, model, detector_info, client=None):
             value = 0.0
         prior.append(value)
     parameters = model.detector_parameters(
-        prior_l1=prior[0], prior_l2=prior[1],
+        prior_l1=prior[0],
+        prior_l2=prior[1],
         micro_time_resolution=getattr(page, "effective_micro_time_resolution", None),
     )
     from chisurf.core.fio.setup_store import resolve_active_user_id
@@ -58,12 +64,20 @@ def _publish_gfactor_result(page, model, detector_info, client=None):
     archived = client.archive_g_factor(
         file_path=model.fast_file, parameters=parameters, active_user=resolve_active_user_id()
     )
-    if not isinstance(archived, dict) or not archived.get("ok", True) or not archived.get("calibration_id"):
+    if (
+        not isinstance(archived, dict)
+        or not archived.get("ok", True)
+        or not archived.get("calibration_id")
+    ):
         error = archived.get("error") if isinstance(archived, dict) else None
         raise ValueError(error or tr("Calibration archival returned no identifier."))
     page._set_g_factor_programmatically(
-        row, f"{model.g_factor:.3f}", archived.get("reference_decay_id"),
-        archived["calibration_id"], l1=f"{parameters['l1']:.5f}", l2=f"{parameters['l2']:.5f}",
+        row,
+        f"{model.g_factor:.3f}",
+        archived.get("reference_decay_id"),
+        archived["calibration_id"],
+        l1=f"{parameters['l1']:.5f}",
+        l2=f"{parameters['l2']:.5f}",
     )
     limits = sorted(int(float(value)) for value in model.region)
     range_text = f"{limits[0]}-{limits[1]}"
@@ -90,9 +104,14 @@ def _publish_gfactor_result(page, model, detector_info, client=None):
         setups["setups"][page.current_setup_name] = existing
         setups["last_used"] = page.current_setup_name
         save_detector_setups(setups, page.current_setups_file)
-    message = tr("G-Factor calculated: {g:.4f}\nUpdated G-Factor for detector: {name}\nG-Factor Channels: {range_text}\n").format(g=model.g_factor, name=name, range_text=range_text)
-    message += (tr("Setup '{name}' saved automatically.").format(name=page.current_setup_name)
-                if page.current_setup_name else tr("No setup was selected, so changes were not saved automatically."))
+    message = tr(
+        "G-Factor calculated: {g:.4f}\nUpdated G-Factor for detector: {name}\nG-Factor Channels: {range_text}\n"
+    ).format(g=model.g_factor, name=name, range_text=range_text)
+    message += (
+        tr("Setup '{name}' saved automatically.").format(name=page.current_setup_name)
+        if page.current_setup_name
+        else tr("No setup was selected, so changes were not saved automatically.")
+    )
     dialogs.information(page, tr("Success"), message)
     return True
 
@@ -361,7 +380,11 @@ def on_calc_g_factor(page, row=None):
                 _publish_gfactor_result(page, model, detector_info)
             except Exception as exc:
                 logger.warning("Failed to publish native G-factor calibration: %s", exc)
-                dialogs.error(page, tr("Error"), tr("Failed to save G-Factor calibration: {error}").format(error=exc))
+                dialogs.error(
+                    page,
+                    tr("Error"),
+                    tr("Failed to save G-Factor calibration: {error}").format(error=exc),
+                )
 
         host = _create_gfactor_host(parent=page, on_close=finished)
         host.setWindowFlags(host.windowFlags() | Qt.Window)

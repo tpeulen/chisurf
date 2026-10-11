@@ -19,12 +19,20 @@ def _table(path, n=120, e_true=0.45, seed=7):
         "Number of Photons (yellow)": total - green,
         "Duration (ms)": np.full(n, 1.0),
     }
-    lines = ["\t".join(cols)] + ["\t".join(f"{v:.10g}" for v in row) for row in np.column_stack(list(cols.values()))]
+    lines = ["\t".join(cols)] + [
+        "\t".join(f"{v:.10g}" for v in row) for row in np.column_stack(list(cols.values()))
+    ]
     path.write_text("\n".join(lines) + "\n")
     return path
 
 
-PARTS = {"metadata": True, "e_histogram": True, "s_histogram": True, "histogram_2d": True, "original_bursts": True}
+PARTS = {
+    "metadata": True,
+    "e_histogram": True,
+    "s_histogram": True,
+    "histogram_2d": True,
+    "original_bursts": True,
+}
 
 
 def test_the_export_writes_the_five_files_beside_the_table(tmp_path):
@@ -39,7 +47,10 @@ def test_the_export_writes_the_five_files_beside_the_table(tmp_path):
 
 def test_no_source_and_a_bad_table_are_reported(tmp_path):
     model = LegacyExportModel()
-    assert model.run_export("", "", "", PARTS) == [] and model.status_text == "Pick a burst file first."
+    assert (
+        model.run_export("", "", "", PARTS) == []
+        and model.status_text == "Pick a burst file first."
+    )
     bad = tmp_path / "bad.bur"
     bad.write_text("a\tb\n1\t2\n")
     assert model.run_export(str(bad), "", "", PARTS) == []
@@ -61,4 +72,6 @@ def test_the_native_step_write_button_writes(tmp_path):
     drv = Driver(app, (900, 600))
     drv.draw(2)
     drv.click(app.item_rects["run"])
-    assert len(app.model.written) == 4 and all(p.is_file() for p in app.model.written), app.model.status_text
+    assert len(app.model.written) == 4 and all(p.is_file() for p in app.model.written), (
+        app.model.status_text
+    )

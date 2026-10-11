@@ -107,7 +107,6 @@ class FretLineModel:
         self.add_component()
         self._select_default_sweep()
 
-
     def dye_pair_options(self) -> list[str]:
         """Offer custom measured inputs and an explicitly illustrative preset."""
         return ["custom", "illustrative"]
@@ -116,6 +115,7 @@ class FretLineModel:
         """Populate illustrative input fields without editing the mixture."""
         if self.dye_pair == "illustrative":
             from ..demo import pair_inputs
+
             self.pair_tau, self.pair_r0 = pair_inputs()
 
     def apply_dye_pair(self) -> None:
@@ -125,6 +125,7 @@ class FretLineModel:
         Existing lines, distances, weights and lifetime-only components stay intact.
         """
         from chisurf.core.fluorescence.fret.fret_line import find_parameter
+
         if not all(np.isfinite(v) and v > 0 for v in (self.pair_tau, self.pair_r0)):
             raise ValueError(tr("Donor lifetime and Förster radius must be finite and positive."))
         changes = []
@@ -137,9 +138,11 @@ class FretLineModel:
             donor = [key for key in active if key.startswith("donor.tau.")]
             if donor != ["donor.tau.0"]:
                 raise ValueError(tr("Use Advanced for multiexponential donor spectra."))
-            for key, value in (("donor.tau.0", self.pair_tau),
-                               ("fret.tau0", self.pair_tau),
-                               ("fret.forster_radius", self.pair_r0)):
+            for key, value in (
+                ("donor.tau.0", self.pair_tau),
+                ("fret.tau0", self.pair_tau),
+                ("fret.forster_radius", self.pair_r0),
+            ):
                 parameter = find_parameter(model, key)
                 if parameter.link is not None:
                     raise ValueError(tr("Use Advanced for linked donor or FRET parameters."))
@@ -162,6 +165,7 @@ class FretLineModel:
     def load_example(self) -> None:
         """Load the declared illustrative pair without pressing Compute for the user."""
         from ..demo import configure_example, make_demo
+
         self.example_path = str(make_demo())
         configure_example(self)
         self.message = tr("Illustrative pair loaded. Press Add FRET line to compute.")
@@ -292,8 +296,11 @@ class FretLineModel:
             relevant_only=not self.show_all_parameters,
         )
         signature = [(t.get("kind"), t.get("component"), t.get("name")) for t in targets]
-        if (signature != self._sweep_signature and self._sweep_key is not None
-                and self._sweep_key in signature):
+        if (
+            signature != self._sweep_signature
+            and self._sweep_key is not None
+            and self._sweep_key in signature
+        ):
             self.sweep_index = signature.index(self._sweep_key)
         self.sweep_index = min(self.sweep_index, max(0, len(signature) - 1))
         self._sweep_signature = signature

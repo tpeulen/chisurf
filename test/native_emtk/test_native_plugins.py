@@ -9,7 +9,9 @@ def test_native_discovery_keeps_pending_ports_explicit(tmp_path):
     for key, entrypoints in [("native", {"emtk": "demo:make_app"}), ("qt", {"gui": "demo:Tool"})]:
         directory = tmp_path / key
         directory.mkdir()
-        (directory / "manifest.json").write_text(json.dumps({"id": key, "version": "1", "entrypoints": entrypoints}))
+        (directory / "manifest.json").write_text(
+            json.dumps({"id": key, "version": "1", "entrypoints": entrypoints})
+        )
     assert set(manifests(tmp_path)) == {"native", "qt"}
     assert native_factory("native", tmp_path) == "demo:make_app"
     with pytest.raises(ValueError, match="no verified native factory"):

@@ -99,7 +99,9 @@ def make_app():
                 if im.radio_button(tr(caption) + f"##pick.{target}", self.pick_target == target):
                     self.pick_target = target
                 im.set_item_tooltip(
-                    tr(f"Choose the {caption.lower()} attachment site: pick its residue in the list below.")
+                    tr(
+                        f"Choose the {caption.lower()} attachment site: pick its residue in the list below."
+                    )
                 )
                 self.remember(f"pick_{target}")
                 im.same_line()

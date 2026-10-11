@@ -117,8 +117,13 @@ class OverviewPanel(Panel):
 #: ``(type, client listing, id key, label key, summary keys)`` of the All items table.
 ALL_ITEMS_SOURCES: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
     ("sample", "list_samples", "sample_id", "description", ("project_id", "sample_uuid")),
-    ("experiment", "list_experiments", "experiment_id", "sample_id",
-     ("experiment_type", "project_id", "status")),
+    (
+        "experiment",
+        "list_experiments",
+        "experiment_id",
+        "sample_id",
+        ("experiment_type", "project_id", "status"),
+    ),
     ("user", "list_users", "user_id", "display_name", ("email", "affiliation", "role")),
     ("device", "list_devices", "device_id", "name", ("device_type", "model", "serial_number")),
     ("probe", "list_probes", "probe_id", "chromophore_name", ("category", "probe_origin")),
@@ -126,12 +131,27 @@ ALL_ITEMS_SOURCES: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
     ("experiment_type", "list_experiment_types", "type_id", "name", ("category",)),
     ("setup", "setups", "setup_id", "name", ("instrument_type",)),
     ("raw_data", "list_raw_data", "raw_data_id", "data_type", ("storage_mode", "experiment_id")),
-    ("processing_run", "list_processing_runs", "processing_id", "processing_type",
-     ("status", "experiment_id")),
-    ("processed_data", "list_processed_data", "processed_data_id", "product_type",
-     ("product_type", "processing_id")),
-    ("analysis", "list_analysis_runs", "analysis_id", "model_name",
-     ("analysis_type", "experiment_id")),
+    (
+        "processing_run",
+        "list_processing_runs",
+        "processing_id",
+        "processing_type",
+        ("status", "experiment_id"),
+    ),
+    (
+        "processed_data",
+        "list_processed_data",
+        "processed_data_id",
+        "product_type",
+        ("product_type", "processing_id"),
+    ),
+    (
+        "analysis",
+        "list_analysis_runs",
+        "analysis_id",
+        "model_name",
+        ("analysis_type", "experiment_id"),
+    ),
     ("project", "list_projects", "project_id", "name", ("experiment_id", "created_at")),
 )
 
@@ -263,7 +283,9 @@ class MeasurementsPanel(Panel):
                             "sample": str(item.get("sample_id", "") or ""),
                             "experiment": str(item.get("experiment_id", "") or ""),
                             "status": str(item.get("status", "") or ""),
-                            "created": str(item.get("created_at", "") or item.get("acquired_at", "") or ""),
+                            "created": str(
+                                item.get("created_at", "") or item.get("acquired_at", "") or ""
+                            ),
                             "location": str(
                                 item.get("file_path", "")
                                 or item.get("url", "")
@@ -389,7 +411,10 @@ class MetadataPanel(Panel):
             samples, known = result
             self.known_values = known
             self.samples = [
-                (str(s.get("sample_id", "")), f"{s.get('sample_id', '')} — {s.get('description') or s.get('sample_id', '')}")
+                (
+                    str(s.get("sample_id", "")),
+                    f"{s.get('sample_id', '')} — {s.get('description') or s.get('sample_id', '')}",
+                )
                 for s in samples
             ]
             if self.sample_id:
@@ -410,8 +435,11 @@ class MetadataPanel(Panel):
         def done(sample: dict) -> None:
             self.rows = []
             for kv in (sample or {}).get("key_values") or []:
-                self._add(str(kv.get("key", "") or ""), str(kv.get("value", "") or ""),
-                          str(kv.get("details", "") or ""))
+                self._add(
+                    str(kv.get("key", "") or ""),
+                    str(kv.get("value", "") or ""),
+                    str(kv.get("details", "") or ""),
+                )
             self.selected_row = ""
             self.say(f"Sample {sid}: {len(self.rows)} metadata keys")
 
@@ -469,8 +497,11 @@ class MetadataPanel(Panel):
         if row is None:
             self.say("Select a metadata row first.")
             return
-        row.update(key=self.detail_key.strip(), value=self.detail_value.strip(),
-                   details=self.detail_details.strip())
+        row.update(
+            key=self.detail_key.strip(),
+            value=self.detail_value.strip(),
+            details=self.detail_details.strip(),
+        )
         self.say("Detail applied to row.")
 
     def add_row(self) -> None:
@@ -514,7 +545,9 @@ class MetadataPanel(Panel):
 class ImportExportPanel(Panel):
     key = "import_export"
     name = "Import / Export"
-    description = "Import PDBx / PDB-IHM / FLR CIF files; export a sample as FLR CIF or the sample table."
+    description = (
+        "Import PDBx / PDB-IHM / FLR CIF files; export a sample as FLR CIF or the sample table."
+    )
 
     def __init__(self, admin: Any) -> None:
         super().__init__(admin)
@@ -736,7 +769,9 @@ class ElabPanel(Panel):
 
         self._go(
             "List eLabFTW",
-            lambda: self.client.list_elabftw_experiments(cid, query=query, page_size=50, max_items=500),
+            lambda: self.client.list_elabftw_experiments(
+                cid, query=query, page_size=50, max_items=500
+            ),
             done,
         )
 
@@ -784,7 +819,9 @@ class ElabPanel(Panel):
 
         self._go(
             "Import eLabFTW",
-            lambda: self.client.import_elabftw_experiments(cid, ids, conflict=conflict, sample_id=sample),
+            lambda: self.client.import_elabftw_experiments(
+                cid, ids, conflict=conflict, sample_id=sample
+            ),
             done,
         )
 
@@ -798,7 +835,9 @@ class ElabPanel(Panel):
         cid = self.connection_id
         self._go(
             "Export eLabFTW",
-            lambda: self.client.export_elabftw_experiment(cid, str(experiment_id), mode=mode, remote_id=remote_id),
+            lambda: self.client.export_elabftw_experiment(
+                cid, str(experiment_id), mode=mode, remote_id=remote_id
+            ),
             lambda result: setattr(
                 self,
                 "message",
@@ -908,7 +947,9 @@ class StudiesPanel(Panel):
                 self.new_name = ""
             self.refresh()
 
-        self.run("Create study", lambda: self.client.create_study(name), done, self.failed("Create"))
+        self.run(
+            "Create study", lambda: self.client.create_study(name), done, self.failed("Create")
+        )
 
     def add_member(self) -> None:
         sid, member_id, kind = self.selected, self.member_id.strip(), self.member_type
@@ -924,8 +965,12 @@ class StudiesPanel(Panel):
                 self.member_id = ""
             self._load(sid)
 
-        self.run("Add member", lambda: self.client.add_study_member(sid, kind, member_id), done,
-                 self.failed("Add member"))
+        self.run(
+            "Add member",
+            lambda: self.client.add_study_member(sid, kind, member_id),
+            done,
+            self.failed("Add member"),
+        )
 
     def set_field(self) -> None:
         sid, key, value = self.selected, self.field_key.strip(), self.field_value
@@ -941,8 +986,12 @@ class StudiesPanel(Panel):
                 self.field_key = self.field_value = ""
             self._load(sid)
 
-        self.run("Set field", lambda: self.client.set_study_field(sid, key, value), done,
-                 self.failed("Set field"))
+        self.run(
+            "Set field",
+            lambda: self.client.set_study_field(sid, key, value),
+            done,
+            self.failed("Set field"),
+        )
 
 
 # ── Protocols ───────────────────────────────────────────────────────────
@@ -983,7 +1032,9 @@ class ProtocolsPanel(Panel):
             for row in self.protocols:
                 row["_row"] = str(row["name"])
 
-        self.run("Protocols", lambda: self.client.list_protocols(scope), done, self.failed("Protocols"))
+        self.run(
+            "Protocols", lambda: self.client.list_protocols(scope), done, self.failed("Protocols")
+        )
 
     def protocol_rows(self) -> list[dict]:
         return self.protocols
@@ -1060,8 +1111,14 @@ class LifecyclePanel(Panel):
             if self.entity_type not in self.definitions and self.definitions:
                 self.entity_type = sorted(self.definitions)[0]
 
-        self.run("Lifecycle definitions", self.client.lifecycle_definitions, done,
-                 lambda error: setattr(self, "message", f"Could not load lifecycle definitions: {error}"))
+        self.run(
+            "Lifecycle definitions",
+            self.client.lifecycle_definitions,
+            done,
+            lambda error: setattr(
+                self, "message", f"Could not load lifecycle definitions: {error}"
+            ),
+        )
 
     def type_options(self) -> list[str]:
         return sorted(self.definitions)
@@ -1076,7 +1133,9 @@ class LifecyclePanel(Panel):
 
     def next_states(self) -> list[str]:
         spec = self.definitions.get(self.loaded_entity[0], {})
-        return [to for frm, to in spec.get("transitions", []) if (frm if frm else None) == self.current]
+        return [
+            to for frm, to in spec.get("transitions", []) if (frm if frm else None) == self.current
+        ]
 
     def to_options(self) -> list[str]:
         return self.next_states() or [""]
@@ -1150,7 +1209,9 @@ class LifecyclePanel(Panel):
 class CalibrationsPanel(Panel):
     key = "calibrations"
     name = "Calibrations"
-    description = "Calibration values (γ, G-factor, R₀, …), user-registered ones, and uses gone stale."
+    description = (
+        "Calibration values (γ, G-factor, R₀, …), user-registered ones, and uses gone stale."
+    )
 
     def __init__(self, admin: Any) -> None:
         super().__init__(admin)
@@ -1175,8 +1236,12 @@ class CalibrationsPanel(Panel):
 
         def done(result) -> None:
             cals, stale = result
-            self.calibrations = rows_of(cals, ("calibration_type", "method", "value", "notes", "artifact_id"), "artifact_id")
-            self.stale = rows_of(stale, ("used_by_id", "calibration_type", "used_artifact_id", "latest_artifact_id"))
+            self.calibrations = rows_of(
+                cals, ("calibration_type", "method", "value", "notes", "artifact_id"), "artifact_id"
+            )
+            self.stale = rows_of(
+                stale, ("used_by_id", "calibration_type", "used_artifact_id", "latest_artifact_id")
+            )
 
         self.run("Calibrations", fetch, done, self.failed("Calibrations"))
 
@@ -1202,8 +1267,12 @@ class CalibrationsPanel(Panel):
                 self.new_value = self.new_notes = ""
             self.refresh()
 
-        self.run("Register calibration", lambda: self.client.create_calibration(kind, value, notes=notes),
-                 done, self.failed("Register"))
+        self.run(
+            "Register calibration",
+            lambda: self.client.create_calibration(kind, value, notes=notes),
+            done,
+            self.failed("Register"),
+        )
 
 
 # ── Reagent lots ────────────────────────────────────────────────────────
@@ -1251,8 +1320,12 @@ class ReagentsPanel(Panel):
             self.lots = rows_of(lots, self.LOT_KEYS, "lot_id")
             self.selected = ""
 
-        self.run("Reagent lots", lambda: self.client.list_reagent_lots(kind=kind, include_expired=expired),
-                 done, self.failed("Reagent lots"))
+        self.run(
+            "Reagent lots",
+            lambda: self.client.list_reagent_lots(kind=kind, include_expired=expired),
+            done,
+            self.failed("Reagent lots"),
+        )
 
     def lot_rows(self) -> list[dict]:
         return self.lots
@@ -1264,7 +1337,11 @@ class ReagentsPanel(Panel):
         lot = next((r for r in self.lots if r["_row"] == self.selected), None)
         if lot is None:
             return []
-        return [{"_row": k, "field": k, "value": lot[k]} for k in self.LOT_KEYS if lot.get(k) not in ("", None)]
+        return [
+            {"_row": k, "field": k, "value": lot[k]}
+            for k in self.LOT_KEYS
+            if lot.get(k) not in ("", None)
+        ]
 
     def create_lot(self) -> None:
         name = self.new_name.strip()
@@ -1287,7 +1364,12 @@ class ReagentsPanel(Panel):
                 self.new_name = self.new_lot_number = self.new_vendor = self.new_expiry = ""
             self.refresh()
 
-        self.run("Create lot", lambda: self.client.create_reagent_lot(**args), done, self.failed("Create"))
+        self.run(
+            "Create lot",
+            lambda: self.client.create_reagent_lot(**args),
+            done,
+            self.failed("Create"),
+        )
 
 
 # ── Pipelines ───────────────────────────────────────────────────────────
@@ -1308,7 +1390,9 @@ class PipelinesPanel(Panel):
 
     def refresh(self) -> None:
         def done(items: list[dict]) -> None:
-            self.pipelines = rows_of(items, ("name", "version", "description", "pipeline_id"), "pipeline_id")
+            self.pipelines = rows_of(
+                items, ("name", "version", "description", "pipeline_id"), "pipeline_id"
+            )
             self.nodes, self.edges, self.runs = [], [], []
             if not self.pipelines:
                 self.message = "No pipelines are registered with this server."
@@ -1373,4 +1457,3 @@ __all__ = [
     "StudiesPanel",
     "overview_text",
 ]
-

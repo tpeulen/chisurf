@@ -92,7 +92,11 @@ def test_select_run_gives_a_container_path_every_reader_accepts(container):
 def test_the_picker_is_spliced_once_under_the_input_table():
     spec = {
         "sections": [
-            {"type": "panel", "title": "Files", "sections": [{"type": "custom", "key": "data_table"}]},
+            {
+                "type": "panel",
+                "title": "Files",
+                "sections": [{"type": "custom", "key": "data_table"}],
+            },
             {"type": "panel", "title": "Settings", "sections": []},
         ]
     }
