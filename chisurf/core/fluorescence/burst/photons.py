@@ -27,7 +27,13 @@ from dataclasses import dataclass, field
 import numpy as np
 import tttrlib
 
-from chisurf.core.datastore import concat_stores, numeric_column, row_count
+from chisurf.core.datastore import (
+    column_names,
+    concat_stores,
+    numeric_column,
+    row_count,
+    take_columns,
+)
 
 __all__ = [
     "PhotonMeta",
@@ -299,6 +305,10 @@ def load_bur_dataframe(paths: Sequence[str | pathlib.Path]):
     tttrlib.DataStore
         The rows of every file, stacked. Columns line up by name, so tables
         written by different runs combine even when their column order differs.
+        The unnamed column the file's trailing tab reads as is dropped: it is
+        the layout of the file, not data, and it reached analysis tables (and
+        ``Bursts.table``) as a column called ``""``. The interleaved zero rows
+        stay; callers select real rows themselves.
 
     Raises
     ------
@@ -310,7 +320,10 @@ def load_bur_dataframe(paths: Sequence[str | pathlib.Path]):
     frames = [read_bur_file(p) for p in paths]
     if not frames:
         raise ValueError("no .bur files provided")
-    return concat_stores(frames)
+    table = concat_stores(frames)
+    names = column_names(table)
+    named = [name for name in names if str(name).strip()]
+    return table if len(named) == len(names) else take_columns(table, named)
 
 
 def is_sentinel_file_reference(value: object) -> bool:

@@ -40,38 +40,53 @@ def _sm_dna_copy():
     return work / "sm_dna"
 
 
-def _run_h2mm(tool, timeout=900):
-    t0 = time.time()
-    tool._run_analysis(force=True)
-    while tool._result is None and time.time() - t0 < timeout:
-        QApplication.instance().processEvents()
-        time.sleep(0.05)
-    _pump(1)
+#: The SPC-132 DNA sample's detectors: green 0/8 (parallel/perpendicular), red 1/9. Set explicitly -- a detector
+#: setup persisted in the settings directory must not decide which photons a guide figure calls donor.
+SM_DNA_SETUP = {
+    "windows": {},
+    "detectors": {
+        name: {"chs": chs, "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
+        for name, chs in (("green", [0, 8]), ("red", [1, 9]))
+    },
+    "tttr_reading": {"file_type": "SPC-130", "macro_time_resolution": 0.0,
+                     "micro_time_resolution": 0.0, "micro_time_binning": 1},
+}
 
 
 def _grab_h2mm_real():
-    """Guides 30/32/h2mm: the H2MM window on the real sm-DNA bursts (~1-3 min fit)."""
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+    """Guides 30/32: the native H2MM window on the real sm-DNA bursts, a 1-4 state scan (~1-2 min)."""
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, show_tabs, wait
 
     data = _sm_dna_copy()
-    tool = H2mmTool()
-    tool.resize(1600, 1150)
-    tool.show()
-    _pump(0.5)
-    tool._set_folder(str(data / "burstwise_All 0.1000#15"))
-    tool.sb_max_states.setValue(4)
-    _run_h2mm(tool)
-    tool.cb_dynamic_only.setChecked(True)
-    tool.sb_burst.setValue(3)
-    _select_tab(tool, "Channel Definitions")
-    _grab(tool, "30_h2mm_results.png")
-    # Guide 32: the donor decay of each FRET state.
-    page = tool._plot_pages["Per-state decay"]
-    for state, box in tool._nano_state_boxes.items():
-        box.setChecked(state in (1, 2, 3))
-    page.resize(900, 560)
-    _grab(page, "32_h2mm_state_decays.png")
-    tool.close()
+    app = app_from("burst_h2mm")
+    m = app.model
+    m.set_setup(SM_DNA_SETUP)
+    m.donor, m.acceptor = "green", "red"
+    driver = Driver(app, (1600, 1100))
+    driver.frame(2)
+    m.data_folder = str(data / "burstwise_All 0.1000#15")
+    m.max_states = 4
+    app.run()
+    wait(driver, lambda: not app.job.busy, timeout=900)
+    print("status:", m.status_text, flush=True)
+    m.dynamic_only, m.nav_burst = True, 3
+    show_tabs(driver, "Selection", "Dwell times")
+    driver.screenshot(FIG / "30_h2mm_results.png")
+    print("wrote 30_h2mm_results.png", flush=True)
+    # Guide 32: the donor decay of each FRET state (S1-S3; S0 is the donor-only-like E ~ 0.03).
+    show_tabs(driver, "Decays")
+    app.nano_states = {1, 2, 3}
+    driver.frame(3)
+    x, y, _w, _h = driver.rect("Dwell FRET")
+    from PIL import Image
+
+    shot = FIG / "32_h2mm_state_decays.png"
+    driver.screenshot(shot)
+    Image.open(shot).crop((int(x) - 4, int(y) - 2, driver.size[0], int(driver.size[1] * 0.62))).save(shot)
+    print("wrote 32_h2mm_state_decays.png", flush=True)
+    app.close()
 
 
 def _grab_h2mm_simulated():
@@ -80,8 +95,6 @@ def _grab_h2mm_simulated():
     from chisurf.plugins.burst.burst_h2mm.core import h2mm
     from chisurf.plugins.burst.burst_h2mm.core.photons import pack_simulated_bursts
     from chisurf.plugins.burst.burst_h2mm.examples.generate_example_data import default_model
-    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
-
     folder = pathlib.Path(tempfile.mkdtemp(prefix="h2mm_sim_"))
     rng = np.random.default_rng(1)
     times = [np.concatenate([[0], np.cumsum(rng.poisson(4, 119) + 1)]).astype(np.int64)
@@ -94,29 +107,32 @@ def _grab_h2mm_simulated():
     tttr.write_hdf_file(str(folder / "sim_smfret.photon.h5"))
     write_csv_table(folder / "sim_smfret.bur", frame)
 
-    tool = H2mmTool()
-    tool.resize(1600, 1150)
-    tool.show()
-    _pump(0.5)
-    tool._set_folder(str(folder))
-    tool.detector_page._load_data({
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, show_tabs, wait
+
+    app = app_from("burst_h2mm")
+    m = app.model
+    m.set_setup({
         "windows": {"all": [0, 4095]},
         "detectors": {"donor": {"chs": [0], "micro_time_ranges": []},
                       "acceptor": {"chs": [1], "micro_time_ranges": []}},
         "tttr_reading": {"file_type": "Auto", "macro_time_resolution": 50.0,
                          "micro_time_resolution": 50.0, "micro_time_binning": 1},
     })
-    tool._refresh_detector_combos()
-    tool.cb_donor.setCurrentText("donor")
-    tool.cb_acceptor.setCurrentText("acceptor")
-    tool.cb_aex.setCurrentIndex(0)
-    tool.sb_max_states.setValue(4)
-    tool.sb_patience.setValue(-1)
-    _run_h2mm(tool, timeout=120)
-    tool.cb_dynamic_only.setChecked(True)
-    _select_tab(tool, "Channel Definitions")
-    _grab(tool, "31_h2mm_simulated.png")
-    tool.close()
+    m.donor, m.acceptor = "donor", "acceptor"
+    m.data_folder = str(folder)
+    m.max_states, m.patience = 4, -1
+    driver = Driver(app, (1600, 1100))
+    driver.frame(2)
+    app.run()
+    wait(driver, lambda: not app.job.busy, timeout=300)
+    print("status:", m.status_text, flush=True)
+    m.dynamic_only = True
+    show_tabs(driver, "Selection", "State path")
+    driver.screenshot(FIG / "31_h2mm_simulated.png")
+    print("wrote 31_h2mm_simulated.png", flush=True)
+    app.close()
 
 
 def _grab_burst_selection_guides():

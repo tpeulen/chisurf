@@ -194,6 +194,8 @@ class BurstAnalysisHubApp(ToolHubApp):
             help_resource=HERE / "help.md",
             guide=HERE / "guide.json",
             initial="setup",
+            # A pipeline: Next runs a step, and >> (documented in its help and in guides 27 and 66) walks the rest.
+            steps=True,
         )
         self._base_names = {p["role"]: p["name"] for p in self.tools}
 

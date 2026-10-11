@@ -17,6 +17,11 @@
 
 ## 2026-10-10
 
+- QA walk, smFRET guides (01–66 subset): 10 defects fixed with tests — `csc accurate-fret --simulate`
+  crashed on its own `#` header, Accurate FRET dropped a Calibrate press during a read, `.bur` tables carried
+  a blank column, H2MM transition arrows overlapped and per-state decays were indistinguishable, the `>>`
+  button never appeared in Burst Analysis/ALEX, ALEX titration showed raw markdown rows; 12 guides corrected
+  (wrong channels in two figures), 16 figures regenerated from the native apps. Record: [burst](plugins/burst.md).
 - One type scale for all text (emtk 8c39495): prose was rasterised at logical size and stretched on Retina
   (blurry, cramped) and measured with hinted advances; it is now rasterised at device resolution, laid out at
   the width it was measured at, with roles body/code/caption/h1-h4 from one interface-size setting (style

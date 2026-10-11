@@ -94,3 +94,20 @@ def test_detect_and_convert_button_then_a_typed_gate_republishes_the_setup(
     assert model.windows["green"] == list(demo.DONOR_GATE)
     assert handed[-1][0]["windows"]["prompt"] == list(demo.DONOR_GATE)
     assert handed[-1][1] == files, "a gate edit republishes the setup and reconverts nothing"
+
+
+def test_the_phase_tag_names_the_position_it_marks(drv, monkeypatch):
+    """The x tag sits at half the period; it said "period 8000" at x = 4000."""
+    from chisurf.plugins.burst.alex_suite.gui import app as app_module
+
+    drv.click_name("detect_only")
+    settle(drv)
+    tags = []
+    real = app_module.implot.tag_x
+    monkeypatch.setattr(
+        app_module.implot, "tag_x", lambda x, colour, fmt="", **kw: (tags.append((x, fmt)), real(x, colour, fmt=fmt, **kw))[1]
+    )
+    drv.draw(2)
+    assert tags, "no phase tag drawn"
+    for x, fmt in tags:
+        assert fmt.endswith(f"{x:g}"), (x, fmt)

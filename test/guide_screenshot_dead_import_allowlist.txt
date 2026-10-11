@@ -1,0 +1,18 @@
+# Guide screenshot grabbers that still import a retired (deleted) GUI module.
+# SHRINKING list: port the grabber to the native app (docs/guides/screenshots/emtk_shot.py)
+# and strike its line. Never add to it. Format: <script>::<module>[:<name>]
+docs/guides/make_screenshots.py::chisurf.plugins.burst.burst_browser:BurstBrowserWidget
+docs/guides/make_screenshots.py::chisurf.plugins.burst.burst_gs.gui.tool
+docs/guides/make_screenshots.py::chisurf.plugins.core.hmm.gui.tool
+docs/guides/make_screenshots.py::chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui
+docs/guides/make_screenshots.py::chisurf.plugins.burst.burst_ebfret.gui.tool
+docs/guides/make_screenshots.py::chisurf.plugins.misc.games.lumis_quest.test
+docs/guides/make_screenshots.py::chisurf.plugins.tttr.intensity_trace:IntensityTrace
+docs/guides/make_screenshots.py::chisurf.plugins.core.batch_analysis.gui.tool
+docs/guides/make_screenshots.py::chisurf.plugins.core.batch_analysis.gui.loaded_datasets
+docs/guides/screenshots/guides_02_14.py::chisurf.plugins.core.tttr_to_pto.gui.tool
+docs/guides/screenshots/guides_15_25.py::chisurf.plugins.burst.burst_background:BurstBackgroundEstimator
+docs/guides/screenshots/guides_26_36.py::chisurf.plugins.burst.burst_analysis.gui.tool
+docs/guides/screenshots/guides_39_53.py::chisurf.plugins.burst.burst_analysis.gui.tool
+docs/guides/screenshots/guides_56_65.py::chisurf.plugins.core.acq.gui.settings_panel
+docs/guides/screenshots/spectra_mfd.py::chisurf.plugins.burst.mfd_prepare.gui.tool

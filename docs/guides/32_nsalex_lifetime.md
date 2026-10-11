@@ -79,7 +79,7 @@ lifetimes can be told apart.
 three FRET states. The decay steepens as E rises: over 2.6–12 ns the mean delay
 after the peak is 1.76, 1.66 and 1.18 ns for S1 (E ≈ 0.22), S2 (≈ 0.62) and S3
 (≈ 0.88), against 2.55 ns for the donor-only-like S0 (E ≈ 0.03, unticked here).
-The colour and state boxes under the plot choose the curves.
+The colour and state boxes above the plot choose the curves; the line style is the state (S1 dashed, S2 dotted, S3 long-dashed).
 ```
 
 ## Result

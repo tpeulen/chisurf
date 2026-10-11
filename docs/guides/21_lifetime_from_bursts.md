@@ -135,8 +135,8 @@ tables that open in ndxplorer.
 
 ### The Burst MLE tool
 
-**Spectroscopy ▸ Single-Molecule ▸ Burst MLE**, or step *6. Burst MLE* of
-**Spectroscopy ▸ Burst Analysis**. In the native tool, **Burst MLE** holds the
+Step *6. Burst MLE* of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis** (no menu
+entry of its own; `python -m chisurf.emtk --plugin burst_mle_analysis` opens it alone). In the native tool, **Burst MLE** holds the
 input files, detector, fit window and editable parameter table; **IRF** holds
 pattern settings and **Detector setup** the shared channel editor. The existing
 wizard also exposes the same model selector in its embedded emtk panel.

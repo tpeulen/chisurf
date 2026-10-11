@@ -207,7 +207,7 @@ class TitrationViewModel:
             f"{int(fit.fractions.shape[1])} shared populations "
             f"(χ²ᵣ = {fit.chi2r:.3g}).",
             "",
-            "| population | E | width | fraction (lowest → highest) |",
+            "| population | E | width | fraction (low → high) |",
             "|---|---|---|---|",
         ]
         for k in range(fit.centres.size):

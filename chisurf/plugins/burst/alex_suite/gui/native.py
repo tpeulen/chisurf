@@ -46,7 +46,7 @@ STEPS: list[dict[str, Any]] = [
         "role": "data",
         "help": str(BURST_GUI / "data_selection_help.md"),
         "description": "The measurements: any format tttrlib reads, including the .sm files of the old "
-        "ALEX-Suite. No measurement at hand: Demo.",
+        "ALEX-Suite. No measurement at hand: Load example.",
     },
     {
         "name": "3. Alternation (optional)",
@@ -144,7 +144,7 @@ ES_Y = (
 #: What the status line asks for on each step (before anything else it says).
 NEEDS = {
     "setup": "Pick your setup (PIE), or press Next (µs-ALEX: step 3 writes one).",
-    "data": "Drop measurement files, or Demo; then Next.",
+    "data": "Drop measurement files, or Load example; then Next.",
     "alternation": "µs-ALEX is converted on arrival; then Next.",
     "selection": "Next runs the burst search.",
     "background": "Background is estimated on arrival; Next.",
@@ -218,7 +218,7 @@ class AlexHubApp(BurstAnalysisHubApp):
         app = AlexDataSelectionApp(model, on_proceed=lambda: self.select("alternation"))
         own = app.track
 
-        def track(name: str) -> None:  # the step's controls (Demo) also advance the hub's tour
+        def track(name: str) -> None:  # the step's controls (Load example) also advance the hub's tour
             own(name)
             self.tour.notify_used(name)
 

@@ -240,24 +240,27 @@ def _grab_16_burst_fcs():
 
 # ---------------------------------------------------------------- guide 17
 def _grab_17_filter_calculator():
-    """FCS Filter Calculator (emtk) on the BH SPC-132 decay: Auto-fit 2 species + Unmix."""
+    """FCS Filter Calculator (emtk) on its built-in example: Auto-fit 2 species + Unmix.
+
+    The caption quotes this example's numbers (1.16 ns / 3.38 ns, 66 / 34 %, chi2_r 1.04);
+    each step is settled, so the figure never shows a half-finished computation.
+    """
     from emtk.testing import PixelPainter, png_encode
     from emtk_shot import app_from
 
     from chisurf.plugins.fcs.fcs_filter_calculator.test.driving import FilterDriver
 
-    _ensure_bh_setup()
     app = app_from("fcs_filter_calculator")
     driver = FilterDriver(app, (1400, 900))
     driver.settle()  # the first computation publishes its model snapshot: edit the live one after it
     model = app.model
-    model.set_setup({"detectors": _BH_DETECTORS})
-    model.set_total_paths([_SPC_FILE.resolve()])
     model.components.clear()
     model._auto_fit_settings["n_components"] = 2
     model._auto_fit_components()
+    driver.settle()
     print("autofit:", model.message)
     model.unmix()
+    driver.settle()
     print("unmix:", model.message)
 
     def write(name):
@@ -350,6 +353,10 @@ def _grab_19_h2mm():
     m = app.model
     driver = Driver(app, (1400, 900))
     driver.frame(2)
+    from guides_26_36 import SM_DNA_SETUP
+
+    m.set_setup(SM_DNA_SETUP)  # explicit: a setup persisted in the settings dir must not pick the photons
+    m.donor, m.acceptor = "green", "red"
     print("detectors:", m.detector_names(), "donor/acceptor:", m.donor, m.acceptor)
     m.data_folder = str(folder)
     m.min_states, m.max_states, m.restarts, m.seed = 2, 3, 1, 0
@@ -514,7 +521,7 @@ def _grab_24_clsm_draw():
 
 # ---------------------------------------------------------------- guide 25
 def _grab_25_accurate_fret():
-    """Accurate FRET on simulated PIE/ALEX bursts with the guide's instrument.
+    """Accurate FRET (native app) on simulated PIE/ALEX bursts with the guide's instrument.
 
     γ = 1.35, α = 0.09, δ = 0.06, β = 0.95; FRET populations at E = 0.30 and
     0.70 plus donor-only and acceptor-only — the same numbers as the guide's
@@ -522,62 +529,19 @@ def _grab_25_accurate_fret():
     """
     import tempfile as _tf
 
-    from chisurf.core.fluorescence.fret.lines import static_fret_line
-    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
+    from emtk_shot import FIG, accurate_fret_calibrated, show_tabs, simulated_alex_table
 
-    gamma, alpha, beta, delta = 1.35, 0.09, 0.95, 0.06
-    tau_d0, r0 = 4.0, 52.0
-    line = static_fret_line(tau_d0, r0=r0, sigma=6.0)
-    rng = np.random.default_rng(25)
-    dd, da, aa, tau = [], [], [], []
-    for efficiency, n in ((0.30, 1500), (0.70, 1500)):
-        photons = rng.poisson(400, n).astype(float)
-        dd.append(rng.poisson((1 - efficiency) * photons))
-        aa.append(rng.poisson(beta * gamma * photons))
-        da.append(
-            rng.poisson(
-                gamma * efficiency * photons
-                + alpha * (1 - efficiency) * photons
-                + delta * beta * gamma * photons
-            )
-        )
-        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.15, n))
-    photons = rng.poisson(400, 500).astype(float)  # donor-only
-    dd.append(rng.poisson(photons))
-    da.append(rng.poisson(alpha * photons))
-    aa.append(rng.poisson(2.0, 500))
-    tau.append(rng.normal(tau_d0, 0.15, 500))
-    photons = rng.poisson(400, 500).astype(float)  # acceptor-only
-    dd.append(rng.poisson(2.0, 500))
-    aa.append(rng.poisson(beta * gamma * photons))
-    da.append(rng.poisson(delta * beta * gamma * photons))
-    tau.append(np.full(500, np.nan))
-
-    table = pathlib.Path(_tf.mkdtemp()) / "rcm_alex_bursts.csv"
-    np.savetxt(
-        table,
-        np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
-        delimiter=",",
-        comments="",
-        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+    table = simulated_alex_table(
+        pathlib.Path(_tf.mkdtemp()) / "rcm_alex_bursts.csv",
+        gamma=1.35, alpha=0.09, beta=0.95, delta=0.06, efficiencies=(0.30, 0.70), seed=25,
     )
-    tool = AccurateFretTool()
-    tool.model.donor_lifetime = tau_d0
-    tool.model.forster_radius = r0
-    tool.model.n_bootstrap = 20
-    tool.model.set_filename(str(table))
-    tool.model.compute()
-    tool._refresh()
-
-    tool.resize(1500, 900)
-    _settle()
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "25")
-    _raise_tab(tool, "E–S")
-    _grab(tool, "25_accurate_fret.png")
-    _raise_tab(tool, "Correction factors")
-    _grab(tool, "25_accurate_fret_factors.png")
-    return tool
+    app, driver = accurate_fret_calibrated(table, size=(1500, 900))
+    show_tabs(driver, "Report", "E–S populations")
+    driver.screenshot(FIG / "25_accurate_fret.png")
+    show_tabs(driver, "Correction factors")
+    driver.screenshot(FIG / "25_accurate_fret_factors.png")
+    print("wrote 25_accurate_fret.png, 25_accurate_fret_factors.png", flush=True)
+    return app
 
 
 if __name__ == "__main__":

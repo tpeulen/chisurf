@@ -1,7 +1,7 @@
 """The native ALEX Suite hub (card AS4): the simple workflow walked with real input.
 
 Two walks. On the simulated µs-ALEX measurement of :mod:`..demo` (written into a temporary folder by the files
-step's own Load demo data button), Next presses alone take it from the files to an E–S histogram: the alternation
+step's own Load example button), Next presses alone take it from the files to an E–S histogram: the alternation
 step converts on arrival, the burst search runs on the converted container with the detected setup, the background
 is estimated, Accurate FRET calibrates, and ndX shows E against S. On copies of the in-repository BH SPC-132 PIE files
 the alternation step leaves the data alone and the burst search finds the Qt tool's 198 bursts.
@@ -119,7 +119,7 @@ def test_next_alone_takes_the_demo_from_files_to_an_es_histogram(hub, settings):
     press_next(drv)  # 1. Setup -> 2. Files (nothing to run)
     assert hub.selected == "data"
     data = hub.children["data"]
-    drv.click(hub._target_rect("load_example"))  # the files step's own Load demo data button
+    drv.click(hub._target_rect("load_example"))  # the files step's own Load example button
     drv.draw(2)
     demo = [Path(p) for p in hub.context.raw_files]
     assert [p.name for p in demo] == ["alex_demo.spc"]
@@ -351,3 +351,25 @@ def test_the_setup_steps_proceed_button_names_the_alex_rails_next_step(hub):
     hub.select("setup")
     strings = drv.draw(3).strings
     assert "Proceed to 2. Files" in strings and "Proceed to Data Selection" not in strings
+
+
+def test_the_tour_names_the_example_button_by_its_caption(hub):
+    """The tour, the step description and the status line said **Demo**; the button reads *Load example*."""
+    import json
+    import re
+
+    from chisurf.plugins.burst.alex_suite.gui import native
+
+    drv = Driver(hub, (1200, 800))
+    hub.select("data")
+    painter = drv.draw(3)
+    rect = hub._target_rect("load_example")
+    assert rect is not None
+    x, y, w, h = rect
+    inside = [t[5] for t in painter.texts if x - 1 <= t[0] <= x + w and y - 1 <= t[1] <= y + h]
+    assert any("Load example" in c for c in inside), inside
+    steps = json.loads((Path(native.__file__).parent / "guide.json").read_text())["steps"]
+    step = next(s for s in steps if (s.get("target") or {}).get("name") == "load_example")
+    named = re.findall(r"<b>([^<]+)</b>", step["await"]["hint"])
+    assert named == ["Load example"]
+    assert "Demo" not in hub.panel.get("description", "") and "Demo" not in hub.status

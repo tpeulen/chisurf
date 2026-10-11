@@ -950,7 +950,9 @@ def write_csv_table(
     )
 
 
-def read_csv_table(path: Any, *, delimiter: str = "\t", header: bool = True) -> Any:
+def read_csv_table(
+    path: Any, *, delimiter: str = "\t", header: bool = True, comment: str | None = None
+) -> Any:
     """Read delimited text into a store, or ``None`` if this reader declines it.
 
     The threaded reader handles a plain delimited file whose header is its first
@@ -968,6 +970,9 @@ def read_csv_table(path: Any, *, delimiter: str = "\t", header: bool = True) -> 
         Field separator.
     header : bool
         Whether the first line names the columns.
+    comment : str, optional
+        Lines starting with this character are skipped (a ``#`` preamble that
+        records how the table was made). The header is then the first other line.
 
     Returns
     -------
@@ -976,7 +981,9 @@ def read_csv_table(path: Any, *, delimiter: str = "\t", header: bool = True) -> 
     import tttrlib
 
     try:
-        store = tttrlib.read_csv(str(path), delimiter=delimiter, has_header=header)
+        store = tttrlib.read_csv(
+            str(path), delimiter=delimiter, has_header=header, comment=comment
+        )
     except Exception:
         return None
     return store if store.n_columns() > 0 else None

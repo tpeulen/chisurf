@@ -40,8 +40,8 @@ no photon-level access needed.
 ### In the GUI: the same-molecule probability
 
 The $P_\text{same}(\tau)$ curve is drawn by **Burst Fusion** — step
-**3. Burst Fusion (optional)** of **Spectroscopy → Single-Molecule → Burst Analysis**, or on its
-own as *Spectroscopy:Single-Molecule:Burst Fusion*. Point **Folder** (**…**) at a
+**3. Burst Fusion (optional)** of **Spectroscopy → Single-Molecule → Burst Analysis** (it has no
+menu entry of its own; `python -m chisurf.emtk --plugin burst_fusion` opens it alone). Point **Folder** (**…**) at a
 burst-analysis folder (the one Burst Selection wrote) and press ▶. The tool
 estimates $P_\text{same}$ over all bursts of the folder and reads off the
 longest lag at which it still meets **P(same) ≥**.

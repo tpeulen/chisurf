@@ -7,6 +7,24 @@ tags: [plugins, smfret]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
+## Where to pick this up
+
+1. Open: **port the remaining burst guide grabbers** (`test/test_guide_screenshot_imports.py`, allow-list
+   `test/guide_screenshot_dead_import_allowlist.txt`: burst_browser, burst_gs, burst_ebfret, burst_background,
+   burst_analysis in `guides_26_36.py`/`guides_39_53.py`, mfd_prepare). Pattern: `docs/guides/screenshots/emtk_shot.py`
+   (`app_from`, `wait`, `show_tabs`, `accurate_fret_calibrated`, `simulated_alex_table`). Trap: a grabber that does not
+   set the detector setup explicitly inherits whatever the settings dir holds — guides 19/30 shipped an H2MM fit of
+   donor 0/1, acceptor 8/9 (E 0.48/0.54) that way; use `guides_26_36.SM_DNA_SETUP` (green 0/8, red 1/9).
+2. Open: **guides not yet walked** in the 2026-10-11 smFRET pass: 14, 27, 28, 29, 33–35, 46 (ndX, beyond opening a burst
+   folder), 52, 58, 11 (PDA; another lane had it open). Method and the defects found: known issue "smFRET guide walk"
+   (found 2026-10-11) in [known issues](/references/known-issues.md).
+3. Measure: **numbers to re-derive when a burst engine changes** (all on the bundled `bh_spc132_sm_dna` files): Burst Selection
+   10 files → 1130 bursts / 1 791 775 photons / 264 806 selected; BVA 1118 of 1130; 2CDE 1118 of 1130; `burst_search`
+   on `m000.spc` 223; `bursts.bva(...).dynamic_fraction` 0.423 (m000–m002, min 20 photons); H2MM 1–3 states E 0.029 /
+   0.422 / 0.866, 1–4 states 0.029 / 0.218 / 0.612 / 0.879 (`burstwise_All 0.1000#15`, seed 0).
+
+## Overview
+
 The `burst/` group covers the confocal single-molecule FRET (smFRET) burst workflow: bursts are selected from Time-Tagged Time-Resolved (TTTR) photon streams, background is estimated, and each burst yields FRET, variance, lifetime and correlation observables that a browser inspects. This pipeline is the subject of [PRD-04](/prds/prd-04.md) (burst pipeline).
 
 > **Qt tools retired (2026-10-11).** `burst_selection` and `burst_mle_analysis` are emtk apps over Qt-free models and engines

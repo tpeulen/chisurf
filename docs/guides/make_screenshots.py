@@ -299,32 +299,26 @@ def _grab_burst_browser():
 
 
 def _grab_2cde_tool():
-    """Grab the FRET-2CDE tool plot (dynamics score vs proximity ratio)."""
-    import numpy as np
-    import pandas as pd
+    """Grab the native FRET-2CDE window on the plugin's demo folder (static and dynamic bursts)."""
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import app_from, wait
 
-    from chisurf.plugins.burst.burst_2cde.core import computation as core
-    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+    from chisurf.plugins.burst.burst_2cde.tests.demo_folder import build
 
-    rng = np.random.default_rng(0)
-    # two static populations (low FRET-2CDE ~ 10) + a dynamic bridge (elevated 2CDE)
-    pr = np.concatenate(
-        [rng.normal(0.15, 0.04, 400), rng.normal(0.75, 0.04, 400), rng.uniform(0.2, 0.7, 200)]
-    )
-    cde = np.concatenate(
-        [rng.normal(10, 1.5, 400), rng.normal(10, 1.5, 400), rng.normal(28, 6, 200)]
-    )
-    df = pd.DataFrame(
-        {
-            "First File": ["f0"] * pr.size,
-            "Proximity Ratio": np.clip(pr, 0, 1),
-            core.COLUMN_FRET_2CDE: cde,
-        }
-    )
-    tool = BurstTwoCdeTool(embedded=True)
-    tool._draw(df, core.COLUMN_FRET_2CDE)
-    tool.resize(720, 520)
-    _grab(tool, "burst_2cde_tool.png")
+    folder = build(pathlib.Path(tempfile.mkdtemp(prefix="2cde_")) / "measurement")
+    app = app_from("burst_2cde")
+    driver = Driver(app, (1100, 720))
+    driver.frame(3)
+    app.model.donor_channels_text, app.model.acceptor_channels_text = "0", "1"
+    app.controller.on_paths_dropped([folder])
+    driver.frame(2)
+    app.controller.run()
+    wait(driver, lambda: not app.controller.running, timeout=300)
+    driver.hover((12.0, 708.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "burst_2cde_tool.png")
+    print("wrote burst_2cde_tool.png:", app.model.status_text, flush=True)
+    app.controller.close()
 
 
 def _emtk_enter(driver, field, text):
@@ -593,69 +587,37 @@ def _grab_coloc_objects(app, driver):
 
 
 def _grab_accurate_fret_tool():
-    """Grab the accurate-FRET workspace and its E-S / E-lifetime plots (guide 39)."""
-    import tempfile
+    """Grab the native accurate-FRET window and its E-S / E-lifetime plots (guide 41).
 
-    import pyqtgraph as pg
-
-    from chisurf.core.fluorescence.fret.lines import static_fret_line
-    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
-
-    gamma, alpha, beta, delta = 0.65, 0.08, 1.4, 0.06
-    tau_d0, r0 = 4.0, 52.0
-    line = static_fret_line(tau_d0, r0=r0, sigma=6.0)
-    rng = np.random.default_rng(7)
-    dd, da, aa, tau = [], [], [], []
-    for efficiency, n in ((0.28, 1500), (0.72, 1500)):
-        photons = rng.poisson(400, n).astype(float)
-        dd.append(rng.poisson((1 - efficiency) * photons))
-        aa.append(rng.poisson(beta * gamma * photons))
-        da.append(
-            rng.poisson(
-                gamma * efficiency * photons
-                + alpha * (1 - efficiency) * photons
-                + delta * beta * gamma * photons
-            )
-        )
-        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.15, n))
-    photons = rng.poisson(400, 500).astype(float)  # donor-only
-    dd.append(rng.poisson(photons))
-    da.append(rng.poisson(alpha * photons))
-    aa.append(rng.poisson(2.0, 500))
-    tau.append(rng.normal(tau_d0, 0.15, 500))
-    photons = rng.poisson(400, 500).astype(float)  # acceptor-only
-    dd.append(rng.poisson(2.0, 500))
-    aa.append(rng.poisson(beta * gamma * photons))
-    da.append(rng.poisson(delta * beta * gamma * photons))
-    tau.append(np.full(500, np.nan))
-
-    table = pathlib.Path(tempfile.gettempdir()) / "accurate_fret_demo_bursts.csv"
-    np.savetxt(
-        table,
-        np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
-        delimiter=",",
-        comments="",
-        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+    A simulated ALEX table with known factors (alpha 0.08, delta 0.06, gamma 0.65, beta 1.4).
+    """
+    from PIL import Image
+    from screenshots.emtk_shot import (
+        accurate_fret_calibrated,
+        show_tabs,
+        simulated_alex_table,
     )
 
-    tool = AccurateFretTool()
-    tool.model.donor_lifetime = tau_d0
-    tool.model.forster_radius = r0
-    tool.model.n_bootstrap = 20
-    tool.model.set_filename(str(table))
-    tool.model.compute()
-    tool._refresh()
-    tool.resize(1500, 900)
-    _grab(tool, "accurate_fret_tool.png")
-
-    # The two diagnostic plots on their own, large enough to read.
-    for name, plot in zip(
-        ("accurate_fret_es.png", "accurate_fret_etau.png"),
-        tool.findChildren(pg.PlotWidget),
-    ):
-        plot.resize(820, 560)
-        _grab(plot, name)
-    table.unlink(missing_ok=True)
+    table = simulated_alex_table(
+        pathlib.Path(tempfile.mkdtemp()) / "accurate_fret_demo_bursts.csv",
+        gamma=0.65, alpha=0.08, beta=1.4, delta=0.06,
+    )
+    app, driver = accurate_fret_calibrated(table)
+    show_tabs(driver, "Report", "E–S populations")
+    driver.screenshot(FIG / "accurate_fret_tool.png")
+    print("wrote accurate_fret_tool.png", flush=True)
+    # The two diagnostic plots on their own: the plot pane below its tab bar.
+    for name, tab in (("accurate_fret_es.png", "E–S populations"),
+                      ("accurate_fret_etau.png", "E–lifetime and FRET lines")):
+        show_tabs(driver, tab)
+        x, y, _w, h = driver.rect("E–S populations")  # the first tab: the pane's left edge
+        shot = FIG / name
+        driver.screenshot(shot)
+        width, height = driver.size
+        left = int(x) - 6
+        Image.open(shot).crop((left, int(y + h) + 4, width, height)).save(shot)
+        print("wrote", name, flush=True)
+    app.close()
 
 
 def _grab_chimol_viewer():
@@ -1477,42 +1439,30 @@ def _simulate_us_alex(path, *, frac_high=0.5, seed=11, duration=25.0):
 
 
 def _grab_alex_suite_alternation():
-    """Grab the alternation step, run on a simulated µs-ALEX measurement."""
-    from chisurf.plugins.burst.alex_suite.gui.tool import AlexSuiteTool
+    """Grab the native ALEX Suite's alternation step, converted on arrival from the shipped demo (guide 66)."""
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import app_from, wait
 
-    workdir = pathlib.Path(tempfile.mkdtemp(prefix="alex_suite_"))
-    _simulate_us_alex(workdir / "alex_demo.ptu")
-
-    tool = AlexSuiteTool()
-    tool.resize(1180, 780)
-    tool.show()
-    QApplication.instance().processEvents()
-
-    def row(fragment):
-        for i in range(tool.nav_list.count()):
-            if fragment in tool.nav_list.item(i).text():
-                return i
-        raise LookupError(fragment)
-
-    tool.nav_list.setCurrentRow(row("1. Files"))
-    QApplication.instance().processEvents()
-    tool._workflow_panels["data"].add_paths([workdir / "alex_demo.ptu"])
-    for _ in range(20):
-        QApplication.instance().processEvents()
-
-    tool.nav_list.setCurrentRow(row("2. Alternation"))
-    QApplication.instance().processEvents()
-    tool._workflow_panels["alternation"].run()
-    for _ in range(30):
-        QApplication.instance().processEvents()
-    _grab(tool, "alex_suite_alternation.png")
+    hub = app_from("alex_suite")
+    driver = Driver(hub, (1180, 780))
+    driver.frame(3)
+    hub.select("data")
+    driver.frame(3)
+    driver.click(hub._target_rect("load_example"))  # the files step's own button, as the tour has it pressed
+    driver.frame(3)
+    driver.click("next")  # -> 3. Alternation, which converts on arrival
+    alternation = hub.children["alternation"].model
+    wait(driver, lambda: not alternation.running and not hub._busy(), timeout=300)
+    driver.hover((12.0, 760.0))
+    driver.frame(3)
+    driver.screenshot(FIG / "alex_suite_alternation.png")
+    print("wrote alex_suite_alternation.png:", hub.status, flush=True)
+    hub.close()
 
 
 def _grab_alex_suite_titration():
     """Grab the titration step, fitted on a simulated concentration series."""
     import csv
-
-    from chisurf.plugins.burst.alex_suite.gui.tool import AlexSuiteTool
 
     workdir = pathlib.Path(tempfile.mkdtemp(prefix="alex_titration_"))
     rng = np.random.default_rng(5)
@@ -1536,33 +1486,26 @@ def _grab_alex_suite_titration():
                 writer.writerow([a, b, c, 1.0])
         rows.append((concentration, path))
 
-    tool = AlexSuiteTool()
-    tool.resize(1180, 780)
-    tool.show()
-    QApplication.instance().processEvents()
-    for i in range(tool.nav_list.count()):
-        if "Titration" in tool.nav_list.item(i).text():
-            tool.nav_list.setCurrentRow(i)
-            break
-    QApplication.instance().processEvents()
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import app_from
 
-    panel = tool._workflow_panels["titration"]
-    panel.model.add_files([str(path) for _, path in rows])
+    hub = app_from("alex_suite")
+    driver = Driver(hub, (1180, 780))
+    driver.frame(3)
+    hub.select("titration")
+    driver.frame(3)
+    model = hub.children["titration"].model
+    model.add_files([str(path) for _, path in rows])
     for index, (concentration, _) in enumerate(rows):
-        panel.model.update_series_cell(index, "concentration", concentration)
-    panel.model.min_photons = 0
-    panel.model.run()
-    for _ in range(30):
-        QApplication.instance().processEvents()
-    # The step is a scrolling page; the plots are its lower half.
-    from qtpy.QtWidgets import QScrollArea
-
-    for area in panel.findChildren(QScrollArea):
-        bar = area.verticalScrollBar()
-        bar.setValue(bar.maximum())
-    for _ in range(15):
-        QApplication.instance().processEvents()
-    _grab(tool, "alex_suite_titration.png")
+        model.update_series_cell(index, "concentration", concentration)
+    model.min_photons = 0
+    model.run()
+    driver.frame(4)
+    driver.hover((12.0, 760.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "alex_suite_titration.png")
+    print("wrote alex_suite_titration.png:", model.summary.splitlines()[0], flush=True)
+    hub.close()
 
 
 def _native_shot(app, name, frames=4, size=(1200, 800)):

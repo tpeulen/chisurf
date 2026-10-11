@@ -405,7 +405,10 @@ class TitrationGui(TourTarget):
                 tr("Fix peak positions"), model.fix_peak_positions
             )
             im.set_item_tooltip(
-                tr("Keep the peak positions fixed across concentrations while fitting.")
+                tr(
+                    "Hold the peak positions and widths at their starting values (the old program's "
+                    "fixed x0 and sigma). Off: they are fitted, shared by every concentration."
+                )
             )
 
         # The tooltip follows the header whether it is open or not (inside the branch a closed header had none).
@@ -437,8 +440,7 @@ class TitrationGui(TourTarget):
         im.spacing()
         im.separator()
         im.text_colored("Result", (0.35, 0.75, 1.0, 1.0))
-        for line in (model.summary or "").splitlines():
-            im.text_wrapped(line.replace("**", ""))
+        _draw_summary(model.summary or "")
 
     # ── the two plots ─────────────────────────────────────────────────────
 
@@ -703,10 +705,11 @@ class AlexAlternationGui(TourTarget):
                         if res.modified:
                             panel.set_gate(name, int(round(res.x_min)), int(round(res.x_max)))
                 if period > 0:
+                    # An x tag marks a position: at the half period it said "period 8000" at x = 4000.
                     implot.tag_x(
                         period * 0.5,
                         (0.6, 0.6, 0.6, 1.0),
-                        fmt=f"period {period:g}",
+                        fmt=f"period/2 = {period * 0.5:g}",
                     )
             else:
                 implot.plot_dummy("arrive with files to see the folded phase")
@@ -1025,6 +1028,46 @@ def make_app(**kwargs: Any) -> AlexSuiteApp:
     install()
     return AlexSuiteApp(**kwargs)
 
+
+
+def _draw_summary(summary: str) -> None:
+    """Draw the fit summary: its text lines, and its population table as a table.
+
+    The summary is markdown (``**bold**`` and a ``| … |`` table). Printed line by line it showed the table as raw
+    ``| 0 | 0.218 |`` and ``|---|`` rows; the canvas's markdown renderer uses a face the rest of the panel does not.
+    """
+    rows: list[list[str]] = []
+
+    def flush() -> None:
+        if not rows:
+            return
+        header, *body = rows
+        if im.begin_table("titration_summary", len(header)):
+            for name in header:
+                im.table_setup_column(name)
+            im.table_headers_row()
+            for row in body:
+                im.table_next_row()
+                for cell in row:
+                    im.table_next_column()
+                    im.text(cell)
+            im.end_table()
+        rows.clear()
+
+    for line in summary.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("|") and stripped.endswith("|"):
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if not all(set(c) <= set("-: ") for c in cells):  # not the |---| separator
+                rows.append(cells)
+            continue
+        flush()
+        if stripped:
+            text = stripped.replace("**", "")
+            if len(text) > 1 and text.startswith("_") and text.endswith("_"):  # an _emphasised_ line
+                text = text[1:-1]
+            im.text_wrapped(text)
+    flush()
 
 __all__ = [
     "WINDOW_BG",

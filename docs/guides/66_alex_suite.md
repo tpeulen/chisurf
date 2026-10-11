@@ -32,7 +32,7 @@ only. **>>** walks every remaining step, the status line at the bottom says what
 the open step needs, and **Guide** walks it with you on a simulated measurement.
 
 1. **Setup** — PIE / ns-ALEX: pick your setup. µs-ALEX: leave it (step 3 writes one).
-2. **Files** — drop the measurements, or **Load demo data**: a simulated µs-ALEX
+2. **Files** — drop the measurements, or **Load example** (in the *Summary* box): a simulated µs-ALEX
    stream (100 µs alternation, donor on channel 0, acceptor on channel 1;
    low-FRET, high-FRET, donor-only and acceptor-only molecules) whose answer is known.
 3. **Alternation (optional)** — µs-ALEX data is detected and converted *on
@@ -111,10 +111,12 @@ detects and converts it straight away; look at the plot. The channel fields say
 :name: fig-alex-suite-alternation
 :width: 95%
 
-The alternation step. The folded *intensity* is nearly flat — real µs-ALEX has
-no laser-off gap — but the two detectors swap: donor bright in the first shaded
-gate, acceptor in the second. That swap is what the detection uses, and what you
-check.
+The alternation step on the shipped example (**Load example** in *2. Files*,
+then **Next**): period 8000 macro-time units = 100 µs, donor gate 235–3685,
+acceptor gate 4235–7685. The folded *intensity* has no laser-off gap — as in real
+µs-ALEX — but the two detectors swap: donor bright in the first shaded gate,
+acceptor in the second. That swap is what the detection uses, and what you
+check. The tag on the axis marks half the period.
 ```
 
 **The gates are yours to adjust.** Detection fills the period and the two laser
@@ -194,19 +196,24 @@ the map with Gaussians and giving each population its own γ are here too
 
 ## Titration
 
-One burst file per ligand concentration. The whole series is fitted **together**,
-with the population positions and widths shared and only their amounts free — the
-old "fixed x0 and sigma" preset, made the default because it is nearly always
-what you want. The fraction of the population that grows with ligand, against
-concentration, is the binding isotherm.
+One burst file per ligand concentration. The whole series is fitted **together**:
+the population positions and widths are shared by every concentration (fitted
+once, for the whole series) and only their amounts are free per concentration.
+**Fix peak positions** goes one step further — the old program's "fixed x0 and
+sigma" preset — and holds the shared positions and widths at their starting
+values; it is off by default. The fraction of the population that grows with
+ligand, against concentration, is the binding isotherm.
 
 ```{figure} figures/alex_suite_titration.png
 :name: fig-alex-suite-titration
 :width: 95%
 
-A simulated seven-point titration with $K_d = 50$. Top: the stack plot, one
-efficiency histogram per concentration with the shared-shape fit dashed over it.
-Bottom: the isotherm read from the high-FRET population.
+A simulated seven-point titration with $K_d = 50$ nM (low-FRET E = 0.22 unbound,
+high-FRET E = 0.68 bound). Right, top: the stack plot, one efficiency histogram
+per concentration with the shared-shape fit dashed over it; right, bottom: the
+isotherm read from the high-FRET population. The *Result* under the controls
+gives the two shared populations (E = 0.218 and 0.680) and $K_d$ = 49.8 nM
+(Hill n = 1.00).
 ```
 
 Fitting each histogram on its own lets a noisy condition move a peak by more than

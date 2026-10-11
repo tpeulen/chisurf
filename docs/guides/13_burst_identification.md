@@ -48,9 +48,9 @@ preserved before run. This two-file validation is separate from the ten-file
 example below and is not an instrument-calibration claim.
 ```
 
-**Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The same panel opens on
-its own as *Spectroscopy:Single-Molecule:Burst Selection*; in the workflow the
-files of step 1 carry over. Add files with **Add files** / **Add folder** (or
+**Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The panel has no
+menu entry of its own (`python -m chisurf.emtk --plugin burst_selection` opens it
+alone); in the workflow the files of step 1 carry over. Add files with **Add files** / **Add folder** (or
 drop them on the window), pick the detectors on the **Detector setup** tab,
 then **Run**. **Restart** searches again even when nothing changed.
 

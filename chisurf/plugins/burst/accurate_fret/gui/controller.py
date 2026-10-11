@@ -35,6 +35,8 @@ class AccurateFretController:
         self.running = False
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="accurate-fret")
         self._future = None
+        self._action = None
+        self._calibrate_next = False  # Calibrate was pressed during a read
         self._cancel = Event()
         self.dialog = None
         self.dialog_action = "load"
@@ -88,6 +90,11 @@ class AccurateFretController:
 
     def run(self):
         if self.running:
+            # A press during a read (the burst table, the dye catalogue or the optical priors, which load on
+            # their own when the window opens) used to be dropped without a word. It runs once the read is done.
+            if self._action != "calibrate":
+                self._calibrate_next = True
+                self.status = "Calibration starts when the current read has finished …"
             return
         reason = self.model.can_run()
         if reason:
@@ -177,6 +184,9 @@ class AccurateFretController:
             self.status = f"Error: {exc}"
         finally:
             self.running = False
+        if self._calibrate_next:
+            self._calibrate_next = False
+            self.run()
 
     def stop(self):
         if self.running:

@@ -72,12 +72,9 @@ def _sm_dna_copy() -> pathlib.Path:
 def _bh_setup() -> None:
     """Write the SPC-132 detector setup (green 0/8, red 1/9) into the settings store.
 
-    Also works around the fresh-profile FK failure: the JSON -> MMFDB migration
-    stamps setups with ``user_default``, a user a new database does not have.
     """
     if not os.environ.get("CHISURF_SETTINGS_DIR"):
         raise RuntimeError("set CHISURF_SETTINGS_DIR to a scratch dir: this writes a setup")
-    import chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups as dsetups
     from chisurf.core.data_io.detector_setups import DETECTOR_SETUPS_FILE
 
     def det(chs):
@@ -91,7 +88,6 @@ def _bh_setup() -> None:
     }
     DETECTOR_SETUPS_FILE.parent.mkdir(parents=True, exist_ok=True)
     DETECTOR_SETUPS_FILE.write_text(json.dumps({"setups": {_BH_SETUP: setup}, "last_used": _BH_SETUP}))
-    dsetups.resolve_active_user_id = lambda: ""
 
 
 def _front_tab(widget, text) -> None:
@@ -143,23 +139,25 @@ def _grab_13_burst_selection(work: pathlib.Path | None = None, grab: bool = True
 
 
 def _grab_08_bva_tool(folder: pathlib.Path | None = None) -> None:
-    """BVA on the burst folder Burst Selection wrote for the ten dsDNA files.
+    """BVA (native app) on the burst folder Burst Selection wrote for the ten dsDNA files."""
+    from emtk.testing import Driver
 
-    Needs ``CHISURF_PLOT_BACKEND=pyqtgraph`` until the emtk error-bar update is
-    fixed (the default backend paints neither the heat map nor the axes).
-    """
-    from chisurf.plugins.burst.burst_bva.gui.tool import BVATool
+    from emtk_shot import FIG, app_from, wait
 
     _bh_setup()
     folder = folder or _grab_13_burst_selection(grab=False)
-    tool = BVATool()
-    tool.resize(1400, 900)
-    tool.show()
-    _pump(1)
-    tool._set_folder(str(folder))  # Auto update runs the analysis
-    _pump(20)
-    _grab(tool, "08_bva_tool.png")
-    tool.close()
+    app = app_from("burst_bva")
+    driver = Driver(app, (1400, 900))
+    driver.frame(3)
+    app.controller.on_paths_dropped([folder])  # Auto update runs the analysis
+    wait(driver, lambda: not app.controller.running and "Done" in app.model.status_text, timeout=600)
+    driver.click("Channel Definitions")
+    driver.frame(3)
+    driver.hover((12.0, 880.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "08_bva_tool.png")
+    print("wrote 08_bva_tool.png:", app.model.status_text, flush=True)
+    app.close()
 
 
 # ── guide 02: RASP ──────────────────────────────────────────────────────
@@ -318,57 +316,22 @@ def _grab_12_tttr_to_pto() -> None:
 
 
 def _grab_14_accurate_fret() -> None:
-    """Accurate FRET on a simulated ALEX burst table with known factors, E-S tab.
+    """Accurate FRET (native app) on a simulated ALEX burst table with known factors, E-S tab.
 
     There is no ALEX/PIE measurement among the test data, so the populations are
-    simulated (alpha 0.08, delta 0.06, gamma 0.65, beta 1.4). Needs
-    ``CHISURF_PLOT_BACKEND=pyqtgraph``: the emtk backend joins the scatter points.
+    simulated (alpha 0.08, delta 0.06, gamma 0.65, beta 1.4).
     """
-    from chisurf.core.fluorescence.fret.lines import static_fret_line
-    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
+    from emtk_shot import FIG, accurate_fret_calibrated, show_tabs, simulated_alex_table
 
-    gamma, alpha, beta, delta = 0.65, 0.08, 1.4, 0.06
-    tau_d0, r0 = 4.0, 52.0
-    line = static_fret_line(tau_d0, r0=r0, sigma=6.0)
-    rng = np.random.default_rng(7)
-    dd, da, aa, tau = [], [], [], []
-    for efficiency, n in ((0.28, 1500), (0.72, 1500)):
-        photons = rng.poisson(400, n).astype(float)
-        dd.append(rng.poisson((1 - efficiency) * photons))
-        aa.append(rng.poisson(beta * gamma * photons))
-        da.append(rng.poisson(gamma * efficiency * photons + alpha * (1 - efficiency) * photons
-                              + delta * beta * gamma * photons))
-        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.15, n))
-    photons = rng.poisson(400, 500).astype(float)  # donor-only
-    dd.append(rng.poisson(photons))
-    da.append(rng.poisson(alpha * photons))
-    aa.append(rng.poisson(2.0, 500))
-    tau.append(rng.normal(tau_d0, 0.15, 500))
-    photons = rng.poisson(400, 500).astype(float)  # acceptor-only
-    dd.append(rng.poisson(2.0, 500))
-    aa.append(rng.poisson(beta * gamma * photons))
-    da.append(rng.poisson(delta * beta * gamma * photons))
-    tau.append(np.full(500, np.nan))
-
-    table = pathlib.Path(tempfile.mkdtemp(prefix="es_")) / "alex_bursts.csv"
-    np.savetxt(
-        table,
-        np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
-        delimiter=",", comments="",
-        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+    table = simulated_alex_table(
+        pathlib.Path(tempfile.mkdtemp(prefix="es_")) / "alex_bursts.csv",
+        gamma=0.65, alpha=0.08, beta=1.4, delta=0.06,
     )
-    tool = AccurateFretTool()
-    tool.model.donor_lifetime = tau_d0
-    tool.model.forster_radius = r0
-    tool.model.n_bootstrap = 20
-    tool.model.set_filename(str(table))
-    tool.model.compute()
-    tool._refresh()
-    tool.resize(1500, 900)
-    tool.show()
-    _front_tab(tool, "E–S")
-    _grab(tool, "14_accurate_fret.png")
-    tool.close()
+    app, driver = accurate_fret_calibrated(table, size=(1500, 900))
+    show_tabs(driver, "Correction factors", "E–S populations")
+    driver.screenshot(FIG / "14_accurate_fret.png")
+    print("wrote 14_accurate_fret.png", flush=True)
+    app.close()
 
 
 def main(names=()):

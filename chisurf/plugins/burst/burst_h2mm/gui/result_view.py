@@ -264,6 +264,10 @@ def transition_arrows(
 
     One arrow per transition with a positive finite rate, from state node ``i`` to node ``j`` (nodes at the states' E
     on the baseline *y_node*), offset sideways so the two directions do not overlap, width scaled by the rate.
+
+    The arrows are horizontal, so "sideways" is the plot's **y** axis: the offset is a fraction of *y_node*, in the
+    plot's count units. It used to be a fraction of the E span, which on a histogram of tens of thousands of dwells is
+    a hundred-thousandth of a pixel, so S0->S1 and S1->S0 were drawn on top of each other.
     """
     if ana is None:
         return []
@@ -276,8 +280,7 @@ def transition_arrows(
     if pos.size == 0:
         return []
     rmax = float(pos.max())
-    span = float(np.nanmax(np.abs(np.diff(xs)))) if n > 1 else 1.0
-    off = 0.03 * (span or 1.0)
+    off = 0.03 * (abs(float(y_node)) or 1.0)
     out = []
     for i in range(n):
         for j in range(n):

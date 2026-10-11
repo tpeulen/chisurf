@@ -38,8 +38,11 @@ Three things distinguish it from typing the factors in by hand:
 :alt: the accurate-FRET tool with a calibrated two-population dataset
 :width: 100%
 
-The tool after *Calibrate*: channel mapping and photophysics on the left, the
-factors with their uncertainties and how each was determined on the right.
+The native window after *Calibrate* on a simulated ALEX table with declared
+α = 0.08, δ = 0.06, γ = 0.65, β = 1.40 (two FRET populations, donor- and
+acceptor-only): the channel mapping on the left, the **Report** (α 0.0800,
+δ 0.0589, γ 0.658, β 1.389) top right and the E–S populations below. The
+*Correction factors* tab lists the same factors with their uncertainty and origin.
 ```
 
 
@@ -92,8 +95,8 @@ from the final population masks.
 Use the **Burst table** row (or drop a file on the window): a generic delimited
 `.csv`, `.tsv` or `.txt`, a legacy `.bur`, or an `.npz` archive. The loaded
 table has one logical row per burst.
-Alternatively press **📥 From ndX** to take the columns of an open
-ndX window, so the calibration runs on exactly the bursts currently
+Alternatively press **From ndX** (under *Data, session and catalogue actions*)
+to take the columns of an open ndX window, so the calibration runs on exactly the bursts currently
 selected there.
 
 Reached as the *Accurate FRET* step of the **Burst Analysis** workflow, the step
@@ -189,27 +192,34 @@ calibration is a pure data estimate.
 
 ### 6. Calibrate
 
-**🎯 Calibrate** runs the iteration in a worker thread. The report at the bottom
-left names every route that contributed:
+**Calibrate** runs the iteration in a worker thread. The **Report** tab (right,
+beside *Correction factors* and *Populations*) names every route that contributed:
 
 ```text
 Automatic FRET calibration
 ==========================
-  alpha  = 0.0801 ± 0.0008
-  delta  = 0.0597 ± 0.0005
-  gamma  = 0.6579 ± 0.0035
-  beta   = 1.3900 ± 0.0046
-  bursts: 500 donor-only, 500 acceptor-only, 3000 FRET in 2 population(s)
-  stoichiometry cuts (mixture): 0.252 / 0.747
-  gamma [E-S population fit] = 0.6579
-  gamma [static FRET line]   = 0.6552
-  population 0: n = 1500, E = 0.277 ± 0.002, R = 61.0 Å, tau_f = 2.954 ns, off-line by -0.003
-  population 1: n = 1500, E = 0.718 ± 0.001, R = 44.5 Å, tau_f = 1.430 ns, off-line by -0.000
-  converged after 2 iteration(s)
+  alpha  = 0.0738 ± 0.0041
+  delta  = 0.0634 ± 0.0032
+  gamma  = 0.6361 ± 0.0203
+  beta   = 1.4039 ± 0.0258
+  bursts: 118 donor-only, 67 acceptor-only, 1317 FRET in 2 population(s)
+  stoichiometry cuts (mixture): 0.252 / 0.750
+  gamma [E-S population fit] = 0.6361
+  gamma [static FRET line] = 0.6627
+  gamma [data (identified estimate)] = 0.6361
+  gamma [posterior] = 0.6361
+  population 0: n = 737, E = 0.302 ± 0.009, R = 59.8 Å, tau_f = 2.874 ns, off-line by -0.001
+  population 1: n = 580, E = 0.758 ± 0.007, R = 43.0 Å, tau_f = 1.325 ns, off-line by +0.011
+  converged after 3 iteration(s)
 ```
 
-The two independent $\gamma$ estimates agreeing to 0.4 % is the consistency check
-worth doing on every new sample; set **gamma from** to `combined` in the
+(The table of `csc accurate-fret --simulate demo_bursts.csv --simulate-photons 350000`,
+declared γ = 0.65, α = 0.08, β = 1.40, δ = 0.06, E = 0.30 / 0.75; see
+[Trying it without data](#trying-it-without-data-and-checking-it-works).)
+
+The two independent $\gamma$ estimates (E–S fit 0.636, FRET line 0.663, declared
+0.65) agreeing within their few-per-cent uncertainty is the consistency check worth
+doing on every new sample; set **gamma from** to `combined` in the
 **Procedure** panel to average them, or to `lifetime`/`es` to force one route.
 
 ### 7. Read the plots
@@ -241,7 +251,10 @@ offset.
 
 ### 8. Use the calibration
 
-* **🔬 Store on setup** saves the factors on the detector setup selected at the
+The actions are in the *Data, session and catalogue actions* section at the top of
+the left panel.
+
+* **Store calibration on setup** saves the factors on the detector setup selected at the
   top of the panel. This is the one to reach for if you will analyse more data
   from the same instrument. A correction factor is a property of the *setup*,
   not of this burst file — $\gamma$ is fixed by the detection efficiencies and
@@ -275,15 +288,15 @@ offset.
   This is how the [filtered-FCS filter calculator](17_filtered_fcs.md) fills its
   **Instrument** parameters: pick the calibrated setup there and $\alpha$,
   $\beta$, $\gamma$, $\delta$ and $R_0$ arrive already measured.
-* **🔗 Share in session** publishes it as a linkable pseudo-fit, so any fit can
+* **Share calibration in session** publishes it as a linkable pseudo-fit, so any fit can
   link its correction parameters to this one calibration (global analysis). The
   factors are real `FittingParameter`s: each carries a process-wide identity, so
   a fit parameter can be *linked* to one — one number, one owner, many
   consumers — and each carries a typeset label, so a parameter table shows
   $\gamma$ and $\Phi_A$ rather than `gamma` and `PhiA`.
-* **📤 To ndX** writes the factors into an open ndX window's MFD
+* **To ndX** writes the factors into an open ndX window's MFD
   constants and recomputes its derived columns.
-* **💾 Export CSV** writes the per-burst $E$, $S$, lifetime and distance with the
+* **Export per-burst CSV** writes the per-burst $E$, $S$, lifetime and distance with the
   calibration report in the file header, so the numbers stay traceable.
 
 ## Doing it entirely inside ndX

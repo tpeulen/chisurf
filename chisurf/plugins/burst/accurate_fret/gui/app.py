@@ -347,6 +347,7 @@ class AccurateFretGui(TourTarget):
         draw_form(spec, self.model, self.form_state)
 
     def _render_results_window(self, box=None):
+        report_shown = False
         if im.begin_tab_bar("accurate_result_tabs"):
             for label in ("Correction factors", "Populations", "Report"):
                 opened = im.begin_tab_item(label)
@@ -384,9 +385,10 @@ class AccurateFretGui(TourTarget):
                             )
                     else:
                         im.text_wrapped(self.model.results_text)
+                        report_shown = True
                     im.end_tab_item()
             im.end_tab_bar()
-        if self.model.result is None:
+        if self.model.result is None and not report_shown:  # the Report tab already says it
             im.text_wrapped(self.model.results_text)
 
     def _draw_plot(self, title, xlabel, ylabel, series, box=None):

@@ -60,8 +60,9 @@ uncertainties are supported.
 
 ### The H2MM tool
 
-**Spectroscopy ▸ Single-Molecule ▸ H2MM**, or step *7. Burst segmentation
-(H2MM)* of **Spectroscopy ▸ Burst Analysis**. The left dock has two tabs.
+Step *7. Burst segmentation (H2MM)* of **Spectroscopy ▸ Single-Molecule ▸ Burst
+Analysis** (no menu entry of its own; `python -m chisurf.emtk --plugin burst_h2mm`
+opens it alone). The left dock has two tabs.
 **H2MM settings** has the action buttons (**Browse folder**, **Run H2MM**,
 **Restart**, **Stop**, **Bootstrap**, **LL scan**, **Save plot**, **Dwells in
 ndX**, **Export dwells**, **Save settings**, **Load settings**, **Guide**,
@@ -86,10 +87,13 @@ refits it.
 :width: 100%
 
 The H2MM tool after a 2–3 state scan of the BH SPC-132 sample folder (donor
-detector 0/1, acceptor 8/9, the *Fast EM (float32)* engine, 1 restart, seed 0),
-followed by **Bootstrap** and **LL scan**. The status line and the rate and state
-tables are those of the fitted analysis; every plot draws arrays of that
-analysis only.
+*green* = routing channels 0/8, acceptor *red* = 1/9, the *Fast EM (float32)*
+engine, 1 restart, seed 0), followed by **Bootstrap** and **LL scan**: three
+states at E = 0.029, 0.422 and 0.866, as in the headless run above. The rate and
+state tables are those of the fitted analysis; the *Dwell FRET* tab draws the
+per-dwell E of each state, its model E, the bootstrap interval (shaded) and the
+kinetic scheme as horizontal arrows above the histogram, line width scaled by
+the rate.
 ```
 
 In the burst workflow, **step 7 starts fitting as soon as you open it**. A state

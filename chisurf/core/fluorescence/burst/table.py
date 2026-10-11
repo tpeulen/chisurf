@@ -99,11 +99,15 @@ def _read_container_run(path: pathlib.Path) -> dict[str, np.ndarray]:
 def _sniff_delimiter(path: pathlib.Path) -> str | None:
     """Return the separator of a delimited file, or ``None`` if it is not plain.
 
-    A burst table is one of four separators and a header on the first line. This
-    answers by counting candidates in the header rather than by sniffing the
-    whole file, and answers ``None`` — rather than guessing — for a file with a
-    comment preamble or no clear separator, because those are what the general
-    reader is for.
+    A burst table is one of four separators and a header line. This answers by
+    looking at the header rather than by sniffing the whole file, and answers
+    ``None`` — rather than guessing — for a file with no clear separator.
+
+    A ``#`` comment preamble is not a guess: the lines before the header that
+    start with ``#`` are skipped (the reader is told to skip them too, see
+    :func:`_has_comment_preamble`). ``csc accurate-fret --simulate`` writes the
+    declared truth there, and its own reader used to reject the file it had just
+    written.
 
     Parameters
     ----------
@@ -117,9 +121,11 @@ def _sniff_delimiter(path: pathlib.Path) -> str | None:
     try:
         with open(path, encoding="utf-8", errors="ignore") as handle:
             header = handle.readline()
+            while header and header.lstrip().startswith("#"):
+                header = handle.readline()
     except OSError:
         return None
-    if not header or header.lstrip().startswith("#"):
+    if not header.strip():
         return None
     # Precedence, not a count. Burst-table column names contain spaces --
     # "Duration (ms)", "Mean Macro Time (ms)" -- so on a wide header the spaces
@@ -132,13 +138,22 @@ def _sniff_delimiter(path: pathlib.Path) -> str | None:
     return " " if " " in header else None
 
 
+def _has_comment_preamble(path: pathlib.Path) -> bool:
+    """Whether the file's first line is a ``#`` comment (a preamble before the header)."""
+    try:
+        with open(path, encoding="utf-8", errors="ignore") as handle:
+            return handle.readline().lstrip().startswith("#")
+    except OSError:
+        return False
+
+
 def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
     """Read a delimited burst table into ``{column: float array}``.
 
     Legacy ``.bur`` files use the canonical companion merge and deinterleave.
     Other files use the threaded reader, which handles a plain delimited file
-    with its header on the first line. Anything else — a comment preamble, a decimal comma,
-    whitespace alignment — reads as **no columns**, and the caller raises. There
+    with its header on the first line after an optional ``#`` preamble. Anything else — a
+    decimal comma, whitespace alignment — reads as **no columns**, and the caller raises. There
     is deliberately no second reader behind this one: a fallback that needs an
     optional package is a path that works on a developer's machine and fails on
     everyone else's.
@@ -169,7 +184,12 @@ def _read_delimited(path: pathlib.Path) -> dict[str, np.ndarray]:
         store = deinterleave_bursts(read_bur_with_companions(path))
     else:
         delimiter = _sniff_delimiter(path)
-        store = read_csv_table(path, delimiter=delimiter) if delimiter is not None else None
+        comment = "#" if _has_comment_preamble(path) else None
+        store = (
+            read_csv_table(path, delimiter=delimiter, comment=comment)
+            if delimiter is not None
+            else None
+        )
     if store is not None:
         columns = {}
         for index in range(store.n_columns()):

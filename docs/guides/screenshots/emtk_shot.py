@@ -45,3 +45,67 @@ def app_from(plugin_id: str):
     from chisurf.emtk.plugins import load_plugin
 
     return load_plugin(plugin_id, persist=False)
+
+
+def simulated_alex_table(path, *, gamma, alpha, beta, delta, efficiencies=(0.28, 0.72), seed=7,
+                         tau_d0=4.0, r0=52.0):
+    """Write an ALEX burst table with known correction factors (two FRET populations, D-only, A-only).
+
+    ``Green Count Rate (KHz)``/``Red Count Rate (KHz)``/``S delayed yellow (kHz)``/``Tau (green)`` -- the
+    ``.bur`` spellings the Accurate FRET channel guess recognises. Returns *path*.
+    """
+    import numpy as np
+
+    from chisurf.core.fluorescence.fret.lines import static_fret_line
+
+    line = static_fret_line(tau_d0, r0=r0, sigma=6.0)
+    rng = np.random.default_rng(seed)
+    dd, da, aa, tau = [], [], [], []
+    for efficiency in efficiencies:
+        photons = rng.poisson(400, 1500).astype(float)
+        dd.append(rng.poisson((1 - efficiency) * photons))
+        aa.append(rng.poisson(beta * gamma * photons))
+        da.append(rng.poisson(gamma * efficiency * photons + alpha * (1 - efficiency) * photons
+                              + delta * beta * gamma * photons))
+        tau.append(rng.normal(float(line.lifetime_at(efficiency)), 0.15, 1500))
+    photons = rng.poisson(400, 500).astype(float)  # donor-only
+    dd.append(rng.poisson(photons))
+    da.append(rng.poisson(alpha * photons))
+    aa.append(rng.poisson(2.0, 500))
+    tau.append(rng.normal(tau_d0, 0.15, 500))
+    photons = rng.poisson(400, 500).astype(float)  # acceptor-only
+    dd.append(rng.poisson(2.0, 500))
+    aa.append(rng.poisson(beta * gamma * photons))
+    da.append(rng.poisson(delta * beta * gamma * photons))
+    tau.append(np.full(500, np.nan))
+    np.savetxt(
+        path,
+        np.column_stack([np.concatenate(c).astype(float) for c in (dd, da, aa, tau)]),
+        delimiter=",", comments="",
+        header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
+    )
+    return path
+
+
+def accurate_fret_calibrated(table, size=(1400, 860), n_bootstrap=20, tau_d0=4.0, r0=52.0):
+    """The native Accurate FRET app with *table* loaded and calibrated; returns ``(app, driver)``."""
+    from emtk.testing import Driver
+
+    app = app_from("accurate_fret")
+    driver = Driver(app, size)
+    driver.frame(3)
+    app.model.donor_lifetime, app.model.forster_radius = tau_d0, r0
+    app.model.n_bootstrap = n_bootstrap
+    app.on_paths_dropped([str(table)])
+    driver.frame(3)
+    app.controller.run()
+    wait(driver, lambda: (app.controller.poll(), not app.controller.running)[1], timeout=600)
+    driver.frame(4)
+    return app, driver
+
+
+def show_tabs(driver, *captions):
+    """Click each tab caption (as a person does) and draw the frames that bring it forward."""
+    for caption in captions:
+        driver.click(caption)
+        driver.frame(3)

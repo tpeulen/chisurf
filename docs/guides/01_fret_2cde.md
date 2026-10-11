@@ -51,9 +51,10 @@ legacy numeric companions encode missing results as zero.
 ```{figure} figures/burst_2cde_native_primary_window.png
 :width: 90%
 
-Native measured-data FRET-2CDE view: 138 of152 bursts have a finite score with
-a50µs Laplace kernel and the displayed routing channels. The horizontal10
-line is a reference, not an inferred kinetic rate or a universal cutoff.
+Native measured-data FRET-2CDE view: 138 of 152 bursts have a finite score with
+a 50 µs Laplace kernel and the displayed routing channels. The horizontal line
+at 10 (*Threshold*) is a reference, not an inferred kinetic rate or a universal
+cutoff; drag it to read off a different level.
 ```
 
 The computation is the `tttrlib.TwoCDE` burst feature (a bit-exact port of the
@@ -61,7 +62,8 @@ FRETBursts reference, parallel over bursts). It is wrapped by the `burst_2cde`
 plugin, exposed as a `2cde compute` CLI, the `burst_2cde.jobs.compute` RPC
 service, and the guided-workflow one-liner `Bursts.two_cde(...)`.
 
-In the burst workflow, **step 4 computes as soon as you open it** — everything
+In the burst workflow (**Spectroscopy → Single-Molecule → Burst Analysis → 5. Burst 2CDE**),
+**the step computes as soon as you open it** — everything
 it needs was decided upstream. It runs off the GUI thread, so the window stays
 usable, and **Stop** in the toolbar interrupts it. Opening the step again does
 not recompute; see [53 — Reusing results](53_reusing_results.md).
@@ -92,11 +94,14 @@ constant $\tau$ and the donor/acceptor channels:
 :name: fig-2cde-tool
 :width: 90%
 
-The FRET-2CDE tool. **Controls** select the `fret` variant, the `laplace` KDE
-kernel, $\tau=100\,\mu s$, and the donor/acceptor routing channels. The plot shows
-2CDE vs proximity ratio: two **static** populations sit on the $\approx10$
-baseline at low/high FRET, while a **dynamic** sub-population is clearly elevated —
-the separation the score is built to reveal (see {ref}`concept-burst-2cde`).
+The FRET-2CDE tool on the plugin's demo folder (60 simulated bursts: static ones
+at a constant acceptor fraction of 0.15 or 0.8, every fourth burst switching
+half-way). The controls select the `fret` variant, the `laplace` KDE kernel,
+$\tau=100\,\mu s$, and the donor/acceptor routing channels (0 / 1). The plot shows
+2CDE vs proximity ratio: the two **static** populations sit near the $\approx10$
+baseline at low/high FRET, while the **dynamic** bursts, averaging to E ≈ 0.45,
+reach 35–65 — the separation the score is built to reveal (see
+{ref}`concept-burst-2cde`).
 ```
 
 From the guided burst workflow:

@@ -91,11 +91,13 @@ comes from, so what you explore is what a later reader gets.
 :name: fig-30-h2mm-results
 :width: 100%
 
-The H2MM window after a 2–3-state scan of the BH SPC-132 sample's 2980 DNA
-bursts (donor detector 0/1, acceptor 8/9, no acceptor-excitation stream), with
-the *LL scan* and *Dwell times* tabs showing. *Rates and states* gives the fitted
-exchange, S0 ⇄ S1 at ~8·10³ s⁻¹ in both directions, and the per-state E of
-0.48 and 0.54; the dwell-time distributions leave out the burst-edge dwells.
+The H2MM window after a 1–4-state scan of the BH SPC-132 sample's 2980 DNA
+bursts (donor *green* = routing channels 0/8, acceptor *red* = 1/9, no
+acceptor-excitation stream, *Fast EM (float32)*, 2 restarts, seed 0), with the
+*Selection* and *Dwell times* tabs showing. BIC falls to four states (ICL turns
+up at four); *Rates and states* gives E = 0.029, 0.218, 0.612 and 0.879 with
+occupancies 0.39 / 0.28 / 0.30 / 0.04. The dwell-time distributions leave out
+the burst-edge dwells.
 ```
 
 ```{figure} figures/h2mm_dashboard.png
@@ -107,10 +109,10 @@ The same dashboard panels drawn from a simulated fit (script figure).
 
 :::{admonition} Known defects
 :class: warning
-Rates at the numerical floor of the transition matrix (1e-12 per tick, here
-7.4e-05 s⁻¹) are printed in *Transition rates* as if measured, and neighbouring
-floor labels run into each other (`7.4e-057.4e-05`). The *State path* axis reads
-*Time in burst (ms) (x0.001)* — the unit and an SI-prefix factor at once.
+Rates at the numerical floor of the transition matrix (1e-12 per tick) are
+listed in *Rates and states* as `0.0` with a waiting time of `1.35e+07` ms, as
+if measured, and they still get a (thin) arrow in the *Dwell FRET* kinetic
+scheme. Read a rate with a waiting time far beyond any burst as "not observed".
 :::
 
 ## See also

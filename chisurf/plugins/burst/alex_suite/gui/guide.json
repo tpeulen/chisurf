@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the native ALEX Suite hub (gui/native.py). It walks the pipeline the way a user does: Demo, then Next, Next, Next. Every action step points at the real control (the hub's Next button, the files step's Demo) and WAITS for the user to press it (await); nothing is pressed on the user's behalf. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
+  "_comment": "Guided tour of the native ALEX Suite hub (gui/native.py). It walks the pipeline the way a user does: Load example, then Next, Next, Next. Every action step points at the real control (the hub's Next button, the files step's Load example) and WAITS for the user to press it (await); nothing is pressed on the user's behalf. Read by chisurf.emtk.help_guide.EmTkGuidedTour.",
   "steps": [
     {
       "title": "Your old workflow, as one pipeline",
@@ -8,13 +8,13 @@
     },
     {
       "title": "2 — the files",
-      "text": "Drop files or a folder here. <b><code>.sm</code> files work directly</b>, no conversion, no cache files beside them.<br/><br/>No measurement at hand: <b>Demo</b> writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a plugin’s generated-data folder and adds it.",
+      "text": "Drop files or a folder here. <b><code>.sm</code> files work directly</b>, no conversion, no cache files beside them.<br/><br/>No measurement at hand: <b>Load example</b> writes a simulated µs-ALEX stream (100 µs alternation, donor on channel 0, acceptor on channel 1; low-FRET, high-FRET, donor-only and acceptor-only molecules) into a plugin’s generated-data folder and adds it.",
       "target": {
         "name": "load_example",
         "panel": "2. Files"
       },
       "await": {
-        "hint": "Press <b>Demo</b> in the Summary box."
+        "hint": "Press <b>Load example</b> in the Summary box."
       }
     },
     {

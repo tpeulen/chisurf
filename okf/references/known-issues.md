@@ -4,6 +4,82 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Guide screenshot scripts still import the Qt burst tools retired in W9 phase 1 (found 2026-10-10)
+
+status: open — partly ported 2026-10-11 (2CDE, BVA, accurate FRET ×3, H2MM ×3, ALEX alternation/titration); the rest is tracked by `test/test_guide_screenshot_imports.py` and its allow-list. Original note: `docs/guides/make_screenshots.py` (burst_browser ~286, burst_gs ~435, accurate_fret ~599, burst_ebfret ~1150, alex_suite ~1510/1544), `docs/guides/screenshots/guides_02_14.py` (accurate_fret ~335, burst_bva ~154), `guides_15_25.py` (burst_background ~182, accurate_fret ~556), `guides_26_36.py` (burst_analysis ~165), `guides_39_53.py` (burst_analysis ~154) and `spectra_mfd.py:51` (mfd_prepare) still import the deleted `gui/tool.py` / `gui/sections.py` of accurate_fret, burst_analysis, alex_suite, burst_background, burst_browser, burst_bva, burst_2cde, burst_ebfret, burst_fcs_correlator, burst_gs, burst_irf_bg and mfd_prepare, so those grab functions raise ImportError. Re-derive with `grep -rn "gui.tool import\|burst_background import\|burst_browser import" docs/guides`. Fix: build the emtk app with `emtk_shot.app_from(<plugin id>)` and render it with `emtk.testing.Driver` (see `guides_56_65.py`).
+
+## smFRET guide walk: defects in the burst tools and their guides (found 2026-10-11)
+
+status: open — owner: smFRET QA walk (T-20261011-QA-SMFRET) for the fixed items; the open items name their owner.
+Walked: guides 01, 02, 08, 13, 19, 21, 30, 31, 32, 41, 66 (steps, numbers, figures) in the native apps
+(`emtk.testing.Driver`, scratch `CHISURF_SETTINGS_DIR`), inside the emtk shell (`EmtkShellApp.open_plugin`) and
+hosted in the Qt shell (`chisurf.gui.plugin_window.open_native_plugin`); 800×600, 1920×1080 and German renders.
+Scratch scripts were in `/tmp/qa_smfret/` (not kept); every repro below is self-contained.
+
+**Fixed (each with a regression test):**
+
+* **`csc accurate-fret --simulate demo.csv` crashed** ("no numeric columns found"): the simulation writes its
+  declared truth as a `#` preamble and the burst-table reader declined any preamble. `core/fluorescence/burst/table.py`
+  skips leading `#` lines (`read_csv_table(comment=)`); test `accurate_fret/test/test_simulate_cli_round_trip.py`.
+* **Accurate FRET: Calibrate pressed while a read runs was dropped without a word** (the window reads the dye catalogue
+  and optical priors on open; a dropped table is read off-thread). It now runs when the read lands
+  (`gui/controller.py` `_calibrate_next`); the *Report* tab printed "… Press Calibrate." twice. Test
+  `accurate_fret/test/test_calibrate_during_read.py`.
+* **`load_bur_dataframe` handed the `.bur` trailing tab on as a column named `""`** (so `BurstWorkflow.select_bursts`
+  → `Bursts.table` carried it). Dropped there (`core/fluorescence/burst/photons.py`); the interleave stays. Test
+  `test/fluorescence/test_bur_table_has_no_blank_column.py`.
+* **H2MM *Dwell FRET*: S_i→S_j and S_j→S_i arrows drawn on top of each other** — the sideways offset was a fraction of
+  the E span applied on the count axis (`gui/result_view.py` `transition_arrows`). Test
+  `burst_h2mm/tests/test_transition_arrows.py`.
+* **H2MM *Per-state decay*: every state of one colour was the same solid line** (guide 19 promised a line style per
+  state). `gui/plots.py` `STATE_DASHES`; test `burst_h2mm/tests/test_state_decay_line_styles.py`.
+* **The Burst Analysis and ALEX Suite hubs never drew `>>`** (fast-forward) that their help and guides 27/66 tell the
+  user to press: `BurstAnalysisHubApp` did not pass `steps=True`. Test
+  `burst_analysis/tests/test_pipeline_fast_forward.py`.
+* **ALEX Suite: the tour, step description and status said "Demo"; the button reads *Load example*** (guide 66 said
+  "Load demo data"). Test `alex_suite/tests/test_emtk_native_hub.py::test_the_tour_names_the_example_button_by_its_caption`.
+* **ALEX Suite titration *Result* printed its markdown table as raw `| 0 | 0.218 |` / `|---|` rows**; drawn as a
+  table now (`gui/app.py` `_draw_summary`); the *Fix peak positions* tooltip said positions were otherwise free per
+  concentration (they are shared). Test `alex_suite/tests/test_titration_summary_table.py`.
+* **ALEX alternation plot: an x tag at half the period read "period 8000"** at x = 4000; it says `period/2 = 4000`.
+  Test `alex_suite/tests/test_alternation_clicks.py::test_the_phase_tag_names_the_position_it_marks`.
+* **Stale guides**: 01 (garbled caption "138 of152 … a50µs", Qt-era tool figure, "step 4" is step 5), 02/08/13/19/21
+  (menu entries *Spectroscopy:Single-Molecule:BVA / Burst Selection / H2MM / Burst MLE / Burst Fusion* do not exist:
+  those manifests are `menu_hidden`, reachable as Burst Analysis steps or `python -m chisurf.emtk --plugin <id>`),
+  08 (Bins 31→51, setup pickers are on *Channel Definitions*, dynamic fraction 0.416→0.423, Qt figure), 13 (the
+  "fresh settings dir stops the panel" known defect no longer reproduces), 19/30 (figures fitted with donor 0/1 and
+  acceptor 8/9 — wrong channels, E 0.48/0.54; regenerated with green 0/8, red 1/9: E 0.029/0.422/0.866 and
+  0.029/0.218/0.612/0.879), 32 (state boxes are above the plot), 41 (emoji button names, "report at the bottom
+  left", a calibration report the tool no longer prints), 66 (titration "fixed x0/sigma made the default" is wrong:
+  it is off by default). Figures regenerated natively: `burst_2cde_tool`, `08_bva_tool`, `14_accurate_fret`,
+  `accurate_fret_{tool,es,etau}`, `25_accurate_fret{,_factors}`, `19_h2mm_tool`, `30_h2mm_results`,
+  `31_h2mm_simulated`, `32_h2mm_state_decays`, `alex_suite_{alternation,titration}`.
+* **Guide grabbers importing deleted Qt tools now fail a test**: `test/test_guide_screenshot_imports.py` against the
+  shrinking `test/guide_screenshot_dead_import_allowlist.txt` (15 left, was 24).
+
+**Open, handed over:**
+
+* **81 de and 81 fr translations start with three spaces their source does not have** (`chisurf_de.ts`/`_fr.ts`,
+  e.g. `Analysis folder:` → `   Analyseordner:`), so German labels sit indented (2CDE window, `burst_2cde de`).
+  Committed in `bed3b9e4c`. Repro: parse the `.ts` and compare leading whitespace of source/translation. Owner: the
+  queued i18n job (catalogue work is deferred there). This walk also added/changed a few source strings (ALEX
+  descriptions, tooltips): they need catalogue entries.
+* **Adding any file to a burst workflow logs `ERROR MMFDB RPC failed: mmfdb.objects.put: Authentication required`**
+  when no MMFDB session exists (fresh profile, ALEX *Load example*): `burst_analysis/gui/data_selection_app.py`
+  `import_raw_file` auto-imports every added file. Owner: MMFDB auth / burst data selection (decide whether an
+  anonymous session skips the import or asks).
+* **The arm64 env's installed emtk lags `~/dev/emtk` HEAD**: `chisurf/emtk/help_guide.py` imports
+  `emtk.type_scale`, which the installed copy lacks, so every native plugin import fails in that env (walked here with
+  `PYTHONPATH=~/dev/emtk`). Owner: the lane that changed `help_guide.py` (reinstall emtk into the envs).
+* **emtk `view_form` `info` sections with `is_markdown` flatten markdown tables** to raw `| … |` rows, and emtk's
+  markdown widget (`im.markdown`) draws in a small proportional face that drops `.`, `,` and `=` in both
+  `PixelPainter` and `PilPainter` renders. Owner: emtk.
+* **H2MM floor rates** (1e-12 per tick) are listed as `0.0` with a 1.35e7 ms waiting time and still get an arrow
+  (documented in guide 30's known defects). Owner: burst_h2mm.
+* **15 guide grabbers** still import deleted Qt tools (allow-list above): burst_browser, burst_gs, burst_ebfret,
+  burst_background, burst_analysis (guides 26–36, 39–53), mfd_prepare, plus non-smFRET (hmm, maxent, lumis_quest,
+  intensity_trace, batch_analysis, tttr_to_pto, acq). Their figures are stale until ported.
+
 ## Lifetime mixture, FRET structure fit and the shell's recording: found while porting the model editor (2026-10-11)
 
 status: open — measured in W9 S2 (model sections); none is caused by that port, each blocks a model in both shells.
@@ -158,10 +234,6 @@ Causes and fixes in `test/test_forbidden_communication.py`:
 The shell files: `builtin.py` 6 to 2 (four copies of the `cs.fits` index lookup became one `_fit_index_of`), `parameter_table.py` 6 to 5, `main_helper.py` 24 to 12, `fit_controller.py` 12 to 8. Reads of the session's fit/dataset objects now go through the new `chisurf.core.api.fit_objects()` / `dataset_objects()` snapshots (also used by burst_selection `api/io.py`, batch_analysis, irf_estimator, maxent_decay) instead of `chisurf.fits` / `chisurf.imported_datasets`.
 
 Still open (counted, not fixed): the remaining 69 hits are real writes to fit parameters / fit methods (`main_helper` restore-state, `parameter_table` fallback when no controller, `fit_controller` `fit.update()`/`fit_range`) that need `FittingClient.set_parameter_*` / `link_parameters` / `set_fit_range` routing with their dialogs' behaviour tests; `accurate_fret/parameters.py` and `lightpath_simulator/core/parameters.py` hold plugin-own `FittingParameter`s and still match because the type name is in `FIT_CONTEXT`.
-
-## Guide screenshot scripts still import the Qt burst tools retired in W9 phase 1 (found 2026-10-10)
-
-status: open — `docs/guides/make_screenshots.py` (burst_browser ~286, burst_gs ~435, accurate_fret ~599, burst_ebfret ~1150, alex_suite ~1510/1544), `docs/guides/screenshots/guides_02_14.py` (accurate_fret ~335, burst_bva ~154), `guides_15_25.py` (burst_background ~182, accurate_fret ~556), `guides_26_36.py` (burst_analysis ~165), `guides_39_53.py` (burst_analysis ~154) and `spectra_mfd.py:51` (mfd_prepare) still import the deleted `gui/tool.py` / `gui/sections.py` of accurate_fret, burst_analysis, alex_suite, burst_background, burst_browser, burst_bva, burst_2cde, burst_ebfret, burst_fcs_correlator, burst_gs, burst_irf_bg and mfd_prepare, so those grab functions raise ImportError. Re-derive with `grep -rn "gui.tool import\|burst_background import\|burst_browser import" docs/guides`. Fix: build the emtk app with `emtk_shot.app_from(<plugin id>)` and render it with `emtk.testing.Driver` (see `guides_56_65.py`).
 
 ## The run picker cannot tell the burst analyses apart (found 2026-10-10)
 

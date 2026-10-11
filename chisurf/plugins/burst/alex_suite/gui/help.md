@@ -8,7 +8,7 @@ analysis that every other tool can read.
 ## The simple workflow
 
 1. **Setup** — PIE / ns-ALEX: pick your detector setup. µs-ALEX: leave it.
-2. **Files** — drop your measurements, or press **Demo** for a
+2. **Files** — drop your measurements, or press **Load example** for a
    simulated µs-ALEX measurement whose answer is known.
 3. **Alternation (optional)** — µs-ALEX data is converted *on arrival*: the
    period, the laser gates and the channel assignment are measured, the file is
@@ -23,7 +23,7 @@ analysis that every other tool can read.
 Each step hands its result to the next one, so from files to an E–S histogram
 is Next presses only (**>>** walks all remaining steps). The status line at the
 bottom says what the open step needs. Steps marked *(optional)* are never run by
-Next. **Guide** starts by pointing at **Demo** in Files and waits for your
+Next. **Guide** starts by pointing at **Load example** in Files and waits for your
 click. Generated photons and their parameter sidecar live in
 `demos/alex_suite` under the ChiSurf settings folder.
 
@@ -32,7 +32,7 @@ click. Generated photons and their parameter sidecar live in
 | ALEX-Suite | here |
 |---|---|
 | the channel table inside *Burst Search Settings* | **1. Setup** — the detector setup, chosen or edited |
-| *Select Directory* + file list | **2. Files** — drop files or folders; also reads MMFDB; **Demo** |
+| *Select Directory* + file list | **2. Files** — drop files or folders; also reads MMFDB; **Load example** |
 | *Burst Search Settings → Microscope* (period, shift, 4 laser edges, flip) | **3. Alternation (optional)** — measured from the data on arrival |
 | *Burst Search → APBS / DCBS* | **4. Burst search** |
 | the `bkg_DD` / `bkg_DA` / `bkg_AA` fields | **5. Background** — measured, not typed |

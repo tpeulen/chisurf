@@ -45,13 +45,14 @@ burst rows remain intact.
 The engine is the `tttrlib.BVA` burst feature (parallel over bursts); the
 `burst_bva` plugin wraps it. Open it as step **4. Burst BVA** of
 **Spectroscopy → Single-Molecule → Burst Analysis** — the burst folder and detector setup of step
-2 carry over — or on its own as *Spectroscopy:Single-Molecule:BVA*.
+2 carry over. It has no menu entry of its own; `python -m chisurf.emtk --plugin burst_bva`
+opens it alone.
 
-Point the plugin at a burst-analysis folder either with the 📂 toolbar button or
+Point the plugin at a burst-analysis folder either with the **Folder** toolbar button or
 by **dropping the folder anywhere on the BVA window**. BVA reads a whole folder,
 so dropping a single file is reported in the status line rather than accepted.
 With **Auto update** ticked the plot is recomputed as soon as a folder and a
-setup are known; ▶ runs it and writes the `bv4/` output.
+setup are known; **Run** runs it and writes the `bv4/` output.
 
 ```{figure} figures/08_bva_tool.png
 :name: fig-bva-tool
@@ -59,10 +60,12 @@ setup are known; ▶ runs it and writes the `bv4/` output.
 
 The BVA tool on the burst folder Burst Selection wrote for the ten bundled
 SPC-132 dsDNA measurements (1130 bursts, 1118 with enough photons for at least
-one slice; 10 photons per slice). Red: the static (shot-noise) line; cyan: the
-mean slice standard deviation per proximity-ratio column. The donor-only spot
-near 0 sits on the line; the FRET population around 0.3–0.7 lies above it.
-Rendered with the emtk plot backend.
+one slice; 10 photons per slice), with the *Channel Definitions* tab open
+(donor routing channels 0,8, acceptor 1,9). Blue: one point per burst; red: the
+static (shot-noise) line; cyan: the mean slice standard deviation per
+proximity-ratio column, with its error bars. The donor-only spot near 0 sits on
+the line; the FRET population around 0.3–0.7 lies above it. The blue box is a
+draggable E/σ region that can be dropped onto the other burst tools.
 ```
 
 ```{figure} figures/bva_native_primary_window.png
@@ -78,13 +81,13 @@ profile use the same channel and slicing definition as the burst points.
 |---|---|---|
 | **Min window length (s)** | 0.01 | Alternative slicing by a fixed time. |
 | **Photons per slice** | 10 | $n$ of the slices and of the static line. |
-| **Setup** | — | Saved detector setup; its detectors fill the two pickers below. The full shared detector editor is on the **Detectors** tab. |
-| **Donor detector** / **Acceptor detector** | first two detectors | Which detectors form $p = n_A/(n_D+n_A)$. |
-| **Bins X** / **Bins Y** | 31 / 31 | Resolution of the 2-D histogram. |
-| **Show static line** / **Auto update** (toolbar) | on / on | Overlay the shot-noise line; recompute on every change. |
+| **Setup** (*Channel Definitions* tab) | Unsaved | Saved detector setup; its detectors fill the two pickers below. *Manual routing* shows the routing channels and micro-time ranges in use. The full shared detector editor is on the **Detectors** tab. |
+| **Donor detector** / **Acceptor detector** (*Channel Definitions* tab) | first two detectors | Which detectors form $p = n_A/(n_D+n_A)$. |
+| **Bins X** / **Bins Y** | 51 / 51 | Columns of the mean-σ profile (cyan) along E, and its σ resolution. |
+| **Show static line** / **Auto update** | on / on | Overlay the shot-noise line; recompute on every change. |
 
-The toolbar counter (*1118 / 1130 bursts*) says how many bursts had at least one
-full slice.
+The status line (*Done – 1118 bursts with Std > 0 on 1130 total*) says how many
+bursts had at least one full slice.
 
 ### Headless
 
@@ -116,7 +119,7 @@ deviation 0.161; the static line at $p = 0.5$, $n = 5$ is 0.2236
 ($\sqrt{0.25/5}$).
 
 From the guided workflow: `bursts.bva("green", "red", photons_per_slice=5)`
-returns a `Bva` result with `.dynamic_fraction` and `.plot()` (0.416 for
+returns a `Bva` result with `.dynamic_fraction` and `.plot()` (0.423 for
 `m000`–`m002.spc` searched with `min_photons=20`). `.plot()` returns a figure
 panel that needs no GUI: `bursts.bva(...).plot().figure.save("bva.png")` writes
 the PNG, and a notebook shows it inline.
