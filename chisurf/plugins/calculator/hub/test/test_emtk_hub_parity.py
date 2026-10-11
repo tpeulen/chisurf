@@ -383,14 +383,14 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     click(app, app.item_rects["help"])
     assert app.help_window.open
     painter = draw(app)
-    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert "Close Help" not in set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not app.help_window.open and app.tour.active
     app.tour.stop()
-    for closer, last in (("Close Help", True), (action_caption("close"), False)):
-        click(app, app.item_rects["help"])
-        click(app, text_rect(draw(app), closer, last=last))
-        assert not app.help_window.open, closer
+    click(app, app.item_rects["help"])
+    click(app, text_rect(draw(app), action_caption("close"), last=False))
+    assert not app.help_window.open
     click(app, app.item_rects["help"])
     app.key(keys.KEY_ESCAPE, "")
     draw(app)

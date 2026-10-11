@@ -23,6 +23,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.texture import Texture
+from emtk.type_scale import math_args, pop_text_style, push_text_style, ui_font_pt
 from emtk.widgets.chat import ChatHistory, draw_chat_input_bar, draw_chat_transcript
 from emtk.widgets.text_editor import TextEditor
 
@@ -707,9 +708,10 @@ class HelpModel:
         self.review_filter = "all"
         self.include_development = False
         self.review_summary = ""
-        from chisurf.core import settings as cs_settings
-
-        self.font_size = float(cs_settings.gui.get("application_font_size", 12.0))
+        #: The reader's body size in emtk points: the interface size (emtk's type scale) until
+        #: the reader zooms. Not the Qt ``application_font_size`` -- a Qt point is not an emtk
+        #: point, and a 13 pt body under an 8 pt interface is what made the reader too large.
+        self.font_size = ui_font_pt()
         self._review_cache: dict[str, str] = {}
         self.event_queue: Queue[Callable[[], None]] = Queue()
 
@@ -981,9 +983,11 @@ class HelpModel:
         self.set_font_size(self.font_size + steps * 0.5)
 
     def reset_zoom(self) -> None:
-        from chisurf.core import settings as cs_settings
+        self.font_size = ui_font_pt()
 
-        self.font_size = float(cs_settings.gui.get("application_font_size", 12.0))
+    def zoom_factor(self) -> float:
+        """The reader's zoom on emtk's type scale: its body size over the interface size."""
+        return self.font_size / ui_font_pt()
 
     def _get_review_status(self, path: pathlib.Path) -> str:
         return help_review.status_of(path).status
@@ -1946,7 +1950,10 @@ class HelpGui:
             im.end_child()
             return
 
-        im.push_font({"size": self.model.font_size})
+        # One type scale for the reader and every other text (emtk.type_scale): the body is the
+        # interface size, headings fixed steps above it; A-/A+ is a zoom on the whole scale.
+        zoom = self.model.zoom_factor()
+        push_text_style("body", zoom=zoom)
 
         for idx, block in enumerate(self.model.current_blocks):
             im.push_id(f"blk_{idx}")
@@ -1972,11 +1979,9 @@ class HelpGui:
             if block.kind == "h1":
                 im.dummy(0.0, 12.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"bold": True})
-                im.push_font_scale(1.55)
+                push_text_style("h1", zoom=zoom)
                 im.text_colored((125, 205, 255, 255), clean_title)
-                im.pop_font_scale()
-                im.pop_font()
+                pop_text_style()
                 im.dummy(0.0, 2.0)
                 im.separator()
                 im.dummy(0.0, 6.0)
@@ -1984,31 +1989,25 @@ class HelpGui:
             elif block.kind == "h2":
                 im.dummy(0.0, 10.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"bold": True})
-                im.push_font_scale(1.3)
+                push_text_style("h2", zoom=zoom)
                 im.text_colored((145, 225, 160, 255), clean_title)
-                im.pop_font_scale()
-                im.pop_font()
+                pop_text_style()
                 im.dummy(0.0, 4.0)
 
             elif block.kind == "h3":
                 im.dummy(0.0, 8.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"bold": True})
-                im.push_font_scale(1.15)
+                push_text_style("h3", zoom=zoom)
                 im.text_colored((245, 205, 115, 255), clean_title)
-                im.pop_font_scale()
-                im.pop_font()
+                pop_text_style()
                 im.dummy(0.0, 3.0)
 
             elif block.kind == "h4":
                 im.dummy(0.0, 6.0)
                 clean_title, _ = self._expand_inline_markup(block.text)
-                im.push_font({"bold": True})
-                im.push_font_scale(1.05)
+                push_text_style("h4", zoom=zoom)
                 im.text_colored((220, 225, 235, 255), clean_title)
-                im.pop_font_scale()
-                im.pop_font()
+                pop_text_style()
                 im.dummy(0.0, 2.0)
 
             elif block.kind == "p":
@@ -2024,8 +2023,7 @@ class HelpGui:
                 im.math(
                     block.text,
                     colour=(216, 222, 233, 255),
-                    font_size=20.0 * self.model.font_size / 12.0,
-                    scale=1.0,
+                    **math_args("body", zoom=zoom),
                     align_center=True,
                     max_width=max(50.0, width - 28.0),
                 )
@@ -2052,9 +2050,11 @@ class HelpGui:
                     if block.text:
                         im.dummy(0.0, 2.0)
                         caption, _ = self._expand_inline_markup(block.text)
+                        push_text_style("caption", zoom=zoom)
                         im.push_style_color(Col.TEXT, (175, 185, 200, 255))
                         im.text_wrapped(f"Figure: {caption}")
                         im.pop_style_color()
+                        pop_text_style()
                     im.dummy(0.0, 6.0)
                 else:
                     im.dummy(0.0, 4.0)
@@ -2078,11 +2078,11 @@ class HelpGui:
                     except Exception:
                         pass
 
-                im.push_font("monospace")
+                push_text_style("code", zoom=zoom)
                 im.push_style_color(Col.FRAME_BG, (20, 24, 30, 255))
                 im.text_wrapped(block.text)
                 im.pop_style_color()
-                im.pop_font()
+                pop_text_style()
                 im.dummy(0.0, 4.0)
 
             elif block.kind == "admonition":
@@ -2111,9 +2111,9 @@ class HelpGui:
                 draw_list.add_rect_filled((x, y), (x + 3.0, y + panel_h), adm_color)
                 im.indent(12.0)
                 im.dummy(0.0, 6.0)
-                im.push_font({"bold": True})
+                push_text_style("body", bold=True, zoom=zoom)
                 im.text_colored(adm_color, adm_title)
-                im.pop_font()
+                pop_text_style()
                 im.text_wrapped(clean_body)
                 if adm_links:
                     self._draw_link_chips(adm_links, f"admlnk_{idx}")
@@ -2159,9 +2159,9 @@ class HelpGui:
                             im.table_next_column()
                             clean_cell, _ = self._expand_inline_markup(cell_text)
                             if r_idx == 0:
-                                im.push_font({"bold": True})
+                                push_text_style("body", bold=True, zoom=zoom)
                                 im.text_colored((140, 200, 255, 255), clean_cell)
-                                im.pop_font()
+                                pop_text_style()
                             else:
                                 im.text_wrapped(clean_cell)
                     im.end_table()
@@ -2185,7 +2185,7 @@ class HelpGui:
             im.pop_id()
 
         im.dummy(0.0, 50.0)
-        im.pop_font()
+        pop_text_style()
         im.end_child()
 
     def _draw_provider_settings(self) -> None:

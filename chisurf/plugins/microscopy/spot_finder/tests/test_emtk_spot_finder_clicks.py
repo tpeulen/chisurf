@@ -16,6 +16,7 @@ from emtk import keys
 from chisurf.plugins.microscopy.spot_finder.gui.app import make_app
 from chisurf.plugins.microscopy.spot_finder.tests.test_native_app import write_field
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
+from chisurf.plugins.emtk_layout import action_caption
 
 SIZES = [(1200, 800), (900, 650)]
 
@@ -202,7 +203,7 @@ def test_click_on_the_image_picks_and_add_clear_picks_buttons(ui):
 def test_help_guide_and_the_tour_is_walked(ui):
     ui.click("help")
     assert ui.app.help_window.open
-    ui.press_text("Close Help")
+    ui.press_text(action_caption("close"))
     ui.click("guide")
     assert ui.app.tour.active
     steps = len(ui.app.tour.steps)

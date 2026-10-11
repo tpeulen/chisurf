@@ -26,6 +26,7 @@ from chisurf.plugins.tttr.ptu_alex_creator.api import AlexRequest, run
 from chisurf.plugins.tttr.ptu_alex_creator.gui.app import AlexApp, translated
 from chisurf.plugins.tttr.ptu_alex_creator.gui.view_model import AlexViewModel
 from test.gui import emtk_layout_checks as lay
+from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent
@@ -644,7 +645,7 @@ def test_guide_and_help_buttons_work(ui):
     assert not ui.app.guide.active
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text("Close Help")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help.open
 
 

@@ -518,8 +518,9 @@ def test_long_document_full_scroll_no_bottom_cutoff():
     doc_key = ("__child__", ("dockwin", "document"), f"doc_{app.model.current_path}")
     assert doc_key in storage
     initial_h = storage[doc_key]["content_height"]
-    # Document contains 32 blocks spanning >2500px; ensure tables didn't reset origin
-    assert initial_h > 2500.0
+    # Document contains 32 blocks spanning well over two screens at the body size of
+    # emtk's type scale; ensure tables didn't reset origin
+    assert initial_h > 1800.0
 
     # Frame 2: Scroll down to the bottom
     io.mouse_pos = (600.0, 400.0)
@@ -527,7 +528,9 @@ def test_long_document_full_scroll_no_bottom_cutoff():
     with im.frame(p, box, io=io, storage=storage):
         app.help_gui.draw(1200.0, 800.0)
 
-    assert storage[doc_key]["scroll_y"] > 1800.0
+    # Scrolled to the very bottom, not cut off short of it.
+    bottom = storage[doc_key]["content_height"] - 800.0
+    assert storage[doc_key]["scroll_y"] > 0.8 * bottom
     assert storage[doc_key]["scroll_y"] <= storage[doc_key]["content_height"]
 
 

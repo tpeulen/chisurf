@@ -9,6 +9,30 @@ timestamp: '2026-08-06T00:00:00Z'
 
 # Where to pick this up
 
+**Text sizes come from emtk's type scale (emtk 8c39495).** The emtk reader
+(`help_app.py` `_draw_markdown_reader`), the emtk Markdown widget and every
+`EmTkHelpWindow` draw through `emtk.type_scale` roles (body = the interface
+size, caption −1 step, h4…h1 +1…+4 steps of 1.125, code = monospace at body);
+the one size setting is `emtk.type_scale.ui_font_pt()` (style editor:
+"Interface font size", env `EMTK_FONT_PT`). `HelpModel.font_size` is the
+reader's body in emtk points and A-/A+ is `zoom_factor()` on the whole scale —
+**not** the Qt `gui.application_font_size` (13 Qt pt under an 8 pt interface was
+the "documentation too large" bug). Measure: `/tmp`-style capture through the
+real native host — a hidden glfw window (content scale 2.0 on this Mac; there is
+no 1x display, ratio 1 uses rendercanvas offscreen `pixel_ratio=1`) rendering
+`HelpApp` on `docs/concepts/fret.md` and the IRF estimator's help, EN and DE —
+then read the PNGs. Guards: emtk `tests/test_type_scale.py` (no literal sizes in
+markdown/help, every Markdown string at a role size, prose cap height = chrome cap
+height within 1 px and pitch = measured advance at ratio 1 and 2, 2x raster at
+ratio 2, ✕ sized like ×). Open: (1) the reader still duplicates emtk's Markdown
+renderer — port it onto `im.markdown` with an anchor/link hook rather than
+growing the copy; (2) prose at ratio 1 is grey-thin (Arial at 10.7 px, AA only) —
+if the owner wants more weight, change `type_scale.PROSE_FAMILY`, not sizes;
+(3) the help window still has the DialogWindow title-bar × beside the header
+"✕ Close" (emtk `dialog_window.py`, owned by another lane at the time); the
+footer "Close Help" is gone; (4) the game guide texts changed source ("Close the
+help window, then …") — their catalogue rows are unfinished in every locale.
+
 **The measurement.** Render the window headlessly and *look at it* — this is a
 component whose defects are invisible to assertions and obvious in an image
 (`QT_QPA_PLATFORM=offscreen`, the `arm64` env, `widget.grab().save(...)`; drive

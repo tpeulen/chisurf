@@ -152,7 +152,7 @@ def test_guide_and_help_buttons_are_pressed(ui):
     assert not ui.app.tour.active
     ui.click("help")
     assert ui.app.help.open
-    ui.press_text("Close Help")
+    ui.press_text(action_caption("close"))
     assert not ui.app.help.open
 
 

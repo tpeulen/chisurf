@@ -17,6 +17,7 @@ from emtk import keys
 from chisurf.plugins.modelling.fret.core.pair_run import PairParams, run_pair_selection
 from chisurf.plugins.modelling.fret.gui.pair_selection_app import PATH_ROWS, make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import CTRL_A, Ui
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 DATA = REPO / "test/data/atomic_coordinates/trajectory/hgbp1"
@@ -450,7 +451,7 @@ def test_help_opens_and_closes(inputs):
     ui = Ui(make_app(), (1200, 800))
     ui.click("help")
     assert ui.app.help_window.open and ui.shown("Optimal FRET pair selection")
-    ui.press_text("Close Help")
+    ui.press_text(action_caption("close"))
     assert not ui.app.help_window.open
     ui.app.close()
 

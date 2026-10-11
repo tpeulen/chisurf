@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 DATA = REPO / "test" / "data" / "atomic_coordinates" / "trajectory" / "hgbp1"
@@ -217,9 +218,9 @@ def check_guide_and_help_buttons(make_app, size=SIZE, prev_step=3, close_step=3)
         assert not ui.app.tour.active and not ui.shown("Step 1 of")
         assert not ui.app.help_window.open
         ui.click("help")
-        assert ui.app.help_window.open and ui.shown("Close Help")
-        ui.press_text("Close Help")
-        assert not ui.app.help_window.open and not ui.shown("Close Help")
+        assert ui.app.help_window.open and ui.shown(action_caption("close"))
+        ui.press_text(action_caption("close"))
+        assert not ui.app.help_window.open and not ui.shown(action_caption("close"))
     finally:
         ui.app.close()
 

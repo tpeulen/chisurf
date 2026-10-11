@@ -62,30 +62,31 @@ def test_last_category_is_drawn_inside_the_modal_and_can_be_clicked(size):
     assert any("maximum" in text for text in driver.painter.strings)
     driver.click(" All ")
     assert window.active_category == "All"
-    driver.click("Close Help")
+    driver.click(action_caption("close"))
     assert not window.open
 
 
-def test_all_help_can_scroll_to_real_document_links_without_moving_footer(monkeypatch):
+def test_all_help_can_scroll_to_real_document_links_without_moving_header_close(monkeypatch):
     """Full text is retained; the last live link can be used after a real wheel scroll."""
     window, driver = _help_driver()
     opened = []
     monkeypatch.setattr(window, "_open_link", opened.append)
-    footer = driver.rect("Close Help")
+    footer = driver.rect(action_caption("close"))
     dx, dy, dw, dh = window.dlg.box
     driver.wheel(-100, at=(dx + dw / 2, dy + dh / 2))
     driver.frame(3)
-    assert driver.rect("Close Help") == footer
+    assert driver.rect(action_caption("close")) == footer
+    assert "Close Help" not in {t[5] for t in driver.painter.texts}
     link = next(
         t[:4]
         for t in driver.painter.texts
         if "TCSPC lifetime fitting" in t[5] and t[5].startswith("↗")
     )
     x, y, w, h = link
-    assert dy <= y and y + h <= footer[1]
+    assert dy <= y
     driver.click(link)
     assert opened == ["docs/concepts/tcspc_lifetime.md"]
-    driver.click("Close Help")
+    driver.click(action_caption("close"))
     assert not window.open
 
 
@@ -107,7 +108,6 @@ def test_moving_the_modal_preserves_the_current_reading_position():
         t[:4] for t in driver.painter.texts if t[5].startswith("↗ TCSPC lifetime fitting")
     )
     assert second[0] == first[0] + 40 and second[1] == first[1] + 20
-    assert second[1] + second[3] <= driver.rect("Close Help")[1]
 
 
 @pytest.mark.parametrize("size", [(400, 300), (480, 320), (600, 400)])

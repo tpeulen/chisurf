@@ -18,6 +18,7 @@ import yaml
 from emtk import keys
 
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
+from chisurf.plugins.emtk_layout import action_caption
 
 SIZE = (1000, 700)
 
@@ -481,8 +482,8 @@ def test_update_now_tooltip_when_a_version_exists(checked):
 # ---------------------------------------------------------------------------------------------- Help and Guide
 def test_help_opens_the_help_window_and_closes(ui):
     ui.click("help")
-    assert ui.app.help_window.open and ui.shown("Close Help")
-    ui.press_text("Close Help")
+    assert ui.app.help_window.open and ui.shown(action_caption("close"))
+    ui.press_text(action_caption("close"))
     assert not ui.app.help_window.open
 
 

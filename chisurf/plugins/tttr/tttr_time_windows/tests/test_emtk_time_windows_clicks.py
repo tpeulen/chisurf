@@ -275,8 +275,8 @@ def test_stop_button_discards_the_running_job(folder):
 @pytest.mark.parametrize("nth", [0, 1])
 def test_each_help_button_opens_the_help_window(ui, nth):
     ui.click(action_caption("help"), nth)
-    assert ui.app.time_window_gui.help_window.open and ui.drawn("Close Help")
-    ui.click("Close Help")
+    assert ui.app.time_window_gui.help_window.open and ui.drawn(action_caption("close"))
+    ui.click(action_caption("close"))
     assert not ui.app.time_window_gui.help_window.open
 
 

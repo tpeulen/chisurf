@@ -20,6 +20,7 @@ from chisurf.plugins.tttr.audifier.core import TTTRData
 from chisurf.plugins.tttr.audifier.gui.app import create_app
 from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
 from chisurf.plugins.tttr.audifier.native_playback import NativeSoundPlayer
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 BH = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"
@@ -319,7 +320,7 @@ def test_guide_and_help_buttons_and_the_tour_is_walked():
     ui, _ = loaded()
     ui.click("help")
     assert ui.app.help.open
-    ui.press_text("Close Help")
+    ui.press_text(action_caption("close"))
     assert not ui.app.help.open
     ui.click("guide")
     assert ui.app.guide.active

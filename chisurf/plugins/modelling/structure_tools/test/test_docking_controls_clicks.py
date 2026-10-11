@@ -19,6 +19,7 @@ from chisurf.plugins.modelling.fret.api.project import save_docking_project
 from chisurf.plugins.modelling.structure_tools.cards.docking import make_app
 from chisurf.plugins.modelling.structure_tools.cards.docking_model import DockingSession
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(path for path in Path(__file__).parents if (path / "pyproject.toml").exists())
 EXAMPLE = REPO / "chisurf/plugins/modelling/fret/examples/fps_hiv_rt"
@@ -285,8 +286,8 @@ def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
         assert not session.pdb_files and app.view.pdb_selected == -1
 
         ui.click("help")
-        assert app.help_window.open and ui.shown("Close Help")
-        ui.press_text("Close Help")
+        assert app.help_window.open and ui.shown(action_caption("close"))
+        ui.press_text(action_caption("close"))
         assert not app.help_window.open
         ui.click("guide")
         steps = len(app.tour.steps)

@@ -22,7 +22,7 @@
     },
     {
       "title": "Check the fresh round",
-      "text": "Close Help, then press Restart once more. Check that the guess history is empty and the dial is back at 50 with a newly generated hidden target. The guide waits for your click; it never presses a control for you.",
+      "text": "Close the help window, then press Restart once more. Check that the guess history is empty and the dial is back at 50 with a newly generated hidden target. The guide waits for your click; it never presses a control for you.",
       "target": {
         "name": "restart_game"
       },

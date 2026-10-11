@@ -17146,27 +17146,27 @@ Guardar un archivo LUT o un settings.tttr.json (pestaña ②) es opcional: solo 
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1726" />
-            <source>Close Help, then press Restart once more. Check that both scores have reset and a fresh serve begins. The guide waits for your click; it never presses a control for you.</source>
+            <source>Close the help window, then press Restart once more. Check that both scores have reset and a fresh serve begins. The guide waits for your click; it never presses a control for you.</source>
             <translation type="unfinished" />
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1727" />
-            <source>Close Help, then press Restart once more. Check that the board is covered and the flags are cleared at the current difficulty. The guide waits for your click; it never presses a control for you.</source>
+            <source>Close the help window, then press Restart once more. Check that the board is covered and the flags are cleared at the current difficulty. The guide waits for your click; it never presses a control for you.</source>
             <translation type="unfinished" />
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1728" />
-            <source>Close Help, then press Restart once more. Check that the guess history is empty and the dial is back at 50 with a newly generated hidden target. The guide waits for your click; it never presses a control for you.</source>
+            <source>Close the help window, then press Restart once more. Check that the guess history is empty and the dial is back at 50 with a newly generated hidden target. The guide waits for your click; it never presses a control for you.</source>
             <translation type="unfinished" />
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1729" />
-            <source>Close Help, then press Restart once more. Check that the score and lives have reset and the ball is waiting on the paddle before you launch it. The guide waits for your click; it never presses a control for you.</source>
+            <source>Close the help window, then press Restart once more. Check that the score and lives have reset and the ball is waiting on the paddle before you launch it. The guide waits for your click; it never presses a control for you.</source>
             <translation type="unfinished" />
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1730" />
-            <source>Close Help, then press Restart once more. Check that the well is empty, the score is reset and a new piece is ready. The guide waits for your click; it never presses a control for you.</source>
+            <source>Close the help window, then press Restart once more. Check that the well is empty, the score is reset and a new piece is ready. The guide waits for your click; it never presses a control for you.</source>
             <translation type="unfinished" />
         </message>
         <message>

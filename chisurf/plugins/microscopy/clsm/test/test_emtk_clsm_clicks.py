@@ -16,6 +16,7 @@ import pytest
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.microscopy.clsm.gui.app import ClsmApp
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 SP5 = REPO / "test/data/clsm/Leica_SP5.ptu"
@@ -238,7 +239,7 @@ def test_help_guide_and_the_tour_is_walked(empty):
     ui = empty
     ui.click("help")
     assert ui.app.help.open
-    ui.press_text("Close Help")
+    ui.press_text(action_caption("close"))
     ui.click("guide")
     assert ui.app.tour.active
     steps = len(ui.app.tour.steps)

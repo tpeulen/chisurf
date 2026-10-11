@@ -231,17 +231,17 @@ def test_a_tool_without_a_native_declaration_says_pending_and_the_rest_works():
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click_text(action_caption("help"))
-    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(
+    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
         drv.draw(2).strings
     )
+    assert "Close Help" not in set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", action_caption("close")):
-        drv.click_text(action_caption("help"))
-        drv.click_text(closer, last=closer == "Close Help")
-        assert not window.open, closer
+    drv.click_text(action_caption("help"))
+    drv.click_text(action_caption("close"))
+    assert not window.open
     drv.click_text(action_caption("help"))
     drv.escape()
     assert not window.open

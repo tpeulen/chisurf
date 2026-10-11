@@ -17,6 +17,10 @@
 
 ## 2026-10-10
 
+- One type scale for all text (emtk 8c39495): prose was rasterised at logical size and stretched on Retina
+  (blurry, cramped) and measured with hinted advances; it is now rasterised at device resolution, laid out at
+  the width it was measured at, with roles body/code/caption/h1-h4 from one interface-size setting (style
+  editor). The doc viewer no longer draws at Qt's 13 pt; help windows have one close (the shared caption).
 - Console plots show inline again in both consoles: `chisurf.core.console.mpl_backend` (Agg, published into the
   running console; `plt.show()` never blocks, `%matplotlib inline` selects it), `display()`, PNG/SVG reprs;
   the emtk console draws images in its transcript (scaled to width, scrollable, Copy/Save image). The shipped

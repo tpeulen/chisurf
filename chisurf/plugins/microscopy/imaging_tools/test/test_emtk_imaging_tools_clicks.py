@@ -9,6 +9,8 @@ native children are drawn in the parity tests). The control -> test list is in
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from emtk import keys
 
@@ -234,17 +236,17 @@ def test_the_source_and_hdf5_lines_follow_the_shared_context(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click_text("Help")
-    assert window.open and {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(
+    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
         drv.draw(2).strings
     )
+    assert "Close Help" not in set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
-    for closer in ("Close Help", action_caption("close")):
-        drv.click_text("Help")
-        drv.click_text(closer, last=closer == "Close Help")
-        assert not window.open, closer
+    drv.click_text("Help")
+    drv.click_text(action_caption("close"))
+    assert not window.open
     drv.click_text("Help")
     drv.escape()
     assert not window.open
@@ -336,3 +338,19 @@ def test_the_whole_flow_works_in_the_small_window_too():
     d.click_text("Guide")
     assert app.tour.active
     app.close()
+
+
+def test_a_file_dropped_on_the_hub_reaches_a_real_step_that_answers_files_dropped(tmp_path):
+    """The pixel steps answer ``files_dropped`` (not ``on_files_dropped``); a drop on the hub must still load the file."""
+    from chisurf.plugins.microscopy.imaging_emtk import pixel_testing as data
+
+    source = Path(data.flim_ptu(tmp_path / "flim.ptu"))
+    app = ImagingToolsApp(client=Client())
+    d = HubDriver(app, BIG)
+    d.draw(3)
+    try:
+        click_entry(d, "pixel_intensity")
+        assert d.drop(str(source)) is True
+        assert app.children["pixel_intensity"].model.filename == str(source)
+    finally:
+        app.close()

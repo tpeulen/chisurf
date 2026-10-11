@@ -235,8 +235,8 @@ def test_stop_analysis_button_discards_the_incomplete_run(folder):
 # -- Guide, Help, drops ------------------------------------------------------------------------------------------
 def test_help_button_opens_and_closes_the_help_window(ui):
     ui.click(action_caption("help"))
-    assert ui.app.count_rate_gui.help_window.open and ui.drawn("Close Help")
-    ui.click("Close Help")
+    assert ui.app.count_rate_gui.help_window.open and ui.drawn(action_caption("close"))
+    ui.click(action_caption("close"))
     assert not ui.app.count_rate_gui.help_window.open
 
 

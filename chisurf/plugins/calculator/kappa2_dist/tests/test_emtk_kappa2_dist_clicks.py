@@ -302,17 +302,17 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     window = app.kappa2_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", action_caption("close"), "Close Help"} <= set(painter.strings)
+    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert "Close Help" not in set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.kappa2_gui.tour.active
     app.kappa2_gui.tour.stop()
-    for closer in ("Close Help", action_caption("close")):
-        press_text(app, "Help")
-        click(
-            app,
-            text_rect(draw(app), closer, last=False if closer == action_caption("close") else True),
-        )
-        assert not window.open, closer
+    press_text(app, "Help")
+    click(
+        app,
+        text_rect(draw(app), action_caption("close"), last=False),
+    )
+    assert not window.open
     press_text(app, "Help")
     app.key(keys.KEY_ESCAPE, "")
     draw(app)

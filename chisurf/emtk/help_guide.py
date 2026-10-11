@@ -18,6 +18,7 @@ from emtk.dialog_window import DialogWindow
 from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.keys import KEY_ESCAPE
+from emtk.type_scale import text_style
 
 from chisurf.plugins.emtk_layout import action_button
 
@@ -239,11 +240,11 @@ class EmTkHelpWindow:
                     im.pop_style_color()
             im.separator()
 
-        # Content scrolling area
+        # Content scrolling area: the rest of the window. The header's ✕ Close is
+        # the window's one close control (Escape closes too); there is no footer.
         avail_w, avail_h = ctx.layout.avail()
-        footer_height = im.get_frame_height() + 3 * im.get_style().item_spacing[1] + 1.0
         im.begin_child(
-            (*im.get_cursor_screen_pos(), max(1.0, avail_w), max(1.0, avail_h - footer_height)),
+            (*im.get_cursor_screen_pos(), max(1.0, avail_w), max(1.0, avail_h)),
             child_id=(self.dlg.key, self.active_category, "body"),
             clip=True,
         )
@@ -253,21 +254,17 @@ class EmTkHelpWindow:
                 continue
 
             im.spacing()
-            im.text_colored(heading, (0.4, 0.8, 1.0, 1.0))
+            with text_style("h2"):
+                im.text_colored(heading, (0.4, 0.8, 1.0, 1.0))
             im.separator()
 
             # The section body is Markdown: emphasis, inline code, lists and links are rendered,
             # not shown as raw ``**`` / backticks; a link opens the documentation browser or the
-            # system browser (``chisurf.emtk.doc_links.open_link``).
+            # system browser (``chisurf.emtk.doc_links.open_link``). Sizes come from emtk's
+            # type scale (:mod:`emtk.type_scale`), like the documentation browser's.
             im.markdown("\n".join(lines), on_link=self._open_link)
 
         im.end_child()
-
-        # Footer action bar
-        im.separator()
-        if im.button(tr("Close Help") + "##footer"):
-            pressed = "close"
-        im.set_item_tooltip(tr("Close this help window."))
 
         self.dlg.end()
 

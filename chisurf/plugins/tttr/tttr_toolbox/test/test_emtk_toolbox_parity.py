@@ -19,6 +19,7 @@ from emtk.app import ImApp
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 from chisurf.plugins.tttr.tttr_toolbox.gui.app import HEADER, make_app
 from test.gui import emtk_layout_checks as lay
+from chisurf.plugins.emtk_layout import action_caption
 
 PLUGIN = Path(__file__).resolve().parents[1]
 SIZES = [(1200, 800), (800, 600)]
@@ -188,11 +189,11 @@ def test_the_status_line_says_ready(ui):
 def test_help_and_tool_help_open_and_close(ui):
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text("Close Help")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help.open
     ui.click_name("tool_help")
     assert ui.app.child_help is not None and ui.app.child_help.open
-    ui.click_text("Close Help")
+    ui.click_text(action_caption("close"))
     assert not ui.app.child_help.open
 
 

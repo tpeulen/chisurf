@@ -275,8 +275,8 @@ def test_panel_headers_fold_and_unfold(ui, title, field, open_at_first):
 # -- Guide and Help ------------------------------------------------------------------------------------------
 def test_help_button_opens_and_closes_the_help_window(ui):
     ui.click(action_caption("help"))
-    assert ui.app.help_window.open and ui.drawn("Close Help")
-    ui.click("Close Help")
+    assert ui.app.help_window.open and ui.drawn(action_caption("close"))
+    ui.click(action_caption("close"))
     assert not ui.app.help_window.open
 
 

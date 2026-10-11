@@ -22,6 +22,7 @@ from chisurf.plugins.fcs.fcs_correlator.filter_model import FilterSettingsModel
 from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as make_correlator
 from chisurf.plugins.fcs.fcs_correlator.workflow import FcsWorkflow, filter_step_allowed
 from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as make_hub
+from chisurf.plugins.emtk_layout import action_caption
 
 CTRL_A = 0x04000000
 SIZES = [(1200, 800), (800, 600)]
@@ -366,7 +367,7 @@ def test_help_guide_and_the_tour_waits_for_the_user():
     hub = _hub()
     hub.click("help")
     assert hub.app.help.open
-    hub.press_text("Close Help")
+    hub.press_text(action_caption("close"))
     hub.click("guide")
     tour = hub.app.tour
     assert tour.active and len(tour.steps) >= 5

@@ -20,6 +20,7 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.tttr.intensity_trace.gui.app import make_app
 from chisurf.plugins.tttr.intensity_trace.model import IntensityTraceModel
+from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 SPC = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"
@@ -275,7 +276,7 @@ def test_help_and_the_tour_waits_for_the_user():
     ui = Ui(make_app())
     ui.click("request_help")
     assert ui.app.help.open
-    ui.press_text("Close Help")
+    ui.press_text(action_caption("close"))
     ui.click("request_guide")
     tour = ui.app.tour
     assert tour.active and len(tour.steps) >= 5

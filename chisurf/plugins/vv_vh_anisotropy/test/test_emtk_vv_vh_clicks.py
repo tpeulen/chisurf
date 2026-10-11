@@ -257,8 +257,8 @@ def test_a_bad_file_through_the_dialog_is_a_status_line_not_a_crash(ui, files, t
 
 def test_help_button_opens_the_help_window_and_close_help_closes_it(ui, files):
     ui.click(action_caption("help"))
-    assert ui.app.help_window.open and ui.drawn("Close Help")
-    ui.click("Close Help")
+    assert ui.app.help_window.open and ui.drawn(action_caption("close"))
+    ui.click(action_caption("close"))
     assert not ui.app.help_window.open
 
 

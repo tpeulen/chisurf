@@ -27,6 +27,7 @@ from chisurf.plugins.spectra_downloader.gui.app import PANELS, create_app, trans
 from chisurf.plugins.spectra_downloader.gui.translations import LOCALES, tr
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 from test.gui import emtk_layout_checks as lay
+from chisurf.plugins.emtk_layout import action_caption
 
 SIZES = [(1200, 800), (800, 600)]
 REAL_HOME = Path(pwd.getpwuid(os.getuid()).pw_dir)
@@ -567,7 +568,7 @@ def test_the_advanced_fields_are_typed_ports_are_spin_fields_and_the_password_is
 def test_help_and_guide_buttons_work(ui):
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text("Close Help")
+    ui.click_text(action_caption("close"))
     assert not ui.app.help.open
     ui.click_name("guide")
     assert ui.app.tour.active

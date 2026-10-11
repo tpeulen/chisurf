@@ -80,16 +80,16 @@ def test_ctrl_equals_plus_minus_zoom_the_text(help_driver, key, text, delta):
     assert m.font_size == pytest.approx(before + delta)
 
 
-def test_ctrl_zero_restores_the_application_font_size(help_driver):
+def test_ctrl_zero_restores_the_interface_font_size(help_driver):
     m = help_driver.app.model
     base = m.font_size
     _press(help_driver, ord("="), "=", CTRL)
     _press(help_driver, ord("="), "=", CTRL)
     assert m.font_size != base
     _press(help_driver, ord("0"), "0", CTRL)
-    from chisurf.core import settings as cs_settings
+    from emtk.type_scale import ui_font_pt
 
-    assert m.font_size == float(cs_settings.gui.get("application_font_size", 12.0))
+    assert m.font_size == ui_font_pt()
 
 
 def test_plain_keys_without_modifiers_are_not_shortcuts(help_driver):
