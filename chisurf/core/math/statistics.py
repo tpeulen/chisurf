@@ -16,7 +16,7 @@ def incremental_average(
     next_sample,
     previous_average=None,
     number_of_samples: int = 1,
-    fractions: typing.Tupel[float, float] = None,
+    fractions: tuple[float, float] | None = None,
 ):
     """
     Compute the running (online) average when a new sample is added.

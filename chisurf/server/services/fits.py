@@ -1452,7 +1452,7 @@ def fit_posterior(
     try:
         eng.run(p_value=float(p_value), **(options or {}))
     except Exception as e:
-        return service_error(f"{engine} engine failed: {e}")
+        return service_error(f"{engine} engine failed: {e}", error_code=OPERATION_FAILED, exception=e)
 
     payload: dict[str, Any] = {
         "ok": True,
@@ -1547,7 +1547,7 @@ def fit_reweight_prior(
     except KeyError as e:
         return service_error(str(e), error_code=INVALID_INPUT)
     except Exception as e:
-        return service_error(f"reweighting failed: {e}")
+        return service_error(f"reweighting failed: {e}", error_code=OPERATION_FAILED, exception=e)
 
     # ``pareto_k`` is deliberately inf when the weights are past smoothing, and
     # nan when the tail was too short to diagnose; neither survives JSON. The
@@ -1617,7 +1617,7 @@ def fit_derived(
             max_draws=int(max_draws),
         )
     except Exception as e:
-        return service_error(f"derived-quantity report failed: {e}")
+        return service_error(f"derived-quantity report failed: {e}", error_code=OPERATION_FAILED, exception=e)
 
     # nan/inf do not survive JSON; a missing end is None rather than a number
     # the caller would have to know to distrust.

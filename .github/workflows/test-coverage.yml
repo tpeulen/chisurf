@@ -45,14 +45,12 @@ jobs:
       - name: Run Ruff
         run: pixi run --environment dev lint
 
-      # Non-blocking: mypy never actually ran to completion in CI before
-      # 2026-09-17 (the job always failed earlier, at a wrong-pixi-environment
-      # exit 127), so this surfaces 5,545 pre-existing errors across 757
-      # files -- real debt, but far beyond a CI fix, not a regression. Runs
-      # and reports so the count is visible, without gating the job on it.
-      - name: Run MyPy
-        run: pixi run --environment dev typecheck
-        continue-on-error: true
+      # Blocking ratchet: per-file mypy error counts may only go down
+      # (test/mypy_baseline.json; refresh with
+      # `python test/test_mypy_baseline.py --update` after fixing errors).
+      # Cold run ~65 s.
+      - name: MyPy ratchet
+        run: pixi run --environment dev pytest test/test_mypy_baseline.py -m slow -q
 
   tests:
     name: Tests (${{ matrix.os }})

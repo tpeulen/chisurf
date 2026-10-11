@@ -350,3 +350,13 @@ exclude = [
     "chisurf/plugins/cookiecutter-chisurf-plugin/",
     "^chisurf/plugins/cookiecutter-chisurf-plugin$",
 ]
+
+# The conda PyQt5 ships no .pyi stubs, so qtpy's `from PyQt5.QtCore import *`
+# re-exports resolve to nothing and mypy reports ~700 phantom errors
+# (`Name "QtCore.QObject" is not defined`, `Module "qtpy.QtCore" has no
+# attribute "QUrl"`). Treat the Qt binding as untyped (Any) instead.
+[[tool.mypy.overrides]]
+module = ["qtpy", "qtpy.*", "PyQt5", "PyQt5.*", "PyQt6", "PyQt6.*", "PySide2", "PySide2.*", "PySide6", "PySide6.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
+ignore_missing_imports = true

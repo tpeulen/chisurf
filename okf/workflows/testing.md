@@ -310,6 +310,14 @@ workstreams supply tours, demos, reachable layouts and source prerequisites.
 The C27 matrix and intermediate hash runs are diagnostic, not acceptance.
 
 
+## Type-check ratchet
+
+CI runs `pytest test/test_mypy_baseline.py -m slow` (blocking): `test/mypy_baseline.json` holds each
+file's mypy error count and may only shrink. A file whose count rises, a new file with errors, or a
+count that dropped without being written back fails. After fixing errors run
+`python test/test_mypy_baseline.py --update`. Qt modules are `follow_imports = "skip"` in
+`pyproject.toml` (the conda PyQt5 ships no stubs), so Qt names are `Any` rather than noise.
+
 ## Lint A/B targets
 
 The approved lint worktree's target inventory is retained below. Select the

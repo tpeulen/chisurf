@@ -2,6 +2,10 @@
 
 ## 2026-10-10
 
+- mypy ratchet: Qt modules skipped in `pyproject.toml` (5078 → 3904 errors), per-file baseline
+  `test/mypy_baseline.json` (3899) guarded by `test/test_mypy_baseline.py`, now a blocking CI step.
+  Real bugs fixed: three `service_error` calls without `error_code` (TypeError on fit-service error paths)
+  and two MMFDB-admin experiment-type calls passing an argument the method does not take.
 - PRD-154 W9 phase 1 (plugins): five parallel lanes retired the Qt tools of ~80 plugins across burst,
   microscopy, tttr/vv-vh/pch, fcs/decay/calculators and core/modelling/traj; each recorded the Qt tool's
   values first (`qt_reference.json` beside its tests) and checked control inventories. `plugin_qt_allowlist.txt`

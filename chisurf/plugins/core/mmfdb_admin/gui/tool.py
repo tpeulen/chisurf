@@ -5361,8 +5361,8 @@ class MMFDBWidget(NavigationPanelTool):
 
     def save_experiment_type(self) -> None:
         data = self.experiment_type_detail_widget.get_data()
-        types = self.client.save_experiment_type(data)
-        self.fill_experiment_type_table(types)
+        self.client.save_experiment_type(data)
+        self.fill_experiment_type_table()
         self.refresh()
 
     def delete_experiment_type(self) -> None:
@@ -5374,8 +5374,8 @@ class MMFDBWidget(NavigationPanelTool):
             self, "Delete experiment type", f"Delete experiment type {type_id}?"
         )
         if answer == QtWidgets.QMessageBox.Yes:
-            types = self.client.delete_experiment_type(int(type_id))
-            self.fill_experiment_type_table(types)
+            self.client.delete_experiment_type(int(type_id))
+            self.fill_experiment_type_table()
             self.refresh()
 
     def collect_experiment(self) -> dict[str, Any]:
