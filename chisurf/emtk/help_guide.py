@@ -102,7 +102,7 @@ class EmTkHelpWindow:
         self.size = size
         self.open = False
         self.active_category = "All"
-        self.dlg = DialogWindow(title, size=size, key=f"help_{title}")
+        self.dlg = DialogWindow(title, size=size, key=f"help_{title}", close_button=False)
 
         # Parsed help content: list of (heading, content_lines)
         self.sections: list[tuple[str, list[str]]] = []
