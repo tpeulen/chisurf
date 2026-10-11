@@ -166,6 +166,20 @@ def _read_strided(path: pathlib.Path, row_stride: int) -> Any:
     columns = {}
     for i, name in enumerate(names):
         values = text[:, i]
+        # An empty cell is a value the writer could not determine (a count rate
+        # of a stream with one photon); it is missing, not text. Typed as text,
+        # the column of a file holding one met the float column of a file
+        # without and the stack refused: "column 'Green Count Rate (KHz)' is
+        # float64 here and str there" on the bundled sm-DNA folder.
+        blank = np.array([str(v).strip() == "" for v in values], dtype=bool)
+        if blank.any() and not blank.all():
+            try:
+                numbers = np.full(values.shape, np.nan)
+                numbers[~blank] = values[~blank].astype(float)
+                columns[name] = numbers
+                continue
+            except (ValueError, OverflowError):
+                pass
         # Integer first: a photon index is an int64 in the store and stays one,
         # where widening it to float costs the dtype for nothing.
         for dtype in (np.int64, float):

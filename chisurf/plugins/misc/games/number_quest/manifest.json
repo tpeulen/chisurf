@@ -19,5 +19,8 @@
   "dependencies": {},
   "menu_hidden": true,
   "deprecated": false,
-  "demo": true
+  "demo": true,
+  "requires": {
+    "games": "*"
+  }
 }

@@ -262,7 +262,7 @@
           "key": "rate",
           "label": "k [1/s]",
           "width": 120,
-          "description": "Fitted transition rate (one-step probability divided by the base time). '< x' is a transition the fit did not see: its rate sits at the numerical floor x and is only a bound."
+          "description": "Fitted transition rate (one-step probability divided by the base time). '< x' is a transition the data do not show: less than one such event is expected in the time inside bursts (x = 1/that time), so the rate is only a bound."
         },
         {
           "key": "time",

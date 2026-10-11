@@ -109,17 +109,31 @@ def _grab_57_mfd_fit():
 
 
 def _grab_65_acquisition_settings():
-    from chisurf.plugins.core.acq.gui.settings_panel import AcquisitionSettingsWidget
-    w = AcquisitionSettingsWidget()
-    w.resize(760, 900); w.show(); _pump(1.0)
-    dlg = w._device_dialog
-    print(type(dlg), [a for a in dir(dlg) if 'model' in a.lower()][:10])
-    try:
-        dlg.model.excitation_mode = "Pulsed"
-        dlg.form.sync_fields(); dlg.form.refresh_plots()
-    except Exception as e:
-        print("set mode failed", e)
-    _pump(0.5)
-    w.grab().save(str(FIG / "65_acquisition_settings.png"))
-    return w
+    """Setup -> Settings -> Acquisition (native settings hub), simulator selected, pulsed excitation.
+
+    Every change in that panel is stored at once, so the grab runs on a scratch settings folder.
+    """
+    import os
+
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from
+
+    os.environ["CHISURF_SETTINGS_DIR"] = tempfile.mkdtemp(prefix="acq_settings_")
+    app = app_from("setup")
+    driver = Driver(app, (1200, 900))
+    driver.frame(3)
+    driver.click("Acquisition")  # the hub's sidebar entry, as a person picks it
+    driver.frame(4)
+    acq = app.child
+    acq.model.output_path = "/data/acquisition"  # not the grabbing user's home folder
+    acq.model.device_type = "Simulation"
+    acq.model.sim_excitation_mode = "Pulsed"
+    driver.frame(4)
+    driver.hover((12.0, 888.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "65_acquisition_settings.png")
+    print("wrote 65_acquisition_settings.png:", acq.model.device_type, acq.model.sim_excitation_mode, flush=True)
+    app.close()
+    return app
 

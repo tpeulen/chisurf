@@ -92,8 +92,13 @@ def correlate_file_handler(
     An empty ``curves`` list therefore means the file was read and produced no
     curve — never that it could not be opened.
     """
+    from chisurf.server.services import INVALID_INPUT, service_error
+
     s = BurstFcsSettings.from_dict(settings or {})
-    pair_cfgs = [PairConfig.from_dict(p) for p in (pairs or [])]
+    try:
+        pair_cfgs = [PairConfig.from_dict(p) for p in (pairs or [])]
+    except ValueError as exc:
+        return service_error(str(exc), error_code=INVALID_INPUT)
     rng = [(int(a), int(b)) for a, b in ranges]
     try:
         curves = correlate_burst_file(pathlib.Path(tttr_path), rng, pair_cfgs, s, filetype=filetype)

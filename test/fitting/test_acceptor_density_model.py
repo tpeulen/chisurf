@@ -117,6 +117,8 @@ def test_the_geometry_survives_a_save_and_reload():
     _, restored = _view(y, 2)
     restored.set_state(saved.get_state())
     assert restored.structure == "tcspc_fret_acceptor_density.dimensions.1"
+    # set_state restores the parameters and the topology; the curve is the next evaluation's.
+    restored.update()
     np.testing.assert_allclose(np.asarray(restored.y), np.asarray(saved.y), rtol=1e-12)
 
 

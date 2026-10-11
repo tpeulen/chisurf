@@ -22,7 +22,8 @@
   },
   "optional_requires": {
     "fcs_channel_preset": "*",
-    "plugin_manager": "*"
+    "plugin_manager": "*",
+    "setup_channel_definition": "*"
   },
   "menu_hidden": true
 }

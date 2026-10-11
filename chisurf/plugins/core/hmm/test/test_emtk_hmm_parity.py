@@ -447,7 +447,8 @@ def test_the_plot_tabs_draw_axes_and_legends(demo):
         assert label in strings, label
     demo.click_text("Dwell times")
     strings = [t[5] for t in demo.draw(3).texts]
-    assert "dwell time" in strings and "state 1" in strings
+    # the demo trace has a bin width of 1: dwell times are in bins, and the axis says so
+    assert "dwell time (bins)" in strings and "state 1" in strings
     demo.click_text("Histogram")
     assert "counts per bin" in [t[5] for t in demo.draw(3).texts]
 

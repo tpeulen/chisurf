@@ -14,7 +14,7 @@
         "action": "Demo"
       },
       "await": {
-        "hint": "Press <b>Demo</b>. It writes the file once and runs the analysis."
+        "hint": "Press <b>Load example</b>. It writes the file once and runs the analysis."
       }
     },
     {

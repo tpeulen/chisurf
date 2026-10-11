@@ -24,8 +24,8 @@
   "optional_requires": {
     "clsm": "*",
     "clsm_generator": "*",
-    "img_coloc": "*",
     "img_calibration": "*",
+    "img_coloc": "*",
     "img_drift": "*",
     "img_flow": "*",
     "img_frc": "*",
@@ -37,8 +37,11 @@
     "img_tracking": "*",
     "psf_determination": "*",
     "region_mle": "*",
-    "setup_channel_definition": "*",
     "spot_finder": "*",
     "tttr_image_browser": "*"
+  },
+  "requires": {
+    "setup_channel_definition": "*",
+    "calculators": "*"
   }
 }

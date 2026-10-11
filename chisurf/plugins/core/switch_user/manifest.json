@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "display_name": "Setup:Switch User",
   "description": "Switch the active MMFDB user for this ChiSurf session.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Setup"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Setup"
+  ],
   "state_namespace": "switch_user",
   "statefulness": {
     "enabled": false,
@@ -15,5 +19,8 @@
   "entrypoints": {
     "emtk": "chisurf.plugins.core.switch_user.app:make_app"
   },
-  "icon": "👤"
+  "icon": "👤",
+  "optional_requires": {
+    "mmfdb_admin": "*"
+  }
 }

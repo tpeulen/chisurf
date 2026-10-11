@@ -19,7 +19,6 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.plugins.modelling.fret.core import stat as _stat
 
 from .fps_model import Rows
 
@@ -49,6 +48,17 @@ def _run_op_child(op: str, params: dict, queue) -> None:
         queue.put(("ok", fn(params)))
     except Exception:  # noqa: BLE001 - the parent shows the traceback
         queue.put(("err", traceback.format_exc()))
+
+
+def _stat():
+    """The FRET plugin's score-trace reader, imported on first use.
+
+    The FRET plugin builds its windows on this plugin's hub, so importing it at module level would make
+    the two plugins require each other and leave no load order.
+    """
+    from chisurf.plugins.modelling.fret.core import stat
+
+    return stat
 
 
 class DockingSession:
@@ -300,7 +310,7 @@ class DockingSession:
 
     def update_curves(self) -> None:
         for path in self.stat_files():
-            frames, scores = _stat.read_score_series(path)
+            frames, scores = _stat().read_score_series(path)
             if scores:
                 self.curves[path] = (list(frames), list(scores))
 
@@ -426,7 +436,7 @@ class DockingSession:
         changed = False
         if self.running:
             self.update_curves()
-            done = sum(_stat.count_frames(p) for p in self.stat_files())
+            done = sum(_stat().count_frames(p) for p in self.stat_files())
             if self.run_op in ("dock", "errors") and done:
                 total = max(1, self._total)
                 self.progress = min(done, total) / total

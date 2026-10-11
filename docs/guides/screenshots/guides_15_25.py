@@ -174,37 +174,46 @@ def _ensure_bh_setup():
 
 # ---------------------------------------------------------------- guide 15
 def _grab_15_background():
-    """Burst Background Estimation on the BH SPC-132 smFRET file (guide 15).
+    """Native Burst Background Estimation on the BH SPC-132 smFRET file (guide 15).
 
-    The file is copied to a scratch folder: the estimate records its rates
-    beside the photons, which must not land in ``test/data``.
+    The file is copied to a scratch folder: the estimate records its rates beside
+    the photons, which must not land in ``test/data``. The detectors are applied
+    explicitly (green 0/8, red 1/9, ungated) -- the window's own default gates
+    them by micro time, and a grabber that inherits whatever setup the settings
+    dir holds draws someone else's channels.
     """
-    from chisurf.plugins.burst.burst_background import BurstBackgroundEstimator
+    import json
+
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import app_from, wait
 
     work = pathlib.Path(tempfile.mkdtemp())
     spc = work / _SPC_FILE.name
     shutil.copy(_SPC_FILE, spc)
-    tool = BurstBackgroundEstimator(show_channel_definition=False)
-    tool.model.channels_provider = lambda: {
-        "green": {"chs": [0, 8], "micro_time_ranges": []},
-        "red": {"chs": [1, 9], "micro_time_ranges": []},
-    }
-    tool._add_tttr_files([str(spc)])
-    tool.model.estimate()
-    print("status:", tool.model.status)
-    print("rates:", tool.model.backgrounds)
-    tool.resize(1280, 820)
-    _settle()
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(tool, "15")
-    _raise_tab(tool, "Inter-photon time")
-    _grab(tool, "15_burst_background.png")
-    # The Fit tab on its own, short: four controls do not need 800 px.
-    _raise_tab(tool, "Fit")
-    tool.resize(900, 600)
-    _settle()
-    _grab_rect(tool, "15_burst_background_fit.png", 176)
-    return tool
+    app = app_from("burst_background")
+    driver = Driver(app, (1280, 820))
+    driver.frame(2)
+    assert app.controller.apply_detectors(json.dumps(_BH_DETECTORS)), app.controller.status
+    app.controller.add_files([spc])
+    driver.frame(2)
+    app.controller.run()
+    wait(driver, lambda: (app.controller.poll(), not app.controller.running)[1], timeout=600)
+    print("status:", app.controller.status, "|", app.model.status, flush=True)
+    print("rates:", app.model.backgrounds, flush=True)
+    driver.screenshot(FIG / "15_burst_background.png")
+    print("wrote 15_burst_background.png", flush=True)
+    # The Fit dock on its own: the four controls, not the whole window.
+    from PIL import Image
+
+    _, top, _, _ = driver.rect("Fit Settings")
+    x, run_y, w, run_h = driver.rect("bg_run")
+    shot = Image.open(FIG / "15_burst_background.png")
+    scale = shot.width / 1280
+    box = (0, top - 6, x + w + 8, run_y + run_h + 6)
+    shot.crop(tuple(int(v * scale) for v in box)).save(FIG / "15_burst_background_fit.png")
+    print("wrote 15_burst_background_fit.png", flush=True)
+    app.close()
+    return app
 
 
 # ---------------------------------------------------------------- guide 16
@@ -451,7 +460,6 @@ def _grab_22_trace_browser():
 # ---------------------------------------------------------------- guide 23
 def _grab_23_fps_editor():
     """FPS JSON Editor (the emtk app) with the HIV-RT labelling project loaded and every AV computed."""
-    import json
     import time
 
     from emtk.testing import PixelPainter, RecordingPainter, png_encode
@@ -461,13 +469,8 @@ def _grab_23_fps_editor():
     src = pathlib.Path("chisurf/plugins/modelling/fret/examples/fps_hiv_rt")
     work = pathlib.Path(tempfile.mkdtemp()) / "fps_hiv_rt"
     shutil.copytree(src, work, ignore=shutil.ignore_patterns("dock_out"))
-    # The shipped project names no structure; point each labelling site at its
-    # body (protein body 0 = 1R0A, DNA body 1) so the AVs are computed.
-    cfg = json.loads((work / "hiv_rt.fps.json").read_text())
-    for pos in cfg["Positions"].values():
-        pdb = "protein_1R0A.pdb" if int(pos.get("body_id", 0)) == 0 else "dna.pdb"
-        pos["pdb_path"] = str((work / pdb).resolve())
-    (work / "hiv_rt.fps.json").write_text(json.dumps(cfg, indent=2))
+    # The shipped project names each site's structure relative to itself
+    # (protein body 0 = protein_1R0A.pdb, DNA body 1 = dna.pdb): load it as a user does.
     app = make_app()
     app.load_path(str(work / "hiv_rt.fps.json"))
     app.editor.compute_all()

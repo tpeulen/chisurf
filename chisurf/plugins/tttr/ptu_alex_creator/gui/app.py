@@ -23,6 +23,7 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import get_locale, tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.core.settings.path_utils import get_path
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
@@ -45,7 +46,7 @@ from .view_model import AlexViewModel
 
 HERE = Path(__file__).parent
 EXTENSIONS = {".sm", ".ptu", ".ht3", ".spc", ".hdf", ".h5", ".raw"}
-FILTERS = "TTTR (*.sm *.ptu *.ht3 *.spc *.hdf *.h5 *.raw);;All files (*)"
+FILTERS = TTTR_FILE_FILTER
 #: The model attributes kept between sessions (the Qt tool kept only its window geometry).
 FIELDS = (
     "input_format",

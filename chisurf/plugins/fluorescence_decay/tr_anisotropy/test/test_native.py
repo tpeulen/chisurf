@@ -185,6 +185,40 @@ def test_example_global_fit_recovers_the_simulated_lifetime_and_rotation(tmp_pat
     assert values["lifetime.tau.0"] == pytest.approx(DEMO["tau_ns"], rel=0.03)
     assert values["rotation.time.0"] == pytest.approx(DEMO["rho_ns"], rel=0.05)
     assert values["anisotropy.r0"] == pytest.approx(DEMO["r0"], rel=0.05)
+    # The fit must also *describe* the data: before the IRF window the model sat ~25 counts
+    # above data that are zero and this range gave chi2r 27.6 with the parameters still "right".
+    assert global_fit.chi2r < 1.3, global_fit.chi2r
+
+
+def test_example_fit_with_the_readers_range_is_a_good_fit_and_recovers_the_truth(tmp_path, monkeypatch):
+    """Load example → Create fits → Fit, untouched: chi2r ~1 and the simulated tau, rho, r0 (found 2026-10-11).
+
+    The model clips the background-subtracted IRF at zero; over the whole range that keeps the
+    positive half of the tail noise, a flat pedestal the convolution turned into a constant
+    offset under the decay (chi2r 4.2, r0 0.347 against 0.38). The wizard now restricts each IRF
+    to the channels it occupies (the model's IRF start/stop).
+    """
+    import chisurf
+    from chisurf.plugins.fluorescence_decay.tr_anisotropy.demo import DEMO
+
+    monkeypatch.setattr(chisurf, "fits", [])
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    model = NativeAnisotropyModel()
+    model.example_folder = tmp_path
+    model.load_example()
+    assert model.load_data()
+    vv, vh, global_fit = model.create_fits()
+    start, stop = vv.model.get_scalar("response_start"), vv.model.get_scalar("response_stop")
+    assert 0 < start < DEMO["irf_mean_ns"] < stop < DEMO["irf_mean_ns"] + 1.0
+    global_fit.run()
+    assert global_fit.chi2r < 1.2, global_fit.chi2r
+    values = {p.canonical_id: p.value for p in vv.model.parameters_all}
+    assert values["lifetime.tau.0"] == pytest.approx(DEMO["tau_ns"], rel=0.02)
+    assert values["rotation.time.0"] == pytest.approx(DEMO["rho_ns"], rel=0.03)
+    assert values["anisotropy.r0"] == pytest.approx(DEMO["r0"], rel=0.03)
+    # where the data are ~0 (before the pulse) the model is too, not a constant ~25 counts
+    model_y, data_y = np.asarray(vv.model.y), np.asarray(vv.data.y)
+    assert abs(model_y[25] - data_y[25]) < 5
 
 
 def test_load_example_is_cached_and_releases_the_tour_step(tmp_path):

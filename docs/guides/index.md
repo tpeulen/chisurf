@@ -184,7 +184,6 @@ irf_estimation
 60_global_analysis
 40_ai_assistant
 70_ask_the_documentation
-71_lumis_quest
 59_console
 64_notebooks
 ```
@@ -237,7 +236,7 @@ irf_estimation
 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | [Asking the documentation](70_ask_the_documentation.md) | Help browser **Ask** panel, `csc help ask`, `help.docs.ask` |
 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `tttrlib.auto_calibrate`, `fret.accurate`, `fret.lines` |
-| [Light path simulator: crosstalk and R0 of an optical setup](104_lightpath_simulator.md) | `lightpath_simulator` (Tools → Calculators), `lightpath-simulator`, `core.workflow.simulate_lightpath` |
+| [Light path simulator: crosstalk and R0 of an optical setup](104_lightpath_simulator.md) | `lightpath_simulator` (Tools → Calculators), `csc lightpath-simulator`, `core.workflow.simulate_lightpath` |
 | [κ² distributions: how much is the orientation assumption costing?](61_kappa2_distribution.md) | `kappa2_dist` plugin, `fluorescence.anisotropy.kappa2` |
 | [Three-colour PDA (PDA3c)](42_pda3c.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
@@ -279,7 +278,7 @@ irf_estimation
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
 | [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
-| [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `tttr-image-browser`, `core.image` |
+| [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `csc tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
 | [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Modelling → Structure Tools), the structure-modelling hub |
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |

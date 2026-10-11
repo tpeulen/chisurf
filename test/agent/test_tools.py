@@ -221,9 +221,24 @@ def test_get_fit_lists_named_parameters(loaded):
     assert result["fit_range"][1] > 0
 
 
+def _first_free_parameter(context) -> str:
+    """The first parameter that is fitted, not computed (the model lists its statistics too)."""
+    parameters = context.fits[0].model.parameters_all_dict
+    return next(name for name, p in parameters.items() if not getattr(p, "is_output", False))
+
+
+def test_a_derived_quantity_cannot_be_set(loaded):
+    fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
+    parameters = loaded.fits[0].model.parameters_all_dict
+    derived = [name for name, p in parameters.items() if getattr(p, "is_output", False)]
+    assert derived, "the lifetime model reports derived quantities"
+    with pytest.raises(ToolError, match="derived quantity"):
+        fitting_tools.set_parameter(loaded, parameter=derived[0], fit=0, value=2.5)
+
+
 def test_set_parameter_changes_value_fixed_and_bounds(loaded):
     fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0])
-    name = fitting_tools.get_fit(loaded, fit=0)["parameters"][0]["name"]
+    name = _first_free_parameter(loaded)
 
     result = fitting_tools.set_parameter(
         loaded, parameter=name, fit=0, value=2.5, fixed=True, bounds=[0.1, 10.0]
@@ -249,7 +264,7 @@ def test_set_parameter_lists_the_real_names_when_the_name_is_wrong(loaded):
 
 def test_set_parameter_can_target_every_fit(loaded):
     fitting_tools.create_fit(loaded, model_name=MODEL_NAME, datasets=[0, 1])
-    name = fitting_tools.get_fit(loaded, fit=0)["parameters"][0]["name"]
+    name = _first_free_parameter(loaded)
     result = fitting_tools.set_parameter(loaded, parameter=name, value=3.0, all_fits=True)
     assert len(result["changed"]) == 2
 

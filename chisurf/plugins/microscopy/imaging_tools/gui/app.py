@@ -746,17 +746,6 @@ class ImagingToolsApp(CalculatorHubApp):
         self._fast_forward_tick()
         self._precompute_tick()
 
-    def on_files_dropped(self, paths):
-        # A tool answers drops under either hook name of the emtk host contract (the pixel steps, Drift, Resolution,
-        # Tracking and Colocalization define ``files_dropped``; the CLSM tools ``on_files_dropped``).
-        for name in ("files_dropped", "on_files_dropped"):
-            handler = getattr(self.child, name, None)
-            if callable(handler):
-                return bool(handler(paths))
-        return False
-
-    files_dropped = on_files_dropped
-
 
 def make_app(**kwargs):
     from chisurf.emtk.i18n import install

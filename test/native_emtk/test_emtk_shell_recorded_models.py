@@ -146,7 +146,16 @@ def test_two_files_of_one_reader_and_a_bunching_term_are_recorded(shell, caplog)
     kristine = _load(driver, shell, KRISTINE, "FCS", "Seidel Kristine")
     uid = _add_fit(driver, shell, kristine, FCS_GENERAL)
     _show(driver, shell, uid)
-    _click_editor(driver, shell, shell.data.editor.action_for("add", "bunching"))
+    editor = shell.data.editor
+
+    def unfold(sections):
+        for section in sections:
+            if section.get("type") == "panel" and section.get("title"):
+                editor.form.folds[section["title"]] = True
+            unfold(section.get("sections") or [])
+
+    unfold(editor.spec.get("sections", []))
+    _click_editor(driver, shell, editor.action_for("add", "bunching"))
     _settle(driver, lambda: _idle(shell) and len(_model(shell, uid).bunching) == 1, "the bunching term")
     assert _recording_failures(caplog) == []
     assert project.can_undo(), "the changes were recorded"

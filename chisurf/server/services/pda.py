@@ -39,7 +39,7 @@ def from_bursts(
     burst_slices: dict[str, Sequence[Sequence[int]]] | None = None,
     channels: Any = None,
     micro_time_ranges: Sequence[Sequence[int]] | None = None,
-    reading_routine: str = "PTU",
+    reading_routine: str | None = None,
     minimum_number_of_photons: int = 20,
     maximum_number_of_photons: int = 200,
     minimum_time_window_length: float = 2e-3,
@@ -59,7 +59,10 @@ def from_bursts(
     micro_time_ranges
         Micro-time gates ``[[lo, hi], ...]``; defaults to a single full window.
     reading_routine
-        TTTR reading routine (``"PTU"``, ``"SPC-130"``, …).
+        TTTR reading routine (``"PTU"``, ``"SPC-130"``, …). By default the
+        container type the burst analysis recorded for the files, else what
+        ``tttrlib`` identifies -- a fixed ``"PTU"`` read an SPC file as nothing
+        and answered ``ok`` with no curves.
     minimum_number_of_photons, maximum_number_of_photons, minimum_time_window_length
         Burst-acceptance thresholds passed to the reader.
     n_colors
@@ -86,6 +89,8 @@ def from_bursts(
     except (TypeError, ValueError) as exc:
         return service_error(f"malformed burst_slices/channels: {exc}", error_code=INVALID_INPUT)
 
+    if reading_routine is None:
+        reading_routine = _recorded_container(slices)
     try:
         from chisurf.core.experiments.pda2c import Pda2cReader
 
@@ -119,4 +124,28 @@ def from_bursts(
                 "minimum_number_of_photons": pda.get("minimum_number_of_photons"),
             }
         )
+    if not any(c["n_photons"] for c in curves):
+        return service_error(
+            "the gated bursts gave an empty PDA histogram: check the channels "
+            f"{[list(g) for g in ch]}, the micro-time ranges and the photon-number limits "
+            f"({minimum_number_of_photons}-{maximum_number_of_photons}) against the files",
+            error_code=OPERATION_FAILED,
+        )
     return {"ok": True, "result": {"curves": curves, "n_files": len(slices)}}
+
+
+def _recorded_container(slices: dict[str, Any]) -> str | None:
+    """The one container type the burst analysis recorded for these files, or ``None``."""
+    from chisurf.core.fio.fluorescence.burst_manifest import (
+        read_analysis_manifest,
+        reading_settings_for,
+    )
+
+    found = set()
+    for path in slices:
+        try:
+            found.add(reading_settings_for(path, read_analysis_manifest(path)).get("container_type"))
+        except Exception:  # an unreadable manifest is no recorded type
+            found.add(None)
+    found.discard(None)
+    return found.pop() if len(found) == 1 else None

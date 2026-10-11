@@ -111,5 +111,36 @@ def test_pda_from_bursts_builds_s1s2_histogram():
     assert curves[0]["n_photons"] > 0
 
 
+@pytest.mark.skipif(not TTTR_FILE.is_file(), reason=f"{TTTR_FILE} not available")
+def test_the_menus_defaults_read_an_spc_file():
+    """ndX's *Send selection to -> PDA* sends no reading routine. The service's
+    default was "PTU": on an SPC file tttrlib read nothing and the service
+    answered ``ok`` with ``curves: []``. It now lets the file say what it is."""
+    import json
+
+    import tttrlib
+
+    n = len(tttrlib.TTTR(str(TTTR_FILE), ROUTINE))
+    consumers = json.loads(pathlib.Path("chisurf/server/burst_consumers.json").read_text())
+    defaults = next(c for c in consumers["consumers"] if c["key"] == "pda")["defaults"]
+    reply = _dispatcher().dispatch(
+        "pda.from_bursts",
+        {"burst_slices": {str(TTTR_FILE): [[0, n // 4], [n // 2, n // 2 + n // 4]]}, **defaults},
+    )
+    result = _result(reply)
+    assert result["ok"] is True, result
+    assert result["result"]["curves"][0]["n_photons"] > 0
+
+
+@pytest.mark.skipif(not TTTR_FILE.is_file(), reason=f"{TTTR_FILE} not available")
+def test_an_empty_histogram_is_an_error_not_an_empty_success():
+    reply = _dispatcher().dispatch(
+        "pda.from_bursts",
+        {"burst_slices": {str(TTTR_FILE): [[0, 1000]]}, "channels": [[30], [31]]},
+    )
+    result = _result(reply)
+    assert result["ok"] is False and "empty PDA histogram" in result["error"], result
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-q"])

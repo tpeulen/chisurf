@@ -488,17 +488,25 @@ guides/figures/h2mm_state_decays.png:
     that had nothing to do with the figure. It fits now; `_grab_burst_export_table`
     is a driven two-state fit to build the grab on.'
 guides/figures/hmm_workspace.png:
-  caption: 'Fitted on a simulated two-state trace with 1 ms bins — states at 18 and 55 counts per bin,
-    true rates 15 and 30 s⁻¹. The fit returns 18.0 and 55.0 counts with 13.9 and 27.9 s⁻¹, and BIC picks
-    two states. Left: the settings. Middle: the trace with the decoded path, and the intensity histogram
-    with the fitted emissions. Right: the state table, the transition matrix with rates, the dwell-time
-    histogr'
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_hmm_tool
   pages:
   - docs/guides/54_hidden_markov_models.md
-  recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
-    by `_grab_hmm_tool()`.
+  recipe: Run `_grab_hmm_tool()` of `docs/guides/make_screenshots.py` (native app, simulated two-state
+    trace handed over in memory, Scan states then Fit pressed); it writes this figure with the Histogram tab
+    in front, and hmm_dwell.png / hmm_scan.png with the other two tabs.
+guides/figures/hmm_dwell.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_hmm_tool
+  pages:
+  - docs/guides/54_hidden_markov_models.md
+  recipe: Written by `_grab_hmm_tool()` with the Dwell times tab clicked; see hmm_workspace.png.
+guides/figures/hmm_scan.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_hmm_tool
+  pages:
+  - docs/guides/54_hidden_markov_models.md
+  recipe: Written by `_grab_hmm_tool()` with the Scan tab clicked; see hmm_workspace.png.
 guides/figures/lifetime_anisotropy.png:
   caption: Fluorescence lifetime and anisotropy decays.
   kind: plot
@@ -568,8 +576,8 @@ guides/figures/ndxplorer_gaussian_panel.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_ndx_gaussian_panel()`.
 guides/figures/ndxplorer_marginal_fit.png:
-  caption: 'Left: every burst lies on the fitted static FRET line $E = 1 - \tau/\tau_0$ ($\tau_0 = 4.00$
-    ns recovered). Right: the E marginal fitted with two Gaussians via ndX''s `fit_equation_to_marginal`
+  caption: 'Left: every burst lies on the fitted static FRET line $E = 1 - \tau/\tau_0$ ($\tau_0 = 4.04$
+    ns for a truth of 4.00). Right: the E marginal fitted with two Gaussians via ndX''s `fit_equation_to_marginal`
     engine. The FRET peak (broad) is well described; the near-zero-efficiency peak is shot-noise-discretised
     rather than Gaussian, so its $\chi^2_r$ is elevated — the cue to hand that population to a {ref}`PDA
     b'
@@ -1348,25 +1356,6 @@ guides/figures/irf_estimator.png:
     the offset C is degenerate against it -- at 4.3 lifetimes of tail the recovered tau is 23 % low and C
     comes back at 1120 against a true 8, and the recovered IRF grows a long tail that is regularisation
     ringing rather than instrument response. The measured table is in the guide.'
-guides/figures/lumis_battle.png:
-  caption: A body-and-label encounter, with the emission band, the tier and the transfer stated on screen.
-  kind: screenshot
-  origin: docs/guides/make_screenshots.py::_grab_lumis_quest
-  pages:
-  - docs/guides/71_lumis_quest.md
-  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py, which delegates
-    to the plugin''s own gallery harness (`chisurf.plugins.misc.games.lumis_quest.test.capture`) and
-    copies two of its screens in. TRAP: the game draws through wgpu, so `QWidget.grab()` on
-    `LumisQuestWidget` returns an *empty* surface -- the frames have to come from the engine''s offscreen
-    path (`chigame.capture`), not from Qt.'
-guides/figures/lumis_town.png:
-  caption: A settlement -- each building is a documentation page, each compound a toctree.
-  kind: screenshot
-  origin: docs/guides/make_screenshots.py::_grab_lumis_quest
-  pages:
-  - docs/guides/71_lumis_quest.md
-  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. See
-    `lumis_battle.png` for the wgpu trap; both screens come from the same harness run.'
 guides/figures/maxent_distribution.png:
   caption: MEM on a decay built from a known bimodal lifetime distribution, with the fit and residuals
     beside it.
@@ -2881,7 +2870,7 @@ guides/figures/anis_wizard_native_primary_window.png:
 
 guides/figures/batch_analysis_loaded.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::_grab_batch_analysis
+  origin: docs/guides/screenshots/batch_analysis_emtk.py
   recipe: >-
     Run the script named in origin (see the function that saves batch_analysis_loaded.png);
     it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
@@ -2891,7 +2880,7 @@ guides/figures/batch_analysis_loaded.png:
 
 guides/figures/batch_analysis_run.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::_grab_batch_analysis
+  origin: docs/guides/screenshots/batch_analysis_emtk.py
   recipe: >-
     Run the script named in origin (see the function that saves batch_analysis_run.png);
     it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
@@ -3000,23 +2989,19 @@ guides/figures/burst_native_selection_verified.png:
 
 guides/figures/burst_shared_mle.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_burst_shared_setup_mle
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/27_alex_smfret_workflow.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/burst_shared_mle.png.
+    CHISURF_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/run.py guides_26_36
+    _grab_burst_shared_setup_mle (the native Burst Analysis hub on m000/m001.spc, setup green 0/8, red 1/9).
   pages:
   - docs/guides/27_alex_smfret_workflow.md
 
 guides/figures/burst_shared_setup.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/guides_26_36.py::_grab_burst_shared_setup_mle
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/27_alex_smfret_workflow.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/burst_shared_setup.png.
+    CHISURF_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/run.py guides_26_36
+    _grab_burst_shared_setup_mle (the native Burst Analysis hub on m000/m001.spc, setup green 0/8, red 1/9).
   pages:
   - docs/guides/27_alex_smfret_workflow.md
 
@@ -3465,12 +3450,11 @@ guides/figures/img_calibration.png:
 
 guides/figures/intensity_trace.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/make_screenshots.py::_grab_intensity_trace
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/74_intensity_traces_and_file_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/intensity_trace.png.
+    Run the function named in origin (from the repository root, with docs/guides on PYTHONPATH and
+    QT_QPA_PLATFORM=offscreen); it drives the native app headlessly into the state the guide describes
+    and writes the PNG here.
   pages:
   - docs/guides/74_intensity_traces_and_file_tools.md
 
@@ -3529,12 +3513,11 @@ guides/figures/lltf_settings.png:
 
 guides/figures/maxent_decay_window.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/make_screenshots.py::_grab_maxent_decay
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/62_maxent_decay.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/maxent_decay_window.png.
+    Run the function named in origin (from the repository root, with docs/guides on PYTHONPATH and
+    QT_QPA_PLATFORM=offscreen); it drives the native app headlessly into the state the guide describes
+    and writes the PNG here.
   pages:
   - docs/guides/62_maxent_decay.md
 

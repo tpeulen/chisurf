@@ -364,3 +364,25 @@ def test_both_services_are_registered_on_the_wire():
     assert registered.get("tcspc.from_bursts") == "bursts.from_bursts_decay"
     assert registered.get("pch.from_bursts") == "bursts.from_bursts_pch"
     assert registered.get("pda.from_bursts") == "pda.from_bursts"
+
+
+def test_the_advertised_fcs_default_pair_correlates(slices):
+    """The FCS consumer's default pair was spelled ``{"ch1": [0], "ch2": [1]}``; the
+    correlator reads ``chs_a``/``chs_b``, so every FCS sent from ndX's menu came back
+    with no curves and no error. The default now correlates, and a pair without
+    channels is refused by name."""
+    import json
+    import pathlib
+
+    from chisurf.plugins.burst.burst_fcs_correlator.backend.services import (
+        correlate_file_handler,
+    )
+
+    consumers = json.loads(pathlib.Path("chisurf/server/burst_consumers.json").read_text())
+    defaults = next(c for c in consumers["consumers"] if c["key"] == "fcs")["defaults"]
+    path, ranges = next(iter(slices.items()))
+    reply = correlate_file_handler(tttr_path=path, ranges=ranges, **defaults)
+    assert reply["ok"] is True, reply
+    assert reply["result"]["curves"]
+    bad = correlate_file_handler(tttr_path=path, ranges=ranges, pairs=[{"ch1": [0], "ch2": [1]}])
+    assert bad["ok"] is False and "chs_a" in bad["error"]

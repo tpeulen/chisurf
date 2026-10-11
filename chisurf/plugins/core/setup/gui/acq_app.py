@@ -6,8 +6,10 @@ under ``gui.acquisition`` (as the Qt panel does on each change) through
 :func:`chisurf.core.settings.settings_utils.set_acquisition_settings`. The form is the spec
 ``acq_settings_emtk.view.json`` drawn by :func:`emtk.view_form.draw_sections`.
 
-What stays in the Qt Acquisition tool: the simulator's per-species table, the kinetics matrices, the decay editor and the
-channel switches (Qt-only AutoForm sections) and the vendor card dialogs. Their stored values are kept untouched here.
+The Acquisition tool starts from what is stored here (device type, simulator parameters). The simulator's per-species
+table, kinetics matrices, decay spectra and channel switches have no form of their own: they are part of the parameter
+JSON the Acquisition tool shows under *Advanced simulation parameters* / *Device Setup…*, and their stored values are
+kept untouched here.
 """
 
 from __future__ import annotations
@@ -178,8 +180,8 @@ class AcquisitionSettingsModel:
         colours = [c.capitalize() for c in ("green", "red", "yellow") if params.get(f"{c}_enabled")]
         return (
             f"Species: {int(params.get('N_species', 1))}    Channels: {', '.join(colours) or 'Green'}\n"
-            "The per-species table (M, D, brightness), kinetics matrices and decay spectra are edited in the "
-            "Qt Acquisition tool; their stored values are kept as they are."
+            "The per-species table (M, D, brightness), kinetics matrices and decay spectra are part of the "
+            "parameter JSON in the Acquisition tool (Advanced simulation parameters); they are kept as stored."
         )
 
     # -- persistence --------------------------------------------------------------------------------------------- #
@@ -210,9 +212,11 @@ class AcquisitionSettingsApp(ImApp):
             title="Acquisition - Help",
             text=(
                 "# Acquisition settings\n\nThe standard output folder, the chunk size, the active device type and "
-                "the simulator parameters of the Acquisition tool. Every change is stored at once.\n\n"
+                "the simulator parameters of the Acquisition tool. Every change is stored at once, and the Acquisition "
+                "tool starts from it.\n\n"
                 "## Simulator\n\nThe scalar parameters are edited here. The per-species table, kinetics and decay "
-                "spectra stay in the Acquisition tool and keep their stored values."
+                "spectra are part of the parameter JSON in the Acquisition tool (Advanced simulation parameters) "
+                "and keep their stored values."
             ),
             owner=self,
         )

@@ -196,7 +196,10 @@ def test_a_right_click_offers_that_panels_menu(window, qapp):
     state = surface.storage.get(("__state__", ("context_popup", "##plot-menu-0:Fit")))
     assert state is not None and state.get("open"), "the menu did not open"
     labels = [getattr(e, "label", None) for e in state["popup"].entries]
-    assert labels[:3] == ["Export data as CSV…", "Export image…", "Auto-range"]
+    # ``None`` is the rule between the exports and Auto-range, where the Qt canvas menu has its
+    # ``addSeparator``: emtk records a separator inside a menu as a row of the menu (it used to
+    # draw it onto the window that opened the popup, so the list had no entry for it).
+    assert labels[:4] == ["Export data as CSV…", "Export image…", None, "Auto-range"]
 
 
 def test_dragging_the_fit_range_edge_moves_the_range(window, qapp):

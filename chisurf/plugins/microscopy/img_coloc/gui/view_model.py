@@ -135,7 +135,7 @@ class ColocViewModel:
         """
         from chisurf.core.fluorescence.imaging import windows_from_payload
 
-        name = str((payload or {}).get("name", "") or "")
+        name = str((payload or {}).get("name") or (payload or {}).get("setup_name") or "")
         try:
             windows = windows_from_payload(payload or {})
         except Exception:
@@ -152,6 +152,74 @@ class ColocViewModel:
         self._result = None
         self._metrics = {}
         self.notify("setup")
+
+    #: The Setup choice that keeps the raw routing channels of the file.
+    RAW_SETUP = "— raw detector channels —"
+    #: What the Setup choice shows for windows handed over without a saved name (the Image Tools hub's Setup).
+    SHARED_SETUP = "— Image Tools setup —"
+
+    @staticmethod
+    def _read_setups() -> dict:
+        """The saved detector setups by name (what *Setup: Channel Definition* saves); ``{}`` without a store."""
+        try:
+            from chisurf.core.data_io.detector_setups import load_detector_setups
+
+            setups = (load_detector_setups() or {}).get("setups") or {}
+        except Exception:  # noqa: BLE001 - no store: only the raw channels
+            logger.debug("detector setups unavailable", exc_info=True)
+            setups = {}
+        return dict(setups) if isinstance(setups, dict) else {}
+
+    def setup_choices(self) -> list[str]:
+        """The saved detector setups the Setup choice offers, after the raw-channel entry.
+
+        The choice asks on every frame, and opening the store costs a few hundred milliseconds,
+        so it is read on a worker thread (again after a few seconds, for setups saved meanwhile);
+        the list fills in when it lands.
+        """
+        import threading
+        import time
+
+        cached = getattr(self, "_setup_cache", None)
+        stale = cached is None or time.monotonic() - cached[0] > 5.0
+        if stale and not getattr(self, "_setup_loading", False):
+            self._setup_loading = True
+
+            def load():
+                try:
+                    self._setup_cache = (time.monotonic(), self._read_setups())
+                finally:
+                    self._setup_loading = False
+                self.notify("setup_choices")
+
+            threading.Thread(target=load, name="coloc-setups", daemon=True).start()
+        names = sorted((cached or (0.0, {}))[1])
+        current = self.setup_pick
+        if current not in names and current != self.RAW_SETUP:
+            names.append(current)
+        return [self.RAW_SETUP, *names]
+
+    @property
+    def setup_pick(self) -> str:
+        """The Setup choice: the picked setup's name, the hub's windows, or the raw-channel entry."""
+        if self.setup_name:
+            return self.setup_name
+        return self.SHARED_SETUP if self.detectors else self.RAW_SETUP
+
+    @setup_pick.setter
+    def setup_pick(self, value: str) -> None:
+        if value == self.SHARED_SETUP:
+            return  # already in force
+        name = "" if value in ("", self.RAW_SETUP) else str(value)
+        if not name:
+            self.apply_setup_settings({})
+            return
+        import time
+
+        setups = self._read_setups()  # a pick is a user action: read the store now
+        self._setup_cache = (time.monotonic(), setups)
+        settings = dict(setups.get(name) or {})
+        self.apply_setup_settings({**settings, "name": name})
 
     def window_names(self) -> list[str]:
         """Return the detector-window names of the selected setup (may be empty)."""

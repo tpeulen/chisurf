@@ -44,6 +44,9 @@ Set **Pixel (nm)** and **Z step (nm)** from the acquisition: the fit only knows 
 gives a confident width in the wrong units. **ROI xy** and **ROI z** are the box cut around a bead for the fit.
 **Detect** finds beads with an adaptive quantile threshold (**Px/frame**), a minimum separation (**Min dist**) and a
 minimum area (**Min area**: a bead covers several pixels, a single bright pixel is a hot camera pixel).
+**Px/frame** is the number of bright pixels kept per slice for the *whole field*, not per bead: a bead of a few pixels
+width takes ten or more of them, so raise it with the number of beads (the demo sets 60 for its five; at the default 20
+the dimmest of them is not found).
 
 ## 3. Fit and check
 

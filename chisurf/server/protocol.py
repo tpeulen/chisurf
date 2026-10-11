@@ -278,7 +278,7 @@ METHOD_PARAM_SCHEMAS = {
     },
     "fit.list": {
         "required_params": [],
-        "optional_params": [],
+        "optional_params": ["statistics"],
         "result": "FitListResult",
     },
     "fit.get": {

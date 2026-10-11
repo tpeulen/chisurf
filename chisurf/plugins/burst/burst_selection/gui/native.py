@@ -662,11 +662,13 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self._empty("No bursts in the visible window: their duration histogram appears here.")
             return
         centres, counts, width = hist
+        # Above the plot: the plot fills the rest of the dock, so a line drawn after it fell outside the panel and
+        # nothing said that these are the bursts of the visible window, not of the file.
+        im.text(f"Total bursts in the window: {int(counts.sum())}")
         if implot.begin_plot("Burst duration", (-1, -1)):
             implot.setup_axes("Burst duration (ms)", "Bursts")
             implot.plot_bars("Bursts", centres, counts, bar_size=width * 0.9)
             implot.end_plot()
-        im.text(f"Total bursts in the window: {int(counts.sum())}")
 
     def _histogram(self, box=None) -> None:
         self.remember("histogram", box)
@@ -714,6 +716,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         centres, counts, width = hist
         if implot.begin_plot(f"Histogram of {m.hist_feature}", (-1, -112 if m.gmm_rows() else -1)):
             implot.setup_axes(m.hist_feature, "Bursts")
+            if (m.gmm_result or {}).get("x") is not None:
+                # Beside the plot: inside, five entries covered the peaks of a histogram the GMM table leaves short.
+                implot.setup_legend(implot.LOCATION_EAST, implot.LEGEND_FLAGS_OUTSIDE)
             if m.hist_log:
                 implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             implot.plot_bars("Bursts", centres, counts, bar_size=width * 0.9)

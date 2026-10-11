@@ -29,13 +29,15 @@ files (PTU/HT3/…) alike**.
 
 ### 1. Pick a detector setup (optional)
 
-The **Setup** combo at the top lists the detector setups defined in the Detector
-Def tool. Picking one makes its named windows — `green`, `red`, `yellow`, … —
+The **Setup** choice at the top lists the detector setups saved in *Setup: Channel
+Definition*. Picking one makes its named windows — `green`, `red`, `yellow`, … —
 the channels you choose from, so a micro-time-gated or PIE window is a "colour"
-like any other. The names appear immediately, before a file is loaded.
+like any other. The names appear immediately, before a file is loaded. Inside
+Image Tools the hub's **Setup** hands its windows over and the choice reads
+*— Image Tools setup —*.
 
-Leave the setup empty to work with the raw detector channels stored in the file
-(`ch0`, `ch1`, …).
+Keep *— raw detector channels —* to work with the routing channels stored in the
+file (`ch0`, `ch1`, …).
 
 ### 2. Load an image
 
@@ -179,7 +181,7 @@ or stored with the analysis.
 Everything the GUI does is available without it:
 
 ```bash
-img-coloc IMAGE.ptu -a green -b red \
+csc img-coloc IMAGE.ptu -a green -b red \
     --auto-background --costes-threshold \
     --costes-test --randomizations 200 --block 4 --seed 0 \
     --ccf-shift 12 --objects --object-distance 3 --json

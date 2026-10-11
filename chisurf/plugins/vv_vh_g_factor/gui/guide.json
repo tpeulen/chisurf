@@ -1,12 +1,20 @@
 [
   {
     "title": "Load the fast reference",
-    "text": "G is the detection-efficiency ratio of the two polarisation channels. It is measured on a dye that depolarises within the pulse width, so its true anisotropy is zero in the tail and VV/VH there is G alone. Load that dye's VV/VH decay (or drop the file on the window).",
+    "text": "G is the detection-efficiency ratio of the two polarisation channels. It is measured on a dye that depolarises within the pulse width, so its true anisotropy is zero in the tail and VV/VH there is G alone. With your own data, load that dye's VV/VH decay here (or drop the file on the window); the example has already loaded the simulated one, and the status line shows the G it gives.",
     "target": {
       "name": "load_fast"
+    }
+  },
+  {
+    "title": "Start with references whose answer you know",
+    "text": "Load example loads simulated references written by the plugin itself: a dye that depolarises within the pulse (the fast reference), a slow protein (rho 16 ns, r0 0.38) and two batch decays. Their VH channel was detected with 1/1.2 the efficiency of VV, so tail matching must give G close to 1.2, and with no polarisation mixing simulated the mixing estimate must come out near zero.",
+    "target": {
+      "name": "load_example",
+      "action": "Load example"
     },
     "await": {
-      "hint": "Press Fast reference... and choose the VV/VH file."
+      "hint": "Press Load example."
     }
   },
   {
@@ -21,12 +29,9 @@
   },
   {
     "title": "Load a slow protein reference",
-    "text": "A slow-rotating, long-lived reference has a known steady-state anisotropy. Its measured value constrains the polarisation mixing: only the single linked estimate l1 = l2 can be determined from one observable, and values outside 0 to 0.5 are shown but not applied.",
+    "text": "A slow-rotating, long-lived reference has a known steady-state anisotropy. Its measured value constrains the polarisation mixing: only the single linked estimate l1 = l2 can be determined from one observable, and values outside 0 to 0.5 are shown but not applied. The example loaded a simulated slow protein; for your own instrument press Slow protein... and choose its file.",
     "target": {
       "name": "load_slow"
-    },
-    "await": {
-      "hint": "Press Slow protein... and choose the file."
     }
   },
   {

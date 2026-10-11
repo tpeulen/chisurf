@@ -70,18 +70,21 @@ receives the newest setup after completion; re-run results affected by an edit.
 :name: fig-burst-shared-setup
 :width: 100%
 
-The complete shared setup and declared Guide/Help/Proceed controls after the
-real two-file BH workflow found198 bursts (green0/1, red8/9). Every detector,
-reading, PIE, LUT and optical control remains reachable at step0.
+The complete shared setup and its Guide/Help/Proceed controls after the
+two-file BH workflow (`m000.spc`, `m001.spc`; green 0/8, red 1/9) found 198
+bursts. Every detector, reading, PIE, LUT and optical control remains reachable
+at step 0.
 ```
 
 ```{figure} figures/burst_shared_mle.png
 :name: fig-burst-shared-mle
 :width: 100%
 
-The same198-burst workflow's pooled Fit23 after Auto IRF/background, with an
-unchanged primary lifetime2.009947318ns and window15–116 at binning32. The MLE
-controls/plot remain in the child; detector setup is shared through step0.
+The same 198-burst workflow on **6. Burst MLE** after **Auto IRF/background**: the
+pooled single-lifetime-plus-anisotropy fit (Fit23) of the green detector gives a
+primary lifetime of 2.049 ns (2I* 2.54) in the window 15–116 at binning 32. The
+MLE controls and plot stay in the step; the detector setup is shared through
+step 0.
 ```
 
 For the shared definition from Python:
@@ -114,11 +117,13 @@ Guide/Proceed/Next yourself when following the shipped tour.
 
 Burst Analysis on step 2 after **Next** ran the search on the ten BH SPC-130 files
 of a double-labelled DNA sample (`burst_selection/tests/data/bh_spc132_sm_dna`,
-setup green 0/1, red 8/9) with the sliding-window search (L = 20, m = 10,
-max dT 0.15 ms): the count rate of the first 10 s of `m000.spc`, all photons
+setup green 0/8, red 1/9) with the sliding-window search (L = 20, m = 10,
+T = 0.5 ms, max dT 0.15 ms, bursts of at least 60 photons — the `#60` of the
+folder name): the count rate of the first 10 s of `m000.spc`, all photons
 (blue) and the selected burst photons (orange), and the proximity-ratio histogram
-of its bursts — 71 bursts in `m000.spc`, 1130 over all ten files. The rail shows
-the step badges: setup done, ten files, bursts ready for steps 4–8.
+of its bursts — 71 bursts in `m000.spc`, 1130 over all ten files (264 806 of
+1 791 775 photons selected). The rail shows the step badges: setup done, ten
+files, bursts ready for steps 4–8.
 ```
 
 The same pipeline from Python is the `BurstWorkflow` facade, where each step is
@@ -144,8 +149,12 @@ bursts.bva("green", "red")                       # variance analysis (tutorial 8
 wf.close()
 ```
 
-Run on `m000.spc` of that dataset this finds 110 bursts, a mean FRET-2CDE of
-12.0 and a BVA dynamic fraction of 0.41. `Setup.from_channels(green=(0, 8),
+Run on `m000.spc` of that dataset this finds 114 bursts, a mean FRET-2CDE of
+12.0 and a BVA dynamic fraction of 0.37. The burst table carries the photon
+count of every detector of the setup (`Number of Photons (green)`, …), so
+`bursts.recurrence()` reads the proximity ratio from it. The search itself runs on every photon of the
+setup's routing channels: a detector's micro-time windows gate its counts (and
+BVA, 2CDE and H2MM), not the search. `Setup.from_channels(green=(0, 8),
 red=(1, 9))` is the shorthand when no micro-time gating is needed.
 
 The correction factors are managed by {src}`chisurf/core/fluorescence/fret/calibration.py`
@@ -154,15 +163,6 @@ The correction factors are managed by {src}`chisurf/core/fluorescence/fret/calib
 [tutorial 13](13_burst_identification.md). `BurstWorkflow.simulate(fret=…,
 exchange_rate=…)` generates a known-ground-truth dataset to validate the
 whole pipeline.
-
-:::{admonition} Known defects
-:class: warning
-`select_bursts` runs the search without the setup's detectors, so the burst
-table it returns carries no per-detector photon counts and no proximity ratio.
-`Bursts.recurrence()` therefore raises *no FRET efficiency / proximity-ratio
-column*, and the micro-time windows of a `Detector` do not gate the search
-itself (BVA, 2CDE and H2MM, which read the photons, do honour them).
-:::
 
 ## Result
 

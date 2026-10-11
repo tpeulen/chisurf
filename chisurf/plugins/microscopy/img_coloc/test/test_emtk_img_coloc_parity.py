@@ -820,9 +820,7 @@ def test_every_qt_control_has_an_emtk_equivalent():
         "van Steensel shift (px)",
         "Log histogram",
     } <= qt
-    assert qt - {"Setup", "Image", "Estimate background", "Export CSV"} <= emtk | {"Setup"}, sorted(
-        qt - emtk
-    )
+    assert qt - {"Image", "Estimate background", "Export CSV"} <= emtk, sorted(qt - emtk)
     assert {"Image", "Run", "Estimate background", "Export CSV"} <= emtk
     qt_tabs = [
         s["title"]
@@ -926,6 +924,11 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, pair
         "channel_b",
         "frame",
     )
+    # With every fold open the settings scroll; the actions are checked at the top of the panel, where a user
+    # scrolls back to them.
+    fx, fy, fw, fh = app.form.rects["frame"]
+    drv.wheel(fx + fw / 2, fy + fh / 2, 40)
+    drv.draw(3)
     rects = {k: app.form.rects[k] for k in names if k in app.form.rects}
     assert_inside(rects, size) if size[0] >= 1200 else None
     from test.gui.emtk_layout_checks import assert_disjoint
@@ -968,3 +971,38 @@ def test_persistent_settings_guard_detects_actual_changes_and_ignores_generated_
     (root / "presets" / "cache").mkdir(parents=True)
     (root / "presets" / "cache" / "definition.json").write_text("{}")
     assert any("presets/cache" in path for path in persistent_settings_state(root))
+
+
+def test_the_setup_choice_offers_the_saved_setups_and_their_windows_become_the_channels(
+    app, drv, stream_module, monkeypatch
+):
+    """The Qt tool's Setup combo: standalone, the saved setups are picked here (the hub hands its own over)."""
+    import chisurf.core.data_io.detector_setups as store
+
+    saved = {
+        "setups": {
+            "two colours": {
+                "detectors": {
+                    "green": {"chs": [0], "micro_time_ranges": []},
+                    "red": {"chs": [1], "micro_time_ranges": []},
+                }
+            }
+        }
+    }
+    monkeypatch.setattr(store, "load_detector_setups", lambda *a, **k: saved)
+    drv.draw(3)
+    assert "Setup" in drv.draw(2).strings
+    model = app.model
+    deadline = time.monotonic() + 10  # the store is read off the UI thread
+    while model.setup_choices() != [ColocViewModel.RAW_SETUP, "two colours"]:
+        assert time.monotonic() < deadline, model.setup_choices()
+        time.sleep(0.01)
+    assert model.setup_pick == ColocViewModel.RAW_SETUP
+    model.setup_pick = "two colours"
+    assert model.setup_name == "two colours" and model.channel_names() == ["green", "red"]
+    model.setup_pick = ColocViewModel.RAW_SETUP
+    assert model.setup_name == "" and model.detectors == {}
+    # windows handed over by the Image Tools hub, which carry no saved name
+    app.apply_setup_settings({"detectors": {"g": {"chs": [0], "micro_time_ranges": []}}})
+    assert model.setup_pick == ColocViewModel.SHARED_SETUP
+    assert ColocViewModel.SHARED_SETUP in model.setup_choices()

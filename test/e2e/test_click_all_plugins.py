@@ -1095,6 +1095,14 @@ def _unfinished_sources(lang):
     return out
 
 
+#: Control kinds whose label is a caption (clipping one is a layout defect).
+CAPTION_KINDS = frozenset({"button", "small_button", "checkbox", "radio_button", "menu_item",
+                           "collapsing_header", "begin_tab_item", "autoform_fold"})
+#: Tools that display documents: their content is English by design (docs/ is not
+#: translated), so drawn English there is not untranslated chrome.
+CONTENT_VIEWERS = frozenset({"help"})
+
+
 class RealUseFindings:
     """What a matrix variant checks on every settled frame of the sweep.
 
@@ -1109,13 +1117,15 @@ class RealUseFindings:
     Inactive for the base sweep, so its verdicts are unchanged.
     """
 
-    def __init__(self, driver, recorder_rows):
+    def __init__(self, driver, recorder_rows, plugin_id=""):
+        self.plugin_id = plugin_id
         self.driver = driver
         self.rows = recorder_rows
         self.active = bool(VARIANT)
         self.lang = VARIANT.get("lang")
         self.clipped: dict = {}
         self.untranslated: dict = {}
+        self.collisions: dict = {}
         self._tr_cache: dict = {}
         self._translated: set = set()
         if self.lang:
@@ -1156,14 +1166,28 @@ class RealUseFindings:
             return
         from emtk.testing_realistic import clipped_texts
 
+        # A caption is the label of a control a user reads to act on; list rows (selectable,
+        # tree_node, list_box) and fields hold content -- a long file or page name in a narrow
+        # list is clipped by design, so it is not a squeezed caption.
         captions = {
             str(row.get("label") or "").split("##")[0].strip()
             for row in self.rows()
-            if row.get("kind") in CLICKABLE
+            if row.get("kind") in CAPTION_KINDS
         }
         captions.discard("")
         texts = {str(entry[5]).strip() for entry in painter.texts}
         if self.lang:
+            # Two controls whose captions translate to one word ("Back" and "Prev" are both
+            # "Zurück") collide when the caption is the id: the second press goes to the first.
+            seen = {}
+            for row in self.rows():
+                engine = row.get("engine_id")
+                if engine and row.get("kind") in ("button", "small_button", "selectable"):
+                    seen[engine] = seen.get(engine, 0) + 1
+            for engine, count in seen.items():
+                if count > 1:
+                    self.collisions.setdefault(engine.split(":", 1)[-1], count)
+        if self.lang and self.plugin_id not in CONTENT_VIEWERS:
             for text in texts:
                 if len(text) > 1 and any(c.isalpha() for c in text):
                     translation = self._translation(text)
@@ -1192,6 +1216,12 @@ class RealUseFindings:
         if self.clipped:
             result["errors"].append(
                 f"{len(self.clipped)} clipped label(s): " + ", ".join(sorted(self.clipped)[:12])
+            )
+        if self.collisions:
+            result["id_collisions"] = self.collisions
+            result["errors"].append(
+                f"{len(self.collisions)} control id(s) drawn twice in one frame: "
+                + ", ".join(sorted(self.collisions)[:12])
             )
         if self.untranslated:
             result["errors"].append(
@@ -1302,7 +1332,7 @@ def _native(plugin_id, result, png_path):
         driver = RealisticDriver(app, size, scale=float(VARIANT.get("scale", 1.0)))
     else:
         driver = Driver(app, size)
-    findings = RealUseFindings(driver, recorder_rows=lambda: recorder.rows)
+    findings = RealUseFindings(driver, recorder_rows=lambda: recorder.rows, plugin_id=plugin_id)
     recorder = Recorder()
     samples = []
     try:

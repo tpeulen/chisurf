@@ -294,22 +294,33 @@ def _grab_05_mdf_editor() -> None:
 
 
 def _grab_12_tttr_to_pto() -> None:
-    """TTTR <-> .pto: three split SPC files packed into one .pto, then unpacked."""
-    from chisurf.plugins.core.tttr_to_pto.gui.tool import TttrToPtoTool
+    """TTTR <-> .pto (native app): three split SPC files packed into one .pto, then unpacked."""
+    from emtk.testing import Driver
+
+    from emtk_shot import app_from, wait
 
     work = pathlib.Path(tempfile.mkdtemp(prefix="pto_"))
     for i in range(3):
         shutil.copy(_SM_DNA / f"m00{i}.spc", work)
-    tool = TttrToPtoTool()
-    tool.resize(760, 260)
-    tool.show()
-    _pump(0.3)
-    tool._on_dropped([str(work / f"m00{i}.spc") for i in range(3)])
-    _pump(0.5)
-    tool._on_dropped([str(work / "m000.pto")])
-    _pump(0.5)
-    _grab(tool, "12_tttr_to_pto.png")
-    tool.close()
+    app = app_from("tttr_to_pto")
+    driver = Driver(app, (1000, 420))
+    driver.frame(3)
+
+    def idle():
+        app.poll()
+        return not app.job.running and not app.pending
+
+    app.files_dropped([str(work / f"m00{i}.spc") for i in range(3)])
+    wait(driver, idle)
+    app.files_dropped([str(work / "m000.pto")])
+    wait(driver, idle)
+    driver.hover((12.0, 408.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "12_tttr_to_pto.png")
+    for row in app.rows:
+        print("row", row, flush=True)
+    print("wrote 12_tttr_to_pto.png", flush=True)
+    app.close()
 
 
 # ── guide 14: E-S and correction factors ────────────────────────────────

@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "display_name": "TTTR:⇄ .pto",
   "description": "Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement.",
-  "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["TTTR"],
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "TTTR"
+  ],
   "icon": "📦",
   "statefulness": {
     "enabled": true,
@@ -16,6 +20,11 @@
   "entrypoints": {
     "emtk": "chisurf.plugins.core.tttr_to_pto.gui.app:create_app"
   },
-  "operation_types": ["measurement_import"],
-  "menu_hidden": true
+  "operation_types": [
+    "measurement_import"
+  ],
+  "menu_hidden": true,
+  "requires": {
+    "tttr_splitter": "*"
+  }
 }

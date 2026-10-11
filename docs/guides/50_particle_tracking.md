@@ -136,7 +136,7 @@ Read them before quoting anything.
 ## Headless
 
 ```bash
-img-tracking movie.tif --channel 0 \
+csc img-tracking movie.tif --channel 0 \
              --pixel-size 0.107 --frame-interval 0.05 \
              --max-distance 5 --max-gap 1 --min-track-length 10 \
              --tracks-csv tracks.csv --output transport.json
@@ -145,7 +145,7 @@ img-tracking movie.tif --channel 0 \
 and, to find out what a photon budget can resolve before spending beam time:
 
 ```bash
-img-tracking --simulate --sim-diffusion 0.5 --sim-particles 8 \
+csc img-tracking --simulate --sim-diffusion 0.5 --sim-particles 8 \
              --sim-frames 60 --max-distance 4
 ```
 

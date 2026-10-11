@@ -64,6 +64,8 @@ def test_two_files_read_by_one_reader_are_one_reader_on_the_server():
 
     restored = restore_session(capture_session(state.datasets, state.fits))
     assert len(restored.datasets) == 2
+    # A restored group keeps its type (the emtk dataset list showed it blank after an undo).
+    assert [group.experiment.name for group in restored.datasets] == ["TCSPC", "TCSPC"]
 
 
 def test_a_structure_arrives_as_a_structure_and_proteinmc_models_it():

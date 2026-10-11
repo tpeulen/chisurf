@@ -306,9 +306,9 @@ class BurstFcsController(RunPickerMixin):
                     }
                 )
         self.check_cancel()
-        from ..core.export import write_fcs_results
+        from ..core.export import write_fcs_results_container
 
-        paths = write_fcs_results(
+        paths = write_fcs_results_container(
             rows, counts, parameters=parameters, cancel_check=self.check_cancel
         )
         self.progress = 1.0

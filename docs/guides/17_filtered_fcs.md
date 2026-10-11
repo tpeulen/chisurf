@@ -139,7 +139,7 @@ signal, error = matrices["cor_log"], boot.std["cor_log"]
 or headless, one TTTR file per molecule:
 
 ```bash
-flc-2d bootstrap mol_*.ptu --dt 100 --dt 1000 --dt 100000 --ddt 10 \
+csc flc-2d bootstrap mol_*.ptu --dt 100 --dt 1000 --dt 100000 --ddt 10 \
     --tmin 125 --tmax 3050 --replicates 200 -o fdc_bootstrap.npz
 ```
 

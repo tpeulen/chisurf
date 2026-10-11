@@ -139,20 +139,28 @@ def _fit_dto(fit: Any, index: int, *, detailed: bool = False) -> dict[str, Any]:
     }
 
 
-def list_fits(state: SessionState) -> ServiceResult:
+def list_fits(state: SessionState, statistics: bool = False) -> ServiceResult:
     """Return a summary of all fits in the session.
+
+    ``chi2`` / ``chi2r`` of a row are what the fit's last run reached (``None``: never run), read
+    without evaluating anything. With *statistics* each row also carries ``chi2r_current``, the
+    reduced χ² of the parameters as they are now — the number the fit window shows — so a
+    question across every fit is one line (``api.list_fits(statistics=True)``).
 
     Parameters
     ----------
     state : SessionState
         Server-side session state.
+    statistics : bool, optional
+        Add ``chi2r_current`` to every row (evaluates each fit's residuals).
 
     """
     fits = list(state.fits)
-    return {
-        "ok": True,
-        "fits": [_fit_dto(f, idx) for idx, f in enumerate(fits)],
-    }
+    rows = [_fit_dto(f, idx) for idx, f in enumerate(fits)]
+    if statistics:
+        for fit, row in zip(fits, rows):
+            row["chi2r_current"] = _safe_chi2r_current(fit)
+    return {"ok": True, "fits": rows}
 
 
 def _safe_results(fit: Any) -> dict[str, int]:

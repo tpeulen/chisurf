@@ -262,8 +262,17 @@ class NativeAnisotropyModel(AnisotropyViewModel):
                 raise ValueError(
                     "Input files or reader settings changed; load/reload the data first."
                 )
+            from ..core.irf import response_window
+
+            window = response_window(
+                self.data["irf_vv"].y, self.data["irf_vh"].y, self.region_lb, self.region_ub
+            )
             self.fit_groups = create_linked_fits(
-                self.data, self.lifetime_spectrum, self.rotation_spectrum, self._corrections
+                self.data,
+                self.lifetime_spectrum,
+                self.rotation_spectrum,
+                self._corrections,
+                irf_window=window,
             )
             self.status = "Created VV, VH and global anisotropy fits with shared parameters."
             self._set_status(True, self.status)

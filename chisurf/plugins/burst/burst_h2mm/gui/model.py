@@ -233,8 +233,9 @@ class H2mmViewModel(RunPickerMixin):
     def rate_rows(self) -> list[dict]:
         """Rows of the rate table: every transition i -> j with its rate and mean waiting time (empty before a fit).
 
-        A rate at the fit's floor was not measured: it is listed as the bound ``< floor`` (waiting time ``> 1/floor``),
-        never as a number that reads like a result.
+        A rate below :func:`.result_view.rate_bound` (less than one event in the bursts' time; the EM floor among
+        them) was not measured: it is listed as the bound ``< bound`` (waiting time ``> 1/bound``), never as a number
+        that reads like a result.
         """
         import numpy as np
 
@@ -243,16 +244,16 @@ class H2mmViewModel(RunPickerMixin):
         rates = result_view.rate_matrix(self.analysis)
         if rates is None:
             return []
-        floor = result_view.floor_rate(self.analysis)
-        at_floor = result_view.rates_at_floor(self.analysis, rates)
+        bound = result_view.rate_bound(self.analysis)
+        unresolved = result_view.rates_unresolved(self.analysis, rates)
         rows = []
         for i in range(rates.shape[0]):
             for j in range(rates.shape[0]):
                 if i == j:
                     continue
                 k = float(rates[i, j])
-                if at_floor[i, j]:
-                    rate, time = f"< {floor:.2g}", f"> {1e3 / floor:.3g}"
+                if unresolved[i, j]:
+                    rate, time = f"< {bound:.2g}", f"> {1e3 / bound:.3g}"
                 else:
                     wait = (1e3 / k) if np.isfinite(k) and k > 0 else float("nan")
                     rate, time = (f"{k:.1f}" if abs(k) >= 10 else f"{k:.3g}"), f"{wait:.3g}"

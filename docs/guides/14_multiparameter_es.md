@@ -33,17 +33,19 @@ populations the $E$–$S$ plot isolates.
 
 ### In the GUI: Accurate FRET
 
-**Spectroscopy → Single-Molecule → Burst Analysis → Accurate FRET** (on its own:
-*Spectroscopy:FRET:Accurate FRET*) finds all four factors from one burst table.
-Pick the **Burst table** (…), map the columns in **Channels** — **I_DD (donor)**,
+**Spectroscopy → Single-Molecule → Burst Analysis**, step **Accurate FRET**
+(on its own: `python -m chisurf.emtk --plugin accurate_fret`) finds all four
+factors from one burst table. Press **Open burst table** (or drop the table on
+the window), check the columns **Channels** guessed — **I_DD (donor)**,
 **I_DA (FRET)**, **I_AA (acceptor)** and optionally **Donor lifetime** — and press
 **Calibrate**. The tool classifies donor-only, acceptor-only and doubly labelled
 bursts with a Gaussian mixture in $S$, takes α from the donor-only and δ from the
 acceptor-only bursts, and γ, β from the $1/S = \Omega + \Sigma E$ fit across the
 FRET populations, iterating until the classification is stable. The **Views**
-tabs show the factor table, the populations, the corrected $E$–$S$ and
-$E$–lifetime plots and the $E$ histogram; **Store on setup** saves the factors
-with the detector setup. The full workflow is in
+tabs show the factor table (with what determined each factor), the populations,
+the report, the corrected $E$–$S$ and $E$–lifetime plots and the $E$ histogram;
+**Store calibration on setup** (under *Data, session and catalogue actions*)
+saves the factors with the detector setup. The full workflow is in
 [Accurate FRET](41_accurate_fret.md).
 
 ```{figure} figures/14_accurate_fret.png
@@ -53,8 +55,8 @@ with the detector setup. The full workflow is in
 Accurate FRET on a simulated ALEX burst table (two FRET populations,
 E = 0.28 and 0.72, 500 donor-only and 500 acceptor-only bursts; true
 α = 0.08, δ = 0.06, γ = 0.65, β = 1.4) — the test data hold no ALEX/PIE
-measurement. Recovered: α = 0.0800, δ = 0.0589, γ = 0.658, β = 1.389, with
-488 donor-only and 487 acceptor-only bursts found. The corrected $E$–$S$ plot
+measurement. Recovered: α = 0.0800, δ = 0.0589, γ = 0.658, β = 1.389, each a
+*data estimate*, with 488 donor-only and 487 acceptor-only bursts found. The corrected $E$–$S$ plot
 puts the FRET populations at $S \approx 0.5$, donor-only at $S \to 1$ and
 acceptor-only at $S \to 0$. Rendered with the emtk plot backend.
 ```
@@ -100,11 +102,3 @@ Multi-parameter E–S histogram.
 - Tools: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`); the **Burst
   Browser** (`chisurf/plugins/burst/burst_browser/`) plots and gates the burst
   table.
-
-## Known defects
-
-- *(the scatter plots joined by black lines, from a transparent pen losing its alpha, are fixed and pinned by `test_a_transparent_pen_with_markers_draws_no_line`.)*
-- **Choosing a dye does nothing.** Opening the tool logs *bound control commit
-  failed (Donor): AccurateFretViewModel.apply_dye_selection() takes 1
-  positional argument but 2 were given* (and the same for Acceptor): the
-  **Dyes (database)** combos pass the selection to a method that takes none.

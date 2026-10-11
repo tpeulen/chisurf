@@ -239,10 +239,9 @@
       "description": "State patch events for trace browser plugin"
     }
   ],
-  "requires": {
-    "intensity_trace": "*"
-  },
   "optional_requires": {
+    "img_flow": "*",
+    "intensity_trace": "*",
     "ndxplorer": "*",
     "tttr_time_windows": "*"
   }

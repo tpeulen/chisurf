@@ -529,5 +529,8 @@
   ],
   "events": [],
   "dependencies": {},
-  "deprecated": false
+  "deprecated": false,
+  "optional_requires": {
+    "structure_tools": "*"
+  }
 }

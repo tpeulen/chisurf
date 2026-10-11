@@ -225,7 +225,7 @@ def zip_output_folder(output_folder: Path, zip_path: str | Path | None = None) -
     return zip_path
 
 
-def write_decay(
+def write_decay_container(
     run_path: str | Path,
     mask=None,
     n_bins: int = 0,
@@ -267,7 +267,10 @@ def write_decay(
     import numpy as np
 
     from chisurf.core.datastore import numeric_column, row_count
-    from chisurf.core.fluorescence.burst.decay import sub_ensemble_decay, write_sub_ensemble_decay
+    from chisurf.core.fluorescence.burst.decay import (
+        sub_ensemble_decay,
+        write_sub_ensemble_decay_container,
+    )
 
     if stream is None:
         stream = {"channels": list(range(64))}
@@ -275,7 +278,7 @@ def write_decay(
     selection = "all" if mask is None else np.flatnonzero(np.asarray(mask, dtype=bool)).tolist()
     identity = {"stream": str(stream), "n_bins": int(n_bins), "bursts": str(selection)}
     identity.update(parameters or {})
-    container = write_sub_ensemble_decay(run_path, store, identity)
+    container = write_sub_ensemble_decay_container(run_path, store, identity)
     counts = numeric_column(store, "Counts")
     result = {
         "container": container,

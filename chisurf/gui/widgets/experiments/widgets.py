@@ -21,10 +21,16 @@ from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, dataset_tooltip_ht
 class ExperimentalDataSelector(QtWidgets.QTreeWidget):
     @property
     def curve_name(self) -> str:
+        """The selected dataset's display name (``Prompt.txt``), as every curve field shows it.
+
+        Not its file path: the name is what a picker field shows in both shells and what
+        :func:`chisurf.macros.model._resolve_selected_curve` matches first.
+        """
         try:
-            return self.selected_dataset.filename
+            dataset = self.selected_dataset
         except AttributeError:
             return "Untitled"
+        return str(getattr(dataset, "name", "") or getattr(dataset, "filename", "") or "Untitled")
 
     def get_datasets(self) -> typing.List[chisurf.core.data.ExperimentalData]:
         data_curves = self.get_data_sets(curve_type=self.curve_type)
@@ -84,7 +90,9 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
         self.update(update_others=True)
 
     def onSaveDataset(self):
-        base_name, extension = os.path.splitext(self.curve_name)
+        base_name, extension = os.path.splitext(
+            str(getattr(self.selected_dataset, "filename", "") or self.curve_name)
+        )
         filename = chisurf.gui.widgets.save_file(
             working_path=base_name,
             file_type="Pickle file (*.pkl)",

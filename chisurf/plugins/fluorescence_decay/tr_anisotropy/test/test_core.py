@@ -31,6 +31,22 @@ def test_correct_irfs_subtracts_and_matches_intensity():
     assert np.isclose(vv.sum(), vh.sum())
 
 
+def test_response_window_spans_the_pulse_not_the_noisy_tail():
+    """The window the model zeroes outside of: the pulse, over both channels, not Poisson noise."""
+    rng = np.random.default_rng(3)
+    x = np.arange(800) * 0.05
+    pulse = 20000 * np.exp(-0.5 * ((x - 2.0) / 0.12) ** 2)
+    vv = rng.poisson(pulse + 4).astype(float)
+    vh = rng.poisson(0.8 * np.roll(pulse, 3) + 4).astype(float)
+    start, stop = irf.response_window(vv, vh, 240, 640)
+    assert 25 < start < 40 < stop < 60
+    # both channels' pulses are inside
+    assert start <= np.argmax(vv) < stop and start <= np.argmax(vh) < stop
+    # nothing above the threshold (a flat background only): the whole range
+    assert irf.response_window(np.full(10, 3.0), np.full(10, 3.0), 0, 10) == (0, 10)
+    assert irf.response_window([], [], 0, 1) == (0, 0)
+
+
 def test_correct_irfs_empty():
     vv, vh = irf.correct_irfs([], [], 0, 1)
     assert len(vv) == 0 and len(vh) == 0

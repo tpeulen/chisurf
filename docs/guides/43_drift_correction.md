@@ -113,7 +113,7 @@ You have two routes:
 ## Headless
 
 ```bash
-img-drift movie.tif --channel 0 --reference first \
+csc img-drift movie.tif --channel 0 --reference first \
     --out-shifts drift.csv --out-stack corrected.tif
 ```
 

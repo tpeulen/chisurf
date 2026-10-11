@@ -52,7 +52,10 @@ region you pick and intensity-matches the two IRFs, which is why it is a step of
 its own rather than a checkbox. With two separate detectors (as on a
 microscope) the IRFs must be normalized to the same total photon number after
 background removal. The model is convolved with the IRF, so changing the IRF
-also changes the number of photons in the model.
+also changes the number of photons in the model. *Create fits* restricts each
+IRF to the channels its pulse occupies (*IRF start* / *IRF stop* in the model
+editor); outside that window the model would clip the subtracted noise at zero
+and keep a positive pedestal that lifts the whole model decay.
 
 ## Reading the result
 

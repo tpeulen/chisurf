@@ -12,6 +12,8 @@ from __future__ import annotations
 import pathlib
 from typing import Any, Callable
 
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
+
 from ..core.model import PhotonTableModel
 
 #: The "All channels" sentinel of the channel filter (the core model's too).
@@ -19,7 +21,7 @@ CHANNEL_ANY = -1
 #: Largest page, as the core model clamps it.
 MAX_ROWS = 20_000
 #: The container formats the Open dialog offers (the Qt tool's filter).
-TTTR_FILTERS = "TTTR files (*.ptu *.phu *.ht2 *.ht3 *.pt3 *.t3r);;All files (*)"
+TTTR_FILTERS = TTTR_FILE_FILTER
 
 
 class _Rows(list):

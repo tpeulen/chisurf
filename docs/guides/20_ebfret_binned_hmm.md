@@ -33,7 +33,7 @@ covering the family of TIRF smFRET tools.
 itself: the same panels, menus, dialogs and defaults as the MATLAB program, drawn
 with emtk and running its analysis on the ChiSurf backend. New to it? Press
 **Guide** in the toolbar — the tour loads a simulated four-state dataset
-(**Load demo**) and waits for you to press each control. Loading does not
+(**🧪 Load example**) and waits for you to press each control. Loading does not
 start the analysis; press **Run** yourself. The primary stacked donor/acceptor
 `.dat` and JSON parameters live in `demos/burst_ebfret` under the ChiSurf
 settings folder. `make_demo()` from

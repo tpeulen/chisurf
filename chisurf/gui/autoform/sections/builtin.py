@@ -251,7 +251,11 @@ class CurveInputWidget(QtWidgets.QWidget):
             _dispatch_fit_update(fit_index)
         except Exception as exc:
             logging.warning(f"CurveInputWidget: select dispatch failed: {exc}")
-        self.name_edit.setText(name)
+        # The name of the curve the model now holds -- what the emtk shell's picker shows
+        # (``resolve_curve_input``) -- not the selector's text, which was the full file path.
+        self._refresh_name()
+        if not self.name_edit.text():
+            self.name_edit.setText(name)
         self._refresh_fwhm()
 
     def _unload(self):

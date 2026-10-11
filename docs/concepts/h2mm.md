@@ -137,7 +137,11 @@ From the parameters directly: the **per-state $E_i$** (and $S_i$) from
 $\mathbf{B}$, and **transition rates** from $\mathbf{A}$ — dividing the
 off-diagonal one-step probabilities by the clock period gives physical rate
 constants $k_{ij}$ (s⁻¹), an interpretable kinetic scheme rather than static
-states.
+states. EM keeps every off-diagonal $A_{ij} \ge 10^{-12}$; a transition the
+data do not contain settles at (or a few times above) that floor. Any rate
+below $1/T$, with $T$ the time spent inside bursts, predicts less than one
+event in the data and is an upper bound, not a measurement: ChiSurf lists it
+as `< 1/T` and draws no arrow for it.
 
 From decoding the hidden path, the **Viterbi** algorithm returns the single
 most-probable per-photon state sequence; segmenting it into maximal same-state

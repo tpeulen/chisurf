@@ -24,10 +24,10 @@ out a brightness population and shows where it sits in the image.
 
 ## Try it on data whose answer is known
 
-Press **Demo**. It writes a simulated scan as an ordinary PTU file —
+Press **Load example**. It writes a simulated scan as an ordinary PTU file —
 monomers ($\varepsilon = 0.5$ counts per dwell, $n = 6$) on the left half, dimers
 ($\varepsilon = 1.0$, $n = 3$) on the right, both halves equally bright — and
-runs the analysis. The **Guide** points at the real **Demo** button and waits
+runs the analysis. The **Guide** points at the real **Load example** button and waits
 for your click, then walks the settings and results. The generated file and its
 parameter sidecar live in `demos/img_pixel_nb` under the ChiSurf settings folder.
 
@@ -78,7 +78,7 @@ per window; **🧭 ndX** explores them together with the other per-pixel columns
 ## Headless
 
 ```bash
-img-pixel-nb scan.ptu -c 0 --detrend 5 --gamma 0.3536 --smoothing average --radius 3 -o scan.imaging.h5
+csc img-pixel-nb scan.ptu -c 0 --detrend 5 --gamma 0.3536 --smoothing average --radius 3 -o scan.imaging.h5
 ```
 
 ```python
@@ -93,7 +93,7 @@ maps = nb_pipeline(stack, {"detrend_segments": 5, "gamma": 1.0})
 dimers = nb_gate_mask(maps["mean"], maps["B"], RectangleROI(0, 1.75, 100, 3))
 ```
 
-On the demo file (**Demo** writes it; `make_demo()` in
+On the demo file (**Load example** writes it; `make_demo()` in
 `chisurf.plugins.microscopy.img_pixel_nb.demo` from Python) the gate keeps 496
 of 1024 pixels with median ε = 0.99 and n = 3.00. The CLI line above, with
 γ = 0.3536 and 3-pixel smoothing, prints `B mean=1.747 | epsilon median=2.120 |

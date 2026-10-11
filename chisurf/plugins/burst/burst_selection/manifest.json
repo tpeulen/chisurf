@@ -120,5 +120,8 @@
   "optional_requires": {
     "ndxplorer": "*"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "requires": {
+    "pto_inspector": "*"
+  }
 }

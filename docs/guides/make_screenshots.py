@@ -843,19 +843,40 @@ def _grab_hmm_tool():
 
 
 def _grab_burst_fusion_tool():
-    """Burst-fusion tool on its own demo, whose molecule count is declared.
+    """Burst-fusion tool on its own demo, whose molecule count is declared (guide 58).
 
-    Uses the plugin's demo rather than a fixture, so the screenshot in the guide
-    shows the same numbers a reader gets by pressing the same button.
+    Driven as the guide walks it: *Load example*, threshold 0.7, *Estimate*, then
+    *Run (Fuse)*; so the figures show the numbers a reader gets by pressing the
+    same buttons. The whole window at its declared 1100 x 720, then the
+    P(same) and proximity-ratio plot tabs.
     """
-    from screenshots.emtk_shot import app_from, render
+    from screenshots.emtk_shot import FIG, app_from, show_tabs, wait
+    from emtk.testing import Driver
 
     app = app_from("burst_fusion")
-    app.model.load_demo()
+    driver = Driver(app, (1100, 720))
+    driver.frame(2)
+
+    def settle():
+        wait(driver, lambda: (app.controller.poll(), not app.controller.running)[1], timeout=900)
+
+    driver.click("load_example")
+    settle()
     app.model.threshold = 0.7
-    app.model.fuse()
-    render(app, "burst_fusion_curve.png", size=(1250, 800))
-    render(app, "burst_fusion_proximity.png", size=(1250, 800))
+    driver.click("toolAction_refresh")
+    settle()
+    driver.click("toolAction_run")
+    settle()
+    print("fusion:", {r["quantity"]: (r["before"], r["after"]) for r in app.model.summary_rows()})
+    driver.screenshot(FIG / "burst_fusion_native_primary_window.png")
+    driver = Driver(app, (1250, 800))
+    driver.frame(3)
+    show_tabs(driver, "P(same)")
+    driver.screenshot(FIG / "burst_fusion_curve.png")
+    show_tabs(driver, "Proximity ratio")
+    driver.screenshot(FIG / "burst_fusion_proximity.png")
+    print("wrote burst_fusion_native_primary_window.png, burst_fusion_curve.png, burst_fusion_proximity.png")
+    app.close()
 
 
 def _grab_ndx_gaussian_panel():
@@ -1098,29 +1119,29 @@ def _grab_global_view():
 def _grab_ebfret_tool():
     """ebFRET after an analysis of its simulated demo: K = 4 with the Viterbi path.
 
-    The run is the real backend loop on the demo's forty four-state traces; the
-    window then shows the four-state model, so the Viterbi overlay and the
+    The native window as a person drives it: *Load example*, Max states 4, *Run*
+    (the real backend loop on the demo's forty four-state traces), then the
+    four-state model and series 3 selected, so the Viterbi overlay and the
     posterior curves -- what the guide explains -- are on screen.
     """
-    import time
+    from screenshots.emtk_shot import FIG, app_from, wait
+    from emtk.testing import Driver
 
-    from chisurf.plugins.burst.burst_ebfret.gui.tool import EbfretTool
-
-    tool = EbfretTool()
-    tool.resize(1200, 820)
-    tool.show()
-    tool._load_demo()
-    client = tool.client
+    app = app_from("burst_ebfret")
+    driver = Driver(app, (1200, 820))
+    driver.frame(2)
+    app.load_example()
+    driver.frame(2)
+    client = app.gui.client
     client.set("max_states", 4)
     client.run()
-    while client.status()["running"]:
-        time.sleep(0.2)
+    wait(driver, lambda: not client.status()["running"], timeout=900)
     client.set("ensemble", 4)
     client.set("series", 3)
-    for _ in range(4):
-        tool._tick()
-        QApplication.instance().processEvents()
-    _grab(tool, "ebfret_gui.png")
+    driver.frame(6)
+    driver.screenshot(FIG / "ebfret_gui.png")
+    print("wrote ebfret_gui.png", flush=True)
+    client.close()
 
 
 def _grab_pto_inspector():
@@ -1290,30 +1311,6 @@ def _grab_ai_assistant():
     )
     QApplication.instance().processEvents()
     _grab(panel, "ai_assistant.png")
-
-
-def _grab_lumis_quest():
-    """Two screens of the game, rendered through its own capture harness.
-
-    The game draws through wgpu, so ``QWidget.grab()`` returns an empty
-    surface -- the frames have to come from the engine's offscreen path. The
-    plugin already ships that harness (it is how the game is reviewed), so
-    this reuses it rather than re-deriving the scene setup.
-    """
-    import shutil
-
-    from chisurf.plugins.misc.games.lumis_quest.test import capture as lumis_capture
-
-    staging = pathlib.Path(tempfile.mkdtemp()) / "lumis"
-    staging.mkdir()
-    lumis_capture.main([str(staging)])
-    # Two of the gallery: the map-is-the-documentation screen, and the battle
-    # where the fluorophore mechanic is visible.
-    for stem in ("lumis_town", "lumis_battle"):
-        source = staging / f"{stem}.png"
-        if source.is_file():
-            shutil.copy(source, FIG / f"{stem}.png")
-            print("wrote", f"{stem}.png")
 
 
 def _grab_burst_export_table():
@@ -1584,13 +1581,15 @@ def _grab_fcs_correlator_step():
 
 
 def _grab_intensity_trace():
-    """Intensity-trace tool on a real smFRET TTTR file, binned and HMM-decoded.
+    """Intensity-trace tool (native app) on a real smFRET TTTR file, binned and HMM-decoded (guide 74).
 
     The file is copied to a scratch folder first: *Compute HMM* writes its
     ``<stem>_HMM#<n>_<w>ms/`` output folder beside the TTTR file, and that must
-    not land in ``test/data``.
+    not land in ``test/data``. The detector setup is set explicitly (a grab that
+    inherits the settings dir's last setup shows whatever that held).
     """
-    from chisurf.plugins.tttr.intensity_trace import IntensityTrace
+    from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
     src = pathlib.Path("test/data/tttr/BH/132/BH_SPC132.spc")
     if not src.is_file():
@@ -1600,36 +1599,34 @@ def _grab_intensity_trace():
     spc = work / src.name
     shutil.copy(src, spc)
 
-    tool = IntensityTrace()
-    tool.resize(1280, 900)
-    # Two detectors as the detector setup would define them: green = routing
-    # channels 0/8 (parallel/perpendicular), red = 1/9.
-    tool._detector_settings = {
+    app = app_from("intensity_trace")
+    driver = Driver(app, (1400, 900))
+    driver.frame(3)
+    # Two detectors as the detector setup defines them: green = routing channels 0/8
+    # (parallel/perpendicular), red = 1/9 -- acceptor first, so the per-bin ratio
+    # n0/(n0+n1) is the proximity ratio rather than its complement.
+    app.model.setup = {
         "detectors": {
-            # acceptor first: the per-bin ratio n0/(n0+n1) is then the
-            # proximity ratio rather than its complement
             "red": {"chs": [1, 9], "micro_time_ranges": []},
             "green": {"chs": [0, 8], "micro_time_ranges": []},
         }
     }
-    tool._refresh_detector_checkboxes()
-    tool.window_spin.blockSignals(True)
-    tool.window_spin.setValue(5.0)
-    tool.window_spin.blockSignals(False)
-    tool.hist_max_input.setValue(100.0)
-    tool.hmm_components_spinner.setValue(2)
-    tool.load_file(file_path=str(spc))
-    tool.perform_hmm()
-    tool.show()
-    QApplication.instance().processEvents()
-    # zoom the time axis onto a 6 s stretch so single bursts are resolved
-    try:
-        tool.plot_widget.plots[0][0].setXRange(20.0, 26.0, padding=0)
-    except Exception:
-        pass
-    QApplication.instance().processEvents()
-    _grab(tool, "intensity_trace.png")
-    return tool, work
+    app.setup_name = "Edited setup"
+    app.model.window_ms = 5.0
+    app.model.hist_max = 100.0
+    app.model.n_states = 2
+    app.open_file(str(spc))
+    wait(driver, lambda: not app.busy)
+    driver.click("HMM")  # the HMM tab of the controls
+    driver.click("Compute HMM")
+    wait(driver, lambda: not app.busy, timeout=600)
+    driver.click("Dwell Times")
+    wait(driver, lambda: not app.busy)
+    _emtk_park(driver)
+    driver.screenshot(FIG / "intensity_trace.png")
+    print("wrote intensity_trace.png:", app.status, flush=True)
+    app.close()
+    return app, work
 
 
 def _grab_file_tools():
@@ -1969,94 +1966,6 @@ def _grab_f_test():
     return tool
 
 
-class _DirectClient:
-    """In-process stand-in for the fitting client: writes parameters directly.
-
-    The shipped FittingClient only talks JSON-RPC to the running server, so
-    without the main window there is none; run_batch takes any object with
-    these three methods.
-    """
-
-    def get_fit_objects(self):
-        import chisurf as cs
-
-        return list(cs.fits)
-
-    def _param(self, name, fit_index):
-        import chisurf as cs
-
-        for p in cs.fits[fit_index].model.parameters_all:
-            if p.name == name:
-                return p
-        return None
-
-    def set_parameter_value(self, parameter_name, value, fit_index):
-        p = self._param(parameter_name, fit_index)
-        if p is not None and not p.fixed:
-            p.value = value
-
-    def set_parameter_fixed(self, parameter_name, fixed, fit_index):
-        p = self._param(parameter_name, fit_index)
-        if p is not None:
-            p.fixed = fixed
-
-
-def _grab_batch_analysis():
-    """Batch wizard: template 2-exp fit on the donor-only decay, run over D0 and DA."""
-    import chisurf as cs
-    from chisurf.plugins.core.batch_analysis.core import runner
-    from chisurf.plugins.core.batch_analysis.gui.tool import BatchProcessingWizard
-
-    d0 = _ibh_decay("Decay_577D.txt")
-    da = _ibh_decay("Decay_577D+577A+GTPgS.txt")
-    template = _ibh_fit(d0, 2)
-    template.run()
-    ds_d0 = template.data
-    ds_da = _ibh_fit(da, 2).data
-    ds_d0.name, ds_da.name = "Decay_577D", "Decay_577D+577A+GTPgS"
-    cs.fits[:] = [template]
-    cs.imported_datasets[:] = [ds_d0, ds_da]
-
-    import chisurf.gui.widgets.fitting.fitting_client as fc
-
-    fc._FITTING_CLIENT = _DirectClient()  # the GUI installs the RPC client here
-    wiz = BatchProcessingWizard()
-    vm = wiz.model
-    vm.selected_dataset_indices = [0, 1]
-    from chisurf.plugins.core.batch_analysis.gui.loaded_datasets import LoadedDatasetSelector
-
-    for sel in wiz.findChildren(LoadedDatasetSelector):
-        sel.repopulate()
-    vm.selected_fit_name = vm.fit_names()[0] if vm.fit_names() else ""
-    vm.save_path = "/data/ibh/batch_results.csv"
-    wiz.assistant.auto_form.sync_fields()
-    results = runner.run_batch(0, vm.build_items())
-    vm._results = results
-    vm._status_html = "<p><b>Done.</b></p>"
-    for r in results.rows:
-        print("batch", r["Run"], r["Filename"], r["Parameter"], r["Fixed"], r["Value"], r["Chi2r"])
-    vm.notify("refresh")
-    wiz.resize(900, 620)
-    from qtpy import QtWidgets
-
-    nav = [w for w in wiz.findChildren(QtWidgets.QListWidget)]
-    shots = {
-        "Loaded data": "batch_analysis_loaded.png",
-        "Files & fit": "batch_analysis_files.png",
-        "Run": "batch_analysis_run.png",
-        "Results": "batch_analysis_results.png",
-    }
-    for lw in nav:
-        for i in range(lw.count()):
-            text = lw.item(i).text()
-            for key, png in shots.items():
-                if key in text:
-                    lw.setCurrentRow(i)
-                    wiz.assistant.auto_form.refresh_plots()
-                    _grab(wiz, png)
-    return wiz
-
-
 def _grab_hydropro():
     """HydroPro with 148L selected and T4 lysozyme's mass and v-bar entered.
 
@@ -2275,7 +2184,6 @@ def main():
         _grab_irf_estimator,
         _grab_console,
         _grab_ai_assistant,
-        _grab_lumis_quest,
         _grab_burst_export_table,
         _grab_alex_suite_alternation,
         _grab_alex_suite_titration,
@@ -2288,7 +2196,6 @@ def main():
         _grab_synthetic_decay,
         _grab_phasor_calculator,
         _grab_f_test,
-        _grab_batch_analysis,
         _grab_hydropro,
         _grab_hydropro_exe_dialog,
         _grab_quest_hub,
@@ -2311,7 +2218,8 @@ def main():
     render(lut_app, "lut_tools_workspace.png", size=(1120, 760))
 
     # The channel-definition editor (LUT handling section, lut_channel_box.png) is the one-page emtk editor:
-    # docs/guides/screenshots/channel_editor_emtk.py draws it.
+    # docs/guides/screenshots/channel_editor_emtk.py draws it. The Batch Analysis figures
+    # (batch_analysis_{loaded,files,run,results}.png) come from docs/guides/screenshots/batch_analysis_emtk.py.
 
     print("screenshots written to", FIG)
 

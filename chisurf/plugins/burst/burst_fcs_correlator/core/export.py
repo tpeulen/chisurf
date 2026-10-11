@@ -28,7 +28,7 @@ RESULT_COLUMNS = yaml.safe_load(Path(__file__).with_name("result_columns.yaml").
     "columns"
 ]
 
-__all__ = ["write_fcs_container", "write_fcs_results"]
+__all__ = ["write_fcs_container", "write_fcs_results_container"]
 
 #: Units for the columns this analysis names itself.
 #:
@@ -116,7 +116,7 @@ def write_fcs_container(
     )
 
 
-def write_fcs_results(rows, burst_counts, *, parameters=None, cancel_check=None):
+def write_fcs_results_container(rows, burst_counts, *, parameters=None, cancel_check=None):
     """Publish indexed FCS results into each measurement's container.
 
     Parameters

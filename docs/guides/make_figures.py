@@ -1237,25 +1237,25 @@ def fig_ndxplorer():
     ndx = str(root / "modules" / "ndxplorer")
     if ndx not in sys.path:
         sys.path.insert(0, ndx)
-    from ndxplorer.analysis.curve_fit import bin_centers, fit_equation_to_marginal
-    from chisurf.core.math.numerics import curve_fit
+    from ndxplorer.analysis.curve_fit import (
+        bin_centers,
+        fit_equation_to_histogram,
+        fit_equation_to_marginal,
+    )
 
+    # The guide's worked example, line for line: the figure shows what its code prints.
     rng = np.random.default_rng(3)
     tau0 = 4.0                       # donor-only lifetime (ns)
-    n_no, n_fret = 2400, 3600
-    E_no, E_fret = 0.02, 0.50        # true population efficiencies
-    # Per-burst shot noise: N photons -> binomial acceptor count -> measured E.
-    N_no = rng.integers(40, 200, n_no)
-    N_fret = rng.integers(40, 200, n_fret)
-    Emeas_no = rng.binomial(N_no, E_no) / N_no
-    Emeas_fret = rng.binomial(N_fret, E_fret) / N_fret
-    Emeas = np.concatenate([Emeas_no, Emeas_fret])
-    # A burst on the static line: tau = tau0*(1 - E), plus lifetime-fit scatter.
-    tau = tau0 * (1.0 - Emeas) + rng.normal(0, 0.05, Emeas.size)
+    n_no = 2400
+    N = rng.integers(40, 200, 6000)
+    Etrue = np.r_[np.full(n_no, 0.02), np.full(3600, 0.50)]
+    Emeas = rng.binomial(N, Etrue) / N
+    tau = tau0 * (1 - Emeas) + rng.normal(0, 0.05, Emeas.size)
 
-    # Fit the static FRET line E = 1 - tau/tau0 through every burst (1 parameter).
-    popt, _ = curve_fit(lambda t, t0: 1.0 - t / t0, tau, Emeas, p0=[3.5])
-    tau0_fit = float(popt[0])
+    # The static FRET line through the displayed 2-D data (the overlay's Fit).
+    counts2, x_edges, y_edges = np.histogram2d(tau, Emeas, bins=(60, 60))
+    line = fit_equation_to_histogram("1 - x/tau0", {"tau0": 3.5}, counts2, x_edges, y_edges)
+    tau0_fit = float(line.params["tau0"])
 
     # Fit the E marginal with two Gaussians via ndX's marginal-fit engine.
     counts, edges = np.histogram(Emeas, bins=70, range=(-0.1, 0.9))
@@ -1265,7 +1265,10 @@ def fig_ndxplorer():
         initial={"a1": counts.max(), "m1": 0.05, "s1": 0.03,
                  "a2": counts.max() * 0.6, "m2": 0.45, "s2": 0.06},
         x=xc, counts=counts.astype(float),
+        constant_names=["Bg"],
     )
+    print(f"ndxplorer_marginal_fit: tau0 {tau0_fit:.3f} ns (chi2r {line.chi2r:.2f}); "
+          f"E peaks {res.params['m1']:.3f} / {res.params['m2']:.3f} (chi2r {res.chi2r:.2f})")
 
     fig, (ax, axm) = plt.subplots(1, 2, figsize=(10.4, 4.2),
                                   gridspec_kw={"width_ratios": [1.15, 1]})

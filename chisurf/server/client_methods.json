@@ -10,7 +10,7 @@
     {"name": "dataset__group", "rpc": "dataset.group", "params": [{"name": "dataset_indices", "required": true}, {"name": "group_name", "default": null}]},
     {"name": "dataset__ungroup", "rpc": "dataset.ungroup", "params": [{"name": "dataset_indices", "required": true}]},
 
-    {"name": "fit__list", "rpc": "fit.list", "params": [], "result_key": "fits", "default": []},
+    {"name": "fit__list", "rpc": "fit.list", "params": [{"name": "statistics", "default": false}], "result_key": "fits", "default": []},
     {"name": "fit__get", "rpc": "fit.get", "params": [{"name": "fit_index", "default": null}, {"name": "fit_uid", "default": null}], "result_key": "fit", "default": {}},
     {"name": "fit__run", "rpc": "fit.run", "params": [{"name": "fit_index", "default": null}, {"name": "fit_uid", "default": null}, {"name": "local_first", "default": null}]},
     {"name": "fit__remove", "rpc": "fit.remove", "params": [{"name": "fit_indices", "default": null}, {"name": "fit_uids", "default": null}]},

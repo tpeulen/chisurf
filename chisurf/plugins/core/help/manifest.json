@@ -117,5 +117,8 @@
       "topic": "help.docs.*",
       "description": "Document lifecycle events"
     }
-  ]
+  ],
+  "optional_requires": {
+    "ai_settings": "*"
+  }
 }

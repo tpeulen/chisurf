@@ -9,6 +9,7 @@ from emtk.docking import LayoutStore
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
 from ..api.models import TimeWindowResult
@@ -86,7 +87,7 @@ class TimeWindowController:
             title,
             mode=mode,
             multiselect=multiple,
-            filters="TTTR (*.ptu *.phu *.ht2 *.ht3 *.pt3 *.t3r *.ptu.gz *.ptu.bz2);;All files (*)",
+            filters=TTTR_FILE_FILTER,
         )
         self.dialog_callback = callback
 

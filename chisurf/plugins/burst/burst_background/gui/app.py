@@ -174,7 +174,7 @@ class BurstBackgroundGui:
         if self.controller is not None:
             self.controller.draw_inputs(remember=self.remember, track=self.track)
         im.begin_disabled(self.controller is not None and self.controller.running)
-        im.text_colored(ACCENT_BLUE, "Fit Settings")
+        im.text_colored(ACCENT_BLUE, tr("Fit Settings"))
 
         # Fit from / to (ms)
         im.text(tr("Fit from (ms):"))

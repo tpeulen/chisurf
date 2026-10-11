@@ -106,10 +106,9 @@
     }
   ],
   "dependencies": {},
-  "requires": {
-    "code_editor": "*",
-    "fret_docking": "*"
-  },
   "menu_hidden": true,
-  "deprecated": false
+  "deprecated": false,
+  "optional_requires": {
+    "structure_tools": "*"
+  }
 }

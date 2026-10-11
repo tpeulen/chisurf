@@ -32,7 +32,7 @@
       "per_file": true,
       "operation_type": "fcs_correlation",
       "product_type": "fcs_correlation",
-      "defaults": {"pairs": [{"ch1": [0], "ch2": [1]}], "settings": {}}
+      "defaults": {"pairs": [{"name": "GxR", "chs_a": [0], "chs_b": [1]}], "settings": {}}
     },
     {
       "key": "tcspc",

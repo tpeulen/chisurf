@@ -33,8 +33,10 @@ have many short FRET traces that are individually too short to fit,
 
 **Spectroscopy → Kinetics → Hidden Markov model**.
 
-The window has three panels: **Model** (the settings), **Trace** (the data and
-what the model made of it) and **States** (the numbers).
+The window has four panels: **Model** (the buttons, the trace files and the
+settings), **Trace** (the data and the decoded path), **Fitted states** (the
+numbers) and a tabbed panel with the **Histogram**, **Dwell times** and
+**Scan** plots.
 
 ```{figure} figures/hmm_workspace.png
 :name: fig-hmm-workspace
@@ -42,15 +44,17 @@ what the model made of it) and **States** (the numbers).
 
 Fitted on a simulated two-state trace with 1 ms bins — states at 18 and 55
 counts per bin, true rates 15 and 30 s⁻¹. The fit returns 18.0 and 55.0 counts
-with 13.9 and 27.9 s⁻¹, and BIC picks two states. Left: the settings. Middle:
-the trace with the decoded path, and the intensity histogram with the fitted
-emissions. Right: the state table, the transition matrix with rates, the
-dwell-time histograms and the state-count scan.
+with 13.9 and 27.9 s⁻¹, and BIC picks two states. Left: the buttons and the
+settings. Top: the trace with the decoded path. Bottom: the state table and the
+transition matrix with rates; right, the intensity histogram with the fitted
+emission of each state (the **Dwell times** and **Scan** tabs beside it are
+shown below).
 ```
 
 ## Load a trace
 
-Drop text or `.npy` files into **Traces**, or use **+ Files**. The layout is one
+Drop text or `.npy` files on the window, or use **Add files...**; **Demo trace**
+loads a generated three-state trace whose means and dwell times are known. The layout is one
 row per time bin, one column per channel:
 
 ```text
@@ -73,9 +77,17 @@ an HMM.
 
 ## Choose the number of states
 
-Do not guess. Open **State scan**, set the range (1 to 6 is usually enough) and
-press **⇄ Scan states**. The scan plot shows AIC and BIC against state count;
-take the **minimum**, not the elbow of the likelihood.
+Do not guess. Open **State scan range**, set the range (1 to 6 is usually enough)
+and press **Scan states**. The **Scan** tab shows AIC and BIC against state
+count; take the **minimum**, not the elbow of the likelihood.
+
+```{figure} figures/hmm_scan.png
+:name: fig-hmm-scan
+:width: 100%
+
+The **Scan** tab for the trace above, 1 to 4 states: both criteria drop steeply
+from one state to two and stay flat after it — two states.
+```
 
 :::{tip}
 BIC penalises parameters more heavily than AIC and normally returns the smaller
@@ -84,7 +96,7 @@ result is real: a state with almost no occupancy, or a mean dwell of a single
 bin, is noise being fitted.
 :::
 
-Then set **States** to the chosen count and press **▶ Fit**.
+Then set **States** to the chosen count and press **Fit**.
 
 ## Read the result
 
@@ -93,24 +105,34 @@ orange, each bin at the total emission mean of its state. The path should track
 the visible steps; where it flickers between two states in a single dwell,
 either the states overlap or there are too many of them.
 
-The intensity histogram below shows the fitted emission of each state, scaled by
+The **Histogram** tab shows the fitted emission of each state, scaled by
 how much time was spent in it. Well-separated peaks mean the assignment is
 driven by intensity. Overlapping peaks are not automatically wrong — the model
 then separates the states through their kinetics — but the per-bin assignment is
 correspondingly less certain.
 
-**States panel.** The state table gives the emission mean and width per channel,
+**Fitted states panel.** The state table gives the emission mean and width per channel,
 the fraction of time in each state, the number of visits and the mean dwell.
 States are always ordered **dimmest first**, so state 0 means the same thing in
 every fit and every figure.
 
-The transition table gives the per-bin probabilities, shaded so the sticky
-diagonal stands out, with the rate underneath each off-diagonal entry once a bin
-width is set.
+The transition table gives the per-bin probabilities, with the rate beside
+each off-diagonal entry once a bin width is set.
 
-The dwell-time histogram is drawn on a logarithmic count axis, where a Markov
-state is a straight line. Curvature is the most useful diagnostic this tool
-offers: it says the level hides more than one state.
+The **Dwell times** tab draws the dwell-time histogram of each state on a
+logarithmic count axis, where a Markov state is a straight line. Curvature is
+the most useful diagnostic this tool offers: it says the level hides more than
+one state.
+
+```{figure} figures/hmm_dwell.png
+:name: fig-hmm-dwell
+:width: 100%
+
+The **Dwell times** tab of the same fit (seconds, since the bin width is set):
+with 38 visits to state 0 and 37 to state 1 a 4 s trace is too short to test the
+straight line: the bump in state 0 is counting noise. Use a longer trace (or
+several, fitted jointly) before reading curvature.
+```
 
 ## Headless
 

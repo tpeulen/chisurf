@@ -30,12 +30,13 @@ tells you the rate.
 :name: fig-burst-gs-workspace
 :width: 100%
 
-Fitted on simulated photons from a molecule with known kinetics — 3000 and
-1000 s⁻¹ between states at E = 0.25 and 0.75. The fit returns 2879 and 1027 s⁻¹
-at E = 0.244 and 0.750, and a 256 µs relaxation time against a true 250 µs.
-Left: where the photons come from and what scheme to fit. Right: the report,
-with the fitted parameters, the states and the transition-time scan on tabs
-below.
+Fitted on the window's default simulation (200 bursts of 200 photons, seed 1)
+from a molecule with known kinetics — 3000 and 1000 s⁻¹ between states at
+E = 0.25 and 0.75. The fit returns 2879 and 1018 s⁻¹ at E = 0.237 and 0.749, and
+a 256.6 µs relaxation time against a true 250 µs. Left: where the photons come
+from and what scheme to fit. Right: the rate and state tables and the report;
+below, the fitted rates against the simulated ones (diamonds), with the
+efficiency axis on the *FRET states* tab.
 ```
 
 The native standalone host declares **1100 × 720** pixels on first use;
@@ -76,7 +77,7 @@ gaps. Ten is a sensible floor; such bursts contribute nothing and cost time.
 
 ## Try it without data first
 
-Tick **Simulate** (under *Simulate instead*) and the tool generates photons from
+Tick **Use Simulation Mode** (top of *Kinetics controls*) and the tool generates photons from
 a molecule with rates and efficiencies you set. This is the honest way to find
 out what your photon budget can resolve, and the only way to know the right
 answer while you are learning to read the output.
@@ -88,7 +89,7 @@ recover unknown kinetics from the real thing.
 
 ## Fit
 
-Choose the number of **states** and press **▶ Fit**.
+Choose the number of **States** and press **▶ Fit Kinetics**.
 
 * **Initial rate** only needs the right order of magnitude — rates are optimised
   in log space, because plausible exchange spans four decades and a linear
@@ -117,7 +118,7 @@ and the one to compare against FCS.
 **Use the BIC to add states, not the log-likelihood.** An extra state always
 fits better because it always has more parameters.
 
-**States** shows where the fitted states sit on the efficiency axis and how much
+The **FRET states** tab shows where the fitted states sit on the efficiency axis and how much
 population each holds. Check this against the burst-wise E histogram before
 believing a narrow pair: two states closer together than the shot-noise width of
 a burst cannot be separated, and the fit will still return two that look precise.
@@ -149,10 +150,12 @@ scanned against how long crossing takes — relative to the instantaneous model.
 :name: fig-burst-gs-transition
 :width: 100%
 
-The expected result: flat at zero while the crossing is too fast to leave a
-trace, falling steeply once it is long enough to be visible. The flat region is
-the answer — the crossing is faster than the point where the curve breaks. This
-is an upper bound, and reporting it as one is the honest reading.
+The expected result, on the log time axis the scan is spaced on: flat at zero
+while the crossing is too fast to leave a trace, falling steeply once it is long
+enough to be visible. The flat region is the answer — the crossing is faster
+than the point where the curve breaks. The report names that point: the longest
+scanned time within 1.92 log units of the best (95 %), here 8.5 µs on 30 scan points. This is
+an upper bound, and reporting it as one is the honest reading.
 ```
 
 **A positive peak is the exception, not the goal.** Only a clear peak is a
@@ -198,7 +201,7 @@ share a single declared raw-data directory.
 Everything above runs without a display:
 
 ```bash
-burst-gs bursts.bur --data-dir ./raw \
+csc burst-gs bursts.bur --data-dir ./raw \
          --donor 0,8 --acceptor 1,9 \
          --states 2 --scan-transition-time --cross-check-h2mm \
          --output kinetics.json
@@ -207,7 +210,7 @@ burst-gs bursts.bur --data-dir ./raw \
 and, to see what a photon budget can resolve before spending beam time:
 
 ```bash
-burst-gs --simulate --sim-rates 3000,1000 --sim-efficiencies 0.25,0.75 \
+csc burst-gs --simulate --sim-rates 3000,1000 --sim-efficiencies 0.25,0.75 \
          --sim-bursts 250 --sim-photons 200 --sim-rate-khz 50
 ```
 

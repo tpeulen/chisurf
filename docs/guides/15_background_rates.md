@@ -38,17 +38,18 @@ from the mean rate of a measurement containing bright bursts.
 ```{figure} figures/burst_background_native_primary_window.png
 :width: 100%
 
-Native measured-data estimate with three detector definitions: green1.497,
-red0.322 and yellow0.338kHz over the3.824–6.357ms tail window. These are the
+Native measured-data estimate with three detector definitions: green 1.497,
+red 0.322 and yellow 0.338 kHz over the 3.824–6.357 ms tail window. These are the
 rates for the displayed gates and window, rather than a universal background.
 ```
 
-The tool is **Background** in the burst workflow (**Spectroscopy ▸ Burst
-Analysis**, below the numbered steps); it is not on the menu on its own. Inside
+The tool is **Background** in the burst workflow (**Spectroscopy ▸ Single-Molecule ▸
+Burst Analysis**, below the numbered steps); it is not on the menu on its own. Inside
 the workflow the measurements and the detector definition come from *1. Data
-Selection*, so the panel shows only the file list, the **Estimate background**
-action and four docks: **Fit**, **Inter-photon time**, **Background rate**
-(per-detector bars) and **Results** (one row per file and detector, in kHz).
+Selection*. The window has three docks: **Fit parameters** (the file list, *Fit
+Settings* and the green **Estimate Background** button, with *Channel definition*
+on a tab behind it), **Inter-photon time**, and **Rates & results** (per-detector
+bars beside a table of one row per file and detector, in kHz).
 Each file's rates are also recorded beside its photons.
 
 ```{figure} figures/15_burst_background.png
@@ -66,7 +67,7 @@ reads 1.647 kHz green, 0.495 kHz red.
 :name: fig-15-burst-background-fit
 :width: 90%
 
-The **Fit Settings**: the window edges (**Fit from** / **Fit to**, also draggable
+The **Fit Settings** in the *Fit parameters* dock: the window edges (**Fit from** / **Fit to**, also draggable
 as the band on the plot), the histogram **Bin width** (0.1 ms) and **Min counts /
 bin** (1).
 ```

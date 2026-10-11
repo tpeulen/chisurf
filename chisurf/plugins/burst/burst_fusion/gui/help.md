@@ -14,11 +14,11 @@ exactly like the original one. The folder you started from is not modified.
 
 ## If you have not brought data
 
-Press **🧪 Load demo**. It simulates a measurement in which a *declared* number
+Press **🧪 Load example**. It simulates a measurement in which a *declared* number
 of molecules (300) crossed the focus and about 60 % of those crossings were
 interrupted — the molecule dimming for a fraction of a millisecond and coming
 back — then runs the ordinary burst search over it and loads the result. The
-search turns those 300 molecules into roughly 430 bursts, and the status block
+search turns those 300 molecules into 419 bursts, and the status block
 keeps the 300 on screen so every number below can be checked against it.
 
 It is a real measurement: a photon file with macro times, micro times and

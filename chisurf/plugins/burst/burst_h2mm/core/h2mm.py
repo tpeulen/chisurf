@@ -183,6 +183,12 @@ class BurstPhotons:
         """Total number of photons across all bursts."""
         return int(self.streams.shape[0])
 
+    @property
+    def total_time(self) -> int:
+        """Time spent inside bursts, summed over all bursts (base time units): first to last photon of each."""
+        slots = np.asarray(self.gap_slot)
+        return int(np.asarray(self.unique_dt)[slots[slots >= 0]].sum()) if slots.size else 0
+
 
 def prepare_bursts(
     times: Sequence[np.ndarray],

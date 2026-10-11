@@ -68,10 +68,15 @@ def entrypoint_parts(target: object) -> tuple[str, str]:
 
     Entry points come in two spellings: ``module:attribute`` for a GUI or a
     service, and the console-script form ``command=module:attribute`` for a
-    CLI. A missing one is ``null``.
+    CLI. A missing one is ``null``. A typed host ``action`` is an object whose
+    ``target`` is the ``module:attribute``.
     """
     if not target:
         return "", ""
+    if isinstance(target, dict):
+        target = target.get("target")
+        if not target:
+            return "", ""
     text = str(target)
     if "=" in text.split(":", 1)[0]:
         text = text.split("=", 1)[1]
@@ -170,6 +175,28 @@ class _Recorder:
         return handler
 
 
+def _centrally_registered() -> set[str]:
+    """RPC methods the server registers itself rather than through a plugin's ``services``.
+
+    ``server_methods.json`` names the methods the embedded and the standalone server serve from
+    the service layer; the mmfdb project service registers the ``project_browser.*`` family.
+    One owner per method: a plugin that also declared a ``services`` entry point for them would
+    be rejected as a duplicate registration.
+    """
+    names = {str(row["rpc"]) for row in _server_methods()}
+    from mmfdb.project import services as project_services
+
+    recorder = _Recorder()
+    project_services.register_services(recorder)
+    return names | set(recorder.names)
+
+
+def _server_methods() -> list[dict]:
+    """The rows of ``chisurf/server/server_methods.json``."""
+    path = pathlib.Path(chisurf.__file__).parent / "server" / "server_methods.json"
+    return json.loads(path.read_text(encoding="utf-8"))["methods"]
+
+
 def test_every_declared_rpc_method_is_actually_registered():
     """The manifest is a promise the service module has to keep.
 
@@ -194,6 +221,16 @@ def test_every_declared_rpc_method_is_actually_registered():
         module_name, attribute = entrypoint_parts(
             (manifest.get("entrypoints") or {}).get("services")
         )
+        if not module_name:
+            # No services entry point of its own: the methods must be served by a central owner
+            # (the server's own table, the mmfdb project service), which has exactly one owner each.
+            unserved = [method for method in declared if method not in _centrally_registered()]
+            if unserved:
+                problems.append(
+                    f"{name}: declares rpc_methods with no services entry point that no central "
+                    f"owner registers: {unserved}"
+                )
+            continue
         if not module_name:
             problems.append(
                 f"{name}: declares {len(declared)} rpc_methods but no services entry point"

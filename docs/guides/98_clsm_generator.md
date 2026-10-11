@@ -35,7 +35,10 @@ status line reports the photon count.
 The **Map** choice in the Maps window browses the input brightness, each detector's lifetime and the reconstructed intensity;
 the colormap, gamma and levels are the image canvas's. **Save photon stream** writes the photons as `.pto` (with the embedded
 intensity), `.npz`, `.ptu`, `.spc` or `.ht3` (the **Output format** choice) and the reconstructed intensity as a TIFF; **Save /
-Load settings** keep the inputs and parameters as JSON. **Guide** walks through the whole sequence, **Help** is the reference.
+Load settings** keep the inputs and parameters as JSON. A `.pto` or `.ptu` carries the scan grid and marker channels in
+its header and its macro clock is the laser period (`n_micro · dt`), so the saved file opens in every Image Tools step
+as it is (drop it on *1. Intensity*); a `<stem>.json` beside it declares the scanner for the `.spc` and `.ht3` formats,
+which only CLSM Draw, the Spot Finder and Region MLE read. **Guide** walks through the whole sequence, **Help** is the reference.
 
 ## Native layout and saved settings
 

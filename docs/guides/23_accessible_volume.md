@@ -98,11 +98,11 @@ the tool and **Help** explains it. Tabs:
 
 **Positions** of the HIV-RT example
 (`chisurf/plugins/modelling/fret/examples/fps_hiv_rt/hiv_rt.fps.json`): eight
-AV1 sites on the p66/p51 subunits of 1R0A and three AV3 sites on the DNA. The
-shipped file names no structure; for the figure each site was pointed at
-`protein_1R0A.pdb` (body 0) or `dna.pdb` (body 1), and all 11 AVs were
-computed (last: p_19bp, 19 936.1 Å³, 5907 grid points). The selected row's
-form is under the table.
+AV1 sites on the p66/p51 subunits of 1R0A and three AV3 sites on the DNA. Each
+site names its structure relative to the file (`protein_1R0A.pdb` for body 0,
+`dna.pdb` for body 1, both shipped beside it), so **Compute AVs** works on the
+file as it is loaded; all 11 AVs computed (last: p_19bp, 21 171.4 Å³, 6273 grid
+points). The selected row's form is under the table.
 ```
 
 ```{figure} figures/23_fps_editor_distances.png

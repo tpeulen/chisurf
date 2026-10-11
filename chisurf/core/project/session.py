@@ -1899,6 +1899,10 @@ def restore_session(
             group = group_class(members, unique_identifier=layout.get("uid"))
             group.name = layout.get("name", "")
             group.current_dataset = selected
+            # As a read group carries them (and the server's cached restore):
+            # without them the dataset list showed a restored group with no type.
+            group.data_reader = getattr(members[0], "data_reader", None)
+            group.experiment = getattr(members[0], "experiment", None)
             output.append(group)
     return RestoredSession(
         output,

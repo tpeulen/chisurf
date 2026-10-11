@@ -11,7 +11,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p66_T27C": {
       "chain_identifier": "A",
@@ -24,7 +25,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p66_E194C": {
       "chain_identifier": "A",
@@ -37,7 +39,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p66_K287C": {
       "chain_identifier": "A",
@@ -50,7 +53,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p51_Q6C": {
       "chain_identifier": "B",
@@ -63,7 +67,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p51_K173C": {
       "chain_identifier": "B",
@@ -76,7 +81,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p51_E194C": {
       "chain_identifier": "B",
@@ -89,7 +95,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p51_K281C": {
       "chain_identifier": "B",
@@ -102,7 +109,8 @@
       "radius3": 0.0,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV1",
-      "body_id": 0
+      "body_id": 0,
+      "pdb_path": "protein_1R0A.pdb"
     },
     "p_1bp": {
       "chain_identifier": "P",
@@ -115,7 +123,8 @@
       "radius3": 1.5,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV3",
-      "body_id": 1
+      "body_id": 1,
+      "pdb_path": "dna.pdb"
     },
     "p_10bp": {
       "chain_identifier": "P",
@@ -128,7 +137,8 @@
       "radius3": 1.5,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV3",
-      "body_id": 1
+      "body_id": 1,
+      "pdb_path": "dna.pdb"
     },
     "p_19bp": {
       "chain_identifier": "P",
@@ -141,7 +151,8 @@
       "radius3": 1.5,
       "simulation_grid_resolution": 1.5,
       "simulation_type": "AV3",
-      "body_id": 1
+      "body_id": 1,
+      "pdb_path": "dna.pdb"
     }
   },
   "Distances": {

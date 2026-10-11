@@ -8,7 +8,6 @@
     "count-rate": "chisurf.plugins.tttr.tttr_count_rate_analysis.cli:cli",
     "lightpath-simulator": "chisurf.plugins.core.lightpath_simulator.cli:cli",
     "hmm": "chisurf.plugins.core.hmm.cli.main:cli",
-    "fluorophore": "mmfdb.admin.cli:cli",
     "help": "chisurf.plugins.core.help.cli.main:cli",
     "fret": "chisurf.plugins.modelling.fret.cli.main:main",
     "proteinmc": "chisurf.plugins.modelling.proteinmc.cli:cli",

@@ -15,5 +15,8 @@
     "script": "__init__.py",
     "emtk": "chisurf.plugins.tttr.tttr_header_edit.gui.native:create_app"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "requires": {
+    "tttr_splitter": "*"
+  }
 }

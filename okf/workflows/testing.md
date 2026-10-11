@@ -335,7 +335,7 @@ the live cursor query. Only the OS cursor is simulated (`glfw.get_cursor_pos`), 
 pointer is never warped. Trap: a hidden window's swap chain is occluded, so wgpu cancels the
 frame before the app draws (`DrawCancelled: Occluded`). The glfw driver therefore runs the
 surface's CPU half itself. `clipped_texts(painter)` lists labels the active clip cuts. Tests:
-`tests/test_testing_realistic.py` (16, including the glfw cases on macOS).
+`tests/test_testing_realistic.py` (17, including the glfw cases on macOS).
 
 **2. Click-all matrix axis (`test/e2e/test_click_all_plugins.py::test_emtk_plugin_real_use`).**
 Each variant reruns the whole sweep (tour, tooltips, every safe control) with one change.
@@ -345,8 +345,13 @@ Each variant reruns the whole sweep (tour, tooltips, every safe control) with on
 | `size_800x600`, `size_1920x1080` | window size | a control's own caption clipped |
 | `resize` | 1100×720, then 800×600 after half the clicks; later clicks re-resolve | as above |
 | `scale2` | `RealisticDriver(scale=2.0)`, the real painter at ratio 2 | as above |
-| `lang_de`, `lang_fr` | `EMTK_LANG` | a clipped *translated* string; an English source drawn although the catalogue translates it |
+| `lang_de`, `lang_fr` | `EMTK_LANG` | a clipped *translated* string; an English source drawn although the catalogue translates it; two controls sharing one id (captions that translate alike) |
 | `realistic` | `RealisticDriver` at scale 1 | — |
+
+A "caption" is the label of a button, checkbox, radio button, menu item, header, tab or fold
+(`CAPTION_KINDS`). List rows and fields hold content, and a long name clipped in a narrow list is
+by design. Document viewers (`CONTENT_VIEWERS`: `help`) show English documentation by design, so
+they skip the untranslated check.
 
 Selection is set by `CHISURF_E2E_MATRIX`. `sample` is the default and runs
 `CHISURF_E2E_MATRIX_SAMPLE` plugins per variant (3). They are a hash-ranked choice that rotates
@@ -371,6 +376,31 @@ menu item still counts. A **ribbon tab** must be a tab or button: a menu header 
 does not count, because that is how the missing ribbon hid. Gaps go in `KNOWN_GAPS`, each with a
 reason, and the list only shrinks: `test_known_gaps_only_shrink` fails on an entry the shell now
 has.
+
+**First runs (2026-10-11).** Two sampled seeds of 21 cases each were run. Sizes, scale 2 and realistic input
+passed everywhere they ran, and so did resize on `burst_gs`. Two tools resized only after their sweep ended,
+because a resize after a fixed number of clicks missed tools with few controls; that is fixed. The language
+variants found seven code defects, all fixed:
+plot titles and axes, padded captions (19 tools), layouts measuring the English source (5 tools), check marks before
+translation, untranslated placeholders, button ids that collide when translated (help), and button rows. A 4.5 s
+help frame was also found and fixed. The open findings are in
+[known issues](../references/known-issues.md), under "Real-use matrix: layout and tour defects outside the language
+checks" and "emtk shell: Qt main-window controls it does not have yet". The hidden glfw driver reproduced the wheel
+after a window move at emtk `84ce461`, which `2021c7b` fixed.
+
+Where to pick this up:
+
+1. Measure: run `CHISURF_E2E_MATRIX=full` once, about 7 × 124 workers and several hours, in the background. Seeds
+   0 and 1 cover 42 of 868 cases. Group the failures by the last error line of `renders/e2e/<variant>/*.json`, as
+   for the base sweep.
+2. Open: the catalogue backlog dominates the language variants' `missing_translation`; that is the queued i18n job.
+   The untranslated check only fires when a catalogue translation exists but English was drawn, which is a code bug
+   by definition.
+3. Open: `HostedDriver` is not yet a matrix variant. The click-all workers drive the synthetic and realistic
+   drivers only, so the glfw path is covered by `tests/test_testing_realistic.py` and `test_native_resize_clicks.py`
+   alone. A `hosted_glfw` variant needs a display session, so it cannot run in CI.
+4. Open: a Qt-host driver is still missing. emtk docks hosted in the Qt main window go through `emtk/qt_host.py`,
+   which this driver does not exercise; that is where the resize-click lane fixed its bug.
 
 ## Type-check ratchet
 

@@ -240,7 +240,7 @@ def test_copy_raw_files_copies_the_bytes_the_qt_export_copied(qt, photon_folder,
 
 
 def test_tiff_stacks_equal_the_qt_stacks(qt, photon_folder, tmp_path):
-    import tifffile
+    from chisurf.core.fio.image import imread
 
     model = model_on(photon_folder)
     model.set_recursive(True)
@@ -251,7 +251,7 @@ def test_tiff_stacks_equal_the_qt_stacks(qt, photon_folder, tmp_path):
     model.current_file = model.selected_files[0]
     model.do_export_tiff(str(tmp_path / "tiff"))
     got = {
-        p.name: [list(tifffile.imread(p).shape), int(tifffile.imread(p).sum())]
+        p.name: [list(imread(p).shape), int(imread(p).sum())]
         for p in sorted((tmp_path / "tiff").iterdir())
     }
     assert got == qt["tiff"]

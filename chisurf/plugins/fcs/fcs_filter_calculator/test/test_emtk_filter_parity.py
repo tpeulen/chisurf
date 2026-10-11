@@ -207,9 +207,8 @@ def test_the_polarized_and_stacked_modes_draw_without_clipping(drv):
 
 def test_the_reconstruction_plot_shows_the_decay_and_the_fit_range(drv):
     painter = drv.draw(3)
-    assert {"Counts", "TAC bin", "Filter value", "Weighted residuals σ"} <= set(painter.strings) | {
-        "Weighted residuals σ"
-    }
+    # every axis label drawn whole (the residual label used to run off its short panel)
+    assert {"Counts", "TAC bin", "Filter value", "Residual / σ"} <= set(painter.strings)
     assert any(s == "green  measured" for s in painter.strings)
 
 

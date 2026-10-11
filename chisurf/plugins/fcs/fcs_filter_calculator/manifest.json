@@ -76,5 +76,8 @@
   "experimental": true,
   "experimental_message": "FCS Filter Calculator is experimental and not yet validated",
   "menu_hidden": true,
-  "deprecated": false
+  "deprecated": false,
+  "requires": {
+    "tttr_splitter": "*"
+  }
 }

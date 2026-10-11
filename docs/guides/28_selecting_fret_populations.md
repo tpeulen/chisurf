@@ -28,18 +28,20 @@ doubly-labelled species.
 ## In ChiSurf
 
 The **Burst Browser** loads a folder of per-burst `.bur` results into a sortable
-table and live histogram; the **Controls** panel gates the population by
+table and live histogram; the **Burst gates** panel gates the population by
 efficiency, stoichiometry and burst size before histogramming any column:
 
 ```{figure} figures/burst_browser.png
 :name: fig-burst-browser
 :width: 95%
 
-The Burst Browser on a real single-molecule DNA dataset (2980 bursts). The
-**Controls** panel sets the histogram column ($E$) and the `E min` / `S min` /
-`Size min` gates; the **Bursts** table lists every burst; the **Histogram**
-panel shows the FRET-efficiency distribution — here clearly bimodal, a donor-only
-peak near $E=0$ and a FRET population around $E\approx0.4$.
+The Burst Browser on a real single-molecule DNA dataset (the ten `.bur` files of
+`bh_spc132_sm_dna/burstwise_All 0.1000#15`, 2980 bursts). **Data & columns** picks
+the histogram column ($E$); **Burst gates** sets the **E Range**, **S Range** and
+**Photon Size Range** (2057 of the 2980 bursts pass); the **Bursts table** lists the
+gated bursts, 50 to a page; the **Histogram** shows the FRET-efficiency
+distribution — clearly bimodal, a donor-only peak near $E=0$ and a FRET population
+around $E\approx0.4$.
 ```
 
 The native browser opens at **1200 × 800** pixels on first use. After loading a
@@ -92,8 +94,10 @@ ratio = low / high if high else np.nan
 ```
 
 Use the column names provided by your measurement; this example requires `E`,
-`S` and `Number of Photons`. For interactive ROI gates and Gaussian-mixture
-clustering, use **Burst Selection** ([tutorial 26](26_2d_peak_fitting.md)).
+`S` and `Number of Photons`. For region gates and 2-D Gaussian fits on the
+$E$–$S$ map use ndX ([tutorial 26](26_2d_peak_fitting.md)); **Burst Selection**
+fits a 1-D Gaussian mixture to a burst histogram
+([tutorial 29](29_fret_histogram_fitting.md)).
 
 ## Result
 

@@ -11,7 +11,7 @@ import pytest
 from chisurf.core.datastore import numeric_column
 from chisurf.core.fio.fluorescence.burst_companion import read_companion
 from chisurf.core.fio.pto import Measurement
-from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results
+from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results_container
 from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
 
 REPO = Path(__file__).resolve().parents[5]
@@ -85,7 +85,7 @@ def test_native_run_writes_the_frozen_real_grid_and_indexed_container(source):
 
 
 def test_cancellation_during_staging_preserves_existing_outputs(source):
-    paths = write_fcs_results(rows(source), {(str(source.parent), source.stem): 4})
+    paths = write_fcs_results_container(rows(source), {(str(source.parent), source.stem): 4})
     before = {p: p.read_bytes() for p in paths}
     count = 0
 
@@ -96,7 +96,7 @@ def test_cancellation_during_staging_preserves_existing_outputs(source):
             raise CancelledError()
 
     with pytest.raises(CancelledError):
-        write_fcs_results(
+        write_fcs_results_container(
             rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=cancel
         )
     assert {p: p.read_bytes() for p in paths} == before
@@ -104,7 +104,7 @@ def test_cancellation_during_staging_preserves_existing_outputs(source):
 
 
 def test_failed_publication_rolls_back_exact_existing_bytes_and_modes(source, monkeypatch):
-    paths = write_fcs_results(rows(source), {(str(source.parent), source.stem): 4})
+    paths = write_fcs_results_container(rows(source), {(str(source.parent), source.stem): 4})
     paths[0].chmod(0o640)
     before = {p: (p.read_bytes(), p.stat().st_mode) for p in paths}
     replace = Path.replace
@@ -119,12 +119,12 @@ def test_failed_publication_rolls_back_exact_existing_bytes_and_modes(source, mo
 
     monkeypatch.setattr(Path, "replace", fail_once)
     with pytest.raises(OSError, match="publication failed"):
-        write_fcs_results(rows(source, 1), {(str(source.parent), source.stem): 4})
+        write_fcs_results_container(rows(source, 1), {(str(source.parent), source.stem): 4})
     assert {p: (p.read_bytes(), p.stat().st_mode) for p in paths} == before
 
 
 def test_concurrent_output_change_is_preserved_and_rejected(source):
-    paths = write_fcs_results(rows(source), {(str(source.parent), source.stem): 4})
+    paths = write_fcs_results_container(rows(source), {(str(source.parent), source.stem): 4})
     original_pto = paths[0].read_bytes()
     count = 0
 
@@ -135,7 +135,7 @@ def test_concurrent_output_change_is_preserved_and_rejected(source):
             paths[0].write_text("external analysis")
 
     with pytest.raises(RuntimeError, match="changed while"):
-        write_fcs_results(
+        write_fcs_results_container(
             rows(source, 1), {(str(source.parent), source.stem): 4}, cancel_check=external_write
         )
     assert paths[0].read_text() == "external analysis"
@@ -163,7 +163,7 @@ def test_two_analysis_folders_of_one_measurement_publish_together(source):
     a, b = rows(source, 0.5), rows(source, 0.7)
     a[0]["Burst Folder"], b[0]["Burst Folder"] = str(first), str(second)
     counts = {(str(first), source.stem): 4, (str(second), source.stem): 5}
-    paths = write_fcs_results(a + b, counts)
+    paths = write_fcs_results_container(a + b, counts)
     assert len(paths) == 1 and paths[0].suffix == ".pto"
     assert not (first / "td4").exists() and not (second / "td4").exists()
     # The canonical last-run table remains the latest analysis, as before.
@@ -240,7 +240,7 @@ def test_stop_after_completed_publication_keeps_successful_output(source):
 
 def test_cancellation_after_first_publish_rolls_back_previous_outputs(source):
     """Cancellation in the bounded publication phase restores already replaced artifacts."""
-    paths = write_fcs_results(rows(source), {(str(source.parent), source.stem): 4})
+    paths = write_fcs_results_container(rows(source), {(str(source.parent), source.stem): 4})
     before = {p: p.read_bytes() for p in paths}
     count = 0
 
@@ -251,7 +251,7 @@ def test_cancellation_after_first_publish_rolls_back_previous_outputs(source):
             raise CancelledError()
 
     with pytest.raises(CancelledError):
-        write_fcs_results(
+        write_fcs_results_container(
             rows(source, 1),
             {(str(source.parent), source.stem): 4},
             cancel_check=cancel_after_container,

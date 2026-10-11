@@ -109,6 +109,12 @@ construction; exclude them (the per-dwell table carries an *Is Edge* flag) or
 account for the censoring before reading rate constants off dwell histograms
 rather than off the transition matrix.
 
+**`< x` in the Rates table is a transition the data do not show.** A rate below
+one event in the time spent inside the bursts (`x` = 1 / that time) cannot be
+measured; most such rates sit at the 1e-12-per-tick floor EM keeps every transition
+probability above. They are listed as bounds (`< x` 1/s, waiting time `> 1/x`) and
+the kinetic scheme on *Dwell FRET* draws no arrow for them.
+
 **A flat likelihood profile means an unidentifiable state.** The **LL scan**
 button profiles the log-likelihood in each state's E and S; a flat curve or a
 window-wide confidence interval says the data do not determine that state, and no

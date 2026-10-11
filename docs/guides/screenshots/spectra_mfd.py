@@ -48,11 +48,21 @@ def _grab_forster_calculator():
     _grab(w, "forster_calculator.png")
 
 def _grab_mfd_prepare():
-    from chisurf.plugins.burst.mfd_prepare.gui.tool import MfdPrepareTool
-    t = MfdPrepareTool(); t.resize(1400, 700)
-    t._folder = str(pathlib.Path(BURST).resolve()); t.folder_label.setText(pathlib.Path(BURST).name)
-    t._prepare(); QApplication.processEvents()
-    _grab(t, "mfd_prepare_report.png")
+    """The native MFD Prepare window after *Prepare* on the shipped sm-DNA burst folder (guide 85)."""
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from emtk.testing import Driver
+    from emtk_shot import app_from, wait
+
+    app = app_from("mfd_prepare")
+    driver = Driver(app, (1400, 860))
+    driver.frame(2)
+    assert app.files_dropped([str(pathlib.Path(BURST).resolve())])
+    app.start_prepare()
+    wait(driver, lambda: not app.job.busy, timeout=600)
+    print("mfd prepare:", app.panel.status_line, flush=True)
+    driver.screenshot(FIG / "mfd_prepare_report.png")
+    print("wrote mfd_prepare_report.png", flush=True)
+    app.close()
 
 if __name__ == "__main__":
     for name in sys.argv[1:]:

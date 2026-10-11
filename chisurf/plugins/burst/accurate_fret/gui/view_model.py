@@ -321,7 +321,7 @@ class AccurateFretViewModel:
             self._dyes = list_dyes(db_path=self.database_path)
         return ["", *[d.name for d in self._dyes]]
 
-    def apply_dye_selection(self) -> str:
+    def apply_dye_selection(self, _value=None) -> str:
         """Take R0, the quantum yields and tau_D(0) from the selected dye pair.
 
         The indirect route to the database: the user picks two dyes, and the
@@ -330,6 +330,12 @@ class AccurateFretViewModel:
         yields and (when curated) the donor lifetime. Anything the database
         cannot answer is left untouched rather than defaulted, and the report
         says which is which.
+
+        Parameters
+        ----------
+        _value : object, optional
+            The value a bound control just committed (the dye or the number);
+            it is already on the model, so it is not read here.
 
         Returns
         -------

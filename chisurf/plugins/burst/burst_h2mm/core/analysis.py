@@ -158,6 +158,10 @@ class H2mmAnalysis:
         then come from Viterbi instead, and :attr:`dwell_decoder` says so.
     dwell_decoder : str
         Decoder that produced :attr:`dwell_path`.
+    observed_time_s : float
+        Time inside the analysed bursts (s). A transition rate well below
+        ``1 / observed_time_s`` predicts less than one event in the data, so it is
+        a bound, not a measurement (``nan`` when unknown).
     n_streams : int
         Number of photon streams in the fitted data.
     base_time_s : float
@@ -192,6 +196,7 @@ class H2mmAnalysis:
     n_underflow: int = 0
     dwell_path: np.ndarray | None = None
     dwell_decoder: str = "viterbi"
+    observed_time_s: float = float("nan")
 
     def dwell_time_arrays(self, *, include_edges: bool = False) -> dict:
         """Per-state dwell durations (base time units), censored ones dropped.
@@ -1013,4 +1018,5 @@ def analyze(
         n_underflow=int(n_underflow),
         dwell_path=np.asarray(dwell_path, dtype=np.int64),
         dwell_decoder=dwell_decoder,
+        observed_time_s=float(data.total_time) * base_time_s if base_time_s > 0 else float("nan"),
     )

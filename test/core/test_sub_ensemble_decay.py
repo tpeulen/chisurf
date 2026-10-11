@@ -17,7 +17,7 @@ from chisurf.core.fio.pto import Measurement
 from chisurf.core.fluorescence.burst.decay import (
     DECAY_NAME,
     sub_ensemble_decay,
-    write_sub_ensemble_decay,
+    write_sub_ensemble_decay_container,
 )
 
 SPC = Path(__file__).resolve().parents[1] / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
@@ -93,7 +93,7 @@ def test_the_decay_reads_back_and_chains_to_its_selection(run):
     path, raw, *_ = run
     keep = np.array([True, True, False, False, True, False])
     decay = sub_ensemble_decay(path, [0, 1], mask=keep)
-    container = write_sub_ensemble_decay(
+    container = write_sub_ensemble_decay_container(
         path, decay, {"channels": "0,1", "selected": keep.tolist()}
     )
     back = read_tables(path)[DECAY_NAME]
@@ -107,6 +107,8 @@ def test_the_decay_reads_back_and_chains_to_its_selection(run):
     assert f"{RUN}/bi4_bur/m000.bur" in lineage  # decay -> selection -> primary photons
     # a different selection is a different run, not an overwrite
     other = sub_ensemble_decay(path, [0, 1], mask=~keep)
-    write_sub_ensemble_decay(path, other, {"channels": "0,1", "selected": (~keep).tolist()})
+    write_sub_ensemble_decay_container(
+        path, other, {"channels": "0,1", "selected": (~keep).tolist()}
+    )
     with Measurement.open(container) as m:
         assert sum(1 for o in m.artifacts() if str(o.name).endswith(DECAY_NAME)) == 2

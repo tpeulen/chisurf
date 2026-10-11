@@ -363,6 +363,22 @@ class BurstGsGui:
                 implot.setup_axes(
                     "transition time (\u00b5s)", "\u0394 log-likelihood vs instantaneous"
                 )
+                # The scan is log-spaced (1 \u00b5s .. 1 ms): on a linear axis its whole
+                # flat, too-fast-to-see region was squeezed into the first pixel, so
+                # the figure showed only the fall the guide tells the reader to look past.
+                implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
+                # Room above zero, so the instantaneous baseline is not the frame's edge.
+                values = np.concatenate([np.asarray(t["y"], float) for t in transit])
+                values = values[np.isfinite(values)]
+                low = float(min(values.min(), 0.0)) if values.size else -1.0
+                high = float(max(values.max(), 0.0)) if values.size else 0.0
+                pad = 0.06 * (high - low) or 1.0
+                request = (low - pad, high + pad)
+                changed = request != getattr(self, "_transit_request", None)
+                self._transit_request = request
+                implot.setup_axis_limits(
+                    implot.AXIS_Y1, *request, implot.COND_ALWAYS if changed else implot.COND_ONCE
+                )
                 for series in transit:
                     implot.set_next_line_style(
                         _hex_to_rgba(series.get("color", "#4c9be8")), float(series.get("width", 2))

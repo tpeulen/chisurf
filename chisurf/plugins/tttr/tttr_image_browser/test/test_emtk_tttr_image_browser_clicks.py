@@ -209,7 +209,7 @@ def test_copy_raw_files_and_tiff_are_greyed_until_a_file_is_selected(app, drv, o
 
 
 def test_tiff_writes_the_stacks_of_the_selected_file(app, drv, shown, tmp_path):
-    import tifffile
+    from chisurf.core.fio.image import imread
 
     (tmp_path / "tiffs").mkdir()
     drv.click("export_tiff")
@@ -218,7 +218,7 @@ def test_tiff_writes_the_stacks_of_the_selected_file(app, drv, shown, tmp_path):
     drv.settle()
     names = sorted(p.name for p in (tmp_path / "tiffs").iterdir())
     assert names == ["Leica_SP8_green.tiff", "Leica_SP8_red.tiff"]
-    assert tifffile.imread(tmp_path / "tiffs" / names[0]).shape == (93, 512, 512)
+    assert imread(tmp_path / "tiffs" / names[0]).shape == (93, 512, 512)
     assert "Wrote 2 TIFF stack(s)" in app.model.status_line
 
 

@@ -47,7 +47,6 @@ MATURITY_FLAGS: dict[str, _MaturityFlag] = {
 }
 
 
-
 def maturity_markers(meta: Mapping[str, Any]) -> list[str]:
     """Return the marker glyph of every maturity flag *meta* sets, in render order.
 

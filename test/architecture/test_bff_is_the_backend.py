@@ -126,28 +126,34 @@ def test_a_representable_fit_becomes_one_bff_graph():
 
 
 def test_the_session_format_is_bffs():
-    """A project's node graph is written and read by ``bff.GraphSession``.
+    """The node graph a project restores is read and staged by ``bff.GraphSession``.
 
-    chinet's JSONL format, with bff owning it since the phase-2 port. The
-    ``.csp`` archive around it is ChiSurf's; what is *in* it is not.
+    chinet's JSONL format, with bff owning it since the phase-2 port. A ``.cs.pto``
+    project stores only fit-owned state (the live graph is not embedded, see the
+    known issue), so the graph session that remains is the private registry the
+    restore stages into (``chisurf.core.project.session``) and the probe a project
+    transition runs; both are ``bff.GraphSession``, and neither is a graph format
+    of ChiSurf's own.
     """
     import ast
     import pathlib
 
-    from chisurf.core.project import project as project_module
+    from chisurf.core.project import session as session_module
+    from chisurf.core.project import transition as transition_module
 
     assert hasattr(bff, "GraphSession")
     assert hasattr(bff.GraphSession, "load")
 
-    # `IMP.bff` is imported inside the save/load functions rather than at
-    # module scope (a project that is never opened should not pay for it), so
-    # the provenance is read off the source instead of the module namespace.
-    source = pathlib.Path(project_module.__file__).read_text(encoding="utf-8")
-    assert "bff.GraphSession.load" in source, (
-        "the session is no longer read by IMP.bff; chinet's format has an "
-        "owner and it is not this package"
-    )
-    ast.parse(source)
+    # `IMP.bff` is imported inside the restore functions rather than at module
+    # scope (a project that is never opened should not pay for it), so the
+    # provenance is read off the source instead of the module namespace.
+    for module in (session_module, transition_module):
+        source = pathlib.Path(module.__file__).read_text(encoding="utf-8")
+        assert "bff.GraphSession()" in source, (
+            f"{module.__name__} no longer stages through IMP.bff; chinet's format has an "
+            "owner and it is not this package"
+        )
+        ast.parse(source)
 
 
 def _description_node_types(family: str) -> set:

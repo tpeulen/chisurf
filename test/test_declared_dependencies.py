@@ -146,6 +146,9 @@ _BUILD_ONLY = {
     "eigen",
     "libboost-headers",
     "cereal",
+    # The RMF library imp-bff links when built from source, which is what gives the dev build its
+    # RmfStructureWriter (the pip wheel is built without RMF). The shipped package gets imp-bff built.
+    "rmf",
 }
 
 #: In the dev env but deliberately not in the released package, with the reason.

@@ -7,7 +7,11 @@
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["Spectroscopy", "Decay", "Fluorescence decay"],
+  "categories": [
+    "Spectroscopy",
+    "Decay",
+    "Fluorescence decay"
+  ],
   "state_namespace": "lifetime_analysis",
   "statefulness": {
     "enabled": true,
@@ -19,16 +23,10 @@
   "entrypoints": {
     "emtk": "chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app:make_app"
   },
-  "optional_requires": {
-    "irf_estimator": "*",
-    "lltf": "*",
-    "maxent_decay": "*",
-    "microtime_histogram": "*",
-    "vv_vh_g_factor": "*",
-    "vv_vh_anisotropy": "*",
-    "synthetic_decay": "*"
-  },
   "experimental": true,
   "experimental_message": "Decay Analysis is experimental and not yet validated",
-  "menu_hidden": false
+  "menu_hidden": false,
+  "requires": {
+    "calculators": "*"
+  }
 }

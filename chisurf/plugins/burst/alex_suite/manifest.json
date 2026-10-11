@@ -28,7 +28,11 @@
     "burst_analysis": "*"
   },
   "optional_requires": {
-    "ndxplorer": "*",
+    "accurate_fret": "*",
+    "burst_background": "*",
+    "burst_browser": "*",
+    "burst_bva": "*",
+    "burst_selection": "*",
     "ptu_alex_creator": "*",
     "tttr_to_pto": "*"
   },

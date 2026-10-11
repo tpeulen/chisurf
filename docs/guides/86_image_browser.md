@@ -122,10 +122,10 @@ report is written without any Word library.
 ## 7. From the command line and Python
 
 ```bash
-tttr-image-browser list FOLDER [--recursive]
-tttr-image-browser load FILE [--max-side 512]
-tttr-image-browser export-tiff FILE [FILE ...] --output-dir DIR
-tttr-image-browser contract
+csc tttr-image-browser list FOLDER [--recursive]
+csc tttr-image-browser load FILE [--max-side 512]
+csc tttr-image-browser export-tiff FILE [FILE ...] --output-dir DIR
+csc tttr-image-browser contract
 ```
 
 On the Leica SP8 file, `list` prints `Leica_SP8.ptu	12.0 MB	★0`, `load` prints the

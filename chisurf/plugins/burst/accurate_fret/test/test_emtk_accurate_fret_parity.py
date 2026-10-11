@@ -70,7 +70,13 @@ def test_calibration_equals_the_qt_tool(tmp_path):
                 default=str,
             )
         )
-        assert ours == {"factors": recorded["factors"], "populations": recorded["populations"]}
+        # Deliberate difference: the Qt tool said "source not reported" for a beta the 1/S fit
+        # measured (tttrlib did not report beta's identification); it is a data estimate.
+        expected = [
+            dict(row, origin="data estimate") if row["factor"] == "\u03b2" else row
+            for row in recorded["factors"]
+        ]
+        assert ours == {"factors": expected, "populations": recorded["populations"]}
     finally:
         app.close()
 

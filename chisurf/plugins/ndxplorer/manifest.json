@@ -6,7 +6,10 @@
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["Tools", "Views"],
+  "categories": [
+    "Tools",
+    "Views"
+  ],
   "icon": "\ud83d\udd2d",
   "state_namespace": "ndxplorer",
   "entrypoints": {
@@ -24,7 +27,6 @@
   "optional_requires": {
     "accurate_fret": "*",
     "burst_fcs_correlator": "*",
-    "burst_mle_analysis": "*",
-    "mmfdb_admin": "*"
+    "burst_mle_analysis": "*"
   }
 }

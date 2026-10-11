@@ -17,6 +17,13 @@
 
 ## 2026-10-10
 
+- QA round 2026-10-11 (four persona walks, real-use matrix, S2 defects, hand-overs): ~60 defects fixed with
+  tests, among them generator scans unreadable by every imaging step (no scan geometry; a 100 Hz "laser"),
+  the Anisotropy Wizard's global fit off its own simulation (IRF tail pedestal; χ²ᵣ 4.2 → 0.99), MMFDB
+  "Authentication required" per file, H2MM rates below one event shown as measured, Lifetime mixtures that
+  read [0.] (imp.bff fceece9ed), no AV distance on 148L (imp.bff f2c272dc7 source hop), ProteinMC's
+  Structure page and emtk-shell autosave; the real-use matrix (sizes, resize, scale 2, de/fr, realistic
+  input) and the whole-app parity test; French catalogue complete; guide screenshot scripts all native.
 - QA walk, FCS/lifetime/PCH/console/project guides: 16 defects fixed with tests — the FCS general model's
   default fit was unidentifiable (D, w_r, w_z free; one focus measures D/w_r²; w_r now starts fixed), its MDF
   Outputs panel showed N/A outside MDF, the PCH fit was unweighted (χ²ᵣ ~1e20; now Poisson-weighted), FIDA

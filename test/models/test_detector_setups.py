@@ -198,7 +198,7 @@ def test_a_missing_setups_file_never_blocks_a_headless_run(tmp_path, monkeypatch
         file_path=str(missing), skip_migration=True
     )
 
-    assert result == {"setups": {}}
+    assert result == {"setups": {}, "last_used": ""}
     assert not shown, "a modal dialog was opened in a headless run"
 
 

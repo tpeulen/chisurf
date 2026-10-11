@@ -14,12 +14,12 @@
     },
     {
       "title": "Load data you can check",
-      "text": "<b>Load demo</b> simulates 40 donor/acceptor traces of a four-state molecule and loads them exactly as <i>File → Load</i> would load a raw <tt>.dat</tt>.",
+      "text": "<b>Load example</b> simulates 40 donor/acceptor traces of a four-state molecule and loads them exactly as <i>File → Load</i> would load a raw <tt>.dat</tt>.",
       "target": {
         "name": "load_example"
       },
       "await": {
-        "hint": "Press <b>Load demo</b>."
+        "hint": "Press <b>Load example</b>."
       }
     },
     {

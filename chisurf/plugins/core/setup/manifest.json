@@ -21,8 +21,6 @@
     "emtk": "chisurf.plugins.core.setup.gui.app:make_app"
   },
   "optional_requires": {
-    "acq": "*",
-    "ai_settings": "*",
     "boarding": "*",
     "fcs_channel_preset": "*",
     "model_manager": "*",

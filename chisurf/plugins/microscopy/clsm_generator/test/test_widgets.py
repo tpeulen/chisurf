@@ -85,3 +85,28 @@ def test_generate_and_save_roundtrip(tmp_path):
     with np.load(out) as data:
         assert "macro_times" in data
         assert len(data["macro_times"]) > 0
+
+
+@pytest.mark.parametrize("suffix", [".ptu", ".pto"])
+def test_a_saved_scan_opens_in_the_imaging_steps_as_it_is(tmp_path, suffix):
+    """Drop the generator's file on *1. Intensity*: the step must see the 16x16 scan, not ``0x0 px``."""
+    import json
+
+    from chisurf.core.fluorescence.imaging.pixel_maps import build_clsm
+    from chisurf.plugins.microscopy.clsm_generator.gui.view_model import ClsmGeneratorViewModel
+
+    inten, life = tmp_path / "i.npy", tmp_path / "l.npy"
+    np.save(inten, np.ones((16, 16)))
+    np.save(life, np.full((16, 16), 2.0))
+    vm = ClsmGeneratorViewModel()
+    vm.n_lifetime_levels, vm.n_intensity_levels = 2, 2
+    vm.sel_intensity, vm.sel_lifetime_files = str(inten), [str(life)]
+    vm.generate()
+    out = tmp_path / f"scan{suffix}"
+    assert vm.save(str(out)) == str(out)
+    import tttrlib
+
+    image = np.asarray(build_clsm(tttrlib.TTTR(str(out)), channels=(0,)).intensity).sum(axis=0)
+    np.testing.assert_array_equal(image, np.asarray(vm._sim.intensity))
+    layout = json.loads(out.with_suffix(".json").read_text())["scan_layout"]
+    assert layout == {"kind": "chisurf-simulated-raster", "n_pixel_per_line": 16}

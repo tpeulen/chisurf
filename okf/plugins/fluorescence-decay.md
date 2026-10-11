@@ -9,13 +9,17 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
-1. Open: **the Anisotropy Wizard's global fit does not fit its own simulated example** (χ²ᵣ 4.2 with the reader's
-   auto range, 27.6 over bins 20–780; r0 0.347 against 0.38). Measure: `NativeAnisotropyModel().load_example()`,
-   `load_data()`, `create_fits()`, run the global fit, compare model and data where the data are ~0 (bin 25:
-   0 vs 25.3). Trap: the plugin test checks parameters only, never χ². Moving the IRF background region does not
-   help. Known issue "Anisotropy Wizard's global fit misses its own simulated example" (2026-10-11).
-2. Open: **the VV/VH G-factor tool has no demo**, so guide 91 cannot be walked without user files; the synthetic
-   references the guide figures use live only in the screenshot scripts.
+1. Measure: **the Anisotropy Wizard's example** — Load example → Load / reload data → Create fits → Fit, untouched:
+   χ²ᵣ 0.99, τ 3.997 ns, ρ 1.999 ns, r0 0.381 (truth 4 / 2 / 0.38). Each fit uses its IRF only over the pulse's
+   channels (*IRF start/stop*, `core/irf.py` `response_window`). Trap: the model clips the background-subtracted
+   IRF at zero, so any IRF used over a noisy tail adds a constant offset under the decay — un-clipping the wizard's
+   subtraction does not help (the model clips again). Tried and reverted: unclipped `correct_irfs` (no effect).
+   Open: the window threshold (5 σ, 0.1 % of peak) cuts an IRF reflection below 0.1 % of the peak; the user can
+   widen *IRF stop* in the model editor.
+2. Measure: **the VV/VH G-factor demo** — Load example: G 1.239 ± 0.132 (simulated 1.2), linked l1 = l2 0.014
+   (simulated 0), batch r∞ 0.047 (ρ 8 ns) / 0.230 (ρ 30 ns). Guide 91 is walkable; its figures
+   (`gfactor_native_primary_window.png`, `vv_vh_g_factor_native_*.png`) still come from the screenshot scripts'
+   own references and could be regenerated from the demo.
 
 The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting (TCSPC) microtime histograms: fitting lifetime decays, recovering the instrument response function (IRF), extracting lifetime or FRET-distance distributions, and resolving rotational anisotropy. These tools depend on a correct IRF and instrument corrections, so estimation and calibration steps sit alongside the fitting steps.
 

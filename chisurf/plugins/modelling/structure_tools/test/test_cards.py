@@ -301,3 +301,20 @@ def test_a_card_keeps_the_hosts_keyboard_entry_point():
     assert callable(app.key)
     app.key(ord("a"), "a", 0)
     app.close()
+
+
+def test_the_shipped_hiv_rt_example_names_structures_that_open_from_its_own_folder(tmp_path):
+    """A user loading the example must be able to Compute AVs without editing it (the guide figure did so)."""
+    from chisurf.plugins.modelling.fps_json_editor.core.model import FpsJsonModel
+
+    shipped = Path(__file__).resolve().parents[2] / "fret/examples/fps_hiv_rt"
+    copy = tmp_path / "unpacked"
+    shutil.copytree(shipped, copy, ignore=shutil.ignore_patterns("dock_out"))
+    model = FpsJsonModel()
+    model.load_file(str(copy / "hiv_rt.fps.json"))
+    assert len(model.positions) == 11
+    for name, params in model.positions.items():
+        path = Path(params["pdb_path"])
+        assert path.is_absolute() and path.is_file() and path.parent == copy.resolve(), name
+        expected = "protein_1R0A.pdb" if int(params.get("body_id", 0)) == 0 else "dna.pdb"
+        assert path.name == expected, name

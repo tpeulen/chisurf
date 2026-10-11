@@ -188,18 +188,24 @@ def _number(value: Any) -> float | None:
 
 
 def _row(entry: dict) -> dict:
-    """One table row from a resolved parameter entry."""
+    """One table row from a resolved parameter entry.
+
+    An output (a derived quantity such as ``s`` or ``ε``) is computed, never fitted: it has no
+    *Fixed* or *Bounds* to set, so those cells are empty (``None``) rather than a check box —
+    the Qt editor shows none either. The entry still says ``fixed`` (nothing may move it).
+    """
     output = bool(entry.get("is_output"))
     linked = bool(entry.get("is_linked") or entry.get("linked_to"))
+    fit_control = None if output else True
     return {
         "uid": str(entry.get("uid") or entry.get("name")),
         "name": str(entry.get("name", "")),
         "label": label_markup(entry.get("label") or entry.get("name", "")),
         "value": _number(entry.get("value")),
-        "fixed": bool(entry.get("fixed")),
-        "lo": _number(entry.get("lo")),
-        "hi": _number(entry.get("hi")),
-        "bounds_on": bool(entry.get("bounds_on")),
+        "fixed": fit_control and bool(entry.get("fixed")),
+        "lo": fit_control and _number(entry.get("lo")),
+        "hi": fit_control and _number(entry.get("hi")),
+        "bounds_on": fit_control and bool(entry.get("bounds_on")),
         "error": _number(entry.get("error_estimate")),
         "output": output,
         "linked": linked,

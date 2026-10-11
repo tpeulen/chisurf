@@ -548,8 +548,11 @@ class SpotFinderApp(ImApp):
             im.text_wrapped(self.error or self.job.error)
 
     def image_view(self, box):
+        # The two captions share one column, as wide as the longer translation ("Région sélectionnée" ran into its combo
+        # at the fixed 110 px the English captions fit in).
+        column = 8.0 + max(im.calc_text_size(tr(t))[0] for t in ("Filter regions", "Selected region"))
         im.text(tr("Filter regions"))
-        im.same_line(110)
+        im.same_line(column)
         im.set_next_item_width(-1)
         _, self.region_filter = im.input_text(
             "##filter_regions", self.region_filter, hint=tr("Region name or file")
@@ -566,7 +569,7 @@ class SpotFinderApp(ImApp):
         )
         if displayed:
             im.text(tr("Selected region"))
-            im.same_line(110)
+            im.same_line(column)
             im.set_next_item_width(-1)
             changed, index = im.combo("##selected_region", current, labels)
             self.remember("selected_region")

@@ -44,23 +44,20 @@ SIZE = (1440, 900)
 #: Qt controls the emtk shell does not have yet, by inventory key, with the reason / owner.
 #: This only shrinks (okf/references/known-issues.md "emtk shell has no ribbon", found
 #: 2026-10-11; okf/subsystems/qt-retirement.md).
-_RIBBON = "the emtk shell has no ribbon (known issue 'emtk shell has no ribbon', W9 shell owner)"
+_RIBBON = ("the emtk shell's ribbon lacks it (known issue 'emtk shell: Qt main-window controls it does "
+           "not have yet', W9 shell owner)")
 _FIT_EXPORT = ("fit export/import is Qt-bound in chisurf/macros/core_fit.py::save_fit "
                "(qt-retirement ledger item 7, S3 KNOWN_GAPS)")
 _LOG = "the emtk Log dock is a plain text view: no filter, history table, pause, clear or hide"
 KNOWN_GAPS: dict[str, str] = {
-    "ribbon_tab:File": _RIBBON,
-    "ribbon_tab:Main": _RIBBON,
-    "ribbon_tab:Spectroscopy": _RIBBON,
-    "ribbon_tab:Structure": _RIBBON,
-    "ribbon_tab:Tools": _RIBBON,
     "ribbon_panel:File/Application": _RIBBON,
     "ribbon_panel:File/Recent": _RIBBON,
     "ribbon_panel:Main/Window": _RIBBON,
-    "ribbon_corner:?": _RIBBON + " (its Help button)",
-    "ribbon_corner:Language: English": _RIBBON + " (its language selector; no language switch in the shell)",
-    "ribbon_corner:P": _RIBBON + " (pin / auto-fold)",
-    "ribbon_corner:Search...": _RIBBON + " (its command search)",
+    # The emtk ribbon (chisurf/emtk/shell_ribbon.py) draws "Help" and "EN" here: the ribbon
+    # owner decides whether they are these controls renamed (then RENAMED) or still gaps.
+    "ribbon_corner:?": _RIBBON + " (its Help button: emtk shows 'Help')",
+    "ribbon_corner:Language: English": _RIBBON + " (its language selector: emtk shows 'EN')",
+    "ribbon_corner:P": _RIBBON + " (pin / auto-fold; emtk has a fold ▲ only)",
     "menu:File/Fits/All Fits": _FIT_EXPORT,
     "menu:File/Fits/Current Fit": _FIT_EXPORT,
     "menu:File/Fits/Load Fit": _FIT_EXPORT,
@@ -155,6 +152,10 @@ def reached():
                 raw.add(str(row["label"]))
                 if row["kind"] in ("begin_tab_item", "selectable", "button", "small_button"):
                     tabs.add(_key(row["label"]))
+        # A ribbon draws its tabs itself and names them ``<ribbon>.tab.<title>`` (emtk.ribbon).
+        for key in list(shell.item_rects):
+            if ".tab." in key:
+                tabs.add(_key(key.split(".tab.", 1)[1]))
         recorder.rows.clear()
 
     try:
@@ -237,7 +238,8 @@ def test_behaviours_the_qt_shell_has_that_no_inventory_shows(tmp_path):
     try:
         console.execute("import matplotlib.pyplot as plt; plt.plot([1, 2, 3]); plt.show()")
         transcript = console.transcript
-        images = transcript.images() if hasattr(transcript, "images") else []
+        images = getattr(transcript, "images", [])
+        images = images() if callable(images) else images
         text = "".join(str(line[0]) for line in getattr(transcript, "lines", []))
         assert images, f"no figure drawn in the emtk console; transcript ends: {text[-300:]!r}"
         assert "<Figure" not in text and "Line2D" not in text, text[-300:]

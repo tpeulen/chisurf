@@ -53,8 +53,9 @@ The status line reports how many bursts from how many files went across, and
 whether the handoff was recorded — for the gate above, *Sent 59 bursts from 1
 file(s) to pda (not recorded: no database product attached)*. The menu uses the
 consumer's advertised `defaults`; it has no dialog for parameters, so detector
-groups other than `[[0], [1]]`, or PDA on a non-PTU file, need the
-headless call below.
+groups other than `[[0], [1]]` (green 0/8 and red 1/9 on this file, say) need the
+headless call below. The file's container type is the one the burst analysis
+recorded, else what the file itself declares; no consumer assumes a vendor format.
 
 ## The menu is not a list ndX keeps
 
@@ -199,12 +200,6 @@ MMFDB), `provenance` is `None`.
 - **The result stays in ChiSurf's reply.** The menu shows the counts in the
   status line and drops the returned decay, histogram or curves; nothing opens
   as a dataset or fit. Use `bridge.send(...)` to keep them.
-- **FCS from the menu returns no curves.** The advertised default pair in
-  {src}`chisurf/server/burst_consumers.json` is `{"ch1": [0], "ch2": [1]}`;
-  the correlator reads `chs_a`/`chs_b`, so both channel lists are empty. Pass
-  `pairs=[{"name": "GxR", "chs_a": [0], "chs_b": [1]}]` from a script.
-- **PDA on a non-PTU file is silently empty.** `pda.from_bursts` defaults to
-  `reading_routine="PTU"`; on an SPC file it answers `ok` with `curves: []`.
 - **Bare file names are resolved against the working directory**, not the
   analysis folder, so a `.bur` naming `m000.spc` fails with *No such file or
   directory* unless ndX runs from the data folder.

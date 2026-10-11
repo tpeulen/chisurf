@@ -4,6 +4,101 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## IMP.bff's bounded least squares returns a start near the edge of a wide box unchanged (found 2026-10-11)
+
+status: open
+
+`FitMinimizer` (the sine bounds transform over MINPACK `lmdif`) stops on its first trust-region collapse and
+returns the start with status 2 ("relative error between two consecutive iterates") and no error when a parameter
+starts close to one edge of a very wide box. Re-derive: `build_lifetime_fit(decay, irf=None, fit_irf=True,
+irf_width=0.2, ...)` in `chisurf/core/fluorescence/decay_fit_model.py` with the description's own width box
+`(1e-4, decay_size*dt)` = 1e-4..32.768 ns. The 16 evaluations never move a single parameter, so lifetimes come
+back as the starting guesses; the same fit with the width box 1e-4..4 ns recovers tau 4.001 ns and width 0.251 ns
+(truth 4.0, 0.25), and 1e-4..5 ns stalls again (the start's position in the box, `2*(x-lo)/(hi-lo)-1`, is about
+-0.9 at the threshold). ChiSurf now bounds the fitted prompt width to a decade either side of its start, which
+removes the symptom for that model only. Root cause belongs in `src/fit/FitMinimizer.cpp` (`fdjac2_step` and the
+first trust radius for a start in the flat part of the transform); every other fit that frees a parameter far from
+the middle of a wide box can fail the same silent way.
+
+## QA walk of the imaging, microscopy and structure guides (found 2026-10-11)
+
+status: open — owner: imaging/microscopy and modelling plugins; fixed items name their regression test, open items their owner.
+
+Walked headlessly (`emtk.testing.Driver`, scratch `CHISURF_SETTINGS_DIR`, en/de/fr, 800×600 and 1400×900/1920×1080),
+in the plugin apps, the emtk shell (`EmtkShellApp`) and hosted in Qt (`open_native_plugin`), with the CLSM Generator's
+own output (64×64, two detectors, τ = 2 and 3 ns), the Spot Finder / Region MLE, Colocalization, N&B, Flow, PSF,
+HydroPro and chimol demos, and the shipped HIV-RT fps.json. Guides walked step by step: 98 (Imaging Tools), 98 (CLSM
+Generator), 84, 38, 67, 93, 44 (load, rotate, zoom, de/fr), 88, 23, 104, 51 (headless); the rest opened and checked
+for layout only (resume list in [imaging plugins](../plugins/imaging.md)).
+
+* **Fixed — the CLSM Generator's photon stream could not be read back by any imaging step.** Saved as PTU/PTO it
+  carried no `ImgHdr_*` tags, so `CLSMImage` auto-detection gave `0x0` ("sim.ptu: 0x0 px. Expected a non-empty image
+  or stack.") in Intensity, N&B, Micro-time, Phasor and Pixel MLE. Repro: Generate → Save photon stream (.ptu) → drop it
+  on *1. Intensity*. Fix: `simulate.declare_scan_header` writes the raster geometry and marker channels into every
+  simulated scan; the generator also writes the `<stem>.json` scanner sidecar (the only route for SPC/HT3). Tests:
+  `test/core/test_simulated_raster_timing.py::test_a_written_scan_reconstructs_and_phasors_without_being_told_the_scanner`,
+  `clsm_generator/test/test_widgets.py::test_a_saved_scan_opens_in_the_imaging_steps_as_it_is`.
+* **Fixed — every simulated scan declared a 100 Hz laser.** The macro clock was the simulator's 10 ms integration
+  window (header macro resolution 0.01 s), so the automatic phasor frequency gave g = 1, s = 0 in every pixel of a
+  generated scan. Macro times are now laser-period ticks and the macro resolution is `n_micro · dt`; images and decays
+  are pixel-identical. After the fix: green g 0.177 / s 0.527, red g 0.049 / s 0.395 (analytic, rotated by the 0.32 ns
+  IRF delay). Tests: same file (contract changed from `window_dt` to the period), `clsm/test/test_native_metadata.py`.
+* **Fixed — a file dropped on Image Tools never reached a pixel step.** The hub overrode the calculator hub's drop
+  forwarding with one that tried only `on_files_dropped`; Intensity, N&B, Micro-time, Phasor, Pixel MLE, Drift,
+  Resolution, Tracking and Colocalization answer `files_dropped`. The override is gone. The hub test used a fake child
+  with the other name. Test: `test_emtk_imaging_tools_clicks.py::test_a_file_dropped_on_the_hub_reaches_a_real_step_that_answers_files_dropped`.
+* **Fixed — the background precompute ran every step on a `ch0` window instead of the detector setup.** A step first
+  built by the precompute got no setup, and a hub without a saved setup had `{}` while its Setup page showed the three
+  default detectors. Repro: fresh settings, drop a scan on *1. Intensity*, *Next*, open *5. Phasor-FLIM*: "Windows: ch0."
+  Tests: `test_emtk_imaging_tools_precompute.py::test_a_step_the_background_builds_computes_with_the_shared_setup_not_the_ch0_fallback`,
+  `::test_without_a_saved_setup_the_tools_use_the_setup_the_setup_page_shows`.
+* **Fixed — after the Spot Finder's Load example or Detect the hub waited for ever.** `_poll_children` set
+  `model.busy = True` while a child's job ran and never cleared it when the open tool's own frame delivered the result:
+  the background precompute never started again and Run all stalled. Test:
+  `test_emtk_imaging_tools_precompute.py::test_a_job_the_open_tool_finished_itself_does_not_leave_the_hub_waiting_on_it`.
+* **Fixed — translated button rows ran past the dock edge.** `emtk_layout.button_width` measured the English source
+  while `im.button` draws `tr(label)` ("Enregistrer les réglages" cut at the Spot Finder's edge; every `button_row` /
+  `same_line_or_wrap` user). Test: `test/native_emtk/test_button_row_hidden_identity.py::test_a_row_of_translated_buttons_wraps_on_the_width_it_draws`.
+  Also: Spot Finder "Région sélectionnée" overprinted its combo (fixed 110 px caption column; now sized to the text).
+* **Fixed — chimol in a window narrower than 760 px picked and rotated at the wrong place.** The host renders at the
+  clamped size and scales the blit, but forwarded unscaled pointer coordinates. Test:
+  `chisurf/plugins/chimol/test/test_emtk_host.py::test_a_pointer_in_a_narrow_window_reaches_chimol_at_the_frame_position`.
+* **Fixed — the shipped HIV-RT fps.json named no structure**, so *Compute AVs* on it reported "Not computed (no PDB
+  path/ID)"; the guide figures were made from a patched copy. Each site now names `protein_1R0A.pdb` / `dna.pdb` and a
+  relative `pdb_path` resolves against the file's folder (`FpsJsonModel.load_file`). The screenshot script loads the
+  shipped file; guide 23's AV numbers were stale (now 21 171.4 Å³, 6273 points for p_19bp), figures 23_* and
+  88_fps_positions regenerated. Test: `structure_tools/test/test_cards.py::test_the_shipped_hiv_rt_example_names_structures_that_open_from_its_own_folder`.
+* **Fixed — the PSF demo promised five beads and Detect found four** (default Px/frame 20 is spent by four beads);
+  the demo sets 60, the guide explains Px/frame, figure regenerated; the parity tests had encoded four. The racy
+  `test_buttons_are_greyed_while_a_job_runs` (failed about every second suite run) now holds the worker. Test:
+  `psf_determination/test/test_emtk_psf_determination_parity.py::test_detect_on_the_demo_finds_every_bead_it_promises`.
+* **Fixed — the native Colocalization had lost the Qt tool's Setup combo** (the parity test exempted it). A Setup
+  choice lists the saved setups (read off the UI thread), shows "— Image Tools setup —" for windows the hub handed
+  over. Test: `img_coloc/test/test_emtk_img_coloc_parity.py::test_the_setup_choice_offers_the_saved_setups_and_their_windows_become_the_channels`.
+* **Fixed — guides showed commands no shell has.** Plugin CLIs are `csc <name>`; guides 17, 38, 43, 45, 48
+  (`sm-image-mle` → `csc region-mle`), 49, 50, 51, 55, 58 (`csc fusion` → `csc burst-fusion`), 63, 67, 86, 104, h2mm
+  and the guide index wrote bare names. Guard: `test/test_guide_shell_commands.py` (both the executable and the `csc`
+  subcommand must exist).
+* **Fixed — stale button names**: guide 67 and the N&B, Flow and Region MLE tours said *Demo* / *Load demo* for the
+  *Load example* button (`test/native_emtk/test_tour_hint_captions.py`); guide 38's Setup paragraph.
+* **Open — hand-back (emtk shell, `chisurf/emtk/main_app.py`): a file dropped on a plugin dock goes to the dock with
+  keyboard focus, not the one under the pointer.** Repro: `EmtkShellApp()`, `open_plugin("imaging_tools")`, select
+  *1. Intensity*, hover the dock, drop a `.ptu` without clicking first → the shell reads it as a dataset
+  (`on_files_dropped` returns False, the step stays empty); after a click into the dock it loads. Owner: emtk shell lane.
+* **Open — chimol's chrome is illegible in an embedded view narrower than 760 px** (FPS editor 3D View at the hub's
+  default 1100–1400 px width: menus, object list and the mouse block are downscaled to ~0.75). Rendering is clamped
+  because chimol's layout overprints below 760×420. Owner: chimol (a narrow layout), `~/dev/chimol`.
+* **Open — AutoForm checkbox captions are not elided or wrapped**: Colocalization at 800×600 in German cuts
+  "Costes-Schwellenwerte" at the dock edge. Owner: emtk `view_form`.
+* **Open — SPC/HT3 written by the generator open only in CLSM Draw, Spot Finder and Region MLE** (scanner sidecar);
+  the pixel steps auto-detect from the header alone. Owner: imaging (`pixel_maps.build_clsm`).
+* **Open — the imaging tools are largely untranslated in German and French** (hub "Search…", "Back", "Run all",
+  Browser "Include subfolders", Spot Finder "Workflow", "Detection name", Region MLE tables, Colocalization coefficient
+  names). Owner: the queued i18n catalogue job (`okf/validation/release-readiness-w6g/current-job.md`).
+* Seen, not mine: `chisurf/emtk/help_guide.py` (another lane) imported `emtk.type_scale` before it was installed in
+  the env; `clsm_generator/test/test_emtk_clsm_generator_clicks.py::test_help_guide_and_the_tour_is_walked` uses
+  `action_caption` without importing it (uncommitted edit of another lane).
+
 ## QA walk of the FCS, lifetime, anisotropy, filtered-FCS, PCH/FIDA, console and project guides (found 2026-10-11)
 
 status: resolved 2026-10-11 — owner: qa-spectroscopist (T-20261011-QA-FCS-TCSPC). Walked guides 04, 09, 10, 17, 59, 75,
@@ -56,7 +151,19 @@ Fixed, each with a regression test:
 
 ## Anisotropy Wizard's global fit misses its own simulated example by a constant offset (found 2026-10-11)
 
-status: open — owner: tcspc_polarized described model / Anisotropy Wizard IRF normalisation. Reproduce:
+status: resolved 2026-10-11 — root cause: the model prepares a measured IRF the ChiSurf way (background
+subtracted, **negatives clipped to zero**, zeroed outside the IRF window; `imp.bff`
+`include/internal/ResponseFunction.h` `clean_response`), and the wizard used each IRF over the whole range, so the
+clip kept the positive half of the subtracted tail noise — a flat pedestal (~0.7 counts/channel for a background
+of 4) the convolution turned into a constant offset under the decay. Measured: replacing the IRF by a clean
+Gaussian removed the offset, a zero-mean tail did not change it, a +0.5 tail raised it; un-clipping the wizard's
+own subtraction changed nothing (the model clips again). Fix: `tr_anisotropy/core/irf.py` `response_window`
+(first..last channel over both polarisations more than max(5 σ_bg, 1e-3 peak) above the dark-region mean) is set
+as each fit's *IRF start / stop* (`core/native_fits.py` `set_response_window`). Load example → Create fits → Fit,
+untouched: χ²ᵣ 0.99, τ 3.997, ρ 1.999, r0 0.381 (truth 4 / 2 / 0.38). Tests:
+`test_native.py::test_example_fit_with_the_readers_range_is_a_good_fit_and_recovers_the_truth` (χ², parameters,
+model≈data before the pulse), the 20–780 test now also checks χ²ᵣ < 1.3, `test_core.py::test_response_window_*`.
+Original note — owner: tcspc_polarized described model / Anisotropy Wizard IRF normalisation. Reproduce:
 `NativeAnisotropyModel(); example_folder = tmp; load_example(); load_data(); vv, vh, g = create_fits(); g.run()`.
 With the reader's auto range (40–683) χ²ᵣ = 4.2, τ 3.91 ns, ρ 2.04 ns, **r0 0.347** against the demo's truth
 4.0 / 2.0 / 0.38; with the range the wizard's own test uses (20–780) χ²ᵣ = 27.6 (τ 3.99, ρ 1.99, r0 0.385). The VV
@@ -66,31 +173,169 @@ model 25.9) — moving the IRF background region (0–30, 240–640, 400–780) 
 
 ## emtk shell / Qt gaps seen in the 2026-10-11 QA walk, outside the walker's lanes (found 2026-10-11)
 
-status: open — owners as named.
+status: open — owners as named. Resolved 2026-10-11 (T-20261011-QA-FCS-HANDOVER): output rows, `list_fits` χ²ᵣ,
+the residual axis label, the G-factor demo, the Qt IRF path and the right-click test — each bullet says how.
+Still open: the installed-emtk/`type_scale` bullet and the Qt shell in German (i18n job).
 
 * **Installed emtk vs the working tree** — owner: whoever edits `chisurf/emtk/help_guide.py` (uncommitted, imports
   `emtk.type_scale`). `emtk.type_scale` is untracked in `~/dev/emtk` (`48c17dd` took the qt_host hunks back), so
   with the installed emtk every help/guide user — the emtk shell's *Console* dock among them — fails to draw
   ("window 'console' failed to draw: No module named 'emtk.type_scale'"). Commit both together.
-* **emtk shell model editor: derived output rows** (`s`, `ε`, the MDF outputs) show a ticked *Fixed* check box and a
-  *Bounds* box; the Qt editor shows none for outputs — owner: model editor (W9 S2).
-* **emtk shell console: `api.list_fits()` rows carry no χ²ᵣ** (`f.get('chi2r')` is `None`), so guide 59's
-  "compare χ² across every fit" has no one-liner there — owner: console/API lane.
+* ~~**emtk shell model editor: derived output rows**~~ (`s`, `ε`, the MDF outputs) showed a ticked *Fixed* check box and a
+  *Bounds* box; the Qt editor shows none for outputs. **Resolved 2026-10-11**: `chisurf/emtk/model_editor.py` `_row`
+  gives an output `None` for fixed/lo/hi/bounds_on (an empty cell, not a check box), one-per-row and paired tables
+  alike. Test `test/native_emtk/test_model_editor_output_rows.py` (incl. a real shell Lifetime fit: `#Ph_B`, `#Ph_F`).
+* ~~**emtk shell console: `api.list_fits()` rows carry no χ²ᵣ**~~ (`f.get('chi2r')` is `None`). Cause: a row's
+  `chi2r` is what the last run reached (deliberately nothing is evaluated by a listing), so an unrun or edited fit
+  had none. **Resolved 2026-10-11**: `api.list_fits(statistics=True)` (server `fit.list` `statistics`, local mode
+  alike) adds `chi2r_current`, the window's number; local rows now equal the server's (`chi2`/`chi2r` recorded,
+  `n_points`, `n_free`). Guide 59 shows the one-liner; verified over the real RPC session (5166.894 = the window).
+  Test `test/server/test_list_fits_statistics.py`.
 * **Qt shell in German**: menu/ribbon (*File, Main, Reset Layout, Screenshot, About ChiSurf, Documentation, Window,
   Help*), fit-window tabs (*Data table, Info, Parameter scan*) and the status *Ready* stay English; the docks' tab
   bar elides to "Daten ei… Daten… An…" at the default width — owner: i18n job (deferred) / Qt legacy shell.
-* **Filter calculator: the *Weighted residuals* y label overflows its short panel** ("Weighted residuals d" runs off
-  the top) — owner: emtk implot axis labels.
-* **VV/VH G-factor tool ships no demo**, so guide 91 cannot be walked without the user's own reference files —
-  owner: the plugin.
-* **Qt IRF field shows the full path** (`ExperimentalDataSelector.curve_name` returns `filename`) — owner of the
-  curve-name semantics in `chisurf/macros/model.py` (uncommitted edits by another lane).
-* **`test/gui/test_fit_window_emtk.py::test_a_right_click_offers_that_panels_menu`** fails against the emtk working
-  tree (menu labels `['Export data as CSV…', 'Export image…', None]`) — owner: the emtk implot menu change in flight.
+* ~~**Filter calculator: the *Weighted residuals* y label overflows its short panel**~~. **Resolved 2026-10-11**:
+  emtk `implot.py` elides a y label longer than the plot frame and keeps it inside the frame (it was centred on the
+  plot area and ran off both ends; emtk test `tests/test_implot_axis_label_fit.py`); the calculator's axis says
+  `Residual / σ` under its *Weighted residuals* dock title, drawn whole (screenshot checked at 1100×720).
+* ~~**VV/VH G-factor tool ships no demo**~~. **Resolved 2026-10-11**: `vv_vh_g_factor/demo.py` (`make_demo`,
+  known G 1.2, l = 0; polarised decays convolved properly, so the slow reference's mixing estimate is 0.014),
+  **Load example** button (model `load_example`), tour step 2 awaits it; demo audit clean. Gives G 1.239 ± 0.132.
+  Tests `test_native.py::test_load_example_*`, `::test_the_tour_waits_for_load_example_*`, parity tour test.
+* ~~**Qt IRF field shows the full path**~~. **Resolved 2026-10-11**: `ExperimentalDataSelector.curve_name` is the
+  dataset's display name; `CurveInputWidget._on_change` shows the name of the curve the model holds (the emtk
+  shell's rule, `resolve_curve_input`); `macros.model.change_irf` writes the attached curve's name to the legacy
+  line edit. Test `test/gui/test_auto_model_widget.py::test_the_irf_field_shows_the_datasets_name_not_its_path`.
+* ~~**`test/gui/test_fit_window_emtk.py::test_a_right_click_offers_that_panels_menu`**~~ failed (labels
+  `['Export data as CSV…', 'Export image…', None]`). **Resolved 2026-10-11**: the test was the wrong side — emtk
+  `separator()` inside a menu now records a `None` row of the menu (it used to draw onto the window that opened
+  the popup), and the fit plot's menu has the rule where the Qt canvas `addSeparator`s; the test expects it.
+
+## `test/test_plugin_demos.py::test_every_shipped_demo_has_the_standard_contract` red at HEAD (found 2026-10-11)
+
+status: open — owners: the plugins named. The audit (`python -m build_tools.dev_utils.demo_contract_audit --live`,
+or `audit_tree(root, revision="HEAD")` as the test does) reports 40 findings over committed demos: `alex_suite`
+and `bid_to_analysis` (`demo-control`: Load example not registered the way the audit recognises — `button_row`
+needs `remember=self.remember` from the `TourTarget` mixin and a `pressed == "load_example"` branch), and
+`core/pto_inspector`, `core/user_editor`, `fcs/fcs_merger`, `microscopy/clsm`, `ndxplorer`, `tttr/trace_browser`,
+`tttr/tttr_image_browser` (the cache API — `DEMO`, `demo_folder()`, `make_demo(folder=None, *, overwrite=False)` —
+and tour step 1 awaiting `load_example`). Found while giving `vv_vh_g_factor` its demo (which audits clean); not
+fixed there — each is its plugin's port. The test measures HEAD, so uncommitted fixes do not turn it green.
 
 ## Guide screenshot scripts still import the Qt burst tools retired in W9 phase 1 (found 2026-10-10)
 
 status: open — partly ported 2026-10-11 (2CDE, BVA, accurate FRET ×3, H2MM ×3, ALEX alternation/titration); the rest is tracked by `test/test_guide_screenshot_imports.py` and its allow-list. Original note: `docs/guides/make_screenshots.py` (burst_browser ~286, burst_gs ~435, accurate_fret ~599, burst_ebfret ~1150, alex_suite ~1510/1544), `docs/guides/screenshots/guides_02_14.py` (accurate_fret ~335, burst_bva ~154), `guides_15_25.py` (burst_background ~182, accurate_fret ~556), `guides_26_36.py` (burst_analysis ~165), `guides_39_53.py` (burst_analysis ~154) and `spectra_mfd.py:51` (mfd_prepare) still import the deleted `gui/tool.py` / `gui/sections.py` of accurate_fret, burst_analysis, alex_suite, burst_background, burst_browser, burst_bva, burst_2cde, burst_ebfret, burst_fcs_correlator, burst_gs, burst_irf_bg and mfd_prepare, so those grab functions raise ImportError. Re-derive with `grep -rn "gui.tool import\|burst_background import\|burst_browser import" docs/guides`. Fix: build the emtk app with `emtk_shot.app_from(<plugin id>)` and render it with `emtk.testing.Driver` (see `guides_56_65.py`).
+
+## emtk shell: Qt main-window controls it does not have yet (found 2026-10-11)
+
+status: open — owner: W9 shell ([Qt retirement ledger](../subsystems/qt-retirement.md)); the ribbon itself is
+being built in another lane (`chisurf/emtk/shell_ribbon.py`, uncommitted at the time of writing)
+
+The whole-app parity test (`test/native_emtk/test_emtk_shell_whole_parity.py` against
+`shell_whole_qt_inventory.json`, see [testing](../workflows/testing.md) "Real-use QA matrix") first found 34 Qt
+main-window controls that a user could not reach in the emtk shell, the whole ribbon among them. No slice owned the
+ribbon, so no parity test could miss it. With the ribbon lane's working tree, the five ribbon tabs and the command
+search are present. That leaves 23, each named in the shrinking `KNOWN_GAPS`:
+
+* **Ribbon remainder**: the panel captions File/Application, File/Recent and Main/Window, plus three corner
+  controls. Qt shows `?`, `Language: English` and the `P` pin/auto-fold; emtk shows *Help*, *EN* and a fold ▲. The
+  ribbon owner decides whether those are renames (move them to `RENAMED`) or still gaps.
+* **Fit export/import** (*Load Fit*, *Current Fit*, *All Fits*) in the menu, the ribbon and the toolbar. This is the
+  S3 gap (ledger item 7).
+* **Menu Switch**, an action-only entrypoint, which the shell does not offer (ledger item 8).
+* **Screenshot**, the window screenshot command on the ribbon and the toolbar.
+* **Log dock**: the Qt Logging dock has *Filter*, *History*, *Pause*, *Clear* and *hide*. The emtk Log dock is plain
+  text.
+* **Console `?`**: emtk captions it *Help*. This is probably a rename.
+
+The test also checks one behaviour that no inventory shows: the console draws a matplotlib figure as a picture. The
+Qt record has `console_inline_figure` ok. With the console lane's working tree the emtk console passes. Measure:
+`QT_QPA_PLATFORM=offscreen python -m pytest test/native_emtk/test_emtk_shell_whole_parity.py` (4 pass on the
+working tree). Trap: the uncommitted ribbon hunk in `main_app.py` reads `Ribbon.menu_open`, which the *installed*
+emtk does not have, so run it with `~/dev/emtk` on `PYTHONPATH` until that lane commits.
+
+## Real-use matrix: layout and tour defects outside the language checks (found 2026-10-11)
+
+status: open — owners as listed
+
+* **quenching_estimator** (`structure_tools`): the *Coarse-grained structure* checkbox caption is clipped at
+  1100×720 in every language. The checkbox sits in the field column of a two-column grid. Seen in `realistic` and
+  `lang_de`; the base sweep does not check clipping. After the sweep, which loads the stub PDB through the tour,
+  every Dye/Simulation number field draws empty. The first frame shows them filled, and click plus Escape on a field
+  does not empty it, so the cause is not found yet. Owner: structure_tools.
+* **structure_tools**, `resize` variant: after the resize to 800×600 the *Project JSON* tab cannot be revealed in
+  80 wheel steps (`renders/e2e/resize/structure_tools.json`). Owner: structure_tools / W5 Driver reveal.
+* **Guided tour cards** draw a step title with the *tour's* domain (`emtk/help_guide.py`:
+  `tr(title, domain=self.domain)`). A named domain does not fall back to the default domain, so a title the
+  `chisurf` catalogue translates stays English ("Load a VV/VH file" in `vv_vh_anisotropy`, fr). Owner: the
+  help_guide lane (both `help_guide.py` files had uncommitted edits, so they were not touched).
+* **traj_tools**, fr: a drawn "to" that the catalogue translates ("à"). Its source was not located. Owner: traj.
+* Pre-existing, seen while verifying: `tttr_microtime_shifter` `test_every_control_lies_inside_its_dock_and_the_window[800x600]`
+  (save_batch cut off at the bottom), the spectra_downloader and ptu_alex_creator translation tests (catalogue
+  wording changed), `test_plugin_demos.py::test_every_shipped_demo_has_the_standard_contract`, and
+  `help/test_doc_registers.py` (stale registers). These are not caused by this lane. The shifter case fails with
+  the HEAD `emtk_layout.py` loaded in-process, and the others fail on catalogue wording, demo contracts and doc
+  registers, none of which this lane touched.
+
+## Real-use language matrix: text drawn in English in a French or German session (found 2026-10-11)
+
+status: resolved 2026-10-11 — the code paths below are fixed (owner: real-use QA lane); the German and French
+catalogue backlog was translated the same day.
+
+Found by `test_emtk_plugin_real_use[lang_de-*|lang_fr-*]`:
+
+* A plot's title and axis labels were never passed through `tr` ("Counts", "Micro-time (ns)" in
+  `synthetic_decay`). Fixed in emtk `e443eed` (`implot.setup_axis`, `Plot.set_title`).
+* A caption padded to a shared label column (`chisurf/plugins/emtk_layout.py::LabelColumn`, used by 19 tools) was
+  in no catalogue, so every padded caption drew English ("Regularization" in `irf_estimator`). Fixed in emtk
+  `571952a` (`view_form._tr_label` keeps the padding and translates the words), and `LabelColumn` now measures the
+  translated captions. Guard: `test/native_emtk/test_padded_captions_translated.py`.
+* Layouts measured the English source and drew the translation, so "Suivant" was clipped at the anisotropy wizard's
+  right edge. The same pattern was in `tttr_count_rate_analysis`, `user_editor`, `mmfdb_admin` and `fcs_correlator`
+  (`_same_line_if_fits`). All five are fixed. Guard: `test/test_measured_text_is_translated.py`.
+* A step list prefixed its check mark before translating ("✓ Files & fit", "[x] Welcome"). Fixed in
+  `chisurf/plugins/emtk_wizard.py::navigation` and the anisotropy wizard.
+* Two help-browser buttons whose German captions coincide ("Back" and "Prev" are both "Zurück") had the same id,
+  because the caption was the id. Pressing the second pressed the first, which was disabled. Fixed with explicit ids
+  in `chisurf/plugins/core/help/gui/help_app.py`. The matrix now reports such `id_collisions`.
+* The filter fields' placeholder "filter" was untranslated (`emtk.widgets.basic.TextInput`, the data table). Fixed
+  in emtk `2c55a95`.
+* Catalogue backlog, which is not a code defect: `chisurf_de.ts` has 7198 of 12463 entries unfinished, and many
+  visible captions are not extracted at all ("Generate", "Load Decay"). The matrix records these per plugin in
+  `missing_translation` without failing.
+
+## Help browser: 4.5 s per frame on a long page (found 2026-10-11)
+
+status: resolved 2026-10-11 — emtk `3e1ebae`
+
+`lang_de-help` timed out at 180 s, and the cause was not the language. After *Literature* is opened, each frame
+re-wrapped about 400 paragraphs, and `_wrapped_lines` measured every candidate line whole, which is quadratic in
+paragraph length. A frame took 4.5 s, or 6 s after *A+*. Wrapping now estimates a candidate from its words' widths
+and measures the whole line only near the limit. The breaks are identical to the old rules over 600 random cases
+in three fonts (`tests/test_wrap_cache.py`), and results are memoised per font state and width. The page now draws
+in 70–300 ms. Trap: a sweep that "hangs" in a document viewer can be one slow frame repeated, so time a frame
+before you suspect the harness.
+
+## Wheel after the window moved under a still hand scrolled the old spot (found 2026-10-11)
+
+status: resolved 2026-10-11 — owner: the resize-click lane (`emtk/native.py`, emtk `2021c7b`)
+
+`emtk.testing_realistic.HostedDriver` on a hidden glfw window reproduced it. rendercanvas stamps a wheel event, like
+a press, with the last *move* it saw. At emtk `84ce461` the press was corrected by the live cursor query but the
+wheel was not. Guard: `tests/test_testing_realistic.py::test_hidden_glfw_window_wheel_after_the_window_moved_under_a_still_hand`.
+
+## emtk tests red at HEAD, seen while building the matrix (found 2026-10-11)
+
+status: open — owner: emtk (font/atlas lane for the first two); the third is fixed
+
+* `tests/test_autoport.py::test_the_autoported_knob_draws_the_same_picture_every_time` fails with 479 differing
+  pixels against its golden image. This is pre-existing at `84ce461`, probably the glyph rasterisation change
+  `aceb942`.
+* `tests/test_imgui_demo_remaining.py::test_configuration_style_fonts` and
+  `tests/test_i18n_seam.py::test_emtk_catalogues_cover_every_builtin_string` are pre-existing at HEAD.
+* `tests/test_i18n_render.py` followed by `tests/test_i18n_seam.py` failed four tests, depending on order:
+  `emtk.i18n.testing.isolated` dropped a built-in catalogue first loaded inside the block but kept its "registered"
+  flag. Fixed in emtk `2c55a95`.
 
 ## smFRET guide walk: defects in the burst tools and their guides (found 2026-10-11)
 
@@ -162,18 +407,121 @@ Scratch scripts were in `/tmp/qa_smfret/` (not kept); every repro below is self-
   markdown widget (`im.markdown`) draws in a small proportional face that drops `.`, `,` and `=` in both
   `PixelPainter` and `PilPainter` renders. Owner: emtk.
 * **H2MM floor rates** (1e-12 per tick) were listed as `0.0` with a 1.35e7 ms waiting time and still got an arrow.
-  status: resolved 2026-10-11 — the floor is one constant (`burst_h2mm/core/h2mm.py` `MIN_TRANS`, used by both
-  engines); `gui/result_view.py` `floor_rate`/`rates_at_floor` mark rates within 2× of `MIN_TRANS / base_time_s`;
-  the *Rates* table lists them as `< 7.4e-05` / `> 1.35e+07` ms, the kinetic scheme draws no arrow, measured rates
-  below 10 1/s keep three digits (were `0.0`/`1.1` at `.1f`). Guide 30 (four-state fit: S0→S2/S3, S2→S3, S3→S0/S1
-  at the floor), `docs/concepts/h2mm.md` and the plugin help say so. Test `burst_h2mm/tests/test_floor_rates.py`.
-* **15 guide grabbers** still import deleted Qt tools (allow-list above): burst_browser, burst_gs, burst_ebfret,
-  burst_background, burst_analysis (guides 26–36, 39–53), mfd_prepare, plus non-smFRET (hmm, maxent, lumis_quest,
-  intensity_trace, batch_analysis, tttr_to_pto, acq). Their figures are stale until ported.
+  status: resolved 2026-10-11 — a rate below one event in the time spent inside bursts is a bound, not a
+  measurement (the floor alone was too narrow: the three-state fit's S2→S0 = 2.8e-4 1/s is 3.8× the floor and just as
+  unmeasured). `H2mmAnalysis.observed_time_s` (`BurstPhotons.total_time`, first to last photon of each burst);
+  `gui/result_view.py` `rate_bound` = max(1/T, 2× `MIN_TRANS / base_time_s`), `rates_unresolved`; the floor is one
+  constant (`core/h2mm.py` `MIN_TRANS`, both engines). *Rates* lists them as `< 0.25` / `> 3.96e+03` ms on the
+  sm-DNA sample (T = 3.96 s), the kinetic scheme draws no arrow, measured rates below 10 1/s keep three digits.
+  Guide 30 (figure regenerated), `docs/concepts/h2mm.md`, plugin help updated. Test
+  `burst_h2mm/tests/test_floor_rates.py`.
+* **15 guide grabbers** imported deleted Qt tools. status: resolved 2026-10-11 — all ported to the native apps
+  (detector setups set explicitly), `test/guide_screenshot_dead_import_allowlist.txt` is empty; the Lumis Quest
+  grabber, guide 71 and its figures were removed (the game left ChiSurf in 088efed79).
+
+**Walk continued (2026-10-11, part 2):** guides 11, 14, 15, 20, 27, 28, 29, 33, 34, 35, 46, 49, 52, 53, 54, 58, 62, 65
+(native apps via `emtk.testing.Driver`; 27 also in a real hidden glfw window at scale 2 with a mid-workflow resize,
+the emtk shell and Qt-hosted; 14/46 hosted in both shells; PDA through the emtk shell's reader to a fit; German
+800×600 for 14, 27, 30 and the ported tools). Scratch in `/tmp/qa_smfret2/` (not kept).
+
+*Fixed (each with a regression test):*
+
+* `BurstWorkflow.select_bursts` dropped the setup's detectors, so `Bursts.recurrence()` always raised (guide 27's
+  known defect): `api/workflow.py` `Setup.summary_detectors`; `burst_analysis/tests/test_select_bursts_detectors.py`.
+* Burst Selection: photon indices printed `1.25e+04`; the *Burst duration* count drawn off-panel; the GMM legend
+  covered the donor-only peak. `burst_selection/tests/test_burst_table_cells.py`.
+* Burst Browser read the `-1` "no photons in this stream" sentinel as a count (S up to 1.106, E −0.096 on sm-DNA);
+  `read_bur_file` kept the trailing-tab column `""`. `burst_browser/test/test_stream_sentinels.py`.
+* BVA refused the bundled 10-file sm-DNA folder ("float64 here and str there": blank rate cells), which the old
+  grabber hid by deleting six files: `burst_bva/core/computation.py` `_read_strided`; `test_blank_rate_cells.py`.
+* GS: transition-time scan on a linear axis; the report's "bounds it below ~1.00 us" was the first scan point
+  (`GsAnalysis.transit_upper_bound`, 8.53 µs). `burst_gs/test/test_transition_scan_axis.py`.
+* ndX → FCS default pair was `ch1/ch2` (no curves, no error) and ndX → PDA defaulted to `PTU` (empty success on
+  SPC). `test/server/test_burst_services.py`, `test/server/test_pda_service.py`.
+* Fusion summary column truncated "Selected"/"0.04159"; ebFRET and fusion tours/help said "Load demo"/"Run (the green
+  ▶)". `test_emtk_fusion_clicks.py`, `burst_ebfret/tests/test_tour_captions.py`.
+* Accurate FRET: every pick in *Dyes (database)* raised `TypeError` (guide 14's known defect); β showed "source not
+  reported" because tttrlib `auto_calibrate` never reported β — fixed in tttrlib (uncommitted there; arm64 rebuilt,
+  **pixi env not**). `accurate_fret/test/test_dye_selection_commit.py`, `test_beta_origin.py`, tttrlib
+  `test_auto_calibrate_reports_whether_the_data_identified_beta`.
+* PDA inputs: the `.bur` zero separator rows became a one-photon burst (0, 1). `test/core/test_pda2c_bur_separator_rows.py`.
+* HMM plots listed every series twice and had unit-less time axes; MaxEnt never showed χ² or the L-curve corner and
+  printed raw progress dicts; Settings → Acquisition never reached the Acquisition tool (Pulsed mode, brightness, seed
+  ignored); a red-at-HEAD acq test clicked a removed "×". Tests under `core/hmm/test`, `maxent_decay/test`,
+  `core/acq/test/test_settings_reach_the_tool.py`.
+* Stale guides corrected: 11, 12, 14, 15, 20, 27, 28, 29, 33, 34, 35, 46, 49, 52, 53, 54, 58, 62, 65, 85 (menu paths,
+  button captions, numbers, removed known-defect boxes for fixed items); figures regenerated natively and read.
+
+*Open:*
+
+* **Rate-only PIE burst tables mis-ratio E/S**: 923 of 2980 sm-DNA bursts drop out of the Browser at full gates
+  (`status_text` on `burstwise_All 0.1000#15/bi4_bur` reads 2057 / 2980). Each stream's rate is over its own
+  first-to-last span (tttrlib `modules/cli/src/cmd_sm.cpp` ~1436): one photon gives NaN, and different denominators
+  are not count ratios. Blocks correct E/S for every rate-only table (Browser, `guess_burst_columns`, Accurate FRET).
+  Root fix in tttrlib: write `S <window> <det> (photons)` counts, which `gated_stream_columns` already prefers.
+* **Native Burst MLE has no reuse fingerprint and no Restart** (Qt wizard skipped when current); guide 53 says so.
+* **ndX send**: bare `First File` names resolve against the cwd ("No such file or directory: 'm000.spc'" from
+  `ndxplorer.io.loading.load(<folder>, kind="burst_dir")` + `bridge.send("tcspc", …)`; fix in `modules/ndxplorer`
+  `selection_to_burst_slices`), and the menu drops the returned result (nothing opens as a dataset).
+* **emtk shell PDA reader form is clipped and does not scroll**: at 1920×1080 *Files* / *Load dropped files* are
+  unreachable (`EmtkShellApp`, Read data → PDA, `driver.wheel(-3, at=(250, 450))`); `test_emtk_shell_readers.py`
+  hid it with a 1300×1800 window. Owner `chisurf/emtk/reader_settings.py` / `fit_docks.py`.
+* **PDA models' `n_points` reads a residual cache**: the fit dock shows 251000 points before the first fit, 81 after
+  (`simple`, `dynamic`, `dynamic_mc`, `pdagauss`, `anisotropy`; `server/services/fits.py` reads it before χ²).
+* Burst Browser: Mean Macro Time cells in `.4g` (`1.218e+04`), E/S gate tags cover the tick labels, gate drag
+  clamps to [0, 1] (guide 28 says limits may go below 0).
+* `pto_inspector` *Export legacy* refuses its own `demo.pto` ("cannot tell which detector 'lifetimes' belongs to").
+* `burst_mle_analysis/gui/mle_native.view.json` *Load example* description lost spaces ("lifetime2ns and32ps").
+* `chisurf/emtk/tool_hub.py`: rail label "7. Burst segmentation (H2MM) •" clipped below ~1000 px; status line cut by
+  Back/Next at 800 px.
+* Acquisition simulator species/kinetics/decay have no native form (JSON only, not written back to
+  `gui.acquisition`) — a control lost with the Qt tool. emtk log axes spanning < 1 decade draw no tick labels
+  (MaxEnt L-curve). MaxEnt solver's `converged` stays False on a converged result.
+* German: hub step names/descriptions/status, Accurate FRET buttons/docks, HMM, ndX status, tttr_to_pto/acq/maxent
+  status lines untranslated (queued i18n job). The existing hub / Burst Selection tests still use green 0/1, red 8/9
+  (the setup trap; counts coincide).
+* Not done in this pass: `testing_realistic` and German for 52/58/14/46/11; guide 11 in the Qt main window.
 
 ## Lifetime mixture, FRET structure fit and the shell's recording: found while porting the model editor (2026-10-11)
 
-status: open — measured in W9 S2 (model sections); none is caused by that port, each blocks a model in both shells.
+status: resolved 2026-10-11 — the four defects fixed at their root, each with a regression test (details per item below; emtk shell checked by `test/native_emtk/test_emtk_shell_recorded_models.py` with screenshots of the Structure page, the mixture and the recorded bunching term).
+
+* **Resolution (2026-10-11).**
+  1. *Lifetime mixture*: the app's *Lifetime* fit is IMP.bff's `tcspc_polarized`, whose published `lifetime_spectrum`
+     named the decay's `spectrum` output — a port the polarised decay (spectrum from the anisotropy node) never writes,
+     so the relay stayed at its placeholder `[0.]`. It now publishes the lifetime-spectrum node, and `publish_output`
+     refuses an output port a structure's node does not write (imp.bff `fceece9ed`; tests
+     `test/mcts/test_lifetime_mixture.py` there, `test/server/test_model_sections_service.py::test_a_mixture_mixes_a_lifetime_fit_made_in_the_app` here).
+  2. *FRET structure fit*: N132 CA was walled in by its bonded neighbours at the 0.5 Å grid (found at 0.7 Å): the AV
+     search left the anchor one stencil step at a time. IMP.bff's lattice search now lets the linker's first step reach
+     every free voxel within `width + grid` (FRETraj's rule; FPS hops 3 voxels) — imp.bff `f2c272dc7`, a physics
+     default with measured costs in imp.bff `okf/validation/fps_screening_ab.md` (FPS parity better: 24-pair rmsd
+     1.20→0.87 Å, all 33 pairs resolve, p66+H 0→0.987 of FPS; Olga-radii agreement with the published table worse:
+     0.71→0.90 Å; golden T4L-132 CB volume at 0.5 Å +33 %). 44/132 now gives a distribution (⟨R⟩ 51.1 Å). I100 is in the
+     core and has no volume by any reference (FRETraj too), so 10/100 still has no distance — the error now names the
+     label (`label 2 (residue 100 CA) has no accessible volume…`). D10 CA is still empty at 0.5 Å and found at 0.7 Å:
+     the stencil away from the anchor is unchanged. Test: `test/models/test_fret_structure.py::test_t4l_ca_labels_give_a_distance_distribution`.
+  3. *ProteinMC Structure page*: the shell sends a read file as the codec's record (`dataset.load` with `curve_data`);
+     a structure had none, so the server fabricated an empty `DataCurve` named after the file. `_extract_curve_data`
+     now sends structures (and groups of them) as structure records and the server restores them with
+     `restore_structure`. IMP.cgmol was **not** needed to reproduce or to draw the page. Test:
+     `test/server/test_shell_channel_datasets.py::test_a_structure_arrives_as_a_structure_and_proteinmc_models_it`.
+  4. *Recording*: (a) each `dataset.load` restored a fresh reader and experiment with the same UID, so one TXT/CSV
+     reader that read two files became two readers with one UID and two `filename`s; the server now binds a record to
+     the session's live reader/experiment of that UID (`_live_identities`) and applies the newer configuration, as the
+     client's single reader has it. (b) the FCS relaxation terms are topology: `GeneralFCSModel.get_state` and
+     `MdfFCSModel.get_state` now record `n_bunching`/`n_anticorr` and `set_state` rebuilds them first
+     (`BunchingTerms.set_count`). `capture_session` itself failed, not only the shell. Also fixed on the way: a group
+     restored from a project lost its experiment and reader, so after an undo the emtk dataset list showed TXT/CSV
+     groups with no type. Tests: `test/server/test_shell_channel_datasets.py`,
+     `test/project/test_fcs_relaxation_topology_roundtrip.py`.
+  Left open: the server's `dataset.load` with `reader_name`+`filename` and no `curve_data` still fabricates an empty
+  `DataCurve` instead of reading the file; nothing in the shell takes that path any more.
+  Also seen (not caused by these fixes, reproduced without them): `pytest test/project` fails
+  `test_session_transactions.py::test_invalid_staged_restore_preserves_live_datasets_and_fits` and
+  `::test_file_read_errors_propagate_and_do_not_clear_live_state` — an earlier test (the `inprocess-proxies` case of
+  `test_project_ui_capture_contract.py`) leaves `cs.imported_datasets` as the server-mode proxy, whose `__setitem__`
+  raises `NotImplementedError`. Both pass alone. Owner: project tests' isolation.
 
 * **Lifetime mixture cannot mix a fit made in the app.** `append_model` of a *Lifetime* (or any TCSPC) fit's model
   succeeds, then the mixture's `problem` raises `LifetimeSpectrumMixture 'mixture.models.1.mixture': lifetime
@@ -7345,5 +7693,6 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
+
 
 

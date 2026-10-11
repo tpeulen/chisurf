@@ -350,7 +350,9 @@ def test_real_native_input_configures_runs_reads_tabs_and_clears(ui):
     ui.click("start")
     wait_for_run(ui.app)
     assert ui.app.model.snapshot is not None
-    assert 128 <= ui.app.model.snapshot["total_photons"] <= 129
+    # The typed brightness and seed reach the run (they did not before 2026-10-11); the simulator stops after
+    # the time step that reaches the limit, so at 420 kHz it ends a few photons past 128.
+    assert 128 <= ui.app.model.snapshot["total_photons"] <= 135
     assert any("Simulation acquisition complete" in text for text in ui.strings())
     assert any(text.startswith("Photons: ") for text in ui.strings())
     ui.click_text("Correlation")
@@ -377,7 +379,10 @@ def test_real_native_input_exercises_cancel_help_and_guide(ui):
     assert "cancelled" in ui.app.model.status.lower()
     ui.click("help")
     assert any("Acquisition" in text for text in ui.strings())
-    ui.click_text("×", last=True)
+    from chisurf.plugins.emtk_layout import action_caption
+
+    ui.click_text(action_caption("close"), last=True)  # the help's one close button (its × is gone)
+    assert not ui.app.help_window.open
     ui.click("guide")
     assert any("answer is known" in text for text in ui.strings())
     ui.click_text("Next ►", last=True)

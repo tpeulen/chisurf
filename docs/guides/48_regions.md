@@ -182,7 +182,7 @@ The GUI's **Analysis region** panel and this option are the same setting; the
 editor's 💾 writes a file the CLI reads.
 
 ```bash
-sm-image-mle analyze -i irf.ptu --roi cell_patch.json scan_001.ptu
+csc region-mle analyze -i irf.ptu --roi cell_patch.json scan_001.ptu
 ```
 
 ```

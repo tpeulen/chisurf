@@ -9,6 +9,7 @@ and write the same file.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 import time
@@ -23,8 +24,12 @@ from chisurf.plugins.fcs.fcs_merger.gui.app import MergerApp
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-sys.path.insert(0, str(REPO / "okf" / "plugins" / "emtk-ports" / "fcs_merger" / "scripts"))
-from make_chunks import build  # noqa: E402
+_MAKE_CHUNKS = REPO / "okf" / "plugins" / "emtk-ports" / "fcs_merger" / "scripts" / "make_chunks.py"
+_spec = importlib.util.spec_from_file_location("fcs_merger_make_chunks", _MAKE_CHUNKS)
+_make_chunks = importlib.util.module_from_spec(_spec)
+sys.path.insert(0, str(_MAKE_CHUNKS.parent))  # the script imports its siblings
+_spec.loader.exec_module(_make_chunks)
+build = _make_chunks.build
 
 SPEC = json.loads((HERE.parent / "gui" / "fcs_merger_emtk.view.json").read_text(encoding="utf-8"))
 

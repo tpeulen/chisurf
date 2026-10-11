@@ -53,7 +53,7 @@ s1s2 = np.asarray(pda.get_S1S2_matrix()).reshape(61, 61)
 # collapse S1S2 -> proximity-ratio histogram (see make_figures.py)
 ```
 
-## In ChiSurf
+## Fitting in the GUI
 
 PDA is a fit **experiment**: load a `.pda`-tagged burst dataset and choose a PDA
 model (single distance, Gaussian-distributed distance, or dynamic two-/N-state).
@@ -73,7 +73,8 @@ $\gamma$. These map onto the forward model in {ref}`concept-pda2c`.
 
 ## Reading bursts
 
-The reader (*PDA* → *PTU/HT3/SPC* in **Read data**) has four panels:
+The reader (*PDA* → *PTU/HT3/SPC* in **Read data**) has five panels — **Colours**
+(2 or 3) and:
 
 - **Detector**: *Setup* picks a saved detector setup; each colour row then takes
   the setup's detector of that colour, its routing *Channels* and, with two

@@ -41,7 +41,7 @@ def _rows(burst_folder: str, first_file: str) -> list:
 def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(tmp_path: Path):
     from chisurf.core.fio.fluorescence.burst_container import write_burst_artifact
     from chisurf.core.fio.fluorescence.legacy_export import export_legacy
-    from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results
+    from chisurf.plugins.burst.burst_fcs_correlator.core.export import write_fcs_results_container
 
     source = Path(__file__).resolve().parents[5] / "test/data/tttr/BH/132/BH_SPC132.spc"
     raw = tmp_path / "m000.spc"
@@ -54,7 +54,7 @@ def test_a_skipped_burst_is_a_sentinel_row_not_a_missing_one(tmp_path: Path):
         operation_type="burst_selection",
         derived_from=(),
     )
-    write_fcs_results(
+    write_fcs_results_container(
         _rows(str(tmp_path), str(raw)), {(str(tmp_path), "m000"): 8}, parameters={"n_bins": 3}
     )
     assert not (tmp_path / "td4").exists()

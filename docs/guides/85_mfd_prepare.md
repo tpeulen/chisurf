@@ -52,8 +52,9 @@ client the preparation runs in this process, otherwise through `mfd_prepare.prep
 :name: fig-mfd-prepare-report
 :width: 100%
 
-MFD Prepare on the measured `bh_spc132_sm_dna` burst folder shipped with the burst-selection tests: 152 bursts, three
-detectors, inclusive photon indices, `m000.spc` resolved beside the folder, every detector's count agreement 1.0000.
+MFD Prepare on the measured `bh_spc132_sm_dna` burst folder shipped with the burst-selection tests: 2980 bursts
+(2990 interleaved sentinel rows removed), three detectors, exclusive photon indices, ten `m00N.spc` files resolved
+through their `.mti` sidecars, 225 358 photons in the bursts, every detector's count agreement 1.0000.
 ```
 
 ## 2. What it checks

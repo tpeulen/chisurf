@@ -107,13 +107,14 @@ the burst-edge dwells.
 The same dashboard panels drawn from a simulated fit (script figure).
 ```
 
-:::{admonition} Known defects
-:class: warning
-Rates at the numerical floor of the transition matrix (1e-12 per tick) are
-listed in *Rates and states* as `0.0` with a waiting time of `1.35e+07` ms, as
-if measured, and they still get a (thin) arrow in the *Dwell FRET* kinetic
-scheme. Read a rate with a waiting time far beyond any burst as "not observed".
-:::
+A transition the data do not show is listed as a bound, not as a rate: below
+one event in the time spent inside the bursts (3.96 s here) the fit cannot
+measure it, so *Rates and states* shows `< 0.25` 1/s with a waiting time
+`> 3.96e+03` ms, and the *Dwell FRET* kinetic scheme draws no arrow for it. Most
+such rates sit at the numerical floor of the transition matrix (1e-12 per tick,
+7.4e-05 1/s on this sample's 13.5 ns clock). In the four-state fit above,
+S0 → S2/S3, S2 → S3 and S3 → S0/S1 are bounds; S1 → S0 = 1.1 1/s (about four
+events) is the slowest measured rate.
 
 ## See also
 

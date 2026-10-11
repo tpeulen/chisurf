@@ -9,19 +9,35 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
-1. Open: **port the remaining burst guide grabbers** (`test/test_guide_screenshot_imports.py`, allow-list
-   `test/guide_screenshot_dead_import_allowlist.txt`: burst_browser, burst_gs, burst_ebfret, burst_background,
-   burst_analysis in `guides_26_36.py`/`guides_39_53.py`, mfd_prepare). Pattern: `docs/guides/screenshots/emtk_shot.py`
-   (`app_from`, `wait`, `show_tabs`, `accurate_fret_calibrated`, `simulated_alex_table`). Trap: a grabber that does not
-   set the detector setup explicitly inherits whatever the settings dir holds — guides 19/30 shipped an H2MM fit of
-   donor 0/1, acceptor 8/9 (E 0.48/0.54) that way; use `guides_26_36.SM_DNA_SETUP` (green 0/8, red 1/9).
-2. Open: **guides not yet walked** in the 2026-10-11 smFRET pass: 14, 27, 28, 29, 33–35, 46 (ndX, beyond opening a burst
-   folder), 52, 58, 11 (PDA; another lane had it open). Method and the defects found: known issue "smFRET guide walk"
-   (found 2026-10-11) in [known issues](/references/known-issues.md).
-3. Measure: **numbers to re-derive when a burst engine changes** (all on the bundled `bh_spc132_sm_dna` files): Burst Selection
+1. Open: **rate-only PIE burst tables mis-ratio E/S** — the top blocker: 923 of 2980 sm-DNA bursts drop out of the
+   Burst Browser at full gates, and every consumer of `guess_burst_columns` (Accurate FRET too) ratios rates over
+   different per-stream spans. Measure: `BurstBrowserViewModel().load_folder(".../burstwise_All 0.1000#15/bi4_bur")`
+   → `status_text()` "2057 / 2980". Root fix in tttrlib `modules/cli/src/cmd_sm.cpp` (~1436): write
+   `S <window> <det> (photons)` counts, which `gated_stream_columns` already prefers. Tried and reverted: reading the
+   `-1` stream sentinel as NaN (dropped donor-only bursts; `-1` means zero photons and is read as 0).
+2. Open: **ndX send** resolves bare `First File` names against the cwd and drops the returned result (guide 52);
+   **native Burst MLE** has no reuse fingerprint / Restart (guide 53); **PDA**: the emtk shell's reader form does not
+   scroll (Files unreachable at 1920×1080) and the models' `n_points` reads a residual cache (251000 → 81). Repros
+   in known issue "smFRET guide walk", part 2.
+3. Open: **not yet walked this way**: `emtk.testing_realistic` + German for guides 11, 14, 46, 52, 58; guide 11 in the
+   Qt main window. Guides 01–58 smFRET set otherwise walked (two passes, 2026-10-11). The guide grabbers are all
+   native (allow-list empty); a grabber must still set the detector setup explicitly (`guides_26_36.SM_DNA_SETUP`,
+   green 0/8, red 1/9) — the existing hub / Burst Selection tests still use 0/1 – 8/9 and pass only because the
+   counts coincide.
+4. Blocked: **where Accurate FRET reports β from** needs the uncommitted tttrlib `estimated_beta` change; only the arm64 env is
+   rebuilt — rebuild pixi (`pixi run build-tttrlib`) before trusting pixi runs of `accurate_fret`.
+5. Measure: H2MM *Rates* lists rates below one event in the burst time as bounds (`< 1/T`): sm-DNA T = 3.96 s →
+   `< 0.25` 1/s; four-state fit S0→S2/S3, S2→S3, S3→S0/S1 are bounds, S1→S0 = 1.1 1/s the slowest measured.
+   Burst Selection marks each burst from its second photon (383 vs `burst_search`'s 382: Max dT rejects the gap
+   before the burst) — not a mismatch.
+6. Measure: **numbers to re-derive when a burst engine changes** (all on the bundled `bh_spc132_sm_dna` files): Burst Selection
    10 files → 1130 bursts / 1 791 775 photons / 264 806 selected; BVA 1118 of 1130; 2CDE 1118 of 1130; `burst_search`
    on `m000.spc` 223; `bursts.bva(...).dynamic_fraction` 0.423 (m000–m002, min 20 photons); H2MM 1–3 states E 0.029 /
-   0.422 / 0.866, 1–4 states 0.029 / 0.218 / 0.612 / 0.879 (`burstwise_All 0.1000#15`, seed 0).
+   0.422 / 0.866, 1–4 states 0.029 / 0.218 / 0.612 / 0.879 (`burstwise_All 0.1000#15`, seed 0). Guide 27 snippet
+   (`m000`, min 20 photons): 114 bursts, FRET-2CDE 11.96, BVA dynamic fraction 0.368; hub MLE on m000+m001: Fit23 τ
+   2.049 ns. BVA on all 10 files 2558 of 2980; background 1.647 / 0.495 kHz; fusion demo 419 bursts (0.9/0.7/0.5 →
+   338/297/280); GS default simulation k 2878.9 / 1017.5 s⁻¹, scan bound 8.53 µs; Accurate FRET guide-14 table
+   α 0.0800, δ 0.0589, γ 0.6579, β 1.3885.
 
 ## Overview
 

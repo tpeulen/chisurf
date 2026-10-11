@@ -147,7 +147,8 @@
     "region_detection"
   ],
   "requires": {
-    "mle_common": "*"
+    "mle_common": "*",
+    "psf_determination": "*"
   },
   "menu_hidden": true
 }

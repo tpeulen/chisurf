@@ -5,7 +5,7 @@ import numpy as np
 
 from chisurf.core import nodes
 
-cn = nodes._bff  # the bff Port/Node runtime that replaced chinet
+cn = nodes._bff  # the bff GraphPort/GraphNode runtime that replaced chinet
 
 
 class TestPortNodeStability(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestPortNodeStability(unittest.TestCase):
         print("\nAllocating 20,000 ports...")
         ports = []
         for i in range(20000):
-            p = cn.Port(value=float(i))
+            p = cn.GraphPort(value=float(i))
             ports.append(p)
             if i % 5000 == 0:
                 gc.collect()
@@ -36,15 +36,15 @@ class TestPortNodeStability(unittest.TestCase):
     def test_complex_graph_evaluation(self):
         """Create a deep graph and evaluate it many times."""
         print("Building complex graph...")
-        root_port = cn.Port(1.0)
+        root_port = cn.GraphPort(1.0)
         nodes_ = []
 
         # Create a chain of 1000 nodes
         prev_port = root_port
         for i in range(1000):
-            node = cn.Node()
-            p_in = cn.Port(0.0)
-            p_out = cn.Port(0.0)
+            node = cn.GraphNode()
+            p_in = cn.GraphPort(0.0)
+            p_out = cn.GraphPort(0.0)
             p_in.link = prev_port
             node.add_input_port("in", p_in)
             node.add_output_port("out", p_out)
@@ -64,7 +64,7 @@ class TestPortNodeStability(unittest.TestCase):
         """Randomly link and unlink ports to check for reference cycle leaks or crashes."""
         print("Random linking/unlinking stress test...")
         rng = np.random.default_rng(42)
-        ports = [cn.Port(0.0) for _ in range(1000)]
+        ports = [cn.GraphPort(0.0) for _ in range(1000)]
         linked = 0
         for _ in range(5000):
             i, j = rng.integers(0, 1000, size=2)

@@ -39,8 +39,8 @@ roughly 23 % shear bias becomes visible rather than theoretical.
 Headless, the same thing:
 
 ```bash
-img-flow demo                  # simulate a scan whose flow profile is known
-img-flow map scan.ptu --tile 24 --lags 5 --pixel-size 100 --json
+csc img-flow demo                  # simulate a scan whose flow profile is known
+csc img-flow map scan.ptu --tile 24 --lags 5 --pixel-size 100 --json
 ```
 
 From Python, `make_demo()` returns the primary PTU path. It reuses a valid

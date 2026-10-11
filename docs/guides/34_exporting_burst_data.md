@@ -29,13 +29,17 @@ other tools. Three levels are common:
 
 Every burst step writes its result as a **run into the measurement's `.pto`**:
 the burst search, BVA, 2CDE, the lifetime fits, H2MM, burst FCS, fusion. Nothing
-writes a `bv4/`, `2c4/`, `bh4/` … companion folder any more. When an older tool
+writes a `bv4/`, `2c4/`, `bh4/` … companion folder any more. The one folder still
+written is the burst search's own on a vendor file (`.spc`, `.ptu`, …), which has
+no container to hold it: `<search>/bi4_bur/<stem>.bur` beside the file (Burst
+Selection says so under **Output**); the later steps then write into a `.pto`
+beside each measurement. When an older tool
 (ndX's folder reader, the Seidel/Margarita software) needs the folder layout, you
 ask for it once, explicitly:
 
 - in the **PTO inspector**: open the container, press **Export legacy…** and
   choose a folder;
-- on the command line: `csg_pto_inspect export-legacy m000.pto out_folder`;
+- on the command line: `csc csg_pto_inspect export-legacy m000.pto out_folder`;
 - in Python: `chisurf.core.fio.fluorescence.legacy_export.export_legacy(container, out_dir)`.
 
 The export writes `bi4_bur/<stem>.bur` for each burst run and, beside it, one
@@ -57,13 +61,19 @@ The workflow tables are plain tables, so any other format is a one-liner. The H2
 export is designed to open directly in **ndxplorer**:
 
 ```python
-# burst table -> CSV / the MFD-HDF5 columns ndxplorer plots on
-bursts.table.to_csv("bursts.csv", index=False)
+# burst table -> CSV (the burst table is a column store, not a pandas frame)
+from chisurf.core.datastore import write_csv_table
+write_csv_table("bursts.csv", bursts.table, delimiter=",")
 
 # per-burst H2MM export: a per-photon HDF5 + a per-burst CSV with the ndX
-# FRET-line columns ("Mean Microtime (green)", "Proximity ratio", ...)
-from chisurf.plugins.burst.burst_h2mm.core.export import build_tables
-build_tables(result, out_dir="h2mm/")
+# FRET-line columns ("Mean Microtime (green)", "Proximity ratio", ...), from the
+# engine's photon data, its Viterbi path and the state efficiencies
+# (`data, meta, path, fret` as in burst_h2mm/examples/H2MM_01_Simulated_smFRET.ipynb)
+from chisurf.plugins.burst.burst_h2mm.core import export
+tables = export.build_tables(data, meta, path, fret, base_time_s=1e-6,
+                             stream_groups=[("green", (0, 8)), ("red", (1, 9))])
+export.write_hdf5(tables.photons, "h2mm/h2mm_photons.h5")
+export.write_csv(tables.bursts, "h2mm/h2mm_bursts.csv")
 
 # per-photon data of the selected bursts
 import numpy as np

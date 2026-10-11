@@ -645,3 +645,46 @@ def test_mixture_new_model_build_editor(qapp, mixture_model):
     editor = build_model_editor(mixture_model)
     assert isinstance(editor, AutoForm)
     assert editor.model is mixture_model
+
+
+def test_the_irf_field_shows_the_datasets_name_not_its_path(qapp, registered_lifetime_model, monkeypatch):
+    """Qt shows the picked IRF as the emtk shell does: ``Prompt.txt``, not ``/…/Prompt.txt`` (2026-10-11).
+
+    The selector handed its dataset's *file path* as the curve name and the field printed it;
+    the field now shows the name of the curve the model holds, and the selector's name is the
+    dataset's display name.
+    """
+    import chisurf as cs
+    from chisurf.core.data import DataCurve
+    from chisurf.gui.autoform.sections.builtin import CurveInputWidget
+    from chisurf.gui.widgets.experiments.widgets import ExperimentalDataSelector
+    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
+    from chisurf.macros.model import CURVE_SELECT
+
+    x = np.linspace(0, 25, 256)
+    prompt = DataCurve(x=x, y=np.exp(-0.5 * ((x - 2) / 0.1) ** 2), name="Prompt.txt",
+                       load_filename_on_init=False)
+    prompt.filename = "/very/long/measurement/folder/Prompt.txt"
+
+    class _Picked:
+        selected_dataset = prompt
+        selected_curve_index = 0
+
+    assert ExperimentalDataSelector.curve_name.fget(_Picked()) == "Prompt.txt"
+
+    model = registered_lifetime_model
+    w = AutoModelWidget(model)
+    irf = next(c for c in w.findChildren(CurveInputWidget) if c._section.label == "IRF")
+
+    def dispatch(name, payload=None):
+        if name == "model.change_irf":  # what the action does to the model
+            CURVE_SELECT[name](model, prompt, payload["irf_name"])
+
+    monkeypatch.setattr(cs.core.actions, "dispatch", dispatch)
+
+    class _Sel(_Picked):
+        curve_name = prompt.filename  # even a selector that still answers a path
+
+    irf._selector = _Sel()
+    irf._on_change()
+    assert irf.name_edit.text() == "Prompt.txt"

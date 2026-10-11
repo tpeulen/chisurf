@@ -191,6 +191,15 @@ Two differences:
   api.set_parameter_value("N", 2.0, fit_uid=api.list_fits()[0]["uid"])
   ```
 
+  The question across every fit is again one line. A row's `chi2r` is what the
+  fit's last run reached (`None` for a fit not run yet); `statistics=True` adds
+  `chi2r_current`, the χ²ᵣ of the parameters as they are now — the number the
+  fit window shows:
+
+  ```python
+  [(f["name"], round(f["chi2r_current"], 3)) for f in api.list_fits(statistics=True)]
+  ```
+
   A command that changes the science is one **Undo** step, named after the
   command.
 * HTML displays as its text form, and `input()` raises `EOFError`.

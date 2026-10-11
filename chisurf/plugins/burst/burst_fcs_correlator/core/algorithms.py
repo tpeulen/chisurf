@@ -467,10 +467,23 @@ class PairConfig:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> PairConfig:
+        """Build a pair from ``{"name", "chs_a", "chs_b", "micro_a", "micro_b"}``.
+
+        A pair without channels on either side correlates nothing; it is refused
+        (``ValueError``) rather than answered with an empty curve list -- the
+        burst-consumer default spelled the keys ``ch1``/``ch2`` and every FCS sent
+        from ndX came back empty without a word.
+        """
+        chs_a, chs_b = list(d.get("chs_a", [])), list(d.get("chs_b", []))
+        if not chs_a or not chs_b:
+            raise ValueError(
+                f"FCS pair {d!r} names no channels: give 'chs_a' and 'chs_b' "
+                "(routing channels, e.g. {'chs_a': [0], 'chs_b': [1]})"
+            )
         return cls(
             pair_name=str(d.get("pair_name") or d.get("name") or ""),
-            chs_a=list(d.get("chs_a", [])),
-            chs_b=list(d.get("chs_b", [])),
+            chs_a=chs_a,
+            chs_b=chs_b,
             micro_a=list(d.get("micro_a", []) or []),
             micro_b=list(d.get("micro_b", []) or []),
         )

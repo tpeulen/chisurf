@@ -160,6 +160,12 @@ _ALLOWED_PREFIXES = {
     "matplotlib": (
         "chisurf/core/console/mpl_inline.py",
         "chisurf/core/console/shell.py",
+        # The console's value formatter looks at a figure only once the user has imported
+        # matplotlib (a ``sys.modules`` check first, the import inside a function).
+        "chisurf/core/console/formatters.py",
+        # The backend matplotlib itself loads for ``module://chisurf.core.console.mpl_backend``;
+        # nothing of ours imports it, so it cannot pull matplotlib in.
+        "chisurf/core/console/mpl_backend.py",
     ),
     "requests": ("chisurf/plugins/spectra_downloader/download/",),
     # The parity suite compares chisurf.core.ml against scikit-learn *where it

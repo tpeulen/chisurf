@@ -195,6 +195,35 @@ class GFactorModel:
         else:
             self.message = "Loaded slow reference; load a fast reference to determine G."
 
+    def load_example(self, folder=None, client=None):
+        """Load the simulated references (:mod:`..demo`, known G = 1.2) as a user would load files.
+
+        The fast dye becomes the fast reference, the slow protein the slow reference, the two further
+        decays join the batch queue; *dt*, rho, r0, the lifetime and background correction are set to
+        the simulation's.
+        """
+        from ..demo import DEMO, make_demo
+
+        files = make_demo(folder)
+        self.fp_dt_ns = float(DEMO["dt_ns"])
+        self.fp_r0 = float(DEMO["r0"])
+        self.fp_rho_ns = float(dict((k, rho) for k, rho, _ in DEMO["decays"])["slow"])
+        # The first moment of a decay recorded after a pulse at 5 ns is ~5 ns + tau, not tau: the
+        # example states the simulated lifetime instead (the manual override a user with a known
+        # reference lifetime would use).
+        self.manual_tau, self.tau_override = True, float(DEMO["tau_ns"])
+        self.background = True
+        self.load(files["fast"])
+        self.load(files["slow"], slow=True)
+        for key in ("batch1", "batch2"):
+            if str(files[key]) not in self.batch_files:
+                self.batch_files.append(str(files[key]))
+        if client is not None:
+            self.compute(client)
+        self.message = (
+            f"Example loaded (simulated, true G = {DEMO['g_factor']}): {self.message}"
+        )
+
     @property
     def g_factor(self):
         return float(self.g_override) if self.manual_g else self.result.get("g_factor")

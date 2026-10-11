@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 import chisurf.core.fio as io
@@ -58,10 +59,20 @@ class FpsJsonModel:
         self.extra_sections = {k: v for k, v in payload.items() if k not in _RESERVED}
 
     def load_file(self, path: str) -> None:
-        """Read an fps.json file into the model."""
+        """Read an fps.json file into the model.
+
+        A position's ``pdb_path`` relative to the file is resolved against the file's folder, so a project
+        that ships its structures beside its fps.json opens with them wherever it is unpacked; a path that
+        does not name a file there (a PDB ID, a structure elsewhere) is kept as written.
+        """
         with io.zipped.open_maybe_zipped(filename=path, mode="r") as fp:
             payload = json.load(fp)
         self.fps_json_payload = payload
+        folder = Path(path).resolve().parent
+        for params in self.positions.values():
+            pdb = str((params or {}).get("pdb_path") or "").strip() if isinstance(params, dict) else ""
+            if pdb and not Path(pdb).is_absolute() and (folder / pdb).is_file():
+                params["pdb_path"] = str(folder / pdb)
 
     def save_file(self, path: str) -> None:
         """Write the model to an fps.json file."""

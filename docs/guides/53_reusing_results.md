@@ -42,18 +42,19 @@ If all four are identical to what produced the result the step is holding, the
 run is skipped and the status bar says so:
 
 ```
-Unchanged — kept the previous BVA result (🔁 Restart recomputes it)
+Unchanged — kept the previous BVA result (Restart recomputes it)
 ```
 
 ```{figure} figures/53_bva_unchanged.png
 :name: fig-53-bva-unchanged
 :width: 100%
 
-**Spectroscopy → Single-Molecule → Burst Analysis → 4. Burst BVA** on four files of the BH SPC-132 DNA
-measurement (934 of 1133 bursts plotted). The step had written its `bv4/` files;
-pressing **Run** again with nothing changed kept them: the status bar says so and
-**🔁 Restart** (third toolbar button) is outlined. **⏩** sits between **◀ Back**
-and **Next ▶**.
+**Spectroscopy → Single-Molecule → Burst Analysis → 4. Burst BVA** on the ten files of the BH SPC-132
+DNA measurement (2558 of 2980 bursts plotted, green 0/8 and red 1/9). The step had
+written its `bv4/` files; pressing **▶ Run** again with nothing changed kept them:
+the status line under the settings says so and **Restart** (second toolbar button,
+beside **▶ Run**) is highlighted. **>>** sits between **Back** and **Next** at the
+bottom right.
 ```
 
 Anything else recomputes: a changed τ or window length, a different donor
@@ -65,16 +66,18 @@ IRF. You never have to remember to invalidate anything.
 | 2. Burst Selection | the same raw files and the same search settings produced the displayed search | any file or setting differs |
 | 4. Burst BVA | the plot on screen is the answer *and*, for a Run, the `bv4/` files are current | settings, detectors or burst files differ |
 | 5. Burst 2CDE | the `2c4/` companions on disk match the current settings | variant, kernel, τ, channels or burst files differ |
-| 6. Burst MLE | the `bg4/`, `br4/`, `by4/` exports on disk match | model, start values, min photons, per-detector settings or IRF differ |
+| 6. Burst MLE | never: every **Fit bursts** fits again (see below) | — |
 | 7. Burst segmentation (H2MM) | the fitted model on screen matches the request | state range, criterion, engine, seed, streams or burst files differ |
-| 8. Burst segment MLE | the `bg4/`, `br4/`, `by4/` exports match *including* their per-state columns | anything in row 6, plus the H2MM run or the per-state photon floor |
+| 8. Burst segment MLE | never, as step 6 | — |
 
 …and, for every row, when the raw measurements change, when the setup's reading
 correction changes, or when the code that computes it does.
 
-Steps 6 and 7 differ in *where* they keep the answer, which is why step 6 can
-reuse across sessions and step 7 cannot: the MLE batch's product is the exported
-files, while an H2MM fit lives only in the panel.
+The two MLE steps keep no fingerprint: the native Burst MLE window fits every
+burst again whenever it is asked, and it has no **Restart**. The exports it
+writes (`bg4/`, `br4/`, `by4/`) are replaced each time. This is a regression
+against the retired Qt wizard, which skipped a batch whose exports were current
+(recorded in the known issues).
 
 ## Steps that start themselves
 
@@ -95,11 +98,11 @@ Arriving at a step whose result is already there costs nothing — that is the
 rule above doing its job, and it is what makes starting on arrival reasonable in
 the first place.
 
-## Walking the whole pipeline (⏩)
+## Walking the whole pipeline (>>)
 
-**⏩**, between **◀ Back** and **Next ▶**, runs the remaining **numbered** steps
+**>>**, between **Back** and **Next**, runs the remaining **numbered** steps
 in order, including the one you are on. It passes over **3. Burst Fusion
-(optional)** — as **Next ▶** does — because fusing replaces the burst folder every
+(optional)** — as **Next** does — because fusing replaces the burst folder every
 later step reads, and that should happen only when you press the step's own
 button. It stops at the separator: what follows
 are tools you reach *with* the result (Browser, Accurate FRET, Burst FCS) or that
@@ -108,15 +111,15 @@ those unasked is not what fast-forward means.
 
 The click decides what will run — the steps become a queue, taken one at a time.
 It is not a loop that fires them off together: each is started only once the
-previous has finished, the same wait **Next ▶** performs, because starting a step
+previous has finished, the same wait **Next** performs, because starting a step
 while another is in flight is what that wait exists to prevent. So a
 fast-forward takes as long as the steps do, the panel you are watching is always
 the one working, and the status bar counts them off (*Fast-forward 3/7: 4. Burst
 BVA*).
 
-The button is its own cancel: while it is walking it reads **⏸**, and a second
+The button is its own cancel: while it is walking it reads **Stop**, and a second
 click stops it *after* the step in flight (a running analysis is never killed
-half-way — use the step's own **Stop** for that). **◀ Back**, or picking a step
+half-way — use the step's own **Stop** for that). **Back**, or picking a step
 in the list yourself, also ends it: both are a change of mind.
 
 Everything above still holds while it walks, which is what makes it cheap on a
@@ -176,15 +179,14 @@ of making each recompute the other.
 ## Forcing a recomputation
 
 You rarely need to: change any setting and the step runs. When you do want the
-same computation again, press **🔁 Restart** — every analysis step has one
-beside its Run button, and it is outlined the moment a run was skipped, which is
+same computation again, press **Restart** — BVA, 2CDE, H2MM and Burst Selection have one
+beside their Run button, and it is outlined the moment a run was skipped, which is
 exactly when it is the thing you want. Deleting the stamp file works too.
 
 ```python
-bva._restart_analysis()             # BVA (its Run takes no force)
-h2mm._run_analysis(force=True)      # H2MM
-two_cde.run(force=True)             # 2CDE
-wizard.process_bursts(force=True)   # burst-wise MLE export
+bva.controller.restart()            # BVA
+h2mm.restart()                      # H2MM
+two_cde.controller.restart()        # 2CDE
 ```
 
 Note that recomputing an H2MM fit reproduces the same answer rather than drawing

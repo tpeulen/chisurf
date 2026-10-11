@@ -484,6 +484,13 @@ def set_parameter(
         if parameter not in parameters:
             missing.append(index)
             continue
+        if getattr(parameters[parameter], "is_output", False):
+            # A statistic or report is computed from the other parameters on every evaluation:
+            # writing it would answer "ok" and change nothing.
+            raise ToolError(
+                f"{parameter!r} is a derived quantity of this model: it is computed from the "
+                "fitted parameters and cannot be set. Set the parameters it is computed from."
+            )
         if bounds is not None:
             if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
                 raise ToolError("'bounds' must be a two-element list [lower, upper]")

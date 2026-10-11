@@ -25,7 +25,7 @@ from chisurf.core.fluorescence.burst.photons import (
     streams_from_dicts,
 )
 
-__all__ = ["DECAY_NAME", "sub_ensemble_decay", "write_sub_ensemble_decay"]
+__all__ = ["DECAY_NAME", "sub_ensemble_decay", "write_sub_ensemble_decay_container"]
 
 #: What the decay is called inside a run.
 DECAY_NAME = "sub-ensemble decay"
@@ -141,7 +141,9 @@ def sub_ensemble_decay(
     return store_from_arrays(columns)
 
 
-def write_sub_ensemble_decay(run_path, store, parameters: Mapping[str, Any] | None = None) -> str:
+def write_sub_ensemble_decay_container(
+    run_path, store, parameters: Mapping[str, Any] | None = None
+) -> str:
     """Write a sub-ensemble decay into the container, as a child of its burst run.
 
     Parameters

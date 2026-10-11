@@ -183,3 +183,21 @@ def test_load_example_button_opens_a_structure_and_satisfies_the_tour(app):
     before = app._object_count()
     assert app.load_example()
     assert app._object_count() == before + 1
+
+
+def test_a_pointer_in_a_narrow_window_reaches_chimol_at_the_frame_position(app):
+    """Below 760 px the frame is rendered at the clamped size and scaled into the window.
+
+    Forwarding the host's coordinates unchanged put a click at the right edge of a 600 px window at
+    x = 600 of a 760 px frame: the atom picked and the rotation centre were both off by the scale.
+    """
+    app.draw(RecordingPainter(), 0, 0, 600, 446)
+    app.draw(RecordingPainter(), 0, 0, 600, 446)
+    assert app._surface == (760, 420)
+    vx, vy, vw, vh = app.item_rects["viewport"]
+    seen = []
+    renderer = app._chimol.renderer
+    renderer.on_pointer_press = lambda x, y, *a, **k: seen.append((round(x), round(y)))
+    app.pointer_press(vx + vw - 1, vy + vh / 2, 1)
+    assert seen and seen[0][0] == pytest.approx(760 * (vw - 1) / vw, abs=1.5)
+    assert seen[0][1] == pytest.approx(210, abs=1.5)

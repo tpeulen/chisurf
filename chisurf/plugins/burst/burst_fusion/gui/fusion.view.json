@@ -80,7 +80,7 @@
               "expand": true,
               "columns": [
                 {"description": "Burst quantity compared before and after fusion.", "key": "quantity", "label": "Quantity", "width": 112},
-                {"description": "Value for the selected bursts before fusion.", "key": "before", "label": "Selected", "width": 58},
+                {"description": "Value for the selected bursts before fusion.", "key": "before", "label": "Selected", "width": 84},
                 {"description": "Value for the fused bursts.", "key": "after", "label": "Fused"}
               ],
               "description": "Every burst identifier fusion changes, before and after. It sits beside the threshold on purpose — this is the answer the threshold is chosen against."

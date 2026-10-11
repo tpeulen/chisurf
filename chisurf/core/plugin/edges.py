@@ -11,7 +11,10 @@ So one rule covers every channel:
 
     Any dotted name ``chisurf.plugins.<...>`` -- as an AST import, an AST string
     constant, or a JSON string value -- that resolves to a plugin other than the
-    one owning the file is an edge.
+    one owning the file is an edge. So is a string that is a plugin's directory
+    relative to the plugin tree (``"microscopy/img_flow"``): the native hubs read
+    a child's ``manifest.json`` from there to build it on first use, which is the
+    same click-time coupling the dotted form used to carry.
 
 Edges are classified by *when* they fire, because only one class constrains boot
 order:
@@ -165,6 +168,43 @@ def _dotted_candidates(text: str) -> list[str]:
     return out
 
 
+def _path_candidates(text: str, relative_dirs: dict[str, str]) -> list[str]:
+    """Plugin module paths named as plugin-tree-relative directories in one string.
+
+    Parameters
+    ----------
+    text
+        A string constant or JSON value.
+    relative_dirs
+        ``{"microscopy/img_flow": "chisurf.plugins.microscopy.img_flow", ...}``.
+
+    Returns
+    -------
+    list of str
+        The module path of the plugin the string names, or nothing. Only the whole
+        string (optionally followed by ``/...``) counts, so prose that merely
+        mentions a directory is not an edge.
+    """
+    value = text.strip().strip("/")
+    if "/" not in value or " " in value or len(value) > 120:
+        return []
+    for length in range(value.count("/") + 1, 0, -1):
+        head = "/".join(value.split("/")[:length])
+        if head in relative_dirs:
+            return [relative_dirs[head]]
+    return []
+
+
+def _relative_dirs(owners: dict[str, str]) -> dict[str, str]:
+    """Each plugin's directory below the plugin tree, mapped to its module path."""
+    prefix = PLUGIN_PACKAGE + "."
+    return {
+        module[len(prefix) :].replace(".", "/"): module
+        for module in owners
+        if module.startswith(prefix)
+    }
+
+
 class _ImportVisitor(ast.NodeVisitor):
     """Collect plugin module references, tagged by when they fire.
 
@@ -173,8 +213,9 @@ class _ImportVisitor(ast.NodeVisitor):
     explicitly with those two flags carried down.
     """
 
-    def __init__(self, module_dotted: str) -> None:
+    def __init__(self, module_dotted: str, relative_dirs: dict[str, str] | None = None) -> None:
         self.module_dotted = module_dotted
+        self.relative_dirs = relative_dirs or {}
         #: ``(dotted, is_hard, lineno)``
         self.found: list[tuple[str, bool, int]] = []
         self._top_level = True
@@ -230,6 +271,8 @@ class _ImportVisitor(ast.NodeVisitor):
         if isinstance(node.value, str):
             for dotted in _dotted_candidates(node.value):
                 self._record(dotted, False, node.lineno)
+            for dotted in _path_candidates(node.value, self.relative_dirs):
+                self._record(dotted, False, node.lineno)
 
 
 def _iter_json_strings(node) -> list[str]:
@@ -262,6 +305,7 @@ def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
     root = root or plugin_root()
     base = root.parent.parent
     owners = module_owners(root)
+    relative_dirs = _relative_dirs(owners)
     edges: set[PluginEdge] = set()
 
     for path in sorted(root.rglob("*.py")):
@@ -275,7 +319,7 @@ def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
         except (OSError, SyntaxError, UnicodeDecodeError):
             continue
         module_dotted = ".".join(path.resolve().relative_to(base).with_suffix("").parts)
-        visitor = _ImportVisitor(module_dotted)
+        visitor = _ImportVisitor(module_dotted, relative_dirs)
         visitor.visit(tree)
         for dotted, hard, lineno in visitor.found:
             target = owner_of_module(dotted, owners)
@@ -296,7 +340,7 @@ def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 continue
             for value in _iter_json_strings(data):
-                for dotted in _dotted_candidates(value):
+                for dotted in (*_dotted_candidates(value), *_path_candidates(value, relative_dirs)):
                     target = owner_of_module(dotted, owners)
                     if target is None or target == source:
                         continue

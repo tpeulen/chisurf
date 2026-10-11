@@ -63,11 +63,12 @@ index into the three arrays — and colours the photons inside bursts:
 
 Burst Selection, **Inter-photon time** tab, the first second of `m000.spc` (**Window
 length** 1.00 s). Outside bursts the photons (blue: all photons) arrive
-~0.1–1 ms apart; the three dips to ~0.01 ms (orange: selected photons) are bursts, at photon indices 382–401, 1785–1807 and
-1995–2034 — the same ranges `burst_search` returns above. The **Bursts** tab
-lists the search result as rows of `First Photon` / `Last Photon` with the
-reductions over each slice (duration, mean macro time, photon counts per
-detector).
+~0.1–1 ms apart; the three dips to ~0.01 ms (orange: selected photons) are bursts, at photon indices 383–401, 1786–1807 and
+1996–2034 — the ranges `burst_search` returns above, less each burst's first
+photon: its dT is the gap *before* the burst, which **Max dT** (0.15 ms) rejects.
+The **Bursts** tab lists the bursts of the whole file as rows of `First Photon` /
+`Last Photon` with the reductions over each slice (duration, mean macro time,
+photon counts per detector).
 ```
 
 Bursts can be sliced into time bins (the basis of [BVA](08_burst_variance_analysis.md)),
@@ -92,14 +93,10 @@ indices. **Bottom:** the same stream binned into a count-rate trace — the burs
 are the spikes the search flags.
 ```
 
-:::{admonition} Known defects
-:class: warning
-In Burst Selection the dT trace joins the burst photons of the window with one
-continuous line across the gaps between bursts. The **Bursts** table does not
-follow a change of the window length (after 10 s → 1 s it still lists the
-bursts of the 10 s window) and applies the search's photon threshold, so the
-three short bursts marked in the trace above are not in it.
-:::
+The orange photons are those the search selected; the **Bursts** table then keeps
+the bursts of at least **Min photons** (60 under **Filter**), so the three short
+bursts above (19, 22 and 39 photons) are drawn in orange but are not rows of the
+table — set **Min photons** to 19 and **▶ Run** again to list them (161 bursts).
 
 ## See also
 

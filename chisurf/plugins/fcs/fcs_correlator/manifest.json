@@ -17,7 +17,8 @@
   },
   "optional_requires": {
     "fcs_channel_preset": "*",
-    "fcs_filter_calculator": "*"
+    "fcs_filter_calculator": "*",
+    "fcs_merger": "*"
   },
   "menu_hidden": true
 }

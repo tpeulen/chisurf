@@ -53,7 +53,6 @@ FLOOR_MARGIN = 2.0
 def floor_rate(ana: Any) -> float:
     """The smallest rate (1/s) the fit can report: the EM floor on a transition probability over the base time.
 
-    A rate at this floor was not measured -- the data carry no such transition -- so it is a bound, ``k < floor``.
     ``nan`` without a base time.
     """
     from ..core.h2mm import MIN_TRANS
@@ -62,12 +61,26 @@ def floor_rate(ana: Any) -> float:
     return MIN_TRANS / base if base > 0 else float("nan")
 
 
-def rates_at_floor(ana: Any, rates: np.ndarray) -> np.ndarray:
-    """Boolean mask of the entries of *rates* that sit at :func:`floor_rate` (not measured)."""
-    floor = floor_rate(ana)
-    if not np.isfinite(floor):
+def rate_bound(ana: Any) -> float:
+    """The smallest rate (1/s) the data can show: one event in the time spent inside bursts, ``1 / T``.
+
+    A rate below it predicts less than one transition in the whole data set, so the fit has not measured it -- most
+    such rates sit at the EM floor (:func:`floor_rate`), the others a few times above it. They are bounds,
+    ``k < 1 / T``. Without the burst time the floor (with its margin) is the bound; ``nan`` without either.
+    """
+    total = float(getattr(ana, "observed_time_s", float("nan")))
+    floor = FLOOR_MARGIN * floor_rate(ana)
+    if np.isfinite(total) and total > 0:
+        return max(1.0 / total, floor) if np.isfinite(floor) else 1.0 / total
+    return floor
+
+
+def rates_unresolved(ana: Any, rates: np.ndarray) -> np.ndarray:
+    """Boolean mask of the entries of *rates* below :func:`rate_bound` (not measured)."""
+    bound = rate_bound(ana)
+    if not np.isfinite(bound):
         return np.zeros(np.shape(rates), dtype=bool)
-    return np.asarray(rates, dtype=np.float64) <= FLOOR_MARGIN * floor
+    return np.asarray(rates, dtype=np.float64) < bound
 
 
 def transition_points(ana: Any) -> tuple[np.ndarray, np.ndarray] | None:
@@ -286,7 +299,7 @@ def transition_arrows(
 ) -> list[tuple[int, int, float, float, float, float, float]]:
     """Arrows of the kinetic scheme along the E axis: ``(from, to, x0, y0, x1, y1, line width)``.
 
-    One arrow per measured transition (a positive finite rate above :func:`floor_rate`), from state node ``i`` to node ``j`` (nodes at the states' E
+    One arrow per measured transition (a positive finite rate above :func:`rate_bound`), from state node ``i`` to node ``j`` (nodes at the states' E
     on the baseline *y_node*), offset sideways so the two directions do not overlap, width scaled by the rate.
 
     The arrows are horizontal, so "sideways" is the plot's **y** axis: the offset is a fraction of *y_node*, in the
@@ -300,8 +313,8 @@ def transition_arrows(
     n = xs.shape[0]
     if rates.shape != (n, n):
         return []
-    # A rate at the EM floor is "no transition seen"; drawing it would show a pathway the data do not have.
-    rates = np.where(rates_at_floor(ana, rates), 0.0, rates)
+    # A rate below the bound is "no transition seen"; drawing it would show a pathway the data do not have.
+    rates = np.where(rates_unresolved(ana, rates), 0.0, rates)
     pos = rates[np.isfinite(rates) & (rates > 0)]
     if pos.size == 0:
         return []

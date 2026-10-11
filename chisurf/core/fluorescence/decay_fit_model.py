@@ -119,6 +119,15 @@ def _hold_instrument(
     parameters = _parameters(model)
     for canonical, is_free in free.items():
         parameters[canonical].fixed = not is_free
+    if fit_irf and irf is None and abs(float(irf_width)) > 0.0:
+        # The description bounds the prompt's width by the whole window (tens of ns). A start that
+        # close to one edge of so wide a box sits where the optimiser's sine bounds transform is
+        # flat: Levenberg-Marquardt overshoots on the first step, finds every trial worse, shrinks
+        # its trust region below tolerance and returns the start unchanged -- with no error.
+        # (Measured: a 0.2 ns start in 1e-4..4 ns converges; in 1e-4..5 ns it never moves.) A decade
+        # either side of the start is where a prompt width can sensibly be, and keeps it central.
+        width = abs(float(irf_width))
+        parameters["instrument.irf_width"].bounds = (width / 10.0, width * 10.0)
 
 
 def _irf_report(model, *, irf, bin_width) -> dict:

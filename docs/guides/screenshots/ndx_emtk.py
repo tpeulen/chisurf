@@ -65,3 +65,47 @@ def save(image, fig: pathlib.Path, name: str) -> None:
     """Write a PIL *image* into the guide figures."""
     image.save(str(fig / name))
     print("wrote", name)
+
+
+def grab_view_menu_rank(fig: pathlib.Path) -> None:
+    """Guide 46's ``ndxplorer_view_menu_rank.png``: ndX's View menu with a table loaded.
+
+    The ranking entries are greyed out until a table is loaded, so a small
+    two-population table is written first; the window is the emtk app ChiSurf
+    hosts (``Tools › Views › ndX``), clicked open as a person does, and the
+    menu's corner of the frame is kept.
+    """
+    import tempfile
+
+    import numpy as np
+    from emtk.testing import Driver
+
+    from chisurf.emtk.plugins import load_plugin
+
+    rng = np.random.default_rng(3)
+    efficiency = np.r_[rng.normal(0.02, 0.02, 400), rng.normal(0.5, 0.05, 600)]
+    table = pathlib.Path(tempfile.mkdtemp(prefix="ndx-menu-")) / "bursts.csv"
+    np.savetxt(table, np.column_stack([4.0 * (1 - efficiency), efficiency]), delimiter=",",
+               header="Tau (green),FRET efficiency", comments="")
+    app = load_plugin("ndxplorer", persist=False)
+    driver = Driver(app, (900, 520))
+    driver.frame(3)
+    if not app.open_path(str(table)):
+        raise RuntimeError(f"ndX could not open {table}")
+    driver.frame(10)
+    driver.click("View")
+    driver.frame(2)
+    shot = fig / "ndxplorer_view_menu_rank.png"
+    driver.screenshot(shot)
+    from PIL import Image
+
+    Image.open(shot).crop((0, 0, 560, 260)).save(shot)
+    print("wrote", shot.name)
+
+
+if __name__ == "__main__":
+    import os
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    grab_view_menu_rank(pathlib.Path(__file__).resolve().parents[1] / "figures")
+    os._exit(0)

@@ -6,7 +6,10 @@
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["Structure", "Modelling"],
+  "categories": [
+    "Structure",
+    "Modelling"
+  ],
   "icon": "🏗️",
   "statefulness": {
     "enabled": true,
@@ -19,10 +22,11 @@
     "emtk": "chisurf.plugins.modelling.structure_tools.app:make_app"
   },
   "optional_requires": {
-    "fps_json_editor": "*",
     "fret_docking": "*",
     "hydropro": "*",
-    "quenching_estimator": "*",
     "traj_tools": "*"
+  },
+  "requires": {
+    "fps_json_editor": "*"
   }
 }

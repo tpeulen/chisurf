@@ -135,6 +135,7 @@ def qt_model():
     model = PsfViewModel()
     model.set_stack(make_stack())
     model.pixel_size_nm, model.z_step_nm = 100.0, 300.0
+    model.pixels_per_frame = 60  # what the demo sets, so the two detect the same five beads
     return model
 
 
@@ -148,7 +149,7 @@ def test_detection_fits_and_the_batch_csv_started_in_the_native_window_equal_the
     ui = demo
     ui.click_name("detect_beads")
     m = ui.settle()
-    assert m.detected_beads == qt.detected_beads and len(m.detected_beads) == 4
+    assert m.detected_beads == qt.detected_beads and len(m.detected_beads) == 5
     ui.click_name("fit_all")
     m = ui.settle()
     assert m.results_text == qt.results_text
@@ -183,7 +184,7 @@ def test_the_physical_widths_of_the_known_stack_are_recovered(demo):
     m = demo.settle()
     fwhm_xy = [float(v) for v in re.findall(r"FWHMxy≈([\d.]+) nm", m.results_text)]
     fwhm_z = [float(v) for v in re.findall(r"FWHMz=([\d.]+) nm", m.results_text)]
-    assert len(fwhm_xy) == 4 == len(fwhm_z)
+    assert len(fwhm_xy) == 5 == len(fwhm_z)
     assert np.mean(fwhm_xy) == pytest.approx(424.0, rel=0.02) and np.mean(fwhm_z) == pytest.approx(
         2120.0, rel=0.03
     )
@@ -287,8 +288,8 @@ def test_the_mmfdb_button_opens_the_dataset_picker_and_cancel_closes_it(ui):
 
 def test_detect_runs_on_a_job_and_marks_the_beads_then_fit_selected_fits_the_first(detected):
     m = detected.app.model
-    assert len(m.detected_beads) == 4 and m.selected_bead == m.detected_beads[0]
-    assert "4 detected beads" in [t[5] for t in detected.draw().texts]
+    assert len(m.detected_beads) == 5 and m.selected_bead == m.detected_beads[0]
+    assert "5 detected beads" in [t[5] for t in detected.draw().texts]
     detected.click_name("fit_selected")
     m = detected.settle()
     assert m._fit_params is not None and "PSF Fit Results" in m.results_text
@@ -317,10 +318,10 @@ def test_the_bead_index_field_selects_and_fits_the_typed_bead_and_clamps(detecte
     )
     type_value(detected, "bead_index", "99")
     detected.settle()
-    assert detected.app.bead_index == 3
+    assert detected.app.bead_index == 4
     detected.click(field(detected, "bead_index.stepper"), fy=0.75)
     detected.settle()
-    assert detected.app.bead_index == 2
+    assert detected.app.bead_index == 3
 
 
 def test_the_bead_index_is_greyed_without_beads(demo):
@@ -331,7 +332,7 @@ def test_the_bead_index_is_greyed_without_beads(demo):
 def test_fit_all_lists_every_bead_and_the_profile_tabs_show_the_fit(detected):
     detected.click_name("fit_all")
     m = detected.settle()
-    assert m.results_text.count("ok=True") == 4
+    assert m.results_text.count("ok=True") == 5
     detected.click_name("fit_selected")
     detected.settle()
     for axis, label in (("x", "x [pixels]"), ("y", "y [pixels]"), ("z", "z [slices]")):
@@ -343,11 +344,26 @@ def test_fit_all_lists_every_bead_and_the_profile_tabs_show_the_fit(detected):
     assert detected.app.profile_axis == "z"
 
 
-def test_buttons_are_greyed_while_a_job_runs(demo):
+def test_buttons_are_greyed_while_a_job_runs(demo, monkeypatch):
+    import threading
+
+    from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
+
+    # Hold the detection until the click is done: a fast detection finished during the click's frames and
+    # enabled Fit all, so the test failed about every second run of the suite.
+    release = threading.Event()
+    detect = PsfViewModel.detect_beads
+
+    def held(self):
+        release.wait(30)
+        return detect(self)
+
+    monkeypatch.setattr(PsfViewModel, "detect_beads", held)
     demo.click_name("detect_beads")
     demo.draw(1)
     assert demo.app.job.busy
     demo.click_name("fit_all")  # greyed: nothing queued twice
+    release.set()
     demo.settle()
     assert "Batch PSF fits" not in demo.app.model.results_text
 
@@ -598,3 +614,9 @@ def test_the_port_is_qt_free():
 
 def test_zzz_the_real_chisurf_folder_was_not_touched():
     assert snapshot_real() == REAL_BEFORE
+
+
+def test_detect_on_the_demo_finds_every_bead_it_promises(detected):
+    """The demo says "five beads"; with the default Px/frame (20) Detect found four, missing the one at (y 55, x 80)."""
+    beads = sorted((y, x) for _z, y, x in detected.app.model.detected_beads)
+    assert beads == [(20, 20), (22, 60), (50, 30), (55, 80), (90, 50)]

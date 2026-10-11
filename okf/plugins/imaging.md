@@ -7,6 +7,21 @@ tags: [plugins, imaging]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
+## Where to pick this up
+
+1. Measure: the end-to-end check of the imaging pipeline is the CLSM Generator's own output. 64×64 brightness map,
+   two lifetime maps (2 and 3 ns), Generate, Save `.ptu`, drop it on *Image Tools → 1. Intensity*, press the step's
+   *Next*: the hub precomputes N&B, micro-time and phasor with the default Setup (green = ch 0, red = ch 1). Phasor
+   medians must read green g 0.177 / s 0.527, red g 0.049 / s 0.395 (analytic values rotated by the 0.32 ns IRF delay).
+   Traps: a stream without `ImgHdr_*` tags reconstructs to `0x0` silently; a macro clock that is not the laser
+   period makes the automatic phasor frequency degenerate (g = 1, s = 0) while every image still looks right; the hub
+   only knows a step is idle when `model.busy` is mirrored back to False (Spot Finder / Region MLE poll their own jobs).
+2. Open: an SPC or HT3 saved by the generator is read by CLSM Draw, Spot Finder and Region MLE (the `<stem>.json`
+   scanner sidecar) but not by the pixel steps, which only auto-detect from the header (`pixel_maps.build_clsm`).
+3. Open: guides not walked in the 2026-10-11 QA pass: 24, 43, 45, 48, 50, 61, 72, 77, 80, 81, 86, 99 (each tool was
+   only opened and screenshotted, en/de/fr, 800×600 and 1920×1080). Method and every defect: known issue "QA walk of
+   the imaging, microscopy and structure guides" (found 2026-10-11).
+
 The imaging group reconstructs and analyses confocal (CLSM) TTTR images pixel-by-pixel:
 intensity, mean arrival time, phasor-FLIM, lifetime (MLE) and number-and-brightness
 maps, with calibration and PSF-determination steps. The plugins live under

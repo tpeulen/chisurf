@@ -344,7 +344,7 @@ def change_irf(
         # Presentation only: pure (Qt-free) models have no line edit, and a
         # missing one must not undo the IRF that was just attached above.
         try:
-            f.model.convolve.lineEdit.setText(str(irf_name or getattr(irf_curve, "name", "")))
+            f.model.convolve.lineEdit.setText(str(getattr(irf_curve, "name", "") or irf_name or ""))
         except AttributeError:
             pass
 

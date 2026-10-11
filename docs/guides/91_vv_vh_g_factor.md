@@ -44,6 +44,15 @@ than treating the finite-window first moment as the exact input lifetime.
 VV/VH file of the fast dye (or drop it on the window). The status line reports $G$ and the results table
 lists $G$ raw and its standard deviation.
 
+To learn the tool without your own references, press **🧪 Load example** (the **Guide** waits for it). It
+writes simulated references to the settings folder (`demos/vv_vh_g_factor`, from the plugin's `demo.py`):
+a dye that depolarises within the pulse (ρ 0.2 ns), a slow protein (ρ 16 ns), and two batch decays
+(ρ 8 and 30 ns), all with τ 4 ns, r0 0.38, 3 background counts per bin, no polarisation mixing and the VH
+channel detected with 1/1.2 the efficiency of VV. It loads them as the fast and slow references, queues
+the two batch decays, and sets dt 0.05 ns/bin, ρ, r0, the 4 ns lifetime and background correction. Tail
+matching then gives G = 1.239 (SD 0.13; the simulated 1.2 is within it) and the linked mixing estimate
+l1 = l2 = 0.014 (simulated 0).
+
 The controls and plots are one native emtk/AutoForm app. ChiSurf's existing
 detector-calibration and lifetime-analysis windows host that same app. Its
 **G-factor and mixing** and **Batch anisotropy** tabs share the reference,
@@ -175,7 +184,8 @@ m.compute()
 print(m.g_factor, m.result["g_factor_stddev_corrected"], m.fp_result.get("l1"))
 ```
 
-Here `fast.dat` and `slow.dat` are your stacked VV/VH reference files. The
+Here `fast.dat` and `slow.dat` are your stacked VV/VH reference files; `m.load_example()` loads the
+simulated ones instead (`chisurf.plugins.vv_vh_g_factor.demo.make_demo(folder)` writes them). The
 synthetic figure above uses 0.05 ns/bin; substitute the physical acquisition
 value for measured data. A missing mixing estimate is reported as `None`.
 The bundled noisy `test_vv_vh_data.dat` is a reader/calculation fixture;

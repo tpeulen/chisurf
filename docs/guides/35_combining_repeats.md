@@ -61,8 +61,8 @@ per_file = {f: np.nanmedian(pr[real & (files == f)]) for f in np.unique(files[re
 pooled = pr[real]
 ```
 
-On the ten repeats the per-file median proximity ratio is 0.32–0.36 for nine
-files and 0.21 for `m006.spc` — the file to look at before it goes into the
+On the ten repeats the per-file median proximity ratio is 0.34–0.39 for nine
+files and 0.23 for `m006.spc` — the file to look at before it goes into the
 pool. The facade's `BurstWorkflow.register_all([...])` followed by
 `select_bursts(handles, setup=setup)` searches several registered files in one
 call and keeps their MMFDB provenance

@@ -44,3 +44,43 @@ def test_hidden_identity_does_not_push_fitting_buttons_to_another_row():
         assert widths[label] == app.item_rects[key][2]
         driver.click(key)
     assert used == ["run", "stop"]
+
+
+def test_a_row_of_translated_buttons_wraps_on_the_width_it_draws():
+    """French captions are longer than the English source: the row must wrap on them, not on the source."""
+    from emtk import i18n as toolkit_i18n
+
+    from chisurf.emtk import i18n
+
+    previous = toolkit_i18n.get_locale()
+    widths, app = {}, None
+
+    def remember(key):
+        app.item_rects[key] = im.get_item_rect()
+
+    def draw():
+        if im.begin("Actions", (0, 0, 400, 120)):
+            widths["save"] = button_width("Save settings")
+            button_row(
+                [
+                    {"label": "Clear picks", "key": "clear"},
+                    {"label": "Save settings", "key": "save"},
+                ],
+                width=1.0 + button_width("Clear picks") + im.get_style().item_spacing[0] + widths["save"],
+                remember=remember,
+            )
+        im.end()
+
+    try:
+        i18n.install("fr")
+        i18n.set_locale("fr")
+        assert toolkit_i18n.tr("Save settings") != "Save settings"
+        app = ImApp(draw)
+        app.item_rects = {}
+        Driver(app, size=(400, 120)).draw(3)
+        assert widths["save"] == app.item_rects["save"][2]
+        # it fits exactly, so it stays on the row; before, the width of "Save settings" was budgeted and the
+        # longer "Enregistrer les réglages" ran past the edge of a dock that was sized to it
+        assert app.item_rects["clear"][1] == app.item_rects["save"][1]
+    finally:
+        toolkit_i18n.set_locale(previous)

@@ -120,7 +120,7 @@ The readout under the controls names the slice and the number of points in it.
 
 Playback is a gate like any other, so every other panel follows it: the marginals,
 the 2-D map, a Gaussian fit and a curve fit all see only the surviving points. A
-selection added with **➕ select** while a slice is on screen records that slice
+selection added with **select** (in the *z axis* panel) while a slice is on screen records that slice
 as part of the gate, so it keeps meaning the same thing after the playback moves
 on.
 
@@ -153,7 +153,7 @@ your calibration; free one deliberately and it joins the fit as a
    the wheel, and a right-click **link** menu. Linking a curve parameter to a fit
    (a FRET line's `tau_d0` to a measured donor lifetime) makes the drawn line
    follow that fit.
-4. Press **🎯 Fit** and choose what to fit against: the **displayed data**
+4. Press **Fit** and choose what to fit against: the **displayed data**
    (one point per populated x column of the 2-D distribution) or an axis
    **marginal** (bin counts with Poisson weights). Free parameters are
    optimised, fixed ones held — including constants and linked parameters, whose
@@ -316,7 +316,7 @@ strands it. See
 
 ### Fitting a constant: moving the data onto the curve
 
-Below the curve's parameters the fit dialog shows a second table: nDXplorer's
+Below the curve's parameters the fit dialog shows a second table: ndX's
 own constants — the ones an equation actually reads. Freeing one puts it in the
 same optimisation, but it does something different there. A constant is not part
 of the curve: it is an input of the equations that build the plotted axes, so
@@ -481,21 +481,31 @@ tau = tau0 * (1 - E) + rng.normal(0, 0.05, E.size)
 Fit the **E marginal** with two Gaussians (the snippet above) — it recovers the
 no-FRET peak near $0.02$ and the FRET peak near $0.50$. Fit the **static FRET
 line** through both clusters with a one-parameter model — the overlay's own
-**🎯 Fit**, against the displayed data:
+**Fit**, against the displayed data:
 
 ```python
 counts, x_edges, y_edges = np.histogram2d(tau, E, bins=(60, 60))
 res = fit_equation_to_histogram("1 - x/tau0", {"tau0": 3.5},
                                 counts, x_edges, y_edges)
-print(res.params["tau0"])   # -> ~4.00 ns, recovered to <0.1 %
+print(res.params["tau0"])   # -> 4.04 ns
 ```
+
+`fit_equation_to_histogram` reduces each $\tau$ column to its densest
+population — the dialog's *the population of each column* — and that lands
+0.9 % above the 4.00 ns the bursts were made with. It is the data, not the
+optimiser: the lifetime carries its own scatter (0.05 ns here), so a column
+mixes bursts of neighbouring efficiencies and its densest $E$ sits toward the
+population's centre, the errors-in-variables flattening of a slope. The
+dialog's default, **the cloud**, fits every populated bin and returns
+$\tau_0 = 4.007$ ns ($\chi^2_r = 0.19$) on the same table.
 
 ```{figure} figures/ndxplorer_marginal_fit.png
 :name: fig-ndxplorer-marginal
 :width: 100%
 
-Left: every burst lies on the fitted static FRET line $E = 1 - \tau/\tau_0$
-($\tau_0 = 4.00$ ns recovered). Right: the E marginal fitted with two Gaussians
+Left: every burst lies on the static FRET line $E = 1 - \tau/\tau_0$ fitted
+through the displayed 2-D data ($\tau_0 = 4.04$ ns for a truth of 4.00).
+Drawn by `make_figures.py::fig_ndxplorer` from the code above. Right: the E marginal fitted with two Gaussians
 via ndX's `fit_equation_to_marginal` engine. The FRET peak (broad) is well
 described; the near-zero-efficiency peak is shot-noise-discretised rather than
 Gaussian, so its $\chi^2_r$ is elevated — the cue to hand that population to a
@@ -510,14 +520,19 @@ A marginal is a projection: two populations that overlap in $E$ can be well
 separated in $S$. The **Gaussian Fit** dock fits the populations in the plane
 they are actually separated in. Theory: {ref}`concept-md-2d-gaussians`.
 
-1. Tick **Select point** and click a population on the 2-D map. A component is
-   added with its centre at the click and its width estimated from the bins
-   around it, and its 1σ / 2σ / 3σ ellipses appear on the map. (**add** puts one
+1. **View ▸ Fit Gaussians** opens the dock (the menu entry toggles it; the
+   window remembers whether it was open). **Select point** is ticked; click a
+   population on the 2-D map. A component is added with its centre at the click
+   and its width estimated from the bins around it, and its 1σ / 2σ / 3σ
+   ellipses appear on the map. The clicked centre starts **Fixed** — you placed
+   it — so the fit moves widths, correlation and weights; untick *Fixed* to let
+   it move too, or turn that default off in **Settings** (*Fix new means by
+   default*). (**add** puts one
    in the middle of the visible map instead; **del** removes the selected row.)
-2. Press **🎯 Fit**. Expectation–maximisation optimises every free parameter
+2. Press **Fit**. Expectation–maximisation optimises every free parameter
    against the bursts inside the visible range — not against the binned image, so
    the answer does not move when you change the binning.
-3. **🔍 Select** turns the chosen rows into $n\sigma$ selections (the **Selection
+3. **Select** turns the chosen rows (the only one when there is one) into $n\sigma$ selections (the **Selection
    σ** box sets $n$), which is how a fitted population becomes a gate a
    [bridge](#from-marginal-to-full-model-bridges) can hand on.
 
@@ -528,19 +543,18 @@ than spread across the panel, because six numbers side by side is a dozen column
 and the dock does not have them; a row names the Gaussian it belongs to
 ($x_1$, $\sigma_{x,1}$, …), and selecting one selects that Gaussian.
 
-- **Hold what you know.** Tick *Fixed* on a centre you placed deliberately — the
-  donor-only corner, say — and it is held *inside* the fit, while that
-  component's width and weight are still optimised.
-- **Link what is shared.** Right-click a cell → **🔗 Link … to** and pin the
+- **Hold what you know.** A *Fixed* centre — a clicked one, or the donor-only
+  corner you typed — is held *inside* the fit, while that component's width and
+  weight are still optimised.
+- **Link what is shared.** Right-click a cell → **Link…** and pin the
   parameter to another one: a parameter of a ChiSurf fit, an ndX constant, or the
   matching parameter of another Gaussian (to test a mixture against one shared
   width). A linked parameter is held by the fit and follows its master, so
   re-fitting the thing it is pinned to moves the ellipse on the map.
 - **Bounds are armed** where a value outside them is meaningless ($\sigma \ge 0$,
-  $|\rho| \le 1$, $w \ge 0$); their columns are hidden until you press the
-  panel's **bounds** button, and a row's **🔍 Details…** always has them.
-- **del** and the **Delete** key both remove the selected Gaussian; **💾 Save** /
-  **📂 Load** write the components, with their held flags, to JSON/CSV alongside
+  $|\rho| \le 1$, $w \ge 0$), and shown in the table's *Lo* / *Hi* columns.
+- **del** and the **Delete** key both remove the selected Gaussian; **Save** /
+  **Load** write the components, with their held flags, to JSON/CSV alongside
   the histogram, the model and both marginals.
 
 ```{figure} figures/ndxplorer_gaussian_panel.png
@@ -739,7 +753,6 @@ the status line.
 - `ndxplorer/analysis/curve_fit.py` (engine); {src}`chisurf/core/support/expressions.py`
   (safe equation engine); histogram fitting alternative:
   {doc}`FRET-efficiency histogram fitting <29_fret_histogram_fitting>`.
-</content>
 - Tool: **ndX** (`chisurf/plugins/ndxplorer/`).
 
 The native ndX owner declares a 1200×800 initial window, packaged with its

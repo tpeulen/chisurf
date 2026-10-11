@@ -13,7 +13,7 @@ predicts the leakage factor $\alpha$ and the direct-excitation factor $\delta$ o
 The physics is in [Accurate FRET and its correction factors](../concepts/accurate_fret.md) and the [FRET concept](../concepts/fret.md).
 
 **Tool:** *Tools → Calculators → Light Path Simulator* (`lightpath_simulator`,
-`chisurf/plugins/core/lightpath_simulator/`). **Headless:** `lightpath-simulator`
+`chisurf/plugins/core/lightpath_simulator/`). **Headless:** `csc lightpath-simulator`
 and `chisurf.plugins.core.lightpath_simulator.core.workflow`.
 
 ```{figure} figures/104_lightpath_simulator.png
@@ -72,12 +72,12 @@ Instrument** writes the instrument setting of the last simulation (lasers, filte
 ## 5. Headless
 
 ```bash
-lightpath-simulator simulate graph.json    # signals, crosstalk matrices, instrument setting, node states
-lightpath-simulator probes                 # catalogue metadata
-lightpath-simulator save graph.json --name my_setup
-lightpath-simulator list
-lightpath-simulator get OPERATION_ID
-lightpath-simulator contract               # the JSON workflow contract
+csc lightpath-simulator simulate graph.json    # signals, crosstalk matrices, instrument setting, node states
+csc lightpath-simulator probes                 # catalogue metadata
+csc lightpath-simulator save graph.json --name my_setup
+csc lightpath-simulator list
+csc lightpath-simulator get OPERATION_ID
+csc lightpath-simulator contract               # the JSON workflow contract
 ```
 
 `--db` selects the MMFDB SQLite file. `serve` exposes the same methods over ZMQ (`lightpath.simulate`, `lightpath.save`,

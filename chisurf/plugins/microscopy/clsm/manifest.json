@@ -145,5 +145,8 @@
     }
   ],
   "events": [],
-  "menu_hidden": true
+  "menu_hidden": true,
+  "optional_requires": {
+    "img_flow": "*"
+  }
 }

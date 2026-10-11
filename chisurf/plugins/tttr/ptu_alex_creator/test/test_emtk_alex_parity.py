@@ -20,13 +20,13 @@ import pytest
 import tttrlib
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 from chisurf.plugins.tttr.ptu_alex_creator import core
 from chisurf.plugins.tttr.ptu_alex_creator.api import AlexRequest, run
 from chisurf.plugins.tttr.ptu_alex_creator.gui.app import AlexApp, translated
 from chisurf.plugins.tttr.ptu_alex_creator.gui.view_model import AlexViewModel
 from test.gui import emtk_layout_checks as lay
-from chisurf.plugins.emtk_layout import action_caption
 
 HERE = Path(__file__).resolve().parent
 PLUGIN = HERE.parent

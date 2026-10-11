@@ -222,7 +222,11 @@ class TestChiSurfAPI:
             assert isinstance(result, list)
             assert len(result) >= 1
             assert result[0]["name"] == "TestFit"
-            assert result[0]["chi2"] == 1.23
+            # the server's row: what the last run reached (None: never run), nothing evaluated
+            assert result[0]["chi2"] is None
+            fit._last_chi2 = 1.23
+            assert api.list_fits()[0]["chi2"] == 1.23
+            assert "chi2r_current" in api.list_fits(statistics=True)[0]
         finally:
             cs.fits.clear()
 

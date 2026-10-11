@@ -30,7 +30,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 ## Theory and workflow
 
 - **Theory** — [Games and generated round data](/concepts/games.md)
-- **Workflow** — [Reviewing the documentation as a game (Lumis Quest)](/guides/71_lumis_quest.md), [Games: a break between fits](/guides/95_games.md)
+- **Workflow** — [Games: a break between fits](/guides/95_games.md)
 
 ## Source
 

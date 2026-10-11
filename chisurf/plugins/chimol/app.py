@@ -336,16 +336,33 @@ class ChimolHostApp(ImApp):
         window = ctx.find_hovered_window(float(x), float(y))
         return window is None or getattr(window, "name", "ChiMOL") == "ChiMOL"
 
+    def _to_frame(self, x, y) -> tuple[float, float]:
+        """Map a pointer position on the host onto chimol's frame.
+
+        Below 760 x 446 the frame is rendered at the clamped size and the blit
+        scales it into the window, so the host's coordinates are not chimol's:
+        unmapped, a click in a narrow window picked the atom at the unscaled
+        position and a drag rotated about the wrong point.
+        """
+        vx, vy, vw, vh = self.item_rects.get("viewport", (0.0, 0.0, *self._surface))
+        sw, sh = self._surface
+        return (
+            (float(x) - vx) * sw / max(float(vw), 1.0),
+            (float(y) - vy) * sh / max(float(vh), 1.0),
+        )
+
     def pointer_press(self, x, y, button, modifiers=0, clicks=1):
         super().pointer_press(x, y, button, modifiers, clicks)
         if self._inside(x, y) and self._running():
             self._drag_from = (float(x), float(y))
-            self._chimol.renderer.on_pointer_press(x, y, button, modifiers, double=clicks > 1)
+            self._chimol.renderer.on_pointer_press(
+                *self._to_frame(x, y), button, modifiers, double=clicks > 1
+            )
 
     def pointer_move(self, x, y, buttons=0, modifiers=0):
         super().pointer_move(x, y, buttons, modifiers)
         if (self._drag_from is not None or self._inside(x, y)) and self._running():
-            self._chimol.renderer.on_pointer_move(x, y, buttons, modifiers)
+            self._chimol.renderer.on_pointer_move(*self._to_frame(x, y), buttons, modifiers)
             if buttons and self._drag_from is not None:
                 dx, dy = x - self._drag_from[0], y - self._drag_from[1]
                 if dx * dx + dy * dy > 25.0:
@@ -355,13 +372,13 @@ class ChimolHostApp(ImApp):
         super().pointer_release(x, y, button, modifiers)
         # A drag that began on the viewer ends there, wherever it is released.
         if (self._drag_from is not None or self._inside(x, y)) and self._running():
-            self._chimol.renderer.on_pointer_release(x, y, button, modifiers)
+            self._chimol.renderer.on_pointer_release(*self._to_frame(x, y), button, modifiers)
         self._drag_from = None
 
     def wheel(self, x, y, steps, modifiers=0):
         super().wheel(x, y, steps, modifiers)
         if self._inside(x, y) and self._running():
-            self._chimol.renderer.on_wheel(x, y, steps, modifiers)
+            self._chimol.renderer.on_wheel(*self._to_frame(x, y), steps, modifiers)
 
     def key(self, key, text="", modifiers=0):
         consumed = super().key(key, text, modifiers)

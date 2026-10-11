@@ -118,7 +118,9 @@ def test_every_provider_ships_a_usable_default_model():
     from chisurf.core.settings.ai_settings import DEFAULT_PROVIDER_SETTINGS
 
     for provider, defaults in DEFAULT_PROVIDER_SETTINGS.items():
-        if provider == "custom":
+        if provider in ("custom", "acp"):
+            # Custom is whatever the user types; ACP is a stdio command that delegates to another
+            # provider (``acp_backend_provider``), so it has no endpoint of its own.
             continue
         assert defaults["text_model"], f"{provider} has no default model"
         assert defaults["base_url"], f"{provider} has no base URL"

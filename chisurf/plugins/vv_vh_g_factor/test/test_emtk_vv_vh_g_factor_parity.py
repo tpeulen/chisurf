@@ -152,8 +152,20 @@ def loaded(ui, files, slow=True, background=False):
 
 
 def field(ui, name):
+    """The rectangle of field *name*, scrolled into view the way a user would (mouse wheel over its panel).
+
+    The controls panel scrolls: the button row wraps (Load example made it three lines), so the
+    mixing overrides at its foot sit below the window's edge until the panel is scrolled.
+    """
     ui.draw()
-    return ui.rect(name)
+    rect = ui.rect(name)
+    for _ in range(30):
+        x, y, w, h = rect
+        if y >= 0 and y + h <= ui.size[1] - 4:
+            break
+        ui.wheel(x + w / 2, min(max(y, 40.0), ui.size[1] - 40.0), -1.0 if y + h > ui.size[1] else 1.0)
+        rect = ui.rect(name)
+    return rect
 
 
 def type_value(ui, name, text):
@@ -765,25 +777,27 @@ def test_help_opens_with_live_links_and_closes(ui):
     assert links and all((repo / link).is_file() for link in links)
 
 
-def test_the_tour_waits_for_the_real_controls(ui, files):
+def test_the_tour_waits_for_the_real_controls(ui, files, tmp_path):
+    """Walkable without user files: Load example, then the tail edit; the file buttons are shown."""
+    ui.app.example_folder = tmp_path / "demo"
     ui.click_name("guide")
     tour = ui.app.guide
-    assert tour.active and tour.awaiting
-    ui.click_text("Next ►")
-    assert tour.step_idx == 0  # refused while it waits for the fast reference
-    pick_file(ui, "load_fast", "fast.dat", Path(files["fast"]).parent)
-    assert not tour.awaiting
+    assert tour.active and tour.get_target_rect("load_fast")  # what G is, at the fast-reference button
     ui.click_text("Next ►")
     assert tour.step_idx == 1 and tour.awaiting
+    ui.click_text("Next ►")
+    assert tour.step_idx == 1  # refused while it waits for Load example
+    ui.click_name("load_example")
+    ui.settle()
+    assert not tour.awaiting and ui.app.model.fast is not None and ui.app.model.slow is not None
+    ui.click_text("Next ►")
+    assert tour.step_idx == 2 and tour.awaiting
     type_value(ui, "tail_start", "320")
     assert not tour.awaiting
     ui.click_text("Next ►")
-    assert tour.step_idx == 2 and tour.awaiting
-    ui.app.model.fp_dt_ns = 0.05
-    pick_file(ui, "load_slow", "slow.dat", Path(files["fast"]).parent)
-    assert not tour.awaiting
+    assert tour.step_idx == 3 and tour.get_target_rect("load_slow")
     ui.click_text("Next ►")
-    assert tour.step_idx == 3
+    assert tour.step_idx == 4
     assert ui.app.guide.get_target_rect("export")
     ui.click_text("Close Tour")
     assert not tour.active

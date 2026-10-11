@@ -6,7 +6,10 @@
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": ["Tools", "System"],
+  "categories": [
+    "Tools",
+    "System"
+  ],
   "icon": "📝",
   "state_namespace": "code_editor",
   "state_schema": {
@@ -70,5 +73,8 @@
   "dependencies": {
     "python-lsp-server": ">=1.14",
     "ruff": ">=0.4"
+  },
+  "optional_requires": {
+    "ai_settings": "*"
   }
 }

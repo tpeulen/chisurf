@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import queue
 import threading
@@ -45,6 +46,33 @@ DEVICE_LABELS = {
     "PICOQUANT": "PicoQuant",
     "BRICKMIC": "BrickMic",
 }
+
+
+#: ``gui.acquisition.device_type`` as Setup -> Settings -> Acquisition stores it -> this tool's device key.
+SETTINGS_DEVICE_TYPES = {
+    "Simulation": "SIMULATION",
+    "Becker-Hickl": "BH_SPC",
+    "PicoQuant": "PICOQUANT",
+    "BrickMic": "BRICKMIC",
+}
+
+
+def stored_acquisition_settings() -> dict[str, Any]:
+    """The ``gui.acquisition`` section Setup -> Settings -> Acquisition writes (``{}`` when there is none)."""
+    try:
+        from chisurf.settings import gui as gui_settings
+
+        stored = gui_settings.get("acquisition") or {}
+    except Exception:  # noqa: BLE001 - a missing or unreadable settings file means "nothing configured"
+        return {}
+    return stored if isinstance(stored, dict) else {}
+
+
+def _peak(values: Any) -> float:
+    """Largest finite brightness in a (nested) ``q`` list; 0 when there is none."""
+    flat = np.asarray(values, dtype=float).ravel() if values is not None else np.zeros(0)
+    flat = flat[np.isfinite(flat)]
+    return float(flat.max()) if flat.size else 0.0
 
 
 def default_acquisition_output_path() -> str:
@@ -91,18 +119,31 @@ class AcquisitionNativeModel:
         self,
         device_factory: Callable[[str], Any] | None = None,
         settings_path_provider: Callable[[str], str | Path | None] | None = None,
+        settings: dict[str, Any] | None = None,
     ) -> None:
-        """Build an idle model without importing a device wrapper."""
+        """Build an idle model without importing a device wrapper.
+
+        *settings* is the ``gui.acquisition`` section (read from the user's settings when ``None``): its device
+        type and simulator parameters -- what Setup -> Settings -> Acquisition edits -- are where the tool starts.
+        """
         self.device_factory = device_factory or _default_hardware_factory
         self.settings_path_provider = settings_path_provider
         self.source = "simulation"
         self.hardware_contacted = False
-        self.device_type = "SIMULATION"
+        stored = stored_acquisition_settings() if settings is None else settings
+        self.device_type = SETTINGS_DEVICE_TYPES.get(str(stored.get("device_type", "")), "SIMULATION")
+        simulation = stored.get("simulation_params")
+        #: The simulator parameters stored by Setup -> Settings -> Acquisition (``None``: built-in defaults).
+        self.stored_simulation = copy.deepcopy(simulation) if isinstance(simulation, dict) else None
         self.time_limit_s, self.photon_limit = 900.0, 256
         self.channel_0, self.channel_1, self.channel_2, self.channel_3 = 8, 0, 9, 1
         # Prefilled from the Settings panel; empty (nothing written) until one is configured.
         self.output_folder = configured_output_path()
         self.brightness_khz, self.seed = 300.0, 12345
+        if self.stored_simulation is not None:
+            # The tool's Peak brightness / seed fields start at the stored values and scale / replace them.
+            self.brightness_khz = _peak(self.stored_simulation.get("q")) or self.brightness_khz
+            self.seed = int(self.stored_simulation.get("rmt1seed", self.seed))
         self.show_decay, self.show_correlation, self.show_count_rate = True, True, True
         self.show_macrotime, self.show_mcs = False, False
         self.status = "Ready: select a device and explicitly initialize it before Start."
@@ -172,7 +213,13 @@ class AcquisitionNativeModel:
         return True
 
     def simulation_params(self) -> dict[str, Any]:
-        """Return the actual full simulator parameter dictionary used by the engine."""
+        """Return the actual full simulator parameter dictionary used by the engine.
+
+        Starts from the parameters stored in Setup -> Settings -> Acquisition (species, excitation mode,
+        geometry, ...) when there are any; the tool's photon limit, seed and peak brightness are applied on top.
+        """
+        if self.stored_simulation is not None:
+            return self.apply_tool_fields(copy.deepcopy(self.stored_simulation))
         return {
             "N_species": 1,
             "N_ph_max": max(1, int(self.photon_limit or 256)),
@@ -195,6 +242,20 @@ class AcquisitionNativeModel:
             "tac_dt": 0.004069,
             "decay_lifetimes": [[[1.0, 3.2]]],
         }
+
+    def apply_tool_fields(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Write the tool's Photon limit, Deterministic seed and Peak brightness into simulator *params*.
+
+        The brightness scales every ``q`` so that its largest entry is the peak brightness (the relative
+        brightness of species and channels is kept). Returns *params*.
+        """
+        params["N_ph_max"] = max(1, int(self.photon_limit or params.get("N_ph_max", 1)))
+        params["rmt1seed"], params["rmt2seed"] = int(self.seed), int(self.seed) + 1
+        peak = _peak(params.get("q"))
+        if peak > 0 and float(self.brightness_khz) > 0:
+            scale = float(self.brightness_khz) / peak
+            params["q"] = (np.asarray(params["q"], dtype=float) * scale).tolist()
+        return params
 
     def _editor_params(self) -> dict[str, Any]:
         """Return advanced JSON when valid, otherwise the safe displayed defaults."""
@@ -290,8 +351,9 @@ class AcquisitionNativeModel:
         self._device_started.clear()
         self._device_stop_sent.clear()
         if self.device_type == "SIMULATION":
-            params = self._editor_params()
-            params["N_ph_max"] = max(1, int(self.photon_limit or params.get("N_ph_max", 1)))
+            # The form's photon limit, seed and brightness reach the run (they were read once, at open, into
+            # the advanced JSON, so editing them afterwards changed nothing).
+            params = self.apply_tool_fields(self._editor_params())
             self._configure_compatible_output(None, params)
             self.status = (
                 "Simulating encoded SPC records through AcquisitionPipeline; no hardware contacted."
@@ -452,8 +514,8 @@ class AcquisitionNativeModel:
         self.advanced_settings_text = json.dumps(candidate, indent=2, sort_keys=True)
         self.photon_limit = int(candidate.get("N_ph_max", self.photon_limit))
         self.seed = int(candidate.get("rmt1seed", self.seed))
-        if isinstance(candidate.get("q"), list) and candidate["q"]:
-            self.brightness_khz = float(candidate["q"][0])
+        if _peak(candidate.get("q")) > 0:
+            self.brightness_khz = _peak(candidate.get("q"))
         self.advanced_settings_open = False
         self.status = (
             "Simulation settings applied and validated by the configured simulator engine."

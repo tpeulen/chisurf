@@ -19,7 +19,10 @@ Theory of the accessible volumes behind the first two: [accessible volumes](../c
 ## 1. FPS JSON editor
 
 An **fps.json** file lists the labelling *positions* (a dye attached to a chain, residue and atom of a structure) and the
-measured *distances* between them. Open one with **Load** (or drop it on the window), or start from nothing.
+measured *distances* between them. Open one with **Load** (or drop it on the window), or start from nothing. A
+position's structure (`pdb_path`) may be written relative to the fps.json and is then found beside it: the HIV
+reverse-transcriptase example `chisurf/plugins/modelling/fret/examples/fps_hiv_rt/hiv_rt.fps.json` names
+`protein_1R0A.pdb` and `dna.pdb` this way, so **Compute AVs** works on it as loaded.
 
 ```{figure} figures/88_fps_positions.png
 :width: 100%

@@ -192,6 +192,17 @@ def save_setup(name: str, data: dict[str, Any]) -> None:
         raise OSError(f"The setup '{name}' could not be saved.")
 
 
+def _cell_text(value: Any) -> str:
+    """A Bursts-table cell: whole numbers (photon indices, counts) in full, others to 4 significant digits.
+
+    ``.4g`` alone printed the photon index 12503 as ``1.25e+04``, which cannot be found in the stream again.
+    """
+    if isinstance(value, float):
+        if np.isfinite(value) and value == int(value):
+            return str(int(value))
+        return f"{value:.4g}" if abs(value) < 1e4 else f"{value:.1f}"
+    return str(value)
+
 class SearchParameters:
     """The selected search's parameters as attributes, so a spec form can bind them (``attr`` = parameter name).
 
@@ -1096,7 +1107,7 @@ class BurstSelectionModel(RunPickerMixin):
             for key in UI_COLUMNS:
                 if key in row:
                     value = row[key]
-                    entry[key] = f"{value:.4g}" if isinstance(value, float) else str(value)
+                    entry[key] = _cell_text(value)
             out.append(entry)
         return out
 
@@ -1552,7 +1563,7 @@ class BurstSelectionModel(RunPickerMixin):
         are those inside the histogram range; the photons are the detector and
         micro-time window the filter keeps.
         """
-        from ..api.io import write_decay
+        from ..api.io import write_decay_container
 
         run_path = self.run_path
         if not run_path:
@@ -1571,7 +1582,7 @@ class BurstSelectionModel(RunPickerMixin):
                 "channels": self.channels or list(range(64)),
                 "micro_time_ranges": [list(r) for r in self.microtime_ranges],
             }
-            out = write_decay(
+            out = write_decay_container(
                 run_path,
                 mask,
                 self.decay_bins,

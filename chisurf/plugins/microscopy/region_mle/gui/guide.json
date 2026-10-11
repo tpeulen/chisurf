@@ -13,7 +13,7 @@
         "action": "Load demo"
       },
       "await": {
-        "hint": "Press <b>Load demo</b>. It simulates the field (a few seconds the first time), detects the regions, and fills this panel in."
+        "hint": "Press <b>Load example</b>. It simulates the field (a few seconds the first time), detects the regions, and fills this panel in."
       }
     },
     {

@@ -123,9 +123,18 @@ def test_mmfdb_admin_manifest_declares_registered_methods():
         (ROOT / "chisurf" / "plugins" / "core" / "mmfdb_admin" / "manifest.json").read_text()
     )
     declared = {item["name"] for item in manifest.get("rpc_methods", [])}
+    # The ``project_browser.*`` family is registered by the same startup service but is the
+    # Project Browser plugin's namespace, so that plugin's manifest declares it (a method has one
+    # declaring manifest).
+    browser = json.loads(
+        (ROOT / "chisurf" / "plugins" / "core" / "project_browser" / "manifest.json").read_text()
+    )
+    browser_declared = {item["name"] for item in browser.get("rpc_methods", [])}
     dispatcher = ServiceDispatcher(SessionState())
     register_services(dispatcher)
     registered = set(dispatcher.list_methods())
 
-    assert sorted(registered - declared) == []
+    assert sorted(declared & browser_declared) == []
+    assert sorted(registered - declared - browser_declared) == []
     assert sorted(declared - registered) == []
+    assert sorted(browser_declared - registered) == []

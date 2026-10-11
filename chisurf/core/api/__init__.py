@@ -484,17 +484,22 @@ class ChiSurfAPI:
 
     # ── fits ──────────────────────────────────────────────────────
 
-    def list_fits(self) -> list[dict[str, Any]]:
+    def list_fits(self, statistics: bool = False) -> list[dict[str, Any]]:
+        """One summary row per fit of the session.
+
+        ``chi2`` / ``chi2r`` are what the fit's last run reached (``None``: never run); with
+        *statistics* every row also carries ``chi2r_current``, the reduced χ² of the parameters
+        as they are now (what the fit window shows)::
+
+            [(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]
+        """
         if self.mode == "server" and self.client is not None:
-            return self.client.fit__list()
+            return self.client.fit__list(statistics=True) if statistics else self.client.fit__list()
         result: list[dict[str, Any]] = []
         fits = list(self._state.fits)
         for idx, f in enumerate(fits):
-            chi2 = None
-            try:
-                chi2 = float(getattr(f, "chi2", float("nan")))
-            except Exception:
-                pass
+            # the same row the server lists: what the last run reached, nothing evaluated
+            chi2 = _safe_chi2(f)
             data_name = ""
             try:
                 data_name = str(getattr(getattr(f, "data", None), "name", "") or "")
@@ -514,6 +519,9 @@ class ChiSurfAPI:
                     "name": str(getattr(f, "name", "") or ""),
                     "type": type(f).__name__,
                     "chi2": chi2,
+                    "chi2r": _safe_chi2r(f),
+                    "n_points": _safe_n_points(f),
+                    "n_free": _safe_n_free(f),
                     "dataset_uid": str(
                         getattr(getattr(f, "data", None), "unique_identifier", "") or ""
                     ),
@@ -549,6 +557,8 @@ class ChiSurfAPI:
                     else {},
                 }
             )
+            if statistics:
+                result[-1]["chi2r_current"] = _safe_chi2r_current(f)
         return result
 
     def get_fit_info(

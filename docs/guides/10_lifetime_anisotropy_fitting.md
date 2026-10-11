@@ -140,8 +140,13 @@ once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** s
 
 5. **Finish.** **Create fits** adds the VV fit, the VH fit and the global fit to the session with the
    amplitudes, lifetimes, rotation components and the three corrections linked; check that r0 is at or
-   below 0.4 first. It asks for **Load / reload data** again when the files or reader settings changed
-   after loading.
+   below 0.4 first. Each fit uses its IRF only over the channels the pulse occupies (*IRF start* /
+   *IRF stop* in the fit's model editor): the first to the last channel more than five background
+   standard deviations (and 0.1 % of the peak) above the background. The model clips the corrected IRF
+   at zero, and over the whole range that would keep the positive half of the tail noise — a constant
+   offset under the decay. It asks for **Load / reload data** again when the files or reader settings
+   changed after loading. On **Load example** the global fit then returns χ²ᵣ ≈ 1.0 with τ 4.0 ns,
+   ρ 2.0 ns and r0 0.38, the simulated values.
 
 ## Result
 

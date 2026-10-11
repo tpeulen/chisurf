@@ -169,8 +169,13 @@ def test_estimate_click_gives_the_curve_the_summary_table_and_the_status(app):
     assert f"{stats['n_bursts_before']} → {stats['n_bursts_after']}" in shown(app)
     rows = app.model.summary_rows()
     painter = draw(app)
-    assert {"Quantity", "Selec.", "Fused"} <= set(painter.strings) and rows
-    assert any(str(rows[0]["quantity"]) in s for s in painter.strings)  # the table cells are drawn
+    # Whole header and whole numbers: the "Selected" column was 58 px wide, so it read
+    # "Selec." and the width row "0.041." for 0.04159 (guide 58's walk).
+    assert {"Quantity", "Selected", "Fused"} <= set(painter.strings) and rows
+    visible = [row for row in rows if row["quantity"] in painter.strings]  # the table scrolls
+    assert "PR width (std)" in [row["quantity"] for row in visible]
+    for row in visible:
+        assert row["before"] in painter.strings, (row, sorted(painter.strings))
     assert not app.model.written_folder  # nothing written by an estimate
     assert stats["n_bursts_after"] < stats["n_bursts_before"]
 

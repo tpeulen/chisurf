@@ -17,7 +17,7 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.dataset_picker import DatasetPicker
-from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
+from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
     action_caption,
@@ -37,7 +37,7 @@ HERE = Path(__file__).parent
 DISPLAY = ("show_fast", "show_slow", "show_raw", "show_corrected", "log_y")
 
 
-class GFactorApp(ImApp):
+class GFactorApp(TourTarget, ImApp):
     def __init__(self, client=None, on_close=None, dataset_client=None):
         primary = json.loads((HERE / "gfactor_emtk.view.json").read_text())
         self.window_size = window_size(primary, (1100, 720))
@@ -127,9 +127,6 @@ class GFactorApp(ImApp):
         column.pad(spec["sections"])
         draw_form(spec, model or self.model, self.forms[name])
 
-    def remember(self, name):
-        self.item_rects[name] = im.get_item_rect()
-
     def choose(
         self,
         title,
@@ -186,6 +183,20 @@ class GFactorApp(ImApp):
             self.guide.notify_used("load_fast")
         if ok and slow:
             self.guide.notify_used("load_slow")
+        return ok
+
+    example_folder = None  # None: the plugin's demo cache
+
+    def load_example(self):
+        """Load the simulated fast/slow references and two batch decays (known G)."""
+        folder = self.example_folder
+
+        def operation(model):
+            model.load_example(folder, self.client)
+
+        ok = self.run(operation)
+        if ok:
+            self.guide.notify_used("load_example")
         return ok
 
     def calculate(self):
@@ -265,6 +276,17 @@ class GFactorApp(ImApp):
         pressed = button_row(
             [
                 {
+                    "label": action_caption("example"),
+                    "key": "load_example",
+                    "enabled": not busy,
+                    "tip": action_tooltip(
+                        "example",
+                        tr(
+                            "Load simulated references with a known G of 1.2: a fast dye, a slow protein and two batch decays."
+                        ),
+                    ),
+                },
+                {
                     "label": "Fast reference...",
                     "key": "load_fast",
                     "enabled": not busy,
@@ -297,9 +319,11 @@ class GFactorApp(ImApp):
                 {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
                 {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
             ],
-            remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
+            remember=self.remember,
         )
-        if pressed == "load_fast":
+        if pressed == "load_example":
+            self.load_example()
+        elif pressed == "load_fast":
             self.choose("Fast reference", lambda paths: self.load(paths[0]))
         elif pressed == "load_slow":
             self.choose("Slow protein reference", lambda paths: self.load(paths[0], slow=True))
@@ -348,7 +372,7 @@ class GFactorApp(ImApp):
                     "tip": "Write per-file r(inf), region, backgrounds, G and errors as a tab-separated file.",
                 },
             ],
-            remember=lambda name: self.item_rects.__setitem__(name, im.get_item_rect()),
+            remember=self.remember,
         )
         if pressed == "run":
             self.run(lambda model: model.compute_batch(self.job.cancelled.is_set))

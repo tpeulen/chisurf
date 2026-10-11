@@ -66,6 +66,10 @@ OVERRIDES = {
     "imp": ("LGPL-2.1", "https://integrativemodeling.org/latest/doc/manual/licenses.html"),
     # Ships no license metadata at all; the repository states BSD-2-Clause.
     "rendercanvas": ("BSD-2-Clause", "https://github.com/pygfx/rendercanvas/blob/main/LICENSE"),
+    # Installed only where the optional window backend / labelling library is; the licence is
+    # what each project's own metadata states.
+    "glfw": ("MIT", "https://github.com/FlorianRhiem/pyGLFW/blob/master/LICENSE.txt"),
+    "labellib": ("MPL-2.0", "https://github.com/Fluorescence-Tools/LabelLib"),
     # Sibling projects in this ecosystem; license from their pyproject.toml.
     "mmfdb": ("MIT", "https://github.com/tpeulen/mmfdb"),
     "imp-bff": ("MPL-2.0", "https://github.com/tpeulen/imp.bff"),

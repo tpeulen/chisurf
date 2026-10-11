@@ -86,8 +86,5 @@
       "description": "State patch events"
     }
   ],
-  "optional_requires": {
-    "code_editor": "*"
-  },
   "menu_hidden": true
 }

@@ -97,9 +97,9 @@ CSV** writes all of it for a methods section.
 ## Headless
 
 ```bash
-img-frc image.tif --pixel-size 65 --criterion fixed_1/7
-img-frc scan.ptu --channel ch0 --pixel-size 80 --split even_odd --json
-img-frc short_stack.tif --axis-order frames --out-csv frc.csv
+csc img-frc image.tif --pixel-size 65 --criterion fixed_1/7
+csc img-frc scan.ptu --channel ch0 --pixel-size 80 --split even_odd --json
+csc img-frc short_stack.tif --axis-order frames --out-csv frc.csv
 ```
 
 It prints the crossing and the resolution, and exits non-zero when the curve

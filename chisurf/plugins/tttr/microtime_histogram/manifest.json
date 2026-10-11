@@ -25,5 +25,8 @@
     "cli": "microtime-histogram=chisurf.plugins.tttr.microtime_histogram.__main__:main",
     "emtk": "chisurf.plugins.tttr.microtime_histogram.gui.app:create_app"
   },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "requires": {
+    "tttr_splitter": "*"
+  }
 }

@@ -89,7 +89,7 @@ way.
 :width: 70%
 
 **TTTR ⇄ .pto** after dropping three split SPC-132 files (`m000`–`m002.spc`,
-3 600 000 bytes) — packed into one `m000.pto` of 3 623 533 bytes — and then
+3 600 000 bytes) — packed into one `m000.pto` of 3 623 114 bytes — and then
 dropping that `.pto`, which unpacks the three files again, byte-identical to
 the originals (`cmp`).
 ```

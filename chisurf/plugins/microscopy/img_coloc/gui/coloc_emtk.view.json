@@ -49,6 +49,13 @@
           "description": "The actions."
         },
         {
+          "type": "choice",
+          "attr": "setup_pick",
+          "label": "Setup",
+          "options_source": "setup_choices",
+          "description": "Detector setup whose named windows (green, red, …) become the pickable image channels — the same vocabulary as the rest of ChiSurf. Setups are saved in Setup: Channel Definition (inside Image Tools the hub's Setup supplies them). Keep the raw detector channels to use the routing channels stored in the file; it does not apply to camera images."
+        },
+        {
           "type": "value",
           "attr": "filename",
           "label": "Image",

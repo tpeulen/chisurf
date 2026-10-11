@@ -1673,8 +1673,9 @@ class HelpGui:
             im.end_popup()
         if self.model.navigation_error:
             im.text_wrapped(self.model.navigation_error)
-        # Navigation toolbar with clear emoticons and tooltips
-        if im.button(tr("Home")):
+        # Navigation toolbar. Each button has its own id: "Back" and "Prev" are both "Zurück"
+        # in German, and a caption-derived id made the second press the first (disabled) one.
+        if im.button(tr("Home") + "##home"):
             self.model.show_home()
             self.tour.notify_used("home")
         self.item_rects["home"] = im.get_item_rect()
@@ -1682,7 +1683,7 @@ class HelpGui:
         im.same_line()
         can_back = self.model.history_idx > 0
         im.begin_disabled(not can_back)
-        if im.button(tr("Back")):
+        if im.button(tr("Back") + "##history_back"):
             self.model.go_back()
         im.set_item_tooltip(
             _with_shortcut(tr("Return to the previous page in navigation history"), "Alt+Left")
@@ -1692,7 +1693,7 @@ class HelpGui:
         im.same_line()
         can_fwd = self.model.history_idx < len(self.model.history) - 1
         im.begin_disabled(not can_fwd)
-        if im.button(tr("Fwd")):
+        if im.button(tr("Fwd") + "##history_forward"):
             self.model.go_forward()
         im.set_item_tooltip(
             _with_shortcut(tr("Advance to the next page in navigation history"), "Alt+Right")
@@ -1700,11 +1701,11 @@ class HelpGui:
         im.end_disabled()
 
         im.same_line()
-        if im.button(tr("Prev")):
+        if im.button(tr("Prev") + "##toc_previous"):
             self.model.go_prev_order()
         im.set_item_tooltip(tr("Open the previous document in the table of contents"))
         im.same_line()
-        if im.button(tr("Next")):
+        if im.button(tr("Next") + "##toc_next"):
             self.model.go_next_order()
         im.set_item_tooltip(tr("Open the next document in the table of contents"))
 

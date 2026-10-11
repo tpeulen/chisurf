@@ -278,6 +278,24 @@ class GsAnalysis:
     state_path: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=np.int32))
     h2mm: dict = field(default_factory=dict)
 
+    def transit_upper_bound(self, drop: float = 1.92) -> float:
+        """Longest scanned crossing time the data cannot tell from the best, in seconds.
+
+        The scan is the log-likelihood against a transition-path time; with no peak
+        the data only bound that time from above. The bound is the end of the run of
+        scan points, from the shortest up, within *drop* log units of the best
+        (1.92 = half the 95 % chi-square quantile for one parameter). The best point
+        itself is no bound -- it is the shortest time scanned, whatever the data say.
+        """
+        times = np.asarray(self.transit_times, dtype=float)
+        delta = np.asarray(self.transit_delta, dtype=float)
+        if not times.size:
+            return float("nan")
+        order = np.argsort(times)
+        times, delta = times[order], delta[order]
+        inside = np.isfinite(delta) & (delta >= np.nanmax(delta) - drop)
+        last = int(np.argmin(inside)) - 1 if not inside.all() else times.size - 1
+        return float(times[max(last, 0)])
     def report(self) -> str:
         """Return a human-readable summary of the run."""
         lines: list[str] = []
@@ -317,10 +335,12 @@ class GsAnalysis:
             lines.append("")
             lines.append("Transition-time scan:")
             if gain < 2.0:
+                bound = self.transit_upper_bound()
                 lines.append(
                     "  No support for a finite transition time. The scan bounds it "
-                    f"below ~{self.transit_times[best] * 1e6:,.2f} us; a crossing faster "
-                    "than the photon rate is invisible, so read this as an upper limit."
+                    f"below ~{bound * 1e6:,.2f} us (longest crossing within 1.92 log units "
+                    "of the best, 95 %); a crossing faster than the photon rate is "
+                    "invisible, so read this as an upper limit."
                 )
             else:
                 lines.append(

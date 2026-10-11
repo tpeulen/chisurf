@@ -155,13 +155,13 @@ data](34_exporting_burst_data.md).
 Everything above is also available without a window:
 
 ```bash
-csg_pto_inspect list     measurement.pto          # every object
-csg_pto_inspect show     measurement.pto bursts   # one, with its settings
-csg_pto_inspect lineage  measurement.pto burst_lifetimes
-csg_pto_inspect graph    measurement.pto --out provenance.json
-csg_pto_inspect verify   measurement.pto
-csg_pto_inspect export   measurement.pto bursts bursts.csv
-csg_pto_inspect export-legacy measurement.pto legacy_folder   # bi4_bur + the ...4 companions
+csc csg_pto_inspect list     measurement.pto          # every object
+csc csg_pto_inspect show     measurement.pto bursts   # one, with its settings
+csc csg_pto_inspect lineage  measurement.pto burst_lifetimes
+csc csg_pto_inspect graph    measurement.pto --out provenance.json
+csc csg_pto_inspect verify   measurement.pto
+csc csg_pto_inspect export   measurement.pto bursts bursts.csv
+csc csg_pto_inspect export-legacy measurement.pto legacy_folder   # bi4_bur + the ...4 companions
 ```
 
 and from Python:

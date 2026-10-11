@@ -64,6 +64,7 @@ def models(tmp_path_factory):
     os.makedirs(root / "settings", exist_ok=True)
     MFDatabase(str(root / "database.sqlite")).close()
     patch.setattr(module, "MAX_PLOT_POINTS", 10**9)
+    patch.setattr(module, "TRACE_PLOT_POINTS", 10**9)
     save_setup(
         "plot-proof",
         {

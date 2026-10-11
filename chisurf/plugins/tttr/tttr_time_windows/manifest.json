@@ -10,7 +10,7 @@
     "Tools",
     "Converter"
   ],
-  "icon": "🪟",
+  "icon": "\ud83e\ude9f",
   "state_namespace": "tttr_time_windows",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -120,8 +120,8 @@
       "description": "Job lifecycle events"
     }
   ],
-  "optional_requires": {
-    "intensity_trace": "*"
-  },
-  "menu_hidden": true
+  "menu_hidden": true,
+  "requires": {
+    "tttr_splitter": "*"
+  }
 }

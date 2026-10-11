@@ -7,6 +7,7 @@ import tttrlib
 from emtk import im
 from emtk.file_dialog import FileDialog
 
+from chisurf.core.fio.staging import TTTR_FILE_FILTER
 from chisurf.core.support.i18n import tr
 
 from .app import SplitterApp
@@ -50,7 +51,7 @@ class SplitterController:
             title,
             mode=mode,
             multiselect=multiple,
-            filters="TTTR (*.ptu *.ht3 *.spc *.hdf *.raw *.sm);;All files (*)",
+            filters=TTTR_FILE_FILTER,
         )
         self.dialog_callback = callback
 

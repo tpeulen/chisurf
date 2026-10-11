@@ -23,9 +23,9 @@ class PluginContext:
         self.client = client
         self.main_window = main_window
 
-    def list_fits(self) -> list[dict[str, Any]]:
+    def list_fits(self, statistics: bool = False) -> list[dict[str, Any]]:
         if self.api is not None:
-            return self.api.list_fits()
+            return self.api.list_fits(statistics=True) if statistics else self.api.list_fits()
         return []
 
     def list_datasets(self) -> list[dict[str, Any]]:

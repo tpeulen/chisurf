@@ -10,7 +10,7 @@
       "title": "Start with data whose answer you know",
       "text": "The hard part of a flow map is knowing whether to believe it: arrows appear over a picture and there is nothing to compare them with. So start with a <b>simulated</b> scan whose flow is known: laminar flow through a channel, fastest in the middle, zero at the walls. It is a real photon stream, written as an ordinary PTU.",
       "target": {"name": "load_example", "action": "Load demo"},
-      "await": {"hint": "Press <b>Load demo</b> and wait for the scan to finish."}
+      "await": {"hint": "Press <b>Load example</b> and wait for the scan to finish."}
     },
     {
       "title": "The file is now selected",

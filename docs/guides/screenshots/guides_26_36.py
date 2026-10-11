@@ -220,6 +220,53 @@ def _grab_burst_analysis_pipeline():
     hub.close()
 
 
+def _grab_burst_shared_setup_mle():
+    """Guide 27: the hub's shared setup (step 0) and Burst MLE after Auto IRF/background, two sm-DNA files."""
+    import shutil as _shutil
+
+    from emtk.testing import Driver
+
+    from chisurf.plugins.burst.burst_analysis.gui.native import create_app
+    from chisurf.plugins.burst.burst_selection.gui.model import save_setup
+    from emtk_shot import render, wait
+
+    data = _sm_dna_copy()
+    two = data.parent / "two"
+    two.mkdir()
+    for name in ("m000.spc", "m001.spc"):
+        _shutil.copy(data / name, two / name)
+    save_setup("BH SPC-130 dsDNA", SM_DNA_SETUP)
+    hub = create_app()
+    driver = Driver(hub, (1280, 900))
+
+    def busy():
+        for child in hub.children.values():
+            for obj in (child, getattr(child, "controller", None), getattr(child, "job", None)):
+                if any(getattr(obj, name, False) is True for name in ("running", "busy")):
+                    return True
+        return bool(hub._pending_next)
+
+    wait(driver, lambda: "setup" in hub.children, timeout=60)
+    hub.children["setup"].select_setup("BH SPC-130 dsDNA")
+    driver.click(hub.item_rects["next"])
+    wait(driver, lambda: "data" in hub.children, timeout=60)
+    hub.on_files_dropped(sorted(str(p) for p in two.glob("*.spc")))
+    driver.click(hub.item_rects["next"])
+    wait(driver, lambda: "selection" in hub.children, timeout=60)
+    driver.click(hub.item_rects["next"])  # searches both files
+    wait(driver, lambda: not busy(), timeout=400)
+    print(hub.children["selection"].model.status_text, flush=True)
+    hub.select("setup")
+    render(hub, "burst_shared_setup.png", size=(1280, 900), driver=driver)
+    hub.select("mle")
+    wait(driver, lambda: "mle" in hub.children and not busy(), timeout=120)
+    driver.click("Auto IRF/background")
+    wait(driver, lambda: not busy() and hub.children["mle"].model.session.outcome is not None, timeout=400)
+    print(hub.children["mle"].model.model_result_text(), hub.children["mle"].model.status_text, flush=True)
+    render(hub, "burst_shared_mle.png", size=(1280, 900), driver=driver)
+    hub.close()
+
+
 def _grab_ndx_2d_gaussians():
     """Guide 26: ndX 2-D Gaussian fit on a simulated four-population E-S table."""
     import ndx_emtk

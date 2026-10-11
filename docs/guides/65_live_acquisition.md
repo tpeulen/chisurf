@@ -25,23 +25,26 @@ photophysics — and produces the same B&H records a card does.
 ## Running one
 
 1. Open **Setup → Settings → Acquisition** and pick the **Active Device Type**.
-   With *Simulation*, the simulator's parameters (species, brightness,
-   diffusion, lifetimes, excitation mode) are embedded below the device picker.
-   Set **Acquisition → Mode** to *Pulsed* if you want to see a decay: the default is CW,
-   whose micro times are all zero, so the decay window shows a single spike at
-   0 ns and the phasor reads (1, 0).
+   With *Simulation*, the simulator's scalar parameters (excitation mode,
+   photon counts, seeds, geometry, micro time, performance) are listed below
+   the device picker. Set **Acquisition → Mode** to *Pulsed* if you want to see
+   a decay: the default is CW, whose micro times are all zero, so the decay
+   window shows a single spike at 0 ns and the phasor reads (1, 0). Every change
+   is stored at once, and the Acquisition tool starts from what is stored: its
+   **Device type**, and its simulator.
 
    ```{figure} figures/65_acquisition_settings.png
    :name: fig-65-acquisition-settings
    :width: 70%
 
    Setup → Settings → Acquisition with the simulator selected and switched to
-   pulsed excitation. The species table sets the number of molecules in the box
-   (M), the diffusion coefficient (D) and the brightness per detector; **Decay
-   …** sets the lifetimes.
+   pulsed excitation. The per-species table (molecules in the box M, diffusion
+   coefficient D, brightness per detector), the kinetics and the decay
+   lifetimes have no form here: they are part of the parameter JSON the
+   Acquisition tool shows under **Advanced simulation parameters**.
    ```
-2. Set the **stop conditions** in the acquisition window: **Time [s]** and **Nbr Ph [k]**
-   (kilo-photons), or both. At least one must be non-zero — an acquisition with
+2. In the acquisition window, set the **stop conditions**: **Time limit (s)** and
+   **Photon limit**, or both. At least one must be non-zero — an acquisition with
    neither would never stop on its own. The photon condition is checked per
    chunk, so a run overshoots it by up to one chunk (**Chunk Size** in the
    settings page, 16384 photons by default).
@@ -54,10 +57,14 @@ photophysics — and produces the same B&H records a card does.
    files plus `simulation_config.json` and `simulation_info.txt`. The field is
    pre-filled with the standard output folder of Setup → Settings → Acquisition when
    one is set; empty means nothing is written.
-5. Press **Start**. The device is initialised on demand.
+5. For a card, press **Initialize device** first — nothing touches the hardware
+   before that click; the simulator needs no initialisation. Then press
+   **Start**. **Peak brightness** and **Deterministic seed** (section
+   *Simulator configuration*) apply to the next simulated run: the brightness
+   scales every species' brightness so that the largest is the value you set.
 
-The progress bar reports the stop reason and the photon count when a condition is
-met, and the LCD next to it is the mean count rate in kHz.
+The line above the live plots reports the photon count, the elapsed time, the mean
+count rate in kHz and the progress towards the photon limit.
 
 ## The Acquisition fit window
 

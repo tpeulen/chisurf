@@ -76,8 +76,30 @@ class LocalLinkClient:
         self.fits[fit_index].update()
 
 
-def create_linked_fits(data, lifetimes, rotations, corrections):
-    """Register four datasets, two polarized fits and their shared global fit."""
+def set_response_window(model, window, dt):
+    """Use only the IRF channels ``[start, stop)`` (``window``) in *model*'s convolution.
+
+    The model clips the background-subtracted IRF at zero, so a noisy tail used over the
+    whole range adds a constant offset to the model decay (see
+    :func:`..irf.response_window`). The window is the model's own *IRF start / stop*
+    (ns), so the user sees and can change it in the model editor.
+    """
+    start, stop = (int(v) for v in window)
+    if stop <= start or dt <= 0:
+        return
+    # The description floors ``response_start / dt``; nudge above the exact product so
+    # binary rounding (40 * 0.05 / 0.05 = 39.999...) cannot drop a channel.
+    eps = 1.0 + 1e-9
+    model.set_scalar("response_start", start * dt * eps)
+    model.set_scalar("response_stop", stop * dt * eps)
+
+
+def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None):
+    """Register four datasets, two polarized fits and their shared global fit.
+
+    ``irf_window`` (channel indices ``(start, stop)``, from
+    :func:`..irf.response_window`) restricts both IRFs to the channels they occupy.
+    """
     required = ("irf_vv_bg_norm", "irf_vh_bg_norm", "data_vv", "data_vh")
     if any(data.get(key) is None for key in required):
         raise ValueError("Load all curves and normalize the IRFs first.")
@@ -109,6 +131,9 @@ def create_linked_fits(data, lifetimes, rotations, corrections):
         model = group.model
         model.anisotropy.polarization_type = role
         model.convolve._irf = data[f"irf_{role}_bg_norm"]
+        if irf_window is not None:
+            x = np.asarray(data[f"irf_{role}_bg_norm"].x, dtype=float)
+            set_response_window(model, irf_window, float(np.mean(np.diff(x))) if x.size > 1 else 0.0)
         configure_components(model, "lifetimes", lifetimes)
         configure_components(model, "rotations", rotations)
         for parameter in model.parameters_all:

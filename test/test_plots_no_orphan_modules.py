@@ -91,6 +91,42 @@ def _imported_paths(path: pathlib.Path) -> set[str]:
     return found
 
 
+def _exported_names() -> dict[str, str]:
+    """Map each public plot name to the submodule that ``plots/__init__.py`` serves it from.
+
+    The package resolves its public names lazily from an ``_EXPORTS`` table, so
+    ``from chisurf.gui.plots import LinePlot`` is an import of ``plots.lineplot``
+    even though no import statement names that module.
+
+    Returns
+    -------
+    dict
+        ``{"LinePlot": "chisurf.gui.plots.lineplot", ...}``.
+    """
+    tree = ast.parse((_PLOTS / "__init__.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "_EXPORTS" for t in node.targets)
+            and isinstance(node.value, ast.Dict)
+        ):
+            return {
+                key.value: f"{_PLOTS_MODULE}.{value.value}"
+                for key, value in zip(node.value.keys, node.value.values)
+                if isinstance(key, ast.Constant) and isinstance(value, ast.Constant)
+            }
+    return {}
+
+
+def _attribute_names(path: pathlib.Path) -> set[str]:
+    """Every attribute name a source file reads (``x.LinePlot`` gives ``LinePlot``)."""
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError:  # pragma: no cover - a broken file is another test's problem
+        return set()
+    return {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+
+
 def test_no_orphan_plot_modules():
     """Every ``chisurf.gui.plots`` submodule has an importer outside itself."""
     candidates = {}
@@ -105,10 +141,21 @@ def test_no_orphan_plot_modules():
     # Parse each source at most once, and only those whose text could name a
     # plot module at all; a per-candidate rescan would re-parse the whole tree.
     imports_by_file = {}
+    exported = _exported_names()
     for source in _PKG.rglob("*.py"):
         if "plots" not in source.read_text(encoding="utf-8", errors="ignore"):
             continue
         refs = {ref for ref in _imported_paths(source) if ref.startswith(_PLOTS_MODULE)}
+        # `from chisurf.gui.plots import LinePlot` reaches the module that serves that name.
+        refs |= {
+            exported[ref.rpartition(".")[2]]
+            for ref in refs
+            if ref.rpartition(".")[0] == _PLOTS_MODULE and ref.rpartition(".")[2] in exported
+        }
+        # So does `import chisurf.gui.plots as p` followed by `p.LinePlot`: the plot registry
+        # resolves every plot that way, inside a zero-argument factory.
+        if _PLOTS_MODULE in refs:
+            refs |= {exported[name] for name in _attribute_names(source) if name in exported}
         if refs:
             imports_by_file[source] = refs
 

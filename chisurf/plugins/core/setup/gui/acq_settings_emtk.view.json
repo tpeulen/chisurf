@@ -1,5 +1,5 @@
 {
- "_comment": "Acquisition settings destination of the Settings hub, as the Qt AcquisitionSettingsWidget (output folder, advanced, device type, simulator parameters). Drawn by emtk.view_form over AcquisitionSettingsModel (gui/acq_app.py). The simulator's per-species table, kinetics matrices, decay editor and channel switches are Qt-only sections (see deliberate.json).",
+ "_comment": "Acquisition settings destination of the Settings hub, as the Qt AcquisitionSettingsWidget (output folder, advanced, device type, simulator parameters). Drawn by emtk.view_form over AcquisitionSettingsModel (gui/acq_app.py). The simulator's per-species table, kinetics matrices, decay spectra and channel switches have no form here: they are part of the parameter JSON in the Acquisition tool (Advanced simulation parameters).",
  "title": "Acquisition",
  "sections": [
   {

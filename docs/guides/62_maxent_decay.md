@@ -11,8 +11,8 @@ This guide runs the **MaxEnt decay** tool to recover a *distribution* of decay
 times — or of distances — instead of two or three exponential components. The
 theory is in {ref}`concept-maximum-entropy`.
 
-**Open it:** *Tools ▸ Fluorescence decay ▸ MaxEnt decay*, or `maxent-decay`
-from a shell.
+**Open it:** *Spectroscopy ▸ Decay ▸ Decay Analysis*, step **2. MaxEnt MEM**, or on its own with
+`python -m chisurf.emtk --plugin maxent_decay`.
 
 Press **Guide** in the tool for a five-step walk through the buttons.
 
@@ -20,7 +20,7 @@ Press **Guide** in the tool for a five-step walk through the buttons.
 :name: fig-maxent-decay-window
 :width: 100%
 
-The MaxEnt window after a run on a synthetic two-lobe decay (1.1 and 3.6 ns). **Left**, the actions (Run MEM, L-curve, Sample, Save), the data buttons (Refresh, Load decay, IRF file, Clear IRF, Prior, Donor, JSON) and the settings forms; **right**, the decay with fit, IRF and fit range, the recovered distribution, the weighted residuals and the L-curve. The mouse wheel zooms every plot and a drag on the box in the decay plot moves the fit range.
+The MaxEnt window after a run on a synthetic two-lobe decay (1.1 and 3.6 ns). **Left**, the actions (Run MEM, L-curve, Sample, Save), the data buttons (Refresh, Load decay, IRF file, Clear IRF, Prior, Donor, JSON) and the settings forms; **right**, the decay with fit, IRF and fit range, the recovered distribution, the weighted residuals and the L-curve of a sweep, whose corner (green diamond) the sweep has written into ν — the status line says so; press Run MEM to use it. The mouse wheel zooms every plot and a drag on the box in the decay plot moves the fit range.
 ```
 
 ```{figure} figures/maxent_native_amplitudes.png
@@ -77,10 +77,11 @@ how much structure you are shown.
 
 MEM on a decay built from a **known** bimodal lifetime distribution — Gaussian
 lobes at $\tau = 1.1$ ns and $\tau = 3.6$ ns, not two discrete exponentials.
-**Left**, the recovered distribution: the long lobe comes back at $\approx 3.8$
-ns, and the short one appears split, which is $\nu$ showing more structure than
-the data support — the reason Step 3 exists. **Right**, the decay with the MEM
-fit over it and the weighted residuals ($\chi^2_r = 1.04$, structureless): a good
+**Right**, the recovered distribution: the long lobe comes back at $\approx 3.9$
+ns, and the short one appears split (at $\approx 0.7$ and $1.45$ ns), which is $\nu$ showing more structure than
+the data support — the reason Step 3 exists. **Middle**, the decay with the MEM
+fit over it and the weighted residuals ($\chi^2_r = 1.04$, structureless; the
+status line under the buttons reads it out after every run): a good
 $\chi^2_r$ constrains the distribution far less than it looks like it should —
 the split short lobe here has the same $\chi^2_r$ as a single broad one would.
 **Fit nuisance** is off, and on data this clean it has nothing to find: it
@@ -91,7 +92,7 @@ from the decay, which is when a real shift exists to fit.
 
 ## Step 3 — choose ν with the L-curve
 
-Press **L-curve**. It sweeps $\nu$ and plots residual norm against solution
+Press **L-curve**. It sweeps $\nu$ and plots $\chi^2$ against the solution
 norm; the corner — marked automatically
 ({src}`chisurf/core/math/regularization.py#sample_lcurve`) — is the point past
 which more smoothness starts costing real fit quality.
@@ -123,7 +124,8 @@ in the data, and no regularization recovers it.
 with the transfer kernel substituted. It is the model-free counterpart to the
 Gaussian and polymer distance models ({ref}`concept-distance-distributions`).
 
-It needs a donor-only reference: **Load donor** or **Load donor fit**. Getting
+It needs a donor-only reference: **Donor** (a file) or **Donor from fit** (the
+lifetimes of the selected live fit). Getting
 that reference wrong puts the donor's own heterogeneity into your distance
 distribution, which is the most common way a MEM distance result goes wrong.
 

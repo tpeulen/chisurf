@@ -8,10 +8,38 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from chisurf.core.experiments.core.experiment import Experiment
 from chisurf.core.experiments.modelling.reader import StructureReader
 from chisurf.core.models.structure.proteinmc_model import ProteinMCModel
+
+
+def _sampling_unavailable() -> str:
+    """Why the native ProteinMC sampler cannot run here, or the empty string.
+
+    Real sampling needs ``IMP.cgmol`` (the potentials) and an IMP.bff built with RMF (the
+    trajectory writer, ``RmfStructureWriter``). An environment without either cannot run it;
+    the open known issue "ProteinMC RMF output missing from canonical core provider" records
+    the RMF half. Everything else in this file runs without sampling.
+    """
+    try:
+        import IMP.cgmol  # noqa: F401
+    except ImportError:
+        return "IMP.cgmol is not installed in this environment"
+    import IMP.bff as bff
+
+    if not hasattr(bff, "RmfStructureWriter"):
+        return (
+            "this IMP.bff build has no RmfStructureWriter (known issue: ProteinMC RMF output "
+            "missing from canonical core provider)"
+        )
+    return ""
+
+
+requires_sampling = pytest.mark.skipif(
+    bool(_sampling_unavailable()), reason=_sampling_unavailable()
+)
 
 
 def _configured_proteinmc(tmp_path):
@@ -114,6 +142,7 @@ def test_proteinmc_restores_trajectory_and_active_observable(tmp_path):
     assert restored._distance_parameters["47-86"].value == model._distance_parameters["47-86"].value
 
 
+@requires_sampling
 def test_proteinmc_resumes_real_sampling_without_original_files(tmp_path):
     """Embedded structure and restraints drive the actual bounded native sampler."""
     model, pdb, labeling = _configured_proteinmc(tmp_path)
@@ -152,6 +181,7 @@ def test_proteinmc_resumes_real_sampling_without_original_files(tmp_path):
     assert np.isfinite(again.energy).all()
 
 
+@requires_sampling
 def test_proteinmc_real_sampling_initializes_uninitialized_move_buffers(tmp_path, monkeypatch):
     """Reused floating-point work memory cannot inject NaNs into real coordinates."""
     from chisurf.core.models.structure.proteinmc import ProteinMCRunner
@@ -232,6 +262,7 @@ def test_fret_structure_embedded_atoms_support_label_recomputation(tmp_path):
     np.testing.assert_allclose(again.y, restored.y, rtol=1e-12, atol=1e-12)
 
 
+@requires_sampling
 def test_proteinmc_fresh_session_preserves_atoms_ports_and_real_sampling(tmp_path):
     """Fresh no-MMFDB restore edits an atom-backed observable and samples again."""
     from chisurf.core.fitting.fit import Fit

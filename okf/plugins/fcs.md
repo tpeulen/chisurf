@@ -14,8 +14,9 @@ timestamp: '2026-07-05T00:00:00Z'
    BH132 green, 50 µs → one species ε 0.308, ⟨N⟩ 1.92, χ²ᵣ 196; two species (start ε 2, ⟨N⟩ 3) χ²ᵣ 3.6.
    Trap: the general model's `w_r` now starts fixed (single focus is degenerate in D and w_r) — a fit that frees it
    reports a D that depends on the start value.
-2. Open: guides not walked in the 2026-10-11 pass: 05, 06, 16, 56, 60, 73 (correlation side); emtk shell console has
-   no χ²ᵣ in `api.list_fits()` rows (known issue "emtk shell / Qt gaps seen in the 2026-10-11 QA walk").
+2. Open: guides not walked in the 2026-10-11 pass: 05, 06, 16, 56, 60, 73 (correlation side). The emtk console's
+   χ² across fits: `[(f["name"], f["chi2r_current"]) for f in api.list_fits(statistics=True)]` (a row's `chi2r` is
+   the last run's, `None` before a run). Filter calculator residual axis: `Residual / σ` under the dock title.
 3. Measure: method of the pass and every defect: known issue "QA walk of the FCS, lifetime, …" (found 2026-10-11).
 
 ## Overview

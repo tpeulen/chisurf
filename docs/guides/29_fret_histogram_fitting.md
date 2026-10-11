@@ -39,9 +39,11 @@ search (**Run**), then open the **Histogram** tab:
 - **GMM settings** — covariance type, random seed, initialisations, iterations,
   tolerance, regularisation and the maximum component count of the mixture.
 
-The histogram is built from the bursts of the file on show. Tick **Pool all files**
-(**Display** panel) to histogram and fit the bursts of every searched file together,
-which is what the whole measurement needs.
+The histogram is built from every burst of the file on show (not only those of the
+visible time window: the **Burst duration** tab above is the one that follows the
+window, and says so). Tick **Pool all files** (**Display** section of **Filter
+settings**) to histogram and fit the bursts of every searched file together, which
+is what the whole measurement needs.
 
 ```{figure} figures/29_burst_selection_gmm.png
 :name: fig-29-burst-selection-gmm
@@ -83,16 +85,6 @@ suffix, so glob one folder, not all of them.
 For a fully model-based description that also accounts for the shot-noise line
 shape (rather than Gaussians), fit the histogram with a
 [PDA model](11_pda2c.md) instead.
-
-:::{admonition} Known defects
-:class: warning
-After ▶ Run the Bursts and Histogram tabs show the bursts of the visible window
-only (8 of 1130 in the first 10 s of this dataset), and **Fit GMM** fits those;
-nothing on the tab says so. With the window unticked the caption reports
-*Whole measurement — 126.3 s* for ten files that last 642 s: the per-file time
-offsets do not accumulate, so the time-axis plots (MCS) draw files 2–10 on top
-of each other.
-:::
 
 ## Result
 

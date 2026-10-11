@@ -401,10 +401,13 @@ def _shown(caption: str) -> str:
 
 
 def button_width(label: str) -> float:
-    """The width ``im.button(label)`` takes."""
-    return (
-        im.calc_text_size(label, hide_double_hash=True)[0] + 2.0 * im.get_style().frame_padding[0]
-    )
+    """The width ``im.button(label)`` takes.
+
+    ``im.button`` draws ``tr(label)``, so that is what is measured: measuring the English source let a row of
+    longer translations ("Enregistrer les réglages" for "Save settings") run past the right edge of its dock.
+    """
+    shown = tr(str(label).split("##", 1)[0])
+    return im.calc_text_size(shown)[0] + 2.0 * im.get_style().frame_padding[0]
 
 
 def same_line_or_wrap(label: str) -> None:
@@ -434,14 +437,18 @@ def button_row(
     pressed = None
     used = 0.0
     for i, button in enumerate(buttons):
-        label = button["label"]
+        key = button.get("key", button["label"])
+        # Measured and drawn translated, with the key as the id ("###"): the id no longer comes
+        # from the caption, so two buttons whose captions translate alike stay two buttons, and
+        # the row wraps at the width of the text that is drawn.
+        text, _sep, ident = str(button["label"]).partition("##")
+        label = f"{_shown(text)}###{ident.lstrip('#') or key}"
         w = button_width(label)
         if i and used + spacing + w <= width:
             im.same_line()
             used += spacing + w
         else:
             used = w
-        key = button.get("key", label)
         colours = button.get("colours")
         if colours:
             from emtk.im_core import Col

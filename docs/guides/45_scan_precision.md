@@ -115,7 +115,7 @@ The same prediction runs from the command line, which is the practical way to
 sweep $D$ rather than the dwell time:
 
 ```bash
-rics-precision 10 --pixel-time 8 --nx 64 --ny 64 --frames 100 \
+csc rics-precision 10 --pixel-time 8 --nx 64 --ny 64 --frames 100 \
                --pixel-size 50 --w-r 0.25 --w-z 1.25 \
                --brightness 100 --n-particles 50 \
                --out-csv sweep.csv

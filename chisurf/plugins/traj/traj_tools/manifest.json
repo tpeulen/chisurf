@@ -38,6 +38,10 @@
     "emtk": "chisurf.plugins.traj.traj_tools.app:make_app"
   },
   "requires": {
+    "calculators": "*"
+  },
+  "menu_hidden": true,
+  "optional_requires": {
     "traj_align": "*",
     "traj_convert": "*",
     "traj_energy_calculator": "*",
@@ -46,6 +50,5 @@
     "traj_remove_clashes": "*",
     "traj_rotate_translate": "*",
     "traj_save_topology": "*"
-  },
-  "menu_hidden": true
+  }
 }

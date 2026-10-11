@@ -209,5 +209,8 @@
       "description": "State patch events for TTTR image browser plugin"
     }
   ],
-  "menu_hidden": true
+  "menu_hidden": true,
+  "optional_requires": {
+    "img_flow": "*"
+  }
 }

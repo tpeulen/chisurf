@@ -110,10 +110,9 @@ class MEMJobs:
                 self.model.settings.irf_background = float(result["irf_background"])
                 if "x_donly" in result:
                     self.model.settings.x_donly = float(result["x_donly"])
-                status = (
-                    f"MEM done: chi2 = {float(result['chisq']):.4g} at nu = {float(result['nu']):.4g}"
-                    + ("." if result.get("converged", True) else " (not converged: raise MEM iterations).")
-                )
+                # The solver's "converged" flag stays False on a result that 10x the iterations
+                # leave unchanged (chi2 1.0409 at 200 and 2000), so it is not echoed here.
+                status = f"MEM done: chi2 = {float(result['chisq']):.4g} at nu = {float(result['nu']):.4g}."
             elif self.kind == "lcurve":
                 self.model.lcurve = result
                 corner = result["corner_index"]

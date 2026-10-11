@@ -110,3 +110,45 @@ def test_native_all_controls_and_populated_plots_have_tooltips(tmp_path, monkeyp
     # the form fields take their tooltips from the spec descriptions (audited by test_emtk_vv_vh_g_factor_parity)
     assert len(tips) > 10 and all(tips)
     app.close()
+
+
+def test_load_example_recovers_the_simulated_g_and_no_mixing(tmp_path):
+    """The demo's references carry a known G (1.2) and no polarisation mixing; the calculator finds both."""
+    from chisurf.plugins.vv_vh_g_factor.demo import DEMO, make_demo
+
+    files = make_demo(tmp_path)
+    stamp = files["fast"].stat().st_mtime_ns
+    assert make_demo(tmp_path)["fast"].stat().st_mtime_ns == stamp  # cached, not rewritten
+    model = GFactorModel()
+    model.load_example(tmp_path)
+    assert model.fast_file == str(files["fast"]) and model.slow_file == str(files["slow"])
+    assert model.g_factor == pytest.approx(DEMO["g_factor"], rel=0.05)
+    assert model.result["g_factor_stddev_corrected"] > abs(model.g_factor - DEMO["g_factor"])
+    assert model.fp_result["l1"] is not None and abs(model.fp_result["l1"]) < 0.05
+    assert len(model.batch_files) == 2
+    model.compute_batch()
+    r_fast_rotor, r_slow_rotor = (row["r_inf"] for row in model.batch_results)
+    assert r_fast_rotor < r_slow_rotor  # rho 8 ns depolarises more than rho 30 ns by the tail
+
+
+def test_the_tour_waits_for_load_example_and_a_real_click_releases_it(tmp_path):
+    """Guide 91 is walkable without user files: the first step points at Load example and waits."""
+    from emtk.testing import Driver
+
+    from chisurf.plugins.vv_vh_g_factor.gui.app import create_app
+
+    app = create_app()
+    app.example_folder = tmp_path
+    ui = Driver(app)
+    ui.draw()
+    app.guide.start(1)
+    ui.draw()
+    assert app.guide.awaiting
+    rect = app.item_rects["load_example"]
+    ui.click(rect)
+    app.job.future.result(timeout=30)
+    app.job.poll()
+    ui.draw()
+    assert not app.guide.awaiting
+    assert app.model.g_factor is not None and app.model.slow is not None
+    app.close()

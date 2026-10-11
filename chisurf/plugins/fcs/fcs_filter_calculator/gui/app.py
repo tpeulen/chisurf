@@ -638,7 +638,9 @@ class FilterApp(TourTarget, ImApp):
 
     def draw_residuals(self, box):
         if implot.begin_plot("##residuals", im.get_content_region_avail()):
-            implot.setup_axes("TAC bin", "Weighted residuals σ")
+            # the dock is titled "Weighted residuals"; the axis says the unit, and stays short
+            # enough for the short panel (the long label ran off it)
+            implot.setup_axes("TAC bin", "Residual / σ")
             for entry in self.model.results():
                 for role in ("", "par", "perp"):
                     values = getattr(

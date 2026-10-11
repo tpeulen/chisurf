@@ -159,7 +159,7 @@ in [H2MM results](30_h2mm_workflow_results.md).
 ### CLI
 
 ```bash
-h2mm compute /path/to/analysis \
+csc h2mm compute /path/to/analysis \
     --file-type SPC-130 \
     --donor-channels 0,8 --acceptor-channels 1,9 \
     --min-states 1 --max-states 4 --criterion bic \

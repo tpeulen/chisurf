@@ -129,77 +129,43 @@ _BURST_FIXTURE_53 = pathlib.Path(
 )
 
 
-def _pump_53(seconds):
-    """Process events for *seconds* so worker results reach the GUI thread."""
-    import time
-
-    from qtpy.QtWidgets import QApplication
-
-    end = time.time() + seconds
-    while time.time() < end:
-        QApplication.instance().processEvents()
-        time.sleep(0.02)
-
-
 def _grab_53_bva_unchanged():
-    """Burst workflow on step 4 (BVA): computed once, then Run again -> 'Unchanged'.
+    """Native Burst Analysis on step 4 (BVA): computed once, then Run again -> 'Unchanged'.
 
     The fixture burst folder (10 BH SPC-132 files of a DNA sample) is copied to a
     scratch directory first, because BVA writes ``bv4/`` and its stamp beside the
-    bursts.
+    bursts. The detector setup is handed over explicitly (green 0/8, red 1/9).
     """
     import shutil
 
-    from chisurf.gui.chiplot import backends as chiplot_backends
-    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
-
-    # The default emtk backend drops the error-bar extents on set_data and the
-    # paint pass then raises, losing the density image and the axes (known
-    # defect); the pyqtgraph backend draws the BVA plot whole.
-    chiplot_backends.set_backend("pyqtgraph")
+    from emtk.testing import Driver
+    from guides_26_36 import SM_DNA_SETUP
+    from screenshots.emtk_shot import app_from, wait
 
     work = pathlib.Path(tempfile.mkdtemp(prefix="g53-")) / _BURST_FIXTURE_53.name
     shutil.copytree(_BURST_FIXTURE_53.resolve(), work)
     # The tables name their measurements relative to the folder's parent.
     for spc in _BURST_FIXTURE_53.parent.resolve().glob("m*.spc"):
         shutil.copy2(spc, work.parent / spc.name)
-    # Undefined count rates are written as empty cells; the BVA reader types
-    # such a column as text in the files that have one and as float64 in the
-    # files that do not, and then refuses to stack them (known defect). Keep the
-    # four tables whose green columns are all numeric.
-    for name in ("m001", "m002", "m003", "m005", "m007", "m009"):
-        (work / "bi4_bur" / f"{name}.bur").unlink()
-    tool = BurstAnalysisTool()
-    tool.resize(1400, 860)
-    tool.workflow_context.burst_folder = work
-    tool.workflow_context.bur_files = sorted((work / "bi4_bur").glob("*.bur"))
-    tool.workflow_context.raw_files = sorted(work.parent.glob("m*.spc"))
-    tool.show()
-    _pump_53(0.5)
-    row = next(i for i, p in enumerate(tool.panels) if p.get("role") == "bva")
-    tool.nav_list.setCurrentRow(row)
-    _pump_53(1.0)
-    bva = tool._panel_widget(row)
+    hub = app_from("burst_analysis")
+    driver = Driver(hub, (1400, 860))
+    driver.frame(2)
+    hub.context.channel_settings = SM_DNA_SETUP
+    hub.context.setup_name = "SPC-132 sm-DNA"
+    hub.context.raw_files = sorted(work.parent.glob("m*.spc"))
+    hub.context.set_burst_folder(work)
+    bva = hub.select("bva")
+    driver.frame(3)
     # Arriving at the step starts a preview; let it finish.
-    for _ in range(600):
-        _pump_53(0.1)
-        if getattr(bva, "_task", None) is None:
-            break
-    # compute_bva appends its columns to the cached burst table in place, so a
-    # second computation on that table fails (known defect). Drop the cache so
-    # the Run below reads the folder afresh.
-    bva._burst_df = bva._tttrs = None
-    bva._run_analysis()
-    for _ in range(600):
-        _pump_53(0.1)
-        if getattr(bva, "_task", None) is None:
-            break
-    _pump_53(1.0)
-    bva._run_analysis()  # nothing changed: kept, with Restart outlined
-    _pump_53(0.5)
-    tool._keep = (bva, work)
-    _grab(tool, "53_bva_unchanged.png")
-    chiplot_backends.set_backend("emtk")
+    wait(driver, lambda: not bva.controller.running, timeout=900)
+    bva.controller.run()
+    wait(driver, lambda: not bva.controller.running, timeout=900)
+    print("bva:", bva.model.status_text, flush=True)
+    bva.controller.run()  # nothing changed: kept, with Restart outlined
+    driver.frame(4)
+    print("bva again:", bva.model.status_text, flush=True)
+    driver.screenshot(FIG / "53_bva_unchanged.png")
+    print("wrote 53_bva_unchanged.png", flush=True)
 
 
 if __name__ == "__main__":

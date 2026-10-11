@@ -35,13 +35,13 @@ it changes nothing until you write the fused folder.
 
 ## 0. Learn it on a measurement whose answer is known
 
-Press **🧪 Demo** in the toolbar. It simulates a measurement in which
+Press **🧪 Load example** among the actions. It simulates a measurement in which
 **300 molecules** crossed the focus and about 60 % of those crossings were
 interrupted — the molecule dimming for a fraction of a millisecond and coming
 back — writes it as an ordinary photon file, and runs the *real* burst search
-over it. The search turns those 300 molecules into about **430 bursts**.
+over it. The search turns those 300 molecules into **419 bursts**.
 
-That gap between 300 and 430 is the whole problem, stated as a number. The
+That gap between 300 and 419 is the whole problem, stated as a number. The
 status block keeps the 300 on screen, so every step below can be checked against
 it rather than judged by eye. The demo is deliberately thin physics — one FRET
 population, no diffusion model, no photophysics — because it exists to
@@ -71,14 +71,15 @@ are not an analysis archive.
 ```{figure} figures/burst_fusion_native_primary_window.png
 :width: 100%
 
-Native written demo result:428 searched bursts become303 at threshold0.7,
-against300 simulated molecules. The effective window is2.182ms; the curves
-compare selected bursts with regenerated spans including gap photons.
+The demo after **Estimate** and **🚀 Run (Fuse)** at P(same) ≥ 0.7: 419 searched
+bursts become 297, against 300 simulated molecules; the window is 2.259 ms. The
+summary table and the plots compare the selected bursts with the written ones,
+regenerated over their spans including the gap photons.
 ```
 
 ## 2. Look at the curve before choosing a threshold
 
-Press **🔄 Estimate** (beside the green Run). Nothing is written; the burst
+Press **🔄 Estimate** (beside the green **🚀 Run (Fuse)**). Nothing is written; the burst
 tables are read and
 
 $$
@@ -119,11 +120,11 @@ story on one file:
 
 | Threshold | Window | Bursts | Proximity-ratio width |
 |---|---|---|---|
-| 0.9 | 1.7 ms | 341 | 0.041 → 0.036 |
-| **0.7** | **2.2 ms** | **303** | **0.041 → 0.033** |
-| 0.5 | 2.7 ms | 283 | 0.041 → 0.031 |
+| 0.9 | 1.7 ms | 338 | 0.042 → 0.036 |
+| **0.7** | **2.3 ms** | **297** | **0.042 → 0.033** |
+| 0.5 | 2.7 ms | 280 | 0.042 → 0.031 |
 
-0.9 leaves splits unrepaired; 0.7 lands on the truth; 0.5 goes *past* it, because
+0.9 leaves splits unrepaired; 0.7 lands within a few bursts of the truth; 0.5 goes *past* it, because
 at this burst rate some genuinely different molecules also fall inside the
 window. Note that the width keeps falling even where the burst count is already
 wrong — narrower is not the same as better, which is why the mean matters too
@@ -178,13 +179,13 @@ signal to cap it with **Max fragments**.
 
 ## 5. Write the fused folder
 
-Press **▶ Run** — on this step, running *is* fusing. This is the slow half: the photon streams are reopened and
+Press **🚀 Run (Fuse)** — on this step, running *is* fusing. This is the slow half: the photon streams are reopened and
 every column is re-derived over the real span, so the result is an ordinary
 burst folder — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea
 that fusion happened.
 
 ```
-<source>_fused_p0.50/
+<source>_fused_p0.70/      (a _0, _1 … suffix when that folder exists)
   bi4_bur/<stem>.bur     the fused bursts, regenerated from the photons
   fu4/<stem>.fu4         per fused burst: fragments merged, background gained
   Info/analysis.json     how the raw data was read
@@ -206,7 +207,7 @@ that point the pipeline analyses the fused bursts. Re-running burst selection
 supersedes that and takes you back to un-fused bursts.
 
 ```{note}
-Because fusion is optional, **Next** and the ⏩ fast-forward pass over this step
+Because fusion is optional, **Next** and the **>>** fast-forward pass over this step
 without running it. Walk past it and every later step keeps analysing the folder
 burst selection produced; run it and they analyse the fused folder. Nothing
 changes the bursts under your analysis unless you press the button.
@@ -224,10 +225,10 @@ them on the fused folder; that is why fusion sits before those steps.
 
 ```bash
 # What would this threshold do? (writes nothing)
-csc fusion curve "burstwise_All 0.1000#15" --threshold 0.5
+csc burst-fusion curve "burstwise_All 0.1000#15" --threshold 0.5
 
 # Write the fused folder
-csc fusion fuse "burstwise_All 0.1000#15" --threshold 0.5 --max-gap 10 -o fused
+csc burst-fusion fuse "burstwise_All 0.1000#15" --threshold 0.5 --max-gap 10 -o fused
 ```
 
 `curve` prints the window, the burst counts and the before/after proximity ratio;
@@ -263,7 +264,7 @@ analyze(folder, FusionSettings(threshold=0.7))
 The source photons, searched folder and parameter/truth sidecar live in
 `demos/burst_fusion` under the ChiSurf settings folder. Pass a dedicated folder
 to `make_demo(folder)` to choose another location, or `overwrite=True` to
-regenerate it. **Guide** waits for your **Demo** click; estimating and writing
+regenerate it. **Guide** waits for your **Load example** click; estimating and writing
 fused bursts remain separate actions.
 
 ## The method, and when *not* to fuse
