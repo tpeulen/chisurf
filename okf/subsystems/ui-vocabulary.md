@@ -30,24 +30,6 @@ timestamp: '2026-10-10T00:00:00Z'
    files shifted lines, so `test/test_i18n_literals.py` and
    `test/test_tooltips.py` report relocated/stale keys until the root
    regenerates them (they only shrink: ported controls left the measurement).
-6. Open: **caption icons are still grey** (2026-10-11). Icon *slots* -- ribbon
-   buttons, menu rows, selectable rows (Tools dock, hub lists) -- draw the
-   pictogram as a colour image of one size per class (emtk `emtk/icons.py`,
-   `icon_box`/`draw_icon`, emtk `04358f3`; recording painters list them in
-   `painter.icons`, not `painter.strings`). An icon typed *into a caption*
-   (`action_caption`, `icon_label`, view_form `icon_caption`: the ❓ Help /
-   📖 Guide buttons, the ribbon corner's 🌍 EN) still goes through the text
-   path: `emtk/dynamic_font.py` `_rasterise_strike` makes the emoji a mask and
-   the glyph shader (`emtk/wgsl/ui.wgsl`) uses texel alpha only, so it draws in
-   the text colour, squeezed into one monospace cell. Measure: grab the shell
-   (`HostedDriver(..., backend="offscreen")`) and look at the Guide/Help
-   buttons beside the coloured tool icons. Blocks: a uniform look between
-   chrome buttons and tool icons. Approaches: draw the leading pictogram of a
-   caption via `draw_icon` in `DrawList.add_text` -- rejected for now because
-   it changes the recorded caption string that ~260 test lines click/assert by
-   (`action_caption(...)`); colour glyph cells in the atlas need a per-quad
-   "untinted" flag in the shader and in the Pixel/PIL painters, and still sit
-   in one cell. Either way, keep the recorded string intact.
 
 # Why it exists
 
@@ -135,6 +117,21 @@ it): `{"label": "Help", "icon": "❓", "action": …, "description": …}`. The 
 form renderer and the Qt `ButtonRowWidget` both draw `icon` in front of the
 translated label (`emtk.view_form.icon_caption`, which also drops the U+FE0F
 presentation selector the atlas cannot draw).
+
+Caption icons are drawn in colour (emtk `605e7d4`). The real painters (GPU
+`QuadPainter`, `PilPainter`, `PixelPainter`) split a caption with
+`emtk.icons.pictogram_runs`: each colour emoji cluster -- including a leading
+pictograph whose U+FE0F `icon_caption` dropped (`⚙ Settings`) -- is drawn by
+`icons.draw_icon` in one small `icon_box` (a line high), the rest as text.
+`text_width` measures the same runs (`icons.caption_width`), so buttons are
+sized to what is drawn. Recording painters still record the whole caption, so
+`action_caption(...)` clicks are unchanged; the icon also appears in
+`painter.icons`. Glyphs with no colour form (◐ ✕ › ▶) stay text-colour masks;
+the icon takes the text colour's alpha, so a disabled button fades it. Known
+limit: the monospace text editor positions by cell, so an emoji typed into it
+is drawn wider than its cell. Wider captions pushed the image browser toolbar
+1 px out of an 800 px window; emtk `e7ba04d` caps a control alone on its line
+at the line and wraps a button row evenly.
 
 Item-rect keys, `remember()` names, awaited tour steps and keyboard shortcuts
 are not part of the vocabulary and did not change when the apps were ported.

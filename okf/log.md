@@ -2,6 +2,9 @@
 
 ## 2026-10-11
 
+- Emoji typed into captions (Help, Guide, the language button, plugin action buttons) draw in colour (emtk
+  605e7d4): the real painters split a caption into icon and text runs with one width rule; recorded strings are
+  unchanged. A wrapped button row spreads evenly (emtk e7ba04d). See [UI vocabulary](subsystems/ui-vocabulary.md).
 - Wizards are translated (de, fr): the hub list, the Anisotropy and Batch analysis wizards' docks, steps,
   welcome and finish texts go through `emtk.i18n` (26 new entries each). The hub rail is as wide as its
   translated Guide and Help captions, and the Anisotropy navigation stacks them when they do not fit.
