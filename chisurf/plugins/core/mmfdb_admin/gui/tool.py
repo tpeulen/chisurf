@@ -1073,17 +1073,6 @@ class MMFDBWidget(NavigationPanelTool):
         item.setTextAlignment(QtCore.Qt.AlignCenter)
         return item
 
-    def _checked_row_ids(self, table: QtWidgets.QTableWidget, id_col: int = 1) -> list[str]:
-        """Return IDs of all checked rows in *table*."""
-        ids: list[str] = []
-        for row in range(table.rowCount()):
-            cb = table.item(row, 0)
-            if cb is not None and cb.checkState() == QtCore.Qt.Checked:
-                id_item = table.item(row, id_col)
-                if id_item is not None:
-                    ids.append(id_item.text().strip())
-        return ids
-
     @staticmethod
     def _apply_checkable_first_column(table: QtWidgets.QTableWidget) -> None:
         """Make the first column of every row in *table* user-checkable."""
@@ -4288,7 +4277,7 @@ class MMFDBWidget(NavigationPanelTool):
             return
         self._refresh_in_progress = True
         self._loading = True
-        self._failures: list[str] = []
+        self._failures = []
         transport_ok = False
         try:
             status = self.client.status() or {}

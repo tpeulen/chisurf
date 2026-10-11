@@ -1886,16 +1886,6 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         if errors:
             parameter.error_estimate = float(max(errors))
 
-    def _on_label_mouse_press(self, event: QtGui.QMouseEvent):
-        try:
-            if event.button() == QtCore.Qt.LeftButton:
-                self._open_details_popup()
-            else:
-                # fall back to default behavior
-                super().mousePressEvent(event)
-        except Exception:
-            pass
-
     def _open_details_popup(self):
         if getattr(self, "_is_output_param", False):
             return

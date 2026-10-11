@@ -1106,7 +1106,7 @@ class ParameterGroup(chisurf.core.base.Base):
 
     def __getattr__(self, key: str):
         """Return a contained Parameter's float value when accessed by name."""
-        v = super().__getattr__(key=key)
+        v = super().__getattr__(key)
         if isinstance(v, chisurf.core.parameter.Parameter):
             return v.value
         return v

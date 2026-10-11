@@ -55,7 +55,7 @@ from .adapter import PROXIMITY_RATIO_COLUMN, UI_COLUMNS, burst_rows_for_display
 ALGORITHM_VERSION = 1
 
 #: Advanced Gaussian-mixture settings (the Qt ``GMMSettingsDialog`` defaults).
-DEFAULT_GMM_SETTINGS = {
+DEFAULT_GMM_SETTINGS: dict[str, Any] = {
     "covariance_type": "full",
     "random_state": 42,
     "max_iter": 300,
