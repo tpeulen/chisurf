@@ -1,0 +1,94 @@
+# The colour of each kind of task in the ChiSurf window (emtk shell).
+#
+# One category, one colour, defined here once. A dock's tab (strong when on top, muted
+# behind), the stripe under its tab strip, its ribbon group's caption and underline, its
+# row in the Tools tree and the headers of a tool hosted in it all take the colour of its
+# category (chisurf/emtk/task_colors.py reads this file; docs/getting_started.md shows the key).
+#
+# Per theme:
+#   fill  the strong colour, an active tab's background; `text` is drawn on it.
+#   ink   the same hue as a foreground on the window background (a caption, a stripe).
+# Every pair is tested for a WCAG contrast of at least 4.5 (test/native_emtk/test_task_colors.py),
+# and neighbouring hues differ in lightness too, so a colour-blind reader still tells most
+# of them apart -- the label always says what a panel is; the colour is the second cue.
+#
+# `groups` places the ribbon's groups ("Tab:Group", as the plugin manifests' display_name
+# arranges them; "Tab:*" for the rest of a tab), `plugins` overrides a plugin whose task
+# differs from its group's, and `docks` names the shell's own panels by dock key or prefix.
+# A dock in none of them (the Tools tree, Start) is core chrome and stays neutral.
+
+categories:
+  documentation:
+    label: Documentation
+    dark: {fill: "#2470CF", text: "#FFFFFF", ink: "#8BB6EB"}
+    light: {fill: "#2470CF", text: "#FFFFFF", ink: "#1A5297"}
+  wizards:
+    label: Wizards
+    dark: {fill: "#C15200", text: "#FFFFFF", ink: "#FFA767"}
+    light: {fill: "#C15200", text: "#FFFFFF", ink: "#953F00"}
+  imaging:
+    label: Imaging
+    dark: {fill: "#185320", text: "#FFFFFF", ink: "#7FD08A"}
+    light: {fill: "#185320", text: "#FFFFFF", ink: "#195922"}
+  decay:
+    label: Decay
+    dark: {fill: "#AB2929", text: "#FFFFFF", ink: "#E48E8E"}
+    light: {fill: "#AB2929", text: "#FFFFFF", ink: "#A42727"}
+  correlation:
+    label: Correlation
+    dark: {fill: "#5E369D", text: "#FFFFFF", ink: "#BAA3DF"}
+    light: {fill: "#5E369D", text: "#FFFFFF", ink: "#5B3497"}
+  single_molecule:
+    label: Single-Molecule
+    dark: {fill: "#B02676", text: "#FFFFFF", ink: "#E68EC0"}
+    light: {fill: "#B02676", text: "#FFFFFF", ink: "#912061"}
+  kinetics:
+    label: Kinetics
+    dark: {fill: "#626F0C", text: "#FFFFFF", ink: "#CDD86E"}
+    light: {fill: "#626F0C", text: "#FFFFFF", ink: "#4F5A09"}
+  structure:
+    label: Structure
+    dark: {fill: "#6A4126", text: "#FFFFFF", ink: "#D6AA8C"}
+    light: {fill: "#6A4126", text: "#FFFFFF", ink: "#6D4327"}
+  fitting:
+    label: Fitting
+    dark: {fill: "#00727C", text: "#FFFFFF", ink: "#6FD3DC"}
+    light: {fill: "#00727C", text: "#FFFFFF", ink: "#00626C"}
+  tools:
+    label: Tools
+    dark: {fill: "#405B75", text: "#FFFFFF", ink: "#A5BBCE"}
+    light: {fill: "#405B75", text: "#FFFFFF", ink: "#3A5269"}
+  file:
+    label: File and setup
+    dark: {fill: "#55524C", text: "#FFFFFF", ink: "#C6C3BF"}
+    light: {fill: "#55524C", text: "#FFFFFF", ink: "#58544F"}
+  console:
+    label: Log and console
+    dark: {fill: "#333A87", text: "#FFFFFF", ink: "#A7ACDE"}
+    light: {fill: "#333A87", text: "#FFFFFF", ink: "#373F93"}
+
+groups:
+  "Main:Help": documentation
+  "Spectroscopy:Decay": decay
+  "Spectroscopy:Correlation": correlation
+  "Spectroscopy:Single-Molecule": single_molecule
+  "Spectroscopy:Kinetics": kinetics
+  "Spectroscopy:Imaging": imaging
+  "Structure:*": structure
+  "Tools:*": tools
+  "File:*": file
+
+plugins:
+  wizards: wizards
+
+docks:
+  "data.": fitting
+  "fit.": fitting
+  "log": console
+  "console": console
+
+# Core chrome (the Tools tree, Start, the Main tab's Window group): no task, a quiet grey, so
+# that the theme's blue tab colour is not mistaken for Documentation.
+neutral:
+  dark: {fill: "#4A4A50", text: "#FFFFFF", ink: "#B8B8BE"}
+  light: {fill: "#4A4A50", text: "#FFFFFF", ink: "#4A4A50"}

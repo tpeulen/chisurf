@@ -202,7 +202,7 @@ class ShellRibbon:
             on_press=action.run,
         )
 
-    def _plugin_button(self, entry, large: bool) -> RibbonButton:
+    def _plugin_button(self, entry, large: bool, accent=None) -> RibbonButton:
         plugin_id = entry.plugin_id
         return RibbonButton(
             "plugin." + plugin_id,
@@ -211,6 +211,7 @@ class ShellRibbon:
             tooltip=entry_tooltip(entry),
             large=large,
             on_press=lambda: self.shell.open_plugin(plugin_id),
+            accent=accent,
         )
 
     def _recent_group(self, actions) -> RibbonGroup:
@@ -245,7 +246,15 @@ class ShellRibbon:
         return RibbonGroup("Recent", buttons)
 
     def tabs(self) -> list[RibbonTab]:
-        """The ribbon's tabs now (the session groups' enabled states and recent projects are live)."""
+        """The ribbon's tabs now (the session groups' enabled states and recent projects are live).
+
+        Each group wears the colour of its kind of task (:mod:`chisurf.emtk.task_colors`) on its
+        caption and underline; a tool of another kind than its group's (Wizards among the
+        Calculators) carries a bar of its own colour.
+        """
+        from chisurf.emtk.task_colors import accent, group_category
+
+        categories = getattr(self.shell, "task_categories", {})
         actions = self._actions()
         built: dict[str, list[RibbonGroup]] = {
             "File": [self._recent_group(actions)]
@@ -265,9 +274,17 @@ class ShellRibbon:
         for tab, groups in self._plugins.items():
             for group, entries in groups.items():
                 large = len(entries) == 1
-                built.setdefault(tab, []).append(
-                    RibbonGroup(group, [self._plugin_button(entry, large) for entry in entries])
-                )
+                kind = group_category(tab, group)
+                buttons = []
+                for entry in entries:
+                    own = categories.get(entry.plugin_id, kind)
+                    buttons.append(
+                        self._plugin_button(entry, large, accent(own) if own != kind else None)
+                    )
+                built.setdefault(tab, []).append(RibbonGroup(group, buttons))
+        for tab, groups in built.items():
+            for group in groups:
+                group.accent = group.accent or accent(group_category(tab, group.title))
         return [RibbonTab(tab, built[tab]) for tab in ordered_tabs(built)]
 
     # -- drawing ------------------------------------------------------------ #

@@ -43,7 +43,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from emtk import im
+from emtk import accents, im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
@@ -222,6 +222,10 @@ class EmtkShellApp(ImApp):
 
         #: ``{menu: {caption: [MenuEntry]}}``: the plugin menus and the Tools tree, in ribbon order.
         self.menus = menu_tree(self.entries)
+        from chisurf.emtk.task_colors import plugin_categories
+
+        #: ``{plugin_id: category}``: the colour of each tool's kind of task (:mod:`chisurf.emtk.task_colors`).
+        self.task_categories = plugin_categories(self.entries)
         self.ribbon = ShellRibbon(self)
         self._ribbon_enabled = _ribbon_preference()
         #: The canvas size of the last frame (what *Screenshot* copies).
@@ -444,6 +448,7 @@ class EmtkShellApp(ImApp):
         width, height = im.get_main_viewport().size
         self._draw_menu_bar(width)
         top = MENU_BAR + self._draw_ribbon(width)
+        self._colour_docks()
         self.docks.draw((0.0, top, width, max(1.0, height - top)))
         self.data.draw_file_dialog((0.0, 0.0, width, height))
         self.console.draw_overlays((0.0, 0.0, width, height))
@@ -453,13 +458,31 @@ class EmtkShellApp(ImApp):
         """Draw *app* into *box* (canvas coordinates) of dock window *window_key*; input over it goes to it.
 
         Called from a dock's draw callback. *child_id* names the child for focus and capture (a plugin's or a fit
-        window's dock key, ``reader.<n>`` for a reader's settings).
+        window's dock key, ``reader.<n>`` for a reader's settings). The child's section headers and title bars
+        take a muted tint of the dock's task colour.
         """
         x, y, w, h = (float(v) for v in box)
         box = (x, y, max(1.0, w), max(1.0, h))
         painter = im.get_current_context().p
-        self.draw_child(painter, app, *box, local_coordinates=True)
+        window = self.docks.window(window_key)
+        with accents.region(window.accent if window is not None else None):
+            self.draw_child(painter, app, *box, local_coordinates=True)
         self._drawn[child_id] = (window_key, app, box)
+
+    def _colour_docks(self) -> None:
+        """Give every dock window the colour of its kind of task (:mod:`chisurf.emtk.task_colors`); emtk draws it.
+
+        A plugin's dock takes its plugin's category, the data / fit docks *fitting*, Log and Console *console*;
+        the rest is core chrome in the neutral grey (also its section headers and selected rows, which the theme
+        would draw in a blue that reads as *Documentation*). Done each frame, so fit windows opened since are
+        coloured too; emtk picks the theme variant when it draws.
+        """
+        from chisurf.emtk.task_colors import accent, dock_category, neutral
+
+        for key, window in self.docks.windows.items():
+            category = dock_category(key, self.task_categories)
+            window.accent = accent(category) or neutral()
+            window.header_tint = True
 
     def _draw_ribbon(self, width: float) -> float:
         """The ribbon under the menu bar; returns its height (none while *Menu Switch* hid it)."""
@@ -779,8 +802,17 @@ class EmtkShellApp(ImApp):
     # ── docks ─────────────────────────────────────────────────────────────
 
     def _draw_tools(self, box) -> None:
-        """The Tools tree: one section per menu, its groups as captions, each tool with its icon."""
+        """The Tools tree: one section per menu, its groups as captions, each tool with its icon.
+
+        Each tool carries a bar of its task colour and each caption is written in it; a menu whose tools
+        are all one kind (Help, Structure) has its header tinted with that colour, the others neutral.
+        """
         from chisurf.emtk.shell_ribbon import entry_label, entry_tooltip
+        from chisurf.emtk.task_colors import accent, neutral
+
+        def colour_of(entries) -> Any:
+            kinds = {self.task_categories.get(e.plugin_id) for e in entries}
+            return accent(kinds.pop()) if len(kinds) == 1 else None
 
         changed, value = im.input_text_with_hint("##tool filter", self.filter, tr("Filter tools"))
         if changed:
@@ -798,15 +830,17 @@ class EmtkShellApp(ImApp):
             found = {caption: entries for caption, entries in found.items() if entries}
             if not found:
                 continue
-            # A filter opens every section that has a match; otherwise the user's clicks own it.
-            is_open = im.collapsing_header(f"{tr(menu)}##tools.{menu}", True if words else 32)
+            menu_accent = colour_of([e for items in groups.values() for e in items]) or neutral()
+            with accents.headers(menu_accent):
+                # A filter opens every section that has a match; otherwise the user's clicks own it.
+                is_open = im.collapsing_header(f"{tr(menu)}##tools.{menu}", True if words else 32)
             self.item_rects[f"tools.menu.{menu}"] = im.get_item_rect()
             if not is_open:
                 continue
             for caption, entries in found.items():
                 im.indent()
                 if caption:
-                    im.text_disabled(tr(caption))
+                    accents.caption(tr(caption), colour_of(groups[caption]))
                     self.item_rects[f"tools.group.{menu}.{caption}"] = im.get_item_rect()
                     im.indent()
                 for entry in entries:
@@ -816,6 +850,7 @@ class EmtkShellApp(ImApp):
                                      icon=entry.icon or None):
                         self.open_plugin(entry.plugin_id)
                     self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
+                    accents.mark_item(accent(self.task_categories.get(entry.plugin_id)))
                     im.set_item_tooltip(entry_tooltip(entry))
                 if caption:
                     im.unindent()

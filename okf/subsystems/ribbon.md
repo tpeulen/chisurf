@@ -58,6 +58,25 @@ Hub scopes that decide where a new tool goes:
 - **Calculators**: stand-alone calculators, κ² included. The FCS diffusion
   calculator is hosted by FCS only.
 
+# Task colours (2026-10-11)
+
+Every kind of task has one colour, declared once in `chisurf/emtk/task_colors.yaml`
+(category → dark/light `fill`, `text`, `ink`; `groups` maps `"Tab:Group"` / `"Tab:*"`,
+`plugins` overrides one tool — Wizards sits in *Calculators* but is orange —, `docks`
+names the shell's own panels by key or prefix; `neutral` is core chrome).
+`chisurf/emtk/task_colors.py` only reads it and assigns: `plugin_categories` (by where the
+shipped `plugin_layout` puts each plugin), `dock_category`, `accent` → an
+`emtk.style.ThemedAccent`. **All drawing is emtk's** (`emtk/accents.py`, emtk `0ec0daf`):
+`DockWindow.accent`/`header_tint` (tab strong/muted with a line, strip stripe, floating
+title, headers inside), `RibbonGroup.accent` (caption + underline), `RibbonButton.accent`
+(bar on a tool of another kind), `accents.region` around `draw_child` (hosted app *and its
+hosted apps* tinted through `emtk.style.ambient_colours`), `accents.headers/caption/mark_item`
+for the Tools tree. The theme variant is picked at draw time from `WINDOW_BG`; every tint
+backs off until the theme's text reads at 4.5:1 (or no worse than the theme's own colour).
+The shell assigns accents each frame in `EmtkShellApp._colour_docks` (fit windows appear
+later). Colour key for users: [getting started](../../docs/getting_started/index.md)
+"Colours tell the kind of task".
+
 # Guards
 
 - `test/plugins/test_ribbon_layout.py`: pins tab → group → buttons from the shipped
@@ -72,6 +91,20 @@ Hub scopes that decide where a new tool goes:
 - `test/plugins/test_plugin_menu_tabs.py`: the closed tab vocabulary.
 
 ## Where to pick this up
+
+7. Task colours: measure with `test/native_emtk/test_task_colors.py` (palette loads, every
+   manifest plugin has a category, contrast ≥ 4.5 in dark and light, a hosted tab drawn in
+   its colour) and emtk `tests/test_accents.py`. A new ribbon group needs a `groups` line in
+   `task_colors.yaml` or the coverage test names it. Open: (a) the shell has **no light-theme
+   switch** — light was verified with `style_colors_light` applied to the palette via
+   `emtk.style.use_palette` (inverted dark palette), so a real light theme should be checked
+   when one lands; (b) table header rows (`TABLE_HEADER_BG`, a module constant, not a `Col`
+   role) stay the theme blue inside tinted docks; (c) 12 categories cannot all be
+   colour-blind distinct — lightness varies (fill luminance 0.05–0.17) but olive/brown/orange
+   and blue/indigo/violet pairs rely on the label. Screenshot recipe: `HostedDriver(shell,
+   (1440, 900), scale=1|2)` with Decay Analysis, HMM, Image Tools, Wizards, Documentation
+   opened; light = invert every upper-case tuple of `emtk.style` with `use_palette` before
+   the shell is made.
 
 6. Measure: the emtk shell's ribbon must stay equal to this one tab for tab:
    `test/native_emtk/test_emtk_shell_ribbon.py::test_parity_with_the_qt_ribbon`. A deliberate

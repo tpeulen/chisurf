@@ -78,6 +78,46 @@ opens the documentation and 🌍 switches the language. The menu bar and the
 **Tools** dock list the same tools under the same groups; the dock is a tree
 with a filter.
 
+### Colours tell the kind of task
+
+Every panel of the native window wears the colour of the kind of work it is
+for, and the same colour marks that kind everywhere: the panel's tab (strong
+while it is in front, muted behind, with a line of the full colour), the stripe
+under its tab strip, its group caption and underline in the ribbon, the bar
+beside its tool in the **Tools** tree, and — tinted — the headers, tabs and
+buttons of the tool inside it. Core chrome (the **Tools** tree, *Start*) stays a
+quiet grey.
+
+```{figure} ../images/native_window_task_colors.png
+:alt: The native window with Decay Analysis, Hidden Markov model, Image Tools, Wizards and Documentation open; Wizards in front in orange.
+
+Wizards (orange) in front; behind it Decay Analysis (red), Hidden Markov model
+(olive), Image Tools (green) and Documentation (blue). Read data / Datasets /
+Analysis are teal (fitting), Log / Console indigo.
+```
+
+| Colour | Kind of task | Where |
+|---|---|---|
+| blue | Documentation | *Main → Help* (Documentation, About) |
+| orange | Wizards | *Tools → Calculators → Wizards* |
+| green | Imaging | *Spectroscopy → Imaging* (Image Tools) |
+| red | Decay | *Spectroscopy → Decay* (Decay Analysis) |
+| violet | Correlation | *Spectroscopy → Correlation* (FCS, PCH) |
+| magenta | Single-molecule | *Spectroscopy → Single-Molecule* (ALEX, bursts, traces) |
+| olive | Kinetics | *Spectroscopy → Kinetics* (Hidden Markov model) |
+| brown | Structure | *Structure* (ChiMOL, Structure Tools) |
+| teal | Fitting | Read data, Datasets, Analysis, Plot settings, fit windows |
+| steel blue | Tools | *Tools* (TTTR Tools, calculators, views, system) |
+| warm grey | File and setup | *File* (Settings, File tools, projects) |
+| indigo | Log and console | Log, Console |
+
+Each colour has a dark- and a light-theme variant; text on every one of them
+has a contrast of at least 4.5 : 1, and neighbouring colours differ in
+lightness as well as hue, so they stay apart for most colour-vision
+deficiencies — the label always names the panel, the colour is the second cue.
+The key is declared once in `chisurf/emtk/task_colors.yaml`; a new tool filed
+under an existing ribbon group takes that group's colour.
+
 ## Your first analysis
 
 The fastest way to see ChiSurf work end-to-end is one of the guides:

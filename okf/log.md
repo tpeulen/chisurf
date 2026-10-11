@@ -2,6 +2,10 @@
 
 ## 2026-10-11
 
+- The emtk shell colours each task: one declared palette (`chisurf/emtk/task_colors.yaml`; documentation blue,
+  wizards orange, imaging green, ...) colours dock tabs, frame stripes, ribbon group captions, Tools-tree rows and
+  the hosted tool's headers, drawn by emtk 0ec0daf (`emtk/accents.py`, contrast 4.5:1 kept). Colour key in
+  Getting Started; see [ribbon](subsystems/ribbon.md).
 - Accessible-volume defaults are FPS's and Olga's (owner decision): linker 20 / width 4.5, AV1 radius 3.5, AV3
   radii 5 / 4.5 / 1.5, grid 0.9, clearance 0.5 W and FPS's first linker step, declared once in IMP.bff
   (51a31f831, `IMP.bff.AV_DEFAULT_*`) and read by ChiSurf's AV, FRET-structure model and FPS card. 3GUN vs FPS's
