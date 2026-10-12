@@ -1,0 +1,92 @@
+{
+ "title": "Decay settings",
+ "sections": [
+  {
+   "type": "value",
+   "attr": "species",
+   "label": "Species",
+   "kind": "int",
+   "style": "spin",
+   "minimum": 1,
+   "maximum": 999,
+   "call": "species_switched",
+   "description": "Which species' decay is being edited. Switching keeps each species' edits; OK writes them all back."
+  },
+  {
+   "type": "custom",
+   "key": "data_table",
+   "title": "Lifetime spectrum",
+   "description": "Amplitude and lifetime (ns) of each exponential component of this species' decay.",
+   "options": {
+    "source": "spectrum_rows",
+    "columns": [
+     {
+      "key": "amplitude",
+      "title": "Amplitude",
+      "editable": true,
+      "format": "%.6g",
+      "description": "Relative amplitude of the component (negative = rise term)."
+     },
+     {
+      "key": "lifetime",
+      "title": "Lifetime (ns)",
+      "editable": true,
+      "format": "%.6g",
+      "description": "Fluorescence lifetime of the component in ns; components with tau <= 0 are skipped."
+     }
+    ],
+    "editable": true,
+    "edited_call": "spectrum_edited",
+    "selected_call": "spectrum_selected",
+    "fit_rows": true,
+    "height": 150
+   }
+  },
+  {
+   "type": "button_row",
+   "buttons": [
+    {
+     "label": "Add",
+     "action": "add_component",
+     "description": "Add a lifetime component (amplitude 1, lifetime 1 ns).",
+     "icon": "➕"
+    },
+    {
+     "label": "Remove",
+     "action": "remove_component",
+     "description": "Remove the selected lifetime component (the last one if none is selected).",
+     "icon": "➖"
+    },
+    {
+     "label": "Clear pattern",
+     "action": "clear_pattern",
+     "description": "Drop the decay-pattern file so this species uses its lifetimes again.",
+     "icon": "✕"
+    }
+   ]
+  },
+  {
+   "type": "value",
+   "attr": "pattern_path",
+   "label": "Decay pattern file",
+   "kind": "str",
+   "description": "Measured or saved decay pattern (.npy or text) that replaces the lifetimes for this species; empty = use the lifetimes."
+  },
+  {
+   "type": "value",
+   "attr": "irf_fwhm_ns",
+   "label": "Gaussian FWHM (ns)",
+   "kind": "float",
+   "minimum": 0.0,
+   "maximum": 1000.0,
+   "decimals": 4,
+   "description": "Full width at half maximum of the Gaussian instrument response shared by all species; 0 = no IRF convolution."
+  },
+  {
+   "type": "custom",
+   "key": "sim_decay_preview",
+   "height": 200,
+   "description": "Live preview of this species' micro-time decay on the simulator's TAC axis."
+  }
+ ]
+}

@@ -2,6 +2,11 @@
 
 ## 2026-10-12
 
+- The emtk Acquisition tool has a Simulation setup dialog (`acq/gui/sim_setup.py`, AutoForm specs): species,
+  brightness and background as one editable table, the k_rad/k_nrad rate grids, and the per-species decay editor, all
+  editing the Qt-free `SimulationSettingsModel` (split out of the Qt dialog, which now subclasses it). OK validates via
+  `build_engine`; the emission seed is no longer overwritten by the tool's seed field. Tests check the simulated
+  photons follow the edits. `18_sim_setup.png` drawn from emtk.
 - MMFDB seed ships measured dye spectra with provenance instead of 3-point placeholders (mmfdb 3846843, 53eed70,
   schema 51 upgrades installed databases); the Förster calculator's Alexa488 → Alexa594 R0 is 57.8 Å from 201/426-point
   curves (handbook 60 Å; excitation stands in for absorption). Guide 83 and its figure updated; the figure generator

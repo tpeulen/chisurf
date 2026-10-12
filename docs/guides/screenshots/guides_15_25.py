@@ -304,13 +304,19 @@ def _grab_18_lfcs_sim():
 
 
 def _grab_18_sim_setup():
-    """Acquisition simulator setup dialog: two species, green+red, a 2x2 rate grid."""
-    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
-        EnhancedSimulationSetupDialog,
-    )
+    """Acquisition simulator setup dialog (emtk): two species, green+red, a 2x2 rate grid."""
+    from emtk.testing import Driver
 
-    dlg = EnhancedSimulationSetupDialog()
-    dlg._apply_parameters(
+    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+
+    width, height = 880, 830
+    app = AcquisitionApp(AcquisitionNativeModel(settings={}))
+    driver = Driver(app, (width, height))
+    driver.frame(2)
+    app.model.open_simulation_setup()  # the same request the "Simulation setup..." button makes
+    driver.frame(2)
+    dialog = app.sim_setup
+    dialog.model.apply_parameters(
         {
             "N_species": 2,
             "green_enabled": True,
@@ -322,21 +328,14 @@ def _grab_18_sim_setup():
             "decay_lifetimes": [[[1.0, 3.8]], [[1.0, 1.2]]],
         }
     )
-    dlg.resize(760, 1000)
-    dlg.show()
-    _settle()
-    from qtpy import QtWidgets
-
-    # Open the collapsed Kinetics panel (its header is a toggle button).
-    for b in dlg.findChildren(QtWidgets.QAbstractButton):
-        if "Kinetics" in b.text():
-            b.click()
-    _settle()
-    if os.environ.get("SHOT_PROBE"):
-        _probe_tabs(dlg, "18setup")
-    print("params k_rad", dlg.get_parameters().get("k_rad"), "N", dlg.get_parameters().get("N_species"))
-    _grab(dlg, "18_sim_setup.png")
-    return dlg
+    dialog.form.folds["Kinetics"] = True  # open the fold that starts closed
+    dialog.window.pos, dialog.window.size = (0.0, 0.0), (float(width), float(height))
+    driver.frame(3)
+    print("params k_rad", dialog.model.to_parameters()["k_rad"], "N", dialog.model.n_species)
+    driver.screenshot(FIG / "18_sim_setup.png")
+    print("wrote 18_sim_setup.png")
+    app.close()
+    return app
 
 
 # ---------------------------------------------------------------- guide 19

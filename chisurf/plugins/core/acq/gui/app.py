@@ -26,8 +26,8 @@ from chisurf.plugins.core.acq.gui.setup_models import (
     BHSetupModel,
     BrickMicSetupModel,
     PicoQuantSetupModel,
-    SimulationSetupModel,
 )
+from chisurf.plugins.core.acq.gui.sim_setup import SimulationSetupDialog
 from chisurf.plugins.core.acq.pipeline import (
     AcquisitionPipeline,
     PipelineConfig,
@@ -73,6 +73,14 @@ def _peak(values: Any) -> float:
     flat = np.asarray(values, dtype=float).ravel() if values is not None else np.zeros(0)
     flat = flat[np.isfinite(flat)]
     return float(flat.max()) if flat.size else 0.0
+
+
+def _seed_offset(params: dict[str, Any]) -> int:
+    """Distance of the emission seed from the diffusion seed in simulator *params* (1 when unset)."""
+    try:
+        return int(params.get("rmt2seed", int(params["rmt1seed"]) + 1)) - int(params["rmt1seed"])
+    except (KeyError, TypeError, ValueError):
+        return 1
 
 
 def default_acquisition_output_path() -> str:
@@ -142,6 +150,8 @@ class AcquisitionNativeModel:
         # Prefilled from the Settings panel; empty (nothing written) until one is configured.
         self.output_folder = configured_output_path()
         self.brightness_khz, self.seed = 300.0, 12345
+        #: Emission seed minus diffusion seed: the seed field moves both, keeping their distance.
+        self.seed_offset = 1
         if self.stored_simulation is not None:
             # The tool's Peak brightness / seed fields start at the stored values and scale / replace them.
             self.brightness_khz = _peak(self.stored_simulation.get("q")) or self.brightness_khz
@@ -163,6 +173,7 @@ class AcquisitionNativeModel:
         self._device_stop_lock = threading.Lock()
         self._file_request = ""
         self._device_setup_requested = False
+        self._simulation_setup_requested = False
         self.bh_simulation_mode = False
         self.advanced_settings_open = False
         self.advanced_settings_text = json.dumps(self.simulation_params(), indent=2, sort_keys=True)
@@ -177,7 +188,7 @@ class AcquisitionNativeModel:
 
     def enabled(self, action: str) -> bool:
         """Return whether a user action is valid in the current lifecycle state."""
-        if action in {"initialize_device", "start", "open_device_setup"}:
+        if action in {"initialize_device", "start", "open_device_setup", "open_simulation_setup"}:
             return not self.running
         if action == "stop":
             return self.running
@@ -252,7 +263,10 @@ class AcquisitionNativeModel:
         brightness of species and channels is kept). Returns *params*.
         """
         params["N_ph_max"] = max(1, int(self.photon_limit or params.get("N_ph_max", 1)))
-        params["rmt1seed"], params["rmt2seed"] = int(self.seed), int(self.seed) + 1
+        params["rmt1seed"], params["rmt2seed"] = (
+            int(self.seed),
+            int(self.seed) + int(self.seed_offset),
+        )
         peak = _peak(params.get("q"))
         if peak > 0 and float(self.brightness_khz) > 0:
             scale = float(self.brightness_khz) / peak
@@ -499,6 +513,30 @@ class AcquisitionNativeModel:
             self.__init__(self.device_factory, self.settings_path_provider)
             self.status = "Settings restored to defaults; no new hardware was contacted."
 
+    def open_simulation_setup(self) -> bool:
+        """Request the simulation setup dialog (species, brightness and kinetics grids)."""
+        if self.running:
+            self.status = "Simulation settings cannot be changed while an acquisition is running."
+            return False
+        self._simulation_setup_requested = True
+        return True
+
+    def apply_simulation_setup(self, params: dict[str, Any]) -> bool:
+        """Apply the dialog's parameters: the full dictionary the next run simulates.
+
+        The dictionary is merged over the current one (keys the dialog does not edit are kept) and
+        validated by constructing the production engine, exactly like the advanced JSON.
+        """
+        before = self.advanced_settings_text
+        self.advanced_settings_text = json.dumps(
+            {**self._editor_params(), **params}, indent=2, sort_keys=True
+        )
+        if not self.apply_advanced_settings():
+            self.advanced_settings_text = before
+            return False
+        self.status = "Simulation setup applied; the next run simulates these species and rates."
+        return True
+
     def open_advanced_settings(self) -> None:
         """Open the full actual simulation parameter dictionary for explicit editing."""
         self._advanced_before_open, self.advanced_settings_open = self.advanced_settings_text, True
@@ -516,6 +554,7 @@ class AcquisitionNativeModel:
         self.advanced_settings_text = json.dumps(candidate, indent=2, sort_keys=True)
         self.photon_limit = int(candidate.get("N_ph_max", self.photon_limit))
         self.seed = int(candidate.get("rmt1seed", self.seed))
+        self.seed_offset = _seed_offset(candidate)
         if _peak(candidate.get("q")) > 0:
             self.brightness_khz = _peak(candidate.get("q"))
         self.advanced_settings_open = False
@@ -671,6 +710,8 @@ class AcquisitionApp(ImApp):
             self.form.custom[plot_key] = lambda *a: self.model.live.draw_plot(*a)
         self.dialog, self.dialog_action = None, ""
         self.setup_open, self.setup_kind, self.setup_model = False, "", None
+        #: The simulation setup dialog while one is open (its own windows; not a device card).
+        self.sim_setup: SimulationSetupDialog | None = None
         self.setup_window = DialogWindow("Device Setup", size=(760, 560), key="acq_device_setup")
         self.file_window = DialogWindow(
             "Acquisition file chooser", size=(640, 460), key="acq_files"
@@ -731,6 +772,14 @@ class AcquisitionApp(ImApp):
                 filters="JSON (*.json)",
                 filename="acquisition_settings.json",
             )
+        if action.startswith("sim_setup_"):
+            saving = action == "sim_setup_save"
+            self.dialog = FileDialog(
+                "Save simulation JSON" if saving else "Load simulation JSON",
+                mode="save" if saving else "open",
+                filters="JSON (*.json)",
+                filename="simulation_config.json",
+            )
         if action.startswith("bh_"):
             self.dialog = FileDialog(
                 "Save BH settings" if action == "bh_save" else "Load BH settings",
@@ -753,6 +802,9 @@ class AcquisitionApp(ImApp):
                 self.model.save_settings(path)
             elif self.dialog_action == "load_settings":
                 self.model.load_settings(path)
+            elif self.dialog_action.startswith("sim_setup_"):
+                if self.sim_setup is not None:
+                    self.sim_setup.file_chosen(self.dialog_action[len("sim_setup_") :], path)
             elif self.dialog_action == "bh_save":
                 self.setup_model.save_json(path)
             elif self.dialog_action == "bh_load":
@@ -778,11 +830,21 @@ class AcquisitionApp(ImApp):
         elif self.setup_kind == "BRICKMIC":
             self.setup_model = BrickMicSetupModel(self.model.device)
         else:
-            self.setup_kind = "SIMULATION"
-            self.setup_model = SimulationSetupModel(self.model._editor_params())
+            self._open_simulation_setup()
+            return
         self.setup_open = True
         self.setup_window.title = f"{DEVICE_LABELS[self.setup_kind]} Device Setup"
         self.setup_window.show()
+
+    def _open_simulation_setup(self) -> None:
+        """Open the simulation setup dialog on the parameters the next run would use."""
+        self.setup_kind = "SIMULATION"
+        self.sim_setup = SimulationSetupDialog(
+            self.model._editor_params(),
+            on_apply=self.model.apply_simulation_setup,
+            request_file=lambda kind: setattr(self.model, "_file_request", f"sim_setup_{kind}"),
+        )
+        self.sim_setup.show()
 
     def _close_device_setup(self) -> None:
         """Close a setup card without applying its editable state."""
@@ -1027,35 +1089,6 @@ class AcquisitionApp(ImApp):
         )
         self.item_rects["setup_apply"] = im.get_item_rect()
 
-    def _draw_simulation_setup(self) -> None:
-        """Render the complete current simulator dictionary and production validation path."""
-        setup: SimulationSetupModel = self.setup_model
-        im.text_wrapped(
-            tr(
-                "All current simulation parameters are shown below. Apply validates this exact dictionary with the production simulator engine before use."
-            )
-        )
-        changed, text = im.input_text_multiline("##simulation_setup_json", setup.text, (0.0, 350.0))
-        if changed:
-            setup.text = text
-        self.item_rects["simulation_setup_json"] = im.get_item_rect()
-        im.text_wrapped(setup.status)
-        if im.button(tr("Apply") + "##setup_apply"):
-            params = setup.apply()
-            if params is not None:
-                self.model.advanced_settings_text = setup.text
-                self.model.photon_limit = int(params.get("N_ph_max", self.model.photon_limit))
-                self.model.seed = int(params.get("rmt1seed", self.model.seed))
-                target = self.model.device
-                if target is not None and hasattr(target, "simulation_params"):
-                    target.simulation_params.update(params)
-        im.set_item_tooltip(
-            tr(
-                "Validate the complete configuration with the production simulator, then update acquisition limits and the selected simulator."
-            )
-        )
-        self.item_rects["setup_apply"] = im.get_item_rect()
-
     def _draw_device_setup(self, box: tuple) -> None:
         """Draw the selected setup card as a bounded topmost native modal."""
         if not self.setup_open:
@@ -1067,8 +1100,6 @@ class AcquisitionApp(ImApp):
             self._draw_picoquant_setup()
         elif self.setup_kind == "BRICKMIC":
             self._draw_brickmic_setup()
-        else:
-            self._draw_simulation_setup()
         if im.button(tr("OK / close") + "##setup_ok"):
             self._close_device_setup()
         im.set_item_tooltip(
@@ -1178,6 +1209,12 @@ class AcquisitionApp(ImApp):
             self._open_file_dialog(action)
         self._draw_file_dialog(box)
         self._draw_advanced(box)
+        if self.model._simulation_setup_requested:
+            self.model._simulation_setup_requested = False
+            self._open_simulation_setup()
+        if self.sim_setup is not None:
+            self.sim_setup.draw(box)
+            self.item_rects.update(self.sim_setup.rects)
         if self.model._device_setup_requested:
             self.model._device_setup_requested = False
             self._open_device_setup()

@@ -1,0 +1,430 @@
+{
+    "title": "Simulation Setup",
+    "n_col": 1,
+    "sections": [
+        {
+            "type": "panel",
+            "title": "Acquisition",
+            "n_col": 2,
+            "sections": [
+                {
+                    "type": "choice",
+                    "description": "Excitation mode: CW (continuous) or Pulsed (pulsed laser; enables the micro-time / TCSPC axis).",
+                    "label": "Mode",
+                    "attr": "excitation_mode",
+                    "options": [
+                        "CW",
+                        "Pulsed"
+                    ]
+                },
+                {
+                    "type": "value",
+                    "description": "Stop once this many photons are generated (fixed-COUNT mode, default 1e6; a training chunk is often ~1e5). For a fixed measurement DURATION set 'Max windows' > 0 instead (Independent-molecule mode requires that).",
+                    "label": "Photons",
+                    "kind": "int",
+                    "attr": "n_ph_max",
+                    "minimum": 1,
+                    "maximum": 2000000000
+                },
+                {
+                    "type": "value",
+                    "description": "Split the streamed SPC output into files of this many photons each.",
+                    "label": "Photons/file",
+                    "kind": "int",
+                    "attr": "n_ph_per_file",
+                    "minimum": 1,
+                    "maximum": 2000000000
+                },
+                {
+                    "type": "value",
+                    "description": "Folder where SPC/photon-stream files are written.",
+                    "label": "Output folder",
+                    "attr": "output_path"
+                },
+                {
+                    "type": "value",
+                    "description": "RNG seed for diffusion, geometry and state transitions. Fix it for reproducible traces; change it for independent replicates.",
+                    "label": "Diffusion seed",
+                    "kind": "int",
+                    "attr": "seed_diffusion",
+                    "minimum": 0
+                },
+                {
+                    "type": "value",
+                    "description": "RNG seed for emission, channel choice and background (independent of the diffusion seed).",
+                    "label": "Emission seed",
+                    "kind": "int",
+                    "attr": "seed_emission",
+                    "minimum": 0
+                }
+            ],
+            "collapsible": true,
+            "collapsed": false,
+            "description": "How many photons to simulate, how they are split into files, and the random seeds."
+        },
+        {
+            "type": "panel",
+            "title": "Sample & brightness",
+            "collapsible": true,
+            "collapsed": false,
+            "description": "One row per species: molecules M, diffusion D and the parallel/perpendicular brightness q of every enabled colour. The BG row holds the per-channel background. Double-click a number to edit it; double-click the Decay cell to edit that species' lifetime spectrum.",
+            "sections": [
+                {
+                    "type": "value",
+                    "attr": "n_species",
+                    "label": "Species",
+                    "kind": "int",
+                    "minimum": 1,
+                    "maximum": 999,
+                    "call": "species_changed",
+                    "description": "Number of molecular / photophysical states (default 1). Brightness q, diffusion D and the N×N rate matrices are all sized by this. Use ≥2 for FRET states, species mixtures, or blinking (a bright + a dark state)."
+                },
+                {
+                    "type": "toggle_row",
+                    "items": [
+                        {
+                            "attr": "green_enabled",
+                            "label": "Green",
+                            "description": "Enable the green detection channel (parallel + perpendicular)."
+                        },
+                        {
+                            "attr": "red_enabled",
+                            "label": "Red",
+                            "description": "Enable the red detection channel (parallel + perpendicular)."
+                        },
+                        {
+                            "attr": "yellow_enabled",
+                            "label": "Yellow",
+                            "description": "Enable the yellow detection channel (parallel + perpendicular)."
+                        }
+                    ],
+                    "description": "Detection colours the simulated setup records; each adds a parallel and a perpendicular channel."
+                },
+                {
+                    "type": "custom",
+                    "key": "data_table",
+                    "description": "Per-species molecules, diffusion and brightness; the last row is the background.",
+                    "options": {
+                        "source": "species_rows",
+                        "columns_source": "species_columns",
+                        "editable": true,
+                        "edited_call": "species_edited",
+                        "editable_call": "species_cell_editable",
+                        "activated_cell_call": "species_cell_activated",
+                        "selected_call": "species_selected",
+                        "fit_rows": true,
+                        "height": 260,
+                        "fit_columns": false
+                    }
+                }
+            ]
+        },
+        {
+            "type": "panel",
+            "title": "Kinetics",
+            "collapsible": true,
+            "collapsed": true,
+            "description": "Species-interconversion transition rates (1/ms). Each grid is N x N, tracks the species count and reads row -> column: the rate of leaving the row's species for the column's. The diagonal is not a rate.",
+            "sections": [
+                {
+                    "type": "custom",
+                    "key": "data_table",
+                    "title": "Radiative (k_rad)",
+                    "description": "Radiative transition rates between species, row -> column (1/ms). Double-click a cell to edit it.",
+                    "options": {
+                        "source": "k_rad_table.rows",
+                        "columns_source": "k_rad_table.columns",
+                        "editable": true,
+                        "edited_call": "k_rad_table.edited",
+                        "editable_call": "k_rad_table.cell_editable",
+                        "fit_rows": true,
+                        "height": 200
+                    }
+                },
+                {
+                    "type": "custom",
+                    "key": "data_table",
+                    "title": "Non-radiative (k_nrad)",
+                    "description": "Non-radiative transition rates between species, row -> column (1/ms). Double-click a cell to edit it.",
+                    "options": {
+                        "source": "k_nrad_table.rows",
+                        "columns_source": "k_nrad_table.columns",
+                        "editable": true,
+                        "edited_call": "k_nrad_table.edited",
+                        "editable_call": "k_nrad_table.cell_editable",
+                        "fit_rows": true,
+                        "height": 200
+                    }
+                }
+            ]
+        },
+        {
+            "type": "panel",
+            "title": "Geometry",
+            "n_col": 2,
+            "sections": [
+                {
+                    "type": "value",
+                    "description": "Lateral half-extent of the ellipsoidal simulation box (µm, default 2). Must exceed the focus by a few diffusion lengths; larger = more dilute but slower. Prefer 'Active margin' (Performance) to auto-shrink around the focus instead of a tiny box.",
+                    "label": "Box XY",
+                    "kind": "float",
+                    "attr": "box_xy",
+                    "minimum": 0.001,
+                    "maximum": 1000000.0,
+                    "decimals": 4
+                },
+                {
+                    "type": "value",
+                    "description": "Axial half-extent of the box (µm, default 4), usually ~2× box_xy for a prolate confocal volume.",
+                    "label": "Box Z",
+                    "kind": "float",
+                    "attr": "box_z",
+                    "minimum": 0.001,
+                    "maximum": 1000000.0,
+                    "decimals": 4
+                },
+                {
+                    "type": "value",
+                    "description": "Excitation Gaussian 1/e² radii [w0 (lateral), z0 (axial)] in µm (default [0.3, 2.0]). Confocal: w0 ~0.2–0.4, aspect z0/w0 ~3–6. Field I ∝ exp(-2((x²+y²)/w0² + z²/z0²)).",
+                    "label": "Focus w0",
+                    "kind": "float",
+                    "attr": "focus_w0",
+                    "minimum": 0.001,
+                    "maximum": 1000000.0,
+                    "decimals": 4
+                },
+                {
+                    "type": "value",
+                    "description": "Excitation Gaussian 1/e² radii [w0 (lateral), z0 (axial)] in µm (default [0.3, 2.0]). Confocal: w0 ~0.2–0.4, aspect z0/w0 ~3–6. Field I ∝ exp(-2((x²+y²)/w0² + z²/z0²)).",
+                    "label": "Focus z0",
+                    "kind": "float",
+                    "attr": "focus_z0",
+                    "minimum": 0.001,
+                    "maximum": 1000000.0,
+                    "decimals": 4
+                },
+                {
+                    "type": "value",
+                    "description": "Diffusion/integration window in the macro-time unit (ms ⇒ 0.001 = 1 µs; default 0.01). Sets the diffusion resolution — do NOT enlarge it for speed (it is sub-stepped internally, so it won't help; use the Performance knobs instead).",
+                    "label": "Step",
+                    "kind": "float",
+                    "attr": "dt",
+                    "minimum": 1e-06,
+                    "maximum": 1000000.0,
+                    "decimals": 6
+                }
+            ],
+            "collapsible": true,
+            "collapsed": false,
+            "description": "Simulation box and confocal focus size in micrometres, and the diffusion time step."
+        },
+        {
+            "type": "panel",
+            "title": "Microtime",
+            "n_col": 2,
+            "sections": [
+                {
+                    "type": "value",
+                    "description": "Number of micro-time (TCSPC/TAC) channels on the fluorescence-decay axis (default 4096; match the instrument, typically 1024–4096). N_tac × tac_dt should span one laser period.",
+                    "label": "TAC channels",
+                    "kind": "int",
+                    "attr": "n_tac_channels",
+                    "minimum": 1,
+                    "maximum": 1000000
+                },
+                {
+                    "type": "value",
+                    "description": "Micro-time channel width in NANOSECONDS (the TAC/TCSPC resolution; default ≈0.004 ns). Separate ns axis from the macro-time.",
+                    "label": "TAC dt",
+                    "kind": "float",
+                    "attr": "tac_dt",
+                    "minimum": 1e-06,
+                    "maximum": 1000000.0,
+                    "decimals": 6
+                },
+                {
+                    "type": "value",
+                    "description": "Pulsed-excitation repetition period in NANOSECONDS (default 13.596 ≈ 73.5 MHz). Micro-times wrap modulo this. Only relevant in Pulsed mode.",
+                    "label": "Laser period",
+                    "kind": "float",
+                    "attr": "laser_period",
+                    "minimum": 1e-06,
+                    "maximum": 1000000.0,
+                    "decimals": 6
+                }
+            ],
+            "collapsible": true,
+            "collapsed": false,
+            "description": "Micro-time histogram: number of TAC channels, channel width and laser period (ns)."
+        },
+        {
+            "type": "panel",
+            "title": "Performance",
+            "description": "Optional throughput knobs (native tttrlib Sim* engine). Speed/accuracy trade-offs — see each tooltip. Defaults reproduce the exact fixed-step engine.",
+            "n_col": 2,
+            "sections": [
+                {
+                    "type": "toggle",
+                    "description": "Coasting: a molecule far from BOTH the focus and the box surface skips its per-window diffusion/emission and is caught up EXACTLY on wake. Large speedup for dilute samples and statistically exact (±0.1%) — safe to leave on for FCS/smFRET. No effect during a scan.",
+                    "label": "Coasting",
+                    "attr": "per_molecule_skip"
+                },
+                {
+                    "type": "toggle",
+                    "description": "Reject far-from-focus field queries with a cheap 6-comparison bounding-box test before the trilinear interpolation. Drops the sub-threshold field tail — a small, statistically unbiased approximation. Safe to leave on; biggest help with large voxel grids.",
+                    "label": "Two-step field lookup",
+                    "attr": "fast_grid_bbox"
+                },
+                {
+                    "type": "toggle",
+                    "description": "Simulate each molecule's WHOLE timeline independently (coasting far, fine-stepping near the focus) and merge the streams — embarrassingly parallel across molecules (combine with worker threads). REQUIRES 'Max windows' > 0 (fixed duration) and IGNORES N_ph_max. Big throughput win for dilute samples.",
+                    "label": "Independent molecules",
+                    "attr": "independent_molecules"
+                },
+                {
+                    "type": "toggle",
+                    "description": "Evaluate the excitation Gaussian analytically instead of sampling a voxel grid: zero construction cost and memory, and exact — but for a GAUSSIAN focus only. Leave OFF to use the general voxel grid, which supports any measured / ISM / aberrated PSF. Turn on only when the focus is a clean 3D Gaussian.",
+                    "label": "Analytic Gaussian focus",
+                    "attr": "analytic_excitation"
+                },
+                {
+                    "type": "choice",
+                    "description": "Point-spread / molecule-detection function for the excitation focus. 'gaussian3d' = separable 3D Gaussian (waists [w0, z0]); 'analytic_gaussian3d' = same Gaussian evaluated grid-free (zero build cost, exact, Gaussian only — equivalent to 'Analytic Gaussian focus'); 'gaussian_lorentzian' = confocal MDF with a z-expanding waist w(z)²=w0²(1+(z/zR)²) (uses w0 and the Rayleigh range zR); 'radial' = a numeric/measured radially-symmetric PSF loaded from a file (see 'PSF file').",
+                    "label": "PSF / focus model",
+                    "attr": "psf_type",
+                    "options": [
+                        "gaussian3d",
+                        "analytic_gaussian3d",
+                        "gaussian_lorentzian",
+                        "radial"
+                    ],
+                    "labels": [
+                        "Gaussian 3D",
+                        "Analytic Gaussian",
+                        "Gaussian-Lorentzian",
+                        "Numeric (radial)"
+                    ]
+                },
+                {
+                    "type": "value",
+                    "description": "Rayleigh range zR (µm) for the Gaussian-Lorentzian PSF: the axial distance over which the beam waist expands by √2 (w(z)²=w0²(1+(z/zR)²)). Confocal ~0.5–1.5 µm. Only used when PSF model = 'gaussian_lorentzian'.",
+                    "label": "Rayleigh range zR (µm)",
+                    "kind": "float",
+                    "attr": "psf_zR",
+                    "minimum": 0.0,
+                    "maximum": 1000000.0
+                },
+                {
+                    "type": "value",
+                    "description": "Path to a numeric/measured radially-symmetric PSF sampled on the (r, z) half-plane: .npy (2D [nz, nr] array), .npz ('rz' + steps), or .mat (PyBroMo). Only used when PSF model = 'radial'. The PSF is filled into the voxel grid by bilinear interpolation at r=√(x²+y²).",
+                    "label": "PSF file (radial)",
+                    "kind": "str",
+                    "attr": "psf_file"
+                },
+                {
+                    "type": "value",
+                    "description": "Radial (r) sample spacing of the numeric PSF file, in µm. Only used for PSF model = 'radial' when not supplied by the file itself (.npz).",
+                    "label": "PSF r step (µm)",
+                    "kind": "float",
+                    "attr": "psf_r_step",
+                    "minimum": 0.0,
+                    "maximum": 1000000.0,
+                    "decimals": 4
+                },
+                {
+                    "type": "value",
+                    "description": "Axial (z) sample spacing of the numeric PSF file, in µm. Only used for PSF model = 'radial' when not supplied by the file itself (.npz).",
+                    "label": "PSF z step (µm)",
+                    "kind": "float",
+                    "attr": "psf_z_step",
+                    "minimum": 0.0,
+                    "maximum": 1000000.0,
+                    "decimals": 4
+                },
+                {
+                    "type": "value",
+                    "description": "Shrink the simulated box to the focus AABB + this margin (µm), holding concentration fixed, so molecules that never reach the focus are never simulated (open-volume only; default 0 = off, ~7× faster at ~2 µm). Exact for diffusion/FCS. WARNING for INTERNAL KINETICS: the margin must exceed √(2·D / k_min) so a molecule reaches its stationary bright/dark distribution BEFORE entering the focus — too small biases brightness (measured up to +6% for a fast ~2–3 kHz blinker at 1.5 µm).",
+                    "label": "Active margin (µm)",
+                    "kind": "float",
+                    "attr": "active_margin",
+                    "minimum": 0.0,
+                    "maximum": 1000000.0
+                },
+                {
+                    "type": "value",
+                    "description": "Fixed-DURATION stop: measurement duration = max_windows × dt (0 = unlimited, default 0). e.g. 10 min at dt = 1 µs ⇒ 6e8 windows. REQUIRED by Independent-molecule mode, which then ignores N_ph_max.",
+                    "label": "Max windows",
+                    "kind": "int",
+                    "attr": "max_windows",
+                    "minimum": 0,
+                    "maximum": 2000000000
+                },
+                {
+                    "type": "value",
+                    "description": "How conservative coasting is: a sleeper's per-step displacement std ≤ (distance-to-boundary) / coast_safety (default 3; 3–4 typical). Larger = safer but slower. Only used when Coasting is on.",
+                    "label": "Coast safety",
+                    "kind": "float",
+                    "attr": "coast_safety",
+                    "minimum": 1.0,
+                    "maximum": 1000000.0,
+                    "decimals": 2
+                },
+                {
+                    "type": "value",
+                    "description": "Never sleep a molecule for fewer than this many windows (default 8) — avoids coasting overhead on short gaps. Only used when Coasting is on.",
+                    "label": "Min coast windows",
+                    "kind": "int",
+                    "attr": "min_coast_windows",
+                    "minimum": 1,
+                    "maximum": 1000000
+                },
+                {
+                    "type": "value",
+                    "description": "Fraction of peak excitation that defines the effective-focus bounding box shared by Coasting, the two-step lookup and the Active margin (default 1e-3). Smaller ⇒ a larger, more conservative focus box.",
+                    "label": "Focus threshold",
+                    "kind": "float",
+                    "attr": "focus_threshold",
+                    "minimum": 0.0,
+                    "maximum": 1000000.0,
+                    "decimals": 6
+                }
+            ],
+            "collapsible": true,
+            "collapsed": false
+        },
+        {
+            "type": "button_row",
+            "buttons": [
+                {
+                    "label": "Decay…",
+                    "action": "open_decay_dialog",
+                    "description": "Define the per-species fluorescence decay (lifetimes / IRF) or load an existing decay pattern. Opens at the selected species.",
+                    "icon": "🧬"
+                },
+                {
+                    "label": "Load JSON",
+                    "action": "load_json",
+                    "description": "Load simulation parameters from a JSON file.",
+                    "icon": "📂"
+                },
+                {
+                    "label": "Save JSON",
+                    "action": "save_json",
+                    "description": "Save the current simulation parameters to a JSON file.",
+                    "icon": "💾"
+                },
+                {
+                    "label": "View JSON",
+                    "action": "view_json",
+                    "description": "Show the current simulation parameters as JSON below the form.",
+                    "icon": "🧾"
+                }
+            ]
+        },
+        {
+            "type": "custom",
+            "key": "sim_json_view",
+            "description": "The simulation parameters exactly as the simulator receives them (read-only)."
+        }
+    ]
+}

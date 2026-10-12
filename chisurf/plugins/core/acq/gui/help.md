@@ -22,7 +22,13 @@ hardware.
 ## Simulation and results
 
 Simulation generates encoded SPC records and feeds them through the same
-`AcquisitionPipeline` as a device FIFO. **Advanced simulation parameters** is a
+`AcquisitionPipeline` as a device FIFO. **Simulation setup** (also *Device Setup…* for
+the Simulation source) edits the simulated sample: a species table (molecules M,
+diffusion D, parallel/perpendicular brightness of each enabled colour, a background
+row and a per-species decay), the radiative and non-radiative kinetics rate grids
+(row to column, 1/ms), geometry, microtime and performance settings. **OK** validates
+the result with the simulator engine and uses it for the next run. **Advanced
+simulation parameters** is a
 complete JSON editor: Apply constructs the real simulator engine before keeping
 the text. Live plots (decay, correlation, count rate, MCS, macrotime) are drawn from
 `AcquisitionPipeline.snapshot()` while the run is going; no values are fabricated

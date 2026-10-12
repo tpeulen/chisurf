@@ -69,41 +69,50 @@ the static cross-correlation (green) is flat at 1. Filter condition number 3.3.
 ### Setting up species and kinetics in the GUI
 
 The acquisition simulator is the *Simulation* device of **Main ▸ Tools ▸
-Acquisition**; its card-setup dialog is shown below.
+Acquisition**. Press **Simulation setup…** (or **Device Setup…** with the
+Simulation source selected) to open its setup dialog, an emtk window declared as
+an AutoForm spec. **OK** merges the dialog over the tool's current simulator
+parameters, validates the result by constructing the simulator engine, and uses
+it for the next **Start**; a set the engine rejects keeps the dialog open and says
+why on the status line. **Cancel** changes nothing. *Advanced simulation
+parameters* still shows the same dictionary as raw JSON.
 
 ```{figure} figures/18_sim_setup.png
 :name: fig-18-sim-setup
 :width: 80%
 
 The simulation setup dialog with two species, green and red detection, and the
-*Kinetics* panel open: the radiative grid holds two non-zero rates
-(1 → 2 at 1.0/ms, 2 → 1 at 0.5/ms), which the button reads back as
-"2×2, 2 set".
+*Kinetics* fold open: the radiative grid holds two non-zero rates
+(s0 → s1 at 1.0/ms, s1 → s0 at 0.5/ms).
 ```
 
-The **Sample & brightness** panel is one row per species: molecules *M*,
-diffusion coefficient *D*, and the parallel/perpendicular brightness *q* of each
-enabled detection colour. Rows follow the **Species** count and columns follow
-the channel checkboxes, so a species or a colour appears with its cells already
-there. The last row is **BG** — the per-channel background, which is not a
-species (its *M* and *D* read `—`) but is detected in the same channels, so it is
-edited in the same grid.
+The **Sample & brightness** panel is one table with a row per species: molecules
+*M*, diffusion coefficient *D*, and the parallel/perpendicular brightness *q* of
+each enabled detection colour. Double-click a number to edit it (Enter commits,
+Escape cancels). Rows follow the **Species** count and columns follow the
+*Green* / *Red* / *Yellow* checkboxes, so a species or a colour appears with its
+cells already there. The last row is **BG** — the per-channel background, which
+is not a species (its *M* and *D* are blank and cannot be edited) but is detected
+in the same channels, so it is edited in the same grid.
 
 The last column is **Decay**: a lifetime spectrum is not a number, so each
-species carries a `…` button that opens the decay editor on *that* species —
-its lifetime/amplitude table, an optional measured decay pattern, and the
-shared Gaussian IRF. A species added after the others starts from the default
-single 3.2 ns lifetime rather than inheriting a neighbour's spectrum.
+species shows a summary (`τ 3.8 ns`) that a double click turns into the decay
+editor for *that* species — its amplitude/lifetime table (**Add**, **Remove**),
+an optional measured decay pattern file (**Clear pattern** drops it), the shared
+Gaussian IRF width, and a live preview of the resulting micro-time decay. **OK**
+in the decay editor writes every species' edits back; **Cancel** discards them.
+The **Decay…** button opens the editor on the selected row. A species added after
+the others starts from the default single 3.2 ns lifetime rather than inheriting
+a neighbour's spectrum. **Load JSON**, **Save JSON** and **View JSON** read,
+write and show the parameter dictionary the simulator receives.
 
 #### State kinetics
 
-The acquisition simulator's setup dialog has a **Kinetics** panel with two
-buttons — *Radiative* (`k_rad`) and *Non-radiative* (`k_nrad`). Each opens an
-editable N×N grid of interconversion rates in 1/ms, where row *i*, column *j* is
-the rate from species *i* to species *j*; the diagonal is fixed at zero, and both
-grids resize with the **Species** count. The button reads back the scheme's size
-and how many transitions are non-zero, so the panel says what the kinetics are
-without being opened.
+The **Kinetics** fold (closed until opened) holds two editable N×N grids,
+*Radiative* (`k_rad`) and *Non-radiative* (`k_nrad`), of interconversion rates in
+1/ms: row *i*, column *j* is the rate from species *i* to species *j*. The
+diagonal is not a rate and cannot be edited, and both grids resize with the
+**Species** count, keeping the rates already entered.
 
 The same grid appears in the dynamic PDA model editors, so a rate matrix is read
 the same way everywhere — see {ref}`concept-pda2c`.

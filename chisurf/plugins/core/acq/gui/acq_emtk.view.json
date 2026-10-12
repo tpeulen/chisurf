@@ -24,8 +24,9 @@
     {"type":"panel","title":"Simulator configuration","description":"Basic controls and a complete validated simulator dictionary for the encoded simulation path.","sections":[
       {"type":"value","attr":"brightness_khz","label":"Peak brightness","kind":"float","minimum":1.0,"maximum":2000.0,"step":10.0,"decimals":1,"style":"spin","description":"Simulator brightness used to build encoded records; never a hardware detector setting."},
       {"type":"value","attr":"seed","label":"Deterministic seed","kind":"int","minimum":0,"maximum":2147483647,"step":1,"style":"spin","description":"Simulator random seed for reproducible encoded records."},
-      {"type":"button_row","description":"Open a complete JSON editor for all simulator parameters, or the known demo stream.","buttons":[
+      {"type":"button_row","description":"Open the simulation setup dialog, a complete JSON editor for all simulator parameters, or the known demo stream.","buttons":[
         {"action":"load_example","label":"Load example","icon":"🧪","description":"Simulate a 20 s two-species stream with known lifetimes (3.4 ns and 1.1 ns), register it as a dataset and open the Acquisition fit window, whose decay, correlation, MCS and macro-time pages fill while it streams. The first time it simulates the stream; later it reuses the file."},
+        {"action":"open_simulation_setup","label":"Simulation setup…","icon":"🧬","description":"Edit the simulated sample: species table (molecules, diffusion, per-colour brightness, background), the kinetics rate grids, per-species decay, geometry, microtime and performance settings. OK applies them, validated by the simulator engine, to the next run."},
         {"action":"open_advanced_settings","label":"Advanced simulation parameters","description":"Edit the full actual simulator parameter dictionary; Apply validates it by constructing the simulator engine."}]}]},
     {"type":"panel","title":"Result visibility","description":"Show the live plot tabs in this native window.","sections":[
       {"type":"toggle","attr":"show_decay","label":"Decay plot","description":"Show the live decay plot tab."},

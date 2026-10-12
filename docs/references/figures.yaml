@@ -2284,9 +2284,9 @@ guides/figures/18_sim_setup.png:
   kind: screenshot
   origin: docs/guides/screenshots/guides_15_25.py::_grab_18_sim_setup
   recipe: >-
-    Run the script named in origin (see the function that saves 18_sim_setup.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    Run the function named in origin; it opens the emtk Simulation setup dialog
+    of the Acquisition tool headlessly (two species, green + red, Kinetics fold
+    open) and writes the PNG here.
   pages:
   - docs/guides/18_tttr_simulation.md
 

@@ -535,13 +535,16 @@ def test_device_setup_real_native_click_path_opens_and_cancels_for_all_devices()
             ui.click("device_type")
             ui.click_text(label, last=True)
             ui.click("open_device_setup")
-            assert app.setup_open is True
             assert app.setup_kind == kind
             if kind == "SIMULATION":
-                ui.type_into("simulation_setup_json", "{")
-                ui.click("setup_apply")
-                assert "rejected" in app.setup_model.status
-            elif kind == "PICOQUANT":
+                # The simulator has its own dialog (species / kinetics tables), not a device card.
+                assert app.setup_open is False
+                assert app.sim_setup is not None and app.sim_setup.open
+                ui.click("sim_cancel")
+                assert not app.sim_setup.open
+                continue
+            assert app.setup_open is True
+            if kind == "PICOQUANT":
                 ui.click("pico_status")
                 ui.click("pico_max_photons", fx=0.01)
                 ui.click("setup_apply")
