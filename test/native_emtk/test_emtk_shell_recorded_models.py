@@ -196,6 +196,57 @@ def test_the_proteinmc_structure_page_shows_the_structure(shell, caplog):
     driver.screenshot(SHOTS / "emtk_shell_proteinmc_structure.png")
 
 
+def _wait_for_rect(driver: Driver, shell, key: str) -> None:
+    for _ in range(40):
+        driver.frame(1)
+        if key in shell.item_rects:
+            driver.frame(2)
+            return
+    raise AssertionError(f"{key} is not drawn: {sorted(k for k in shell.item_rects if 'run' in k)}")
+
+
+def test_proteinmc_sampling_starts_and_stops_from_its_buttons(shell, tmp_path):
+    """The editor's ▶ Sample / ■ Stop (``background_run``) drive the model's run."""
+    driver = Driver(shell, size=(1500, 2400))
+    structure = _load(driver, shell, PDB, "Modelling", "StructureReader")
+    uid = _add_fit(driver, shell, structure, "ProteinMC")
+    model = _model(shell, uid)
+    # Enough frames that the run is still going when Stop is pressed.
+    model.output_directory = str(tmp_path / "proteinmc")
+    model.n_written = 10_000
+    _show(driver, shell, uid)
+    editor = shell.data.editor
+    for section in editor.spec.get("sections", []):
+        if section.get("type") == "panel" and section.get("title"):
+            editor.form.folds[section["title"]] = True
+    start = None
+    for _ in range(40):
+        driver.frame(1)
+        start = next(
+            (k for k in shell.item_rects if k.startswith("editor.run.") and k.endswith(".start")),
+            None,
+        )
+        if start:
+            break
+    assert start, "the Sample button is not drawn"
+    stop = start[: -len(".start")] + ".stop"
+    _wait_for_rect(driver, shell, stop)
+
+    driver.click(start)
+    _settle(driver, lambda: model.is_sampling or model.frame_count > 0, "the run to start", 120)
+    _settle(driver, lambda: model.frame_count > 0, "a first frame", 120)
+    driver.screenshot(SHOTS / "emtk_shell_proteinmc_sampling.png")
+    assert model.is_sampling, "the run ended before Stop could be pressed"
+    driver.click(stop)
+    _settle(driver, lambda: not model.is_sampling, "the run to stop", 120)
+    frames = model.frame_count
+    assert 0 < frames < model.n_written + 1, frames
+    assert model.sampling_status != "starting…"
+    driver.frame(5)
+    assert model.frame_count == frames, "frames kept arriving after Stop"
+    driver.screenshot(SHOTS / "emtk_shell_proteinmc_stopped.png")
+
+
 def test_a_lifetime_mixture_mixes_a_lifetime_fit_made_in_the_shell(shell):
     driver = Driver(shell, size=(1500, 2400))
     _prompt = _load(driver, shell, TCSPC / "Prompt.txt", "TCSPC", "TXT/CSV")

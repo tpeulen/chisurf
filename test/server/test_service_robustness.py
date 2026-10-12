@@ -92,13 +92,16 @@ class TestInputRobustnessDatasets:
         assert not result.get("ok")
         assert "no reader" in result.get("error", "")
 
-    def test_add_dataset_with_curve_data_none_creates_empty(self):
+    def test_add_dataset_with_an_unknown_reader_adds_nothing(self):
+        # A named reader that does not exist is an error, never an empty curve
+        # named after the file (a structure's models then drew that curve).
         state = SessionState()
         result = add_dataset(
             state, reader_name="Test", filename="/tmp/f.dat", name="T", curve_data=None
         )
-        assert result.get("ok") is True
-        assert len(state.datasets) == 1
+        assert not result.get("ok")
+        assert "unknown reader" in result.get("error", "")
+        assert len(state.datasets) == 0
 
     def test_get_dataset_info_negative_index(self):
         ds = _make_dataset()

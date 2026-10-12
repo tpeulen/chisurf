@@ -43,8 +43,8 @@ icons. The status strip of S5 is still open; the splash window and its startup s
    `shell_s2_models_qt_inventory.json` (10 models: TCSPC with IRF and background, mixture, MaxEnt, structure, FCS
    kinetics, two PDA, global, ProteinMC; `capture_shell_s2_models_qt_before.py`, about 15 min, writes as it goes).
    `KNOWN_GAPS` is empty. Trap: the Qt inventory's dye names come from the user's MMFDB (`ENVIRONMENT` in the test).
-   Open: `background_run` (ProteinMC start/stop) is drawn but no test presses it; the ProteinMC *Structure* page fails
-   in the shell (chimol gets a `DataCurve`); see known issues "Lifetime mixture" and "FRET: Structure fit".
+   ProteinMC's Sample/Stop and *Structure* page work in the shell since 2026-10-12
+   (`test_emtk_shell_recorded_models.py`; known issues "Lifetime mixture, FRET structure fit and the shell's recording").
 3. Open: PDA reader leftovers. The form is native (`chisurf/emtk/pda_sections.py`, logic in
    `chisurf/core/experiments/pda2c/inputs.py` and `settings.py`); `KNOWN_GAPS` in `test_emtk_shell_readers.py` is
    empty. The shell's file dialog still picks one file, so several measurements go through the form's drop list or

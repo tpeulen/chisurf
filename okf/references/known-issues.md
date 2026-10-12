@@ -905,8 +905,12 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
      restored from a project lost its experiment and reader, so after an undo the emtk dataset list showed TXT/CSV
      groups with no type. Tests: `test/server/test_shell_channel_datasets.py`,
      `test/project/test_fcs_relaxation_topology_roundtrip.py`.
-  Left open: the server's `dataset.load` with `reader_name`+`filename` and no `curve_data` still fabricates an empty
-  `DataCurve` instead of reading the file; nothing in the shell takes that path any more.
+  ~~Left open: the server's `dataset.load` with `reader_name`+`filename` and no `curve_data` still fabricates an empty
+  `DataCurve`~~ — **closed 2026-10-12**: `add_dataset` now reads the file with the registered reader it names
+  (`find_reader` matches the display or the class name, as a server-mode client sends it) and refuses an unknown
+  reader instead of inventing a curve. Tests: `test_shell_channel_datasets.py::test_a_named_reader_without_a_record_reads_the_file_on_the_server`,
+  `test_service_robustness.py::test_add_dataset_with_an_unknown_reader_adds_nothing`. ProteinMC's run buttons
+  (`background_run`) are now pressed by `test/native_emtk/test_emtk_shell_recorded_models.py::test_proteinmc_sampling_starts_and_stops_from_its_buttons`.
   Also seen (not caused by these fixes, reproduced without them): `pytest test/project` fails
   `test_session_transactions.py::test_invalid_staged_restore_preserves_live_datasets_and_fits` and
   `::test_file_read_errors_propagate_and_do_not_clear_live_state` — an earlier test (the `inprocess-proxies` case of
@@ -924,8 +928,9 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
   `av_distance_distribution` raises "cannot sample a distance: one or both labels have no states" for residues
   44/132 and 10/100 (CA), so every PDB added to the ensemble is skipped with a warning. Reproduce with
   `chisurf.core.models.tcspc.fret_structure.av_distance_distribution(Structure(pdb), axis, res_1=44, res_2=132)`.
-* **ProteinMC's Structure page fails in the emtk shell**: `chisurf/gui/plots/proteinMC.py:468` hands the dataset (a
-  `DataCurve`) to chimol's `add_structure` ("Unsupported structure type"). The Qt shell draws it.
+* ~~**ProteinMC's Structure page fails in the emtk shell**: `chisurf/gui/plots/proteinMC.py:468` hands the dataset (a
+  `DataCurve`) to chimol's `add_structure` ("Unsupported structure type"). The Qt shell draws it.~~ Resolved (item 3
+  of the resolution above; the remaining fabricating path closed 2026-10-12).
 * **The emtk shell's recording and autosave fail silently** (`chisurf/emtk/shell_session.py`, logged only):
   "cannot restore dataset …: inconsistent reader identity" once two files are read with one TXT/CSV reader, and
   "model GeneralFCSModel parameter count changed (44 != 46)" after a bunching term is added. `capture_session` over

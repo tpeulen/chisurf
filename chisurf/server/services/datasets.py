@@ -609,7 +609,8 @@ def add_dataset(
     reader_name : str, optional
         Name of the reader (ignored if *reader* is provided).
     filename : str, optional
-        Path to the data file (used with *reader_name*).
+        Path to the data file. Without *curve_data* it is read here by the
+        registered reader *reader_name* (display or class name).
     name : str, optional
         Display name for the dataset.
     curve_data : dict, optional
@@ -642,52 +643,38 @@ def add_dataset(
                 f"invalid cached dataset: {error}", error_code=INVALID_INPUT, exception=error
             )
     if reader is None and reader_name and filename:
+        # No record from the client: read the file here with the reader it
+        # names. Fabricating an empty curve named after the file (as this did)
+        # handed a structure's models a ``DataCurve`` to draw.
+        from chisurf.core.experiments.bootstrap import (
+            ensure_experiments_registered,
+            find_reader,
+        )
+
+        ensure_experiments_registered(allow_widgets=False)
+        named = find_reader(None, str(reader_name))
+        if named is None:
+            return service_error(f"unknown reader {reader_name!r}", error_code=INVALID_INPUT)
         try:
-            import pathlib
-
-            import numpy as np
-
-            from chisurf.core.data import DataCurve
-
-            p = pathlib.Path(filename)
-            x = (
-                np.array(curve_data.get("x", []), dtype=float)
-                if curve_data and "x" in curve_data
-                else None
-            )
-            y = (
-                np.array(curve_data.get("y", []), dtype=float)
-                if curve_data and "y" in curve_data
-                else None
-            )
-            ex = (
-                np.array(curve_data.get("ex", []), dtype=float)
-                if curve_data and "ex" in curve_data
-                else None
-            )
-            ey = (
-                np.array(curve_data.get("ey", []), dtype=float)
-                if curve_data and "ey" in curve_data
-                else None
-            )
-            ds = DataCurve(name=str(name or p.stem or "dataset"), x=x, y=y, ex=ex, ey=ey)
-            ds.filename = str(p.resolve())
-            state.add_dataset(ds)
-            if event_bus is not None and not _from_controller:
-                event_bus.publish(
-                    "dataset.added",
-                    {"dataset_index": len(state.datasets) - 1, "name": str(name or p.name)},
-                )
-            return {
-                "ok": True,
-                "uid": str(getattr(ds, "unique_identifier", "") or ""),
-                "name": str(name or p.name),
-                "dataset_index": len(state.datasets) - 1,
-            }
+            group = named.get_data(filename=str(filename))
         except Exception as e:
             return service_error(
-                f"failed to create remote dataset: {e}", error_code=OPERATION_FAILED, exception=e
+                f"{reader_name} could not read {filename}: {e}",
+                error_code=OPERATION_FAILED,
+                exception=e,
             )
+        if name:
+            group.name = str(name)
+        state.add_dataset(group)
+        index = len(state.datasets) - 1
+        if event_bus is not None and not _from_controller:
+            event_bus.publish("dataset.added", {"dataset_index": index, "name": str(group.name)})
+        return {
+            "ok": True,
+            "uid": str(getattr(group, "unique_identifier", "") or ""),
+            "name": str(group.name),
+            "dataset_index": index,
+        }
 
     if reader is None:
         return service_error("no reader provided", error_code=INVALID_INPUT)

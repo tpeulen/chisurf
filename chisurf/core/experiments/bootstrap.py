@@ -335,8 +335,9 @@ def find_reader(
         Experiment to search (case-insensitive).  All experiments are searched
         when omitted.
     reader_name : str, optional
-        Reader name to match (case-insensitive).  The first reader of the
-        experiment is returned when omitted.
+        Reader name to match (case-insensitive), the display name first, then
+        the reader's class name.  The first reader of the experiment is
+        returned when omitted.
 
     Returns
     -------
@@ -357,5 +358,9 @@ def find_reader(
             continue
         for reader in readers:
             if str(getattr(reader, "name", "")).lower() == wanted_reader:
+                return reader
+        # A client in server mode names its reader by class (``StructureReader``).
+        for reader in readers:
+            if type(reader).__name__.lower() == wanted_reader:
                 return reader
     return None

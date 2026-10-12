@@ -86,6 +86,22 @@ def test_a_structure_arrives_as_a_structure_and_proteinmc_models_it():
     assert capture_session(state.datasets, state.fits) is not None
 
 
+def test_a_named_reader_without_a_record_reads_the_file_on_the_server():
+    """``dataset.load`` with only ``reader_name`` + ``filename`` reads, it does not fabricate."""
+    from chisurf.core.data import DataCurve
+    from chisurf.core.structure import Structure
+    from chisurf.server.services.datasets import add_dataset
+
+    _reader("Modelling", "StructureReader")  # registers the experiments
+    state = SessionState()
+    result = add_dataset(state, reader_name="StructureReader", filename=str(PDB))
+    assert result["ok"], result
+    members = list(state.datasets[0])
+    assert len(members) == 1 and isinstance(members[0], Structure)
+    assert not isinstance(members[0], DataCurve)
+    assert members[0].n_atoms > 1000
+
+
 def test_a_cached_structure_needs_its_snapshot():
     from chisurf.server.services.datasets import _prepare_cached_dataset
 
