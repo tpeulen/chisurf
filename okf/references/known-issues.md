@@ -283,6 +283,16 @@ Each was re-checked against the pre-change baseline where it touched a changed s
   went red once (the read's status said *failed*; the file took 145 s instead of 45 s, while another lane's suite ran)
   and then passed in three whole-file runs. The status text was not kept; if it recurs, record `data.status` first.
 
+## tttrlib dev build: `build/bin/tttr` links a libhdf5 the environment no longer has (found 2026-10-10)
+
+status: resolved 2026-10-12 — `~/dev/tttrlib/build` reconfigured against the arm64 env (stale HDF5/OpenMP/pkg-config cache entries cleared with `cmake -U`, `-DHDF5_ROOT=$ENV`, `CMAKE_MAKE_PROGRAM=/usr/bin/make`) and `--target tttr` rebuilt; `build/bin/tttr` now links `@rpath/libhdf5.310`. The test itself skips an unlinkable binary.
+
+`test/fio/test_container_cross_writer.py` prefers `~/dev/tttrlib/build/bin/tttr` when it exists; that binary aborts with
+`dyld: Library not loaded: @rpath/libhdf5.200.dylib` (exit -6), so the four cross-writer tests fail on this machine while
+they pass where the binary is absent (the CLI from the environment is used). Cause: a stale local build, not source.
+Owner: tttrlib (rebuild the build tree against the current environment's HDF5; the memory recipe "tttrlib editable
+rebuild" applies). The test should also not prefer an unlinkable binary silently.
+
 ## QA walk of the imaging, microscopy and structure guides (found 2026-10-11)
 
 status: open — owner: imaging/microscopy and modelling plugins; fixed items name their regression test, open items their owner.
@@ -1204,16 +1214,6 @@ every default of the release, the thing the core avoids. *Not fixed here:* the e
 Qt wizard, and the fix is a decision about the wizard's meaning (report a missing user file as "defaults in use", not
 MISSING, and drop it from `settings_ok`). Both wizards need the same change in `boarding/utils.py` and
 `boarding/view_model.py`.
-
-## tttrlib dev build: `build/bin/tttr` links a libhdf5 the environment no longer has (found 2026-10-10)
-
-status: resolved 2026-10-12 — `~/dev/tttrlib/build` reconfigured against the arm64 env (stale HDF5/OpenMP/pkg-config cache entries cleared with `cmake -U`, `-DHDF5_ROOT=$ENV`, `CMAKE_MAKE_PROGRAM=/usr/bin/make`) and `--target tttr` rebuilt; `build/bin/tttr` now links `@rpath/libhdf5.310`. The test itself skips an unlinkable binary.
-
-`test/fio/test_container_cross_writer.py` prefers `~/dev/tttrlib/build/bin/tttr` when it exists; that binary aborts with
-`dyld: Library not loaded: @rpath/libhdf5.200.dylib` (exit -6), so the four cross-writer tests fail on this machine while
-they pass where the binary is absent (the CLI from the environment is used). Cause: a stale local build, not source.
-Owner: tttrlib (rebuild the build tree against the current environment's HDF5; the memory recipe "tttrlib editable
-rebuild" applies). The test should also not prefer an unlinkable binary silently.
 
 ## ALEX hub: Accurate FRET opens no table from the container run (found 2026-10-10)
 
@@ -8036,6 +8036,4 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
-
-
 
