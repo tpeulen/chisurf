@@ -15,7 +15,7 @@ def test_server_app_list_methods():
     server = ChiSurfServer(cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
     methods = client.list_methods()
@@ -33,7 +33,7 @@ def test_server_app_list_datasets():
     server = ChiSurfServer(cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
     datasets = client.list_datasets()

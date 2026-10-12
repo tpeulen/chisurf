@@ -17,7 +17,7 @@ def test_zmq_round_trip():
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     client = ZmqClient(cmd_port=cmd_port)
     result = client.call("test", {"x": 3, "y": 4})
@@ -42,7 +42,7 @@ def test_zmq_request_id_increments():
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     client = ZmqClient(cmd_port=cmd_port)
     r1 = client.call("test", {})
@@ -68,7 +68,7 @@ def test_zmq_invalid_request_no_method():
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     import zmq
 
@@ -95,7 +95,7 @@ def test_zmq_invalid_request_bad_type():
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     import zmq
 
@@ -123,7 +123,7 @@ def test_zmq_timeout():
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=find_free_port())
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     client = ZmqClient(cmd_port=cmd_port, timeout_ms=200)
     result = client.call("test", {})
@@ -145,7 +145,7 @@ def test_zmq_parse_error_handled():
     server = ZmqServer(handler=handler, cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
 
     import zmq
 

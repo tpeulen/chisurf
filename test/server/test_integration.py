@@ -24,7 +24,7 @@ def server_client():
     server = ChiSurfServer(cmd_port=cmd_port, pub_port=pub_port)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
-    time.sleep(0.5)
+    assert server.wait_ready(), "the server did not bind its sockets"
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
     client.connect()
     yield client, server

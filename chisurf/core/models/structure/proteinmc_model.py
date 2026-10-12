@@ -252,6 +252,23 @@ class ProteinMCModel(Model):
 
         self.find_parameters()
 
+    # -- no curve ------------------------------------------------------
+
+    @property
+    def n_points(self) -> int:
+        """Number of compared points: zero, because sampling has no data curve."""
+        return 0
+
+    @property
+    def weighted_residuals(self) -> np.ndarray:
+        """Return no residuals: the "data" is a structure, which has no ``y`` to subtract.
+
+        The base class reads ``fit.data.y`` and ``self[...]``; asking a structure for
+        either logged a failed C++ path on every ``chi2`` / ``chi2r`` read and then
+        raised from the numpy fallback.
+        """
+        return np.empty(0, dtype=np.float64)
+
     # -- labelling file ------------------------------------------------
 
     def _labeling_payload(self) -> dict:

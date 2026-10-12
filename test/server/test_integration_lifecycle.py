@@ -45,10 +45,27 @@ def _client() -> ChisurfClient:
         _SERVER = ChiSurfServer(cmd_port=cmd, pub_port=pub)
         t = threading.Thread(target=_SERVER.serve_forever, daemon=True)
         t.start()
-        time.sleep(0.3)
+        assert _SERVER.wait_ready(), "the server did not bind its sockets"
         _CLIENT = ChisurfClient(cmd_port=cmd, pub_port=pub)
         _CLIENT.connect()
         return _CLIENT
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _stop_shared_server():
+    """Close the lazily started shared client and server when this module is done.
+
+    They used to live to the end of the process, so every later test module ran beside a
+    server that still held its two ports and its worker thread.
+    """
+    yield
+    global _SERVER, _CLIENT, _PORTS
+    client, server = _CLIENT, _SERVER
+    _CLIENT = _SERVER = _PORTS = None
+    if client is not None:
+        client.close()
+    if server is not None:
+        server.stop()
 
 
 def _reset():
@@ -585,7 +602,7 @@ class TestZmqEvents:
         srv = ChiSurfServer(cmd_port=cmd, pub_port=pub)
         t = threading.Thread(target=srv.serve_forever, daemon=True)
         t.start()
-        time.sleep(0.3)
+        assert srv.wait_ready(), "the server did not bind its sockets"
         cl = ChisurfClient(cmd_port=cmd, pub_port=pub)
         cl.connect()
         yield cl, srv

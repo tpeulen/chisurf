@@ -351,21 +351,25 @@ i18n-extract = { cmd = "python build_tools/i18n/extract_strings.py" }
 i18n-compile = { cmd = "lrelease chisurf/gui/i18n/chisurf_en.ts chisurf/gui/i18n/chisurf_de.ts chisurf/gui/i18n/chisurf_es.ts chisurf/gui/i18n/chisurf_fr.ts chisurf/gui/i18n/chisurf_pt.ts chisurf/gui/i18n/chisurf_ru.ts", inputs = ["chisurf/gui/i18n/*.ts"], outputs = ["chisurf/gui/i18n/*.qm"] }
 
 test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment on Linux'", depends-on = ["build-extensions"] }
+# Suites partition the tests BY MARKER, never by path list or `-k` substring (a node id
+# that merely contained "gui" used to fall out of every suite). Precedence: slow, then
+# e2e, then gui/widget, then everything else. test/test_suite_partition.py collects the
+# whole tree and fails if any test belongs to zero or to two of these four suites.
 # `-m "not slow"` makes the declared marker actually do something: it was
 # defined in pyproject and excluded from nothing, so a file marked slow still
 # ran in every default sweep. The slow ones build whole windows and grab them --
 # a minute against seconds for the rest -- and `test-slow` is how to ask for them.
-test = { cmd = "pytest -v test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow and not e2e' --timeout=120 --durations=20", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
-test-slow = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') -m slow", depends-on = ["build-extensions"] }
-test-gui = { cmd = "pytest $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'widget or gui'", depends-on = ["build-extensions"] }
+test = { cmd = "pytest -v -m 'not slow and not e2e and not gui and not widget' --timeout=120 --durations=20", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-slow = { cmd = "pytest -m slow", depends-on = ["build-extensions"] }
+test-gui = { cmd = "pytest -m '(gui or widget) and not slow and not e2e'", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-doctest = { cmd = "pytest test --doctest-modules", depends-on = ["build-extensions"] }
 lint = { cmd = "ruff check chisurf/ test/ && ruff format --check chisurf/ test/" }
 fmt = { cmd = "ruff format chisurf/ test/ && ruff check --fix chisurf/ test/" }
 typecheck = { cmd = "mypy chisurf/" }
-test-cov = { cmd = "pytest -v test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow' --timeout=120 --durations=20 --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-cov = { cmd = "pytest -v -m 'not slow and not e2e and not gui and not widget' --timeout=120 --durations=20 --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-linux = { cmd = "docker build -t chisurf-linux -f Dockerfile.linux . && docker run --rm chisurf-linux" }
 test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extensions"] }
-test-e2e = { cmd = "pytest test/e2e -q -p no:cacheprovider --timeout=300 --durations=15", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-e2e = { cmd = "pytest -m 'e2e and not slow' -q -p no:cacheprovider --timeout=300 --durations=15", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 # PRD-46: run the shipped example scripts + their public-API unit tests. These
 # also run as part of the default `test` task (they live under test/), so this is
 # a convenience entry point for iterating on the scripts alone.

@@ -92,6 +92,8 @@ def test_shared_client_adopts_chisurf_login_session(monkeypatch):
     monkeypatch.setattr(client_mod, "MMFDBClient", _FakeClient)
 
     session.clear_cached_session()
+    # The shared client is process-global: one an earlier test built would be returned as is.
+    picker.reset_session_client()
     try:
         # Not logged in -> client left unauthenticated, no login attempt.
         assert picker.inprocess_client().token is None
@@ -102,6 +104,7 @@ def test_shared_client_adopts_chisurf_login_session(monkeypatch):
         assert picker.inprocess_client().token == "APP-LOGIN-TOKEN"
     finally:
         session.clear_cached_session()
+        picker.reset_session_client()
 
 
 def test_resolve_local_path_prefers_selection_then_opens():

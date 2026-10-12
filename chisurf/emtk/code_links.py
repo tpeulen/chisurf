@@ -17,12 +17,14 @@ import pathlib
 import sys
 from typing import Any
 
+from chisurf.core.support.weak_registry import WeakOrderedRegistry
+
 logger = logging.getLogger(__name__)
 
 __all__ = ["open_source"]
 
 
-_ACTIVE_EMTK_EDITORS: list[Any] = []
+_ACTIVE_EMTK_EDITORS = WeakOrderedRegistry()
 
 
 def register_emtk_editor(editor: Any) -> None:

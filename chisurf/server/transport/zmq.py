@@ -92,8 +92,17 @@ class ZmqServer:
                 f"Non-loopback host '{host}' requires CURVE/ZAP transport security "
                 "which is not yet implemented. Use 127.0.0.1 (loopback) instead."
             )
-        self._running = False
+        # ``_stopping`` is the stop request and outlives the loop's start: the old
+        # ``_running`` flag was set True *inside* ``serve_forever`` after binding, so a
+        # ``stop()`` arriving before the thread got that far was overwritten and the
+        # server then ran forever, holding both ports for the rest of the process.
+        self._stopping = threading.Event()
+        #: Set once both sockets are bound and the loop is about to poll.
+        self._ready = threading.Event()
+        #: Set when the loop has left and its sockets are closed.
+        self._finished = threading.Event()
         self._thread: threading.Thread | None = None
+        self._loop_thread: threading.Thread | None = None
         self._ctx: zmq.Context | None = None
         self._rep_socket: zmq.Socket | None = None
         self._pub_socket: zmq.Socket | None = None
@@ -102,43 +111,68 @@ class ZmqServer:
         """Run the ZMQ event loop (blocking)."""
         import zmq
 
-        self._ctx = zmq.Context()
-
-        self._rep_socket = self._ctx.socket(zmq.REP)
-        self._rep_socket.bind(f"tcp://{self._host}:{self._cmd_port}")
-
-        self._pub_socket = self._ctx.socket(zmq.PUB)
-        self._pub_socket.bind(f"tcp://{self._host}:{self._pub_port}")
-
-        self._running = True
-        _log.info(
-            "ZMQ server listening on tcp://%s:%s (cmd) and tcp://%s:%s (pub)",
-            self._host,
-            self._cmd_port,
-            self._host,
-            self._pub_port,
-        )
-
-        poller = zmq.Poller()
-        poller.register(self._rep_socket, zmq.POLLIN)
-
+        self._loop_thread = threading.current_thread()
+        if self._stopping.is_set():
+            # Stopped before the loop got going: bind nothing, hold nothing.
+            self._finished.set()
+            return
         try:
-            while self._running:
+            self._ctx = zmq.Context()
+
+            self._rep_socket = self._ctx.socket(zmq.REP)
+            self._rep_socket.bind(f"tcp://{self._host}:{self._cmd_port}")
+
+            self._pub_socket = self._ctx.socket(zmq.PUB)
+            self._pub_socket.bind(f"tcp://{self._host}:{self._pub_port}")
+
+            self._ready.set()
+            _log.info(
+                "ZMQ server listening on tcp://%s:%s (cmd) and tcp://%s:%s (pub)",
+                self._host,
+                self._cmd_port,
+                self._host,
+                self._pub_port,
+            )
+
+            poller = zmq.Poller()
+            poller.register(self._rep_socket, zmq.POLLIN)
+
+            while not self._stopping.is_set():
                 try:
                     socks = dict(poller.poll(timeout=50))
                 except zmq.ZMQError:
-                    if not self._running:
+                    if self._stopping.is_set():
                         break
                     continue
 
                 if self._rep_socket in socks:
                     self._handle_one()
         finally:
+            # Also when a bind failed: a stop() waiting on this loop must not wait out
+            # its timeout for a server that never came up.
             self._cleanup()
+            self._finished.set()
 
-    def stop(self) -> None:
-        """Signal the server loop to stop."""
-        self._running = False
+    @property
+    def _running(self) -> bool:
+        """Whether the loop is polling (ready and not asked to stop)."""
+        return self._ready.is_set() and not self._stopping.is_set()
+
+    def wait_ready(self, timeout: float = 10.0) -> bool:
+        """Block until the sockets are bound; ``False`` when that did not happen in *timeout*."""
+        return self._ready.wait(timeout)
+
+    def stop(self, timeout: float = 5.0) -> None:
+        """Stop the server loop and wait until its sockets are closed.
+
+        Waiting is what frees the two ports before the caller moves on; without it the
+        next server of a test run raced the previous one for them. A call from the loop's
+        own thread (a handler asking for shutdown) cannot wait for itself and returns.
+        """
+        self._stopping.set()
+        loop = self._loop_thread
+        if loop is not None and threading.current_thread() is not loop:
+            self._finished.wait(timeout)
 
     def broadcast_event(self, topic: str, payload: dict[str, Any]) -> None:
         """Publish an event on the PUB socket."""
@@ -234,6 +268,11 @@ class ZmqServer:
                     sock.close(linger=0)
                 except Exception:
                     pass
+        # A closed socket is not "no socket": ``broadcast_event`` only skips ``None``, so an
+        # event published by a late subscriber of the bus logged a traceback ("Socket
+        # operation on non-socket") for every one it tried to send after the server stopped.
+        self._rep_socket = None
+        self._pub_socket = None
         if self._ctx is not None:
             try:
                 self._ctx.term()

@@ -14,8 +14,8 @@ manager (the CI uses it too). From a checkout of the repository:
 
 ```
 pixi run chisurf        # launch the GUI  (== python -m chisurf)
-pixi run test           # non-GUI test suite
-pixi run test-gui       # GUI / widget tests
+pixi run test           # default suite (everything not slow, e2e, gui or widget)
+pixi run test-gui       # tests marked gui or widget
 ```
 
 The sibling packages in `modules/` (`tttrlib`, built from C++ source, plus

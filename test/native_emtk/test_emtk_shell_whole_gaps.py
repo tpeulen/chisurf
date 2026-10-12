@@ -372,15 +372,17 @@ def test_the_qt_windows_save_fit_macro_writes_the_same_files_without_qt(fitted, 
 
     from chisurf.macros import core_fit
 
+    from qtpy import QtWidgets
+
     _shell, _driver_, session = fitted
     fit = session.server.state.fits[-1]
+    # Any earlier test in the process may have made the application; the export must not make one.
+    app_before = QtWidgets.QApplication.instance()
     core_fit.save_fit(str(tmp_path), fit_window=SimpleNamespace(fit=fit))
     report = docx.Document(str(tmp_path / "fcs_demo.docx"))
     assert len(report.inline_shapes) == 2
     assert (tmp_path / "fcs_demo.fit.cs.pto").is_file()
-    from qtpy import QtWidgets
-
-    assert QtWidgets.QApplication.instance() is None, "the export made a Qt application"
+    assert QtWidgets.QApplication.instance() is app_before, "the export made a Qt application"
 
 
 def test_current_fit_has_the_qt_shortcut(fitted):

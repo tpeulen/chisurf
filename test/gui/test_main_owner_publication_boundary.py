@@ -50,7 +50,7 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
         assert (tmp_path / "native.xml").is_file()
         return
 
-    from qtpy import QtCore, QtWidgets, sip
+    from qtpy import QtCore, QtWidgets
 
     import chisurf as cs
     import chisurf.gui as cs_gui
@@ -58,6 +58,7 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
     from chisurf.core.project.lifecycle import SaveDecision
     from chisurf.core.project.project import ResourceContext
     from chisurf.gui.main import Main
+    from chisurf.gui.qt_lifetime import is_deleted
     from chisurf.gui.plots.lineplot.lineplot import LinePlot
     from chisurf.gui.widgets.fitting import FitSubWindow
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
@@ -226,7 +227,7 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
         assert main.current_fit is fit
         assert document.__dict__ == before
         assert window.get_project_plot_state() == original_plot_state
-        assert not sip.isdeleted(controller)
+        assert not is_deleted(controller)
         assert timer.isActive()
     else:
         if scenario.startswith("macro-"):
@@ -239,16 +240,16 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
         assert main.mdiarea.subWindowList()[0] is not window
         app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
         app.sendPostedEvents(None, QtCore.QEvent.DeferredDelete)
-        assert sip.isdeleted(window)
-        assert sip.isdeleted(timer)
+        assert is_deleted(window)
+        assert is_deleted(timer)
         replacement = main.mdiarea.subWindowList()[0]
         assert plot not in replacement._created_plots
         # the Plot settings surface is the main window's: it survives and shows
         # the replacement; every other control of the old view is retired
         app.processEvents()  # the replacement builds its first page on the next turn
-        assert not sip.isdeleted(controller)
+        assert not is_deleted(controller)
         assert controller.owner is replacement
-        assert all(sip.isdeleted(widget) for widget in old_controls if widget is not controller)
+        assert all(is_deleted(widget) for widget in old_controls if widget is not controller)
         assert len(api._state.fits) == 1
     app.processEvents()
     assert main.grab().save(str(tmp_path / "after.png"))

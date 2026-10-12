@@ -91,6 +91,12 @@ server.serve_forever()
                 _get_project_document=lambda: document,
             )
             monkeypatch.setattr(cs, "cs", gui)
+            # install_proxies() replaces these three process globals with proxies on a client
+            # this test closes; monkeypatch hands the real ones back, or every later test in the
+            # process meets "this client is closed" at its first cs.fits.
+            monkeypatch.setattr(cs, "imported_datasets", cs.imported_datasets)
+            monkeypatch.setattr(cs, "fits", cs.fits)
+            monkeypatch.setattr(cs, "__client__", getattr(cs, "__client__", None), raising=False)
             state = SessionState()
             state._project_gui = gui
             api = ChiSurfAPI(mode="server", client=client, state=state)

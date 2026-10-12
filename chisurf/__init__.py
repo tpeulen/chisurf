@@ -246,6 +246,12 @@ def __getattr__(name: str):
         value = mod.invoke_action
         globals()["action_execute"] = value
         return value
+    if name == "macros":
+        # Scripts and consoles reach ``cs.macros.core_fit`` straight after ``import chisurf``;
+        # the package used to be bound only as a side effect of the GUI imports it.
+        mod = importlib.import_module("chisurf.macros")
+        globals()["macros"] = mod
+        return mod
     if name == "plugins":
         # Historically bound as a package attribute only by the eager GUI
         # experiments imports; ``load_toolbar_plugins`` reads

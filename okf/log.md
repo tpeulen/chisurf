@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Suites partition by marker (test / test-gui / test-slow / test-e2e); testpaths = test + chisurf; `test/test_suite_partition.py` guards one-suite-per-test. 6235 tests no suite ran (test/gui, every `tests/` dir, flat `test_*.py`) now run. Root `conftest.py` restores process state per test (API proxies, RPC server, UI language, mmfdb login and token caches) and stops leaked servers per module; `ZmqServer.stop()` race fixed with ready/finished events and `wait_ready()`. ProteinMC fits report NaN chi2 instead of logging a failed C++ path; `get_instances()` skips deleted Qt wrappers; `cs.macros` resolves lazily; active-window registries are weak. emtk pin d5a1a05 (texel-bounded texture caches; `import emtk.i18n` no longer pulls the widget set).
 - Magenta ChiSurf window traced to an emtk older than chisurf needs (e0f8b67 lacks `DockManager.focused`): every
   frame raised, the canvas swallowed it and presented an unrendered Metal drawable. emtk be2add5 (0.1.8):
   `emtk.frame_errors.draw_control` logs each distinct frame error once, notifies handlers and draws an error panel in

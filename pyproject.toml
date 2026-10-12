@@ -225,8 +225,12 @@ qt_api = "pyqt5"
 # Coverage is opt-in (use `pixi run test-cov`); keeping it off by default avoids
 # dumping .coverage*/htmlcov into the repo root on every test run.
 addopts = ""
-norecursedirs = ["build_tools", "modules", "conda-bld", ".pixi", "dist", "rattler-recipe", "repro", "manual", "benchmarks", "renders"]
-testpaths = ["test", "chisurf/plugins/burst/burst_selection/tests"]
+norecursedirs = ["build_tools", "modules", "conda-bld", ".pixi", "dist", "rattler-recipe", "repro", "manual", "benchmarks", "renders", "cookiecutter-chisurf-plugin"]
+# Every test lives under one of these two roots, wherever its directory is called
+# (``test/``, ``tests/``, or a flat ``test_*.py`` beside the code). Suites are then
+# carved out by MARKER, never by path list or ``-k`` substring: see
+# ``test/test_suite_partition.py`` for the one-suite-per-test guard.
+testpaths = ["test", "chisurf"]
 markers = [
     "e2e: opens every plugin headlessly",
     "slow: marks tests as slow (reader-heavy) and excluded from default runs",

@@ -135,3 +135,26 @@ class DeprecationTests(unittest.TestCase):
     def test_removed_in_needs_deprecated_in(self):
         with self.assertRaises(TypeError):
             deprecated(removed_in="20.01.01")
+
+
+def test_register_skips_an_instance_whose_qt_object_was_deleted():
+    """A wrapper that outlives its widget must not be handed back as a live instance.
+
+    ``ExperimentalDataSelector.update`` walks ``get_instances()`` and called ``update()`` on
+    a wrapper whose C++ half was gone: "wrapped C/C++ object ... has been deleted".
+    """
+    pytest = __import__("pytest")
+    sip = pytest.importorskip("PyQt5.sip")
+    from qtpy import QtCore
+
+    from chisurf.core.support.decorators import register
+
+    @register
+    class Probe(QtCore.QObject):
+        pass
+
+    keep, gone = Probe(), Probe()
+    assert {id(o) for o in Probe.get_instances()} == {id(keep), id(gone)}
+    sip.delete(gone)
+    assert sip.isdeleted(gone)
+    assert [id(o) for o in Probe.get_instances()] == [id(keep)]

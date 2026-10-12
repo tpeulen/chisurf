@@ -407,10 +407,12 @@ def test_plot_star_exports_and_configuration(tmp_path):
 from unittest.mock import patch
 import chisurf.core.settings
 from chisurf.gui import chiplot as cp
+# ``gui.plot.pyqtgraph_config`` is a retired settings key (the pyqtgraph renderer is gone):
+# importing the plots must neither need it nor hand it to chiplot.
+assert 'pyqtgraph_config' not in chisurf.core.settings.cs_settings['gui']['plot']
 with patch.object(cp, 'configure', wraps=cp.configure) as configure:
     import chisurf.gui.plots as plots
-    configure.assert_called_once_with(
-        **chisurf.core.settings.cs_settings['gui']['plot']['pyqtgraph_config'])
+    configure.assert_not_called()
 namespace = {}
 exec('from chisurf.gui.plots import *', namespace)
 for name in plots.__all__:

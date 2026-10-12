@@ -119,8 +119,18 @@ class ChiSurfServer:
         )
         self._zmq_server.serve_forever()
 
+    def wait_ready(self, timeout: float = 10.0) -> bool:
+        """Block until :meth:`serve_forever` has bound both sockets.
+
+        Returns
+        -------
+        bool
+            ``False`` when the sockets were not bound within *timeout* seconds.
+        """
+        return self._zmq_server.wait_ready(timeout)
+
     def stop(self) -> None:
-        """Gracefully stop the server."""
+        """Gracefully stop the server, returning once its sockets are closed."""
         ChiSurfServer._active_servers.discard(self)
         _log.info("ChiSurfServer stopping")
         if hasattr(self, "service_startup_manager"):

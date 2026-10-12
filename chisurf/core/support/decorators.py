@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import functools
 import itertools
+import sys
 import textwrap
 import warnings
 import weakref
@@ -14,6 +15,23 @@ __all__ = [
     "register",
     "set_module",
 ]
+
+
+def _qt_object_deleted(obj) -> bool:
+    """Whether *obj* is a Qt wrapper whose C++ object has been deleted.
+
+    A Python wrapper outlives its widget whenever something still names it (a test, a list
+    of tool windows, a closure). Calling anything on it then raises ``RuntimeError: wrapped
+    C/C++ object ... has been deleted``. Never imports Qt: a process without it has no such
+    wrappers.
+    """
+    sip = sys.modules.get("PyQt5.sip") or sys.modules.get("sip")
+    if sip is None:
+        return False
+    try:
+        return bool(sip.isdeleted(obj))
+    except TypeError:
+        return False  # not a sip wrapper at all
 
 
 def register(cls):
@@ -54,11 +72,15 @@ def register(cls):
 
         @classmethod
         def get_instances(cls) -> weakref.ReferenceType:
-            """Returns all instances of the class as a generator"""
+            """Returns all live instances of the class as a generator.
+
+            An instance whose Qt object has been deleted is not live, whatever still
+            references its wrapper, and is dropped like a collected one.
+            """
             dead = set()
-            for ref in cls._instances:
+            for ref in list(cls._instances):
                 obj = ref()
-                if obj is not None:
+                if obj is not None and not _qt_object_deleted(obj):
                     yield obj
                 else:
                     dead.add(ref)

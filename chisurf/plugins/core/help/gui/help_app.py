@@ -27,6 +27,7 @@ from emtk.type_scale import math_args, pop_text_style, push_text_style, ui_font_
 from emtk.widgets.chat import ChatHistory, draw_chat_input_bar, draw_chat_transcript
 from emtk.widgets.text_editor import TextEditor
 
+from chisurf.core.support.weak_registry import WeakOrderedRegistry
 from chisurf.emtk.help_guide import EmTkGuidedTour
 from chisurf.plugins.core.help.api import io as help_io
 from chisurf.plugins.core.help.api import review as help_review
@@ -673,7 +674,7 @@ def parse_markdown_blocks(
     return blocks
 
 
-_ACTIVE_HELP_INSTANCES: list[HelpModel] = []
+_ACTIVE_HELP_INSTANCES = WeakOrderedRegistry()
 
 
 def register_help_model(model: HelpModel) -> None:

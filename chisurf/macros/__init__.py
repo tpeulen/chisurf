@@ -14,6 +14,9 @@ _MODULES = ("model", "model_parse", "core_data", "core_fit")
 
 
 def __getattr__(name: str):
+    if name in _MODULES:
+        # ``cs.macros.core_fit`` is a module reached by attribute, as scripts spell it.
+        return import_module(f"{__name__}.{name}")
     for module_name in _MODULES:
         module = import_module(f"{__name__}.{module_name}")
         try:

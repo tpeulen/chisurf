@@ -650,7 +650,9 @@ class SetupMixin:
         from qtpy import QtWidgets
 
         container = self.layout_experiment_reader.parentWidget()
-        outer = container.parentWidget().layout() if container is not None else None
+        # A container with no parent is a window of its own: there is no outer layout to ask.
+        holder = container.parentWidget() if container is not None else None
+        outer = holder.layout() if holder is not None else None
         if not isinstance(outer, QtWidgets.QBoxLayout):
             return
         native = getattr(widget, "control", None) is not None

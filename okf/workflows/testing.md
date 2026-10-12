@@ -49,11 +49,21 @@ modules can segfault at Qt teardown).
 The pixi tasks wrap the above (CI uses pixi; they `build-extensions` first):
 
 ```bash
-pixi run test           # non-GUI test suite (build-extensions first)
-pixi run test-gui       # GUI/widget tests (-k 'widget or gui')
+pixi run test           # default suite: everything not marked slow, e2e, gui or widget
+pixi run test-gui       # tests marked gui or widget (not slow, not e2e)
+pixi run test-slow      # tests marked slow
+pixi run test-e2e       # test/e2e (marked e2e by test/e2e/conftest.py), not slow
 pixi run test-smoke     # fast smoke test (test/test_basic.py)
 pixi run test-doctest   # doctests
 ```
+
+The four suites partition the whole tree by **marker**, never by path list or
+`-k` substring (a node id that merely contained "gui" once fell out of every
+suite, and `tests/` directories were on no list); precedence is slow, then e2e,
+then gui/widget, then the rest, and `test/test_suite_partition.py` fails when a
+test belongs to zero or two suites. Process-wide state a test changes is handed
+back by the autouse fixtures of the root `conftest.py`
+(`test/test_process_state_isolation.py` proves each).
 
 All `test*` tasks `depends-on` `build-extensions`, so the
 [compiled modules](/subsystems/compiled-modules.md) are built first.

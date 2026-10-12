@@ -163,6 +163,9 @@ def test_fresh_bva_core_read_needs_no_gui_libraries(tmp_path):
     code = (
         "import sys; from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis; "
         "table,streams=read_burst_analysis(sys.argv[1],'SPC-130'); assert table.n_rows()==152; "
-        "assert not any(name.split('.')[0] in {'qtpy','PyQt5','PyQt6','PySide2','PySide6','emtk'} for name in sys.modules)"
+        "assert not any(name.split('.')[0] in {'qtpy','PyQt5','PyQt6','PySide2','PySide6'} for name in sys.modules); "
+        # emtk.i18n is the translation seam core code reaches through tr() (plugin manifests);
+        # it is text lookup, not a GUI. Everything else of emtk -- painter, layout, widgets -- is.
+        "assert not [n for n in sys.modules if n.split('.')[0] == 'emtk' and n.split('.')[1:2] != ['i18n'] and n != 'emtk']"
     )
     subprocess.run([sys.executable, "-c", code, str(folder)], check=True, capture_output=True)

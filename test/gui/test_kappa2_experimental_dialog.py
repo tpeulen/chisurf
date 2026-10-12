@@ -13,7 +13,10 @@ def test_dialog_applies_the_calculator_mean_to_the_model(qapp):
     from chisurf.gui.widgets.models.tcspc import kappa2_helpers as helpers
 
     parameters = SimpleNamespace(kappa2=0.5)
-    model = SimpleNamespace(fret_parameters=parameters, orientation_parameter=None)
+    updates = []
+    model = SimpleNamespace(
+        fret_parameters=parameters, orientation_parameter=None, update=lambda: updates.append(1)
+    )
     QtCore.QTimer.singleShot(
         1000,
         lambda: [
@@ -24,3 +27,4 @@ def test_dialog_applies_the_calculator_mean_to_the_model(qapp):
     )
     helpers.open_experimental_k2_dialog(None, model)
     assert parameters.kappa2 == pytest.approx(2.0 / 3.0, abs=0.03)
+    assert updates, "the model was not asked to recompute with the new kappa2"
