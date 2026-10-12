@@ -28,6 +28,11 @@ Hub that groups ChiSurf's FRET-line, FRET/homoFRET, FCS and phasor-plot calculat
 
 This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [Working in the shell: interface, account and the two hubs](/guides/105_application_shell.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/calculator/hub/`

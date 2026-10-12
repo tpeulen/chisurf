@@ -252,3 +252,5 @@ Resizing or restoring them does not rewrite the container or regenerate its
 artifacts. Data rows, curve points, checksums and provenance remain properties
 of the same stored measurement. The [Inspector workflow](../guides/63_pto_inspector.md)
 explains artifact selection, graph preferences and wide-table navigation.
+
+Tool: PTO Inspector (`chisurf/plugins/core/pto_inspector/`).

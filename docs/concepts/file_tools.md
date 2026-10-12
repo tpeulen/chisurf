@@ -38,3 +38,5 @@ The one-measurement-one-file arrangement behind the `.pto` is explained in
 - [Intensity traces and file tools](../guides/74_intensity_traces_and_file_tools.md)
 - [Handling TTTR files](../guides/12_handling_tttr_files.md)
 - [Inspecting a container](../guides/63_pto_inspector.md)
+
+Tools: Split/Convert (`chisurf/plugins/tttr/tttr_splitter/`), TTTR Header editor (`chisurf/plugins/tttr/tttr_header_edit/`), TTTR→Time-Window BIDs (`chisurf/plugins/tttr/tttr_time_windows/`), ⇄ .pto (`chisurf/plugins/core/tttr_to_pto/`).

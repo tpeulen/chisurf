@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Every menu-visible plugin reference page links a Theory concept and a Workflow guide (16 gaps closed; the generator takes them from `chisurf/plugins/<dir>` mentions in `docs/concepts` and `docs/guides`). New `concepts/application_shell.md` and `guides/105_application_shell.md`. Open: 53 `menu_hidden` plugin pages still lack one or both.
 - PRD mention allow-list emptied: the 82 shipped `chisurf/` files that named a PRD now carry no PRD number (comments, docstrings, `view.json` `_comment`); `test/test_prd_mentions.py` has no exceptions left (PRD-154 Part D gate 2).
 - Suites partition by marker (test / test-gui / test-slow / test-e2e); testpaths = test + chisurf; `test/test_suite_partition.py` guards one-suite-per-test. 6235 tests no suite ran (test/gui, every `tests/` dir, flat `test_*.py`) now run. Root `conftest.py` restores process state per test (API proxies, RPC server, UI language, mmfdb login and token caches) and stops leaked servers per module; `ZmqServer.stop()` race fixed with ready/finished events and `wait_ready()`. ProteinMC fits report NaN chi2 instead of logging a failed C++ path; `get_instances()` skips deleted Qt wrappers; `cs.macros` resolves lazily; active-window registries are weak. emtk pin d5a1a05 (texel-bounded texture caches; `import emtk.i18n` no longer pulls the widget set).
 - Magenta ChiSurf window traced to an emtk older than chisurf needs (e0f8b67 lacks `DockManager.focused`): every

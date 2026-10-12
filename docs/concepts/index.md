@@ -165,6 +165,7 @@ games
 :maxdepth: 1
 
 application_identity
+application_shell
 code_editor
 flrcif_vocabulary
 ```

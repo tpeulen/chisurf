@@ -206,3 +206,5 @@ artifact data, curve coordinates, exported CSV and provenance relationships.
 The data table retains readable column widths and horizontal navigation.
 
 ![Native PTO Inspector showing a stored measured decay and provenance](figures/pto_inspector_native_curve.png)
+
+Tool: PTO Inspector (`chisurf/plugins/core/pto_inspector/`).

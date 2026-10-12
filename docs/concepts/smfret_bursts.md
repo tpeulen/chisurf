@@ -301,3 +301,5 @@ retained modern callers. Retiring the earlier GUI fallback changes the entry
 surface, not the burst definition, selected photon indices or per-burst
 observables. The workflow guide records a measured-file regression with exact
 before/after column and settings agreement.
+
+Tool: BID→Analysis (`chisurf/plugins/burst/bid_to_analysis/`).

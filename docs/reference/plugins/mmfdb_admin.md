@@ -471,6 +471,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `provenance.dependencies.upstream` | no |  |
 | `provenance.graph.export` | no |  |
 
+## Theory and workflow
+
+- **Theory** — [The measurement database: records, provenance and who may change them](/concepts/measurement_database.md)
+- **Workflow** — [Administering the measurement database: MMFDB Admin](/guides/102_mmfdb_admin.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/mmfdb_admin/`

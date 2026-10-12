@@ -61,3 +61,5 @@ administrator can be created.
   MMFDB Admin tool, step by step.
 - {doc}`The photon container </concepts/photon_container>`: the same provenance
   model, inside a single measurement file.
+
+Tool: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`).

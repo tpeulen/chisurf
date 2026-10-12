@@ -39,6 +39,11 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 | `help.docs.ask` | yes | Puts a question to ChiSurf's documentation and returns a grounded answer together with the pages it was taken from. Needs a language-model provider configured in Settings -> AI; the assistant can only browse, search and read documentation - it cannot load data, fit or run code. |
 | `help.docs.contract` | no | Return the Help plugin workflow contract. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [Asking the documentation](/guides/70_ask_the_documentation.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/help/`

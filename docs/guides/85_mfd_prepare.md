@@ -196,3 +196,5 @@ Geometry is a native host preference. The selected burst folder and prepared
 results are rebuilt by selecting the folder and pressing Prepare after reopening.
 This display change preserves the preparation's photon-index convention, stream
 definitions and count-agreement threshold. See [MFD fitting](../concepts/mfd_fitting.md).
+
+Tool: MFD Prepare (`chisurf/plugins/burst/mfd_prepare/`).

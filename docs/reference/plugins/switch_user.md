@@ -39,6 +39,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Save selected user | `save_login` | bool |  |  | Remember this account as the default one for the next start. |
 | Log in automatically when allowed | `autologin` | bool |  |  | Keep a session token in the operating system's credential store so the next start signs in without a password. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [Working in the shell: interface, account and the two hubs](/guides/105_application_shell.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/switch_user/`

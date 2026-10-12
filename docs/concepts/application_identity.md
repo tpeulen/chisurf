@@ -20,3 +20,5 @@ A clipboard failure leaves the guided action pending rather than claiming a copy
 Help explains the fields; the guide waits for Help, Copy details and Close.
 Close ends this information window and its tour while the main application
 remains available. See the [application-information workflow](../guides/103_application_identity.md).
+
+Tool: About ChiSurf (`chisurf/plugins/core/about/`).

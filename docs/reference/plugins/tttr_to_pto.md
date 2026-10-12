@@ -29,6 +29,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 ## Theory and workflow
 
+- **Theory** — [File tools: operations on the container, not the measurement](/concepts/file_tools.md)
 - **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source

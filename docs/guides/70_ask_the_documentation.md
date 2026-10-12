@@ -174,3 +174,5 @@ If you are writing documentation, the header is generated and checked — see
   to load data, fit and report.
 * {doc}`Driving ChiSurf from its console <59_console>` — when you would rather
   write the Python yourself.
+
+Tool: Documentation browser (`chisurf/plugins/core/help/`).

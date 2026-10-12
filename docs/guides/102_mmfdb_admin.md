@@ -155,3 +155,5 @@ The native administrator currently has no matching population control.
 For a headless administrative example, use the owning MMFDB `seed_example`
 API with an explicitly selected demo database; its sources and produced table
 are managed objects in that database's object store.
+
+Tool: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`).

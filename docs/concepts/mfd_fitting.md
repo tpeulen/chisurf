@@ -409,3 +409,5 @@ definitions or verification thresholds. The [preparation guide](../guides/85_mfd
 shows measured BH fixture results and distinguishes this validation step from
 fitting an MFD model. The report region uses available viewport space rather
 than extending a forced minimum height below a narrow window.
+
+Tool: MFD Prepare (`chisurf/plugins/burst/mfd_prepare/`).

@@ -29,6 +29,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 ## Theory and workflow
 
+- **Theory** — [Single-molecule FRET: burst analysis (E, S, corrections)](/concepts/smfret_bursts.md)
 - **Workflow** — [Exporting burst data](/guides/34_exporting_burst_data.md)
 
 ## Source

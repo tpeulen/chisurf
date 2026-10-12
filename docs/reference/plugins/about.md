@@ -27,6 +27,11 @@ ChiSurf About Plugin  This plugin provides information about ChiSurf, including 
 
 This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Application identity and support details](/concepts/application_identity.md)
+- **Workflow** — [Application details for a support request](/guides/103_application_identity.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/about/`

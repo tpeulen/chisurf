@@ -33,6 +33,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Container | `filename` | data_source |  |  | The .pto to inspect — one measurement in one file: the instrument data verbatim, and every result computed from it beside it. Dropping a vendor photon file offers to pack it into a container first. |
 | Legacy folder | `export_legacy_folder` | data_source |  |  | Folder that receives the Seidel/Margarita layout: bi4_bur/*.bur beside one <ending>4/ companion directory per analysis. |
 
+## Theory and workflow
+
+- **Theory** — [The photon container: one measurement, one file](/concepts/photon_container.md)
+- **Workflow** — [Inspecting a container: what is in a `.pto`, and how it got there](/guides/63_pto_inspector.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/pto_inspector/`

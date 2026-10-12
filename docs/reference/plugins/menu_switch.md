@@ -27,6 +27,11 @@ Menu Switch  Switches the open ChiSurf main window between the traditional menu 
 
 This plugin opens no window and has no parameters: it is an action on the ChiSurf host. Switch the current ChiSurf window between the menu bar and ribbon, and save the interface preference. It is only available from an open ChiSurf main window.
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [Working in the shell: interface, account and the two hubs](/guides/105_application_shell.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/menu_switch/`

@@ -130,6 +130,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Smooth edges | `antialias` | bool |  |  | Grey-scale anti-aliasing of glyph edges. Off draws hard black-and-white edges, which some people read more easily at small sizes. Hinting cannot be chosen: the rasteriser does not offer it. |
 | Fallback faces | `fallbacks` | str |  |  | Comma-separated faces tried, in order, for a character the chosen face does not have (CJK, mathematical symbols, subscripts), before the faces the system provides. A face may also be given a chain of its own: Inter, Verdana, prose. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/setup/`

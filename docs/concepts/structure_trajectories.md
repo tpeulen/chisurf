@@ -277,3 +277,5 @@ coordinates and representations. A stored host size does not rescale the
 scientific coordinate arrays; camera and viewport transforms determine how
 they are drawn. The [molecular viewer workflow](../guides/44_molecular_viewer.md)
 distinguishes host preferences from ChiMOL's display configuration and scene.
+
+Tool: Traj Tools (`chisurf/plugins/traj/traj_tools/`).

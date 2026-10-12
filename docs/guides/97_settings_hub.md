@@ -83,3 +83,5 @@ open panel (TTTR LUT Tools and Channel Definition read photon files).
 
 - [Detector setups](../concepts/detector_setup.md): the theory behind the Channel Definition panel.
 - [Application identity](../concepts/application_identity.md): what the version and support details in the settings establish.
+
+Tool: Settings (`chisurf/plugins/core/setup/`).

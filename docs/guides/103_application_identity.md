@@ -39,3 +39,5 @@ app = make_app()
 print(app.details_text())
 app.request_close()
 ```
+
+Tool: About ChiSurf (`chisurf/plugins/core/about/`).

@@ -35,6 +35,11 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 | `mfd_prepare.prepare` | yes | Prepare a burst folder for MFD analysis. |
 | `mfd_prepare.describe` | no | Return the plugin contract descriptor. |
 
+## Theory and workflow
+
+- **Theory** — [Fitting the 2D MFD histogram](/concepts/mfd_fitting.md)
+- **Workflow** — [Checking a burst folder before an MFD fit](/guides/85_mfd_prepare.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/burst/mfd_prepare/`
