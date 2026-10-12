@@ -2,6 +2,14 @@
 
 ## 2026-10-12
 
+- PRD-154 gate 1 run (not met; runs killed by exit 137 and a session restart while the tree moved): the run-1
+  failures fixed at their cause. emtk 7ea9b2f (opaque fills are row slices), 83c6b01 (a fragmented full atlas repacks
+  before it declines), e0f8b67 (a dock unwinds a window that raised); chimol b2152dd (help panel tooltips); macro
+  `__file__` is a str; the demo audit sees card toolbars and per-tool tours; the guide scheme takes chimol's
+  `control` target and `locale`, and the view schema is generated deterministically; the narrow detector-table test
+  measures instead of hard-coding pixels; boarding, burst and help strings go through `tr`; the click-all harness reads
+  text-editor content as content. emtk pin moved to f893fce (grapheme clusters, plot margins, dock focus, table
+  selection, chat markdown).
 - German and French catalogues complete again: today's new strings (simulation setup, Photon Table and TTTR toolbox
   help, plot settings, hub dissolution titles) translated, and 381 empty German entries finished (mostly units and
   names; 34 real translations). ndxplorer's one missing string translated (ndxplorer befd644).

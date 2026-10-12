@@ -100,6 +100,13 @@ _VIEW_TOP_LEVEL = {
             "chimol understands 'settings' and 'viewer'."
         ),
     },
+    "locale": {
+        "type": "string",
+        "description": (
+            "The language a generated, per-language spec is written in "
+            "(QuEst's quest.view.<code>.json)."
+        ),
+    },
 }
 
 #: ``kind`` values :mod:`chisurf.gui.autoform.sections.builtin` actually
@@ -260,12 +267,12 @@ def build_view_schema() -> dict:
             | APP_SECTION_KEYS.get(name, frozenset())
         ):
             properties.setdefault(key, {})
-        for key in CURVE_SECTION_KEYS:
+        for key in sorted(CURVE_SECTION_KEYS):
             properties[key] = {"type": "boolean"}
         if name == "custom":
             from emtk.view_form import TABLE_KEYS
 
-            for key in TABLE_KEYS | {"x_label", "y_label", "log_x"}:
+            for key in sorted(TABLE_KEYS | {"x_label", "y_label", "log_x"}):
                 properties.setdefault(key, {})
         if name == "panel":
             properties["include"] = {"type": "string"}
@@ -337,7 +344,9 @@ def build_view_schema() -> dict:
         for key, value in top_level.items()
         if key not in {"panels", "_columns", "entity_actions"}
     }
-    table_properties: dict[str, dict[str, Any]] = {key: {} for key in COMMON_KEYS | TABLE_KEYS}
+    table_properties: dict[str, dict[str, Any]] = {
+        key: {} for key in sorted(COMMON_KEYS | TABLE_KEYS)
+    }
     group = {
         "anyOf": [
             {"type": "array", "items": {"$ref": "#/$defs/section"}},
@@ -475,6 +484,14 @@ def build_guide_schema() -> dict:
                     "A window drawn in the viewport, by key -- density, "
                     "objects, mouse, history (chimol). Resolves only while it "
                     "is open, so the step should open it first."
+                ),
+            },
+            "control": {
+                "type": "string",
+                "description": (
+                    "With window: one control inside that window, by the name its "
+                    "panel registers (chimol). Rings the button rather than the "
+                    "whole window."
                 ),
             },
             "movie": {"type": "boolean", "description": "The playback transport (chimol)."},

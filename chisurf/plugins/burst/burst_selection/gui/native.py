@@ -604,9 +604,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         if implot.begin_plot(f"Count rate ({m.trace_bin_ms:g} ms bins)", (-1, -1)):
             implot.setup_axes("Time in the window (s)", "Count rate (Hz)")
             if "all" in curves:
-                implot.plot_line("All photons", *curves["all"])
+                implot.plot_line(tr("All photons"), *curves["all"])
             if "selected" in curves:
-                implot.plot_line("Selected photons", *curves["selected"])
+                implot.plot_line(tr("Selected photons"), *curves["selected"])
             implot.end_plot()
 
     def _dt(self, box=None) -> None:
@@ -622,9 +622,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             implot.setup_axes("Photon index", "dT (ms)")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             if "all" in curves:
-                implot.plot_scatter("All photons", *curves["all"], size=1.5)
+                implot.plot_scatter(tr("All photons"), *curves["all"], size=1.5)
             if "selected" in curves:
-                implot.plot_scatter("Selected photons", *curves["selected"], size=1.5)
+                implot.plot_scatter(tr("Selected photons"), *curves["selected"], size=1.5)
             limits = m.thresholds()
             for n, key in enumerate(("dt_min", "dt_max")):
                 if limits[key] is not None:
@@ -646,9 +646,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             implot.setup_axes("Micro time (ns)", "Counts")
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             if "all" in curves:
-                implot.plot_line("All photons", *curves["all"])
+                implot.plot_line(tr("All photons"), *curves["all"])
             if "selected" in curves:
-                implot.plot_line("Selected photons", *curves["selected"])
+                implot.plot_line(tr("Selected photons"), *curves["selected"])
             implot.end_plot()
 
     def _duration(self, box=None) -> None:

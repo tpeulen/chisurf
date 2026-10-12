@@ -268,8 +268,11 @@ Each was re-checked against the pre-change baseline where it touched a changed s
   after zoom/pan (all variants) -- the plots predate the auto-range button (emtk aea9d8b).
 - **Audifier** (resize, 800x600): "Optical Setup…" and "Read" are clipped horizontally in the Detector setup
   toolbar. **MMFDB admin** (resize): the "📖 Guide" caption is clipped.
-- **lang_de** untranslated: Boarding "Detector setup", "FCS channels"; HMM "counts"; Spectra "to";
-  VV/VH anisotropy "Load a VV/VH file".
+- **lang_de** untranslated: ~~Boarding "Detector setup", "FCS channels"~~ (resolved 2026-10-12: the wizard's step
+  list, step title and subtitle go through `tr`; the Settings hub's "none" was a QSS file's `border: none;`, which the
+  harness now reads as document content like a table cell); HMM "counts"; Spectra "to"; VV/VH anisotropy "Load a
+  VV/VH file". Burst Analysis' "All", "All photons", "Selected photons", "Unsaved" resolved the same day (help-window
+  category pill, Burst Selection legends, Burst Browser detector choice, BVA setup choice).
 - In-process plugin suites, also red at the old emtk with the old specs: TTTR image browser drag/wheel/resize
   clicks (3), VV/VH `test_save_outputs_and_its_error_path`; ~~the shell suites fail on
   `emtk.overlays.dismiss` (chisurf code calling an unpushed emtk function)~~ — resolved by the emtk pin 6d998ed

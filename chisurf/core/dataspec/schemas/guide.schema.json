@@ -81,6 +81,10 @@
                       "type": "string",
                       "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
                     },
+                    "control": {
+                      "type": "string",
+                      "description": "With window: one control inside that window, by the name its panel registers (chimol). Rings the button rather than the whole window."
+                    },
                     "movie": {
                       "type": "boolean",
                       "description": "The playback transport (chimol)."
@@ -265,6 +269,10 @@
                           "type": "string",
                           "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
                         },
+                        "control": {
+                          "type": "string",
+                          "description": "With window: one control inside that window, by the name its panel registers (chimol). Rings the button rather than the whole window."
+                        },
                         "movie": {
                           "type": "boolean",
                           "description": "The playback transport (chimol)."
@@ -437,6 +445,10 @@
                 "window": {
                   "type": "string",
                   "description": "A window drawn in the viewport, by key -- density, objects, mouse, history (chimol). Resolves only while it is open, so the step should open it first."
+                },
+                "control": {
+                  "type": "string",
+                  "description": "With window: one control inside that window, by the name its panel registers (chimol). Rings the button rather than the whole window."
                 },
                 "movie": {
                   "type": "boolean",

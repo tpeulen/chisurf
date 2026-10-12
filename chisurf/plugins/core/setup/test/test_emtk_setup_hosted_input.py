@@ -63,8 +63,9 @@ def test_the_wheel_scrolls_the_models_table_and_the_first_row_leaves_the_view(hu
 
 
 def plot_centre(drv):
+    # The live fit-window preview labels its axes as a fit window does ("time / ns").
     painter = drv.draw(1)
-    cx = next(t[0] for t in painter.texts if t[5] == "t / ns")
+    cx = next(t[0] for t in painter.texts if t[5] == "time / ns")
     cy = next(t[1] for t in painter.texts if t[5] == "counts")
     return cx, cy
 

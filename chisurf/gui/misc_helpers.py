@@ -248,7 +248,8 @@ def run_macro(
             "QtGui": QtGui,
             "window": main_window,
         }
-    globals.update({"__file__": filename})
+    # A module's __file__ is a str; a Path broke `Path(...).write_text(__file__)` in macros.
+    globals.update({"__file__": os.fspath(filename)})
 
     import importlib
     import sys

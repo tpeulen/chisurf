@@ -232,14 +232,19 @@ class EmTkHelpWindow:
             cats = ["All"] + [h for h, _ in self.sections]
             used_width = 0.0
             for c in cats:
-                place_button(f" {c} ")
+                # "All" is the window's own pill and is translated; the others are the
+                # headings of the help text, which is English content.
+                shown = tr("All") if c == "All" else c
+                place_button(f" {shown} ")
                 is_sel = c == self.active_category
                 if is_sel:
                     im.push_style_color(Col.BUTTON, (40, 90, 180, 255))
-                if im.button(f" {c} ##filter_{c}"):
+                if im.button(f" {shown} ##filter_{c}"):
                     self.active_category = c
                 im.set_item_tooltip(
-                    "Show all help sections." if c == "All" else f"Show the {c} help section."
+                    tr("Show all help sections.")
+                    if c == "All"
+                    else tr("Show the {section} help section.").format(section=c)
                 )
                 if is_sel:
                     im.pop_style_color()

@@ -50,6 +50,30 @@ def _rectangle_key(node):
     return None
 
 
+#: The card base whose ``toolbar(rows)`` is ``button_row(rows, remember=self.remember)``.
+CARD_SHELL = "chisurf.emtk.card_shell.CardShell"
+
+
+def _card_toolbar_class(tree, scope):
+    """Whether ``self.toolbar`` of *scope* is :data:`CARD_SHELL`'s remembered button row.
+
+    True for a class that names the card base directly and overrides neither ``toolbar``
+    nor ``remember``, so a toolbar row's ``key`` is the rectangle the tour points at.
+    """
+    if not isinstance(scope, ast.ClassDef):
+        return False
+    imports = {
+        alias.asname or alias.name: f"{node.module}.{alias.name}"
+        for node in tree.body if isinstance(node, ast.ImportFrom) and node.level == 0
+        for alias in node.names
+    }
+    if not any(isinstance(base, ast.Name) and imports.get(base.id) == CARD_SHELL for base in scope.bases):
+        return False
+    return not any(
+        isinstance(node, ast.FunctionDef) and node.name in {"toolbar", "remember"} for node in scope.body
+    )
+
+
 def _tour_target_class(tree, scope, registration_sources, seen=None):
     """Follow authored imports to the shared rectangle mixin, without executing them."""
     seen = set() if seen is None else seen
@@ -101,6 +125,7 @@ def _imperative_control(tree, registration_sources):
         shared_remember = isinstance(scope, ast.ClassDef) and _tour_target_class(
             tree, scope, registration_sources
         )
+        card_toolbar = _card_toolbar_class(tree, scope)
         for function in methods.values() if isinstance(scope, ast.ClassDef) else [scope]:
             nodes = list(ast.walk(function))
             has_button = any(_is_button(node) for node in nodes)
@@ -133,15 +158,21 @@ def _imperative_control(tree, registration_sources):
                 for alias in node.names if alias.name == "button_row"
             }
             for assignment in nodes:
-                if not shared_remember or not isinstance(assignment, ast.Assign):
+                if not isinstance(assignment, ast.Assign):
                     continue
                 call = assignment.value
-                if not (
+                remembered_row = shared_remember and (
                     isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
                     and call.func.id in button_row_names and call.args
                     and any(keyword.arg == "remember" and _attribute(keyword.value, "remember")
                             for keyword in call.keywords)
-                ):
+                )
+                card_row = card_toolbar and (
+                    isinstance(call, ast.Call) and _attribute(call.func, "toolbar")
+                    and isinstance(call.func.value, ast.Name) and call.func.value.id == "self"
+                    and call.args
+                )
+                if not (remembered_row or card_row):
                     continue
                 declared_key = any(
                     isinstance(node, ast.Dict)
@@ -163,7 +194,21 @@ def _imperative_control(tree, registration_sources):
                             for statement in branch.body for node in ast.walk(statement))
                     for branch in nodes
                 )
-                if declared_key and callback:
+                # A dispatch table indexed by the pressed key: ``{..., "load_example": self.load_example}[pressed]()``.
+                dispatched = any(
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Subscript)
+                    and isinstance(node.func.value, ast.Dict)
+                    and isinstance(node.func.slice, ast.Name)
+                    and node.func.slice.id in result_names
+                    and any(
+                        isinstance(key, ast.Constant) and key.value == "load_example"
+                        and _attribute(value, "load_example")
+                        for key, value in zip(node.func.value.keys, node.func.value.values)
+                    )
+                    for node in nodes
+                )
+                if declared_key and (callback or dispatched):
                     return True
             for loop in nodes:
                 if not isinstance(loop, ast.For) or not isinstance(loop.target, ast.Tuple):
@@ -327,6 +372,23 @@ def audit_demo(source: str, guide, view, path: str, *, control_sources=None, reg
     return findings
 
 
+def _teaches_the_example(text):
+    """Whether a tour's step index 1 points at ``load_example`` (the tour a demo belongs to)."""
+    try:
+        guide = json.loads(text)
+    except (ValueError, TypeError):
+        return False
+    steps = guide.get("steps", []) if isinstance(guide, dict) else guide
+    if not isinstance(steps, list) or len(steps) <= 1 or not isinstance(steps[1], dict):
+        return False
+    target = steps[1].get("target", {})
+    if isinstance(target, str):
+        return target == "load_example"
+    return isinstance(target, dict) and "load_example" in {
+        target.get(key) for key in ("name", "action", "attr", "key")
+    }
+
+
 def audit_tree(root: Path = ROOT, *, revision: str | None = "HEAD") -> dict:
     """Read committed producer/resource bytes, keeping local prototypes diagnostic only."""
     sources = {}
@@ -388,13 +450,19 @@ def audit_tree(root: Path = ROOT, *, revision: str | None = "HEAD") -> dict:
             name: text for name, text in sources.items()
             if owner(name) == plugin and name.startswith(parent + "/")
         }
+        # A plugin that hosts several tools keeps each tool's tour beside its resources
+        # (``gui/resources/<tool>/guide.json``); the demo is taught by one of them.
         guides = [
             (name, text)
             for name, text in sorted(owned.items())
-            if Path(name).parent.as_posix() in {parent, parent + "/gui"}
+            if (
+                Path(name).parent.as_posix() in {parent, parent + "/gui"}
+                or Path(name).parent.parent.as_posix() == parent + "/gui/resources"
+            )
             and "guide" in Path(name).name
             and name.endswith(".json")
         ]
+        guides.sort(key=lambda item: not _teaches_the_example(item[1]))
         views = [
             (name, text)
             for name, text in sorted(owned.items())

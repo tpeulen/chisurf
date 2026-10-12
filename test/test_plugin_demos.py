@@ -313,3 +313,55 @@ def test_every_shipped_demo_has_the_standard_contract():
     report = audit_tree(root, revision="HEAD")
     assert report["demos"], "No committed demos were measured."
     assert not report["findings"], report["findings"]
+
+
+CARD_CONTROL = """from chisurf.emtk.card_shell import CardShell
+class Card(CardShell):
+    def draw(self):
+        pressed = self.toolbar([{"label": "Example", "key": "load_example"}, {"label": "Run", "key": "run"}])
+        {None: lambda: None, "load_example": self.load_example, "run": self.run}[pressed]()
+"""
+
+
+def test_a_card_toolbar_dispatching_the_pressed_key_is_a_real_control():
+    """A card's toolbar is the remembered button row; a dispatch table is its callback."""
+    assert (
+        audit_demo(GOOD, GUIDE, [], "probe/demo.py", control_sources={"gui/card.py": CARD_CONTROL})
+        == []
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        CARD_CONTROL.replace("class Card(CardShell):", "class Card:"),
+        CARD_CONTROL + "\n    def toolbar(self, rows):\n        return None\n",
+        CARD_CONTROL + "\n    def remember(self, key):\n        pass\n",
+        CARD_CONTROL.replace('"load_example": self.load_example', '"load_example": self.run'),
+        CARD_CONTROL.replace('"key": "load_example"', '"key": "example"'),
+        CARD_CONTROL.replace("[pressed]()", '["run"]()'),
+    ],
+)
+def test_a_card_toolbar_without_the_real_registration_or_callback_does_not_pass(source):
+    """No base, an overridden toolbar or remember, a wrong callback, key or index all fail."""
+    findings = audit_demo(GOOD, GUIDE, [], "probe/demo.py", control_sources={"gui/card.py": source})
+    assert "demo-control" in [f.code for f in findings]
+
+
+def test_a_tool_tour_beside_its_resources_teaches_the_plugins_demo(tmp_path):
+    """A plugin hosting several tools: the tour under ``gui/resources/<tool>`` that awaits the example counts."""
+    plugin = _plugin(tmp_path)
+    (plugin / "gui/guide.json").write_text(
+        json.dumps({"steps": [{"title": "Intro"}, {"target": {"name": "nav_list"}}]})
+    )
+    (plugin / "gui/card.py").write_text(CARD_CONTROL)
+    tool = plugin / "gui/resources/docking"
+    tool.mkdir(parents=True)
+    (tool / "guide.json").write_text(json.dumps(GUIDE))
+    report = audit_tree(tmp_path, revision=None)
+    record = next(r for r in report["demos"] if r["path"].endswith("probe/demo.py"))
+    assert record["guide"].endswith("gui/resources/docking/guide.json")
+    assert report["findings"] == []
+    (tool / "guide.json").unlink()  # without it the plugin's own tour is audited, and fails
+    codes = {f["code"] for f in audit_tree(tmp_path, revision=None)["findings"]}
+    assert "demo-tour-target" in codes

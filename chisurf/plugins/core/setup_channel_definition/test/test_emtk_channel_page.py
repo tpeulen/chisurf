@@ -1076,7 +1076,27 @@ def test_the_detector_table_buttons_never_overlap_or_clip_in_a_narrow_host(make,
                     column.key,
                     cw,
                 )
-    assert (width >= 700) == ("gch" in shown) and (width >= 600) == ("l1" in shown)
+    # Which optional columns fit is measured, not a pixel limit: the page drops them in its
+    # declared order until the rest fit, and drops one only when it would not have fitted.
+    page = app.page
+    hidden = [key for key in page.NARROW_COLUMNS if key not in shown]
+    assert hidden == list(page.NARROW_COLUMNS[: len(hidden)]), (width, hidden)
+    if hidden:
+        from emtk.i18n import tr
+
+        def least(column):
+            """The narrowest a column can be: its header as drawn, padded, or its own minimum."""
+            title = tr(column.title).strip()
+            return max(
+                36.0, ui.painter.text_width(title) + 16.0 if title else 0.0, column.min_width
+            )
+
+        needed = sum(least(c) for c in control.columns if c.key in shown)
+        restored = next(c for c in control.columns if c.key == hidden[-1])
+        # 24 px: the vertical scroll bar and the frame the table keeps beside its columns.
+        assert needed + least(restored) + 24.0 > control._body_box[2], (width, hidden)
+    if width >= 1200:
+        assert not hidden
     if width >= 470:  # the delete button of the second row still works at the narrow end
         press_button(ui, "detectors", "red", "delete")
         assert list(app.model.data["detectors"]) == ["green"]

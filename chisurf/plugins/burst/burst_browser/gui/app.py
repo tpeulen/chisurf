@@ -204,7 +204,8 @@ class BurstBrowserGui:
             cur_det_idx = dets.index(self.model.detector)
         im.set_next_item_width(avail_w)
         im.text(tr("Detector:"))
-        changed, new_det_idx = im.combo("##det", cur_det_idx, dets)
+        # The first entry is the "All" choice, a word of the window; the rest are detector names.
+        changed, new_det_idx = im.combo("##det", cur_det_idx, [tr(dets[0]), *dets[1:]])
         im.set_item_tooltip(tr("Detector (channel group) whose bursts are shown."))
         self.remember("detector")
         if changed and 0 <= new_det_idx < len(dets):

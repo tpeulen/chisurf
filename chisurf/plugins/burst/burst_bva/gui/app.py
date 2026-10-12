@@ -570,7 +570,7 @@ class BurstBvaGui:
         setups = [UNSAVED, *bar.names]
         index = setups.index(bar.selected) if bar.selected in setups else 0
         im.text(tr("Setup:"))
-        changed, picked = im.combo("##bva_setup", index, setups)
+        changed, picked = im.combo("##bva_setup", index, [tr(setups[0]), *setups[1:]])
         im.set_item_tooltip(
             tr(
                 "Choose a saved detector setup; its detectors become the donor and acceptor choices."

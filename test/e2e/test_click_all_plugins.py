@@ -668,6 +668,49 @@ def painter_rectangle(painter, rect):
     return x, y, w, h
 
 
+def implot_clipped(plot):
+    """Samples of *plot*'s lines and scatters that lie outside its current view, as strings.
+
+    A view that auto-ranged must contain every finite sample; on a log axis only the positive
+    ones can be drawn at all. A peak sitting on (or past) the frame is the defect this finds: a
+    log axis padded in linear space, a curve left out of the fit.
+    """
+    import math
+
+    out = []
+    x_axis, y_axis = plot.x_axis(0), plot.y_axis(0)
+    for record in getattr(plot, "records", []):
+        pts = record.get("pts")
+        if record.get("kind") not in ("line", "scatter") or not pts:
+            continue
+        for axis_name, axis, index in (("x", x_axis, 0), ("y", y_axis, 1)):
+            log = axis.scale == 2
+            values = [p[index] for p in pts if math.isfinite(p[index]) and (p[index] > 0 or not log)]
+            if not values:
+                continue
+            lo, hi = axis.range_min, axis.range_max
+            top, bottom = max(values), min(values)
+            if top >= hi or bottom <= lo:
+                out.append(f"{record.get('label')} {axis_name}: data {bottom:g}..{top:g} outside {lo:g}..{hi:g}")
+    return out
+
+
+def chiplot_clipped(canvas):
+    """The chiplot equivalent of :func:`implot_clipped`: drawn axis ranges against the data extent."""
+    out = []
+    drawn = getattr(canvas, "_drawn", None)
+    if not drawn:
+        return out
+    for axis, name in ((0, "x"), (1, "y")):
+        data, _placed = canvas._extent(axis)
+        if data is None or name not in drawn:
+            continue
+        lo, hi = sorted(drawn[name])
+        if data[0] < lo - 1e-9 or data[1] > hi + 1e-9:
+            out.append(f"{name}: data {data[0]:g}..{data[1]:g} outside {lo:g}..{hi:g}")
+    return out
+
+
 @contextmanager
 def recorded_plots():
     """Record every plot a frame draws: implot plots and chiplot panels, in host coordinates.
@@ -703,6 +746,12 @@ def recorded_plots():
                 "opted_out": bool(
                     plot.flags & (implot.FLAGS_NO_INPUTS | implot.FLAGS_NO_AUTO_RANGE_BUTTON)
                 ),
+                "clipped": (
+                    implot_clipped(plot)
+                    if not implot._auto_range_shown(plot)
+                    and not any(ax.enabled and ax.has_range for ax in plot.axes)
+                    else []
+                ),
             }
         )
 
@@ -717,6 +766,7 @@ def recorded_plots():
                 "button": painter_rectangle(painter, rect) if rect else None,
                 "shown": canvas._auto_button_shown(),
                 "opted_out": not (canvas._auto_button and canvas._interactive),
+                "clipped": chiplot_clipped(canvas) if all(canvas.is_auto_range()) else [],
             }
         )
 
@@ -786,6 +836,9 @@ def exercise_auto_range(driver, result):
                 entry["skipped"] = "opted out" if plot["opted_out"] else "not fully on screen"
                 continue
             entry["shown_at_start"] = plot["shown"]
+            if plot["clipped"]:
+                entry["clipped"] = plot["clipped"]
+                result["errors"].append(f"auto-range: {entry['plot']} clips its data: {plot['clipped'][0]}")
             x, y, w, h = plot["area"]
             centre = (x + w / 2.0, y + h / 2.0)
             current = plot
@@ -1979,6 +2032,17 @@ def _native(plugin_id, result, png_path):
                     self.tables.append((painter_rectangle(ctx.p, rect), TABLE_HEADER_H))
                 return result
 
+            original_editor = im.text_editor
+
+            def observe_editor(*args, **kwargs):
+                """Record a text editor's rectangle: what it shows is the user's document (a QSS file's
+                ``border: none;`` is not the caption "none")."""
+                result = original_editor(*args, **kwargs)
+                rect = im.get_item_rect()
+                if rect is not None:
+                    self.tables.append((painter_rectangle(im.get_current_context().p, rect), 0.0))
+                return result
+
             from chisurf.emtk.node_editor.control import GraphControl
 
             original_graph = GraphControl._draw_graph
@@ -2004,6 +2068,7 @@ def _native(plugin_id, result, png_path):
                     patch.object(Context, "item_add", observe_item),
                     patch.object(view_form, "_fold", observe_fold),
                     patch.object(GraphControl, "_draw_graph", observe_graph),
+                    patch.object(im, "text_editor", observe_editor),
                 ):
                     yield self
             finally:

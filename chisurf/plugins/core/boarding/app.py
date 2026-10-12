@@ -168,10 +168,14 @@ class BoardingApp(ImApp):
     def draw_steps(self, box: Any = None) -> None:
         """The navigation list, the Back / Next / Finish bar and Help / Guide."""
         for item in self.model.navigation():
-            if im.selectable(item["label"], item["current"]):
+            # The model's label is English; the mark stays, the title is translated and the
+            # step index keeps the control's id one id in every language.
+            mark = "\u2713 " if item["complete"] else "  "
+            label = f"{mark}{tr(item['title'])}###step{item['index']}"
+            if im.selectable(label, item["current"]):
                 self.model.go_to(item["index"])
                 self.tour.notify_used("nav_list")
-            im.set_item_tooltip(item["tooltip"])
+            im.set_item_tooltip(tr(item["tooltip"]))
             if item["current"]:
                 self.item_rects["nav_list"] = im.get_item_rect()
         im.separator()
@@ -186,9 +190,9 @@ class BoardingApp(ImApp):
 
     def draw_page(self, box: Any = None) -> None:
         """The header of the current step and its page."""
-        im.text(self.model.title)
+        im.text(tr(self.model.title))
         im.begin_disabled(True)
-        im.text_wrapped(self.model.subtitle)
+        im.text_wrapped(tr(self.model.subtitle))
         im.end_disabled()
         im.separator()
         panel = self.panels[self.model.step_id]

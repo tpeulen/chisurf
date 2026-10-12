@@ -181,6 +181,31 @@ def test_the_written_schemas_match_the_generator():
         )
 
 
+def test_the_generated_view_schema_does_not_depend_on_the_hash_seed():
+    """Regenerating must give the same bytes, or every regeneration is a reordering diff.
+
+    Key sets were iterated unsorted, so the written file reordered itself with
+    ``PYTHONHASHSEED`` and a one-key change arrived as a 400-line diff.
+    """
+    import os
+    import subprocess
+    import sys
+
+    code = (
+        "import json; from chisurf.core.dataspec.schema import build_view_schema; "
+        "print(json.dumps(build_view_schema()))"
+    )
+    outputs = set()
+    for seed in ("0", "1"):
+        env = dict(os.environ, PYTHONHASHSEED=seed)
+        outputs.add(
+            subprocess.run(
+                [sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True
+            ).stdout
+        )
+    assert len(outputs) == 1
+
+
 def test_every_section_type_is_in_the_scheme():
     """A new section type must reach the scheme, or its files cannot validate."""
     from chisurf.core.dataspec import _SECTION_TYPES
