@@ -4,7 +4,7 @@
   initial:
     a1: 1
     tau1: 4
-  description: No description!
+  description: "Single-exponential decay, amplitude a1 and lifetime tau1 (ns)."
 2-Lifetimes:
   equation: a1*exp(-x/tau1)+a2*exp(-x/tau2)
   initial:
@@ -12,7 +12,7 @@
     tau1: 2
     a2: 1
     tau2: 4
-  description: No description!
+  description: "Sum of two exponentials: amplitudes a1, a2 and lifetimes tau1, tau2 (ns)."
 3-Lifetimes:
   equation: a1*exp(-x/tau1)+a2*exp(-x/tau2)+a3*exp(-x/tau3)
   initial:
@@ -22,7 +22,7 @@
     tau2: 2
     a3: 1
     tau3: 1
-  description: No description!
+  description: "Sum of three exponentials: amplitudes a1..a3 and lifetimes tau1..tau3 (ns)."
 Transient-Quenching:
   equation: p0*exp(-x/tau0-4*pi*Rdye*Ddye*Nq**2/Vav*x*(1+2*Rdye/sqrt(pi*Ddye*x)))
   initial:
@@ -32,21 +32,14 @@ Transient-Quenching:
     Ddye: 40
     Nq: 1
     Vav: 16755
-  description: "<html><head /><body><h1>Transient-Quenching</h1><p>Lorem ipsum dolor
-    sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt
-    ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam
-    et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus
-    est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing
-    elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam
-    erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum.
-    Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+  description: "Transient (diffusion-limited) quenching of one dye (lifetime tau0, amplitude p0) by Nq quenchers in the volume Vav: Smoluchowski term with dye radius Rdye and diffusion coefficient Ddye."
 Transient-Quenching Empirical:
   equation: p0*exp(-a*x-2*b*sqrt(x))
   initial:
     p0: 1
     a: 1
     b: 1
-  description: No description!
+  description: "Empirical transient (diffusion-limited) quenching: exp(-a t - 2 b sqrt(t)), amplitude p0; a is the stationary rate, b the transient term."
 Transient-Quenching 2-state:
   equation: a1*exp(-x/tau0-4*pi*Rdye*Ddye*Nq**2/Vav*x*(1+2*Rdye/sqrt(pi*Ddye*x)))+a2*exp(-x/tau0)
   initial:
@@ -57,7 +50,7 @@ Transient-Quenching 2-state:
     Ddye: 40
     Nq: 1
     Vav: 16755
-  description: No description!
+  description: "Two populations of one dye (lifetime tau0): a1 quenched transiently by Nq quenchers in the volume Vav (Smoluchowski term with dye radius Rdye and diffusion coefficient Ddye), a2 unquenched."
 2-Lifetimes, 1-Rate:
   equation: a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ))
   initial:
@@ -66,7 +59,7 @@ Transient-Quenching 2-state:
     a2: 1
     tau2: 2
     kQ: 0.5
-  description: No description!
+  description: "Two donor lifetimes tau1, tau2 (amplitudes a1, a2), both quenched by one additional rate kQ (1/ns)."
 2-Lifetimes, 1-Rate, 0-Rate:
   equation: p0*((1-xD)*(a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ)))+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))
   initial:
@@ -77,14 +70,14 @@ Transient-Quenching 2-state:
     a2: 1
     tau2: 2
     kQ: 0.5
-  description: No description!
+  description: "A fraction xD of donors without quencher (lifetimes tau1, tau2) and 1 - xD quenched by the rate kQ; overall amplitude p0."
 1-Lifetime, 1-Rate:
   equation: a1*exp(-x*(1/tau1+kQ))
   initial:
     a1: 1
     tau1: 4
     kQ: 0.5
-  description: No description!
+  description: "One donor lifetime tau1 (amplitude a1) quenched by an additional rate kQ (1/ns)."
 1-Lifetime, 1-Rate, 0-Rate:
   equation: p0*((1-aD)*exp(-x*(1/tau1+kQ))+aD*exp(-x*(1/tau1)))
   initial:
@@ -92,7 +85,7 @@ Transient-Quenching 2-state:
     aD: 0.5
     tau1: 4
     kQ: 0.5
-  description: No description!
+  description: "A fraction aD of donors without quencher (lifetime tau1) and 1 - aD quenched by the rate kQ; overall amplitude p0."
 2-Lifetime, 2-Rates, 1-Higher-order:
   equation: "(ad1 * exp(-x/td1) + (1-ad1) * exp(-x/td2)) * abs(aDO) / (abs(aDO)  +
     abs(aDA) + abs(aDAA)) +(ad1 * exp(-x/td1) + (1-ad1) * exp(-x/td2)) * (af1A * exp(-x*abs(kf1A))

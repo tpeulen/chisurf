@@ -16,17 +16,27 @@ A key attribute of parameters is their value. Parameter values are either fixed 
 **Fig.10 Fitting parameters.** (**a**) Parameters are shown as rows of a table
 in the Analysis dock, here the Convolution box of a lifetime fit: the *Value*,
 *Fixed*, the lower and upper bound *Lo*/*Hi* with *Bounds* to enforce them, and
-the fitted *Error*. Fixed parameters are drawn grey. (**b**) A click on a
-parameter's name opens its detail popup, here for the IRF time shift *ts*
-(`timeshift`): its link state (*Not linked*) with **Link…** and **Unlink**,
-the value with *Fixed*, the **Prior**, and the bounds.
+the fitted *Error*. Fixed parameters are drawn grey. (**b**) A right click on
+a parameter row opens its link menu, here for the IRF time shift *ts*
+(`timeshift`): **Link timeshift to** lists the fits and their parameters,
+**Unlink** removes the link (greyed while *ts* is not linked).
 
 A parameter value is changed by editing its *Value* cell (**Fig.10**, **a**),
-or in the popup (**b**). *Fixed* fixes it, *Bounds* enables the *Lo*/*Hi*
-range. A parameter is linked to another one with **Link…** in its popup, or
-from the table's right-click menu ({doc}`linking_parameters`); a linked
-parameter shows its value in grey italics and the popup names the parameter it
-follows.
+or in the table. *Fixed* fixes it, *Bounds* enables the *Lo*/*Hi*
+range. A parameter is linked to another one from the table's right-click menu
+(**b**, {doc}`linking_parameters`).
+
+The last column, *Prior*, says what the fit believes about the parameter besides
+its bounds. **Box** (the default) is the plain *Lo*/*Hi* range; a family
+(**Gaussian**, **Truncated Gaussian**, **Log-normal**, **Half-normal**,
+**Exponential**, **Gamma**, **Beta**) attaches a smooth prior that pulls the fit
+toward a value. Pick the family from the **Prior** entry of the row's right-click
+menu (its location parameters start at the parameter's current value, its width at
+a tenth of it), or type it into the cell with its shape parameters in the order
+the family lists them, e.g. `Gaussian(4, 0.4)` (mean 4, standard deviation 0.4); `Box`
+clears it. A linked parameter follows its master: its row is drawn in blue, its
+tooltip says *linked to* the master's name, and its cells are read only until
+**Unlink**.
 
 Actions in the user interface on parameters can be called from the shell. In the ChiSurf shell script below, two parameters are created, values are assigned to the respective parameters, and parameters are linked to each other, to illustrate how to create and interact with parameters.
 

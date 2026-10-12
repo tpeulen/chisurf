@@ -46,11 +46,13 @@ Do not add the previous global fits!
 :align: center
 ```
 
-Finally, press the fit button and obtain the estimates for the g-factor and the polarization correction factor based on both data sets. Here, the following values are obtained:
+Finally, press the fit button and obtain the estimates for the g-factor and the polarization correction factors based on both data sets: read *g*, *l1* and *l2* in the *Global parameters* table of the Analysis dock. For the original A488/eGFP data they were:
 
 1. g-factor = 1.01
 2. l1 = 0.0437
 3. l2 = 0.349
+
+(The screenshot is made with the bundled example recordings, so its values differ.)
 
 *@Elizabeth: We have observed that the depolarization in one polarization direction is much larger in our used 40X/NA1.2 Zeiss water objective. This might be different for other objectives.*
 

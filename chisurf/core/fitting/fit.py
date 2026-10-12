@@ -106,6 +106,35 @@ def _raw_fit_name(f) -> str:
     return f"{model_name} - {data_name}"
 
 
+def reported_parameters(model) -> list:
+    """``(label, parameter)`` of the parameters a fit's report lists, in report order.
+
+    Only what the model computes with. A catalogue model (``Parse-Model``) holds the
+    parameters of *every* equation of its catalogue, and only the active equation's
+    are read (``structure_parameter_ids``); listing the rest buries six parameters
+    under a hundred fixed ones. A global fit reports each local fit's parameters
+    under ``i:name`` (its own naming), then its global parameters: keyed by bare
+    name, the three ``N`` of three curves collapsed into whichever came last.
+    """
+    fits = getattr(model, "fits", None)
+    if isinstance(fits, list) and hasattr(model, "global_parameters_all"):
+        rows = []
+        for index, fit in enumerate(fits, 1):
+            local = getattr(fit, "model", None)
+            if local is not None:
+                rows += [(f"{index}:{label}", p) for label, p in reported_parameters(local)]
+        rows += [(p.name, p) for p in model.global_parameters_all]
+        return rows
+    used = getattr(model, "structure_parameter_ids", None)
+    used = set(used()) if callable(used) else None
+    by_name = model.parameters_all_dict
+    return [
+        (name, by_name[name])
+        for name in sorted(by_name)
+        if not used or getattr(by_name[name], "canonical_id", name) in used
+    ]
+
+
 class _StagedProgress:
     """One progress bar shared by several optimisations run back to back.
 
@@ -842,20 +871,18 @@ class Fit(cs.core.base.Base):
         shown = f"{chi2r:.4f}" if chi2r == 0 or 1e-3 <= abs(chi2r) < 1e5 else f"{chi2r:.4e}"
         s = f"chi2r={shown}  range={self.xmin}..{self.xmax}\n\n"
         s += f"  {'Name':<12s}  {'Value':<11s}  {'Error':<13s}  {'Source'}  {'Link'}\n"
-        pd = self.model.parameters_all_dict
-        for k in sorted(pd.keys()):
-            p = pd[k]
+        for label, p in reported_parameters(self.model):
             if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
                 continue
             if getattr(p, "is_output", False):
                 continue
             val = f"{p.value:.5g}"
             if p.fixed:
-                s += f"  {p.name:<12s}  {val:<11s}  fixed"
+                s += f"  {label:<12s}  {val:<11s}  fixed"
             else:
                 try:
                     ee = p.error_estimate
-                    if isinstance(ee, float):
+                    if isinstance(ee, float) and math.isfinite(ee):  # nan: never estimated
                         rel = abs(ee / (p.value + 1e-12) * 100.0)
                         err = f"±{ee:.3g}({rel:.1f}%)"
                         src = "sp" if p.scan_result is not None else "cov"
@@ -865,7 +892,7 @@ class Fit(cs.core.base.Base):
                 except Exception:
                     err = "±N/A"
                     src = ""
-                s += f"  {p.name:<12s}  {val:<11s}  {err:<13s}  {src:<6s}"
+                s += f"  {label:<12s}  {val:<11s}  {err:<13s}  {src:<6s}"
             if p.is_linked and p.link is not None:
                 s += f"  →{p.link.name}"
             s += "\n"
@@ -981,8 +1008,7 @@ class Fit(cs.core.base.Base):
             the parameter's bounds and contributes nothing to the objective.
         """
         out = []
-        for name in sorted(self.model.parameters_all_dict.keys()):
-            p = self.model.parameters_all_dict[name]
+        for name, p in reported_parameters(self.model):
             if not isinstance(p, cs.core.fitting.parameter.FittingParameter):
                 continue
             if getattr(p, "is_output", False):
@@ -996,7 +1022,7 @@ class Fit(cs.core.base.Base):
             informative = not isinstance(prior, cs.core.fitting.priors.UniformPrior)
             out.append(
                 {
-                    "name": str(p.name),
+                    "name": str(name),
                     "description": repr(prior),
                     "informative": bool(informative),
                 }
@@ -1285,6 +1311,13 @@ class Fit(cs.core.base.Base):
             if record_result:
                 self.results.append(self.model.__getstate__())
             self._record_achieved_chi2()
+            # A global fit moved its local fits' parameters: what they recorded from their own
+            # runs no longer describes them (a local fit listed chi2r 0.677 beside a curve at 0.709).
+            for member in getattr(self.model, "fits", None) or ():
+                if member is not self and hasattr(member, "_record_achieved_chi2"):
+                    member.__dict__.pop("_last_chi2", None)
+                    member.__dict__.pop("_last_chi2r", None)
+                    member._record_achieved_chi2()
         if finalize:
             self.model.finalize()
         if cancelled:

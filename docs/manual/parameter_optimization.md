@@ -28,7 +28,7 @@ The effect of optimizing (fitting) variable model parameters to data for a fluor
 ```
 
 **Fig.13 Optimizing variable parameters.** A lifetime fit of the IBH sample
-decay before (**a**) and after (**b**) pressing **▶ Fit** in the Fit box. The
+decay before (**a**) and after (**b**) pressing **Fit** in the Fit box. The
 Lifetimes table shows the lifetime τ_L moving from its start value to the
 optimum, with its fitted *Error*; the *Fit* plot shows the data (orange), the
 IRF (blue) and the model (magenta), with the weighted residuals and their

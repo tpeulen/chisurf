@@ -15,8 +15,8 @@ background correctly.
 :align: center
 ```
 
-The VV and VH fits after their individual fits, with the corrections still fixed: the residuals show
-that a single polarisation cannot be described on its own (bundled recording of
-`test/data/tcspc/Jordi`).
+The VV and VH fits after their individual fits, with the corrections still fixed (bundled recording of
+`test/data/tcspc/Jordi`): VV is described on its own (χ²ᵣ ≈ 1.1), VH is not (χ²ᵣ ≈ 4, structured
+residuals) -- its anisotropy terms follow VV's and cannot adapt to it alone.
 
 In this step, still the g-factor, l1 and l2 are fixed to the initially estimated values. Next, also perform a quick fit on the VH dataset. Important note: The fit will not be good! This only serves to initialize the parameter.

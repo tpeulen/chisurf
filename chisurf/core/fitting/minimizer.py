@@ -1351,6 +1351,39 @@ def ier_is_success(ier) -> bool:
     return ier in _SUCCESS
 
 
+#: How many times a run that stopped on ``xtol`` is resumed from where it stopped.
+XTOL_RESTARTS = 4
+#: The relative chi2 drop a resumed run has to reach for another resume to be worth it.
+XTOL_RESTART_GAIN = 1e-3
+
+
+def _run_restarting_on_xtol(m, observer=None) -> int:
+    """Run *m* (a bff minimiser), resuming it while an ``xtol`` stop was premature; MINPACK's ``info``.
+
+    ``info == 2`` means the trust region shrank below ``xtol`` relative to the parameters. On
+    a coupled fit (a VV/VH global fit whose members were first fitted alone) lmdif gets there
+    far from the minimum: the step bound has collapsed while the residual still falls steeply,
+    and the run reports success at chi2r 21.7 where pressing **Fit** once more reaches 1.4
+    (bundled 8 ps recording). A resume starts with a fresh Jacobian and step bound. It is
+    repeated only while it pays -- a run that has really converged stops after one resume
+    that gains nothing.
+    """
+    ier = m.run()
+    for _ in range(XTOL_RESTARTS):
+        if ier != 2 or (observer is not None and observer.cancelled):
+            break
+        try:
+            before = float(m.get_chi2())
+        except Exception:
+            break
+        m.set_initial_values([float(v) for v in m.x])
+        ier = m.run()
+        after = float(m.get_chi2())
+        if not after < before * (1.0 - XTOL_RESTART_GAIN):
+            break
+    return ier
+
+
 def minimize(
     func,
     x0,
@@ -1445,7 +1478,7 @@ def minimize(
         observer = ProgressObserver(progress_callback, n_free)
         m.set_observer(observer)
 
-    ier = m.run()
+    ier = _run_restarting_on_xtol(m, observer)
     x = np.asarray(m.x)
 
     # A Python exception raised inside the residual is *recorded* by

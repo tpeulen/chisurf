@@ -822,68 +822,59 @@ manual/_images/image_rId12.png:
   recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
     older interface and should be replaced by a fresh screenshot of the current one.
 manual/_images/image_rId127.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId133.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId135.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId136.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId137.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId138.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId139.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId140.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId143.png:
-  kind: legacy screenshot
-  origin: docs/_old_manual/manual.docx
+  kind: screenshot
+  origin: docs/guides/screenshots/handmade_replacements.py::manual_anisotropy_rid
   pages:
   - docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md
-  recipe: Extracted from the historical Word manual by build_tools/docs/convert_manual.py. It shows an
-    older interface and should be replaced by a fresh screenshot of the current one.
+  recipe: python docs/guides/screenshots/handmade_replacements.py manual_anisotropy_rid (emtk shell, two Jordi recordings through the anisotropy wizard, joint Global fit; scratch settings).
 manual/_images/image_rId72.png:
   kind: legacy screenshot
   origin: docs/_old_manual/manual.docx
@@ -1391,222 +1382,159 @@ guides/figures/burst_export_table.png:
   pages:
   - docs/guides/34_exporting_burst_data.md
 manual/figures/fit_window_plot_settings.png:
-  caption: "A lifetime fit of the IBH sample decay in its fit window (Fit plot) beside the Plot settings dock showing that plot's settings."
+  caption: A lifetime fit of the IBH sample decay in its fit window (Fit plot) beside the Plot settings dock showing that
+    plot's settings.
   kind: screenshot
   origin: docs/guides/screenshots/fit_window_emtk.py::main
   pages:
   - docs/manual/fit_plots.md
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
-    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
-    range 522-3793, fitted), Plot settings dock raised. State: Fit plot, default settings.'
+  recipe: pixi run -e test python docs/guides/screenshots/fit_window_emtk.py. emtk shell (private in-process session, scratch
+    settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    Lifetime fit (Decay_577D + Prompt as IRF, range 522-3793, fitted); Fit page, Plot settings dock raised, default settings.
 manual/figures/fit_window_reference_settings.png:
-  caption: 'The same fit with logX ticked in the Plot settings.'
+  caption: The same fit with logX ticked in the Plot settings.
   kind: screenshot
   origin: docs/guides/screenshots/fit_window_emtk.py::main
   pages:
   - docs/manual/fit_plots.md
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
-    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
-    range 522-3793, fitted), Plot settings dock raised. State: Fit plot, logX on.'
+  recipe: pixi run -e test python docs/guides/screenshots/fit_window_emtk.py. emtk shell (private in-process session, scratch
+    settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    As fit_window_plot_settings with logX ticked and Reference raw.
 manual/figures/fit_window_info_settings.png:
-  caption: 'The Info plot (fit report) and its settings tabs Analysis, Metadata, External data, Export.'
+  caption: The Info plot (fit report) and its settings tabs Analysis, Metadata, External data, Export.
   kind: screenshot
   origin: docs/guides/screenshots/fit_window_emtk.py::main
   pages:
   - docs/manual/fit_plots.md
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
-    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
-    range 522-3793, fitted), Plot settings dock raised. State: Info plot, Analysis tab.'
+  recipe: pixi run -e test python docs/guides/screenshots/fit_window_emtk.py. emtk shell (private in-process session, scratch
+    settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    As fit_window_plot_settings; Info page, Analysis tab of the Plot settings dock.
 manual/figures/fit_window_parameter_scan.png:
-  caption: 'Parameter scan of the lifetime t0 of the IBH sample fit and its settings.'
+  caption: Parameter scan of the lifetime t0 of the IBH sample fit and its settings.
   kind: screenshot
   origin: docs/guides/screenshots/fit_window_emtk.py::main
   pages:
   - docs/manual/parameter_scan.md
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0, then python docs/guides/screenshots/fit_window_emtk.py
-    /tmp/case0. A real Main (offscreen, 1500x900) with a two-lifetime fit of test/data/tcspc/ibh_sample (Decay_577D + Prompt,
-    range 522-3793, fitted), Plot settings dock raised. State: Parameter scan plot after scanning the first free parameter (t0) over its default range in 30 steps.'
+  recipe: pixi run -e test python docs/guides/screenshots/fit_window_emtk.py. emtk shell (private in-process session, scratch
+    settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    As fit_window_plot_settings; Parameter scan page after scanning t0 over +-5 % in 30 steps.
 manual/figures/fcs_main_window.png:
-  caption: The main window at start with Experiment FCS and File type Seidel Kristine in the Read data dock.
+  caption: 'The shell at start with Experiment FCS and File type Seidel Kristine in the Read data dock.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: no data loaded. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
-    -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py
-    grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: no data loaded.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_datasets_added.png:
-  caption: The Read data dock (Experiment FCS, File type Seidel Kristine, + Data, drop area) after loading the three
-    A488 curves.
+  caption: 'The Datasets dock listing the three A488 curves after loading them.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: three curves loaded. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d)
-    MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: three curves loaded, Datasets dock raised.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_add_analysis.png:
-  caption: The Datasets dock with the three A488 curves selected, Model Parse-Model and + Analysis.
+  caption: 'The Datasets dock with a curve selected, Model Parse-Model and + Analysis.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: curves selected. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
-    -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py
-    grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: first curve selected, before + Analysis.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_fit_windows.png:
-  caption: One Parse-Model fit window per curve, as they open.
+  caption: 'One Parse-Model fit window per curve, as tabs of the working area.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: fits added. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
-    -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py
-    grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: three fits added (Start page closed), third tab in front.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_fit_windows_tabbed.png:
-  caption: 'The fit windows shown as tabs (View/toolbar: tab windows).'
+  caption: 'The fit windows as tabs (Tab Windows) with the second one in front.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: tabbed view. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
-    -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py
-    grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: tab view, second window in front.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_fit_windows_tiled.png:
-  caption: The fit windows tiled over the working area.
+  caption: 'The fit windows tiled side by side over the working area (Tile Windows); curve 1, the current fit the Analysis dock follows, on the left.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: tiled view. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
-    -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py
-    grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: tiled view, curve 1 centred.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_model_3d_gauss_bunching.png:
-  caption: Analysis dock with the formula 3D Gauss, 1 bunching chosen for curve 1, its rendered equation and description;
-    the window maximised.
+  caption: 'Analysis dock with the formula 3D Gauss, 1 bunching chosen for curve 1, its equation and description; curve not yet fitted.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: formula chosen, not yet fitted. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: formula chosen, not yet fitted.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_model_parameters.png:
-  caption: 'The Analysis dock alone: Fit section, Equation (Model, formula, rendering) and the Equation parameters
-    table (Value, Fixed, Lo, Hi, Bounds, Error).'
+  caption: 'The Analysis dock alone: Fit section, Equation (Model, f(x), description) and the Equation parameters table.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: formula chosen, not yet fitted. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: formula chosen, not yet fitted; the shell drawn 1900x2400, cropped to the Analysis dock region.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_first_fit.png:
-  caption: 'Curve 1 fitted over the full range: the bunching term absorbs the afterpulsing of the first lag point
-    (ba 0.97 at 75 ns, N 0.17).'
+  caption: 'Curve 1 fitted over the full range: the bunching term absorbs the afterpulsing of the first lag point.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: fit over points 0-199. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: fit over points 0-199.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_fit_range.png:
-  caption: 'Fit range set to points 1-134 (0.4 us to ~100 ms): First/Last in the Fit section and the shaded range
-    in the plot.'
+  caption: 'Fit range set to points 1-134 (0.4 us to ~100 ms): First/Last in the Fit section and the shaded range in the plot.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: range set, before refit. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: range set, before refit.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_second_fit.png:
   caption: 'Curve 1 refitted over points 1-134: N 4.86, td 25.6 us, s 7.26, ba 0.21, bt 0.90 us.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: refit. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp
-    -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. python docs/guides/screenshots/manual_fcs.py
-    grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: refit.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_all_fitted.png:
-  caption: All three curves fitted individually with 3D Gauss, 1 bunching over points 1-134, tiled.
+  caption: 'All three curves fitted individually with 3D Gauss, 1 bunching over points 1-134, tiled.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: three local fits. Rerun: CHISURF_SETTINGS_DIR=$(mktemp -d)
-    MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: three local fits, tiled.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_link_menu.png:
-  caption: 'Right-click menu of the td row of curve 2: Link td to -> the session''s fits -> Parameters/All parameters,
-    beside the Analysis dock.'
+  caption: 'Right-click menu of the td row of curve 2: Link td to, listing the session''s fits (each opens its parameters).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: composite of the dock and the menu chain. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: menu opened on the td row of curve 2 (curve 2 centred).'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_linked_parameters.png:
-  caption: 'Equation parameters of curve 3 with td, s and bt linked to curve 1: greyed, italic, showing curve 1''s
-    values.'
+  caption: 'Equation parameters of curve 3 with td, s and bt linked to curve 1 (blue, showing curve 1''s values), after one local Fit of its own N, ba and b (chi2r 1.33).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: after linking through the row menus. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: after linking td, s and bt of curves 2 and 3 to curve 1 and one Fit of each child; the shell drawn 1900x2400, cropped to the Analysis dock region.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_add_global_fit.png:
-  caption: Datasets dock with Global Dataset selected and Model Global fit, ready for + Analysis.
+  caption: 'Datasets dock with Model Global fit chosen for the Global Dataset, ready for + Analysis; the three curves tiled, children linked to curve 1 and refitted.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: before adding the global fit. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: children linked and refitted, before adding the global fit.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_file_menu.png:
-  caption: 'File menu with its Fits submenu: Load Fit, Current Fit (Alt+Cmd+S), All Fits, Close Fit, Close all fits.'
+  caption: 'File menu with its Project and Fits sections (Load Fit, Current Fit (Ctrl+Alt+S), All Fits, Close Fit, Close all fits), opened over the converged global fit of the three curves.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
-  recipe: 'Real Main (offscreen, 1500x950), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation
-    of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and loaded
-    with dataset.add; three Parse-Model fits. State: composite of the two popups. Rerun: CHISURF_SETTINGS_DIR=$(mktemp
-    -d) MMFDB_SETTINGS_DIR=$(mktemp -d) PYTHONPATH=modules/chimol:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
-    python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough'
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: File menu open after the global fit has run.'
+  pages:
+  - docs/manual/fit_of_a_fcs_curve.md
+manual/figures/fcs_global_fit.png:
+  caption: 'Global fit of the three A488 curves: its Info tab lists each curve''s parameters (1:N, 2:N, ...) with the linked td, s and bt; the three local fit windows tiled beside it, chi2r 0.71 / 1.04 / 1.26.'
+  kind: screenshot
+  origin: docs/guides/screenshots/manual_fcs.py::grab_fcs_walkthrough
+  recipe: 'emtk shell (make_app, 1900x1100, private session driven with emtk.testing.Driver; run from the repo root with CHISURF_SETTINGS_DIR=$(mktemp -d) MMFDB_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_fcs.py grab_fcs_walkthrough), experiment FCS, file type Seidel Kristine; data: the detector-1 autocorrelation of the three Zeiss Confocor3 A488 measurements in test/data/fcs/confocor3 written as A488_ACF_1..3.cor and read through Read data; Parse-Model fits. State: Global fit added on the Global Dataset, the three Parse-Model fits added under Local fits, Fit run; global fit and local fits tiled.'
   pages:
   - docs/manual/fit_of_a_fcs_curve.md
 manual/figures/fcs_correlator_step.png:
@@ -1715,8 +1643,8 @@ manual/figures/anisotropy_ribbon_tools.png:
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: isolated Main 1600x960 with load_tools() (ribbon), Tools tab
-    current.'
+    2048 channels x 8 ps per polarisation). State: emtk shell (make_app, 1900x1100, private session driven with
+    emtk.testing.Driver; run with pixi run -e test python), ribbon Tools tab current.'
   pages:
   - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
 manual/figures/anisotropy_fit_windows.png:
@@ -1725,9 +1653,9 @@ manual/figures/anisotropy_fit_windows.png:
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: wizard model with stacked files, corrections 1.16/0.12/0.44,
-    rep rate 1000/(2048*bin) MHz, Create fits; windows opened as the Main''s fit.added handler does; Tile Windows;
-    not fitted.'
+    2048 channels x 8 ps per polarisation). State: emtk shell; the Anisotropy wizard opened from the Wizards hub
+    with stacked files, corrections 1.16/0.12/0.44, rep rate 1000/(2048*bin) MHz, Create fits (the shell opens
+    a dock window per fit); Start page closed, Tile Windows (VV in the centre); not fitted.'
   pages:
   - docs/manual/anisotropy_wizard.md
   - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
@@ -1737,7 +1665,8 @@ manual/figures/anisotropy_analysis_vv.png:
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: as anisotropy_fit_windows, VV window active, Analysis dock raised.'
+    2048 channels x 8 ps per polarisation). State: as anisotropy_fit_windows, VV tiled in the centre (the Analysis dock follows it); the shell drawn
+    1900x2400, cropped to the Analysis dock region.'
   pages:
   - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
 manual/figures/anisotropy_analysis_vh.png:
@@ -1746,16 +1675,17 @@ manual/figures/anisotropy_analysis_vh.png:
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: as anisotropy_fit_windows, VH window active, Analysis dock raised.'
+    2048 channels x 8 ps per polarisation). State: as anisotropy_fit_windows, VH tiled in the centre (the Analysis dock follows it); the shell drawn
+    1900x2400, cropped to the Analysis dock region.'
   pages:
   - docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md
 manual/figures/anisotropy_step1_vv_fit.png:
-  caption: VV and VH after their individual fits with the corrections fixed.
+  caption: 'VV and VH after their individual fits with the corrections fixed: VV chi2r 1.12, VH 4.22.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: after vv.run() and vh.run(); VV window active.'
+    2048 channels x 8 ps per polarisation). State: emtk shell; after Fit of the VH and of the VV fit (Analysis dock), VV tiled in the centre.'
   pages:
   - docs/manual/step_1_approximating_gfactor_with_small_fluorophore.md
 manual/figures/anisotropy_step2_corrections_free.png:
@@ -1764,41 +1694,40 @@ manual/figures/anisotropy_step2_corrections_free.png:
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: g, l1, l2 Fixed off on the VV fit; window resized to 1600x2600
-    for the grab, cropped to 1240 px.'
+    2048 channels x 8 ps per polarisation). State: emtk shell; g, l1, l2 Fixed off on the VV fit (edited through the shell
+    parameter calls); the shell drawn 1900x2400, cropped to the Analysis dock region.'
   pages:
   - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md
 manual/figures/anisotropy_step2_global_fit.png:
-  caption: After the joint fit of VV and VH with free corrections.
+  caption: 'After the joint fit of VV and VH with free corrections: global chi2r 2.02 (VV 1.21, VH 2.82).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
-    2048 channels x 8 ps per polarisation). State: global fit run (chi2r ~12); single-dye data, so g drifts to ~2.5.'
+    2048 channels x 8 ps per polarisation). State: emtk shell; global fit run with Global anisotropy tiled in the centre (chi2r ~4.6; the member
+    fits are updated afterwards, their windows do not redraw by themselves); single-dye data, so g moves to ~1.5.'
   pages:
   - docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md
 manual/figures/anisotropy_two_samples.png:
-  caption: 'Six fit windows: the first sample fitted, the second (bundled 9 ps recording, standing in for eGFP)
-    as created.'
+  caption: 'Six fit windows as tabs and the Datasets dock: the first sample fitted (its global fit in front), the second (bundled 9 ps recording,
+    standing in for eGFP) as created.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_anisotropy.py::main_window
   recipe: 'python docs/guides/screenshots/manual_anisotropy.py main (offscreen, from the repo root). Data: bundled
     stacked VV/VH recording test/data/tcspc/Jordi (H2O_8-0 ps_2048 ch.dat IRF, 02_18-577+7.5uM(577)UP_8ps.dat decay;
     2048 channels x 8 ps per polarisation). State: second wizard model with H2O_9-1 ps_2048 ch.dat / 02_18-577+7.5uM(577)UP_9ps.dat
-    at 0.009 ns, Create fits, Tile Windows.'
+    at 0.009 ns, Create fits in the emtk shell; Start page closed, Tab Windows, Datasets dock raised.'
   pages:
   - docs/manual/loading_and_setting_up_the_egfp_data_set.md
 manual/figures/main_overview.png:
-  caption: 'The main window: docks, two fitted IBH decays tiled, the console after a few commands.'
+  caption: 'The main window: docks, two fitted IBH decays as tabs (donor-only with one lifetime, the FRET decay shown, with two), the console after a few commands.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::overview
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Analysis dock
-    raised, windows tiled, console: fit = cs.fits[0]; fit.name; round(fit.chi2r, 3).'
   pages:
   - docs/manual/overview.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py overview. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    Two fitted Lifetime fits; Analysis dock; console after three api calls.
 manual/figures/tools_montage.png:
   caption: 'Four companion tools: ndXplorer, the FCS hub, the TTTR Image Browser, Histogram-Microtime.'
   kind: screenshot
@@ -1812,102 +1741,84 @@ manual/figures/main_read_data_dock.png:
   caption: 'The Read data dock: TCSPC, TXT/CSV and the reader''s file parameters for the IBH sample.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::read_data_dock
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Read data dock
-    raised, before reading.'
   pages:
   - docs/manual/data_import.md
+  recipe: 'pixi run -e test python docs/guides/screenshots/manual_general.py read_data_dock. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Read data dock floated and cropped: TCSPC, TXT/CSV, file parameters.'
 manual/figures/main_datasets_loaded.png:
   caption: The data list after reading the four IBH files.
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::datasets_loaded
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Datasets dock
-    raised, before the fits.'
   pages:
   - docs/manual/data_import.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py datasets_loaded. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Datasets dock floated and cropped after the four IBH files were read.
 manual/figures/main_datasets_context_menu.png:
   caption: The data list's context menu (Save, Load, Remove, Group, Ungroup, Refresh).
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::datasets_context_menu
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Row 1 selected;
-    the menu built by ExperimentalDataSelector.contextMenuEvent is captured (QMenu.exec_ patched) and painted at
-    the click point.'
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py datasets_context_menu. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); rows 1 and 2 selected (click, ctrl-click), right click on row 2 opens the table's context menu; Datasets
+    dock cropped.
   pages:
   - docs/manual/data_import.md
 manual/figures/main_datasets_grouped.png:
   caption: Datasets 0 and 1 grouped, unfolded; the console lists the group.
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::datasets_grouped
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. chisurf.macros.group_datasets([0,
-    1]); console: [d.name for d in cs.imported_datasets]; [d.name for d in cs.imported_datasets[2]].'
   pages:
   - docs/manual/data_import.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py datasets_grouped. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Datasets 1 and 2 selected and grouped with the context menu's Group, the group unfolded; console lists the datasets.
 manual/figures/main_read_data_vvvh.png:
   caption: The Read data dock set up for a stacked VV/VH file.
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::read_data_vvvh
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Last shot: reader.is_vv_vh=True,
-    polarization=''vv/vh'' (this also switches header/dt scaling, so it runs after the files are read).'
   pages:
   - docs/manual/data_input_and_file_format.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py read_data_vvvh. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Read data dock with Anisotropy (VV/VH) stacked ticked and pol. VV,VH.
 manual/figures/main_datasets_fits.png:
   caption: The Datasets dock with two Lifetime fits; their windows tiled.
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::datasets_with_fits
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Datasets dock
-    raised, windows tiled.'
   pages:
   - docs/manual/creating_fits.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py datasets_with_fits. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Two fitted Lifetime fits (donor-only, FRET); Datasets tab and the fit window.
 manual/figures/main_analysis_dock.png:
   caption: The Analysis dock of the active fit beside the fit windows.
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::analysis_dock
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. Analysis dock
-    raised, first window active, tiled.'
   pages:
   - docs/manual/analysis_dock.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py analysis_dock. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Two fitted Lifetime fits; Analysis dock with the Convolution box open beside the fit window.
 manual/figures/main_mdi_tiled.png:
   caption: 'Two fit windows tiled (toolbar: Tile Windows).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. actionTile_windows
-    triggered.'
   pages:
   - docs/manual/multiple_document_interface.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); The two fit windows floated side by side.
 manual/figures/main_mdi_tabbed.png:
   caption: 'The same fit windows tabbed (toolbar: Tab Windows).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0; python docs/guides/screenshots/manual_general.py
-    /tmp/case0 [shot ...]. Real Main (offscreen, 1500x950), the case-0 science closed; the IBH sample (test/data/tcspc/ibh_sample:
-    Decay_577D, Decay_577D+577A+GTPgS, Prompt, whitelight) read through Read data (TCSPC, TXT/CSV, 10 header rows,
-    0.0141 ns/ch); ''Lifetime'' fits of the two decays against Prompt, fit range 522-3793, fitted. actionTab_windows
-    triggered.'
   pages:
   - docs/manual/multiple_document_interface.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); The same fit windows docked as tabs.
 manual/figures/globalview_tool.png:
   caption: The Global View window on four fits whose lifetime t0 follows the donor-only fit.
   kind: screenshot
@@ -1975,148 +1886,126 @@ manual/figures/manual_convolution.png:
   caption: The Convolution box of a fitted lifetime fit with the measured prompt loaded as IRF.
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_convolution
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    convolution. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: lifetime fit of Decay_577D, fitted; Convolution box grabbed.'
   pages:
   - docs/manual/nuisances.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py convolution. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    Lifetime fit with Prompt as IRF; Analysis dock floated, Convolution box open, cropped.
 manual/figures/manual_generic.png:
   caption: 'The Generic box with a background pattern loaded (sc, bg, tBg, tMeas, #Ph_B, #Ph_F).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_generic
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    generic. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793.
-    State: fitted lifetime fit; Prompt.txt loaded as background through model.set_background_curve. The field reads
-    ''DataCurve'' (app defect: the macro stores an unnamed copy).'
   pages:
   - docs/manual/nuisances.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py generic. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    As manual_convolution, Prompt picked as background; Generic box.
 manual/figures/manual_corrections.png:
   caption: 'The Corrections box: Lin. table, Smoothing, Pile-up/DNL/Reverse, tDead and win-size.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_corrections
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    corrections. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: fitted lifetime fit; whitelight.txt loaded through set_linearization -- the field still shows
-    its placeholder (app defect: no name_attr for Lin. table, unnamed copy).'
   pages:
   - docs/manual/nuisances.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py corrections. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    As manual_convolution, whitelight.txt picked as Lin. table; Corrections box.
 manual/figures/manual_fit_controller.png:
-  caption: 'The Fit box: Fit, MCTS, Sample, settings, auto range, attach dataset, Local first, Dataset, Result,
-    First/Last.'
+  caption: 'The Fit box: Fit, MCTS, Sample, settings, auto range, attach dataset, Local first, Dataset, Result, First/Last.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_fit_controller
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    fit_controller. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: fitted lifetime fit; Fit box grabbed.'
   pages:
   - docs/manual/fit_interface.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py fit_controller. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Lifetime fit; Fit box of the Analysis dock, cropped.
 manual/figures/manual_parameter_table.png:
-  caption: '(a) The Convolution parameter table, (b) the detail popup of ts (timeshift): Link…/Unlink, value, Fixed,
-    Prior, bounds.'
+  caption: '(a) The Convolution parameter table, (b) the detail popup of ts (timeshift): Link…/Unlink, value, Fixed, Prior,
+    bounds.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_parameter_table
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    parameter_table. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit
-    range 522-3793. State: fitted lifetime fit; popup opened by ParameterGroupTableWidget._open_details_popup on
-    the timeshift row.'
   pages:
   - docs/manual/parameters.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py parameter_table. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Convolution box with the right-click link menu open on the ts row.
 manual/figures/manual_scoring_range.png:
   caption: The scoring range as First/Last in the Fit box and as the shaded region on the Fit plot.
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_scoring_range
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    scoring_range. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: fitted lifetime fit; Convolution/Generic folded; Fit page current; whole Main grabbed.'
   pages:
   - docs/manual/model_scoring_range.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py scoring_range. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Fitted lifetime fit; whole window, Fit box open and Fit page showing the range.
 manual/figures/manual_fit_before_after.png:
-  caption: 'A lifetime fit of the IBH sample before (a) and after (b) pressing Fit: Fit and Lifetimes boxes beside
-    the Fit plot.'
+  caption: 'A lifetime fit of the IBH sample before (a) and after (b) pressing Fit: Fit and Lifetimes boxes beside the Fit
+    plot.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_fit_before_after
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    fit_before_after. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit
-    range 522-3793. State: unfitted lifetime fit (tau=1 ns start), grabbed; fit.run(); grabbed again. Fit window
-    scaled to 760 px.'
   pages:
   - docs/manual/parameter_optimization.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py fit_before_after. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Same fit before (range set, not fitted) and after pressing Fit, Lifetimes box open; 1500x1100 window.
 manual/figures/manual_sampling.png:
   caption: 'A sampled lifetime fit: Sample in the Fit box, the rank plot of t0 on the Chain diagnostics page.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_sampling
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    sampling. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range 522-3793.
-    State: fitted lifetime fit; sample_fit(method=''blocked'', steps=2000, thin=1, n_runs=4) into a temp directory;
-    Chain diagnostics page current.'
   pages:
   - docs/manual/parameter_sampling.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py sampling. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    Fitted fit sampled (blocked, 2000 steps, 4 runs) through Sample; Chain diagnostics page.
 manual/figures/manual_equation_parsing.png:
-  caption: 'A parsed decay equation (Parse-Model, 2-Lifetimes) fitted to the IBH sample decay: Equation box, Equation
-    parameters, Fit plot.'
+  caption: 'A parsed decay equation (Parse-Model, 2-Lifetimes) fitted to the IBH sample decay: Equation box, Equation parameters,
+    Fit plot.'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_equation_parsing
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    equation_parsing. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit
-    range 522-3793. State: ParseDecayModel on Decay_577D with the prompt as IRF, model_name ''2-Lifetimes'', start
-    a1=a2=0.5, tau1=4, tau2=1, fitted; Convolution/Generic/Corrections folded.'
   pages:
   - docs/manual/equation_parsing.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py equation_parsing. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Parse-Model with the 2-Lifetimes equation, fitted; Equation boxes open.
 manual/figures/manual_donor_reference.png:
-  caption: 'A FRET (Gaussian) fit of the IBH donor-acceptor sample: raw (a), Plot settings with Reference = Donor
-    reference (b), the curves divided by the donor reference (c).'
+  caption: 'A FRET (Gaussian) fit of the IBH donor-acceptor sample: raw (a), Plot settings with Reference = Donor reference
+    (b), the curves divided by the donor reference (c).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_donor_reference
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    donor_reference. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit
-    range 522-3793. State: tcspc_fret_gaussian on Decay_577D+577A+GTPgS with the prompt as IRF, fitted; (c) reference_mode
-    tcspc_donor_reference, logY off, IRF curve hidden. Fit windows scaled to 820 px.'
   pages:
   - docs/manual/reference_curves.md
+  recipe: 'pixi run -e test python docs/guides/screenshots/manual_fitting.py donor_reference. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); FRET: Gaussian distances fit of Decay_577D+577A+GTPgS fitted; Fit page raw (a), Plot settings dock (b), Reference
+    = Donor reference with logY off and IRF hidden (c).'
 manual/figures/manual_calculators.png:
   caption: The calculators hub on F-test / chi2-max (a) and FRET / homoFRET (b).
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_calculators
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    calculators. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: chisurf.plugins.calculator.hub.gui.app.make_app() in a ControlHost 1000x640, select(''f_test'')
-    and select(''fret_calculator''), default values.'
   pages:
   - docs/manual/fcalculator.md
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py calculators. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    Calculators hub (emtk app, 1000x640) on F-test / chi2-max (a) and FRET / homoFRET (b).
 manual/figures/manual_parameter_link.png:
-  caption: 'Two IBH lifetime fits with the second''s t0 linked to the first''s: (a) the Lifetimes table, (b) the
-    detail popup (t0 -> t0, Unlink enabled).'
+  caption: 'Two IBH lifetime fits with the second''s t0 linked to the first''s: (a) the Lifetimes table, (b) the detail popup
+    (t0 -> t0, Unlink enabled).'
   kind: screenshot
   origin: docs/guides/screenshots/manual_fitting.py::shot_parameter_link
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    parameter_link. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: fit 1: Decay_577D fitted; fit 2: Decay_577D+577A+GTPgS unfitted, its t0.link = fit 1''s t0.'
   pages:
   - docs/manual/linking_parameters.md
+  recipe: 'pixi run -e test python docs/guides/screenshots/manual_fitting.py parameter_link. emtk shell (private in-process
+    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
+    dt 0.0141); Two lifetime fits; the lifetimes of the second linked to the first through the Lifetimes box link menu: linked
+    table (a) and the open menu (b).'
 manual/figures/manual_global_view.png:
   caption: 'The same two linked fits in Global View: fits, free parameters and the link arrow; the follower t0 selected.'
   kind: screenshot
-  origin: docs/guides/screenshots/manual_fitting.py::shot_parameter_link
-  recipe: 'python -m test.project.scientific_catalogue_probe --case 0 /tmp/case0 (and --case 2, --case 9 for the
-    script''s arguments), then python docs/guides/screenshots/manual_fitting.py /tmp/case0 /tmp/case2 /tmp/case9
-    parameter_link. Real Main offscreen, 1500x950; IBH sample = test/data/tcspc/ibh_sample, prompt as IRF, fit range
-    522-3793. State: after the link above: chisurf.plugins.core.globalview.gui.app.make_app(remember_layout=False)
-    in a ControlHost 1200x760, follower record selected with model.select_parameter.'
+  origin: docs/guides/screenshots/manual_fitting.py::shot_global_view
   pages:
   - docs/manual/linking_parameters.md
-
+  recipe: pixi run -e test python docs/guides/screenshots/manual_fitting.py global_view. emtk shell (private in-process session,
+    scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV, dt 0.0141);
+    The two linked fits of manual_parameter_link in Global View (emtk app on the session's fits), the follower t0 selected.
 # --- Figures recorded to clear the unrecorded worklist ---
 # Entries whose origin names a script were found by locating the code that saves the file;
 # the others have no generating script and say so in their recipe.
@@ -3010,6 +2899,16 @@ guides/figures/channel_definition_wizard_after_export.png:
     data that page names, and save the grab as guides/figures/channel_definition_wizard_after_export.png.
   pages:
   - docs/guides/87_channel_definition.md
+
+guides/figures/vv_vh_g_factor_window.png:
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_vv_vh_g_factor_window
+  recipe: >-
+    Run the script named in origin (see the function that saves vv_vh_g_factor_window.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
 
 guides/figures/decay_gap_filter.png:
   kind: screenshot
@@ -3941,13 +3840,3 @@ guides/figures/vv_vh_native_primary_window.png:
     data that page names, and save the grab as guides/figures/vv_vh_native_primary_window.png.
   pages:
   - docs/guides/10_lifetime_anisotropy_fitting.md
-guides/figures/vv_vh_g_factor_window.png:
-  kind: screenshot
-  origin: docs/guides/make_screenshots.py::_grab_vv_vh_g_factor_window
-  recipe: >-
-    Run the script named in origin (see the function that saves vv_vh_g_factor_window.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
-  pages:
-  - docs/guides/76_decay_analysis_tools.md
-

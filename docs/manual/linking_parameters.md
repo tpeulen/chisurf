@@ -9,25 +9,27 @@ tags: [manual, linking, parameters]
 
 A linked parameter *follows* another one: it is no longer estimated and takes
 the other parameter's value. Links are made in two places. In a fit's
-parameter table, a click on a parameter's name opens its detail popup, whose
-**Link…** picks the parameter to follow and **Unlink** detaches it; the
-table's right-click menu offers the same (**Fig.36**). **Tools → Views → Global
+parameter table, a right click on a parameter opens a menu whose **Link … to**
+picks the parameter to follow and **Unlink** detaches it; a lifetime group links
+as a whole with the **link** menu of its box (**Fig.36**). **Tools → Views → Global
 View** draws every open fit, its parameters and their links as a network
 (**Fig.37**): click a parameter node to select it (it shows in the *Selection*
 table), click a second one and press **Link**: the first one selected is the
 master, the second follows it. A parameter can also be dragged onto the one it
 should follow. **Unlink** removes the links of the selected parameters -- with
-**all** ticked, of every parameter in every fit.
+**all** ticked, of every parameter in every fit. In every parameter table a
+linked parameter is drawn in blue and its tooltip names the parameter it follows
+(*linked to* the master), so a follower is told apart from a fixed one (grey).
 
 ```{image} figures/manual_parameter_link.png
 :align: center
 ```
 
 **Fig.36 A linked lifetime.** Two lifetime fits of IBH sample decays, the
-lifetime `t0` of the second linked to that of the first. (**a**) The second
-fit's Lifetimes table: the linked τ_L is drawn in grey italics and shows the
-value it follows. (**b**) Its detail popup: `t0 → t0` names the parameter it
-follows, and **Unlink** is enabled.
+lifetimes of the second linked to those of the first. (**a**) The second
+fit's Lifetimes table after linking: τ_L shows the value it follows (4.1562 ns
+from the first fit). (**b**) The **link** menu of the Lifetimes box lists the
+lifetime groups of the other fits; picking one links the lifetimes.
 
 ```{image} figures/manual_global_view.png
 :align: center

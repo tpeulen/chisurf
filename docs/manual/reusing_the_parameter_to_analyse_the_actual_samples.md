@@ -31,4 +31,4 @@ If the estimated parameter given in the fit setup are sufficiently close, one ca
 
 Attention! Verify that no negative scatter fraction is present. Short-lived scatter might often e mixed up with fast rotational components.
 
-Here we obtain an average eGFP lifetime of 2.44 ns and a rotational component of 17.8 ns.
+For the original cell data this gave an average eGFP lifetime of 2.44 ns and a rotational component of 17.8 ns; the screenshot uses the bundled example recording.

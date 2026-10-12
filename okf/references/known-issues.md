@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (found 2026-10-12)
+
+status: open
+
+**Found 2026-10-12** while shooting the manual figures through the emtk shell (`docs/guides/screenshots/manual_shell.py`,
+`guides_shell_models.py`): the session log shows "Recording the change… failed: cannot restore model state" and
+"prediction changed after reconstruction" when a fit of the MFD 2D model, a global fit, or a parameter scan is
+recorded for undo/autosave. The figures are unaffected (the live fit is fine); what fails is the project capture, so
+undo and the autosaved `.cs.pto` miss those steps. *Measure:* run the generators with the shell log visible and grep
+for "Recording the change". *Next:* find which model state the capture cannot round-trip (owner: project session,
+`chisurf/emtk/shell_session.py` / `chisurf/core/project/`).
+
 ## Microscopy parity: two native tests red on 2026-10-12, independent of the Qt-host port
 
 status: open

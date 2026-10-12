@@ -7,8 +7,10 @@ channel followed by the VH channel in one column. For the "two single files"
 layout the same measurement is written as four two-column files (time, counts)
 into a scratch folder first.
 
-    python docs/guides/screenshots/manual_anisotropy.py wizard
-    python docs/guides/screenshots/manual_anisotropy.py main
+    IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_anisotropy.py wizard
+    IMP_BFF_GPU=off pixi run -e test python docs/guides/screenshots/manual_anisotropy.py main
+
+``main`` drives the emtk shell (the default ChiSurf window) with ``emtk.testing.Driver``.
 
 Writes into ``docs/manual/figures/``. Run from the repository root, offscreen.
 """
@@ -20,14 +22,11 @@ import pathlib
 import sys
 import tempfile
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.getcwd())
-# Before anything else: chisurf's imports pull in the standard library's ``test``
-# package, which would then shadow the repository's.
-# isort: off
-from test.gui.fit_window_page_probe import _frames  # noqa: E402,F401
 import numpy as np  # noqa: E402
-# isort: on
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import shell_driver as sd  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 OUT = ROOT / "docs" / "manual" / "figures"
@@ -124,8 +123,9 @@ def wizard() -> None:
     m.first_column_is_time = False
     m.use_header = False
     m.bin_width = BIN
-    m.irf_vv_path = str(IRF)
-    m.data_vv_path = str(DECAY)
+    m.irf_vv_path = str(_recorded_at(IRF, 80.0))
+    m.data_vv_path = str(_recorded_at(DECAY, 80.0))
+    m.load_data()  # the laser rate in the file footer fills the Repetition rate field
     ui.draw()
     _shot(ui, "anisotropy_wizard_stacked.png")
 
@@ -161,210 +161,122 @@ def wizard() -> None:
     os._exit(0)
 
 
-def _open_main(scratch: pathlib.Path):
-    """An isolated Main (settings in *scratch*), with its ribbon, and no project."""
-    from qtpy import QtCore, QtWidgets
+def _recorded_at(path, rate_mhz):
+    """A scratch copy of the recording whose footer names its laser rate (``# rep_rate: MHz``).
 
-    import chisurf as cs
-    import chisurf.gui as gui
-    from chisurf.core.api import ChiSurfAPI
-    from chisurf.core.plugin.client import InProcessClient
-    from chisurf.core.project.lifecycle import SaveDecision
-    from chisurf.core.project.project import ResourceContext
-    from chisurf.gui.main import Main
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
-    from chisurf.server.dispatcher import ServiceDispatcher
+    The bundled files carry no metadata; a VV/VH file written by an acquisition says its rate and the
+    wizard reads it into its *Repetition rate* field, which is what this copy stands in for.
+    """
+    import pathlib as _p
+    import tempfile as _t
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    settings_type = QtCore.QSettings
-
-    class IsolatedSettings(settings_type):
-        """Keep the window state out of the user's preferences."""
-
-        def __init__(self, *args, **kwargs):
-            super().__init__(str(scratch / "main.ini"), settings_type.IniFormat)
-
-    QtCore.QSettings = IsolatedSettings
-    cs.fits, cs.imported_datasets, gui.fit_windows = [], [], []
-    cs.__client__ = None
-    cs.project_resources = ResourceContext()
-    cs.console = gui.widgets.ipython.QIPythonWidget()
-    cs.console.history_widget = None
-    main = Main()
-    cs.cs = main
-    main.init_setups()
-    main.define_actions()
-    main.arrange_widgets()
-    main._save_decision = lambda: SaveDecision.DISCARD
-    main.resize(1600, 960)
-    main.show()
-    api = ChiSurfAPI(mode="local")
-    dispatcher = ServiceDispatcher(api._state)
-    dispatcher._build_default_registry()
-    install_fitting_client(InProcessClient(dispatcher))
-    for _ in range(5):
-        app.processEvents()
-    return app, main
+    folder = _p.Path(_t.gettempdir()) / "chisurf_anisotropy_recordings"
+    folder.mkdir(parents=True, exist_ok=True)
+    target = folder / _p.Path(path).name
+    target.write_text(_p.Path(path).read_text() + f"# rep_rate: {rate_mhz}\n")
+    return target
 
 
-def _pump(app, n: int = 10) -> None:
-    for _ in range(n):
-        app.processEvents()
+def _wizard_in_shell(driver, wait, irf, decay, bin_width=BIN, rate=80.0):
+    """Open the wizards hub in the shell, select *Anisotropy*, load the stacked files, create the fits.
 
-
-def _wizard_model(irf, decay, lifetimes=None, rotations=None, corrections=None, bin_width=BIN):
-    """The wizard's model with the stacked files loaded and the IRF background corrected."""
-    from chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.model import NativeAnisotropyModel
-
-    m = NativeAnisotropyModel()
+    Returns the three fit uids ``(vv, vh, global)`` in creation order.
+    """
+    app = driver.app
+    known = {r["uid"] for r in app.data.datasets.fits}
+    hosted = app.open_plugin("wizards")
+    wait(lambda: hosted.app is not None or bool(hosted.error))
+    child = hosted.app.select("anisotropy")
+    m = child.model
     m.stacked_files = True
     m.first_column_is_time = False
     m.use_header = False
     m.bin_width = bin_width
-    # one excitation period spans the 2048 channels of a polarisation
-    m.rep_rate = 1000.0 / (2048 * bin_width)
-    m.irf_vv_path = str(irf)
-    m.data_vv_path = str(decay)
-    if lifetimes is not None:
-        m.lifetime_spectrum = [list(p) for p in lifetimes]
-    if rotations is not None:
-        m.rotation_spectrum = [list(p) for p in rotations]
-    for key, value in (corrections or {}).items():
-        setattr(m, key, value)
-    m.load_data()
-    return m
+    m.irf_vv_path = str(_recorded_at(irf, rate))
+    m.data_vv_path = str(_recorded_at(decay, rate))
+    assert m.load_data(), m.status
+    assert m.create_fits(), m.status
+    wait(lambda: len({r["uid"] for r in app.data.datasets.fits} - known) >= 3 and sd.idle(app))
+    new = [r for r in app.data.datasets.fits if r["uid"] not in known]
+    app.close_plugin("wizards")
+    driver.frame(3)
+    by_name = {r["name"]: r["uid"] for r in new}
+    return (
+        next(u for n, u in by_name.items() if n.endswith("VV")),
+        next(u for n, u in by_name.items() if n.endswith("VH")),
+        next(u for n, u in by_name.items() if n.startswith("Global")),
+    )
 
 
-def _create_fits(app, main, model):
-    """*Create fits* of the wizard, and their windows.
-
-    In the application the wizard's ``fit.added`` events reach the Main over the
-    shared event bus, which opens a window per fit; here the Main has no bus, so
-    the windows are opened the way its event handler opens them.
-    """
-    model.create_fits()
-    print("status:", model.status, flush=True)
-    vv, vh, global_fit = model.fit_groups
-    for fit in (global_fit, vv, vh):
-        main._open_fit_subwindow(fit)
-        _pump(app, 5)
-    return vv, vh, global_fit
-
-
-def _parameter(fit, canonical_id):
-    """The parameter *canonical_id* of a fit group's model."""
-    return next(p for p in fit.model.parameters_all if p.canonical_id == canonical_id)
-
-
-def _window_of(main, fit):
-    from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow
-
-    return next(w for w in main.mdiarea.subWindowList() if isinstance(w, FitSubWindow) and w.fit is fit)
-
-
-def _dock(main, name):
-    from qtpy import QtWidgets
-
-    dock = main.findChild(QtWidgets.QDockWidget, name)
-    dock.show()
-    dock.raise_()
-    return dock
-
-
-def _activate(app, main, fit):
-    window = _window_of(main, fit)
-    main.mdiarea.setActiveSubWindow(window)
-    _pump(app, 10)
-    return window
-
-
-def _grab(app, widget, name, height=None):
-    _pump(app, 10)
-    pixmap = widget.grab()
-    if height is not None:  # drop the empty dock below the content
-        pixmap = pixmap.copy(0, 0, pixmap.width(), min(int(height * pixmap.devicePixelRatio()),
-                                                       pixmap.height()))
-    pixmap.save(str(OUT / name))
-    _say(name)
-
-
-def _refresh(app, *fits):
-    import chisurf.gui as gui
-
-    for fit in fits:
-        fit.update()
-    for window in list(getattr(gui, "fit_windows", []) or []):
-        try:
-            window.refresh_current_plot()
-        except Exception:
-            pass
-    _pump(app, 10)
-    for fit in fits:
-        print(" ", getattr(fit, "name", "?"), "chi2r", round(float(getattr(fit, "chi2r", float("nan"))), 3),
-              flush=True)
+def _free_corrections(driver, wait, uid: str) -> None:
+    """Untick *Fixed* of g, l1 and l2 of fit *uid* (the VH fit follows through its links)."""
+    app = driver.app
+    sd.show(driver, wait, uid)
+    for name in ("g", "l1", "l2"):
+        row = next(
+            r
+            for src, rows in app.data.editor._sources.items()
+            if src.startswith("rows_")
+            for r in rows
+            if r.get("name") == name
+        )
+        app.data.edit_model_parameter(row, "fixed", False)
+        wait(lambda: sd.idle(app))
 
 
 def main_window() -> None:
-    """The Main window with the fits the wizard builds, and the global fit across two samples."""
+    """The shell with the fits the wizard builds, and the global fit across two samples."""
     scratch = _hermetic()
     import chisurf.core.settings as settings
 
     settings.chisurf_settings_path = scratch / "settings"
     OUT.mkdir(parents=True, exist_ok=True)
-    app, main = _open_main(scratch)
-    main.load_tools()
-    _pump(app)
+    driver, wait = sd.shell()
+    app = driver.app
 
     # where the wizard is: Tools -> Calculators -> Wizards
-    ribbon = getattr(main._ribbon_integration, "ribbon_bar", None)
-    try:
-        ribbon.setCurrentCategory(ribbon.category("Tools"))
-    except Exception as exc:
-        print("ribbon tab:", exc, flush=True)
-    _grab(app, main, "anisotropy_ribbon_tools.png")
+    app.ribbon.ribbon.current = "Tools"
+    sd.shot_shell(driver, "anisotropy_ribbon_tools.png")
+    app.ribbon.ribbon.current = "Spectroscopy"
 
     # first sample: the wizard's fits, with the corrections the manual starts from
-    m = _wizard_model(IRF, DECAY, corrections=CORRECTIONS)
-    vv, vh, global1 = _create_fits(app, main, m)
-    main.mdiarea.tileSubWindows()
-    _pump(app, 20)
-    _grab(app, main, "anisotropy_fit_windows.png")
+    vv, vh, glob = _wizard_in_shell(driver, wait, IRF, DECAY)
+    sd.tile(app, first=vv)
+    sd.show(driver, wait, vv)
+    sd.shot_shell(driver, "anisotropy_fit_windows.png")
+    sd.shot_region(driver, "anisotropy_analysis_vv.png")
+    sd.tile(app, first=vh)
+    sd.show(driver, wait, vh)
+    sd.shot_region(driver, "anisotropy_analysis_vh.png")
 
-    analysis = _dock(main, "dockWidgetAnalysis")
-    _activate(app, main, vv)
-    _grab(app, analysis, "anisotropy_analysis_vv.png")
-    _activate(app, main, vh)
-    _grab(app, analysis, "anisotropy_analysis_vh.png")
+    # step 1: each polarisation fitted alone, corrections fixed -- VV first, then VH, as the page says
+    sd.tile(app, first=vv)
+    sd.show(driver, wait, vv)
+    sd.run(driver, wait)
+    sd.show(driver, wait, vh)
+    sd.run(driver, wait)  # then the VH fit, as the page says
+    sd.tile(app, first=vv)
+    sd.show(driver, wait, vv)
+    sd.shot_shell(driver, "anisotropy_step1_vv_fit.png")
 
-    # step 1: each polarisation fitted alone, corrections fixed
-    vv.run()
-    vh.run()
-    _refresh(app, vv, vh, global1)
-    _activate(app, main, vv)
-    _grab(app, main, "anisotropy_step1_vv_fit.png")
+    # step 2: corrections free (on VV), then the joint fit
+    _free_corrections(driver, wait, vv)
+    sd.shot_region(driver, "anisotropy_step2_corrections_free.png")
+    sd.tile(app, first=glob)
+    sd.show(driver, wait, glob)
+    sd.run(driver, wait)
+    sd.shot_shell(driver, "anisotropy_step2_global_fit.png")
 
-    # step 2: corrections free (on VV; VH follows through its links), then the joint fit
-    for name in ("anisotropy.g", "anisotropy.l1", "anisotropy.l2"):
-        _parameter(vv, name).fixed = False
-    _activate(app, main, vv)
-    main.resize(1600, 2600)  # tall enough for the editor to reach its anisotropy rows
-    _pump(app, 10)
-    _grab(app, analysis, "anisotropy_step2_corrections_free.png", height=1240)
-    main.resize(1600, 960)
-    _pump(app, 10)
-    global1.run()
-    _refresh(app, vv, vh, global1)
-    _activate(app, main, global1)
-    _grab(app, main, "anisotropy_step2_global_fit.png")
-    print("sample 1:", {n: round(float(_parameter(vv, n).value), 4)
-                        for n in ("anisotropy.g", "anisotropy.l1", "anisotropy.l2")}, flush=True)
+    # the second sample, the same way: six fit windows, tabbed, and the Datasets dock listing the fits
+    from chisurf.emtk.fit_docks import DATASETS_KEY
 
-    # the second sample, the same way: six windows (its fits as created, not yet fitted)
-    m2 = _wizard_model(IRF2, DECAY2, corrections=CORRECTIONS, bin_width=BIN2)
-    _create_fits(app, main, m2)
-    main.mdiarea.tileSubWindows()
-    _pump(app, 20)
-    _grab(app, main, "anisotropy_two_samples.png")
+    _wizard_in_shell(driver, wait, IRF2, DECAY2, bin_width=BIN2, rate=71.0)
+    app.docks.hide("start")
+    app.tab_fit_windows()
+    sd.show(driver, wait, glob)  # the first sample's (fitted) global fit in front
+    app.docks.focus(DATASETS_KEY)
+    driver.frame(4)
+    sd.shot_shell(driver, "anisotropy_two_samples.png")
     os._exit(0)
 
 

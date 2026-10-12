@@ -13,7 +13,7 @@ tags: [manual, data, import]
 
 Internally, all imported data is managed in a single list (**chisurf.imported_datasets**). Its elements are instances of **chisurf.data.ExperimentalData**. The user interface helps populating the dataset list (**Fig.4**).
 
-**Fig.4 The Read data dock.** At the top, **Experiment** selects the experiment type (here TCSPC) and **File type** the reader for it (here TXT/CSV); **+ Data** reads a file and **?** opens the reader's help. Below, under **File parameters**, the reader's settings: the *Format* (column detection, header rows to skip, which columns hold x, y and their errors), *Timing* (time per channel, rebinning, repetition rate) and *Anisotropy (VV/VH)*. Shown are the settings for the IBH sample decays: 10 header rows and 0.0141 ns per channel. Files can also be dropped on the dock ("Drop files here").
+**Fig.4 The Read data dock.** At the top, **Experiment** selects the experiment type (here TCSPC) and **File type** the reader for it (here TXT/CSV); **Browse…** picks a file, **Load example** loads the reader's bundled example, and **+ Data** reads the file. Below, under **File parameters**, the reader's settings: the *Format* (column detection, header rows to skip, which columns hold x, y and their errors), *Timing* (time per channel, rebinning, repetition rate) and *Anisotropy (VV/VH)*. Shown are the settings for the IBH sample decays: the header is skipped (*Skip rows*) and the channel width *dt* is 0.0141 ns. Files can also be dropped on the dock ("Drop files here").
 
 To read data using the graphic user interface, first select the corresponding experiment type (**Fig.4**, 1). Afterwards select the file type of the experiment (**Fig.4**, 2). Before reading data, check the parameters that are passed to the data read (**Fig.4**, 3). Finally, you can load the dataset into ChiSurf, either by clicking on the "**+ Data**" button or using the key combination "**Ctrl+N**" (Windows, Linux) or "**⌘+N**" on macOS. Alternatively, multiple files of the same kind can be opened in a single step by selecting the respective files in a file explorer of your choice and dragging the selected files into the user interface to the dataset list (**Fig.5**).
 
@@ -42,13 +42,13 @@ cs.current_setup = 'Seidel Kristine'
 
 Interactions with the graphical user interface are reflecting as commands in the programming shell.
 
-The context menu of the data list can be used to save, load, remove, group and ungroup datasets (**Fig.6**). Dataset of equal data type can be group into groups. Grouping dataset can be useful when analyzing datasets of similar type, e.g., when analyzing titration data.
+The context menu of the data list can be used to save, load, remove, group and ungroup datasets (**Fig.6**). Dataset of equal data type can be group into groups. Grouping dataset can be useful when analyzing datasets of similar type, e.g., when analyzing titration data. Ctrl- or shift-click selects several datasets; the menu then acts on all of them.
 
 ```{image} figures/main_datasets_context_menu.png
 :align: center
 ```
 
-**Fig.6 Dataset context menu.** A right click on the data list offers **Save**, **Load**, **Remove**, **Group**, **Ungroup** and **Refresh** (redraw the list) for the selected datasets.
+**Fig.6 Dataset context menu.** A right click on the data list offers **Save** (the first selected dataset to a file), **Load** (a saved dataset back into the session), **Remove**, **Group** (two or more selected datasets), **Ungroup** (a selected group) and **Refresh** (read the lists from the session again). Here datasets 1 and 2 are selected, so **Group** is available and **Ungroup** is greyed.
 
 To group datasets, select the corresponding dataset in the data set list and select in the context menu (right click) the group option (**Fig.7**).
 
@@ -56,7 +56,7 @@ To group datasets, select the corresponding dataset in the data set list and sel
 :align: center
 ```
 
-**Fig.7 Grouped datasets.** The two decays grouped with **Group**: in the data list the group is one entry, unfolded here to show its members. In the **Console**, the group is one element of `cs.imported_datasets` and iterates over its members.
+**Fig.7 Grouped datasets.** The two decays grouped with **Group** of the context menu (`api.group_datasets([1, 2])`): in the data list the group is one entry, *Data-Group*, replacing its members; its triangle (or a double click, Right/Left on the keyboard) unfolds the members, numbered 3.1 and 3.2 under it. In the **Console**, `api.list_datasets()` lists the group as one element.
 
 In the shell datasets are grouped as follows:
 

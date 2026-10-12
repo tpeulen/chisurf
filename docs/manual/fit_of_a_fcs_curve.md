@@ -37,34 +37,35 @@ Zeiss Confocor3 A488 measurements bundled in `test/data/fcs/confocor3`).
 :align: center
 ```
 
-The curves are listed in the **Datasets** dock. Select them, choose
-**Parse-Model** under **Model** and press **+ Analysis**:
+The curves are listed in the **Datasets** dock. Select a curve, choose
+**Parse-Model** under **Model** and press **+ Analysis**; repeat for each curve:
 
 ```{image} figures/fcs_add_analysis.png
 :align: center
 ```
 
-One fit window opens per curve:
+One fit window opens per curve, as a tab of the working area:
 
 ```{image} figures/fcs_fit_windows.png
 :align: center
 ```
 
-Caution! The windows may lie on top of each other. Maximise one to see one curve
-at a time, or show them as tabs -- **View** and the toolbar arrange the
-windows; with tabs, a click on a window's tab brings it to the front:
+Windows opened as tabs lie behind each other; a click on a window's tab brings it
+to the front (**Tab Windows** in the *Main* tab of the ribbon gathers them as
+tabs again):
 
 ```{image} figures/fcs_fit_windows_tabbed.png
 :align: center
 ```
 
-Or tile them to cover the working area evenly:
+Or tile them (**Tile Windows**) to see the curves side by side; the **Analysis**
+dock follows the current window (here curve 1, on the left):
 
 ```{image} figures/fcs_fit_windows_tiled.png
 :align: center
 ```
 
-Make the first window current and open the **Analysis** dock. Under
+Make the first window current; the **Analysis** dock follows it. Under
 **Equation**, choose the formula **3D Gauss, 1 bunching** in **Model**; the
 equation, its rendered form and a description appear beneath:
 
@@ -146,7 +147,7 @@ range and fit them as done for the first curve:
 :align: center
 ```
 
-The third curve, fitted alone, gives `s` = 10 and a negative bunching amplitude
+The second curve, fitted alone, gives `s` = 12.7 and a negative bunching amplitude
 -- more evidence that one measurement does not pin the volume down.
 
 Next, we link the fits together so that shared parameters are minimised jointly.
@@ -154,8 +155,8 @@ Decide on one "parent" curve to which all others point -- here curve 1 -- and
 make a "child" curve current.
 
 **Right-click a parameter row** in **Equation parameters**: the menu offers
-**🔗 Link *name* to**, listing every fit of the session, then that fit's
-**Parameters**; pick the parameter to link to (**Unlink** drops a link again):
+**🔗 Link *name* to**, listing every fit of the session; open a fit and pick
+the parameter to link to (**Unlink** drops a link again):
 
 ```{image} figures/fcs_link_menu.png
 :align: center
@@ -163,8 +164,14 @@ make a "child" curve current.
 
 For our joint fit, link (i) the diffusion time `td`, (ii) the shape factor `s`
 and (iii) the bunching time `bt` of curves 2 and 3 to curve 1. Linked
-parameters are shown greyed and in italics, with the value of the parameter they
-follow:
+parameters are shown in blue, with the value of the parameter they follow.
+
+A child now computes with curve 1's `td`, `s` and `bt` but still with the `N`
+and `ba` it found alone -- for curves 2 and 3 a negative bunching amplitude that
+belonged to a 33 µs `bt` -- so its model rises over the data (χ²ᵣ of several
+hundred). Press **▶ Fit** once in each child: only its own `N` and `ba` (and the
+offset `b`) are free, and the curve fits again with the shared values. Curve 3
+after that fit:
 
 ```{image} figures/fcs_linked_parameters.png
 :align: center
@@ -178,16 +185,24 @@ choose **Global fit** under **Model** and press **+ Analysis**:
 ```
 
 The global fit opens as a fit window of its own. In its **Analysis** dock, pick
-each curve's fit in **Add** and press **➕ Add**, so that **Local fits** lists the
-three curves (**➖ Remove** and **🗑 Clear** take them out again; there is no need
+each curve's fit in **Add** and press **Add**, so that **Local fits** lists the
+three curves (**Remove** and **Clear** take them out again; there is no need
 to keep the global fit out of its own list). Press **▶ Fit**: all curves are now
 fitted jointly, with the linked `td`, `s` and `bt` shared and `N` and `ba` free
-per curve. Read the joint values on the global fit's **Info** tab.
+per curve. Read the joint values on the global fit's **Info** tab: each curve's
+parameters under its number (`1:N`, `2:N`, ...), the linked ones with the
+parameter they follow (→`td`). Here the joint fit gives `td` = 25.6 µs,
+`s` = 6.64 and `bt` = 1.5 µs, with `N` = 5.2 to 5.3 and `ba` = 15 to 17 % per
+curve, at a global χ²ᵣ of 1.0:
+
+```{image} figures/fcs_global_fit.png
+:align: center
+```
 
 If you fit many and / or complicated models, a fit can take a while; a progress
 dialog shows how far it is.
 
-Finally, save the fits with **File → Fits → Current Fit** (⌥⌘S) or **All Fits**:
+Finally, save the fits with **File → Current Fit** (Ctrl+Alt+S) or **All Fits** (section *Fits*):
 
 ```{image} figures/fcs_file_menu.png
 :align: center

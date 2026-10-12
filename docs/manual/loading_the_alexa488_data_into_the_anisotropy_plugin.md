@@ -66,8 +66,9 @@ Please note that the amplitude sum of the fluorescence lifetime components is no
 for the anisotropy components the sum is the fundamental anisotropy r0 (at most 0.4; 0.38 for most
 fluorophores).
 
-In the *Finish* step press **Create fits** to generate the joint fits in the main ChiSurf window, and
-**Tile Windows** (*Main* tab of the ribbon) to distribute the windows.
+In the *Finish* step press **Create fits** to generate the joint fits in the main ChiSurf window; each
+opens as a dock window, and **Tile Windows** (*Main* tab of the ribbon) distributes them. The window in
+the centre is the one the *Analysis* dock follows.
 
 ```{image} figures/anisotropy_fit_windows.png
 :align: center
@@ -117,8 +118,9 @@ Next, switch to the **Analysis** dock and inspect what it shows for the three wi
 :align: center
 ```
 
-The **Analysis** dock for the VH and the VV fit: the *Fit* bar (**Fit**, dataset, fit range *First* /
-*Last*), then the *Convolution*, *Generic*, *Corrections*, *Lifetimes* and *Anisotropy* sections.
+The **Analysis** dock for the VH and the VV fit: the *Fit* bar (**Fit**, **MCTS**, **Sample**, dataset,
+fit range *First* / *Last*), then the *Convolution*, *Generic*, *Corrections*, *Lifetimes* and
+*Anisotropy* sections.
 
 Each numeric parameter is a row of a table:
 

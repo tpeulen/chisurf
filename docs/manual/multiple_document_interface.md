@@ -17,9 +17,9 @@ The multiple document interface displays fits created using the graphical user i
 :align: center
 ```
 
-**Fig.17 Fit windows in the multiple document interface.** The toolbar under the menu bar holds, from the left: **Add dataset** (with the current reader), **Save all fits**, **Close fit**, then **Tile Windows**, **Tab Windows** and **Reset Layout**, **Screenshot**, and **Quit**. Top: two fit windows tiled, every window visible at once. Bottom: the same windows tabbed, one shown at a time and chosen by its tab; **Tile Windows** returns to separate windows.
+**Fig.17 Fit windows in the shell.** Each fit window is a dock window. Top: two fit windows floated side by side, every window visible at once. Bottom: the same windows docked as tabs of the central area, one shown at a time and chosen by its tab. Drag a window's title bar to float or tile it, drop it on the tab strip to dock it again; **×** closes only the window, the fit stays in the session.
 
-Fit windows are tiled or tabbed from that toolbar (**Fig.17**). Selecting another fit window calls:
+Fit windows are arranged by dragging them (**Fig.17**). Selecting another fit window calls:
 
 ```
 cs.current_fit = chisurf.fits[0]

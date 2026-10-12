@@ -333,6 +333,12 @@ def _grab_18_sim_setup():
     driver.frame(3)
     print("params k_rad", dialog.model.to_parameters()["k_rad"], "N", dialog.model.n_species)
     driver.screenshot(FIG / "18_sim_setup.png")
+    # The dialog keeps a margin inside the viewport (its box is narrower than the window), so the tool
+    # behind it shows as a strip at the right and bottom edge: crop to the dialog's own box.
+    from PIL import Image
+
+    x, y, w, h = (int(v) for v in dialog.window.box)
+    Image.open(FIG / "18_sim_setup.png").convert("RGB").crop((x, y, x + w, y + h)).save(FIG / "18_sim_setup.png")
     print("wrote 18_sim_setup.png")
     app.close()
     return app

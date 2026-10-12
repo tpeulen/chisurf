@@ -8,7 +8,7 @@ tags: [manual, fitting, settings]
 # Fit Plots
 
 Fits display (depending on the model) different plots, chosen from the tab bar of
-the fit window in the MDI (**Fig.18**). The settings of the current plot are
+the fit window (**Fig.18**). The settings of the current plot are
 shown in the **Plot settings** dock; switching tabs, or fit windows, switches
 what the dock shows. A plot without settings says so in the dock.
 
@@ -18,13 +18,13 @@ what the dock shows. A plot without settings says so in the dock.
 
 **Fig.18 Plots in fit windows.** Right: a lifetime fit of the IBH sample decay
 with its measured prompt; the tab bar of the fit window selects the plot (*Fit*,
-*Data table*, *Info*, *Parameter scan*, ...). Left: the **Plot settings** of the
+*Data table*, *Info*, *Parameter scan*, ...). Lower left: the **Plot settings** of the
 *Fit* plot. Both are drawn by emtk; the dock is one surface that draws the
 current plot's settings.
 
 Most fit models display line plots of the data and the model function, with the
 weighted residuals and their autocorrelation above them (**Fig.18**, right). The
-*Fit* plot's settings (**Fig.18**, left):
+*Fit* plot's settings (**Fig.18**, lower left):
 
 | Control | What it does |
 |---|---|

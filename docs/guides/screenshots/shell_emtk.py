@@ -35,7 +35,7 @@ class Shell:
         from chisurf.server.session import SessionState
 
         self.state = SessionState()
-        self.app = EmtkShellApp({}, loader=lambda plugin_id: None)
+        self.app = EmtkShellApp()  # the real plugin catalogue and loader, as make_app builds it
         self.app.data.adopt(start_session(state=self.state))
         self.data = self.app.data
         self.driver = Driver(self.app, size)
