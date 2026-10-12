@@ -2,6 +2,9 @@
 
 ## 2026-10-12
 
+- German and French catalogues complete again: today's new strings (simulation setup, Photon Table and TTTR toolbox
+  help, plot settings, hub dissolution titles) translated, and 381 empty German entries finished (mostly units and
+  names; 34 real translations). ndxplorer's one missing string translated (ndxplorer befd644).
 - Acquisition simulation: `ch_conversion` is tttrlib's index map (hardware channel per simulated channel), not
   detector/source pairs; the pair layout decoded the second detector as channel 0. The settings model, wrapper, CLI,
   `encode_records` fallback (now raises on a pair-length list) and `acq_sim_defaults.json` are fixed, and a test
