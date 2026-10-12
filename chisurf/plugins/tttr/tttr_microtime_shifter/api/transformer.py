@@ -1,4 +1,4 @@
-"""Microtime Shifter as a conformant transformer (PRD-16 / PRD-11).
+"""Microtime Shifter as a conformant transformer.
 
 Adapts the plugin's pure ``shift_file`` to the general transformer contract:
 declared typed ports, an ``operation_type`` whose parameter schema lives in the

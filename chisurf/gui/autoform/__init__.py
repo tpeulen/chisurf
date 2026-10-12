@@ -1,8 +1,8 @@
 """Generic renderer that builds a Qt editor from a declarative ``DataSet``.
 
 ``AutoForm`` walks a UI-agnostic spec from :mod:`chisurf.core.dataspec` and
-composes the editor from registered item/section widgets (PRD-40). It was lifted
-out of ``chisurf.gui.widgets.models.auto_model_widget`` (PRD-38), where it was
+composes the editor from registered item/section widgets. It was lifted
+out of ``chisurf.gui.widgets.models.auto_model_widget``, where it was
 scoped to fitting models, so settings, metadata and tool panels can be rendered
 the same way. ``AutoModelWidget`` remains as a backwards-compatible alias.
 """

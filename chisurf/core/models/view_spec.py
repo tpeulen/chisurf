@@ -1,6 +1,6 @@
 """Backwards-compatible shim re-exporting :mod:`chisurf.core.dataspec`.
 
-PRD-40 lifted this module out from under ``models/`` so the same declarative
+This module was lifted out from under ``models/`` so the same declarative
 ``dataset → editor`` framework can describe settings, metadata and tool panels,
 not just models. Existing imports (``from chisurf.core.models import view_spec``)
 keep working through this re-export; new code should import from

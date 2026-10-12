@@ -1,4 +1,4 @@
-"""PRD-15: mmfdb-admin reagent RPC handlers.
+"""Mmfdb-admin reagent RPC handlers.
 
 Reagent lots are reachable through the admin backend (and thus MMFDBClient): list/create
 + expiry + usage links. A bad kind / target_type comes back as an ``error`` field, not

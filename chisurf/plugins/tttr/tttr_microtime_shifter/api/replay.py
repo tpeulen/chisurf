@@ -1,6 +1,6 @@
-"""Replay executor for the ``microtime_shift`` operation (PRD-21 Task 2 follow-on).
+"""Replay executor for the ``microtime_shift`` operation.
 
-PRD-21 Task 2 records each derived artifact's producing operation as a replayable
+Each derived artifact's producing operation as a replayable
 :class:`~mmfdb.provenance.compute_spec.ComputeSpec`; ``recompute``/``replay`` dispatch
 to a registered executor per ``operation_type``. This module fills that seam for the
 Micro-time Shifter: it materializes each source artifact's stored TTTR file, re-runs

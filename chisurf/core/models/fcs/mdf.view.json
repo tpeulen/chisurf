@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the Enderlein Gauss-Lorentz MDF FCS model (MdfFCSModel). PRD-62: relocated out of gui/widgets, R0 renamed to wem (registry collision with FRET's Foerster-radius R0), regrouped into table-view parameter groups, added optional bunching terms.",
+  "_comment": "Editor layout for the Enderlein Gauss-Lorentz MDF FCS model (MdfFCSModel). Relocated out of gui/widgets, R0 renamed to wem (registry collision with FRET's Foerster-radius R0), regrouped into table-view parameter groups, added optional bunching terms.",
   "sections": [
     {
       "type": "panel",

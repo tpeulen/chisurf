@@ -1,4 +1,4 @@
-"""RPC contract tests for the ``phasor.*`` service (PRD-56 §7).
+"""RPC contract tests for the ``phasor.*`` service.
 
 Drives the handlers through an in-process ``ServiceDispatcher`` — the same dispatch
 path the ZMQ server uses — and asserts shapes and round-tripping of array payloads.

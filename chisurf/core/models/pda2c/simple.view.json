@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the discrete PDA model (Pda2cSimpleModel). PRD-38 model/view-spec split: compute stays in simple.py; this JSON is user-editable (reorder sections, retitle, add plots).",
+  "_comment": "Editor layout for the discrete PDA model (Pda2cSimpleModel). Compute stays in simple.py; this JSON is user-editable (reorder sections, retitle, add plots).",
   "sections": [
     {
       "type": "panel",

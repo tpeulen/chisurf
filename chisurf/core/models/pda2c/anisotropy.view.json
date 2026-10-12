@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the anisotropy PDA model (Pda2cAnisotropyModel). PRD-38 model/view-spec split: compute stays in anisotropy.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the anisotropy PDA model (Pda2cAnisotropyModel). Compute stays in anisotropy.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

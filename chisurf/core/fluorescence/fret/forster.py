@@ -1,8 +1,8 @@
-"""Förster radius from spectral overlap (PRD-06 Task 1).
+"""Förster radius from spectral overlap.
 
 The canonical, grid-agnostic implementation of the spectral overlap integral and the
 Förster radius R0 — the primitive behind "look up a donor/acceptor pair and get R0
-computed from the overlap", consumed by the fluorophore database (PRD-06) and the FRET
+computed from the overlap", consumed by the fluorophore database and the FRET
 models. The Light Path Simulator plugin has a grid-specific variant
 (``lightpath_simulator/backend/crosstalk.py``) that can delegate here.
 

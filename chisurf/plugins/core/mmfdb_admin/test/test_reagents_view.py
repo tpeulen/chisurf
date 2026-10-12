@@ -1,4 +1,4 @@
-"""PRD-15: ReagentLotsView Qt widget (smoke).
+"""ReagentLotsView Qt widget (smoke).
 
 Drives the thin view over a real in-process MMFDBClient RPC layer: list lots, filter by
 kind, toggle show-expired, show the selected lot's fields, and create a lot via the form.

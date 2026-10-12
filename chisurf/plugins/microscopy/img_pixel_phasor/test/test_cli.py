@@ -1,4 +1,4 @@
-"""Headless CLI smoke tests for the phasor plugin (PRD-55 acceptance).
+"""Headless CLI smoke tests for the phasor plugin.
 
 Covers the acceptance item "derived maps are produced through the plugin's
 ``cli/main.py``": with a modulation frequency supplied, the CLI emits per-pixel

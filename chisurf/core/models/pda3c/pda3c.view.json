@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the three-colour PDA model (Pda3cModel). PRD-65; compute stays in pda3c.py, this JSON is user-editable.",
+  "_comment": "Editor layout for the three-colour PDA model (Pda3cModel). Compute stays in pda3c.py, this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

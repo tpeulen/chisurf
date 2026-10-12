@@ -1,4 +1,4 @@
-"""Kinetic consistency check for fitted PDA models (PRD-50, scope item 5).
+"""Kinetic consistency check for fitted PDA models.
 
 A PDA fit answers "which parameters best describe the histogram", never
 "*could* this scheme have produced the histogram at all". Those are different

@@ -1654,8 +1654,8 @@ class PlotWidget(QtWidgets.QWidget):
     after the model changes.
 
     Rendering goes through :mod:`chisurf.gui.chiplot`, so every declarative plot
-    in ChiSurf follows the backend seam rather than importing a plotting library
-    (PRD-64). Anything chiplot cannot express belongs *in* chiplot: reaching
+    in ChiSurf follows the backend seam rather than importing a plotting library.
+    Anything chiplot cannot express belongs *in* chiplot: reaching
     past the seam here would silently opt every plugin's plot out of the
     migration at once.
 

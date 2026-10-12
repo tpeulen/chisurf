@@ -1,4 +1,4 @@
-"""PRD-22: mmfdb-admin pipeline RPC handlers.
+"""Mmfdb-admin pipeline RPC handlers.
 
 Stored pipeline definitions (and their grouped runs) are reachable through the admin
 backend (and thus MMFDBClient): list pipelines, get a pipeline's structure (nodes +

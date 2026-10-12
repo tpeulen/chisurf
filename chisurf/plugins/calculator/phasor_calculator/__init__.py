@@ -1,4 +1,4 @@
-"""Interactive phasor-plot calculator (PRD-56).
+"""Interactive phasor-plot calculator.
 
 A data-free phasor plot for the Calculators hub: place reference lifetimes, a FRET
 trajectory and a two-component mixing line on the universal semicircle. Built from a

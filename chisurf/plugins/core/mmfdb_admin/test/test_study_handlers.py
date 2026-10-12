@@ -1,4 +1,4 @@
-"""PRD-13 Increment 3: mmfdb-admin study RPC handlers.
+"""Mmfdb-admin study RPC handlers.
 
 Studies are reachable through the admin backend (and thus MMFDBClient): list/get/create
 + membership + configurable fields. A bad member_type / missing name comes back as an

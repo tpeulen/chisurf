@@ -1,4 +1,4 @@
-"""PRD-13 Increment 3b: the StudiesView Qt widget (smoke).
+"""The StudiesView Qt widget (smoke).
 
 Drives the thin view against the real InProcessClient RPC layer: create studies, list
 them, and show members + fields on selection.

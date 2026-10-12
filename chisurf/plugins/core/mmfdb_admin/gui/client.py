@@ -382,7 +382,7 @@ class MMFDBClient:
             {"study_id": study_id, "key": key, "value": value},
         )
 
-    # -- reagents / consumables (PRD-15) -------------------------------------
+    # -- reagents / consumables -------------------------------------
 
     def list_reagent_lots(
         self, kind: str | None = None, include_expired: bool = False
@@ -428,7 +428,7 @@ class MMFDBClient:
             {"lot_id": lot_id, "target_type": target_type, "target_id": target_id, "role": role},
         )
 
-    # -- calibration provenance (PRD-05) -------------------------------------
+    # -- calibration provenance -------------------------------------
 
     def list_calibrations(self) -> list[dict[str, Any]]:
         return self._call("mmfdb.calibrations.list").get("calibrations", [])
@@ -453,7 +453,7 @@ class MMFDBClient:
             },
         )
 
-    # -- pipelines / workflows (PRD-22) --------------------------------------
+    # -- pipelines / workflows --------------------------------------
 
     def list_pipelines(self, scope: str = "all") -> list[dict[str, Any]]:
         return self._call("mmfdb.pipelines.list", {"scope": scope}).get("pipelines", [])

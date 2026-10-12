@@ -644,7 +644,7 @@ class _DyeTableWidget(QtWidgets.QWidget):
     def __init__(self, probes: list[dict], db_path: str | None = None, parent=None):
         super().__init__(parent)
         self.probes = probes
-        # PRD-23: construction is read-only — the MMFDB adapter is opened lazily on
+        # construction is read-only — the MMFDB adapter is opened lazily on
         # first tooltip render (see _ensure_db_adapter), never in __init__.
         self._db_path = db_path
         self._db_adapter: MFDatabaseAdapter | None = None

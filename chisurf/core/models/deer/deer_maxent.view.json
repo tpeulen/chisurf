@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the model-free (MaxEnt) DEER model (DeerMaxEntModel). PRD-38 model/view-spec split: compute stays in deer.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the model-free (MaxEnt) DEER model (DeerMaxEntModel). Compute stays in deer.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

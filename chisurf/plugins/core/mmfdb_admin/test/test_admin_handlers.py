@@ -1,4 +1,4 @@
-"""Tests for mmfdb-admin RPC handlers defined in PRD-02b."""
+"""Tests for mmfdb-admin RPC handlers defined in the mmfdb-admin plugin."""
 
 from __future__ import annotations
 

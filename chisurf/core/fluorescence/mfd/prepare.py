@@ -14,7 +14,7 @@ Three things here are deliberate rather than incidental.
 folder. Every open goes through :func:`chisurf.core.fio.staging.open_tttr`, the one
 seam that resolves container types and applies per-channel corrections. **A read that
 yields zero photons raises** :class:`UnresolvedPhotonSource`. That is the one
-deliberate behaviour change of PRD-72: the failure this replaces was not an error at
+deliberate behaviour change: the failure this replaces was not an error at
 all, but an analysis that ran on nothing and looked like a measurement with no signal.
 
 **The photon-index convention is detected, not assumed.** ``Number of Photons``

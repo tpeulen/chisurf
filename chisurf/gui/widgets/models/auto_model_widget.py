@@ -1,7 +1,7 @@
 """Backwards-compatible shim — the renderer now lives in :mod:`chisurf.gui.autoform`.
 
-PRD-40 lifted ``AutoModelWidget`` out from under ``models/`` and renamed it
-``AutoForm`` so it can render any declarative editor, not just fitting models.
+``AutoModelWidget`` was lifted out from under ``models/`` and renamed
+to ``AutoForm`` so it can render any declarative editor, not just fitting models.
 Existing imports keep working through this re-export.
 """
 

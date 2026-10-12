@@ -1,6 +1,6 @@
-"""Self-contained studies/projects view (PRD-13 Increment 3).
+"""Self-contained studies/projects view.
 
-A thin Qt widget over the ``mmfdb.studies.*`` RPC handlers (PRD-23: logic in the backend,
+A thin Qt widget over the ``mmfdb.studies.*`` RPC handlers (logic in the backend,
 view only renders): list studies (scoped), show a study's members and configurable
 fields, and create a study / add a member / set a field. Like ``LifecycleView`` /
 ``ProtocolsView`` it is **standalone** (constructed with an ``MMFDBClient``) so the

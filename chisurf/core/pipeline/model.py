@@ -1,12 +1,12 @@
-"""Pipeline definition + type-checked composition (PRD-22).
+"""Pipeline definition + type-checked composition.
 
 A pipeline is a directed acyclic graph of **transformer invocations** at the data
 level (the chinet node/port model applied to data operations). A node binds a
-transformer's ``operation_type`` (PRD-11/16) to parameters; an edge wires a
+transformer's ``operation_type`` to parameters; an edge wires a
 producer's output port to a consumer's input port.
 
 This module is pure: it knows nothing about MMFDB, files, or Qt. It resolves a
-node's ``operation_type`` to its registered transformer (PRD-16) purely to read the
+node's ``operation_type`` to its registered transformer purely to read the
 declared port kinds, and validates every edge against them — so an invalid
 composition fails *at definition time*, before anything runs. Execution lives in
 :mod:`chisurf.core.pipeline.runner`.
@@ -24,7 +24,7 @@ class PipelineNode:
     """One transformer invocation: an ``operation_type`` bound to parameters.
 
     ``name`` is the node's unique handle within a pipeline (edges reference it).
-    ``parameters`` are the bound transformer parameters (PRD-11 schema); they are
+    ``parameters`` are the bound transformer parameters; they are
     validated against the operation type's ``.dic`` schema when the node runs, not
     here.
     """
@@ -96,7 +96,7 @@ def validate_pipeline(pipeline: Pipeline, *, resolver=get_transformer_for_operat
     Checks, in order: unique node names; every ``operation_type`` resolves to a
     registered transformer; every edge references existing nodes and declared ports;
     each edge is **type-compatible** (the producer's output-port kinds intersect the
-    consumer's input-port kinds — PRD-16); and the graph is acyclic.
+    consumer's input-port kinds); and the graph is acyclic.
     """
     seen: set[str] = set()
     for node in pipeline.nodes:

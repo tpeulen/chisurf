@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the 3D-Rice DEER model (DeerRiceModel). PRD-38 model/view-spec split: compute stays in deer.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the 3D-Rice DEER model (DeerRiceModel). Compute stays in deer.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

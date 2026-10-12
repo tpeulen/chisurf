@@ -1,4 +1,4 @@
-"""Three-colour PDA experiment readers (PRD-65)."""
+"""Three-colour PDA experiment readers."""
 
 from __future__ import annotations
 

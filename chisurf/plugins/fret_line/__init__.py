@@ -2,7 +2,7 @@
 
 Provides a GUI tool (``FRETLineTool``) for computing FRET efficiency lines
 over parameter ranges and overlaying them on smFRET 2D histograms in ndxplorer.
-The widget is built via AutoForm (PRD-40) from ``fret_line.view.json``.
+The widget is built via AutoForm from ``fret_line.view.json``.
 """
 
 from __future__ import annotations

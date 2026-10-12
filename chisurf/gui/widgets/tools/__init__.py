@@ -1,4 +1,4 @@
-"""Shared base classes for dockable transformer tools (PRD-23).
+"""Shared base classes for dockable transformer tools.
 
 Provides a common dockable-tool base (`ChisurfDockTool`) and a reusable
 path-drop list (`PathDropListWidget`) so every transformer GUI reuses one

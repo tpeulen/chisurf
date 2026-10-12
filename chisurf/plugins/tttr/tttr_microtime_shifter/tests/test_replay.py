@@ -1,4 +1,4 @@
-"""PRD-21 Task 2 follow-on: the microtime_shift replay executor.
+"""The microtime_shift replay executor.
 
 Registers a real TTTR file as a raw measurement, records a microtime_shift result,
 then recomputes/replays that artifact's compute spec end to end — materializing the

@@ -1,4 +1,4 @@
-"""PRD-14 Increment 3: mmfdb-admin protocol RPC handlers.
+"""Mmfdb-admin protocol RPC handlers.
 
 Protocols are reachable through the admin backend (and thus MMFDBClient) so the GUI
 view is a thin caller: list/get/versions/create + the per-operation protocol provenance.
@@ -49,7 +49,7 @@ def test_get_protocol_exposes_parameter_schema(db):
         create_protocol_handler("burst", "processing", operation_type="burst_selection")
         got = get_protocol_handler("burst")
     names = {p["name"] for p in got["parameter_schema"]}
-    assert "min_photons" in names  # the operation_type schema (PRD-11), no forked stack
+    assert "min_photons" in names  # the operation_type schema, no forked stack
 
 
 def test_protocol_for_operation_provenance(db):

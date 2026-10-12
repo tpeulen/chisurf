@@ -1,8 +1,8 @@
-"""Self-contained protocols view (PRD-14 Increment 3).
+"""Self-contained protocols view.
 
-A thin Qt widget over the ``mmfdb.protocols.*`` RPC handlers (PRD-23: logic in the
+A thin Qt widget over the ``mmfdb.protocols.*`` RPC handlers (logic in the
 backend, view only renders): list protocols (scoped), show a protocol's version history
-and its declared parameter schema (the operation_type's PRD-11 schema), and create a new
+and its declared parameter schema (the operation_type's schema), and create a new
 protocol/version. Like ``LifecycleView`` it is **standalone** (constructed with an
 ``MMFDBClient``) so the in-flight mmfdb-admin dock rewrite (``OVERHAUL_PLAN.md``) slots it
 in without entangling the legacy tab framework, and so it smoke-tests in isolation.

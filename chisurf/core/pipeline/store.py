@@ -1,4 +1,4 @@
-"""Persist pipeline definitions and runs (PRD-22 Task 3).
+"""Persist pipeline definitions and runs.
 
 A pipeline is a *saveable, shareable document* (the Orange3 ``.ows`` lesson): its
 graph structure is stored in the dictionary-declared ``mmfdb_pipeline`` /

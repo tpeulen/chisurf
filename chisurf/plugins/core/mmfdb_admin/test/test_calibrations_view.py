@@ -1,4 +1,4 @@
-"""PRD-05: CalibrationsView Qt widget (smoke).
+"""CalibrationsView Qt widget (smoke).
 
 Drives the thin view over a real in-process MMFDBClient: list calibrations, register a
 literature value via the form, and show stale uses.

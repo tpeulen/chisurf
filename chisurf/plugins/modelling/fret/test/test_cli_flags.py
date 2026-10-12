@@ -1,4 +1,4 @@
-"""Headless CLI-contract tests for PRD-58 (R09 / R16).
+"""Headless CLI-contract tests.
 
 * R16 — the ``evaluate`` command's ``--pdb-dir`` / ``--top`` + ``--traj`` flags and
   the pure ``_resolve_evaluate_mode`` selector.

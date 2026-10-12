@@ -1,4 +1,4 @@
-"""PRD-14 Increment 3b: the ProtocolsView Qt widget (smoke).
+"""The ProtocolsView Qt widget (smoke).
 
 Drives the thin view against the real InProcessClient RPC layer: create protocols,
 list them (latest per name), show version history + the operation_type parameter schema,

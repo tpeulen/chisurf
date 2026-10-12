@@ -1,4 +1,4 @@
-"""``phasor.*`` RPC service — exposes the phasor toolkit over JSON-RPC (PRD-56 §2.2).
+"""``phasor.*`` RPC service — exposes the phasor toolkit over JSON-RPC.
 
 Thin, transport-friendly wrappers over :mod:`..analysis` (pure numpy/scipy). Handlers
 take and return JSON-friendly arrays (nested lists), so any RPC client — ChiSurf's

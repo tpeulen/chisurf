@@ -1,8 +1,8 @@
-"""Three-colour PDA fitting models (PRD-65).
+"""Three-colour PDA fitting models.
 
 Compute lives in :mod:`chisurf.core.fluorescence.pda3c`; this package is the
 ChiSurf model layer around it, with editor layouts in the co-located
-``*.view.json`` files (PRD-38 model/view-spec split).
+``*.view.json`` files (model/view-spec split).
 """
 
 from __future__ import annotations

@@ -6,8 +6,7 @@ a static line is drawn on top and the deviation from it discussed. This package
 makes them **fitted**, by forward-modelling the raw per-burst observables over an
 empirical nuisance measure taken from the bursts themselves.
 
-The design is [PRD-71](../../../okf/prds/prd-71.md); the groundwork underneath it
-is [PRD-72](../../../okf/prds/prd-72.md). Four ideas carry it:
+Four ideas carry it:
 
 1. **The burst statistics come from the experiment**, photon-distribution-analysis
    style: the nuisance measure is the *empirical* joint distribution of the burst

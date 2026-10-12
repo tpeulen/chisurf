@@ -1,4 +1,4 @@
-"""Three-colour PDA experiment readers (PRD-65).
+"""Three-colour PDA experiment readers.
 
 A PDA3c dataset is a **burst table**, not a curve: five photon counts per burst,
 ``F_BB``/``F_BG``/``F_BR`` under blue excitation and ``F_GG``/``F_GR`` under

@@ -1,6 +1,6 @@
-"""Self-contained reagent / consumable inventory view (PRD-15 LIMS P4).
+"""Self-contained reagent / consumable inventory view.
 
-A thin Qt widget over the ``mmfdb.samples.reagents.*`` RPC handlers (PRD-23: logic in the
+A thin Qt widget over the ``mmfdb.samples.reagents.*`` RPC handlers (logic in the
 backend, view only renders): list reagent lots (kind filter + show-expired toggle),
 show the selected lot's fields, and create a lot. Like ``StudiesView`` it is
 **standalone** (constructed with an ``MMFDBClient``) so it slots into the mmfdb-admin

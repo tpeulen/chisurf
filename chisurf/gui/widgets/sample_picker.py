@@ -1,4 +1,4 @@
-"""Qt widgets for selecting and creating MMFDB samples (PRD-39 GUI)."""
+"""Qt widgets for selecting and creating MMFDB samples."""
 
 from __future__ import annotations
 
@@ -122,7 +122,7 @@ class SamplePicker(QtWidgets.QWidget):
 
 
 class _SampleDefinitionDialog(QtWidgets.QDialog):
-    """Dialog for entering sample definition with PRD-39 external references."""
+    """Dialog for entering sample definition with external references."""
 
     def __init__(self, db=None, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
@@ -154,7 +154,7 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         form.addRow("Buffer", self.buffer_edit)
         main_layout.addLayout(form)
 
-        # ── External references group (PRD-39) ──
+        # ── External references group ──
         ref_group = QtWidgets.QGroupBox("External References (UniProt / PDB)", self)
         ref_layout = QtWidgets.QFormLayout(ref_group)
 

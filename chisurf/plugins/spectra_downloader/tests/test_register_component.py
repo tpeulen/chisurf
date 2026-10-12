@@ -218,7 +218,7 @@ def test_reregister_keeps_provenance_and_refreshes_spectra(db):
 
 
 def test_cas_is_canonicalized_and_looked_up(db):
-    """Foundation for PRD-45: CAS aliases collapse to `cas` and are queryable."""
+    """Foundation for CAS aliases collapse to `cas` and are queryable."""
     db.register_component(
         name="Benzene",
         source="photochemcad",

@@ -1,1 +1,1 @@
-"""Backend (RPC) surface for the phasor imaging plugin (PRD-56)."""
+"""Backend (RPC) surface for the phasor imaging plugin."""

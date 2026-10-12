@@ -1,4 +1,4 @@
-"""Headless + offscreen-GUI tests for the phasor calculator (PRD-56)."""
+"""Headless + offscreen-GUI tests for the phasor calculator."""
 
 from __future__ import annotations
 

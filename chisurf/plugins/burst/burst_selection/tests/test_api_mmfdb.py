@@ -1,4 +1,4 @@
-"""PRD-23: the raw-input MMFDB helpers live in the api layer (Qt-free).
+"""The raw-input MMFDB helpers live in the api layer (Qt-free).
 
 These helpers used to live in ``gui/tool.py`` (with ``register_result``/``MFDatabase``
 imported into the view). They were moved to ``api/mmfdb.py`` so the GUI calls the api

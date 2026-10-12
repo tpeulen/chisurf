@@ -1,8 +1,8 @@
-"""The transformer contract types, registry, and conformance check (PRD-16).
+"""The transformer contract types, registry, and conformance check.
 
-A transformer is an ``operation_type`` (PRD-11) plus a small mandatory contract:
+A transformer is an ``operation_type`` plus a small mandatory contract:
 typed input/output **ports**, parameters declared in the ``.dic`` (not code), a
-**pure** ``transform`` (no Qt, no DB), and uniform MMFDB registration via the PRD-11
+**pure** ``transform`` (no Qt, no DB), and uniform MMFDB registration via the
 operation-node path. This module defines the contract, a self-registering registry,
 and a conformance check that gates new transformers.
 """
@@ -65,7 +65,7 @@ class Transformer(Protocol):
     transformer_id : str
         Stable id (e.g. ``"microtime_shifter"``).
     operation_type : str
-        PRD-11 operation vocabulary value; its parameter schema is declared in the
+        operation vocabulary value; its parameter schema is declared in the
         ``.dic`` (``mmfdb_operation_parameter_def``), never in code.
     version : str
         Contract/implementation version.
@@ -85,7 +85,7 @@ class Transformer(Protocol):
 
 
 class TransformerConformanceError(ValueError):
-    """A transformer does not satisfy the PRD-16 contract."""
+    """A transformer does not satisfy the transformer contract."""
 
 
 _REGISTRY: dict[str, Transformer] = {}
@@ -108,7 +108,7 @@ def list_transformers() -> list[Transformer]:
 def get_transformer_for_operation(operation_type: str) -> Transformer | None:
     """Return a registered transformer whose ``operation_type`` matches, or ``None``.
 
-    The pipeline engine (PRD-22) resolves a node's ``operation_type`` to the
+    The pipeline engine resolves a node's ``operation_type`` to the
     transformer that declares its typed ports, so edges can be type-checked against
     ``input_spec``/``output_spec``. If several transformers share an operation type,
     the lowest ``transformer_id`` wins (stable, deterministic).
@@ -120,11 +120,11 @@ def get_transformer_for_operation(operation_type: str) -> Transformer | None:
 
 
 def check_transformer_conformance(transformer: Transformer, conn: Any = None) -> None:
-    """Validate a transformer against the PRD-16 contract.
+    """Validate a transformer against the transformer contract.
 
     Checks the required attributes, that it declares input/output ports, and that
     its ``operation_type`` has a ``.dic`` parameter schema (when a DB connection is
-    supplied, via PRD-11 ``mmfdb_operation_parameter_def``). Raises
+    supplied, via ``mmfdb_operation_parameter_def``). Raises
     :class:`TransformerConformanceError` on any violation.
     """
     for attr in ("transformer_id", "operation_type", "version"):

@@ -1,4 +1,4 @@
-"""PRD-12 Increment 4b: the LifecycleView Qt widget.
+"""The LifecycleView Qt widget.
 
 Smoke-tests the thin view against the real InProcessClient RPC layer: load definitions,
 display state + history, drive a transition, and surface an illegal jump — all without

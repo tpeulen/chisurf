@@ -1,7 +1,7 @@
-"""Workflow / pipeline engine on the transformer contract (PRD-22).
+"""Workflow / pipeline engine on the transformer contract.
 
-Compose conformant transformers (PRD-16) into a type-checked dataflow graph that
-executes as a recorded, reproducible chain of operations (PRD-11) — the data-level
+Compose conformant transformers into a type-checked dataflow graph that
+executes as a recorded, reproducible chain of operations — the data-level
 analog of chinet's typed node graph. Definition + type-checking live in
 :mod:`~chisurf.core.pipeline.model`; headless execution in
 :mod:`~chisurf.core.pipeline.runner`.

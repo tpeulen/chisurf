@@ -1,4 +1,4 @@
-"""PRD-21 Task 2 follow-on: the burst_selection replay executor.
+"""The burst_selection replay executor.
 
 Registers a real single-molecule SPC file as a raw measurement, records a
 burst_selection result whose compute spec carries the full reproducible parameter set

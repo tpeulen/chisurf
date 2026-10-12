@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the Gaussian-distance PDA model (Pda2cGaussianDistanceModel). PRD-38 model/view-spec split: compute stays in pdagauss.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the Gaussian-distance PDA model (Pda2cGaussianDistanceModel). Compute stays in pdagauss.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

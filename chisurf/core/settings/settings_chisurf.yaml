@@ -355,7 +355,7 @@ optimization:
   global_optimize_local_first: false
   global_threaded_model_update: false
   # Recompute only the local models a parameter change actually reaches, using
-  # the fit's factor graph (PRD-68). The selective path is armed solely by a
+  # the fit's factor graph. The selective path is armed solely by a
   # complete parameter-vector assignment and consumed by the very next
   # update_model, so anything else -- a GUI edit of a single value, a structure
   # change -- still recomputes everything. Set to false to always recompute all

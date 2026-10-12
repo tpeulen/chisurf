@@ -1,6 +1,6 @@
-"""Self-contained pipeline/workflow view (PRD-22).
+"""Self-contained pipeline/workflow view.
 
-A thin Qt widget over the ``mmfdb.pipelines.*`` RPC handlers (PRD-23: logic in the
+A thin Qt widget over the ``mmfdb.pipelines.*`` RPC handlers (logic in the
 backend, view only renders): list stored pipeline definitions, and on selection show
 the pipeline's structure (nodes + typed wiring) and its recorded runs (each grouping a
 chain of operations). Read-only — pipelines are authored in code / via the runner, not

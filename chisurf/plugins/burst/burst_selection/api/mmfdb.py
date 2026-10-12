@@ -673,10 +673,10 @@ def _sidecar_data_format(path: Path) -> str:
     return suffix or "unknown"
 
 
-# --- raw-input registration / lookup (PRD-23: moved out of gui/) -------------
+# --- raw-input registration / lookup (moved out of gui/) ---
 #
 # These are view-agnostic MMFDB/IO helpers; the GUI tool re-exports them so its
-# construction stays free of registration logic (PRD-23 Task 2/4).
+# construction stays free of registration logic.
 
 
 def file_md5(path: Path) -> str:

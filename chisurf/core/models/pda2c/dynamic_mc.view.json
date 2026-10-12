@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the dynamic N-state PDA model (Pda2cDynamicNStateModel). PRD-38 model/view-spec split: compute stays in dynamic_mc.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the dynamic N-state PDA model (Pda2cDynamicNStateModel). Compute stays in dynamic_mc.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

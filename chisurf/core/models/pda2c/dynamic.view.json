@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the dynamic two-state PDA model (Pda2cDynamicTwoStateModel). PRD-38 model/view-spec split: compute stays in dynamic.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the dynamic two-state PDA model (Pda2cDynamicTwoStateModel). Compute stays in dynamic.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

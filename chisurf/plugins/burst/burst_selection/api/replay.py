@@ -1,11 +1,11 @@
-"""Replay executor for the ``burst_selection`` operation (PRD-21 Task 2 follow-on).
+"""Replay executor for the ``burst_selection`` operation.
 
 Mirrors ``tttr_microtime_shifter/api/replay.py`` for burst selection: it materializes
 the source artifact's stored TTTR file, reconstructs an :class:`AnalysisRequest` from the
 compute spec's parameters (``settings_from_parameters`` is the inverse of
 ``extract_burst_parameters``), re-runs the pure ``analyze_request``, and registers the
 outputs through :class:`BurstMMFDBPipeline` so the replay lands in the same shape as a
-normal run (PRD-28: a burst-table artifact derived from the source plus its sidecars).
+normal run (a burst-table artifact derived from the source plus its sidecars).
 
 Faithful replay depends on the compute spec capturing the full reproducible parameter
 set — including the detector ``channels`` stream mask (role-indexed) and the GMM

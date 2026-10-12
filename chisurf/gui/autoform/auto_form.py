@@ -4,7 +4,7 @@
 and builds the control panel by composition — it *has a* bound object, it is not
 one. Generic sections are drawn from the parameters themselves; bespoke ones are
 looked up in the section registry by key. This is the single renderer that
-replaces the per-domain hand-written widgets (PRD-40). ``AutoModelWidget`` is
+replaces the per-domain hand-written widgets. ``AutoModelWidget`` is
 kept as a backwards-compatible alias.
 """
 
@@ -1397,5 +1397,5 @@ class AutoForm(QtWidgets.QWidget):
         return group_widget.findChildren(FittingParameterWidget)
 
 
-#: Backwards-compatible alias from the PRD-38 model-only name.
+#: Backwards-compatible alias from the model-only name.
 AutoModelWidget = AutoForm

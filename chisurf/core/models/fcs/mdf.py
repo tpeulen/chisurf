@@ -1,4 +1,4 @@
-"""Enderlein Gauss--Lorentz MDF FCS model (Qt-free, PRD-38/PRD-62 view-spec split).
+"""Enderlein Gauss--Lorentz MDF FCS model (Qt-free, view-spec split).
 
 Unlike the formula-string ``ParseFCSModel`` catalogue, this is a Python-computed
 :class:`~chisurf.core.models.model.ModelCurve` that evaluates the diffusion
@@ -43,7 +43,7 @@ class MdfPhysical(FittingParameterGroup):
     ``w0`` is the excitation beam's lateral 1/e^2 waist; ``wem`` is the
     emission/collection-side Gauss-Lorentz waist (Enderlein's ``R0``, renamed
     to avoid colliding with the unrelated Foerster-radius ``R0`` in the
-    parameter registry — see PRD-62). ``diam`` is the known inter-focus
+    parameter registry). ``diam`` is the known inter-focus
     separation for two-focus (dual-focus) FCS; 0 means single-focus
     auto-correlation (the default). ``b`` is the correlation-curve baseline
     offset, defaulting to 1 to match the typical normalized-ACF convention

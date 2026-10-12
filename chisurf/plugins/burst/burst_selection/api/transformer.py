@@ -1,4 +1,4 @@
-"""Burst Selection as a conformant transformer (PRD-16 / PRD-11).
+"""Burst Selection as a conformant transformer.
 
 Adapts the plugin's pure ``analyze_request`` to the general transformer contract:
 declared typed ports, an ``operation_type`` ("burst_selection") whose parameter
@@ -102,7 +102,7 @@ class BurstSelectionTransformer:
             # A TTTR file, whether freshly imported (``raw_measurement``) or already
             # micro-time shifted (``processed_data``) — both are valid burst inputs,
             # which lets the canonical raw -> microtime_shift -> burst_selection
-            # pipeline (PRD-22) type-check.
+            # pipeline type-check.
             name="raw",
             kinds=("raw_measurement", "processed_data"),
             formats=("ptu", "spc", "ht3", "hdf", "h5"),

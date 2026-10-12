@@ -1,6 +1,6 @@
-"""Self-contained calibration provenance view (PRD-05).
+"""Self-contained calibration provenance view.
 
-A thin Qt widget over the ``mmfdb.calibrations.*`` RPC handlers (PRD-23: logic in the
+A thin Qt widget over the ``mmfdb.calibrations.*`` RPC handlers (logic in the
 backend, view only renders): list calibration records (type/method/value/notes),
 register a literature ("god-given") value, and surface **stale uses** — fits whose
 calibration is superseded by a newer one of the same type (the read side of "when a

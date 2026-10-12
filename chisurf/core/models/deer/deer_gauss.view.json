@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the (multi-)Gaussian DEER model (DeerGaussianModel). PRD-38 model/view-spec split: compute stays in deer.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the (multi-)Gaussian DEER model (DeerGaussianModel). Compute stays in deer.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

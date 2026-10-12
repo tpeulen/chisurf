@@ -1,10 +1,10 @@
-"""Headless pipeline runner (PRD-22).
+"""Headless pipeline runner.
 
 Topologically evaluates a validated :class:`~chisurf.core.pipeline.model.Pipeline`
-and runs each node. Execution reuses the PRD-21 *replay-executor* seam: a node is a
+and runs each node. Execution reuses the *replay-executor* seam: a node is a
 :class:`~mmfdb.provenance.compute_spec.ComputeSpec` (operation_type + parameters +
 source artifact ids), run by the ``operation_type``'s registered executor, which
-materializes inputs, runs the pure PRD-16 ``transform``, and registers each output
+materializes inputs, runs the pure ``transform``, and registers each output
 as a recorded operation. So a pipeline run is a chain of recorded operations with
 full provenance — queryable through the lineage API and reproducible.
 

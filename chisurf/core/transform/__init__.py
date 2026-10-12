@@ -1,8 +1,8 @@
-"""General transformer contract (PRD-16).
+"""General transformer contract.
 
 One abstraction every data-transformer plugin (Burst Selection, Microtime Shifter,
 background correction, correlation, …) obeys: declared typed input/output ports, a
-`.dic`-declared parameter schema (PRD-11 ``mmfdb_operation_parameter_def``), a pure
+`.dic`-declared parameter schema (``mmfdb_operation_parameter_def``), a pure
 ``transform``, and uniform MMFDB registration as an operation node. Mirrors chinet's
 typed node/ports on the data side.
 """

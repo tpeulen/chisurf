@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the model-free (Tikhonov) DEER model (DeerTikhonovModel). PRD-38 model/view-spec split: compute stays in deer.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the model-free (Tikhonov) DEER model (DeerTikhonovModel). Compute stays in deer.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",

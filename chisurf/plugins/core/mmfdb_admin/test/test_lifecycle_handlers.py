@@ -1,4 +1,4 @@
-"""PRD-12 Increment 4: mmfdb-admin lifecycle RPC handlers.
+"""Mmfdb-admin lifecycle RPC handlers.
 
 The lifecycle state machine is reachable through the admin backend handlers (and thus
 the MMFDBClient) so the GUI view is a thin caller. Illegal transitions come back as an

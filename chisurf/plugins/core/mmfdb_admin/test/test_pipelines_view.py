@@ -1,4 +1,4 @@
-"""PRD-22: PipelinesView Qt widget (smoke).
+"""PipelinesView Qt widget (smoke).
 
 Drives the thin read-only view over a real in-process MMFDBClient: list pipelines, and on
 selection show the pipeline's nodes, typed wiring, and recorded runs.

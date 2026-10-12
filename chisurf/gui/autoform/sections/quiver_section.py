@@ -37,7 +37,7 @@ Options
     Unit shown in the colour legend.
 
 Every arrow is drawn as a chiplot line plus a chiplot arrow head, so the section
-carries no renderer-specific code (PRD-64). An arrow of zero length is skipped
+carries no renderer-specific code. An arrow of zero length is skipped
 rather than drawn as a dot: a tile with no measurable velocity should look
 empty, not like a very slow one.
 """

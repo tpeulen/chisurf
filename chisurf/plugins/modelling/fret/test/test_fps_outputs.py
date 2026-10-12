@@ -1,4 +1,4 @@
-"""Headless tests for PRD-58 FPS-parity output + geometry helpers.
+"""Headless tests for FPS-parity output + geometry helpers.
 
 Covers requirements that were implemented but untested:
 

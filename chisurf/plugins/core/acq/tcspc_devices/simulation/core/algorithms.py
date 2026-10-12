@@ -283,7 +283,7 @@ def build_engine(params: dict[str, Any]):
     settings.microtime_resolution = float(params.get("tac_dt", 0.004069))
     settings.laser_period = float(params.get("laser_period", 13.596))
 
-    # Opt-in throughput knobs (native tttrlib Sim* engine; PRD-007). Guarded with hasattr so
+    # Opt-in throughput knobs (native tttrlib Sim* engine). Guarded with hasattr so
     # an older tttrlib without them still runs — the flag is simply ignored there.
     _throughput = (
         ("per_molecule_skip", "per_molecule_skip", bool, False),

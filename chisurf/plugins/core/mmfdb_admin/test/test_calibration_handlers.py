@@ -1,4 +1,4 @@
-"""PRD-05: mmfdb-admin calibration RPC handlers.
+"""Mmfdb-admin calibration RPC handlers.
 
 Calibrations are reachable through the admin backend (and thus MMFDBClient): register a
 value, list records, and surface stale uses (a calibration superseded by a newer one of

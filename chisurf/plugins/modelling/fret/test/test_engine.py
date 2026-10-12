@@ -1,6 +1,6 @@
 """Headless tests for the rigid-body docking data model + IMP-free pose scoring.
 
-Covers PRD-58 rigid-body-docking (RBD) pieces that were implemented but untested:
+Covers rigid-body-docking (RBD) pieces that were implemented but untested:
 
 * ``RigidBody`` coordinate transforms (``core/engine.py``).
 * ``DistanceRestraint.global_position_a/b`` + ``get_effective_distance``.

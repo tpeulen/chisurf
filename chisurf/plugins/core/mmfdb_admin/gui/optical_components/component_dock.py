@@ -137,7 +137,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
         self._spectrum_view = SpectrumView()
         splitter.addWidget(self._spectrum_view)
 
-        # --- Form (AutoForm + JSON view schemes, PRD-40) ---
+        # --- Form (AutoForm + JSON view schemes) ---
         self._form_stack = QtWidgets.QStackedWidget()
         self._forms = {}
         for item in self._registry:

@@ -163,7 +163,7 @@ raw TTTR artifact
   -> optional sidecar artifacts
 ```
 
-`api/mmfdb.py` uses PRD-03 result-registry APIs:
+`api/mmfdb.py` uses result-registry APIs:
 
 - `register_raw_measurement()` for input TTTR files.
 - `register_result(kind="burst_table", ...)` for primary burst outputs.

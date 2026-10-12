@@ -4,7 +4,7 @@ Instead of iterating Baum-Welch EM to the maximum-likelihood estimate, this
 module trains a small neural network **once** on data drawn from the H2MM
 generative model (:func:`~.h2mm.simulate_bursts`) and then estimates the model
 parameters of a real dataset in a **single forward pass** — the
-simulation-based / amortised-inference idea (see OKF ``PRD-60``).
+simulation-based / amortised-inference idea.
 
 Why it is a *replacement* for EM, not an initialiser
 ----------------------------------------------------

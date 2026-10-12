@@ -1,4 +1,4 @@
-"""Headless tests for the pure-numpy phasor analysis toolkit (PRD-55 / PRD-56 §7)."""
+"""Headless tests for the pure-numpy phasor analysis toolkit."""
 
 from __future__ import annotations
 

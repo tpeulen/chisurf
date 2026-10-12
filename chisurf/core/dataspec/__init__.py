@@ -2,7 +2,7 @@
 
 This package is the chisurf-native, guidata-like vocabulary for declaring *how
 a structured, typed object wants to be edited* — without importing or
-referencing any GUI toolkit (PRD-40). It is the contract that enforces the
+referencing any GUI toolkit. It is the contract that enforces the
 strict split between data/computation (``chisurf/core``) and presentation
 (``chisurf/gui``):
 
@@ -18,7 +18,7 @@ asserted in a headless test with Qt not even installed::
     spec = model.view_spec()
     assert any(s.target == "lifetimes" for s in spec.sections)
 
-It was lifted out of ``chisurf.core.models.view_spec`` (PRD-38) so editors for
+It was lifted out of ``chisurf.core.models.view_spec`` so editors for
 models, settings, metadata and tool panels can all be declared the same way;
 ``chisurf.core.models.view_spec`` remains as a backwards-compatible shim. See
 :mod:`chisurf.gui.widgets.models.auto_model_widget` for the renderer that
@@ -414,7 +414,7 @@ class ValueSection(Section):
     """A single scalar field (int / float / string) bound to the object.
 
     The generic typed-field primitive (the ``IntItem`` / ``FloatItem`` /
-    ``StringItem`` of PRD-40), selected via ``kind``. Like :class:`ChoiceSection`
+    ``StringItem``), selected via ``kind``. Like :class:`ChoiceSection`
     and :class:`ToggleSection` it either writes ``attr`` on the ``target`` group
     (``setattr``) or dispatches ``set_action`` with the value under
     ``value_key``. The numeric bounds/step/decimals/suffix only apply to the
@@ -873,7 +873,7 @@ def _section_from_dict(d: typing.Mapping[str, typing.Any]) -> Section:
 class ParameterGroupView:
     """Adapter that makes a ``FittingParameterGroup`` renderable with no JSON.
 
-    PRD-40 calls for "a ``FittingParameterGroup`` *is* a ``DataSet`` view
+    The design calls for "a ``FittingParameterGroup`` *is* a ``DataSet`` view
     automatically". This is that adapter: wrap any parameter group and the
     result exposes a :meth:`view_spec` describing a single
     :class:`ParameterGroupSection`, so ``AutoForm(ParameterGroupView(group))``
