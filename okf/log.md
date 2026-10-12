@@ -2,6 +2,13 @@
 
 ## 2026-10-12
 
+- Magenta ChiSurf window traced to an emtk older than chisurf needs (e0f8b67 lacks `DockManager.focused`): every
+  frame raised, the canvas swallowed it and presented an unrendered Metal drawable. emtk be2add5 (0.1.8):
+  `emtk.frame_errors.draw_control` logs each distinct frame error once, notifies handlers and draws an error panel in
+  every host, and `emtk.version_info()` reports version and commit. ChiSurf refuses to start against emtk older than
+  `chisurf.emtk.requirement.EMTK_MIN_VERSION` and names both versions; pyproject and the recipe carry the same bound
+  (guard test); frame errors also reach `crash_*.log`. Rule: raise emtk `__version__` and `EMTK_MIN_VERSION` together
+  when chisurf starts using newer emtk API. emtk pin to be2add5.
 - Anisotropy wizard: the repetition rate defaults from the file's footer (`rep_rate` or period keys) and reaches the
   model's period; the IRF-to-decay shift is bounded to the peak offset plus three response widths, so a one-lifetime
   global fit from a far start no longer slides the IRF away (chi2r 12947 → 1.65); the IRF response window excludes

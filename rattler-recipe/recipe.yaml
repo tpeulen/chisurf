@@ -131,7 +131,7 @@ requirements:
     # The node-graph editor toolkit (emtk.qt_host), imported unguarded by the
     # node editor widgets and chimol. emtk is on PyPI but not conda-forge:
     # `pip install emtk` (source: github.com/tpeulen/emtk).
-    - emtk
+    - emtk >=0.1.8
     # The chigame WebGPU engine: wgpu is the graphics API, rendercanvas the
     # per-platform surface, glfw the window backend chimol runs Qt-free on.
     # conda-forge spells it wgpu-py; PyPI spells it wgpu, imported as `wgpu`

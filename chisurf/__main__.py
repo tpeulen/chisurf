@@ -37,9 +37,11 @@ def _run_with_crash_log(launch: Callable[[], int]) -> int:
         with crash_log.open("w") as crash_file:
             # enable already registers fatal signals; registering them twice fails.
             faulthandler.enable(file=crash_file, all_threads=True)
+            frame_handler = _record_frame_errors(crash_file)
             try:
                 return int(launch() or 0)
             finally:
+                _forget_frame_errors(frame_handler)
                 # Never leave the signal handler referencing a closed file.
                 try:
                     faulthandler.disable()
@@ -48,6 +50,49 @@ def _run_with_crash_log(launch: Callable[[], int]) -> int:
     except Exception:
         logging.exception("ChiSurf encountered an error during startup")
         raise
+
+
+def _record_frame_errors(crash_file):
+    """Copy every distinct emtk frame error into *crash_file*; return the handler (or None).
+
+    emtk draws an error panel and logs the traceback when a frame raises (the event loop
+    would otherwise swallow it and present an empty surface); this puts the same
+    traceback in the crash log the user is asked for.
+    """
+    try:
+        from emtk.frame_errors import add_frame_error_handler
+    except ImportError:
+        return None
+
+    def handler(record) -> None:
+        crash_file.write(f"emtk frame error\n{record.text}\n")
+        crash_file.flush()
+
+    add_frame_error_handler(handler)
+    return handler
+
+
+def _forget_frame_errors(handler) -> None:
+    """Undo :func:`_record_frame_errors`."""
+    if handler is None:
+        return
+    from emtk.frame_errors import remove_frame_error_handler
+
+    remove_frame_error_handler(handler)
+
+
+def _require_emtk() -> None:
+    """Refuse to start against an emtk older than ChiSurf needs, saying which and why."""
+    import sys
+
+    from chisurf.emtk.requirement import EmtkTooOld, check_emtk
+
+    try:
+        check_emtk()
+    except EmtkTooOld as error:
+        logging.error("%s", error)
+        print(f"ChiSurf cannot start.\n{error}", file=sys.stderr)
+        raise SystemExit(2) from None
 
 
 def main() -> None:
@@ -60,6 +105,8 @@ def main() -> None:
     import sys
 
     args = sys.argv[1:]
+    # Both windows draw with emtk (the Qt one hosts emtk surfaces): check it first.
+    _require_emtk()
     if "--qt" not in args:
         argv = [arg for arg in args if arg != "--emtk-shell"]
 

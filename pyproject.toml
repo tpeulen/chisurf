@@ -69,8 +69,9 @@ dependencies = [
     "labellib",
     # The node-graph editor toolkit: chisurf.gui.widgets.node_editor and
     # chimol import emtk.qt_host unguarded, so it is not optional.
-    # emtk is on PyPI (source: github.com/tpeulen/emtk).
-    "emtk",
+    # emtk is on PyPI (source: github.com/tpeulen/emtk). The bound is
+    # chisurf.emtk.requirement.EMTK_MIN_VERSION, checked at startup.
+    "emtk>=0.1.8",
     "PyYAML",
     "packaging",
     "typing-extensions",

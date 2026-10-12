@@ -43,6 +43,9 @@ def test_startup_failure_keeps_the_gui_stub_scoped(monkeypatch, tmp_path):
         scoped.setattr(faulthandler, "enable", lambda **kwargs: None)
         scoped.setattr(faulthandler, "disable", lambda: None)
         scoped.setattr(chisurf_main, "QtWidgets", None, raising=False)
+        # The stub is the Qt window's factory: without --qt, main() opens the real emtk
+        # shell and the test blocks in its event loop.
+        scoped.setattr(sys, "argv", ["chisurf", "--qt"])
         with pytest.raises(RuntimeError) as captured:
             chisurf_main.main()
         assert captured.value is failure
