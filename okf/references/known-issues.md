@@ -1207,7 +1207,7 @@ MISSING, and drop it from `settings_ok`). Both wizards need the same change in `
 
 ## tttrlib dev build: `build/bin/tttr` links a libhdf5 the environment no longer has (found 2026-10-10)
 
-status: open
+status: resolved 2026-10-12 — `~/dev/tttrlib/build` reconfigured against the arm64 env (stale HDF5/OpenMP/pkg-config cache entries cleared with `cmake -U`, `-DHDF5_ROOT=$ENV`, `CMAKE_MAKE_PROGRAM=/usr/bin/make`) and `--target tttr` rebuilt; `build/bin/tttr` now links `@rpath/libhdf5.310`. The test itself skips an unlinkable binary.
 
 `test/fio/test_container_cross_writer.py` prefers `~/dev/tttrlib/build/bin/tttr` when it exists; that binary aborts with
 `dyld: Library not loaded: @rpath/libhdf5.200.dylib` (exit -6), so the four cross-writer tests fail on this machine while

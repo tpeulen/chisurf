@@ -2,6 +2,7 @@
 
 ## 2026-10-12
 
+- Machine repair, no source change: arm64 gained `IMP.cgmol` (imp-tricks src on its path), so the ProteinMC tests run there; `~/dev/tttrlib/build` reconfigured against arm64 (stale HDF5/OpenMP cache cleared) and `build/bin/tttr` rebuilt against `libhdf5.310`. Known issue "tttrlib dev build" resolved; how-to in `okf/workflows/build-and-env.md`.
 - mypy ratchet repaired: `test/test_mypy_baseline.py` read a missing mypy module (the pixi `test` env has none) as zero errors, so the baseline drifted 3835 → 3904 unseen; it now raises, and the baseline is re-recorded at 3900 (mypy 2.3). Re-derive in the `dev` env (`okf/workflows/testing.md`). Open: the files that gained errors while it was blind (`chisurf/emtk/*`, `core/api/__init__.py` +7, `core/structure/av/__init__.py` +6).
 - Every menu-visible plugin reference page links a Theory concept and a Workflow guide (16 gaps closed; the generator takes them from `chisurf/plugins/<dir>` mentions in `docs/concepts` and `docs/guides`). New `concepts/application_shell.md` and `guides/105_application_shell.md`. Open: 53 `menu_hidden` plugin pages still lack one or both.
 - PRD mention allow-list emptied: the 82 shipped `chisurf/` files that named a PRD now carry no PRD number (comments, docstrings, `view.json` `_comment`); `test/test_prd_mentions.py` has no exceptions left (PRD-154 Part D gate 2).

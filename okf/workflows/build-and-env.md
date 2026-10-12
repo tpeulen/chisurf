@@ -235,6 +235,13 @@ $ENV/bin/python -c "import sys; from pathlib import Path; sys.path.insert(0,'bui
 extension whose signature is invalidated dies on import with **exit 137 /
 Killed: 9** and no message. Guard: `test/test_build_tttrlib_sibling_envs.py`.
 
+The sibling env also needs `IMP.cgmol`, which is pure Python in the imp-tricks checkout and comes with no
+compiled build: `pip install --no-deps -e modules/imp-tricks` there, or a `.pth` file in its site-packages
+naming `<imp-tricks>/src`. Without it the ProteinMC tests fail on import in that env only. tttrlib's own
+`build/` dir keeps the HDF5/OpenMP paths of the env it was first configured in; when that env moves, clear
+them (`cmake -S . -B build -U 'HDF5_*' -U 'OpenMP*' -U 'libaec*' -U 'PKG_CONFIG*' -DHDF5_ROOT=$ENV
+-DCMAKE_PREFIX_PATH=$ENV`) before rebuilding, or tttrlib's cross-prefix HDF5 guard fires on the stale cache.
+
 ## The same error with nothing wrong with the build
 
 Once each environment has a build it can load, that `libhdf5.320` message is
