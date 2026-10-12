@@ -2,6 +2,18 @@
 
 ## 2026-10-12
 
+- Structure Tools dissolved (owner decision): its tools are ordinary plugins on the Structure tab, grouped Modelling
+  (ChiMOL), FRET (Docking & Screening, FPS JSON Editor), Computation (HydroPro, QuEst) and Trajectory (Traj Tools).
+  The shared card window is `chisurf/emtk/card_shell.py`. The FPS editor is a chimol plugin (chimol 4d9eef9,
+  7c20edb, 4f1f070): every control of ChiSurf's FPS card was ported and the card deleted; the menu entry opens chimol.
+  Docking gained Load example; tour bubbles decode HTML entities. See [modelling](plugins/modelling.md).
+- Settings > Plots reached no plot: an import-time palette copy, a hard-coded line width, an ignored grid alpha and
+  axis text size, and a crash with the fit-range band off. Plots now read `gui.plot` when built
+  (`chisurf/core/plotting/appearance.py`; 19 of 19 settings change a rendered fit plot, was 2). The pyqtgraph-era
+  keys are removed with a load-time migration and a guard bans the name in settings and UI text. The panel is
+  rebuilt with a live fit-window preview on a simulated convolved decay (emtk 1dfa2b5 `Plot.grid_opacity`).
+- AV obstacle radii: one declared scale on IMP's radii, `AV_DEFAULT_RADIUS_SCALE` = 0.84 (IMP.bff 3b1751b7e, chimol
+  5ba1c3b), instead of a second radii table (owner decision); QuEst and chimol's FPS editor expose it.
 - Fonts: emtk `emtk.fonts` (136d300) gives every text role (interface, code, prose, headings, math, captions) a
   face with a fallback chain, a size and a weight, plus interface magnification, glyph oversampling, antialiasing and
   the heading step, applied live. ChiSurf Settings -> Fonts stores it in `gui.fonts` (defaults are today's look) and

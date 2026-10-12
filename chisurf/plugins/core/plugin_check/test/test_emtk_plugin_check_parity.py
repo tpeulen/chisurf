@@ -166,7 +166,6 @@ REPAIRED_DECLARATIONS = {
     "Pong",
     "QuEst",
     "Spot Finder",
-    "Structure Tools",
     "Switch User",
     "TTTR Header editor",
     "TTTR→Time-Window BIDs",

@@ -24,9 +24,8 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
-from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_spec
-
 from chisurf.emtk.card_shell import CardShell, Rows
+from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_spec
 
 HERE = Path(__file__).resolve().parent
 #: The window's ``help.md`` and ``guide.json`` are the plugin's: one tour for the card and the plugin window.

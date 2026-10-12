@@ -149,20 +149,17 @@ gui:
     - 350
   fit_progress_close_delay_ms: 200
   plot:
-    # Plotting backend: "emtk", the native renderer (the only one; the pyqtgraph
-    # backend was removed and naming it fails with a message saying so). The env
-    # var CHISURF_PLOT_BACKEND overrides this at startup.
-    backend: emtk
-    # Base point size for axis chrome (ticks, labels, title, legend). 0 derives
-    # it from the application font, which is what keeps a plot from looking
-    # like a screenshot pasted into the window. Ticks are drawn 3 pt smaller,
-    # axis labels 2 pt, and nothing goes below 6 pt.
+    # Edited in Settings > Plots; read when a plot draws (chisurf.core.plotting.appearance).
+    # Point size of the axis text (ticks, axis names, legend). 0 follows the
+    # interface font of Settings > Fonts.
     font_size: 0
     colors:
+      # Opacity of the selected fit's curves and of the other fits of a group
+      # (0-1). The keys keep their historical names; the values are opacities.
       active_transparency: 1
       auto_corr: "#ff00ff"
       data: "#ffa629"
-      inactive_transparency: 0.2
+      inactive_transparency: 0.4
       irf: "#4284f5"
       model: "#d400cd"
       region_selector: "#26a298"
@@ -172,22 +169,16 @@ gui:
       region_selector_alpha: 50
       residuals: "#df0101"
     enable_grid: true
-    # Grid line opacity, 0-1. A grid at full opacity buries an eighty-pixel
-    # residual strip; this is what the "Grid opacity" slider writes.
-    grid_alpha: 0.35
+    # Grid strength, 0-1: 0 none, 0.3 the theme's own grid, 1 solid lines. A
+    # strong grid buries an eighty-pixel residual strip; "Grid strength" writes it.
+    grid_alpha: 0.3
     enable_region_selector: true
-    hideTitle: true
     # Show the axis names. Was shipped false and read by nothing, so labels
     # appeared regardless; true keeps that behaviour now that it is honoured.
     label_axis: true
+    # Width of the model, IRF, residual and autocorrelation curves; the noisy
+    # data trace is drawn at half of it.
     line_width: 2.0
-    # The key keeps its historical name (saved settings use it); the values are
-    # handed to chiplot.configure().
-    pyqtgraph_config:
-      antialias: false
-      background: k
-      foreground: d
-      leftButtonPan: true
     show_acorr_grid: true
     show_data_grid: true
     show_legend: true

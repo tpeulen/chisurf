@@ -79,7 +79,7 @@ PANELS = [
         "Plots",
         "core/plot_settings",
         "settings_chisurf.yaml",
-        "Plot appearance, colors and backend settings in gui.plot.",
+        "How fit plots look: colours, fit range, axes and grid, with a live preview.",
     ),
     Panel(
         "models",

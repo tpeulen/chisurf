@@ -3,7 +3,7 @@
   "steps": [
     {
       "title": "Two FRET tools in one window",
-      "text": "<b>Docking &amp; Screening</b> places rigid bodies with FRET restraints and scores structure libraries; <b>Pair Selection</b> picks the label pairs that tell the conformations of a trajectory apart. You press the controls; the tour only points at them.",
+      "text": "<b>Docking & Screening</b> places rigid bodies with FRET restraints and scores structure libraries; <b>Pair Selection</b> picks the label pairs that tell the conformations of a trajectory apart. You press the controls; the tour only points at them.",
       "target": {}
     },
     {

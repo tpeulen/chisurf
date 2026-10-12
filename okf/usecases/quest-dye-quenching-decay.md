@@ -41,12 +41,12 @@ Method: Peulen, Opanasyuk & Seidel, *J. Phys. Chem. B* **121**, 8211–8241 (201
 * No measured file is needed. QuEst also accepts a four-character RCSB id in the
   *Structure file* box and fetches it.
 
-**Tool:** *Structure Tools → QuEst*
+**Tool:** *Structure → Computation → QuEst*
 (`chisurf/plugins/quenching_estimator`, `QuEstTool` — `QuEstWindow` is kept as an
 alias for the legacy name — wrapping
 `quest.gui.dye_widget.TransientDecayGenerator` from the companion **quest**
-repository). The plugin is `menu_hidden`; it is reached as the fourth entry of
-the **Structure Tools** hub, below the separator. The form is an `AutoForm` over
+repository). Its own ribbon button since the Structure Tools hub was dissolved (2026-10-12);
+the steps below predate that and name the old hub. The form is an `AutoForm` over
 `quest/gui/quest.view.json`, whose state *is* the QuEst project dict — so the
 GUI, the `quest` CLI and the web backend all consume the same JSON, and there is
 no hand-written conversion between them. Headless equivalents: the `quest` CLI

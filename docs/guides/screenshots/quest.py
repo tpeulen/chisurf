@@ -1,6 +1,6 @@
 """QuEst screenshot: the native window after Load example and Simulate (guide 80).
 
-The window is the plugin's emtk app (the QuEst card of Structure Tools), driven headlessly with
+The window is the plugin's emtk app (the QuEst card plus site picking), driven headlessly with
 real presses on its buttons and written to ``figures/``. Settings live in a scratch folder, so the
 demo cache is written there and never into the user's settings.
 """

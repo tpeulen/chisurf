@@ -1,11 +1,14 @@
-"""Native emtk plot settings editor (Qt-free), at parity with the Qt tool.
+"""Settings ▸ Plots: how every fit plot looks, with a live preview (emtk, Qt-free).
 
-The form -- the five collapsible sections of the Qt tool, the Apply / Save /
-Reset bar and the status line -- is the view spec ``plot_settings_emtk.view.json``
-drawn by :func:`emtk.view_form.draw_sections`. Only what a spec cannot express is
-drawn here: the Help / Guide buttons and the **preview**, an ``emtk.implot`` plot
-of three *sample* curves (data, model, IRF) that previews the styling and follows
-every pending edit. All state and work is in :class:`~.model.PlotSettingsModel`.
+The controls are ``plot_settings_emtk.view.json`` drawn by
+:func:`emtk.view_form.draw_sections` over :class:`~.model.PlotSettingsModel`;
+every change applies at once and is saved once the mouse is released, as in
+Settings ▸ Fonts. Only the **preview** is drawn here -- a plot is not something
+a spec can express: a simulated measurement and its fit, stacked like a fit
+window (autocorrelation, weighted residuals, data), styled by the settings.
+
+Wide windows put the controls in a scrolling column beside the preview;
+narrow ones put the preview on top.
 """
 
 from __future__ import annotations
@@ -16,22 +19,44 @@ from typing import Any
 
 from emtk import im, implot
 from emtk.app import ImApp
-from emtk.docking import DockManager, Region, Split
 from emtk.view_form import FormState, draw_sections
 
+from chisurf.core.plotting import appearance
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.emtk_layout import action_button, window_size
 
-from .model import PlotSettingsModel, color_rgb
+from .model import PlotSettingsModel
 
 HERE = Path(__file__).parent
+VIEW_JSON = HERE / "plot_settings_emtk.view.json"
 
-_SETTINGS, _ACTIONS, _PREVIEW = "settings", "actions", "preview"
+#: Below this width the preview goes above the controls instead of beside them.
+_SIDE_BY_SIDE_MIN_WIDTH = 620.0
+#: Width share and bounds of the controls column when side by side.
+_COLUMN_SHARE, _COLUMN_MIN, _COLUMN_MAX = 0.42, 320.0, 520.0
+#: Height shares of the preview's panels, as a fit window stacks them.
+_PANEL_SHARES = (("acorr", 0.2), ("residuals", 0.22), ("data", 0.58))
+#: The theme's gridline colour at strength 1 (emtk's plot grid).
+_GRID_RGBA = (255, 255, 255, 20)
 
-#: Colours of the axis furniture by the pyqtgraph foreground letter.
-_FOREGROUND = {"d": (200, 200, 200), "w": (255, 255, 255), "l": (220, 220, 220), "k": (0, 0, 0)}
-#: The dashed model curve of the Qt preview: pixels on / off.
-_DASH = (8.0, 5.0)
+
+def _legend_label(label: str) -> str:
+    """A preview series' legend entry in the interface language."""
+    labels = {
+        "data": tr("data"),
+        "model": tr("model"),
+        "IRF": tr("IRF"),
+        "other fit": tr("other fit"),
+        "w.res.": tr("w.res."),
+        "a.corr.": tr("a.corr."),
+    }
+    return labels.get(label, label)
+
+
+def _rgba(color: str, opacity: float = 1.0) -> tuple[int, int, int, int]:
+    """A stored colour at *opacity*, as implot takes it."""
+    return (*appearance.hex_rgb(color), int(round(255 * min(max(opacity, 0.0), 1.0))))
 
 
 class PlotSettingsApp(ImApp):
@@ -39,14 +64,20 @@ class PlotSettingsApp(ImApp):
 
     def __init__(self, model: PlotSettingsModel | None = None) -> None:
         self.model = model or PlotSettingsModel()
-        spec = json.loads((HERE / "plot_settings_emtk.view.json").read_text(encoding="utf-8"))
-        self.window_size = window_size(spec, (1200, 800))
-        self.panels = {p["name"]: p for p in spec["sections"]}
+        self.spec = json.loads(VIEW_JSON.read_text(encoding="utf-8"))
+        self.window_size = window_size(self.spec, (1200, 800))
+        self.panels = {p["name"]: p for p in self.spec["sections"]}
         self.form = FormState()
         self.form.custom["preview_plot"] = self._draw_preview
         self.item_rects: dict[str, tuple] = {}
         #: What the preview submitted on the last frame, one row per series.
         self.preview_drawn: list[dict[str, Any]] = []
+        #: The preview's panels on the last frame: panel -> grid alpha, axis names, legend.
+        self.preview_panels: dict[str, dict[str, Any]] = {}
+        #: The preview's shared time axis ``[min, max]`` (linked by all three panels).
+        self._x_link: list[float] | None = None
+        #: Factor the preview text was drawn at (the axis text size over the interface size).
+        self.preview_scale = 1.0
         self.help_window = EmTkHelpWindow(
             title="Plot Settings — Help", resource=HERE / "help.md", owner=self
         )
@@ -54,118 +85,163 @@ class PlotSettingsApp(ImApp):
             steps=HERE / "guide.json",
             owner=self,
             wait_for_controls=True,
-            get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
+            get_target_rect=self.target_rect,
         )
         self.form.on_used = self.tour.notify_used
-        # Settings above, the Apply / Save / Reset bar under them (as in the Qt tool), the
-        # preview below. The bar is a window of its own and the form scrolls with its window:
-        # a scrolling child inside one window lets the clipped rows under its bottom edge take
-        # the clicks meant for the buttons below it.
-        self.docks = DockManager(
-            Split(
-                "v", 0.64, Split("v", 0.8, Region("settings"), Region("actions")), Region("preview")
-            )
-        )
-        self.docks.add_window(
-            "settings", "Plot Settings", self.draw_settings, dock="settings", closable=False
-        )
-        self.docks.add_window(
-            "actions", "Apply / Save / Reset", self.draw_actions, dock="actions", closable=False
-        )
-        self.docks.add_window(
-            "preview",
-            "Preview (sample curves)",
-            self.draw_preview_window,
-            dock="preview",
-            closable=False,
-        )
         super().__init__(self.render)
+
+    def target_rect(self, key: str):
+        """Where control *key* was drawn: a slider row registers its slider and its field."""
+        for name in (key, f"{key}.slider", f"{key}.edit"):
+            rect = self.item_rects.get(name) or self.form.rects.get(name)
+            if rect:
+                return rect
+        return None
 
     # ── one frame ──────────────────────────────────────────────────────
     def render(self) -> None:
+        """Help / Guide, the controls and the preview, the help window and the tour."""
         vp = im.get_main_viewport()
-        box = (*vp.pos, *vp.size)
         self.form.rects.clear()
-        self.docks.draw(box)
+        im.set_next_window_pos((0, 0), im.Cond.ALWAYS)
+        im.set_next_window_size(vp.size, im.Cond.ALWAYS)
+        if im.begin("Plot Settings##plot_settings", flags=im.WindowFlags.NO_RESIZE):
+            if action_button("help"):
+                self.help_window.show()
+            self.item_rects["help"] = im.get_item_rect()
+            im.same_line()
+            if action_button("guide"):
+                self.tour.start()
+            self.item_rects["guide"] = im.get_item_rect()
+            avail_w, avail_h = (float(v) for v in im.get_content_region_avail())
+            if avail_w >= _SIDE_BY_SIDE_MIN_WIDTH:
+                column = min(max(avail_w * _COLUMN_SHARE, _COLUMN_MIN), _COLUMN_MAX)
+                self._settings_child((column, avail_h))
+                im.same_line()
+                self._preview_child((max(avail_w - column - 8.0, 120.0), avail_h))
+            else:
+                preview_h = max(avail_h * 0.5, 180.0)
+                self._preview_child((avail_w, preview_h))
+                self._settings_child((avail_w, max(avail_h - preview_h - 6.0, 80.0)))
+        im.end()
+        # Keep the change once the hand is off the control: not on every frame of a drag.
+        if self.model.unsaved and not im.is_mouse_down(0):
+            self.model.flush()
+        box = (*vp.pos, *vp.size)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
-    # ── windows ────────────────────────────────────────────────────────
-    def draw_settings(self, box: Any) -> None:
-        """The settings window: Help / Guide and the folding sections."""
-        if action_button("help"):
-            self.help_window.show()
-        self.item_rects["help"] = im.get_item_rect()
-        im.same_line()
-        if action_button("guide"):
-            self.tour.start()
-        self.item_rects["guide"] = im.get_item_rect()
-        draw_sections(self.panels[_SETTINGS]["sections"], self.model, self.form, titles=False)
+    def _settings_child(self, size: tuple[float, float]) -> None:
+        """The scrolling column of controls."""
+        im.begin_child("##plot_settings_body", size)
+        draw_sections(self.panels["settings"]["sections"], self.model, self.form, titles=True)
+        self.item_rects["settings"] = im.end_child()
 
-    def draw_actions(self, box: Any) -> None:
-        """The Apply / Save / Reset bar and the status line."""
-        draw_sections(self.panels[_ACTIONS]["sections"], self.model, self.form, titles=False)
-
-    def draw_preview_window(self, box: Any) -> None:
-        """The docked preview window."""
-        draw_sections(self.panels[_PREVIEW]["sections"], self.model, self.form, titles=False)
+    def _preview_child(self, size: tuple[float, float]) -> None:
+        """The preview, filling its box."""
+        im.begin_child("##plot_settings_preview", size, scrollable=False)
+        draw_sections(self.panels["preview"]["sections"], self.model, self.form, titles=False)
+        im.end_child()
 
     # ── the preview plot ───────────────────────────────────────────────
     def _draw_preview(
         self, section: dict, model: PlotSettingsModel, state: FormState, width: float
     ) -> None:
-        """The ``preview_plot`` custom section: sample data / model / IRF curves."""
-        dark = model.preview_dark
-        background = (0, 0, 0, 255) if dark else (255, 255, 255, 255)
-        foreground = _FOREGROUND.get(model.pg_foreground, (200, 200, 200) if dark else (60, 60, 60))
-        axis = (*foreground, 255)
-        grid_alpha = int(round(255 * model.grid_alpha_pct / 100.0))
-        pushed = [
-            (implot.COL_FRAME_BG, background),
-            (implot.COL_PLOT_BG, background),
-            (implot.COL_AXIS_TEXT, axis),
-            (implot.COL_AXIS_TICK, axis),
-            (implot.COL_PLOT_BORDER, (*foreground, 120)),
-            (implot.COL_LEGEND_TEXT, axis),
-            (implot.COL_AXIS_GRID, (*foreground, grid_alpha)),
-        ]
-        for index, colour in pushed:
-            implot.push_style_color(index, colour)
-        avail = im.get_content_region_avail()
-        flags = implot.FLAGS_NO_TITLE | (0 if model.show_legend else implot.FLAGS_NO_LEGEND)
-        grid_flag = 0 if model.preview_grid else implot.AXIS_FLAGS_NO_GRID_LINES
+        """The ``preview_plot`` custom section: a fit window's three panels on sample data."""
+        preview = model.preview()
+        curves = preview["curves"]
+        (lo, hi), band = preview["region"]
+        avail_h = max(float(im.get_content_region_avail()[1]), 180.0)
+        x_limits = (0.0, float(curves["data"][0]["x"][-1]))
+        names = {"acorr": tr("a.corr."), "residuals": tr("w.res."), "data": tr("counts")}
+        scale = 1.0
+        if preview["font_size"] > 0:
+            from emtk import fonts
+
+            scale = preview["font_size"] / max(float(fonts.role_size_pt("ui")), 1.0)
+            im.push_font_scale(scale)
         self.preview_drawn = []
-        shown = implot.begin_plot(
-            "##plot_settings_preview", (-1.0, max(float(avail[1]), 90.0)), flags
-        )
-        if shown:
-            x_label = "t / ns" if model.label_axis else ""
-            y_label = "counts" if model.label_axis else ""
-            implot.setup_axes(x_label, y_label, grid_flag, grid_flag)
-            implot.setup_axis_limits(implot.AXIS_X1, 0.0, 10.0, implot.COND_ONCE)
-            # The sample curves span 2 .. 1200 counts: fixed limits keep the baseline above the frame.
-            implot.setup_axis_limits(implot.AXIS_Y1, 1.0, 2000.0, implot.COND_ONCE)
-            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            implot.setup_legend(implot.LOCATION_NORTH_EAST)
-            for series in model.preview_series():
-                rgb = color_rgb(series["color"])
-                kwargs = {"line_color": (*rgb, 255), "line_weight": float(series["width"])}
-                if series["dash"]:
-                    kwargs["dash"] = _DASH
-                implot.plot_line(series["label"], series["x"], series["y"], **kwargs)
-                self.preview_drawn.append(
-                    {
-                        "label": series["label"],
-                        "color": "#%02x%02x%02x" % rgb,
-                        "width": float(series["width"]),
-                        "dash": bool(series["dash"]),
-                        "points": len(series["x"]),
-                    }
-                )
-            implot.end_plot()
-        implot.pop_style_color(len(pushed))
-        self.item_rects["preview_plot"] = im.get_item_rect()
-        state.rects["preview_plot"] = im.get_item_rect()
+        self.preview_panels = {}
+        top = None
+        implot.begin_aligned_plots("##plot_settings_aligned")
+        for panel, share in _PANEL_SHARES:
+            grid = preview["grid"][panel]
+            grid_flags = 0 if grid is not None else implot.AXIS_FLAGS_NO_GRID_LINES
+            strength = appearance.grid_strength(grid) if grid is not None else 0.0
+            grid_rgba = (*_GRID_RGBA[:3], min(255, int(round(_GRID_RGBA[3] * strength))))
+            legend = panel == "data" and preview["legend"]
+            flags = implot.FLAGS_NO_TITLE | implot.FLAGS_NO_MENUS
+            flags |= 0 if legend else implot.FLAGS_NO_LEGEND
+            implot.push_style_color(implot.COL_AXIS_GRID, grid_rgba)
+            x_label = tr("time / ns") if preview["labels"] and panel == "data" else ""
+            y_label = names[panel] if preview["labels"] else ""
+            shown = implot.begin_plot(f"##preview_{panel}", (-1.0, avail_h * share - 4.0), flags)
+            if shown:
+                x_flags = grid_flags | (0 if panel == "data" else implot.AXIS_FLAGS_NO_TICK_LABELS)
+                implot.setup_axes(x_label, y_label, x_flags, grid_flags)
+                # One time axis for the three panels: a zoom or pan in one moves all.
+                if self._x_link is None:
+                    self._x_link = list(x_limits)
+                implot.setup_axis_links(implot.AXIS_X1, self._x_link)
+                if panel == "data":
+                    implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+                    peak = max(float(max(c["y"])) for c in curves["data"])
+                    implot.setup_axis_limits(implot.AXIS_Y1, 1.0, peak * 2.0, implot.COND_ONCE)
+                    implot.setup_legend(implot.LOCATION_NORTH_EAST)
+                    if band is not None:
+                        rgb = band[:3]
+                        implot.plot_shaded(
+                            "##fit range",
+                            [lo, hi],
+                            [peak * 1e3] * 2,
+                            yref=float("-inf"),
+                            fill_color=(*rgb, int(band[3])),
+                        )
+                        implot.plot_inf_lines("##fit range edges", [lo, hi], line_color=(*rgb, 220))
+                for series in curves[panel]:
+                    colour = _rgba(series["color"], series["opacity"])
+                    implot.plot_line(
+                        _legend_label(series["label"]),
+                        series["x"],
+                        series["y"],
+                        line_color=colour,
+                        line_weight=float(series["width"]),
+                    )
+                    self.preview_drawn.append(
+                        {
+                            "panel": panel,
+                            "label": series["label"],
+                            "color": "#%02x%02x%02x" % colour[:3],
+                            "alpha": colour[3],
+                            "width": float(series["width"]),
+                            "points": len(series["x"]),
+                        }
+                    )
+                rect = (*implot.get_plot_pos(), *implot.get_plot_size())
+                implot.end_plot()
+            else:
+                rect = tuple(im.get_item_rect())
+            implot.pop_style_color(1)
+            top = rect if top is None else top
+            self.preview_panels[panel] = {
+                "grid": None if grid is None else grid_rgba[3],
+                "labels": (x_label, y_label) if shown else ("", ""),
+                "legend": legend,
+                "rect": tuple(rect),
+                "band": band if panel == "data" else None,
+            }
+        implot.end_aligned_plots()
+        if scale != 1.0:
+            im.pop_font_scale()
+        description = section.get("description")
+        if description:
+            im.set_item_tooltip(str(description))
+        bottom = self.preview_panels["data"]["rect"]
+        assert top is not None  # the loop drew at least one panel
+        whole = (top[0], top[1], bottom[0] + bottom[2] - top[0], bottom[1] + bottom[3] - top[1])
+        self.item_rects["preview_plot"] = whole
+        state.rects["preview_plot"] = whole
+        self.preview_scale = scale
 
     # ── persistence ────────────────────────────────────────────────────
     def export_settings(self) -> dict:
@@ -174,14 +250,18 @@ class PlotSettingsApp(ImApp):
 
     def restore_settings(self, settings: dict) -> None:
         """Restore :meth:`export_settings`."""
-        folds = settings.get("folds", {})
+        folds = settings.get("folds", {}) if isinstance(settings, dict) else {}
         if isinstance(folds, dict):
             self.form.folds.update({str(k): bool(v) for k, v in folds.items()})
 
     def close(self) -> None:
-        """Nothing to release."""
+        """Keep a change made in the last frame."""
+        self.model.flush()
 
 
 def make_app() -> PlotSettingsApp:
     """Build the plot settings app (the manifest's ``entrypoints.emtk``)."""
     return PlotSettingsApp()
+
+
+__all__ = ["PlotSettingsApp", "make_app"]

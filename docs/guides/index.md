@@ -140,7 +140,7 @@ irf_estimation
 84_spot_finder
 86_image_browser
 87_channel_definition
-88_structure_tools
+88_fret_docking
 90_updater
 97_settings_hub
 95_games
@@ -273,14 +273,14 @@ irf_estimation
 | [Model comparison and batch fits](78_model_comparison_and_batch.md) | `f_test`, `batch_analysis`, `core.math.statistics` |
 | [HydroPro: diffusion coefficients from a structure](79_hydropro.md) | `hydropro` plugin, HYDROPRO / HYDRO++ |
 | [QuEst: predicting dye quenching at a labelling site](80_quenching_estimator.md) | `quenching_estimator`, `modules/quest` |
-| [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_tools` (Structure Tools hub), `core.structure.trajectory_data` |
+| [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](81_trajectory_tools.md) | `traj_tools` (Structure → Trajectory → Traj Tools), `core.structure.trajectory_data` |
 | [FRET lines: static, dynamic and model lines for the E–lifetime plot](82_fret_lines.md) | `fret_line` (Calculators hub), `core.fluorescence.fret.lines` |
 | [Spectra, overlap integrals and R₀](83_spectra_and_r0.md) | `spectra_downloader` (Spectroscopy menu), Förster calculator (TCSPC FRET κ² row → calc R0) |
 | [Finding spots and objects in an image](84_spot_finder.md) | `spot_finder` (Image Tools hub), `csc spot-finder`, `spot_finder.core.spots` |
 | [Checking a burst folder before an MFD fit](85_mfd_prepare.md) | `mfd_prepare` (no menu; CLI/RPC), `core.fluorescence.mfd.prepare` |
 | [Browsing a folder of scan images](86_image_browser.md) | `tttr_image_browser` (Spectroscopy → Imaging → Image Tools → Browser), `csc tttr-image-browser`, `core.image` |
 | [Detector setup: channels, PIE windows, timing and LUTs](87_channel_definition.md) | `setup_channel_definition` (Setup → Channel Definition), the shared detector setup editor |
-| [Structure Tools: FPS JSON editor, docking and QuEst](88_structure_tools.md) | `structure_tools` (Structure → Modelling → Structure Tools), the structure-modelling hub |
+| [FRET docking and pair selection](88_fret_docking.md) | `fret_docking` (Structure → FRET → Docking & Screening), `fret` CLI, `fret.dock` RPC |
 | [The PSF measured on beads](93_psf_determination.md) | `psf_determination` (Imaging), `psf-determination` CLI, `PsfViewModel`, `psf_determination.fit.run` RPC |
 | [States and rates from a binned trace](92_hmm_binned_traces.md) | `hmm` (Spectroscopy → Kinetics), `csc hmm`, `HmmViewModel`, `hmm.fit` RPC |
 | [The G-factor of a polarised setup](91_vv_vh_g_factor.md) | `vv_vh_g_factor` (Spectroscopy → Fluorescence decay), `csc`/`vv-vh-g-factor`, `GFactorModel` |

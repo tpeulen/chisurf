@@ -18,7 +18,7 @@ rigid-body and flexible fitting, and the reference against which measured
 distances are scored.
 
 This is the "Structure / modelling" coverage entry, upstream of the FRET-docking
-and κ² workflows in the Structure Tools hub and downstream of
+and κ² workflows and downstream of
 [FRET calculators](/usecases/fret-calculators.md) (which give you the `R0` you
 type in here).
 
@@ -30,9 +30,11 @@ run: `E:18:CB` (TYR, buried), `E:44:CB`, `E:60:CB`, `E:134:CB` (ALA, exposed).
 **Tool:** `chisurf.plugins.modelling.fps_json_editor`
 (`FpsJsonEditorTool` → `FpsJsonEditor`), display name
 *Structure:FRET:FPS JSON Editor*; CLI `fps-json-editor`, RPC service
-`fps_json_editor.*`. Also reachable from the **Structure Tools** hub
-(`modelling/structure_tools`), which bundles it with FRET Docking, Kappa2, QuEst,
-HydroPro and the trajectory tools.
+`fps_json_editor.*`. **Since 2026-10-12 the editor is ChiMOL's** (owner: "the fps
+editor should live in chimol"): the menu entry opens ChiMOL's *Labelling network*
+window (`chimol.plugins.labelling`, command `fps_circle , , Positions`); ChiSurf's
+FPS card was deleted after its features were ported (chimol `7c20edb`). The steps
+below predate that and describe the deleted card.
 
 ## Steps
 
@@ -163,7 +165,7 @@ per-row *Details…* dialog is nicely grouped (Dye Dimensions / Simulation Setti
    supply L/W/R1–R3 for Alexa 488, Alexa 647, Cy3B … **RF-383.**
    *Resolved*: the file ships (two Alexa488 presets, FPS's row: L 20, W 4.5,
    R 3.5 — the AV defaults, guarded by `test/core/test_dye_definition_shipped.py`),
-   and since 2026-10-11 choosing one sets L/W/R in the structure_tools FPS card
+   and since 2026-10-11 choosing one set L/W/R in the (since deleted) ChiSurf FPS card
    (the card read fps.json keys from a file that spells them `av_*`).
 
 **Smaller things seen.** Typing the PDB path immediately launches a full AV for

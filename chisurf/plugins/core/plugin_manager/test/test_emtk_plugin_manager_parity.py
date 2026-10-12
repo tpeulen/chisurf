@@ -399,11 +399,11 @@ def test_selection_fills_the_detail_pane_and_dependency_table(trio):
     draw(app)
     edge = model.dependency_rows()[0]
     assert (edge["plugin"], edge["installed"], edge["status"]) == ("ghost", "—", "missing")
-    # a built-in with edges in both directions, and one that stands alone
+    # a built-in hub with a hard and many optional edges, and one that stands alone
     click_row(app, "traj_tools")
     draw(app)
     assert len(model.dependency_rows()) >= 8
-    assert any(e["relation"] == "optional for" for e in model.dependency_rows())
+    assert {"requires", "optional"} <= {e["relation"] for e in model.dependency_rows()}
     blocks = dict(model.details_blocks()[:1])
     assert blocks["title"] == "Traj Tools"
     click_row(app, "about")

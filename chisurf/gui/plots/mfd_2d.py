@@ -14,10 +14,8 @@ How many bursts survived the cut, and why the fractions are not populations, is
 three-line paragraph under the axes costs the curves the room they were given the
 tab for. It lives in the Info tab with the rest of the fit's provenance.
 
-Everything goes through :mod:`chisurf.gui.chiplot`. pyqtgraph is a backend behind
-that seam and anything reaching past it falls through with a warning rather than
-failing, so a passthrough is a silent parity bug — which is why the tests assert
-this module produces none.
+Everything goes through :mod:`chisurf.gui.chiplot`; nothing reaches past it to
+the renderer.
 """
 
 from __future__ import annotations

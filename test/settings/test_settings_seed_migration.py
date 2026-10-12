@@ -3,7 +3,8 @@
 Until 26.1 the first start copied the packaged ``settings_chisurf.yaml`` into
 the settings folder. Loading overlays the user file on the defaults, so every
 copied default was pinned as if chosen: when the plot backend default moved
-from pyqtgraph to emtk, every existing install kept pyqtgraph.
+from pyqtgraph to emtk, every existing install kept pyqtgraph. Keys that no
+longer exist at all (that backend choice among them) are dropped on load.
 """
 
 from __future__ import annotations
@@ -23,14 +24,16 @@ def _defaults() -> dict:
 
 def test_a_seeded_copy_follows_the_new_defaults_and_keeps_real_changes(tmp_path):
     seeded = _defaults()
-    seeded["gui"]["plot"]["backend"] = "pyqtgraph"  # the default of its day
+    seeded["gui"]["plot"]["grid_alpha"] = 0.35  # the default of its day
+    seeded["gui"]["plot"]["backend"] = "pyqtgraph"  # a key that is gone
     seeded["gui"]["language"] = "fr"  # something the user chose
     user_file = tmp_path / "settings_chisurf.yaml"
     user_file.write_text(yaml.safe_dump(seeded), encoding="utf-8")
 
     settings = settings_utils.get_chisurf_settings(user_file)
 
-    assert settings["gui"]["plot"]["backend"] == _defaults()["gui"]["plot"]["backend"]
+    assert settings["gui"]["plot"]["grid_alpha"] == _defaults()["gui"]["plot"]["grid_alpha"]
+    assert "backend" not in settings["gui"]["plot"]
     assert settings["gui"]["language"] == "fr"
     # Migrated once: the file keeps only the change.
     assert yaml.safe_load(user_file.read_text(encoding="utf-8")) == {"gui": {"language": "fr"}}
@@ -38,9 +41,9 @@ def test_a_seeded_copy_follows_the_new_defaults_and_keeps_real_changes(tmp_path)
 
 def test_a_value_that_was_never_a_default_is_kept(tmp_path):
     user_file = tmp_path / "settings_chisurf.yaml"
-    user_file.write_text(yaml.safe_dump({"gui": {"plot": {"backend": "wgpu"}}}), encoding="utf-8")
+    user_file.write_text(yaml.safe_dump({"gui": {"plot": {"line_width": 3.5}}}), encoding="utf-8")
 
-    assert settings_utils.get_chisurf_settings(user_file)["gui"]["plot"]["backend"] == "wgpu"
+    assert settings_utils.get_chisurf_settings(user_file)["gui"]["plot"]["line_width"] == 3.5
 
 
 def test_no_user_file_is_the_defaults_and_creates_nothing(tmp_path):

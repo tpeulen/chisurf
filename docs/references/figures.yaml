@@ -2386,11 +2386,11 @@ guides/figures/23_fps_editor.png:
   pages:
   - docs/guides/23_accessible_volume.md
 
-guides/figures/23_fps_editor_3d.png:
+guides/figures/23_fps_editor_network.png:
   kind: screenshot
   origin: docs/guides/screenshots/guides_15_25.py::_grab_23_fps_editor
   recipe: >-
-    Run the script named in origin (see the function that saves 23_fps_editor_3d.png);
+    Run the script named in origin (see the function that saves 23_fps_editor_network.png);
     it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
     renderer) into the state the guide describes and writes the PNG here.
   pages:
@@ -2688,34 +2688,12 @@ guides/figures/88_docking_results.png:
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
+    No script draws this image. Open the tool described in docs/guides/88_fret_docking.md,
     drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
     native windows) into the state the surrounding text describes, using the
     data that page names, and save the grab as guides/figures/88_docking_results.png.
   pages:
-  - docs/guides/88_structure_tools.md
-
-guides/figures/88_fps_positions.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/88_fps_positions.png.
-  pages:
-  - docs/guides/88_structure_tools.md
-
-guides/figures/88_fps_split.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/88_fps_split.png.
-  pages:
-  - docs/guides/88_structure_tools.md
+  - docs/guides/88_fret_docking.md
 
 guides/figures/88_microtime_shifter.png:
   kind: screenshot
@@ -3839,17 +3817,6 @@ guides/figures/spot_finder_regions.png:
     renderer) into the state the guide describes and writes the PNG here.
   pages:
   - docs/guides/84_spot_finder.md
-
-guides/figures/structure_hub_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/88_structure_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/structure_hub_native_primary_window.png.
-  pages:
-  - docs/guides/88_structure_tools.md
 
 guides/figures/synthetic_decay_native_window.png:
   kind: screenshot

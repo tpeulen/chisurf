@@ -85,3 +85,36 @@ def test_the_allowed_sphere_is_imp_bffs_and_on():
     assert model.av_allowed_sphere_radius == DEFAULT_ALLOWED_SPHERE_RADIUS
     model.av_allowed_sphere_radius = 3.0
     assert model.project["av_parameter"]["allowed_sphere_radius"] == 3.0
+
+
+def test_the_obstacle_radius_scale_is_imp_bffs_and_reaches_the_volume():
+    """Owner, 2026-10-12: one scale factor on IMP's radii to match FPS's.
+
+    QuEst restates IMP.bff's ``AV_DEFAULT_RADIUS_SCALE`` (fitted to FPS's Bondi
+    radii) and, because it hands IMP's radii to the array door itself, applies
+    it there: the volume at the default is the volume at an explicit
+    ``radius_scale`` of the same value, and 1.0 -- IMP's radii as they are --
+    gives a smaller one (148L E96 CB, AV1 at IMP.bff's defaults).
+    """
+    from chisurf.plugins.quenching_estimator.core.av import (
+        AV,
+        DEFAULT_RADIUS_SCALE,
+        av_defaults,
+    )
+    from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
+
+    assert DEFAULT_RADIUS_SCALE == bff.AV_DEFAULT_RADIUS_SCALE
+    assert av_defaults()["radius_scale"] == DEFAULT_RADIUS_SCALE
+    model = ProjectFormModel()
+    assert model.av_radius_scale == DEFAULT_RADIUS_SCALE
+    model.av_radius_scale = 1.0
+    assert model.project["av_parameter"]["radius_scale"] == 1.0
+
+    pdb = str(REPO / "test" / "148l.pdb")
+    site = dict(residue_seq_number=96, atom_name="CB", chain_identifier="E")
+    default = AV(pdb, **site)
+    explicit = AV(pdb, radius_scale=DEFAULT_RADIUS_SCALE, **site)
+    unscaled = AV(pdb, radius_scale=1.0, **site)
+    assert len(default.points) == len(explicit.points) > len(unscaled.points)
+    with pytest.raises(ValueError):
+        AV(pdb, radius_scale=0.0, **site)

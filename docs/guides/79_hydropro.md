@@ -27,9 +27,8 @@ on a Mac HydroPro can prepare the input but cannot run it (see
 
 ## Open the tool
 
-**Structure → Modelling → Structure Tools**, then **🌊 HydroPro** in the left list. The
-entry sits below the separator, next to QuEst. It has no ribbon button of its
-own.
+**Structure → Computation → HydroPro** (🌊), next to QuEst. It opens as a
+window of its own.
 
 ```{figure} figures/hydropro_tool.png
 :name: fig-hydropro-tool
@@ -224,8 +223,8 @@ viscous than water.
 
 - Concept: {ref}`concept-hydrodynamics`. Related: {ref}`concept-anisotropy`,
   {ref}`concept-fcs-correlation`, {ref}`concept-molecular-surfaces`.
-- Tool: **HydroPro** (`chisurf/plugins/modelling/hydropro/`), reached through
-  **Structure Tools**. Press **Guide** on its toolbar for a walk-through.
+- Tool: **HydroPro** (`chisurf/plugins/modelling/hydropro/`), on the ribbon at
+  **Structure → Computation**. Press **Guide** on its toolbar for a walk-through.
 - Program: HYDROPRO 10 {cite}`ortega2011`; the method
   {cite}`garciadelatorre2000`.
 

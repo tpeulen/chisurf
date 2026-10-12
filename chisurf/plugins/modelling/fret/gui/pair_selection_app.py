@@ -3,7 +3,7 @@
 The native counterpart of the Qt ``FRETPairSelectionWindow``. The run is :func:`..core.pair_run.run_pair_selection`, the
 function the Qt window calls too; this file is the session around it (a worker thread, the rows of the table) and the
 window: the fields of the Qt window declared in ``pair_selection.view.json``, three file rows, a results table
-(``data_table``) and a decay plot. The shell (dialogs, Help, guided tour) is the one the Structure Tools cards share.
+(``data_table``) and a decay plot. The shell (dialogs, Help, guided tour) is the shared :class:`chisurf.emtk.card_shell.CardShell`.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.emtk.card_shell import CardShell
 from chisurf.plugins.emtk_layout import (
     LabelColumn,
     action_caption,
@@ -28,7 +29,6 @@ from chisurf.plugins.emtk_layout import (
     labelled,
     layout_spec,
 )
-from chisurf.plugins.modelling.structure_tools.cards.shell import CardShell
 
 from ..core.pair_run import PairParams, PairResult, run_pair_selection
 
@@ -226,7 +226,7 @@ class _View:
 
     @property
     def result_rows(self):
-        from chisurf.plugins.modelling.structure_tools.cards.fps_model import Rows
+        from chisurf.emtk.card_shell import Rows
 
         rows = Rows(self.session.rows)
         rows.revision = id(self.session.result)

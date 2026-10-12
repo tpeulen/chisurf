@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **129 plugins**, **91** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **128 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 *
 ```
 
-**129 plugins** across 33 categories.
+**128 plugins** across 32 categories.
 
 ## Core
 
@@ -65,7 +65,7 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 | [FCS Definitions](fcs_channel_preset.md) *(hidden)* | FCS channel definition plugin per detector setup |
 | [Menu Switch](menu_switch.md) | Menu Switch  Switches the open ChiSurf main window between the traditional menu bar and the ribbon, without a restart. The choice is saved and restored at the next start. Menu Switch opens no window of its own. |
 | [Models](model_manager.md) *(hidden)* | Model Manager for ChiSurf |
-| [Plots](plot_settings.md) *(hidden)* | Configure plot appearance, colors, and rendering backend |
+| [Plots](plot_settings.md) *(hidden)* | How fit plots look: curve colours and width, fit-range band, global fits, axes and grid, with a live preview |
 | [Plugins](plugin_manager.md) *(hidden)* | Plugin Manager for ChiSurf |
 | [Settings](setup.md) | Unified Settings for ChiSurf |
 | [Styles](style_manager.md) *(hidden)* | Style Manager Plugin for ChiSurf |
@@ -178,16 +178,16 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [HydroPro](hydropro.md) *(hidden)* | Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures. |
+| [HydroPro](hydropro.md) | Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures. |
 | [Protein Monte Carlo](proteinmc.md) *(hidden)* | Protein Monte Carlo CLI plugin.  Expose the ProteinMC cmd tool via the unified ChiSurf CLI. |
-| [QuEst](quenching_estimator.md) *(hidden)* | Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is this plugin's core/ (the former quest package). |
+| [QuEst](quenching_estimator.md) | Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is this plugin's core/ (the former quest package). |
 
 ## Structure → FRET
 
 | Plugin | Summary |
 | --- | --- |
-| [Docking & Screening](fret_docking.md) *(hidden)* | FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi). |
-| [FPS JSON Editor](fps_json_editor.md) *(hidden)* | Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID. |
+| [Docking & Screening](fret_docking.md) | FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi). |
+| [FPS JSON Editor](fps_json_editor.md) | Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly. |
 | [Kappa2 Distribution](kappa2_dist.md) *(hidden)* | Calculate and visualise the k² orientation-factor distribution for FRET using WIC, DWT, or isotropic models. |
 
 ## Structure → Modelling
@@ -195,13 +195,6 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [ChiMOL](chimol.md) | Molecular structure viewer and protein analysis plugin for ChiSurf. |
-| [Structure Tools](structure_tools.md) | Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, QuEst, HydroPro and Trajectory Tools. |
-
-## Structure → Structure
-
-| Plugin | Summary |
-| --- | --- |
-| [Traj Tools](traj_tools.md) *(hidden)* | Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools. |
 
 ## Structure → Trajectory
 
@@ -215,6 +208,7 @@ Of the **129 plugins**, **91** build their interface from declarative AutoForm s
 | [Remove Clashed](traj_remove_clashes.md) *(hidden)* | Remove frames containing steric clashes from trajectories. |
 | [Rotate/Translate](traj_rotate_translate.md) *(hidden)* | Apply rigid-body rotation and translation to trajectories. |
 | [Save Topol](traj_save_topology.md) *(hidden)* | Save topology or first-frame structure files from trajectories. |
+| [Traj Tools](traj_tools.md) | Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools. |
 
 ## TTTR
 

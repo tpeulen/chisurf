@@ -55,9 +55,5 @@
   ],
   "events": [],
   "dependencies": {},
-  "menu_hidden": true,
-  "deprecated": false,
-  "requires": {
-    "structure_tools": "*"
-  }
+  "deprecated": false
 }

@@ -1,8 +1,8 @@
 {
   "id": "traj_tools",
   "version": "1.0.0",
-  "display_name": "Structure:Structure:Traj Tools",
-  "icon": "🧰",
+  "display_name": "Structure:Trajectory:Traj Tools",
+  "icon": "🎬",
   "description": "Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.",
   "authors": [
     "Thomas-Otavio Peulen"
@@ -40,7 +40,6 @@
   "requires": {
     "calculators": "*"
   },
-  "menu_hidden": true,
   "optional_requires": {
     "traj_align": "*",
     "traj_convert": "*",

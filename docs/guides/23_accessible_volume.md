@@ -48,7 +48,7 @@ rda_e = donor.dRDAE(acceptor, forster_radius=52.0)   # FRET-averaged <R_DA>_E
 mean_donor_position = donor.Rmp      # mean dye position (for a structural restraint)
 ```
 
-The `fps_json_editor` plugin edits FPS-style labelling/AV configurations, the
+ChiMOL's labelling window (Structure ▸ FRET ▸ FPS JSON Editor) edits FPS-style labelling/AV plans, the
 AV-based decay model (`models/tcspc/av_decay.py`) uses the simulated $P(R_{DA})$
 directly in a FRET decay fit, and the FRET-docking tools use AV clouds as
 restraints. The coarse-grained dye models for docking come from the external
@@ -58,39 +58,37 @@ On 148L (residues 27 and 95, CA, AV1 as above) this gives $P(R_{DA})$ on 96
 bins with $\langle R_{DA}\rangle = 40.4$ Å and
 $\langle R_{DA}\rangle_E = 42.2$ Å ($R_0 = 52$ Å).
 
-### The FPS JSON Editor
+### The FPS JSON editor (ChiMOL's labelling window)
 
-**Structure ▸ FRET ▸ FPS JSON Editor.** The toolbar loads/saves a
-`*.fps.json` labelling project, **Update** pushes hand edits of the *JSON* tab
-back into the tables, **Clear** empties it (asks first); **Guide** walks through
-the tool and **Help** explains it. Tabs:
+**Structure ▸ FRET ▸ FPS JSON Editor** opens ChiMOL with its **Labelling network**
+window on the *Positions* tab; inside ChiMOL the same window is **Tools ▸ Labelling**.
+The editor is a plugin of ChiMOL, so every accessible volume it computes is an
+object of the viewer it sits in: a cloud with its mean position, shown, hidden,
+coloured and saved like any other object, and a line per distance. Its header
+**Load…**, **Save**, **Save as…**, **Clear** (asks first), **Guide** and **?**
+act on the `*.fps.json` plan. Tabs:
 
-- **Positions** — one row per labelling site: **Show**, **Name**, **Structure**
-  (the file name; the path, or a PDB ID, is the **PDB file or ID** field),
+- **Network** — the plan as a circle: chains on the rim, positions as dots,
+  distances as chords coloured by the FRET efficiency at the declared distance
+  and Förster radius.
+- **Positions** — one row per labelling site: **Show**, **Name**, **Structure**,
   **Chain**, **Res**, **Atom**, **Dye Preset**, **Dye Model** (AV1/AV0/AV3/ROTAMER),
-  **Color** and the computed **AV** volume. Selecting a row opens its form under
-  the table: attachment lists read from the structure, dye preset and model,
+  **Cloud colour** and the computed **AV** volume. Selecting a row opens its form
+  under the table: attachment lists read from the structure, dye preset and model,
   colour, the dye dimensions (linker length and width, three radii), and the
-  folded **Simulation** and **Advanced** panels. Every number is typed and kept
-  in the same range as the fps.json format allows (the contact-volume trapped
-  fraction takes −1, "not used"). **Add Row**, **Delete Row** (asks; the
-  distances that use the position go with it), **Browse PDB...** for the
-  selected row, **Compute AVs** (every named row; a row also recomputes when
-  its site changes) and **Save AV MRC** (the selected AV, else all of them, as
-  density maps). The line above the table reports each AV's volume and grid
-  points.
-- **Distances** — donor/acceptor pairs (**Label 1**, **Label 2**), the distance
-  **Type** (`dRDAE` = $\langle R_{DA}\rangle_E$, `dRDA`, `dRMP`, `pRDA`), the
-  Förster radius, the measured value and errors in the form of the selected
-  restraint, a **Score set**, the scoring-group filter with **Add / Remove
-  Scoring Group**, and **Load DA Distribution...** for a `pRDA` restraint.
-- **FlexFit** (sets of flexible residues and bonds), **JSON** (the raw file)
-  and **3D View**: the ChiMOL molecular viewer with every structure the
-  positions use as cartoon, each computed accessible volume as a translucent
-  surface with its mean position as a sphere, and a line per distance. Drag to
-  rotate, wheel to zoom, and click an atom to attach the selected position to
-  it. The viewer's own object list, sequence strip and command prompt work as
-  in ChiMOL.
+  folded **Simulation** (body id, allowed sphere — shown as FPS's 0.5 × linker
+  width until declared —, grid resolution, anchor atoms, strip mask, obstacle
+  radius scale) and **Advanced** panels. **Add Row**, **Delete Row(s)** (Ctrl/Shift
+  select several; asks once, the distances that use them go too), **Delete AV(s)**,
+  **Attach to selection**, **Browse PDB…**, **Fetch PDB…** (a 4-character RCSB ID),
+  **◀ Residue** / **Residue ▶**, **Compute AVs** (a row also recomputes when its
+  site changes) and **Save AV MRC…**.
+- **Distances** — **Label 1**, **Label 2**, **Type** (`dRDAE` = $\langle R_{DA}\rangle_E$,
+  `dRDA`, `dRMP`, `pRDA`), $R_0$, the measured value and errors, a **Score set**,
+  the scoring-group filter with **Add / Remove Scoring Group**, and **Load DA
+  Distribution…** for a `pRDA` restraint.
+- **FlexFit** (sets of flexible residues and bonds) and **JSON** (the raw file;
+  **Apply** pushes hand edits back).
 
 ```{figure} figures/23_fps_editor.png
 :name: fig-23-fps-editor
@@ -99,33 +97,29 @@ the tool and **Help** explains it. Tabs:
 **Positions** of the HIV-RT example
 (`chisurf/plugins/modelling/fret/examples/fps_hiv_rt/hiv_rt.fps.json`): eight
 AV1 sites on the p66/p51 subunits of 1R0A and three AV3 sites on the DNA. Each
-site names its structure relative to the file (`protein_1R0A.pdb` for body 0,
-`dna.pdb` for body 1, both shipped beside it), so **Compute AVs** works on the
-file as it is loaded; all 11 AVs computed (last: p_19bp, 21 171.4 Å³, 6273 grid
-points). The selected row's form is under the table.
+site names its structure relative to the file (`protein_1R0A.pdb`, `dna.pdb`,
+both shipped beside it), so **Load…** computes all 11 AVs as the file is.
 ```
 
 ```{figure} figures/23_fps_editor_distances.png
 :name: fig-23-fps-editor-distances
 :width: 100%
 
-**Distances** of the same project: 20 protein–DNA pairs of type `dRDAE`, the
-first one selected.
+**Distances** of the same plan: 20 protein–DNA pairs of type `dRDAE`.
 ```
 
-```{figure} figures/23_fps_editor_3d.png
-:name: fig-23-fps-editor-3d
+```{figure} figures/23_fps_editor_network.png
+:name: fig-23-fps-editor-network
 :width: 100%
 
-**3D View** of the same project: 1R0A and the DNA as cartoon, the 11
-accessible volumes as surfaces with their mean positions, and the 20 distance
-lines.
+**Network** of the same plan: the 11 positions on the rim of their chains, the 20
+distances as chords.
 ```
 
-Besides **Load** in the toolbar, the editor window accepts a dropped
-`*.fps.json` file from the file manager — the first JSON path dropped anywhere on
-the window is loaded. The window also remembers its size and position between
-sessions.
+A `*.fps.json` dropped on the ChiMOL window, or `load plan.fps.json` at its
+prompt, opens the plan in the same window. Every control is also a ChiMOL
+command (`fps_circle`, `fps_position`, `fps_step`, `fps_compute`, `fps_distance`,
+…), so a plan can be built from a script.
 
 ## Result
 
@@ -143,10 +137,4 @@ Accessible volumes and the inter-dye distance distribution.
 ## See also
 
 - `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, `calculate_1_radius`/`calculate_3_radius`); plugin `modelling/fps_json_editor`; the AV decay model `models/tcspc/av_decay.py`.
-- Tool: the **FPS JSON Editor** (`chisurf/plugins/modelling/fps_json_editor/`) and **Structure Tools** (`chisurf/plugins/modelling/structure_tools/`).
-
-The standalone native FPS JSON card declares a1100×720 initial host window.
-Saved custom geometry retains precedence. This declaration applies only to the
-FPS card; other Structure Tools cards keep their own host behavior. Loaded
-position/restraint/FlexFit data and actually computed accessible-volume point
-clouds, means and grid spacing retain their values across geometry restoration.
+- Tool: the **FPS JSON Editor** entry (`chisurf/plugins/modelling/fps_json_editor/`) opens ChiMOL's labelling window (`chimol.plugins.labelling`); the headless payload validation, PDB fetch, CLI and RPC stay in that plugin.

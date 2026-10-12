@@ -185,7 +185,7 @@ areas = atom_surface_areas(
 
 ## See also
 
-- Tools in ChiSurf: **Structure Tools** (`chisurf/plugins/modelling/structure_tools/`) exposes the surface and accessibility calculations; **HydroPro** (`chisurf/plugins/modelling/hydropro/`) computes hydrodynamic properties from the same structure.
+- Tools in ChiSurf: **ChiMOL** (`chisurf/plugins/chimol/`) exposes the surface and accessibility calculations; **HydroPro** (`chisurf/plugins/modelling/hydropro/`) computes hydrodynamic properties from the same structure.
 - Related tools: **QuEst** (`chisurf/plugins/quenching_estimator/`) simulates dynamic PET quenching for a tethered dye against the same surface.
 
 ## References

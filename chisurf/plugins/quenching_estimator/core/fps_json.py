@@ -4,8 +4,6 @@ from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 import numpy as np
 
-from chisurf.plugins.quenching_estimator.core.av import DEFAULT_ALLOWED_SPHERE_RADIUS
-
 
 def load_fps_json(path_or_dict: Union[Path, str, dict]) -> dict:
     """Load and parse an fps.json file or dictionary, validating its structure."""
@@ -47,6 +45,7 @@ def normalize_to_fps_positions(sites_list_or_dict: Any, project: dict) -> dict:
         raise TypeError("Sites must be a list or a dict conforming to fps.json format.")
 
     positions = {}
+    defaults: dict | None = None
     for idx, site in enumerate(sites_list_or_dict):
         chain = site.get("chain", "") or site.get("chain_identifier", "")
         res = site.get("residue") or site.get("residue_seq_number")
@@ -64,6 +63,11 @@ def normalize_to_fps_positions(sites_list_or_dict: Any, project: dict) -> dict:
         av_param = project.get("av_parameter", {})
         if not isinstance(av_param, dict):
             av_param = {}
+        if defaults is None:
+            # What the project leaves out is IMP.bff's declared default, as at every other AV door.
+            from chisurf.core.structure.av import av_defaults
+
+            defaults = av_defaults()
 
         positions[name] = {
             "chain_identifier": chain,
@@ -71,20 +75,37 @@ def normalize_to_fps_positions(sites_list_or_dict: Any, project: dict) -> dict:
             "atom_name": atom,
             "residue_name": res_name,
             "linker_length": float(
-                project.get("linker_length") or av_param.get("linker_length") or 20.0
+                project.get("linker_length")
+                or av_param.get("linker_length")
+                or defaults["linker_length"]
             ),
             "linker_width": float(
-                project.get("linker_width") or av_param.get("linker_width") or 0.5
+                project.get("linker_width")
+                or av_param.get("linker_width")
+                or defaults["linker_width"]
             ),
-            "radius1": float(project.get("radius1") or av_param.get("radius1") or 3.5),
-            "radius2": float(project.get("radius2") or av_param.get("radius2") or 4.5),
-            "radius3": float(project.get("radius3") or av_param.get("radius3") or 3.5),
+            "radius1": float(
+                project.get("radius1") or av_param.get("radius1") or defaults["radius1"]
+            ),
+            "radius2": float(
+                project.get("radius2") or av_param.get("radius2") or defaults["av3_radii"][1]
+            ),
+            "radius3": float(
+                project.get("radius3") or av_param.get("radius3") or defaults["av3_radii"][2]
+            ),
             "simulation_grid_resolution": float(
-                project.get("dg") or project.get("simulation_grid_resolution") or 1.5
+                project.get("dg")
+                or project.get("simulation_grid_resolution")
+                or defaults["simulation_grid_resolution"]
             ),
             "simulation_type": project.get("simulation_type") or "AV1",
             "allowed_sphere_radius": float(
-                project.get("allowed_sphere_radius") or DEFAULT_ALLOWED_SPHERE_RADIUS
+                project.get("allowed_sphere_radius") or defaults["allowed_sphere_radius"]
+            ),
+            "radius_scale": float(
+                project.get("radius_scale")
+                or av_param.get("radius_scale")
+                or defaults["radius_scale"]
             ),
             "anchor_atoms": project.get("anchor_atoms", ""),
             "chain_weighting": project.get("chain_weighting", False),

@@ -5,7 +5,6 @@ from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
-from emtk.colormaps import to_rgb
 
 import chisurf as cs
 import chisurf.core.data
@@ -13,14 +12,13 @@ import chisurf.core.experiments
 import chisurf.core.fitting
 import chisurf.core.math
 import chisurf.core.math.statistics
+import chisurf.core.plotting.appearance as appearance
 import chisurf.core.plotting.transforms as plot_transforms
 import chisurf.core.settings
 import chisurf.core.support.decorators
 from chisurf import typing
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
-
-colors = cs.core.settings.gui["plot"]["colors"]
 
 _BUILTIN_PRESETS_PATH = Path(__file__).parent / "reference_presets.json"
 
@@ -96,68 +94,77 @@ class LinePlotSettings:
     ``None`` while unticked, ``getCheckState``) are kept.
     """
 
-    director = {
-        "data": {
-            "lw": 1.0,
-            "color": colors["data"],
-            "target": "main_plot",
-            "allow_reference_transform": True,
-            "allow_shift": True,
-            "allow_density": True,
-            "plot_only_region": False,
-            "auto_downsample": True,
-        },
-        "IRF": {
-            "lw": 2.0,
-            "color": colors["irf"],
-            "target": "main_plot",
-            "allow_reference_transform": False,
-            "allow_shift": True,
-            "allow_density": True,
-            "plot_only_region": False,
-        },
-        "model": {
-            "lw": 2.0,
-            "target": "main_plot",
-            "color": colors["model"],
-            "allow_reference_transform": True,
-            "allow_shift": True,
-            "allow_density": True,
-            "plot_only_region": True,
-        },
-        "weighted residuals": {
-            "lw": 2.0,
-            "target": "top_left_plot",
-            "label": "w.res.",
-            "color": colors["residuals"],
-            "allow_reference_transform": False,
-            "allow_shift": True,
-            "allow_density": False,
-            "plot_only_region": False,
-            "auto_downsample": True,
-        },
-        "autocorrelation": {
-            "lw": 2.0,
-            "target": "top_right_plot",
-            "color": colors["auto_corr"],
-            "label": "a.cor.",
-            "allow_reference_transform": False,
-            "allow_shift": True,
-            "allow_density": False,
-            "plot_only_region": False,
-            "auto_downsample": True,
-        },
-        "default": {
-            "lw": 2.0,
-            "color": colors["data"],
-            "target": "main_plot",
-            "allow_reference_transform": False,
-            "allow_shift": True,
-            "allow_density": False,
-            "allow_clipping": False,
-            "plot_only_region": False,
-        },
-    }
+    @property
+    def director(self) -> dict:
+        """Per curve name: its colour, width, target panel and drawing options.
+
+        Read from the live plot settings every time a curve is made, never kept:
+        a copy taken at import kept the palette and width of the start-up
+        settings, so *Settings ▸ Plots* looked as if it changed nothing.
+        """
+        color, width = appearance.curve_color, appearance.line_width
+        return {
+            "data": {
+                "lw": width("data"),
+                "color": color("data"),
+                "target": "main_plot",
+                "allow_reference_transform": True,
+                "allow_shift": True,
+                "allow_density": True,
+                "plot_only_region": False,
+                "auto_downsample": True,
+            },
+            "IRF": {
+                "lw": width(),
+                "color": color("irf"),
+                "target": "main_plot",
+                "allow_reference_transform": False,
+                "allow_shift": True,
+                "allow_density": True,
+                "plot_only_region": False,
+            },
+            "model": {
+                "lw": width(),
+                "target": "main_plot",
+                "color": color("model"),
+                "allow_reference_transform": True,
+                "allow_shift": True,
+                "allow_density": True,
+                "plot_only_region": True,
+            },
+            "weighted residuals": {
+                "lw": width(),
+                "target": "top_left_plot",
+                "label": "w.res.",
+                "color": color("residuals"),
+                "allow_reference_transform": False,
+                "allow_shift": True,
+                "allow_density": False,
+                "plot_only_region": False,
+                "auto_downsample": True,
+            },
+            "autocorrelation": {
+                "lw": width(),
+                "target": "top_right_plot",
+                "color": color("auto_corr"),
+                "label": "a.cor.",
+                "allow_reference_transform": False,
+                "allow_shift": True,
+                "allow_density": False,
+                "plot_only_region": False,
+                "auto_downsample": True,
+            },
+            "default": {
+                "lw": width(),
+                "color": color("data"),
+                "target": "main_plot",
+                "allow_reference_transform": False,
+                "allow_shift": True,
+                "allow_density": False,
+                "allow_clipping": False,
+                "plot_only_region": False,
+            },
+        }
 
     def __init__(
         self,
@@ -594,10 +601,11 @@ class LinePlot(plotbase.Plot):
         )
 
         # Fitting-region selector
-        if cs.core.settings.gui["plot"]["enable_region_selector"]:
-            ca = list(to_rgb(colors["region_selector"]))
-            co = [ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"]]
-            region = plots["main_plot"].region((0.0, 1.0), brush=co)
+        #: The draggable fit-range band; ``None`` when the selector is switched off.
+        self.region = None
+        band = appearance.region_rgba()
+        if band is not None:
+            region = plots["main_plot"].region((0.0, 1.0), brush=band)
             self.region = region
 
             def onRegionUpdate(*_):
@@ -632,32 +640,29 @@ class LinePlot(plotbase.Plot):
 
             region.on_change(onRegionUpdate, final=True)
 
-        # Grid
-        if cs.core.settings.gui["plot"]["enable_grid"]:
-            grid_alpha = float(cs.core.settings.gui["plot"].get("grid_alpha", 0.35))
-            if cs.core.settings.gui["plot"]["show_data_grid"]:
-                plots["main_plot"].grid(x=True, y=True, alpha=grid_alpha)
-            # ``alpha`` is the grid's opacity, not an on/off flag — these two
-            # panels asked for 1.0 and drew solid foreground-coloured stripes
-            # across a strip only eighty pixels tall, burying the residuals.
-            # It went unnoticed while the foreground was black on black, and
-            # there was no way to turn it down: the value is a setting now.
-            if cs.core.settings.gui["plot"]["show_residual_grid"]:
-                plots["top_left_plot"].grid(x=True, y=True, alpha=grid_alpha)
-            if cs.core.settings.gui["plot"]["show_acorr_grid"]:
-                plots["top_right_plot"].grid(x=True, y=True, alpha=grid_alpha)
+        # Grid: set on every panel, on or off. A panel's grid is on until told
+        # otherwise, so switching it on only where wanted left "Enable grid" and
+        # the per-panel switches unable to turn a grid off.
+        for panel, key in (
+            ("data", "main_plot"),
+            ("residuals", "top_left_plot"),
+            ("acorr", "top_right_plot"),
+        ):
+            alpha = appearance.grid_alpha(panel)
+            shown = alpha is not None
+            plots[key].grid(x=shown, y=shown, alpha=alpha if shown else 0.0)
         # Same story as "Label axes" below: a settings checkbox that no plot
         # read, so a legend could be asked for and never appear — and one that
         # never appears is one that cannot be dragged either. The curves are
         # already named, which is all a legend needs.
-        if cs.core.settings.gui["plot"].get("show_legend", False):
+        if appearance.show_legend():
             # Top-right: the fit-quality box holds the top-left.
             plots["main_plot"].legend(offset=(-10, 10))
 
         # "Label axes" was a settings checkbox nothing read, so turning it off
         # did nothing at all. Honour it: axis names cost horizontal space that
         # a narrow docked panel may prefer to give the data.
-        if cs.core.settings.gui["plot"].get("label_axis", True):
+        if appearance.label_axes():
             plots["top_left_plot"].set_labels(left="w.res.")
             plots["top_right_plot"].set_labels(left="a.corr.")
             plots["main_plot"].set_labels(left=y_label, bottom=x_label)
@@ -784,10 +789,10 @@ class LinePlot(plotbase.Plot):
     def _make_line(target_plot, pen_color, lw, name, auto_downsample, clip_to_view):
         """Draw an empty chiplot curve with optional render-perf hints.
 
-        The line/scatter data is filled in later by :meth:`update`. Auto-
-        downsampling and clip-to-view are pyqtgraph render optimisations with no
-        renderer-neutral chiplot verb, so they are set on the backend item via
-        the documented ``.native`` escape hatch.
+        The line/scatter data is filled in later by :meth:`update`. Long traces
+        ask chiplot to thin them to the pixels they cover
+        (``set_downsampling``) and to lay out only the visible part
+        (``set_clip_to_view``).
 
         Parameters
         ----------
@@ -800,7 +805,7 @@ class LinePlot(plotbase.Plot):
         name : str
             Legend label.
         auto_downsample, clip_to_view : bool
-            pyqtgraph render-perf hints.
+            chiplot's render-cost hints for long traces.
 
         Returns
         -------
@@ -815,7 +820,7 @@ class LinePlot(plotbase.Plot):
     def add_plot(self, curves: typing.Dict, curve_key: str, plot_dict: typing.Dict, index: int = 1):
         color_idx = index % len(cs.core.settings.colors)
         pen_color = cs.core.settings.colors[color_idx]["hex"]
-        lw = cs.core.settings.gui["plot"]["line_width"]
+        lw = appearance.line_width()
 
         director = self.settings.director
 
@@ -1122,8 +1127,9 @@ class LinePlot(plotbase.Plot):
                 float(np.log10(max(float(v), floor))) for v in (lb_min, ub_max, lb, ub)
             )
 
-        self.region.set_limits(lb_min, ub_max)
-        self.region.set_bounds(lb, ub)
+        if self.region is not None:
+            self.region.set_limits(lb_min, ub_max)
+            self.region.set_bounds(lb, ub)
 
         # Handle group display mode
         if self.settings.display_group and hasattr(self.fit, "grouped_fits"):
@@ -1557,7 +1563,7 @@ class LinePlot(plotbase.Plot):
             # other grouped fits are dimmed. chiplot's Curve.set_opacity gives
             # this in one call (replacing the former four-method fallback stack).
             fit_index = grouped_fits.index(group_fit)
-            alpha = 1.0 if fit_index == current_fit_index else 0.4
+            alpha = appearance.fit_opacity(fit_index == current_fit_index)
             try:
                 line.set_opacity(alpha)
             except Exception:
@@ -1638,8 +1644,7 @@ class LinePlot(plotbase.Plot):
         else:
             typical_amp = 1.0
 
-        # Keep residual traces separated, similar to pyqtgraph's multi-curve
-        # demonstration where each curve is shifted by a fixed y-step.
+        # Keep residual traces separated: each fit's trace is shifted by a fixed y-step.
         spacing = max(1.0, 2.5 * typical_amp)
 
         return {idx: (idx - int(current_fit_index)) * spacing for idx in range(len(grouped_fits))}

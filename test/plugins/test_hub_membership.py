@@ -115,7 +115,6 @@ def _declared_children() -> dict[str, list[str]]:
     from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import PANELS as DECAY
     from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS as IMAGING
     from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
-    from chisurf.plugins.modelling.structure_tools.registry import STRUCTURE_TOOL_PANELS
     from chisurf.plugins.traj.traj_tools.registry import TOOL_PANELS
 
     return {
@@ -126,7 +125,6 @@ def _declared_children() -> dict[str, list[str]]:
         "wizards": [e.emtk for e in default_wizards()],
         "games": [p["class_path"] for p in GAME_PANELS],
         "setup": [ref for p in SETUP for ref in (p.plugin, p.entry) if ref],
-        "structure_tools": [p.get("plugin") or p["emtk"] for p in STRUCTURE_TOOL_PANELS],
         "traj_tools": [p["emtk"] for p in TOOL_PANELS],
         "lifetime_analysis": [row[0] for row in DECAY],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],

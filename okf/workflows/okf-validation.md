@@ -63,7 +63,7 @@ ownership. This mechanism does not waive the release's zero-debt requirement.
 
 The W0a read-only docs check on 2026-10-09 found four pages without headers:
 `docs/development/autoform_matrix_contract.md`, `docs/guides/87_channel_definition.md`,
-`docs/guides/88_structure_tools.md`, and `docs/guides/97_settings_hub.md`.
+`docs/guides/88_fret_docking.md`, and `docs/guides/97_settings_hub.md`.
 W0b owns these existing metadata repairs; two paths contain foreign work. This
 keeps the docs release gate open and is not a validator implementation failure.
 

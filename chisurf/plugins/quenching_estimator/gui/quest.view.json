@@ -106,6 +106,15 @@
                 },
                 {
                   "type": "value",
+                  "attr": "av_radius_scale",
+                  "kind": "float",
+                  "label": "Obstacle radius scale",
+                  "description": "Factor on the atoms' van der Waals radii (IMP's united-atom set) when they are obstacles to the linker and the dye. The default, 0.84, matches FPS's smaller Bondi radii: at it the T4L CB-site volumes agree with FPS's own routine. 1.0 uses IMP's radii as they are.",
+                  "minimum": 0.5,
+                  "maximum": 1.5
+                },
+                {
+                  "type": "value",
                   "attr": "dg",
                   "kind": "float",
                   "label": "Grid resolution (Å)",

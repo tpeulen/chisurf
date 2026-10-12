@@ -17,7 +17,7 @@ APPS = {
     "style_manager": "chisurf.plugins.core.style_manager.gui.app:make_style_manager_app",
     "code_editor": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app",
     "games": "chisurf.plugins.misc.games.gui.app:make_app",
-    "structure_tools": "chisurf.plugins.modelling.structure_tools.app:make_app",
+    "fret_docking": "chisurf.plugins.modelling.fret.gui.app:make_app",
 }
 
 

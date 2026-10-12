@@ -23,7 +23,7 @@ missing, because a plot that silently omits half of what it was asked to draw
 is worse than one that says so. Those are the open front recorded in okf/subsystems/chiplot.md.
 
 It is the only backend (the pyqtgraph one was removed); ``CHISURF_PLOT_BACKEND=pyqtgraph``
-or ``gui.plot.backend: pyqtgraph`` fails with a message saying so.
+fails with a message saying so.
 """
 
 from __future__ import annotations
@@ -126,6 +126,26 @@ _LABEL_TEXT = (196, 201, 212)
 #: The width reserved for y tick numbers. Fixed rather than measured, so panels
 #: stacked in one column put their left axes on one line whatever their values.
 _Y_TICK_WIDTH = 44.0
+
+
+def _chrome_scale() -> float:
+    """Factor on the axis text: the plot font size (``gui.plot.font_size``) over the interface's.
+
+    ``1.0`` while the setting is ``0`` (follow the interface font) or the sizes
+    cannot be read. Read per frame, so *Settings ▸ Plots* reaches open plots.
+    """
+    try:
+        from emtk import fonts
+
+        from chisurf.core.plotting.appearance import font_size
+
+        size = font_size()
+        if size <= 0:
+            return 1.0
+        base = float(fonts.role_size_pt("ui"))
+        return size / base if base > 0.0 else 1.0
+    except Exception:  # noqa: BLE001 - an unreadable setting draws at the interface size
+        return 1.0
 
 
 def _orientation(value) -> str:
@@ -632,6 +652,9 @@ class EmtkCanvas(base.Canvas):
         self._log = {"x": False, "y": False}
         self._range: dict[str, tuple[float, float] | None] = {"x": None, "y": None}
         self._grid = True
+        #: Factor on the theme's gridlines (``grid(alpha=...)`` relative to chiplot's default).
+        self._grid_strength = 1.0
+        self._tick_width = _Y_TICK_WIDTH
         self._legend = False
         self._background = _rgb(background, (30, 32, 38))
         self._interactive = True
@@ -714,12 +737,25 @@ class EmtkCanvas(base.Canvas):
         the title above. The left gutter has a fixed width, so the residual
         strips stacked over a decay keep their axes on one vertical line.
         """
+        scale = _chrome_scale()
+        scaled = scale != 1.0 and callable(getattr(painter, "set_font_scale", None))
+        if scaled:
+            painter.set_font_scale(scale)
+        try:
+            self._draw_scaled(painter, x, y, w, h, scale if scaled else 1.0)
+        finally:
+            if scaled:
+                painter.set_font_scale(1.0)
+
+    def _draw_scaled(self, painter, x: float, y: float, w: float, h: float, scale: float) -> None:
+        """:meth:`draw` with the axis text already at the plot font size (*scale* of the UI's)."""
         from emtk.widgets.plot import Plot as EmtkPlot
 
         self._last_box = (x, y, w, h)
+        self._tick_width = _Y_TICK_WIDTH * scale
         row = float(painter.line_height())
         left_axis, bottom_axis = self._axis_visible["left"], self._axis_visible["bottom"]
-        gutter_left = (row + 2.0 + _Y_TICK_WIDTH + 6.0) if left_axis else 4.0
+        gutter_left = (row + 2.0 + self._tick_width + 6.0) if left_axis else 4.0
         gutter_bottom = 4.0
         if bottom_axis:
             gutter_bottom += row + 2.0
@@ -753,6 +789,7 @@ class EmtkCanvas(base.Canvas):
             show_legend=self._legend,
         )
         plot.y_inverted = self._y_inverted
+        plot.grid_opacity = self._grid_strength
         plot.show_y_tick_labels = False
         plot.x_tick_target = max(2, int(bw // 90))
         plot.y_tick_target = max(3, int(bh // 36))
@@ -885,9 +922,9 @@ class EmtkCanvas(base.Canvas):
                 py = plot._y_axis.to_pixels(value)
                 if by - 1.0 <= py <= by + bh + 1.0:
                     painter.text(
-                        bx - _Y_TICK_WIDTH - 6.0,
+                        bx - self._tick_width - 6.0,
                         py - row * 0.5,
-                        _Y_TICK_WIDTH,
+                        self._tick_width,
                         row,
                         ALIGN_RIGHT | ALIGN_VCENTER,
                         text,
@@ -2038,9 +2075,13 @@ class EmtkCanvas(base.Canvas):
         self._range_callbacks.append(callback)
 
     def set_grid(self, *, x=None, y=None, alpha=None) -> None:
-        """Toggle the axis grid."""
+        """Toggle the axis grid; *alpha* sets its strength (chiplot's default 0.3 is the theme's)."""
         if x is not None or y is not None:
             self._grid = bool(x or y)
+        if alpha is not None:
+            from chisurf.core.plotting.appearance import grid_strength
+
+            self._grid_strength = grid_strength(alpha)
         self.refresh()
 
     def set_background(self, color) -> None:

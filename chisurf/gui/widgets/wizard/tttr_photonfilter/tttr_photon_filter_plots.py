@@ -1,6 +1,6 @@
 import numpy as np
-from emtk.colormaps import to_rgb
 
+import chisurf.core.plotting.appearance as appearance
 from chisurf.gui import chiplot as cp
 
 #: Every plot of the page shares these two pens: the unselected photons faint, the selected ones solid.
@@ -8,7 +8,7 @@ COLOR_ALL = (255, 255, 0, 64)
 COLOR_SELECTED = (0, 255, 255, 255)
 
 
-def create_plots(page, colors):
+def create_plots(page):
     """Build the page's plots (chiplot panels) and the draggable dT region."""
     page.pw_burst_histogram = cp.Plot(parent=page, title="Burst histogram")
     page.pw_burst_histogram.set_labels(left="Counts", bottom="Burst size (Nbr. Photons)")
@@ -63,8 +63,13 @@ def create_plots(page, colors):
         _plot.set_downsampling(auto=True, mode="peak")
         _plot.set_clip_to_view(True)
 
-    ca = list(to_rgb(colors["region_selector"]))
-    co = (ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"])
+    # The burst-gap selection is this page's control, not an optional fit-range
+    # band: it takes the band's colour but is drawn whether or not that is shown.
+    plot = appearance.plot_settings()
+    co = (
+        *appearance.hex_rgb(appearance.curve_color("region_selector", plot)),
+        int((plot.get("colors") or {}).get("region_selector_alpha", 50)),
+    )
     page.region_selector = page.pw_dT.region(
         (np.log10(page._dT_min), np.log10(page._dT_max)),
         orientation="horizontal",

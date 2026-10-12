@@ -409,13 +409,13 @@ def test_the_hover_hook_is_wired_to_the_window():
 # --------------------------------------------------------------------------- #
 # One window: the network, the records, and the document
 # --------------------------------------------------------------------------- #
-def test_the_panel_has_the_four_tabs():
-    """A plan is one thing, so it is one window."""
+def test_the_panel_has_the_five_tabs():
+    """A plan is one thing, so it is one window: the network and the four editing tabs."""
     from chimol.plugins.labelling.circle_window import TABS
 
     panel = _panel(_network())
     assert [item.label for item in panel.tabs.items] == list(TABS)
-    assert TABS == ("Network", "Positions", "Distances", "JSON")
+    assert TABS == ("Network", "Positions", "Distances", "FlexFit", "JSON")
 
 
 def _open(panel, name: str):
@@ -425,49 +425,37 @@ def _open(panel, name: str):
 
 def test_the_positions_tab_lists_them_and_edits_the_selected_one():
     panel = _open(_panel(_network()), "Positions")
-    p = RecordingPainter()
-    panel.draw(p, _Rect())
-    assert panel._rows["Positions"].row_count() == 3
-    name, fields = panel._record("Positions")
-    assert name and fields is not None
-    editor = panel._editor("Positions")
-    assert editor is not None
-    keys = {row.key for row in editor.model.settings}
-    assert "field.chain_identifier" in keys and "field.residue_seq_number" in keys
-    editor.model.setter("field.residue_seq_number", 42)
-    assert fields["residue_seq_number"] == 42, "the form did not write to the document"
+    panel.draw(RecordingPainter(), _Rect())
+    assert len(panel.editor.position_rows()) == 3
+    assert panel.editor.set_position("a", "residue_seq_number", 42)
+    assert panel.model.positions["a"]["residue_seq_number"] == 42, "the edit missed the document"
 
 
 def test_the_distances_tab_edits_a_distance():
     panel = _open(_panel(_network()), "Distances")
     panel.draw(RecordingPainter(), _Rect())
-    name, fields = panel._record("Distances")
-    assert name in panel.model.distances
-    panel._editor("Distances").model.setter("field.Forster_radius", 60.0)
-    assert fields["Forster_radius"] == 60.0
+    name = next(iter(panel.model.distances))
+    assert panel.editor.set_distance(name, "Forster_radius", 60.0)
+    assert panel.model.distances[name]["Forster_radius"] == 60.0
 
 
 def test_a_record_can_be_added_and_removed():
     panel = _panel(_network())
     before = len(panel.model.positions)
-    added = panel.add_record("Positions")
+    added = panel.editor.add_position("d", "A", 30)
     assert added and len(panel.model.positions) == before + 1
-    assert set(panel.model.positions[added]) >= {"chain_identifier", "residue_seq_number"}
-    panel._lists["Positions"].selection.set_count(panel._rows["Positions"].row_count())
-    panel.remove_record("Positions")
+    assert set(panel.model.positions["d"]) >= {"chain_identifier", "residue_seq_number"}
+    assert panel.editor.delete_positions(["d"]) == 1
     assert len(panel.model.positions) == before
 
 
 def test_removing_a_position_takes_its_distances_with_it():
     """A distance to a position that is gone is not a distance."""
-    panel = _panel(_network())
+    panel = _open(_panel(_network()), "Positions")
     panel.draw(RecordingPainter(), _Rect())
-    _open(panel, "Positions")
-    panel.draw(RecordingPainter(), _Rect())
-    name, _fields = panel._record("Positions")
-    panel.remove_record("Positions")
+    panel.editor.delete_positions(["a"])
     for fields in panel.model.distances.values():
-        assert name not in (fields["position1_name"], fields["position2_name"])
+        assert "a" not in (fields["position1_name"], fields["position2_name"])
 
 
 def test_the_json_tab_shows_the_document_and_applies_it_back():

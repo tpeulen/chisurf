@@ -65,6 +65,8 @@ def av_defaults() -> dict:
         "link_search": str(IMP.bff.AV_DEFAULT_LINK_SEARCH),
         # the allowed sphere, on by default at FPS's 2.25 A
         "allowed_sphere_radius": float(IMP.bff.AV_DEFAULT_ALLOWED_SPHERE),
+        # the one factor on IMP's radii that matches FPS's obstacle set
+        "radius_scale": float(IMP.bff.AV_DEFAULT_RADIUS_SCALE),
     }
 
 
@@ -197,6 +199,18 @@ def resolve_av_backend(preference=None):
 #: (161) came back empty than at FPS's 2.25 A. The attachment atom itself is
 #: never an obstacle -- IMP.bff drops it at every door, as FPS does.
 DEFAULT_ALLOWED_SPHERE_RADIUS = 2.25
+
+#: The factor IMP's united-atom radii are scaled by as the AV's obstacles.
+#:
+#: **IMP.bff's declared default, ``AV_DEFAULT_RADIUS_SCALE``** (owner,
+#: 2026-10-12: "i do not want a separate set of atom radii, if fps is slightly
+#: smaller, use a single scale factor to match fps radii"), fitted to FPS's
+#: Bondi radii (``okf/validation/fps_screening_ab.md`` in IMP.bff). QuEst reads
+#: IMP's radii itself and hands them to the array door, which takes radii as
+#: given, so the scale is applied here. Restated for the same reason as
+#: :data:`DEFAULT_ALLOWED_SPHERE_RADIUS`; ``test_av_defaults.py`` holds the two
+#: equal.
+DEFAULT_RADIUS_SCALE = 0.84
 
 #: Smallest `allowed_sphere_radius` that IMP.bff's path search can start from.
 #: Only reachable now by asking for less than the default explicitly; the clamp
@@ -637,6 +651,7 @@ class AV:
         residue_name=None,
         av_backend=None,
         link_search=None,
+        radius_scale=None,
     ):
         """
         Parameters
@@ -657,6 +672,8 @@ class AV:
         :param attachment_atom_index:
         :param verbose:
         :param allowed_sphere_radius:
+        :param radius_scale: factor on IMP's radii as the obstacles; ``None``
+            is IMP.bff's ``AV_DEFAULT_RADIUS_SCALE`` (fitted to FPS)
         :param simulation_type:
         :param position_name:
         :param residue_name:
@@ -743,6 +760,13 @@ class AV:
         # How the linker is routed: "fps" (IMP.bff's default, FPS's cube hop from
         # every node) or "fast" (the hop out of the seed only).
         self.link_search = str(av_defaults()["link_search"] if link_search is None else link_search)
+        # The obstacle radii: IMP's, times one declared factor (FPS's are ~17 %
+        # smaller; the factor is fitted to them, not a second radii table).
+        self.radius_scale = float(
+            av_defaults()["radius_scale"] if radius_scale is None else radius_scale
+        )
+        if not self.radius_scale > 0.0:
+            raise ValueError("radius_scale must be positive, got %r" % (radius_scale,))
         # Rejected first, before the structure is even read. `simulation_type` is
         # a project field a scan can set, and "AV3" used to reach a `calculate3R`
         # deleted back in 7ecf209 -- so it raised `NameError: name 'calculate3R'
@@ -855,7 +879,14 @@ class AV:
         # obstacles, as FPS does) and the attachment point.
         coords = np.asarray(atoms["coord"], dtype=np.float64)
         xyzr = np.ascontiguousarray(
-            np.hstack([coords, np.asarray(atoms["radius"], dtype=np.float64).reshape(-1, 1)])
+            np.hstack(
+                [
+                    coords,
+                    (np.asarray(atoms["radius"], dtype=np.float64) * self.radius_scale).reshape(
+                        -1, 1
+                    ),
+                ]
+            )
         )
         av_result = _get_av()(
             xyzr,

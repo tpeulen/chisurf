@@ -2,7 +2,7 @@
 
 ``form_model.py`` is the Qt-free project model the window binds to; ``quest.view.json`` (and its ``de``/``fr``
 translations) is generated from ``settings/parameter_catalog.json`` by ``generate_view_spec.py``. The native window
-(``app.py``) is the QuEst card of Structure Tools plus site picking; ``tool.py`` hosts it in a ``ChisurfDockTool``.
+(``app.py``) is the QuEst card (``card.py``) plus site picking; ``tool.py`` hosts it in a ``ChisurfDockTool``.
 Nothing here imports Qt at module scope: ``QuEstTool`` is resolved on first use (PEP 562).
 """
 

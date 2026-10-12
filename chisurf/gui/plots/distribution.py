@@ -7,6 +7,7 @@ import numpy as np
 import chisurf.core.fitting
 import chisurf.core.fluorescence
 import chisurf.core.math.datatools
+import chisurf.core.plotting.appearance as appearance
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
@@ -30,10 +31,7 @@ def _symbol(s):
     return None if s is None or str(s) == "None" else s
 
 
-plot_settings = chisurf.core.settings.gui["plot"]
-colors = plot_settings["colors"]
 color_scheme = chisurf.core.settings.colors
-lw = plot_settings["line_width"]
 
 """
 For plotting
@@ -331,11 +329,12 @@ class DistributionPlot(plotbase.Plot):
 
         # Match LinePlot's grid settings where applicable: show a grid on the
         # main distribution plot and, when present, on the residuals.
-        if plot_settings.get("enable_grid", False):
-            if plot_settings.get("show_data_grid", False):
-                self.distribution_plot.grid(x=True, y=True, alpha=0.5)
-            if self.residual_plot is not None and plot_settings.get("show_residual_grid", False):
-                self.residual_plot.grid(x=True, y=True, alpha=1.0)
+        for panel, plot in (("data", self.distribution_plot), ("residuals", self.residual_plot)):
+            if plot is None:
+                continue
+            alpha = appearance.grid_alpha(panel)
+            shown = alpha is not None
+            plot.grid(x=shown, y=shown, alpha=alpha if shown else 0.0)
 
         # Apply requested axis scaling (x) to main plot and residuals.
         log_x = str(self._scale_x).lower() == "log"
@@ -345,7 +344,11 @@ class DistributionPlot(plotbase.Plot):
             self.residual_plot.set_log(x=log_x, y=False)
 
         self.distribution_curve = self.distribution_plot.line(
-            [0.0], [0.0], pen=colors["data"], width=lw, fill=colors["data"]
+            [0.0],
+            [0.0],
+            pen=appearance.curve_color("data"),
+            width=appearance.line_width(),
+            fill=appearance.curve_color("data"),
         )
 
         # Draggable fit-quality box (χ²_red and DW), similar to LinePlot: a
@@ -500,9 +503,8 @@ class DistributionPlot(plotbase.Plot):
             getattr(self.fit.model, ds["attribute"]), **ds.get("accessor_kwargs", {})
         )
 
-        # Helper to drop curves with no finite support. This prevents
-        # feeding all-NaN or empty arrays into pyqtgraph's ScatterPlotItem,
-        # which otherwise emits RuntimeWarnings.
+        # Helper to drop curves with no finite support: an all-NaN or empty
+        # array has nothing to draw and only produces RuntimeWarnings.
         def _sanitize_curve(y, x):
             try:
                 x_arr = np.asarray(x, dtype=float).ravel()
@@ -694,7 +696,7 @@ class DistributionPlot(plotbase.Plot):
                         curve_step = "right"
                     # Use the dedicated residuals color for the w.res. curve.
                     try:
-                        c = colors.get("residuals", c)
+                        c = appearance.curve_color("residuals")
                     except Exception:
                         pass
                 else:
@@ -714,7 +716,7 @@ class DistributionPlot(plotbase.Plot):
                         y_plot,
                         step=curve_step,
                         pen=c,
-                        width=lw,
+                        width=appearance.line_width(),
                         symbol=_symbol(s),
                         fill=fill_brush,
                     )
@@ -724,7 +726,7 @@ class DistributionPlot(plotbase.Plot):
                         y_plot,
                         step=curve_step,
                         pen=c,
-                        width=lw,
+                        width=appearance.line_width(),
                         symbol=_symbol(s),
                     )
         else:
@@ -757,11 +759,23 @@ class DistributionPlot(plotbase.Plot):
                     ys[1::3] = y_arr
                     ys[2::3] = np.nan
                     self.distribution_plot.line(
-                        xs, ys, step=False, pen=c, width=lw, symbol=_symbol(s), fill=fill
+                        xs,
+                        ys,
+                        step=False,
+                        pen=c,
+                        width=appearance.line_width(),
+                        symbol=_symbol(s),
+                        fill=fill,
                     )
             else:
                 self.distribution_plot.line(
-                    x, y, step=step, pen=c, width=lw, symbol=_symbol(s), fill=fill
+                    x,
+                    y,
+                    step=step,
+                    pen=c,
+                    width=appearance.line_width(),
+                    symbol=_symbol(s),
+                    fill=fill,
                 )
 
         # Show basic fit quality metrics in a draggable box. Prefer the

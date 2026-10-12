@@ -7,6 +7,7 @@ and zero separate windows that could cause OpenGL context lockups or hangs.
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import re
@@ -26,10 +27,14 @@ logger = logging.getLogger(__name__)
 
 
 def _clean_html_text(text: str) -> str:
-    """Convert common HTML formatting like <br/> and <b> to plain text."""
+    """Convert common HTML formatting like <br/> and <b> to plain text.
+
+    Entities are decoded after the tags are gone: a tour written for Qt's rich text spells ``&`` as
+    ``&amp;``, and drawn verbatim it read "Docking &amp; Screening".
+    """
     s = re.sub(r"<\s*br\s*/?>|<\s*p\s*/?>", "\n", text, flags=re.IGNORECASE)
     s = re.sub(r"<[^>]+>", "", s)
-    return s.strip()
+    return html.unescape(s).strip()
 
 
 ACCENT_BLUE = (0.4, 0.8, 1.0, 1.0)

@@ -74,6 +74,17 @@ WALKTHROUGH = {
         "wizard apply",
         "wizard done",
     ],
+    # The fps.json editor: the labelling window's controls run these commands.
+    "fps_editor": [
+        "load 148l.pdb",
+        "fps_circle , , Positions",
+        "fps_position",
+        "fps_step , 1",
+        "fps_compute",
+        "fps_circle , , Distances",
+        "fps_distance",
+        "fps_circle , , JSON",
+    ],
 }
 
 
@@ -232,6 +243,9 @@ def test_the_tour_walks_to_the_end_through_real_commands(name):
 
 {lines}
 
+        # A closing remark (a step that waits for nothing) is read and dismissed with Next.
+        while gui.tour is not None and gui.tour.current is not None and not gui.tour.current.waits:
+            gui.advance_tour()
         emit("finished", "yes" if gui.tour is None else "no")
         # The bubble's rectangles must not outlive it: they are hit-tested, and
         # one left behind swallows clicks on the chrome underneath.
@@ -348,7 +362,18 @@ def test_what_run_issues_is_a_command(name):
 @pytest.mark.parametrize("name", TOURS)
 def test_every_target_is_a_control_the_chrome_knows(name):
     """A target spelled wrong resolves to nothing and centres the bubble."""
-    known = {"menu", "toolbar", "command", "wizard", "object", "movie", "sequence", "window"}
+    # ``control`` names one button inside a ``window`` (the panel's own ``control_rect``).
+    known = {
+        "menu",
+        "toolbar",
+        "command",
+        "wizard",
+        "object",
+        "movie",
+        "sequence",
+        "window",
+        "control",
+    }
     for index, step in enumerate(load_tour(name).steps):
         for key in step.target:
             assert key in known, (

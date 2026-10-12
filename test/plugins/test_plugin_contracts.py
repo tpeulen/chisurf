@@ -167,7 +167,7 @@ def test_trajectory_manifests_drive_plugin_discovery():
     traj_root = repo_root / "chisurf" / "plugins" / "traj"
 
     expected = {
-        "traj_tools": "Structure:Structure:Traj Tools",
+        "traj_tools": "Structure:Trajectory:Traj Tools",
         "traj_align": "Structure:Trajectory:Align",
         "traj_convert": "Structure:Trajectory:Convert",
         "traj_energy_calculator": "Structure:Trajectory:Energy Calculator",
@@ -187,10 +187,9 @@ def test_trajectory_manifests_drive_plugin_discovery():
     for manifest_id, display_name in expected.items():
         info = infos[manifest_id]
         assert info["plugin_name"] == display_name
-        # The whole family is menu-hidden, ``traj_tools`` included: it is reached
-        # as the *Trajectory Tools* panel of the Structure Tools hub
-        # (the ``structure_tools`` hub), not from a menu of its own.
-        assert info["menu_hidden"]
+        # ``traj_tools`` is the family's ribbon button (Structure › Trajectory);
+        # the tools it hosts are menu-hidden and reached through it.
+        assert info["menu_hidden"] == (manifest_id != "traj_tools")
         assert not info["cli_only"]
         assert info["module_path"].startswith("chisurf.plugins.traj.")
 

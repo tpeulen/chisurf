@@ -41,9 +41,9 @@ def test_global_refresh_toggle_accepts_the_value_delivered_by_a_form():
 
 def test_hub_key_release_supports_optional_child_event_hooks():
     """A valid draw/key child need not implement every host event hook."""
-    from chisurf.plugins.modelling.structure_tools.app import StructureToolsHubApp
+    from chisurf.plugins.modelling.fret.gui.app import FretApp
 
-    app = StructureToolsHubApp.__new__(StructureToolsHubApp)
+    app = FretApp.__new__(FretApp)
     app.selected = "Test"
     app.children = {"Test": SimpleNamespace(key=lambda *args: True)}
     assert app.key_release(1) is False

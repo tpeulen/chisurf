@@ -107,7 +107,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Accessible-volume (AV) dye modeling](/concepts/accessible_volume.md), [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
-- **Workflow** — [Accessible-volume (AV) calculations](/guides/23_accessible_volume.md), [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md), [Structure Tools: FPS JSON editor, docking and QuEst](/guides/88_structure_tools.md)
+- **Workflow** — [Accessible-volume (AV) calculations](/guides/23_accessible_volume.md), [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
 
 ## Source
 
@@ -115,3 +115,4 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 - Manifest: {src}`chisurf/plugins/modelling/fret/manifest.json`
 - UI spec: {src}`chisurf/plugins/modelling/fret/gui/fret_dock.view.json`
 - UI spec: {src}`chisurf/plugins/modelling/fret/gui/pair_selection.view.json`
+- UI spec: {src}`chisurf/plugins/modelling/fret/gui/resources/window.view.json`

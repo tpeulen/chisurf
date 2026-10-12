@@ -20,8 +20,7 @@ the averaging regime), see {ref}`concept-structure-trajectories`.
 
 ## Open the tools
 
-**Structure → Modelling → Structure Tools**, then **🎞️ Trajectory Tools** in the
-left list. The workspace has one dock tab per tool: *Align*, *Convert*,
+**Structure → Trajectory → Traj Tools** (🎬). The workspace has one dock tab per tool: *Align*, *Convert*,
 *Energy Calc*, *FRET*, *Join*, *Remove Clashed*, *Rot Translate*, *Save Topol*.
 A file dropped on the window goes to the tab in front if that tab has a single
 trajectory field. Each tool also runs as its own window from the command line
@@ -366,8 +365,8 @@ Measured on the example data. File references are to the current tree.
 - Concept: {ref}`concept-structure-trajectories`. Dye clouds:
   {ref}`concept-accessible-volume`, {doc}`23_accessible_volume`. Orientation
   factor: {ref}`concept-kappa2-orientation`.
-- Tool: **Traj Tools** (`chisurf/plugins/traj/traj_tools/`), reached through
-  the Structure Tools hub.
+- Tool: **Traj Tools** (`chisurf/plugins/traj/traj_tools/`), on the ribbon at
+  **Structure → Trajectory**.
 
 
 ## Retained protein-quenching settings

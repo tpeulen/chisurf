@@ -42,7 +42,7 @@ opened (an unsaved edit, a selected row, which sections are folded) while you lo
 | ChiSurf Settings | the typed editor of `settings_chisurf.yaml`: **Language**, search, typed fields, **Edit source**, **Validate**, **Save**, **Reload**, **Help** | {numref}`fig-settings-chisurf` |
 | Acquisition | output folder (**Browse...**), chunk size, real-time simulation, device type and the simulator's parameters; every change is stored at once | {numref}`fig-settings-acquisition` |
 | Styles | the style-sheet editor ([Styles](../reference/plugins/style_manager.md)) | |
-| Plots | colours, appearance and the live preview ([Plot settings](../reference/plugins/plot_settings.md)); the wheel zooms the preview, a drag pans it | |
+| Plots | curve colours and width, fit-range band, global fits, axes and grid, beside a live preview laid out like a fit window ([Plot settings](../reference/plugins/plot_settings.md)); a change applies at once and is saved; the wheel zooms the preview, a drag pans it | |
 | Models | the model table with its search and detail pane | |
 | User Editor | accounts of the MMFDB | |
 | AI Settings | provider, models and generation settings ([AI settings](../reference/plugins/ai_settings.md)) | |

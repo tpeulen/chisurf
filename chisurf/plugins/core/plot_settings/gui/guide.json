@@ -1,58 +1,59 @@
 {
-  "_comment": "Guided tour for Plot Settings (emtk app). 'name' is the control: a field's attr, a button's action, '<section>.fold' for a section header, 'preview_plot' for the sample plot. Steps with an 'await' wait for the user to use the control.",
+  "_comment": "Guided tour for Settings > Plots (emtk app). 'name' is the control: a field's attr, a button's action, '<section>.fold' for a section header, 'preview_plot' for the preview. Steps with an 'await' wait for the user to use the control.",
   "steps": [
     {
-      "title": "Change it on top, watch it below",
-      "text": "Every edit in the sections above shows at once on the <b>preview</b> below: three <b>sample</b> curves (data, model, instrument response) drawn with the colours, line width, grid and legend you choose. They preview the styling and are not your data.<br><br>Settings are grouped into folding sections: backend, colours, appearance, node graphs and a pyqtgraph-only section.",
+      "title": "A fit window, on sample data",
+      "text": "The <b>preview</b> is laid out like a fit window: the autocorrelation of the residuals on top, the weighted residuals under it, the decay below. It is a <b>simulated</b> measurement -- an instrument response convolved with two lifetimes, background and photon noise -- with a fit that is close but not exact, so data, model and residuals can be told apart. Every control on the left acts on it at once.",
       "target": {
         "name": "preview_plot"
       }
     },
     {
-      "title": "The backend is the how, not the what",
-      "text": "The rendering backend decides which engine draws a plot; the curves, ranges and selections stay as they are. A changed backend reaches plots that are created afterwards. Only the native <b>emtk</b> backend is installed, so there is nothing to switch yet.",
-      "target": {
-        "name": "backend"
-      }
-    },
-    {
       "title": "Pick a colour and watch the preview",
-      "text": "Click the <b>swatch</b> beside <b>Data curve</b> to open a colour picker, or type a hex value such as <code>#22cc44</code> and press Enter. The preview curve changes at once, and the status line says the edit is not applied yet.",
+      "text": "Click the <b>swatch</b> beside <b>Model</b> for a colour picker, or type a hex value such as <code>#22cc44</code> and press Enter. The model curve in the preview changes at once.",
       "target": {
-        "name": "color_data"
+        "name": "color_model"
       },
       "await": {
-        "hint": "Change the data curve colour."
+        "hint": "Change the model colour."
       }
     },
     {
-      "title": "Apply uses it, Save keeps it",
-      "text": "<b>Apply</b> writes the edits into the active settings: curves drawn from now on take the new colours, a fit already on screen keeps its colours until it is re-plotted. <b>Save</b> also writes them to the settings file for the next start; <b>Reset</b> reloads everything from the active settings and drops edits you did not apply.",
+      "title": "Changes apply at once and are kept",
+      "text": "There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Plots opened from now on use it; a fit already on screen takes the new colours when it is re-plotted. The line under the controls says what happened.",
       "target": {
-        "name": "apply"
-      },
-      "await": {
-        "hint": "Press <b>Apply</b>."
+        "name": "settings"
       }
     },
     {
-      "title": "Appearance: line width, grid, legend",
-      "text": "Line width, font size, grid opacity and which furniture the plots show. The grid and legend options change the preview too.",
+      "title": "The fit range",
+      "text": "The band marks the channels the fit uses; you drag its edges in a fit window. Turn its <b>Opacity</b> up or down here -- much above 60 it hides the data under it.",
       "target": {
-        "name": "Appearance.fold"
+        "name": "region_alpha"
       },
       "await": {
-        "hint": "Open the <b>Appearance</b> section."
+        "hint": "Move the <b>Opacity</b> slider."
       }
     },
     {
-      "title": "The folded section is engine-specific",
-      "text": "The advanced section holds the options that only exist on the pyqtgraph engine: anti-aliasing, panning and the background and foreground colours. They are inert under the native emtk backend, which is why they live in their own folded section. The preview follows the background.",
+      "title": "Global fits",
+      "text": "With several datasets in one global fit, the selected one is drawn solid and the others dimmed. <b>Other fits</b> sets how dim: the second dataset in the preview follows it.",
       "target": {
-        "name": "Advanced: pyqtgraph Configuration.fold"
-      },
-      "await": {
-        "hint": "Open the <b>Advanced: pyqtgraph Configuration</b> section."
+        "name": "inactive_transparency"
+      }
+    },
+    {
+      "title": "Axes and grid",
+      "text": "Axis names, the legend, the size of the axis text and how strongly the grid is drawn, per panel. <b>Axis text</b> 'auto' follows the interface font of Settings ▸ Fonts.",
+      "target": {
+        "name": "Axes and grid.fold"
+      }
+    },
+    {
+      "title": "Back to the shipped look",
+      "text": "<b>Reset to defaults</b> puts every plot setting back, applied at once and saved.",
+      "target": {
+        "name": "reset_defaults"
       }
     }
   ]

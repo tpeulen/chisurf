@@ -1,0 +1,61 @@
+{
+  "_comment": "Guided tour for the docking card. Steps point at real controls; the ones with an await wait until the user presses the control.",
+  "steps": [
+    {
+      "title": "What this tool does",
+      "text": "FRET distances between dyes tell you how two or more rigid structures sit relative to each other. This tool moves the bodies until the distances the labels <i>should</i> give (from their accessible volumes) match the ones you measured, and scores how well they do.<br/><br/>You need the structures and an <b>fps.json</b> file that holds the labelling positions and the measured distances. Seven steps; you press the buttons, the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Load the example, or a project",
+      "text": "<b>Load example</b> copies the shipped HIV reverse transcriptase project (the protein, its DNA and an fps.json with 20 measured distances) into your settings folder and fills every input. <b>Project</b> loads a docking project of your own: the structures, the fps.json and the parameters in one file. Or add the pieces yourself in the next steps.",
+      "target": {
+        "key": "load_example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "The rigid bodies",
+      "text": "One structure per rigid body, in the order of their body ids. <b>Add Files</b> adds one (so does dropping a .pdb on the window). The same file twice is a homodimer.",
+      "target": {
+        "key": "pdb_rows"
+      }
+    },
+    {
+      "title": "The restraints",
+      "text": "<b>fps.json</b> chooses the labelling and distance file. Build one in ChiMOL's labelling editor (<b>Tools › Labelling</b>).",
+      "target": {
+        "key": "fps_pick"
+      },
+      "await": {
+        "hint": "Press <b>fps.json</b> and choose the file."
+      }
+    },
+    {
+      "title": "Choose what to do",
+      "text": "<b>Op</b> selects <i>dock</i> (rigid-body docking), <i>refine</i>, <i>screen</i> (rank a library of structures) or <i>score</i> (one structure). <b>Runs</b> above 1 repeats the docking from random starts to estimate how well the distances determine the result.",
+      "target": {
+        "key": "operation"
+      }
+    },
+    {
+      "title": "Run it",
+      "text": "Press <b>Run</b>. The bar shows the progress and the best score so far; <b>Stop</b> ends the run.",
+      "target": {
+        "key": "run"
+      },
+      "await": {
+        "hint": "Press <b>Run</b>."
+      }
+    },
+    {
+      "title": "Read the result",
+      "text": "Each result is a row of the <b>Results</b> table (best score first); select one to see its structure in the <b>Structure</b> tab and the <b>Score</b> tab for the trace. Press <b>Help</b> for the scores and the files written.",
+      "target": {
+        "key": "tab_Results"
+      }
+    }
+  ]
+}

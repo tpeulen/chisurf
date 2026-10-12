@@ -1,6 +1,6 @@
 ---
 type: Reference
-title: Use case — FRET-restrained rigid-body docking (Structure Tools → Docking & Screening)
+title: Use case — FRET-restrained rigid-body docking (Structure → FRET → Docking & Screening)
 description: Take a two-body complex and a set of measured FRET distances and dock the bodies against them — load the docking project, score the reference pose, minimise or Monte-Carlo the mobile body, repeat the run for a score spread, and rank a structure library. Currently blocked end to end by an IMP.bff API that the plugin cannot reach.
 tags: [usecase, structure, fret, docking, modelling, imp, gui]
 timestamp: '2026-07-28T00:00:00Z'
@@ -39,9 +39,9 @@ protein + DNA test system. The screening/pair-selection half uses
 (`3GUN_NMSim_cl-rep_894.dcd`) with `pair_selection_tutorial.fps.json`.
 
 **Tool:** `chisurf.plugins.modelling.fret` (`FretDockingTool`), display name
-*Structure:FRET:Docking & Screening*; `menu_hidden`, so the way in is the
-**Structure Tools** hub (`modelling/structure_tools`) → panel **2. Docking &
-Screening**. CLI `fret`, RPC `fret.dock` / `fret.refine` / `fret.score` /
+*Structure:FRET:Docking & Screening*: its own ribbon button since the Structure
+Tools hub was dissolved (2026-10-12); the window lists *Docking & Screening* and
+*Pair Selection*. (Steps and observations below predate that and name the old hub.) CLI `fret`, RPC `fret.dock` / `fret.refine` / `fret.score` /
 `fret.screen` / `fret.estimate_errors`.
 
 ## Steps

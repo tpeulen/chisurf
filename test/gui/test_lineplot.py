@@ -37,7 +37,8 @@ def test_group_display_alpha_and_setalpha_contract():
     # setOpacity / setAlpha / pen-alpha) collapsed to chiplot's Curve.set_opacity
     # when lineplot migrated off pyqtgraph.
     assert "line.set_opacity(alpha)" in src
-    assert "alpha = 1.0 if fit_index == current_fit_index else 0.4" in src
+    # The opacities are the plot settings' (selected / other fits), not constants.
+    assert "alpha = appearance.fit_opacity(fit_index == current_fit_index)" in src
 
 
 def test_group_display_uses_selected_fit_when_available():

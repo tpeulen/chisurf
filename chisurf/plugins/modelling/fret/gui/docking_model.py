@@ -1,8 +1,8 @@
 """Qt-free backing model of the FRET docking form.
 
 Its attributes mirror the fields of ``fret_dock.view.json``; :meth:`DockingModel.build_params`
-turns them into the ``api.operations`` request. The Structure Tools docking card keeps its own
-session (:mod:`chisurf.plugins.modelling.structure_tools.cards.docking_model`) and is tested
+turns them into the ``api.operations`` request. The native docking card keeps its own
+session (:mod:`chisurf.plugins.modelling.fret.gui.docking_session`) and is tested
 against this model's requests.
 """
 

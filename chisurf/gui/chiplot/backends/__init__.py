@@ -1,12 +1,10 @@
 """Backend selection for chiplot.
 
-The active backend is chosen once, lazily. The resolution order is:
-
-1. ``CHISURF_PLOT_BACKEND`` environment variable.
-2. ``gui.plot.backend`` from the ChiSurf settings (``settings_chisurf.yaml``).
-3. ``"emtk"`` (the default).
-
-A new backend registers here via :func:`register_backend` and becomes
+The active backend is chosen once, lazily: the ``CHISURF_PLOT_BACKEND``
+environment variable when set, else ``"emtk"``. There is no user setting for it:
+with one renderer a choice in *Settings ▸ Plots* was a control that did
+nothing (the former ``gui.plot.backend`` key is dropped from settings files on
+load). A new backend registers here via :func:`register_backend` and becomes
 selectable with no call-site change.
 """
 
@@ -28,7 +26,7 @@ _REGISTRY: dict[str, str] = {
 _REMOVED: dict[str, str] = {
     "pyqtgraph": (
         "the pyqtgraph backend was removed (pyqtgraph is no longer a dependency); "
-        "chiplot draws with emtk. Unset CHISURF_PLOT_BACKEND / gui.plot.backend, or set it to 'emtk'"
+        "chiplot draws with emtk. Unset CHISURF_PLOT_BACKEND, or set it to 'emtk'"
     ),
 }
 
@@ -45,18 +43,7 @@ _active: base.Backend | None = None
 
 def _resolve_backend_name() -> str:
     """Return the backend name following the documented resolution order."""
-    env_name = os.environ.get("CHISURF_PLOT_BACKEND")
-    if env_name:
-        return env_name
-    try:
-        from chisurf.core import settings as _cs
-
-        name = _cs.cs_settings.get("gui", {}).get("plot", {}).get("backend")
-        if name:
-            return name
-    except Exception:
-        pass
-    return "emtk"
+    return os.environ.get("CHISURF_PLOT_BACKEND") or "emtk"
 
 
 def register_backend(name: str, dotted_path: str) -> None:

@@ -1016,7 +1016,7 @@ class GuidedTour(QtCore.QObject):
             #    header bar somewhere else in the column. Same silent degradation
             #    as an unresolved target, and just as invisible to the guardrail.
             self._unfold(parent)
-            # 1. Raise pyqtgraph Dock / ChiSurf Dock if present
+            # 1. Raise the ChiSurf Dock the target sits in, if any
             if hasattr(parent, "raiseDock") and callable(parent.raiseDock):
                 try:
                     parent.raiseDock()

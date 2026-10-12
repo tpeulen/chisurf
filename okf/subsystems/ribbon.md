@@ -4,7 +4,7 @@ title: Ribbon and hubs
 description: How a plugin's manifest address becomes a ribbon tab, group and button, how hubs (meta tools) host other plugins, and the guards that keep every tool in exactly one place.
 resource: chisurf/gui/widgets/ribbon/, chisurf/core/plugin/ribbon_layout.py, chisurf/emtk/shell_ribbon.py
 tags: [gui, ribbon, plugins, hubs, navigation]
-timestamp: '2026-10-11T00:00:00Z'
+timestamp: '2026-10-12T00:00:00Z'
 ---
 
 # What it is
@@ -29,7 +29,7 @@ against this ribbon is [Qt retirement (shell)](qt-retirement.md), resume item 5.
 
 A **hub** (meta tool) is an ordinary plugin with an address whose window hosts
 other plugins as panels: TTTR Tools, File tools, Image Tools, Calculators,
-Wizards, Games, Settings, Structure Tools (with Trajectory Tools nested),
+Wizards, Games, Settings, Traj Tools, FRET (docking + pair selection),
 Decay Analysis, Burst Analysis, ALEX Suite, FCS (with the FCS correlator
 nested). The ribbon knows nothing about hubs. A hosted tool leaves the ribbon
 only because its own manifest says `menu_hidden`. Hub list rows show each child's
@@ -44,7 +44,7 @@ Domain tabs, left to right (`TAB_ORDER`):
 | File | Recent · Project · Fits · Application (built in) · **Setup**: Settings, Switch User, Menu Switch · **Data**: File tools |
 | Main | **Window**: the toolbar's window actions, minus those File shows (`ribbon_file.FILE_ACTIONS`) · **Help** |
 | Spectroscopy | **Correlation**: FCS, PCH · **Decay**: Decay Analysis · **Kinetics**: Hidden Markov model · **Single-Molecule**: ALEX Suite, Burst Analysis, Intensity trace, Trace Browser, ebFRET · **Imaging**: Image Tools |
-| Structure | **Modelling**: ChiMOL, Structure Tools |
+| Structure | **Modelling**: ChiMOL · **FRET**: Docking & Screening, FPS JSON Editor · **Computation**: HydroPro, QuEst · **Trajectory**: Traj Tools |
 | Tools | **Calculators**: Calculators, Light Path Simulator, Spectra Downloader, Wizards · **Photon data**: TTTR Tools · **System**: Code Editor, Games, MMFDB Admin · **Views**: Acquisition, Global View, ndX |
 
 Hub scopes that decide where a new tool goes:
@@ -57,6 +57,11 @@ Hub scopes that decide where a new tool goes:
 - **Decay Analysis**: decay tools, including VV/VH Anisotropy and Synthetic Decay.
 - **Calculators**: stand-alone calculators, κ² included. The FCS diffusion
   calculator is hosted by FCS only.
+- **Structure tab has no hub** (owner, 2026-10-12): the former Structure Tools
+  hub was dissolved; each structure tool is its own ribbon button, grouped by
+  `GROUP_ORDER["Structure"]` (Modelling, FRET, Computation, Trajectory). Traj Tools
+  stays a hub for the trajectory family; the shared card window shell is
+  `chisurf/emtk/card_shell.py`.
 
 # Task colours (2026-10-11)
 

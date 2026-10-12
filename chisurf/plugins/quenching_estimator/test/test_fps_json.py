@@ -251,3 +251,16 @@ def test_run_fps_scan_buried_residue(base_project, tmp_path):
     assert res["status"] == "failed"
     assert "error" in res
     assert "Accessible Volume is empty" in res["error"]
+
+
+def test_normalize_fills_what_the_project_leaves_out_with_imp_bff_defaults():
+    """A site exported without AV numbers carries IMP.bff's declared defaults, not QuEst's old 0.5 / 1.5."""
+    from chisurf.core.structure.av import av_defaults
+
+    defaults = av_defaults()
+    pos = api.normalize_to_fps_positions([{"chain": "A", "residue": 3}], {})["Positions"]["3A"]
+    assert pos["linker_length"] == defaults["linker_length"]
+    assert pos["linker_width"] == defaults["linker_width"]
+    assert pos["radius1"] == defaults["radius1"]
+    assert pos["simulation_grid_resolution"] == defaults["simulation_grid_resolution"]
+    assert pos["allowed_sphere_radius"] == defaults["allowed_sphere_radius"]

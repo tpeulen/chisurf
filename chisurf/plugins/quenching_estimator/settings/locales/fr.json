@@ -45,6 +45,10 @@
       "label": "Sphère autorisée",
       "description": "Rayon autour de l'atome d'ancrage dans lequel le linker ignore les obstacles, pour pouvoir quitter l'atome auquel il est lié. Activée par défaut à la valeur de FPS, 2,25 Å (0,5 × la largeur de linker de 4,5 Å) ; l'atome d'ancrage lui-même n'est jamais un obstacle."
     },
+    "av_parameter.radius_scale": {
+      "label": "Facteur des rayons d'obstacle",
+      "description": "Facteur appliqué aux rayons de van der Waals des atomes (jeu d'atomes unifiés d'IMP) lorsqu'ils font obstacle au linker et au colorant. La valeur par défaut, 0,84, reproduit les rayons de Bondi plus petits de FPS : les volumes des sites CB de T4L concordent alors avec la routine de FPS. 1,0 utilise les rayons d'IMP tels quels."
+    },
     "dg": {
       "label": "Résolution de la grille",
       "description": "Résolution de la grille utilisée pour calculer le volume accessible (AV) et l'espace de diffusion."

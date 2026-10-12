@@ -13,12 +13,12 @@ import time
 import numpy as np
 
 import chisurf as cs
+import chisurf.core.plotting.appearance as appearance
 import chisurf.core.settings
 from chisurf.emtk.chimol_view import ChimolView
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots.plotbase import Plot
 
-colors = cs.core.settings.gui["plot"]["colors"]
 color_scheme = cs.core.settings.colors
 
 
@@ -57,18 +57,18 @@ class ProteinMCPlot(Plot):
         self.energy_plot.set_title("Energy")
         self.fret_plot.set_title("FRET")
 
-        lw = cs.core.settings.gui["plot"]["line_width"]
+        lw = appearance.line_width()
         self.rmsd_curve = self.rmsd_plot.line(
-            [0.0], [0.0], pen=colors["irf"], width=lw, name="rmsd"
+            [0.0], [0.0], pen=appearance.curve_color("irf"), width=lw, name="rmsd"
         )
         self.drmsd_curve = self.drmsd_plot.line(
-            [0.0], [0.0], pen=colors["data"], width=lw, name="drmsd"
+            [0.0], [0.0], pen=appearance.curve_color("data"), width=lw, name="drmsd"
         )
         self.energy_curve = self.energy_plot.line(
-            [0.0], [0.0], pen=colors["model"], width=lw, name="energy"
+            [0.0], [0.0], pen=appearance.curve_color("model"), width=lw, name="energy"
         )
         self.fret_curve = self.fret_plot.line(
-            [0.0], [0.0], pen=colors["model"], width=lw, name="fret"
+            [0.0], [0.0], pen=appearance.curve_color("model"), width=lw, name="fret"
         )
         # A movable=False "current frame" cursor on each panel.
         self.frame_lines = []

@@ -57,11 +57,3 @@ def test_the_dye_group_starts_at_the_av_defaults():
         "linker_width": defaults["linker_width"],
         "radius1": defaults["radius1"],
     }
-
-
-def test_a_preset_sets_the_fps_cards_numbers():
-    """The FPS card's Dye Preset read fps.json keys from a file that spells them ``av_*``."""
-    from chisurf.plugins.modelling.structure_tools.cards.fps_model import dye_presets
-
-    preset = dye_presets()["D1-Alexa488"]
-    assert {"linker_length", "linker_width", "radius1"} <= set(preset)

@@ -72,7 +72,7 @@ def test_the_dependency_is_not_declared(manifest):
 
 
 def test_asking_for_the_pyqtgraph_backend_says_it_was_removed(monkeypatch):
-    """A stale ``CHISURF_PLOT_BACKEND=pyqtgraph`` or settings value fails with the reason."""
+    """A stale ``CHISURF_PLOT_BACKEND=pyqtgraph`` fails with the reason."""
     from chisurf.gui.chiplot import backends
 
     monkeypatch.setenv("CHISURF_PLOT_BACKEND", "pyqtgraph")
@@ -182,4 +182,45 @@ def test_native_allowlist_has_no_stale_entries():
     assert not stale, (
         "these files no longer use .native — remove them from "
         "test/chiplot_native_allowlist.txt:\n  " + "\n  ".join(stale)
+    )
+
+
+def test_no_setting_or_ui_string_names_pyqtgraph():
+    """No settings key and no user-facing string names the removed renderer.
+
+    A setting that names pyqtgraph is a control that changes nothing -- Settings ▸ Plots
+    showed a "pyqtgraph Configuration" section and a renderer choice with one option for
+    as long as the keys were in ``settings_chisurf.yaml``. Shipped settings, view specs,
+    guided tours and help pages are checked; the retired keys live on only in the
+    migration that removes them from old settings files (``settings_utils.RETIRED_KEYS``).
+    """
+    import yaml
+
+    offenders = []
+
+    def keys(node, path):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if "pyqtgraph" in str(key).lower():
+                    offenders.append(f"{path}/{key}")
+                keys(value, f"{path}/{key}")
+        elif isinstance(node, list):
+            for value in node:
+                keys(value, path)
+
+    for settings in sorted((_PKG / "core" / "settings").glob("*.yaml")):
+        keys(yaml.safe_load(settings.read_text(encoding="utf-8")), settings.name)
+    ui_files = [
+        *_PKG.rglob("*.view.json"),
+        *_PKG.rglob("guide.json"),
+        *_PKG.rglob("*guide*.json"),
+        *_PKG.rglob("help.md"),
+        *_PKG.rglob("*_help.md"),
+        *_PKG.rglob("manifest.json"),
+    ]
+    for path in sorted(set(ui_files)):
+        if "pyqtgraph" in path.read_text(encoding="utf-8", errors="ignore").lower():
+            offenders.append(path.relative_to(_ROOT).as_posix())
+    assert not offenders, "the removed renderer is still named in settings / UI text:\n  " + (
+        "\n  ".join(offenders)
     )

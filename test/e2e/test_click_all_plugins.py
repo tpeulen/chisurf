@@ -802,6 +802,9 @@ def exercise_auto_range(driver, result):
                 continue
             button = current["button"]
             bx, by, bw, bh = button
+            # The plot area now, not before the zoom: zooming changes the tick labels, and with
+            # them the width of the axis gutter (``100`` -> ``90``), so the area moves.
+            x, y, w, h = current["area"]
             inside = x <= bx and bx + bw <= x + w + 0.5 and y <= by and by + bh <= y + h + 0.5
             if not (inside and on_screen(button, smallest=7.5)):
                 result["errors"].append(f"auto-range: {entry['plot']} A outside its plot {button}")
@@ -938,10 +941,13 @@ def _safe_row(panel, painter):
     return None
 
 
-def _reference_control(recorder, avoid):
+def _reference_control(recorder, avoid, size=None):
     """A drawn control whose click proves the input is free and changes nothing for good.
 
     A selected tab (a click on it is a no-op), else a fold header or checkbox (clicked twice).
+    With *size* (the layout box) only a control that is on screen qualifies -- one scrolled out of
+    its region is drawn at coordinates that belong to something else -- and the returned row's
+    ``rect`` is its visible part, the place a hand would click.
     """
     kinds = ("begin_tab_item", "autoform_fold", "collapsing_header", "checkbox")
     rows = [
@@ -952,6 +958,9 @@ def _reference_control(recorder, avoid):
         and row.get("rect")
         and not skip_reason(str(row.get("id", "")) + " " + str(row.get("label", "")))
     ]
+    if size is not None:
+        shown = [(row, visible_rectangle(row, size)) for row in rows]
+        rows = [dict(row, rect=visible) for row, visible in shown if visible is not None]
     for kind in kinds:
         for row in rows:
             x, y, w, h = row["rect"]
@@ -1103,7 +1112,7 @@ def exercise_context_menus(driver, recorder, result):
                     continue
                 recorder.rows.clear()
                 driver.frame()
-                reference = _reference_control(recorder, area)
+                reference = _reference_control(recorder, area, _layout_size(driver))
                 outcome["released"] = True
                 if reference is None:
                     outcome["landed"] = "no reference control to click"

@@ -10,7 +10,7 @@
     "Structure",
     "Computation"
   ],
-  "icon": "\ud83c\udf0a",
+  "icon": "🌊",
   "state_namespace": "hydropro",
   "statefulness": {
     "enabled": true,
@@ -36,6 +36,5 @@
     }
   ],
   "dependencies": {},
-  "menu_hidden": true,
   "deprecated": false
 }

@@ -4,6 +4,21 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Structure Tools isolated ribbon check depends on an uncommitted loader
+
+status: resolved 2026-10-12 — the Structure Tools hub and its `test_native.py` were removed (each structure tool is its own ribbon button); `select_gui_entrypoint` is covered by `plugin_manager/test/test_launcher_dispatch.py::test_runtime_selection_defaults_to_emtk`.
+
+Observed 2026-10-09 at HEAD 6bcec3cb5: the committed Structure Tools
+`test_native.py::test_structure_ribbon_entries_resolve_native` imports
+`select_gui_entrypoint`, absent from committed `core/plugin/registry.py`. It fails
+in a private HEAD package, while the exact affected test passes in the live tree
+where a separate stream has implemented that loader. The W6g hub-size candidate
+preserves/excludes those foreign changes; its four owned tests are independent.
+Publication/integration of the plugin-loader lane must precede a clean committed
+ribbon-route acceptance. Do not copy the entire foreign registry diff merely to
+make an isolated geometry test green. Evidence is in the Structure Tools final
+archive under `green-corrected.txt` and `ribbon-live.txt`.
+
 ## The pixi test environment builds IMP.bff without RMF and without IMP (found 2026-10-12)
 
 status: open — owner: the IMP.bff build in the pixi environment.
@@ -1365,21 +1380,6 @@ owner declarations during the programme static-cleanup gate while preserving
 the actual physical regressions and cold-fit reference. Exact before/after
 identities and commands are in
 [the scientific-owner archive](../validation/release-readiness-w6g/lltf-selection-owner-current-job.zip).
-
-## Structure Tools isolated ribbon check depends on an uncommitted loader
-
-status: open — loader publication is now recorded in 1abd5eff19c7; isolated ribbon acceptance remains to be verified.
-
-Observed 2026-10-09 at HEAD 6bcec3cb5: the committed Structure Tools
-`test_native.py::test_structure_ribbon_entries_resolve_native` imports
-`select_gui_entrypoint`, absent from committed `core/plugin/registry.py`. It fails
-in a private HEAD package, while the exact affected test passes in the live tree
-where a separate stream has implemented that loader. The W6g hub-size candidate
-preserves/excludes those foreign changes; its four owned tests are independent.
-Publication/integration of the plugin-loader lane must precede a clean committed
-ribbon-route acceptance. Do not copy the entire foreign registry diff merely to
-make an isolated geometry test green. Evidence is in the Structure Tools final
-archive under `green-corrected.txt` and `ribbon-live.txt`.
 
 ## H2MM settings JSON omits the detector definition promised by toolbar help
 

@@ -46,6 +46,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Linker width (Å) | `av_linker_width` | float |  | 0.0 … 50.0 | Width of the linker tethering the dye. |
 | Dye radius (Å) | `av_radius1` | float |  | 0.0 … 50.0 | Exclusion radius representing the dye sphere (single-sphere approximation). |
 | Allowed sphere (Å) | `av_allowed_sphere_radius` | float |  | 0.0 … 20.0 | Radius around the attachment atom inside which the linker ignores obstacles, so it can leave the atom it is tied to. On by default at FPS's 2.25 Å (0.5 × the 4.5 Å linker width); the attachment atom itself is never an obstacle. |
+| Obstacle radius scale | `av_radius_scale` | float |  | 0.5 … 1.5 | Factor on the atoms' van der Waals radii (IMP's united-atom set) when they are obstacles to the linker and the dye. The default, 0.84, matches FPS's smaller Bondi radii: at it the T4L CB-site volumes agree with FPS's own routine. 1.0 uses IMP's radii as they are. |
 | Grid resolution (Å) | `dg` | float |  | 0.1 … 5.0 | Grid resolution used to compute the accessible volume (AV) and diffusion search space. |
 
 ### Simulation

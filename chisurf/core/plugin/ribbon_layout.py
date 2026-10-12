@@ -46,6 +46,7 @@ GROUP_ORDER = {
         "Imaging › Tools",
         "Imaging › Simulate",
     ),
+    "Structure": ("Modelling", "FRET", "Computation", "Trajectory"),
     "Tools": ("Photon data", "Calculators", "Views", "System"),
 }
 

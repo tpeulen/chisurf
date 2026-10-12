@@ -1,32 +1,23 @@
-"""The native FPS JSON editor: the Structure Tools FPS card as a window of its own.
+"""Structure › FRET › FPS JSON Editor: ChiMOL with its labelling editor open.
 
-The editor (Positions, Distances, FlexFit, JSON and 3D tabs, AV computation, MRC export) is the card of
-``structure_tools`` (imported, not copied): its Qt-free model, specs, guide and help. The Qt tool's RCSB fetch is the
-card's PDB-ID fetch.
+The fps.json editor is a plugin of ChiMOL (``chimol.plugins.labelling``: the *Labelling network* window with its
+Positions, Distances, FlexFit and JSON tabs, the accessible volumes drawn in the viewer it sits in). ChiSurf ships
+no editor of its own: this entry opens the ChiMOL window and runs ``fps_circle , , Positions`` once the viewer is
+up. The headless half of this plugin (payload validation, PDB fetch, the CLI and RPC services) is ``core``, ``api``,
+``cli`` and ``rpc``.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:  # the names __getattr__ serves, for linters and type checkers
-    from chisurf.plugins.modelling.structure_tools.cards.fps_json import FpsJsonCard, make_app
-
-__all__ = ["FpsJsonCard", "make_app"]
+#: The chimol command that opens the editor on its Positions tab.
+OPEN_EDITOR = "fps_circle , , Positions"
 
 
-def __getattr__(name: str):
-    """Serve the Structure Tools card on first access.
+def make_app():
+    """The ChiMOL window with the labelling editor open."""
+    from chisurf.plugins.chimol.app import make_app as make_chimol
 
-    The card lives in the plugin that hosts it and that plugin imports this one's model, so a
-    module-level import here would make the two plugins require each other.
-    """
-    if name == "FpsJsonCard":
-        from chisurf.plugins.modelling.structure_tools.cards.fps_json import FpsJsonCard
+    return make_chimol(commands=(OPEN_EDITOR,))
 
-        return FpsJsonCard
-    if name == "make_app":
-        from chisurf.plugins.modelling.structure_tools.cards.fps_json import make_app
 
-        return make_app
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+__all__ = ["OPEN_EDITOR", "make_app"]

@@ -67,18 +67,42 @@ def prune_defaults(values, defaults):
 #: old default -- files were seeded with a full copy of the defaults until
 #: 26.1 -- so the value is dropped and the new default applies.
 FORMER_DEFAULTS: dict[tuple, tuple] = {
-    ("gui", "plot", "backend"): ("pyqtgraph",),
+    # Shipped as 0.2 while nothing read it; the plots drew the other fits of a
+    # group at a hard-coded 0.4, which is the look the setting now keeps.
+    ("gui", "plot", "colors", "inactive_transparency"): (0.2,),
+    # 0.35 was ignored (the grid drew at the theme's strength); 0.3 is that strength.
+    ("gui", "plot", "grid_alpha"): (0.35,),
 }
+
+#: Settings that no longer exist. A user file still holding one is cleaned on load,
+#: so a value that does nothing cannot sit in the file looking as if it did.
+#: ``gui.plot``: the renderer choice (emtk is the only one), the options of the
+#: removed pyqtgraph renderer, and a "hide titles" switch no plot ever read.
+RETIRED_KEYS: tuple[tuple, ...] = (
+    ("gui", "plot", "backend"),
+    ("gui", "plot", "pyqtgraph_config"),
+    ("gui", "plot", "hideTitle"),
+)
+
+
+def _parent(mapping: dict, path: tuple) -> dict | None:
+    """The mapping holding the last key of *path*, or ``None``."""
+    parent = mapping
+    for key in path[:-1]:
+        parent = parent.get(key) if isinstance(parent, dict) else None
+    return parent if isinstance(parent, dict) else None
 
 
 def _drop_former_defaults(user: dict) -> dict:
-    """Remove the values :data:`FORMER_DEFAULTS` lists from a user mapping."""
+    """Remove the values :data:`FORMER_DEFAULTS` lists, and the :data:`RETIRED_KEYS`, from a user mapping."""
     for path, former in FORMER_DEFAULTS.items():
-        parent = user
-        for key in path[:-1]:
-            parent = parent.get(key) if isinstance(parent, dict) else None
-        if isinstance(parent, dict) and parent.get(path[-1]) in former:
+        parent = _parent(user, path)
+        if parent is not None and parent.get(path[-1]) in former:
             del parent[path[-1]]
+    for path in RETIRED_KEYS:
+        parent = _parent(user, path)
+        if parent is not None:
+            parent.pop(path[-1], None)
     return user
 
 

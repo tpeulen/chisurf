@@ -45,6 +45,10 @@
       "label": "Erlaubte Kugel",
       "description": "Radius um das Ankeratom, innerhalb dessen der Linker Hindernisse ignoriert, damit er das Atom verlassen kann, an das er gebunden ist. Standardmäßig an, mit dem FPS-Wert 2,25 Å (0,5 × die Linkerbreite von 4,5 Å); das Ankeratom selbst ist nie ein Hindernis."
     },
+    "av_parameter.radius_scale": {
+      "label": "Skalierung der Hindernisradien",
+      "description": "Faktor auf die Van-der-Waals-Radien der Atome (IMPs United-Atom-Satz), wenn sie Hindernisse für Linker und Farbstoff sind. Der Standardwert 0,84 entspricht den kleineren Bondi-Radien von FPS: damit stimmen die Volumina der T4L-CB-Positionen mit FPS' eigener Routine überein. 1,0 verwendet IMPs Radien unverändert."
+    },
     "dg": {
       "label": "Gitterauflösung",
       "description": "Gitterauflösung für die Berechnung des zugänglichen Volumens (AV) und des Diffusionsraums."

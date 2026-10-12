@@ -81,6 +81,22 @@ the linker ignores obstacles: FPS's `LinkerInitialSphere` of half a linker width
 2.25 Å at the default 4.5 Å width. A position that does not set it gets half its own
 linker width; the dye itself must still fit where it ends up.
 
+**How big an atom is.** An obstacle's radius is the one IMP's structure reader
+gives the atom — a CHARMM united-atom radius that carries implicit hydrogens
+(carbon 1.85–2.275 Å) — times one factor, the **obstacle-radius scale**
+(`radius_scale`, default 0.84). FPS uses element Bondi radii (carbon 1.70,
+nitrogen 1.55, oxygen 1.52 Å), about 16 % smaller; rather than carry a second
+radii table, the factor is fitted to them. Over the heavy atoms of T4 lysozyme
+and HIV-1 RT the median FPS/IMP radius ratio is 0.838, and at 0.84 the median
+CB-site volume of T4L (PDB 148L) agrees with FPS's own routine to 1 %
+(0.91 with IMP's radii unscaled); against FPS's distances on T4L 3GUN the bias
+falls from +1.2 to +0.9 Å at unchanged rmsd. The factor applies to the AV's
+obstacles only; the clash term of a docking score keeps IMP's radii. 1.0 uses
+IMP's radii as they are. The search starts from the grid point nearest the
+attachment atom, so a site whose atom sits off-grid in a narrow pocket can come
+back empty at a fine grid where FPS, which centres its grid on the atom, finds
+a volume (T4L N132 CB at 0.5 Å).
+
 ## The mean dye position
 
 The first quantity read off the cloud is the **mean dye position**, the
@@ -232,8 +248,8 @@ excluded-volume and other data). Combined with the analytic
 {doc}`/guides/03_polymer_distance_distributions` shapes, the same machinery
 connects a measured efficiency to a structure or an ensemble.
 
-In ChiSurf the labeling/scoring configuration lives in an `fps.json` file edited by
-the `fps_json_editor` plugin; the AV grid engine is the external Bayesian-
+In ChiSurf the labeling/scoring configuration lives in an `fps.json` file edited in
+ChiMOL's labelling window (Structure ▸ FRET ▸ FPS JSON Editor); the AV grid engine is the external Bayesian-
 fluorescence framework (`IMP.bff`, dye code `IMP.bff.cgdye`), and the FRET plugin
 hands the network to an AV-restraint scoring function for docking and refinement.
 
@@ -247,23 +263,14 @@ hands the network to an AV-restraint scoring function for docking and refinement
   {src}`chisurf/core/structure/av/__init__.py#DynamicAV`; FRET plugin
   {src}`chisurf/plugins/modelling/fret/core/av.py` and
   {src}`chisurf/plugins/modelling/fret/core/distance.py`; editor
-  `chisurf/plugins/modelling/fps_json_editor/`.
+  `chimol.plugins.labelling` (opened by `chisurf/plugins/modelling/fps_json_editor/`).
 - Key literature: {cite}`sindbert2011` introduces the accessible volume and
   measures what the linker does to a distance; {cite}`kalinin2012` is the FPS
   toolkit and its benchmark; {cite}`dimura2016` reviews FRET-restrained
   integrative modelling.
 
-Host layout is independent of accessible-volume computation. The native FPS
-card preserves the calculated point clouds, mean positions and grid spacing
-when its host window changes. The [workflow](../guides/23_accessible_volume.md)
-distinguishes loaded input from actual AV computation.
+Host layout is independent of accessible-volume computation: the computed point
+clouds, mean positions and grid spacing are viewer objects and do not change with
+the window. The [workflow](../guides/23_accessible_volume.md) distinguishes loaded
+input from actual AV computation.
 
-### Structure Tools host geometry
-
-The Structure Tools native hub declares an initial 1100 × 720 logical-pixel
-window, with saved user geometry taking precedence. This host metadata does
-not alter accessible-volume calculations, structure coordinates or FPS
-restraints. Each child retains its own controls and scientific state while
-selected. The [Structure Tools workflow](../guides/88_structure_tools.md) shows
-a populated native workspace and explains the distinction between host
-preferences and computed results.

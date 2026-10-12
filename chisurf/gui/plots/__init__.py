@@ -2,11 +2,6 @@
 
 from importlib import import_module
 
-import chisurf.core.settings
-from chisurf.gui import chiplot as cp
-
-cp.configure(**chisurf.core.settings.cs_settings["gui"]["plot"]["pyqtgraph_config"])
-
 _EXPORTS = {
     "ConditionalScanPlot": "conditional_scan",
     "DeerPrCIPlot": "deer_pr",

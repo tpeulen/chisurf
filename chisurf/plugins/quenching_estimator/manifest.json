@@ -11,7 +11,6 @@
     "Computation"
   ],
   "icon": "💧",
-  "menu_hidden": true,
   "state_namespace": "quenching_estimator",
   "state_schema": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -529,8 +528,5 @@
   ],
   "events": [],
   "dependencies": {},
-  "deprecated": false,
-  "optional_requires": {
-    "structure_tools": "*"
-  }
+  "deprecated": false
 }

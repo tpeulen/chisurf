@@ -109,7 +109,7 @@ Analysis are teal (fitting), Log / Console indigo.
 | violet | Correlation | *Spectroscopy → Correlation* (FCS, PCH) |
 | magenta | Single-molecule | *Spectroscopy → Single-Molecule* (ALEX, bursts, traces) |
 | olive | Kinetics | *Spectroscopy → Kinetics* (Hidden Markov model) |
-| brown | Structure | *Structure* (ChiMOL, Structure Tools) |
+| brown | Structure | *Structure* (ChiMOL, FRET docking, QuEst, HydroPro, Traj Tools) |
 | teal | Fitting | Read data, Datasets, Analysis, Plot settings, fit windows |
 | steel blue | Tools | *Tools* (TTTR Tools, calculators, views, system) |
 | warm grey | File and setup | *File* (Settings, File tools, projects) |

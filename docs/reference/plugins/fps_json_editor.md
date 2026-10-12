@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: FPS JSON Editor
-description: Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID.
+description: Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly.
 resource: chisurf/plugins/modelling/fps_json_editor/
 tags: [reference, plugins, fps-json-editor, structure, fret]
 anchor: plugin-fps_json_editor
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fps_json_editor)=
 # FPS JSON Editor
 
-Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID.
+Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly.
 
 ## Identity
 

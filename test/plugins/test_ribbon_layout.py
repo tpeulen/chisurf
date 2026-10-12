@@ -49,7 +49,10 @@ EXPECTED = {
         "Imaging": ["Image Tools"],
     },
     "Structure": {
-        "Modelling": ["ChiMOL", "Structure Tools"],
+        "Modelling": ["ChiMOL"],
+        "FRET": ["Docking & Screening", "FPS JSON Editor"],
+        "Computation": ["HydroPro", "QuEst"],
+        "Trajectory": ["Traj Tools"],
     },
     "Tools": {
         "Photon data": ["TTTR Tools"],

@@ -35,7 +35,10 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Iterable, MutableMapping
 
-from chisurf.plugins.quenching_estimator.core.av import DEFAULT_ALLOWED_SPHERE_RADIUS
+from chisurf.plugins.quenching_estimator.core.av import (
+    DEFAULT_ALLOWED_SPHERE_RADIUS,
+    DEFAULT_RADIUS_SCALE,
+)
 from chisurf.plugins.quenching_estimator.core.i18n import resolve_locale, translate_catalog, ui
 from chisurf.plugins.quenching_estimator.core.project import (
     DEFAULT_FORSTER_RADIUS,
@@ -65,6 +68,7 @@ FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
         ("av_linker_width", "av_parameter.linker_width"),
         ("av_radius1", "av_parameter.radius1"),
         ("av_allowed_sphere_radius", "av_parameter.allowed_sphere_radius"),
+        ("av_radius_scale", "av_parameter.radius_scale"),
         ("dg", "dg"),
         ("tau0", "tau0"),
         ("donor_D", "fret.dyes.0.D"),
@@ -100,6 +104,7 @@ FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
 #: an empty box that reads as "off".
 FIELD_DEFAULTS: dict[str, Any] = {
     "av_allowed_sphere_radius": DEFAULT_ALLOWED_SPHERE_RADIUS,
+    "av_radius_scale": DEFAULT_RADIUS_SCALE,
 }
 
 #: Catalog entries that are *not* a scalar field, and where they live instead.

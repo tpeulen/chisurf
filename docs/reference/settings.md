@@ -384,45 +384,47 @@ Fields under `gui.editor` control the integrated text editor:
 
 #### 1.8.6 Plotting defaults (`gui.plot`)
 
-Used across the plotting layer (`plots.*`, FCS/PDA widgets, PDA widgets,
-protein MC plots, etc.).
-
-- **`line_width`**  
-  Default line width for curves in most plots.
-
-- **`enable_grid`**, **`show_data_grid`**, **`show_residual_grid`**,
-  **`show_acorr_grid`**  
-  Flags controlling whether grid lines are shown for different plot panels
-  (main data, residuals, auto‑correlation) in generic line plots.
-
-- **`enable_region_selector`**  
-  If true, enables a draggable region selector in main plots used to adjust
-  fit ranges.
-
-- **`hideTitle`**  
-  If true, hides the titles of the dock widgets in multi‑panel
-  plots (e.g. AV plots, protein MC plots).
-
-- **`label_axis`**  
-  Legacy flag for axis labeling; by default axis labels are always shown for
-  clarity in modern plots.
-
-- **`pyqtgraph_config`**  
-  Sub‑dictionary named after the removed pyqtgraph backend (saved settings use the
-  key): `antialias`, `background`, `foreground`, `leftButtonPan`. It is handed to
-  `chiplot.configure()`, which the emtk renderer largely ignores.
+How fit plots look. Edited in **Settings ▸ Plots**, which applies a change at
+once and writes only what differs from the shipped values; every plot reads
+them when it draws, through `chisurf.core.plotting.appearance` (fit line plots,
+distribution plots, protein MC plots, the photon-filter wizard).
 
 - **`colors`**  
-  Named colors used in most line plots:
-  - **`data`** – main experimental curve
-  - **`model`** – fitted model curve
-  - **`residuals`** – residuals
-  - **`auto_corr`** – autocorrelation curves
-  - **`irf`** – instrument response function
-  - **`region_selector`** / **`region_selector_alpha`** – color and opacity of
-    the fit‑range selector overlay
-  - **`active_transparency`**, **`inactive_transparency`** – transparencies for
-    active vs. inactive curves.
+  - **`data`**, **`model`**, **`irf`**, **`residuals`**, **`auto_corr`** –
+    the curves of a fit plot (`auto_corr` is the autocorrelation of the
+    weighted residuals).
+  - **`region_selector`** / **`region_selector_alpha`** – colour and opacity
+    (0–255) of the fit-range band.
+  - **`active_transparency`**, **`inactive_transparency`** – opacity (0–1) of
+    the selected dataset's curves and of the other datasets of a global fit.
+    The names are historical; the values are opacities.
+
+- **`line_width`**  
+  Width of the model, IRF, residual and autocorrelation curves; the data trace
+  is drawn at half of it.
+
+- **`font_size`**  
+  Point size of the axis text (ticks, axis names, legend); `0` follows the
+  interface font.
+
+- **`enable_grid`**, **`show_data_grid`**, **`show_residual_grid`**,
+  **`show_acorr_grid`**, **`grid_alpha`**  
+  Grid on or off everywhere, per panel, and its strength (0–1; `0.3` is the
+  theme's own grid, `1` solid lines).
+
+- **`enable_region_selector`**  
+  Draw the draggable fit-range band on the data panel.
+
+- **`show_legend`**, **`label_axis`**  
+  Show the legend and the axis names on new fit plots.
+
+- **`node_graph`**  
+  Grid and node size of the node graphs (Global View, the light path, the
+  provenance inspector, the node editor).
+
+Retired keys -- `backend` (emtk is the only renderer), `pyqtgraph_config` (the
+options of the removed pyqtgraph renderer) and `hideTitle` (read by no plot) --
+are removed from a user's settings file when it is loaded.
 
 ---
 

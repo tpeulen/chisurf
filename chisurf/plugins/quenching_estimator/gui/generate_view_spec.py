@@ -70,6 +70,7 @@ _RANGES: dict[str, tuple[float, float]] = {
     "av_parameter.linker_width": (0.0, 50.0),
     "av_parameter.radius1": (0.0, 50.0),
     "av_parameter.allowed_sphere_radius": (0.0, 20.0),
+    "av_parameter.radius_scale": (0.5, 1.5),
     "dg": (0.1, 5.0),
     "tau0": (0.0, 1000.0),
     "fret.dyes.0.D": (0.0, 1000.0),

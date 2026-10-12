@@ -1,8 +1,8 @@
-"""The native QuEst window of this plugin: the QuEst card of Structure Tools, hosted on its own.
+"""The native QuEst window of this plugin: the QuEst card (:mod:`.card`) plus attachment-site picking.
 
-The card (``chisurf.plugins.modelling.structure_tools.cards.quest``) is the emtk counterpart of ``QuEstTool``: the project
+The card is the emtk counterpart of ``QuEstTool``: the project
 form of ``quest.view.json``, the quenching table, the three result plots, a 3D trace of the structure and the project JSON.
-It is reused here, not copied; the import is inside the factory so that importing this module pulls in neither IMP nor quest.
+The import is inside the factory so that importing this module pulls in neither IMP nor quest.
 
 This window adds to the card's *3D Structure* tab what the Qt tool's molecule widget had: choose Donor or Acceptor, then
 pick the attachment residue from the residue list of the loaded structure (the list stands in for the 3D click of the
@@ -10,7 +10,7 @@ legacy widget: the implot3d plot offers no ray pick).
 
 The ``?`` and **Guide** buttons are drawn by the card itself: ``CardShell`` builds an ``EmTkHelpWindow`` and an
 ``EmTkGuidedTour`` from this folder's ``help.md`` and ``guide.json`` (the card's resource folder is this one), so the
-plugin window, its Qt host and the Structure Tools card show one help page and walk one tour. **Load example** gives the
+plugin window and its Qt host show one help page and walk one tour. **Load example** gives the
 tour T4 lysozyme to work on (``demo.py``).
 """
 
@@ -86,7 +86,7 @@ def make_app():
     from emtk import im
     from emtk.i18n import tr
 
-    from chisurf.plugins.modelling.structure_tools.cards.quest import QuestCard
+    from chisurf.plugins.quenching_estimator.gui.card import QuestCard
 
     class QuEstWindow(QuestCard):
         """The card plus attachment-site picking by residue."""

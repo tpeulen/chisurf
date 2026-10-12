@@ -2,7 +2,7 @@
   "id": "plot_settings",
   "version": "1.0.0",
   "display_name": "Setup:Plots",
-  "description": "Configure plot appearance, colors, and rendering backend",
+  "description": "How fit plots look: curve colours and width, fit-range band, global fits, axes and grid, with a live preview",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
   "icon": "📊",

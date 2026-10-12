@@ -290,7 +290,6 @@ def _grab_17_filter_calculator():
 def _grab_18_lfcs_sim():
     """Lifetime-FCS simulator after *Simulate* with its default two species."""
     from emtk.testing import Driver
-
     from emtk_shot import app_from, render, wait
 
     app = app_from("fcs-lfcs-sim")
@@ -354,7 +353,6 @@ def _sm_dna_copy():
 def _grab_19_h2mm():
     """H2MM on the BH SPC-132 smFRET burst folder: a real 1-3 state scan."""
     from emtk.testing import Driver
-
     from emtk_shot import app_from, render, wait
 
     work, folder = _sm_dna_copy()
@@ -390,7 +388,6 @@ def _grab_21_burst_mle():
     in-repo sample with its own channel map (green = routing 0/8, red = 1/9 per the folder's burst-analysis handoff).
     """
     from emtk.testing import Driver
-
     from emtk_shot import app_from, render, wait
 
     work, folder = _sm_dna_copy()
@@ -459,40 +456,45 @@ def _grab_22_trace_browser():
 
 # ---------------------------------------------------------------- guide 23
 def _grab_23_fps_editor():
-    """FPS JSON Editor (the emtk app) with the HIV-RT labelling project loaded and every AV computed."""
+    """Structure › FRET › FPS JSON Editor: ChiMOL's labelling editor on the HIV-RT project, every AV computed."""
     import time
 
-    from emtk.testing import PixelPainter, RecordingPainter, png_encode
+    from emtk.native import NativeHost
+    from PIL import Image
 
     from chisurf.plugins.modelling.fps_json_editor.gui.app import make_app
 
     src = pathlib.Path("chisurf/plugins/modelling/fret/examples/fps_hiv_rt")
     work = pathlib.Path(tempfile.mkdtemp()) / "fps_hiv_rt"
     shutil.copytree(src, work, ignore=shutil.ignore_patterns("dock_out"))
-    # The shipped project names each site's structure relative to itself
-    # (protein body 0 = protein_1R0A.pdb, DNA body 1 = dna.pdb): load it as a user does.
+    size = (1400, 900)
     app = make_app()
-    app.load_path(str(work / "hiv_rt.fps.json"))
-    app.editor.compute_all()
-    deadline = time.time() + 300
-    while app.editor.busy and time.time() < deadline:
-        app.draw(RecordingPainter(), 0, 0, 1200, 800)
-        time.sleep(0.05)
-    for _ in range(3):
-        app.draw(RecordingPainter(), 0, 0, 1200, 800)
-    first = app.editor.rows_pos[0]["row"]
-    app.editor.selected_pos = first
-    app.editor.selected_dist = app.editor.rows_dist[0]["row"]
-    for tab, name in (("Positions", "23_fps_editor.png"), ("Distances", "23_fps_editor_distances.png"),
-                      ("3D View", "23_fps_editor_3d.png")):
-        app.tab = tab
-        painter = PixelPainter(1200, 800)
-        for _ in range(6):  # chimol's chrome (3D View) settles over a few frames
-            painter = PixelPainter(1200, 800)
-            app.draw(painter, 0, 0, 1200, 800)
-        (FIG / name).write_bytes(png_encode(painter.width, painter.height, painter.px))
+    host = NativeHost(app, size=size, backend="offscreen")
+    host.draw_frame()
+    cmd = app._chimol.cmd
+    from chimol.plugins.labelling.editor import editor_for
+
+    # The editor's Load: each site's AV on the structure the site names (protein and DNA here), the
+    # path relative to the file, as a user loads it. (`fps_load` computes every site on one structure.)
+    editor = editor_for(cmd)
+    editor.load(str(work / "hiv_rt.fps.json"))
+    deadline = time.time() + 600
+    while editor.busy and time.time() < deadline:
+        editor.poll()
+        host.draw_frame()
+        time.sleep(0.1)
+    for tab, name in (
+        ("Positions", "23_fps_editor.png"),
+        ("Distances", "23_fps_editor_distances.png"),
+        ("Network", "23_fps_editor_network.png"),
+    ):
+        cmd.do(f"fps_circle , , {tab}")
+        for _ in range(6):  # the viewer and the panel settle over a few frames
+            frame = host.draw_frame()
+        Image.fromarray(np.asarray(frame)).save(FIG / name)
         print("wrote", name)
-    print("AV:", app.editor.av_message)
+    print("AV:", editor.av_message or editor.status)
+    host.close()
     app.close()
 
 

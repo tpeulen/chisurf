@@ -36,6 +36,7 @@ SITE_AV_PARAMETER_KEYS: tuple[str, ...] = (
     "simulation_grid_resolution",
     "simulation_type",
     "allowed_sphere_radius",
+    "radius_scale",
 )
 
 

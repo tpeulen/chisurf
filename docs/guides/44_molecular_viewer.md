@@ -113,10 +113,10 @@ structure, so `load` does three things with it: the structure named by the
 document's own `pdb_path` fields is loaded when the scene is empty, every
 position's dye **accessible volume** is computed and added as its own object
 (see [accessible-volume calculations](23_accessible_volume.md)), and the
-document's FRET distances are drawn between the AV mean positions. Inside
-ChiSurf the finished document is also handed to the
-[FPS JSON Editor](plugin-fps_json_editor), opened populated — the same editor
-the **Structure ▸ FRET ▸ FPS JSON Editor** menu opens.
+document's FRET distances are drawn between the AV mean positions. The plan
+opens in the **Labelling network** window (**Tools ▸ Labelling**), the fps.json
+editor — the same window the ChiSurf menu **Structure ▸ FRET ▸ FPS JSON Editor**
+opens.
 
 Objects appear in the **Objects** panel, one row each. Every row carries the same
 five menus PyMOL uses, and the grey `all` row applies them to everything at once:

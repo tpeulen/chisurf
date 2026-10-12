@@ -126,11 +126,11 @@ def _grab_parameter_link_menu():
     import chisurf
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
+    from chisurf.core.models.description import tcspc_lifetime
     from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.gui.widgets.fitting.parameter_widgets import (
         FittingParameterProxyController,
     )
-    from chisurf.core.models.description import tcspc_lifetime
     from chisurf.server.services.fits import get_fit_info, list_fits
     from chisurf.server.session import SessionState
 
@@ -194,11 +194,11 @@ def _grab_parameter_link_menu():
 def _grab_pda_editor():
     """Grab the PDA (Gaussian-distance) model editor for the PDA guide."""
     import numpy as np
-    from chisurf.core.math import special as stats
 
     import chisurf.core.fitting.fit as fit_mod
     import chisurf.core.fluorescence.tcspc as tcspc
     from chisurf.core.data import DataCurve
+    from chisurf.core.math import special as stats
     from chisurf.core.models.pda2c.pdagauss import Pda2cGaussianDistanceModel
     from chisurf.gui.widgets.models.model_editor import build_model_editor
 
@@ -281,8 +281,8 @@ def _grab_pda3c_exchange_panel():
 
 def _grab_burst_browser():
     """Guide 28: the native Burst Browser on the real sm-DNA burst folder, histogram of E."""
-    from screenshots.emtk_shot import FIG, app_from, wait
     from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
     folder = pathlib.Path(
         "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All 0.1000#15/bi4_bur"
@@ -447,8 +447,8 @@ def _grab_burst_gs_tool():
     truth. Two grabs: the fitted report and rates, and the transition-time scan
     (the part of the tool with no binned equivalent).
     """
-    from screenshots.emtk_shot import FIG, app_from, wait
     from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
     app = app_from("burst_gs")
     driver = Driver(app, (1440, 860))
@@ -664,9 +664,10 @@ def _grab_chimol_viewer():
     # Driven through a bare MolView rather than the plugin window: inside the
     # window `ray` hands the trace to a worker, which a script with no event loop
     # of its own never lets finish ("ray: cancelled").
-    import chisurf.core.structure as cs_struct
     from chimol.core.viewer.viewer import Viewer
     from chimol.io.structure import _read_full_model
+
+    import chisurf.core.structure as cs_struct
 
     view = Viewer()
     view.resize(900, 650)
@@ -720,9 +721,9 @@ def _grab_chimol_biofilm():
     demo is the difference between them.
     """
     from chimol.commands.command import Cmd
+    from chimol.core.viewer.viewer import Viewer
     from chimol.io.structure import load_structure_payload
     from chimol.plugins.demos.material import generated_demo_path
-    from chimol.core.viewer.viewer import Viewer
 
     rmf = generated_demo_path("biofilm_growth.rmf")
     _reader, payload = load_structure_payload(str(rmf))
@@ -850,8 +851,8 @@ def _grab_burst_fusion_tool():
     same buttons. The whole window at its declared 1100 x 720, then the
     P(same) and proximity-ratio plot tabs.
     """
-    from screenshots.emtk_shot import FIG, app_from, show_tabs, wait
     from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, show_tabs, wait
 
     app = app_from("burst_fusion")
     driver = Driver(app, (1100, 720))
@@ -1086,8 +1087,8 @@ def _grab_global_view():
     import chisurf
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.core.models.description import tcspc_lifetime
+    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.plugins.core.globalview.gui.tool import GraphWizard
 
     def make(name, tau, n_curves=1):
@@ -1124,8 +1125,8 @@ def _grab_ebfret_tool():
     four-state model and series 3 selected, so the Viterbi overlay and the
     posterior curves -- what the guide explains -- are on screen.
     """
-    from screenshots.emtk_shot import FIG, app_from, wait
     from emtk.testing import Driver
+    from screenshots.emtk_shot import FIG, app_from, wait
 
     app = app_from("burst_ebfret")
     driver = Driver(app, (1200, 820))
@@ -1153,8 +1154,9 @@ def _grab_pto_inspector():
     """
     import shutil
 
-    from chisurf.core.fio.pto import Measurement
     from screenshots.emtk_shot import app_from, render
+
+    from chisurf.core.fio.pto import Measurement
 
     ptu = pathlib.Path("test/data/clsm/Leica_SP5.ptu")
     if not ptu.is_file():
@@ -1330,8 +1332,8 @@ def _grab_burst_export_table():
 
     from chisurf.core.datastore import column_names, column_values
     from chisurf.gui.widgets.chitable import ArraySource, ChiTableWidget
-    from chisurf.plugins.burst.burst_h2mm.core import export as burst_export
     from chisurf.plugins.burst.burst_h2mm.core import engines as h2mm_engines
+    from chisurf.plugins.burst.burst_h2mm.core import export as burst_export
     from chisurf.plugins.burst.burst_h2mm.core.photons import (
         StreamDef,
         bursts_from_dataframe,
@@ -1845,7 +1847,6 @@ def _grab_synthetic_decay():
     polarized pair with g = 1.1 and one 2 ns rotation.
     """
     import numpy as np
-
     from screenshots.emtk_shot import app_from, render
 
     ex = pathlib.Path("chisurf") / "plugins" / "fluorescence_decay" / "lltf" / "example"
@@ -1881,8 +1882,9 @@ def _grab_synthetic_decay():
 
 def _grab_phasor_calculator():
     """Phasor calculator: 80 MHz, grid + ticks, FRET for tau_D0 = 4 ns, a 0.6/5 ns mixture."""
-    from chisurf.plugins.microscopy.img_pixel_phasor import analysis
     from screenshots.emtk_shot import app_from, render
+
+    from chisurf.plugins.microscopy.img_pixel_phasor import analysis
 
     app = app_from("phasor_calculator")
     m = app.tool._model
@@ -1998,21 +2000,12 @@ def _grab_hydropro_exe_dialog():
     _grab(d, "hydropro_exe_dialog.png")
 
 
-def _grab_quest_hub():
-    """Structure Tools with the QuEst card selected."""
-    from screenshots.emtk_shot import app_from, render
-
-    app = app_from("structure_tools")
-    app.select("QuEst")
-    render(app, "quest_structure_tools.png", (1100, 640))
-    app.close()
-
-
 def _grab_traj_tools():
     """Traj Tools hub on the T4L NMSim trajectory: Align, FRET, Energy Calc, Remove Clashed (guide 81)."""
+    from screenshots.emtk_shot import app_from, render
+
     from chisurf.core.structure import trajectory_data as md
     from chisurf.plugins.traj.potential_energy.potential_specs import make_potential
-    from screenshots.emtk_shot import app_from, render
 
     out = pathlib.Path(tempfile.mkdtemp(prefix="traj_tools_"))
     top, dcd = str(_T4L_TOP), str(_T4L_DCD)
@@ -2198,7 +2191,6 @@ def main():
         _grab_f_test,
         _grab_hydropro,
         _grab_hydropro_exe_dialog,
-        _grab_quest_hub,
         _grab_traj_tools,
         _grab_fret_line_tool,
     ):

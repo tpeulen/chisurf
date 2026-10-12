@@ -526,6 +526,9 @@ class ToolHubApp(ImApp):
             im.set_item_tooltip(tr("Find tools by name or description."))
             self.item_rects["search"] = im.get_item_rect()
             matching = {p["role"] for p in self.matching_panels()}
+            # The rail scrolls in its own region: more tools than the window is tall (a small window,
+            # the interface magnified) stay reachable instead of running off the bottom.
+            im.begin_child("##rail")
             for panel in self.panels:
                 if panel.get("separator"):
                     if not self.filter:
@@ -556,6 +559,7 @@ class ToolHubApp(ImApp):
                 self.item_rects["nav." + panel["role"]] = im.get_item_rect()
             if not matching:
                 im.text_wrapped(tr("No matching tools."))
+            im.end_child()
         im.end()
         im.set_next_window_pos((left, 0), im.Cond.ALWAYS)
         im.set_next_window_size((width - left, HEADER), im.Cond.ALWAYS)

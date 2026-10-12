@@ -33,8 +33,6 @@ from .tttr_photon_filter_mode import install_filter_mode_visibility
 from .tttr_photon_filter_plots import create_plots, place_plots
 from .tttr_photon_filter_support import CommaSeparatedIntegersValidator
 
-colors = chisurf.core.settings.gui["plot"]["colors"]
-
 #: Help text shown left of the splitter (toggled by the 'help' button). Was the
 #: <string> of the QTextEdit in tttr_photon_filter.ui.
 _FILTER_HELP_HTML = (
@@ -2625,7 +2623,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         self._dT_min = default_dT_min
         self._dT_max = default_dT_max
 
-        create_plots(self, colors)
+        create_plots(self)
         place_plots(self)
 
         # Build the burst info panel next to the Filter groupBox

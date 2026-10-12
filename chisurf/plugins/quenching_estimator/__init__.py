@@ -31,7 +31,6 @@ from typing import Any
 icon = "💧"
 
 name = "Structure:Computation:QuEst"
-menu_hidden = True  # integrated into Structure Tools; hidden from the ribbon
 
 
 def __getattr__(name: str) -> Any:

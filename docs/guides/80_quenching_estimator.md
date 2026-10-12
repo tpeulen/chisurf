@@ -25,9 +25,8 @@ volume, Brownian walk and photon kernels. It used to be a separate package
 
 ## Open the tool
 
-**Structure → Modelling → Structure Tools**, then **💡 QuEst** in the left list,
-or the plugin's own window (`csg_quest`, or `csc quest gui`). Both are the same
-window. Press **Guide** for a walk-through and **Load example** to start from the
+**Structure → Computation → QuEst** (💧), or from the command line (`csg_quest`, or
+`csc quest gui`). Both are the same window. Press **Guide** for a walk-through and **Load example** to start from the
 shipped example: T4 lysozyme (PDB 148L), the dye on the C$_\beta$ of Ser 36,
 FRET off, a short seeded run. **Simulate** then ends in a few seconds:
 
@@ -207,6 +206,6 @@ excitation lower the brightness without changing the simulated decay.
 - Concept: {ref}`concept-dye-quenching`. Related: {ref}`concept-accessible-volume`,
   {ref}`concept-fret`, {ref}`concept-hydrodynamics`,
   {ref}`fundamentals-quenching-mechanisms`.
-- Tool: **QuEst** (`chisurf/plugins/quenching_estimator/`), reached through
-  **Structure Tools** or its own window.
+- Tool: **QuEst** (`chisurf/plugins/quenching_estimator/`), on the ribbon at
+  **Structure → Computation**.
 - Method: {cite}`peulen2017`.

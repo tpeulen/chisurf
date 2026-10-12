@@ -178,10 +178,32 @@
     {
      "text": "ChiMOL",
      "tooltip": "Molecular structure viewer and protein analysis plugin for ChiSurf."
+    }
+   ],
+   "FRET": [
+    {
+     "text": "Docking  Screening",
+     "tooltip": "FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi)."
     },
     {
-     "text": "Structure Tools",
-     "tooltip": "Unified structure toolbox: FPS JSON Editor, FRET Docking  Screening, QuEst, HydroPro and Trajectory Tools."
+     "text": "FPS JSON Editor",
+     "tooltip": "Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID."
+    }
+   ],
+   "Computation": [
+    {
+     "text": "HydroPro",
+     "tooltip": "Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures."
+    },
+    {
+     "text": "QuEst",
+     "tooltip": "Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is th"
+    }
+   ],
+   "Trajectory": [
+    {
+     "text": "Traj Tools",
+     "tooltip": "Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools."
     }
    ]
   },
@@ -709,6 +731,46 @@
     "visible": true,
     "menu": [
      {
+      "text": "Computation",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "HydroPro",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "QuEst",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
+      "text": "FRET",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
+       {
+        "text": "Docking  Screening",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "FPS JSON Editor",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       }
+      ]
+     },
+     {
       "text": "Modelling",
       "shortcut": "",
       "checkable": false,
@@ -719,9 +781,17 @@
         "shortcut": "",
         "checkable": false,
         "visible": true
-       },
+       }
+      ]
+     },
+     {
+      "text": "Trajectory",
+      "shortcut": "",
+      "checkable": false,
+      "visible": true,
+      "menu": [
        {
-        "text": "Structure Tools",
+        "text": "Traj Tools",
         "shortcut": "",
         "checkable": false,
         "visible": true

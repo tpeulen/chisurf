@@ -1,4 +1,4 @@
-"""The native QuEst window of the plugin (the Structure Tools card hosted on its own), on temporary settings.
+"""The native QuEst window of the plugin (its QuEst card plus site picking), on temporary settings.
 
 The window builds Qt-free, every control draws with a tooltip, the form accepts typed values, and a press on Simulate
 with a loaded structure ends in a result (``QY ...``) computed on IMP.bff.

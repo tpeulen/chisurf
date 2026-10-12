@@ -11,9 +11,9 @@ if load *.fps.json open edit and label struct"):
 
 The hook is the same host-hook shape ``load`` uses for
 ``on_open_structure``: chimol names no editor (standalone chimol has no
-such attribute and the load stays a load), and the chisurf plugin answers
-it by opening the FPS JSON Editor populated -- see
-``chisurf/plugins/chimol/__init__.py:_open_fps_editor``.
+such attribute and the load stays a load). ChiSurf no longer answers it:
+the fps.json editor is chimol's own labelling window, which ``fps_load``
+fills itself; the tests set the hook only to observe the payload.
 
 Everything here runs in the toolkit-free subprocess probe: no Qt can be
 imported in the child, which is the rule for any test of chimol's

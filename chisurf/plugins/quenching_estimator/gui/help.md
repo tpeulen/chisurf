@@ -31,4 +31,3 @@ Every field has a tooltip with the project path it edits.
 
 - [QuEst — the workflow](docs/guides/80_quenching_estimator.md) — every setting, the outputs, the command line and the Python API.
 - [Dye quenching by amino acids](docs/concepts/dye_quenching.md) — the contact model, the rate table and what quenching does to lifetimes, FCS and FRET.
-- [Structure Tools](docs/guides/88_structure_tools.md) — the hub this window is also a card of.

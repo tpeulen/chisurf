@@ -30,10 +30,10 @@ def test_build_plugin_widget_prefers_emtk(qapp, qtbot):
 
     from chisurf.core.plugin.registry import build_plugin_widget
 
-    widget = build_plugin_widget(_manifest("modelling/structure_tools"))
+    widget = build_plugin_widget(_manifest("modelling/fps_json_editor"))
     qtbot.addWidget(widget)
     assert isinstance(widget, host_class()), (
-        "Structure Tools must open as an EMTK ControlHost, not the Qt widget"
+        "The FPS JSON Editor must open as an EMTK ControlHost, not the Qt widget"
     )
 
 
@@ -74,11 +74,11 @@ def test_show_manifest_gui_routes_through_dispatch(qapp, qtbot, monkeypatch):
     monkeypatch.setattr(registry, "build_plugin_widget", _spy)
     root = pathlib.Path(__file__).resolve().parents[5]
     shown = misc_helpers._show_manifest_gui(
-        _Main(), root / "chisurf" / "plugins" / "modelling" / "structure_tools"
+        _Main(), root / "chisurf" / "plugins" / "modelling" / "fps_json_editor"
     )
     assert shown
     assert "ControlHost" in opened["kind"], opened
-    assert "Structure Tools" in opened["title"]
+    assert "FPS JSON Editor" in opened["title"]
 
 
 def test_ribbon_callback_targets_the_launcher():
@@ -98,7 +98,7 @@ def test_ribbon_callback_targets_the_launcher():
     )
 
 
-@pytest.mark.parametrize("root_name", ["modelling/structure_tools", "chimol", "modelling/hydropro"])
+@pytest.mark.parametrize("root_name", ["modelling/fps_json_editor", "chimol", "modelling/hydropro"])
 def test_runtime_selection_defaults_to_emtk(root_name):
     from chisurf.core.plugin.registry import select_gui_entrypoint
 

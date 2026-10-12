@@ -4,7 +4,7 @@ title: Plotting (chiplot)
 description: The single renderer-neutral 2-D plotting API every call site draws through, its backend contract, and the guard that keeps the rendering library behind it.
 resource: chisurf/gui/chiplot/
 tags: [gui, plotting, chiplot, seam]
-timestamp: '2026-07-29T00:00:00Z'
+timestamp: '2026-10-12T00:00:00Z'
 ---
 
 # What it is
@@ -85,12 +85,14 @@ asserts each concrete class has an empty `__abstractmethods__` for that reason.
 # Backend selection
 
 `backends/__init__.py` keeps a registry (`register_backend`) and resolves the
-active backend lazily from the `CHISURF_PLOT_BACKEND` environment variable,
-the `gui.plot.backend` setting, or defaults to `pyqtgraph`; `set_backend(name)`
-switches it. `available_backends()` lists the registered names. A new renderer
-registers there and becomes selectable with no call-site change. This is the
-mechanism [PRD-64](/prds/prd-64.md) exists to enable: pyqtgraph is the engine
-today, a native renderer behind the same contract is the goal.
+active backend lazily from the `CHISURF_PLOT_BACKEND` environment variable, else
+`emtk`; `set_backend(name)` switches it. `available_backends()` lists the
+registered names. A new renderer registers there and becomes selectable with no
+call-site change. There is **no user setting** for it any more: with one
+renderer the `gui.plot.backend` choice in Settings ▸ Plots was a control that
+did nothing, and the key is dropped from settings files on load (2026-10-12,
+see "Settings ▸ Plots changed no plot"). This is the mechanism
+[PRD-64](/prds/prd-64.md) existed to enable; pyqtgraph is gone (W8).
 
 ## The native renderer is emtk, not WebGPU
 
@@ -289,6 +291,55 @@ the new `font_size` are all controls now, and
 together. `label_axis` was the reverse case: a control that had *never* been
 read, so turning it off did nothing; `LinePlot` honours it.
 
+## Settings ▸ Plots changed no plot — 2026-10-12
+
+Reported as "plot config not good … may be a real bug". It was: rendering a real
+`LinePlot` after each change the panel applies (the documented contract — plots
+built after Apply use the settings) showed **every colour, the region colour and
+alpha, the line width, the axis font size, the grid strength and "Grid" off had no
+effect**, and switching the fit-range band off **crashed** the next plot
+(`AttributeError: 'LinePlot' object has no attribute 'region'`). Only the legend
+and axis-name switches worked. One mode explains most of it:
+
+* **snapshots taken at import.** `lineplot.py` held `colors = …["colors"]` at
+  module level and its `director` (curve colour/width per name) was a class
+  attribute built from it; the panel's Apply *replaced* the `colors` dict, so the
+  snapshot kept the start-up palette for the whole session. `distribution.py`,
+  `proteinMC.py` and the photon-filter wizard did the same. Every reader now goes
+  through `chisurf/core/plotting/appearance.py`, read when the plot is built
+  (Qt-free; the panel's preview reads the same functions, so it cannot drift).
+* **width overridden by name.** The director's hard-coded `lw` beat
+  `line_width` for every named curve; now the line width, the data trace at half.
+* **chiplot accepted and ignored.** `grid(alpha=…)` was dropped by the emtk
+  backend (gridline colours were emtk constants: emtk `Plot.grid_opacity`, a factor
+  on the theme's alpha, added in emtk 1dfa2b5; `appearance.grid_strength` maps
+  0 → none, 0.3 → theme, 1 → solid), and a panel's grid was on unless told off, so
+  "Grid" off never reached it (`LinePlot` now sets every panel's grid either way).
+  `gui.plot.font_size` was read only by the Qt `chrome_font`, which nothing calls;
+  `EmtkCanvas.draw` now scales its axis text by it (`painter.set_font_scale`).
+* **dead keys.** `pyqtgraph_config` (antialias, left-button pan, background,
+  foreground) went to `chiplot.configure()`, a no-op on emtk; `hideTitle` was read
+  by nothing; `backend` had one choice. Removed from the shipped settings and the
+  panel; `settings_utils.RETIRED_KEYS` drops them from old user files on load
+  (`FORMER_DEFAULTS` moves the never-honoured `inactive_transparency: 0.2` and
+  `grid_alpha: 0.35` to the values the plots actually drew, 0.4 and 0.3).
+  `active/inactive_transparency` were read by nothing either — the grouped-fit
+  opacities were a hard-coded 1.0 / 0.4 — and now are those opacities.
+
+Measured with a probe that applies each change through the panel's model, builds
+`LinePlot(_simulated_fit())` and diffs the exported panels: 19/19 settings change
+the picture now (was 2/19). Guards: `test/gui/test_plot_appearance_live.py`,
+`test/core/test_plot_appearance.py`, `test_no_setting_or_ui_string_names_pyqtgraph`
+in `test/test_pyqtgraph_seam.py`. The panel itself (live apply + save like
+Settings ▸ Fonts, a preview laid out like a fit window on a simulated convolved
+decay) is `chisurf/plugins/core/plot_settings/`.
+
+**Open:** a fit window already on screen keeps the curves it built (colours,
+widths, band) until it is re-plotted — the panel says so. Re-styling open
+`LinePlot`s live needs `LinePlot` to re-apply `director` to its existing handles
+(`set_pen`, `set_opacity`, the region brush) on a settings-changed signal; only the
+axis text size and node graphs follow at once today.
+
 ## A panel that advertises no size gets none
 
 `_PlotWidget` had `setMinimumSize(50, 50)` and no `sizeHint`, so Qt fell back to
@@ -477,6 +528,12 @@ unexercised.
 
 # Where to pick this up — the emtk backend
 
+**Plot settings reach the plots (2026-10-12):** see "Settings ▸ Plots changed no plot". Next:
+re-style *open* fit windows when a plot setting changes (the one gap left; it needs `LinePlot`
+to re-apply its director to existing handles). Re-measure with the probe described there before
+and after — a setting that changes the preview but not an exported `LinePlot` panel is the
+failure mode this closed.
+
 **Auto-range "A" button (2026-10-12):** done on both stacks (see "Auto-range, and mouse
 behaviour worth copying"). Next: run the full click-all sweep and read each plugin JSON's
 `auto_range` list — a plot reported "shows no A after zoom/pan" is one whose wheel and drag a
@@ -489,7 +546,7 @@ the `pyqtgraph` backend and `_passthrough.py` are deleted, `pixi.toml` / `pyproj
 `rattler-recipe/recipe.yaml` no longer declare it, and both allow-lists are retired
 (`test/pyqtgraph_import_allowlist.txt` deleted; `test/chiplot_native_allowlist.txt` stays, empty).
 `test/test_pyqtgraph_seam.py` now bans the import outright, checks the three manifests, and checks
-that `CHISURF_PLOT_BACKEND=pyqtgraph` / `gui.plot.backend: pyqtgraph` raises a `KeyError` saying
+that `CHISURF_PLOT_BACKEND=pyqtgraph` (and, until 2026-10-12, `gui.plot.backend`) raises a `KeyError` saying
 the backend was removed. chiplot has **no passthrough**: an unknown attribute on `Plot`, `Grid`,
 `ImageView` or the package is an `AttributeError` where it is written, `chiplot.colormap` is a
 plain function, `Backend.raw_module` is gone.
@@ -537,13 +594,10 @@ Both manifests dropped `"gui"`.
 
 **Where to pick this up**
 
-1. The Qt `plot_settings` tool and its emtk twin still carry an "Advanced: pyqtgraph Configuration"
-   section (antialias, left-button pan, background, foreground). Every one of those options is inert
-   now: the settings key is still named `pyqtgraph_config` (saved files use it) and is handed to
-   `chiplot.configure()`, which emtk ignores. Re-derive: `grep -rn pyqtgraph_config chisurf`. Decide
-   per option whether to give it an emtk meaning (background and foreground do: the preview follows
-   `background`) or drop it, rename the key with a settings migration, and re-translate the strings
-   (the `.ts` catalogues still hold the old sources; i18n is deferred).
+1. ~~"Advanced: pyqtgraph Configuration" in Settings ▸ Plots~~ — **done 2026-10-12**: all four
+   options dropped (emtk antialiases and pans with the left button always; plots follow the
+   theme), the key removed with a load-time migration (`settings_utils.RETIRED_KEYS`), strings
+   re-extracted and translated (de/fr). See "Settings ▸ Plots changed no plot".
 2. `okf/validation/release-readiness-w6g/plugin-inventory.md` is stale (the `plugin_inventory.py
    --write` record): two plugins lost their Qt entry here, and other lanes' ports changed it too.
 3. Not tried / not done: an emtk **histogram** beside the colour ramp of `ImageView`; `Grid` image panels

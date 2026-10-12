@@ -4,22 +4,42 @@ title: Modelling plugins
 description: Structural and FRET-modelling tools — accessible-volume editing, restrained rigid-body docking, orientation-factor and hydrodynamics estimation, and FRET-line generation.
 resource: chisurf/plugins/modelling/
 tags: [plugins, modelling]
-timestamp: '2026-07-05T00:00:00Z'
+timestamp: '2026-10-12T00:00:00Z'
 ---
+
+## Where to pick this up (2026-10-12, structure hub dissolved, FPS editor in chimol)
+
+1. **Structure tab layout** is Modelling (ChiMOL) · FRET (Docking & Screening, FPS JSON Editor) · Computation
+   (HydroPro, QuEst) · Trajectory (Traj Tools), from `GROUP_ORDER["Structure"]` in
+   `chisurf/core/plugin/ribbon_layout.py`. Re-derive with `test/plugins/test_ribbon_layout.py`; the Qt reference
+   inventories (`test/native_emtk/shell_{s5,whole}_qt_inventory.json`) had only their Structure parts re-captured
+   (the scripts rewrite the WHOLE file — splice, do not overwrite: other tabs carry other lanes' baselines).
+2. **FPS JSON Editor entry = ChiMOL with `fps_circle , , Positions`** (`fps_json_editor/gui/app.py`,
+   `ChimolHostApp(commands=...)`). Its Guide is ChiMOL's host tour, not chimol's `fps_editor` tour: open item — start
+   `tour fps_editor` from the entry's Guide. Feature parity record: chimol `okf/plugins/labelling.md`
+   (chimol `7c20edb`, `4f1f070`); every card control is present except the card's own 3D View tab (the editor sits
+   in the viewer).
+3. **`test_plugin_help_guide_seam` / `demo_contract_audit` read HEAD**: until this change is committed they still
+   see `structure_tools` (failures "GUI module not on disk: structure_tools") — not a defect of the tree.
+4. **FRET window** (`fret/gui/app.py`) is a two-tool window of its own (docking + pair selection); Pair Selection
+   could become its own ribbon entry if the owner wants the same "normal tool" rule there.
+5. Shared card shell: `chisurf/emtk/card_shell.py` (`CardShell`, `Rows`) — used by the docking, pair-selection and
+   QuEst cards.
 
 The modelling group turns fluorescence observables (FRET efficiencies, anisotropies,
 diffusion coefficients) into and out of molecular structure. Most tools live under
 `chisurf/plugins/modelling/`; two closely related FRET-modelling plugins
 (`fret_line` at the plugin root, `calculator/kappa2_dist` under the calculators group)
-belong to the same domain and are re-exposed through the `structure_tools` toolbox.
+belong to the same domain. There is no structure hub: every tool is its own ribbon
+button on the Structure tab (the `structure_tools` hub was dissolved 2026-10-12; its cards
+moved into the plugins that own them, the shared window shell into `chisurf/emtk/card_shell.py`).
 
 | Plugin dir | Display name | What it does |
 | --- | --- | --- |
-| `modelling/fret` | Structure:FRET:Docking & Screening | FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation; a thin shim around an external molecular-modeling framework and its accessible-volume/FRET extension. |
-| `modelling/fps_json_editor` | Structure:FRET:FPS JSON Editor | Edit `fps.json` files that define FRET accessible-volume dye models; fetch reference structures by PDB ID. |
+| `modelling/fret` | Structure:FRET:Docking & Screening | One window with the docking card (`gui/docking_card.py`, session `gui/docking_session.py`) and the pair-selection card. FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation; a thin shim around an external molecular-modeling framework and its accessible-volume/FRET extension. |
+| `modelling/fps_json_editor` | Structure:FRET:FPS JSON Editor | Opens ChiMOL's labelling editor (`chimol.plugins.labelling`, `fps_circle , , Positions`): ChiSurf ships no FPS editor of its own (owner, 2026-10-12). Keeps the headless half: payload validation, RCSB fetch, CLI `fps-json-editor`, RPC `fps_json_editor.*`. |
 | `modelling/hydropro` | Structure:Computation:HydroPro | Graphical front-end to an external hydrodynamics tool, computing properties such as the translational diffusion coefficient from atomic or bead-model structures. |
 | `modelling/proteinmc` | (no manifest) | Protein Monte-Carlo helpers; a first-class module still lacking a `manifest.json` (see steering note). |
-| `modelling/structure_tools` | Structure:Structure Tools | Unified toolbox aggregating FPS JSON Editor, FRET Docking, Kappa2 Distribution, QuEst, HydroPro and Trajectory Tools into one entry point. |
 | `fret_line` | Spectroscopy:FRET:FRET Line Generator | Compute static, dynamic, WLC and mixture FRET lines for overlay on smFRET 2D histograms in ndxplorer. |
 | `calculator/kappa2_dist` | Structure:FRET:Kappa2 Distribution | Compute and visualise the κ² orientation-factor distribution (WIC, DWT, isotropic models); lives under the calculators group and is embedded in the calculators hub. |
 

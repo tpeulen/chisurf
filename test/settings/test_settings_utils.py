@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 import yaml
 
 
@@ -38,7 +39,23 @@ def test_set_mmfdb_login_settings_persists_values(tmp_path, monkeypatch) -> None
     assert data["mmfdb"]["save_login"] is True
 
 
-def test_set_language_persists_without_an_existing_gui_section(tmp_path, monkeypatch) -> None:
+@pytest.fixture
+def private_gui(monkeypatch):
+    """A private copy of the live ``gui`` settings: ``set_language`` also writes the live one.
+
+    Without it the process kept ``gui.language: ru`` after these tests, and every later
+    ``tr()`` in the session answered in Russian.
+    """
+    import copy
+
+    import chisurf.core.settings as css
+
+    monkeypatch.setitem(css.cs_settings, "gui", copy.deepcopy(css.cs_settings.get("gui", {})))
+
+
+def test_set_language_persists_without_an_existing_gui_section(
+    tmp_path, monkeypatch, private_gui
+) -> None:
     """The UI language survives a restart even when the YAML has no ``gui:`` yet.
 
     Regression guard: the writer used to take ``data.get('gui', {})``, whose
@@ -59,7 +76,7 @@ def test_set_language_persists_without_an_existing_gui_section(tmp_path, monkeyp
     assert data["gui"]["language"] == "ru"
 
 
-def test_set_language_keeps_the_rest_of_the_gui_section(tmp_path, monkeypatch) -> None:
+def test_set_language_keeps_the_rest_of_the_gui_section(tmp_path, monkeypatch, private_gui) -> None:
     """Writing the language merges into ``gui:`` instead of replacing it."""
     from chisurf.core.settings import settings_utils
 

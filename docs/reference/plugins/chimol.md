@@ -30,7 +30,7 @@ This plugin's window is an EMTK app: its controls and tables are described in th
 
 ## Theory and workflow
 
-- **Theory** — [ChiMOL: why the analysis session has its own molecular viewer](/concepts/molecular_viewer.md)
+- **Theory** — [Molecular surfaces and solvent accessibility](/concepts/molecular_surfaces.md), [ChiMOL: why the analysis session has its own molecular viewer](/concepts/molecular_viewer.md)
 - **Workflow** — [The molecular viewer (ChiMOL)](/guides/44_molecular_viewer.md)
 
 ## Source

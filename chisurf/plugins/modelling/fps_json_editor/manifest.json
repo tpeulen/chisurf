@@ -2,7 +2,7 @@
   "id": "fps_json_editor",
   "version": "2.0.0",
   "display_name": "Structure:FRET:FPS JSON Editor",
-  "description": "Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID.",
+  "description": "Edit fps.json labelling plans in ChiMOL's labelling editor (positions, distances, FlexFit, accessible volumes); validate payloads and fetch PDB structures headlessly.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
@@ -106,9 +106,8 @@
     }
   ],
   "dependencies": {},
-  "menu_hidden": true,
   "deprecated": false,
   "optional_requires": {
-    "structure_tools": "*"
+    "chimol": "*"
   }
 }

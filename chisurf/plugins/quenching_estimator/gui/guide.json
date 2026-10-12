@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the QuEst window (the plugin window and the Structure Tools card share it). Steps point at real controls and wait for the user to press them; targets are the window's control names and the attrs of quest.view.json. Load example ships its own structure, so the tour can be walked without the user's files.",
+  "_comment": "Guided tour of the QuEst window (the plugin window and its Qt host share it). Steps point at real controls and wait for the user to press them; targets are the window's control names and the attrs of quest.view.json. Load example ships its own structure, so the tour can be walked without the user's files.",
   "steps": [
     {
       "title": "What QuEst simulates",

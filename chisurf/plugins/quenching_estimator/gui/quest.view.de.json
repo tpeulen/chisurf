@@ -106,6 +106,15 @@
                 },
                 {
                   "type": "value",
+                  "attr": "av_radius_scale",
+                  "kind": "float",
+                  "label": "Skalierung der Hindernisradien",
+                  "description": "Faktor auf die Van-der-Waals-Radien der Atome (IMPs United-Atom-Satz), wenn sie Hindernisse für Linker und Farbstoff sind. Der Standardwert 0,84 entspricht den kleineren Bondi-Radien von FPS: damit stimmen die Volumina der T4L-CB-Positionen mit FPS' eigener Routine überein. 1,0 verwendet IMPs Radien unverändert.",
+                  "minimum": 0.5,
+                  "maximum": 1.5
+                },
+                {
+                  "type": "value",
                   "attr": "dg",
                   "kind": "float",
                   "label": "Gitterauflösung (Å)",

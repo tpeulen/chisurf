@@ -1,117 +1,41 @@
-"""Qt-free model of the plot settings: every control of the Qt tool as an attribute.
+"""Qt-free model of Settings ▸ Plots: the ``gui.plot`` settings, field by field, applied live.
 
-The Qt tool (:class:`~.tool.PlotSettingsWidget`) keeps its state in widgets; this
-class keeps the same state in plain attributes so the emtk app, a spec and the
-tests can read and write it. The field set, the ranges, the defaults a missing
-settings key falls back to and the layout of the settings dictionary are the
-Qt tool's (``_load_settings_into_controls`` and ``_collect_settings``); the
-differences are listed in the evidence report of the port.
+Every field is a :class:`_Setting` bound to one key of the live ``gui.plot``
+dictionary: reading it reads the settings, writing it changes them at once --
+the plots read them through :mod:`chisurf.core.plotting.appearance` whenever
+they draw, so there is nothing to "apply". Like Settings ▸ Fonts, a change is
+also kept for the next start: :meth:`PlotSettingsModel.flush` writes what
+differs from the shipped defaults to the user's ``settings_chisurf.yaml``
+(the app calls it once a drag is released, not on every frame of it), and
+:meth:`PlotSettingsModel.reset_defaults` puts back the shipped look.
 
-Editing does not touch the settings: edits are *pending* until :meth:`apply`
-(which writes them into the live ``gui.plot`` settings and re-styles the open
-node graphs), and :meth:`save` applies and persists to ``settings_chisurf.yaml``.
-:meth:`reset` reloads every field from the live settings and drops pending edits.
-:meth:`preview_series` is what the sample plot draws: three curves that preview
-the styling, never analysis data.
+:meth:`PlotSettingsModel.preview` is what the preview draws: a simulated
+TCSPC measurement and its fit, so every setting has something real to act on.
 """
 
 from __future__ import annotations
 
 import copy
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-#: The registered chiplot backends, sorted as chiplot's ``available_backends()`` returns
-#: them (that function lives in the Qt-dependent GUI package, which a Qt-free app must not
-#: import; a test keeps the two lists equal).
-BACKENDS = ("emtk",)
+from chisurf.core.plotting import appearance
+from chisurf.core.support.i18n import tr
 
-#: Qt's pyqtgraph combos, in the Qt order.
-PG_BACKGROUNDS = ("k", "w", "default")
-PG_FOREGROUNDS = ("d", "w", "l", "k")
-
-#: The six palette entries: (settings key, model attribute, label as in the Qt tool).
-COLOR_KEYS = (
-    ("data", "color_data", "Data curve"),
-    ("model", "color_model", "Model curve"),
-    ("irf", "color_irf", "Instrument response"),
-    ("residuals", "color_residuals", "Residuals"),
-    ("auto_corr", "color_auto_corr", "Autocorrelation"),
-    ("region_selector", "color_region_selector", "Region selector"),
-)
-
-#: Inclusive ranges of the numeric controls (the Qt spin boxes and sliders).
-RANGES: dict[str, tuple[float, float]] = {
-    "region_alpha": (0, 255),
-    "active_transparency": (0.0, 1.0),
-    "inactive_transparency": (0.0, 1.0),
-    "line_width": (0.5, 10.0),
-    "font_size": (0, 24),
-    "grid_alpha_pct": (0, 100),
-    "ng_line_width": (0.0, 4.0),
-    "ng_grid_opacity_pct": (0, 100),
-    "ng_grid_spacing": (4, 96),
-    "ng_node_size": (6.0, 30.0),
+#: Node-graph keys under ``gui.plot.node_graph`` and their shipped values (mirrors
+#: ``chisurf.emtk.node_editor.style_settings.NODE_GRAPH_DEFAULTS``; a test keeps them equal).
+NODE_GRAPH_DEFAULTS = {
+    "show_grid": True,
+    "grid_line_width": 0.5,
+    "grid_opacity": 0.06,
+    "grid_spacing": 24.0,
+    "node_size": 13.0,
 }
-
-#: Attributes that hold whole numbers (everything else numeric is a float).
-INT_FIELDS = frozenset(
-    {"region_alpha", "font_size", "grid_alpha_pct", "ng_grid_opacity_pct", "ng_grid_spacing"}
-)
-
-BOOL_FIELDS = (
-    "enable_grid",
-    "show_data_grid",
-    "show_residual_grid",
-    "show_acorr_grid",
-    "enable_region_selector",
-    "show_legend",
-    "hide_title",
-    "label_axis",
-    "ng_show_grid",
-    "pg_antialias",
-    "pg_left_button_pan",
-)
-
-#: Every editable attribute, in the order of the Qt tool's sections.
-FIELDS = (
-    ("backend",)
-    + tuple(attr for _, attr, _ in COLOR_KEYS)
-    + (
-        "region_alpha",
-        "active_transparency",
-        "inactive_transparency",
-        "line_width",
-        "font_size",
-        "enable_grid",
-        "grid_alpha_pct",
-        "show_data_grid",
-        "show_residual_grid",
-        "show_acorr_grid",
-        "enable_region_selector",
-        "show_legend",
-        "hide_title",
-        "label_axis",
-        "ng_show_grid",
-        "ng_line_width",
-        "ng_grid_opacity_pct",
-        "ng_grid_spacing",
-        "ng_node_size",
-        "pg_antialias",
-        "pg_left_button_pan",
-        "pg_background",
-        "pg_foreground",
-    )
-)
-
-#: Colour of the preview's lines when a stored colour is not a hex string.
-_FALLBACK_COLOR = "#b4b4be"
 
 
 def normalise_color(value: Any) -> str:
-    """``"#abc"`` / ``"AABBCC"`` as ``"#aabbcc"``; anything else (a name) unchanged."""
+    """``"#abc"`` / ``"AABBCC"`` as ``"#aabbcc"``; anything else unchanged."""
     text = str(value or "").strip()
     raw = text.lstrip("#").lower()
     if len(raw) == 3:
@@ -121,289 +45,395 @@ def normalise_color(value: Any) -> str:
     return text
 
 
-def color_rgb(value: Any) -> tuple[int, int, int]:
-    """The RGB triple of a hex colour (a non-hex stored colour reads as light grey)."""
-    text = normalise_color(value)
-    if len(text) != 7 or not text.startswith("#"):
-        text = _FALLBACK_COLOR
-    try:
-        return tuple(int(text[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
-    except ValueError:
-        return (180, 180, 190)
+def _default(path: tuple[str, ...]) -> Any:
+    """The shipped value of a ``gui.plot`` key path."""
+    if path[0] == "node_graph":
+        return NODE_GRAPH_DEFAULTS[path[1]]
+    value: Any = appearance.DEFAULTS
+    for key in path:
+        value = value[key]
+    return value
 
 
-def _settings():
-    import chisurf.core.settings as css
+class _Setting:
+    """One ``gui.plot`` key as a model attribute: read and written live.
 
-    return css
+    Parameters
+    ----------
+    path : tuple of str
+        Key path under ``gui.plot``.
+    kind : {"color", "bool", "int", "float"}
+        How a written value is coerced.
+    bounds : (float, float), optional
+        Inclusive range a number is clamped into (the control's range).
+    percent : bool
+        The control shows ``0..100`` for a stored ``0..1`` fraction.
+    """
+
+    def __init__(self, *path: str, kind: str, bounds=None, percent: bool = False) -> None:
+        self.path = tuple(path)
+        self.kind = kind
+        self.bounds = bounds
+        self.percent = percent
+        self.name = ""
+
+    def __set_name__(self, owner, name: str) -> None:
+        self.name = name
+
+    def stored(self, model: PlotSettingsModel) -> Any:
+        """The stored value, or the shipped one when the key is missing."""
+        block: Any = model.live()
+        for key in self.path:
+            if not isinstance(block, dict) or key not in block:
+                return _default(self.path)
+            block = block[key]
+        return block
+
+    def coerce(self, value: Any) -> Any:
+        """*value* as the control's type, clamped into its range."""
+        if self.kind == "color":
+            return normalise_color(value)
+        if self.kind == "bool":
+            return bool(value)
+        number = float(value)
+        if self.bounds is not None:
+            number = min(max(number, self.bounds[0]), self.bounds[1])
+        return int(round(number)) if self.kind == "int" else number
+
+    def __get__(self, model, owner=None):
+        if model is None:
+            return self
+        value = self.stored(model)
+        try:
+            if self.percent:
+                return self.coerce(float(value) * 100.0)
+            return self.coerce(value)
+        except (TypeError, ValueError):
+            return self.coerce(_default(self.path) * (100.0 if self.percent else 1.0))
+
+    def __set__(self, model, value) -> None:
+        value = self.coerce(value)
+        stored = value / 100.0 if self.percent else value
+        if self.kind == "int" and not self.percent:
+            stored = int(value)
+        block = model.live()
+        for key in self.path[:-1]:
+            child = block.get(key)
+            if not isinstance(child, dict):
+                child = {}
+                block[key] = child
+            block = child
+        if block.get(self.path[-1]) == stored:
+            return
+        block[self.path[-1]] = stored
+        model.changed(self.name)
+
+
+#: Ranges of the numeric controls (the view spec states the same; a test keeps them equal).
+RANGES: dict[str, tuple[float, float]] = {
+    "line_width": (0.5, 10.0),
+    "region_alpha": (0, 255),
+    "active_transparency": (0.0, 1.0),
+    "inactive_transparency": (0.0, 1.0),
+    "font_size": (0, 24),
+    "grid_alpha_pct": (0, 100),
+    "ng_line_width": (0.0, 4.0),
+    "ng_grid_opacity_pct": (0, 100),
+    "ng_grid_spacing": (4, 96),
+    "ng_node_size": (6.0, 30.0),
+}
 
 
 class PlotSettingsModel:
-    """Pending plot settings, with Apply / Save / Reset against the live settings."""
+    """Backing model of ``plot_settings_emtk.view.json``.
 
-    def __init__(self, load: bool = True) -> None:
-        self.backend = "emtk"
-        for _, attr, _ in COLOR_KEYS:
-            setattr(self, attr, "#ffffff")
-        self.region_alpha = 100
-        self.active_transparency = 1.0
-        self.inactive_transparency = 0.2
-        self.line_width = 2.0
-        self.font_size = 0
-        self.enable_grid = True
-        self.grid_alpha_pct = 35
-        self.show_data_grid = True
-        self.show_residual_grid = True
-        self.show_acorr_grid = True
-        self.enable_region_selector = True
-        self.show_legend = False
-        self.hide_title = True
-        self.label_axis = False
-        self.ng_show_grid = True
-        self.ng_line_width = 0.5
-        self.ng_grid_opacity_pct = 6
-        self.ng_grid_spacing = 24
-        self.ng_node_size = 13.0
-        self.pg_antialias = False
-        self.pg_left_button_pan = True
-        self.pg_background = "k"
-        self.pg_foreground = "d"
-        #: What the last action reported ("" until one ran).
-        self.message = ""
-        self._baseline: dict[str, Any] = {}
-        if load:
-            self.reset()
-            self.message = ""
-        else:
-            self._baseline = self.values()
+    Parameters
+    ----------
+    persist : bool
+        Write changes to the settings file in :meth:`flush` (off in tests that must
+        not touch it).
+    """
 
-    # ── the Qt tool's defaults and ranges ─────────────────────────────────
+    # -- curves -------------------------------------------------------------------- #
+    color_data = _Setting("colors", "data", kind="color")
+    color_model = _Setting("colors", "model", kind="color")
+    color_irf = _Setting("colors", "irf", kind="color")
+    color_residuals = _Setting("colors", "residuals", kind="color")
+    color_auto_corr = _Setting("colors", "auto_corr", kind="color")
+    line_width = _Setting("line_width", kind="float", bounds=RANGES["line_width"])
+    # -- fit range ----------------------------------------------------------------- #
+    enable_region_selector = _Setting("enable_region_selector", kind="bool")
+    color_region_selector = _Setting("colors", "region_selector", kind="color")
+    region_alpha = _Setting(
+        "colors", "region_selector_alpha", kind="int", bounds=RANGES["region_alpha"]
+    )
+    # -- grouped fits -------------------------------------------------------------- #
+    active_transparency = _Setting(
+        "colors", "active_transparency", kind="float", bounds=RANGES["active_transparency"]
+    )
+    inactive_transparency = _Setting(
+        "colors", "inactive_transparency", kind="float", bounds=RANGES["inactive_transparency"]
+    )
+    # -- axes and grid ------------------------------------------------------------- #
+    label_axis = _Setting("label_axis", kind="bool")
+    show_legend = _Setting("show_legend", kind="bool")
+    font_size = _Setting("font_size", kind="int", bounds=RANGES["font_size"])
+    enable_grid = _Setting("enable_grid", kind="bool")
+    grid_alpha_pct = _Setting(
+        "grid_alpha", kind="int", bounds=RANGES["grid_alpha_pct"], percent=True
+    )
+    show_data_grid = _Setting("show_data_grid", kind="bool")
+    show_residual_grid = _Setting("show_residual_grid", kind="bool")
+    show_acorr_grid = _Setting("show_acorr_grid", kind="bool")
+    # -- node graphs --------------------------------------------------------------- #
+    ng_show_grid = _Setting("node_graph", "show_grid", kind="bool")
+    ng_line_width = _Setting(
+        "node_graph", "grid_line_width", kind="float", bounds=RANGES["ng_line_width"]
+    )
+    ng_grid_opacity_pct = _Setting(
+        "node_graph", "grid_opacity", kind="int", bounds=RANGES["ng_grid_opacity_pct"], percent=True
+    )
+    ng_grid_spacing = _Setting(
+        "node_graph", "grid_spacing", kind="float", bounds=RANGES["ng_grid_spacing"]
+    )
+    ng_node_size = _Setting("node_graph", "node_size", kind="float", bounds=RANGES["ng_node_size"])
+
+    def __init__(self, persist: bool = True) -> None:
+        self.persist = bool(persist)
+        #: Fields changed since the last :meth:`flush`.
+        self.unsaved: set[str] = set()
+        #: One line saying what the last change did.
+        self.status = tr("Changes apply at once and are kept for the next start.")
+
+    # -- the live settings ---------------------------------------------------------- #
     @staticmethod
-    def clamp(attr: str, value: Any) -> Any:
-        """Clamp *value* into the range of *attr* (Qt's ``setValue`` does the same)."""
-        lo, hi = RANGES[attr]
-        number = float(value)
-        number = min(max(number, lo), hi)
-        return int(round(number)) if attr in INT_FIELDS else number
+    def live() -> dict:
+        """The live ``gui.plot`` dictionary (created when missing), the one plots read."""
+        import chisurf.core.settings as css
 
-    def set_value(self, attr: str, value: Any) -> None:
-        """Set a field with the clamping and coercion its control would apply."""
-        if attr in RANGES:
-            value = self.clamp(attr, value)
-        elif attr in BOOL_FIELDS:
-            value = bool(value)
-        elif attr.startswith("color_"):
-            value = normalise_color(value)
-        setattr(self, attr, value)
+        gui = css.cs_settings.setdefault("gui", {})
+        block = gui.get("plot")
+        if not isinstance(block, dict):
+            block = {}
+            gui["plot"] = block
+        return block
 
-    # ── load / collect (the Qt tool's _load_settings_into_controls / _collect_settings) ──
-    @staticmethod
-    def live_plot_settings() -> dict:
-        """The live ``gui.plot`` settings dictionary (the one the plots read)."""
-        return _settings().cs_settings.get("gui", {}).get("plot", {})
-
-    def load(self, ps: dict) -> None:
-        """Fill every field from a ``gui.plot`` dictionary, with the Qt defaults for missing keys."""
-        colors = ps.get("colors", {}) or {}
-        # A settings file written before the pyqtgraph backend was removed still names it:
-        # show (and write back) the one renderer there is instead of a choice that fails.
-        stored = str(ps.get("backend", "emtk"))
-        self.backend = stored if stored in BACKENDS else "emtk"
-        for key, attr, _ in COLOR_KEYS:
-            self.set_value(attr, colors.get(key, "#ffffff"))
-        self.set_value("region_alpha", int(colors.get("region_selector_alpha", 100)))
-        self.set_value("active_transparency", float(colors.get("active_transparency", 1.0)))
-        self.set_value("inactive_transparency", float(colors.get("inactive_transparency", 0.2)))
-        self.set_value("line_width", float(ps.get("line_width", 2.0)))
-        self.set_value("font_size", int(ps.get("font_size", 0) or 0))
-        self.enable_grid = bool(ps.get("enable_grid", True))
-        self.set_value("grid_alpha_pct", int(round(float(ps.get("grid_alpha", 0.35)) * 100)))
-        self.show_data_grid = bool(ps.get("show_data_grid", True))
-        self.show_residual_grid = bool(ps.get("show_residual_grid", True))
-        self.show_acorr_grid = bool(ps.get("show_acorr_grid", True))
-        self.enable_region_selector = bool(ps.get("enable_region_selector", True))
-        self.show_legend = bool(ps.get("show_legend", False))
-        self.hide_title = bool(ps.get("hideTitle", True))
-        self.label_axis = bool(ps.get("label_axis", False))
-        ng = ps.get("node_graph", {}) or {}
-        self.ng_show_grid = bool(ng.get("show_grid", True))
-        self.set_value("ng_line_width", float(ng.get("grid_line_width", 0.5)))
-        self.set_value("ng_grid_opacity_pct", int(round(float(ng.get("grid_opacity", 0.06)) * 100)))
-        self.set_value("ng_grid_spacing", int(float(ng.get("grid_spacing", 24.0))))
-        self.set_value("ng_node_size", float(ng.get("node_size", 13.0)))
-        pg = ps.get("pyqtgraph_config", {}) or {}
-        self.pg_antialias = bool(pg.get("antialias", False))
-        self.pg_left_button_pan = bool(pg.get("leftButtonPan", True))
-        self.pg_background = str(pg.get("background", "k"))
-        self.pg_foreground = str(pg.get("foreground", "d"))
-
-    def collect(self) -> dict[str, Any]:
-        """The fields as a ``gui.plot`` dictionary (the Qt tool's ``_collect_settings``)."""
-        colors = {key: getattr(self, attr) for key, attr, _ in COLOR_KEYS}
-        colors.update(
-            {
-                "region_selector_alpha": self.region_alpha,
-                "active_transparency": self.active_transparency,
-                "inactive_transparency": self.inactive_transparency,
-            }
-        )
-        return {
-            "backend": self.backend,
-            "colors": colors,
-            "line_width": self.line_width,
-            "font_size": self.font_size,
-            "enable_grid": self.enable_grid,
-            "grid_alpha": self.grid_alpha_pct / 100.0,
-            "show_data_grid": self.show_data_grid,
-            "show_residual_grid": self.show_residual_grid,
-            "show_acorr_grid": self.show_acorr_grid,
-            "enable_region_selector": self.enable_region_selector,
-            "show_legend": self.show_legend,
-            "hideTitle": self.hide_title,
-            "label_axis": self.label_axis,
-            "node_graph": {
-                "show_grid": self.ng_show_grid,
-                "grid_line_width": self.ng_line_width,
-                "grid_opacity": self.ng_grid_opacity_pct / 100.0,
-                "grid_spacing": float(self.ng_grid_spacing),
-                "node_size": self.ng_node_size,
-            },
-            "pyqtgraph_config": {
-                "antialias": self.pg_antialias,
-                "background": self.pg_background,
-                "foreground": self.pg_foreground,
-                "leftButtonPan": self.pg_left_button_pan,
-            },
-        }
+    @classmethod
+    def fields(cls) -> tuple[str, ...]:
+        """Every bound attribute, in declaration order."""
+        return tuple(name for name, value in vars(cls).items() if isinstance(value, _Setting))
 
     def values(self) -> dict[str, Any]:
-        """Every editable attribute and its value (for dirty tracking and tests)."""
-        return {attr: getattr(self, attr) for attr in FIELDS}
+        """Every field and its value."""
+        return {name: getattr(self, name) for name in self.fields()}
 
-    # ── state the form reads ─────────────────────────────────────────────
-    @property
-    def dirty(self) -> bool:
-        """Whether a field differs from what was last loaded or applied."""
-        return self.values() != self._baseline
+    def changed(self, name: str) -> None:
+        """A field was written: plots drawn from now on use it; :meth:`flush` keeps it."""
+        self.unsaved.add(name)
+        self.status = tr("Applied. Plots opened from now on use it; open fits on re-plot.")
 
-    @property
-    def backends(self) -> tuple[str, ...]:
-        """The choices of the backend combo."""
-        return BACKENDS
-
-    @property
-    def status_text(self) -> str:
-        """One line under the buttons: what the last action did, and whether edits are pending."""
-        if self.dirty:
-            return "Edits not applied yet: Apply uses them, Save also keeps them."
-        return self.message or "Showing the active plot settings."
-
-    # ── actions ──────────────────────────────────────────────────────────
-    def reset(self) -> None:
-        """Reload every field from the live settings and drop pending edits (Qt: Reset)."""
-        self.load(copy.deepcopy(self.live_plot_settings()))
-        self._baseline = self.values()
-        self.message = "Reloaded from the active settings."
-
-    def apply(self) -> None:
-        """Write the fields into the live ``gui.plot`` settings (Qt: Apply)."""
-        settings = self.collect()
-        css = _settings()
-        gui = css.cs_settings.setdefault("gui", {})
-        existing = gui.get("plot", {})
-        existing_colors = existing.get("colors", {})
-        settings["colors"].update(
-            {k: v for k, v in existing_colors.items() if k not in settings["colors"]}
-        )
-        existing.update(settings)
-        gui["plot"] = existing
-        # The node graphs read their style when they are built; an open one would
-        # keep the old grid until reopened without this.
-        try:
-            from chisurf.emtk.node_editor.style_settings import refresh_open_graphs
-
-            refresh_open_graphs()
-        except Exception:  # noqa: BLE001 - nothing open to catch up
-            pass
-        self._baseline = self.values()
-        self.message = "Applied to the active settings."
-
-    def settings_file(self) -> Path:
-        """``settings_chisurf.yaml`` of the settings folder."""
+    # -- persistence ----------------------------------------------------------------- #
+    @staticmethod
+    def shipped() -> dict:
+        """The packaged ``gui.plot`` defaults."""
         from chisurf.core.settings.path_utils import get_path
+        from chisurf.core.settings.settings_utils import get_chisurf_settings
 
-        return get_path("settings") / "settings_chisurf.yaml"
+        packaged = get_chisurf_settings(
+            get_path("settings") / "settings_chisurf.yaml", use_source_folder=True
+        )
+        return copy.deepcopy((packaged.get("gui") or {}).get("plot") or {})
 
-    def save(self) -> None:
-        """Apply, then persist ``gui.plot`` to ``settings_chisurf.yaml`` (Qt: Save)."""
-        self.apply()
-        import yaml
+    def flush(self) -> bool:
+        """Keep the changes: write what differs from the shipped defaults; re-style node graphs.
 
-        css = _settings()
-        path = self.settings_file()
-        try:
-            data: Any = {}
-            if path.exists():
-                with open(path, encoding="utf-8") as fh:
-                    data = yaml.safe_load(fh) or {}
-            if not isinstance(data, dict):
-                data = {}
-            data.setdefault("gui", {})["plot"] = copy.deepcopy(
-                css.cs_settings.get("gui", {}).get("plot", {})
-            )
-            with open(path, "w", encoding="utf-8") as fh:
-                yaml.safe_dump(data, fh, default_flow_style=False, sort_keys=False)
-        except Exception as exc:  # noqa: BLE001 - reported on the status line, as Qt's dialog did
-            self.message = f"Save failed: {exc}"
-            return
-        self.message = f"Applied and saved to {path}."
-
-    # ── the preview ──────────────────────────────────────────────────────
-    @property
-    def preview_dark(self) -> bool:
-        """Whether the preview has the dark background (the pyqtgraph background ``k``)."""
-        return self.pg_background == "k"
-
-    @property
-    def preview_grid(self) -> bool:
-        """Whether the preview draws a grid (Qt: ``enable_grid`` and ``show_data_grid``)."""
-        return bool(self.enable_grid and self.show_data_grid)
-
-    def preview_series(self) -> list[dict[str, Any]]:
-        """The three sample curves of the Qt preview, with the pending colours and widths.
-
-        These are **sample** curves that preview the styling (two decays and an
-        instrument response on a constant background, so the log axis stays
-        readable); they are not analysis data.
+        Returns
+        -------
+        bool
+            True when something was written.
         """
-        t = np.linspace(0.0, 10.0, 256)
-        background = 2.0
-        data = 1000 * np.exp(-t / 3.0) + 200 * np.exp(-t / 8.0) + background
-        model = 980 * np.exp(-t / 2.9) + 210 * np.exp(-t / 7.8) + background
-        irf = 500 * np.exp(-((t - 1.0) ** 2) / 0.05) + background
-        return [
-            {
-                "label": "data",
-                "x": t,
-                "y": data,
-                "color": self.color_data,
-                "width": self.line_width,
-                "dash": False,
-            },
-            {
-                "label": "model",
-                "x": t,
-                "y": model,
-                "color": self.color_model,
-                "width": self.line_width,
-                "dash": True,
-            },
-            {
-                "label": "IRF",
-                "x": t,
-                "y": irf,
-                "color": self.color_irf,
-                "width": 1.5,
-                "dash": False,
-            },
+        if not self.unsaved:
+            return False
+        node_graph = any(name.startswith("ng_") for name in self.unsaved)
+        self.unsaved.clear()
+        if node_graph:
+            # A node graph reads its style when it is built; one that is open catches up here.
+            try:
+                from chisurf.emtk.node_editor.style_settings import refresh_open_graphs
+
+                refresh_open_graphs()
+            except Exception:  # noqa: BLE001 - nothing open to catch up
+                pass
+        if not self.persist:
+            return False
+        from chisurf.core.settings.settings_utils import prune_defaults, update_settings_section
+
+        changed = prune_defaults(copy.deepcopy(self.live()), self.shipped())
+        ok = update_settings_section("gui", {"plot": changed})
+        self.status = (
+            tr("Applied and saved. Plots opened from now on use it; open fits on re-plot.")
+            if ok
+            else tr("Applied; the settings file could not be written.")
+        )
+        return ok
+
+    def reset_defaults(self) -> None:
+        """Every plot setting back to the shipped look, applied at once and saved."""
+        live = self.live()
+        live.clear()
+        live.update(self.shipped())
+        self.unsaved = {"ng_show_grid"}  # also re-styles open node graphs
+        self.flush()
+        self.status = tr("Plot settings reset to the defaults.")
+
+    # -- the preview ------------------------------------------------------------------ #
+    def preview(self) -> dict[str, Any]:
+        """The simulated measurement the preview draws, styled by the current settings.
+
+        Returns
+        -------
+        dict
+            ``curves``: per panel (``acorr``, ``residuals``, ``data``) a list of
+            series ``{label, x, y, color, width, opacity}``; ``region``: the fit
+            range ``(lo, hi)`` and its fill (``None`` when the selector is off);
+            ``grid``: per panel the grid alpha or ``None``; ``legend``, ``labels``
+            and ``font_size``.
+        """
+        sample = preview_sample()
+        settings = self.live()
+        color = {role: appearance.curve_color(role, settings) for role in appearance.CURVE_ROLES}
+        active = appearance.fit_opacity(True, settings)
+        other = appearance.fit_opacity(False, settings)
+        lo, hi = sample["range"]
+        fit_x = sample["t"][lo:hi]
+
+        def series(label, x, y, role, opacity):
+            return {
+                "label": label,
+                "x": x,
+                "y": y,
+                "color": color[role],
+                "width": appearance.line_width(role if role == "data" else "model", settings),
+                "opacity": opacity,
+            }
+
+        # The other dataset of the global fit goes down first, under the selected one;
+        # its curves share one legend entry.
+        other_fit = "other fit"
+        data = [
+            series(other_fit, sample["t"], sample["data_2"], "data", other),
+            series(other_fit, fit_x, sample["model_2"], "model", other),
+            series("data", sample["t"], sample["data"], "data", active),
+            series("model", fit_x, sample["model"], "model", active),
+            series("IRF", sample["t"], sample["irf"], "irf", active),
         ]
+        residuals = [
+            series(other_fit, fit_x, sample["wres_2"] + sample["wres_offset"], "residuals", other),
+            series("w.res.", fit_x, sample["wres"], "residuals", active),
+        ]
+        acorr = [
+            series(
+                other_fit,
+                sample["lag_t"],
+                sample["acorr_2"] + sample["acorr_offset"],
+                "auto_corr",
+                other,
+            ),
+            series("a.corr.", sample["lag_t"], sample["acorr"], "auto_corr", active),
+        ]
+        return {
+            "curves": {"acorr": acorr, "residuals": residuals, "data": data},
+            "region": (
+                (float(sample["t"][lo]), float(sample["t"][hi - 1])),
+                appearance.region_rgba(settings),
+            ),
+            "grid": {
+                panel: appearance.grid_alpha(panel, settings) for panel in appearance.GRID_PANELS
+            },
+            "legend": appearance.show_legend(settings),
+            "labels": appearance.label_axes(settings),
+            "font_size": appearance.font_size(settings),
+        }
+
+
+_SAMPLE: dict[str, Any] = {}
+
+
+def _convolve(decay: np.ndarray, irf: np.ndarray) -> np.ndarray:
+    """The decay convolved with the instrument response, on the decay's channels."""
+    return np.convolve(irf, decay)[: decay.size]
+
+
+def _autocorrelation(values: np.ndarray, lags: int) -> np.ndarray:
+    """Normalised autocorrelation of *values* for lags ``1..lags`` (``0`` for white noise)."""
+    v = np.asarray(values, dtype=float)
+    n = v.size
+    mean_sq = float(np.mean(v * v)) or 1.0
+    return np.array([float(np.mean(v[k:] * v[: n - k])) / mean_sq for k in range(1, lags + 1)])
+
+
+def preview_sample() -> dict[str, np.ndarray]:
+    """A simulated TCSPC measurement: IRF ⊛ two-exponential decay + background, Poisson noise.
+
+    The model is the noise-free decay of a *fit* that is close but not exact (a
+    slightly shorter long lifetime), so model and data can be told apart and
+    the weighted residuals show the structure a misfit leaves. A second
+    dataset of a global fit is simulated the same way, at another brightness,
+    to show the other fits of a group. Deterministic: a fixed seed.
+    """
+    if _SAMPLE:
+        return _SAMPLE
+    rng = np.random.default_rng(20261012)
+    dt = 0.05  # ns per channel
+    t = np.arange(256) * dt
+    # A Gaussian prompt with the short exponential shoulder of a real detector.
+    irf = np.exp(-0.5 * ((t - 1.2) / 0.09) ** 2) + 0.01 * np.exp(-(t - 1.2) / 0.25) * (t > 1.2)
+    irf /= irf.sum()
+
+    def measured(total, amplitudes, lifetimes, background):
+        decay = sum(a * np.exp(-t / tau) for a, tau in zip(amplitudes, lifetimes))
+        decay = _convolve(decay / decay.sum(), irf)
+        return total * decay / decay.sum() + background
+
+    expected = measured(4.0e5, (0.55, 0.45), (0.8, 3.6), 3.0)
+    expected_2 = measured(1.6e5, (0.3, 0.7), (0.6, 2.8), 2.0)
+    data = rng.poisson(expected).astype(float)
+    data_2 = rng.poisson(expected_2).astype(float)
+    lo, hi = int(np.argmax(t >= 0.9)), 236
+    model = measured(4.0e5, (0.57, 0.43), (0.84, 3.35), 3.0)[lo:hi]
+    model *= data[lo:hi].sum() / model.sum()
+    model_2 = measured(1.6e5, (0.32, 0.68), (0.62, 2.7), 2.0)[lo:hi]
+    model_2 *= data_2[lo:hi].sum() / model_2.sum()
+    wres = (data[lo:hi] - model) / np.sqrt(np.maximum(data[lo:hi], 1.0))
+    wres_2 = (data_2[lo:hi] - model_2) / np.sqrt(np.maximum(data_2[lo:hi], 1.0))
+    lags = (hi - lo) // 2
+    acorr = _autocorrelation(wres, lags)
+    _SAMPLE.update(
+        {
+            "t": t,
+            "irf": irf * expected.max() / irf.max() * 0.6 + 1.0,
+            "data": data,
+            "data_2": data_2,
+            "model": model,
+            "model_2": model_2,
+            "range": (lo, hi),
+            "wres": wres,
+            "wres_2": wres_2,
+            # A group's other fits sit above the selected one, as the fit window stacks them.
+            "wres_offset": float(np.ceil(2.5 * np.percentile(np.abs(wres), 95))),
+            "acorr": acorr,
+            "acorr_2": _autocorrelation(wres_2, lags),
+            "acorr_offset": float(2.5 * np.percentile(np.abs(acorr), 95)),
+            "lag_t": t[lo : lo + lags],
+        }
+    )
+    return _SAMPLE
+
+
+__all__ = [
+    "NODE_GRAPH_DEFAULTS",
+    "PlotSettingsModel",
+    "RANGES",
+    "normalise_color",
+    "preview_sample",
+]

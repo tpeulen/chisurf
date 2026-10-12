@@ -11,6 +11,7 @@ handlers its own window drives, so orbit/pan/zoom behave identically.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -40,7 +41,10 @@ class ChimolHostApp(ImApp):
     #: frame pixels (the guide points at it; it is drawn by chimol, not here).
     PROMPT_H = 18.0
 
-    def __init__(self, size: tuple[int, int] = (900, 620)):
+    def __init__(self, size: tuple[int, int] = (900, 620), commands: tuple[str, ...] = ()):
+        #: chimol commands run once the viewer is up: a launcher opens one of chimol's own panels this way
+        #: (Structure › FRET › FPS JSON Editor runs ``fps_circle , , Positions``).
+        self._startup_commands = tuple(commands)
         spec = json.loads((HERE / "window.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1200, 800))
         self._chimol_size = size
@@ -123,6 +127,7 @@ class ChimolHostApp(ImApp):
         if frame is not None:
             self._frame = frame
         self._subscribe()
+        self._run_startup_commands()
 
     def _ensure_chimol(self) -> bool:
         """Start chimol now if it is not running (joins a start under way); whether it runs."""
@@ -135,7 +140,17 @@ class ChimolHostApp(ImApp):
             self._error = f"{type(exc).__name__}: {exc}"
             return False
         self._subscribe()
+        self._run_startup_commands()
         return True
+
+    def _run_startup_commands(self) -> None:
+        """Run the commands this window was opened with, once, on the viewer that just started."""
+        commands, self._startup_commands = self._startup_commands, ()
+        for line in commands:
+            try:
+                self._chimol_app.cmd.do(line)
+            except Exception:  # noqa: BLE001 - the viewer stays usable; the failure is logged
+                logging.getLogger(__name__).exception("chimol startup command failed: %s", line)
 
     def _subscribe(self) -> None:
         # A movie started from the console, a macro or a script runs no input
@@ -424,7 +439,7 @@ class ChimolHostApp(ImApp):
             self._chimol = None
 
 
-def make_app() -> ChimolHostApp:
+def make_app(commands: tuple[str, ...] = ()) -> ChimolHostApp:
     """The embedded viewer, speaking ChiSurf's language.
 
     :func:`chisurf.emtk.i18n.install` selects ChiSurf's configured language in
@@ -436,4 +451,4 @@ def make_app() -> ChimolHostApp:
     from chisurf.emtk.i18n import install
 
     install()
-    return ChimolHostApp()
+    return ChimolHostApp(commands=commands)

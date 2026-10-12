@@ -1,225 +1,219 @@
 {
   "window": {"width": 1200, "height": 800},
-  "_comment": "Plot settings, native emtk window. 'settings' is the scrolling form (one collapsible panel per section of the Qt tool), 'actions' the Apply / Save / Reset bar, 'preview' the sample plot docked beside it (drawn by gui/app.py: a plot is not something a spec can express). Drawn by emtk.view_form over PlotSettingsModel (gui/model.py).",
+  "_comment": "Settings > Plots, native emtk window bound to PlotSettingsModel (gui/model.py). 'settings' is the scrolling column of controls, 'preview' the live sample plot beside it (drawn by gui/app.py: a plot is not something a spec can express). Every change applies at once and is saved to gui.plot, as in Settings > Fonts.",
   "title": "Plot Settings",
   "sections": [
     {
       "type": "panel",
       "name": "settings",
       "title": "Settings",
-      "description": "All plot settings.",
+      "description": "Every plot setting. A change applies at once and is kept for the next start.",
       "sections": [
         {
           "type": "panel",
-          "title": "Rendering Backend",
-          "description": "Which engine draws newly created plots.",
-          "sections": [
-            {
-              "type": "choice",
-              "attr": "backend",
-              "label": "Active backend",
-              "options_source": "backends",
-              "description": "Rendering backend for chiplot panels: emtk is the native renderer and the only one (the pyqtgraph backend was removed). It is used by plots created after you apply the change."
-            },
-            {
-              "type": "info",
-              "text": "Changes apply on next application start or when a new plot is created.",
-              "description": "When a changed backend takes effect."
-            }
-          ],
+          "title": "Curves",
+          "description": "Colour and width of the curves of a fit plot. The preview shows each one.",
           "collapsible": true,
-          "collapsed": false
-        },
-        {
-          "type": "panel",
-          "title": "Colors",
-          "description": "The palette curves and regions take in every plot. The preview below follows the edits.",
+          "collapsed": false,
           "sections": [
             {
               "type": "value",
               "attr": "color_data",
-              "label": "Data curve",
+              "label": "Data",
               "kind": "color",
-              "description": "Colour of the data curve in decay plots. Click the swatch for a colour picker, or type a hex value such as #ffa52f."
+              "description": "Colour of the measured data. Click the swatch for a colour picker, or type a hex value such as #ffa629."
             },
             {
               "type": "value",
               "attr": "color_model",
-              "label": "Model curve",
+              "label": "Model",
               "kind": "color",
-              "description": "Colour of the fitted model curve. Click the swatch for a colour picker, or type a hex value."
+              "description": "Colour of the fitted model curve, drawn over the data in the fit range."
             },
             {
               "type": "value",
               "attr": "color_irf",
-              "label": "Instrument response",
+              "label": "IRF",
               "kind": "color",
-              "description": "Colour of the instrument response function (IRF). Click the swatch for a colour picker, or type a hex value."
+              "description": "Colour of the instrument response function (IRF)."
             },
             {
               "type": "value",
               "attr": "color_residuals",
               "label": "Residuals",
               "kind": "color",
-              "description": "Colour of the weighted residuals panel. Click the swatch for a colour picker, or type a hex value."
+              "description": "Colour of the weighted residuals, (data − model) / σ, in the strip above the data."
             },
             {
               "type": "value",
               "attr": "color_auto_corr",
               "label": "Autocorrelation",
               "kind": "color",
-              "description": "Colour of the autocorrelation curve. Click the swatch for a colour picker, or type a hex value."
+              "description": "Colour of the autocorrelation of the residuals, the top strip: flat for a good fit, a wave for a systematic misfit."
             },
-            {
-              "type": "value",
-              "attr": "color_region_selector",
-              "label": "Region selector",
-              "kind": "color",
-              "description": "Colour of the draggable fit-range band. Click the swatch for a colour picker, or type a hex value."
-            },
-            {
-              "type": "value",
-              "attr": "region_alpha",
-              "label": "Region alpha",
-              "kind": "int",
-              "description": "Opacity of the fit-range band, 0 (invisible) to 255 (solid).",
-              "minimum": 0,
-              "maximum": 255,
-              "style": "slider"
-            },
-            {
-              "type": "value",
-              "attr": "active_transparency",
-              "label": "Active transparency",
-              "kind": "float",
-              "description": "Opacity of the active plot, 0 to 1.",
-              "minimum": 0.0,
-              "maximum": 1.0,
-              "step": 0.05,
-              "decimals": 2,
-              "style": "spin"
-            },
-            {
-              "type": "value",
-              "attr": "inactive_transparency",
-              "label": "Inactive transparency",
-              "kind": "float",
-              "description": "Opacity of plots that are not active, 0 to 1.",
-              "minimum": 0.0,
-              "maximum": 1.0,
-              "step": 0.05,
-              "decimals": 2,
-              "style": "spin"
-            }
-          ],
-          "n_col": 1,
-          "collapsible": true,
-          "collapsed": false
-        },
-        {
-          "type": "panel",
-          "title": "Appearance",
-          "description": "Line width, fonts, grid and which furniture the plots show.",
-          "sections": [
             {
               "type": "value",
               "attr": "line_width",
               "label": "Line width",
               "kind": "float",
-              "description": "Width of the data and model curves, 0.5 to 10 pixels.",
               "minimum": 0.5,
               "maximum": 10.0,
               "step": 0.5,
-              "decimals": 2,
-              "style": "spin"
+              "decimals": 1,
+              "suffix": " px",
+              "style": "spin",
+              "description": "Width of the model, IRF, residual and autocorrelation curves. The noisy data trace is drawn at half of it, so the model stays visible through it."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Fit range",
+          "description": "The draggable band that marks the channels the fit uses.",
+          "collapsible": true,
+          "collapsed": false,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "enable_region_selector",
+              "label": "Show fit-range band",
+              "description": "Draw the draggable fit-range band on the data panel. Off, the range is still used; it is set in the fit's own controls."
             },
             {
               "type": "value",
-              "attr": "font_size",
-              "label": "Axis font size",
+              "attr": "color_region_selector",
+              "label": "Colour",
+              "kind": "color",
+              "description": "Colour of the fit-range band."
+            },
+            {
+              "type": "value",
+              "attr": "region_alpha",
+              "label": "Opacity",
               "kind": "int",
-              "description": "Base point size for ticks, axis labels and titles. 'auto' (0) follows the application font.",
+              "minimum": 0,
+              "maximum": 255,
+              "style": "slider",
+              "description": "Opacity of the fit-range band, 0 (invisible) to 255 (solid). Much above 60 it reads as a fill and hides the data under it."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Global fits",
+          "description": "How the datasets of a global fit are told apart when they are shown together.",
+          "collapsible": true,
+          "collapsed": false,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "active_transparency",
+              "label": "Selected fit",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "step": 0.05,
+              "decimals": 2,
+              "style": "spin",
+              "description": "Opacity of the curves of the selected dataset, 0 (invisible) to 1 (solid)."
+            },
+            {
+              "type": "value",
+              "attr": "inactive_transparency",
+              "label": "Other fits",
+              "kind": "float",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "step": 0.05,
+              "decimals": 2,
+              "style": "spin",
+              "description": "Opacity of the curves of the other datasets of the group, 0 (invisible) to 1 (solid). The preview shows a second dataset at this opacity."
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Axes and grid",
+          "description": "Axis names, legend, axis text size and the grid of each panel.",
+          "collapsible": true,
+          "collapsed": false,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "font_size",
+              "label": "Axis text",
+              "kind": "int",
               "minimum": 0,
               "maximum": 24,
               "step": 1,
+              "suffix": " pt",
               "style": "spin",
-              "special_text": "auto"
+              "special_text": "auto",
+              "description": "Point size of the tick numbers, axis names and legend. 'auto' (0) follows the interface font of Settings ▸ Fonts. Open plots follow at once."
             },
             {
               "type": "value",
               "attr": "grid_alpha_pct",
-              "label": "Grid opacity",
+              "label": "Grid strength",
               "kind": "int",
-              "description": "Grid line opacity, per cent.",
               "minimum": 0,
               "maximum": 100,
-              "style": "slider"
+              "suffix": " %",
+              "style": "slider",
+              "description": "How strongly the grid is drawn: 0 % none, 30 % the theme's own grid, 100 % solid lines."
             },
             {
               "type": "panel",
-              "title": "Options",
-              "description": "Which plot furniture is shown by default.",
+              "title": "Show",
+              "description": "Which plot furniture new fit plots show.",
+              "n_col": 2,
               "sections": [
                 {
                   "type": "toggle",
+                  "attr": "label_axis",
+                  "label": "Axis names",
+                  "description": "Show the axis names (counts, time, w.res., a.corr.). Off gives the space to the data in a narrow panel."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "show_legend",
+                  "label": "Legend",
+                  "description": "Show the legend naming each curve on the data panel of new plots."
+                },
+                {
+                  "type": "toggle",
                   "attr": "enable_grid",
-                  "label": "Enable grid",
-                  "description": "Show grid lines in the plots."
+                  "label": "Grid",
+                  "description": "Draw grid lines. Off turns the grid off on every panel; on, the three switches below pick the panels."
                 },
                 {
                   "type": "toggle",
                   "attr": "show_data_grid",
-                  "label": "Grid on data panel",
-                  "description": "Draw the grid on the data (decay) panel."
+                  "label": "Grid on data",
+                  "description": "Draw the grid on the data panel."
                 },
                 {
                   "type": "toggle",
                   "attr": "show_residual_grid",
                   "label": "Grid on residuals",
-                  "description": "Draw the grid on the residuals panel."
+                  "description": "Draw the grid on the weighted-residuals strip."
                 },
                 {
                   "type": "toggle",
                   "attr": "show_acorr_grid",
                   "label": "Grid on autocorrelation",
-                  "description": "Draw the grid on the autocorrelation panel."
-                },
-                {
-                  "type": "toggle",
-                  "attr": "enable_region_selector",
-                  "label": "Fit-range selector",
-                  "description": "Draw the draggable fit-range band on the data panel."
-                },
-                {
-                  "type": "toggle",
-                  "attr": "show_legend",
-                  "label": "Show legend by default",
-                  "description": "Show the legend in new plots."
-                },
-                {
-                  "type": "toggle",
-                  "attr": "hide_title",
-                  "label": "Hide titles",
-                  "description": "Hide plot titles by default."
-                },
-                {
-                  "type": "toggle",
-                  "attr": "label_axis",
-                  "label": "Label axes",
-                  "description": "Show the axis names (counts, t / ns, ...)."
+                  "description": "Draw the grid on the autocorrelation strip."
                 }
-              ],
-              "n_col": 2
+              ]
             }
-          ],
-          "n_col": 1,
-          "collapsible": true,
-          "collapsed": true
+          ]
         },
         {
           "type": "panel",
-          "title": "Node Graphs (Global View)",
-          "description": "Background grid and node size of the node graphs.",
+          "title": "Node graphs",
+          "description": "Background grid and node size of the node graphs: Global View, the light path, the provenance inspector and the node editor.",
+          "collapsible": true,
+          "collapsed": true,
           "sections": [
             {
               "type": "toggle",
@@ -232,153 +226,80 @@
               "attr": "ng_line_width",
               "label": "Grid line width",
               "kind": "float",
-              "description": "Grid line thickness. Below one pixel draws a hairline; on a HiDPI screen a full pixel doubles to two device pixels and the grid starts to out-weigh the edges drawn on top of it.",
               "minimum": 0.0,
               "maximum": 4.0,
               "step": 0.25,
               "decimals": 2,
               "suffix": " px",
-              "style": "spin"
+              "style": "spin",
+              "description": "Grid line thickness. Below one pixel draws a hairline; on a HiDPI screen a full pixel doubles to two device pixels and the grid starts to out-weigh the edges drawn on top of it."
             },
             {
               "type": "value",
               "attr": "ng_grid_opacity_pct",
               "label": "Grid opacity",
               "kind": "int",
-              "description": "Grid line opacity of a node graph, per cent.",
               "minimum": 0,
               "maximum": 100,
-              "style": "slider"
+              "suffix": " %",
+              "style": "slider",
+              "description": "Grid line opacity of a node graph, per cent."
             },
             {
               "type": "value",
               "attr": "ng_grid_spacing",
               "label": "Grid spacing",
-              "kind": "int",
-              "description": "Distance between the grid lines of a node graph, 4 to 96 pixels.",
+              "kind": "float",
               "minimum": 4,
               "maximum": 96,
               "step": 1,
+              "decimals": 0,
               "suffix": " px",
-              "style": "spin"
+              "style": "spin",
+              "description": "Distance between the grid lines of a node graph, 4 to 96 pixels."
             },
             {
               "type": "value",
               "attr": "ng_node_size",
-              "label": "Node size (Global View)",
+              "label": "Node size",
               "kind": "float",
-              "description": "The node radius a newly opened Global View starts its own node-size control at. A window that is already open keeps the value its slider holds.",
               "minimum": 6.0,
               "maximum": 30.0,
               "step": 0.5,
-              "decimals": 2,
+              "decimals": 1,
               "suffix": " px",
-              "style": "spin"
-            },
-            {
-              "type": "info",
-              "text": "Grid and spacing apply to Global View, the light path, the provenance inspector and the node editor; Apply also catches up the windows that are open.",
-              "description": "Where the node-graph settings take effect."
+              "style": "spin",
+              "description": "The node radius a newly opened Global View starts its own node-size control at. A window that is already open keeps the value its slider holds."
             }
-          ],
-          "n_col": 1,
-          "collapsible": true,
-          "collapsed": true
+          ]
         },
         {
-          "type": "panel",
-          "title": "Advanced: pyqtgraph Configuration",
-          "description": "Options that only exist on the pyqtgraph engine.",
-          "sections": [
-            {
-              "type": "toggle",
-              "attr": "pg_antialias",
-              "label": "Antialiasing",
-              "description": "Use antialiased lines in pyqtgraph plots."
-            },
-            {
-              "type": "toggle",
-              "attr": "pg_left_button_pan",
-              "label": "Left button pans",
-              "description": "Pan pyqtgraph plots with the left mouse button."
-            },
-            {
-              "type": "choice",
-              "attr": "pg_background",
-              "label": "Background",
-              "options": [
-                "k",
-                "w",
-                "default"
-              ],
-              "description": "pyqtgraph background colour: k black, w white, default the library default. The preview follows it."
-            },
-            {
-              "type": "choice",
-              "attr": "pg_foreground",
-              "label": "Foreground",
-              "options": [
-                "d",
-                "w",
-                "l",
-                "k"
-              ],
-              "description": "Axis, tick and label colour (d light grey, w white, l light, k black). Keep it contrasting with the background: matching the two hides every axis."
-            }
-          ],
-          "n_col": 1,
-          "collapsible": true,
-          "collapsed": true
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "name": "actions",
-      "title": "Actions",
-      "description": "Apply, save or reload the plot settings.",
-      "sections": [
-        {
           "type": "button_row",
-          "description": "Apply the edits, save them, or reload the active settings.",
           "buttons": [
             {
-              "action": "apply",
-              "label": "Apply",
-              "description": "Write the edits into the active plot settings; plots created from now on use them, and open node graphs are re-styled."
-            },
-            {
-              "action": "save",
-              "label": "Save",
-              "icon": "💾",
-              "description": "Apply the edits and write them to settings_chisurf.yaml so they are kept for the next start."
-            },
-            {
-              "action": "reset",
-              "label": "Reset",
-              "icon": "♻️",
-              "description": "Reload every control from the active settings, discarding edits that were not applied."
+              "action": "reset_defaults",
+              "label": "Reset to defaults",
+              "description": "Every plot setting back to the shipped look, applied at once and saved."
             }
           ]
         },
         {
           "type": "info",
-          "source": "status_text",
-          "description": "What the last action did, and whether edits are waiting to be applied."
+          "source": "status",
+          "description": "What the last change did."
         }
       ]
     },
     {
       "type": "panel",
       "name": "preview",
-      "title": "Preview (sample curves)",
-      "description": "A sample plot that previews the styling.",
+      "title": "Preview",
+      "description": "A simulated measurement drawn with the settings: follows every change.",
       "sections": [
         {
           "type": "custom",
           "key": "preview_plot",
-          "title": "",
-          "description": "Sample curves (data, model, IRF) drawn with the colours, line width, grid, legend and background chosen on the left. They preview the styling and are not analysis data."
+          "description": "A simulated TCSPC measurement (instrument response convolved with two lifetimes, background, Poisson noise) and a fit that is close but not exact, with its weighted residuals and their autocorrelation, and a second dataset of a global fit. Not your data."
         }
       ]
     }

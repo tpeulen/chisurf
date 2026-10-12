@@ -18,7 +18,7 @@ Combined dockable workspace for trajectory alignment, conversion, energy calcula
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_tools` |
-| Menu path | Structure → Structure → **Traj Tools** |
+| Menu path | Structure → Trajectory → **Traj Tools** |
 | Categories | Structure, Tools |
 | Version | 1.0.0 |
 | Surfaces | emtk |

@@ -1,6 +1,6 @@
 """QuEst as a dockable ChiSurf tool: the Qt host of the native emtk window.
 
-The window itself is :func:`.app.make_app` -- the QuEst card of Structure Tools
+The window itself is :func:`.app.make_app` -- the QuEst card (:mod:`.card`)
 plus attachment-site picking -- drawn by emtk. This class only *hosts* it, the
 way ``lightpath_simulator`` hosts its emtk app: a ``ChisurfDockTool`` gives it
 the docking, geometry persistence and status bar the host integrates. The

@@ -278,10 +278,44 @@
      "icon": true,
      "enabled": true,
      "size": "small"
+    }
+   ],
+   "FRET": [
+    {
+     "text": "Docking  Screening",
+     "tooltip": "FRET-restrained rigid-body docking, refinement, structure-library screening and error estimation using IMP + IMP.bff accessible volumes (a thin shim around IMP.pmi).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
     },
     {
-     "text": "Structure Tools",
-     "tooltip": "Unified structure toolbox: FPS JSON Editor, FRET Docking & Screening, QuEst, HydroPro and Trajectory Tools.",
+     "text": "FPS JSON Editor",
+     "tooltip": "Edit fps.json files for FRET accessible-volume modeling and fetch reference PDB structures by RCSB ID.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Computation": [
+    {
+     "text": "HydroPro",
+     "tooltip": "Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "QuEst",
+     "tooltip": "Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is this plugin's core/ (the former quest package).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    }
+   ],
+   "Trajectory": [
+    {
+     "text": "Traj Tools",
+     "tooltip": "Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools.",
      "icon": true,
      "enabled": true,
      "size": "small"
