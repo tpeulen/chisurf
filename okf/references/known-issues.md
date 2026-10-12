@@ -67,7 +67,8 @@ oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
 ## QuEst moved into ChiSurf; a third of T4L sites have no AV at the default width (found 2026-10-12)
 
 status: open — the port itself is done (2026-10-12); Open 1 and Open 3 resolved 2026-10-12 (FPS's link search is
-IMP.bff's default, imp.bff e4a3e2b9d, pinned in pixi.lock), Open 2 remains (below). The release-gate leftovers
+IMP.bff's default, imp.bff e4a3e2b9d; attachment atom excluded and allowed sphere on by default, imp.bff 8ce0dcc28,
+pinned in pixi.lock), Open 2 remains (below). The release-gate leftovers
 (Qt file dialogs in the form model, the demo contract, de/fr catalogue sources, the deleted
 `quest_native_failure.png` reference) are fixed 2026-10-12.
 
@@ -143,6 +144,17 @@ quenches (collisions 0.974 -> 0.0). Sites re-scanned over all 151 (57 quench): `
 (99, 89, 132) -- 139 stopped, 36 barely quenches (0.970), the classic 99 is back (0.320; 96 0.986 and 129 1.000 are
 not), 132 the standard FRET site (0.459); `test_quenching_is_site_dependent` E155/E10 (inverted, 0.896/0.721) ->
 E99/E96 (0.242/1.000). Re-check Open 1: done above -- FPS's hop labels 2 of the 51, the rest is the radii.
+**Resolved 2026-10-12 (later) -- the attachment atom and the allowed sphere were not the cause either.** Owner: "the
+attachment site must be excluded, also allowed sphere radius must be enabled by default". FPS excludes the attachment
+atom alone (not its side chain); every IMP.bff lattice door already did, now held exact by imp.bff
+`test_av_attachment_exclusion.py`. The allowed sphere was already on (a -1 that derived FPS's `0.5 W`) and is now a
+number everywhere: `IMP.bff.AV_DEFAULT_ALLOWED_SPHERE` = 2.25 A (imp.bff 8ce0dcc28, chimol b250441); a position without
+one takes `0.5 W` for its own width. QuEst's own 2.1 A became 2.25 A and its Dye panel shows *Allowed sphere (A)*; the
+FPS card shows the row's value. 148L chain E at W 4.5: **48 of 151 still empty** with QuEst's radii (49 at 2.1 A; 161
+opens), 34 of 153 CB records with FPS's Bondi radii (FPS 33). Baselines re-pinned (`_previous` kept): E96 103 288 ->
+104 379 points, E129 57 374 -> 57 393, E139 112 875 -> 113 389, R_DA 64.8467 -> 64.8028 A; no QY moved.
+`QUENCHED_SITES` stays (99, 89, 132): 99 0.320 -> 0.360; 96 (0.986) and 129 (1.000) still do not quench.
+Remaining levers are the radii and the off-node seed (imp.bff `okf/validation/fps_screening_ab.md` item 0-2).
 
 ## Red in the 2026-10-12 click matrix, not from the table-fill / stretch change (found 2026-10-12)
 

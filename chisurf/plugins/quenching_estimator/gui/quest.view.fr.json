@@ -97,6 +97,15 @@
                 },
                 {
                   "type": "value",
+                  "attr": "av_allowed_sphere_radius",
+                  "kind": "float",
+                  "label": "Sphère autorisée (Å)",
+                  "description": "Rayon autour de l'atome d'ancrage dans lequel le linker ignore les obstacles, pour pouvoir quitter l'atome auquel il est lié. Activée par défaut à la valeur de FPS, 2,25 Å (0,5 × la largeur de linker de 4,5 Å) ; l'atome d'ancrage lui-même n'est jamais un obstacle.",
+                  "minimum": 0.0,
+                  "maximum": 20.0
+                },
+                {
+                  "type": "value",
                   "attr": "dg",
                   "kind": "float",
                   "label": "Résolution de la grille (Å)",

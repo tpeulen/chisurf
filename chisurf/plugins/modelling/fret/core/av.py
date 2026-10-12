@@ -135,7 +135,8 @@ def compute_av(
         ``source_info`` the attachment atom is resolved by *identity*, which
         is the only way that cannot silently attach a dye to the wrong atom.
     source_info : dict, optional
-        ``chain_identifier``, ``residue_seq_number``, ``atom_name``.
+        ``chain_identifier``, ``residue_seq_number``, ``atom_name``, and an
+        optional ``allowed_sphere_radius`` (absent: FPS's ``0.5 * linker_width``).
 
     Returns
     -------
@@ -161,6 +162,16 @@ def compute_av(
         if found is not None:
             xyz = np.ascontiguousarray(np.asarray(found, dtype=np.float64))
 
+    # The allowed sphere around the attachment atom is on: the position's own,
+    # else FPS's rule for this width, LinkerInitialSphere 0.5 x linker_width
+    # (2.25 A at the default width, ``AV_DEFAULT_ALLOWED_SPHERE``). The
+    # attachment atom itself is dropped from the obstacles by IMP.bff.
+    declared = (source_info or {}).get("allowed_sphere_radius")
+    allowed = (
+        float(declared)
+        if declared is not None
+        else float(bff.av_derived_allowed_sphere_radius(float(linker_width)))
+    )
     result = bff.get_av(
         np.ascontiguousarray(np.asarray(atoms, dtype=np.float64)[:, :4]),
         xyz,
@@ -170,6 +181,7 @@ def compute_av(
         r2=r2,
         r3=r3,
         grid_resolution=float(disc_step),
+        allowed_sphere_radius=allowed,
     )
 
     ng = int(result.ng)

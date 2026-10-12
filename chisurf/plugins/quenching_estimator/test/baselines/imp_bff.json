@@ -1,23 +1,146 @@
 {
   "_previous": {
     "_previous": {
-      "reason": "Re-pinned when QuEst moved into ChiSurf as the quenching_estimator plugin, on IMP.bff 2e7f56c. Every moved number is IMP.bff's accessible volume, not the port: the FPS first linker step (3-voxel cube hops out of the seed) and the global lattice grew the volumes (E96 30126 -> 94641 points, E129 716 -> 39811: it was nearly walled in), so the contact geometry and with it the quenching moved (E96 and E129 no longer quench, E139 does). The AV parameters are stated now (21.5/0.5/3.5, the value these were recorded at); at IMP.bff's default width 4.5 A E96, E129 and E139 have no volume.",
+      "_previous": {
+        "reason": "Re-pinned when QuEst moved into ChiSurf as the quenching_estimator plugin, on IMP.bff 2e7f56c. Every moved number is IMP.bff's accessible volume, not the port: the FPS first linker step (3-voxel cube hops out of the seed) and the global lattice grew the volumes (E96 30126 -> 94641 points, E129 716 -> 39811: it was nearly walled in), so the contact geometry and with it the quenching moved (E96 and E129 no longer quench, E139 does). The AV parameters are stated now (21.5/0.5/3.5, the value these were recorded at); at IMP.bff's default width 4.5 A E96, E129 and E139 have no volume.",
+        "replaced": "2026-10-12",
+        "values": {
+          "accessible_volumes": {
+            "E129": {
+              "extent": [
+                5.5,
+                10.0,
+                12.0
+              ],
+              "n_points": 716,
+              "ng": 81,
+              "occupied_voxels": 716,
+              "points_centroid": [
+                30.5642,
+                36.9574,
+                29.1606
+              ],
+              "x0": [
+                17.5,
+                39.0,
+                21.5
+              ]
+            },
+            "E139": {
+              "extent": [
+                21.5,
+                32.0,
+                30.5
+              ],
+              "n_points": 29076,
+              "ng": 81,
+              "occupied_voxels": 29076,
+              "points_centroid": [
+                30.9269,
+                52.6108,
+                28.687
+              ],
+              "x0": [
+                21.0,
+                47.5,
+                30.0
+              ]
+            },
+            "E96": {
+              "extent": [
+                29.0,
+                23.5,
+                30.0
+              ],
+              "n_points": 30126,
+              "ng": 81,
+              "occupied_voxels": 30126,
+              "points_centroid": [
+                -1.4133,
+                24.6861,
+                28.6644
+              ],
+              "x0": [
+                5.5,
+                34.0,
+                27.5
+              ]
+            }
+          },
+          "distances": {
+            "pair": [
+              55,
+              124
+            ],
+            "rda_mean": 66.2112,
+            "rda_mean_e": 64.6367,
+            "rmp": 63.9107
+          },
+          "fret": {
+            "av_volume": 17461.0,
+            "collisions_fraction": 0.0,
+            "contact_to_free_ratio": 0.186632,
+            "contact_volume": 2746.25,
+            "donor_counts_total": 4000.0,
+            "fret_efficiency": 0.4075,
+            "lifetime_donor": 4.154259,
+            "quantum_yield_donor": 1.0,
+            "quantum_yield_fret": 0.5925
+          },
+          "simulations": {
+            "E129": {
+              "av_volume": 755.125,
+              "collisions_fraction": 0.88115,
+              "contact_to_free_ratio": 0.921438,
+              "contact_volume": 362.125,
+              "donor_counts_total": 704.0,
+              "fret_efficiency": null,
+              "lifetime_donor": 1.585649,
+              "quantum_yield_donor": 0.176,
+              "quantum_yield_fret": null
+            },
+            "E139": {
+              "av_volume": 7581.75,
+              "collisions_fraction": 0.0,
+              "contact_to_free_ratio": 0.265629,
+              "contact_volume": 1591.25,
+              "donor_counts_total": 4000.0,
+              "fret_efficiency": null,
+              "lifetime_donor": 4.154259,
+              "quantum_yield_donor": 1.0,
+              "quantum_yield_fret": null
+            },
+            "E96": {
+              "av_volume": 7337.75,
+              "collisions_fraction": 0.4855,
+              "contact_to_free_ratio": 0.474813,
+              "contact_volume": 2362.375,
+              "donor_counts_total": 1968.0,
+              "fret_efficiency": null,
+              "lifetime_donor": 3.638508,
+              "quantum_yield_donor": 0.492,
+              "quantum_yield_fret": null
+            }
+          }
+        }
+      },
+      "reason": "Re-pinned when IMP.bff's AV search default became FPS's link search (imp.bff e4a3e2b9d, owner 2026-10-12): the linker hops three voxels from every node it reaches, not only out of the seed (stencil 342). Every moved number is that search: the volumes grow (E96 94641 -> 103288 points, E129 39811 -> 57374, E139 104199 -> 112875 at the stated 21.5/0.5/3.5), so the contact geometry and the quenching move with them -- E139 no longer quenches (collisions 0.974 -> 0.0, donor lifetime 0.64 -> 4.22 ns) and E96 barely does (0.0 -> 0.0024). The record before this one is kept under _previous._previous.",
       "replaced": "2026-10-12",
       "values": {
         "accessible_volumes": {
           "E129": {
             "extent": [
-              5.5,
-              10.0,
-              12.0
+              31.0,
+              33.5,
+              38.0
             ],
-            "n_points": 716,
-            "ng": 81,
-            "occupied_voxels": 716,
+            "n_points": 39811,
+            "ng": 87,
+            "occupied_voxels": 39811,
             "points_centroid": [
-              30.5642,
-              36.9574,
-              29.1606
+              25.816,
+              41.8085,
+              17.618
             ],
             "x0": [
               17.5,
@@ -27,17 +150,17 @@
           },
           "E139": {
             "extent": [
-              21.5,
-              32.0,
-              30.5
+              33.5,
+              39.0,
+              39.0
             ],
-            "n_points": 29076,
-            "ng": 81,
-            "occupied_voxels": 29076,
+            "n_points": 104199,
+            "ng": 87,
+            "occupied_voxels": 104199,
             "points_centroid": [
-              30.9269,
-              52.6108,
-              28.687
+              29.8589,
+              50.8943,
+              29.8703
             ],
             "x0": [
               21.0,
@@ -47,17 +170,17 @@
           },
           "E96": {
             "extent": [
-              29.0,
-              23.5,
-              30.0
+              38.5,
+              32.5,
+              39.0
             ],
-            "n_points": 30126,
-            "ng": 81,
-            "occupied_voxels": 30126,
+            "n_points": 94641,
+            "ng": 87,
+            "occupied_voxels": 94641,
             "points_centroid": [
-              -1.4133,
-              24.6861,
-              28.6644
+              -0.3846,
+              25.5856,
+              26.3243
             ],
             "x0": [
               5.5,
@@ -66,80 +189,115 @@
             ]
           }
         },
+        "backend": "imp_bff",
+        "coarse_graining": {
+          "148l.pdb": {
+            "cb_centroid": [
+              8.2537,
+              45.1658,
+              34.5988
+            ],
+            "chains": [
+              "A",
+              "E",
+              "S"
+            ],
+            "n_atoms": 874,
+            "n_cb": 154,
+            "n_residue_ids_with_more_than_one_cb": 0
+          },
+          "mc4r_dimer.cif": {
+            "cb_centroid": [
+              0.7328,
+              -0.4185,
+              -0.8506
+            ],
+            "chains": [
+              "A",
+              "B"
+            ],
+            "n_atoms": 5704,
+            "n_cb": 1068,
+            "n_residue_ids_with_more_than_one_cb": 534
+          }
+        },
         "distances": {
           "pair": [
             55,
             124
           ],
-          "rda_mean": 66.2112,
-          "rda_mean_e": 64.6367,
-          "rmp": 63.9107
+          "rda_mean": 64.7781,
+          "rda_mean_e": 62.5289,
+          "rmp": 61.4007
         },
         "fret": {
-          "av_volume": 17461.0,
+          "av_volume": 23273.5,
           "collisions_fraction": 0.0,
-          "contact_to_free_ratio": 0.186632,
-          "contact_volume": 2746.25,
+          "contact_to_free_ratio": 0.167872,
+          "contact_volume": 3345.375,
           "donor_counts_total": 4000.0,
-          "fret_efficiency": 0.4075,
-          "lifetime_donor": 4.154259,
+          "fret_efficiency": 0.47325,
+          "lifetime_donor": 4.220883,
           "quantum_yield_donor": 1.0,
-          "quantum_yield_fret": 0.5925
+          "quantum_yield_fret": 0.52675
         },
+        "grid_resolution": 0.5,
+        "seed": 5,
         "simulations": {
           "E129": {
-            "av_volume": 755.125,
-            "collisions_fraction": 0.88115,
-            "contact_to_free_ratio": 0.921438,
-            "contact_volume": 362.125,
-            "donor_counts_total": 704.0,
-            "fret_efficiency": null,
-            "lifetime_donor": 1.585649,
-            "quantum_yield_donor": 0.176,
-            "quantum_yield_fret": null
-          },
-          "E139": {
-            "av_volume": 7581.75,
+            "av_volume": 4976.375,
             "collisions_fraction": 0.0,
-            "contact_to_free_ratio": 0.265629,
-            "contact_volume": 1591.25,
+            "contact_to_free_ratio": 0.433597,
+            "contact_volume": 1505.125,
             "donor_counts_total": 4000.0,
             "fret_efficiency": null,
-            "lifetime_donor": 4.154259,
+            "lifetime_donor": 4.220883,
             "quantum_yield_donor": 1.0,
             "quantum_yield_fret": null
           },
-          "E96": {
-            "av_volume": 7337.75,
-            "collisions_fraction": 0.4855,
-            "contact_to_free_ratio": 0.474813,
-            "contact_volume": 2362.375,
-            "donor_counts_total": 1968.0,
+          "E139": {
+            "av_volume": 13024.875,
+            "collisions_fraction": 0.9743,
+            "contact_to_free_ratio": 0.217776,
+            "contact_volume": 2329.25,
+            "donor_counts_total": 487.0,
             "fret_efficiency": null,
-            "lifetime_donor": 3.638508,
-            "quantum_yield_donor": 0.492,
+            "lifetime_donor": 0.639201,
+            "quantum_yield_donor": 0.12175,
+            "quantum_yield_fret": null
+          },
+          "E96": {
+            "av_volume": 11830.125,
+            "collisions_fraction": 0.0,
+            "contact_to_free_ratio": 0.375376,
+            "contact_volume": 3228.75,
+            "donor_counts_total": 4000.0,
+            "fret_efficiency": null,
+            "lifetime_donor": 4.220883,
+            "quantum_yield_donor": 1.0,
             "quantum_yield_fret": null
           }
-        }
+        },
+        "structure": "148l.pdb"
       }
     },
-    "reason": "Re-pinned when IMP.bff's AV search default became FPS's link search (imp.bff e4a3e2b9d, owner 2026-10-12): the linker hops three voxels from every node it reaches, not only out of the seed (stencil 342). Every moved number is that search: the volumes grow (E96 94641 -> 103288 points, E129 39811 -> 57374, E139 104199 -> 112875 at the stated 21.5/0.5/3.5), so the contact geometry and the quenching move with them -- E139 no longer quenches (collisions 0.974 -> 0.0, donor lifetime 0.64 -> 4.22 ns) and E96 barely does (0.0 -> 0.0024). The record before this one is kept under _previous._previous.",
+    "reason": "Re-pinned when QuEst's allowed sphere became IMP.bff's declared default (owner 2026-10-12: \"allowed sphere radius must be enabled by default\"): AV_DEFAULT_ALLOWED_SPHERE = FPS's 2.25 A (LinkerInitialSphere 0.5 x the 4.5 A width) in place of QuEst's own 2.1 A. At these baselines' explicit 21.5/0.5/3.5 the larger sphere opens a few voxels around each anchor: E96 103 288 -> 104 379 points, E129 57 374 -> 57 393, E139 112 875 -> 113 389, the contact volumes and distances with them (R_DA 64.8467 -> 64.8028 A); no quantum yield, lifetime or count moved. The attachment atom was already dropped from the obstacles at every IMP.bff door and still is.",
     "replaced": "2026-10-12",
     "values": {
       "accessible_volumes": {
         "E129": {
           "extent": [
-            31.0,
-            33.5,
-            38.0
+            33.0,
+            34.0,
+            38.5
           ],
-          "n_points": 39811,
+          "n_points": 57374,
           "ng": 87,
-          "occupied_voxels": 39811,
+          "occupied_voxels": 57374,
           "points_centroid": [
-            25.816,
-            41.8085,
-            17.618
+            25.8454,
+            41.168,
+            16.6281
           ],
           "x0": [
             17.5,
@@ -149,17 +307,17 @@
         },
         "E139": {
           "extent": [
-            33.5,
-            39.0,
+            34.0,
+            39.5,
             39.0
           ],
-          "n_points": 104199,
+          "n_points": 112875,
           "ng": 87,
-          "occupied_voxels": 104199,
+          "occupied_voxels": 112875,
           "points_centroid": [
-            29.8589,
-            50.8943,
-            29.8703
+            29.7856,
+            50.9087,
+            29.8593
           ],
           "x0": [
             21.0,
@@ -169,17 +327,17 @@
         },
         "E96": {
           "extent": [
-            38.5,
-            32.5,
-            39.0
+            39.5,
+            34.0,
+            39.5
           ],
-          "n_points": 94641,
+          "n_points": 103288,
           "ng": 87,
-          "occupied_voxels": 94641,
+          "occupied_voxels": 103288,
           "points_centroid": [
-            -0.3846,
-            25.5856,
-            26.3243
+            -0.2057,
+            25.5895,
+            26.1658
           ],
           "x0": [
             5.5,
@@ -225,15 +383,15 @@
           55,
           124
         ],
-        "rda_mean": 64.7781,
-        "rda_mean_e": 62.5289,
-        "rmp": 61.4007
+        "rda_mean": 64.8467,
+        "rda_mean_e": 62.5111,
+        "rmp": 61.298
       },
       "fret": {
-        "av_volume": 23273.5,
+        "av_volume": 24697.25,
         "collisions_fraction": 0.0,
-        "contact_to_free_ratio": 0.167872,
-        "contact_volume": 3345.375,
+        "contact_to_free_ratio": 0.164484,
+        "contact_volume": 3488.5,
         "donor_counts_total": 4000.0,
         "fret_efficiency": 0.47325,
         "lifetime_donor": 4.220883,
@@ -244,10 +402,10 @@
       "seed": 5,
       "simulations": {
         "E129": {
-          "av_volume": 4976.375,
+          "av_volume": 7171.75,
           "collisions_fraction": 0.0,
-          "contact_to_free_ratio": 0.433597,
-          "contact_volume": 1505.125,
+          "contact_to_free_ratio": 0.3618,
+          "contact_volume": 1905.375,
           "donor_counts_total": 4000.0,
           "fret_efficiency": null,
           "lifetime_donor": 4.220883,
@@ -255,25 +413,25 @@
           "quantum_yield_fret": null
         },
         "E139": {
-          "av_volume": 13024.875,
-          "collisions_fraction": 0.9743,
-          "contact_to_free_ratio": 0.217776,
-          "contact_volume": 2329.25,
-          "donor_counts_total": 487.0,
-          "fret_efficiency": null,
-          "lifetime_donor": 0.639201,
-          "quantum_yield_donor": 0.12175,
-          "quantum_yield_fret": null
-        },
-        "E96": {
-          "av_volume": 11830.125,
+          "av_volume": 14109.375,
           "collisions_fraction": 0.0,
-          "contact_to_free_ratio": 0.375376,
-          "contact_volume": 3228.75,
+          "contact_to_free_ratio": 0.213553,
+          "contact_volume": 2482.875,
           "donor_counts_total": 4000.0,
           "fret_efficiency": null,
           "lifetime_donor": 4.220883,
           "quantum_yield_donor": 1.0,
+          "quantum_yield_fret": null
+        },
+        "E96": {
+          "av_volume": 12911.0,
+          "collisions_fraction": 0.0024,
+          "contact_to_free_ratio": 0.360449,
+          "contact_volume": 3420.75,
+          "donor_counts_total": 3944.0,
+          "fret_efficiency": null,
+          "lifetime_donor": 4.170031,
+          "quantum_yield_donor": 0.986,
           "quantum_yield_fret": null
         }
       },
@@ -287,13 +445,13 @@
         34.0,
         38.5
       ],
-      "n_points": 57374,
+      "n_points": 57393,
       "ng": 87,
-      "occupied_voxels": 57374,
+      "occupied_voxels": 57393,
       "points_centroid": [
-        25.8454,
+        25.8388,
         41.168,
-        16.6281
+        16.6257
       ],
       "x0": [
         17.5,
@@ -307,13 +465,13 @@
         39.5,
         39.0
       ],
-      "n_points": 112875,
+      "n_points": 113389,
       "ng": 87,
-      "occupied_voxels": 112875,
+      "occupied_voxels": 113389,
       "points_centroid": [
-        29.7856,
-        50.9087,
-        29.8593
+        29.7981,
+        50.879,
+        29.8643
       ],
       "x0": [
         21.0,
@@ -327,13 +485,13 @@
         34.0,
         39.5
       ],
-      "n_points": 103288,
+      "n_points": 104379,
       "ng": 87,
-      "occupied_voxels": 103288,
+      "occupied_voxels": 104379,
       "points_centroid": [
-        -0.2057,
-        25.5895,
-        26.1658
+        -0.1527,
+        25.5674,
+        26.0486
       ],
       "x0": [
         5.5,
@@ -379,15 +537,15 @@
       55,
       124
     ],
-    "rda_mean": 64.8467,
-    "rda_mean_e": 62.5111,
-    "rmp": 61.298
+    "rda_mean": 64.8028,
+    "rda_mean_e": 62.504,
+    "rmp": 61.288
   },
   "fret": {
-    "av_volume": 24697.25,
+    "av_volume": 24746.25,
     "collisions_fraction": 0.0,
-    "contact_to_free_ratio": 0.164484,
-    "contact_volume": 3488.5,
+    "contact_to_free_ratio": 0.164214,
+    "contact_volume": 3490.5,
     "donor_counts_total": 4000.0,
     "fret_efficiency": 0.47325,
     "lifetime_donor": 4.220883,
@@ -398,10 +556,10 @@
   "seed": 5,
   "simulations": {
     "E129": {
-      "av_volume": 7171.75,
+      "av_volume": 7174.125,
       "collisions_fraction": 0.0,
-      "contact_to_free_ratio": 0.3618,
-      "contact_volume": 1905.375,
+      "contact_to_free_ratio": 0.362186,
+      "contact_volume": 1907.5,
       "donor_counts_total": 4000.0,
       "fret_efficiency": null,
       "lifetime_donor": 4.220883,
@@ -409,10 +567,10 @@
       "quantum_yield_fret": null
     },
     "E139": {
-      "av_volume": 14109.375,
+      "av_volume": 14173.625,
       "collisions_fraction": 0.0,
-      "contact_to_free_ratio": 0.213553,
-      "contact_volume": 2482.875,
+      "contact_to_free_ratio": 0.213326,
+      "contact_volume": 2492.0,
       "donor_counts_total": 4000.0,
       "fret_efficiency": null,
       "lifetime_donor": 4.220883,
@@ -420,10 +578,10 @@
       "quantum_yield_fret": null
     },
     "E96": {
-      "av_volume": 12911.0,
+      "av_volume": 13047.375,
       "collisions_fraction": 0.0024,
-      "contact_to_free_ratio": 0.360449,
-      "contact_volume": 3420.75,
+      "contact_to_free_ratio": 0.357317,
+      "contact_volume": 3434.75,
       "donor_counts_total": 3944.0,
       "fret_efficiency": null,
       "lifetime_donor": 4.170031,

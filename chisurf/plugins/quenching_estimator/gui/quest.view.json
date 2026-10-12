@@ -97,6 +97,15 @@
                 },
                 {
                   "type": "value",
+                  "attr": "av_allowed_sphere_radius",
+                  "kind": "float",
+                  "label": "Allowed sphere (Å)",
+                  "description": "Radius around the attachment atom inside which the linker ignores obstacles, so it can leave the atom it is tied to. On by default at FPS's 2.25 Å (0.5 × the 4.5 Å linker width); the attachment atom itself is never an obstacle.",
+                  "minimum": 0.0,
+                  "maximum": 20.0
+                },
+                {
+                  "type": "value",
                   "attr": "dg",
                   "kind": "float",
                   "label": "Grid resolution (Å)",

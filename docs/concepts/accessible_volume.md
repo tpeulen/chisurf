@@ -73,6 +73,14 @@ also offers a faster search that hops only out of the start sphere and then step
 to the 74 nearest neighbours (`link_search = "fast"`); it returns ~7 % less volume. The result is a **weighted point cloud** — the
 allowed grid points $\mathbf{r}_i$ with weights $w_i$.
 
+Two rules keep the attachment atom from walling in its own dye, both FPS's and both
+on by default. The **attachment atom is not an obstacle** — the atom alone, as FPS
+drops it; the rest of its residue stays (the fps.json `strip_mask` removes more when
+a document asks for it). And inside the **allowed sphere** (`allowed_sphere_radius`)
+the linker ignores obstacles: FPS's `LinkerInitialSphere` of half a linker width,
+2.25 Å at the default 4.5 Å width. A position that does not set it gets half its own
+linker width; the dye itself must still fit where it ends up.
+
 ## The mean dye position
 
 The first quantity read off the cloud is the **mean dye position**, the

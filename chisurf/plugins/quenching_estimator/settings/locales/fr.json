@@ -41,6 +41,10 @@
       "label": "Rayon du fluorophore",
       "description": "Rayon d'exclusion représentant le fluorophore comme une sphère (approximation à une sphère)."
     },
+    "av_parameter.allowed_sphere_radius": {
+      "label": "Sphère autorisée",
+      "description": "Rayon autour de l'atome d'ancrage dans lequel le linker ignore les obstacles, pour pouvoir quitter l'atome auquel il est lié. Activée par défaut à la valeur de FPS, 2,25 Å (0,5 × la largeur de linker de 4,5 Å) ; l'atome d'ancrage lui-même n'est jamais un obstacle."
+    },
     "dg": {
       "label": "Résolution de la grille",
       "description": "Résolution de la grille utilisée pour calculer le volume accessible (AV) et l'espace de diffusion."

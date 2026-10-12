@@ -35,6 +35,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Iterable, MutableMapping
 
+from chisurf.plugins.quenching_estimator.core.av import DEFAULT_ALLOWED_SPHERE_RADIUS
 from chisurf.plugins.quenching_estimator.core.i18n import resolve_locale, translate_catalog, ui
 from chisurf.plugins.quenching_estimator.core.project import (
     DEFAULT_FORSTER_RADIUS,
@@ -63,6 +64,7 @@ FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
         ("av_linker_length", "av_parameter.linker_length"),
         ("av_linker_width", "av_parameter.linker_width"),
         ("av_radius1", "av_parameter.radius1"),
+        ("av_allowed_sphere_radius", "av_parameter.allowed_sphere_radius"),
         ("dg", "dg"),
         ("tau0", "tau0"),
         ("donor_D", "fret.dyes.0.D"),
@@ -91,6 +93,14 @@ FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
         ("fret_kappa2", "fret.kappa2"),
     )
 )
+
+#: What a field shows when the project does not carry it. A project (or a dye
+#: picked from the catalogue) that never set ``allowed_sphere_radius`` gets the
+#: accessible volume's own default, so the form shows that number rather than
+#: an empty box that reads as "off".
+FIELD_DEFAULTS: dict[str, Any] = {
+    "av_allowed_sphere_radius": DEFAULT_ALLOWED_SPHERE_RADIUS,
+}
 
 #: Catalog entries that are *not* a scalar field, and where they live instead.
 #: Listed so the sync test can tell "deliberately not a spin box" from "someone
@@ -226,7 +236,10 @@ class ProjectFormModel:
         path = FIELD_PATHS.get(name)
         if path is None:
             raise AttributeError(name)
-        return _get_path(self._project, path)
+        value = _get_path(self._project, path)
+        if value is None:
+            return FIELD_DEFAULTS.get(name)
+        return value
 
     def __setattr__(self, name: str, value: Any) -> None:
         path = FIELD_PATHS.get(name)

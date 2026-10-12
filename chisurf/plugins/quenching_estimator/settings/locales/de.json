@@ -41,6 +41,10 @@
       "label": "Farbstoffradius",
       "description": "Ausschlussradius, der den Farbstoff als Kugel beschreibt (Ein-Kugel-Näherung)."
     },
+    "av_parameter.allowed_sphere_radius": {
+      "label": "Erlaubte Kugel",
+      "description": "Radius um das Ankeratom, innerhalb dessen der Linker Hindernisse ignoriert, damit er das Atom verlassen kann, an das er gebunden ist. Standardmäßig an, mit dem FPS-Wert 2,25 Å (0,5 × die Linkerbreite von 4,5 Å); das Ankeratom selbst ist nie ein Hindernis."
+    },
     "dg": {
       "label": "Gitterauflösung",
       "description": "Gitterauflösung für die Berechnung des zugänglichen Volumens (AV) und des Diffusionsraums."

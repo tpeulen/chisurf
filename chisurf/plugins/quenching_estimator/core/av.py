@@ -63,6 +63,8 @@ def av_defaults() -> dict:
         # "fps": FPS's link search (the 3-voxel cube hop from every node);
         # "fast": the hop out of the seed only, then the 74 stencil.
         "link_search": str(IMP.bff.AV_DEFAULT_LINK_SEARCH),
+        # the allowed sphere, on by default at FPS's 2.25 A
+        "allowed_sphere_radius": float(IMP.bff.AV_DEFAULT_ALLOWED_SPHERE),
     }
 
 
@@ -182,29 +184,19 @@ def resolve_av_backend(preference=None):
     )
 
 
-#: Radius around the attachment atom inside which obstacles are ignored, so the
-#: linker can leave the atom it is tied to.
+#: The allowed sphere, A: around the attachment atom the linker ignores
+#: obstacles, so it can leave the atom it is tied to.
 #:
-#: **One project-level value, 2.1 A**, replacing QuEst's 0.5 default and the
-#: separate 2.0 clamp IMP's path got. 2.1 A is carbon's CHARMM radius -- the
-#: attachment atom is a CB in every default workflow, and the sphere that lets
-#: the linker escape it should be the size of that atom. It also sits just above
-#: the cliff below which IMP's path search starts nowhere and returns an **empty
-#: volume with no error**; imp.bff's own reference test uses 2.0 and expects zero
-#: points at 1.0.
-#:
-#: **Only the IMP.bff backend honours it.** `ll.dyeDensityAV1` has no such
-#: parameter; the LabelLib path zeroes the attachment atom's own vdW radius
-#: instead. Measured: raising the default from 0.5 to 2.1 moves LabelLib's
-#: labelable-site count on 148l chain E by exactly nothing (43/151 before and
-#: after), while IMP.bff goes 147 -> 151/151 and quenching sites 60 -> 67.
-#:
-#: That is also the correction to a claim made when IMP.bff was promoted: the
-#: 43-vs-147 gap between the backends is **not** mostly this parameter, it is
-#: how each treats the attachment site. LabelLib frees only the attachment atom,
-#: so a CB hemmed in by CHARMM-sized neighbours has no way out; IMP ignores every
-#: obstacle within the sphere.
-DEFAULT_ALLOWED_SPHERE_RADIUS = 2.1
+#: **IMP.bff's declared default, ``AV_DEFAULT_ALLOWED_SPHERE`` = 2.25 A**
+#: (owner, 2026-10-12: "allowed sphere radius must be enabled by default"):
+#: FPS's ``LinkerInitialSphere`` 0.5 times the 4.5 A width of every FPS linker
+#: preset. Restated here because this module imports IMP lazily (a module-level
+#: default argument cannot read it); ``test_av_defaults.py`` holds the two equal.
+#: It was QuEst's own 2.1 A until 2026-10-12 (carbon's CHARMM radius, chosen
+#: when the search had no first step); at 2.1 A one more 148L chain-E CB site
+#: (161) came back empty than at FPS's 2.25 A. The attachment atom itself is
+#: never an obstacle -- IMP.bff drops it at every door, as FPS does.
+DEFAULT_ALLOWED_SPHERE_RADIUS = 2.25
 
 #: Smallest `allowed_sphere_radius` that IMP.bff's path search can start from.
 #: Only reachable now by asking for less than the default explicitly; the clamp
@@ -859,8 +851,8 @@ class AV:
         if verbose:
             print("AV backend    : %s" % backend)
         # `IMP.bff.get_av`, the array door: the obstacles as one (N, 4) x/y/z/radius
-        # array (the attachment atom among them -- `allowed_sphere_radius` frees
-        # it) and the attachment point.
+        # array (the attachment atom among them -- IMP.bff drops it from the
+        # obstacles, as FPS does) and the attachment point.
         coords = np.asarray(atoms["coord"], dtype=np.float64)
         xyzr = np.ascontiguousarray(
             np.hstack([coords, np.asarray(atoms["radius"], dtype=np.float64).reshape(-1, 1)])

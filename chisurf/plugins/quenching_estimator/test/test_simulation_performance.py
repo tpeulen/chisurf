@@ -99,6 +99,11 @@ PDB_PATH = Path(__file__).parent / "148l.pdb"
 # search -- with FPS's Bondi radii 96 and 132 label (imp.bff
 # okf/validation/fps_screening_ab.md).
 #
+# Re-scanned 2026-10-12 (later), when QuEst's allowed sphere became IMP.bff's
+# declared default (FPS's 2.25 A, was QuEst's 2.1 A): the three stay -- 99
+# 0.320 -> 0.360, 89 0.784, 132 0.459; of the classic sites 96 (0.986) and 129
+# (1.000) still barely or never quench, so they do not come back.
+#
 # Do not "fix" a failure here by widening the assertion: it means the volume
 # moved, and the sites have to be re-measured (scratch loop over every CB site,
 # 0 < QY < 1) rather than the test relaxed.

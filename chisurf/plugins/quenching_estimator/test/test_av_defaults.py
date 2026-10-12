@@ -64,3 +64,24 @@ def test_the_dye_catalogue_width_is_the_declared_width():
     assert catalogue
     for name, dye in catalogue.items():
         assert dye["av_parameter"]["linker_width"] == bff.AV_DEFAULT_LINKER_WIDTH, name
+
+
+def test_the_allowed_sphere_is_imp_bffs_and_on():
+    """Owner, 2026-10-12: "allowed sphere radius must be enabled by default".
+
+    QuEst restates IMP.bff's ``AV_DEFAULT_ALLOWED_SPHERE`` (FPS's 2.25 A) because
+    a module-level default argument cannot import IMP lazily; it was its own
+    2.1 A until then. The form shows it when a project does not carry one.
+    """
+    from chisurf.plugins.quenching_estimator.core.av import (
+        DEFAULT_ALLOWED_SPHERE_RADIUS,
+        av_defaults,
+    )
+    from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
+
+    assert DEFAULT_ALLOWED_SPHERE_RADIUS == bff.AV_DEFAULT_ALLOWED_SPHERE == 2.25
+    assert av_defaults()["allowed_sphere_radius"] == DEFAULT_ALLOWED_SPHERE_RADIUS
+    model = ProjectFormModel()
+    assert model.av_allowed_sphere_radius == DEFAULT_ALLOWED_SPHERE_RADIUS
+    model.av_allowed_sphere_radius = 3.0
+    assert model.project["av_parameter"]["allowed_sphere_radius"] == 3.0

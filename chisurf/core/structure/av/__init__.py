@@ -108,6 +108,11 @@ def av_defaults() -> dict:
         # How the linker is routed: "fps" (FPS's own search, the 3-voxel cube
         # hop from every node) or "fast" (the hop out of the seed only).
         "link_search": str(IMP.bff.AV_DEFAULT_LINK_SEARCH),
+        # The allowed sphere around the attachment atom, on by default: FPS's
+        # 2.25 A at the default width; ``linker_initial_sphere`` is the same
+        # sphere in linker widths (FPS's rule, 0.5 W, for any other width).
+        "allowed_sphere_radius": float(IMP.bff.AV_DEFAULT_ALLOWED_SPHERE),
+        "linker_initial_sphere": float(IMP.bff.AV_DEFAULT_LINKER_INITIAL_SPHERE),
     }
 
 
@@ -166,12 +171,13 @@ class BasicAV:
         #: "fps" (FPS's link search, IMP.bff's default) or "fast" (seed-only).
         self.link_search = str(link_search)
         self.dg = simulation_grid_resolution
-        # ``None`` means the caller did not choose: hand upstream the sentinel
-        # and let it derive FPS's seed sphere, half the linker width
-        # (IMP.bff ``av_derived_allowed_sphere_radius``).
-        self.allowed_sphere_radius = (
-            -1.0 if allowed_sphere_radius is None else float(allowed_sphere_radius)
-        )
+        # ``None`` means the caller did not choose: the allowed sphere is on, at
+        # FPS's rule for this linker width, LinkerInitialSphere 0.5 x W (2.25 A
+        # at the default width, IMP.bff's ``AV_DEFAULT_ALLOWED_SPHERE``). A
+        # negative value asks IMP.bff to derive the same.
+        if allowed_sphere_radius is None:
+            allowed_sphere_radius = defaults["linker_initial_sphere"] * float(linker_width)
+        self.allowed_sphere_radius = float(allowed_sphere_radius)
 
         self.verbose = verbose
         self.position_name = position_name
@@ -224,13 +230,19 @@ class BasicAV:
         # The upstream door takes one (N, 4) array of x, y, z, radius, and the
         # three dye radii separately.
         xyz = np.ascontiguousarray(obstacle_atoms["xyz"], dtype=np.float64)
+        # The source is read off the *unfiltered* atoms: the strip drops side-
+        # chain atoms of the site residue, so an index into ``atoms`` is not an
+        # index into ``obstacle_atoms`` for an attachment atom past the CB.
+        # IMP.bff finds the attachment among the obstacles by its coordinate
+        # and drops it from them, as FPS does.
+        source_xyz = np.ascontiguousarray(atoms["xyz"][attachment_atom_index], dtype=np.float64)
         atoms_xyzr = np.ascontiguousarray(
             np.hstack([xyz, np.asarray(obstacle_atoms["radius"], dtype=np.float64)[:, None]])
         )
 
         result = _compute_av()(
             atoms_xyzr,
-            np.ascontiguousarray(xyz[attachment_atom_index], dtype=np.float64),
+            source_xyz,
             linker_length=self.linker_length,
             linker_width=self.linker_width,
             r1=dye_radii[0],

@@ -2,6 +2,11 @@
 
 ## 2026-10-12
 
+- AV: attachment atom excluded and allowed sphere on by default (owner decision; IMP.bff 8ce0dcc28, chimol b250441).
+  FPS drops the attachment atom alone, which IMP.bff already did at every lattice door (now tested exactly);
+  `AV_DEFAULT_ALLOWED_SPHERE` = 2.25 Å (FPS's LinkerInitialSphere 0.5 x 4.5), a position without one takes 0.5 W.
+  QuEst gains an Allowed sphere field (2.1 -> 2.25 Å); BasicAV picked the wrong source atom past CB (fixed).
+  Neither rule was the cause of 148L's empty sites (48 with IMP radii; FPS's Bondi radii give 34 vs FPS's 33).
 - Tree-wide ruff check and format clean again (123 files reformatted, import order fixed). The plugin-dependency
   extractor no longer counts an import under `if TYPE_CHECKING:` as a load-time edge, so a lazy shim can declare
   its names for type checkers without making two plugins require each other.
