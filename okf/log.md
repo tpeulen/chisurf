@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- Chat transcripts, Ask Docs and the documentation viewer render inline Markdown as rich-text runs: links drawn in
+  place and clickable (also across a wrap), real bold and code spans, no duplicate link-chip rows and no literal
+  backticks in table cells (emtk `draw_inline`, 8f2053a..20ffaf4). Ask Docs links open the docs browser; the
+  assistant routes through `doc_links.open_link`. emtk pin to b16f504.
 - PRD-154 gate 1 run (not met; runs killed by exit 137 and a session restart while the tree moved): the run-1
   failures fixed at their cause. emtk 7ea9b2f (opaque fills are row slices), 83c6b01 (a fragmented full atlas repacks
   before it declines), e0f8b67 (a dock unwinds a window that raised); chimol b2152dd (help panel tooltips); macro

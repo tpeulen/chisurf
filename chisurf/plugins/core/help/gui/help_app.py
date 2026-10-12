@@ -1397,8 +1397,14 @@ class HelpGui:
         self._draw_provider_settings()
         self.tour.draw(width, height)
 
-    def _expand_inline_markup(self, text: str) -> tuple[str, list[tuple[str, str]]]:
-        """Expand inline math and Sphinx/MyST roles, returning clean text and links."""
+    def _expand_inline_markup(
+        self, text: str, as_markdown: bool = False
+    ) -> tuple[str, list[tuple[str, str]]]:
+        """Expand inline math and Sphinx/MyST roles, returning clean text and links.
+
+        With ``as_markdown`` the roles become ``[label](target)`` Markdown links and the
+        text keeps its emphasis, code spans and ``$math$``, for ``draw_inline`` to draw as runs.
+        """
         base_dir = self.model.current_path.parent if self.model.current_path else None
         links: list[tuple[str, str]] = []
 
@@ -1420,7 +1426,7 @@ class HelpGui:
                 target = f"src:{clean_body}"
                 if (label, target) not in links:
                     links.append((label, target))
-                return f"`{label}`"
+                return f"[{label}]({target})" if as_markdown else f"`{label}`"
 
             if role == "cite":
                 from chisurf.plugins.core.help.api import bibliography as bib
@@ -1438,14 +1444,14 @@ class HelpGui:
                         target = bib.entry_url(entry)
                         if (label, target) not in links:
                             links.append((label, target))
-                        labels.append(label)
+                        labels.append(f"[{label}]({target})" if as_markdown else label)
                     elif key in refs:
                         ref_entry = refs[key]
                         label = ref_entry[1] or key
                         target = f"{ref_entry[0]}#{key}"
                         if (label, target) not in links:
                             links.append((label, target))
-                        labels.append(label)
+                        labels.append(f"[{label}]({target})" if as_markdown else label)
                     else:
                         labels.append(f"`{key}`")
                 return "; ".join(labels) if labels else body
@@ -1456,6 +1462,7 @@ class HelpGui:
             if path or anchor:
                 if (caption, target) not in links:
                     links.append((caption, target))
+                return f"[{caption}]({target})" if as_markdown else caption
             return caption
 
         s = re.sub(r"\{(ref|doc|numref|eq|term|src|cite)\}`([^`]+)`", role_repl, text)
@@ -1470,9 +1477,11 @@ class HelpGui:
                     target = f"src:{target}"
             if (label, target) not in links:
                 links.append((label, target))
-            return label
+            return f"[{label}]({target})" if as_markdown else label
 
         s = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", link_repl, s)
+        if as_markdown:
+            return s, links
 
         # 3. Format inline math: $...$
         def math_repl(m: re.Match) -> str:
@@ -1954,30 +1963,17 @@ class HelpGui:
 
         self.model.open_page(target)
 
-    def _draw_link_chips(self, links: list[tuple[str, str]], id_prefix: str) -> None:
-        if not links:
-            return
-        im.dummy(0.0, 1.0)
-        sep_w = im.calc_text_size("•")[0] + 12.0
-        is_first = True
-        for l_idx, (label, target) in enumerate(links):
-            link_label = label
-            tw = im.calc_text_size(link_label)[0]
-            needed_w = tw if is_first else (tw + sep_w)
+    def _draw_rich(
+        self, text: str, tag: str, colour=None, bold: bool = False, prefix: str = ""
+    ) -> None:
+        """Draw inline Markdown as runs: links in place, real bold and code spans."""
+        from emtk.widgets.markdown import draw_inline
 
-            if not is_first:
-                avail = im.get_line_avail()
-                if avail >= needed_w:
-                    im.same_line()
-                    im.text_disabled("•")
-                    im.same_line()
-                else:
-                    is_first = True
-
-            if im.text_link(f"{link_label}##{id_prefix}_{l_idx}"):
-                self._handle_link_click(target)
-            im.set_item_tooltip(f"Open: {target}")
-            is_first = False
+        source, _ = self._expand_inline_markup(text, as_markdown=True)
+        draw_inline(
+            source, self._handle_link_click, tag, colour=colour, bold=bold, prefix=prefix,
+            zoom=self.model.zoom_factor(),
+        )
 
     def _draw_markdown_reader(self, width: float, height: float) -> None:
         """Render formatted markdown elements in an immediate-mode child container."""
@@ -2053,11 +2049,7 @@ class HelpGui:
                 im.dummy(0.0, 2.0)
 
             elif block.kind == "p":
-                clean_text, links = self._expand_inline_markup(block.text)
-                if not links or clean_text.strip() != "; ".join(label for label, _ in links):
-                    im.text_wrapped(clean_text)
-                if links:
-                    self._draw_link_chips(links, f"plnk_{idx}")
+                self._draw_rich(block.text, f"p{idx}")
                 im.dummy(0.0, 4.0)
 
             elif block.kind == "math":
@@ -2139,7 +2131,8 @@ class HelpGui:
                     )
                 )
                 adm_title = block.items[0] if block.items else block.arg.capitalize()
-                clean_body, adm_links = self._expand_inline_markup(block.text)
+                clean_body, _ = self._expand_inline_markup(block.text)
+                clean_body = clean_body.replace("`", "")
                 im.dummy(0.0, 4.0)
                 x, y = im.get_cursor_screen_pos()
                 body_w = max(40.0, width - 24.0)
@@ -2148,7 +2141,7 @@ class HelpGui:
                 estimated_lines = max(1, int((measured_h + line_height - 1) // line_height))
                 if measured_w > body_w:
                     estimated_lines *= max(1, int((measured_w + body_w - 1) // body_w))
-                panel_h = 20.0 + line_height * (1 + estimated_lines + len(adm_links))
+                panel_h = 20.0 + line_height * (1 + estimated_lines)
                 draw_list = im.get_window_draw_list()
                 draw_list.add_rect_filled((x, y), (x + width, y + panel_h), (30, 40, 55, 255))
                 draw_list.add_rect_filled((x, y), (x + 3.0, y + panel_h), adm_color)
@@ -2157,9 +2150,7 @@ class HelpGui:
                 push_text_style("body", bold=True, zoom=zoom)
                 im.text_colored(adm_color, adm_title)
                 pop_text_style()
-                im.text_wrapped(clean_body)
-                if adm_links:
-                    self._draw_link_chips(adm_links, f"admlnk_{idx}")
+                self._draw_rich(block.text, f"adm{idx}")
                 im.dummy(0.0, 8.0)
                 im.unindent(12.0)
                 remaining = y + panel_h - im.get_cursor_screen_pos()[1]
@@ -2174,7 +2165,9 @@ class HelpGui:
                 column_widths = [
                     max(
                         im.calc_text_size(
-                            self._expand_inline_markup(row[column] if column < len(row) else "")[0]
+                            self._expand_inline_markup(row[column] if column < len(row) else "")[
+                                0
+                            ].replace("`", "")
                         )[0]
                         for row in rows
                     )
@@ -2200,24 +2193,23 @@ class HelpGui:
                         for c_idx in range(cols):
                             cell_text = row[c_idx] if c_idx < len(row) else ""
                             im.table_next_column()
-                            clean_cell, _ = self._expand_inline_markup(cell_text)
                             if r_idx == 0:
-                                push_text_style("body", bold=True, zoom=zoom)
-                                _text_wrapped_coloured((140, 200, 255, 255), clean_cell)
-                                pop_text_style()
+                                self._draw_rich(
+                                    cell_text,
+                                    f"c{idx}_{r_idx}_{c_idx}",
+                                    colour=(140, 200, 255, 255),
+                                    bold=True,
+                                )
                             else:
-                                im.text_wrapped(clean_cell)
+                                self._draw_rich(cell_text, f"c{idx}_{r_idx}_{c_idx}")
                     im.end_table()
                 im.dummy(0.0, 4.0)
 
             elif block.kind == "list_item":
-                clean_item, item_links = self._expand_inline_markup(block.text)
                 bullet = (
                     block.arg if block.arg and not block.arg.startswith(("-", "*", "+")) else "•"
                 )
-                im.text_wrapped(f"  {bullet}  {clean_item}")
-                if item_links:
-                    self._draw_link_chips(item_links, f"llnk_{idx}")
+                self._draw_rich(block.text, f"li{idx}", prefix=f"  {bullet}  ")
                 im.dummy(0.0, 1.0)
 
             elif block.kind == "hr":
@@ -2302,6 +2294,7 @@ class HelpGui:
             size=(avail_w, transcript_h),
             on_insert_code=None,
             on_replace_code=None,
+            on_link=self._handle_link_click,
         )
 
         im.separator()

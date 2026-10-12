@@ -536,6 +536,7 @@ class ChatGui:
             size=(width, transcript_h),
             on_insert_code=self._on_insert_code,
             on_replace_code=self._on_replace_code,
+            on_link=self._open_link,
         )
 
         im.separator()
@@ -624,6 +625,12 @@ class ChatGui:
             im.set_item_tooltip(f"Respond to permission request: {opt_name}")
             im.pop_style_color()
         im.separator()
+
+    def _open_link(self, target: str) -> None:
+        """Route an answer link: docs pages to the documentation browser, URLs to the browser."""
+        from chisurf.emtk.doc_links import open_link
+
+        open_link(target)
 
     def _on_insert_code(self, code: str) -> None:
         if self.model.editor_ref and hasattr(self.model.editor_ref, "insert_code_at_cursor"):
