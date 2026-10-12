@@ -26,6 +26,7 @@ HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 _MAKE_CHUNKS = REPO / "okf" / "plugins" / "emtk-ports" / "fcs_merger" / "scripts" / "make_chunks.py"
 _spec = importlib.util.spec_from_file_location("fcs_merger_make_chunks", _MAKE_CHUNKS)
+assert _spec is not None and _spec.loader is not None, _MAKE_CHUNKS
 _make_chunks = importlib.util.module_from_spec(_spec)
 sys.path.insert(0, str(_MAKE_CHUNKS.parent))  # the script imports its siblings
 _spec.loader.exec_module(_make_chunks)

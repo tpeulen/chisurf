@@ -47,7 +47,7 @@ class OptimizationSettingsModel:
     would misreport what the next run does.
     """
 
-    def __init__(self, settings: dict = None):
+    def __init__(self, settings: dict | None = None):
         import chisurf as cs
 
         source = settings if settings is not None else cs.core.settings.cs_settings

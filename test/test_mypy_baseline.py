@@ -43,7 +43,7 @@ def count_mypy_errors() -> dict[str, int]:
         m = _LINE.match(line)
         if m:
             counts[m.group("file")] += 1
-    if not counts and proc.returncode not in (0, 1):
+    if proc.returncode not in (0, 1) or (not counts and proc.stderr.strip()):
         raise RuntimeError(f"mypy failed to run:\n{proc.stdout}\n{proc.stderr}")
     return dict(sorted(counts.items()))
 

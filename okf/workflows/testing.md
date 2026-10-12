@@ -510,6 +510,11 @@ count that dropped without being written back fails. After fixing errors run
 `python test/test_mypy_baseline.py --update`. Qt modules are `follow_imports = "skip"` in
 `pyproject.toml` (the conda PyQt5 ships no stubs), so Qt names are `Any` rather than noise.
 
+Re-derive it with a Python that has mypy: `pixi run -e dev python test/test_mypy_baseline.py --update`
+(CI uses the `dev` env; the `test` env has no mypy module, so the guard raises there instead of
+reading an empty run as zero errors). Baseline refreshes must only lower counts; an edit that raises
+one is fixed, not recorded.
+
 ## Lint A/B targets
 
 The approved lint worktree's target inventory is retained below. Select the
