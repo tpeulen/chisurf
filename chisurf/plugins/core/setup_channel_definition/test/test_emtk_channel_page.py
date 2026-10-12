@@ -1063,14 +1063,15 @@ def test_the_detector_table_buttons_never_overlap_or_clip_in_a_narrow_host(make,
     for key, w in shown.items():
         assert w >= 20.0, (key, w)  # the table drops columns before it squeezes them
     compact = app.page._compact
+    buttons = app.page._detector_buttons
     assert compact == (width < 540)
     if "calc" in shown and "delete" in shown:
-        assert (control.value(0, "calc"), control.value(0, "delete")) == (
+        assert (buttons.caption(0, "calc"), buttons.caption(0, "delete")) == (
             ("G", "Del") if compact else ("Calc G", "Delete")
         )
         for column, cw in zip(control._shown, control._widths):
             if column.key in ("calc", "delete"):
-                assert cw >= len(str(control.value(0, column.key))) * 6.0 + 8.0, (
+                assert cw >= len(buttons.caption(0, column.key)) * 6.0 + 8.0, (
                     width,
                     column.key,
                     cw,

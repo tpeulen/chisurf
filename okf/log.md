@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- Small-window defects found by the `zoom_125` sweep fixed at their causes (emtk a939f78: a button wider than its
+  line elides, dock tabs elide before they scroll, tab bars wrap). The channel definition's Reading row and grid
+  measure and stack, its PIE table goes compact in a narrow panel, and a tool hub's rail scrolls. The sweep compares
+  the A button against the current plot area and clicks only visible reference controls.
 - AV radius scale 0.84, fitted to FPS: median FPS/IMP radius ratio 0.838 over 20,434 heavy atoms of 148L, 3GUN and
   1RTD; 148L CB volume against FPS 0.906 -> 0.990; empty sites 48 -> 40 (FPS 33; the rest are HETATM/waters or the
   nearest-grid-point start the owner kept); 3GUN bias against FPS +1.22 -> +0.90 Å at the same rmsd. `av_defaults()`

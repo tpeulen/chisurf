@@ -24,6 +24,7 @@ import copy
 import json
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from pathlib import Path
 from threading import Event
 
@@ -87,6 +88,7 @@ RED_BUTTON = ((170, 40, 40, 220), (210, 60, 60, 255), (240, 80, 80, 255))
 FIELD_W = 170.0
 NUMBER_W = 120.0
 GRID_GAP = 28.0
+MIN_FIELD_W = 60.0
 
 
 # --------------------------------------------------------------------------- #
@@ -174,11 +176,14 @@ class _ButtonCells:
     there calls the action with the record. Gap in emtk: a ``data_table`` column cannot be an action.
     """
 
-    def __init__(self, binding, columns):
+    def __init__(self, binding, columns, short=None, compact=None):
         self.binding = binding
         self.control = binding.control
         #: ``{column key: (caption, tooltip, action(record))}``
         self.columns = columns
+        #: ``{column key: caption}`` shown instead while ``compact()`` is true (a narrow host)
+        self.short = short or {}
+        self.compact = compact or (lambda: False)
         self.hot = None
         self.control_draw, self.control_press, self.control_tip = (
             self.control.draw,
@@ -213,6 +218,17 @@ class _ButtonCells:
                 x += width
         return out
 
+    def caption(self, index, key):
+        """The caption of a button cell in the language in use (and the short one in a narrow host).
+
+        The table's own cell stays empty: the cell's text would be drawn under the button, untranslated.
+        """
+        value = self.control.value(index, key) if index is not None else ""
+        if value:
+            return tr(str(value))
+        short = self.short.get(key)
+        return tr(short if short and self.compact() else self.columns[key][0])
+
     def fit_columns(self):
         """Give each button column the room its widest caption needs *in the language in use*.
 
@@ -220,8 +236,6 @@ class _ButtonCells:
         62 px cell is clipped. The widest caption of the rows in view (else the column's own) sets the
         column's minimum, and the table shares out the rest.
         """
-        from dataclasses import replace
-
         from emtk import im
 
         for position, column in enumerate(self.control.columns):
@@ -229,9 +243,8 @@ class _ButtonCells:
             if entry is None:
                 continue
             captions = {
-                tr(str(self.control.value(index, column.key) or entry[0]))
-                for index in range(self.control.row_count())
-            } or {tr(entry[0])}
+                self.caption(index, column.key) for index in range(self.control.row_count())
+            } or {self.caption(None, column.key)}
             need = max(im.calc_text_size(caption)[0] for caption in captions) + 18.0
             if column.min_width != need:
                 self.control.columns[position] = replace(column, min_width=need)
@@ -248,7 +261,7 @@ class _ButtonCells:
         p.push_clip(bx, by, bw, bh)
         for position, index, key, (cx, cy, cw, ch) in self.cells():
             # the cells hold the source text (the rows are cached); it is translated where it is drawn
-            caption = tr(str(self.control.value(index, key) or self.columns[key][0]))
+            caption = self.caption(index, key)
             width = cw - 4.0  # covers the cell's own text, which only reserves the column its width
             bx0, by0, bh0 = cx + (cw - width) / 2.0, cy + 2.0, ch - 4.0
             hot = self.hot == (index, key)
@@ -506,6 +519,8 @@ class ChannelDefinitionWidget:
                     self._remove_detector,
                 ),
             },
+            short={"calc": mark("G"), "delete": mark("Del")},
+            compact=lambda: self._compact,
         )
         self._window_table = self._binding(
             "window_rows",
@@ -531,6 +546,8 @@ class ChannelDefinitionWidget:
             {
                 "delete": (mark("Delete"), mark("Remove this PIE window."), self._remove_window),
             },
+            short={"delete": mark("Del")},
+            compact=lambda: self._compact,
         )
         self._lut_table = self._binding(
             "lut_rows",
@@ -793,6 +810,7 @@ class ChannelDefinitionWidget:
         """
         from emtk import im
 
+        avail = im.get_content_region_avail()[0]
         left = max((self._width(r[0][0]) for r in rows), default=0.0)
         right = max((self._width(r[1][0]) for r in rows if len(r) > 1), default=0.0)
         field = max((cell[2] for r in rows for cell in r[:1]), default=FIELD_W)
@@ -801,6 +819,9 @@ class ChannelDefinitionWidget:
             im.get_content_region_avail()[0]
             >= second + right + max((cell[2] for r in rows for cell in r[1:]), default=0.0) + 8.0
         )
+        # No room for a usable field beside the widest label (a docked panel, the window magnified):
+        # each label sits above its field, which then has the page's width.
+        stacked = avail - left - 8.0 < MIN_FIELD_W
         for row in rows:
             for group in [row] if wide else [[cell] for cell in row]:
                 for n, (label, draw_field, width) in enumerate(group):
@@ -809,8 +830,12 @@ class ChannelDefinitionWidget:
                         im.same_line(label_x)
                     im.align_text_to_frame_padding()
                     im.text(label)
-                    im.same_line(field_x)
-                    im.set_next_item_width(width)
+                    if stacked:
+                        field_x = 0.0
+                    else:
+                        im.same_line(field_x)
+                    # a field never reaches past the page: in a narrow host it gives way (measured, not fixed)
+                    im.set_next_item_width(max(MIN_FIELD_W, min(width, avail - field_x - 8.0)))
                     draw_field()
 
     def _text_field(self, key, value):
@@ -972,7 +997,8 @@ class ChannelDefinitionWidget:
                 reading["file_type"] = options[index]
                 self.model.changed()
                 self._used("file_type")
-            im.same_line()
+            if read_beside:
+                im.same_line()
             if im.button(tr("Read")):
                 self.browse("measurement")
                 self._used("read")
@@ -1016,13 +1042,10 @@ class ChannelDefinitionWidget:
             for label in (tr("File Type:"), tr("Macrotime res. (ns):"), tr("Microtime binning:"))
         )
         # the Read button sits beside the combo: in a narrow host the combo gives way to it
-        file_width = max(
-            90.0,
-            min(
-                FIELD_W + 40.0,
-                im.get_content_region_avail()[0] - left - self._width(tr("Read")) - 16.0,
-            ),
-        )
+        room = im.get_content_region_avail()[0] - left - self._width(tr("Read")) - 16.0
+        # too narrow even for the smallest combo: Read drops under it instead of leaving the page
+        read_beside = room >= 90.0
+        file_width = min(FIELD_W + 40.0, room) if read_beside else NUMBER_W
         self._grid(
             [
                 [(tr("File Type:"), file_type, file_width)],
@@ -1084,8 +1107,8 @@ class ChannelDefinitionWidget:
                     "l1": str(info.get("l1", 0.0)),
                     "l2": str(info.get("l2", 0.0)),
                     "gch": format_gate(info.get("g_factor_channels")),
-                    "calc": "G" if self._compact else mark("Calc G"),
-                    "delete": mark("Del") if self._compact else mark("Delete"),
+                    "calc": "",
+                    "delete": "",
                 }
                 for name, info in detectors.items()
             ]
@@ -1094,7 +1117,7 @@ class ChannelDefinitionWidget:
     def window_rows(self):
         """Records of the PIE Windows table."""
         windows = self.model.data["windows"]
-        signature = _signature(windows)
+        signature = _signature([windows, self._compact])
         if signature != self._window_sig:
             self._window_sig = signature
             self._window_rows = [
@@ -1103,7 +1126,7 @@ class ChannelDefinitionWidget:
                     "name": name,
                     "start": str(bounds[0]),
                     "end": str(bounds[1]),
-                    "delete": mark("Delete"),
+                    "delete": "",
                 }
                 for name, bounds in windows.items()
             ]
@@ -1153,7 +1176,7 @@ class ChannelDefinitionWidget:
     def _keep_rows(self):
         """After an edit made in a table: the rows already show what was typed, so they are not rebuilt."""
         self._detector_sig = _signature([self.model.data["detectors"], self._compact])
-        self._window_sig = _signature(self.model.data["windows"])
+        self._window_sig = _signature([self.model.data["windows"], self._compact])
 
     def edit_detector(self, record, key, value):
         """A Detectors cell was committed: apply it with the Qt rules; a value Qt refuses keeps the old one."""
@@ -1694,6 +1717,14 @@ class ChannelDefinitionWidget:
                 "add_window",
                 tr("Add a PIE window (0:2048) with a free name; rename and edit it in the table."),
             )
+        # In a narrow host the name column says "Name" and the button "Del", so all four columns fit.
+        self._compact = im.get_content_region_avail()[0] < 520.0
+        control = self._window_table.control
+        for position, column in enumerate(control.columns):
+            wanted = mark("Name") if column.key == "name" and self._compact else None
+            wanted = wanted or (mark("Window Name") if column.key == "name" else column.title)
+            if column.title != wanted:
+                control.columns[position] = replace(column, title=wanted)
         self._draw_table(self._window_table, "windows", len(self.model.data["windows"]))
 
     #: Columns the Detectors table drops, in this order, when the page is too narrow for the others (they stay in the model).
