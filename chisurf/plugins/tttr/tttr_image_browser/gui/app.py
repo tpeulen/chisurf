@@ -389,10 +389,6 @@ class TTTRImageBrowserApp(ImApp):
         self._draw_dialog(box)
         self.help_window.draw(box)
         self.tour.draw(width, height)
-        # A notch the image plot used for zooming stays in ``io.mouse_wheel`` (emtk gap, gap_wheel_stale.py) and would
-        # step the next spin field the pointer reaches; every window has had its chance to take it by now.
-        self.io.mouse_wheel = 0.0
-        self.io.mouse_wheel_h = 0.0
 
     def _window(self, name: str, box: tuple, body: Any) -> None:
         if im.begin(name, box, _window_flags()):

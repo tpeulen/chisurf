@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- One wheel notch is one step everywhere (emtk b82aa06): the frame loop spends one-shot input (wheel, key, click,
+  char, drop) when the outermost frame ends, so a widget that leaves a notch unconsumed can no longer repeat it every
+  frame while hovered (the runaway plot zoom). Three plugins' hand-written wheel resets are removed; chiplot gets a
+  settle test.
 - QuEst is ChiSurf's `quenching_estimator` plugin (owner decision): the engine, settings, local API, RPC, CLI and the
   Qt-free form model and view specs moved in from the `quest` package and were ported to the flat IMP.bff API
   (`get_av`, `simulate_probe_diffusion`, the grid, FRET-rate and photon kernels; IMP.bff 2e7f56c32 makes

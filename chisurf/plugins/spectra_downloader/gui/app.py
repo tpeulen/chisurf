@@ -668,7 +668,6 @@ class SpectraApp(TourTarget, ImApp):
             self.tour.draw(width, height)
         if self.help.open:
             self.help.draw((0.0, 0.0, width, height))
-        self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0
 
     # -- state ---------------------------------------------------------------------------------------------------------------- #
     def export_state(self):

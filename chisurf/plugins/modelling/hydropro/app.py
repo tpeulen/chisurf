@@ -386,12 +386,6 @@ class HydroProApp(ImApp):
 
     on_files_dropped = files_dropped
 
-    def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
-        super().draw(painter, x, y, w, h)
-        # A spin field steps by the wheel without consuming it, and emtk keeps an unconsumed wheel until a window takes
-        # it: every further frame would step the field again (a notch became a run-away). One notch is one pass.
-        self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0
-
     def animating(self) -> bool:
         return self.model.running or super().animating()
 
