@@ -2,6 +2,11 @@
 
 ## 2026-10-12
 
+- QuEst FRET efficiency against the static AV average explained: not a FRET bug. With stickiness off the simulated E
+  is 0.265 against the static <E> 0.263 (E55->E124, R0 52 A); the default per-residue stickiness multiplies 0.1 per
+  overlapping residue sphere (down to 1e-8, the documented amino_acid rule) and freezes the dyes, so the 0.473 -> 0.726
+  move was the frozen position changing with the AV. Pinned by `quenching_estimator/test/test_fret_static_limit.py`;
+  whether compounded stickiness should saturate is left to the owner (known-issues, QuEst Open 1).
 - Small-window defects found by the `zoom_125` sweep fixed at their causes (emtk a939f78: a button wider than its
   line elides, dock tabs elide before they scroll, tab bars wrap). The channel definition's Reading row and grid
   measure and stack, its PIE table goes compact in a narrow panel, and a tool hub's rail scrolls. The sweep compares

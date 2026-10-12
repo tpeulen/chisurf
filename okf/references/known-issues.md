@@ -162,6 +162,21 @@ IMP's radii x the scale -- IMP.bff's file door `get_av_from_pdb` (standalone bui
 ChiSurf's FRET plugin `chisurf/plugins/modelling/fret/core/av.py` `load_structure_with_vdw` (`VDW_RADII`), which is why
 `test/fitting/data/fret_structure_reference.json` did not move. Those are a second radii set the owner does not want;
 retiring them needs IMP's radii on a path without IMP (PRD-137), so it is a decision, not a patch.
+**Lead (a) resolved 2026-10-12 -- not a FRET bug; the walkers are trapped by compounded stickiness.** Static AV
+average for E55->E124 at R0 52 A (400 000 random AV point pairs): <R> 64.1 A, **<E> 0.263**, E(<R>) 0.222 (so
+0.47 at 64.8 A was never expected). The rate kernels are right (`fret_rate_trace` equals the hand mean of
+(R0/r)^6/tau0 per frame to the 5% of r_min clamping; `simulate_photon_trace` at constant k gives 1/(1+k tau0)). With
+stickiness off (`slow_factor` 1, kQ 0) the simulated E is 0.238/0.263/0.279/0.280 over seeds 1-4 (mean 0.265): theory
+holds, at D 7 and 40 and in both acceptor dynamics (the `averaged` fast-acceptor limit sits slightly higher, 0.28-0.36,
+as Jensen requires). With the default `slow_factor` 0.1 it is 0.57/0.85/0.46/0.43. Cause: `slow_factor_grid`
+**multiplies** 0.1 per residue sphere overlapping a voxel (8.5 A radius), reaching 1e-8; 3.3 % of the AV volume has
+mobility < 0.01 yet the donor spends **94 %** of its 400 ns there (walk steps scale sqrt(m) at the *current* voxel, so
+the occupancy is not the uniform AV), and the pair is frozen at wherever it got stuck: R_DA 43-45 A for the whole run
+(rms step 0.02 A against 0.9 A free). The 0.473 -> 0.726 move is that frozen position changing with the AV, not
+R0/units/averaging. Consequence: with default stickiness QuEst's FRET efficiency is single-trajectory-dominated and
+must not be compared with the static AV <E>. Pinned by `test_fret_static_limit.py` (unsticky matches <E> within 0.05;
+sticky differs by > 0.1). Still open as a design question (not changed): whether compounded stickiness should saturate
+(e.g. floor the product or use max/mean instead of the product) so a dye cannot freeze for the whole run.
 
 **Open 2 -- the dye-trajectory and ACF panels concatenate the parallel trajectories**: with *Parallel trajectories*
 -1 (8 on this machine) the time axis runs to 8 x t_max (16 000 ns for t_max 2000). Seen in the plugin window after
