@@ -634,7 +634,6 @@
   "chisurf/plugins/tttr/audifier/core.py": 1,
   "chisurf/plugins/tttr/audifier/gui/view_model.py": 12,
   "chisurf/plugins/tttr/audifier/lifetime_analysis.py": 3,
-  "chisurf/plugins/tttr/filetools/gui/app.py": 1,
   "chisurf/plugins/tttr/intensity_trace/gui/app.py": 2,
   "chisurf/plugins/tttr/intensity_trace/model.py": 1,
   "chisurf/plugins/tttr/photon_table/core/model.py": 2,

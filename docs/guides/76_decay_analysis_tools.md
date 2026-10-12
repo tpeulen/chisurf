@@ -1,14 +1,14 @@
 ---
 type: Guide
-title: Decay Analysis window, Lazy Lifetime Analysis and synthetic decays
-description: The Spectroscopy:Decay:Decay Analysis window and its seven panels; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count) and what its component-count scan really tests; and the Synthetic Decay Generator for decays whose answer is known.
+title: The decay tools, Lazy Lifetime Analysis and synthetic decays
+description: The seven tools of Spectroscopy > Decay; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count) and what its component-count scan really tests; and the Synthetic Decay Generator for decays whose answer is known.
 tags: [guides, tcspc, decay, lifetime, fitting, corrections]
 ---
 
-# Decay Analysis window, Lazy Lifetime Analysis and synthetic decays
+# The decay tools, Lazy Lifetime Analysis and synthetic decays
 
-Three tools around a single TCSPC decay. **Decay Analysis** is the window that
-collects the decay tools. **Lazy Lifetime Analysis** (LLTF) fits one decay with
+Three tools around a single TCSPC decay. The **Decay** group of the Spectroscopy
+tab holds the decay tools, each in its own window. **Lazy Lifetime Analysis** (LLTF) fits one decay with
 a discrete multi-exponential model and makes the choices that are usually made
 by hand: fit range, background, IRF shift and, optionally, the number of
 components. The **Synthetic Decay Generator** produces decays from parameters
@@ -26,41 +26,32 @@ data (Neyman $\chi^2$), which LLTF uses, is discussed in
 
 ## Open the tools
 
-| Tool | How to open it |
-|---|---|
-| Decay Analysis | **Spectroscopy → Decay → Decay Analysis** (marked experimental) |
-| Lazy Lifetime Analysis | panel **3. Lazy Lifetime Analysis** of Decay Analysis; it has no menu entry of its own. Headless: `csc lltf fit` |
-| Synthetic Decay Generator | panel **Synthetic Decay** of Decay Analysis; headless `csc synth-decay`, or the `synthetic_decay.compute*` RPC methods |
+Every decay tool is a tool of its own under **Spectroscopy → Decay** (ribbon, menu bar and the
+Tools tree). Each opens directly in its own window with its own **?** help and **Guide**.
+
+| Tool | Opens from | What it does | Guide |
+|---|---|---|---|
+| IRF Estimation | **Spectroscopy → Decay → IRF Estimation** | estimates an IRF from the decay itself when none was measured | {doc}`irf_estimation` |
+| MaxEnt MEM | **Spectroscopy → Decay → MaxEnt MEM** | lifetime or FRET-distance distribution without a component count | {doc}`62_maxent_decay` |
+| Lazy Lifetime Analysis | **Spectroscopy → Decay → Lazy Lifetime Analysis** (marked experimental). Headless: `csc lltf fit` | discrete multi-exponential fit of one decay file (below) | this page |
+| Histogram-Microtime | **Spectroscopy → Decay → Histogram-Microtime** | builds the decay from a TTTR photon file | {doc}`73_tttr_decay_and_correlation` |
+| VV/VH G-Factor Calculator | **Spectroscopy → Decay → VV/VH G-Factor Calculator** | $G$ from a pair of polarized decays | {doc}`10_lifetime_anisotropy_fitting` |
+| VV/VH Anisotropy Decay | **Spectroscopy → Decay → VV/VH Anisotropy Decay** (deprecated) | the anisotropy decay $r(t)$ of one VV/VH file, with $G$, backgrounds and a VH shift | {doc}`10_lifetime_anisotropy_fitting` |
+| Synthetic Decay Generator | **Spectroscopy → Decay → Synthetic Decay Generator**. Headless: `csc synth-decay`, or the `synthetic_decay.compute*` RPC methods | decays whose lifetimes you chose, for checking a fit against a known answer | [below](#synthetic-decay-generator) |
+
+Nothing is passed from one tool to the next: an IRF estimated with IRF Estimation has to be saved
+and loaded into the fit that uses it.
 
 The same generator also drives the synthetic components of the FCS Filter
 Calculator ({doc}`17_filtered_fcs`) and the decay dialog of the simulated TCSPC
 acquisition device, through a separate editor.
 
-## The Decay Analysis window
-
-```{figure} figures/decay_analysis_hub.png
-:name: fig-decay-analysis-hub
+```{figure} figures/vv_vh_g_factor_window.png
+:name: fig-vv-vh-g-factor-window
 :width: 100%
 
-**Spectroscopy → Decay → Decay Analysis**, here on panel 5 with a fast dye and a slow protein loaded.
-The list on the left holds the tools in the order they depend on each other (a `*` marks
-the experimental one, whose banner appears above the tool); **Back** and **Next** walk it, the
-search box filters it by name or purpose, **Help** and **Guide** belong to the window.
+**Spectroscopy → Decay → VV/VH G-Factor Calculator** with a fast dye and a slow protein loaded.
 ```
-
-| Panel | What it does | Guide |
-|---|---|---|
-| 1. IRF Estimation | estimates an IRF from the decay itself when none was measured | {doc}`irf_estimation` |
-| 2. MaxEnt MEM | lifetime or FRET-distance distribution without a component count | {doc}`62_maxent_decay` |
-| 3. Lazy Lifetime Analysis | discrete multi-exponential fit of one decay file (below) | this page |
-| 4. Histogram-Microtime | builds the decay from a TTTR photon file | {doc}`73_tttr_decay_and_correlation` |
-| 5. VV/VH G-Factor | $G$ from a pair of polarized decays | {doc}`10_lifetime_anisotropy_fitting` |
-| 6. VV/VH Anisotropy | the anisotropy decay $r(t)$ of one VV/VH file, with $G$, backgrounds and a VH shift | {doc}`10_lifetime_anisotropy_fitting` |
-| Synthetic Decay | decays whose lifetimes you chose, for checking a fit against a known answer | [below](#synthetic-decay-generator) |
-
-Each panel is the standalone tool embedded unchanged; the mouse, the wheel, the keyboard and
-dropped files go to the selected tool, and a panel keeps its state while you move along the list. Nothing is passed from one panel to the next: an
-IRF estimated in panel 1 has to be saved and loaded into the fit that uses it.
 
 ## Lazy Lifetime Analysis
 
@@ -105,7 +96,7 @@ hand, in this order:
 :name: fig-lltf-results
 :width: 100%
 
-Panel 3 after **Fit** on the plugin's example donor decay (`example/5-44_D0.dat`
+Lazy Lifetime Analysis after **Fit** on the plugin's example donor decay (`example/5-44_D0.dat`
 with `IRF_D0.dat`), two lifetimes, default settings: 1.350 ns (0.130) and
 4.005 ns (0.870), $\chi^2_r = 1.56$ over 4.57–44.1 ns. The dashed lines are the
 automatic fit range; the residuals keep a spike on the rising edge.
@@ -359,7 +350,7 @@ subtract the floor first if the test is not meant to include it.
   fit ({doc}`10_lifetime_anisotropy_fitting`) as starting values, and use that
   fit for uncertainties ({doc}`39_parameter_uncertainty`). LLTF itself reports
   none.
-- A distribution rather than discrete components: panel 2, {doc}`62_maxent_decay`.
+- A distribution rather than discrete components: MaxEnt MEM, {doc}`62_maxent_decay`.
 - Synthetic decays go to a fit through **Fit group**, or as files to any tool
   that reads a two-column decay, LLTF included.
 
@@ -468,7 +459,6 @@ default 4 ns component.
   {doc}`73_tttr_decay_and_correlation` · {doc}`irf_estimation` ·
   {doc}`18_tttr_simulation` (photon-level simulation) ·
   {doc}`39_parameter_uncertainty`.
-- Tools: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`),
-  **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`),
+- Tools: **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`),
   **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`);
   the **F-Test** calculator (`chisurf/plugins/core/f_test/`).

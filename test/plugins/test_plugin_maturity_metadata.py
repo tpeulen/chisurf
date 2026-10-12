@@ -153,11 +153,11 @@ def test_every_manifest_flag_reaches_the_discovery_record():
 def test_the_flagged_message_travels_with_the_record():
     """The tool's own wording reaches the record, so hosts do not restate it."""
     records = _discovery_records()
-    lifetime = records[str(PLUGIN_ROOT / "fluorescence_decay" / "lifetime_analysis")]
-    assert lifetime["experimental"] is True
-    assert "experimental" in lifetime["experimental_message"].lower()
-    assert lifetime["deprecated"] is False
-    assert lifetime["deprecation_message"] == ""
+    lltf = records[str(PLUGIN_ROOT / "fluorescence_decay" / "lltf")]
+    assert lltf["experimental"] is True
+    assert "experimental" in lltf["experimental_message"].lower()
+    assert lltf["deprecated"] is False
+    assert lltf["deprecation_message"] == ""
 
 
 class TestVvVhAnisotropyDeprecation:
@@ -173,7 +173,7 @@ class TestVvVhAnisotropyDeprecation:
         manifest = load_manifest(self.manifest_path)
         assert manifest is not None
         assert manifest.deprecated is True
-        assert manifest.menu_hidden is True
+        assert manifest.menu_hidden is False  # reachable from Spectroscopy > Decay, marked deprecated
         assert "G-Factor" in manifest.deprecation_message
 
     def test_the_module_does_not_restate_the_manifest_wording(self):

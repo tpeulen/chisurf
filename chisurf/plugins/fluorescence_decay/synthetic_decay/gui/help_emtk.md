@@ -131,7 +131,7 @@ bin width comes in through the time axis.
 
 ## Further reading
 
-- [Decay Analysis, Lazy Lifetime Analysis and synthetic decays](docs/guides/76_decay_analysis_tools.md)
+- [The decay tools, Lazy Lifetime Analysis and synthetic decays](docs/guides/76_decay_analysis_tools.md)
   — every control, the CLI, and a ground-truth test of the automatic lifetime fit.
 - [TCSPC and fluorescence lifetimes](docs/concepts/tcspc_lifetime.md) — the model,
   the convolution and the averaged lifetimes.

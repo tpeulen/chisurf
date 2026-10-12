@@ -19,11 +19,9 @@ fits 1…N exponentials, F-tests the series, and returns the component count it
 judges warranted together with the lifetimes, the amplitudes and χ²ᵣ.
 
 **Tool:** `chisurf.plugins.fluorescence_decay.lltf` (`LLTFGUIWizard`). It is
-reached as panel **3. Lazy Lifetime Analysis** of the **Decay Analysis** hub
-(`lifetime_analysis`, the same shell as
+opened from **Spectroscopy › Decay › Lazy Lifetime Analysis** (a tool of its own beside
 [MaxEnt MEM and the G-factor calibration](/usecases/decay-analysis-maxent.md)),
-and it carries the red *experimental — not yet validated* banner. Its own
-manifest is `menu_hidden`, so the hub panel is the only GUI entry point. The
+and it carries the red *experimental — not yet validated* banner. The
 same engine is a CLI: `csc lltf fit <decay> <irf> …`.
 
 The GUI does **not** fit in-process: pressing **Fit** spawns
@@ -40,8 +38,8 @@ matching prompt, 3714 of its 6100 channels are exactly zero). Also
 
 ## Steps
 
-1. Open **Decay Analysis** and pick panel **3. Lazy Lifetime Analysis**. The
-   panel comes up with the experimental banner, four *Input Files* rows and a
+1. Open **Spectroscopy › Decay › Lazy Lifetime Analysis**. The
+   window comes up with the experimental banner, four *Input Files* rows and a
    *Fitting Options* group; **Fit** is greyed out. *Config File* is already
    filled with a copy of the packaged defaults written to the system temp dir
    (`$TMPDIR/lltf_config.yml`); *Output Directory* is empty.
@@ -84,7 +82,7 @@ matching prompt, 3714 of its 6100 channels are exactly zero). Also
 ## Observed (last run: 2026-07-28)
 
 Driven headlessly (`QT_QPA_PLATFORM=offscreen`, arm64 env) through both the
-standalone `LLTFGUIWizard` and the Decay Analysis hub panel, with the shipped
+standalone `LLTFGUIWizard`, with the shipped
 example data. Screenshots at each step; the fit engine also exercised directly
 and through `csc lltf` to separate GUI from engine.
 

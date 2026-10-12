@@ -128,7 +128,7 @@ An entry must carry enough for the figure to be **remade without asking anyone**
 guides/figures/fcs_model_editor.png:
   caption: The composable FCS model editor, with the Diffusion section set to
     Gauss and the Equation box showing the assembled G(τ).
-  origin: docs/guides/make_screenshots.py::fcs_model_editor
+  origin: docs/guides/screenshots/guides_shell_models.py::_grab_fcs
   kind: screenshot
   recipe: >
     Launch ChiSurf offscreen, open the FCS experiment, add the

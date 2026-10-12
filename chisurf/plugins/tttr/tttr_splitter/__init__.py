@@ -23,8 +23,5 @@ single-molecule or imaging experiments, making them more manageable for subseque
 # Plugin brand icon (unified emoji set)
 icon = "✂️"
 
-name = "TTTR:Editor:Split/Convert"
+name = "File:Data:Split/Convert"
 
-# Aggregated into the File tools hub (filetools); hidden as a top-level
-# menu entry but still importable and standalone-launchable.
-menu_hidden = True

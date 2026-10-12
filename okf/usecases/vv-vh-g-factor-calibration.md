@@ -28,7 +28,7 @@ timestamp: '2026-07-29T00:00:00Z'
 
 ## Current native workflow — 2026-10-07
 
-Open the existing native app through Decay Analysis, its standalone module or
+Open the existing native app from Spectroscopy › Decay, its standalone module or
 the detector setup host. Load **Fast reference**, set the yellow tail bounds,
 and choose the blue background bounds in a measured pre-pulse region. Load
 **Slow protein** with its physical ns/bin timing; invalid automatic mixing
@@ -55,9 +55,8 @@ scrambling of the objective and are estimated from a **slow-rotating** sample
 whose steady-state anisotropy is predicted by the Perrin equation
 `r_s = r₀ / (1 + τ/ρ)`.
 
-**Where it lives:** *Spectroscopy → Fluorescence decay → VV/VH G-Factor
-Calculator* (`vv_vh_g_factor`), also embedded as panel **5. VV/VH G-Factor** in
-the *Decay Analysis* hub (`lifetime_analysis`). Headless: `csc vv-vh-g-factor
+**Where it lives:** *Spectroscopy → Decay → VV/VH G-Factor
+Calculator* (`vv_vh_g_factor`). Headless: `csc vv-vh-g-factor
 calculate`. Distinct from the neighbouring `vv_vh_anisotropy` plugin, which is
 marked deprecated.
 
@@ -72,7 +71,7 @@ marked deprecated.
 
 ## Historical Qt workflow (2026-07-29)
 
-1. Open the calculator (standalone, or *Decay Analysis* → **5. VV/VH G-Factor**).
+1. Open the calculator (*Spectroscopy → Decay → VV/VH G-Factor Calculator*).
 2. **Load VV/VH File** → the fast-rotating reference. The stacked file is split
    into its VV and VH halves and both are drawn on a log-intensity plot against
    the raw channel index. Two draggable regions appear: a **blue tail-matching

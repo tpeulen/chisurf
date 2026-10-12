@@ -30,13 +30,29 @@ SETTINGS = pathlib.Path(chisurf.__file__).parent / "core" / "settings" / "settin
 EXPECTED = {
     "File": {
         "Setup": ["Menu Switch", "Settings", "Switch User"],
-        "Data": ["File tools"],
+        "Data": [
+            "BID→Analysis",
+            "MFD Prepare",
+            "PTO Inspector",
+            "Split/Convert",
+            "TTTR Header editor",
+            "TTTR→Time-Window BIDs",
+            "⇄ .pto",
+        ],
     },
     "Main": {
         "Help": ["About ChiSurf", "Documentation"],
     },
     "Spectroscopy": {
-        "Decay": ["Decay Analysis"],
+        "Decay": [
+            "Histogram-Microtime",
+            "IRF Estimation",
+            "Lazy Lifetime Analysis",
+            "MaxEnt MEM",
+            "Synthetic Decay Generator",
+            "VV/VH Anisotropy Decay",
+            "VV/VH G-Factor Calculator",
+        ],
         "Correlation": ["FCS", "PCH"],
         "Single-Molecule": [
             "ALEX Suite",
@@ -161,7 +177,7 @@ def test_imaging_subgroups_follow_the_existing_spectroscopy_methods():
             {"plugin_name": "Spectroscopy:Imaging:Lifetime:Pixel MLE"},
             {"plugin_name": "Spectroscopy:Correlation:FCS"},
             {"plugin_name": "Spectroscopy:Imaging:Tools:Browser"},
-            {"plugin_name": "Spectroscopy:Decay:Decay Analysis"},
+            {"plugin_name": "Spectroscopy:Decay:IRF Estimation"},
             {"plugin_name": "Spectroscopy:Imaging:Image Tools"},
         ]
     )

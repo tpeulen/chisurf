@@ -35,7 +35,7 @@ easy to misread.
 - **Audifier** plays the stream; blinking, bursts and afterpulsing sound different.
 
 **0. Setup** holds the one detector setup (routing, PIE windows, reading calibration, LUTs) that Count Rate Analysis and
-Audifier share. File-level operations (split, convert, header) live in [File tools](file_tools.md).
+Audifier share. File-level operations (split, convert, header) live in [File tools](file_tools.md) (File › Data).
 
 ## Rules of thumb
 

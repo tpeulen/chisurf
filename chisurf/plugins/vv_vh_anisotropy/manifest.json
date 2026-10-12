@@ -14,7 +14,6 @@
   "entrypoints": {
     "emtk": "chisurf.plugins.vv_vh_anisotropy.gui.app:create_app"
   },
-  "menu_hidden": true,
   "deprecated": true,
   "deprecation_message": "VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
 }

@@ -112,21 +112,18 @@ def _declared_children() -> dict[str, list[str]]:
     from chisurf.plugins.calculator.hub.core.registry import default_calculators
     from chisurf.plugins.core.setup.gui.model import PANELS as SETUP
     from chisurf.plugins.core.wizards.core.registry import default_wizards
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import PANELS as DECAY
     from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS as IMAGING
     from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
     from chisurf.plugins.traj.traj_tools.registry import TOOL_PANELS
 
     return {
         "tttr_toolbox": _panels_json("tttr/tttr_toolbox/gui/panels.json"),
-        "filetools": _panels_json("tttr/filetools/gui/panels.json"),
         "imaging_tools": [row[1] for row in IMAGING],
         "calculators": [e.widget for e in default_calculators()],
         "wizards": [e.emtk for e in default_wizards()],
         "games": [p["class_path"] for p in GAME_PANELS],
         "setup": [ref for p in SETUP for ref in (p.plugin, p.entry) if ref],
         "traj_tools": [p["emtk"] for p in TOOL_PANELS],
-        "lifetime_analysis": [row[0] for row in DECAY],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],
         "alex_suite": [p["plugin"] for p in ALEX if p.get("plugin")],
         # Hubs whose panel factories name the hosted tools in their app module.

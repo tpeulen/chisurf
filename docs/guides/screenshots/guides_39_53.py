@@ -52,36 +52,6 @@ def _quadratic_fit_39(sample=True):
     return fit
 
 
-def _grab_39_sampling_controls():
-    """Fit controller (Sample, gear) beside the gear's sampling/fitting settings form."""
-    from qtpy import QtWidgets
-
-    from chisurf.gui.autoform import AutoForm
-    from chisurf.gui.widgets.fitting import FittingControllerWidget
-    from chisurf.gui.widgets.fitting.fitting_controls import OptimizationSettingsModel
-
-    fit = _quadratic_fit_39(sample=False)
-    host = QtWidgets.QWidget()
-    lay = QtWidgets.QHBoxLayout(host)
-    left = QtWidgets.QVBoxLayout()
-    left.addWidget(QtWidgets.QLabel("<b>Fit controller</b>"))
-    controller = FittingControllerWidget(fit=fit)
-    left.addWidget(controller)
-    left.addStretch(1)
-    lay.addLayout(left, 1)
-    right = QtWidgets.QVBoxLayout()
-    right.addWidget(QtWidgets.QLabel("<b>⚙ Sampling and fitting settings</b>"))
-    model = OptimizationSettingsModel()
-    form = AutoForm(model, parent=host)
-    model.set_rebuild_callback(form.rebuild)
-    right.addWidget(form)
-    right.addStretch(1)
-    lay.addLayout(right, 1)
-    host.resize(1280, 470)
-    host._keep = (controller, form, model, fit)
-    _grab(host, "39_sampling_controls.png")
-
-
 def _page_host(page, width=900, height=620):
     """*page* on a fit-window surface, as the fit window draws it (emtk)."""
     from emtk.qt_host import ControlHost

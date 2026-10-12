@@ -2,6 +2,18 @@
 
 ## 2026-10-12
 
+- File tools and Decay Analysis hubs dissolved (owner): Split/Convert, ⇄ .pto, PTO Inspector, TTTR Header editor,
+  TTTR→Time-Window BIDs, BID→Analysis and MFD Prepare are ordinary File › Data tools; IRF Estimation, MaxEnt MEM, Lazy
+  Lifetime Analysis (experimental), Histogram-Microtime, VV/VH G-Factor, VV/VH Anisotropy Decay (deprecated) and
+  Synthetic Decay are ordinary Spectroscopy › Decay tools. Split/Convert and Time Windows own their saved options and
+  drop handling; icons made distinct (MFD Prepare 📋, microtime histogram ⏲️). Hub plugins, tests and Qt-inventory rows
+  removed; `test/plugins/test_decay_tools.py` and per-tool settings round-trips added. Remaining hubs listed in
+  [ribbon](subsystems/ribbon.md).
+- Guide screenshots redrawn from the emtk UI: model editors, MFD and acquisition fit windows, sampling settings,
+  F-test, HydroPro, Ask Docs, AI assistant, burst export, ChiMOL Objects/Groups/Map panels, console, H2MM per-state
+  decays, ribbon. New generators `docs/guides/screenshots/{shell_emtk,guides_shell_models,guides_shell_tools,
+  guides_plugins_emtk,handmade_replacements}.py`; the dead Qt grab functions are gone and `figures.yaml` records the
+  new origins.
 - One atom-radius set for accessible volumes everywhere (owner): IMP's radius by residue and atom name times
   `IMP.bff.AV_DEFAULT_RADIUS_SCALE` (0.84). IMP.bff 113a0b1d6 adds `imp_atom_radius` (IMP's CHARMM mapping, usable
   without IMP linked) and makes the file door use it; ChiSurf's one accessor is `chisurf/core/structure/av/radii.py`.

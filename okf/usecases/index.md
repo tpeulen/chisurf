@@ -360,7 +360,7 @@ The workflows a first pass should cover — expand as the tester discovers more:
   leave the window. *(last driven 2026-07-28; RF-853..RF-862)*
 
 - [Lazy Lifetime Analysis (LLTF)](/usecases/lltf-lazy-lifetime-analysis.md) — the
-  one-button TCSPC fit: hand the *Decay Analysis* hub's panel 3 a decay and its
+  one-button TCSPC fit: hand the *Lazy Lifetime Analysis* tool a decay and its
   IRF and let it estimate the analysis range, the background and the IRF shift,
   fit 1…N exponentials and F-test the series for the component count. The engine
   is real and quick (a 1…4 scan in 31 s; an explicit two-exponential fit returns

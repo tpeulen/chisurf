@@ -125,8 +125,50 @@
    ],
    "Data": [
     {
-     "text": "File tools",
-     "tooltip": "Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID\u2192Analysis, and the TTTR header editor.",
+     "text": "BID\u2192Analysis",
+     "tooltip": "BID \u2192 Analysis Converter\n\nThis plugin reads burst ID (BID) files containing start/stop photon indices\nand generates a burstwise analysis folder next to the corresponding TTTR data.\n\nWorkflow per BID file:\n- Infer the TTTR file from the BID file name (same stem, common TTTR extensions)\n- Load TTTR via tttrlib\n- Compute burst summary using cs.core.fio.fluorescence.burst.generate_burst_dataframe\n- Write a BUR file to analysis/bi4_bur/<stem>.bur\n- Update/create analysis/Info/*.mti with total measurement time\n\nThe plugin exposes a simple GUI file dialog when launched from the Plugins menu.\nIt can also be called programmatically via convert_bid_file(pathlike).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "MFD Prepare",
+     "tooltip": "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "PTO Inspector",
+     "tooltip": "Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Split/Convert",
+     "tooltip": "TTTR Split / Convert plugin.\n\nThis plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved)\nfiles, particularly those in the PicoQuant PTU format, into smaller segments. This is\nuseful for:\n\n1. Breaking down large datasets into manageable chunks\n2. Extracting specific time segments from long measurements\n3. Creating subsets of data for parallel processing\n4. Reducing memory requirements for analysis\n\nThe plugin features:\n- Support for various TTTR file formats\n- Configurable splitting parameters (photons per file, time segments)\n- Options for micro-time binning to reduce file size\n- Ability to reset macro-times in the output files\n- Selection of output container formats (file format conversion)\n\nThis tool is particularly valuable for handling large datasets from long-duration\nsingle-molecule or imaging experiments, making them more manageable for subsequent analysis.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "TTTR Header editor",
+     "tooltip": "TTTR Header Editor plugin.\n\nThis plugin provides a tool for viewing and editing header tags of any\ntime-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read \u2014 PicoQuant\nPTU and HT3, Becker&Hickl SPC, and Photon-HDF5. ``tttrlib`` normalises every\ncontainer into the same tag list, so the editor is format-agnostic on read. It\nallows users to:\n1. Open and inspect any supported TTTR file (auto-detected container)\n2. View all header tags and their values in a tabular format\n3. Edit existing tag values\n4. Add new custom tags to the header\n5. Remove unwanted tags\n6. Save the edited header to a new PTU file\n\nThe plugin features an intuitive table-based interface that displays tag names,\ntypes, values, and indices. Users can modify any field and see the changes in\nreal-time. A JSON view is also available to see the complete header structure.\n\nThis tool is particularly useful for:\n- Correcting metadata in experimental TTTR files\n- Adding missing information to headers\n- Preparing files for specialized analysis\n- Troubleshooting issues with file metadata\n- Educational purposes to understand TTTR file structure\n\nThe photon events of the source file are copied verbatim into the saved file.\nOutput is always a PTU container, because it is the only ``tttrlib`` container\nthat persists arbitrary edited header tags without loss.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "TTTR\u2192Time-Window BIDs",
+     "tooltip": "Split TTTR files into fixed-duration time-window BID (.bst) files.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "\u21c4 .pto",
+     "tooltip": "Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement.",
      "icon": true,
      "enabled": true,
      "size": "small"
@@ -191,8 +233,50 @@
   "Spectroscopy": {
    "Decay": [
     {
-     "text": "Decay Analysis \u26a0\ufe0f",
-     "tooltip": "\u26a0\ufe0f  Decay Analysis is experimental and not yet validated\nIntegrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator.",
+     "text": "Histogram-Microtime",
+     "tooltip": "Create and inspect TTTR microtime histograms.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "IRF Estimation",
+     "tooltip": "Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Lazy Lifetime Analysis \u26a0\ufe0f",
+     "tooltip": "\u26a0\ufe0f  Lazy Lifetime Analysis is experimental and not yet validated\nLazy Lifetime Analysis for TCSPC fluorescence decay data.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "MaxEnt MEM",
+     "tooltip": "Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance).",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "Synthetic Decay Generator",
+     "tooltip": "Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) \u2014 the single canonical decay generator, exposed as API/CLI/RPC/GUI.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "VV/VH Anisotropy Decay \u26d4",
+     "tooltip": "\u26d4  VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead.\nCompute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.",
+     "icon": true,
+     "enabled": true,
+     "size": "small"
+    },
+    {
+     "text": "VV/VH G-Factor Calculator",
+     "tooltip": "Calculate detector G-factors using tail-matching on VV/VH format files.",
      "icon": true,
      "enabled": true,
      "size": "small"

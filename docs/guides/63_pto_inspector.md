@@ -15,7 +15,7 @@ settings that produced it (see
 All of that is recorded whether or not anyone reads it. This guide is about
 reading it.
 
-Open **File → Data → File tools → PTO Inspector**, or drop a `.pto` on the window.
+Open **File → Data → PTO Inspector**, or drop a `.pto` on the window.
 Nothing here writes to the file.
 
 ## What is in it

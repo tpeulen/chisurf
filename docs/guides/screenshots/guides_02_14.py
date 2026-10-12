@@ -182,25 +182,6 @@ def _grab_02_rasp_p_same(work: pathlib.Path | None = None) -> None:
 # ── guide 03: polymer distance distributions ────────────────────────────
 
 
-def _grab_03_polymer_editors() -> None:
-    """TCSPC editors of the SAW-nu and Ising-chain FRET models."""
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models import description
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    for cls, name in (
-        (description.tcspc_fret_saw_nu, "03_saw_nu_editor.png"),
-        (description.tcspc_fret_ising_chain, "03_ising_chain_editor.png"),
-    ):
-        x = np.linspace(0, 25, 256)  # ns
-        data = DataCurve(x=x, y=np.exp(-x / 4.0) + 1.0)
-        fit = fit_mod.Fit(model_class=cls, data=data)
-        editor = build_model_editor(fit.model)
-        editor.resize(600, 1100 if "ising" in name else 1060)
-        _grab(editor, name)
-
-
 # ── guide 04: PCH / FIDA ────────────────────────────────────────────────
 
 
@@ -221,73 +202,7 @@ def _grab_04_pch_tool() -> None:
     render(app, "04_pch_tool.png", size=(1400, 850))
 
 
-def _grab_04_fida_editor() -> None:
-    """The FIDA model fitted to the BH_SPC132 green PCH (two species, bounds on)."""
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models.pch.fida_model import FidaModel
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-    from chisurf.plugins.pch.gui.client import PCHClient
-
-    result = PCHClient().compute(
-        filename=str(_SPC_FILE.resolve()), channels=[0, 8], bin_time_us=50.0,
-        micro_time_min=0, micro_time_max=65535,
-    )
-    counts = np.asarray(result["hist_counts"], dtype=float)
-    k = np.arange(counts.size, dtype=float)
-    data = DataCurve(
-        name="BH_SPC132 green 50 us", load_filename_on_init=False,
-        x=k, y=counts / counts.sum(), ey=np.sqrt(np.maximum(counts, 1.0)) / counts.sum(),
-    )
-    fit = fit_mod.Fit(model_class=FidaModel, data=data)
-    model = fit.model
-    fit.fit_range = (0, counts.size)
-    start = {"q1": 0.5, "N1": 1.0, "q2": 5.0, "N2": 0.01}
-    for p in model.parameters_all:
-        if p.name[0] in "qN":
-            p.bounds_on = True  # off by default: the fit then runs N negative
-        if p.name in ("q3", "N3"):
-            p.fixed = True
-        if p.name in start:
-            p.value = start[p.name]
-    fit.run()
-    print("FIDA chi2r", fit.chi2r, [(p.name, round(p.value, 4)) for p in model.parameters_all])
-    editor = build_model_editor(model)
-    editor.resize(700, 330)
-    _grab(editor, "04_fida_editor.png")
-
-
 # ── guide 05: Enderlein MDF ─────────────────────────────────────────────
-
-
-def _grab_05_mdf_editor() -> None:
-    """The MDF FCS model fitted to the bundled Kristine correlation curve."""
-    from qtpy import QtWidgets
-
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models.fcs.mdf import MdfFCSModel
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    a = np.loadtxt("test/data/fcs/kristine/Kristine_with_error.cor")
-    sel = a[:, 0] > 1e-3  # lag in ms; skip the sub-us antibunching range
-    data = DataCurve(
-        name="Kristine_with_error.cor", load_filename_on_init=False,
-        x=a[sel, 0], y=a[sel, 1], ey=a[sel, 3],
-    )
-    fit = fit_mod.Fit(model_class=MdfFCSModel, data=data)
-    fit.fit_range = (0, int(sel.sum()))
-    fit.run()
-    print("MDF chi2r", fit.chi2r, [(p.name, round(p.value, 4)) for p in fit.model.parameters_all])
-    editor = build_model_editor(fit.model)
-    editor.resize(620, 820)
-    editor.show()
-    _pump(0.3)
-    for button in editor.findChildren(QtWidgets.QAbstractButton):
-        if any(t in button.text() for t in ("Outputs", "Optics")):
-            button.click()
-    _pump(0.5)
-    _grab(editor, "05_mdf_editor.png")
 
 
 # ── guide 12: TTTR files ────────────────────────────────────────────────
@@ -355,10 +270,7 @@ def main(names=()):
         "13": lambda: _grab_13_burst_selection(work),
         "08": lambda: _grab_08_bva_tool(_grab_13_burst_selection(work, grab=False)),
         "02": lambda: _grab_02_rasp_p_same(work),
-        "03": _grab_03_polymer_editors,
         "04_pch": _grab_04_pch_tool,
-        "04_fida": _grab_04_fida_editor,
-        "05": _grab_05_mdf_editor,
         "12": _grab_12_tttr_to_pto,
         "14": _grab_14_accurate_fret,
     }

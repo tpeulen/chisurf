@@ -1,12 +1,12 @@
 ---
 type: Reference
-title: Use case — Decay Analysis hub (MaxEnt lifetime distribution, IRF estimation, G-factor)
+title: Use case — Decay tools (MaxEnt lifetime distribution, IRF estimation, G-factor)
 description: Model-free lifetime analysis of a TCSPC decay — run MaxEnt MEM on the current fit, estimate an IRF from a decay, and calibrate the detector G-factor from VV/VH data.
 tags: [usecase, tcspc, maxent, mem, irf, g-factor, anisotropy, gui]
 timestamp: '2026-07-26T00:00:00Z'
 ---
 
-# Use case: Decay Analysis hub — model-free lifetime distribution
+# Use case: Decay tools — model-free lifetime distribution
 
 **Goal:** the user has already fitted a decay with a discrete lifetime model and
 wants the answer *without* assuming how many exponentials there are: a
@@ -38,10 +38,10 @@ use case in short form).
    click **Add fit**.
 4. Analysis dock → **Convolve** → **…** next to *IRF* → pick `Prompt.txt`.
 5. Click **Fit**.
-6. Open **Spectroscopy:Decay Analysis** (ribbon). The hub lists five numbered
-   panels: *1. IRF Estimation*, *2. MaxEnt MEM*, *3. Lazy Lifetime Analysis* ⚠,
-   *4. Histogram-Microtime*, *5. VV/VH G-Factor*.
-7. Select **2. MaxEnt MEM**. Click **🔄 Refresh** to pull the decay, the IRF and
+6. Open **Spectroscopy › Decay › MaxEnt MEM** (ribbon). The Decay group also holds
+   *IRF Estimation*, *Lazy Lifetime Analysis* ⚠, *Histogram-Microtime* and
+   *VV/VH G-Factor Calculator*, each its own window.
+7. In MaxEnt MEM Click **🔄 Refresh** to pull the decay, the IRF and
    the fit range out of the current fit.
 8. Switch the left tab to **Settings** and check what Refresh filled in: τ grid,
    timeshift, background, IRF background, lamp scatter, regularisation `nu`.

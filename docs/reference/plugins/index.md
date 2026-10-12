@@ -10,7 +10,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **128 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **126 plugins**, **90** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -19,7 +19,7 @@ Of the **128 plugins**, **90** build their interface from declarative AutoForm s
 *
 ```
 
-**128 plugins** across 32 categories.
+**126 plugins** across 29 categories.
 
 ## Core
 
@@ -31,7 +31,13 @@ Of the **128 plugins**, **90** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [File tools](filetools.md) | Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header editor. |
+| [BID→Analysis](bid_to_analysis.md) | BID → Analysis Converter  This plugin reads burst ID (BID) files containing start/stop photon indices and generates a burstwise analysis folder next to the corresponding TTTR data.  Workflow per BID file: - Infer the TTTR file from the BID file name (same stem, common TTTR extensions) - Load TTTR via tttrlib - Compute burst summary using cs.core.fio.fluorescence.burst.generate_burst_dataframe - Write a BUR file to analysis/bi4_bur/<stem>.bur - Update/create analysis/Info/*.mti with total measurement time  The plugin exposes a simple GUI file dialog when launched from the Plugins menu. It can also be called programmatically via convert_bid_file(pathlike). |
+| [MFD Prepare](mfd_prepare.md) | Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report. |
+| [PTO Inspector](pto_inspector.md) | Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it. |
+| [Split/Convert](tttr_splitter.md) | TTTR Split / Convert plugin.  This plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved) files, particularly those in the PicoQuant PTU format, into smaller segments. This is useful for:  1. Breaking down large datasets into manageable chunks 2. Extracting specific time segments from long measurements 3. Creating subsets of data for parallel processing 4. Reducing memory requirements for analysis  The plugin features: - Support for various TTTR file formats - Configurable splitting parameters (photons per file, time segments) - Options for micro-time binning to reduce file size - Ability to reset macro-times in the output files - Selection of output container formats (file format conversion)  This tool is particularly valuable for handling large datasets from long-duration single-molecule or imaging experiments, making them more manageable for subsequent analysis. |
+| [TTTR Header editor](tttr_header_edit.md) | TTTR Header Editor plugin.  This plugin provides a tool for viewing and editing header tags of any time-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant PTU and HT3, Becker&Hickl SPC, and Photon-HDF5. ``tttrlib`` normalises every container into the same tag list, so the editor is format-agnostic on read. It allows users to: 1. Open and inspect any supported TTTR file (auto-detected container) 2. View all header tags and their values in a tabular format 3. Edit existing tag values 4. Add new custom tags to the header 5. Remove unwanted tags 6. Save the edited header to a new PTU file  The plugin features an intuitive table-based interface that displays tag names, types, values, and indices. Users can modify any field and see the changes in real-time. A JSON view is also available to see the complete header structure.  This tool is particularly useful for: - Correcting metadata in experimental TTTR files - Adding missing information to headers - Preparing files for specialized analysis - Troubleshooting issues with file metadata - Educational purposes to understand TTTR file structure  The photon events of the source file are copied verbatim into the saved file. Output is always a PTU container, because it is the only ``tttrlib`` container that persists arbitrary edited header tags without loss. |
+| [TTTR→Time-Window BIDs](tttr_time_windows.md) | Split TTTR files into fixed-duration time-window BID (.bst) files. |
+| [⇄ .pto](tttr_to_pto.md) | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
 
 ## Help
 
@@ -94,14 +100,13 @@ Of the **128 plugins**, **90** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [Anisotropy-Wizard](tr_anisotropy.md) *(hidden)* | Guided setup of a linked VV/VH global time-resolved anisotropy fit: load polarised decays, background-correct the IRFs, set instrument corrections and define lifetime/rotation spectra. |
-| [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor calibration, the VV/VH anisotropy decay, and a synthetic decay generator. |
-| [Histogram-Microtime](microtime_histogram.md) *(hidden)* | Create and inspect TTTR microtime histograms. |
-| [IRF Estimation](irf_estimator.md) *(hidden)* | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
-| [Lazy Lifetime Analysis](lltf.md) *(hidden)* | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
-| [MaxEnt MEM](maxent_decay.md) *(hidden)* | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
-| [Synthetic Decay Generator](synthetic_decay.md) *(hidden)* | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
-| [VV/VH Anisotropy Decay](vv_vh_anisotropy.md) *(hidden)* | Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift. |
-| [VV/VH G-Factor Calculator](vv_vh_g_factor.md) *(hidden)* | Calculate detector G-factors using tail-matching on VV/VH format files. |
+| [Histogram-Microtime](microtime_histogram.md) | Create and inspect TTTR microtime histograms. |
+| [IRF Estimation](irf_estimator.md) | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
+| [Lazy Lifetime Analysis](lltf.md) | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
+| [MaxEnt MEM](maxent_decay.md) | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
+| [Synthetic Decay Generator](synthetic_decay.md) | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
+| [VV/VH Anisotropy Decay](vv_vh_anisotropy.md) | Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift. |
+| [VV/VH G-Factor Calculator](vv_vh_g_factor.md) | Calculate detector G-factors using tail-matching on VV/VH format files. |
 
 ## Spectroscopy → FRET
 
@@ -210,32 +215,12 @@ Of the **128 plugins**, **90** build their interface from declarative AutoForm s
 | [Save Topol](traj_save_topology.md) *(hidden)* | Save topology or first-frame structure files from trajectories. |
 | [Traj Tools](traj_tools.md) | Combined dockable workspace for trajectory alignment, conversion, energy calculation, FRET, joining, clash removal, rotation/translation, topology saving, and trajectory energy tools. |
 
-## TTTR
-
-| Plugin | Summary |
-| --- | --- |
-| [PTO Inspector](pto_inspector.md) *(hidden)* | Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to open the tool that performs it. |
-| [⇄ .pto](tttr_to_pto.md) *(hidden)* | Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendor file(s) it embeds back out. Whichever direction, the dropped file is kept and the result is verified byte-for-byte before anything is ever deleted. Packing is also offered as a one-time nag wherever a plugin drops a vendor file to load it as the working measurement. |
-
-## TTTR → Editor
-
-| Plugin | Summary |
-| --- | --- |
-| [Split/Convert](tttr_splitter.md) *(hidden)* | TTTR Split / Convert plugin.  This plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved) files, particularly those in the PicoQuant PTU format, into smaller segments. This is useful for:  1. Breaking down large datasets into manageable chunks 2. Extracting specific time segments from long measurements 3. Creating subsets of data for parallel processing 4. Reducing memory requirements for analysis  The plugin features: - Support for various TTTR file formats - Configurable splitting parameters (photons per file, time segments) - Options for micro-time binning to reduce file size - Ability to reset macro-times in the output files - Selection of output container formats (file format conversion)  This tool is particularly valuable for handling large datasets from long-duration single-molecule or imaging experiments, making them more manageable for subsequent analysis. |
-| [TTTR Header editor](tttr_header_edit.md) *(hidden)* | TTTR Header Editor plugin.  This plugin provides a tool for viewing and editing header tags of any time-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant PTU and HT3, Becker&Hickl SPC, and Photon-HDF5. ``tttrlib`` normalises every container into the same tag list, so the editor is format-agnostic on read. It allows users to: 1. Open and inspect any supported TTTR file (auto-detected container) 2. View all header tags and their values in a tabular format 3. Edit existing tag values 4. Add new custom tags to the header 5. Remove unwanted tags 6. Save the edited header to a new PTU file  The plugin features an intuitive table-based interface that displays tag names, types, values, and indices. Users can modify any field and see the changes in real-time. A JSON view is also available to see the complete header structure.  This tool is particularly useful for: - Correcting metadata in experimental TTTR files - Adding missing information to headers - Preparing files for specialized analysis - Troubleshooting issues with file metadata - Educational purposes to understand TTTR file structure  The photon events of the source file are copied verbatim into the saved file. Output is always a PTU container, because it is the only ``tttrlib`` container that persists arbitrary edited header tags without loss. |
-
 ## Tools
 
 | Plugin | Summary |
 | --- | --- |
 | [AI Settings](ai_settings.md) *(hidden)* | AI Settings plugin for configuring API providers and backends. |
 | [Open Project](project_browser.md) *(hidden)* | Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control. |
-
-## Tools → Burst
-
-| Plugin | Summary |
-| --- | --- |
-| [MFD Prepare](mfd_prepare.md) *(hidden)* | Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report. |
 
 ## Tools → Calculators
 
@@ -251,8 +236,6 @@ Of the **128 plugins**, **90** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [ALEX Creator](ptu_alex_creator.md) *(hidden)* | Convert ALEX macro-time modulation into micro-time (single, batch or merged), for PIE-style analysis of .sm and other TTTR files. |
-| [BID→Analysis](bid_to_analysis.md) *(hidden)* | BID → Analysis Converter  This plugin reads burst ID (BID) files containing start/stop photon indices and generates a burstwise analysis folder next to the corresponding TTTR data.  Workflow per BID file: - Infer the TTTR file from the BID file name (same stem, common TTTR extensions) - Load TTTR via tttrlib - Compute burst summary using cs.core.fio.fluorescence.burst.generate_burst_dataframe - Write a BUR file to analysis/bi4_bur/<stem>.bur - Update/create analysis/Info/*.mti with total measurement time  The plugin exposes a simple GUI file dialog when launched from the Plugins menu. It can also be called programmatically via convert_bid_file(pathlike). |
-| [TTTR→Time-Window BIDs](tttr_time_windows.md) *(hidden)* | Split TTTR files into fixed-duration time-window BID (.bst) files. |
 
 ## Tools → Miscellaneous
 
@@ -274,7 +257,7 @@ Of the **128 plugins**, **90** build their interface from declarative AutoForm s
 
 | Plugin | Summary |
 | --- | --- |
-| [TTTR Tools](tttr_toolbox.md) | Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools. |
+| [TTTR Tools](tttr_toolbox.md) | Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File › Data. |
 
 ## Tools → System
 

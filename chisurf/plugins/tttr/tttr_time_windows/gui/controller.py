@@ -267,6 +267,20 @@ def _layout_store():
 
 
 class _StandaloneApp(TimeWindowApp):
+    def export_settings(self):
+        """Return the window length, output folder and queued files as JSON-able preferences."""
+        return {
+            "selected_files": [str(p) for p in self.tool._file_paths],
+            "time_window_ms": self.tool.time_window_ms,
+            "output_dir": self.tool.output_dir_text,
+        }
+
+    def restore_settings(self, state):
+        """Apply preferences saved by :meth:`export_settings`."""
+        self.tool.time_window_ms = float(state.get("time_window_ms", 10.0))
+        self.tool.output_dir_text = str(state.get("output_dir") or "")
+        self.tool.add_paths(state.get("selected_files", []))
+
     def close(self):
         self.tool.job.close()
         if self.tool.dataset_picker is not None:

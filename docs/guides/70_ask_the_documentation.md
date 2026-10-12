@@ -39,9 +39,9 @@ reading. Type the question and press Enter.
 :name: fig-ask-the-documentation
 :width: 100%
 
-The Ask panel beside the page it cited. The links in the answer's own prose go
-to the page — and to the heading on it — and the list underneath is what the
-assistant actually opened.
+The **Ask Docs** pane beside the page it cited: the question, the answer, and
+under it the list of pages the assistant opened. The answer is placed rather than
+generated, so the figure can be re-taken.
 ```
 
 **The answer itself is linked.** Where it names a page — or a heading on one —

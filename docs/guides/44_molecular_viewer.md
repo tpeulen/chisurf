@@ -404,7 +404,7 @@ systematically under denser voxels.
 
 ### The Map panel
 
-The **Map** tab shows the map's value distribution with each contour as a marker
+The **Density** panel (**Tools ▸ Map ▸ Density Controls**, or `density_panel`) shows the map's value distribution with each contour as a marker
 on it, so a level is chosen by *looking* rather than by typing a number and
 re-rendering:
 
@@ -412,19 +412,18 @@ re-rendering:
 :name: fig-chimol-map-panel
 :width: 620px
 
-The Map panel. Each contour is a marker on the histogram — here a filled surface
-(blue) and a wireframe (orange) on the same map. Drag a marker to move that
-level, click empty histogram to add one, right-click a marker to remove it.
+The Density panel on a 6 Å map of 148L. Each contour is a marker on the histogram — here a filled
+surface (blue) and a wireframe (orange, selected) on the same map. Drag a marker to move that level,
+double-click empty histogram to add one, drag a marker off the plot or press **-** to remove it.
 ```
 
 The counts are on a log scale: a density is overwhelmingly background, and on a
 linear axis the fraction of a per cent worth contouring is a flat line at zero.
-The `Level` box still takes an exact value when one is known, and the style and
-colour controls act on the selected marker.
-
-This editor is not specific to maps — it is chisurf's shared `level_histogram`
-section, so any tool that has to ask for a threshold over a distribution (a
-burst gate, a photon-count cut) gets the same one from its `.view.json`.
+The `level` box under the histogram takes an exact value when one is known
+(type it and press Return; it is held to the map's value range), the **-**
+button removes the selected level (the last one stays), and the style, colour
+and opacity controls act on the selected marker. Dragging a marker off the
+histogram also removes it.
 
 **The opening contour is chosen by rank, not by value.** With no level given,
 the level enclosing the densest **one per cent** of voxels is used. A rank is

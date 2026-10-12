@@ -3,7 +3,7 @@ type: Plugin Reference
 title: Split/Convert
 description: 'TTTR Split / Convert plugin. This plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved) files, particularly those in the PicoQuant PTU format, into smaller segments. This is useful for: 1. Breaking down large datasets into manageable chunks 2. Extracting specific time segments from long measurements 3. Creating subsets of data for parallel processing 4. Reducing memory requirements for analysis The plugin features: - Support for various TTTR file formats - Configurable splitting parameters (photons per file, time segments) - Options for micro-time binning to reduce file size - Ability to reset macro-times in the output files - Selection of output container formats (file format conversion) This tool is particularly valuable for handling large datasets from long-duration single-molecule or imaging experiments, making them more manageable for subsequent analysis.'
 resource: chisurf/plugins/tttr/tttr_splitter/
-tags: [reference, plugins, tttr-splitter, tttr, editor]
+tags: [reference, plugins, tttr-splitter, file, data]
 anchor: plugin-tttr_splitter
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ TTTR Split / Convert plugin.  This plugin provides functionality for splitting l
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_splitter` |
-| Menu path | TTTR → Editor → **Split/Convert** |
-| Categories | TTTR, Editor |
+| Menu path | File → Data → **Split/Convert** |
+| Categories | File, Data |
 | Version | 1.0.0 |
 | Surfaces | emtk, script |
 
@@ -47,6 +47,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | batch_files | `batch_files` | path_list |  |  | Files queued for the batch run. |
 | Use file's parent as output folder | `batch_use_parent` | bool |  |  | Write each result next to its source file. |
+
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 

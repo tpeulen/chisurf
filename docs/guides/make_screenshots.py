@@ -27,9 +27,10 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 import numpy as np  # noqa: E402
 from qtpy.QtWidgets import QApplication  # noqa: E402
 
+os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chisurf_grab_settings_"))
 import chisurf.core.settings  # noqa: E402,F401
 
-FIG = pathlib.Path(__file__).parent / "figures"
+FIG =pathlib.Path(__file__).parent / "figures"
 FIG.mkdir(exist_ok=True)
 _SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 _PDB_148L = pathlib.Path("test/data/atomic_coordinates/pdb_files/148l.pdb").resolve()
@@ -77,40 +78,6 @@ def _grab_ndx_overlay_axes():
         finally:
             window.close()
             tool.close()
-
-
-def _grab_fcs_model_editor():
-    """Grab the composable FCS model editor (AutoForm) for the FCS guide."""
-    import numpy as np
-
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models.fcs.general import GeneralFCSModel
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    x = np.logspace(-3, 3, 60)  # 1 us .. 1 s, in ms
-    data = DataCurve(name="synthetic-fcs", load_filename_on_init=False, y=np.zeros_like(x), x=x)
-    fit = fit_mod.Fit(model_class=GeneralFCSModel, data=data)
-    editor = build_model_editor(fit.model)
-    editor.resize(560, 760)
-    _grab(editor, "fcs_model_editor.png")
-
-
-def _grab_tcspc_lifetime_editor():
-    """Grab the TCSPC multi-exponential lifetime model editor for the TCSPC guide."""
-    import numpy as np
-
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.data import DataCurve
-    from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    x = np.linspace(0, 25, 256)  # ns
-    data = DataCurve(x=x, y=np.exp(-x / 4.0) + 1.0)
-    fit = fit_mod.Fit(model_class=LifetimeModel, data=data)
-    editor = build_model_editor(fit.model)
-    editor.resize(560, 760)
-    _grab(editor, "tcspc_lifetime_editor.png")
 
 
 def _grab_parameter_link_menu():
@@ -189,94 +156,6 @@ def _grab_parameter_link_menu():
         canvas.save(str(FIG / "parameter_link_menu.png"))
     finally:
         install_fitting_client(None)
-
-
-def _grab_pda_editor():
-    """Grab the PDA (Gaussian-distance) model editor for the PDA guide."""
-    import numpy as np
-
-    import chisurf.core.fitting.fit as fit_mod
-    import chisurf.core.fluorescence.tcspc as tcspc
-    from chisurf.core.data import DataCurve
-    from chisurf.core.math import special as stats
-    from chisurf.core.models.pda2c.pdagauss import Pda2cGaussianDistanceModel
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
-    nmax, nmin = 60, 5
-    n = np.arange(nmax + 1)
-    ps = stats.poisson.pmf(n, mu=20.0).astype(float)
-    ps /= ps.sum()
-    s1s2 = np.zeros((nmax + 1, nmax + 1), dtype=float)
-    for N in range(nmin, nmax + 1):
-        g = np.arange(N + 1)
-        s1s2[g, N - g] += ps[N] * stats.binom.pmf(g, N, 0.6) * 1000.0
-    ny, nx = s1s2.shape
-    rr, cc = np.indices((ny, nx))
-    y = s1s2.ravel(order="C")
-    pda = {
-        "maximum_number_of_photons": nmax,
-        "minimum_number_of_photons": nmin,
-        "minimum_time_window_length": 2e-3,
-        "channels": ([0], [1]),
-        "s1s2": s1s2,
-        "ps": ps,
-        "row_indices": rr.ravel().tolist(),
-        "col_indices": cc.ravel().tolist(),
-        "ndim": 2,
-        "shape": (ny, nx),
-        "size": int(y.size),
-        "tttr_indices": None,
-    }
-    data = DataCurve(
-        name="synthetic-pda",
-        load_filename_on_init=False,
-        pda=pda,
-        y=y,
-        x=np.arange(y.size),
-        ey=tcspc.counting_noise(y),
-    )
-    fit = fit_mod.Fit(model_class=Pda2cGaussianDistanceModel, data=data)
-    editor = build_model_editor(fit.model)
-    editor.resize(560, 760)
-    _grab(editor, "pda_model_editor.png")
-
-
-def _grab_pda3c_exchange_panel():
-    """Grab the PDA3c exchange-scheme panel for the three-colour guide.
-
-    Driven into a realistic state — three species and a linear 1-2-3 chain — so
-    the grid shows a scheme built by *zeroing* the transitions it does not have,
-    which is the point the figure has to make.
-    """
-    import numpy as np
-    from qtpy.QtWidgets import QAbstractButton
-
-    import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
-    from chisurf.core.models.pda3c.pda3c import Pda3cModel
-    from chisurf.gui.autoform import AutoForm
-
-    data = Pda3cSimulatorReader(n_bursts=200, seed=3).read()[0]
-    model = fit_mod.Fit(model_class=Pda3cModel, data=data).model
-    model.species.append(r_gr=68.0, r_bg=62.0, r_br=80.0)
-    model.species.append(r_gr=78.0, r_bg=72.0, r_br=90.0)
-    model.dynamic = True
-    # A linear chain 1 <-> 2 <-> 3: k13 and k31 left at zero.
-    model.rate_matrix = np.array([[0.0, 120.0, 0.0],
-                                  [80.0, 0.0, 300.0],
-                                  [0.0, 90.0, 0.0]])
-    model.find_parameters()
-
-    editor = AutoForm(model)
-    # Open the exchange panel and fold the distance tables away, so the figure
-    # is the scheme rather than the rows above it.
-    for button in editor.findChildren(QAbstractButton):
-        if "Exchange" in button.text():
-            button.click()
-        elif button.isCheckable() and button.isChecked() and "Distance" in button.text():
-            button.click()
-    editor.resize(600, 620)
-    _grab(editor, "pda3c_exchange.png")
 
 
 def _grab_burst_browser():
@@ -644,7 +523,8 @@ def _grab_chimol_viewer():
         "test/data/atomic_coordinates/pdb_files/148l.pdb"
     ).resolve()
 
-    # -- the object panel: RETIRED UPSTREAM, so nothing is grabbed here ------
+    # -- the object panel: drawn by docs/guides/screenshots/guides_plugins_emtk.py (chimol) --
+    # (kept: why the old Qt grabs were retired)
     # `chimol_objects_panel.png` and `chimol_groups_panel.png` were grabs of a
     # Qt dock reached through `window.objects.widget`. That dock no longer
     # exists: chimol's WebGPU port moved the object list into the viewport and
@@ -938,73 +818,6 @@ def _grab_kappa2_tool():
     render(app, "kappa2_tool.png", size=(640, 820))
 
 
-def _grab_ask_the_documentation():
-    """The help browser's Ask panel, beside the page it cited.
-
-    The conversation is placed directly rather than run: the answer would come
-    from whichever model the machine happens to have configured, so the
-    screenshot would differ on every machine and could not be regenerated. The
-    *rendering* — the answer layout, the citation list, the warning when
-    nothing was read — is what the figure documents, and that is ours.
-    """
-    from chisurf.core.agent import doc_index
-    from chisurf.plugins.core.help.gui.tool import HelpWidget
-
-    widget = HelpWidget()
-    widget.resize(1500, 900)
-    widget.show()
-    QApplication.instance().processEvents()
-
-    page = doc_index.resolve("docs/concepts/accurate_fret.md")
-    if page is not None:
-        widget.navigate(pathlib.Path(page))
-    widget.show_ask_panel()
-    QApplication.instance().processEvents()
-
-    panel = widget.ask_panel
-    panel._turns.append(panel._question_html("What does the gamma correction factor do?"))
-    panel._turns.append(
-        panel._answer_html(
-            {
-                "text": (
-                    "The γ factor corrects the raw green/red photon ratio for the two "
-                    "things that make the two channels not comparable: the detection "
-                    "efficiencies of the donor and acceptor detection paths, and the "
-                    "fluorescence quantum yields of the two dyes.\n\n"
-                    "Without it the proximity ratio is not a FRET efficiency, and the "
-                    "populations in an E–S histogram sit in the wrong place. All four "
-                    "factors and where each comes from are in "
-                    "[The four factors]"
-                    "(docs/concepts/accurate_fret.md#The four factors); the workflow "
-                    "that determines them is "
-                    "[Accurate FRET corrections](docs/guides/41_accurate_fret.md)."
-                ),
-                "pages": [
-                    {
-                        "document": "docs/concepts/accurate_fret.md",
-                        "title": "Accurate FRET: correction factors, FRET lines, and "
-                                 "where they come from",
-                        "type": "Concept",
-                        "section": "The four factors",
-                    },
-                    {
-                        "document": "docs/guides/41_accurate_fret.md",
-                        "title": "Accurate FRET: automatic correction factors",
-                        "type": "Guide",
-                        "section": "",
-                    },
-                ],
-            }
-        )
-    )
-    panel._render()
-    # Resized last: the panel is added to the splitter while the window is
-    # already shown, and an earlier resize is undone by the layout settling.
-    widget.resize(1500, 900)
-    QApplication.instance().processEvents()
-    _grab(widget, "ask_the_documentation.png")
-
-
 def _grab_maxent_decay():
     """MaxEnt decay on a decay whose lifetime distribution is known.
 
@@ -1238,9 +1051,6 @@ def _grab_console():
     """
     import chisurf
     from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit
-    from chisurf.gui.chinsole.widget import Chinsole
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
-
     n, dt = 512, 0.0323
     t = np.arange(n) * dt
     irf = np.exp(-0.5 * ((t - 1.0) / 0.12) ** 2)
@@ -1257,14 +1067,25 @@ def _grab_console():
         fit.data.name = name
         fit.run()
         fits.append(fit)
-    install_fitting_client(None)
     chisurf.fits = fits
 
-    console = Chinsole()
-    console.resize(1000, 320)
-    console.show()
-    QApplication.instance().processEvents()
-    console.push({"cs": chisurf, "np": np})
+    # The emtk shell's console (the Qt Chinsole is legacy), hosted alone on the frame loop.
+    from emtk.app import ImApp
+    from emtk.testing import Driver
+
+    from chisurf.emtk.console import ShellConsole
+
+    tmp = pathlib.Path(tempfile.mkdtemp(prefix="chisurf_console_"))
+    console = ShellConsole({"cs": chisurf, "np": np}, history_path=tmp / "history.txt",
+                           session_file=tmp / "session.py")
+    size = (1000, 320)
+
+    def gui() -> None:
+        console.draw((0, 0, *size))
+        console.draw_overlays((0, 0, *size))
+
+    driver = Driver(ImApp(gui), size)
+    driver.frame(2)
     for line in (
         "cs.fits",
         "fit = cs.fits[0]",
@@ -1272,133 +1093,12 @@ def _grab_console():
         "[(f.name, round(f.chi2r, 3)) for f in cs.fits]",
         "sorted(fit.model.parameters_all_dict)[:6]",
     ):
-        console.view.set_input_buffer(line)
-        QApplication.instance().processEvents()
         console.execute(line)
-        QApplication.instance().processEvents()
-    _grab(console, "console.png")
-
-
-def _grab_ai_assistant():
-    """The assistant in the mode that operates ChiSurf.
-
-    The conversation is placed rather than run, for the same reason as
-    :func:`_grab_ask_the_documentation`: a live answer depends on whichever
-    model the machine has configured, and the figure could not be re-taken.
-    The mode selector is set to *ChiSurf tools* because the transcript is a
-    tool-driven run -- "Chat only" beside tool calls is an incoherent figure.
-    """
-    from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget
-
-    panel = AgentPanelWidget()
-    panel.resize(980, 720)
-    panel.mode_combo.setCurrentIndex(1)
-    panel.show()
-    QApplication.instance().processEvents()
-
-    panel.transcript.clear()
-    panel._append_sys(panel._greeting_for(panel._current_mode()))
-    panel._append_user(
-        "Fit the decays in test/data/tcspc/ibh and tell me the lifetimes."
-    )
-    panel._append_sys("load_data(path='test/data/tcspc/ibh')  ->  3 dataset(s)")
-    panel._append_sys("add_fit(model='Lifetime', dataset=0..2)  ->  3 fits")
-    panel._append_sys("run_fit(all)  ->  chi2r = 1.03, 1.12, 0.98")
-    panel._append_assistant(
-        "All three converged. The donor-only sample gives 3.81 ns; the two "
-        "labelled samples give 2.34 ns and 1.61 ns, so the transfer "
-        "efficiencies are 0.39 and 0.58. The fits are in your window \u2014 "
-        "chi2r is 0.98-1.12, so none of them is straining. Ask me to add a "
-        "second component if the residuals look structured."
-    )
-    QApplication.instance().processEvents()
-    _grab(panel, "ai_assistant.png")
-
-
-def _grab_burst_export_table():
-    """The per-burst export table, as it actually comes out of `build_tables`.
-
-    The subject of that guide is a *column contract* -- the names are chosen so
-    ndX imports them without any mapping -- so the figure has to be the real
-    header over real values, not a prose table restating it.
-
-    Driven on a simulated two-state trace whose answer is known: bursts
-    alternate between E = 0.25 and E = 0.75, so `Dominant State` in the figure
-    must alternate 0/1 in step with `Proximity ratio`. That makes the figure
-    check the export *and* the H2MM fit behind it, rather than only showing a
-    layout.
-    """
-    import tttrlib
-
-    from chisurf.core.datastore import column_names, column_values
-    from chisurf.gui.widgets.chitable import ArraySource, ChiTableWidget
-    from chisurf.plugins.burst.burst_h2mm.core import engines as h2mm_engines
-    from chisurf.plugins.burst.burst_h2mm.core import export as burst_export
-    from chisurf.plugins.burst.burst_h2mm.core.photons import (
-        StreamDef,
-        bursts_from_dataframe,
-    )
-
-    rng = np.random.default_rng(0)
-    macro, micro, channel, rows = [], [], [], []
-    clock = 0
-    for index in range(40):
-        n_photons = int(rng.integers(60, 160))
-        efficiency = 0.25 if index % 2 == 0 else 0.75
-        start = len(macro)
-        for _ in range(n_photons):
-            clock += int(rng.integers(1, 40))
-            macro.append(clock)
-            red = rng.random() < efficiency
-            channel.append(1 if red else 0)
-            micro.append(
-                int(rng.integers(100, 500) if red else rng.integers(200, 900))
-            )
-        rows.append(("sim.spc", start, len(macro) - 1))
-        clock += 5000
-
-    tttr = tttrlib.TTTR()
-    tttr.append_events(
-        np.asarray(macro, np.uint64),
-        np.asarray(micro, np.uint16),
-        np.asarray(channel, np.int8),
-        np.zeros(len(macro), np.int8),
-        False,
-        0,
-    )
-
-    # A plain mapping of columns, not a DataFrame: the reader takes either, and
-    # pandas is not the storage model here (test/test_pandas_seam.py).
-    frame = {
-        "First File": [row[0] for row in rows],
-        "First Photon": np.array([row[1] for row in rows], dtype=np.int64),
-        "Last Photon": np.array([row[2] for row in rows], dtype=np.int64),
-    }
-    data, meta = bursts_from_dataframe(
-        frame,
-        {"sim.spc": tttr},
-        [StreamDef("green", [0]), StreamDef("red", [1])],
-        min_photons=1,
-        return_meta=True,
-    )
-    fit = h2mm_engines.fit_states(data, 2, n_restarts=1, max_iter=200, seed=0)
-    path, _ = h2mm_engines.viterbi(fit, data)
-    tables = burst_export.build_tables(
-        data, meta, path, np.array([0.25, 0.75]),
-        base_time_s=1e-6, micro_time_ns=0.032,
-        stream_groups=[("green", (0,)), ("red", (1,))],
-    )
-
-    bursts = tables.bursts
-    names = column_names(bursts)
-    columns = {
-        name: np.asarray(column_values(bursts, index), dtype=float)
-        for index, name in enumerate(names)
-    }
-    widget = ChiTableWidget(source=ArraySource(columns))
-    # Wide enough for all ten columns: the last one clipped at 1250.
-    widget.resize(1460, 430)
-    _grab(widget, "burst_export_table.png")
+        driver.frame(2)
+    console.set_input("")  # leave the prompt bare, as a user would after running the lines
+    driver.frame(2)
+    driver.screenshot(FIG / "console.png")
+    print("wrote console.png", flush=True)
 
 
 def _simulate_us_alex(path, *, frac_high=0.5, seed=11, duration=25.0):
@@ -1632,11 +1332,11 @@ def _grab_intensity_trace():
 
 
 def _grab_file_tools():
-    """File-tools hub: Split / Convert with a file loaded, and Time Windows run.
+    """File tools: Split / Convert with a file loaded, and Time Windows run.
 
     Writes ``file_tools.png`` (TTTR -> Time Windows after *Process*, with the
     trace and its window boundaries) and ``file_tools_split.png`` (TTTR Split /
-    Convert with a file loaded). The hub and both children are the native emtk apps.
+    Convert with a file loaded). Each tool is its own native emtk window.
     """
     import tttrlib
     from emtk.testing import Driver
@@ -1650,27 +1350,27 @@ def _grab_file_tools():
     spc = work / src.name
     shutil.copy(src, spc)
 
-    hub = app_from("filetools")
-    driver = Driver(hub, (1300, 800))
-    driver.frame(2)
-
     # 1) Split / Convert
-    hub.select("split_convert")
-    model = hub.children["split_convert"].tool._model
+    split = app_from("tttr_splitter")
+    driver = Driver(split, (1300, 800))
+    driver.frame(2)
+    model = split.tool._model
     model.output_folder = str(work / "split")
     model.set_tttr(tttrlib.TTTR(str(spc)), str(spc))
     model.update()
-    render(hub, "file_tools_split.png", size=(1300, 800), driver=driver)
+    render(split, "file_tools_split.png", size=(1300, 800), driver=driver)
 
     # 2) TTTR -> Time Windows: queue the file, process, show the preview
-    hub.select("tttr_time_windows")
-    controller = hub.children["tttr_time_windows"].tool
+    windows = app_from("tttr_time_windows")
+    driver = Driver(windows, (1300, 800))
+    driver.frame(2)
+    controller = windows.tool
     controller.time_window_ms = 1000.0
     controller.add_paths([spc])
     controller._process_all()
     wait(driver, lambda: not controller.job.running and not controller.process_pending)
-    render(hub, "file_tools.png", size=(1300, 800), driver=driver)
-    return hub
+    render(windows, "file_tools.png", size=(1300, 800), driver=driver)
+    return windows
 
 
 def _grab_fcs_toolbox():
@@ -1748,8 +1448,8 @@ def _pump(seconds):
         time.sleep(0.02)
 
 
-def _grab_decay_analysis_hub():
-    """The native Decay Analysis hub on its VV/VH G-factor panel, a fast dye and a slow protein loaded.
+def _grab_vv_vh_g_factor_window():
+    """The VV/VH G-Factor Calculator (Spectroscopy > Decay), a fast dye and a slow protein loaded.
 
     Synthetic VV/VH pairs whose answer is known (G = 1.2, rho 0.2 ns and 16 ns,
     tau 4 ns), generated as the G-factor parity test does.
@@ -1758,7 +1458,7 @@ def _grab_decay_analysis_hub():
     from emtk.pil_painter import PilPainter
 
     from chisurf.core.fio import write_vv_vh
-    from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.app import make_app
+    from chisurf.emtk.plugins import load_plugin
 
     folder = pathlib.Path(tempfile.mkdtemp(prefix="gfactor_"))
     rng = np.random.default_rng(5)
@@ -1774,9 +1474,8 @@ def _grab_decay_analysis_hub():
         files[name] = folder / f"{name}.dat"
         write_vv_vh(files[name], vv=vv, vh=vh, metadata={"dt": dt})
 
-    app = make_app()
-    child = app.select("vv_vh_g_factor")
-    model = child.model
+    app = load_plugin("vv_vh_g_factor")
+    model = app.model
     model.fp_dt_ns = dt
     model.load(str(files["fast"]))
     model.load(str(files["slow"]), slow=True)
@@ -1785,9 +1484,9 @@ def _grab_decay_analysis_hub():
     for _ in range(4):
         painter = PilPainter(1200, 800)
         app.draw(painter, 0, 0, 1200, 800)
-    painter.frame.save(FIG / "decay_analysis_hub.png")
+    painter.frame.save(FIG / "vv_vh_g_factor_window.png")
     app.close()
-    print("wrote decay_analysis_hub.png")
+    print("wrote vv_vh_g_factor_window.png")
 
 
 def _grab_lltf():
@@ -1950,56 +1649,6 @@ def _ibh_fit(decay, n):
     return fit
 
 
-def _grab_f_test():
-    """F-test fed from real fits: 1- vs 2-exponential donor-only decay."""
-    from chisurf.plugins.core.f_test.gui.tool import FTestTool
-
-    d0 = _ibh_decay("Decay_577D.txt")
-    f1, f2 = _ibh_fit(d0, 1), _ibh_fit(d0, 2)
-    f1.run(); f2.run()
-    tool = FTestTool()
-    tool._load_fit(f1, "model1")
-    tool._load_fit(f2, "model2")
-    tool._load_fit(f2, "chi2max")
-    tool.resize(620, 560)
-    _grab(tool, "f_test_tool.png")
-    m = tool._model
-    print("ftest", m.chi2_1, m.n1, m.chi2_2, m.n2, m.conf_level, m.chi2_min, m.npars, m.dof, m.chi2_max)
-    return tool
-
-
-def _grab_hydropro():
-    """HydroPro with 148L selected and T4 lysozyme's mass and v-bar entered.
-
-    No HYDROPRO executable exists for macOS, so the grab shows the form ready to
-    run, with the structure listed in the results table and no value yet.
-    """
-    from chisurf.plugins.modelling.hydropro.gui.tool import HydroProTool
-
-    w = HydroProTool()
-    m = w._model
-    m.exe_path = ""
-    m.struct_files = str(_PDB_148L)
-    m.rm = 18700.0
-    m.vbar = 0.73
-    m.status = "Executable not configured"
-    w._form.rebuild()
-    w._refresh_table_files()
-    w.table.setColumnWidth(0, 470)
-    w.resize(760, 820)
-    _grab(w, "hydropro_tool.png")
-
-
-def _grab_hydropro_exe_dialog():
-    """The dialog Run opens when no executable is configured."""
-    from chisurf.plugins.modelling.hydropro.gui.dialogs import DownloadInfoDialog
-    from chisurf.plugins.modelling.hydropro.gui.tool import _DOWNLOAD_URL
-
-    d = DownloadInfoDialog(_DOWNLOAD_URL)
-    d.resize(560, 200)
-    _grab(d, "hydropro_exe_dialog.png")
-
-
 def _grab_traj_tools():
     """Traj Tools hub on the T4L NMSim trajectory: Align, FRET, Energy Calc, Remove Clashed (guide 81)."""
     from screenshots.emtk_shot import app_from, render
@@ -2146,11 +1795,7 @@ def main():
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
 
     for grab in (
-        _grab_fcs_model_editor,
-        _grab_tcspc_lifetime_editor,
         _grab_parameter_link_menu,
-        _grab_pda_editor,
-        _grab_pda3c_exchange_panel,
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,
@@ -2168,16 +1813,13 @@ def main():
         _grab_region_editor,
         _grab_ndx_gaussian_panel,
         _grab_ndx_overlay_axes,
-        _grab_ask_the_documentation,
         _grab_maxent_decay,
-        _grab_decay_analysis_hub,
+        _grab_vv_vh_g_factor_window,
         _grab_global_view,
         _grab_ebfret_tool,
         _grab_pto_inspector,
         _grab_irf_estimator,
         _grab_console,
-        _grab_ai_assistant,
-        _grab_burst_export_table,
         _grab_alex_suite_alternation,
         _grab_alex_suite_titration,
         _grab_decay_gap_filter,
@@ -2188,9 +1830,6 @@ def main():
         _grab_lltf,
         _grab_synthetic_decay,
         _grab_phasor_calculator,
-        _grab_f_test,
-        _grab_hydropro,
-        _grab_hydropro_exe_dialog,
         _grab_traj_tools,
         _grab_fret_line_tool,
     ):

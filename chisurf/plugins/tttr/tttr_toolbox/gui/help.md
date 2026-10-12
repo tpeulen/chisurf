@@ -49,7 +49,7 @@ macro time, one row per photon, with a channel filter. When a histogram or a
 count rate looks wrong, this is where you see why.
 
 Splitting files, converting containers and editing headers are file-level
-operations; they live in **File tools**.
+operations; they live in **File › Data**.
 
 **Count Rate Analysis** reports per-detector rates across many files. This is the
 fastest possible sanity check on a dataset — a detector that died mid-session, a

@@ -11,7 +11,7 @@ This guide runs the **MaxEnt decay** tool to recover a *distribution* of decay
 times — or of distances — instead of two or three exponential components. The
 theory is in {ref}`concept-maximum-entropy`.
 
-**Open it:** *Spectroscopy ▸ Decay ▸ Decay Analysis*, step **2. MaxEnt MEM**, or on its own with
+**Open it:** *Spectroscopy ▸ Decay ▸ MaxEnt MEM*, or on its own with
 `python -m chisurf.emtk --plugin maxent_decay`.
 
 Press **Guide** in the tool for a five-step walk through the buttons.

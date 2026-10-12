@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: TTTR Tools
-description: 'Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools.'
+description: 'Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File › Data.'
 resource: chisurf/plugins/tttr/tttr_toolbox/
 tags: [reference, plugins, tttr-toolbox, tools, photon-data, tttr]
 anchor: plugin-tttr_toolbox
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-tttr_toolbox)=
 # TTTR Tools
 
-Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File tools.
+Photon-level TTTR toolbox: ALEX Creator, Micro-time Shifter, Photon Table, Count Rate Analysis and Audifier. File-level operations live in File › Data.
 
 ## Identity
 

@@ -173,7 +173,45 @@ class SplitterController:
         self.job.start(lambda: snapshot.run_batch(file_progress_cb=progress), publish, error)
 
 
+#: Model fields that are the user's choices; saved with the window and restored on reopen.
+SPLITTER_FIELDS = (
+    "input_format",
+    "output_format",
+    "photons_per_file_k",
+    "microtime_binning",
+    "split_files",
+    "reset_macro_times",
+    "keep_original",
+    "batch_use_parent",
+    "input_file",
+    "output_folder",
+    "batch_files",
+)
+
+
 class _StandaloneApp(SplitterApp):
+    def export_settings(self):
+        """Return the split/convert options as JSON-able preferences."""
+        return {name: getattr(self.tool._model, name) for name in SPLITTER_FIELDS}
+
+    def restore_settings(self, state):
+        """Apply preferences saved by :meth:`export_settings`; a vanished input file is skipped."""
+        for name in SPLITTER_FIELDS:
+            if name in state:
+                setattr(self.tool._model, name, state[name])
+        if state.get("input_file") and Path(state["input_file"]).is_file():
+            self.tool.load_input(state["input_file"])
+
+    def files_dropped(self, paths):
+        """Host hook: a file dropped on the window becomes the input file."""
+        if not paths:
+            return False
+        self.tool.load_input(str(paths[0]))
+        return True
+
+    on_files_dropped = files_dropped
+    on_paths_dropped = files_dropped
+
     def close(self):
         self.tool.job.close()
         if self.tool.dataset_picker is not None:

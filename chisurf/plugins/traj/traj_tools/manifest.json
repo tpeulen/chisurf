@@ -9,6 +9,7 @@
   ],
   "categories": [
     "Structure",
+    "Trajectory",
     "Tools"
   ],
   "state_namespace": "traj_tools",

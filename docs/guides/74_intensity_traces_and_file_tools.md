@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Intensity traces and file tools
-description: Binning a TTTR file into per-detector intensity traces, decoding them with a hidden Markov model, and the File tools hub that splits, converts, packs, inspects and windows the same files.
+description: Binning a TTTR file into per-detector intensity traces, decoding them with a hidden Markov model, and the File › Data tools that split, convert, pack, inspect and window the same files.
 tags: [guides, file-formats, tttr, photons]
 ---
 
@@ -10,7 +10,7 @@ tags: [guides, file-formats, tttr, photons]
 Two tools that work on the photon stream before any model is fitted.
 **Intensity trace** bins a TTTR file into counts per detector and per time
 window, shows the count histogram beside each trace, and fits a hidden Markov
-model (HMM) to find the levels. **File tools** is the hub for operations on the
+model (HMM) to find the levels. The **File › Data** tools operate on the
 *file*: splitting and converting it, packing it into a `.pto`, reading one back,
 editing the header, and cutting it into fixed time windows.
 
@@ -107,7 +107,7 @@ TTTR file named `<stem>_HMM#<n>_<w>ms/`:
 | `hist/<stem>_hist_<detector>.csv`, `_hist_sum.csv` | count histograms with the current histogram settings |
 | `hist/<stem>_fret_hist.csv` | ratio histogram, 50 bins on [0, 1] |
 
-The `.bst` files are burst-ID files: **BID → Analysis** in File tools turns
+The `.bst` files are burst-ID files: **BID → Analysis** in File › Data turns
 them into a burst table, so the bursts of one HMM state can go on to lifetime or
 FRET analysis. Their second column is the index of the first photon *after*
 the run, while burst-ID readers take it as the last photon *in* it — each run
@@ -137,22 +137,21 @@ with a mean dwell of 12 ms — about one transit through the focus.
 
 ## File tools
 
-### Open the hub
+### Open a tool
 
-**File → Data → File tools**. A list on the left, one panel per tool on the right;
-panels load when first selected, so a tool whose dependencies are missing shows
-an error panel and the rest still work. **Guide** walks through the hub.
+**File → Data** lists the file tools; each opens in its own window, with its own
+**Guide** and **?** help. A tool whose dependencies are missing fails alone.
 
 ```{figure} figures/file_tools.png
 :name: fig-file-tools
 :width: 100%
 
-File tools on **TTTR → Time Windows** with an Olympus HT3 scan queued: the preview
+**TTTR → Time-Window BIDs** with an Olympus HT3 scan queued: the preview
 shows its intensity trace; **Process** cuts the file into windows of the chosen
 **Time window (ms)** and each window becomes one row of the `.bst` file.
 ```
 
-### The panels
+### The tools
 
 **TTTR Split / Convert** — rewrite a recording in pieces or in another
 container.
@@ -292,7 +291,7 @@ many short traces, ebFRET ({doc}`20_ebfret_binned_hmm`).
   data model behind `.bst` indices: {doc}`33_timestamps_and_bursts` · TTTR
   formats: {doc}`12_handling_tttr_files`.
 - Tools: **Intensity trace** (`chisurf/plugins/tttr/intensity_trace/`);
-  **File tools** (`chisurf/plugins/tttr/filetools/`) hosting
+  the **File › Data** tools
   `tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`,
   `tttr_time_windows`, `bid_to_analysis` and `mfd_prepare`.
 
@@ -317,17 +316,13 @@ written only to the selected output folder.
 
 ### Native File tools layout
 
-The native File tools hub starts at 1100 × 720, with a saved size taking
-precedence. Its seven routes open the actual native tools: Split / Convert,
-TTTR ⇄ PTO, PTO Inspector, TTTR header, Time Windows, BID → Analysis and
-MFD Prepare. Switching panels preserves each child instance and its settings.
-Resizing keeps the navigation and child viewport responsive without changing
-the underlying photon operations.
+Each file tool is its own native window and starts at 1100 × 720 unless a saved
+size exists: Split / Convert, ⇄ .pto, PTO Inspector, TTTR Header editor,
+TTTR → Time-Window BIDs, BID → Analysis and MFD Prepare. Split / Convert and
+Time-Window BIDs also restore their options between sessions.
 
 Split / Convert keeps progress, **Stop** and completion messages inside its
 existing input/output dock, so a completed operation leaves its controls
 reachable. PTO Inspector preserves useful column widths in wide result tables;
 scroll horizontally to inspect trailing values rather than shrinking every
 column to fit the viewport.
-
-![Native computed workflow with readable controls and results](figures/filetools_native_window.png)

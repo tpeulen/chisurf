@@ -110,6 +110,5 @@
       "topic": "irf_estimator.jobs.*",
       "description": "Job lifecycle events"
     }
-  ],
-  "menu_hidden": true
+  ]
 }

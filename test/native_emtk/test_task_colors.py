@@ -62,7 +62,7 @@ def test_every_shipped_plugin_resolves_to_a_task_colour():
     assert known["help"] == "documentation"
     assert known["wizards"] == "wizards"
     assert known["imaging_tools"] == "imaging"
-    assert known["hmm"] == "kinetics" and known["lifetime_analysis"] == "decay"
+    assert known["hmm"] == "kinetics" and known["lltf"] == "decay"
 
 
 def test_the_shells_own_docks_have_their_category():

@@ -146,7 +146,6 @@ REPAIRED_DECLARATIONS = {
     "ChiMOL",
     "Code Editor",
     "Count Rate Analysis",
-    "Decay Analysis",
     "Docking & Screening",
     "Documentation",
     "FCS Filter Calculator",

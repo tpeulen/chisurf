@@ -159,7 +159,7 @@ def test_narrow_widths_keep_every_plugin_reachable(shell):
     driver = Driver(shell, size=(560, 800))
     driver.frame(2)
     modes = shell.ribbon.ribbon.group_modes
-    assert modes["Decay"] == "full" and modes["Imaging"] != "full", modes
+    assert modes["Correlation"] == "full" and modes["Imaging"] != "full", modes
     collapsed = next(group for group, mode in modes.items() if mode == "collapsed")
     driver.click(f"ribbon.group.Spectroscopy.{collapsed}")
     driver.frame()

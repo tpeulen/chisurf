@@ -82,8 +82,32 @@
    ],
    "Data": [
     {
-     "text": "File tools",
-     "tooltip": "Everything that acts on a file rather than on the physics inside it: TTTR split/convert, packing and unpacking a .pto container, reading one back, time-window BIDs, BID→Analysis, and the TTTR header e"
+     "text": "BID→Analysis",
+     "tooltip": "BID → Analysis Converter\n\nThis plugin reads burst ID (BID) files containing start/stop photon indices\nand generates a burstwise analysis folder next to the corresponding TTTR data.\n\nWorkflow per BID f"
+    },
+    {
+     "text": "MFD Prepare",
+     "tooltip": "Prepare a burst folder for multiparameter-fluorescence (MFD) analysis: resolve photon sources, verify channel counts, compute mean micro times, and inspect the preparation report."
+    },
+    {
+     "text": "PTO Inspector",
+     "tooltip": "Inspect a .pto photon container: every object in it, the provenance graph that says how each came to be, the payload as a table or a curve, and the settings that are the recipe. Double-click a step to"
+    },
+    {
+     "text": "Split/Convert",
+     "tooltip": "TTTR Split / Convert plugin.\n\nThis plugin provides functionality for splitting large TTTR (Time-Tagged Time-Resolved)\nfiles, particularly those in the PicoQuant PTU format, into smaller segments. This"
+    },
+    {
+     "text": "TTTR Header editor",
+     "tooltip": "TTTR Header Editor plugin.\n\nThis plugin provides a tool for viewing and editing header tags of any\ntime-tagged time-resolved (TTTR) file that :mod:`tttrlib` can read — PicoQuant\nPTU and HT3, Becker&Hi"
+    },
+    {
+     "text": "TTTR→Time-Window BIDs",
+     "tooltip": "Split TTTR files into fixed-duration time-window BID (.bst) files."
+    },
+    {
+     "text": "⇄ .pto",
+     "tooltip": "Convert between a vendor photon file (.ptu, .spc, .ht3, ...) and ChiSurf's own .pto container, in either direction. Drop a vendor file to pack it into a .pto beside it; drop a .pto to unpack the vendo"
     }
    ]
   },
@@ -124,8 +148,32 @@
   "Spectroscopy": {
    "Decay": [
     {
-     "text": "Decay Analysis ⚠️",
-     "tooltip": "⚠️  Decay Analysis is experimental and not yet validated\nIntegrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, VV/VH G-factor c"
+     "text": "Histogram-Microtime",
+     "tooltip": "Create and inspect TTTR microtime histograms."
+    },
+    {
+     "text": "IRF Estimation",
+     "tooltip": "Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution."
+    },
+    {
+     "text": "Lazy Lifetime Analysis ⚠️",
+     "tooltip": "⚠️  Lazy Lifetime Analysis is experimental and not yet validated\nLazy Lifetime Analysis for TCSPC fluorescence decay data."
+    },
+    {
+     "text": "MaxEnt MEM",
+     "tooltip": "Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance)."
+    },
+    {
+     "text": "Synthetic Decay Generator",
+     "tooltip": "Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI."
+    },
+    {
+     "text": "VV/VH Anisotropy Decay ⛔",
+     "tooltip": "⛔  VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead.\nCompute and plot the anisotropy decay r(t) of a VV/VH file with a g-f"
+    },
+    {
+     "text": "VV/VH G-Factor Calculator",
+     "tooltip": "Calculate detector G-factors using tail-matching on VV/VH format files."
     }
    ],
    "Correlation": [
@@ -561,7 +609,43 @@
       "visible": true,
       "menu": [
        {
-        "text": "File tools",
+        "text": "BID→Analysis",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "MFD Prepare",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "PTO Inspector",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Split/Convert",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "TTTR Header editor",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "TTTR→Time-Window BIDs",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "⇄ .pto",
         "shortcut": "",
         "checkable": false,
         "visible": true
@@ -649,7 +733,43 @@
       "visible": true,
       "menu": [
        {
-        "text": "Decay Analysis",
+        "text": "Histogram-Microtime",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "IRF Estimation",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Lazy Lifetime Analysis",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "MaxEnt MEM",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "Synthetic Decay Generator",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "VV/VH Anisotropy Decay",
+        "shortcut": "",
+        "checkable": false,
+        "visible": true
+       },
+       {
+        "text": "VV/VH G-Factor Calculator",
         "shortcut": "",
         "checkable": false,
         "visible": true

@@ -35,7 +35,7 @@
     },
     {
       "title": "Look at the photons before trusting a summary",
-      "text": "Every histogram and count rate here is a summary of individual records. When a summary looks wrong, the <b>Photon Table</b> shows the records themselves: routing channel, micro time and macro time, one row per photon, filtered by channel.<br/><br/>Splitting files and editing headers are file-level operations; they live in <b>File tools</b>.",
+      "text": "Every histogram and count rate here is a summary of individual records. When a summary looks wrong, the <b>Photon Table</b> shows the records themselves: routing channel, micro time and macro time, one row per photon, filtered by channel.<br/><br/>Splitting files and editing headers are file-level operations; they live in <b>File › Data</b>.",
       "target": {
         "panel": "Photon Table"
       }

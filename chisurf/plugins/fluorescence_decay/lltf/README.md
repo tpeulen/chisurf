@@ -33,11 +33,11 @@ in fluorescence spectroscopy.
 ## Requirements
 
 - numpy, scipy and PyYAML; the fit writes `<decay>_fit.png` with `emtk.figure` (no figure is shown on screen).
-- The window (`gui/app.py`) is an emtk app and needs no Qt; the Decay Analysis hub hosts the same app.
+- The window (`gui/app.py`) is an emtk app and needs no Qt; Spectroscopy ▸ Decay ▸ Lazy Lifetime Analysis opens it.
 
 ## Usage
 
-1. Open Spectroscopy ▸ Decay ▸ Decay Analysis and choose panel **3. Lazy Lifetime Analysis** (it has no menu entry of its own)
+1. Open Spectroscopy ▸ Decay ▸ Lazy Lifetime Analysis
 2. Load TCSPC data:
    - Import decay curves
    - Load instrument response function (IRF)

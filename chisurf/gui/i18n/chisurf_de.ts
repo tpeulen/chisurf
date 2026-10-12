@@ -63065,7 +63065,7 @@ Für das exakte äußere Produkt deaktivieren.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5274" />
             <source>MaxEnt MEM</source>
-            <translation type="unfinished" />
+            <translation>MaxEnt MEM</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="5307" />
@@ -63340,7 +63340,7 @@ Für das exakte äußere Produkt deaktivieren.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11889" />
             <source>⇄ .pto</source>
-            <translation type="unfinished" />
+            <translation>⇄ .pto</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="834" />

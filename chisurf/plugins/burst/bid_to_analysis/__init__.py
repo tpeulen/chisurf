@@ -54,11 +54,8 @@ from chisurf.core.fio.fluorescence.burst import (
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
 
 # Plugin name in menu
-name = "Tools:Converter:BID→Analysis"
+name = "File:Data:BID→Analysis"
 
-# Aggregated into the File tools hub (tttr/filetools); hidden as a top-level
-# menu entry but still importable and standalone-launchable.
-menu_hidden = True
 
 # Optional icon exposed for the plugin manager/UI
 icon = "🔗"

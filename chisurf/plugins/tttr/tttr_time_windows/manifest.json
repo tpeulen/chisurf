@@ -1,15 +1,12 @@
 {
   "id": "tttr_time_windows",
   "version": "2.0.0",
-  "display_name": "Tools:Converter:TTTR\u2192Time-Window BIDs",
+  "display_name": "File:Data:TTTR→Time-Window BIDs",
   "description": "Split TTTR files into fixed-duration time-window BID (.bst) files.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],
-  "categories": [
-    "Tools",
-    "Converter"
-  ],
+  "categories": ["File", "Data"],
   "icon": "\ud83e\ude9f",
   "state_namespace": "tttr_time_windows",
   "state_schema": {
@@ -120,7 +117,6 @@
       "description": "Job lifecycle events"
     }
   ],
-  "menu_hidden": true,
   "requires": {
     "tttr_splitter": "*"
   }

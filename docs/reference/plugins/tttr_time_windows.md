@@ -3,7 +3,7 @@ type: Plugin Reference
 title: TTTR→Time-Window BIDs
 description: Split TTTR files into fixed-duration time-window BID (.bst) files.
 resource: chisurf/plugins/tttr/tttr_time_windows/
-tags: [reference, plugins, tttr-time-windows, tools, converter]
+tags: [reference, plugins, tttr-time-windows, file, data]
 anchor: plugin-tttr_time_windows
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ Split TTTR files into fixed-duration time-window BID (.bst) files.
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_time_windows` |
-| Menu path | Tools → Converter → **TTTR→Time-Window BIDs** |
-| Categories | Tools, Converter |
+| Menu path | File → Data → **TTTR→Time-Window BIDs** |
+| Categories | File, Data |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |
 | State namespace | `tttr_time_windows` |

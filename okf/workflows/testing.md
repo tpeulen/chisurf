@@ -575,8 +575,6 @@ chisurf/plugins/fcs/fcs_lfcs_sim/test
 chisurf/plugins/fcs/fcs_merger/test
 chisurf/plugins/fcs/flc_2d/test
 chisurf/plugins/fluorescence_decay/irf_estimator/test
-chisurf/plugins/fluorescence_decay/lifetime_analysis/test
-chisurf/plugins/fluorescence_decay/lifetime_analysis/tests
 chisurf/plugins/fluorescence_decay/lltf/test
 chisurf/plugins/fluorescence_decay/maxent_decay/test
 chisurf/plugins/fluorescence_decay/synthetic_decay/test
@@ -614,7 +612,6 @@ chisurf/plugins/traj/traj_rotate_translate/test
 chisurf/plugins/traj/traj_save_topology/test
 chisurf/plugins/traj/traj_tools/test
 chisurf/plugins/tttr/audifier/test
-chisurf/plugins/tttr/filetools/test
 chisurf/plugins/tttr/microtime_histogram/tests
 chisurf/plugins/tttr/photon_table/tests
 chisurf/plugins/tttr/ptu_alex_creator/test

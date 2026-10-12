@@ -20,8 +20,7 @@ and why two detectors remove afterpulsing).
 
 ## Open the tools
 
-* **Histogram-Microtime**: **Spectroscopy → Decay → Decay Analysis**, panel
-  **4. Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`).
+* **Histogram-Microtime**: **Spectroscopy → Decay → Histogram-Microtime** (`chisurf/plugins/tttr/microtime_histogram/`).
 * **Correlator**: **Spectroscopy → Correlation → FCS**, steps **1. Channel
   Definitions** to **5. FCS Merger** (`chisurf/plugins/fcs/fcs_correlator/`).
 

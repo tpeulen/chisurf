@@ -85,6 +85,5 @@
       "topic": "maxent_decay.state.*",
       "description": "State patch events"
     }
-  ],
-  "menu_hidden": true
+  ]
 }

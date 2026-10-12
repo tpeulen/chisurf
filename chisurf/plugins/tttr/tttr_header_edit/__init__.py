@@ -31,8 +31,5 @@ that persists arbitrary edited header tags without loss.
 # Plugin brand icon (unified emoji set)
 icon = "🏷️"
 
-name = "TTTR:Editor:TTTR Header editor"
+name = "File:Data:TTTR Header editor"
 
-# Aggregated into the File tools hub (filetools); hidden as a top-level
-# menu entry but still importable and standalone-launchable.
-menu_hidden = True

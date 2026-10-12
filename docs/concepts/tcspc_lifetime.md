@@ -23,7 +23,7 @@ For the step-by-step workflows in ChiSurf, see the guides
 {doc}`/guides/10_lifetime_anisotropy_fitting`,
 {doc}`/guides/21_lifetime_from_bursts` and {doc}`/guides/32_nsalex_lifetime`;
 building the decay from a photon file is
-{doc}`/guides/73_tttr_decay_and_correlation`; the Decay Analysis window, Lazy
+{doc}`/guides/73_tttr_decay_and_correlation`; the decay tools, Lazy
 Lifetime Analysis and the Synthetic Decay Generator are
 {doc}`/guides/76_decay_analysis_tools`.
 
@@ -425,7 +425,7 @@ FRET distance distributions and anisotropy decays are resolved; see
 - Guides: {doc}`/guides/10_lifetime_anisotropy_fitting` ·
   {doc}`/guides/21_lifetime_from_bursts` · {doc}`/guides/32_nsalex_lifetime` ·
   {doc}`/guides/73_tttr_decay_and_correlation` (histogramming a photon file) ·
-  {doc}`/guides/76_decay_analysis_tools` (Decay Analysis, Lazy Lifetime
+  {doc}`/guides/76_decay_analysis_tools` (the decay tools, Lazy Lifetime
   Analysis, Synthetic Decay Generator).
 - Implementation: convolution kernels
   {src}`chisurf/core/fluorescence/tcspc/convolve.py`; nuisances (pile-up, DNL)
@@ -440,7 +440,7 @@ FRET distance distributions and anisotropy decays are resolved; see
   applied above; {cite}`maus2001` the $2I^*$ statistic used for burst- and
   pixel-wise fits; {cite}`wahl2015` the timing electronics and acquisition
   modes; {cite}`isbaner2016` dead-time distortion and its correction.
-- Tools in ChiSurf: **Decay Analysis** (`chisurf/plugins/fluorescence_decay/lifetime_analysis/`) collects the decay tools — IRF estimation, **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for an automated discrete-exponential fit of one decay file, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.
+- Tools in ChiSurf: *Spectroscopy → Decay* holds the decay tools — IRF estimation (`chisurf/plugins/fluorescence_decay/irf_estimator/`), **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for an automated discrete-exponential fit of one decay file, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.
 
 Microtime linearization can mask low-count calibration bins before building
 the correction. When region-mean normalization is enabled, the low-count

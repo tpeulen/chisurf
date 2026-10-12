@@ -226,17 +226,20 @@ single colour it would just sit on top of the curve it names.
 
 Splitting by *stream* rather than by detector matters under PIE/ALEX, where the
 acceptor-excitation stream shares its detectors with the acceptor stream and is
-separated only by a micro-time window. In the panel below you can see it
-directly: the red curve stops at ~6.8 ns and the yellow one begins there.
+separated only by a micro-time window. Under PIE the acceptor-excitation
+stream would appear as a third, yellow curve that starts where the sensitised
+red one ends; the panel below is a two-colour donor/acceptor sample, so it shows
+green and red only.
 
 ```{figure} figures/h2mm_state_decays.png
 :name: fig-h2mm-state-decays
 :width: 90%
 
-Per-state decays of a two-state fit with **every colour ticked**. Green is
-the donor, red the sensitised acceptor, yellow the directly excited acceptor —
-red and yellow share the same detectors and are separated by the PIE window at
-~6.8 ns. Solid is S0 (low FRET: little red), dashed is S1 (high FRET).
+Per-state decays of a two-state fit of the sm-DNA bursts (SPC-132) with **every
+colour ticked**. Green is the donor, red the sensitised acceptor. The lines are
+the states: S0 is low FRET (E ≈ 0.03, little red), S1 is high FRET (E ≈ 0.46),
+drawn dashed in the plot. The yellow directly-excited-acceptor curve of a PIE
+sample is not part of this data set.
 ```
 
 The underlying histograms are written to **`h2mm_state_decays.csv`**, at the

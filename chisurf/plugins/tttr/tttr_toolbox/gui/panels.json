@@ -1,7 +1,7 @@
 {
   "_comment": "Data-driven panel list for the TTTR Tools toolbox. Each entry names a tool by its plugin folder under chisurf/plugins; the toolbox opens the plugin's emtk app (manifest entrypoints.emtk) on first selection. \"icon\" is drawn in the navigation list in front of the name. Add a tool by adding an entry here \u2014 no Python needed. Use {\"separator\": true} to group.",
   "title": "\ud83e\uddf0 TTTR Tools",
-  "_scope": "Photon-level work on a TTTR stream. File-level operations (split/convert, header, .pto, time windows) live in File tools.",
+  "_scope": "Photon-level work on a TTTR stream. File-level operations (split/convert, header, .pto, time windows) live in File › Data.",
   "panels": [
     {
       "name": "ALEX Creator",

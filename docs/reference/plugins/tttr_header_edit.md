@@ -3,7 +3,7 @@ type: Plugin Reference
 title: TTTR Header editor
 description: 'TTTR Header Editor plugin. This plugin provides a tool for viewing and editing header tags of any time-tagged time-resolved (TTTR) file that :mod:tttrlib can read — PicoQuant PTU and HT3, Becker&Hickl SPC, and Photon-HDF5. tttrlib normalises every container into the same tag list, so the editor is format-agnostic on read. It allows users to: 1. Open and inspect any supported TTTR file (auto-detected container) 2. View all header tags and their values in a tabular format 3. Edit existing tag values 4. Add new custom tags to the header 5. Remove unwanted tags 6. Save the edited header to a new PTU file The plugin features an intuitive table-based interface that displays tag names, types, values, and indices. Users can modify any field and see the changes in real-time. A JSON view is also available to see the complete header structure. This tool is particularly useful for: - Correcting metadata in experimental TTTR files - Adding missing information to headers - Preparing files for specialized analysis - Troubleshooting issues with file metadata - Educational purposes to understand TTTR file structure The photon events of the source file are copied verbatim into the saved file. Output is always a PTU container, because it is the only tttrlib container that persists arbitrary edited header tags without loss.'
 resource: chisurf/plugins/tttr/tttr_header_edit/
-tags: [reference, plugins, tttr-header-edit, tttr, editor]
+tags: [reference, plugins, tttr-header-edit, file, data]
 anchor: plugin-tttr_header_edit
 generator: build_tools/docs/generate_plugin_docs.py
 ---
@@ -18,8 +18,8 @@ TTTR Header Editor plugin.  This plugin provides a tool for viewing and editing 
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_header_edit` |
-| Menu path | TTTR → Editor → **TTTR Header editor** |
-| Categories | TTTR, Editor |
+| Menu path | File → Data → **TTTR Header editor** |
+| Categories | File, Data |
 | Version | 1.0.0 |
 | Surfaces | emtk, script |
 
@@ -30,6 +30,10 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | json_text | `json_text` | text |  |  | Live JSON view of the full TTTR header with the edited tags. |
+
+## Theory and workflow
+
+- **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source
 

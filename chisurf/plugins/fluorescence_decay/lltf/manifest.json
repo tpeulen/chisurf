@@ -25,6 +25,5 @@
     "emtk": "chisurf.plugins.fluorescence_decay.lltf.gui.app:make_app"
   },
   "experimental": true,
-  "experimental_message": "Lazy Lifetime Analysis is experimental and not yet validated",
-  "menu_hidden": true
+  "experimental_message": "Lazy Lifetime Analysis is experimental and not yet validated"
 }

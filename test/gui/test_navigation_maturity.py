@@ -217,8 +217,8 @@ class TestRibbonMarksAMenuLaunchedTool:
 
     def test_an_experimental_tool_is_marked_and_explained(self, qapp):
         flagged = self._flagged_buttons(qapp)
-        assert "Decay Analysis ⚠️" in flagged, sorted(flagged)
-        tooltip = flagged["Decay Analysis ⚠️"]
+        assert "Lazy Lifetime Analysis ⚠️" in flagged, sorted(flagged)
+        tooltip = flagged["Lazy Lifetime Analysis ⚠️"]
         assert tooltip.startswith("⚠️")
         assert "experimental" in tooltip.split("\n")[0].lower()
         # The description is kept below the warning, not replaced by it.

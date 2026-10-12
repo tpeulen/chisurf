@@ -169,7 +169,7 @@ tests assert over a real container rather than a synthesised one.
 ## Looking inside one
 
 Everything above is recorded whether or not anyone reads it. The **PTO
-Inspector** (*File → Data → File tools → PTO Inspector*) is the window that does: the objects in the
+Inspector** (*File → Data → PTO Inspector*) is the window that does: the objects in the
 file, the payload as a table or a curve, the settings, and the provenance drawn
 as a **graph** rather than a list.
 
@@ -241,12 +241,11 @@ native host. [Audifier](../guides/94_tttr_audifier.md) preserves its waveform
 and waterfall across layout changes; reopening preferences restores the
 configuration, while the recording is loaded again for recomputation.
 
-The native File tools hub keeps container operations in the tools that own
+The File › Data tools keep container operations in the tools that own
 them. Packing, inspecting provenance, editing tags and preparing burst results
-share navigation rather than an additional photon algorithm. Host resizing
-retains the actual child contexts and scientific settings. The
+are separate windows, not an additional photon algorithm. The
 [File tools workflow](../guides/74_intensity_traces_and_file_tools.md) lists all
-seven routes and their distinct input requirements.
+seven tools and their distinct input requirements.
 
 PTO Inspector's declared host dimensions are presentation preferences.
 Resizing or restoring them does not rewrite the container or regenerate its

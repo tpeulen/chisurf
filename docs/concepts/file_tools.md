@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: 'File tools: operations on the container, not the measurement'
-description: What the File tools hub is for, why moving a recording between containers, cutting it into windows or correcting a header does not change the photons, and which tool does which.
+description: What the File › Data tools are for, why moving a recording between containers, cutting it into windows or correcting a header does not change the photons, and which tool does which.
 tags: [concepts, file-formats, file, tools]
 anchor: concept-file-tools
 ---
@@ -11,9 +11,9 @@ anchor: concept-file-tools
 
 A recording exists twice: as photons (detector, macro time, micro time) and as a *file* that carries them with a header
 and a vendor layout. Some operations act on the second only. They split, convert, pack, inspect, window or relabel,
-and none of them estimates a physical quantity. The File tools hub
-(`chisurf/plugins/tttr/filetools/`) collects them in one window with a navigation list on the left and one lazily built
-panel per tool on the right. A failing tool breaks only its own panel.
+and none of them estimates a physical quantity. The File tools are ordinary tools in **File › Data**, each in its own window
+(`tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`, `tttr_time_windows`, `bid_to_analysis`,
+`mfd_prepare`).
 
 | tool | does |
 |---|---|

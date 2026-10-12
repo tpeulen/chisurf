@@ -69,8 +69,8 @@ setting is refused and named in the status line.
 :name: fig-settings-acquisition
 :width: 100%
 
-Acquisition. The simulator's per-species table, kinetics matrices and decay spectra stay in the Acquisition tool and keep
-their stored values; the other simulator parameters are edited here.
+Acquisition. The simulator's per-species table, kinetics matrices and decay spectra stay in the Acquisition tool (**Tools → Views → Acquisition**)
+and keep their stored values; the other simulator parameters are edited here.
 ```
 
 ## 3. Keyboard, wheel and files

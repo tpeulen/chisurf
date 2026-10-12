@@ -93,9 +93,9 @@ buttons of the tool inside it. Core chrome (the **Tools** tree, *Start*) stays a
 quiet grey.
 
 ```{figure} ../images/native_window_task_colors.png
-:alt: The native window with Decay Analysis, Hidden Markov model, Image Tools, Wizards and Documentation open; Wizards in front in orange.
+:alt: The native window with a decay tool, Hidden Markov model, Image Tools, Wizards and Documentation open; Wizards in front in orange.
 
-Wizards (orange) in front; behind it Decay Analysis (red), Hidden Markov model
+Wizards (orange) in front; behind it a decay tool (red), Hidden Markov model
 (olive), Image Tools (green) and Documentation (blue). Read data / Datasets /
 Analysis are teal (fitting), Log / Console indigo.
 ```
@@ -105,7 +105,7 @@ Analysis are teal (fitting), Log / Console indigo.
 | blue | Documentation | *Main → Help* (Documentation, About) |
 | orange | Wizards | *Tools → Calculators → Wizards* |
 | green | Imaging | *Spectroscopy → Imaging* (Image Tools) |
-| red | Decay | *Spectroscopy → Decay* (Decay Analysis) |
+| red | Decay | *Spectroscopy → Decay* (IRF, MaxEnt, lifetime fits, G-factor) |
 | violet | Correlation | *Spectroscopy → Correlation* (FCS, PCH) |
 | magenta | Single-molecule | *Spectroscopy → Single-Molecule* (ALEX, bursts, traces) |
 | olive | Kinetics | *Spectroscopy → Kinetics* (Hidden Markov model) |

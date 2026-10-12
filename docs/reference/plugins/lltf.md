@@ -39,7 +39,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
-- **Workflow** — [Decay Analysis window, Lazy Lifetime Analysis and synthetic decays](/guides/76_decay_analysis_tools.md)
+- **Workflow** — [The decay tools, Lazy Lifetime Analysis and synthetic decays](/guides/76_decay_analysis_tools.md)
 
 ## Source
 

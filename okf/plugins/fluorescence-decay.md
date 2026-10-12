@@ -25,7 +25,6 @@ The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting 
 
 | Plugin dir | Display name | What it does |
 |---|---|---|
-| `lifetime_analysis` | Decay Analysis | Integrated lifetime-analysis window bundling IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms and VV/VH G-factor calibration. |
 | `irf_estimator` | IRF Estimation | Blind IRF estimation from decay data via truncated-exponential fitting and Richardson-Lucy deconvolution. |
 | `maxent_decay` | MaxEnt MEM | Maximum-entropy analysis of TCSPC decays for lifetime and FRET-distance distributions. |
 | `lltf` | Lazy Lifetime Analysis | Fast/low-setup lifetime estimation for TCSPC decay data. |

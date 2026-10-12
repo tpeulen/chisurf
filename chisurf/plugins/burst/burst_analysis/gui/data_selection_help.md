@@ -14,5 +14,5 @@ of step 0, and the IRF & Background and Background tools read the same photons.
 - **Remove** takes the selected file out of the list, **Clear** all of them.
 
 Converting a vendor file to ChiSurf's `.pto` container is not offered on a drop
-here; use *File tools › TTTR to PTO* first if you want the bursts kept inside
+here; use *File › Data › ⇄ .pto* first if you want the bursts kept inside
 the measurement.

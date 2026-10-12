@@ -46,7 +46,6 @@
       "summary": "Register reference decay and archive G-factor calibration in MMFDB."
     }
   ],
-  "menu_hidden": true,
   "requires": {
     "tttr_splitter": "*"
   }
