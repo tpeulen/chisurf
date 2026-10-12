@@ -32,7 +32,10 @@ class ResidualPlot(plotbase.Plot):
         self.data_x, self.data_y = None, None
 
         curves = list()
-        lw = chisurf.core.settings.gui["plot"]["line_width"]
+        from chisurf.core.plotting import appearance
+
+        lw = appearance.line_width()
+        self._colors: list[str] = []
 
         p = self.add_panel()
 
@@ -43,9 +46,17 @@ class ResidualPlot(plotbase.Plot):
 
         for i, f in enumerate(_member_fits(fit)):
             color = chisurf.core.settings.colors[i % len(chisurf.core.settings.colors)]["hex"]
+            self._colors.append(color)
             c = p.line([], [], pen=cp.to_pen(color, width=lw), name=f.data.name)
             curves.append(c)
         self.curves = curves
+
+    def restyle(self, name: str = "") -> None:
+        """Re-read the plot line width into every residual trace."""
+        from chisurf.core.plotting import appearance
+
+        for curve, color in zip(self.curves, self._colors):
+            curve.set_pen(cp.to_pen(color, width=appearance.line_width()))
 
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)

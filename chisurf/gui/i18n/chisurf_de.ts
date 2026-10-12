@@ -66306,8 +66306,8 @@ fortgesetzt werden.
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10151" />
-            <source>There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Plots opened from now on use it; a fit already on screen takes the new colours when it is re-plotted. The line under the controls says what happened.</source>
-            <translation>Es gibt keine Schaltfläche Anwenden: Eine Änderung gilt, sobald Sie sie vornehmen, und wird für den nächsten Start gespeichert, wie in Einstellungen ▸ Schriften. Ab jetzt geöffnete Diagramme nutzen sie; ein bereits angezeigter Fit übernimmt die neuen Farben beim Neuzeichnen. Die Zeile unter den Steuerelementen sagt, was geschah.</translation>
+            <source>There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Every fit already on screen is restyled at once. The line under the controls says what happened.</source>
+            <translation>Es gibt keine Schaltfläche Anwenden: Eine Änderung gilt, sobald Sie sie vornehmen, und wird für den nächsten Start gespeichert, wie in Einstellungen ▸ Schriften. Jeder bereits angezeigte Fit wird sofort neu gestaltet. Die Zeile unter den Steuerelementen sagt, was geschah.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11008" />
@@ -66356,13 +66356,13 @@ fortgesetzt werden.
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="861" />
-            <source>Applied and saved. Plots opened from now on use it; open fits on re-plot.</source>
-            <translation>Angewendet und gespeichert. Ab jetzt geöffnete Diagramme nutzen es; offene Fits beim Neuzeichnen.</translation>
+            <source>Applied and saved. Every open plot is restyled at once.</source>
+            <translation>Angewendet und gespeichert. Jedes geöffnete Diagramm wird sofort neu gestaltet.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="863" />
-            <source>Applied. Plots opened from now on use it; open fits on re-plot.</source>
-            <translation>Angewendet. Ab jetzt geöffnete Diagramme nutzen es; offene Fits beim Neuzeichnen.</translation>
+            <source>Applied. Every open plot is restyled at once.</source>
+            <translation>Angewendet. Jedes geöffnete Diagramm wird sofort neu gestaltet.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6743" />

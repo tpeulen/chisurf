@@ -42,10 +42,10 @@ def test_curves_take_the_colours_and_width_set_after_import(qapp, plot):
     assert director["model"]["lw"] == 4.0 and director["data"]["lw"] == 2.0
 
 
-def test_the_band_switched_off_builds_a_plot_without_one(qapp, plot):
+def test_the_band_switched_off_builds_a_plot_with_the_band_hidden(qapp, plot):
     plot["enable_region_selector"] = False
     page = _lineplot(qapp)  # raised AttributeError: 'LinePlot' object has no attribute 'region'
-    assert page.region is None
+    assert page.region is not None and not page.region.visible  # kept, hidden: switching it on restyles
 
 
 def test_grid_off_turns_every_panel_grid_off(qapp, plot):

@@ -20,7 +20,7 @@
     },
     {
       "title": "Changes apply at once and are kept",
-      "text": "There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Plots opened from now on use it; a fit already on screen takes the new colours when it is re-plotted. The line under the controls says what happened.",
+      "text": "There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Every fit already on screen is restyled at once. The line under the controls says what happened.",
       "target": {
         "name": "settings"
       }

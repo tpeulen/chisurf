@@ -12,7 +12,12 @@ the tests read the same functions, so the preview cannot drift from the plots.
 
 from __future__ import annotations
 
+import logging
+import weakref
+from collections.abc import Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 #: The shipped values, for a settings dictionary that lacks a key.
 DEFAULTS: dict[str, Any] = {
@@ -60,6 +65,60 @@ GRID_REFERENCE_ALPHA = 0.3
 #: The factor on the theme's gridlines at ``alpha = 1``: solid lines (the theme
 #: draws its grid at an alpha of 20 out of 255).
 GRID_FULL_STRENGTH = 255.0 / 20.0
+
+
+#: Who wants to hear that a plot setting changed: bound methods (held weakly, so an open plot that
+#: is closed or dropped never keeps the list alive or gets called) and plain functions.
+_subscribers: list[weakref.ref | Callable[[str], None]] = []
+
+
+def subscribe(callback: Callable[[str], None]) -> Callable[[], None]:
+    """Be told, with the name of the changed field, whenever a plot setting changes.
+
+    This is the one notification every open plot subscribes to: *Settings ▸ Plots* calls
+    :func:`notify` after it writes a value, and each subscriber restyles itself from the
+    live readers in this module. A bound method is held weakly.
+
+    Parameters
+    ----------
+    callback : callable
+        Called as ``callback(name)``; *name* is the settings field that changed (``""``: several).
+
+    Returns
+    -------
+    callable
+        Takes no arguments; ends the subscription.
+    """
+    entry: weakref.ref | Callable[[str], None]
+    entry = weakref.WeakMethod(callback) if hasattr(callback, "__self__") else callback  # type: ignore[arg-type]
+    _subscribers.append(entry)
+
+    def unsubscribe() -> None:
+        try:
+            _subscribers.remove(entry)
+        except ValueError:
+            pass
+
+    return unsubscribe
+
+
+def notify(name: str = "") -> None:
+    """Tell every subscriber that the plot setting *name* changed (the values are already stored).
+
+    A subscriber that raises is logged and does not stop the others.
+    """
+    for entry in list(_subscribers):
+        callback = entry() if isinstance(entry, weakref.ref) else entry
+        if callback is None:
+            try:
+                _subscribers.remove(entry)
+            except ValueError:
+                pass
+            continue
+        try:
+            callback(name)
+        except Exception:  # noqa: BLE001 - one plot that cannot restyle must not strand the rest
+            logger.exception("plot appearance subscriber failed for %r", name)
 
 
 def plot_settings() -> dict:
@@ -200,7 +259,9 @@ __all__ = [
     "hex_rgb",
     "label_axes",
     "line_width",
+    "notify",
     "plot_settings",
     "region_rgba",
     "show_legend",
+    "subscribe",
 ]

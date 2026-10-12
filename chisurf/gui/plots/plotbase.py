@@ -75,6 +75,27 @@ class Plot:
         self._settings_spec = None
         self._refresh: typing.Callable[[], None] | None = None
         self._settings_refresh: typing.Callable[[], None] | None = None
+        # Every page hears the one "a plot setting changed" notification (Settings > Plots) and
+        # restyles itself; a page never polls for it and a window never patches its pages.
+        from chisurf.core.plotting import appearance
+
+        self._appearance_off = appearance.subscribe(self._on_appearance)
+
+    def _on_appearance(self, name: str = "") -> None:
+        """A plot setting changed: restyle this page now, then ask for a frame."""
+        self.restyle(name)
+        self.request_redraw()
+
+    def restyle(self, name: str = "") -> None:
+        """Re-read the plot appearance (:mod:`chisurf.core.plotting.appearance`) into what is drawn.
+
+        Pages that draw from those settings override this; it must not need new data.
+
+        Parameters
+        ----------
+        name : str
+            The settings field that changed (``""``: any or several).
+        """
 
     # -- page body -----------------------------------------------------------
 
@@ -105,7 +126,11 @@ class Plot:
             self._refresh()
 
     def close(self) -> None:
-        """Release what the page holds (pages override)."""
+        """Release what the page holds (pages override, and call this one)."""
+        off = getattr(self, "_appearance_off", None)
+        if off is not None:
+            off()
+            self._appearance_off = None
 
     # -- settings ------------------------------------------------------------
 

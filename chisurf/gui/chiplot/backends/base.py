@@ -214,6 +214,10 @@ class Canvas(abc.ABC):
         """Enable a legend collecting named handles."""
 
     @abc.abstractmethod
+    def remove_legend(self) -> None:
+        """Stop showing the legend."""
+
+    @abc.abstractmethod
     def readd(self, handle: H.Handle) -> None:
         """Re-attach a previously removed handle to this panel."""
 

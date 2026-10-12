@@ -12,14 +12,12 @@ import chisurf.core.parameter
 import chisurf.core.settings
 import chisurf.core.support.decorators
 from chisurf import typing
+from chisurf.core.plotting import appearance
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
-plot_settings = cs.core.settings.gui["plot"]
-colors = plot_settings["colors"]
 color_scheme = cs.core.settings.colors
-lw = plot_settings["line_width"]
 
 OVERLAY_PEN = cp.to_pen((255, 128, 0), width=1.5, style="dash")
 CROSSING_PEN = cp.to_pen((0, 180, 0), width=1.5, style="dash_dot")
@@ -90,8 +88,8 @@ class ParameterScanPlot(plotbase.Plot):
         self.distribution_curve = p2.line(
             [0.0],
             [0.0],
-            pen=colors["data"],
-            width=lw,
+            pen=appearance.curve_color("data"),
+            width=appearance.line_width(),
             name="Data",
         )
 
@@ -339,6 +337,12 @@ class ParameterScanPlot(plotbase.Plot):
         if lower is None or upper is None:
             return f"p={p_value:.2f}"
         return f"p={p_value:.2f} [{lower:.4g}, {upper:.4g}]"
+
+    def restyle(self, name: str = "") -> None:
+        """Re-read the plot settings into the scan curve."""
+        self.distribution_curve.set_pen(
+            appearance.curve_color("data"), width=appearance.line_width()
+        )
 
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)

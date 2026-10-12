@@ -428,6 +428,12 @@ class _Entry:
         self.state["width"] = float(getattr(pen, "width", 1.0) or 1.0)
         self._canvas.refresh()
 
+    def set_fill(self, brush) -> None:
+        """Fill down to zero with *brush* (``None``: no fill)."""
+        colour = self.state.get("color", (200, 200, 200))
+        self.state["fill"] = None if brush is None else _rgba(brush, (*colour, 90))
+        self._canvas.refresh()
+
     def set_symbol(self, symbol) -> None:
         """Set the marker drawn at each sample (``None`` for a bare line)."""
         self.state["symbol"] = symbol
@@ -596,6 +602,11 @@ class _Entry:
         """The ``(low, high)`` edges in data coordinates."""
         low, high = self.state.get("bounds", (0.0, 1.0))
         return (float(low), float(high))
+
+    def set_brush(self, brush) -> None:
+        """Restyle the band's fill, keeping its alpha."""
+        self.state["brush"] = _rgba(brush, self.state.get("brush", (70, 110, 160, 50)))
+        self._canvas.refresh()
 
     def set_bounds(self, low: float, high: float) -> None:
         """Move the region, keeping it inside its limits."""
@@ -1828,6 +1839,11 @@ class EmtkCanvas(base.Canvas):
     def add_legend(self, *, offset=(30, 30)) -> None:
         """Show a legend collecting the named series."""
         self._legend = True
+        self.refresh()
+
+    def remove_legend(self) -> None:
+        """Stop showing the legend."""
+        self._legend = False
         self.refresh()
 
     def readd(self, handle) -> None:

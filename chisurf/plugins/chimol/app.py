@@ -41,10 +41,18 @@ class ChimolHostApp(ImApp):
     #: frame pixels (the guide points at it; it is drawn by chimol, not here).
     PROMPT_H = 18.0
 
-    def __init__(self, size: tuple[int, int] = (900, 620), commands: tuple[str, ...] = ()):
+    def __init__(
+        self,
+        size: tuple[int, int] = (900, 620),
+        commands: tuple[str, ...] = (),
+        guide_command: str = "",
+    ):
         #: chimol commands run once the viewer is up: a launcher opens one of chimol's own panels this way
         #: (Structure › FRET › FPS JSON Editor runs ``fps_circle , , Positions``).
         self._startup_commands = tuple(commands)
+        #: The chimol command the Guide button runs instead of the viewer tour below, for a launcher that opens
+        #: one of chimol's own tools (the FPS JSON Editor runs ``tour fps_editor``). Empty: the general tour.
+        self._guide_command = str(guide_command)
         spec = json.loads((HERE / "window.view.json").read_text(encoding="utf-8"))
         self.window_size = window_size(spec, (1200, 800))
         self._chimol_size = size
@@ -307,8 +315,20 @@ class ChimolHostApp(ImApp):
         self.item_rects["help"] = im.get_item_rect()
         im.same_line()
         if action_button("guide"):
-            self.tour.start()
+            self.start_guide()
         self.item_rects["guide"] = im.get_item_rect()
+
+    def start_guide(self) -> None:
+        """Start the tour this window is for: its launcher's chimol tour, else the viewer's general one."""
+        if self._guide_command and self._ensure_chimol():
+            try:
+                self._chimol_app.cmd.do(self._guide_command)
+            except Exception:  # noqa: BLE001 - fall back to the general tour rather than a dead button
+                logging.getLogger(__name__).exception("chimol guide command failed: %s", self._guide_command)
+            else:
+                self.request_frame()
+                return
+        self.tour.start()
 
     def load_example(self) -> bool:
         """Load the bundled T4 lysozyme (148l) into the viewer; whether a command ran."""
@@ -439,7 +459,7 @@ class ChimolHostApp(ImApp):
             self._chimol = None
 
 
-def make_app(commands: tuple[str, ...] = ()) -> ChimolHostApp:
+def make_app(commands: tuple[str, ...] = (), guide_command: str = "") -> ChimolHostApp:
     """The embedded viewer, speaking ChiSurf's language.
 
     :func:`chisurf.emtk.i18n.install` selects ChiSurf's configured language in
@@ -451,4 +471,4 @@ def make_app(commands: tuple[str, ...] = ()) -> ChimolHostApp:
     from chisurf.emtk.i18n import install
 
     install()
-    return ChimolHostApp(commands=commands)
+    return ChimolHostApp(commands=commands, guide_command=guide_command)

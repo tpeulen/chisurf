@@ -522,6 +522,10 @@ class PlotAPI:
         """
         self._canvas.add_legend(offset=offset)
 
+    def hide_legend(self) -> None:
+        """Stop showing the legend (:meth:`legend` shows it again)."""
+        self._canvas.remove_legend()
+
     def add(self, handle: H.Handle) -> None:
         """Re-attach a previously removed handle.
 

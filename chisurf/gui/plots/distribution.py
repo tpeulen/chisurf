@@ -327,14 +327,7 @@ class DistributionPlot(plotbase.Plot):
             p = self.add_panel()
             self.distribution_plot = p
 
-        # Match LinePlot's grid settings where applicable: show a grid on the
-        # main distribution plot and, when present, on the residuals.
-        for panel, plot in (("data", self.distribution_plot), ("residuals", self.residual_plot)):
-            if plot is None:
-                continue
-            alpha = appearance.grid_alpha(panel)
-            shown = alpha is not None
-            plot.grid(x=shown, y=shown, alpha=alpha if shown else 0.0)
+        self._apply_grid()
 
         # Apply requested axis scaling (x) to main plot and residuals.
         log_x = str(self._scale_x).lower() == "log"
@@ -368,6 +361,22 @@ class DistributionPlot(plotbase.Plot):
             self._quality_text = None
 
     # -- settings -----------------------------------------------------------
+
+    def _apply_grid(self) -> None:
+        """Match LinePlot's grid settings: the main distribution plot and, when present, the residuals."""
+        for panel, plot in (("data", self.distribution_plot), ("residuals", self.residual_plot)):
+            if plot is None:
+                continue
+            alpha = appearance.grid_alpha(panel)
+            shown = alpha is not None
+            plot.grid(x=shown, y=shown, alpha=alpha if shown else 0.0)
+
+    def restyle(self, name: str = "") -> None:
+        """Re-read the plot settings: grid, and the distribution curve's colour, width and fill."""
+        self._apply_grid()
+        color = appearance.curve_color("data")
+        self.distribution_curve.set_pen(color, width=appearance.line_width())
+        self.distribution_curve.set_fill(color)
 
     def distribution_types(self) -> list[str]:
         """The distributions the model actually serves."""

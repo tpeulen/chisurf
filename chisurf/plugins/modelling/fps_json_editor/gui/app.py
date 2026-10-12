@@ -11,13 +11,15 @@ from __future__ import annotations
 
 #: The chimol command that opens the editor on its Positions tab.
 OPEN_EDITOR = "fps_circle , , Positions"
+#: The chimol tour the Guide button starts: the labelling editor's, not the viewer's general one.
+GUIDE = "tour fps_editor"
 
 
 def make_app():
     """The ChiMOL window with the labelling editor open."""
     from chisurf.plugins.chimol.app import make_app as make_chimol
 
-    return make_chimol(commands=(OPEN_EDITOR,))
+    return make_chimol(commands=(OPEN_EDITOR,), guide_command=GUIDE)
 
 
-__all__ = ["OPEN_EDITOR", "make_app"]
+__all__ = ["GUIDE", "OPEN_EDITOR", "make_app"]

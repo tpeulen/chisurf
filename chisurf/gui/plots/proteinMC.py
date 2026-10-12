@@ -171,6 +171,17 @@ class ProteinMCPlot(Plot):
         width, height = im.get_content_region_avail()
         im.host_control("##proteinmc-traces", grid, (width, height))
 
+    def restyle(self, name: str = "") -> None:
+        """Re-read the plot settings into the four trajectory curves."""
+        lw = appearance.line_width()
+        for curve, role in (
+            (self.rmsd_curve, "irf"),
+            (self.drmsd_curve, "data"),
+            (self.energy_curve, "model"),
+            (self.fret_curve, "model"),
+        ):
+            curve.set_pen(appearance.curve_color(role), width=lw)
+
     def update_all(self, *args, **kwargs):
 
         try:

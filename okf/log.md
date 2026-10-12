@@ -2,6 +2,13 @@
 
 ## 2026-10-12
 
+- Plot appearance has one change notification, `appearance.notify`, that every plot page subscribes to
+  (`plotbase.Plot.restyle`, weakly), so Settings > Plots restyles open fit windows at once instead of on re-plot.
+  chiplot gained `Region.set_brush`, `Curve.set_fill` and `Plot.hide_legend`; the invariant test
+  `test/gui/test_plot_appearance_restyles_open_plots.py` changes every setting and reads the open plot's drawn state.
+- FPS JSON Editor's Guide button starts ChiMOL's labelling tour (`tour fps_editor`): the ChiMOL host takes a
+  `guide_command`. ChiMOL sessions keep the labelling plan (scoring groups, FlexFit sets; chimol 6487d07); the AV
+  clouds are still not saved (chimol `okf/plugins/labelling.md`).
 - QuEst FRET efficiency against the static AV average explained: not a FRET bug. With stickiness off the simulated E
   is 0.265 against the static <E> 0.263 (E55->E124, R0 52 A); the default per-residue stickiness multiplies 0.1 per
   overlapping residue sphere (down to 1e-8, the documented amino_acid rule) and freezes the dyes, so the 0.473 -> 0.726

@@ -130,6 +130,16 @@ class Curve(Handle, Protocol):
         """
         ...
 
+    def set_fill(self, brush) -> None:
+        """Set (or clear with ``None``) the fill under the curve down to zero.
+
+        Parameters
+        ----------
+        brush : brush-like or None
+            Fill colour (alpha kept) or :class:`style.Brush`; ``None`` removes the fill.
+        """
+        ...
+
     def set_symbol(self, symbol) -> None:
         """Set (or clear with ``None``) a per-point marker on the curve.
 
@@ -419,6 +429,16 @@ class Region(Handle, Protocol):
         ----------
         low, high : float
             New edges in data coordinates.
+        """
+        ...
+
+    def set_brush(self, brush) -> None:
+        """Restyle the band's fill (colour with alpha) without moving it.
+
+        Parameters
+        ----------
+        brush : brush-like
+            Fill colour or :class:`style.Brush` (coerced via ``to_brush``).
         """
         ...
 

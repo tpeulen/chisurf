@@ -5,9 +5,8 @@ band, how the datasets of a global fit are told apart, the axes and the grid,
 and the grid of the node graphs.
 
 A change **applies at once** and is **kept for the next start** -- there is no
-Apply or Save button, as in Settings ▸ Fonts. Plots opened from now on use the
-new settings; a fit already on screen takes new colours when it is re-plotted
-(the axis text size reaches open plots at once). **Reset to defaults** puts the
+Apply or Save button, as in Settings ▸ Fonts. Every plot already open is
+restyled at once, and plots opened later use the same settings. **Reset to defaults** puts the
 shipped look back. Only what differs from the shipped look is written to
 `settings_chisurf.yaml`.
 

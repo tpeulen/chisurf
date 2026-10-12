@@ -4,6 +4,38 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## FPS JSON Editor's Guide button started ChiMOL's general tour (found 2026-10-12)
+
+status: resolved 2026-10-12 — the host's Guide button runs the launcher's own chimol command (`tour fps_editor`) when the window was opened for a ChiMOL tool.
+
+Cause: the FPS JSON Editor opens the shared ChiMOL host with `fps_circle , , Positions`, but the host's toolbar Guide
+always started the host's own `guide.json` (the general viewer tour); the labelling editor's tour (`chimol/data/tours/fps_editor.json`,
+run by the editor's own Guide button through `tour fps_editor`) was never reachable from the ChiSurf entry. Fix:
+`ChimolHostApp(guide_command=...)`, set by `fps_json_editor/gui/app.py` (`GUIDE = "tour fps_editor"`). Regression:
+`chisurf/plugins/modelling/fps_json_editor/test/test_guide_button.py` presses the real Guide button.
+
+## Open fit windows did not restyle when Settings > Plots changed (found 2026-10-12)
+
+status: resolved 2026-10-12 — one notification, `chisurf.core.plotting.appearance.notify`, that every plot page subscribes to (`plotbase.Plot.restyle`).
+
+Cause: the settings panel wrote `gui.plot` and told nobody; plots read the settings only when they built a curve, a grid or a band, so an
+open fit window showed the old look until the next re-plot (only the axis text size was read per frame). Fix: `appearance.subscribe/notify`;
+`PlotSettingsModel.changed` and `reset_defaults` notify; `plotbase.Plot` subscribes weakly in `__init__` and unsubscribes in `close`;
+`LinePlot`, `DistributionPlot`, `ResidualPlot`, `ProteinMCPlot` and `ParameterScanPlot` implement `restyle` (the last one read a
+module-level snapshot of the settings, now live). chiplot gained `Region.set_brush`, `Curve.set_fill` and `Plot.hide_legend`. The fit-range band is
+always built and hidden while the selector is off. Invariant: `test/gui/test_plot_appearance_restyles_open_plots.py` changes every field of the
+settings model and reads the drawn chiplot state of an open plot with no re-plot; it also fails when a new field is added to the model without
+being listed. Node-graph fields keep their own subscriber (`refresh_open_graphs`); the subscription holds a weak
+method, so `test/gui/test_lineplot_resource_lifetime.py` still sees retired pages deleted.
+
+## ChiMOL sessions dropped scoring groups and FlexFit sets (found 2026-10-12)
+
+status: resolved 2026-10-12 — chimol `register_session_section` + the labelling plan section (chimol 6487d07); the AV clouds themselves are still not saved (open, see chimol `okf/plugins/labelling.md` item 3).
+
+Cause: `save_session` had no hook for state beside the viewer, and the labelling editor's document (scoring groups, FlexFit sets, typed-in
+distances, selected group/set) lives there. Round-trip test: `tests/test_fps_editor.py::test_a_session_round_trips_scoring_groups_and_flexfit_sets`.
+Also fixed there: an object-dtype array (the built-in PDB parser's residue names) made a whole session unreadable.
+
 ## Structure Tools isolated ribbon check depends on an uncommitted loader
 
 status: resolved 2026-10-12 — the Structure Tools hub and its `test_native.py` were removed (each structure tool is its own ribbon button); `select_gui_entrypoint` is covered by `plugin_manager/test/test_launcher_dispatch.py::test_runtime_selection_defaults_to_emtk`.

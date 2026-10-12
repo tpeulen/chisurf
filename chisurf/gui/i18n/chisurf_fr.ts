@@ -66444,8 +66444,8 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10151" />
-            <source>There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Plots opened from now on use it; a fit already on screen takes the new colours when it is re-plotted. The line under the controls says what happened.</source>
-            <translation>Il n’y a pas de bouton Appliquer : une modification prend effet dès qu’elle est faite et est enregistrée pour le prochain démarrage, comme dans Réglages ▸ Polices. Les tracés ouverts désormais l’utilisent ; un ajustement déjà affiché prend les nouvelles couleurs au prochain tracé. La ligne sous les contrôles indique ce qui s’est passé.</translation>
+            <source>There is no Apply button: a change is in force as soon as you make it and is saved for the next start, as in Settings ▸ Fonts. Every fit already on screen is restyled at once. The line under the controls says what happened.</source>
+            <translation>Il n’y a pas de bouton Appliquer : une modification prend effet dès qu’elle est faite et est enregistrée pour le prochain démarrage, comme dans Réglages ▸ Polices. Chaque ajustement déjà affiché est restylé immédiatement. La ligne sous les contrôles indique ce qui s’est passé.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11008" />
@@ -66494,13 +66494,13 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="861" />
-            <source>Applied and saved. Plots opened from now on use it; open fits on re-plot.</source>
-            <translation>Appliqué et enregistré. Les tracés ouverts désormais l’utilisent ; les ajustements ouverts au prochain tracé.</translation>
+            <source>Applied and saved. Every open plot is restyled at once.</source>
+            <translation>Appliqué et enregistré. Chaque tracé ouvert est restylé immédiatement.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="863" />
-            <source>Applied. Plots opened from now on use it; open fits on re-plot.</source>
-            <translation>Appliqué. Les tracés ouverts désormais l’utilisent ; les ajustements ouverts au prochain tracé.</translation>
+            <source>Applied. Every open plot is restyled at once.</source>
+            <translation>Appliqué. Chaque tracé ouvert est restylé immédiatement.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6743" />

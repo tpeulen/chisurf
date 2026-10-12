@@ -230,7 +230,8 @@ class PlotSettingsModel:
     def changed(self, name: str) -> None:
         """A field was written: plots drawn from now on use it; :meth:`flush` keeps it."""
         self.unsaved.add(name)
-        self.status = tr("Applied. Plots opened from now on use it; open fits on re-plot.")
+        self.status = tr("Applied. Every open plot is restyled at once.")
+        appearance.notify(name)
 
     # -- persistence ----------------------------------------------------------------- #
     @staticmethod
@@ -271,7 +272,7 @@ class PlotSettingsModel:
         changed = prune_defaults(copy.deepcopy(self.live()), self.shipped())
         ok = update_settings_section("gui", {"plot": changed})
         self.status = (
-            tr("Applied and saved. Plots opened from now on use it; open fits on re-plot.")
+            tr("Applied and saved. Every open plot is restyled at once.")
             if ok
             else tr("Applied; the settings file could not be written.")
         )
@@ -284,6 +285,7 @@ class PlotSettingsModel:
         live.update(self.shipped())
         self.unsaved = {"ng_show_grid"}  # also re-styles open node graphs
         self.flush()
+        appearance.notify("")
         self.status = tr("Plot settings reset to the defaults.")
 
     # -- the preview ------------------------------------------------------------------ #

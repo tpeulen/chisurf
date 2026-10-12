@@ -548,6 +548,11 @@ class LinePlot(plotbase.Plot):
         self.ub_i: int = 0
 
         self.curve_styles = curve_styles or {}
+        #: How each curve was styled (``id(line) -> (line, look)``), so a settings change can
+        #: restyle it: the director entry, whether it is a secondary curve, a fixed colour (the
+        #: palette ones), and the fit-group index whose opacity it follows.
+        self._looks: dict[int, tuple] = {}
+        self._selected_group_index = 0
         self._base_y_label = y_label
 
         kwargs["fit"] = fit
@@ -601,45 +606,69 @@ class LinePlot(plotbase.Plot):
         )
 
         # Fitting-region selector
-        #: The draggable fit-range band; ``None`` when the selector is switched off.
+        #: The draggable fit-range band; hidden while the selector is switched off.
         self.region = None
         band = appearance.region_rgba()
-        if band is not None:
-            region = plots["main_plot"].region((0.0, 1.0), brush=band)
-            self.region = region
+        region = plots["main_plot"].region(
+            (0.0, 1.0), brush=band or (*appearance.hex_rgb(appearance.curve_color("data")), 0)
+        )
+        self.region = region
 
-            def onRegionUpdate(*_):
-                # Get the currently selected fit for region update
-                if hasattr(fit, "selected_fit"):
-                    current_fit = fit.selected_fit
-                else:
-                    current_fit = fit
+        def onRegionUpdate(*_):
+            # Get the currently selected fit for region update
+            if hasattr(fit, "selected_fit"):
+                current_fit = fit.selected_fit
+            else:
+                current_fit = fit
 
-                self.lb_i, self.ub_i = self.get_bounds(current_fit, region)
-                lb, ub = current_fit.data.x[self.lb_i], current_fit.data.x[self.ub_i]
-                x_shift = self.settings.x_shift
-                lb += x_shift
-                ub += x_shift
-                if self.settings.data_is_log_x:
-                    lb = np.log10(lb)
-                    ub = np.log10(ub)
-                self.region.set_bounds(lb, ub)
-                cs.core.actions.dispatch(
-                    name="fit.range.set",
-                    payload={
-                        "xmin": int(self.lb_i),
-                        "xmax": int(self.ub_i),
-                        "fit_index": getattr(self.fit, "fit_idx", 0),
-                    },
-                )
-                try:
-                    self.regionChanged.emit(self.lb_i, self.ub_i)
-                except Exception:
-                    pass
-                self.update(only_fit_range=True)
+            self.lb_i, self.ub_i = self.get_bounds(current_fit, region)
+            lb, ub = current_fit.data.x[self.lb_i], current_fit.data.x[self.ub_i]
+            x_shift = self.settings.x_shift
+            lb += x_shift
+            ub += x_shift
+            if self.settings.data_is_log_x:
+                lb = np.log10(lb)
+                ub = np.log10(ub)
+            self.region.set_bounds(lb, ub)
+            cs.core.actions.dispatch(
+                name="fit.range.set",
+                payload={
+                    "xmin": int(self.lb_i),
+                    "xmax": int(self.ub_i),
+                    "fit_index": getattr(self.fit, "fit_idx", 0),
+                },
+            )
+            try:
+                self.regionChanged.emit(self.lb_i, self.ub_i)
+            except Exception:
+                pass
+            self.update(only_fit_range=True)
 
-            region.on_change(onRegionUpdate, final=True)
+        region.on_change(onRegionUpdate, final=True)
+        if band is None:
+            region.hide()
 
+        self._x_label = x_label
+        self._panel_plots = plots
+        self._apply_panel_appearance()
+
+        lines = OrderedDict()
+        curves = self.fit.get_curves()
+        curves_keys = list(curves.keys())[::-1]
+        for i, curve_key in enumerate(curves_keys):
+            lines[curve_key] = self.add_plot(
+                curves=curves, curve_key=curve_key, plot_dict=plots, index=i
+            )
+        self.lines = lines
+        self.plots = plots
+        self.settings.fill_line_widget()
+
+    def _apply_panel_appearance(self) -> None:
+        """Grid, legend, axis names and the fit-range band, from the live plot settings.
+
+        Idempotent: it runs when the plot is built and again on every settings change.
+        """
+        plots = self._panel_plots
         # Grid: set on every panel, on or off. A panel's grid is on until told
         # otherwise, so switching it on only where wanted left "Enable grid" and
         # the per-panel switches unable to turn a grid off.
@@ -658,6 +687,8 @@ class LinePlot(plotbase.Plot):
         if appearance.show_legend():
             # Top-right: the fit-quality box holds the top-left.
             plots["main_plot"].legend(offset=(-10, 10))
+        else:
+            plots["main_plot"].hide_legend()
 
         # "Label axes" was a settings checkbox nothing read, so turning it off
         # did nothing at all. Honour it: axis names cost horizontal space that
@@ -665,18 +696,41 @@ class LinePlot(plotbase.Plot):
         if appearance.label_axes():
             plots["top_left_plot"].set_labels(left="w.res.")
             plots["top_right_plot"].set_labels(left="a.corr.")
-            plots["main_plot"].set_labels(left=y_label, bottom=x_label)
-
-        lines = OrderedDict()
-        curves = self.fit.get_curves()
-        curves_keys = list(curves.keys())[::-1]
-        for i, curve_key in enumerate(curves_keys):
-            lines[curve_key] = self.add_plot(
-                curves=curves, curve_key=curve_key, plot_dict=plots, index=i
+            plots["main_plot"].set_labels(
+                left=getattr(self, "_reference_y_label_override", None) or self._base_y_label,
+                bottom=self._x_label
             )
-        self.lines = lines
-        self.plots = plots
-        self.settings.fill_line_widget()
+        else:
+            for panel_plot in plots.values():
+                panel_plot.set_labels(left="", bottom="")
+        band = appearance.region_rgba()
+        if self.region is not None:
+            if band is None:
+                self.region.hide()
+            else:
+                self.region.set_brush(band)
+                self.region.show()
+
+    def restyle(self, name: str = "") -> None:
+        """Re-read the plot settings into every curve and panel (no data, no re-plot)."""
+        self._apply_panel_appearance()
+        director = self.settings.director
+        for line, look in list(self._looks.values()):
+            options = director.get(look["key"], director["default"])
+            width = options.get("lw", 2)
+            color = look["color"] if look["color"] is not None else options.get("color", "#FFFFFF")
+            if look["secondary"]:
+                width *= 0.5
+                color = "#4D" + color.split("#")[1]
+            try:
+                line.set_pen(color, width=width)
+            except Exception:  # noqa: BLE001 - a handle without a pen keeps its look
+                continue
+            self._apply_curve_style(look["curve_key"], line)
+            if look["group_index"] is not None:
+                line.set_opacity(
+                    appearance.fit_opacity(look["group_index"] == self._selected_group_index)
+                )
 
     def settings_model(self):
         """The settings spec edits :attr:`settings`."""
@@ -785,6 +839,28 @@ class LinePlot(plotbase.Plot):
         self.settings.display_group = True
         self._auto_display_group_applied = True
 
+    def _remember_look(
+        self,
+        line,
+        key: str,
+        curve_key: str,
+        *,
+        secondary: bool = False,
+        fixed_color: str | None = None,
+        group_index: int | None = None,
+    ) -> None:
+        """Record how *line* was styled, so :meth:`restyle` can restyle it from new settings."""
+        self._looks[id(line)] = (
+            line,
+            {
+                "key": key,
+                "curve_key": curve_key,
+                "secondary": secondary,
+                "color": fixed_color,
+                "group_index": group_index,
+            },
+        )
+
     @staticmethod
     def _make_line(target_plot, pen_color, lw, name, auto_downsample, clip_to_view):
         """Draw an empty chiplot curve with optional render-perf hints.
@@ -848,6 +924,7 @@ class LinePlot(plotbase.Plot):
                         clip_to_view,
                     )
                     self._apply_curve_style(curve_key, line)
+                    self._remember_look(line, ik, curve_key, secondary=curve_key != ik)
                     return line
         else:
             curve = curves[curve_key]
@@ -865,6 +942,7 @@ class LinePlot(plotbase.Plot):
                     clip_to_view,
                 )
                 self._apply_curve_style(curve_key, line)
+                self._remember_look(line, "default", curve_key, fixed_color=pen_color)
                 return line
 
         return None
@@ -1456,6 +1534,7 @@ class LinePlot(plotbase.Plot):
             return
 
         current_fit_index = getattr(fit, "selected_fit_index", 0)
+        self._selected_group_index = current_fit_index
         wres_offsets = self._compute_group_curve_offsets(
             grouped_fits, current_fit_index, curve_name="weighted residuals"
         )
@@ -1547,6 +1626,12 @@ class LinePlot(plotbase.Plot):
                     clip_to_view,
                 )
                 self._apply_curve_style(curve_key, line)
+                self._remember_look(
+                    line,
+                    curve_key if curve_key in director else "default",
+                    curve_key,
+                    group_index=grouped_fits.index(group_fit),
+                )
                 self.lines[line_name] = line
             else:
                 line = self.lines[line_name]
