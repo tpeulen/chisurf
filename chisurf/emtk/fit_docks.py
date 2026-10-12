@@ -311,8 +311,16 @@ class AnalysisModel:
     def enabled(self, name: str) -> bool:
         live = bool(self.info) and not self.docks.busy
         if name in (
-            "run_fit", "auto_range", "remove_fit", "xmin", "xmax", "xmin2", "xmax2",
-            "sample", "select_dataset", "dataset_index",
+            "run_fit",
+            "auto_range",
+            "remove_fit",
+            "xmin",
+            "xmax",
+            "xmin2",
+            "xmax2",
+            "sample",
+            "select_dataset",
+            "dataset_index",
         ):
             return live
         if name == "mcts":
@@ -620,8 +628,12 @@ class DataDocks:
         elif topic in ("fit.removed", "fit.cleared", "fit.reordered"):
             self._dirty |= {"fits", "windows", "current"}
         elif topic in (
-            "fit.ran", "fit.updated", "fit.dataset_changed", "fit.result_idx_changed",
-            "fit.mask_changed", "fit.group.member_selected",
+            "fit.ran",
+            "fit.updated",
+            "fit.dataset_changed",
+            "fit.result_idx_changed",
+            "fit.mask_changed",
+            "fit.group.member_selected",
         ) or topic.startswith("parameter."):
             self._dirty |= {"fits", "current"}
             targets = [self.windows[uid]] if uid in self.windows else list(self.windows.values())
@@ -778,7 +790,9 @@ class DataDocks:
         if not uid or self.session is None:
             return False
         api = self.session.api
-        return self._then_update(tr("Choosing the fit range…"), lambda: api.auto_fit_range(fit_uid=uid))
+        return self._then_update(
+            tr("Choosing the fit range…"), lambda: api.auto_fit_range(fit_uid=uid)
+        )
 
     def set_grid_range(self, x0: int, x1: int, y0: int, y1: int) -> bool:
         """The rectangle of a 2-D grid dataset the fit uses."""
@@ -1041,7 +1055,9 @@ class DataDocks:
 
         rows = [r for r in self.datasets.datasets if r["experiment"] != "Global"]
         self.dataset_picker = DatasetPicker(
-            rows, anchor, on_pick=lambda row: self.set_curve(curve, row),
+            rows,
+            anchor,
+            on_pick=lambda row: self.set_curve(curve, row),
             title=tr("Pick the curve"),
         )
         self.request_frame()
@@ -1281,7 +1297,9 @@ class DataDocks:
         if not self.current_uid:
             return
         self.open_file_dialog(
-            tr("Select the folder for the sampling results"), mode="folder", done=self.start_sampling
+            tr("Select the folder for the sampling results"),
+            mode="folder",
+            done=self.start_sampling,
         )
 
     def open_settings(self) -> None:
@@ -1321,9 +1339,7 @@ class DataDocks:
             return api.set_fit_dataset(dataset, fit_uid=uid)
 
         self._dirty |= {"windows"}
-        return self._then_update(
-            tr("Attaching {name}…").format(name=row.get("name", "")), change
-        )
+        return self._then_update(tr("Attaching {name}…").format(name=row.get("name", "")), change)
 
     def window_at(self, x: float, y: float) -> str:
         """The uid of the fit window drawn under (x, y), ``""`` if none."""
@@ -1369,7 +1385,9 @@ class DataDocks:
         # Beside the pointer, kept inside the window.
         right = float(im.get_main_viewport().size[0])
         x = max(0.0, min(x + 12.0, right - w - 12.0)) - 12.0
-        draw.add_rect_filled((x + 12, y + 8), (x + 20 + w, y + 12 + h), style.color(im.Col.POPUP_BG))
+        draw.add_rect_filled(
+            (x + 12, y + 8), (x + 20 + w, y + 12 + h), style.color(im.Col.POPUP_BG)
+        )
         draw.add_rect((x + 12, y + 8), (x + 20 + w, y + 12 + h), style.color(im.Col.BORDER))
         draw.add_text((x + 16, y + 10), style.color(im.Col.TEXT), text)
 
@@ -1454,8 +1472,12 @@ class DataDocks:
             w, _ = im.get_content_region_avail()
             # What the dock has left after the status line under it (measured, not a guessed number of
             # pixels), but never less than a form can be used in: a small window used to leave the reader
-            # form one pixel, and its controls were unreachable. The dock scrolls instead.
-            room = im.stretch_height(f"reader.{id(app)}", minimum=MIN_READER_FORM_H)
+            # form one pixel, and its controls were unreachable. The dock scrolls instead -- but the floor
+            # is never taller than the dock's own view: a form that overhangs the dock (a short window,
+            # 800 x 600) can never be seen whole, its lower half lies under the next dock, and its last
+            # control is reached only by trading the dock's scroll against the form's.
+            floor = min(MIN_READER_FORM_H, float(box[3]))
+            room = im.stretch_height(f"reader.{id(app)}", minimum=floor)
             self.shell.host_child(READ_KEY, f"reader.{id(app)}", app, (x, y, float(w), room))
             im.dummy((float(w), room))
         self._status_line()
@@ -1501,7 +1523,9 @@ class DataDocks:
         if im.button(f"{label}##code-{uid}"):
             self.toggle_code(uid)
         self.shell.item_rects[f"{window.key}.code"] = im.get_item_rect()
-        im.set_item_tooltip(tr("Show the model's source and view.json, editable; or the plots again."))
+        im.set_item_tooltip(
+            tr("Show the model's source and view.json, editable; or the plots again.")
+        )
         window.box = (x, y + strip, max(1.0, w), max(1.0, h - strip))
         self.shell.host_child(window.key, window.key, window.app, window.box)
 
@@ -1517,11 +1541,15 @@ class DataDocks:
 
         def after(files: Any) -> None:
             if isinstance(files, dict) and files.get("files"):
-                window.show_code(True, files, on_apply=lambda path, text: self.apply_code(uid, path, text))
+                window.show_code(
+                    True, files, on_apply=lambda path, text: self.apply_code(uid, path, text)
+                )
             else:
                 self.status = tr("The model's source could not be found.")
 
-        return self._start(tr("Opening the model's code…"), lambda: api.model_code_files(fit_uid=uid), after)
+        return self._start(
+            tr("Opening the model's code…"), lambda: api.model_code_files(fit_uid=uid), after
+        )
 
     def apply_code(self, uid: str, path: str, text: str) -> str:
         """Save and apply an edit made on a window's Code face (``model.code.apply``)."""

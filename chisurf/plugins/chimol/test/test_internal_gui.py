@@ -364,9 +364,28 @@ def test_two_submenus_sharing_a_label_are_told_apart(gui):
 # --------------------------------------------------------------------------- #
 # Long menus
 # --------------------------------------------------------------------------- #
+def _short_viewport(gui, height=200):
+    """Lay the panel out *height* pixels tall, with the object list unfolded by hand.
+
+    A viewport this low folds the object list to its title bar (chimol keeps its chrome at full size and
+    folds instead of overprinting), so its menu buttons are not there to press. The user unfolds it with
+    the arrow at the left of its title bar, and a fold undone by hand stays undone while the viewport is
+    low -- which is the state a long menu in a short window is opened from.
+    """
+    gui.layout(WIDTH, height)
+    objects = gui.window("objects")
+    assert objects.collapsed, "a viewport this low is meant to fold the object list"
+    frame = gui.window_frame(objects)
+    half = gui.WINDOW_TITLE_H / 2
+    gui.mouse_press(frame.x + half, frame.y + half)
+    gui.release()
+    gui.layout(WIDTH, height)
+    assert not objects.collapsed, "the fold arrow did not unfold the object list"
+
+
 def test_a_long_menu_stays_inside_the_viewport(gui):
     """The menu itself is never off the window, however many entries it has."""
-    gui.layout(WIDTH, 200)
+    _short_viewport(gui)
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     menu = gui._menus[-1]
 
@@ -383,7 +402,7 @@ def test_a_long_menu_keeps_one_column(gui):
     an arbitrary place, and the separators were being dropped to keep the two
     columns aligned. PyMOL never wraps: one column, and the pop-up scrolls.
     """
-    gui.layout(WIDTH, 200)
+    _short_viewport(gui)
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     menu = gui._menus[-1]
 
@@ -400,7 +419,7 @@ def test_a_long_menu_keeps_one_column(gui):
 
 def test_every_entry_of_a_long_menu_can_be_reached_by_scrolling(gui):
     """Scrolling is only worth doing if the hit rectangles scroll with it."""
-    gui.layout(WIDTH, 200)
+    _short_viewport(gui)
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     menu = gui._menus[-1]
     inside = _centre(menu.rect)
@@ -422,7 +441,7 @@ def test_every_entry_of_a_long_menu_can_be_reached_by_scrolling(gui):
 
 def test_a_scrolled_out_row_does_not_take_the_click(gui):
     """Its rectangle is still in the list; the visibility test is the guard."""
-    gui.layout(WIDTH, 200)
+    _short_viewport(gui)
     gui.mouse_press(*_centre(gui._button_rects[1]["A"]))
     menu = gui._menus[-1]
     inside = _centre(menu.rect)

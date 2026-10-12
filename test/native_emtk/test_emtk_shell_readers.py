@@ -435,22 +435,37 @@ def _reader_child(shell):
 def reveal_in_reader(driver: Driver, shell, target: str) -> None:
     """Wheel until *target* of the reader form is fully on screen, as a user does.
 
-    The Read data dock scrolls, and the form inside it scrolls: the dock first, over the strip beside the form,
-    until the form's box is in the window, then the form, over its own left edge, until the control is in it.
+    The Read data dock scrolls, and the form inside it scrolls. On screen means inside the form's box *and*
+    inside the dock's view -- not the window: what overhangs the dock lies under the next one, and a wheel
+    there goes to that dock. The form is wheeled over the part of its left edge the dock shows, until the
+    control is in the form's box; the dock over the strip beside the form, until the control is in its view.
     """
-    height = driver.size[1]
+    from chisurf.emtk.fit_docks import READ_KEY
+
     for _ in range(160):
         app, box = _reader_child(shell)
+        _vx, top, _vw, vh = shell.docks.window(READ_KEY).content
+        bottom = top + vh
         x, y, w, h = app.form.rects[target]
-        if 0 <= y and y + h <= box[3] and box[1] >= 0 and box[1] + box[3] <= height:
+        in_form = 0 <= y and y + h <= box[3]
+        in_dock = top <= box[1] + y and box[1] + y + h <= bottom
+        if in_form and in_dock:
             return
-        if box[1] + box[3] > height or box[1] < 0:
+        shown = (max(box[1], top), min(box[1] + box[3], bottom))
+        if in_form or shown[1] - shown[0] < 8.0:
+            # The dock moves the control (or, while the form is out of its view, the form) into the view.
+            centre = box[1] + (y + h / 2 if in_form else box[3] / 2)
             before = box[1]
-            driver.wheel(-3 if box[1] > 0 else 3, at=(box[0] + box[2] + 3, 200))
-            assert _reader_child(shell)[1][1] != before, "the Read data dock does not scroll to the form"
+            driver.wheel(
+                -1 if centre > (top + bottom) / 2 else 1,
+                at=(box[0] + box[2] + 3, (top + bottom) / 2),
+            )
+            assert _reader_child(shell)[1][1] != before, (
+                "the Read data dock does not scroll to the form"
+            )
         else:
             before = y
-            driver.wheel(-3 if y > 0 else 3, at=(box[0] + 2, box[1] + box[3] / 2))
+            driver.wheel(-3 if y > 0 else 3, at=(box[0] + 2, (shown[0] + shown[1]) / 2))
             assert _reader_child(shell)[0].form.rects[target][1] != before, (
                 f"the form does not scroll to reveal {target}"
             )

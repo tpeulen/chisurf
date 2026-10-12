@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- emtk shell tests green against emtk 6d998ed. At 800x600 the PDA reader form's 260 px floor overhung the Read
+  data dock (about 209 px visible), so a wheel over its lower half went to the Analysis dock; the floor is now at most
+  the dock's view. chimol's long-menu tests predated chimol folding its object list below 420x300 and now unfold it
+  as a user would.
 - Release gate 1 measured (not met): pixi `test` 119 -> 21 failed in the last complete run (13623 passed),
   `test-gui` 6 failed / 1120 passed, `test-e2e` red against a then-unpinned emtk. Fixed: test isolation (the
   hermetic settings dir is removed at exit, mmfdb resolvers and the UI language restored, a leaked `cs.fits`), a
