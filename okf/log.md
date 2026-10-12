@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- MMFDB seed ships measured dye spectra with provenance instead of 3-point placeholders (mmfdb 3846843, 53eed70,
+  schema 51 upgrades installed databases); the Förster calculator's Alexa488 → Alexa594 R0 is 57.8 Å from 201/426-point
+  curves (handbook 60 Å; excitation stands in for absorption). Guide 83 and its figure updated; the figure generator
+  uses the app's own data path.
 - File tools and Decay Analysis hubs dissolved (owner): Split/Convert, ⇄ .pto, PTO Inspector, TTTR Header editor,
   TTTR→Time-Window BIDs, BID→Analysis and MFD Prepare are ordinary File › Data tools; IRF Estimation, MaxEnt MEM, Lazy
   Lifetime Analysis (experimental), Histogram-Microtime, VV/VH G-Factor, VV/VH Anisotropy Decay (deprecated) and

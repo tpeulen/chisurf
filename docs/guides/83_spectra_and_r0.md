@@ -95,10 +95,16 @@ csc spectra-download push                  # staging → resolved MMFDB
 csc spectra-download push --replace        # purge the reference set first (backs up the MMFDB)
 ```
 
-A fresh MMFDB already holds seed dyes (Alexa488, Alexa594, ATTO647N, …). Where
-no measured spectrum was imported, those seeds carry **Gaussian fallback
-spectra** built from the absorption and emission maxima and a width, which is
-good enough to try the calculator and not good enough to publish an $R_0$ from.
+A fresh MMFDB already holds seed dyes (Alexa488, Alexa594, Cy3, Cy5, ATTO647N,
+Trp) with **measured** spectra taken from the reference spectra library, each
+stored with its provenance (source, retrieval time, licence) in the spectrum's
+`details`. Where the library has no absorption curve (the Chroma Alexa Fluor
+entries), its **excitation** spectrum stands in for the absorption band shape,
+the usual approximation; the absolute scale then comes from ε_max. A seed dye
+with no measured spectrum (2-aminopurine) carries none, so the calculator does
+not offer it. Databases installed from an older seed are upgraded on first open
+(schema 51 removes the former 3-point placeholder curves and attaches the
+measured ones).
 
 ## 4. Compute R₀
 
@@ -111,7 +117,8 @@ press **calc R0** in the κ² row. The **Förster Radius Calculator** opens:
 
 The calculator on the seed MMFDB: donor Alexa488 (Q_D 0.92 filled from the
 database), acceptor Alexa594 (ε_max 87 000 M⁻¹ cm⁻¹ filled from the database),
-n = 1.33. R₀ = 58.4 Å, J = 2.30×10¹⁵ M⁻¹ cm⁻¹ nm⁴.
+n = 1.33. R₀ = 57.8 Å, J = 2.17×10¹⁵ M⁻¹ cm⁻¹ nm⁴, from the measured 201-point
+emission and 426-point excitation curves of the seed (handbook value: 60 Å).
 ```
 
 1. **Donor emission** and **Acceptor absorption**: searchable lists of the

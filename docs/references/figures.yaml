@@ -3190,9 +3190,9 @@ guides/figures/forster_calculator.png:
   kind: screenshot
   origin: docs/guides/screenshots/spectra_mfd.py::_grab_forster_calculator
   recipe: >-
-    Run the script named in origin (see the function that saves forster_calculator.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    python docs/guides/screenshots/spectra_mfd.py _grab_forster_calculator (repo root,
+    arm64 env); drives the emtk Förster dialog headlessly into the state the guide
+    describes and writes the PNG here.
   pages:
   - docs/guides/83_spectra_and_r0.md
 
