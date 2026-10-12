@@ -113,6 +113,9 @@ def av_defaults() -> dict:
         # sphere in linker widths (FPS's rule, 0.5 W, for any other width).
         "allowed_sphere_radius": float(IMP.bff.AV_DEFAULT_ALLOWED_SPHERE),
         "linker_initial_sphere": float(IMP.bff.AV_DEFAULT_LINKER_INITIAL_SPHERE),
+        # The one factor IMP's united-atom radii are scaled by as the AV's
+        # obstacles, fitted to FPS's Bondi radii (no second radii table).
+        "radius_scale": float(IMP.bff.AV_DEFAULT_RADIUS_SCALE),
     }
 
 

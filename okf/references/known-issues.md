@@ -81,9 +81,11 @@ oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
 
 ## QuEst moved into ChiSurf; a third of T4L sites have no AV at the default width (found 2026-10-12)
 
-status: open — the port itself is done (2026-10-12); Open 1 and Open 3 resolved 2026-10-12 (FPS's link search is
-IMP.bff's default, imp.bff e4a3e2b9d; attachment atom excluded and allowed sphere on by default, imp.bff 8ce0dcc28,
-pinned in pixi.lock), Open 2 remains (below). The release-gate leftovers
+status: open — 2026-10-12 (latest): the empty sites of Open 1 are now the radii scaled to FPS's (one factor on IMP's
+radii, `AV_DEFAULT_RADIUS_SCALE` 0.84, imp.bff 3b1751b7e, pinned in pixi.lock): 148L 48 -> 40 empty against FPS's 33,
+the rest decided (nearest-grid-point start) or HETATM; Open 2 remains (below). Earlier the same day: the port is done;
+Open 1 and Open 3 resolved (FPS's link search, imp.bff e4a3e2b9d; attachment atom excluded and allowed sphere on,
+imp.bff 8ce0dcc28). The release-gate leftovers
 (Qt file dialogs in the form model, the demo contract, de/fr catalogue sources, the deleted
 `quest_native_failure.png` reference) are fixed 2026-10-12.
 
@@ -136,6 +138,30 @@ to FPS's (median 0.99 of FPS's against 0.93 seed-only). QuEst's default radii ar
 consistency), so a third of the sites stay unlabelable at W 4.5 under them; record and numbers in imp.bff
 `okf/validation/fps_screening_ab.md` ("Where to pick this up" 1-2, also the off-node anchor that keeps T4L-132 empty
 at 0.5 A).
+**Resolved further 2026-10-12 (latest) -- one obstacle-radius scale, and the anchor decided.** Owner: "i do not want
+a separate set of atom radii, if fps is slightly smaller, use a single scale factor to match fps radii". IMP.bff
+3b1751b7e declares `AV_DEFAULT_RADIUS_SCALE = 0.84` (position field `radius_scale`, schema 1.9); QuEst applies it to the
+radii it hands the array door (`core/av.py` `DEFAULT_RADIUS_SCALE`, held to IMP.bff by `test_av_defaults.py`) and shows
+it as *Obstacle radius scale* in the Dye panel; chimol's labelling AV passes it to the structure door (chimol 5ba1c3b).
+Fitted, not inferred: median FPS/IMP radius ratio 0.838 over 20 434 heavy atoms of 148L/3GUN/1RTD; over the 151
+chain-E CB sites (L 20, W 4.5, R 3.5, grid 0.9) the median volume against FPS's own routine goes 0.906 -> **0.990**
+and the empty sites **48 -> 40** (32 shared with FPS's 33; ATOM records only 42 -> 36). The 8 still empty here and
+not in FPS (3, 97, 104, 105, 106, 114, 117, 138) stay empty down to x0.78, so they are not the radii: 3/97/104/106 open
+without HETATM and waters (FPS reads ATOM records only; QuEst keeps them), 105/114/117/138 are the nearest-grid-point
+start, which the owner decided to keep ("of course the nearest grid point") -- so T4L-132 CB at a 0.5 A grid staying
+empty is a documented consequence, not an open item (the scale does not open it: 0 voxels; 9 142 at 0.9 A, FPS
+9 237). Classic sites at W 4.5: 99 and 129 empty as in FPS, 96 and 132 now open. Table and choice in imp.bff
+`okf/validation/fps_screening_ab.md` ("AV obstacle-radius scale"). QuEst re-pinned (`test/baselines/imp_bff.json`
+with `_previous`; volumes E96 104 379 -> 117 747, E129 57 393 -> 121 576 points; E129 now quenches, QY 0.701;
+`QUENCHED_SITES` 99/89/132 -> **99/129/132**, 89 stopped quenching; residue-specific test sites E155 -> E9 (TRP) and
+E99 -> E158 (near quenchers), E96 stays the exposed one). Two leads, not fixed: (a) the baseline's FRET run
+(E55->E124, W 0.5) moves from E 0.473 to 0.726 while R_DA moves only 64.80 -> 64.07 A -- reproduced exactly at
+`radius_scale` 1.0, so it is the scale, but the simulated E and the AV distance disagree at either scale (E 0.47 at
+64.8 A with R0 52 is not a static average); (b) the other AV doors still read an element-keyed Bondi table rather than
+IMP's radii x the scale -- IMP.bff's file door `get_av_from_pdb` (standalone builder, chimol's default AV path) and
+ChiSurf's FRET plugin `chisurf/plugins/modelling/fret/core/av.py` `load_structure_with_vdw` (`VDW_RADII`), which is why
+`test/fitting/data/fret_structure_reference.json` did not move. Those are a second radii set the owner does not want;
+retiring them needs IMP's radii on a path without IMP (PRD-137), so it is a decision, not a patch.
 
 **Open 2 -- the dye-trajectory and ACF panels concatenate the parallel trajectories**: with *Parallel trajectories*
 -1 (8 on this machine) the time axis runs to 8 x t_max (16 000 ns for t_max 2000). Seen in the plugin window after

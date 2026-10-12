@@ -94,7 +94,7 @@ def test_the_obstacle_radius_scale_is_imp_bffs_and_reaches_the_volume():
     radii) and, because it hands IMP's radii to the array door itself, applies
     it there: the volume at the default is the volume at an explicit
     ``radius_scale`` of the same value, and 1.0 -- IMP's radii as they are --
-    gives a smaller one (148L E96 CB, AV1 at IMP.bff's defaults).
+    gives a smaller one (148L E55 CB, AV1 at IMP.bff's defaults).
     """
     from chisurf.plugins.quenching_estimator.core.av import (
         AV,
@@ -111,7 +111,7 @@ def test_the_obstacle_radius_scale_is_imp_bffs_and_reaches_the_volume():
     assert model.project["av_parameter"]["radius_scale"] == 1.0
 
     pdb = str(REPO / "test" / "148l.pdb")
-    site = dict(residue_seq_number=96, atom_name="CB", chain_identifier="E")
+    site = dict(residue_seq_number=55, atom_name="CB", chain_identifier="E")
     default = AV(pdb, **site)
     explicit = AV(pdb, radius_scale=DEFAULT_RADIUS_SCALE, **site)
     unscaled = AV(pdb, radius_scale=1.0, **site)

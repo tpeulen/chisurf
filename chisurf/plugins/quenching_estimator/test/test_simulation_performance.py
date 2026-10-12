@@ -104,10 +104,22 @@ PDB_PATH = Path(__file__).parent / "148l.pdb"
 # 0.320 -> 0.360, 89 0.784, 132 0.459; of the classic sites 96 (0.986) and 129
 # (1.000) still barely or never quench, so they do not come back.
 #
+# Re-scanned 2026-10-12 (latest), when IMP.bff's AV obstacles became IMP's radii
+# x AV_DEFAULT_RADIUS_SCALE = 0.84 (imp.bff 3b1751b7e, fitted to FPS's Bondi
+# radii): the volumes grow again and 89 stops quenching, while the classic 129
+# comes back -- so the classic pair 99/129 plus the FRET site 132:
+#
+#     site   x1.0 (FPS search)   x0.84
+#      89         0.784          1.000   <- dropped
+#      99         0.360          0.796
+#     129         1.000          0.701   <- back (classic site)
+#     132         0.459          0.659
+#      96         0.986          1.000   (classic, still does not quench)
+#
 # Do not "fix" a failure here by widening the assertion: it means the volume
 # moved, and the sites have to be re-measured (scratch loop over every CB site,
 # 0 < QY < 1) rather than the test relaxed.
-QUENCHED_SITES = (99, 89, 132)
+QUENCHED_SITES = (99, 129, 132)
 
 
 def _project(residue: int, *, seed: int | None = 5, **overrides):

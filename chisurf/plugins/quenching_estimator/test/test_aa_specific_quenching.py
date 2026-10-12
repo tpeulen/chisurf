@@ -219,9 +219,13 @@ class TestSimulationIsResidueSpecific:
         assert rows["LEU"]["mean_quench_rate"] == 0.0
 
     def test_disabling_a_residue_type_removes_its_contribution(self) -> None:
-        with_trp = simulate_project(
-            _project(attachment={"chain": "E", "residue": 155, "atom": "CB"})
-        )
+        """TRP off at a TRP-dominated site raises the quantum yield.
+
+        E9, re-picked 2026-10-12 when IMP.bff's AV obstacles became IMP's radii
+        x 0.84 (imp.bff 3b1751b7e): E155 stopped quenching under this project
+        (QY 1.000 with or without TRP); E9 is TRP-only (share 1.00) at QY 0.362.
+        """
+        with_trp = simulate_project(_project(attachment={"chain": "E", "residue": 9, "atom": "CB"}))
         trp_share = next(
             row["quench_rate_fraction"]
             for row in (with_trp.aa_residence or [])
@@ -233,7 +237,7 @@ class TestSimulationIsResidueSpecific:
         table["TRP"]["kQ"] = 0.0
         without_trp = simulate_project(
             _project(
-                attachment={"chain": "E", "residue": 155, "atom": "CB"},
+                attachment={"chain": "E", "residue": 9, "atom": "CB"},
                 amino_acid_interactions=table,
             )
         )
@@ -253,9 +257,14 @@ class TestSimulationIsResidueSpecific:
         Scanned all 151 chain-E CB sites here; the classic E99 quenches strongly
         (0.242) and E96 not at all (1.000), so the pair is those two. Re-measure,
         do not widen, if it moves again.
+
+        Re-picked 2026-10-12 (latest), when the AV obstacles became IMP's radii x
+        AV_DEFAULT_RADIUS_SCALE = 0.84 (imp.bff 3b1751b7e): E99 barely quenches
+        here any more (0.971); the full chain-E scan puts E158 lowest (0.104,
+        then 141 0.123, 142 0.166), and E96 still does not quench (1.000).
         """
         near_quenchers = simulate_project(
-            _project(attachment={"chain": "E", "residue": 99, "atom": "CB"})
+            _project(attachment={"chain": "E", "residue": 158, "atom": "CB"})
         )
         far_site = simulate_project(
             _project(attachment={"chain": "E", "residue": 96, "atom": "CB"})

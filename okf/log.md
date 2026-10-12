@@ -2,6 +2,11 @@
 
 ## 2026-10-12
 
+- AV radius scale 0.84, fitted to FPS: median FPS/IMP radius ratio 0.838 over 20,434 heavy atoms of 148L, 3GUN and
+  1RTD; 148L CB volume against FPS 0.906 -> 0.990; empty sites 48 -> 40 (FPS 33; the rest are HETATM/waters or the
+  nearest-grid-point start the owner kept); 3GUN bias against FPS +1.22 -> +0.90 Å at the same rmsd. `av_defaults()`
+  carries `radius_scale`; QuEst baselines re-pinned with `_previous`, quenched sites (99, 129, 132). Open: chimol's
+  file door and the FRET plugin still read an element Bondi table (a second radii set).
 - Structure Tools dissolved (owner decision): its tools are ordinary plugins on the Structure tab, grouped Modelling
   (ChiMOL), FRET (Docking & Screening, FPS JSON Editor), Computation (HydroPro, QuEst) and Trajectory (Traj Tools).
   The shared card window is `chisurf/emtk/card_shell.py`. The FPS editor is a chimol plugin (chimol 4d9eef9,
