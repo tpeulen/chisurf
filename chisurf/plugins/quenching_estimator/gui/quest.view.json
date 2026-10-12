@@ -475,6 +475,12 @@
           "description": "Run the current project through quest.api."
         },
         {
+          "label": "Load example",
+          "icon": "🧪",
+          "action": "load_example",
+          "description": "Load the shipped example: T4 lysozyme (PDB 148L), dye on E36, a short run."
+        },
+        {
           "label": "📂 Load project…",
           "action": "load_project_dialog",
           "description": "Read a QuEst project JSON written by any surface."

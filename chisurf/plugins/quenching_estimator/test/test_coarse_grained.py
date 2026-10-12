@@ -14,11 +14,11 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.quenching_estimator.core import build_donor_from_project, simulate_project
-from chisurf.plugins.quenching_estimator.core.structure import Structure
 from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
     STANDARD_AMINO_ACID_RESIDUES,
     default_amino_acid_interactions,
 )
+from chisurf.plugins.quenching_estimator.core.structure import Structure
 
 PDB_PATH = Path(__file__).parent / "148l.pdb"
 
@@ -92,10 +92,7 @@ class TestStructureCoarseGraining:
         assert hetero_atoms(coarse) == hetero_atoms(all_atom)
         # And their names survived: IMP calls them "HET: C1", which truncates to
         # a useless "HET:" in the |U5 field unless the prefix is stripped.
-        assert all(
-            name and not name.startswith("HET")
-            for _, name in hetero_atoms(coarse)
-        )
+        assert all(name and not name.startswith("HET") for _, name in hetero_atoms(coarse))
 
     def test_cb_moves_to_the_side_chain_centre_of_mass(self) -> None:
         all_atom = Structure(str(PDB_PATH), make_coarse=False)
@@ -167,7 +164,7 @@ class TestCoarseGrainedSimulation:
         assert 0.0 < result.quantum_yield_donor <= 1.0
         assert result.av_volume and result.av_volume > 0.0
 
-        rows = {row["residue_name"]: row for row in result.aa_residence}
+        rows = {row["residue_name"]: row for row in (result.aa_residence or [])}
         assert rows, "expected residue-type metrics"
         assert rows["ALA"]["mean_quench_rate"] == 0.0
 
@@ -175,4 +172,5 @@ class TestCoarseGrainedSimulation:
         """Removing side chains frees space the dye can reach."""
         all_atom = simulate_project(_project(coarse_grained=False))
         coarse = simulate_project(_project(coarse_grained=True))
+        assert coarse.av_volume is not None and all_atom.av_volume is not None
         assert coarse.av_volume > all_atom.av_volume

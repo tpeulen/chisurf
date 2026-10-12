@@ -27,7 +27,7 @@ volume, Brownian walk and photon kernels. It used to be a separate package
 
 **Structure → Modelling → Structure Tools**, then **💡 QuEst** in the left list,
 or the plugin's own window (`csg_quest`, or `csc quest gui`). Both are the same
-window. Press **Guide** for a walk-through and **Load demo** to start from the
+window. Press **Guide** for a walk-through and **Load example** to start from the
 shipped example: T4 lysozyme (PDB 148L), the dye on the C$_\beta$ of Ser 36,
 FRET off, a short seeded run. **Simulate** then ends in a few seconds:
 
@@ -35,8 +35,8 @@ FRET off, a short seeded run. **Simulate** then ends in a few seconds:
 :name: fig-quest-structure-tools
 :width: 100%
 
-The QuEst window after **Load demo** and **Simulate** (800 × 600): T4 lysozyme (148L), dye on E36 C$_\beta$ at the
-default accessible volume. The State line reads QY = 0.913 and ⟨τ⟩ = 4.11 ns; the panels are the donor decay, the dye's
+The QuEst window after **Load example** and **Simulate** (800 × 600): T4 lysozyme (148L), dye on E36 C$_\beta$ at the
+default accessible volume. The State line reads QY = 0.864 and ⟨τ⟩ = 4.05 ns; the panels are the donor decay, the dye's
 distance from its mean position along the trajectory and its position autocorrelation.
 ```
 
@@ -50,7 +50,7 @@ the same ones every AV in ChiSurf uses.
 
 1. **Structure file**: a PDB or mmCIF file, or a four-character RCSB ID,
    which is downloaded. Remove crystal waters first, because they block the
-   accessible volume and hide quenchers. **Load demo** uses T4 lysozyme, 148L,
+   accessible volume and hide quenchers. **Load example** uses T4 lysozyme, 148L,
    which ships with the plugin (`examples/148l.pdb`).
 2. **Attachment chain / residue / atom**: where the linker starts, usually the
    C$_\beta$ of the labelled residue (for 148L, chain `E`; the demo uses
@@ -155,7 +155,7 @@ csc quest scan ...        # several sites, fps.json positions
 ```
 
 `decay.csv` holds the decay and the scalar results; for this run
-`quantum_yield_donor` is 0.913, the same number the window shows. From Python:
+`quantum_yield_donor` is 0.864, the same number the window shows. From Python:
 
 ```python
 from chisurf.plugins.quenching_estimator.api import local as quest
@@ -191,11 +191,13 @@ excitation lower the brightness without changing the simulated decay.
 ## Known defects
 
 - **A third of T4 lysozyme's sites have no accessible volume at the default
-  linker width.** With IMP.bff's defaults (width 4.5 Å, grid 0.9 Å) 51 of the
-  151 C$_\beta$ sites of 148L chain E come back empty (among them 96, 117, 129,
-  132, 139), where FPS finds a volume. IMP.bff's linker search hops out of the
-  attachment seed only, not from every node as FPS does; that is a recorded
-  decision in IMP.bff (speed). A width of 0.5 Å labels all 151.
+  linker width.** With IMP.bff's defaults (width 4.5 Å, grid 0.9 Å) 48 of the
+  151 C$_\beta$ sites of 148L chain E come back empty (among them 96, 99, 117,
+  129, 132, 139). The linker search is FPS's own (hops of three voxels from
+  every node); what walls these sites in is the radii: QuEst inflates atoms by
+  IMP's united-atom radii (carbon up to 2.275 Å), and with FPS's smaller Bondi
+  radii the same search leaves exactly FPS's 33 empty, 96, 117 and 132 among the
+  labelled. A width of 0.5 Å labels all 151.
 - **The trajectory panel concatenates the parallel trajectories.** With
   *Parallel trajectories* at −1 (all cores, at most 8) the dye-trajectory and
   autocorrelation panels run over 8 × the simulation time.

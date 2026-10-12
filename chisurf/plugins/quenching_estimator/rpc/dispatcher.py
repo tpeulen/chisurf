@@ -26,7 +26,7 @@ from typing import Any, Callable, Dict, Optional
 
 __all__ = ["ServiceDispatcher", "InProcessClient", "RemoteError", "ok", "fail"]
 
-Handler = Callable[[Dict[str, Any]], Dict[str, Any]]
+Handler = Callable[[dict[str, Any]], dict[str, Any]]
 
 
 class RemoteError(RuntimeError):
@@ -101,9 +101,7 @@ class ServiceDispatcher:
 
         return sorted(self._handlers)
 
-    def dispatch(
-        self, method: str, params: Optional[Dict[str, Any]] = None
-    ) -> dict[str, Any]:
+    def dispatch(self, method: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Call *method* with *params* and return its envelope."""
 
         from chisurf.plugins.quenching_estimator.rpc.contract import error_code_for, service_error
@@ -134,16 +132,12 @@ class InProcessClient:
     def __init__(self, dispatcher: ServiceDispatcher) -> None:
         self._dispatcher = dispatcher
 
-    def call(
-        self, method: str, params: Optional[Dict[str, Any]] = None
-    ) -> dict[str, Any]:
+    def call(self, method: str, params: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Execute *method* and return the response envelope."""
 
         return self._dispatcher.dispatch(method, params)
 
-    def result(
-        self, method: str, params: Optional[Dict[str, Any]] = None
-    ) -> Any:
+    def result(self, method: str, params: Optional[dict[str, Any]] = None) -> Any:
         """Execute *method* and return its result, raising on failure.
 
         Raises

@@ -70,7 +70,7 @@ class JobStatus(str, enum.Enum):
 class Job:
     """One long-running operation."""
 
-    def __init__(self, job_id: str, action: str, params: Optional[Dict[str, Any]] = None):
+    def __init__(self, job_id: str, action: str, params: Optional[dict[str, Any]] = None):
         self.job_id = job_id
         self.action = action
         self.params = params or {}
@@ -86,7 +86,7 @@ class Job:
     def cancel_requested(self) -> bool:
         return self._cancel_event.is_set()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """The shape a host reads. Deliberately JSON-only — no result object.
 
         `result` is excluded: it may be a `DecaySimulationResult` full of numpy,
@@ -109,13 +109,13 @@ class JobManager:
 
     def __init__(self, max_history: int = 100):
         self._lock = threading.RLock()
-        self._jobs: Dict[str, Job] = {}
+        self._jobs: dict[str, Job] = {}
         self._order: list[str] = []
         self._max_history = max(0, int(max_history))
 
     # -- lifecycle --------------------------------------------------------
 
-    def create(self, action: str, params: Optional[Dict[str, Any]] = None) -> Job:
+    def create(self, action: str, params: Optional[dict[str, Any]] = None) -> Job:
         job = Job(str(uuid.uuid4()), action, params)
         with self._lock:
             self._jobs[job.job_id] = job
@@ -126,7 +126,7 @@ class JobManager:
         with self._lock:
             return self._jobs.get(job_id)
 
-    def list(self) -> list[Dict[str, Any]]:
+    def list(self) -> list[dict[str, Any]]:
         """Newest first, like every other listing here."""
         with self._lock:
             return [self._jobs[j].to_dict() for j in reversed(self._order) if j in self._jobs]
@@ -151,9 +151,7 @@ class JobManager:
                 return
             # A worker that returns *after* observing cancellation is cancelled,
             # not completed -- its result is partial.
-            job.status = (
-                JobStatus.CANCELLED if job.cancel_requested else JobStatus.COMPLETED
-            )
+            job.status = JobStatus.CANCELLED if job.cancel_requested else JobStatus.COMPLETED
             if job.status is JobStatus.COMPLETED:
                 job.result = result
                 job.progress = 100
@@ -213,7 +211,11 @@ class JobManager:
 
     def reporter(self, job_id: str) -> Callable[[int, str], None]:
         """A progress callback to hand to the domain."""
-        return lambda percent, message="": self.set_progress(job_id, percent, message)
+
+        def report(percent: int, message: str = "") -> None:
+            self.set_progress(job_id, percent, message)
+
+        return report
 
     # -- history ----------------------------------------------------------
 

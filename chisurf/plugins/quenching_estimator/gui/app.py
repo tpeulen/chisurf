@@ -10,7 +10,7 @@ legacy widget: the implot3d plot offers no ray pick).
 
 The ``?`` and **Guide** buttons are drawn by the card itself: ``CardShell`` builds an ``EmTkHelpWindow`` and an
 ``EmTkGuidedTour`` from this folder's ``help.md`` and ``guide.json`` (the card's resource folder is this one), so the
-plugin window, its Qt host and the Structure Tools card show one help page and walk one tour. **Load demo** gives the
+plugin window, its Qt host and the Structure Tools card show one help page and walk one tour. **Load example** gives the
 tour T4 lysozyme to work on (``demo.py``).
 """
 
@@ -111,8 +111,9 @@ def make_app():
                 im.same_line()
             im.new_line()
             rows = residues(self.session)
-            if rows:
-                project = self.session.model.project
+            model = self.session.model
+            if rows and model is not None:
+                project = model.project
                 att = project.get("attachment", {})
                 dyes = project.get("fret", {}).get("dyes", [])
                 acc = dyes[1].get("attachment", {}) if len(dyes) > 1 else {}

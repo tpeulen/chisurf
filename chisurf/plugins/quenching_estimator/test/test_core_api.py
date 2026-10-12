@@ -1,30 +1,47 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Dict, Any
-
-import json
+from typing import Any, Dict
 
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from chisurf.plugins.quenching_estimator.core import (  # type: ignore[import]
+from chisurf.plugins.quenching_estimator.core import (
     DecaySimulationResult,
+    autocorr,
     autocorr_to_tau_window,
     calculate_aa_residence,
     diffusion_coefficient_grid,
     load_project,
     simulate_project,
 )
-from chisurf.plugins.quenching_estimator.core import av as fps  # type: ignore[import]
-from chisurf.plugins.quenching_estimator.core import autocorr  # type: ignore[import]
+from chisurf.plugins.quenching_estimator.core import av as fps
 
 AAS = [
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 ]
 
 
@@ -35,10 +52,10 @@ def _aa_interactions(**overrides: dict[str, float]) -> dict[str, dict[str, float
     return interactions
 
 
-def _make_minimal_project(with_fret: bool) -> Dict[str, Any]:
+def _make_minimal_project(with_fret: bool) -> dict[str, Any]:
     """Small helper mirroring test_api but importing quest.core."""
 
-    project: Dict[str, Any] = {}
+    project: dict[str, Any] = {}
 
     project["pdb"] = str(Path(__file__).resolve().parent / "148l.pdb")
     project["attachment"] = {"chain": "E", "residue": 10, "atom": "CB"}
@@ -96,7 +113,10 @@ def test_simulate_project_core_imports() -> None:
     assert 0.0 < result.quantum_yield_donor <= 1.0
     assert 0.0 <= result.collisions_fraction <= 1.0
     assert result.trajectory_autocorr is not None
-    assert len(result.trajectory_autocorr) == int(np.ceil(10.0 * project["tau0"] / project["t_step"])) + 1
+    assert (
+        len(result.trajectory_autocorr)
+        == int(np.ceil(10.0 * project["tau0"] / project["t_step"])) + 1
+    )
 
 
 def test_load_project_core_roundtrip(tmp_path: Path) -> None:
@@ -190,7 +210,7 @@ def test_rejected_diffusion_steps_remain_at_last_accepted_position() -> None:
 
 
 def test_simulate_diffusion_combines_parallel_trajectories() -> None:
-    from chisurf.plugins.quenching_estimator.core.dye_diffusion import SimulateDiffusion  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core.dye_diffusion import SimulateDiffusion
 
     density = np.zeros((3, 3, 3), dtype=np.uint8)
     density[1, 1, 1] = 1
@@ -226,9 +246,11 @@ def test_simulate_diffusion_combines_parallel_trajectories() -> None:
 
 
 def test_parallel_trajectories_minus_one_uses_all_cores_capped_at_eight(monkeypatch) -> None:
-    from chisurf.plugins.quenching_estimator.core.dye_diffusion import SimulateDiffusion  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core.dye_diffusion import SimulateDiffusion
 
-    monkeypatch.setattr("chisurf.plugins.quenching_estimator.core.dye_diffusion.os.cpu_count", lambda: 12)
+    monkeypatch.setattr(
+        "chisurf.plugins.quenching_estimator.core.dye_diffusion.os.cpu_count", lambda: 12
+    )
 
     assert SimulateDiffusion._resolve_parallel_trajectories(-1) == 8
     assert SimulateDiffusion._resolve_parallel_trajectories(0) == 1
@@ -237,7 +259,7 @@ def test_parallel_trajectories_minus_one_uses_all_cores_capped_at_eight(monkeypa
 
 
 def test_simulate_diffusion_samples_amino_acid_quenching_grid() -> None:
-    from chisurf.plugins.quenching_estimator.core.dye_diffusion import SimulateDiffusion  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core.dye_diffusion import SimulateDiffusion
 
     density = np.zeros((3, 3, 3), dtype=np.uint8)
     density[1, 1, 1] = 1
@@ -352,7 +374,7 @@ def test_build_donor_uses_amino_acid_interaction_grid() -> None:
         GLU={"slow_factor": 0.2, "kQ": 2.0},
     )
 
-    from chisurf.plugins.quenching_estimator.core import build_donor_from_project  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 
     donor = build_donor_from_project(project)
     av = donor.av
@@ -386,7 +408,7 @@ def test_build_donor_uses_amino_acid_interaction_grid() -> None:
 def test_build_donor_always_uses_whole_protein_surface_centers() -> None:
     project = _make_minimal_project(with_fret=False)
 
-    from chisurf.plugins.quenching_estimator.core import build_donor_from_project  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 
     donor = build_donor_from_project(project)
     centers, residue_names = donor.slow_center_data
@@ -400,7 +422,7 @@ def test_build_donor_reads_parallel_trajectory_count() -> None:
     project = _make_minimal_project(with_fret=False)
     project["parallel_trajectories"] = 4
 
-    from chisurf.plugins.quenching_estimator.core import build_donor_from_project  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 
     donor = build_donor_from_project(project)
 
@@ -410,7 +432,7 @@ def test_build_donor_reads_parallel_trajectory_count() -> None:
 def test_build_donor_defaults_parallel_trajectories_to_all_cores() -> None:
     project = _make_minimal_project(with_fret=False)
 
-    from chisurf.plugins.quenching_estimator.core import build_donor_from_project  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 
     donor = build_donor_from_project(project)
 
@@ -424,7 +446,7 @@ def test_amino_acid_interactions_clamp_slow_factor_and_kq() -> None:
         GLU={"slow_factor": 2.0, "kQ": -1.0},
     )
 
-    from chisurf.plugins.quenching_estimator.core import build_donor_from_project  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 
     donor = build_donor_from_project(project)
 
@@ -444,7 +466,7 @@ def test_build_donor_uses_project_amino_acid_interactions_as_source_of_truth() -
     donor_dye["slow_radius"] = 8.5
     donor_dye["amino_acid_interactions"] = _aa_interactions(ASP={"slow_factor": 0.5, "kQ": 4.0})
 
-    from chisurf.plugins.quenching_estimator.core import build_donor_from_project  # type: ignore[import]
+    from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 
     donor = build_donor_from_project(project)
 

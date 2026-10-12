@@ -34,8 +34,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.quenching_estimator.core.av import center_grid_indices as _center_grid_indices
 from chisurf.plugins.quenching_estimator.core.av import AV, available_av_backends, grid_center_index
+from chisurf.plugins.quenching_estimator.core.av import center_grid_indices as _center_grid_indices
 
 STRUCTURE = Path(__file__).parent / "148l.pdb"
 RESOLUTION = 0.5
@@ -109,12 +109,8 @@ def test_every_cloud_point_indexes_to_an_occupied_voxel(av) -> None:
     ng = av.ng
     density = np.asarray(av.density).reshape(ng, ng, ng)
 
-    ix, iy, iz, _ = _center_grid_indices(
-        points, x0, RESOLUTION, ng, np.zeros(len(points))
-    )
-    inside = (
-        (ix >= 0) & (ix < ng) & (iy >= 0) & (iy < ng) & (iz >= 0) & (iz < ng)
-    )
+    ix, iy, iz, _ = _center_grid_indices(points, x0, RESOLUTION, ng, np.zeros(len(points)))
+    inside = (ix >= 0) & (ix < ng) & (iy >= 0) & (iy < ng) & (iz >= 0) & (iz < ng)
     assert inside.all(), f"{(~inside).sum()} points index outside the grid"
 
     occupied = density[ix, iy, iz] > 0

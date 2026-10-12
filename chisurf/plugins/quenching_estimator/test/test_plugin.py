@@ -6,6 +6,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, Callable
 
 PLUGIN_DIR = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((PLUGIN_DIR / "manifest.json").read_text(encoding="utf8"))
@@ -107,7 +108,7 @@ class TestTheServicesRegisterIntoAHostDispatcher:
         handlers rather than two copies that can drift."""
         from chisurf.plugins.quenching_estimator.rpc.services import register_services
 
-        registered: dict[str, object] = {}
+        registered: dict[str, Callable[..., Any]] = {}
 
         class Dispatcher:
             def register(self, name, handler):
@@ -132,7 +133,7 @@ class TestTheServicesRegisterIntoAHostDispatcher:
             (Path(__file__).parents[1] / "manifest.json").read_text(encoding="utf-8")
         )
         declared = {entry["name"] for entry in manifest["rpc_methods"]}
-        registered: dict[str, object] = {}
+        registered: dict[str, Callable[..., Any]] = {}
 
         class Dispatcher:
             def register(self, name, handler):
@@ -145,7 +146,7 @@ class TestTheServicesRegisterIntoAHostDispatcher:
     def test_a_registered_method_actually_runs(self) -> None:
         from chisurf.plugins.quenching_estimator.rpc.services import register_services
 
-        registered: dict[str, object] = {}
+        registered: dict[str, Callable[..., Any]] = {}
 
         class Dispatcher:
             def register(self, name, handler):
@@ -159,9 +160,8 @@ class TestTheServicesRegisterIntoAHostDispatcher:
 
 class TestTheContractIsDefinedOnce:
     def test_it_reexports_rather_than_restates(self) -> None:
-        from chisurf.plugins.quenching_estimator.rpc.contract import CONTRACT_VERSION, ERROR_CODES
-
         from chisurf.plugins.quenching_estimator.api import contract
+        from chisurf.plugins.quenching_estimator.rpc.contract import CONTRACT_VERSION, ERROR_CODES
 
         assert contract.CONTRACT_VERSION == CONTRACT_VERSION
         assert contract.ERROR_CODES == ERROR_CODES

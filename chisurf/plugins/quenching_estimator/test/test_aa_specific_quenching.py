@@ -13,7 +13,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.quenching_estimator.core import build_donor_from_project, calculate_aa_quenching, simulate_project
+from chisurf.plugins.quenching_estimator.core import (
+    build_donor_from_project,
+    calculate_aa_quenching,
+    simulate_project,
+)
 from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
     DEFAULT_QUENCHER_ATOMS,
     REFERENCE_PET_QUENCHING,
@@ -81,7 +85,9 @@ class TestInteractionTable:
         assert table["TRP"]["quench_radius"] is None
 
     def test_slow_factor_is_clamped(self) -> None:
-        table = normalize_amino_acid_interactions({"TRP": {"slow_factor": 5.0}, "TYR": {"slow_factor": -2.0}})
+        table = normalize_amino_acid_interactions(
+            {"TRP": {"slow_factor": 5.0}, "TYR": {"slow_factor": -2.0}}
+        )
         assert table["TRP"]["slow_factor"] == 1.0
         assert table["TYR"]["slow_factor"] == 0.0
 
@@ -195,7 +201,7 @@ class TestQuenchingDecomposition:
 class TestSimulationIsResidueSpecific:
     def test_result_reports_per_residue_quenching(self) -> None:
         result = simulate_project(_project(attachment={"chain": "E", "residue": 155, "atom": "CB"}))
-        rows = {row["residue_name"]: row for row in result.aa_residence}
+        rows = {row["residue_name"]: row for row in (result.aa_residence or [])}
 
         quenching = {name: row for name, row in rows.items() if row["mean_quench_rate"] > 0}
         assert quenching, "expected at least one residue type to quench at this site"
@@ -213,10 +219,12 @@ class TestSimulationIsResidueSpecific:
         assert rows["LEU"]["mean_quench_rate"] == 0.0
 
     def test_disabling_a_residue_type_removes_its_contribution(self) -> None:
-        with_trp = simulate_project(_project(attachment={"chain": "E", "residue": 155, "atom": "CB"}))
+        with_trp = simulate_project(
+            _project(attachment={"chain": "E", "residue": 155, "atom": "CB"})
+        )
         trp_share = next(
             row["quench_rate_fraction"]
-            for row in with_trp.aa_residence
+            for row in (with_trp.aa_residence or [])
             if row["residue_name"] == "TRP"
         )
         assert trp_share > 0.0
@@ -229,15 +237,28 @@ class TestSimulationIsResidueSpecific:
                 amino_acid_interactions=table,
             )
         )
-        trp_row = next(row for row in without_trp.aa_residence if row["residue_name"] == "TRP")
+        trp_row = next(
+            row for row in (without_trp.aa_residence or []) if row["residue_name"] == "TRP"
+        )
         assert trp_row["mean_quench_rate"] == 0.0
         # Removing the dominant quencher must raise the quantum yield.
         assert without_trp.quantum_yield_donor > with_trp.quantum_yield_donor
 
     def test_quenching_is_site_dependent(self) -> None:
-        """A site buried among aromatics must quench more than an exposed one."""
-        near_aromatics = simulate_project(
-            _project(attachment={"chain": "E", "residue": 155, "atom": "CB"})
+        """A site with quenchers in reach must quench more than an exposed one.
+
+        Re-picked 2026-10-12, when IMP.bff's AV search became FPS's link search
+        (the three-voxel cube hop from every node): the volumes grew and the
+        former pair inverted -- E155 0.896 against E10 0.721 under this project.
+        Scanned all 151 chain-E CB sites here; the classic E99 quenches strongly
+        (0.242) and E96 not at all (1.000), so the pair is those two. Re-measure,
+        do not widen, if it moves again.
+        """
+        near_quenchers = simulate_project(
+            _project(attachment={"chain": "E", "residue": 99, "atom": "CB"})
         )
-        far_site = simulate_project(_project(attachment={"chain": "E", "residue": 10, "atom": "CB"}))
-        assert near_aromatics.quantum_yield_donor < far_site.quantum_yield_donor
+        far_site = simulate_project(
+            _project(attachment={"chain": "E", "residue": 96, "atom": "CB"})
+        )
+        assert near_quenchers.quantum_yield_donor < 0.5
+        assert far_site.quantum_yield_donor == pytest.approx(1.0)

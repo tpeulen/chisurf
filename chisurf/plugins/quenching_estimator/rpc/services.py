@@ -16,10 +16,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping, Optional
 
-from chisurf.plugins.quenching_estimator.core import runs
 from chisurf.plugins.quenching_estimator import settings
-from chisurf.plugins.quenching_estimator.rpc.contract import register_payload_converter, service_error, to_payload
-from chisurf.plugins.quenching_estimator.rpc.dispatcher import InProcessClient, ServiceDispatcher, fail, ok
+from chisurf.plugins.quenching_estimator.core import runs
+from chisurf.plugins.quenching_estimator.rpc.contract import (
+    register_payload_converter,
+    service_error,
+    to_payload,
+)
+from chisurf.plugins.quenching_estimator.rpc.dispatcher import (
+    InProcessClient,
+    ServiceDispatcher,
+    fail,
+    ok,
+)
 
 __all__ = [
     "register_services",
@@ -110,7 +119,10 @@ def validate_handler(
     project: Mapping[str, Any],
     pdb_path: Optional[str] = None,
 ) -> dict[str, Any]:
-    from chisurf.plugins.quenching_estimator.core.project import ProjectValidationError, validate_project
+    from chisurf.plugins.quenching_estimator.core.project import (
+        ProjectValidationError,
+        validate_project,
+    )
 
     try:
         validate_project(project, pdb_path=pdb_path)
@@ -130,7 +142,10 @@ def simulate_handler(
     save_outputs: bool = False,
 ) -> dict[str, Any]:
     from chisurf.plugins.quenching_estimator.api import local as api
-    from chisurf.plugins.quenching_estimator.core.project import ProjectValidationError, validate_project
+    from chisurf.plugins.quenching_estimator.core.project import (
+        ProjectValidationError,
+        validate_project,
+    )
 
     try:
         validate_project(project, pdb_path=pdb_path)
@@ -150,9 +165,7 @@ def simulate_handler(
     except Exception as exc:
         from chisurf.plugins.quenching_estimator.rpc.contract import error_code_for
 
-        return service_error(
-            f"Simulation failed: {exc}", error_code_for(exc), type(exc).__name__
-        )
+        return service_error(f"Simulation failed: {exc}", error_code_for(exc), type(exc).__name__)
     # The **native** result. A transport calls `contract.to_payload`.
     return ok(result)
 
@@ -204,10 +217,11 @@ def scan_handler(
         return service_error(str(exc), error_code_for(exc), type(exc).__name__)
 
     manager.finish(job.job_id)
+    final = manager.get(job.job_id)
     return ok(
         {
             "job_id": job.job_id,
-            "cancelled": manager.get(job.job_id).status.value == "cancelled",
+            "cancelled": final is not None and final.status.value == "cancelled",
             "results": {record["name"]: record for record in records},
         }
     )
@@ -266,8 +280,10 @@ def quenching_defaults_handler() -> dict[str, Any]:
 
 
 def structure_metadata_handler(pdb_path: str) -> dict[str, Any]:
-    from chisurf.plugins.quenching_estimator.core.structure import resolve_structure_path
-    from chisurf.plugins.quenching_estimator.core.structure import structure_metadata
+    from chisurf.plugins.quenching_estimator.core.structure import (
+        resolve_structure_path,
+        structure_metadata,
+    )
 
     try:
         resolved = resolve_structure_path(pdb_path)
@@ -362,14 +378,10 @@ def register_services(dispatcher: Any) -> None:
         "quest.parameter_catalog",
         lambda p: parameter_catalog_handler((p or {}).get("locale")),
     )
-    dispatcher.register(
-        "quest.locales", lambda p: locales_handler((p or {}).get("locale"))
-    )
+    dispatcher.register("quest.locales", lambda p: locales_handler((p or {}).get("locale")))
     dispatcher.register("quest.dyes.list", lambda p: dyes_list_handler())
     dispatcher.register("quest.dyes.save", lambda p: dyes_save_handler(**(p or {})))
-    dispatcher.register(
-        "quest.quenching_defaults", lambda p: quenching_defaults_handler()
-    )
+    dispatcher.register("quest.quenching_defaults", lambda p: quenching_defaults_handler())
     dispatcher.register(
         "quest.structure.metadata", lambda p: structure_metadata_handler(**(p or {}))
     )

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, MutableMapping
 
 import pytest
 
@@ -54,7 +54,7 @@ def client() -> InProcessClient:
 
 # E36: labelable under IMP.bff's default AV (linker width 4.5 A). E96, the old fixture, is empty there;
 # see okf/references/known-issues.md in ChiSurf ("a third of T4L sites have no AV at the default width").
-def _project(residue: int = 36) -> dict[str, Any]:
+def _project(residue: int = 36) -> MutableMapping[str, Any]:
     """A minimal valid project pointing at the bundled 148l.pdb."""
     from chisurf.plugins.quenching_estimator.api import local as api
 
@@ -428,9 +428,7 @@ class TestQuenchingDefaults:
 
 class TestStructureMetadata:
     def test_valid_structure(self, client) -> None:
-        r = client.call(
-            "quest.structure.metadata", {"pdb_path": str(STRUCTURE)}
-        )
+        r = client.call("quest.structure.metadata", {"pdb_path": str(STRUCTURE)})
         assert r["ok"] is True
         meta = r["result"]
         assert meta["atom_count"] > 0
@@ -444,9 +442,7 @@ class TestStructureMetadata:
         assert r["ok"] is False
 
     def test_json_serialisable(self, client) -> None:
-        r = client.call(
-            "quest.structure.metadata", {"pdb_path": str(STRUCTURE)}
-        )
+        r = client.call("quest.structure.metadata", {"pdb_path": str(STRUCTURE)})
         json.dumps(to_payload(r["result"]))
 
 

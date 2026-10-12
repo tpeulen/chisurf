@@ -61,6 +61,8 @@
     "plot.autocorrelation.description": "How quickly the dye forgets where it was; sets whether quenching is diffusion- or contact-limited.",
     "button.simulate": "▶ Simulate",
     "button.simulate.description": "Run the current project through quest.api.",
+    "button.load_example": "Load example",
+    "button.load_example.description": "Load the shipped example: T4 lysozyme (PDB 148L), dye on E36, a short run.",
     "button.load_project": "📂 Load project…",
     "button.load_project.description": "Read a QuEst project JSON written by any surface.",
     "button.save_project": "💾 Save project…",

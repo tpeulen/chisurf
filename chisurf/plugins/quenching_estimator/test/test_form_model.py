@@ -21,12 +21,16 @@ import json
 
 import pytest
 
+from chisurf.plugins.quenching_estimator.core.project import (
+    DEFAULT_FORSTER_RADIUS,
+    ProjectValidationError,
+    template_project,
+)
 from chisurf.plugins.quenching_estimator.gui.form_model import (
     FIELD_PATHS,
     NON_SCALAR_PARAMETERS,
     ProjectFormModel,
 )
-from chisurf.plugins.quenching_estimator.core.project import DEFAULT_FORSTER_RADIUS, ProjectValidationError, template_project
 from chisurf.plugins.quenching_estimator.settings import parameter_catalog
 
 
@@ -372,8 +376,16 @@ class TestTheRunIsAJob:
         assert model.cancel_simulation() is False
 
 
-def _pdb_atom(record: str, serial: int, name: str, resname: str, chain: str,
-              resseq: int, x: float, element: str) -> str:
+def _pdb_atom(
+    record: str,
+    serial: int,
+    name: str,
+    resname: str,
+    chain: str,
+    resseq: int,
+    x: float,
+    element: str,
+) -> str:
     """One fixed-column PDB coordinate line."""
     return (
         f"{record:<6}{serial:>5} {name:<4} {resname:>3} {chain}{resseq:>4}    "
@@ -395,8 +407,9 @@ def test_auto_attach_skips_a_leading_non_protein_chain(tmp_path) -> None:
     serial = 3
     for resseq, resname in ((5, "ALA"), (6, "GLY")):
         for name, element in (("N", "N"), ("CA", "C"), ("CB", "C"), ("C", "C")):
-            lines.append(_pdb_atom("ATOM", serial, name, resname, "B", resseq,
-                                   float(serial), element))
+            lines.append(
+                _pdb_atom("ATOM", serial, name, resname, "B", resseq, float(serial), element)
+            )
             serial += 1
     pdb = tmp_path / "two_chains.pdb"
     pdb.write_text("".join(lines) + "END\n", encoding="utf8")
@@ -409,3 +422,33 @@ def test_auto_attach_skips_a_leading_non_protein_chain(tmp_path) -> None:
     assert model.attachment_chain == "B"
     assert model.attachment_residue == 5
     assert model.attachment_atom == "CB"
+
+
+def test_the_dialog_actions_request_a_host_dialog_and_finish_through_the_model(tmp_path) -> None:
+    """Save/load project are requests the hosting window serves; no toolkit dialog is opened here.
+
+    The spec's ``save_project_dialog`` / ``load_project_dialog`` actions used to open a Qt file
+    dialog from inside the model. Now they leave a request, the window opens its own emtk dialog,
+    and the choice comes back through ``finish_dialog``, which writes or reads the project.
+    """
+    model = ProjectFormModel(locale="en")
+    model.tau0 = 3.25
+    request = model.save_project_dialog()
+    assert request["kind"] == "save_project" and request["mode"] == "save"
+    assert request["filename"] == "project.json" and "*.json" in request["filters"]
+    assert model.take_dialog_request() == request and model.take_dialog_request() is None
+
+    saved = model.finish_dialog("save_project", tmp_path / "chosen")  # no extension: .json added
+    assert saved == tmp_path / "chosen.json" and saved is not None and saved.is_file()
+    assert model.status == "Saved chosen.json"
+
+    other = ProjectFormModel(locale="en")
+    assert other.load_project_dialog()["mode"] == "open"
+    assert saved is not None
+    assert other.finish_dialog("load_project", saved) == saved
+    assert other.tau0 == 3.25 and other.status == "Loaded chosen.json"
+
+    broken = tmp_path / "broken.json"
+    broken.write_text("{not json", encoding="utf8")
+    assert other.finish_dialog("load_project", broken) is None
+    assert other.status.startswith("broken.json:") and other.tau0 == 3.25

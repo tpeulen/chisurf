@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, MutableMapping
 
 import numpy as np
 import pytest
@@ -47,7 +47,7 @@ def _isolate_artefacts(tmp_path, monkeypatch):
 
 # E36: labelable under IMP.bff's default AV (linker width 4.5 A). E96, the old fixture, is empty there;
 # see okf/references/known-issues.md in ChiSurf ("a third of T4L sites have no AV at the default width").
-def _project(residue: int = 36) -> dict[str, Any]:
+def _project(residue: int = 36) -> MutableMapping[str, Any]:
     project = api.template(with_fret=False)
     project["pdb"] = str(STRUCTURE)
     project["attachment"] = {"chain": "E", "residue": residue, "atom": "CB"}
@@ -239,7 +239,12 @@ class TestFacadeBlueprintContract:
                 if method == "quest.dyes.list":
                     return {}
                 if method == "quest.contract.describe":
-                    return {"plugin_id": "quenching_estimator", "methods": {}, "error_codes": {}, "serialization": {}}
+                    return {
+                        "plugin_id": "quenching_estimator",
+                        "methods": {},
+                        "error_codes": {},
+                        "serialization": {},
+                    }
                 if method == "quest.structure.metadata":
                     return {"atom_count": 0, "chains": []}
                 if method == "quest.simulate":

@@ -126,11 +126,24 @@ class TestTheCapabilityFlagsAreRealChecks:
         """
         import IMP.bff
 
-        for name in ("get_av", "density_to_points", "random_distances", "distance_sample_statistics",
-                     "mean_position_distance", "center_grid_indices", "slow_factor_grid",
-                     "quenching_rate_grid", "av_contact_mask", "simulate_probe_diffusion",
-                     "sphere_points", "solvent_accessible_surface", "fret_rate_trace",
-                     "fret_rate_pair_trace", "simulate_photon_trace", "simulate_quenched_decay"):
+        for name in (
+            "get_av",
+            "density_to_points",
+            "random_distances",
+            "distance_sample_statistics",
+            "mean_position_distance",
+            "center_grid_indices",
+            "slow_factor_grid",
+            "quenching_rate_grid",
+            "av_contact_mask",
+            "simulate_probe_diffusion",
+            "sphere_points",
+            "solvent_accessible_surface",
+            "fret_rate_trace",
+            "fret_rate_pair_trace",
+            "simulate_photon_trace",
+            "simulate_quenched_decay",
+        ):
             assert callable(getattr(IMP.bff, name, None)), name
 
     def test_at_least_one_backend_is_available_in_this_environment(self) -> None:

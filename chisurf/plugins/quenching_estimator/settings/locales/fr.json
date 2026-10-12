@@ -224,6 +224,8 @@
     "plot.autocorrelation.description": "Vitesse à laquelle le fluorophore oublie sa position ; détermine si l'extinction est limitée par la diffusion ou par le contact.",
     "button.simulate": "▶ Simuler",
     "button.simulate.description": "Exécuter le projet courant via quest.api.",
+    "button.load_example": "Charger l’exemple",
+    "button.load_example.description": "Charger l'exemple fourni : lysozyme T4 (PDB 148L), colorant sur E36, une courte simulation.",
     "button.load_project": "📂 Charger un projet…",
     "button.load_project.description": "Lire un projet QuEst au format JSON, quelle qu'en soit l'origine.",
     "button.save_project": "💾 Enregistrer le projet…",

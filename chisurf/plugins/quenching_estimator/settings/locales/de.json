@@ -224,6 +224,8 @@
     "plot.autocorrelation.description": "Wie schnell der Farbstoff seine Position vergisst; bestimmt, ob die Löschung diffusions- oder kontaktbegrenzt ist.",
     "button.simulate": "▶ Simulieren",
     "button.simulate.description": "Das aktuelle Projekt über quest.api rechnen.",
+    "button.load_example": "Beispiel laden",
+    "button.load_example.description": "Das mitgelieferte Beispiel laden: T4-Lysozym (PDB 148L), Farbstoff an E36, ein kurzer Lauf.",
     "button.load_project": "📂 Projekt laden…",
     "button.load_project.description": "Ein QuEst-Projekt-JSON einlesen, gleich von welcher Oberfläche es stammt.",
     "button.save_project": "💾 Projekt speichern…",

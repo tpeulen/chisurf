@@ -29,7 +29,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from chisurf.plugins.quenching_estimator.core.i18n import DEFAULT_LOCALE, available_locales, translate_catalog, ui_strings
+from chisurf.plugins.quenching_estimator.core.i18n import (
+    DEFAULT_LOCALE,
+    available_locales,
+    translate_catalog,
+    ui_strings,
+)
 from chisurf.plugins.quenching_estimator.gui.form_model import FIELD_PATHS
 
 __all__ = [
@@ -48,6 +53,7 @@ def view_spec_path(locale: str = DEFAULT_LOCALE) -> Path:
     if locale == DEFAULT_LOCALE:
         return VIEW_SPEC_PATH
     return VIEW_SPEC_PATH.with_name(f"quest.view.{locale}.json")
+
 
 #: Catalog path → attribute on :class:`~quest.gui.form_model.ProjectFormModel`.
 _ATTR_BY_PATH = {path: attr for attr, path in FIELD_PATHS.items()}
@@ -117,6 +123,7 @@ _TABLE_PATHS = {
     "amino_acid_interactions.slow_factor",
 }
 
+
 def _field(path: str, entry: dict) -> dict[str, Any]:
     """One value/toggle section for a catalog parameter."""
     attr = _ATTR_BY_PATH[path]
@@ -157,20 +164,17 @@ def _field(path: str, entry: dict) -> dict[str, Any]:
     return section
 
 
-
-
 def _quencher_table(parameters: dict, strings: dict) -> dict[str, Any]:
     """The per-residue chemistry table. Column help comes from the catalog."""
 
-    def column(key: str, label: str, width: int, path: str | None = None,
-               description: str = "") -> dict[str, Any]:
+    def column(
+        key: str, label: str, width: int, path: str | None = None, description: str = ""
+    ) -> dict[str, Any]:
         return {
             "key": key,
             "label": label,
             "width": width,
-            "description": (
-                parameters[path]["description"] if path else description
-            ),
+            "description": (parameters[path]["description"] if path else description),
         }
 
     return {
@@ -195,12 +199,21 @@ def _quencher_table(parameters: dict, strings: dict) -> dict[str, Any]:
             # The units are the model's, not the language's: kQ is 1/ns and the
             # radius is Å in every locale.
             column("kQ", strings["table.kQ"], 100, "amino_acid_interactions.kQ"),
-            column("quench_radius", strings["table.radius"], 100,
-                   "amino_acid_interactions.quench_radius"),
-            column("quench_atoms", strings["table.atoms"], 200,
-                   "amino_acid_interactions.quench_atoms"),
-            column("slow_factor", strings["table.slow_factor"], 90,
-                   "amino_acid_interactions.slow_factor"),
+            column(
+                "quench_radius",
+                strings["table.radius"],
+                100,
+                "amino_acid_interactions.quench_radius",
+            ),
+            column(
+                "quench_atoms", strings["table.atoms"], 200, "amino_acid_interactions.quench_atoms"
+            ),
+            column(
+                "slow_factor",
+                strings["table.slow_factor"],
+                90,
+                "amino_acid_interactions.slow_factor",
+            ),
         ],
     }
 
@@ -326,12 +339,15 @@ def build_view_spec(locale: str = DEFAULT_LOCALE) -> dict[str, Any]:
                                 "read_only": True,
                                 "description": strings["field.state.description"],
                             },
-                            _plot("decay_series", "plot.decay", strings,
-                                  log_y=True, height=240),
-                            _plot("trajectory_series", "plot.trajectory", strings,
-                                  height=200),
-                            _plot("autocorrelation_series", "plot.autocorrelation",
-                                  strings, log_x=True, height=200),
+                            _plot("decay_series", "plot.decay", strings, log_y=True, height=240),
+                            _plot("trajectory_series", "plot.trajectory", strings, height=200),
+                            _plot(
+                                "autocorrelation_series",
+                                "plot.autocorrelation",
+                                strings,
+                                log_x=True,
+                                height=200,
+                            ),
                         ],
                     },
                 ],
@@ -343,6 +359,12 @@ def build_view_spec(locale: str = DEFAULT_LOCALE) -> dict[str, Any]:
                         "label": strings["button.simulate"],
                         "action": "run_simulation",
                         "description": strings["button.simulate.description"],
+                    },
+                    {
+                        "label": strings["button.load_example"],
+                        "icon": "🧪",
+                        "action": "load_example",
+                        "description": strings["button.load_example.description"],
                     },
                     {
                         "label": strings["button.load_project"],

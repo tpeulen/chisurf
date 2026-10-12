@@ -34,7 +34,6 @@ HERE = Path(__file__).resolve().parent
 RES = HERE.parents[2] / "quenching_estimator" / "gui"
 TABS = ("Plots & Dynamics", "3D Structure", "Quenching Chemistry", "Project JSON")
 STRUCTURE_FILTER = "Structures (*.pdb *.ent *.cif *.pdb.gz);;All files (*)"
-PROJECT_FILTER = "QuEst project (*.json);;All files (*)"
 COLOURS = {
     "donor": (31, 119, 180, 255),
     "fret": (214, 39, 40, 255),
@@ -194,16 +193,34 @@ class QuestSession:
         self.say(f"Loaded {Path(path).name}")
         return True
 
-    def load_demo(self) -> bool:
-        """Point the project at the plugin's demo (T4 lysozyme, dye on E36, FRET off, a short seeded run)."""
-        if not self.ready:
-            return False
-        from chisurf.plugins.quenching_estimator.demo import apply_demo
+    def load_example(self) -> bool:
+        """Load the plugin's demo project (T4 lysozyme, dye on E36, FRET off, a short seeded run).
 
-        path = apply_demo(self.model)
+        The project and its structure are what ``quenching_estimator.demo.make_demo`` keeps in the
+        settings cache; a failure to write or read them is the status.
+        """
+        model = self.model
+        if model is None:
+            return False
+        try:
+            path = model.load_example()
+        except Exception as exc:  # noqa: BLE001 - shown in the window
+            self.say(f"Failed to load the example: {exc}", True)
+            return False
         self.structure = None
-        self.say(f"Loaded the demo: {Path(path).name}, dye on E:36 CB")
+        self.say(f"Loaded the example: {Path(path).name}, dye on E:36 CB")
         return True
+
+    def finish_dialog(self, kind: str, path: str) -> bool:
+        """Hand a file-dialog choice to the model (it reads or writes the project); True on success."""
+        model = self.model
+        if model is None:
+            return False
+        done = model.finish_dialog(kind, path)
+        if done is not None and kind == "load_project":
+            self.structure = None
+        self.say(model.status, done is None)
+        return done is not None
 
     def load_project(self, path: str) -> bool:
         if not self.ready:
@@ -417,29 +434,45 @@ class QuestCard(CardShell):
             self.used("load_pdb")
         self.sync()
 
-    def load_demo(self) -> None:
+    def load_example(self) -> None:
         """The shipped example (T4 lysozyme, E36), so the tour can be walked without the user's own files."""
-        if self.session.load_demo():
-            self.used("load_demo")
+        if self.session.load_example():
+            self.used("load_example")
         self.sync()
 
     def load_project(self) -> None:
-        self.open_file("Load project", PROJECT_FILTER, self._load_project)
-
-    def _load_project(self, path: str) -> None:
-        if self.session.load_project(path):
-            self.used("load_project")
-        self.sync()
+        """Ask for a project file: the model requests the dialog, this window opens it."""
+        if self.session.model is not None:
+            self.session.model.load_project_dialog()
+            self.serve_dialog_request()
 
     def save_project(self) -> None:
-        self.save_file("Save project", PROJECT_FILTER, self._save_project, filename="project.json")
+        """Ask where to write the project: the model requests the dialog, this window opens it."""
+        if self.session.model is not None:
+            self.session.model.save_project_dialog()
+            self.serve_dialog_request()
 
-    def _save_project(self, path: str) -> None:
-        if not str(path).endswith(".json"):
-            path = f"{path}.json"
-        if self.session.save_project(path):
-            self.used("save_project")
-        self.sync()
+    def serve_dialog_request(self) -> None:
+        """Open the emtk file dialog the project model asked for (from a toolbar or a spec action)."""
+        model = self.session.model
+        if model is None or self.dialog is not None:
+            return
+        request = model.take_dialog_request()
+        if not request:
+            return
+        kind = request["kind"]
+
+        def picked(path: str) -> None:
+            if self.session.finish_dialog(kind, path):
+                self.used(kind)
+            self.sync()
+
+        if request.get("mode") == "save":
+            self.save_file(
+                request["title"], request["filters"], picked, filename=request.get("filename", "")
+            )
+        else:
+            self.open_file(request["title"], request["filters"], picked)
 
     def simulate(self) -> None:
         if self.session.simulate():
@@ -465,6 +498,7 @@ class QuestCard(CardShell):
     # ── frame ─────────────────────────────────────────────────────────────
 
     def before_frame(self) -> None:
+        self.serve_dialog_request()
         if self.session.poll():
             self.sync()
         if self.session.running:
@@ -499,10 +533,15 @@ class QuestCard(CardShell):
                     ),
                 },
                 {
-                    "label": "Load demo",
-                    "key": "load_demo",
+                    "label": action_caption("example"),
+                    "key": "load_example",
                     "enabled": not running,
-                    "tip": "Load the shipped example: T4 lysozyme (PDB 148L), dye on E36, a short run.",
+                    "tip": action_tooltip(
+                        "example",
+                        tr(
+                            "Load the shipped example: T4 lysozyme (PDB 148L), dye on E36, a short run."
+                        ),
+                    ),
                 },
                 {
                     "label": "Load PDB...",
@@ -528,7 +567,7 @@ class QuestCard(CardShell):
             None: lambda: None,
             "simulate": self.simulate,
             "cancel": lambda: (s.cancel(), self.sync()),
-            "load_demo": self.load_demo,
+            "load_example": self.load_example,
             "load_pdb": self.load_structure,
             "load_project": self.load_project,
             "save_project": self.save_project,

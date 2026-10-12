@@ -167,6 +167,7 @@ def test_cancel_stops_a_running_simulation_by_click(app, pdb):
 
 def test_a_simulated_result_equals_the_engine_for_the_same_project(app, pdb):
     import numpy as np
+
     from chisurf.plugins.quenching_estimator.api.local import simulate_project
 
     s = app.session

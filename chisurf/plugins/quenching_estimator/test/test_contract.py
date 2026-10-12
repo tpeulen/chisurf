@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, MutableMapping
 
 import numpy as np
 import pytest
@@ -40,12 +40,12 @@ from chisurf.plugins.quenching_estimator.rpc import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STRUCTURE = REPO_ROOT / "test" / "148l.pdb"
-MANIFEST = json.loads((REPO_ROOT /  "manifest.json").read_text(encoding="utf8"))
+MANIFEST = json.loads((REPO_ROOT / "manifest.json").read_text(encoding="utf8"))
 
 
 # E36: labelable under IMP.bff's default AV (linker width 4.5 A). E96, the old fixture, is empty there;
 # see okf/references/known-issues.md in ChiSurf ("a third of T4L sites have no AV at the default width").
-def _project(residue: int = 36) -> dict[str, Any]:
+def _project(residue: int = 36) -> MutableMapping[str, Any]:
     project = api.template(with_fret=False)
     project["pdb"] = str(STRUCTURE)
     project["attachment"] = {"chain": "E", "residue": residue, "atom": "CB"}
@@ -175,9 +175,7 @@ class TestTheRoundTripValidatesAgainstTheManifest:
         json.dumps(payload)
 
     def test_validate(self) -> None:
-        payload = to_payload(
-            local_client().result("quest.validate", {"project": _project()})
-        )
+        payload = to_payload(local_client().result("quest.validate", {"project": _project()}))
         self._check(payload, self._schema("quest.validate"))
         json.dumps(payload)
 
@@ -191,9 +189,7 @@ class TestTheRoundTripValidatesAgainstTheManifest:
             }
         }
         payload = to_payload(
-            local_client().result(
-                "quest.scan", {"project": _project(), "positions": positions}
-            )
+            local_client().result("quest.scan", {"project": _project(), "positions": positions})
         )
         self._check(payload, self._schema("quest.scan"))
         json.dumps(payload)

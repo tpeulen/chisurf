@@ -14,7 +14,10 @@ from textwrap import dedent
 
 import numpy as np
 
-from chisurf.plugins.quenching_estimator.core.structure.reader import _strip_waters, _WATER_RESIDUE_NAMES
+from chisurf.plugins.quenching_estimator.core.structure.reader import (
+    _WATER_RESIDUE_NAMES,
+    _strip_waters,
+)
 
 # A minimal structure: two protein CA atoms and a water oxygen.
 _PDB_WITH_WATER = dedent("""\
@@ -38,14 +41,42 @@ _PDB_WITH_WAT = dedent("""\
 
 def _atoms(res_name: str, count: int = 1) -> np.ndarray:
     """A minimal atom array with *count* atoms of residue type *res_name*."""
-    dtype = np.dtype({
-        "names": ["i", "chain", "res_id", "insertion_code", "residue_index",
-                   "res_name", "atom_id", "atom_name", "element", "coord",
-                   "charge", "radius", "bfactor", "mass"],
-        "formats": ["i4", "|U1", "i4", "|U1", "i4", "|U5",
-                     "i4", "|U5", "|U1", "3f8",
-                     "f8", "f8", "f8", "f8"],
-    })
+    dtype = np.dtype(
+        {
+            "names": [
+                "i",
+                "chain",
+                "res_id",
+                "insertion_code",
+                "residue_index",
+                "res_name",
+                "atom_id",
+                "atom_name",
+                "element",
+                "coord",
+                "charge",
+                "radius",
+                "bfactor",
+                "mass",
+            ],
+            "formats": [
+                "i4",
+                "|U1",
+                "i4",
+                "|U1",
+                "i4",
+                "|U5",
+                "i4",
+                "|U5",
+                "|U1",
+                "3f8",
+                "f8",
+                "f8",
+                "f8",
+                "f8",
+            ],
+        }
+    )
     atoms = np.zeros(count, dtype=dtype)
     atoms["res_name"] = res_name
     atoms["atom_name"] = "O"
@@ -107,6 +138,7 @@ class TestStripWatersInReader:
         pdb = tmp_path / "with_water.pdb"
         pdb.write_text(_PDB_WITH_WATER)
         from chisurf.plugins.quenching_estimator.core.structure import read
+
         atoms = read(str(pdb), verbose=False)
         names = {str(r).strip().upper() for r in atoms["res_name"]}
         assert "HOH" not in names
@@ -117,6 +149,7 @@ class TestStripWatersInReader:
         pdb = tmp_path / "with_wat.pdb"
         pdb.write_text(_PDB_WITH_WAT)
         from chisurf.plugins.quenching_estimator.core.structure import read
+
         atoms = read(str(pdb), verbose=False)
         names = {str(r).strip().upper() for r in atoms["res_name"]}
         assert "WAT" not in names
@@ -125,6 +158,7 @@ class TestStripWatersInReader:
     def test_148l_has_no_water(self) -> None:
         """The bundled 148L structure contains ~140 HOH records; none survive."""
         from chisurf.plugins.quenching_estimator.core.structure import Structure
+
         s = Structure(str(Path(__file__).parent / "148l.pdb"), make_coarse=False)
         names = {str(r).strip().upper() for r in s.atoms["res_name"]}
         for water in _WATER_RESIDUE_NAMES:

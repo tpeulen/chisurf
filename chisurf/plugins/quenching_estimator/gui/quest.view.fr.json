@@ -475,6 +475,12 @@
           "description": "Exécuter le projet courant via quest.api."
         },
         {
+          "label": "Charger l’exemple",
+          "icon": "🧪",
+          "action": "load_example",
+          "description": "Charger l'exemple fourni : lysozyme T4 (PDB 148L), colorant sur E36, une courte simulation."
+        },
+        {
           "label": "📂 Charger un projet…",
           "action": "load_project_dialog",
           "description": "Lire un projet QuEst au format JSON, quelle qu'en soit l'origine."

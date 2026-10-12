@@ -18,24 +18,45 @@ from chisurf.plugins.quenching_estimator.core import dye_diffusion as dd
 def test_there_is_no_python_quenching_module_to_import():
     import importlib.util
 
-    assert importlib.util.find_spec("IMP.bff.quenching") is None      # the reason `_pet()` must not import it
+    assert (
+        importlib.util.find_spec("IMP.bff.quenching") is None
+    )  # the reason `_pet()` must not import it
 
 
 def test_the_tables_are_plain_copyable_json():
     table = dd.default_amino_acid_interactions(slow_factor=0.1)
-    assert len(table) == 20 and set(table["CYS"]) == {"slow_factor", "kQ", "quench_radius", "quench_atoms"}
-    assert table["CYS"]["kQ"] == pytest.approx(0.8) and table["CYS"]["slow_factor"] == pytest.approx(0.1)
+    assert len(table) == 20 and set(table["CYS"]) == {
+        "slow_factor",
+        "kQ",
+        "quench_radius",
+        "quench_atoms",
+    }
+    assert table["CYS"]["kQ"] == pytest.approx(0.8) and table["CYS"][
+        "slow_factor"
+    ] == pytest.approx(0.1)
     assert table["CYS"]["quench_atoms"] == ["SG"] and table["ALA"]["quench_radius"] is None
     assert copy.deepcopy(table) == table and json.loads(json.dumps(table)) == table
 
 
 def test_normalising_fills_the_defaults_and_keeps_what_was_given():
-    out = dd.normalize_amino_acid_interactions({"CYS": {"kQ": 1.5, "quench_radius": 6.0}, "trp": 0.2})
+    out = dd.normalize_amino_acid_interactions(
+        {"CYS": {"kQ": 1.5, "quench_radius": 6.0}, "trp": 0.2}
+    )
     assert len(out) == 20
-    assert out["CYS"]["kQ"] == 1.5 and out["CYS"]["quench_radius"] == 6.0 and out["CYS"]["quench_atoms"] == ["CB"] or out["CYS"]["quench_atoms"]
-    assert out["TRP"]["slow_factor"] == pytest.approx(0.2)           # a bare number is a slow factor
+    assert (
+        out["CYS"]["kQ"] == 1.5
+        and out["CYS"]["quench_radius"] == 6.0
+        and out["CYS"]["quench_atoms"] == ["CB"]
+        or out["CYS"]["quench_atoms"]
+    )
+    assert out["TRP"]["slow_factor"] == pytest.approx(0.2)  # a bare number is a slow factor
     assert out["ALA"]["kQ"] == 0.0
-    assert dd.normalize_amino_acid_interactions({"CYS": {"quench_radius": "nonsense"}})["CYS"]["quench_radius"] is None
+    assert (
+        dd.normalize_amino_acid_interactions({"CYS": {"quench_radius": "nonsense"}})["CYS"][
+            "quench_radius"
+        ]
+        is None
+    )
 
 
 def test_the_quencher_table_and_reference_are_plain_dicts():

@@ -1,16 +1,17 @@
-import os.path
 import json
 import os
+import os.path
 import warnings
 from collections import OrderedDict
 
 import numpy as np
+
+from chisurf.plugins.quenching_estimator.core.io import write_xyz
+from chisurf.plugins.quenching_estimator.core.structure import Structure
+
 # Qt-free: the accessible-volume widget that used to live here was unused, and
 # it was the only reason this module imported a GUI toolkit.
-
 from chisurf.plugins.quenching_estimator.core.structure import reader as PDB
-from chisurf.plugins.quenching_estimator.core.structure import Structure
-from chisurf.plugins.quenching_estimator.core.io import write_xyz
 
 # ---------------------------------------------------------------------------
 # `IMP.bff` is a hard dependency
@@ -36,6 +37,7 @@ from chisurf.plugins.quenching_estimator.core.io import write_xyz
 # (okf/references/known-issues.md).
 # ---------------------------------------------------------------------------
 
+
 def av_defaults() -> dict:
     """The accessible-volume defaults, as ``IMP.bff`` declares them.
 
@@ -58,7 +60,17 @@ def av_defaults() -> dict:
             float(IMP.bff.AV_DEFAULT_AV3_RADIUS3),
         ),
         "simulation_grid_resolution": float(IMP.bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION),
+        # "fps": FPS's link search (the 3-voxel cube hop from every node);
+        # "fast": the hop out of the seed only, then the 74 stencil.
+        "link_search": str(IMP.bff.AV_DEFAULT_LINK_SEARCH),
     }
+
+
+def _link_search_stencil(link_search: str) -> int:
+    """The ``IMP.bff`` search stencil a link-search name selects ("fps" or "fast")."""
+    import IMP.bff
+
+    return int(IMP.bff.av_link_search_stencil(str(link_search)))
 
 
 def av1_parameter() -> dict:
@@ -88,6 +100,7 @@ def _get_av():
             f"importable ({exc}). It is a hard dependency."
         ) from exc
     return IMP.bff.get_av
+
 
 #: Resolved on first use by :func:`_density2points_kernel`, never at import.
 _UPSTREAM_DENSITY2POINTS = None
@@ -264,8 +277,6 @@ def _pair_distance_kernels():
             raise ImportError(
                 "QuEst's donor-acceptor distances require `IMP.bff`, which "
                 "is not importable. It is a hard dependency."
-
-
             ) from exc
         _UPSTREAM_PAIR_KERNELS = (random_distances, av_pair_statistics)
     return _UPSTREAM_PAIR_KERNELS
@@ -306,9 +317,7 @@ def _sample_pair_distances(av1, av2, n_samples, seed=RDA_SAMPLING_SEED):
         wide[:, :3] = points
         return wide
 
-    sample = random_distances(
-        _weighted(av1.points), _weighted(av2.points), n_samples, int(seed)
-    )
+    sample = random_distances(_weighted(av1.points), _weighted(av2.points), n_samples, int(seed))
     # Contiguous copies: `av_pair_statistics` does two `np.dot`s, and a strided
     # column view makes them slower than they need be.
     return (
@@ -455,16 +464,30 @@ def slow_factor_grid(density, ng, dg, slow_radius, rs, r0, slow_fact):
     """Per-voxel diffusion scaling from overlapping sticky spheres (they multiply)."""
     from IMP.bff import slow_factor_grid as _upstream
 
-    return _cube(_upstream(_flat(density), int(ng), float(dg), _flat(slow_radius), _flat(rs),
-                           _flat(r0), _flat(slow_fact)), ng)
+    return _cube(
+        _upstream(
+            _flat(density),
+            int(ng),
+            float(dg),
+            _flat(slow_radius),
+            _flat(rs),
+            _flat(r0),
+            _flat(slow_fact),
+        ),
+        ng,
+    )
 
 
 def additive_factor_grid(density, ng, dg, radius, rs, r0, values):
     """Per-voxel quenching rate from overlapping quencher spheres (they add)."""
     from IMP.bff import quenching_rate_grid as _upstream
 
-    return _cube(_upstream(_flat(density), int(ng), float(dg), _flat(radius), _flat(rs),
-                           _flat(r0), _flat(values)), ng)
+    return _cube(
+        _upstream(
+            _flat(density), int(ng), float(dg), _flat(radius), _flat(rs), _flat(r0), _flat(values)
+        ),
+        ng,
+    )
 
 
 def subav(density, ng, dg, slow_radius, rs, r0):
@@ -489,8 +512,14 @@ def simulate_traj(d, ds, dg, t_max, t_step, D, slow_fact, random_seed=None):
     slow = np.asarray(1.0 if slow_fact is None else slow_fact, dtype=np.float64)
     slow_density = [] if ds is None else _flat(ds, np.int32)
     walk = simulate_probe_diffusion(
-        _flat(d, np.int32), slow_density, float(dg), float(t_max), float(t_step), float(D),
-        slow.ravel(), cxx_seed(random_seed),
+        _flat(d, np.int32),
+        slow_density,
+        float(dg),
+        float(t_max),
+        float(t_step),
+        float(D),
+        slow.ravel(),
+        cxx_seed(random_seed),
     )
     xyz = np.asarray(walk.get_xyz(), dtype=np.float64).reshape(-1, 3)
     accepted = np.asarray(walk.get_accepted())
@@ -511,8 +540,12 @@ def asa(r, vdw, probe_atom_indices, sphere_points, probe=1.0, radius=2.5):
     points = [] if sphere_points is None else _flat(sphere_points)
     return np.asarray(
         solvent_accessible_surface(
-            _flat(r), _flat(vdw), [int(i) for i in np.asarray(probe_atom_indices).ravel()],
-            points, float(probe), float(radius),
+            _flat(r),
+            _flat(vdw),
+            [int(i) for i in np.asarray(probe_atom_indices).ravel()],
+            points,
+            float(probe),
+            float(radius),
         ),
         dtype=np.float64,
     )
@@ -523,8 +556,13 @@ def _kappa2_or_isotropic(kappa2) -> float:
 
 
 def fret_rate_trace(
-    trajectory, acceptor_points, R0: float, tau0: float, r_min: float = 7.0,
-    max_acceptor_points: int = 512, kappa2=None,
+    trajectory,
+    acceptor_points,
+    R0: float,
+    tau0: float,
+    r_min: float = 7.0,
+    max_acceptor_points: int = 512,
+    kappa2=None,
 ):
     """Per-frame FRET rate (1/ns) along a donor trajectory, acceptor averaged.
 
@@ -534,23 +572,40 @@ def fret_rate_trace(
     """
     from IMP.bff import fret_rate_trace as _upstream
 
-    return np.asarray(_upstream(
-        _flat(trajectory), _flat(acceptor_points), float(R0), float(tau0), float(r_min),
-        int(max_acceptor_points), _kappa2_or_isotropic(kappa2),
-    ))
+    return np.asarray(
+        _upstream(
+            _flat(trajectory),
+            _flat(acceptor_points),
+            float(R0),
+            float(tau0),
+            float(r_min),
+            int(max_acceptor_points),
+            _kappa2_or_isotropic(kappa2),
+        )
+    )
 
 
 def fret_rate_pair_trace(
-    donor_trajectory, acceptor_trajectory, R0: float, tau0: float,
-    r_min: float = 7.0, kappa2=None,
+    donor_trajectory,
+    acceptor_trajectory,
+    R0: float,
+    tau0: float,
+    r_min: float = 7.0,
+    kappa2=None,
 ):
     """Per-frame FRET rate (1/ns) from two frame-aligned trajectories."""
     from IMP.bff import fret_rate_pair_trace as _upstream
 
-    return np.asarray(_upstream(
-        _flat(donor_trajectory), _flat(acceptor_trajectory), float(R0), float(tau0),
-        float(r_min), _kappa2_or_isotropic(kappa2),
-    ))
+    return np.asarray(
+        _upstream(
+            _flat(donor_trajectory),
+            _flat(acceptor_trajectory),
+            float(R0),
+            float(tau0),
+            float(r_min),
+            _kappa2_or_isotropic(kappa2),
+        )
+    )
 
 
 def density2points(nx, ny, nz, dg, density, r0):
@@ -558,23 +613,39 @@ def density2points(nx, ny, nz, dg, density, r0):
 
     *r0* is the centre of voxel ``(0, 0, 0)``.
     """
-    grid = np.ascontiguousarray(np.asarray(density, dtype=np.float64).reshape(int(nx), int(ny), int(nz)))
+    grid = np.ascontiguousarray(
+        np.asarray(density, dtype=np.float64).reshape(int(nx), int(ny), int(nz))
+    )
     points = _density2points_kernel()(grid, float(dg), _flat(r0))
     # (n, 4) of x, y, z, density; QuEst's grids are binary, so the weight
     # column carries nothing here.
     return np.ascontiguousarray(np.asarray(points, dtype=np.float64)[:, :3])
 
 
-class AV(object):
-
-    def __init__(self, structure, residue_seq_number=None, atom_name=None, chain_identifier=None,
-                 linker_length=None, linker_width=None, radius1=None,
-                 radius2=None, radius3=None, simulation_grid_resolution=None, save_av=False, output_file='out',
-                 attachment_atom_index=None, verbose=False,
-                 allowed_sphere_radius=DEFAULT_ALLOWED_SPHERE_RADIUS,
-                 simulation_type='AV1', position_name=None, residue_name=None,
-                 av_backend=None):
-
+class AV:
+    def __init__(
+        self,
+        structure,
+        residue_seq_number=None,
+        atom_name=None,
+        chain_identifier=None,
+        linker_length=None,
+        linker_width=None,
+        radius1=None,
+        radius2=None,
+        radius3=None,
+        simulation_grid_resolution=None,
+        save_av=False,
+        output_file="out",
+        attachment_atom_index=None,
+        verbose=False,
+        allowed_sphere_radius=DEFAULT_ALLOWED_SPHERE_RADIUS,
+        simulation_type="AV1",
+        position_name=None,
+        residue_name=None,
+        av_backend=None,
+        link_search=None,
+    ):
         """
         Parameters
         ----------
@@ -661,8 +732,14 @@ class AV(object):
         """
         # ``None`` is "not chosen": IMP.bff's declared default (was 20/0.5/5.0 at
         # a 0.5 A grid, with AV3 radii 4.5/3.5 -- this class's own guesses).
-        if None in (linker_length, linker_width, radius1, radius2, radius3,
-                    simulation_grid_resolution):
+        if None in (
+            linker_length,
+            linker_width,
+            radius1,
+            radius2,
+            radius3,
+            simulation_grid_resolution,
+        ):
             _d = av_defaults()
             linker_length = _d["linker_length"] if linker_length is None else linker_length
             linker_width = _d["linker_width"] if linker_width is None else linker_width
@@ -671,6 +748,9 @@ class AV(object):
             radius3 = _d["av3_radii"][2] if radius3 is None else radius3
             if simulation_grid_resolution is None:
                 simulation_grid_resolution = _d["simulation_grid_resolution"]
+        # How the linker is routed: "fps" (IMP.bff's default, FPS's cube hop from
+        # every node) or "fast" (the hop out of the seed only).
+        self.link_search = str(av_defaults()["link_search"] if link_search is None else link_search)
         # Rejected first, before the structure is even read. `simulation_type` is
         # a project field a scan can set, and "AV3" used to reach a `calculate3R`
         # deleted back in 7ecf209 -- so it raised `NameError: name 'calculate3R'
@@ -723,16 +803,21 @@ class AV(object):
 
         if attachment_atom_index is None:
             if residue_seq_number is None or atom_name is None:
-                raise ValueError("either attachment_atom number or residue and atom_name have to be provided.")
+                raise ValueError(
+                    "either attachment_atom number or residue and atom_name have to be provided."
+                )
             self.attachment_residue = residue_seq_number
             self.attachment_atom = atom_name
             if chain_identifier is None:
-                attachment_atom_index = np.where((atoms['res_id'] == residue_seq_number) &
-                                                (atoms['atom_name'] == atom_name))[0]
+                attachment_atom_index = np.where(
+                    (atoms["res_id"] == residue_seq_number) & (atoms["atom_name"] == atom_name)
+                )[0]
             else:
-                attachment_atom_index = np.where((atoms['res_id'] == residue_seq_number) &
-                                                 (atoms['atom_name'] == atom_name) &
-                                                 (atoms['chain'] == chain_identifier))[0]
+                attachment_atom_index = np.where(
+                    (atoms["res_id"] == residue_seq_number)
+                    & (atoms["atom_name"] == atom_name)
+                    & (atoms["chain"] == chain_identifier)
+                )[0]
             if len(attachment_atom_index) != 1:
                 # Name the selection: a project with two dyes hits this for the
                 # acceptor as readily as for the donor, and the bare message
@@ -743,9 +828,7 @@ class AV(object):
                     atom_name,
                 )
                 if len(attachment_atom_index) == 0:
-                    raise ValueError(
-                        "No attachment atom %s in the structure." % site
-                    )
+                    raise ValueError("No attachment atom %s in the structure." % site)
                 raise ValueError(
                     "Attachment atom %s is ambiguous: it matches %d atoms."
                     % (site, len(attachment_atom_index))
@@ -753,14 +836,14 @@ class AV(object):
             else:
                 attachment_atom_index = attachment_atom_index[0]
             if verbose:
-                print("Atom index: %s" %attachment_atom_index)
+                print("Atom index: %s" % attachment_atom_index)
         else:
             if residue_seq_number is None:
-                residue_seq_number = int(atoms['res_id'][attachment_atom_index])
+                residue_seq_number = int(atoms["res_id"][attachment_atom_index])
             if atom_name is None:
-                atom_name = _decode(atoms['atom_name'][attachment_atom_index])
+                atom_name = _decode(atoms["atom_name"][attachment_atom_index])
             if chain_identifier is None:
-                chain_identifier = _decode(atoms['chain'][attachment_atom_index])
+                chain_identifier = _decode(atoms["chain"][attachment_atom_index])
             self.attachment_residue = residue_seq_number
             self.attachment_atom = atom_name
 
@@ -792,20 +875,19 @@ class AV(object):
             0.0,
             float(simulation_grid_resolution),
             float(_clamped_allowed_sphere_radius(allowed_sphere_radius)),
+            _link_search_stencil(self.link_search),
         )
 
         ng = int(av_result.ng)
         flat_density = np.asarray(av_result.get_density())
-        if flat_density.size != ng ** 3:
+        if flat_density.size != ng**3:
             raise ValueError(
                 "Accessible-volume grid is not cubic (%d values for ng=%d); every grid "
                 "kernel here takes a single edge length." % (flat_density.size, ng)
             )
         # QuEst's kernels test `density > 0`: binarise, as the uint8 the in-tree
         # code produced. The flat density is C-ordered.
-        density = np.ascontiguousarray(
-            (flat_density.reshape(ng, ng, ng) > 0.0).astype(np.uint8)
-        )
+        density = np.ascontiguousarray((flat_density.reshape(ng, ng, ng) > 0.0).astype(np.uint8))
         grid_origin = np.asarray(av_result.get_grid_origin(), dtype=np.float64).reshape(3)
 
         # **Both backends anchor the same way, since 2026-07-28.** `x0` is the
@@ -845,11 +927,20 @@ class AV(object):
         if verbose:
             print("Points in total-AV: %i" % density.sum())
         if save_av:
-            write_xyz(output_file + '.xyz', points, verbose=verbose)
+            write_xyz(output_file + ".xyz", points, verbose=verbose)
 
     def calc_slow_av(
-            self, slow_centers=None, slow_radius=None, save=True, verbose=True, replace_density=False,
-            slow_fact=None, quench_radius=None, k_quench=None, quench_centers=None):
+        self,
+        slow_centers=None,
+        slow_radius=None,
+        save=True,
+        verbose=True,
+        replace_density=False,
+        slow_fact=None,
+        quench_radius=None,
+        k_quench=None,
+        quench_centers=None,
+    ):
         """
         Calculates a subav given the accessible volume determined during class initiation.
         : list/numpy array of points dimension (npoints, 3)
@@ -889,7 +980,7 @@ class AV(object):
             print("Calculating slow-AV:")
             print(slow_centers)
         if isinstance(slow_radius, (int, float)):
-            slow_radii = np.ones(slow_centers.shape[0])*slow_radius
+            slow_radii = np.ones(slow_centers.shape[0]) * slow_radius
         elif len(slow_radius) != slow_centers.shape[0]:
             raise ValueError("The size of the slow_radius doesnt match the number of slow_centers")
         else:
@@ -909,14 +1000,18 @@ class AV(object):
         else:
             quench_points = np.asarray(quench_centers, dtype=np.float64).reshape((-1, 3))
             if quench_points.shape[0] != slow_centers.shape[0]:
-                raise ValueError("The number of quench_centers doesnt match the number of slow_centers")
+                raise ValueError(
+                    "The number of quench_centers doesnt match the number of slow_centers"
+                )
 
         if quench_radius is None:
             quench_radii = slow_radii
         elif isinstance(quench_radius, (int, float)):
             quench_radii = np.ones(quench_points.shape[0]) * quench_radius
         elif len(quench_radius) != quench_points.shape[0]:
-            raise ValueError("The size of the quench_radius doesnt match the number of quench_centers")
+            raise ValueError(
+                "The size of the quench_radius doesnt match the number of quench_centers"
+            )
         else:
             quench_radii = np.asarray(quench_radius, dtype=np.float64)
 
@@ -934,7 +1029,6 @@ class AV(object):
             print("slow centers: \n%s" % slow_centers)
 
         ng = int(self.ng)
-        npm = int((ng - 1) // 2)
         density = self.density_fast
         dg = self.dg
         x0 = self.x0
@@ -944,15 +1038,19 @@ class AV(object):
         if slow_facts is None:
             self.slow_factor_grid = None
         else:
-            self.slow_factor_grid = slow_factor_grid(density, ng, dg, slow_radii, slow_centers, x0, slow_facts)
+            self.slow_factor_grid = slow_factor_grid(
+                density, ng, dg, slow_radii, slow_centers, x0, slow_facts
+            )
         if k_quench_values is None:
             self.k_quench_grid = None
         else:
-            self.k_quench_grid = additive_factor_grid(density, ng, dg, quench_radii, quench_points, x0, k_quench_values)
+            self.k_quench_grid = additive_factor_grid(
+                density, ng, dg, quench_radii, quench_points, x0, k_quench_values
+            )
         if verbose or self.verbose:
             print("Points in slow-AV: %i" % n)
         if save:
-            write_xyz(self.output_file + '_slow.xyz', points, verbose=verbose)
+            write_xyz(self.output_file + "_slow.xyz", points, verbose=verbose)
         self.density_slow = slow_density
         self.points_slow = points
         if replace_density:
@@ -998,7 +1096,6 @@ class AV(object):
         """
         return RDAMean(self, av)
 
-
     def dRDAE(self, av):
         """
         Calculate the FRET-averaged mean distance to the second accessible volume `av`
@@ -1018,19 +1115,17 @@ class AV(object):
         return RDAMeanE(self, av)
 
     def __repr__(self):
-        s = '\n'
-        s += 'Accessible Volume\n'
-        s += '-----------------\n'
-        s += 'Attachment residue: %s\n' % self.attachment_residue
-        s += 'Attachment atom: %s\n' % self.attachment_atom
-        s += '\n'
-        s += 'Fast-AV:\n'
-        s += 'n-points: %s\n' % self.points_fast.shape[0]
+        s = "\n"
+        s += "Accessible Volume\n"
+        s += "-----------------\n"
+        s += "Attachment residue: %s\n" % self.attachment_residue
+        s += "Attachment atom: %s\n" % self.attachment_atom
+        s += "\n"
+        s += "Fast-AV:\n"
+        s += "n-points: %s\n" % self.points_fast.shape[0]
         if self.points_slow is not None:
-            s += 'Slow-AV:\n'
-            s += 'n-points: %s\n' % self.points_slow.shape[0]
+            s += "Slow-AV:\n"
+            s += "n-points: %s\n" % self.points_slow.shape[0]
         else:
-            s += 'Slow-AV: not calculated'
+            s += "Slow-AV: not calculated"
         return s
-
-

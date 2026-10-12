@@ -37,6 +37,7 @@ BASELINE_DIR = Path(__file__).parent / "baselines"
 _spec = importlib.util.spec_from_file_location(
     "quest_baseline_generate", BASELINE_DIR / "generate.py"
 )
+assert _spec is not None and _spec.loader is not None
 gen = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(gen)
 
@@ -125,9 +126,7 @@ class TestTheSimulationHasNotMoved:
     def test_the_fret_channel_agrees(self, backend: str, monkeypatch) -> None:
         monkeypatch.setenv("QUEST_AV_BACKEND", backend)
         expected = _baseline(backend)["fret"]
-        measured = gen.measure_simulation(
-            gen._project(gen.FRET_PAIR[0], acceptor=gen.FRET_PAIR[1])
-        )
+        measured = gen.measure_simulation(gen._project(gen.FRET_PAIR[0], acceptor=gen.FRET_PAIR[1]))
 
         assert measured["fret_efficiency"] == pytest.approx(
             expected["fret_efficiency"], rel=SCALAR_TOLERANCE
@@ -164,16 +163,13 @@ def test_coarse_graining_has_not_moved(backend: str, structure_name: str) -> Non
         measured["n_residue_ids_with_more_than_one_cb"]
         == expected["n_residue_ids_with_more_than_one_cb"]
     )
-    assert measured["cb_centroid"] == pytest.approx(
-        expected["cb_centroid"], abs=GEOMETRY_TOLERANCE
-    )
+    assert measured["cb_centroid"] == pytest.approx(expected["cb_centroid"], abs=GEOMETRY_TOLERANCE)
 
 
 def test_both_backends_are_baselined() -> None:
     """A missing baseline must not pass quietly as a skip nobody reads."""
     missing = [b for b in available_av_backends() if not (BASELINE_DIR / f"{b}.json").exists()]
     assert not missing, f"no baseline for available backend(s): {', '.join(missing)}"
-
 
 
 # The cross-backend canary is retired with LabelLib. It caught a real

@@ -33,7 +33,12 @@ class TestTheContractMatchesTheHost:
     def test_the_status_vocabulary_is_chisurfs(self) -> None:
         """Same strings, so a host's UI can render QuEst's jobs unchanged."""
         assert {s.value for s in JobStatus} == {
-            "queued", "running", "cancelling", "completed", "failed", "cancelled",
+            "queued",
+            "running",
+            "cancelling",
+            "completed",
+            "failed",
+            "cancelled",
         }
 
     def test_cancelling_is_not_terminal_but_cancelled_is(self) -> None:
@@ -60,7 +65,13 @@ class TestTheContractMatchesTheHost:
         assert "result" not in payload
         json.dumps(payload)
         assert set(payload) == {
-            "job_id", "action", "status", "progress", "message", "error", "error_code",
+            "job_id",
+            "action",
+            "status",
+            "progress",
+            "message",
+            "error",
+            "error_code",
         }
 
 
@@ -121,9 +132,7 @@ class TestCancellation:
         assert job.status is JobStatus.CANCELLING
         assert manager.should_cancel(job.job_id) is True
 
-    def test_a_worker_that_returns_after_cancelling_is_cancelled(
-        self, manager: JobManager
-    ) -> None:
+    def test_a_worker_that_returns_after_cancelling_is_cancelled(self, manager: JobManager) -> None:
         """Not `completed`: its result is partial, and saying otherwise lies."""
         job = manager.create("quest.scan")
         manager.start(job.job_id)
@@ -197,7 +206,9 @@ class TestTheScanActuallyStops:
     }
 
     def _project(self) -> dict:
-        from chisurf.plugins.quenching_estimator.core.dye_diffusion import default_amino_acid_interactions
+        from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
+            default_amino_acid_interactions,
+        )
 
         return {
             "tau0": 4.2,
@@ -249,9 +260,7 @@ class TestTheScanActuallyStops:
 
     def test_without_a_canceller_it_runs_everything(self, tmp_path) -> None:
         """The guard must not change behaviour when nobody is cancelling."""
-        records = list(
-            scan_positions(self._project(), self.POSITIONS, project_dir=tmp_path)
-        )
+        records = list(scan_positions(self._project(), self.POSITIONS, project_dir=tmp_path))
         assert [record["name"] for record in records] == list(self.POSITIONS)
 
     def test_progress_is_reported_per_site(self, tmp_path) -> None:
@@ -261,9 +270,7 @@ class TestTheScanActuallyStops:
                 self._project(),
                 self.POSITIONS,
                 project_dir=tmp_path,
-                report_progress=lambda percent, message="": reported.append(
-                    (percent, message)
-                ),
+                report_progress=lambda percent, message="": reported.append((percent, message)),
             )
         )
         assert [percent for percent, _ in reported] == [20, 40, 60, 80, 100]
@@ -272,19 +279,17 @@ class TestTheScanActuallyStops:
 
 class TestTheRpcSurface:
     def test_cancel_reports_whether_it_was_accepted(self) -> None:
-        from chisurf.plugins.quenching_estimator.rpc import local_client
         from chisurf.plugins.quenching_estimator.core.tasks import default_manager
+        from chisurf.plugins.quenching_estimator.rpc import local_client
 
         job = default_manager().create("quest.scan")
         default_manager().start(job.job_id)
         client = local_client()
 
-        assert client.result("quest.jobs.cancel", {"job_id": job.job_id})[
-            "cancel_requested"
-        ] is True
-        assert client.result("quest.jobs.get", {"job_id": job.job_id})["status"] == (
-            "cancelling"
+        assert (
+            client.result("quest.jobs.cancel", {"job_id": job.job_id})["cancel_requested"] is True
         )
+        assert client.result("quest.jobs.get", {"job_id": job.job_id})["status"] == ("cancelling")
 
     def test_an_unknown_job_is_an_error_not_a_null(self) -> None:
         from chisurf.plugins.quenching_estimator.rpc import local_client

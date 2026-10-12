@@ -10,17 +10,20 @@ the logic in one place so both the CLI and notebook users can share it.
 
 from __future__ import annotations
 
+import csv
+import json
+import struct
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, Optional, Sequence, Tuple
 
-import csv
-import json
-import struct
 import numpy as np
 
 from chisurf.plugins.quenching_estimator.core.av import av_defaults as _av_defaults
-from chisurf.plugins.quenching_estimator.core.dye_diffusion import DonorDecay, normalize_amino_acid_interactions
+from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
+    DonorDecay,
+    normalize_amino_acid_interactions,
+)
 from chisurf.plugins.quenching_estimator.core.photon import simulate_decay_quench
 from chisurf.plugins.quenching_estimator.core.structure import resolve_structure_path
 
@@ -40,7 +43,7 @@ def autocorr(x: np.ndarray, axis: int = 0, normalize: bool = True) -> np.ndarray
     centred = x - np.mean(x, axis=axis)
     # Pad to 2N so the FFT gives the linear, not the circular, correlation.
     spectrum = np.fft.fft(centred, n=2 * n, axis=axis)
-    index = [slice(None)] * x.ndim
+    index: list[Any] = [slice(None)] * x.ndim
     index[axis] = slice(0, n)
     acf = np.fft.ifft(spectrum * np.conjugate(spectrum), axis=axis)[tuple(index)].real
     if not normalize:
@@ -53,42 +56,42 @@ def write_mrc(filename: Path | str, grid: np.ndarray, dg: float, origin: np.ndar
     """Write a 3D density grid (NumPy array) to an MRC file."""
     grid = np.ascontiguousarray(grid, dtype=np.float32)
     nx, ny, nz = grid.shape
-    
+
     header = bytearray(1024)
-    
+
     # Word 1-3: NC, NR, NS (columns, rows, sections)
-    struct.pack_into('<iii', header, 0, nx, ny, nz)
+    struct.pack_into("<iii", header, 0, nx, ny, nz)
     # Word 4: MODE = 2 (float32)
-    struct.pack_into('<i', header, 12, 2)
+    struct.pack_into("<i", header, 12, 2)
     # Word 5-7: NCSTART, NRSTART, NSSTART = 0, 0, 0
-    struct.pack_into('<iii', header, 16, 0, 0, 0)
+    struct.pack_into("<iii", header, 16, 0, 0, 0)
     # Word 8-10: MX, MY, MZ = NC, NR, NS
-    struct.pack_into('<iii', header, 28, nx, ny, nz)
+    struct.pack_into("<iii", header, 28, nx, ny, nz)
     # Word 11-13: X, Y, Z cell dimensions (in Angstroms)
-    struct.pack_into('<fff', header, 40, nx * dg, ny * dg, nz * dg)
+    struct.pack_into("<fff", header, 40, nx * dg, ny * dg, nz * dg)
     # Word 14-16: cell angles = 90.0, 90.0, 90.0
-    struct.pack_into('<fff', header, 52, 90.0, 90.0, 90.0)
+    struct.pack_into("<fff", header, 52, 90.0, 90.0, 90.0)
     # Word 17-19: MAPC, MAPR, MAPS = 1, 2, 3 (axes order X, Y, Z)
-    struct.pack_into('<iii', header, 64, 1, 2, 3)
+    struct.pack_into("<iii", header, 64, 1, 2, 3)
     # Word 20-22: DMIN, DMAX, DMEAN
     dmin = float(grid.min())
     dmax = float(grid.max())
     dmean = float(grid.mean())
-    struct.pack_into('<fff', header, 76, dmin, dmax, dmean)
+    struct.pack_into("<fff", header, 76, dmin, dmax, dmean)
     # Word 23: ISPG = 1
-    struct.pack_into('<i', header, 88, 1)
-    
+    struct.pack_into("<i", header, 88, 1)
+
     # Word 50-52: Origin X, Y, Z
     ox, oy, oz = float(origin[0]), float(origin[1]), float(origin[2])
-    struct.pack_into('<fff', header, 196, ox, oy, oz)
-    
+    struct.pack_into("<fff", header, 196, ox, oy, oz)
+
     # Word 53: MAP string identifier
-    header[208:212] = b'MAP '
-    
+    header[208:212] = b"MAP "
+
     # Word 54: Machine stamp (little endian)
-    struct.pack_into('<I', header, 212, 0x44410000)
-    
-    with open(filename, 'wb') as f:
+    struct.pack_into("<I", header, 212, 0x44410000)
+
+    with open(filename, "wb") as f:
         f.write(header)
         f.write(grid.tobytes())
 
@@ -110,8 +113,10 @@ def sampled_density_grid(
     samples = samples.reshape((-1, 3))
 
     center_index = (np.asarray(shape, dtype=np.float64) - 1.0) / 2.0
-    indices = np.trunc((samples - np.asarray(center, dtype=np.float64)) / float(dg) + center_index).astype(np.int64)
-    inside = np.isfinite(samples).all(axis=1)
+    indices = np.trunc(
+        (samples - np.asarray(center, dtype=np.float64)) / float(dg) + center_index
+    ).astype(np.int64)
+    inside: np.ndarray = np.asarray(np.isfinite(samples).all(axis=1))
     for axis, size in enumerate(shape):
         inside &= (indices[:, axis] >= 0) & (indices[:, axis] < size)
     if allowed_density is not None:
@@ -243,9 +248,7 @@ def _residue_type_contact_stats(
     return frames_near, distance_sum, event_count, max_event, quench_rate_sum, quench_frames
 
 
-def _attribute_frames_to_residue_type(
-    trajectory, slow_centers, center_type, center_factor, radius
-):
+def _attribute_frames_to_residue_type(trajectory, slow_centers, center_type, center_factor, radius):
     """Assign each frame to the residue type it is most strongly slowed by.
 
     Ties on the slowing factor are broken by distance (then by centre order);
@@ -348,11 +351,11 @@ def _flatten_center_groups(
             quench = np.asarray(
                 quench_centers_by_residue.get(residue_name, slow), dtype=np.float64
             ).reshape((-1, 3))
-            if quench.shape[0] != slow.shape[0]:
+            if len(quench) != len(slow):
                 raise ValueError(
                     f"quench centers for {normalized_name} do not match the slow centers"
                 )
-        type_ids.append(np.full(slow.shape[0], len(names), dtype=np.int64))
+        type_ids.append(np.full(len(slow), len(names), dtype=np.int64))
         names.append(normalized_name)
         slow_blocks.append(slow)
         quench_blocks.append(quench)
@@ -383,9 +386,7 @@ def _subsample_points(points: Any, limit: int, decimals: int | None = None) -> O
 def _as_trajectory(trajectory: Any) -> np.ndarray:
     if trajectory is None:
         return np.empty((0, 3), dtype=np.float64)
-    return np.ascontiguousarray(
-        np.asarray(trajectory, dtype=np.float64).reshape((-1, 3))
-    )
+    return np.ascontiguousarray(np.asarray(trajectory, dtype=np.float64).reshape((-1, 3)))
 
 
 def calculate_aa_quenching(
@@ -530,7 +531,7 @@ def _residue_type_metrics(
 
         center_factor = np.asarray(
             [
-                1.0 if slow_factors.get(names[type_id]) is None else float(slow_factors[names[type_id]])
+                1.0 if (factor := slow_factors.get(names[type_id])) is None else float(factor)
                 for type_id in center_type
             ],
             dtype=np.float64,
@@ -643,12 +644,16 @@ def aa_residence_from_model(model: DonorDecay) -> list[dict[str, Any]]:
     quench_radii: dict[str, float] = {}
     for residue_name in centers_by_residue:
         try:
-            effective_slow_factors[residue_name] = float(model._slow_facts_for_residue_names([residue_name])[0])
+            effective_slow_factors[residue_name] = float(
+                model._slow_facts_for_residue_names([residue_name])[0]
+            )
         except Exception:
             effective_slow_factors[residue_name] = None
         try:
             quench_rates[residue_name] = float(model._kq_for_residue_names([residue_name])[0])
-            quench_radii[residue_name] = float(model._quench_radii_for_residue_names([residue_name])[0])
+            quench_radii[residue_name] = float(
+                model._quench_radii_for_residue_names([residue_name])[0]
+            )
         except Exception:
             quench_rates[residue_name] = 0.0
             quench_radii[residue_name] = 0.0
@@ -721,7 +726,9 @@ def build_donor_from_project(
     if donor_D is None:
         raise KeyError("Donor dye entry must define diffusion coefficient 'D'.")
     slow_radius = p.get("slow_radius", donor_dye.get("slow_radius", 8.5))
-    amino_acid_interactions = p.get("amino_acid_interactions", donor_dye.get("amino_acid_interactions"))
+    amino_acid_interactions = p.get(
+        "amino_acid_interactions", donor_dye.get("amino_acid_interactions")
+    )
     parallel_trajectories = p.get("parallel_trajectories", -1)
     if parallel_trajectories is None:
         parallel_trajectories = -1
@@ -826,7 +833,7 @@ def build_donor_from_project(
 def _histogram_decay(
     model: DonorDecay,
     nbins: int,
-    tac_range: Tuple[float, float],
+    tac_range: tuple[float, float],
 ) -> tuple[np.ndarray, np.ndarray]:
     edges, donor_counts = model.get_histogram(nbins=nbins, range=tac_range)
     time = 0.5 * (edges[:-1] + edges[1:])
@@ -836,7 +843,7 @@ def _histogram_decay(
 def _curve_decay_from_model(
     model: DonorDecay,
     nbins: int,
-    tac_range: Tuple[float, float],
+    tac_range: tuple[float, float],
     dt_tac: Optional[float],
     n_curves: Optional[int],
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -905,7 +912,7 @@ def simulate_project(
     *,
     pdb_path: Optional[Path | str] = None,
     nbins: Optional[int] = None,
-    tac_range: Tuple[float, float] = (0.0, 50.0),
+    tac_range: tuple[float, float] = (0.0, 50.0),
     mode: Optional[str] = None,
     n_curves: Optional[int] = None,
     dt_tac: Optional[float] = None,
@@ -1026,7 +1033,9 @@ def simulate_project(
     project_dict["save_avs"] = save_outputs
     project_dict["output_file"] = str(job_dir / "out")
     parallel_trajectories = project_dict.get("parallel_trajectories", -1)
-    project_dict["parallel_trajectories"] = int(-1 if parallel_trajectories is None else parallel_trajectories)
+    project_dict["parallel_trajectories"] = int(
+        -1 if parallel_trajectories is None else parallel_trajectories
+    )
 
     model = build_donor_from_project(project_dict, pdb_path=pdb_path)
 
@@ -1140,7 +1149,7 @@ def simulate_project(
         or (project_dict.get("av_parameter") or {}).get("simulation_grid_resolution")
         or _av_defaults()["simulation_grid_resolution"]
     )
-    dg3 = dg ** 3
+    dg3 = dg**3
     full_av_points = getattr(getattr(model, "av", None), "points_fast", None)
     full_acv_points = getattr(getattr(model, "av", None), "points_slow", None)
     av_volume = float(len(full_av_points)) * dg3 if full_av_points is not None else None
@@ -1151,29 +1160,71 @@ def simulate_project(
     else:
         contact_to_free_ratio = None
 
-    res_dict = {} if not save_outputs else {
-        "job_id": job_name,
-        "time_ns": time.tolist() if hasattr(time, "tolist") else list(time),
-        "donor_counts": donor_counts.tolist() if hasattr(donor_counts, "tolist") else list(donor_counts),
-        "fret_counts": None if fret_counts is None else (fret_counts.tolist() if hasattr(fret_counts, "tolist") else list(fret_counts)),
-        "quantum_yield_donor": float(model.quantum_yield),
-        "quantum_yield_fret": float(qy_fret) if qy_fret is not None else None,
-        "collisions_fraction": float(model.collisions),
-        "fret_efficiency": float(fret_eff) if fret_eff is not None else None,
-        "project": _make_json_serializable(project_dict),
-        "trajectory_distance_to_mean": None if trajectory_distance_to_mean is None else (trajectory_distance_to_mean.tolist() if hasattr(trajectory_distance_to_mean, "tolist") else list(trajectory_distance_to_mean)),
-        "trajectory_autocorr": None if trajectory_autocorr is None else (trajectory_autocorr.tolist() if hasattr(trajectory_autocorr, "tolist") else list(trajectory_autocorr)),
-        "trajectory_time_ns": None if trajectory_time_ns is None else (trajectory_time_ns.tolist() if hasattr(trajectory_time_ns, "tolist") else list(trajectory_time_ns)),
-        "trajectory_autocorr_lag_ns": None if trajectory_autocorr_lag_ns is None else (trajectory_autocorr_lag_ns.tolist() if hasattr(trajectory_autocorr_lag_ns, "tolist") else list(trajectory_autocorr_lag_ns)),
-        "trajectory_points": None if trajectory_points is None else (trajectory_points.tolist() if hasattr(trajectory_points, "tolist") else list(trajectory_points)),
-        "av_points": None if av_points is None else (av_points.tolist() if hasattr(av_points, "tolist") else list(av_points)),
-        "acv_points": None if acv_points is None else (acv_points.tolist() if hasattr(acv_points, "tolist") else list(acv_points)),
-        "lifetime_donor": lifetime_donor,
-        "av_volume": av_volume,
-        "contact_volume": contact_volume,
-        "contact_to_free_ratio": contact_to_free_ratio,
-        "aa_residence": aa_residence,
-    }
+    res_dict = (
+        {}
+        if not save_outputs
+        else {
+            "job_id": job_name,
+            "time_ns": time.tolist() if hasattr(time, "tolist") else list(time),
+            "donor_counts": donor_counts.tolist()
+            if hasattr(donor_counts, "tolist")
+            else list(donor_counts),
+            "fret_counts": None
+            if fret_counts is None
+            else (fret_counts.tolist() if hasattr(fret_counts, "tolist") else list(fret_counts)),
+            "quantum_yield_donor": float(model.quantum_yield),
+            "quantum_yield_fret": float(qy_fret) if qy_fret is not None else None,
+            "collisions_fraction": float(model.collisions),
+            "fret_efficiency": float(fret_eff) if fret_eff is not None else None,
+            "project": _make_json_serializable(project_dict),
+            "trajectory_distance_to_mean": None
+            if trajectory_distance_to_mean is None
+            else (
+                trajectory_distance_to_mean.tolist()
+                if hasattr(trajectory_distance_to_mean, "tolist")
+                else list(trajectory_distance_to_mean)
+            ),
+            "trajectory_autocorr": None
+            if trajectory_autocorr is None
+            else (
+                trajectory_autocorr.tolist()
+                if hasattr(trajectory_autocorr, "tolist")
+                else list(trajectory_autocorr)
+            ),
+            "trajectory_time_ns": None
+            if trajectory_time_ns is None
+            else (
+                trajectory_time_ns.tolist()
+                if hasattr(trajectory_time_ns, "tolist")
+                else list(trajectory_time_ns)
+            ),
+            "trajectory_autocorr_lag_ns": None
+            if trajectory_autocorr_lag_ns is None
+            else (
+                trajectory_autocorr_lag_ns.tolist()
+                if hasattr(trajectory_autocorr_lag_ns, "tolist")
+                else list(trajectory_autocorr_lag_ns)
+            ),
+            "trajectory_points": None
+            if trajectory_points is None
+            else (
+                trajectory_points.tolist()
+                if hasattr(trajectory_points, "tolist")
+                else list(trajectory_points)
+            ),
+            "av_points": None
+            if av_points is None
+            else (av_points.tolist() if hasattr(av_points, "tolist") else list(av_points)),
+            "acv_points": None
+            if acv_points is None
+            else (acv_points.tolist() if hasattr(acv_points, "tolist") else list(acv_points)),
+            "lifetime_donor": lifetime_donor,
+            "av_volume": av_volume,
+            "contact_volume": contact_volume,
+            "contact_to_free_ratio": contact_to_free_ratio,
+            "aa_residence": aa_residence,
+        }
+    )
     if save_outputs:
         try:
             with open(job_dir / "result.json", "w", encoding="utf8") as f:
@@ -1185,9 +1236,13 @@ def simulate_project(
         # Save individual results in the job folder
         try:
             # Save trajectory.npy
-            if hasattr(model, "diffusion") and model.diffusion is not None and model.diffusion._traj is not None:
+            if (
+                hasattr(model, "diffusion")
+                and model.diffusion is not None
+                and model.diffusion._traj is not None
+            ):
                 np.save(job_dir / "trajectory.npy", model.diffusion._traj)
-            
+
             # Save av.mrc and acv.mrc
             if hasattr(model, "av") and model.av is not None:
                 av_obj = model.av
@@ -1200,9 +1255,16 @@ def simulate_project(
                         slow_density=getattr(av_obj, "density_slow", None),
                         slow_factor=float(model.slow_fact),
                     )
-                    write_mrc(job_dir / "diffusion_coefficients.mrc", diffusion_grid, av_obj.dg, av_obj.x0)
+                    write_mrc(
+                        job_dir / "diffusion_coefficients.mrc", diffusion_grid, av_obj.dg, av_obj.x0
+                    )
                     if getattr(av_obj, "k_quench_grid", None) is not None:
-                        write_mrc(job_dir / "quenching_rates.mrc", av_obj.k_quench_grid, av_obj.dg, av_obj.x0)
+                        write_mrc(
+                            job_dir / "quenching_rates.mrc",
+                            av_obj.k_quench_grid,
+                            av_obj.dg,
+                            av_obj.x0,
+                        )
                 if hasattr(av_obj, "density_slow") and av_obj.density_slow is not None:
                     write_mrc(job_dir / "acv.mrc", av_obj.density_slow, av_obj.dg, av_obj.x0)
                 if (
@@ -1219,8 +1281,10 @@ def simulate_project(
                         center=av_obj.x0,
                         allowed_density=av_obj.density_fast,
                     )
-                    write_mrc(job_dir / "sampled_dye_density.mrc", dye_density, av_obj.dg, av_obj.x0)
-                
+                    write_mrc(
+                        job_dir / "sampled_dye_density.mrc", dye_density, av_obj.dg, av_obj.x0
+                    )
+
             # Save decay.csv
             decay_file = job_dir / "decay.csv"
             with open(decay_file, "w", encoding="utf-8") as f:
@@ -1232,7 +1296,7 @@ def simulate_project(
                     f.write("time_ns,donor_counts\n")
                     for t, d in zip(time, donor_counts):
                         f.write(f"{t:.4f},{d:.4f}\n")
-                    
+
             # Save results.csv
             results_file = job_dir / "results.csv"
             with open(results_file, "w", encoding="utf-8") as f:
@@ -1279,7 +1343,7 @@ def simulate_project(
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
                 writer.writerows(aa_residence)
-            
+
             # Save project.json
             with open(job_dir / "project.json", "w", encoding="utf8") as f:
                 json.dump(_make_json_serializable(project_dict), f, indent=2)

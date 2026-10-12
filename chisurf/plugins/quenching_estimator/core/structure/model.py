@@ -1,30 +1,28 @@
 import os
-from copy import deepcopy, copy
-from collections import OrderedDict
+import os.path
 import tempfile
+from collections import OrderedDict
+from copy import copy, deepcopy
 
 import numpy as np
 
 from chisurf.plugins.quenching_estimator.core.structure import reader as PDB
 
-import os.path
-
-
-clusterCriteria = ['maxclust', 'inconsistent', 'distance']
+clusterCriteria = ["maxclust", "inconsistent", "distance"]
 
 
 #: Backbone atom slots for the per-residue lookup table below. Only these
 #: positions are indexed; a residue's remaining side-chain atoms are found by
 #: name when they are needed, not tabulated here.
 internal_atom_numbers = [
-    ('N', 0),
-    ('CA', 1),
-    ('C', 2),
-    ('O', 3),
-    ('CB', 4),
-    ('H', 5),
-    ('CG', 6),
-    ('CD', 7),
+    ("N", 0),
+    ("CA", 1),
+    ("C", 2),
+    ("O", 3),
+    ("CB", 4),
+    ("H", 5),
+    ("CG", 6),
+    ("CD", 7),
 ]
 
 #: The residues QuEst indexes, in a fixed order — `res2id` turns a three-letter
@@ -32,15 +30,31 @@ internal_atom_numbers = [
 #: extra entries, because its ring closes through CG and CD.
 residue_atoms_internal = OrderedDict(
     [
-        (residue, ['N', 'C', 'CA', 'CB', 'O', 'H'])
+        (residue, ["N", "C", "CA", "CB", "O", "H"])
         for residue in (
-            'CYS', 'MET', 'PHE', 'ILE', 'LEU', 'VAL', 'TRP', 'TYR', 'ALA',
-            'THR', 'SER', 'GLN', 'ASN', 'GLU', 'ASP', 'HIS', 'ARG', 'LYS',
+            "CYS",
+            "MET",
+            "PHE",
+            "ILE",
+            "LEU",
+            "VAL",
+            "TRP",
+            "TYR",
+            "ALA",
+            "THR",
+            "SER",
+            "GLN",
+            "ASN",
+            "GLU",
+            "ASP",
+            "HIS",
+            "ARG",
+            "LYS",
         )
     ]
     + [
-        ('GLY', ['N', 'C', 'CA', 'O', 'H']),
-        ('PRO', ['N', 'C', 'CA', 'CB', 'O', 'H', 'CG', 'CD']),
+        ("GLY", ["N", "C", "CA", "O", "H"]),
+        ("PRO", ["N", "C", "CA", "CB", "O", "H", "CG", "CD"]),
     ]
 )
 
@@ -71,24 +85,25 @@ def move_center_of_mass(structure, all_atoms):
     ``set()`` of small integers.
     """
     for i, res in enumerate(structure.residue_indices):
-        at_nbr = np.where(all_atoms['residue_index'] == res)[0]
+        at_nbr = np.where(all_atoms["residue_index"] == res)[0]
         cb_nbr = structure.l_cb[i]
         if cb_nbr > 0:
             cb = structure.atoms[cb_nbr]
-            cb['coord'] *= cb['mass']
+            cb["coord"] *= cb["mass"]
             for at in at_nbr:
                 atom = all_atoms[at]
-                residue_name = atom['res_name']
+                residue_name = atom["res_name"]
                 # A residue with no coarse template has no "side chain" to fold
                 # into a CB; its atoms are kept whole by `to_coarse` and must
                 # not be collapsed into somebody else's centre of mass.
                 if residue_name not in residue_atoms_internal:
                     continue
-                if atom['atom_name'] not in residue_atoms_internal[residue_name]:
-                    cb['coord'] += atom['coord'] * atom['mass']
-                    cb['mass'] += atom['mass']
-            cb['coord'] /= cb['mass']
+                if atom["atom_name"] not in residue_atoms_internal[residue_name]:
+                    cb["coord"] += atom["coord"] * atom["mass"]
+                    cb["mass"] += atom["mass"]
+            cb["coord"] /= cb["mass"]
             structure.atoms[cb_nbr] = cb
+
 
 def make_residue_lookup_table(structure):
     l_residue = np.zeros((structure.n_residues, structure.max_atom_residue), dtype=np.int32) - 1
@@ -96,27 +111,27 @@ def make_residue_lookup_table(structure):
     res_dict = structure.residue_dict
     for residue in list(res_dict.values()):
         for atom in list(residue.values()):
-            atom_name = atom['atom_name']
+            atom_name = atom["atom_name"]
             if atom_name in list(a2id.keys()):
-                l_residue[n, a2id[atom_name]] = atom['i']
+                l_residue[n, a2id[atom_name]] = atom["i"]
         n += 1
-    l_ca = l_residue[:, a2id['CA']]
-    l_cb = l_residue[:, a2id['CB']]
-    l_c = l_residue[:, a2id['C']]
-    l_n = l_residue[:, a2id['N']]
-    l_h = l_residue[:, a2id['H']]
+    l_ca = l_residue[:, a2id["CA"]]
+    l_cb = l_residue[:, a2id["CB"]]
+    l_c = l_residue[:, a2id["C"]]
+    l_n = l_residue[:, a2id["N"]]
+    l_h = l_residue[:, a2id["H"]]
     return l_residue, l_ca, l_cb, l_c, l_n, l_h
+
 
 def get_residue_sequence(structure):
     try:
         residue_dict = structure.residue_dict
-        return [residue_dict[key]['C']['res_name'] for key in list(residue_dict.keys())]
+        return [residue_dict[key]["C"]["res_name"] for key in list(residue_dict.keys())]
     except KeyError:
         return structure.io.sequence(structure)
 
 
-class Structure(object):
-
+class Structure:
     max_atom_residue = 16
 
     def __init__(self, filename=None, make_coarse=True, verbose=False, auto_update=True):
@@ -199,7 +214,7 @@ class Structure(object):
         array([ 0.        ,  3.09665806, -3.08322105,  3.13562203,  3.09102453,...])
         """
 
-        super(Structure, self).__init__()
+        super().__init__()
         self.is_coarse = make_coarse
         self.verbose = verbose
         self.auto_update = auto_update
@@ -216,11 +231,14 @@ class Structure(object):
             ####################################################
             ######         LOOKUP TABLES                  ######
             ####################################################
-            self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = make_residue_lookup_table(self)
-            self.residue_types = np.array([res2id[res] for res in list(self.atoms['res_name'])
-                                           if res in list(res2id.keys())], dtype=np.int32)
+            self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = (
+                make_residue_lookup_table(self)
+            )
+            self.residue_types = np.array(
+                [res2id[res] for res in list(self.atoms["res_name"]) if res in list(res2id.keys())],
+                dtype=np.int32,
+            )
             self.dist_ca = np.zeros((self.n_residues, self.n_residues), dtype=np.float64)
-
 
             self.sequence = get_residue_sequence(self)
 
@@ -263,21 +281,24 @@ class Structure(object):
         # `quest/core/structure/reader.py` deliberately stopped doing. Before this, keeping
         # HETATM records raised `KeyError: 'FGA'` here.
         tmp = [
-            atom for atom in all_atoms
-            if atom['res_name'] not in residue_atoms_internal
-            or atom['atom_name'] in residue_atoms_internal[atom['res_name']]
+            atom
+            for atom in all_atoms
+            if atom["res_name"] not in residue_atoms_internal
+            or atom["atom_name"] in residue_atoms_internal[atom["res_name"]]
         ]
-        atoms = np.empty(len(tmp), dtype={'names': PDB.keys, 'formats': PDB.formats})
+        atoms = np.empty(len(tmp), dtype={"names": PDB.keys, "formats": PDB.formats})
         atoms[:] = tmp
-        atoms['i'] = np.arange(atoms.shape[0])
-        atoms['atom_id'] = np.arange(atoms.shape[0])
+        atoms["i"] = np.arange(atoms.shape[0])
+        atoms["atom_id"] = np.arange(atoms.shape[0])
         self.atoms = atoms
 
         ####################################################
         ######         LOOKUP TABLES                  ######
         ####################################################
-        self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = make_residue_lookup_table(self)
-        tmp = [res2id[res] for res in list(self.atoms['res_name']) if res in list(res2id.keys())]
+        self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = make_residue_lookup_table(
+            self
+        )
+        tmp = [res2id[res] for res in list(self.atoms["res_name"]) if res in list(res2id.keys())]
         self.residue_types = np.array(tmp, dtype=np.int32)
         self.dist_ca = np.zeros((self.n_residues, self.n_residues), dtype=np.float64)
 
@@ -290,23 +311,23 @@ class Structure(object):
 
     @property
     def xyz(self):
-        return self.atoms['coord']
+        return self.atoms["coord"]
 
     @xyz.setter
     def xyz(self, v):
-        self.atoms['coord'] = v
+        self.atoms["coord"] = v
 
     @property
     def vdw(self):
-        return self.atoms['radius']
+        return self.atoms["radius"]
 
     @vdw.setter
     def vdw(self, v):
-        self.atoms['radius'] = v
+        self.atoms["radius"] = v
 
     @property
     def residue_names(self):
-        res_name = list(set(self.atoms['res_name']))
+        res_name = list(set(self.atoms["res_name"]))
         res_name.sort()
         return res_name
 
@@ -324,10 +345,10 @@ class Structure(object):
         """
         residue_dict = OrderedDict()
         for res in self.residue_indices:
-            at_nbr = np.where(self.atoms['residue_index'] == res)
+            at_nbr = np.where(self.atoms["residue_index"] == res)
             residue_dict[res] = OrderedDict()
             for atom in self.atoms[at_nbr]:
-                residue_dict[res][atom['atom_name']] = atom
+                residue_dict[res][atom["atom_name"]] = atom
         return residue_dict
 
     @property  # OK
@@ -340,7 +361,7 @@ class Structure(object):
 
     @property  # OK
     def atom_types(self):
-        return set(self.atoms['atom_name'])
+        return set(self.atoms["atom_name"])
 
     @property  # OK
     def residue_indices(self):
@@ -350,7 +371,7 @@ class Structure(object):
         integer by the reader. Iterate this to walk residues; `residue_ids`
         below answers a different question and must not be used for grouping.
         """
-        return sorted({int(index) for index in self.atoms['residue_index']})
+        return sorted({int(index) for index in self.atoms["residue_index"]})
 
     @property  # OK
     def residue_ids(self):
@@ -360,11 +381,11 @@ class Structure(object):
         almost all of them. Grouping on this is the defect fixed on 2026-07-28;
         use `residue_indices`.
         """
-        return sorted({int(res_id) for res_id in self.atoms['res_id']})
+        return sorted({int(res_id) for res_id in self.atoms["res_id"]})
 
     @property  # OK
     def b_factors(self):
-        bfac = self.atoms[self.l_ca]['bfactor']
+        bfac = self.atoms[self.l_ca]["bfactor"]
         return bfac
 
     @property
@@ -400,7 +421,7 @@ class Structure(object):
         if filename is None:
             filename = self.filename
         aw = np.copy(self.atoms)
-        aw['coord'] = self.xyz
+        aw["coord"] = self.xyz
         self.io.write(filename, aw, append=append)
 
     def __str__(self):
@@ -409,12 +430,23 @@ class Structure(object):
         else:
             s = ""
             for at in self.atoms:
-                s += "%-6s%5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" % \
-                     ("ATOM ",
-                      at['atom_id'], at['atom_name'], " ", at['res_name'], at['chain'],
-                      at['res_id'], " ",
-                      at['coord'][0], at['coord'][1], at['coord'][2],
-                      0.0, 0.0, "  ", at['element'])
+                s += "%-6s%5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" % (
+                    "ATOM ",
+                    at["atom_id"],
+                    at["atom_name"],
+                    " ",
+                    at["res_name"],
+                    at["chain"],
+                    at["res_id"],
+                    " ",
+                    at["coord"][0],
+                    at["coord"][1],
+                    at["coord"][2],
+                    0.0,
+                    0.0,
+                    "  ",
+                    at["element"],
+                )
             return s
 
     def __deepcopy__(self, memo):

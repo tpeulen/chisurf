@@ -13,10 +13,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 from chisurf.plugins.quenching_estimator.core import av as fps
+from chisurf.plugins.quenching_estimator.core import build_donor_from_project
 from chisurf.plugins.quenching_estimator.core.av import fret_rate_trace
-from chisurf.plugins.quenching_estimator.core.project import DEFAULT_FORSTER_RADIUS, template_project
+from chisurf.plugins.quenching_estimator.core.project import (
+    DEFAULT_FORSTER_RADIUS,
+    template_project,
+)
 
 STRUCTURE = Path(__file__).parent / "148l.pdb"
 
@@ -47,8 +50,7 @@ class TestFretRateKernel:
         cloud = np.array([[40.0, 0.0, 0.0], [80.0, 0.0, 0.0]])
         rate = fret_rate_trace(trajectory, cloud, 52.0, 4.0, r_min=1.0)[0]
         singles = [
-            fret_rate_trace(trajectory, cloud[i : i + 1], 52.0, 4.0, r_min=1.0)[0]
-            for i in range(2)
+            fret_rate_trace(trajectory, cloud[i : i + 1], 52.0, 4.0, r_min=1.0)[0] for i in range(2)
         ]
         # The *rate* is averaged (fast-acceptor limit), not the distance.
         assert rate == pytest.approx(sum(singles) / 2.0)
@@ -177,24 +179,18 @@ class TestThePairedRateKernel:
 
     def test_overlapping_dyes_do_not_diverge(self) -> None:
         coincident = np.zeros((2, 3))
-        rates = fps.fret_rate_pair_trace(
-            coincident, coincident, R0=50.0, tau0=4.0, r_min=8.0
-        )
+        rates = fps.fret_rate_pair_trace(coincident, coincident, R0=50.0, tau0=4.0, r_min=8.0)
         assert np.all(np.isfinite(rates))
         assert rates == pytest.approx(np.full(2, (50.0 / 8.0) ** 6 / 4.0))
 
     def test_mismatched_lengths_are_an_error(self) -> None:
         """Truncating would silently change the sampled time window."""
         with pytest.raises(ValueError, match="same number of"):
-            fps.fret_rate_pair_trace(
-                np.zeros((10, 3)), np.zeros((7, 3)), R0=50.0, tau0=4.0
-            )
+            fps.fret_rate_pair_trace(np.zeros((10, 3)), np.zeros((7, 3)), R0=50.0, tau0=4.0)
 
     def test_an_empty_trajectory_is_an_error(self) -> None:
         with pytest.raises(ValueError, match="frames"):
-            fps.fret_rate_pair_trace(
-                np.zeros((0, 3)), np.zeros((0, 3)), R0=50.0, tau0=4.0
-            )
+            fps.fret_rate_pair_trace(np.zeros((0, 3)), np.zeros((0, 3)), R0=50.0, tau0=4.0)
 
 
 class TestTheAcceptorDiffusesAndSticks:
@@ -255,8 +251,7 @@ class TestTheAcceptorDiffusesAndSticks:
 
         project = self._project()
         project["fret"]["dyes"][1]["amino_acid_interactions"] = {
-            "TRP": {"slow_factor": 0.001, "kQ": 0.0, "quench_radius": None,
-                    "quench_atoms": ["CB"]}
+            "TRP": {"slow_factor": 0.001, "kQ": 0.0, "quench_radius": None, "quench_atoms": ["CB"]}
         }
         model = build_donor_from_project(project)
 
@@ -284,8 +279,7 @@ class TestTheAcceptorDiffusesAndSticks:
         donor = model.diffusion._traj
         acceptor = model.acceptor_diffusion._traj
         assert donor.shape == acceptor.shape
-        assert not np.allclose(donor - donor.mean(axis=0),
-                               acceptor - acceptor.mean(axis=0))
+        assert not np.allclose(donor - donor.mean(axis=0), acceptor - acceptor.mean(axis=0))
 
     def test_the_two_walks_share_a_time_base(self) -> None:
         """They are paired frame by frame, so they must be pairable."""
@@ -306,17 +300,11 @@ class TestTheAcceptorDiffusesAndSticks:
         """If they agreed, simulating the acceptor would be pointless."""
         from chisurf.plugins.quenching_estimator.api.local import simulate_project
 
-        moving = simulate_project(
-            self._project(acceptor_dynamics="trajectory"), save_outputs=False
-        )
-        averaged = simulate_project(
-            self._project(acceptor_dynamics="averaged"), save_outputs=False
-        )
-        assert moving.fret_efficiency != pytest.approx(
-            averaged.fret_efficiency, abs=1e-3
-        )
+        moving = simulate_project(self._project(acceptor_dynamics="trajectory"), save_outputs=False)
+        averaged = simulate_project(self._project(acceptor_dynamics="averaged"), save_outputs=False)
+        assert moving.fret_efficiency != pytest.approx(averaged.fret_efficiency, abs=1e-3)
         for result in (moving, averaged):
-            assert 0.0 < result.fret_efficiency < 1.0
+            assert result.fret_efficiency is not None and 0.0 < result.fret_efficiency < 1.0
 
     def test_trajectory_is_the_default(self) -> None:
         from chisurf.plugins.quenching_estimator.api.local import build_donor_from_project

@@ -48,7 +48,7 @@ def test_the_fixture_actually_has_colliding_residue_numbers(dimer_all_atom) -> N
     or the new identity, which is exactly how the defect survived.
     """
     atoms = dimer_all_atom.atoms
-    per_chain = {chain: set() for chain in set(atoms["chain"])}
+    per_chain: dict[str, set[int]] = {chain: set() for chain in set(atoms["chain"])}
     for chain, res_id in zip(atoms["chain"], atoms["res_id"]):
         per_chain[chain].add(int(res_id))
 
@@ -151,7 +151,6 @@ def test_a_structure_without_colliding_numbers_is_unaffected() -> None:
 
     duplicated = [n for n, c in Counter(int(r) for r in cb["res_id"]).items() if c > 1]
     assert not duplicated, (
-        "148L gained a duplicated residue number; it is the control precisely "
-        "because it has none"
+        "148L gained a duplicated residue number; it is the control precisely because it has none"
     )
     assert structure.n_residues == len(structure.residue_indices)

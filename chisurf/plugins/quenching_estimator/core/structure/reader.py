@@ -1,10 +1,9 @@
-import os
 import locale
+import os
 import threading
 from pathlib import Path
 
 import numpy as np
-
 
 #: ``residue_index`` is the residue's **identity**, and `res_id` is not.
 #:
@@ -18,17 +17,24 @@ import numpy as np
 #: `residue_index` is assigned here, from IMP's hierarchy, one per distinct
 #: ``(chain, res_id, insertion_code)`` in file order. Group on it; report
 #: `chain`/`res_id`/`insertion_code` to a human.
-keys = ['i', 'chain', 'res_id', 'insertion_code', 'residue_index', 'res_name',
-        'atom_id', 'atom_name', 'element',
-        'coord',
-        'charge', 'radius', 'bfactor', 'mass']
+keys = [
+    "i",
+    "chain",
+    "res_id",
+    "insertion_code",
+    "residue_index",
+    "res_name",
+    "atom_id",
+    "atom_name",
+    "element",
+    "coord",
+    "charge",
+    "radius",
+    "bfactor",
+    "mass",
+]
 
-formats = ['i4', '|U1', 'i4', '|U1', 'i4', '|U5',
-           'i4', '|U5', '|U1',
-           '3f8',
-           'f8', 'f8', 'f8', 'f8']
-
-
+formats = ["i4", "|U1", "i4", "|U1", "i4", "|U5", "i4", "|U5", "|U1", "3f8", "f8", "f8", "f8", "f8"]
 
 
 def sequence(structure, use_atoms=False):
@@ -40,7 +46,7 @@ def sequence(structure, use_atoms=False):
     :param use_atoms: boolean
     """
     # Try using SEQRES
-    pdb = open(structure.filename, 'r').readlines()
+    pdb = open(structure.filename).readlines()
     # get residue-sequence
     seq = [l for l in pdb if l[0:6] == "SEQRES"]
     if len(seq) != 0 and not use_atoms:
@@ -54,22 +60,12 @@ def sequence(structure, use_atoms=False):
         # at the first model.
         models = [i for i, l in enumerate(pdb) if l.startswith("MODEL")]
         if len(models) > 1:
-            pdb = pdb[models[0]:models[1]]
+            pdb = pdb[models[0] : models[1]]
         atoms = [l for l in pdb if l[0:6] == "ATOM  " and l[13:16] == "CA "]
         chain_dict = dict([(l[21], []) for l in atoms])
         for c in list(chain_dict.keys()):
             chain_dict[c] = [l[17:20] for l in atoms if l[21] == c]
     return chain_dict
-
-
-
-
-
-
-
-
-
-
 
 
 def write(filename, atoms=None, append=False):
@@ -79,20 +75,36 @@ def write(filename, atoms=None, append=False):
     :param filename: target-filename
     :param atoms: structured numpy array
     """
-    mode = 'a+' if append else 'w+'
+    mode = "a+" if append else "w+"
     if atoms is not None:
         fp = open(filename, mode)
         # http://cupnet.net/pdb_format/
-        al = ["%-6s%5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" %
-              ("ATOM ", at['atom_id'], at['atom_name'], " ", at['res_name'], at['chain'], at['res_id'], " ",
-               at['coord'][0], at['coord'][1], at['coord'][2], 0.0, at['bfactor'], at['element'], "  ")
-              for at in atoms
+        al = [
+            "%-6s%5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n"
+            % (
+                "ATOM ",
+                at["atom_id"],
+                at["atom_name"],
+                " ",
+                at["res_name"],
+                at["chain"],
+                at["res_id"],
+                " ",
+                at["coord"][0],
+                at["coord"][1],
+                at["coord"][2],
+                0.0,
+                at["bfactor"],
+                at["element"],
+                "  ",
+            )
+            for at in atoms
         ]
-        if mode == 'a+':
-            fp.write('MODEL')
+        if mode == "a+":
+            fp.write("MODEL")
         fp.write("".join(al))
-        if mode == 'a+':
-            fp.write('ENDMDL')
+        if mode == "a+":
+            fp.write("ENDMDL")
         fp.close()
 
 
@@ -191,10 +203,23 @@ def read(filename, **kwargs):
 #: Residue names that identify water molecules. Every common force field and
 #: crystallographic convention is covered, so the filter does not depend on a
 #: single parser's notion of "water".
-_WATER_RESIDUE_NAMES = frozenset({
-    "HOH", "WAT", "TIP3", "TIP4", "TIP4P", "TIP",
-    "SPC", "SPCM", "SOL", "DOD", "H2O", "OH2", "D2O",
-})
+_WATER_RESIDUE_NAMES = frozenset(
+    {
+        "HOH",
+        "WAT",
+        "TIP3",
+        "TIP4",
+        "TIP4P",
+        "TIP",
+        "SPC",
+        "SPCM",
+        "SOL",
+        "DOD",
+        "H2O",
+        "OH2",
+        "D2O",
+    }
+)
 
 
 def strip_water_pdb_text(pdb_text: str) -> str:
@@ -310,4 +335,3 @@ def _read_with_imp(path):
         atoms["mass"][index] = mass
 
     return _strip_waters(atoms)
-

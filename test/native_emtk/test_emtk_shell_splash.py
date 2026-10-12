@@ -116,6 +116,34 @@ def test_a_failed_build_closes_the_splash_and_keeps_the_error():
     assert not state.active
 
 
+def test_a_main_window_that_cannot_open_closes_the_splash_and_keeps_the_error():
+    """A failure opening the main window is kept for the caller, not lost in the loop with the splash up."""
+    state = SplashState()
+    events: list[str] = []
+    queued: list = []
+    shells: list = []
+
+    def make(splash):
+        shells.append(_Shell(splash))
+        return shells[-1]
+
+    def cannot_open(shell):
+        raise RuntimeError("no window")
+
+    run = SplashRun(state, make, open_main=cannot_open,
+                    close_splash=lambda: events.append("close"), later=queued.append)
+    state.start()
+    run.frame()
+    while queued:
+        queued.pop(0)()
+    shells[0].data.session_settled = True
+    run.frame()
+    while queued:
+        queued.pop(0)()
+    assert events == ["close"] and isinstance(run.error, RuntimeError)
+    assert run.main is None and run.step == "done" and not state.active
+
+
 def test_the_state_follows_stages_and_keeps_the_last_log_line():
     import logging
 

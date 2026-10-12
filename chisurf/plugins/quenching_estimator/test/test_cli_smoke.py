@@ -8,12 +8,29 @@ from click.testing import CliRunner
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from chisurf.plugins.quenching_estimator.cli.cli import cli  # type: ignore[import]
-
+from chisurf.plugins.quenching_estimator.cli.cli import cli
 
 AMINO_ACIDS = [
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 ]
 
 
@@ -41,15 +58,19 @@ def _make_minimal_project() -> dict:
     project["amino_acid_interactions"] = _aa_interactions(TYR={"slow_factor": 0.1, "kQ": 2.0})
     project["output_file"] = "test_out"
     project["save_avs"] = False
-    project["fret"] = {"enabled": False, "dyes": [
-        {
-            "name": "D0",
-            "role": "donor",
-            "attachment": project["attachment"],
-            "av_parameter": project["av_parameter"],
-            "D": 7.0,
-        }
-    ], "R0_matrix": []}
+    project["fret"] = {
+        "enabled": False,
+        "dyes": [
+            {
+                "name": "D0",
+                "role": "donor",
+                "attachment": project["attachment"],
+                "av_parameter": project["av_parameter"],
+                "D": 7.0,
+            }
+        ],
+        "R0_matrix": [],
+    }
     return project
 
 
@@ -66,6 +87,8 @@ def test_cli_template_and_validate(tmp_path: Path) -> None:
     project_path = tmp_path / "proj.quest.json"
     project_path.write_text(json.dumps(project), encoding="utf8")
 
-    result_validate = runner.invoke(cli, ["validate", "-p", str(project_path)], catch_exceptions=False)
+    result_validate = runner.invoke(
+        cli, ["validate", "-p", str(project_path)], catch_exceptions=False
+    )
     assert result_validate.exit_code == 0
     assert "valid" in result_validate.output.lower()

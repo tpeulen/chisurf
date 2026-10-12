@@ -45,7 +45,9 @@ def parameter_catalog() -> dict[str, Any]:
 
 
 def _with_stickiness_defaults(dye: Mapping[str, Any]) -> dict[str, Any]:
-    from chisurf.plugins.quenching_estimator.core.dye_diffusion import normalize_amino_acid_interactions
+    from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
+        normalize_amino_acid_interactions,
+    )
 
     normalized = dict(dye)
     normalized.setdefault("slow_radius", 8.5)
@@ -92,9 +94,7 @@ def save_dye(dye: Mapping[str, Any]) -> MutableMapping[str, Any]:
     entry = _with_stickiness_defaults(dye)
     entry["name"] = name
     dyes[name] = entry
-    DYE_REPOSITORY_PATH.write_text(
-        json.dumps(dyes, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    DYE_REPOSITORY_PATH.write_text(json.dumps(dyes, indent=2, ensure_ascii=False), encoding="utf-8")
     return entry
 
 

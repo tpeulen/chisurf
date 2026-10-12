@@ -1,5 +1,5 @@
 {
-  "_comment": "Guided tour of the QuEst window (the plugin window and the Structure Tools card share it). Steps point at real controls and wait for the user to press them; targets are the window's control names and the attrs of quest.view.json. Load demo ships its own structure, so the tour can be walked without the user's files.",
+  "_comment": "Guided tour of the QuEst window (the plugin window and the Structure Tools card share it). Steps point at real controls and wait for the user to press them; targets are the window's control names and the attrs of quest.view.json. Load example ships its own structure, so the tour can be walked without the user's files.",
   "steps": [
     {
       "title": "What QuEst simulates",
@@ -8,9 +8,9 @@
     },
     {
       "title": "Start from the demo",
-      "text": "<b>Load demo</b> loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure use <b>Load PDB...</b> instead; a valid attachment site is picked for you.",
-      "target": {"name": "load_demo"},
-      "await": {"hint": "Press <b>Load demo</b>."}
+      "text": "<b>Load example</b> loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure use <b>Load PDB...</b> instead; a valid attachment site is picked for you.",
+      "target": {"name": "load_example"},
+      "await": {"hint": "Press <b>Load example</b>."}
     },
     {
       "title": "Where the dye sits",

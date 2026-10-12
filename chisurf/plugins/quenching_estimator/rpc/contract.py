@@ -40,7 +40,6 @@ __all__ = [
     "PLUGIN_ID",
     "CONTRACT_VERSION",
     "ERROR_CODES",
-    "METHOD_NAMES",
     "service_success",
     "service_error",
     "error_code_for",

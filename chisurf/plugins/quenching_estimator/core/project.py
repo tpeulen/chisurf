@@ -83,15 +83,11 @@ def validate_project(
 
     missing = [key for key in REQUIRED_TOP_LEVEL_KEYS if key not in project]
     if missing:
-        raise ProjectValidationError(
-            f"Project missing required keys: {', '.join(missing)}"
-        )
+        raise ProjectValidationError(f"Project missing required keys: {', '.join(missing)}")
 
     pdb = pdb_path or project.get("pdb")
     if pdb is None and project_path is None:
-        raise ProjectValidationError(
-            "Project must define 'pdb' path when no override is provided."
-        )
+        raise ProjectValidationError("Project must define 'pdb' path when no override is provided.")
     if pdb is not None:
         try:
             resolve_structure_path(pdb)
@@ -105,9 +101,7 @@ def validate_project(
             "Project must define at least one dye in fret.dyes with a diffusion coefficient 'D'."
         )
     if dyes[0].get("D") is None:
-        raise ProjectValidationError(
-            "Donor dye entry must define diffusion coefficient 'D'."
-        )
+        raise ProjectValidationError("Donor dye entry must define diffusion coefficient 'D'.")
 
     # The orientation factor is an assumption the project *states*, so a value
     # outside [0, 4] is a malformed project rather than a runtime surprise --
@@ -140,7 +134,9 @@ def template_project(*, with_fret: bool = True) -> MutableMapping[str, Any]:
     """
 
     from chisurf.plugins.quenching_estimator.core.av import av1_parameter, av_defaults
-    from chisurf.plugins.quenching_estimator.core.dye_diffusion import default_amino_acid_interactions
+    from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
+        default_amino_acid_interactions,
+    )
 
     project: MutableMapping[str, Any] = {
         "tau0": 4.2,

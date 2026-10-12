@@ -10,9 +10,11 @@ from __future__ import annotations
 import ast
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
+from chisurf.plugins.quenching_estimator.core.scan import simulate_site, site_project
 from chisurf.plugins.quenching_estimator.rpc import (
     METHODS,
     InProcessClient,
@@ -21,7 +23,6 @@ from chisurf.plugins.quenching_estimator.rpc import (
     local_client,
     register_services,
 )
-from chisurf.plugins.quenching_estimator.core.scan import simulate_site, site_project
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -110,7 +111,12 @@ class TestMethods:
         defaults = local_client().result("quest.quenching_defaults")
         assert len(defaults["residues"]) == 20
         assert set(defaults["reference_pet_quenching"]) == {
-            "TRP", "TYR", "MET", "HIS", "CYS", "PRO",
+            "TRP",
+            "TYR",
+            "MET",
+            "HIS",
+            "CYS",
+            "PRO",
         }
         # The quenching centre of TRP is the indole ring, not CB.
         assert "NE1" in defaults["default_quench_atoms"]["TRP"]
@@ -133,10 +139,22 @@ class TestScanRecordShape:
         # A failure carries the full key set with nulls, so a table of results
         # never has ragged rows.
         expected = {
-            "name", "chain", "residue", "residue_name", "atom", "status", "error",
-            "lifetime", "quantum_yield", "contact_fraction", "av_volume",
-            "contact_volume", "contact_to_free_ratio", "dominant_quencher",
-            "dominant_quencher_fraction", "quenchers",
+            "name",
+            "chain",
+            "residue",
+            "residue_name",
+            "atom",
+            "status",
+            "error",
+            "lifetime",
+            "quantum_yield",
+            "contact_fraction",
+            "av_volume",
+            "contact_volume",
+            "contact_to_free_ratio",
+            "dominant_quencher",
+            "dominant_quencher_fraction",
+            "quenchers",
         }
         assert set(failed) == expected
 
@@ -148,7 +166,7 @@ class TestScanRecordShape:
         assert failed["residue_name"] == "TRP"
 
     def test_site_project_moves_the_attachment_and_the_donor_dye(self) -> None:
-        base = {
+        base: dict[str, Any] = {
             "av_parameter": {"linker_length": 21.5},
             "fret": {"enabled": True, "dyes": [{"name": "donor", "D": 7.5}, {"name": "acceptor"}]},
         }
@@ -175,7 +193,7 @@ class TestManifest:
 
     @staticmethod
     def _manifest() -> dict:
-        return json.loads((REPO_ROOT /  "manifest.json").read_text(encoding="utf8"))
+        return json.loads((REPO_ROOT / "manifest.json").read_text(encoding="utf8"))
 
     def test_identity_matches_the_contract(self) -> None:
         from chisurf.plugins.quenching_estimator.rpc.contract import PLUGIN_ID
@@ -234,7 +252,7 @@ class TestSurfacesShareTheChemistry:
         surface simulated something no other surface did. It is gone: the form
         starts from `template_project()` like everything else.
         """
-        assert not (REPO_ROOT /  "gui" / "dye_diffusion.json").exists()
+        assert not (REPO_ROOT / "gui" / "dye_diffusion.json").exists()
 
         from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
 
@@ -339,5 +357,5 @@ class TestLayering:
     def test_the_service_layer_is_gui_free(self) -> None:
         """The backend must import without any Qt binding present."""
         for name in ("dispatcher.py", "services.py", "contract.py", "__init__.py"):
-            modules = _imported_modules(REPO_ROOT /  "rpc" / name)
+            modules = _imported_modules(REPO_ROOT / "rpc" / name)
             assert not any(m.startswith(("qtpy", "PyQt5", "PySide")) for m in modules)

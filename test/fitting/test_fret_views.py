@@ -280,7 +280,9 @@ def test_a_structure_ensemble():
     stored before, and regenerated when the labels took FPS's AV defaults (IMP.bff
     51a31f831: radius 3.5 Å, grid 0.9 Å, FPS's first linker step). At the classic
     settings (radius 4 Å, grid 0.5 Å) the new search stays within 0.52 % of the classic
-    curve (data/fret_structure_reference.json).
+    curve (data/fret_structure_reference.json). Regenerated again 2026-10-12 when the AV
+    search became FPS's link search (IMP.bff e4a3e2b9d; at most 0.85 % per channel, the
+    replaced curve kept under ``_previous``).
     """
     import json
     import pathlib

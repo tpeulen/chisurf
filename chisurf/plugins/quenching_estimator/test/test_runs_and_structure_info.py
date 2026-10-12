@@ -29,7 +29,9 @@ def _make_job(root: Path, *, chain: str = "E", residue: int = 55, result: bool =
         encoding="utf8",
     )
     if result:
-        (job_dir / "result.json").write_text(json.dumps({"quantum_yield_donor": 0.5}), encoding="utf8")
+        (job_dir / "result.json").write_text(
+            json.dumps({"quantum_yield_donor": 0.5}), encoding="utf8"
+        )
         (job_dir / "decay.csv").write_text("t,counts\n0,1\n", encoding="utf8")
     return job_id
 

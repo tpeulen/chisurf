@@ -236,7 +236,6 @@ chisurf/plugins/ndxplorer/test/test_emtk_ndxplorer_parity.py
 chisurf/plugins/ndxplorer/tests/test_push_fret_lines.py
 chisurf/plugins/ndxplorer/tests/test_window_routes.py
 chisurf/plugins/ndxplorer/window.py
-chisurf/plugins/quenching_estimator/test/test_plugin.py
 chisurf/plugins/spectra_downloader/browser.py
 chisurf/plugins/spectra_downloader/download_manager.py
 chisurf/plugins/spectra_downloader/gui/add_to_mmfdb_panel.py

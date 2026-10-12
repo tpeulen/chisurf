@@ -15,7 +15,6 @@ import numpy as np
 
 from chisurf.plugins.quenching_estimator.core.dye_diffusion import DonorDecay
 
-
 #: Three emitted photons at 1, 2 and 3 ns; two quenched ones at t = 0.
 TRACE_DTS = np.array([1.0, 0.0, 2.0, 0.0, 3.0], dtype=np.float64)
 TRACE_PHS = np.array([1, 0, 1, 0, 1], dtype=np.uint8)

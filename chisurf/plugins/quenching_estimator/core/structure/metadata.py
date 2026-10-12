@@ -11,7 +11,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from chisurf.plugins.quenching_estimator.core.structure.reader import _WATER_RESIDUE_NAMES, strip_water_pdb_text
+from chisurf.plugins.quenching_estimator.core.structure.reader import (
+    _WATER_RESIDUE_NAMES,
+    strip_water_pdb_text,
+)
 
 __all__ = ["structure_metadata"]
 
@@ -53,13 +56,13 @@ def structure_metadata(path: Path | str) -> dict[str, Any]:
     # PDB lines are filtered directly; CIF rows are skipped during parsing and
     # the raw text is returned as-is (the browser viewer does not use pdb_text
     # for CIF files).
-    is_cif = 'loop_' in raw_text and '_atom_site.' in raw_text
+    is_cif = "loop_" in raw_text and "_atom_site." in raw_text
     pdb_text = raw_text if is_cif else strip_water_pdb_text(raw_text)
 
     if is_cif:
         rows = pdb_text.splitlines()
         in_loop = False
-        loop_headers = []
+        loop_headers: list[str] = []
 
         def clean_val(s):
             s = s.strip()
@@ -70,20 +73,20 @@ def structure_metadata(path: Path | str) -> dict[str, Any]:
         i = 0
         while i < len(rows):
             line = rows[i].strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 i += 1
                 continue
 
-            if line == 'loop_':
+            if line == "loop_":
                 in_loop = True
                 loop_headers = []
                 i += 1
                 while i < len(rows):
                     next_line = rows[i].strip()
-                    if next_line.startswith('_atom_site.'):
+                    if next_line.startswith("_atom_site."):
                         loop_headers.append(next_line)
                         i += 1
-                    elif next_line.startswith('_'):
+                    elif next_line.startswith("_"):
                         in_loop = False
                         break
                     else:
@@ -92,33 +95,37 @@ def structure_metadata(path: Path | str) -> dict[str, Any]:
                 if in_loop and loop_headers:
                     header_map = {}
                     for idx, h in enumerate(loop_headers):
-                        field = h.split('.')[-1].strip()
+                        field = h.split(".")[-1].strip()
                         header_map[field] = idx
 
-                    atom_name_col = header_map.get('auth_atom_id')
+                    atom_name_col = header_map.get("auth_atom_id")
                     if atom_name_col is None:
-                        atom_name_col = header_map.get('label_atom_id')
+                        atom_name_col = header_map.get("label_atom_id")
 
-                    res_name_col = header_map.get('auth_comp_id')
+                    res_name_col = header_map.get("auth_comp_id")
                     if res_name_col is None:
-                        res_name_col = header_map.get('label_comp_id')
+                        res_name_col = header_map.get("label_comp_id")
 
-                    chain_col = header_map.get('auth_asym_id')
+                    chain_col = header_map.get("auth_asym_id")
                     if chain_col is None:
-                        chain_col = header_map.get('label_asym_id')
+                        chain_col = header_map.get("label_asym_id")
 
-                    res_id_col = header_map.get('auth_seq_id')
+                    res_id_col = header_map.get("auth_seq_id")
                     if res_id_col is None:
-                        res_id_col = header_map.get('label_seq_id')
+                        res_id_col = header_map.get("label_seq_id")
 
-                    group_col = header_map.get('group_PDB')
+                    group_col = header_map.get("group_PDB")
 
                     while i < len(rows):
                         data_line = rows[i].strip()
-                        if not data_line or data_line.startswith('#'):
+                        if not data_line or data_line.startswith("#"):
                             i += 1
                             continue
-                        if data_line == 'loop_' or data_line.startswith('_') or data_line.startswith('data_'):
+                        if (
+                            data_line == "loop_"
+                            or data_line.startswith("_")
+                            or data_line.startswith("data_")
+                        ):
                             break
 
                         parts = []
@@ -148,17 +155,29 @@ def structure_metadata(path: Path | str) -> dict[str, Any]:
                             parts.append("".join(current))
 
                         if len(parts) >= len(loop_headers):
-                            group = clean_val(parts[group_col]) if group_col is not None else 'ATOM'
-                            if group in ('ATOM', 'HETATM'):
-                                atom_name = clean_val(parts[atom_name_col]) if atom_name_col is not None else ''
-                                residue_name = clean_val(parts[res_name_col]) if res_name_col is not None else ''
+                            group = clean_val(parts[group_col]) if group_col is not None else "ATOM"
+                            if group in ("ATOM", "HETATM"):
+                                atom_name = (
+                                    clean_val(parts[atom_name_col])
+                                    if atom_name_col is not None
+                                    else ""
+                                )
+                                residue_name = (
+                                    clean_val(parts[res_name_col])
+                                    if res_name_col is not None
+                                    else ""
+                                )
                                 if residue_name.strip().upper() in _WATER_RESIDUE_NAMES:
                                     i += 1
                                     continue
                                 atom_count += 1
-                                chain_id = clean_val(parts[chain_col]) if chain_col is not None else 'A'
+                                chain_id = (
+                                    clean_val(parts[chain_col]) if chain_col is not None else "A"
+                                )
                                 chain_id = chain_id.strip() or "_"
-                                raw_residue = clean_val(parts[res_id_col]) if res_id_col is not None else '1'
+                                raw_residue = (
+                                    clean_val(parts[res_id_col]) if res_id_col is not None else "1"
+                                )
                                 try:
                                     residue_id = int(raw_residue)
                                 except ValueError:
@@ -168,7 +187,10 @@ def structure_metadata(path: Path | str) -> dict[str, Any]:
                                     residue_id,
                                     {"id": residue_id, "name": residue_name, "atoms": []},
                                 )
-                                if atom_name and atom_name not in chains[chain_id][residue_id]["atoms"]:
+                                if (
+                                    atom_name
+                                    and atom_name not in chains[chain_id][residue_id]["atoms"]
+                                ):
                                     chains[chain_id][residue_id]["atoms"].append(atom_name)
                         i += 1
                     in_loop = False

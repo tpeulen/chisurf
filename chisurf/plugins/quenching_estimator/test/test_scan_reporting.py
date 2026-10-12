@@ -9,17 +9,16 @@ every site fail for a reason that has nothing to do with the site.
 
 from __future__ import annotations
 
+import importlib
 import json
 from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
 
-import importlib
-
 from chisurf.plugins.quenching_estimator.api import local as api
 
-cli = importlib.import_module('chisurf.plugins.quenching_estimator.cli.cli')
+cli = importlib.import_module("chisurf.plugins.quenching_estimator.cli.cli")
 from chisurf.plugins.quenching_estimator.core.av import AV
 from chisurf.plugins.quenching_estimator.core.dye_diffusion import default_amino_acid_interactions
 
@@ -126,9 +125,12 @@ class TestScanCommand:
             cli.cli,
             [
                 "scan",
-                "-p", str(project_path),
-                "-l", str(sites_path),
-                "-o", str(output_path),
+                "-p",
+                str(project_path),
+                "-l",
+                str(sites_path),
+                "-o",
+                str(output_path),
             ],
         )
         assert result.exit_code == 0, result.output

@@ -356,7 +356,14 @@ class SplashRun:
         self.state.wake()
 
     def _open(self) -> None:
-        self.main = self.open_main(self.shell)
+        try:
+            self.main = self.open_main(self.shell)
+        except BaseException as error:  # a main window that cannot open must not leave the splash up
+            self.error = error
+            self.step = "done"
+            _log.exception("opening the ChiSurf window failed")
+            self._close()
+            return
         self.step = "opened"
         self.state.wake()
 

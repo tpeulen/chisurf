@@ -689,9 +689,9 @@ def test_every_spec_and_dialog_text_is_translated_in_all_locales(ui):
 
     for name in ("spectra_emtk", "overview", "endpoint_auth"):
         collect(json.loads((HERE / "gui" / f"{name}.view.json").read_text()))
-    from chisurf.plugins.spectra_downloader.gui.translations import _ROWS
+    from chisurf.plugins.spectra_downloader.gui.translations import SOURCES
 
-    known = {row[0] for row in _ROWS}
+    known = set(SOURCES)
     extra = {
         "Ready",
         "Back",
@@ -717,10 +717,12 @@ def test_every_spec_and_dialog_text_is_translated_in_all_locales(ui):
     collect(detail)
     missing = sorted((spec_texts | extra) - known)
     assert not missing, missing
+    from chisurf.plugins.spectra_downloader.tests.test_native import expected
+
     for locale in LOCALES[1:]:
         i18n.set_locale(locale)
-        for row in _ROWS:
-            assert tr(row[0]) == row[LOCALES.index(locale)]
+        for source in SOURCES:
+            assert tr(source) == expected(locale, source)
 
 
 def test_the_socket_guard_really_blocks_the_network():

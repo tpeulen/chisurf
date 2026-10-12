@@ -11,12 +11,12 @@ def write_xyz(filename, points, verbose=False):
         print("\nwrite_xyz")
         print("---------")
         print("Filename: %s" % filename)
-    fp = open(filename, 'w')
+    fp = open(filename, "w")
     npoints = len(points)
-    fp.write('%i\n' % npoints)
-    fp.write('Name\n')
+    fp.write("%i\n" % npoints)
+    fp.write("Name\n")
     for p in points:
-        fp.write('D %.3f %.3f %.3f\n' % (p[0], p[1], p[2]))
+        fp.write("D %.3f %.3f %.3f\n" % (p[0], p[1], p[2]))
     fp.close()
     if verbose:
         print("-------------------")

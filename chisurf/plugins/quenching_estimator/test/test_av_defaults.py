@@ -30,7 +30,8 @@ def test_av_defaults_are_imp_bffs():
     assert d["linker_width"] == bff.AV_DEFAULT_LINKER_WIDTH
     assert d["radius1"] == bff.AV_DEFAULT_RADIUS1
     assert d["simulation_grid_resolution"] == pytest.approx(
-        bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION)
+        bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION
+    )
     assert av1_parameter() == {
         "linker_length": d["linker_length"],
         "linker_width": d["linker_width"],
@@ -59,8 +60,7 @@ def test_an_unset_donor_decay_takes_the_declared_defaults():
 
 
 def test_the_dye_catalogue_width_is_the_declared_width():
-    catalogue = json.loads(
-        (REPO /  "settings" / "dye_repository.json").read_text())
+    catalogue = json.loads((REPO / "settings" / "dye_repository.json").read_text())
     assert catalogue
     for name, dye in catalogue.items():
         assert dye["av_parameter"]["linker_width"] == bff.AV_DEFAULT_LINKER_WIDTH, name

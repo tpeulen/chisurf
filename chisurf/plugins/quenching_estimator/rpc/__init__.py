@@ -15,7 +15,11 @@ from chisurf.plugins.quenching_estimator.rpc.contract import (
     service_success,
     to_payload,
 )
-from chisurf.plugins.quenching_estimator.rpc.dispatcher import InProcessClient, RemoteError, ServiceDispatcher
+from chisurf.plugins.quenching_estimator.rpc.dispatcher import (
+    InProcessClient,
+    RemoteError,
+    ServiceDispatcher,
+)
 from chisurf.plugins.quenching_estimator.rpc.services import (
     METHODS,
     local_client,

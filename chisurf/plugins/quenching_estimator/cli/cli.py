@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Mapping, MutableMapping, Sequence
-
-import json
 
 import click
 
 from chisurf.plugins.quenching_estimator.api import local as api
-from chisurf.plugins.quenching_estimator.core.project import ProjectValidationError, template_project, validate_project
+from chisurf.plugins.quenching_estimator.core.project import (
+    ProjectValidationError,
+    template_project,
+    validate_project,
+)
 from chisurf.plugins.quenching_estimator.core.scan import simulate_site
 from chisurf.plugins.quenching_estimator.core.structure import resolve_structure_path
 
@@ -65,7 +68,9 @@ def _set_path(target: MutableMapping[str, Any], path: str, value: Any) -> None:
         cursor[last_key] = value
 
 
-def _clone_with_overrides(project: MutableMapping[str, Any], setters: Sequence[tuple[str, Any]]) -> MutableMapping[str, Any]:
+def _clone_with_overrides(
+    project: MutableMapping[str, Any], setters: Sequence[tuple[str, Any]]
+) -> MutableMapping[str, Any]:
     from copy import deepcopy
 
     clone = deepcopy(project)
@@ -98,7 +103,9 @@ def _cartesian(assignments: Sequence[tuple[str, Sequence[Any]]]) -> list[list[tu
     return combos
 
 
-def _build_runs(base_project: MutableMapping[str, Any], setters: Sequence[tuple[str, Any]]) -> list[tuple[MutableMapping[str, Any], dict[str, Any]]]:
+def _build_runs(
+    base_project: MutableMapping[str, Any], setters: Sequence[tuple[str, Any]]
+) -> list[tuple[MutableMapping[str, Any], dict[str, Any]]]:
     """Create per-run projects for grid sweeping."""
     # Split single vs multi-valued
     multi: list[tuple[str, list[Any]]] = []
@@ -480,9 +487,7 @@ def runs_clean(project_dir: Path | None, older_than_days: float | None, confirme
 
     from chisurf.plugins.quenching_estimator.core.runs import purge_runs
 
-    report = purge_runs(
-        project_dir, older_than_days=older_than_days, dry_run=not confirmed
-    )
+    report = purge_runs(project_dir, older_than_days=older_than_days, dry_run=not confirmed)
     megabytes = report["bytes"] / (1024 * 1024)
     verb = "Would remove" if report["dry_run"] else "Removed"
     click.echo(f"{verb} {report['count']} run(s), {megabytes:.1f} MB from {report['directory']}")
@@ -532,7 +537,9 @@ def _write_csv(path: Path, result: api.DecaySimulationResult) -> None:
     with path.open("w", newline="", encoding="utf8") as fp:
         writer = csv.DictWriter(fp, fieldnames=fieldnames)
         writer.writeheader()
-        fret_counts = result.fret_counts if result.fret_counts is not None else [None] * len(result.time)
+        fret_counts = (
+            result.fret_counts if result.fret_counts is not None else [None] * len(result.time)
+        )
         for t, d, f in zip(result.time, result.donor_counts, fret_counts):
             writer.writerow(
                 {

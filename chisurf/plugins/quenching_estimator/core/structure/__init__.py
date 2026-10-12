@@ -15,10 +15,20 @@ The order above is the direction of travel, and it is the seam
 it wants labelled, never *how to read it*.
 """
 
-from chisurf.plugins.quenching_estimator.core.structure.fetch import download_pdb_id, is_pdb_id, resolve_structure_path
+from chisurf.plugins.quenching_estimator.core.structure.fetch import (
+    download_pdb_id,
+    is_pdb_id,
+    resolve_structure_path,
+)
 from chisurf.plugins.quenching_estimator.core.structure.metadata import structure_metadata
 from chisurf.plugins.quenching_estimator.core.structure.model import Structure, move_center_of_mass
-from chisurf.plugins.quenching_estimator.core.structure.reader import keys, formats, read, strip_water_pdb_text, water_stripped_pdb_path
+from chisurf.plugins.quenching_estimator.core.structure.reader import (
+    formats,
+    keys,
+    read,
+    strip_water_pdb_text,
+    water_stripped_pdb_path,
+)
 
 __all__ = [
     "Structure",

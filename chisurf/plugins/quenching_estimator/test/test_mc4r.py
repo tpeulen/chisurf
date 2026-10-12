@@ -2,16 +2,34 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Ensure quest is importable
 ROOT = Path(__file__).resolve().parents[1]
 
-from chisurf.plugins.quenching_estimator.api.local import simulate_project, DecaySimulationResult
+from chisurf.plugins.quenching_estimator.api.local import DecaySimulationResult, simulate_project
 
 AMINO_ACIDS = [
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 ]
 
 
@@ -26,7 +44,7 @@ def test_mc4r_simulation() -> None:
     cif_path = ROOT / "test" / "data" / "mc4r_dimer.cif"
     assert cif_path.exists(), f"Test CIF file not found at {cif_path}"
 
-    project: Dict[str, Any] = {
+    project: dict[str, Any] = {
         "pdb": str(cif_path),
         "attachment": {
             "chain": "A",
@@ -57,7 +75,7 @@ def test_mc4r_simulation() -> None:
         ),
         "output_file": "out_test",
         "save_avs": False,
-        "fret": {"enabled": False, "dyes": [{"D": 40.0}], "R0_matrix": []}
+        "fret": {"enabled": False, "dyes": [{"D": 40.0}], "R0_matrix": []},
     }
 
     result = simulate_project(project)

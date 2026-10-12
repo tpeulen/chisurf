@@ -1,27 +1,25 @@
-import time
+import inspect
+import json
 import os
+import tempfile
+import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
-import json
-import tempfile
 from pathlib import Path
-import inspect
 
 import numpy as np
+
+from chisurf.plugins.quenching_estimator.core import av as fps
 
 # No Qt in this module: the desktop form lives in `quest.gui`, and a headless
 # run must not pay for a GUI toolkit it never uses. Progress is reported through
 # a callback (see DonorDecay.update_all), not by driving a dialog from inside
 # the simulation (okf/specs/plugin-integration.md).
-
 from chisurf.plugins.quenching_estimator.core import photon
-
-from chisurf.plugins.quenching_estimator.core.structure import reader as PDB
-from chisurf.plugins.quenching_estimator.core.structure import Structure
-from chisurf.plugins.quenching_estimator.core import av as fps
 from chisurf.plugins.quenching_estimator.core.av import AV
 from chisurf.plugins.quenching_estimator.core.io import write_xyz
-
+from chisurf.plugins.quenching_estimator.core.structure import Structure
+from chisurf.plugins.quenching_estimator.core.structure import reader as PDB
 
 # ---------------------------------------------------------------------------
 # PET chemistry -- the C++ of `IMP.bff` (``PETQuenching.h``)
@@ -56,8 +54,10 @@ def _pet():
         _PET = types.SimpleNamespace(
             QUENCHER_ATOMS={k: tuple(v) for k, v in dict(bff.quencher_atoms()).items()},
             STANDARD_AMINO_ACID_RESIDUES=tuple(bff.standard_amino_acid_residues()),
-            PET_QUENCHING_REFERENCE={k: {"kQ": float(v.kQ), "contact_distance": float(v.contact_distance)}
-                                     for k, v in dict(bff.pet_quenching_reference()).items()},
+            PET_QUENCHING_REFERENCE={
+                k: {"kQ": float(v.kQ), "contact_distance": float(v.contact_distance)}
+                for k, v in dict(bff.pet_quenching_reference()).items()
+            },
             DEFAULT_DYE_RADIUS=getattr(bff, "DEFAULT_DYE_RADIUS", _FALLBACK_DYE_RADIUS),
             amino_acid_quenching_defaults=bff.amino_acid_quenching_defaults,
             normalize_amino_acid_quenching=bff.normalize_amino_acid_quenching,
@@ -121,7 +121,9 @@ def _interaction_table_to_dict(table):
 
     A project document is JSON: it must hold plain mappings, never the C++ objects (they cannot be copied or serialised).
     """
-    return OrderedDict((str(residue), _interaction_to_dict(params)) for residue, params in dict(table).items())
+    return OrderedDict(
+        (str(residue), _interaction_to_dict(params)) for residue, params in dict(table).items()
+    )
 
 
 def _interaction_table_from_dict(value):
@@ -143,7 +145,10 @@ def _interaction_table_from_dict(value):
             if "quench_radius" in entry:
                 try:
                     item.quench_radius = float(entry["quench_radius"])
-                except (TypeError, ValueError):       # None or text: inherit the model-wide critical distance
+                except (
+                    TypeError,
+                    ValueError,
+                ):  # None or text: inherit the model-wide critical distance
                     item.quench_radius = float("nan")
             if entry.get("quench_atoms") is not None:
                 item.quench_atoms = tuple(entry["quench_atoms"])
@@ -166,7 +171,9 @@ def default_amino_acid_interactions(kQ_scale=1.0, slow_factor=1.0, dye_radius=No
     pet = _pet()
     if dye_radius is None:
         dye_radius = pet.DEFAULT_DYE_RADIUS
-    return _interaction_table_to_dict(pet.amino_acid_quenching_defaults(kQ_scale, slow_factor, dye_radius))
+    return _interaction_table_to_dict(
+        pet.amino_acid_quenching_defaults(kQ_scale, slow_factor, dye_radius)
+    )
 
 
 def normalize_amino_acid_interactions(value=None):
@@ -174,7 +181,9 @@ def normalize_amino_acid_interactions(value=None):
 
     Delegates to :func:`IMP.bff.normalize_amino_acid_quenching`.
     """
-    return _interaction_table_to_dict(_pet().normalize_amino_acid_quenching(_interaction_table_from_dict(value)))
+    return _interaction_table_to_dict(
+        _pet().normalize_amino_acid_quenching(_interaction_table_from_dict(value))
+    )
 
 
 def _clamp_slow_factor(value):
@@ -192,9 +201,7 @@ DEFAULT_AMINO_ACID_SLOW_FACTS = None  # built on first use by the accessor below
 
 def normalize_amino_acid_slow_facts(value=None):
     """The per-residue stickiness table, defaults filled in."""
-    normalized = OrderedDict(
-        (res, 1.0) for res in _pet().STANDARD_AMINO_ACID_RESIDUES
-    )
+    normalized = OrderedDict((res, 1.0) for res in _pet().STANDARD_AMINO_ACID_RESIDUES)
     if not value:
         return normalized
     for residue, factor in value.items():
@@ -222,7 +229,9 @@ def selection2atom_idx(pdb, res_types, verbose=False):
     for residue_key in res_types:
         atoms = []
         for atom_name in res_types[residue_key]:
-            atoms.append(np.where((pdb['res_name'] == residue_key) & (pdb['atom_name'] == atom_name))[0])
+            atoms.append(
+                np.where((pdb["res_name"] == residue_key) & (pdb["atom_name"] == atom_name))[0]
+            )
         if len(atoms) > 0:
             atom_idx[residue_key] = np.array(np.hstack(atoms), dtype=np.uint32)
         else:
@@ -242,9 +251,9 @@ def save_hist(filename, x, y, verbose=False):
     """
     if verbose:
         print("Writing histogram to file: %s" % filename)
-    fp = open(filename, 'w')
+    fp = open(filename, "w")
     for p in zip(x, y):
-        fp.write('%.3f\t%i\n' % (p[0], p[1]))
+        fp.write("%.3f\t%i\n" % (p[0], p[1]))
     fp.close()
 
 
@@ -275,15 +284,14 @@ def get_quencher_coordinates(pdb, quencher, verbose=True, all_atoms=True):
     atom_idx = selection2atom_idx(pdb, quencher)
     coordinates = OrderedDict()
     for res_key in quencher:
-        coordinates[res_key] = pdb['coord'][atom_idx[res_key]]
+        coordinates[res_key] = pdb["coord"][atom_idx[res_key]]
     if verbose:
         print("Quencher atom-indeces: \n %s" % atom_idx)
         print("Quencher coordinates: \n %s" % coordinates)
     return coordinates
 
 
-class SimulateDiffusion(object):
-
+class SimulateDiffusion:
     @property
     def mean(self):
         traj = self._traj
@@ -307,14 +315,14 @@ class SimulateDiffusion(object):
         return self._traj, self._is_quenched
 
     @property
-    def critical_distance(self):
-        return self._critical_distance
-
-    @property
     def quencher_distances(self):
         if self._quencher_distances is None:
             raise ValueError("Set quencher first.")
         return self._quencher_distances
+
+    @property
+    def critical_distance(self):
+        return self._critical_distance
 
     @critical_distance.setter
     def critical_distance(self, v):
@@ -326,7 +334,9 @@ class SimulateDiffusion(object):
             if self._traj is not None:
                 self._is_quenched = np.zeros(self._traj.shape[0], dtype=bool)
             return
-        self._is_quenched = is_quenched(self.quencher_distances, self._critical_distance, self.verbose)
+        self._is_quenched = is_quenched(
+            self.quencher_distances, self._critical_distance, self.verbose
+        )
 
     @property
     def quenched(self):
@@ -337,9 +347,19 @@ class SimulateDiffusion(object):
     def save_trajectory(self, filename, skip):
         write_xyz(filename, (self._traj)[::skip])
 
-    def __init__(self, av, quencher, output_file='out', verbose=False,
-                 critical_distance=None, asa_calc=False, asa_n_sphere_point=590, asa_probe_radius=0.5,
-                 trajectory_suffix='_traj.xyz', all_quencher_atoms=True):
+    def __init__(
+        self,
+        av,
+        quencher,
+        output_file="out",
+        verbose=False,
+        critical_distance=None,
+        asa_calc=False,
+        asa_n_sphere_point=590,
+        asa_probe_radius=0.5,
+        trajectory_suffix="_traj.xyz",
+        all_quencher_atoms=True,
+    ):
         """
 
         :param av:
@@ -434,7 +454,7 @@ class SimulateDiffusion(object):
             print("Calculating quencher distances")
             print("Total quenching atoms: %s" % n)
         for i, quencher_position in enumerate(quencher_coordinates):
-            dist[i] = np.sum((traj - quencher_position)**2, axis=1)
+            dist[i] = np.sum((traj - quencher_position) ** 2, axis=1)
         return dist
 
     @property
@@ -448,24 +468,21 @@ class SimulateDiffusion(object):
             if isinstance(val, dict):
                 normalized_quencher[res_key] = {
                     "atoms": list(val.get("atoms", [])),
-                    "kQ": float(val.get("kQ", 2.0))
+                    "kQ": float(val.get("kQ", 2.0)),
                 }
             else:
                 # Legacy format: list of atoms
-                normalized_quencher[res_key] = {
-                    "atoms": list(val),
-                    "kQ": 2.0
-                }
+                normalized_quencher[res_key] = {"atoms": list(val), "kQ": 2.0}
 
         if self.all_quencher_atoms:
             pdb = self.pdb
             for residue_key in normalized_quencher:
-                atoms_idx = np.where(pdb['res_name'] == residue_key)[0]
-                all_atoms = list(set(pdb[atoms_idx]['atom_name']))
+                atoms_idx = np.where(pdb["res_name"] == residue_key)[0]
+                all_atoms = list(set(pdb[atoms_idx]["atom_name"]))
                 normalized_quencher[residue_key]["atoms"] = all_atoms
 
         self._quencher = normalized_quencher
-        
+
         # helper dict mapping residue_key to list of atoms
         atom_mapping = OrderedDict()
         for res_key, val in self._quencher.items():
@@ -479,15 +496,22 @@ class SimulateDiffusion(object):
         if self.verbose:
             print("Calculating ASA of quenchers.")
             print("radii:")
-            print(self.av.atoms['radius'])
+            print(self.av.atoms["radius"])
             print("coordinates:")
-            print(self.av.atoms['coord'])
+            print(self.av.atoms["coord"])
             print("Quencher atom-indices")
             print(self._quencher_atom_indices)
 
-        quencher_atom_index_array = np.hstack([v.flatten() for v in list(self._quencher_atom_indices.values())])
-        asa_v = fps.asa(self.av.structure.atoms['coord'], self.av.structure.atoms['radius'], quencher_atom_index_array,
-                        self.asa_sphere_points, self.asa_probe_radius)
+        quencher_atom_index_array = np.hstack(
+            [v.flatten() for v in list(self._quencher_atom_indices.values())]
+        )
+        asa_v = fps.asa(
+            self.av.structure.atoms["coord"],
+            self.av.structure.atoms["radius"],
+            quencher_atom_index_array,
+            self.asa_sphere_points,
+            self.asa_probe_radius,
+        )
 
         asa_it = (x for x in asa_v)
         asa = OrderedDict()
@@ -497,7 +521,9 @@ class SimulateDiffusion(object):
         if self.verbose:
             print("Accessible surface area:")
             print(self._asa)
-        self._quencher_coordinates = get_quencher_coordinates(self.pdb, atom_mapping, verbose=self.verbose)
+        self._quencher_coordinates = get_quencher_coordinates(
+            self.pdb, atom_mapping, verbose=self.verbose
+        )
         if self.verbose:
             print("Quencher coordinates:")
             print(self._quencher_coordinates)
@@ -541,9 +567,7 @@ class SimulateDiffusion(object):
         # `(n - 1) / 2` until 2026-07-28, which differs from the kernels'
         # integer offset on every even edge length -- see
         # `quest.core.av.grid_center_index`.
-        center_index = np.array(
-            [fps.grid_center_index(n) for n in shape], dtype=np.float64
-        )
+        center_index = np.array([fps.grid_center_index(n) for n in shape], dtype=np.float64)
         # `floor`, not `trunc`: `trunc` maps [-1, 0) to 0, so a position up to
         # one voxel *below* the grid was treated as inside it and read voxel 0's
         # quenching rate. `floor` sends it to -1, which the bounds check below
@@ -572,7 +596,7 @@ class SimulateDiffusion(object):
             ]
 
         base_seed = int(random_seed)
-        max_seed = (2 ** 31) - 1
+        max_seed = (2**31) - 1
         return [int((base_seed + idx * 104729) % max_seed) for idx in range(n_trajectories)]
 
     @staticmethod
@@ -583,7 +607,9 @@ class SimulateDiffusion(object):
         return max(1, min(requested, MAX_PARALLEL_TRAJECTORIES))
 
     @staticmethod
-    def _simulate_single_trajectory(density, slow_density, dg, slow_fact, t_step, t_max, D, random_seed):
+    def _simulate_single_trajectory(
+        density, slow_density, dg, slow_fact, t_step, t_max, D, random_seed
+    ):
         return fps.simulate_traj(
             density,
             slow_density,
@@ -594,10 +620,6 @@ class SimulateDiffusion(object):
             D=D,
             random_seed=random_seed,
         )
-
-    @property
-    def quencher_atom_indices(self):
-        return self._quencher_atom_indices
 
     @property
     def quencher_coordinates(self):
@@ -620,9 +642,18 @@ class SimulateDiffusion(object):
         self._quencher_atom_indeces = atom_indices
 
     def run(
-            self, D=40.0, slow_fact=0.01, t_step=0.002, t_max=10000,
-            save_traj=False, save_j=50, verbose=True, random_seed=None,
-            parallel_trajectories=-1, **kwargs):
+        self,
+        D=40.0,
+        slow_fact=0.01,
+        t_step=0.002,
+        t_max=10000,
+        save_traj=False,
+        save_j=50,
+        verbose=True,
+        random_seed=None,
+        parallel_trajectories=-1,
+        **kwargs,
+    ):
         """
 
         :param D: float
@@ -654,7 +685,7 @@ class SimulateDiffusion(object):
             print("Simulate dye-trajectory")
             print("Simulation time [us]: %.2f" % (t_max / 1000))
             print("Time-step [ps]: %.2f" % (t_step * 1000))
-            print("Number of steps: %.2f" % int((t_max / t_step)))
+            print("Number of steps: %.2f" % int(t_max / t_step))
             print("Parallel trajectories: %i" % n_trajectories)
             print("AV-grid parameter [Ang]: %.2f" % dg)
             print("Diff coeff. [Ang/ns2]: %.2f" % D)
@@ -707,17 +738,19 @@ class SimulateDiffusion(object):
             print("Rejected steps: %i" % n_rejected)
         end = time.process_time()
         if verbose:
-            print("time spent: %.2gs" % (end-start))
+            print("time spent: %.2gs" % (end - start))
             print("n_accepted: %s" % n_accepted)
             print("-----------------------")
             print("Attachment point: %s" % self.x0)
             print("Mean dye-position: %s" % self.mean)
 
         if save_traj:
-            self.save_trajectory(self.output_file+self.trajectory_suffix, save_j)
+            self.save_trajectory(self.output_file + self.trajectory_suffix, save_j)
         if not self._has_k_quench_grid():
             if self.quencher:
-                self._quencher_distances = self.get_quencher_distance2(self.quencher_coordinates, verbose)
+                self._quencher_distances = self.get_quencher_distance2(
+                    self.quencher_coordinates, verbose
+                )
             else:
                 self._is_quenched = np.zeros(self._traj.shape[0], dtype=bool)
         if verbose:
@@ -727,18 +760,43 @@ class SimulateDiffusion(object):
                 print(self._quencher_distances)
 
 
-class DonorDecay(object):
-
-    def __init__(self, tau0=None, kQ=1.0, nph=0, verbose=False, auto_update=False, pdb=None,
-                 attachment_residue=None, attachment_atom=None, attachment_chain=None, dg=None, sticky_mode='quencher',
-                 save_avs=True, D=None, slow_fact=0.05, critical_distance=None, output_file='out',
-                 av_parameter=None,
-                 quencher={'TRP': ['CB'], 'TYR': ['CB'], 'HIS': ['CB']}, t_max=10000.0, t_step=0.004,
-                 slow_radius=10.0, all_quencher_atoms=True, stickiness_mode='global',
-                 amino_acid_slow_facts=None, amino_acid_interactions=None, random_seed=None,
-                 parallel_trajectories=-1, coarse_grained=False,
-                 acceptor_D=None, acceptor_slow_fact=None, acceptor_slow_radius=None,
-                 acceptor_amino_acid_interactions=None, acceptor_dynamics="trajectory"):
+class DonorDecay:
+    def __init__(
+        self,
+        tau0=None,
+        kQ=1.0,
+        nph=0,
+        verbose=False,
+        auto_update=False,
+        pdb=None,
+        attachment_residue=None,
+        attachment_atom=None,
+        attachment_chain=None,
+        dg=None,
+        sticky_mode="quencher",
+        save_avs=True,
+        D=None,
+        slow_fact=0.05,
+        critical_distance=None,
+        output_file="out",
+        av_parameter=None,
+        quencher={"TRP": ["CB"], "TYR": ["CB"], "HIS": ["CB"]},
+        t_max=10000.0,
+        t_step=0.004,
+        slow_radius=10.0,
+        all_quencher_atoms=True,
+        stickiness_mode="global",
+        amino_acid_slow_facts=None,
+        amino_acid_interactions=None,
+        random_seed=None,
+        parallel_trajectories=-1,
+        coarse_grained=False,
+        acceptor_D=None,
+        acceptor_slow_fact=None,
+        acceptor_slow_radius=None,
+        acceptor_amino_acid_interactions=None,
+        acceptor_dynamics="trajectory",
+    ):
         """
         quenching trajectory as calculated by SimulateDiffusion.quenched
         :param tau0: float
@@ -837,7 +895,9 @@ class DonorDecay(object):
         self._acceptor_diffusion = None
         self.amino_acid_interactions = normalize_amino_acid_interactions(amino_acid_interactions)
         self.random_seed = random_seed
-        self.parallel_trajectories = int(-1 if parallel_trajectories is None else parallel_trajectories)
+        self.parallel_trajectories = int(
+            -1 if parallel_trajectories is None else parallel_trajectories
+        )
         self.coarse_grained = bool(coarse_grained)
         self._structure = None
         self._residue_site_cache = None
@@ -852,7 +912,7 @@ class DonorDecay(object):
         self._photon_trace_fret = None
 
     def __str__(self):
-        s = ''
+        s = ""
         return s
 
     @property
@@ -972,9 +1032,7 @@ class DonorDecay(object):
 
     def _interaction_for_residue(self, residue_name, interactions=None):
         table = self.amino_acid_interactions if interactions is None else interactions
-        return table.get(
-            _normalize_residue_name(residue_name), self._INTERACTION_FALLBACK
-        )
+        return table.get(_normalize_residue_name(residue_name), self._INTERACTION_FALLBACK)
 
     @property
     def acceptor_interactions(self):
@@ -1083,7 +1141,8 @@ class DonorDecay(object):
         # auto_update=False: QuEst never edits torsion angles, so the internal
         # coordinate build is pure overhead.
         self._structure = (
-            v if isinstance(v, Structure)
+            v
+            if isinstance(v, Structure)
             else Structure(v, make_coarse=self.coarse_grained, auto_update=False)
         )
         self._residue_site_cache = None
@@ -1099,9 +1158,17 @@ class DonorDecay(object):
         attachment_atom = self.attachment_atom
         chain = self.attachment_chain
         structure = self.structure
-        av = AV(structure, residue_seq_number=residue, atom_name=attachment_atom, chain_identifier=chain,
-                simulation_grid_resolution=dg, save_av=self.save_avs, verbose=verbose,
-                output_file=self.output_file, **self.av_parameter)
+        av = AV(
+            structure,
+            residue_seq_number=residue,
+            atom_name=attachment_atom,
+            chain_identifier=chain,
+            simulation_grid_resolution=dg,
+            save_av=self.save_avs,
+            verbose=verbose,
+            output_file=self.output_file,
+            **self.av_parameter,
+        )
         self._av = av
 
     def simulate_diffusion(self, verbose=False, plot_traj=False):
@@ -1110,11 +1177,13 @@ class DonorDecay(object):
         av = self.av
         D = self.diffusion_coefficient
         slow_fact = self.slow_fact
-        if self.stickiness_mode == 'amino_acid':
-            slow_fact = getattr(av, 'slow_factor_grid', None)
+        if self.stickiness_mode == "amino_acid":
+            slow_fact = getattr(av, "slow_factor_grid", None)
             if slow_fact is None:
                 slow_fact = self.slow_fact
-        diffusion = SimulateDiffusion(av, quencher=self.quencher, verbose=verbose, all_quencher_atoms=all_quencher_atoms)
+        diffusion = SimulateDiffusion(
+            av, quencher=self.quencher, verbose=verbose, all_quencher_atoms=all_quencher_atoms
+        )
         diffusion.run(
             D=D,
             verbose=verbose,
@@ -1138,7 +1207,7 @@ class DonorDecay(object):
         """
         if getattr(self, "random_seed", None) is None:
             return None
-        return int((int(self.random_seed) + 7919) % ((2 ** 31) - 1))
+        return int((int(self.random_seed) + 7919) % ((2**31) - 1))
 
     def calc_photons(self, verbose=False, donor_traj=None, kQ=None):
         """
@@ -1150,9 +1219,9 @@ class DonorDecay(object):
         tau0 = self.tau0
         if donor_traj is None:
             donor_traj = self.diffusion
-        
+
         k_quench = donor_traj.k_quench
-        
+
         if verbose:
             print("")
             print("Simulating decay:")
@@ -1163,7 +1232,10 @@ class DonorDecay(object):
 
         t_step = donor_traj.t_step
         dts, phs = photon.simulate_photon_trace_rate(
-            n_ph=n_photons, kQ=k_quench, t_step=t_step, tau0=tau0,
+            n_ph=n_photons,
+            kQ=k_quench,
+            t_step=t_step,
+            tau0=tau0,
             random_seed=self._photon_seed(),
         )
 
@@ -1202,9 +1274,12 @@ class DonorDecay(object):
         y, x = np.histogram(dts[nph == 1], range=range, bins=nbins)
         return x, y
 
-    def save_histogram(self, filename='hist.txt', verbose=False, nbins=4096, range=(0, 50)):
+    def save_histogram(self, filename="hist.txt", verbose=False, nbins=4096, range=(0, 50)):
         verbose = verbose or self.verbose
-        x, y, = self.get_histogram(nbins, range)
+        (
+            x,
+            y,
+        ) = self.get_histogram(nbins, range)
         save_hist(filename, x, y, verbose)
 
     def calc_acceptor_av(self, verbose=False):
@@ -1218,9 +1293,17 @@ class DonorDecay(object):
             return None
         params = self.fret_av_parameter if self.fret_av_parameter is not None else self.av_parameter
         try:
-            av = AV(self.structure, residue_seq_number=residue, atom_name=atom, chain_identifier=chain,
-                    simulation_grid_resolution=self.dg, save_av=self.save_avs, verbose=verbose,
-                    output_file=self.output_file + '_A', **params)
+            av = AV(
+                self.structure,
+                residue_seq_number=residue,
+                atom_name=atom,
+                chain_identifier=chain,
+                simulation_grid_resolution=self.dg,
+                save_av=self.save_avs,
+                verbose=verbose,
+                output_file=self.output_file + "_A",
+                **params,
+            )
         except ValueError as error:
             # Say which dye is at fault. A scan moves the donor from site to
             # site but leaves the acceptor where the project put it, so a stale
@@ -1236,9 +1319,7 @@ class DonorDecay(object):
             slow_centers=slow_centers,
             slow_radius=self.acceptor_slow_radius_value,
             verbose=verbose,
-            slow_fact=self._slow_facts_for_residue_names(
-                residue_names, self.acceptor_interactions
-            ),
+            slow_fact=self._slow_facts_for_residue_names(residue_names, self.acceptor_interactions),
         )
         self._acceptor_av = av
         self._acceptor_diffusion = None  # its walk belongs to this volume
@@ -1286,10 +1367,11 @@ class DonorDecay(object):
 
         seed = self.random_seed
         if seed is not None:
-            seed = int((int(seed) + 104729) % ((2 ** 31) - 1))
+            seed = int((int(seed) + 104729) % ((2**31) - 1))
 
-        diffusion = SimulateDiffusion(av, quencher={}, verbose=verbose,
-                                      all_quencher_atoms=self.all_quencher_atoms)
+        diffusion = SimulateDiffusion(
+            av, quencher={}, verbose=verbose, all_quencher_atoms=self.all_quencher_atoms
+        )
         diffusion.run(
             D=self.acceptor_diffusion_coefficient_value,
             verbose=verbose,
@@ -1321,8 +1403,10 @@ class DonorDecay(object):
         The default reproduces every number computed before it existed, because
         a published R0 is already quoted at kappa2 = 2/3.
         """
-        return fps.ISOTROPIC_KAPPA2 if self.fret_kappa2_value is None else float(
-            self.fret_kappa2_value
+        return (
+            fps.ISOTROPIC_KAPPA2
+            if self.fret_kappa2_value is None
+            else float(self.fret_kappa2_value)
         )
 
     def rda_mean_e(self, n_samples=50000):
@@ -1333,7 +1417,9 @@ class DonorDecay(object):
         it: the decay comes from the per-frame rate in
         :meth:`calc_fret_rate_trace`.
         """
-        acceptor_av = self._acceptor_av if self._acceptor_av is not None else self.calc_acceptor_av()
+        acceptor_av = (
+            self._acceptor_av if self._acceptor_av is not None else self.calc_acceptor_av()
+        )
         if acceptor_av is None:
             return None
         return float(fps.RDAMeanE(self.av, acceptor_av, self.fret_R0_angstrom, n_samples))
@@ -1360,7 +1446,11 @@ class DonorDecay(object):
         ``(R0/<r>)^6``, and averaging first weights close approaches heavily.
         """
         verbose = verbose or self.verbose
-        acceptor_av = self._acceptor_av if self._acceptor_av is not None else self.calc_acceptor_av(verbose=verbose)
+        acceptor_av = (
+            self._acceptor_av
+            if self._acceptor_av is not None
+            else self.calc_acceptor_av(verbose=verbose)
+        )
         if acceptor_av is None:
             raise ValueError(
                 "FRET is enabled but the acceptor dye is not defined: set its "
@@ -1375,7 +1465,9 @@ class DonorDecay(object):
         # of the two radii — two spheres cannot interpenetrate, and (R0/r)^6
         # diverges if they are allowed to.
         donor_radius = float((self.av_parameter or {}).get("radius1", _pet().DEFAULT_DYE_RADIUS))
-        acceptor_params = self.fret_av_parameter if self.fret_av_parameter is not None else self.av_parameter
+        acceptor_params = (
+            self.fret_av_parameter if self.fret_av_parameter is not None else self.av_parameter
+        )
         acceptor_radius = float((acceptor_params or {}).get("radius1", _pet().DEFAULT_DYE_RADIUS))
         r_min = donor_radius + acceptor_radius
 
@@ -1422,7 +1514,10 @@ class DonorDecay(object):
         # rates add frame by frame.
         k_total = (np.asarray(k_quench, dtype=np.float64) + k_fret).astype(np.float32)
         dts, phs = photon.simulate_photon_trace_rate(
-            n_ph=n_photons, kQ=k_total, t_step=t_step, tau0=self.tau0,
+            n_ph=n_photons,
+            kQ=k_total,
+            t_step=t_step,
+            tau0=self.tau0,
             random_seed=self._photon_seed(),
         )
         self._photon_trace_fret = dts, phs

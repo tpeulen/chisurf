@@ -66,7 +66,10 @@ oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
 
 ## QuEst moved into ChiSurf; a third of T4L sites have no AV at the default width (found 2026-10-12)
 
-status: open — the port itself is done (2026-10-12); two items remain (below).
+status: open — the port itself is done (2026-10-12); Open 1 and Open 3 resolved 2026-10-12 (FPS's link search is
+IMP.bff's default, imp.bff e4a3e2b9d, pinned in pixi.lock), Open 2 remains (below). The release-gate leftovers
+(Qt file dialogs in the form model, the demo contract, de/fr catalogue sources, the deleted
+`quest_native_failure.png` reference) are fixed 2026-10-12.
 
 **What changed.** Owner: "make quest a plugin and update against the imp.bff -- the current one". The Qt-free part
 of the former `quest` package (engine, project model, scan, runs, tasks, i18n, settings, facade, RPC contract and
@@ -105,10 +108,41 @@ decision recorded in imp.bff `okf/validation/fps_screening_ab.md` -- so QuEst's 
 defaults") cannot label a third of the protein, and the run stops with "Accessible Volume is empty". It blocks
 using QuEst's defaults for site scans; the demo (E36) and the plumbing fixtures were moved to labelable sites. Not
 changed here: the default and the hop rule are IMP.bff's to decide.
+**Resolved 2026-10-12 -- the search is FPS's now; the empty sites were mostly the radii, not the search.** IMP.bff
+e4a3e2b9d makes FPS's every-node hop the default (`link_search = "fps"`, stencil 342; `"fast"` keeps the seed-only
+search), checked against FPS's own routing (identical reached set) at 1.05-1.12x the seed-only search's cost. Re-measured
+over the 151 chain-E CB sites (L 20, W 4.5, R 3.5, grid 0.9, clearance derived): **QuEst's radii (IMP united-atom,
+C up to 2.275 A, HETATM included) 50 empty seed-only -> 48 with FPS's search** (10 and 161 open); ATOM records only
+44 -> 41; **FPS's own Bondi radii over ATOM records, as FPS reads the file, 33 empty under either search -- exactly FPS's
+own routine's 33** (`prototypes/fps_oracle`, 31 shared). So "FPS labels them" holds for FPS's radii: 96, 117 and 132
+open with Bondi radii and stay empty with IMP's; 99 and 129 are empty in FPS too. FPS's search does bring the volumes
+to FPS's (median 0.99 of FPS's against 0.93 seed-only). QuEst's default radii are IMP's on purpose (docking
+consistency), so a third of the sites stay unlabelable at W 4.5 under them; record and numbers in imp.bff
+`okf/validation/fps_screening_ab.md` ("Where to pick this up" 1-2, also the off-node anchor that keeps T4L-132 empty
+at 0.5 A).
 
 **Open 2 -- the dye-trajectory and ACF panels concatenate the parallel trajectories**: with *Parallel trajectories*
 -1 (8 on this machine) the time axis runs to 8 x t_max (16 000 ns for t_max 2000). Seen in the plugin window after
-**Load demo** -> **Simulate**; pre-existing in QuEst.
+**Load example** -> **Simulate** (`docs/guides/figures/quest_demo_result.png`); pre-existing in QuEst.
+
+**Open 3 -- the AV moved again (2026-10-12 08:03), and the suite follows it**: the imp.bff working tree makes
+FPS's every-node link search the default (`include/ProbeAccessibleVolumeDefaults.h`, owner 2026-10-12, reversing
+2026-10-11's "av go fast by default"; uncommitted there at the time of writing) and `_IMP_bff.so` in `arm64` is
+built from it. Against that build 12 of 591 QuEst tests were red: `test_baselines.py` (AV grid/cloud, scalar and
+distance metrics at 96, 129, 139), `test_aa_specific_quenching.py::test_quenching_is_site_dependent` and
+`test_simulation_performance.py::TestSeededReproducibility[139]`; a parallel lane is re-pinning them (baselines with
+`_previous` kept, the site pair re-scanned to E99/E96). The demo moved with it: E36 at seed 7 gives QY 0.864 /
+⟨τ⟩ 4.05 ns (was 0.913 / 4.11), which the guide, its figure and `test_demo_and_guide.py` now carry. Re-derive:
+`git -C ~/dev/imp/modules/bff status` and `pytest chisurf/plugins/quenching_estimator/test/test_baselines.py -q`.
+Blocks: QuEst's suite until the IMP.bff change is committed and pinned; then re-check Open 1 (FPS's hop should label
+most of the 51 empty sites) and re-run `docs/guides/screenshots/quest.py` if the demo number moves.
+**Resolved 2026-10-12**: committed as imp.bff e4a3e2b9d (pushed), `pixi update imp-bff` pins it; the suite is 590 passed,
+1 skipped against it. Baselines re-generated with the replaced record under `_previous` (the earlier one nested under
+`_previous._previous`): E96 94 641 -> 103 288 points, E129 39 811 -> 57 374, E139 104 199 -> 112 875; E139 no longer
+quenches (collisions 0.974 -> 0.0). Sites re-scanned over all 151 (57 quench): `QUENCHED_SITES` (36, 89, 139) ->
+(99, 89, 132) -- 139 stopped, 36 barely quenches (0.970), the classic 99 is back (0.320; 96 0.986 and 129 1.000 are
+not), 132 the standard FRET site (0.459); `test_quenching_is_site_dependent` E155/E10 (inverted, 0.896/0.721) ->
+E99/E96 (0.242/1.000). Re-check Open 1: done above -- FPS's hop labels 2 of the 51, the rest is the radii.
 
 ## Red in the 2026-10-12 click matrix, not from the table-fill / stretch change (found 2026-10-12)
 
@@ -125,8 +159,14 @@ Each was re-checked against the pre-change baseline where it touched a changed s
 - **lang_de** untranslated: Boarding "Detector setup", "FCS channels"; HMM "counts"; Spectra "to";
   VV/VH anisotropy "Load a VV/VH file".
 - In-process plugin suites, also red at the old emtk with the old specs: TTTR image browser drag/wheel/resize
-  clicks (3), VV/VH `test_save_outputs_and_its_error_path`; the shell suites fail on
-  `emtk.overlays.dismiss` (chisurf code calling an unpushed emtk function).
+  clicks (3), VV/VH `test_save_outputs_and_its_error_path`; ~~the shell suites fail on
+  `emtk.overlays.dismiss` (chisurf code calling an unpushed emtk function)~~ — resolved by the emtk pin 6d998ed
+  (2026-10-12): every `test/native_emtk/test_emtk_shell*.py` file and `test_ndx_context_menu_release.py` collect and
+  pass against it. That last file imports `emtk.testing_realistic.assert_input_released` (emtk af31641), so against an
+  older emtk its ImportError stops the collection of the whole run — refresh the env (`pixi install -e test`), not the test.
+- **Open, not reproduced**: `test_emtk_shell_readers.py::test_a_burst_table_dropped_on_the_pda_form_is_read_into_the_datasets`
+  went red once (the read's status said *failed*; the file took 145 s instead of 45 s, while another lane's suite ran)
+  and then passed in three whole-file runs. The status text was not kept; if it recurs, record `data.status` first.
 
 ## QA walk of the imaging, microscopy and structure guides (found 2026-10-11)
 
@@ -641,7 +681,10 @@ the emtk shell and Qt-hosted; 14/46 hosted in both shells; PDA through the emtk 
   itself, so `ReaderSettingsApp` drew its form in a window that clipped it. The form now sits in a scrolling child, and the
   Read data dock gives it at least `MIN_READER_FORM_H` (260 px) and scrolls itself when that does not fit
   (`test/native_emtk/test_emtk_shell_pda_reader_scroll.py` at 1920×1080, 1300×900 and 800×600; the reader tests no longer
-  need a 1300×1800 window).
+  need a 1300×1800 window). Follow-up 2026-10-12: at 800×600 the Read data dock's view is ~209 px, so the 260 px floor
+  overhung it, the form's lower half lay under the Analysis dock, and a wheel there went to that dock (the 800×600 case
+  went red). The floor is now never taller than the dock's view (`fit_docks._draw_read`), and the test helper
+  `reveal_in_reader` judges *on screen* by the dock's view, not the window.
 * ~~**PDA models' `n_points` reads a residual cache**~~ — fixed 2026-10-11: `n_points` of the five two-colour models (one
   property on `Pda2cModelMixin`) is the bin count of the 1D histogram computed from the data and the settings
   (`pda_1d_residual_size`), 81 before and after the first fit, and it follows a change of `n_bins` at once

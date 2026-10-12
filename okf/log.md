@@ -2,6 +2,15 @@
 
 ## 2026-10-12
 
+- AV search default is FPS's (owner decision): three-voxel cube hops from every node (IMP.bff e4a3e2b9d, stencil 342;
+  `link_search="fast"` keeps the seed-only search), also for docking, at 1.05-1.12x the seed-only cost after exact
+  shortcuts (ring skipping, SIMD rows). Fixed on the way: `av_distance_quadrature` diverged for overlapping clouds.
+  Finding: 148L's empty sites at W 4.5 come from the atom radii and the attachment handling, not the search.
+- Release gate 1 leftovers: QuEst's form model is Qt-free (the emtk window serves its file dialogs), its demo meets
+  the plugin contract (Load example; QY 0.864 under FPS's search), and its code passes ruff and mypy (about 80 errors
+  fixed, two stale baseline entries removed). `python -m chisurf` crash-logs and reports startup failures on the
+  emtk path as on `--qt`, and the splash closes when the main window fails to open. Spectra's hand translations
+  moved into the ChiSurf catalogue (one source per string); all catalogues re-extracted and compiled.
 - emtk shell tests green against emtk 6d998ed. At 800x600 the PDA reader form's 260 px floor overhung the Read
   data dock (about 209 px visible), so a wheel over its lower half went to the Analysis dock; the floor is now at most
   the dock's view. chimol's long-menu tests predated chimol folding its object list below 420x300 and now unfold it

@@ -63,8 +63,14 @@ On a grid of spacing $\Delta$ (~0.5–1 Å) around the attachment atom, a point 
 $\le L_\text{link}$ that does not cut through the biomolecule, and the dye body
 does not clash with any atom (each carrying its van-der-Waals radius).
 Reachability is a shortest-path flood-fill from the attachment point, so the
-linker cannot tunnel through the protein and the cloud hugs the surface rather
-than filling a naïve sphere. The result is a **weighted point cloud** — the
+cloud hugs the surface rather than filling a naïve sphere. The flood fill is
+FPS's {cite}`kalinin2012`: every grid point within half a linker width of the
+attachment atom is a start, and from every point it reaches the linker hops up to
+three grid steps along each axis at once (a $7\times7\times7$ cube), landing on any
+free point at its straight-line length. A hop can cross a wall thinner than three
+grid steps, which is what lets a linker leave a crowded attachment site. IMP.bff
+also offers a faster search that hops only out of the start sphere and then steps
+to the 74 nearest neighbours (`link_search = "fast"`); it returns ~7 % less volume. The result is a **weighted point cloud** — the
 allowed grid points $\mathbf{r}_i$ with weights $w_i$.
 
 ## The mean dye position

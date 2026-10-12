@@ -3758,14 +3758,13 @@ guides/figures/psf_determination.png:
   pages:
   - docs/guides/93_psf_determination.md
 
-guides/figures/quest_native_failure.png:
+guides/figures/quest_demo_result.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/quest.py::_grab_quest_demo_result
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/80_quenching_estimator.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/quest_native_failure.png.
+    Run the script named in origin (see the function that saves quest_demo_result.png);
+    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
+    renderer) into the state the guide describes and writes the PNG here.
   pages:
   - docs/guides/80_quenching_estimator.md
 

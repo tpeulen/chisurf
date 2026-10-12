@@ -77,6 +77,13 @@ def _compute_av():
     return compute_av
 
 
+def _link_search_stencil(link_search: str) -> int:
+    """The ``IMP.bff`` search stencil a link-search name selects ("fps" or "fast")."""
+    import IMP.bff
+
+    return int(IMP.bff.av_link_search_stencil(str(link_search)))
+
+
 def av_defaults() -> dict:
     """The accessible-volume defaults, as ``IMP.bff`` declares them.
 
@@ -98,6 +105,9 @@ def av_defaults() -> dict:
             IMP.bff.AV_DEFAULT_AV3_RADIUS3,
         ),
         "simulation_grid_resolution": IMP.bff.AV_DEFAULT_SIMULATION_GRID_RESOLUTION,
+        # How the linker is routed: "fps" (FPS's own search, the 3-voxel cube
+        # hop from every node) or "fast" (the hop out of the seed only).
+        "link_search": str(IMP.bff.AV_DEFAULT_LINK_SEARCH),
     }
 
 
@@ -132,6 +142,7 @@ class BasicAV:
         atom_name: str = None,
         position_name: str = None,
         verbose: bool = False,
+        link_search: str = None,
         **kwargs,
     ):
         # ``None`` is "not chosen": the parameter takes IMP.bff's default
@@ -150,6 +161,10 @@ class BasicAV:
             radius2 = defaults["av3_radii"][1]
         if radius3 is None:
             radius3 = defaults["av3_radii"][2]
+        if link_search is None:
+            link_search = defaults["link_search"]
+        #: "fps" (FPS's link search, IMP.bff's default) or "fast" (seed-only).
+        self.link_search = str(link_search)
         self.dg = simulation_grid_resolution
         # ``None`` means the caller did not choose: hand upstream the sentinel
         # and let it derive FPS's seed sphere, half the linker width
@@ -223,6 +238,7 @@ class BasicAV:
             r3=dye_radii[2],
             grid_resolution=self.dg,
             allowed_sphere_radius=self.allowed_sphere_radius,
+            search_stencil=_link_search_stencil(self.link_search),
         )
 
         ng = int(result.get_ng())

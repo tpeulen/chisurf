@@ -55,16 +55,12 @@ class TestItReachesTheRate:
     def test_the_default_reproduces_the_rate_exactly(self) -> None:
         donor, acceptor = _pair()
         without = fret_rate_pair_trace(donor, acceptor, R0=52.0, tau0=4.0)
-        stated = fret_rate_pair_trace(
-            donor, acceptor, R0=52.0, tau0=4.0, kappa2=ISOTROPIC_KAPPA2
-        )
+        stated = fret_rate_pair_trace(donor, acceptor, R0=52.0, tau0=4.0, kappa2=ISOTROPIC_KAPPA2)
         assert np.array_equal(without, stated)
 
     def test_the_rate_is_linear_in_kappa2(self) -> None:
         donor, acceptor = _pair()
-        base = fret_rate_pair_trace(
-            donor, acceptor, R0=52.0, tau0=4.0, kappa2=ISOTROPIC_KAPPA2
-        )
+        base = fret_rate_pair_trace(donor, acceptor, R0=52.0, tau0=4.0, kappa2=ISOTROPIC_KAPPA2)
         doubled = fret_rate_pair_trace(
             donor, acceptor, R0=52.0, tau0=4.0, kappa2=2 * ISOTROPIC_KAPPA2
         )
@@ -101,7 +97,11 @@ class TestTheProjectCarriesIt:
         """
         from pathlib import Path
 
-        from chisurf.plugins.quenching_estimator.core.project import ProjectValidationError, template_project, validate_project
+        from chisurf.plugins.quenching_estimator.core.project import (
+            ProjectValidationError,
+            template_project,
+            validate_project,
+        )
 
         project = template_project(with_fret=True)
         project["pdb"] = str(Path(__file__).parent / "148l.pdb")

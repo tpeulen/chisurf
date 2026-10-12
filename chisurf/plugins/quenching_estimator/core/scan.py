@@ -114,7 +114,7 @@ def simulate_site(
     name: str,
     pdb_path: Optional[Path | str] = None,
     nbins: Optional[int] = None,
-    tac_range: Tuple[float, float] = (0.0, 50.0),
+    tac_range: tuple[float, float] = (0.0, 50.0),
     project_dir: Optional[Path | str] = None,
 ) -> dict[str, Any]:
     """Simulate one labeling site and return its record. Never raises.
@@ -162,9 +162,7 @@ def simulate_site(
         "contact_volume": getattr(result, "contact_volume", None),
         "contact_to_free_ratio": getattr(result, "contact_to_free_ratio", None),
         "dominant_quencher": quenchers[0]["residue_name"] if quenchers else None,
-        "dominant_quencher_fraction": (
-            quenchers[0]["quench_rate_fraction"] if quenchers else None
-        ),
+        "dominant_quencher_fraction": (quenchers[0]["quench_rate_fraction"] if quenchers else None),
         "quenchers": quenchers,
     }
 
@@ -175,7 +173,7 @@ def scan_positions(
     *,
     pdb_path: Optional[Path | str] = None,
     nbins: Optional[int] = None,
-    tac_range: Tuple[float, float] = (0.0, 50.0),
+    tac_range: tuple[float, float] = (0.0, 50.0),
     project_dir: Optional[Path | str] = None,
     should_cancel: Optional[Callable[[], bool]] = None,
     report_progress: Optional[Callable[..., Any]] = None,

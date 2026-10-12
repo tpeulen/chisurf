@@ -28,6 +28,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 TEST_DIR = Path(__file__).resolve().parents[1]
 #: The checkout root (``chisurf/``'s parent), so the script runs from anywhere.
@@ -74,7 +75,9 @@ def clear_numba_cache() -> int:
 
 
 def _project(residue: int, *, structure: Path = STRUCTURE, chain: str = "E", acceptor=None):
-    from chisurf.plugins.quenching_estimator.core.dye_diffusion import default_amino_acid_interactions
+    from chisurf.plugins.quenching_estimator.core.dye_diffusion import (
+        default_amino_acid_interactions,
+    )
 
     donor = {
         "name": "D0",
@@ -233,7 +236,7 @@ def build(backend: str) -> dict:
     # picks -- which made both files identical on the first run, while their
     # accessible volumes differed by 7000 points.
     os.environ["QUEST_AV_BACKEND"] = backend
-    baseline = {
+    baseline: dict[str, Any] = {
         "backend": backend,
         "structure": STRUCTURE.name,
         "seed": SEED,

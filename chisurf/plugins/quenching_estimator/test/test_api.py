@@ -12,22 +12,43 @@ bundled PDB file so they do not depend on the GUI.
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
-import json
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 
-from chisurf.plugins.quenching_estimator.api.local import load_project, simulate_project, DecaySimulationResult  # type: ignore[import]
-
+from chisurf.plugins.quenching_estimator.api.local import (
+    DecaySimulationResult,
+    load_project,
+    simulate_project,
+)
 
 PDB_PATH = Path(__file__).resolve().parent / "148l.pdb"
 AAS = [
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 ]
 
 
@@ -38,7 +59,7 @@ def _aa_interactions(**overrides: dict[str, float]) -> dict[str, dict[str, float
     return interactions
 
 
-def _make_minimal_project(with_fret: bool) -> Dict[str, Any]:
+def _make_minimal_project(with_fret: bool) -> dict[str, Any]:
     """Return a small but complete QuEst project dictionary for testing.
 
     The parameters are chosen so that simulations run quickly while still
@@ -46,7 +67,7 @@ def _make_minimal_project(with_fret: bool) -> Dict[str, Any]:
     quencher positions are selected from the bundled 148l.pdb file.
     """
 
-    project: Dict[str, Any] = {}
+    project: dict[str, Any] = {}
 
     project["pdb"] = str(PDB_PATH)
     project["attachment"] = {
@@ -266,6 +287,7 @@ def test_simulate_project_job_dir(tmp_path: Path) -> None:
 
     # Verify uuid format
     import uuid
+
     uuid.UUID(job_folder.name)
 
     out_xyz = job_folder / "out.xyz"

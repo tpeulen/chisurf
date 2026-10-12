@@ -1,3 +1,4 @@
+import importlib
 import json
 import os
 from pathlib import Path
@@ -5,8 +6,8 @@ from pathlib import Path
 import pytest
 
 from chisurf.plugins.quenching_estimator.api import local as api
-import importlib
-cli = importlib.import_module('chisurf.plugins.quenching_estimator.cli.cli')
+
+cli = importlib.import_module("chisurf.plugins.quenching_estimator.cli.cli")
 
 
 class DummyResult:
@@ -63,6 +64,7 @@ def test_resolve_output_path_multiple(tmp_path):
 
 def test_validate_project_missing_key_raises():
     import click
+
     bad = {"tau0": 1.0}  # missing many keys
     with pytest.raises(click.ClickException):
         cli._validate_project(bad)
@@ -72,8 +74,26 @@ def test_simulate_set_and_grid(monkeypatch, tmp_path):
     interactions = {
         residue: {"slow_factor": 1.0, "kQ": 0.0}
         for residue in [
-            "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-            "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+            "ALA",
+            "ARG",
+            "ASN",
+            "ASP",
+            "CYS",
+            "GLN",
+            "GLU",
+            "GLY",
+            "HIS",
+            "ILE",
+            "LEU",
+            "LYS",
+            "MET",
+            "PHE",
+            "PRO",
+            "SER",
+            "THR",
+            "TRP",
+            "TYR",
+            "VAL",
         ]
     }
     project = {
@@ -97,11 +117,13 @@ def test_simulate_set_and_grid(monkeypatch, tmp_path):
 
     def fake_sim(project, pdb_path=None, nbins=None, tac_range=None, **kwargs):
         import numpy as np
+
         return DummyResult(time=np.array([0.0, 1.0]), donor_counts=np.array([1.0, 2.0]))
 
     monkeypatch.setattr(api, "simulate_project", fake_sim)
 
     import click.testing
+
     runner = click.testing.CliRunner()
     result = runner.invoke(
         cli.cli,
@@ -201,9 +223,15 @@ def test_1anf_cli_aa_sticking_increases_event_residence(tmp_path):
 
     control_rows = by_residue(tmp_path / "control.json")
     sticky_rows = by_residue(tmp_path / "sticky.json")
-    control_acidic_total = sum(control_rows[aa]["attributed_total_time_ns"] for aa in ("ASP", "GLU"))
+    control_acidic_total = sum(
+        control_rows[aa]["attributed_total_time_ns"] for aa in ("ASP", "GLU")
+    )
     sticky_acidic_total = sum(sticky_rows[aa]["attributed_total_time_ns"] for aa in ("ASP", "GLU"))
-    control_acidic_max = max(control_rows[aa]["attributed_max_event_time_ns"] for aa in ("ASP", "GLU"))
-    sticky_acidic_max = max(sticky_rows[aa]["attributed_max_event_time_ns"] for aa in ("ASP", "GLU"))
+    control_acidic_max = max(
+        control_rows[aa]["attributed_max_event_time_ns"] for aa in ("ASP", "GLU")
+    )
+    sticky_acidic_max = max(
+        sticky_rows[aa]["attributed_max_event_time_ns"] for aa in ("ASP", "GLU")
+    )
     assert sticky_acidic_total > control_acidic_total
     assert sticky_acidic_max > control_acidic_max

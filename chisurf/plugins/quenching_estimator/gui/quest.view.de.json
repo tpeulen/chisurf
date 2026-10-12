@@ -475,6 +475,12 @@
           "description": "Das aktuelle Projekt über quest.api rechnen."
         },
         {
+          "label": "Beispiel laden",
+          "icon": "🧪",
+          "action": "load_example",
+          "description": "Das mitgelieferte Beispiel laden: T4-Lysozym (PDB 148L), Farbstoff an E36, ein kurzer Lauf."
+        },
+        {
           "label": "📂 Projekt laden…",
           "action": "load_project_dialog",
           "description": "Ein QuEst-Projekt-JSON einlesen, gleich von welcher Oberfläche es stammt."

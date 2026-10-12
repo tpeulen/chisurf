@@ -13,7 +13,11 @@ import math
 import numpy as np
 import pytest
 
-from chisurf.plugins.quenching_estimator.core.av import additive_factor_grid, slow_factor_grid, subav
+from chisurf.plugins.quenching_estimator.core.av import (
+    additive_factor_grid,
+    slow_factor_grid,
+    subav,
+)
 
 
 def _reference_masks(ng, dg, radii, centers, origin):
@@ -32,9 +36,7 @@ def _reference_masks(ng, dg, radii, centers, origin):
         iz0 = math.floor((center[2] - origin[2]) / dg) + offset
         radius_idx = int(radius / dg)
         grid = np.indices((ng, ng, ng))
-        d2 = (
-            (grid[0] - ix0) ** 2 + (grid[1] - iy0) ** 2 + (grid[2] - iz0) ** 2
-        )
+        d2 = (grid[0] - ix0) ** 2 + (grid[1] - iy0) ** 2 + (grid[2] - iz0) ** 2
         masks.append(d2 < radius_idx * radius_idx)
     return masks
 
@@ -148,9 +150,12 @@ def test_empty_voxels_are_left_untouched():
     density = np.zeros((ng, ng, ng), dtype=np.uint8)
     origin = np.zeros(3)
     centers = np.array([origin])
-    assert np.count_nonzero(
-        additive_factor_grid(density, ng, dg, np.array([5.0]), centers, origin, np.array([2.0]))
-    ) == 0
+    assert (
+        np.count_nonzero(
+            additive_factor_grid(density, ng, dg, np.array([5.0]), centers, origin, np.array([2.0]))
+        )
+        == 0
+    )
     assert np.all(
         slow_factor_grid(density, ng, dg, np.array([5.0]), centers, origin, np.array([0.1])) == 1.0
     )

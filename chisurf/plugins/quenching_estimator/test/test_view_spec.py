@@ -15,7 +15,11 @@ import json
 
 import pytest
 
-from chisurf.plugins.quenching_estimator.core.i18n import DEFAULT_LOCALE, available_locales, ui_strings
+from chisurf.plugins.quenching_estimator.core.i18n import (
+    DEFAULT_LOCALE,
+    available_locales,
+    ui_strings,
+)
 from chisurf.plugins.quenching_estimator.gui.form_model import FIELD_PATHS
 from chisurf.plugins.quenching_estimator.gui.generate_view_spec import (
     VIEW_SPEC_PATH,
@@ -61,9 +65,7 @@ class TestEveryLanguageGetsTheSameForm:
     @pytest.mark.parametrize("locale", LOCALES)
     def test_the_bound_fields_are_identical(self, locale: str) -> None:
         english = {s["attr"] for s in _walk(build_view_spec()["sections"]) if s.get("attr")}
-        other = {
-            s["attr"] for s in _walk(build_view_spec(locale)["sections"]) if s.get("attr")
-        }
+        other = {s["attr"] for s in _walk(build_view_spec(locale)["sections"]) if s.get("attr")}
         assert english == other
 
     @pytest.mark.parametrize("locale", LOCALES)
@@ -76,6 +78,7 @@ class TestEveryLanguageGetsTheSameForm:
     @pytest.mark.parametrize("locale", LOCALES)
     def test_numeric_bounds_are_identical(self, locale: str) -> None:
         """A German spin box must not accept a different range."""
+
         def bounds(spec):
             return {
                 s["attr"]: (s.get("minimum"), s.get("maximum"))
@@ -153,11 +156,7 @@ class TestItIsUsable:
                 assert section.get("description"), section["attr"]
 
     def test_units_are_in_the_labels(self, spec) -> None:
-        labels = {
-            s["attr"]: s.get("label", "")
-            for s in _walk(spec["sections"])
-            if s.get("attr")
-        }
+        labels = {s["attr"]: s.get("label", "") for s in _walk(spec["sections"]) if s.get("attr")}
         # The Förster radius is the one that has actually been wrong; a label
         # without its unit is how 5.5 nm got read as 5.5 Å.
         assert "Å" in labels["fret_R0"]
@@ -169,7 +168,12 @@ class TestItIsUsable:
             for section in _walk(spec["sections"])
             for button in section.get("buttons", ())
         }
-        assert {"run_simulation", "save_project_dialog", "load_project_dialog"} <= actions
+        assert {
+            "run_simulation",
+            "load_example",
+            "save_project_dialog",
+            "load_project_dialog",
+        } <= actions
 
     def test_the_results_panel_plots_what_a_run_produces(self, spec) -> None:
         sources = {s["source"] for s in _walk(spec["sections"]) if s.get("type") == "plot"}

@@ -81,10 +81,28 @@ PDB_PATH = Path(__file__).parent / "148l.pdb"
 # 36 is also labelable at IMP.bff's default linker width (4.5 A), which 96, 99
 # and 129 are not.
 #
+# Re-scanned 2026-10-12, when IMP.bff's AV search became FPS's link search (the
+# three-voxel cube hop from every node, imp.bff e4a3e2b9d): all 151 sites scan,
+# 57 quench. 139 stopped again and 36 nearly did; of the classic three only 99
+# quenches under this project (96 0.986, 129 1.000), so 99 comes back and the
+# standard FRET site 132 takes the third slot:
+#
+#     site   IMP.bff (2026-10-12, seed-only)   IMP.bff (2026-10-12, FPS search)
+#      36          0.361                              0.970   <- dropped (barely quenches)
+#      89          0.424                              0.784
+#     139          0.122                              1.000   <- dropped
+#      99            --                               0.320   <- back (classic site)
+#     132            --                               0.459   <- replacement
+#
+# At IMP.bff's default width (4.5 A) none of 96, 99, 129, 132, 139 has a volume
+# under this plugin's radii (IMP's united-atom set): that is the radii, not the
+# search -- with FPS's Bondi radii 96 and 132 label (imp.bff
+# okf/validation/fps_screening_ab.md).
+#
 # Do not "fix" a failure here by widening the assertion: it means the volume
 # moved, and the sites have to be re-measured (scratch loop over every CB site,
 # 0 < QY < 1) rather than the test relaxed.
-QUENCHED_SITES = (36, 89, 139)
+QUENCHED_SITES = (99, 89, 132)
 
 
 def _project(residue: int, *, seed: int | None = 5, **overrides):
@@ -139,7 +157,9 @@ class TestSaveOutputs:
         full = simulate_project(
             _project(QUENCHED_SITES[0]), project_dir=tmp_path, save_outputs=True
         )
-        fast = simulate_project(_project(QUENCHED_SITES[0]), project_dir=tmp_path, save_outputs=False)
+        fast = simulate_project(
+            _project(QUENCHED_SITES[0]), project_dir=tmp_path, save_outputs=False
+        )
 
         assert fast.quantum_yield_donor == pytest.approx(full.quantum_yield_donor)
         assert fast.collisions_fraction == pytest.approx(full.collisions_fraction)
@@ -147,16 +167,14 @@ class TestSaveOutputs:
         assert fast.contact_volume == pytest.approx(full.contact_volume)
         assert fast.contact_to_free_ratio == pytest.approx(full.contact_to_free_ratio)
 
-        by_name = {row["residue_name"]: row for row in fast.aa_residence}
+        by_name = {row["residue_name"]: row for row in (fast.aa_residence or [])}
         assert by_name, "aa_residence drives the scan's 'Quenched by' column"
-        for row in full.aa_residence:
+        for row in full.aa_residence or []:
             assert by_name[row["residue_name"]]["mean_quench_rate"] == pytest.approx(
                 row["mean_quench_rate"]
             )
 
-    def test_viewer_point_clouds_follow_render_data_not_save_outputs(
-        self, tmp_path: Path
-    ) -> None:
+    def test_viewer_point_clouds_follow_render_data_not_save_outputs(self, tmp_path: Path) -> None:
         """Two questions, two flags.
 
         The thinned clouds exist for a plot or a 3D viewer; the job directory
@@ -171,7 +189,9 @@ class TestSaveOutputs:
         assert scan.acv_points is None
         assert scan.trajectory_points is None
 
-        gui = simulate_project(_project(QUENCHED_SITES[0]), project_dir=tmp_path, save_outputs=False)
+        gui = simulate_project(
+            _project(QUENCHED_SITES[0]), project_dir=tmp_path, save_outputs=False
+        )
         assert not (tmp_path / "jobs").exists(), "a GUI run must write nothing"
         assert gui.av_points is not None
         assert gui.trajectory_distance_to_mean is not None
@@ -261,6 +281,7 @@ class TestDensityToPoints:
         points = density2points(nx, ny, nz, 0.5, grid, (-1.0, 2.0, 0.25))
 
         assert points.shape == (len(expected), 3)
+
         # Lexicographic sort on both sides: same voxels, any order.
         def _sorted(a):
             a = np.asarray(a, dtype=np.float64)

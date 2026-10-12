@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import sys
 import json
+import sys
+from pathlib import Path
+
 import numpy as np
 import pytest
-from pathlib import Path
 from click.testing import CliRunner
 
 # Ensure quest is importable
@@ -12,14 +13,32 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from chisurf.plugins.quenching_estimator.api.local import simulate_project, DecaySimulationResult
+from chisurf.plugins.quenching_estimator.api.local import DecaySimulationResult, simulate_project
 from chisurf.plugins.quenching_estimator.cli.cli import cli
 
 PDB_PATH = Path(__file__).resolve().parent / "148l.pdb"
 
 AMINO_ACIDS = [
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 ]
 
 
@@ -48,7 +67,7 @@ def _make_project(with_fret: bool) -> dict:
         "output_file": "test_out",
         "save_avs": False,
     }
-    
+
     dyes = [
         {
             "name": "D0",
@@ -80,7 +99,7 @@ def test_use_case_donor_only() -> None:
     """Test standard donor-only simulation on 148l.pdb."""
     project = _make_project(with_fret=False)
     result = simulate_project(project)
-    
+
     assert isinstance(result, DecaySimulationResult)
     assert result.time.ndim == 1
     assert result.donor_counts.ndim == 1
@@ -93,12 +112,12 @@ def test_use_case_fret() -> None:
     """Test FRET simulation on 148l.pdb."""
     project = _make_project(with_fret=True)
     result = simulate_project(project)
-    
+
     assert isinstance(result, DecaySimulationResult)
     assert result.fret_counts is not None
     assert len(result.fret_counts) == project["n_bins"]
-    assert 0.0 <= result.quantum_yield_fret <= 1.0
-    assert 0.0 <= result.fret_efficiency <= 1.0
+    assert result.quantum_yield_fret is not None and 0.0 <= result.quantum_yield_fret <= 1.0
+    assert result.fret_efficiency is not None and 0.0 <= result.fret_efficiency <= 1.0
 
 
 def test_cli_validate_use_case(tmp_path: Path) -> None:
@@ -107,7 +126,7 @@ def test_cli_validate_use_case(tmp_path: Path) -> None:
     project = _make_project(with_fret=False)
     project_path = tmp_path / "project.json"
     project_path.write_text(json.dumps(project), encoding="utf8")
-    
+
     result = runner.invoke(cli, ["validate", "-p", str(project_path)])
     assert result.exit_code == 0
     assert "valid" in result.output.lower()
@@ -120,12 +139,12 @@ def test_cli_simulate_use_case(tmp_path: Path) -> None:
     project = _make_project(with_fret=False)
     project_path = tmp_path / "project.json"
     project_path.write_text(json.dumps(project), encoding="utf8")
-    
+
     out_csv = tmp_path / "out.csv"
     result = runner.invoke(cli, ["simulate", "-p", str(project_path), "-o", str(out_csv)])
     assert result.exit_code == 0
     assert out_csv.exists()
-    
+
     # Check that CSV has headers
     lines = out_csv.read_text(encoding="utf8").splitlines()
     assert len(lines) > 1
@@ -140,21 +159,27 @@ def test_cli_simulate_grid_sweep_use_case(tmp_path: Path) -> None:
     project = _make_project(with_fret=False)
     project_path = tmp_path / "project.json"
     project_path.write_text(json.dumps(project), encoding="utf8")
-    
+
     out_json = tmp_path / "out.json"
-    result = runner.invoke(cli, [
-        "simulate",
-        "-p", str(project_path),
-        # 10 and 15 lost their accessible volume when radii moved to IMP's.
-        "--grid", "attachment.residue=18,36",
-        "-o", str(out_json)
-    ])
+    result = runner.invoke(
+        cli,
+        [
+            "simulate",
+            "-p",
+            str(project_path),
+            # 10 and 15 lost their accessible volume when radii moved to IMP's.
+            "--grid",
+            "attachment.residue=18,36",
+            "-o",
+            str(out_json),
+        ],
+    )
     assert result.exit_code == 0
-    
+
     # Grid sweeps output multiple files matching format: out_param-val.json
     out_files = list(tmp_path.glob("out_attachment.residue-*.json"))
     assert len(out_files) == 2
-    
+
     # Read one file to verify it's valid JSON result
     with out_files[0].open("r", encoding="utf8") as f:
         data = json.load(f)

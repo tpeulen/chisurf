@@ -3,7 +3,7 @@
 QuEst already has one description of every input: `quest/settings/parameter_catalog.json`
 names each field by its **path in the project dict** (`av_parameter.linker_length`,
 `fret.dyes.1.attachment.chain`) and carries its label, type and help text. The
-docs are generated from it and the web UI reads it. This module makes the Qt
+docs are generated from it and the web UI reads it. This module makes the
 form read it too, by exposing a project dict as a flat set of attributes that
 ChiSurf's AutoForm can bind to.
 
@@ -30,10 +30,12 @@ from __future__ import annotations
 
 import copy
 import json
+import threading
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any, Iterable, MutableMapping
 
+from chisurf.plugins.quenching_estimator.core.i18n import resolve_locale, translate_catalog, ui
 from chisurf.plugins.quenching_estimator.core.project import (
     DEFAULT_FORSTER_RADIUS,
     REQUIRED_TOP_LEVEL_KEYS,
@@ -41,7 +43,6 @@ from chisurf.plugins.quenching_estimator.core.project import (
     template_project,
     validate_project,
 )
-from chisurf.plugins.quenching_estimator.core.i18n import resolve_locale, translate_catalog, ui
 
 __all__ = [
     "FIELD_PATHS",
@@ -53,7 +54,7 @@ __all__ = [
 #: Attribute name → path in the project dict. Every scalar the catalog
 #: documents appears here; the order is the order the catalog lists them, which
 #: is also the order the form shows them.
-FIELD_PATHS: "OrderedDict[str, str]" = OrderedDict(
+FIELD_PATHS: OrderedDict[str, str] = OrderedDict(
     (
         ("pdb", "pdb"),
         ("attachment_chain", "attachment.chain"),
@@ -134,7 +135,7 @@ def _set_path(mapping: Any, path: str, value: Any) -> None:
     it would produce a project that validates but simulates something else.
     """
     parts = path.split(".")
-    node = mapping
+    node: Any = mapping
     for part in parts[:-1]:
         if isinstance(node, (list, tuple)):
             node = node[int(part)]
@@ -143,7 +144,7 @@ def _set_path(mapping: Any, path: str, value: Any) -> None:
                 node[part] = OrderedDict()
             node = node[part]
     last = parts[-1]
-    if isinstance(node, (list, tuple)):
+    if isinstance(node, list):
         node[int(last)] = value
     else:
         node[last] = value
@@ -172,7 +173,9 @@ class ProjectFormModel:
     3.5
     """
 
-    def __init__(self, project: dict | None = None, locale: str | None = None) -> None:
+    def __init__(
+        self, project: MutableMapping[str, Any] | None = None, locale: str | None = None
+    ) -> None:
         # Bypass __setattr__: the field machinery needs _project to exist first.
         object.__setattr__(self, "_project", copy.deepcopy(project or template_project()))
         object.__setattr__(self, "_listeners", [])
@@ -183,10 +186,12 @@ class ProjectFormModel:
         self.status = self._t("status.idle")
         # The off-thread run (see start_simulation). __getattr__ raises for
         # anything it does not know, so these exist from the start.
-        self._sim_thread = None
-        self._sim_job_id = None
-        self._sim_result = None
-        self._sim_error = None
+        self._sim_thread: threading.Thread | None = None
+        self._sim_job_id: str | None = None
+        self._sim_result: Any = None
+        self._sim_error: BaseException | None = None
+        #: A file dialog the hosting window should open (see load_project_dialog), or None.
+        self.dialog_request: dict[str, Any] | None = None
 
     # -- AutoForm plumbing --------------------------------------------------
 
@@ -204,10 +209,10 @@ class ProjectFormModel:
 
         try:
             from chisurf.core.dataspec import load_view_spec
+
             return load_view_spec(path)
         except Exception:
             return json.loads(path.read_text(encoding="utf-8"))
-
 
     def set_changed_callback(self, callback) -> None:
         """AutoForm's hook: it wants to know when the model changed."""
@@ -245,7 +250,7 @@ class ProjectFormModel:
         """A copy of the project, safe to hand to the service layer."""
         return copy.deepcopy(self._project)
 
-    def load_project_dict(self, project: dict) -> None:
+    def load_project_dict(self, project: MutableMapping[str, Any]) -> None:
         """Replace the whole state with *project*, then fix attachment if needed.
 
         Raises
@@ -260,9 +265,7 @@ class ProjectFormModel:
             raise ProjectValidationError("A QuEst project is a JSON object.")
         missing = [key for key in REQUIRED_TOP_LEVEL_KEYS if key not in project]
         if missing:
-            raise ProjectValidationError(
-                f"Not a QuEst project: missing {', '.join(missing)}."
-            )
+            raise ProjectValidationError(f"Not a QuEst project: missing {', '.join(missing)}.")
         object.__setattr__(self, "_project", copy.deepcopy(project))
         self.auto_attach_to_structure()
         self._notify()
@@ -329,9 +332,7 @@ class ProjectFormModel:
         if not 0 <= row_index < len(rows):
             return
         residue = rows[row_index]["residue"]
-        entry = self._project.setdefault("amino_acid_interactions", {}).setdefault(
-            residue, {}
-        )
+        entry = self._project.setdefault("amino_acid_interactions", {}).setdefault(residue, {})
         text = "" if value is None else str(value).strip()
         if column_key == "quench_atoms":
             entry["quench_atoms"] = [a.strip() for a in text.split(",") if a.strip()]
@@ -383,6 +384,7 @@ class ProjectFormModel:
             return
         try:
             from chisurf.plugins.quenching_estimator.core.structure import structure_metadata
+
             meta = structure_metadata(pdb)
         except Exception:
             return
@@ -391,8 +393,26 @@ class ProjectFormModel:
             return
 
         STANDARD = {
-            "ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE",
-            "LEU","LYS","MET","PHE","PRO","SER","THR","TRP","TYR","VAL",
+            "ALA",
+            "ARG",
+            "ASN",
+            "ASP",
+            "CYS",
+            "GLN",
+            "GLU",
+            "GLY",
+            "HIS",
+            "ILE",
+            "LEU",
+            "LYS",
+            "MET",
+            "PHE",
+            "PRO",
+            "SER",
+            "THR",
+            "TRP",
+            "TYR",
+            "VAL",
         }
 
         def find_residue(chain, prefer_id=None):
@@ -425,7 +445,8 @@ class ProjectFormModel:
         # A site counts as valid only if it is a standard residue: the template
         # default (A:1) can name a sugar that exists but cannot take a dye.
         current_ok = any(
-            c["id"] == current_chain and any(
+            c["id"] == current_chain
+            and any(
                 r["id"] == current_res and r.get("name", "").upper() in STANDARD
                 for r in c.get("residues", [])
             )
@@ -454,14 +475,12 @@ class ProjectFormModel:
                 # has a chain A, but it is the NAG ligand, so a template acceptor
                 # on A:2 stayed there and every FRET run failed on it.
                 acc_chain = next(
-                    (
-                        c for c in chains
-                        if c["id"] == acc_chain_id and find_residue(c) is not None
-                    ),
+                    (c for c in chains if c["id"] == acc_chain_id and find_residue(c) is not None),
                     chain0,
                 )
                 all_std = [
-                    r for r in acc_chain.get("residues", [])
+                    r
+                    for r in acc_chain.get("residues", [])
                     if r.get("name", "").upper() in STANDARD
                 ]
                 if all_std:
@@ -479,9 +498,7 @@ class ProjectFormModel:
     def save_project(self, path: str | Path) -> Path:
         """Write the state as project JSON — the CLI's and web UI's format."""
         destination = Path(path)
-        destination.write_text(
-            json.dumps(self._project, indent=2, default=str), encoding="utf8"
-        )
+        destination.write_text(json.dumps(self._project, indent=2, default=str), encoding="utf8")
         return destination
 
     def load_project(self, path: str | Path) -> None:
@@ -489,47 +506,94 @@ class ProjectFormModel:
         with Path(path).open("r", encoding="utf8") as handle:
             self.load_project_dict(json.load(handle))
 
-    # The two dialog actions are what the toolbar buttons call. Qt is imported
-    # inside them, not at module scope: only a click can reach this code, and
-    # the rest of the model must stay importable where there is no display.
+    # The two dialog actions are what the toolbar buttons call. The model does
+    # not draw a dialog: it *requests* one (``dialog_request``) and the window
+    # that hosts it opens its own emtk file dialog, then hands the choice back
+    # through :meth:`finish_dialog`. So the model stays importable, and
+    # testable, where there is no display, and no toolkit is imported here.
 
-    def save_project_dialog(self) -> Path | None:
-        from qtpy import QtWidgets
-
-        path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            None,
-            self._t("dialog.save_project"),
-            "project.json",
-            self._t("filter.project"),
+    def load_project_dialog(self) -> dict:
+        """Ask the hosting window for a project file to read; returns the request."""
+        return self._request_dialog(
+            "load_project",
+            mode="open",
+            title=self._t("dialog.load_project"),
+            filters=f"{self._t('filter.project')};;{self._t('filter.all')}",
         )
-        if not path:
-            return None
-        saved = self.save_project(path)
-        self.status = self._t("status.saved").format(name=saved.name)
+
+    def save_project_dialog(self) -> dict:
+        """Ask the hosting window where to write the project; returns the request."""
+        return self._request_dialog(
+            "save_project",
+            mode="save",
+            title=self._t("dialog.save_project"),
+            filters=f"{self._t('filter.project')};;{self._t('filter.all')}",
+            filename="project.json",
+        )
+
+    def _request_dialog(self, kind: str, **options: Any) -> dict:
+        """Record a file-dialog request for the hosting window and notify it."""
+        request: dict[str, Any] = {"kind": kind, **options}
+        self.dialog_request = request
         self._notify()
-        return saved
+        return request
 
-    def load_project_dialog(self) -> Path | None:
-        from qtpy import QtWidgets
+    def take_dialog_request(self) -> dict | None:
+        """Return the pending file-dialog request and clear it (the host opens it once)."""
+        request, self.dialog_request = self.dialog_request, None
+        return request
 
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            None,
-            self._t("dialog.load_project"),
-            "",
-            f"{self._t('filter.project')};;{self._t('filter.all')}",
-        )
-        if not path:
-            return None
+    def finish_dialog(self, kind: str, path: str | Path) -> Path | None:
+        """Carry out what a file dialog chose; a failure becomes the status line.
+
+        Parameters
+        ----------
+        kind : str
+            ``"load_project"`` or ``"save_project"``, the ``kind`` of the request.
+        path : str or pathlib.Path
+            The chosen file. A project saved without an extension gets ``.json``.
+
+        Returns
+        -------
+        pathlib.Path or None
+            The file read or written, or None when nothing was (the status says why).
+        """
+        path = Path(path)
         try:
-            self.load_project(path)
+            if kind == "save_project":
+                if path.suffix.lower() != ".json":
+                    path = path.with_name(path.name + ".json")
+                done = self.save_project(path)
+                self.status = self._t("status.saved").format(name=done.name)
+            elif kind == "load_project":
+                self.load_project(path)
+                done = path
+                self.status = self._t("status.loaded").format(name=path.name)
+            else:
+                raise ValueError(f"unknown file dialog {kind!r}")
         except (ProjectValidationError, OSError, ValueError) as error:
             # A file that is not a project leaves the form as it was and says why.
-            self.status = f"{Path(path).name}: {error}"
+            self.status = f"{path.name}: {error}"
             self._notify()
             return None
-        self.status = self._t("status.loaded").format(name=Path(path).name)
         self._notify()
-        return Path(path)
+        return done
+
+    def load_example(self) -> Path:
+        """Load the plugin's demo project (T4 lysozyme, dye on E36), written by ``demo.make_demo``.
+
+        Returns
+        -------
+        pathlib.Path
+            The demo project file that was read.
+        """
+        from chisurf.plugins.quenching_estimator.demo import make_demo
+
+        path = make_demo()
+        self.load_project(path)
+        self.status = self._t("status.loaded").format(name=path.name)
+        self._notify()
+        return path
 
     # -- running, and what came out ----------------------------------------
 
@@ -553,11 +617,10 @@ class ProjectFormModel:
         `save_outputs=False` keeps a GUI run from littering `jobs/` in whatever
         directory the app happened to start in.
         """
-        import threading
-
         from chisurf.plugins.quenching_estimator.core.tasks import default_manager
 
         if self._sim_thread is not None and self._sim_thread.is_alive():
+            assert self._sim_job_id is not None  # set before the thread starts
             return self._sim_job_id
 
         manager = default_manager()
@@ -689,9 +752,7 @@ class ProjectFormModel:
         result = getattr(self, "results", None)
         if result is None:
             return []
-        series = [
-            {"x": result.time, "y": result.donor_counts, "name": self._t("plot.decay.donor")}
-        ]
+        series = [{"x": result.time, "y": result.donor_counts, "name": self._t("plot.decay.donor")}]
         if result.fret_counts is not None:
             series.append(
                 {"x": result.time, "y": result.fret_counts, "name": self._t("plot.decay.fret")}
@@ -735,7 +796,7 @@ class ProjectFormModel:
             try:
                 callback()
             except Exception:  # pragma: no cover - a bad listener must not
-                pass          # take the form down mid-edit
+                pass  # take the form down mid-edit
 
     # -- help text, from the one place it is written ------------------------
 

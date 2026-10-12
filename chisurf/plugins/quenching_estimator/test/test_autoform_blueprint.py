@@ -20,10 +20,10 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-VIEW_SPEC = REPO_ROOT /  "gui" / "quest.view.json"
-VIEW_SPEC_DE = REPO_ROOT /  "gui" / "quest.view.de.json"
-VIEW_SPEC_FR = REPO_ROOT /  "gui" / "quest.view.fr.json"
-GENERATOR = REPO_ROOT /  "gui" / "generate_view_spec.py"
+VIEW_SPEC = REPO_ROOT / "gui" / "quest.view.json"
+VIEW_SPEC_DE = REPO_ROOT / "gui" / "quest.view.de.json"
+VIEW_SPEC_FR = REPO_ROOT / "gui" / "quest.view.fr.json"
+GENERATOR = REPO_ROOT / "gui" / "generate_view_spec.py"
 
 
 class TestViewSpecFiles:
@@ -69,16 +69,12 @@ class TestViewSpecGeneration:
     def test_generated_matches_committed_german(self) -> None:
         committed = json.loads(VIEW_SPEC_DE.read_text(encoding="utf8"))
         generated = self._generated("de")
-        assert generated == committed, (
-            "quest.view.de.json is stale — re-run the generator"
-        )
+        assert generated == committed, "quest.view.de.json is stale — re-run the generator"
 
     def test_generated_matches_committed_french(self) -> None:
         committed = json.loads(VIEW_SPEC_FR.read_text(encoding="utf8"))
         generated = self._generated("fr")
-        assert generated == committed, (
-            "quest.view.fr.json is stale — re-run the generator"
-        )
+        assert generated == committed, "quest.view.fr.json is stale — re-run the generator"
 
     def test_every_section_has_a_type(self) -> None:
         from chisurf.plugins.quenching_estimator.gui.generate_view_spec import build_view_spec
@@ -115,8 +111,8 @@ class TestFormModelContract:
             assert hasattr(model, attr), f"FIELD_PATHS lists {attr!r} but the model lacks it"
 
     def test_form_model_default_is_a_valid_project(self) -> None:
-        from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
         from chisurf.plugins.quenching_estimator.core.project import validate_project
+        from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
 
         project = ProjectFormModel().to_project_dict()
         # The default template points at "structure.pdb" which does not exist
@@ -140,8 +136,8 @@ class TestFormModelContract:
         assert model.to_project_dict()["tau0"] == 3.14
 
     def test_loading_and_editing_does_not_alias(self) -> None:
-        from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
         from chisurf.plugins.quenching_estimator.core.project import template_project
+        from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
 
         original = template_project()
         model = ProjectFormModel()
@@ -183,14 +179,14 @@ class TestCrossSurfaceConsistency:
             # These are the known custom/special fields that don't get a value section.
             if param_id in ("amino_acid_interactions",):
                 continue
-            assert param_id in spec_attrs or any(
-                param_id in attr for attr in spec_attrs
-            ), f"catalog parameter {param_id!r} has no spec field"
+            assert param_id in spec_attrs or any(param_id in attr for attr in spec_attrs), (
+                f"catalog parameter {param_id!r} has no spec field"
+            )
 
     def test_the_spec_serves_three_locales(self) -> None:
         """The blueprint generates one spec per language."""
-        from chisurf.plugins.quenching_estimator.gui.generate_view_spec import build_view_spec
         from chisurf.plugins.quenching_estimator.core.i18n import available_locales
+        from chisurf.plugins.quenching_estimator.gui.generate_view_spec import build_view_spec
 
         for locale in available_locales():
             spec = build_view_spec(locale)
@@ -212,15 +208,22 @@ class TestWebAutoformRenderer:
         assert isinstance(spec["sections"], list)
         # Every section has a `type` the renderer knows about.
         valid_types = {
-            "panel", "dock_area", "value", "choice", "toggle", "toggle_row",
-            "button_row", "table", "custom", "info", "plot",
+            "panel",
+            "dock_area",
+            "value",
+            "choice",
+            "toggle",
+            "toggle_row",
+            "button_row",
+            "table",
+            "custom",
+            "info",
+            "plot",
         }
 
         def check(sections: list[dict]) -> None:
             for section in sections:
-                assert section["type"] in valid_types, (
-                    f"unknown section type {section['type']!r}"
-                )
+                assert section["type"] in valid_types, f"unknown section type {section['type']!r}"
                 check(section.get("sections", []))
 
         check(spec["sections"])
@@ -233,8 +236,19 @@ class TestWebAutoformRenderer:
 
         spec = build_view_spec()
         # These are the types in webui/frontend/src/components/autoform/types.ts
-        ts_types = {"panel", "dock_area", "value", "choice", "toggle",
-                     "toggle_row", "button_row", "table", "custom", "info", "plot"}
+        ts_types = {
+            "panel",
+            "dock_area",
+            "value",
+            "choice",
+            "toggle",
+            "toggle_row",
+            "button_row",
+            "table",
+            "custom",
+            "info",
+            "plot",
+        }
 
         def collect(sections: list[dict], found: set[str]) -> None:
             for section in sections:

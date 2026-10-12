@@ -107,9 +107,7 @@ def run_summary(path: Path) -> dict[str, Any]:
     made the listing grow without bound.
     """
 
-    date_str = datetime.datetime.fromtimestamp(path.stat().st_mtime).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    date_str = datetime.datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
     project_file = path / "project.json"
 
     if project_file.exists():

@@ -18,6 +18,7 @@ spelling, so call sites read unchanged.
 Imports are lazy: ``import quest.core`` must not pull ``IMP`` in
 (okf/references/known-issues.md).
 """
+
 from __future__ import annotations
 
 from typing import Tuple

@@ -1,5 +1,5 @@
 {
- "total": 3887,
+ "total": 3885,
  "files": {
   "chisurf/core/actions/_decorator.py": 1,
   "chisurf/core/actions/model_actions.py": 1,
@@ -620,8 +620,6 @@
   "chisurf/plugins/ndxplorer/calibration_bridge.py": 3,
   "chisurf/plugins/pch/demo.py": 1,
   "chisurf/plugins/pch/gui/app.py": 1,
-  "chisurf/plugins/quenching_estimator/gui/app.py": 1,
-  "chisurf/plugins/quenching_estimator/test/test_plugin.py": 1,
   "chisurf/plugins/spectra_downloader/download/atto.py": 5,
   "chisurf/plugins/spectra_downloader/download/chroma.py": 1,
   "chisurf/plugins/spectra_downloader/download/dedupe_spectra.py": 2,

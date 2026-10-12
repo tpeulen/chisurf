@@ -13,13 +13,12 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 import pytest
 
 from chisurf.plugins.quenching_estimator.core import i18n
 from chisurf.plugins.quenching_estimator.settings import parameter_catalog
-
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -103,16 +102,13 @@ class TestEveryTranslationIsComplete:
 
     @pytest.mark.parametrize("code", TRANSLATED)
     def test_all_categories_are_translated(self, code: str) -> None:
-        categories = {
-            entry["category"] for entry in parameter_catalog()["parameters"].values()
-        }
+        categories = {entry["category"] for entry in parameter_catalog()["parameters"].values()}
         translated = set(i18n.locale_data(code).get("categories", {}))
         assert not categories - translated, sorted(categories - translated)
 
     @pytest.mark.parametrize("code", TRANSLATED)
     def test_placeholders_survive_translation(self, code: str) -> None:
         """`{name}` renamed to `{Name}` is a crash at the moment it is shown."""
-        import re
 
         english = i18n.locale_data(i18n.DEFAULT_LOCALE)["ui"]
         translated = i18n.locale_data(code)["ui"]
@@ -158,8 +154,7 @@ class TestUiStrings:
         """A partial translation is useful; it must not be an error."""
         monkeypatch.setattr(i18n, "LOCALES_DIR", tmp_path)
         (tmp_path / "en.json").write_text(
-            json.dumps({"locale": "en", "name": "English",
-                        "ui": {"a": "Alpha", "b": "Beta"}}),
+            json.dumps({"locale": "en", "name": "English", "ui": {"a": "Alpha", "b": "Beta"}}),
             encoding="utf8",
         )
         (tmp_path / "xx.json").write_text(
@@ -179,8 +174,9 @@ class TestUiStrings:
 
     def test_a_broken_locale_file_is_skipped(self, tmp_path, monkeypatch) -> None:
         monkeypatch.setattr(i18n, "LOCALES_DIR", tmp_path)
-        (tmp_path / "en.json").write_text('{"locale": "en", "name": "English", "ui": {}}',
-                                          encoding="utf8")
+        (tmp_path / "en.json").write_text(
+            '{"locale": "en", "name": "English", "ui": {}}', encoding="utf8"
+        )
         (tmp_path / "zz.json").write_text("{ not json", encoding="utf8")
         i18n.clear_cache()
         try:
@@ -195,8 +191,7 @@ class TestTheScienceIsNotTranslated:
     def test_the_project_is_identical_in_every_language(self) -> None:
         from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
 
-        projects = [ProjectFormModel(locale=code).to_project_dict()
-                    for code in ("en", "de", "fr")]
+        projects = [ProjectFormModel(locale=code).to_project_dict() for code in ("en", "de", "fr")]
         assert projects[0] == projects[1] == projects[2]
 
     def test_units_stay_in_their_symbols(self) -> None:
@@ -209,9 +204,7 @@ class TestTheScienceIsNotTranslated:
     def test_project_keys_are_never_translated(self) -> None:
         """Descriptions name real keys (`critical_distance`); those must survive."""
         german = i18n.translate_catalog("de")["parameters"]
-        assert "critical_distance" in german["amino_acid_interactions.quench_radius"][
-            "description"
-        ]
+        assert "critical_distance" in german["amino_acid_interactions.quench_radius"]["description"]
         assert "slow_factor" in german["amino_acid_interactions"]["description"]
 
 
@@ -229,9 +222,7 @@ class TestTheServiceLayerServesLanguages:
 
         response = local_client().call("quest.parameter_catalog", {"locale": "fr"})
         assert response["ok"]
-        assert response["result"]["parameters"]["tau0"]["label"] == (
-            "Durée de vie non éteinte"
-        )
+        assert response["result"]["parameters"]["tau0"]["label"] == ("Durée de vie non éteinte")
 
     def test_no_locale_means_english_not_the_servers_language(self, monkeypatch) -> None:
         """A shared backend must not answer in whatever the host is set to."""
@@ -241,9 +232,7 @@ class TestTheServiceLayerServesLanguages:
         i18n.clear_cache()
         try:
             response = local_client().call("quest.parameter_catalog", {})
-            assert response["result"]["parameters"]["tau0"]["label"] == (
-                "Unquenched lifetime"
-            )
+            assert response["result"]["parameters"]["tau0"]["label"] == ("Unquenched lifetime")
         finally:
             i18n.clear_cache()
 
@@ -251,14 +240,10 @@ class TestTheServiceLayerServesLanguages:
         from pathlib import Path
 
         manifest = json.loads(
-            (Path(__file__).resolve().parents[1] /  "manifest.json").read_text(
-                encoding="utf8"
-            )
+            (Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf8")
         )
         methods = {entry["name"]: entry for entry in manifest["rpc_methods"]}
-        assert "locale" in methods["quest.parameter_catalog"]["params_schema"][
-            "properties"
-        ]
+        assert "locale" in methods["quest.parameter_catalog"]["params_schema"]["properties"]
         assert "quest.locales" in methods
 
 

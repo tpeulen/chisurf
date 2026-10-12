@@ -2,7 +2,7 @@
 
 QuEst (Peulen, Opanasyuk and Seidel, [10.1021/acs.jpcb.7b03441](https://doi.org/10.1021/acs.jpcb.7b03441)) simulates a dye on a flexible linker diffusing over a protein. Contact with a quenching residue (Trp, Tyr, His, Met, Pro, Cys) quenches the dye by photo-induced electron transfer (PET); with an acceptor dye the transfer of energy (FRET) is simulated too. The result is the donor fluorescence decay, from which the quantum yield and the lifetime follow.
 
-If you have not used it before, press **Guide**; **Load demo** gives it T4 lysozyme (PDB 148L) to work on.
+If you have not used it before, press **Guide**; **Load example** gives it T4 lysozyme (PDB 148L) to work on.
 
 ## What you enter
 

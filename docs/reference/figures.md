@@ -17,7 +17,7 @@ screenshot names the recipe that produced it. Provenance is kept in
 [`figures.yaml`](../references/figures.yaml); an image used without an
 entry there is marked **unrecorded** below, and that is the worklist.
 
-*411 figures, 4 unrecorded.*
+*411 figures, 3 unrecorded.*
 
 | # | Image | Caption | Origin | Page |
 | --- | --- | --- | --- | --- |
@@ -261,7 +261,7 @@ entry there is marked **unrecorded** below, and that is the worklist.
 | 238 | `guides/figures/hydro_native_primary_window.png` | The native host with an actual 148L structure path and an explicitly labelled parser-format fixture. This stand-in report is NOT a HYDROPRO calculation. | hand-driven headless capture of the tool the guide describes (no generating script) | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
 | 239 | `guides/figures/hydropro_exe_dialog.png` | The dialog shown when the executable path is empty or does not exist. **Select executable…** picks the binary, and **Open download page** opens the program's we… | docs/guides/make_screenshots.py::_grab_hydropro_exe_dialog | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
 | 240 | `guides/figures/hydropro_tool.png` | HydroPro with T4 lysozyme (PDB 148L) selected and its mass and partial specific volume entered. The structure is listed in the table with an empty result, becau… | docs/guides/make_screenshots.py::_grab_hydropro | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 241 | `guides/figures/quest_demo_result.png` | The QuEst window after **Load demo** and **Simulate** (800 × 600): T4 lysozyme (148L), dye on E36 C$_\beta$ at the default accessible volume. The State line rea… | **unrecorded** | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
+| 241 | `guides/figures/quest_demo_result.png` | The QuEst window after **Load example** and **Simulate** (800 × 600): T4 lysozyme (148L), dye on E36 C$_\beta$ at the default accessible volume. The State line… | docs/guides/screenshots/quest.py::_grab_quest_demo_result | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
 | 242 | `guides/figures/traj_tools_align.png` | Align on the T4 lysozyme ensemble, fitted on the 162 Cα atoms (their indices are in *Atom selection*). The log confirms the aligned file was written. | docs/guides/make_screenshots.py::idx | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
 | 243 | `guides/figures/traj_tools_clashes.png` | Remove Clashed with the Cα atoms and a 3.5 Å threshold. 132 of the 894 frames have a Cα pair closer than that and are dropped. 762 frames are kept. | docs/guides/make_screenshots.py::idx | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
 | 244 | `guides/figures/traj_tools_convert.png` | Convert writing every tenth frame of the ensemble to one DCD: 90 frames of 1293 atoms. | docs/guides/make_screenshots.py::idx | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |

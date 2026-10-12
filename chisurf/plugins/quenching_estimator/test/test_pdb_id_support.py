@@ -1,23 +1,43 @@
 from __future__ import annotations
 
+import importlib
 import json
 import sys
 import urllib.error
+from email.message import Message
 from pathlib import Path
 
 import click
 import pytest
 
-
-
-import importlib
-
-cli = importlib.import_module('chisurf.plugins.quenching_estimator.cli.cli')
-from chisurf.plugins.quenching_estimator.core.structure import download_pdb_id, is_pdb_id, resolve_structure_path
+cli = importlib.import_module("chisurf.plugins.quenching_estimator.cli.cli")
+from chisurf.plugins.quenching_estimator.core.structure import (
+    download_pdb_id,
+    is_pdb_id,
+    resolve_structure_path,
+)
 
 AMINO_ACIDS = [
-    "ALA", "ARG", "ASN", "ASP", "CYS", "GLN", "GLU", "GLY", "HIS", "ILE",
-    "LEU", "LYS", "MET", "PHE", "PRO", "SER", "THR", "TRP", "TYR", "VAL",
+    "ALA",
+    "ARG",
+    "ASN",
+    "ASP",
+    "CYS",
+    "GLN",
+    "GLU",
+    "GLY",
+    "HIS",
+    "ILE",
+    "LEU",
+    "LYS",
+    "MET",
+    "PHE",
+    "PRO",
+    "SER",
+    "THR",
+    "TRP",
+    "TYR",
+    "VAL",
 ]
 
 
@@ -32,7 +52,7 @@ class _FakeResponse:
     def __init__(self, content: bytes) -> None:
         self._content = content
 
-    def __enter__(self) -> "_FakeResponse":
+    def __enter__(self) -> _FakeResponse:
         return self
 
     def __exit__(self, *args: object) -> None:
@@ -67,8 +87,13 @@ def test_download_pdb_id_caches_rcsb_file(monkeypatch: pytest.MonkeyPatch, tmp_p
 
     # These cover the plugin's own fetch; the real call delegates to ChiSurf's
     # shared implementation, which this monkeypatched urlopen would never see.
-    monkeypatch.setattr("chisurf.plugins.quenching_estimator.core.structure.fetch._shared_downloader", lambda: None)
-    monkeypatch.setattr("chisurf.plugins.quenching_estimator.core.structure.fetch.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        "chisurf.plugins.quenching_estimator.core.structure.fetch._shared_downloader", lambda: None
+    )
+    monkeypatch.setattr(
+        "chisurf.plugins.quenching_estimator.core.structure.fetch.urllib.request.urlopen",
+        fake_urlopen,
+    )
 
     path = download_pdb_id("148l", cache_dir=tmp_path)
 
@@ -85,13 +110,18 @@ def test_download_pdb_id_falls_back_to_cif(monkeypatch: pytest.MonkeyPatch, tmp_
     def fake_urlopen(url: str, timeout: int) -> _FakeResponse:
         calls.append(url)
         if url.endswith(".pdb"):
-            raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=None, fp=None)
+            raise urllib.error.HTTPError(url, 404, "Not Found", hdrs=Message(), fp=None)
         return _FakeResponse(b"data_1ABC\n#\n")
 
     # These cover the plugin's own fetch; the real call delegates to ChiSurf's
     # shared implementation, which this monkeypatched urlopen would never see.
-    monkeypatch.setattr("chisurf.plugins.quenching_estimator.core.structure.fetch._shared_downloader", lambda: None)
-    monkeypatch.setattr("chisurf.plugins.quenching_estimator.core.structure.fetch.urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        "chisurf.plugins.quenching_estimator.core.structure.fetch._shared_downloader", lambda: None
+    )
+    monkeypatch.setattr(
+        "chisurf.plugins.quenching_estimator.core.structure.fetch.urllib.request.urlopen",
+        fake_urlopen,
+    )
 
     path = download_pdb_id("1abc", cache_dir=tmp_path)
 
@@ -103,10 +133,15 @@ def test_download_pdb_id_falls_back_to_cif(monkeypatch: pytest.MonkeyPatch, tmp_
     ]
 
 
-def test_resolve_structure_path_accepts_files_and_pdb_ids(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_resolve_structure_path_accepts_files_and_pdb_ids(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     local = tmp_path / "local.pdb"
     local.write_text("ATOM\n", encoding="utf8")
-    monkeypatch.setattr("chisurf.plugins.quenching_estimator.core.structure.fetch.download_pdb_id", lambda pdb_id, cache_dir=None: tmp_path / f"{pdb_id.lower()}.pdb")
+    monkeypatch.setattr(
+        "chisurf.plugins.quenching_estimator.core.structure.fetch.download_pdb_id",
+        lambda pdb_id, cache_dir=None: tmp_path / f"{pdb_id.lower()}.pdb",
+    )
 
     assert resolve_structure_path(local) == local
     assert resolve_structure_path("1abc") == tmp_path / "1abc.pdb"
@@ -121,6 +156,10 @@ def test_cli_validation_accepts_pdb_id(monkeypatch: pytest.MonkeyPatch, tmp_path
 
     cli._validate_project(_minimal_project("148l"))
 
-    monkeypatch.setattr(cli, "resolve_structure_path", lambda source: (_ for _ in ()).throw(FileNotFoundError("missing")))
+    monkeypatch.setattr(
+        cli,
+        "resolve_structure_path",
+        lambda source: (_ for _ in ()).throw(FileNotFoundError("missing")),
+    )
     with pytest.raises(click.ClickException):
         cli._validate_project(_minimal_project("missing.pdb"))

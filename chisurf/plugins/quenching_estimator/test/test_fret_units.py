@@ -14,7 +14,10 @@ from pathlib import Path
 import pytest
 
 from chisurf.plugins.quenching_estimator.core import build_donor_from_project
-from chisurf.plugins.quenching_estimator.core.project import DEFAULT_FORSTER_RADIUS, template_project
+from chisurf.plugins.quenching_estimator.core.project import (
+    DEFAULT_FORSTER_RADIUS,
+    template_project,
+)
 
 
 def _efficiency(r_da: float, r0: float) -> float:

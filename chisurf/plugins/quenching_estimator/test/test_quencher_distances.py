@@ -41,23 +41,35 @@ simulation._traj = np.array([[3.0, 4.0, 0.0]])
 simulation.verbose = False
 np.testing.assert_array_equal(simulation.get_quencher_distance2(np.zeros((1, 3))), [[25]])
 """
-    result = subprocess.run([sys.executable, "-c", script], env=environment,
-                            capture_output=True, text=True, timeout=30)
+    result = subprocess.run(
+        [sys.executable, "-c", script], env=environment, capture_output=True, text=True, timeout=30
+    )
     assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64])
 def test_pythagorean_walk_preserves_squared_distances_and_contact_boundary(dtype):
     """Known 3–4–5 contacts distinguish squared distances and strict thresholds."""
-    trajectory = np.array([
-        [0, 0, 0], [3, 4, 0], [3, 4, 12], [-3, 0, 4],
-        [3, 3.999, 0], [3, 4.001, 0], [0, 0, 12],
-    ], dtype=dtype)
+    trajectory = np.array(
+        [
+            [0, 0, 0],
+            [3, 4, 0],
+            [3, 4, 12],
+            [-3, 0, 4],
+            [3, 3.999, 0],
+            [3, 4.001, 0],
+            [0, 0, 12],
+        ],
+        dtype=dtype,
+    )
     quenchers = np.array([[0, 0, 0], [0, 0, 12]], dtype=dtype)
-    expected = np.array([
-        [0, 25, 169, 25, 24.992001, 25.008001, 144],
-        [144, 169, 25, 73, 168.992001, 169.008001, 0],
-    ], dtype=np.float16)
+    expected = np.array(
+        [
+            [0, 25, 169, 25, 24.992001, 25.008001, 144],
+            [144, 169, 25, 73, 168.992001, 169.008001, 0],
+        ],
+        dtype=np.float16,
+    )
     simulation = _simulation(trajectory)
     distances = simulation.get_quencher_distance2(quenchers)
     assert distances.shape == (2, 7)
@@ -65,7 +77,9 @@ def test_pythagorean_walk_preserves_squared_distances_and_contact_boundary(dtype
     np.testing.assert_array_equal(distances, expected)
     simulation._quencher_distances = distances
     simulation.critical_distance = 5.0
-    np.testing.assert_array_equal(simulation.quenched, [True, False, False, False, True, False, True])
+    np.testing.assert_array_equal(
+        simulation.quenched, [True, False, False, False, True, False, True]
+    )
     np.testing.assert_array_equal(simulation.k_quench, [2, 0, 0, 0, 2, 0, 3])
 
 
@@ -78,8 +92,10 @@ def test_brownian_walk_agrees_with_independent_scalar_distance_oracle(dtype):
     trajectory = trajectory.astype(dtype)
     quenchers = np.array([[0, 0, 0], [2, 1, -1]], dtype=dtype)
     # math.dist is an independent scalar Euclidean-distance implementation.
-    oracle = np.array([[math.dist(point, position) ** 2 for position in trajectory]
-                       for point in quenchers], dtype=np.float64)
+    oracle = np.array(
+        [[math.dist(point, position) ** 2 for position in trajectory] for point in quenchers],
+        dtype=np.float64,
+    )
     simulation = _simulation(trajectory)
     distances = simulation.get_quencher_distance2(quenchers)
     np.testing.assert_array_equal(distances, oracle.astype(np.float16))

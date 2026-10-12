@@ -11,7 +11,7 @@ from emtk import i18n
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.spectra_downloader.gui.app import PANELS, create_app
-from chisurf.plugins.spectra_downloader.gui.translations import _ROWS, LOCALES, tr
+from chisurf.plugins.spectra_downloader.gui.translations import LOCALES, SOURCES, TOOLTIPS, tr
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 
 
@@ -162,11 +162,29 @@ def test_persisted_selection_excludes_password(app):
     assert app.panel == "Browse"
 
 
+def catalogue(locale):
+    """ChiSurf's finished translations for *locale* (the one source of the window's strings)."""
+    from chisurf.emtk.i18n import read_catalog
+
+    root = Path(__file__).resolve().parents[4]
+    path = root / "chisurf" / "gui" / "i18n" / f"chisurf_{locale}.ts"
+    return read_catalog(path, include_unfinished=False)["chisurf"]
+
+
+def expected(locale, source):
+    """What *source* must read in *locale*: English as is, otherwise the catalogue's translation."""
+    if locale == "en":
+        return source
+    translations = catalogue(locale)
+    assert source in translations, f"{locale}: no catalogue translation for {source!r}"
+    return translations[source]
+
+
 @pytest.mark.parametrize("locale", LOCALES)
 def test_all_panels_and_controls_have_translations_and_render(app, locale):
     i18n.set_locale(locale)
-    for row in _ROWS:
-        assert tr(row[0]) == row[LOCALES.index(locale)]
+    for source in SOURCES:
+        assert tr(source) == expected(locale, source)
     app.model.select(app.model.rows[0]["probe_id"])
     for panel in PANELS:
         app.panel = panel
@@ -241,10 +259,8 @@ def test_scraper_process_streams_output_and_rejects_concurrent_run(app, monkeypa
 
 
 def test_descriptive_tooltips_translate(app):
-    from chisurf.plugins.spectra_downloader.gui.translations import _HELP_ROWS, TOOLTIPS
-
     for locale in LOCALES:
         i18n.set_locale(locale)
-        for row in _HELP_ROWS:
-            assert tr(row[0]) == row[LOCALES.index(locale)]
+        for text in TOOLTIPS.values():
+            assert tr(text) == expected(locale, text)
         assert TOOLTIPS["Push selected"] != "Push selected"
