@@ -2,6 +2,9 @@
 
 ## 2026-10-12
 
+- emtk 807cdbc: an extended grapheme cluster (skin tone, ZWJ, VS16, keycap, flag, tag, combining mark) is one glyph,
+  one caret step and one delete in every painter and editor (`emtk/grapheme.py`, no new dependency); a skin-tone emoji
+  no longer draws as two glyphs. Reaches ChiSurf with the next emtk pin.
 - Plot appearance has one change notification, `appearance.notify`, that every plot page subscribes to
   (`plotbase.Plot.restyle`, weakly), so Settings > Plots restyles open fit windows at once instead of on re-plot.
   chiplot gained `Region.set_brush`, `Curve.set_fill` and `Plot.hide_legend`; the invariant test

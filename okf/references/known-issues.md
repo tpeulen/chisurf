@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## An emoji with a skin-tone modifier drew as two glyphs (found 2026-10-12)
+
+status: resolved 2026-10-12 — emtk 807cdbc: `emtk/grapheme.py` segments extended grapheme clusters; painters draw one cell per cluster, editors move, select and delete whole clusters.
+
+Cause: emtk had no single definition of one character. The painters, `TextField` and `CommandLine` split text by code
+point, and the colour-icon path laid a sequence out with PIL's basic layout (no raqm shaping), so 👍🏽 became the thumb
+and a tone swatch side by side. Now every multi-code-point sequence (skin tone, ZWJ, VS16, keycap, regional-indicator
+flag, tag sequence, combining mark) is one cell; when the font cannot compose it, the base emoji is drawn alone.
+Tests: emtk `tests/test_grapheme_clusters.py` (136). Open: keycap and flag sequences fall back to the base glyph or the
+`¤` placeholder when the atlas has no glyph; composed sequences need Pillow built with raqm. ChiSurf sees the fix once
+its emtk pin moves past 807cdbc.
+
 ## FPS JSON Editor's Guide button started ChiMOL's general tour (found 2026-10-12)
 
 status: resolved 2026-10-12 — the host's Guide button runs the launcher's own chimol command (`tour fps_editor`) when the window was opened for a ChiMOL tool.
