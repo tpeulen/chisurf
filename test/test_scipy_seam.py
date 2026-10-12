@@ -39,7 +39,7 @@ _ALLOWLIST = _ROOT / "test" / "scipy_import_allowlist.txt"
 #: The packages the retirement covers. Same scope as the numba seam: the claim
 #: is "the shipped chisurf tree imports scipy nowhere at runtime", not "the
 #: solved environment has no scipy" -- it stays for tests and for sibling
-#: checkouts (modules/quest, modules/imp-tricks) that guard their own.
+#: checkouts (modules/imp-tricks) that guard their own.
 #: ChiMOL is excluded like under numba: its kernels are being removed by the
 #: WebGPU port, a separate effort with its own tracking.
 _EXCLUDED_PREFIXES = ("chisurf/plugins/chimol/",)

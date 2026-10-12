@@ -39654,7 +39654,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6125" />
             <source>Open the &lt;b&gt;Quenching Chemistry&lt;/b&gt; tab.</source>
-            <translation>Ouvrez l'onglet &lt;b&gt;Chimie de l'extinction&lt;/b&gt;.</translation>
+            <translation>Ouvrez l&apos;onglet &lt;b&gt;Chimie d&apos;extinction&lt;/b&gt;.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6126" />
@@ -41484,7 +41484,7 @@ aux distributions qui se chevauchent.</translation>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6734" />
             <source>Press &lt;b&gt;Load demo&lt;/b&gt;.</source>
-            <translation type="obsolete">Appuyez sur &lt;b&gt;Charger la démo&lt;/b&gt;.</translation>
+            <translation>Appuyez sur &lt;b&gt;Charger la démo&lt;/b&gt;.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6735" />
@@ -52565,7 +52565,7 @@ de corrélation) dans un seul outil à navigation latérale. Construit sur l'env
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10758" />
             <source>What QuEst simulates</source>
-            <translation>Ce que simule QuEst</translation>
+            <translation>Ce que QuEst simule</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10759" />
@@ -53250,7 +53250,7 @@ de corrélation) dans un seul outil à navigation latérale. Construit sur l'env
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10916" />
             <source>Where the dye sits</source>
-            <translation>Où se place le colorant</translation>
+            <translation>Où se trouve le colorant</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="10917" />
@@ -64889,6 +64889,530 @@ Utilisez Lire, puis Graphique : le déclin en micro-temps de vos données s’af
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="8958" />
             <source>Starting up…</source>
             <translation>Démarrage…</translation>
+        </message>
+        <message>
+            <source>Load demo</source>
+            <translation>Charger la démo</translation>
+        </message>
+        <message>
+            <source>Load the shipped example: T4 lysozyme (PDB 148L), dye on E36, a short run.</source>
+            <translation>Charger l&apos;exemple fourni : lysozyme T4 (PDB 148L), colorant sur E36, une courte simulation.</translation>
+        </message>
+        <message>
+            <source>The project as the quest command line and the RPC methods read it (read only).</source>
+            <translation>Le projet tel que la ligne de commande quest et les méthodes RPC le lisent (lecture seule).</translation>
+        </message>
+        <message>
+            <source>Write the form as project JSON, the file the quest command line reads.</source>
+            <translation>Écrire le formulaire en JSON de projet, le fichier que lit la ligne de commande quest.</translation>
+        </message>
+        <message>
+            <source>QuEst needs IMP.bff (its accessible volume and PET quenching tables), which this Python environment does not provide. The reason it reported:</source>
+            <translation>QuEst a besoin d&apos;IMP.bff (son volume accessible et ses tables d&apos;extinction PET), que cet environnement Python ne fournit pas. La raison signalée :</translation>
+        </message>
+        <message>
+            <source>Try to load QuEst again (after installing IMP.bff).</source>
+            <translation>Réessayer de charger QuEst (après avoir installé IMP.bff).</translation>
+        </message>
+        <message>
+            <source>A dye tethered to a protein by a flexible linker wanders over the surface; where it meets a quenching residue (Trp, Tyr, His, Met, Pro) its fluorescence is quenched by photo-induced electron transfer (PET), and with a second dye it can also transfer energy by FRET. QuEst simulates that diffusion from the structure alone and gives you the decay you would measure.&lt;br/&gt;&lt;br/&gt;You press the buttons; the tour only points at them.</source>
+            <translation>Un colorant attaché à une protéine par un lieur flexible se déplace sur la surface ; là où il rencontre un résidu extincteur (Trp, Tyr, His, Met, Pro), sa fluorescence est éteinte par transfert d&apos;électron photo-induit (PET), et avec un second colorant il peut aussi transférer de l&apos;énergie par FRET. QuEst simule cette diffusion à partir de la seule structure et donne le déclin que vous mesureriez.&lt;br/&gt;&lt;br/&gt;Vous appuyez sur les boutons ; la visite se contente de les montrer.</translation>
+        </message>
+        <message>
+            <source>Start from the demo</source>
+            <translation>Commencer par la démo</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Load demo&lt;/b&gt; loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure use &lt;b&gt;Load PDB...&lt;/b&gt; instead; a valid attachment site is picked for you.</source>
+            <translation>&lt;b&gt;Charger la démo&lt;/b&gt; charge le lysozyme T4 (PDB 148L), place le colorant sur le Cβ de Ser 36 et règle une courte simulation. Elle est fournie avec ChiSurf, rien n&apos;est à télécharger. Avec votre propre structure, utilisez plutôt &lt;b&gt;Charger PDB...&lt;/b&gt; ; un site d&apos;attache valide est choisi pour vous.</translation>
+        </message>
+        <message>
+            <source>Chain, residue and atom of the attachment point, usually the Cβ of the labelled residue. Change the residue to compare sites.</source>
+            <translation>Chaîne, résidu et atome du point d&apos;attache, généralement le Cβ du résidu marqué. Changez de résidu pour comparer les sites.</translation>
+        </message>
+        <message>
+            <source>Linker length, linker width and dye radius define where the dye centre can be. A longer linker reaches more quenchers. At the default width (4.5 Å) some surface sites have no volume at all; a narrower width labels them.</source>
+            <translation>La longueur et la largeur du lieur et le rayon du colorant définissent où peut se trouver le centre du colorant. Un lieur plus long atteint plus d&apos;extincteurs. À la largeur par défaut (4,5 Å), certains sites de surface n&apos;ont aucun volume ; une largeur plus étroite permet de les marquer.</translation>
+        </message>
+        <message>
+            <source>QuEst walks the dye through its volume and races photons against the quenching rate along the walk. The state line shows the quantum yield and the mean lifetime when it is done.</source>
+            <translation>QuEst fait se déplacer le colorant dans son volume et met en concurrence les photons et la vitesse d&apos;extinction le long du trajet. La ligne d&apos;état affiche ensuite le rendement quantique et la durée de vie moyenne.</translation>
+        </message>
+        <message>
+            <source>Press &lt;b&gt;Simulate&lt;/b&gt; and wait for the state line to show QY.</source>
+            <translation>Appuyez sur &lt;b&gt;Simuler&lt;/b&gt; et attendez que la ligne d&apos;état affiche QY.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Plots &amp;amp; Dynamics&lt;/b&gt; shows the simulated decay, the dye&apos;s distance from its mean position along the trajectory and how fast the dye forgets where it was. QY is relative to the unquenched dye: 1 means no quenching. Run twice with different seeds: if QY moves, lengthen the simulation.</source>
+            <translation>&lt;b&gt;Courbes &amp;amp; dynamique&lt;/b&gt; montre le déclin simulé, la distance du colorant à sa position moyenne le long de la trajectoire et la vitesse à laquelle le colorant oublie où il était. QY est relatif au colorant non éteint : 1 signifie aucune extinction. Lancez deux fois avec des graines différentes : si QY change, allongez la simulation.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Quenching Chemistry&lt;/b&gt; lists the quenching rate, contact radius, atoms and stickiness of each amino acid. They are reference values; edit a cell to test another assumption.</source>
+            <translation>&lt;b&gt;Chimie d&apos;extinction&lt;/b&gt; liste la vitesse d&apos;extinction, le rayon de contact, les atomes et l&apos;adhérence de chaque acide aminé. Ce sont des valeurs de référence ; modifiez une cellule pour tester une autre hypothèse.</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;Save project...&lt;/b&gt; writes the form as a project file: the file the &lt;code&gt;quest&lt;/code&gt; command line and the RPC methods run. Press &lt;b&gt;Help&lt;/b&gt; for every parameter.</source>
+            <translation>&lt;b&gt;Enregistrer le projet...&lt;/b&gt; écrit le formulaire dans un fichier de projet : le fichier qu&apos;exécutent la ligne de commande &lt;code&gt;quest&lt;/code&gt; et les méthodes RPC. Appuyez sur &lt;b&gt;Aide&lt;/b&gt; pour chaque paramètre.</translation>
+        </message>
+        <message>
+            <source>Load PDB...</source>
+            <translation>Charger PDB...</translation>
+        </message>
+        <message>
+            <source>Plots &amp; Dynamics</source>
+            <translation>Courbes &amp; dynamique</translation>
+        </message>
+        <message>
+            <source>3D Structure</source>
+            <translation>Structure 3D</translation>
+        </message>
+        <message>
+            <source>Quenching Chemistry</source>
+            <translation>Chimie d&apos;extinction</translation>
+        </message>
+        <message>
+            <source>Project JSON</source>
+            <translation>JSON du projet</translation>
+        </message>
+        <message>
+            <source>State: {status}</source>
+            <translation>État : {status}</translation>
+        </message>
+        <message>
+            <source>Time (ns)</source>
+            <translation>Temps (ns)</translation>
+        </message>
+        <message>
+            <source>Lag (ns)</source>
+            <translation>Décalage (ns)</translation>
+        </message>
+        <message>
+            <source>Figure</source>
+            <translation>Figure</translation>
+        </message>
+        <message>
+            <source>missing: {path}</source>
+            <translation>manquant : {path}</translation>
+        </message>
+        <message>
+            <source># QuEst — transient decay of a tethered dye
+
+Predicts the fluorescence decay of a dye on a flexible linker from the
+structure alone: the dye diffuses inside its accessible volume, is quenched on
+contact with nearby amino acids (PET), and — with FRET enabled — transfers to
+an acceptor.
+
+## What to set
+1. **Structure** — a PDB/CIF file or a four-character RCSB ID, and the residue
+   the dye is attached to.
+2. **Dye** — linker length, width and dye radius define the accessible volume.
+3. **Simulation** — the unquenched lifetime, the diffusion coefficient and how
+   long to simulate. `t_step` must resolve the fastest motion; the defaults are
+   measured, not guessed.
+4. **Quenching** — per-residue quenching rates and contact radii. Editing a row
+   changes the chemistry for that amino acid only.
+5. **FRET** — enable it, place the acceptor, and give R₀ **in Ångström**.
+
+## What comes out
+Quantum yield and mean lifetime, the donor (and FRET) decay, the dye
+trajectory, and its autocorrelation.
+
+Everything in this form is one QuEst *project*. **Save project** writes exactly
+the JSON the command line (`quest simulate project.json`) and the web UI read,
+so a run started here can be finished anywhere.
+</source>
+            <translation># QuEst — déclin transitoire d&apos;un fluorophore attaché
+
+Prédit le déclin de fluorescence d&apos;un fluorophore porté par un bras flexible à
+partir de la seule structure : le fluorophore diffuse dans son volume
+accessible, s&apos;éteint au contact des acides aminés voisins (PET) et — si le FRET
+est activé — transfère son énergie à un accepteur.
+
+## Ce qu&apos;il faut régler
+1. **Structure** — un fichier PDB/CIF ou un identifiant RCSB à quatre
+   caractères, et le résidu portant le fluorophore.
+2. **Fluorophore** — longueur et largeur du bras espaceur et rayon du
+   fluorophore définissent le volume accessible.
+3. **Simulation** — durée de vie non éteinte, coefficient de diffusion et durée
+   à simuler. `t_step` doit résoudre le mouvement le plus rapide ; les valeurs
+   par défaut sont mesurées, non devinées.
+4. **Extinction** — taux d&apos;extinction et rayons de contact par résidu. Modifier
+   une ligne ne change la chimie que de cet acide aminé.
+5. **FRET** — l&apos;activer, placer l&apos;accepteur et donner R₀ **en ångströms**.
+
+## Ce qui en sort
+Rendement quantique et durée de vie moyenne, déclin du donneur (et du FRET), la
+trajectoire du fluorophore et son autocorrélation.
+
+Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
+écrit exactement le JSON que lisent la ligne de commande
+(`quest simulate project.json`) et l&apos;interface web : un calcul commencé ici peut
+être terminé ailleurs.
+</translation>
+        </message>
+        <message>
+            <source>ACF</source>
+            <translation>FAC</translation>
+        </message>
+        <message>
+            <source>Acceptor atom</source>
+            <translation>Atome de l&apos;accepteur</translation>
+        </message>
+        <message>
+            <source>Acceptor chain</source>
+            <translation>Chaîne de l&apos;accepteur</translation>
+        </message>
+        <message>
+            <source>Acceptor diffusion coefficient (Å²/ns)</source>
+            <translation>Coefficient de diffusion de l&apos;accepteur (Å²/ns)</translation>
+        </message>
+        <message>
+            <source>Acceptor dye radius (Å)</source>
+            <translation>Rayon de l&apos;accepteur (Å)</translation>
+        </message>
+        <message>
+            <source>Acceptor dynamics</source>
+            <translation>Dynamique de l&apos;accepteur</translation>
+        </message>
+        <message>
+            <source>Acceptor linker length (Å)</source>
+            <translation>Longueur du bras de l&apos;accepteur (Å)</translation>
+        </message>
+        <message>
+            <source>Acceptor linker width (Å)</source>
+            <translation>Largeur du bras de l&apos;accepteur (Å)</translation>
+        </message>
+        <message>
+            <source>Acceptor residue</source>
+            <translation>Résidu de l&apos;accepteur</translation>
+        </message>
+        <message>
+            <source>Acceptor slowing radius (Å)</source>
+            <translation>Rayon de ralentissement de l&apos;accepteur (Å)</translation>
+        </message>
+        <message>
+            <source>Atom name (e.g., CB, CA) used as the tethering point for the dye.</source>
+            <translation>Nom de l&apos;atome (par ex. CB, CA) servant de point d&apos;attache au fluorophore.</translation>
+        </message>
+        <message>
+            <source>Atom name where the FRET acceptor dye is attached.</source>
+            <translation>Nom de l&apos;atome sur lequel l&apos;accepteur FRET est attaché.</translation>
+        </message>
+        <message>
+            <source>Atom names whose centroid defines this residue&apos;s quenching centre. The defaults follow the redox-active moiety that mediates photo-induced electron transfer: the indole ring for TRP, the phenol ring for TYR, the imidazole ring for HIS, SD for MET and SG for CYS - not CB.</source>
+            <translation>Noms des atomes dont le barycentre définit le centre d&apos;extinction de ce résidu. Les valeurs par défaut suivent le groupement rédox-actif qui assure le transfert d&apos;électron photo-induit : le cycle indole pour TRP, le cycle phénol pour TYR, le cycle imidazole pour HIS, SD pour MET et SG pour CYS — et non CB.</translation>
+        </message>
+        <message>
+            <source>Attachment chain</source>
+            <translation>Chaîne d&apos;attache</translation>
+        </message>
+        <message>
+            <source>Attachment residue</source>
+            <translation>Résidu d&apos;attache</translation>
+        </message>
+        <message>
+            <source>Base filename prefix used when saving simulation outputs, trajectories, and decays.</source>
+            <translation>Préfixe de nom employé pour enregistrer les résultats, les trajectoires et les déclins.</translation>
+        </message>
+        <message>
+            <source>Chain identifier of the amino acid residue where the dye is tethered.</source>
+            <translation>Identifiant de chaîne du résidu sur lequel le fluorophore est attaché.</translation>
+        </message>
+        <message>
+            <source>Chain identifier of the residue where the FRET acceptor dye is attached.</source>
+            <translation>Identifiant de chaîne du résidu sur lequel l&apos;accepteur FRET est attaché.</translation>
+        </message>
+        <message>
+            <source>Coarse-grained structure</source>
+            <translation>Structure gros grains</translation>
+        </message>
+        <message>
+            <source>Contact radius used by residue types that do not define their own quench_radius. It is measured from the dye centre to the residue&apos;s quenching centre, so it must exceed the dye radius plus van der Waals contact (typically 7-9 A for a 3.5 A dye).</source>
+            <translation>Rayon de contact employé par les types de résidus qui ne définissent pas leur propre quench_radius. Il se mesure du centre du fluorophore au centre d&apos;extinction du résidu et doit donc dépasser le rayon du fluorophore augmenté du contact de van der Waals (typiquement 7 à 9 Å pour un fluorophore de 3,5 Å).</translation>
+        </message>
+        <message>
+            <source>Decay bins</source>
+            <translation>Canaux du déclin</translation>
+        </message>
+        <message>
+            <source>Diffusion coefficient of the FRET acceptor dye when not interacting with the protein surface.</source>
+            <translation>Coefficient de diffusion de l&apos;accepteur FRET hors interaction avec la surface de la protéine.</translation>
+        </message>
+        <message>
+            <source>Diffusion coefficient of the donor dye in solution, when not interacting with the protein surface.</source>
+            <translation>Coefficient de diffusion du donneur en solution, hors interaction avec la surface de la protéine.</translation>
+        </message>
+        <message>
+            <source>Distance from the dye centre to this residue&apos;s quenching centre within which quenching occurs. Leave empty to inherit the project-wide critical_distance.</source>
+            <translation>Distance entre le centre du fluorophore et le centre d&apos;extinction de ce résidu en deçà de laquelle l&apos;extinction se produit. Laisser vide pour hériter du critical_distance du projet.</translation>
+        </message>
+        <message>
+            <source>Distance of the dye from its mean position — how far it actually explores.</source>
+            <translation>Distance du fluorophore à sa position moyenne — l&apos;étendue qu&apos;il explore réellement.</translation>
+        </message>
+        <message>
+            <source>Donor decay, and the FRET-quenched decay when FRET is enabled.</source>
+            <translation>Déclin du donneur et, si le FRET est activé, déclin éteint par FRET.</translation>
+        </message>
+        <message>
+            <source>Donor diffusion coefficient (Å²/ns)</source>
+            <translation>Coefficient de diffusion du donneur (Å²/ns)</translation>
+        </message>
+        <message>
+            <source>Dye radius (Å)</source>
+            <translation>Rayon du fluorophore (Å)</translation>
+        </message>
+        <message>
+            <source>Dye trajectory</source>
+            <translation>Trajectoire du fluorophore</translation>
+        </message>
+        <message>
+            <source>Exclusion radius representing the FRET acceptor dye sphere.</source>
+            <translation>Rayon d&apos;exclusion représentant l&apos;accepteur FRET comme une sphère.</translation>
+        </message>
+        <message>
+            <source>Exclusion radius representing the dye sphere (single-sphere approximation).</source>
+            <translation>Rayon d&apos;exclusion représentant le fluorophore comme une sphère (approximation à une sphère).</translation>
+        </message>
+        <message>
+            <source>FRET enabled</source>
+            <translation>FRET activé</translation>
+        </message>
+        <message>
+            <source>Factor between 0 and 1 scaling the dye&apos;s diffusion coefficient near this residue type, modelling unspecific stickiness. Overlapping residues multiply their factors.</source>
+            <translation>Facteur compris entre 0 et 1 qui met à l&apos;échelle le coefficient de diffusion du fluorophore au voisinage de ce type de résidu, modélisant une adhérence non spécifique. Les résidus qui se recouvrent multiplient leurs facteurs.</translation>
+        </message>
+        <message>
+            <source>Fallback contact radius (Å)</source>
+            <translation>Rayon de contact par défaut (Å)</translation>
+        </message>
+        <message>
+            <source>Fluorescence decay</source>
+            <translation>Déclin de fluorescence</translation>
+        </message>
+        <message>
+            <source>Fluorescence lifetime of the donor dye in the absence of quenching.</source>
+            <translation>Durée de vie de fluorescence du donneur en l&apos;absence d&apos;extinction.</translation>
+        </message>
+        <message>
+            <source>Förster radius R0 of the donor–acceptor pair, in Ångström like every other length in a project. Stored as the donor→acceptor cell of fret.R0_matrix; the transfer rate scales as (R0/r)^6, so entering nanometres makes FRET vanish. Typical xanthene pairs are 45–65 Å.</source>
+            <translation>Rayon de Förster R0 du couple donneur–accepteur, en ångströms comme toute autre longueur du projet. Il est stocké dans la case donneur→accepteur de fret.R0_matrix ; le taux de transfert varie en (R0/r)^6, si bien qu&apos;une saisie en nanomètres fait disparaître le FRET. Les couples xanthènes usuels se situent entre 45 et 65 Å.</translation>
+        </message>
+        <message>
+            <source>Grid resolution (Å)</source>
+            <translation>Résolution de la grille (Å)</translation>
+        </message>
+        <message>
+            <source>Grid resolution used to compute the accessible volume (AV) and diffusion search space.</source>
+            <translation>Résolution de la grille utilisée pour calculer le volume accessible (AV) et l&apos;espace de diffusion.</translation>
+        </message>
+        <message>
+            <source>How quickly the dye forgets where it was; sets whether quenching is diffusion- or contact-limited.</source>
+            <translation>Vitesse à laquelle le fluorophore oublie sa position ; détermine si l&apos;extinction est limitée par la diffusion ou par le contact.</translation>
+        </message>
+        <message>
+            <source>How the acceptor is treated: &apos;trajectory&apos; simulates its Brownian walk with its own diffusion coefficient and stickiness and uses the instantaneous donor-acceptor distance, &apos;averaged&apos; averages over its static accessible volume (the fast-acceptor limit, valid only when it explores that volume quickly compared with the donor lifetime). The two disagree because a cloud is weighted uniformly while a trajectory is weighted by where the dye dwells.</source>
+            <translation>Traitement de l&apos;accepteur : « trajectory » simule sa marche brownienne avec son propre coefficient de diffusion et sa propre adhérence, et utilise la distance donneur-accepteur instantanée ; « averaged » moyenne sur son volume accessible statique (limite de l&apos;accepteur rapide, valable seulement s&apos;il parcourt ce volume rapidement devant la durée de vie du donneur). Les deux diffèrent parce qu&apos;un nuage est pondéré uniformément alors qu&apos;une trajectoire l&apos;est par les endroits où le fluorophore séjourne.</translation>
+        </message>
+        <message>
+            <source>Linker length (Å)</source>
+            <translation>Longueur du bras espaceur (Å)</translation>
+        </message>
+        <message>
+            <source>Maximum distance from attachment point to the center of the FRET acceptor dye.</source>
+            <translation>Distance maximale entre le point d&apos;attache et le centre de l&apos;accepteur FRET.</translation>
+        </message>
+        <message>
+            <source>Maximum distance from attachment point to the center of the dye.</source>
+            <translation>Distance maximale entre le point d&apos;attache et le centre du fluorophore.</translation>
+        </message>
+        <message>
+            <source>Number of excitation photons simulated to reconstruct the fluorescence decay histogram.</source>
+            <translation>Nombre de photons d&apos;excitation simulés pour reconstruire l&apos;histogramme de déclin de fluorescence.</translation>
+        </message>
+        <message>
+            <source>Number of independent Brownian dynamics trajectories run concurrently and combined before photon sampling. Use -1 to use all CPU cores, capped at 8.</source>
+            <translation>Nombre de trajectoires browniennes indépendantes calculées simultanément et réunies avant l&apos;échantillonnage des photons. −1 utilise tous les cœurs du processeur, dans la limite de 8.</translation>
+        </message>
+        <message>
+            <source>Number of time channels/bins used to construct the output decay histogram.</source>
+            <translation>Nombre de canaux temporels de l&apos;histogramme de déclin produit.</translation>
+        </message>
+        <message>
+            <source>Orientation factor κ²</source>
+            <translation>Facteur d&apos;orientation κ²</translation>
+        </message>
+        <message>
+            <source>Orientation factor κ² of the transfer, between 0 (perpendicular transition dipoles) and 4 (collinear). QuEst does not model it: the dye is a point diffusing in a volume and has no dipole to orient, so this is the averaging regime you are asserting. The default 2/3 is the isotropic dynamic average, which is what a published Förster radius already assumes — leaving it there reproduces the rate exactly. Raise it only with evidence that both dyes are orientationally restricted.</source>
+            <translation>Facteur d&apos;orientation κ² du transfert, entre 0 (dipôles de transition perpendiculaires) et 4 (colinéaires). QuEst ne le modélise pas : le fluorophore est un point diffusant dans un volume et n&apos;a aucun dipôle à orienter — cette valeur est donc le régime de moyenne que vous postulez. La valeur par défaut 2/3 est la moyenne dynamique isotrope, que suppose déjà tout rayon de Förster publié ; la conserver reproduit exactement la vitesse de transfert. Ne l&apos;augmentez qu&apos;avec la preuve que les deux fluorophores sont contraints en orientation.</translation>
+        </message>
+        <message>
+            <source>Outcome of the last simulation.</source>
+            <translation>Résultat de la dernière simulation.</translation>
+        </message>
+        <message>
+            <source>Output file prefix</source>
+            <translation>Préfixe des fichiers de sortie</translation>
+        </message>
+        <message>
+            <source>Parallel trajectories</source>
+            <translation>Trajectoires parallèles</translation>
+        </message>
+        <message>
+            <source>Path to the structure file (PDB/CIF), or a bare four-character RCSB PDB ID used for AV calculation.</source>
+            <translation>Chemin du fichier de structure (PDB/CIF), ou identifiant RCSB PDB à quatre caractères, utilisé pour le calcul du volume accessible.</translation>
+        </message>
+        <message>
+            <source>Position autocorrelation</source>
+            <translation>Autocorrélation de la position</translation>
+        </message>
+        <message>
+            <source>QuEst — help</source>
+            <translation>QuEst — aide</translation>
+        </message>
+        <message>
+            <source>Quenching</source>
+            <translation>Extinction</translation>
+        </message>
+        <message>
+            <source>Radius (Å)</source>
+            <translation>Rayon (Å)</translation>
+        </message>
+        <message>
+            <source>Radius around each amino-acid centre within which that residue slows the acceptor. Separate from the donor&apos;s: a cyanine and a rhodamine do not adhere to a protein surface in the same way. Defaults to the donor&apos;s value.</source>
+            <translation>Rayon autour de chaque centre d&apos;acide aminé à l&apos;intérieur duquel ce résidu ralentit l&apos;accepteur. Distinct de celui du donneur : une cyanine et une rhodamine n&apos;adhèrent pas de la même façon à une surface protéique. Par défaut, la valeur du donneur.</translation>
+        </message>
+        <message>
+            <source>Radius around each whole-protein amino-acid center where that residue type contributes its slow_factor to the diffusion coefficient grid.</source>
+            <translation>Rayon autour de chaque centre d&apos;acide aminé de la protéine entière à l&apos;intérieur duquel ce type de résidu applique son slow_factor à la grille des coefficients de diffusion.</translation>
+        </message>
+        <message>
+            <source>Rate at which this residue type quenches the dye while the two are in contact. Contributions from residues whose contact spheres overlap add up.</source>
+            <translation>Taux auquel ce type de résidu éteint le fluorophore tant que les deux sont en contact. Les contributions des résidus dont les sphères de contact se recouvrent s&apos;additionnent.</translation>
+        </message>
+        <message>
+            <source>Read a QuEst project JSON written by any surface.</source>
+            <translation>Lire un projet QuEst au format JSON, quelle qu&apos;en soit l&apos;origine.</translation>
+        </message>
+        <message>
+            <source>Reduce the structure to backbone plus CB before simulating, with CB moved to the side-chain centre of mass. Side-chain atoms are then absent, so every residue&apos;s quenching centre falls back to that CB pseudo-atom, and the accessible volume grows because side chains no longer block it. This is a modelling choice, not a speed optimisation: QuEst&apos;s cost is dominated by the AV grid rather than the atom count.</source>
+            <translation>Réduit la structure au squelette et aux CB avant la simulation, chaque CB étant déplacé au centre de masse de sa chaîne latérale. Les atomes de chaîne latérale sont alors absents : le centre d&apos;extinction de chaque résidu se rabat sur ce pseudo-atome CB, et le volume accessible augmente puisque les chaînes latérales ne l&apos;obstruent plus. C&apos;est un choix de modélisation, non une optimisation : le coût de QuEst tient à la grille du volume accessible, pas au nombre d&apos;atomes.</translation>
+        </message>
+        <message>
+            <source>Residue sequence number of the amino acid where the dye is tethered.</source>
+            <translation>Numéro de séquence du résidu sur lequel le fluorophore est attaché.</translation>
+        </message>
+        <message>
+            <source>Residue sequence number where the FRET acceptor dye is attached.</source>
+            <translation>Numéro de séquence du résidu sur lequel l&apos;accepteur FRET est attaché.</translation>
+        </message>
+        <message>
+            <source>Run the current project through quest.api.</source>
+            <translation>Exécuter le projet courant via quest.api.</translation>
+        </message>
+        <message>
+            <source>Save AV files</source>
+            <translation>Enregistrer les fichiers AV</translation>
+        </message>
+        <message>
+            <source>Seed for the Monte-Carlo simulation. When set, both the diffusion trajectory and the photon trace are seeded, so repeated runs of the same project reproduce the same decay and quantum yield exactly. Leave unset for an independent random run; the photon trace then uses a faster multi-threaded kernel.</source>
+            <translation>Graine de la simulation Monte-Carlo. Lorsqu&apos;elle est fixée, la trajectoire de diffusion et le tirage des photons sont tous deux initialisés : deux exécutions du même projet reproduisent exactement le même déclin et le même rendement quantique. Sans graine, chaque exécution est indépendante et le tirage des photons emploie un noyau multithread plus rapide.</translation>
+        </message>
+        <message>
+            <source>Simulated photons</source>
+            <translation>Photons simulés</translation>
+        </message>
+        <message>
+            <source>Simulation time (ns)</source>
+            <translation>Durée de simulation (ns)</translation>
+        </message>
+        <message>
+            <source>Slow factor</source>
+            <translation>Facteur</translation>
+        </message>
+        <message>
+            <source>Slowing radius (Å)</source>
+            <translation>Rayon de ralentissement (Å)</translation>
+        </message>
+        <message>
+            <source>Structure file</source>
+            <translation>Fichier de structure</translation>
+        </message>
+        <message>
+            <source>Subsampling factor for writing trajectory frames to coordinates files.</source>
+            <translation>Facteur de sous-échantillonnage lors de l&apos;écriture des images de trajectoire dans les fichiers de coordonnées.</translation>
+        </message>
+        <message>
+            <source>Three-letter amino-acid code.</source>
+            <translation>Code d&apos;acide aminé à trois lettres.</translation>
+        </message>
+        <message>
+            <source>Time step (ns)</source>
+            <translation>Pas de temps (ns)</translation>
+        </message>
+        <message>
+            <source>Time step size for the Brownian dynamics trajectory calculation.</source>
+            <translation>Pas de temps du calcul de la trajectoire de dynamique brownienne.</translation>
+        </message>
+        <message>
+            <source>Total length of the simulated Brownian dynamics trajectory.</source>
+            <translation>Durée totale de la trajectoire de dynamique brownienne simulée.</translation>
+        </message>
+        <message>
+            <source>Trajectory skip frames</source>
+            <translation>Images de trajectoire ignorées</translation>
+        </message>
+        <message>
+            <source>Unquenched lifetime (ns)</source>
+            <translation>Durée de vie non éteinte (ns)</translation>
+        </message>
+        <message>
+            <source>Whether a FRET acceptor dye is simulated to compute FRET efficiency and decay curves.</source>
+            <translation>Indique si un accepteur FRET est simulé afin de calculer l&apos;efficacité de FRET et les courbes de déclin.</translation>
+        </message>
+        <message>
+            <source>Whether to save the calculated accessible volume grids as XYZ files.</source>
+            <translation>Indique si les grilles de volume accessible calculées sont enregistrées au format XYZ.</translation>
+        </message>
+        <message>
+            <source>Width of the linker tethering the FRET acceptor dye.</source>
+            <translation>Largeur du bras espaceur qui retient l&apos;accepteur FRET.</translation>
+        </message>
+        <message>
+            <source>Width of the linker tethering the dye.</source>
+            <translation>Largeur du bras espaceur qui retient le fluorophore.</translation>
+        </message>
+        <message>
+            <source>Write the form as project JSON — the same file the CLI and the web UI read.</source>
+            <translation>Écrire le formulaire au format projet JSON — le fichier que lisent la ligne de commande et l&apos;interface web.</translation>
+        </message>
+        <message>
+            <source>averaged</source>
+            <translation type="unfinished">averaged</translation>
+        </message>
+        <message>
+            <source>kQ (1/ns)</source>
+            <translation type="unfinished">kQ (1/ns)</translation>
+        </message>
+        <message>
+            <source>trajectory</source>
+            <translation type="unfinished">trajectory</translation>
+        </message>
+        <message>
+            <source>|r − ⟨r⟩| (Å)</source>
+            <translation type="unfinished">|r − ⟨r⟩| (Å)</translation>
+        </message>
+        <message>
+            <source>▶ Simulate</source>
+            <translation>▶ Simuler</translation>
+        </message>
+        <message>
+            <source>💾 Save project…</source>
+            <translation>💾 Enregistrer le projet…</translation>
+        </message>
+        <message>
+            <source>📂 Load project…</source>
+            <translation>📂 Charger un projet…</translation>
         </message>
     </context>
 </TS>

@@ -1,0 +1,7 @@
+{
+    "fortunepath": "./lib/ui/fortune/",
+    "min_length": 0,
+    "max_length": 200,
+    "attempts": 1000,
+    "enabled": true
+}

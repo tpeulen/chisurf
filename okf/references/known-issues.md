@@ -4,6 +4,78 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
+
+status: resolved 2026-10-12 — the legacy PyQt form is retired with the `quest` package; `QuEstTool` hosts the native
+emtk window (the Structure Tools QuEst card plus residue picking). The legacy form was captured first (1200 x 760,
+the broken ChiMOL viewport visible) and its controls inventoried; every one has a counterpart except the dead
+ChiMOL viewer's *Reload* (see the 2026-10-12 entry "QuEst moved into ChiSurf").
+
+**Open, owner W6d/W9 plugin migration.** A scratch offscreen construction of
+`quenching_estimator` succeeds after the owning Quest numerical dependency fix,
+but its 1200×760 PNG shows the left settings panel split into three columns
+too narrow for the Structure file/Attachment/Simulation labels and controls.
+The parent inspected the image, rather than accepting the construction test.
+The owning `modules/quest/quest/gui/chimol_widget.py` also imports removed
+`chisurf.plugins.chimol.chimol.app.sequence_dock`, `renderer.view` and
+`io.structure` paths; its caught errors leave the sequence and 3D tabs as
+placeholders. Current ChiMOL uses its own standalone package and native
+surfaces, so replacing a prefix alone cannot restore these old Qt interfaces.
+
+This blocks visual and molecular-selection parity for Qt retirement. Capture
+the real loaded-148L baseline before replacing the QuEst surface, reuse the
+current ChiMOL viewer/sequence APIs in the owning Quest framework, and render
+every tab with the same data. Do not count the W7 factory-only PNG as a complete
+migration baseline. Numerical provider readiness is separate: the immutable
+IMP.bff core wheel supplies F arrays and residual callbacks with scientific
+oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
+
+## QuEst moved into ChiSurf; a third of T4L sites have no AV at the default width (found 2026-10-12)
+
+status: open — the port itself is done (2026-10-12); two items remain (below).
+
+**What changed.** Owner: "make quest a plugin and update against the imp.bff -- the current one". The Qt-free part
+of the former `quest` package (engine, project model, scan, runs, tasks, i18n, settings, facade, RPC contract and
+services, CLI, form model, view-spec generator and its en/de/fr specs) is now
+`chisurf/plugins/quenching_estimator/` (`core/`, `settings/`, `api/local.py`, `rpc/`, `cli/`, `gui/`), and ChiSurf
+neither imports nor builds `quest` (`build-quest` gone from pixi.toml, `modules/quest` symlink and CI checkouts
+removed, `csg_quest` launches the plugin; guard: `quest` in `test/test_no_retired_dependency_imports.py`). Every
+retired IMP.bff import maps onto the flat surface: `IMP.bff.av.compute.compute_av` -> `get_av` (one (N, 4) xyzr
+array; `ng`, C-ordered `get_density()`, `get_grid_origin()`), `av._kernels.density2points` -> `density_to_points`,
+`av._kernels.random_distances` -> `random_distances`, `distance_metrics.av_pair_statistics` ->
+`distance_sample_statistics` (R_E is index **1** now, not 2), `distance_metrics.mean_position_distance` ->
+`mean_position_distance` (flat arrays), and `IMP.bff.quenching.{grid_center_index, slow_factor_grid,
+quenching_rate_grid, av_contact_mask, sphere_points, solvent_accessible_surface, fret_rate_trace,
+fret_rate_pair_trace, simulate_photon_trace, simulate_quenched_decay}` -> the same names on `IMP.bff` (flat in,
+flat out: the `(ng, ng, ng)` reshape is the caller's; `kappa2` has no default, pass 2/3), `simulate_dye_diffusion`
+-> `simulate_probe_diffusion`. Nothing was lost; one binding was broken: `center_grid_indices` took its four
+`std::vector<int>&` outputs as *inputs* and was uncallable from Python -- fixed in IMP.bff 2e7f56c32 (argout
+typemap, `test/quenching/test_center_grid_indices.py`), pinned in pixi.lock. Two engine defects fixed on the way:
+trajectory seeds are `uint32` and half overflowed the C `int` seed (now folded into 31 bits, `core.av.cxx_seed`),
+and auto-attach left the acceptor on 148L's ligand chain A (every FRET run after **Load PDB...** failed). The PyQt
+form, web UI, ZMQ server and `quest.hosts` did not move; the Qt tool now hosts the emtk window (before-PNG of the
+legacy form taken first, inventory: every legacy control has a counterpart -- renames *Run Simulation*/*▶ Simulate* ->
+*Simulate*, *?* -> *Help*, the Advanced fold's six fields present when opened -- except *Reload* of the ChiMOL
+viewer, which never loaded in ChiSurf (its import path was retired; the 3D tab draws the backbone instead), and
+*Open Web UI* in the emtk window, dropped with the web UI). Suite: QuEst at bdcf3e8 had 96 failed + 6 errors (of 689, 53 AV tests silently skipped); the moved suite
+is 585 passed, 1 skipped (opt-in network test), 0 failed. Baselines re-pinned with the old values kept under
+`_previous` in `test/baselines/imp_bff.json`: every move is IMP.bff's AV (E96 30 126 -> 94 641 points at
+21.5/0.5/3.5, E129 716 -> 39 811), not the port; quenched fixture sites re-scanned (57 of 151 quench) -> 36, 89, 139.
+
+**Open 1 -- at IMP.bff's default AV (L 20, W 4.5, R 3.5, grid 0.9) 51 of the 151 Cβ sites of 148L chain E are
+empty** (3, 6, 7, 10, 11, 24-27, 29, 31, 33, 42, 46, 54, 58, 63, 66, 67, 74, 78, 84, 88, 91, 95-106, 111, 114, 117,
+120, 121, 129, 132, 133, 138, 139, 146, 149, 152, 153, 161), including T4L-132, a standard FRET site; at W 0.5 none
+is. Re-derive: `IMP.bff.get_av(xyzr, cb, 20, 4.5, 3.5, 0, 0, 0.9, 2.1).n_points` over every chain-E CB (clearance
+-1 gives the same set). It is IMP.bff's linker search hopping out of the seed only (FPS hops from every node), a
+decision recorded in imp.bff `okf/validation/fps_screening_ab.md` -- so QuEst's defaults (owner: "all use same
+defaults") cannot label a third of the protein, and the run stops with "Accessible Volume is empty". It blocks
+using QuEst's defaults for site scans; the demo (E36) and the plumbing fixtures were moved to labelable sites. Not
+changed here: the default and the hop rule are IMP.bff's to decide.
+
+**Open 2 -- the dye-trajectory and ACF panels concatenate the parallel trajectories**: with *Parallel trajectories*
+-1 (8 on this machine) the time axis runs to 8 x t_max (16 000 ns for t_max 2000). Seen in the plugin window after
+**Load demo** -> **Simulate**; pre-existing in QuEst.
+
 ## Red in the 2026-10-12 click matrix, not from the table-fill / stretch change (found 2026-10-12)
 
 status: open — owners: the plugins named.
@@ -618,8 +690,9 @@ status: resolved 2026-10-11 — the four defects fixed at their root, each with 
         `test_emtk_quenching_estimator_clicks.py::test_a_placeholder_acceptor_takes_imp_bffs_av_defaults`). The
         named dyes keep their own L and R; their shared 0.5 Å width was a placeholder and is 4.5 (guard
         `quest/tests/test_av_defaults.py`). `tests/baselines/imp_bff.json` passes dg/W 0.5 explicitly, so no
-        pinned number moved. QuEST's own AV still cannot run: `quest.core.av` imports `IMP.bff.av.compute`, which
-        no current IMP.bff ships (102 failing/erroring tests before and after; port it as chimol was).
+        pinned number moved. ~~QuEST's own AV still cannot run~~ -- runs since 2026-10-12: QuEst moved into ChiSurf
+        as the `quenching_estimator` plugin, ported to `IMP.bff.get_av` and the flat kernels (entry "QuEst moved
+        into ChiSurf" at the top).
      2. ~~*chimol's IMP.bff AV backend is dead*~~ — **closed 2026-10-12** (chimol 4bd6a7a). The backend calls
         `IMP.bff.get_av_from_pdb` on the strip-masked copy (and `get_av_from_structure` when a contact volume is
         declared), probes that door at discovery, and the auto fallback logs one warning naming why IMP.bff is
@@ -1615,29 +1688,6 @@ It matters out of proportion to its size: `pixi` is the single sanctioned
 environment and build tool, every CI workflow uses it, and `build-extensions` is
 a `depends-on` of every `test*` task. A broken default solve takes the whole
 sanctioned test path with it, and `--frozen` masks that locally.
-
-## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
-
-status: open
-
-**Open, owner W6d/W9 plugin migration.** A scratch offscreen construction of
-`quenching_estimator` succeeds after the owning Quest numerical dependency fix,
-but its 1200×760 PNG shows the left settings panel split into three columns
-too narrow for the Structure file/Attachment/Simulation labels and controls.
-The parent inspected the image, rather than accepting the construction test.
-The owning `modules/quest/quest/gui/chimol_widget.py` also imports removed
-`chisurf.plugins.chimol.chimol.app.sequence_dock`, `renderer.view` and
-`io.structure` paths; its caught errors leave the sequence and 3D tabs as
-placeholders. Current ChiMOL uses its own standalone package and native
-surfaces, so replacing a prefix alone cannot restore these old Qt interfaces.
-
-This blocks visual and molecular-selection parity for Qt retirement. Capture
-the real loaded-148L baseline before replacing the QuEst surface, reuse the
-current ChiMOL viewer/sequence APIs in the owning Quest framework, and render
-every tab with the same data. Do not count the W7 factory-only PNG as a complete
-migration baseline. Numerical provider readiness is separate: the immutable
-IMP.bff core wheel supplies F arrays and residual callbacks with scientific
-oracle tests. [Readiness evidence](../validation/release-readiness-w7.md).
 
 ## Standalone parameter JSON/YAML file corruption (2026-10-07)
 

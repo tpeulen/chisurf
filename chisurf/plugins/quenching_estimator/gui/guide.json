@@ -1,42 +1,48 @@
 {
-  "_comment": "Guided tour for QuEst embedded in ChiSurf. Targets follow QuEst's own form (quest/gui/quest.view.json) and its tour (quest/settings/tour.json). Steps wait for the user to press the buttons. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "_comment": "Guided tour of the QuEst window (the plugin window and the Structure Tools card share it). Steps point at real controls and wait for the user to press them; targets are the window's control names and the attrs of quest.view.json. Load demo ships its own structure, so the tour can be walked without the user's files.",
   "steps": [
     {
-      "title": "What QuEst predicts",
-      "text": "QuEst predicts how strongly a dye at one labelling site is quenched by the protein. The dye diffuses inside its accessible volume and is quenched by <b>photoinduced electron transfer</b> whenever it touches Trp, Tyr, Met, His, Pro or Cys. The result is a donor decay and a quantum yield.<br/><br/>Use it to <b>compare sites</b>: the rate table is a starting point, not a calibration.",
+      "title": "What QuEst simulates",
+      "text": "A dye tethered to a protein by a flexible linker wanders over the surface; where it meets a quenching residue (Trp, Tyr, His, Met, Pro) its fluorescence is quenched by photo-induced electron transfer (PET), and with a second dye it can also transfer energy by FRET. QuEst simulates that diffusion from the structure alone and gives you the decay you would measure.<br/><br/>You press the buttons; the tour only points at them.",
       "target": {}
     },
     {
-      "title": "Load the structure",
-      "text": "Remove crystal waters first: they block the accessible volume and hide quenchers. A four-character PDB ID also works; T4 lysozyme (148L) is the example.",
-      "target": {"action": "Load PDB"},
-      "await": {"hint": "Press <b>Load PDB…</b> and choose a structure."}
+      "title": "Start from the demo",
+      "text": "<b>Load demo</b> loads T4 lysozyme (PDB 148L), puts the dye on the Cβ of Ser 36 and sets a short run. It ships with ChiSurf, so nothing has to be downloaded. With your own structure use <b>Load PDB...</b> instead; a valid attachment site is picked for you.",
+      "target": {"name": "load_demo"},
+      "await": {"hint": "Press <b>Load demo</b>."}
     },
     {
       "title": "Where the dye sits",
-      "text": "Chain, residue and atom of the attachment point, usually the Cβ of the labelled residue.",
+      "text": "Chain, residue and atom of the attachment point, usually the Cβ of the labelled residue. Change the residue to compare sites.",
       "target": {"attr": "attachment_residue"}
     },
     {
       "title": "The accessible volume",
-      "text": "Linker length, linker width and dye radius define where the dye centre can be. A longer linker reaches more quenchers.",
+      "text": "Linker length, linker width and dye radius define where the dye centre can be. A longer linker reaches more quenchers. At the default width (4.5 Å) some surface sites have no volume at all; a narrower width labels them.",
       "target": {"attr": "av_linker_length"}
     },
     {
-      "title": "The quenching chemistry",
-      "text": "One row per residue type: the rate while in contact (kQ), the contact radius from the dye centre, the atoms that define the quenching centre, and the slow factor that models stickiness. Overlapping contacts add their rates.",
-      "target": {"tab": "Quenching Chemistry"}
-    },
-    {
       "title": "Simulate",
-      "text": "QuEst walks the dye through its volume and races photons against the quenching rate along the walk.",
-      "target": {"action": "Run Simulation"},
-      "await": {"hint": "Press <b>Run Simulation</b>."}
+      "text": "QuEst walks the dye through its volume and races photons against the quenching rate along the walk. The state line shows the quantum yield and the mean lifetime when it is done.",
+      "target": {"name": "simulate"},
+      "await": {"hint": "Press <b>Simulate</b> and wait for the state line to show QY."}
     },
     {
-      "title": "Read the result",
-      "text": "The quantum yield is relative to the unquenched dye (1 means no quenching). The per-residue breakdown says which residue type does the quenching — the residue to move away from, or to mutate. Run twice with different seeds: if the quantum yield changes, lengthen the simulation.",
-      "target": {"tab": "Plots & Dynamics"}
+      "title": "Read the decay",
+      "text": "<b>Plots &amp; Dynamics</b> shows the simulated decay, the dye's distance from its mean position along the trajectory and how fast the dye forgets where it was. QY is relative to the unquenched dye: 1 means no quenching. Run twice with different seeds: if QY moves, lengthen the simulation.",
+      "target": {"name": "tab_Plots & Dynamics"}
+    },
+    {
+      "title": "The chemistry",
+      "text": "<b>Quenching Chemistry</b> lists the quenching rate, contact radius, atoms and stickiness of each amino acid. They are reference values; edit a cell to test another assumption.",
+      "target": {"name": "tab_Quenching Chemistry"},
+      "await": {"hint": "Open the <b>Quenching Chemistry</b> tab."}
+    },
+    {
+      "title": "Save the project",
+      "text": "<b>Save project...</b> writes the form as a project file: the file the <code>quest</code> command line and the RPC methods run. Press <b>Help</b> for every parameter.",
+      "target": {"name": "save_project"}
     }
   ]
 }

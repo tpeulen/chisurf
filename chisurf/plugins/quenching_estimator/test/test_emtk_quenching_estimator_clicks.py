@@ -1,7 +1,7 @@
 """Click coverage of the native QuEst window: Cancel, Load/Save project, Reset Defaults, attachment-site picking.
 
-Everything is pressed at the rectangle the control was drawn in (``Ui``), on T4 lysozyme (PDB 148L) shipped with the
-quest package. The simulated result is compared with the engine's ``simulate_project`` for the same project.
+Everything is pressed at the rectangle the control was drawn in (``Ui``), on T4 lysozyme (PDB 148L) shipped beside these
+tests. The simulated result is compared with the engine's ``simulate_project`` for the same project.
 """
 
 from __future__ import annotations
@@ -15,7 +15,6 @@ import pytest
 
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 
-quest = pytest.importorskip("quest")
 SIZE = (1400, 900)
 
 
@@ -29,9 +28,7 @@ def hermetic(tmp_path, monkeypatch):
 
 @pytest.fixture
 def pdb(tmp_path):
-    src = Path(quest.__file__).resolve().parents[1] / "tests" / "148l.pdb"
-    if not src.is_file():
-        pytest.skip("the quest test structure is not there")
+    src = Path(__file__).resolve().parent / "148l.pdb"
     return Path(shutil.copy(src, tmp_path / "148l.pdb"))
 
 
@@ -86,7 +83,7 @@ def test_load_pdb_project_save_and_reload_by_clicks(app, pdb, tmp_path):
 
 
 def test_reset_defaults_restores_the_reference_chemistry(app):
-    from quest.project import template_project
+    from chisurf.plugins.quenching_estimator.core.project import template_project
 
     ui = Ui(app, SIZE)
     ui.draw(3)
@@ -108,7 +105,7 @@ def test_pick_donor_and_acceptor_residues_by_clicking_the_list(app, pdb):
     ui.draw(3)
     app.session.load_structure(str(pdb))
     _open_structure_tab(ui)
-    assert {"pick_donor", "pick_acceptor", "open_web_ui"} <= set(app.item_rects)
+    assert {"pick_donor", "pick_acceptor"} <= set(app.item_rects)
 
     ui.click("pick_donor")
     ui.click("res.E.3")
@@ -149,19 +146,6 @@ def test_a_placeholder_acceptor_takes_imp_bffs_av_defaults():
     assert dyes[1]["attachment"]["residue"] == 7
 
 
-def test_open_web_ui_opens_the_local_interface(app, monkeypatch):
-    import webbrowser
-
-    from chisurf.plugins.quenching_estimator.gui.app import WEB_UI_URL
-
-    opened = []
-    monkeypatch.setattr(webbrowser, "open", lambda url, *a, **k: opened.append(url) or True)
-    ui = Ui(app, SIZE)
-    _open_structure_tab(ui)
-    ui.click("open_web_ui")
-    assert opened == [WEB_UI_URL]
-
-
 def test_cancel_stops_a_running_simulation_by_click(app, pdb):
     s = app.session
     s.load_structure(str(pdb))
@@ -183,13 +167,15 @@ def test_cancel_stops_a_running_simulation_by_click(app, pdb):
 
 def test_a_simulated_result_equals_the_engine_for_the_same_project(app, pdb):
     import numpy as np
-    from quest.api import simulate_project
+    from chisurf.plugins.quenching_estimator.api.local import simulate_project
 
     s = app.session
     s.load_structure(str(pdb))
     m = s.model
-    m.attachment_chain, m.attachment_residue, m.attachment_atom = "E", 117, "CB"
+    m.attachment_chain, m.attachment_residue, m.attachment_atom = "E", 36, "CB"
     m.n_photons, m.t_max, m.parallel_trajectories = 2000, 30.0, 1
+    # Seeded, or the window and the engine draw different photons and the curves cannot agree.
+    m.project["random_seed"] = 11
     project = json.loads(json.dumps(m.to_project_dict()))
     ui = Ui(app, SIZE)
     ui.draw(3)
@@ -197,10 +183,9 @@ def test_a_simulated_result_equals_the_engine_for_the_same_project(app, pdb):
     assert s.running, s.message
     assert s.wait(300)
     ui.draw(3)
-    if s.status_error:
-        pytest.skip(f"engine unavailable here: {s.message}")
+    assert not s.status_error, s.message
     shown = m.decay_series()
     assert shown and len(shown[0]["y"]) > 10
     engine = simulate_project(project, save_outputs=False)
-    assert np.allclose(np.asarray(shown[0]["y"], float), np.asarray(engine["donor_counts"], float))
+    assert np.allclose(np.asarray(shown[0]["y"], float), np.asarray(engine.donor_counts, float))
     assert m.status.startswith("QY")

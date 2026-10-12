@@ -1,0 +1,48 @@
+{
+  "title": "QuEst Interactive Guide",
+  "demo_pdb": "148l.pdb",
+  "steps": [
+    {
+      "id": "welcome",
+      "title": "Welcome to the QuEst Guide",
+      "text": "This guided tour walks through tethered dye Brownian dynamics simulations using <b>T4 Lysozyme (PDB: 148L)</b> as the reference structure.<br/><br/>Click <b>Next</b> to explore the workspace.",
+      "target": {"action": "Guide"}
+    },
+    {
+      "id": "load_structure",
+      "title": "Structure Loading (148L PDB)",
+      "text": "The PDB file defines the macromolecular coordinates for dye attachment and collision calculations. In guide mode, <b>148l.pdb</b> is automatically loaded as the target structure.",
+      "target": {"action": "Load PDB"}
+    },
+    {
+      "id": "dye_physics",
+      "title": "Tethered Dye Physics & AV Parameters",
+      "text": "Configure the dye linker length (L), linker width (w), and attachment atom (e.g. <b>Chain E, Residue 118, Atom CB</b>). The accessible volume (AV) grid is calculated around this tether site.",
+      "target": {"title": "Dye Parameters"}
+    },
+    {
+      "id": "quenching_chemistry",
+      "title": "Photoinduced Electron Transfer (PET) Quenching",
+      "text": "Amino acids (Trp, Tyr, Met, His) quench fluorescence upon contact. The Quenching Chemistry table defines per-residue contact radii (Å), quenching rates (kQ), and diffusion slowing factors.",
+      "target": {"tab": "Quenching Chemistry"}
+    },
+    {
+      "id": "chimol_3d",
+      "title": "3D Molecular Structure (ChiMol)",
+      "text": "View the 3D macromolecular structure and dye attachment sites rendered interactively using the ChiMol OpenGL viewer.",
+      "target": {"tab": "3D Structure"}
+    },
+    {
+      "id": "run_simulation",
+      "title": "Run Brownian Dynamics Simulation",
+      "text": "Press <b>Run Simulation</b> (or press <b>Ctrl+R</b>) to compute dye diffusion trajectories, quenching events, FRET efficiency, and fluorescence decay histograms.",
+      "target": {"action": "Run Simulation"}
+    },
+    {
+      "id": "results_plots",
+      "title": "Plots & Dynamics Diagnostics",
+      "text": "Inspect the calculated fluorescence decay, dye trajectory displacement |r − ⟨r⟩|, and position autocorrelation curves (ACF). Drag the splitter handles to resize plots as needed.",
+      "target": {"tab": "Plots & Dynamics"}
+    }
+  ]
+}

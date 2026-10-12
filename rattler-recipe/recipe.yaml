@@ -65,7 +65,7 @@ build:
       - csg_traj_remove_clashed_frames = chisurf.plugins.traj.traj_remove_clashes.__main__:main
       - csg_traj_rotate_translate = chisurf.plugins.traj.traj_rotate_translate.__main__:main
       - csg_traj_save_topology = chisurf.plugins.traj.traj_save_topology.__main__:main
-      - csg_quest = quest.gui:start_gui
+      - csg_quest = chisurf.plugins.quenching_estimator.__main__:main
       - csg_ndxplorer = ndxplorer.__main__:main
       - csg_trace_browser = chisurf.plugins.tttr.trace_browser.__main__:main
       - csg_tttr_image_browser = chisurf.plugins.tttr.tttr_image_browser.__main__:main

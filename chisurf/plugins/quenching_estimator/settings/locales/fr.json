@@ -1,0 +1,343 @@
+{
+  "locale": "fr",
+  "name": "Français",
+  "catalog.title": "Catalogue des paramètres QuEst",
+  "catalog.description": "Descriptions de référence des paramètres utilisés par la ligne de commande, les réglages par défaut et l'interface web.",
+  "categories": {
+    "Structure": "Structure",
+    "Labeling site": "Site de marquage",
+    "Accessible volume": "Volume accessible",
+    "Simulation": "Simulation",
+    "Quenching": "Extinction",
+    "FRET Acceptor": "Accepteur FRET",
+    "Advanced": "Avancé"
+  },
+  "parameters": {
+    "pdb": {
+      "label": "Fichier de structure",
+      "description": "Chemin du fichier de structure (PDB/CIF), ou identifiant RCSB PDB à quatre caractères, utilisé pour le calcul du volume accessible."
+    },
+    "attachment.chain": {
+      "label": "Chaîne d'attache",
+      "description": "Identifiant de chaîne du résidu sur lequel le fluorophore est attaché."
+    },
+    "attachment.residue": {
+      "label": "Résidu d'attache",
+      "description": "Numéro de séquence du résidu sur lequel le fluorophore est attaché."
+    },
+    "attachment.atom": {
+      "label": "Atome d'attache",
+      "description": "Nom de l'atome (par ex. CB, CA) servant de point d'attache au fluorophore."
+    },
+    "av_parameter.linker_length": {
+      "label": "Longueur du bras espaceur",
+      "description": "Distance maximale entre le point d'attache et le centre du fluorophore."
+    },
+    "av_parameter.linker_width": {
+      "label": "Largeur du bras espaceur",
+      "description": "Largeur du bras espaceur qui retient le fluorophore."
+    },
+    "av_parameter.radius1": {
+      "label": "Rayon du fluorophore",
+      "description": "Rayon d'exclusion représentant le fluorophore comme une sphère (approximation à une sphère)."
+    },
+    "dg": {
+      "label": "Résolution de la grille",
+      "description": "Résolution de la grille utilisée pour calculer le volume accessible (AV) et l'espace de diffusion."
+    },
+    "tau0": {
+      "label": "Durée de vie non éteinte",
+      "description": "Durée de vie de fluorescence du donneur en l'absence d'extinction."
+    },
+    "fret.dyes.0.D": {
+      "label": "Coefficient de diffusion du donneur",
+      "description": "Coefficient de diffusion du donneur en solution, hors interaction avec la surface de la protéine."
+    },
+    "critical_distance": {
+      "label": "Rayon de contact par défaut",
+      "description": "Rayon de contact employé par les types de résidus qui ne définissent pas leur propre quench_radius. Il se mesure du centre du fluorophore au centre d'extinction du résidu et doit donc dépasser le rayon du fluorophore augmenté du contact de van der Waals (typiquement 7 à 9 Å pour un fluorophore de 3,5 Å)."
+    },
+    "t_max": {
+      "label": "Durée de simulation",
+      "description": "Durée totale de la trajectoire de dynamique brownienne simulée."
+    },
+    "t_step": {
+      "label": "Pas de temps",
+      "description": "Pas de temps du calcul de la trajectoire de dynamique brownienne."
+    },
+    "n_photons": {
+      "label": "Photons simulés",
+      "description": "Nombre de photons d'excitation simulés pour reconstruire l'histogramme de déclin de fluorescence."
+    },
+    "n_bins": {
+      "label": "Canaux du déclin",
+      "description": "Nombre de canaux temporels de l'histogramme de déclin produit."
+    },
+    "parallel_trajectories": {
+      "label": "Trajectoires parallèles",
+      "description": "Nombre de trajectoires browniennes indépendantes calculées simultanément et réunies avant l'échantillonnage des photons. −1 utilise tous les cœurs du processeur, dans la limite de 8."
+    },
+    "slow_radius": {
+      "label": "Rayon de ralentissement",
+      "description": "Rayon autour de chaque centre d'acide aminé de la protéine entière à l'intérieur duquel ce type de résidu applique son slow_factor à la grille des coefficients de diffusion."
+    },
+    "save_avs": {
+      "label": "Enregistrer les fichiers AV",
+      "description": "Indique si les grilles de volume accessible calculées sont enregistrées au format XYZ."
+    },
+    "output_file": {
+      "label": "Préfixe des fichiers de sortie",
+      "description": "Préfixe de nom employé pour enregistrer les résultats, les trajectoires et les déclins."
+    },
+    "skip_frame": {
+      "label": "Images de trajectoire ignorées",
+      "description": "Facteur de sous-échantillonnage lors de l'écriture des images de trajectoire dans les fichiers de coordonnées."
+    },
+    "fret.enabled": {
+      "label": "FRET activé",
+      "description": "Indique si un accepteur FRET est simulé afin de calculer l'efficacité de FRET et les courbes de déclin."
+    },
+    "fret.R0_matrix": {
+      "label": "Rayon de Förster",
+      "description": "Rayon de Förster R0 du couple donneur–accepteur, en ångströms comme toute autre longueur du projet. Il est stocké dans la case donneur→accepteur de fret.R0_matrix ; le taux de transfert varie en (R0/r)^6, si bien qu'une saisie en nanomètres fait disparaître le FRET. Les couples xanthènes usuels se situent entre 45 et 65 Å."
+    },
+    "fret.kappa2": {
+      "label": "Facteur d'orientation κ²",
+      "description": "Facteur d'orientation κ² du transfert, entre 0 (dipôles de transition perpendiculaires) et 4 (colinéaires). QuEst ne le modélise pas : le fluorophore est un point diffusant dans un volume et n'a aucun dipôle à orienter — cette valeur est donc le régime de moyenne que vous postulez. La valeur par défaut 2/3 est la moyenne dynamique isotrope, que suppose déjà tout rayon de Förster publié ; la conserver reproduit exactement la vitesse de transfert. Ne l'augmentez qu'avec la preuve que les deux fluorophores sont contraints en orientation."
+    },
+    "fret.dyes.1.attachment.chain": {
+      "label": "Chaîne de l'accepteur",
+      "description": "Identifiant de chaîne du résidu sur lequel l'accepteur FRET est attaché."
+    },
+    "fret.dyes.1.attachment.residue": {
+      "label": "Résidu de l'accepteur",
+      "description": "Numéro de séquence du résidu sur lequel l'accepteur FRET est attaché."
+    },
+    "fret.dyes.1.attachment.atom": {
+      "label": "Atome de l'accepteur",
+      "description": "Nom de l'atome sur lequel l'accepteur FRET est attaché."
+    },
+    "fret.dyes.1.av_parameter.linker_length": {
+      "label": "Longueur du bras de l'accepteur",
+      "description": "Distance maximale entre le point d'attache et le centre de l'accepteur FRET."
+    },
+    "fret.dyes.1.av_parameter.linker_width": {
+      "label": "Largeur du bras de l'accepteur",
+      "description": "Largeur du bras espaceur qui retient l'accepteur FRET."
+    },
+    "fret.dyes.1.av_parameter.radius1": {
+      "label": "Rayon de l'accepteur",
+      "description": "Rayon d'exclusion représentant l'accepteur FRET comme une sphère."
+    },
+    "fret.dyes.1.D": {
+      "label": "Coefficient de diffusion de l'accepteur",
+      "description": "Coefficient de diffusion de l'accepteur FRET hors interaction avec la surface de la protéine."
+    },
+    "amino_acid_interactions": {
+      "label": "Interactions avec les acides aminés",
+      "description": "Table d'interaction par type de résidu. Chaque entrée contient slow_factor (0–1, mesure du ralentissement du fluorophore par le résidu), kQ (taux d'extinction en 1/ns appliqué au contact), quench_radius (rayon de contact en ångströms depuis le centre du fluorophore ; null hérite de critical_distance) et quench_atoms (noms des atomes dont le barycentre définit le centre d'extinction). Par défaut, seuls les résidus à chaîne latérale rédox-active éteignent la fluorescence : TRP, TYR, MET, HIS, CYS et PRO."
+    },
+    "amino_acid_interactions.kQ": {
+      "label": "Taux d'extinction kQ",
+      "description": "Taux auquel ce type de résidu éteint le fluorophore tant que les deux sont en contact. Les contributions des résidus dont les sphères de contact se recouvrent s'additionnent."
+    },
+    "amino_acid_interactions.quench_radius": {
+      "label": "Rayon de contact",
+      "description": "Distance entre le centre du fluorophore et le centre d'extinction de ce résidu en deçà de laquelle l'extinction se produit. Laisser vide pour hériter du critical_distance du projet."
+    },
+    "amino_acid_interactions.quench_atoms": {
+      "label": "Atomes du centre d'extinction",
+      "description": "Noms des atomes dont le barycentre définit le centre d'extinction de ce résidu. Les valeurs par défaut suivent le groupement rédox-actif qui assure le transfert d'électron photo-induit : le cycle indole pour TRP, le cycle phénol pour TYR, le cycle imidazole pour HIS, SD pour MET et SG pour CYS — et non CB."
+    },
+    "amino_acid_interactions.slow_factor": {
+      "label": "Facteur de ralentissement",
+      "description": "Facteur compris entre 0 et 1 qui met à l'échelle le coefficient de diffusion du fluorophore au voisinage de ce type de résidu, modélisant une adhérence non spécifique. Les résidus qui se recouvrent multiplient leurs facteurs."
+    },
+    "coarse_grained": {
+      "label": "Structure gros grains",
+      "description": "Réduit la structure au squelette et aux CB avant la simulation, chaque CB étant déplacé au centre de masse de sa chaîne latérale. Les atomes de chaîne latérale sont alors absents : le centre d'extinction de chaque résidu se rabat sur ce pseudo-atome CB, et le volume accessible augmente puisque les chaînes latérales ne l'obstruent plus. C'est un choix de modélisation, non une optimisation : le coût de QuEst tient à la grille du volume accessible, pas au nombre d'atomes."
+    },
+    "random_seed": {
+      "label": "Graine aléatoire",
+      "description": "Graine de la simulation Monte-Carlo. Lorsqu'elle est fixée, la trajectoire de diffusion et le tirage des photons sont tous deux initialisés : deux exécutions du même projet reproduisent exactement le même déclin et le même rendement quantique. Sans graine, chaque exécution est indépendante et le tirage des photons emploie un noyau multithread plus rapide."
+    },
+    "fret.acceptor_dynamics": {
+      "label": "Dynamique de l'accepteur",
+      "description": "Traitement de l'accepteur : « trajectory » simule sa marche brownienne avec son propre coefficient de diffusion et sa propre adhérence, et utilise la distance donneur-accepteur instantanée ; « averaged » moyenne sur son volume accessible statique (limite de l'accepteur rapide, valable seulement s'il parcourt ce volume rapidement devant la durée de vie du donneur). Les deux diffèrent parce qu'un nuage est pondéré uniformément alors qu'une trajectoire l'est par les endroits où le fluorophore séjourne."
+    },
+    "fret.dyes.1.slow_radius": {
+      "label": "Rayon de ralentissement de l'accepteur",
+      "description": "Rayon autour de chaque centre d'acide aminé à l'intérieur duquel ce résidu ralentit l'accepteur. Distinct de celui du donneur : une cyanine et une rhodamine n'adhèrent pas de la même façon à une surface protéique. Par défaut, la valeur du donneur."
+    },
+    "fret.dyes.1.amino_acid_interactions": {
+      "label": "Interactions de l'accepteur",
+      "description": "Table d'interaction par type de résidu pour l'accepteur, de même forme que l'amino_acid_interactions du donneur. Seul slow_factor est utilisé, car QuEst rapporte le déclin du donneur : l'extinction PET propre à l'accepteur modifierait sa brillance, pas celle du donneur. Par défaut, la table du donneur."
+    }
+  },
+  "ui": {
+    "app.title": "QuEst",
+    "app.subtitle": "Estimateur d'extinction",
+    "panel.structure": "Structure",
+    "panel.dye": "Fluorophore",
+    "panel.simulation": "Simulation",
+    "panel.quenching": "Extinction",
+    "panel.fret": "FRET",
+    "panel.advanced": "Avancé",
+    "dock.project": "Projet",
+    "dock.structure": "Structure",
+    "dock.results": "Résultats",
+    "help.description": "Guide succinct de QuEst : quoi régler, dans quel ordre et ce que la simulation renvoie.",
+    "dock.project.description": "Tous les paramètres de simulation du projet QuEst, regroupés en panneaux repliables.",
+    "panel.structure.description": "Fichier de structure ou identifiant RCSB et résidu auquel le fluorophore est attaché.",
+    "panel.dye.description": "Longueur et largeur du lien et rayon du fluorophore, qui définissent son volume accessible.",
+    "panel.simulation.description": "Durée de vie sans extinction, coefficient de diffusion, durée et échantillonnage de la simulation.",
+    "panel.quenching.description": "Distances et taux d'extinction des acides aminés qui éteignent le fluorophore au contact.",
+    "table.quencher.description": "Taux d'extinction, rayon de contact, atomes éteignants et facteur de ralentissement par résidu ; modifier une ligne ne change que cet acide aminé.",
+    "panel.fret.description": "Activer le FRET et définir la position de l'accepteur, la géométrie de son fluorophore et le rayon de Förster R0.",
+    "panel.advanced.description": "Réglages numériques rarement nécessaires : binning, graine aléatoire et parallélisme.",
+    "dock.structure.description": "La structure actuellement chargée, base de la simulation.",
+    "dock.results.description": "État de la simulation avec le déclin du donneur, la trajectoire du fluorophore et son autocorrélation.",
+    "field.state": "État",
+    "field.state.description": "Résultat de la dernière simulation.",
+    "status.idle": "Pas encore simulé.",
+    "status.running": "Simulation en cours…",
+    "status.cancelled": "Annulé.",
+    "status.failed": "Échec : {error}",
+    "status.no_structure": "Pas de structure chargée",
+    "status.saved": "{name} enregistré",
+    "status.loaded": "{name} chargé",
+    "table.residue": "Résidu",
+    "table.residue.description": "Code d'acide aminé à trois lettres.",
+    "plot.decay.title": "Déclin de fluorescence",
+    "plot.decay.x": "Temps (ns)",
+    "plot.decay.y": "Coups",
+    "plot.decay.description": "Déclin du donneur et, si le FRET est activé, déclin éteint par FRET.",
+    "plot.decay.donor": "Donneur",
+    "plot.decay.fret": "FRET",
+    "plot.trajectory.title": "Trajectoire du fluorophore",
+    "plot.trajectory.x": "Temps (ns)",
+    "plot.trajectory.y": "|r − ⟨r⟩| (Å)",
+    "plot.trajectory.description": "Distance du fluorophore à sa position moyenne — l'étendue qu'il explore réellement.",
+    "plot.autocorrelation.title": "Autocorrélation de la position",
+    "plot.autocorrelation.x": "Décalage (ns)",
+    "plot.autocorrelation.y": "FAC",
+    "plot.autocorrelation.description": "Vitesse à laquelle le fluorophore oublie sa position ; détermine si l'extinction est limitée par la diffusion ou par le contact.",
+    "button.simulate": "▶ Simuler",
+    "button.simulate.description": "Exécuter le projet courant via quest.api.",
+    "button.load_project": "📂 Charger un projet…",
+    "button.load_project.description": "Lire un projet QuEst au format JSON, quelle qu'en soit l'origine.",
+    "button.save_project": "💾 Enregistrer le projet…",
+    "button.save_project.description": "Écrire le formulaire au format projet JSON — le fichier que lisent la ligne de commande et l'interface web.",
+    "dialog.save_project": "Enregistrer le projet QuEst",
+    "dialog.load_project": "Charger un projet QuEst",
+    "dialog.open_structure": "Ouvrir une structure",
+    "action.cancel": "Annuler",
+    "filter.project": "Projet QuEst (*.json)",
+    "filter.structures": "Structures (*.pdb *.cif *.mmcif)",
+    "filter.all": "Tous les fichiers (*)",
+    "menu.file": "&Fichier",
+    "menu.help": "&Aide",
+    "menu.load_structure": "Charger une structure…",
+    "menu.save_project": "Enregistrer le projet…",
+    "menu.load_project": "Charger un projet…",
+    "menu.exit": "Quitter",
+    "menu.about": "À propos / Citation…",
+    "about.title": "À propos de QuEst",
+    "about.cite": "Si vous utilisez QuEst dans une publication scientifique, merci de citer :",
+    "help.title": "QuEst — aide",
+    "help.text": "# QuEst — déclin transitoire d'un fluorophore attaché\n\nPrédit le déclin de fluorescence d'un fluorophore porté par un bras flexible à\npartir de la seule structure : le fluorophore diffuse dans son volume\naccessible, s'éteint au contact des acides aminés voisins (PET) et — si le FRET\nest activé — transfère son énergie à un accepteur.\n\n## Ce qu'il faut régler\n1. **Structure** — un fichier PDB/CIF ou un identifiant RCSB à quatre\n   caractères, et le résidu portant le fluorophore.\n2. **Fluorophore** — longueur et largeur du bras espaceur et rayon du\n   fluorophore définissent le volume accessible.\n3. **Simulation** — durée de vie non éteinte, coefficient de diffusion et durée\n   à simuler. `t_step` doit résoudre le mouvement le plus rapide ; les valeurs\n   par défaut sont mesurées, non devinées.\n4. **Extinction** — taux d'extinction et rayons de contact par résidu. Modifier\n   une ligne ne change la chimie que de cet acide aminé.\n5. **FRET** — l'activer, placer l'accepteur et donner R₀ **en ångströms**.\n\n## Ce qui en sort\nRendement quantique et durée de vie moyenne, déclin du donneur (et du FRET), la\ntrajectoire du fluorophore et son autocorrélation.\n\nTout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**\nécrit exactement le JSON que lisent la ligne de commande\n(`quest simulate project.json`) et l'interface web : un calcul commencé ici peut\nêtre terminé ailleurs.\n",
+    "autoform.missing": "Le formulaire de bureau de QuEst est rendu par AutoForm de ChiSurf, qui n'a pas pu être importé.\n\nInstallez ChiSurf, ou faites pointer CHISURF_ROOT vers une copie de travail.\n\nLa ligne de commande (`quest simulate project.json`) et l'interface web n'en ont pas besoin.",
+    "web.language": "Langue",
+    "web.dye": "Colorant",
+    "web.run_select": "Sélectionner une simulation antérieure",
+    "web.theme_toggle": "Basculer entre les modes clair et sombre",
+    "web.tour": "Visite guidée",
+    "web.tour.next": "Suivant",
+    "web.tour.prev": "Retour",
+    "web.tour.done": "Terminer",
+    "web.tour.close": "Fermer la visite",
+    "web.tour.step_of": "Étape {c} sur {t}",
+    "web.tour.welcome.title": "Bienvenue sur QuEst",
+    "web.tour.welcome.body": "Cette visite guidée vous fait parcourir tout le flux de travail : charger une protéine, placer un colorant, lancer et lire une simulation, balayer les résidus et ajuster les paramètres avancés. Utilisez les touches fléchées ou les boutons pour continuer.",
+    "web.tour.step1.title": "Onglets du flux de travail",
+    "web.tour.step1.body": "Parcourez les étapes de gauche à droite : Marquage, Simulation, Scan et Paramètres avancés. L'étape active est mise en évidence et détermine les réglages affichés dans la barre latérale.",
+    "web.tour.step2.title": "Charger une structure",
+    "web.tour.step2.body": "Saisissez un identifiant PDB à quatre lettres et appuyez sur Charger, ou importez votre propre fichier PDB/CIF. QuEst en résout les chaînes, résidus et atomes.",
+    "web.tour.step3.title": "Importer un fichier",
+    "web.tour.step3.body": "Vous préférez un fichier local à un identifiant PDB ? Importez ici un PDB ou un CIF ; la structure remplace celle chargée et les sélections de marquage se reconstruisent.",
+    "web.tour.step4.title": "Exécutions",
+    "web.tour.step4.body": "Chaque simulation est enregistrée. Sélectionnez ici une exécution précédente pour recharger son site de marquage, ses paramètres et ses résultats.",
+    "web.tour.step5.title": "Panneau structure",
+    "web.tour.step5.body": "Confirme ce qui est chargé : le nom du fichier ainsi que le nombre de chaînes et d'atomes. Rien ne se lance tant qu'une structure n'apparaît pas ici.",
+    "web.tour.step6.title": "Placer le colorant",
+    "web.tour.step6.body": "Choisissez la chaîne, le résidu et l'atome auxquels le colorant se fixe. Un colorant ne peut pas être attaché aux molécules d'eau ou aux ions en fin de structure.",
+    "web.tour.step7.title": "Accepteur FRET",
+    "web.tour.step7.body": "Ajoutez éventuellement un second colorant et définissez un site accepteur. Le transfert d'énergie par résonance (Förster) est alors combiné à l'extinction PET dans la décroissance.",
+    "web.tour.step8.title": "Volume accessible",
+    "web.tour.step8.body": "Définit l'espace que le lieur laisse le colorant explorer autour de l'atome d'attache. La longueur du lieur est la valeur utilisée par la simulation.",
+    "web.tour.step9.title": "Visionneuse de structure",
+    "web.tour.step9.body": "Cette vue 3D dessine la structure et le site de marquage. Elle se met à jour quand vous changez la chaîne, le résidu et l'atome.",
+    "web.tour.step10.title": "Lancer la simulation",
+    "web.tour.step10.body": "Une fois la structure chargée, cliquez sur Lancer la simulation. La décroissance, l'extinction et la trajectoire du colorant apparaissent sur l'onglet Simulation.",
+    "web.tour.step11.title": "Paramètres de simulation",
+    "web.tour.step11.body": "Durée de vie, viscosité et les autres paramètres du modèle se règlent ici, sur l'onglet Simulation. La valeur à côté de chaque champ est celle de l'exécution en cours.",
+    "web.tour.step12.title": "Résultats de simulation",
+    "web.tour.step12.body": "L'onglet Simulation lit les décroissances, les histogrammes des taux d'extinction et la trajectoire du colorant pour le site focalisé et ses accepteurs.",
+    "web.tour.step13.title": "Paramètres du balayage",
+    "web.tour.step13.body": "Choisissez quels résidus évaluer — un seul site ou chaque résidu de la chaîne — avant de lancer le balayage par lots.",
+    "web.tour.step14.title": "Résultats du balayage",
+    "web.tour.step14.body": "Le tableau du balayage rapporte durée de vie, rendement quantique, fraction de contact et volumes accessible/contact par résidu. Les colonnes trient et filtrent, et les résultats s'exportent dans le presse-papiers.",
+    "web.tour.step15.title": "Paramètres d'extinction",
+    "web.tour.step15.body": "Dans les paramètres avancés, vous pouvez modifier les taux d'extinction par résidu qui pilotent le modèle PET.",
+    "web.tour.step16.title": "Configuration de simulation",
+    "web.tour.step16.body": "Les réglages qui façonnent le calcul de la simulation — confirmations et commutateurs de modèle avancés — se trouvent ici.",
+    "web.tour.step17.title": "Adhésion du colorant",
+    "web.tour.step17.body": "Les colorants ralentissent aussi à l'intérieur de la protéine, pas seulement à sa surface ; le rayon de ralentissement capture cette transition et c'est un paramètre d'exécution auquel vous pouvez revenir.",
+    "web.tour.step18.title": "Mode JSON",
+    "web.tour.step18.body": "Basculez la Configuration en mode JSON pour éditer l'objet projet brut au lieu du formulaire structuré. Les deux pilotent le même état.",
+    "web.tour.step19.title": "Enregistrer un préréglage",
+    "web.tour.step19.body": "Enregistrez les paramètres actuels sous forme de préréglage de colorant nommé, que vous pouvez rappeler avec le sélecteur de colorant, au lieu de retaper les valeurs.",
+    "web.tour.step20.title": "Langue",
+    "web.tour.step20.body": "Basculez toute l'interface — libellés, textes d'aide et cette visite — entre le français, l'anglais et l'allemand. Votre choix est mémorisé.",
+    "web.tour.step21.title": "Thème",
+    "web.tour.step21.body": "Basculez entre l'apparence claire et sombre. Le thème est enregistré pour votre prochaine visite.",
+    "web.tour.step22.title": "Citer QuEst",
+    "web.tour.step22.body": "Cliquez ici pour voir exactement comment citer QuEst dans un article.",
+    "web.tour.step23.title": "Télécharger",
+    "web.tour.step23.body": "Enfin, téléchargez les résultats de l'exécution en cours sous forme de fichier, ou appuyez sur Effacer pour réinitialiser l'application et recommencer.",
+    "web.tour.done.title": "Tout est prêt",
+    "web.tour.done.body": "Voilà l'ensemble du flux de travail : charger une structure, placer un colorant, lancer une simulation, balayer les résidus et affiner le modèle. Vous pouvez rouvrir cette visite à tout moment via le bouton en haut.",
+    "web.guide": "Guide",
+    "web.run": "Lancer la simulation",
+    "web.running": "Simulation en cours…",
+    "web.results": "Résultats",
+    "web.project": "Projet",
+    "web.quantum_yield": "Rendement quantique",
+    "web.lifetime": "Durée de vie moyenne",
+    "web.efficiency": "Efficacité de FRET",
+    "doc.title": "Référence des paramètres QuEst",
+    "doc.summary": "Résumé du catalogue",
+    "doc.generated": "Cette page est générée à partir de {sources}. Modifiez-les d'abord pour changer le texte d'aide d'un paramètre — l'interface web, cette page et le formulaire de bureau lisent les mêmes fichiers.",
+    "doc.col.key": "Clé",
+    "doc.col.category": "Catégorie",
+    "doc.col.type": "Type",
+    "doc.col.unit": "Unité",
+    "doc.col.description": "Description",
+    "doc.label": "Libellé",
+    "doc.type": "Type",
+    "doc.unit": "Unité",
+    "table.kQ": "kQ (1/ns)",
+    "table.radius": "Rayon (Å)",
+    "table.atoms": "Atomes",
+    "table.slow_factor": "Facteur",
+    "web.tab.labeling": "1 – Marquage",
+    "web.tab.simulation": "2 – Simulation",
+    "web.tab.scan": "3 – Balayage",
+    "web.tab.advanced": "4 – Avancé",
+    "web.card.runs": "Exécutions",
+    "web.card.settings": "Paramètres de simulation",
+    "web.card.scan_settings": "Paramètres du balayage",
+    "web.card.derived": "Grandeurs dérivées",
+    "web.tagline": "Chargez une structure, choisissez un site de marquage, lancez la simulation d'extinction/FRET."
+  }
+}

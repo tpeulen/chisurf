@@ -1,8 +1,7 @@
-"""QuEst's contract, re-exported for host code that wants it locally.
+"""Host-side access to QuEst: the in-process client and the contract.
 
-Nothing is *defined* here. The contract belongs to the `quest` package
-(`quest.rpc.contract`), and a second copy in the plugin would be one more
-thing to keep in step — which is precisely the drift `LAY-05` was about.
+``local`` is the facade (``template``, ``validate``, ``simulate``, ``scan`` ...); it is imported on
+use, not here, because it reaches the engine and through it IMP.
 """
 
 from .client import QuEstClient

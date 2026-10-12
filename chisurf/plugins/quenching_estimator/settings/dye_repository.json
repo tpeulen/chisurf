@@ -1,0 +1,1682 @@
+{
+  "Alexa488": {
+    "name": "Alexa488",
+    "tau0": 4.2,
+    "D": 7,
+    "av_parameter": {
+      "linker_length": 21.5,
+      "linker_width": 4.5,
+      "radius1": 3.5
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.8,
+        "quench_radius": 7.0,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 1.0,
+        "quench_radius": 8.2,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 1.67,
+        "quench_radius": 7.0,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 2.0,
+        "quench_radius": 7.5,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 3.5,
+        "quench_radius": 8.5,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 2.0,
+        "quench_radius": 8.5,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "Alexa594": {
+    "name": "Alexa594",
+    "tau0": 3.9,
+    "D": 6,
+    "av_parameter": {
+      "linker_length": 22,
+      "linker_width": 4.5,
+      "radius1": 4
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.571,
+        "quench_radius": 7.5,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 0.714,
+        "quench_radius": 8.7,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 1.193,
+        "quench_radius": 7.5,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 1.429,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 2.5,
+        "quench_radius": 9.0,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 1.429,
+        "quench_radius": 9.0,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "Cy3": {
+    "name": "Cy3",
+    "tau0": 1.2,
+    "D": 8,
+    "av_parameter": {
+      "linker_length": 18,
+      "linker_width": 4.5,
+      "radius1": 3
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.686,
+        "quench_radius": 6.5,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 0.857,
+        "quench_radius": 7.7,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 1.431,
+        "quench_radius": 6.5,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 1.714,
+        "quench_radius": 7.0,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 3.0,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 1.714,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "Cy5": {
+    "name": "Cy5",
+    "tau0": 1,
+    "D": 8,
+    "av_parameter": {
+      "linker_length": 20,
+      "linker_width": 4.5,
+      "radius1": 3.2
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.64,
+        "quench_radius": 6.7,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 0.8,
+        "quench_radius": 7.9,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 1.336,
+        "quench_radius": 6.7,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 1.6,
+        "quench_radius": 7.2,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 2.8,
+        "quench_radius": 8.2,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 1.6,
+        "quench_radius": 8.2,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "Atto488": {
+    "name": "Atto488",
+    "tau0": 4.1,
+    "D": 4,
+    "av_parameter": {
+      "linker_length": 20,
+      "linker_width": 4.5,
+      "radius1": 4
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.686,
+        "quench_radius": 7.5,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 0.857,
+        "quench_radius": 8.7,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 1.431,
+        "quench_radius": 7.5,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 1.714,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 3.0,
+        "quench_radius": 9.0,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 1.714,
+        "quench_radius": 9.0,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "Atto647N": {
+    "name": "Atto647N",
+    "tau0": 3.5,
+    "D": 3.9,
+    "av_parameter": {
+      "linker_length": 22,
+      "linker_width": 4.5,
+      "radius1": 4.5
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.914,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 1.143,
+        "quench_radius": 9.2,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 1.909,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 2.286,
+        "quench_radius": 8.5,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 4.0,
+        "quench_radius": 9.5,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 2.286,
+        "quench_radius": 9.5,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "TMR": {
+    "name": "TMR",
+    "tau0": 2.3,
+    "D": 3.5,
+    "av_parameter": {
+      "linker_length": 15,
+      "linker_width": 4.5,
+      "radius1": 3
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.1,
+        "kQ": 1.143,
+        "quench_radius": 6.5,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.1,
+        "kQ": 1.429,
+        "quench_radius": 7.7,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.1,
+        "kQ": 2.386,
+        "quench_radius": 6.5,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.1,
+        "kQ": 2.857,
+        "quench_radius": 7.0,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.1,
+        "kQ": 5.0,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.1,
+        "kQ": 2.857,
+        "quench_radius": 8.0,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.1,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  },
+  "AF488": {
+    "name": "AF488",
+    "tau0": 4.2,
+    "D": 7,
+    "av_parameter": {
+      "linker_length": 21.5,
+      "linker_width": 4.5,
+      "radius1": 3.5
+    },
+    "slow_radius": 8.5,
+    "amino_acid_interactions": {
+      "ALA": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "ARG": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CZ",
+          "NE",
+          "NH1",
+          "NH2"
+        ]
+      },
+      "ASN": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "ND2"
+        ]
+      },
+      "ASP": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "OD1",
+          "OD2"
+        ]
+      },
+      "CYS": {
+        "slow_factor": 0.9,
+        "kQ": 0.8,
+        "quench_radius": 7.0,
+        "quench_atoms": [
+          "SG"
+        ]
+      },
+      "GLN": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "NE2"
+        ]
+      },
+      "GLU": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CD",
+          "OE1",
+          "OE2"
+        ]
+      },
+      "GLY": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CA"
+        ]
+      },
+      "HIS": {
+        "slow_factor": 0.9,
+        "kQ": 1.0,
+        "quench_radius": 8.2,
+        "quench_atoms": [
+          "CG",
+          "ND1",
+          "CD2",
+          "CE1",
+          "NE2"
+        ]
+      },
+      "ILE": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LEU": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      },
+      "LYS": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "NZ"
+        ]
+      },
+      "MET": {
+        "slow_factor": 0.9,
+        "kQ": 1.67,
+        "quench_radius": 7.0,
+        "quench_atoms": [
+          "SD"
+        ]
+      },
+      "PHE": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ"
+        ]
+      },
+      "PRO": {
+        "slow_factor": 0.9,
+        "kQ": 2.0,
+        "quench_radius": 7.5,
+        "quench_atoms": [
+          "N",
+          "CB",
+          "CG",
+          "CD"
+        ]
+      },
+      "SER": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG"
+        ]
+      },
+      "THR": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "OG1"
+        ]
+      },
+      "TRP": {
+        "slow_factor": 0.9,
+        "kQ": 3.5,
+        "quench_radius": 8.5,
+        "quench_atoms": [
+          "CD2",
+          "CE2",
+          "CE3",
+          "CZ2",
+          "CZ3",
+          "CH2",
+          "NE1",
+          "CG",
+          "CD1"
+        ]
+      },
+      "TYR": {
+        "slow_factor": 0.9,
+        "kQ": 2.0,
+        "quench_radius": 8.5,
+        "quench_atoms": [
+          "CG",
+          "CD1",
+          "CD2",
+          "CE1",
+          "CE2",
+          "CZ",
+          "OH"
+        ]
+      },
+      "VAL": {
+        "slow_factor": 0.9,
+        "kQ": 0.0,
+        "quench_radius": null,
+        "quench_atoms": [
+          "CB"
+        ]
+      }
+    }
+  }
+}

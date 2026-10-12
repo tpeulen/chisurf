@@ -1,18 +1,14 @@
-"""QuEst as a dockable ChiSurf tool.
+"""QuEst as a dockable ChiSurf tool: the Qt host of the native emtk window.
 
-# What changed, and why it is not cosmetic
+The window itself is :func:`.app.make_app` -- the QuEst card of Structure Tools
+plus attachment-site picking -- drawn by emtk. This class only *hosts* it, the
+way ``lightpath_simulator`` hosts its emtk app: a ``ChisurfDockTool`` gives it
+the docking, geometry persistence and status bar the host integrates. The
+PyQt form this tool used to embed (``TransientDecayGenerator`` of the former
+standalone QuEst package) is gone with that package.
 
-The previous plugin was a `QMainWindow` used as a central widget, with a
-hand-built `File` menu and `menu_hidden = True` — a window pretending to be
-embedded. `ChisurfDockTool` is what the host actually integrates: docks,
-drag-and-drop of paths, geometry persistence, and the tool status bar that
-plugin messages appear in.
-
-**The import of `quest` is inside `__init__`, not at module scope.** ChiSurf's
-discovery imports every plugin at startup; the old file did
-`from quest.gui import TransientDecayGenerator` at the top, so simply launching
-ChiSurf pulled in QuEst, IMP and numba whether or not anyone opened this tool —
-and a broken QuEst install became a broken ChiSurf startup.
+Nothing heavy is imported at module scope: ChiSurf's discovery imports every
+plugin at startup, and the engine (``core/``) reaches IMP.
 """
 
 from __future__ import annotations
@@ -31,13 +27,13 @@ def _display_name() -> str:
         manifest = load_manifest(_MANIFEST_PATH)
         if manifest is not None:
             return manifest.display_name
-    except Exception:
+    except Exception:  # noqa: BLE001 - a title is not worth failing the tool over
         pass
     return "QuEst"
 
 
 class QuEstTool(ChisurfDockTool):
-    """Dockable window hosting QuEst's AutoForm."""
+    """Dockable window hosting the native QuEst window."""
 
     tool_settings_name = "QuEstTool"
 
@@ -45,46 +41,19 @@ class QuEstTool(ChisurfDockTool):
         super().__init__(*args, **kwargs)
         self.setWindowTitle(_display_name())
 
-        # Imported here, not at module scope: see the module docstring.
-        from quest.gui import TransientDecayGenerator
+        from emtk.qt_host import ControlHost
 
-        self.dg = TransientDecayGenerator()
-        self.setCentralWidget(self.dg)
-        self._init_actions()
+        from .app import make_app
+
+        self.quest_app = make_app()
+        self.host = ControlHost(self.quest_app, background=(30, 32, 38))
+        self.setCentralWidget(self.host)
         self.resize(1200, 760)
         try:
             self.restore_window_geometry()
-        except Exception:
-            # A tool that cannot restore its geometry should still open.
+        except Exception:  # noqa: BLE001 - a tool that cannot restore its geometry should still open
             pass
 
-    #: Actions the embedded form does **not** already expose in its own footer.
-    #:
-    #: The form's footer carries Simulate, Load project and Save project. A
-    #: first draft of this toolbar repeated the last two — found by rendering
-    #: the widget and looking at it, not by any assertion, which is why
-    #: okf/workflows/testing.md says to do that.
-    TOOLBAR_ACTIONS = (("Load PDB…", "onLoadPDB"),)
 
-    def _init_actions(self) -> None:
-        """File actions, as a toolbar rather than a menu bar.
-
-        A docked tool has no menu bar of its own; the host owns that. The
-        previous plugin built its own `File` menu, which is one of the things
-        that made it a window pretending to be embedded.
-        """
-        toolbar = self.addToolBar("QuEst")
-        toolbar.setObjectName("quenching_estimator_toolbar")
-
-        for label, slot in self.TOOLBAR_ACTIONS:
-            handler = getattr(self.dg, slot, None)
-            if handler is None:
-                continue
-            action = toolbar.addAction(label)
-            action.triggered.connect(handler)
-        self.ensure_help_toolbar(toolbar=toolbar, title="QuEst — help")
-
-
-#: The old name. Kept because ChiSurf's legacy AST discovery and the plugin's
-#: own test both reference it; it is the same widget.
+#: The old name, kept because ChiSurf's legacy AST discovery references it.
 QuEstWindow = QuEstTool

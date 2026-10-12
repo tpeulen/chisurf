@@ -166,7 +166,7 @@ csg_traj_energy_calculator = "chisurf.plugins.traj.potential_energy.__main__:mai
 csg_traj_remove_clashed_frames = "chisurf.plugins.traj.traj_remove_clashes.__main__:main"
 csg_traj_rotate_translate = "chisurf.plugins.traj.traj_rotate_translate.__main__:main"
 csg_traj_save_topology = "chisurf.plugins.traj.traj_save_topology.__main__:main"
-csg_quest = "quest.gui:start_gui"
+csg_quest = "chisurf.plugins.quenching_estimator.__main__:main"
 csg_ndxplorer = "ndxplorer.__main__:main"
 csg_trace_browser = "chisurf.plugins.tttr.trace_browser.__main__:main"
 csg_tttr_image_browser = "chisurf.plugins.tttr.tttr_image_browser.__main__:main"
@@ -209,6 +209,8 @@ namespaces = true
 "chisurf.settings.constants" = ["*.json"]
 
 "chisurf.gui" = ["gui.ui"]
+# QuEst's demo structure (T4 lysozyme, 148L): the guided tour runs on it.
+"chisurf.plugins.quenching_estimator" = ["examples/*.pdb"]
 
 [tool.setuptools.exclude-package-data]
 # include-package-data can otherwise reattach excluded descendants to a parent.

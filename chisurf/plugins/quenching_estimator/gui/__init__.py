@@ -1,8 +1,9 @@
-"""The desktop surfaces of QuEst: the Qt dock tool and the native emtk window.
+"""The surfaces of QuEst: the project form model, its view spec, the native emtk window and its Qt host.
 
-`quest/gui/` stays in QuEst: it is generated from QuEst's own parameter catalog and is what makes the package usable
-standalone. The Qt tool embeds it; the native window (``app.py``) hosts the QuEst card of Structure Tools. Nothing here
-imports Qt: ``QuEstTool`` is resolved on first use (PEP 562), so ``gui.app`` can be imported Qt-free.
+``form_model.py`` is the Qt-free project model the window binds to; ``quest.view.json`` (and its ``de``/``fr``
+translations) is generated from ``settings/parameter_catalog.json`` by ``generate_view_spec.py``. The native window
+(``app.py``) is the QuEst card of Structure Tools plus site picking; ``tool.py`` hosts it in a ``ChisurfDockTool``.
+Nothing here imports Qt at module scope: ``QuEstTool`` is resolved on first use (PEP 562).
 """
 
 __all__ = ["QuEstTool"]

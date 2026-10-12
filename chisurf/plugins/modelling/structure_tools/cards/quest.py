@@ -1,13 +1,13 @@
 """The QuEst card of Structure Tools: Brownian-dynamics simulation of dye quenching (PET) and FRET on a protein.
 
-The native counterpart of the Qt ``QuEstTool`` / ``TransientDecayGenerator``. The science and the project model are
-the ``quest`` package's (``quest.gui.form_model.ProjectFormModel`` is Qt-free: the project dict *is* the state, so what
-the window saves is what the CLI and the web UI read). This file draws it: the Project panel of ``quest.view.json``
-(read from the quest package, not copied), the quenching table as a ``data_table``, the three result plots, a 3D trace
-of the structure with the attachment sites, and the project JSON.
+The science and the project model are the ``quenching_estimator`` plugin's
+(``chisurf.plugins.quenching_estimator.gui.form_model.ProjectFormModel`` is Qt-free: the project dict *is* the state,
+so what the window saves is what the plugin's CLI and RPC methods run). This file draws it: the Project panel of the
+plugin's ``quest.view.json`` (read from the plugin, not copied), the quenching table as a ``data_table``, the three
+result plots, a 3D trace of the structure with the attachment sites, and the project JSON.
 
-QuEst needs the IMP.bff quenching tables (``IMP.bff.quenching``) to build even an empty project; where the Python
-environment has none, the card says so and offers Retry, as the Qt hub's error panel does.
+QuEst needs IMP.bff's PET quenching tables to build even an empty project; where the Python environment has no
+IMP.bff, the card says so and offers Retry.
 """
 
 from __future__ import annotations
@@ -30,7 +30,8 @@ from .fps_model import Rows
 from .shell import CardShell
 
 HERE = Path(__file__).resolve().parent
-RES = HERE / "resources" / "quest"
+#: The window's ``help.md`` and ``guide.json`` are the plugin's: one tour for the card and the plugin window.
+RES = HERE.parents[2] / "quenching_estimator" / "gui"
 TABS = ("Plots & Dynamics", "3D Structure", "Quenching Chemistry", "Project JSON")
 STRUCTURE_FILTER = "Structures (*.pdb *.ent *.cif *.pdb.gz);;All files (*)"
 PROJECT_FILTER = "QuEst project (*.json);;All files (*)"
@@ -86,7 +87,6 @@ QUENCH_TABLE = {
                 "source": "quencher_rows",
                 "editable": True,
                 "expand": True,
-                "reserve": 4,
                 "row_key": "residue",
                 "edited_call": "edit_quencher",
                 "status": True,
@@ -107,19 +107,24 @@ JSON_VIEW = {
 }
 
 
-def quest_spec() -> dict:
-    """The Project panel of the quest package's view spec, as emtk draws it (folds, spin fields, capped widths)."""
-    import quest.gui.generate_view_spec as gvs
+def quest_spec(locale: str | None = None) -> dict:
+    """The Project panel of the QuEst view spec, as emtk draws it (folds, spin fields, capped widths).
 
-    path = gvs.view_spec_path()
+    The spec is generated per language (``quest.view.<code>.json``, labels and help from the parameter catalogue's
+    locale files); *locale* defaults to the window's current language and falls back to English.
+    """
+    import chisurf.plugins.quenching_estimator.gui.generate_view_spec as gvs
+
+    if locale is None:
+        from emtk.i18n import get_locale
+
+        locale = str(get_locale() or "en").replace("-", "_").split("_")[0].lower()
+    path = gvs.view_spec_path(locale)
+    if not Path(path).is_file():
+        path = gvs.view_spec_path()
     full = json.loads(Path(path).read_text(encoding="utf-8"))
-    project = next(
-        s
-        for d in full["sections"]
-        if d.get("type") == "dock_area"
-        for s in d["sections"]
-        if s.get("title") == "Project"
-    )
+    # The first panel of the dock area is the project form, in every language (its title is translated).
+    project = next(d for d in full["sections"] if d.get("type") == "dock_area")["sections"][0]
     panels = []
     for panel in copy.deepcopy(project["sections"]):
         panel["sections"] = [s for s in panel["sections"] if s.get("type") != "table"]
@@ -161,7 +166,7 @@ class QuestSession:
     def build(self) -> bool:
         """Create the project model; the failure (missing IMP.bff quenching tables, ...) is the status."""
         try:
-            from quest.gui.form_model import ProjectFormModel
+            from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
 
             self.model = ProjectFormModel(locale="en")
         except Exception as exc:  # noqa: BLE001 - shown in the window
@@ -187,6 +192,17 @@ class QuestSession:
         self.model.auto_attach_to_structure()
         self.structure = None
         self.say(f"Loaded {Path(path).name}")
+        return True
+
+    def load_demo(self) -> bool:
+        """Point the project at the plugin's demo (T4 lysozyme, dye on E36, FRET off, a short seeded run)."""
+        if not self.ready:
+            return False
+        from chisurf.plugins.quenching_estimator.demo import apply_demo
+
+        path = apply_demo(self.model)
+        self.structure = None
+        self.say(f"Loaded the demo: {Path(path).name}, dye on E:36 CB")
         return True
 
     def load_project(self, path: str) -> bool:
@@ -285,7 +301,7 @@ class QuestSession:
                 self.say(f"Not a number: {value}", True)
 
     def reset_quencher_defaults(self) -> None:
-        from quest.project import template_project
+        from chisurf.plugins.quenching_estimator.core.project import template_project
 
         self.model.project["amino_acid_interactions"] = template_project().get(
             "amino_acid_interactions", {}
@@ -401,6 +417,12 @@ class QuestCard(CardShell):
             self.used("load_pdb")
         self.sync()
 
+    def load_demo(self) -> None:
+        """The shipped example (T4 lysozyme, E36), so the tour can be walked without the user's own files."""
+        if self.session.load_demo():
+            self.used("load_demo")
+        self.sync()
+
     def load_project(self) -> None:
         self.open_file("Load project", PROJECT_FILTER, self._load_project)
 
@@ -477,6 +499,12 @@ class QuestCard(CardShell):
                     ),
                 },
                 {
+                    "label": "Load demo",
+                    "key": "load_demo",
+                    "enabled": not running,
+                    "tip": "Load the shipped example: T4 lysozyme (PDB 148L), dye on E36, a short run.",
+                },
+                {
                     "label": "Load PDB...",
                     "key": "load_pdb",
                     "enabled": not running,
@@ -491,7 +519,7 @@ class QuestCard(CardShell):
                 {
                     "label": "Save project...",
                     "key": "save_project",
-                    "tip": "Write the form as project JSON, the file the CLI and the web UI read.",
+                    "tip": "Write the form as project JSON, the file the quest command line reads.",
                 },
                 *self.help_buttons(),
             ]
@@ -500,13 +528,14 @@ class QuestCard(CardShell):
             None: lambda: None,
             "simulate": self.simulate,
             "cancel": lambda: (s.cancel(), self.sync()),
+            "load_demo": self.load_demo,
             "load_pdb": self.load_structure,
             "load_project": self.load_project,
             "save_project": self.save_project,
             "guide": self.start_guide,
             "help": self.show_help,
         }[pressed]()
-        im.text_wrapped(f"State: {s.model.status}")
+        im.text_wrapped(tr("State: {status}").format(status=s.model.status))
         self.remember("state")
         im.separator()
         self.form.rects.clear()
@@ -520,8 +549,8 @@ class QuestCard(CardShell):
         im.separator()
         im.text_wrapped(
             tr(
-                "QuEst needs the IMP.bff quenching tables (IMP.bff.quenching), which this Python environment "
-                "does not provide. The reason it reported:"
+                "QuEst needs IMP.bff (its accessible volume and PET quenching tables), which this Python "
+                "environment does not provide. The reason it reported:"
             )
         )
         im.text_wrapped(self.session.error)
@@ -532,7 +561,7 @@ class QuestCard(CardShell):
                 self.spec = quest_spec()
             self.sync()
         im.set_item_tooltip(
-            tr("Try to load QuEst again (after installing the IMP.bff quenching module).")
+            tr("Try to load QuEst again (after installing IMP.bff).")
         )
         self.remember("retry")
         im.same_line()
@@ -553,7 +582,7 @@ class QuestCard(CardShell):
                 "Plots & Dynamics": "The fluorescence decay, the dye trajectory and the position autocorrelation of the last run.",
                 "3D Structure": "The structure with the donor and acceptor attachment sites.",
                 "Quenching Chemistry": "The quenching parameters of every amino acid.",
-                "Project JSON": "The project as the CLI and the web UI read it (read only).",
+                "Project JSON": "The project as the quest command line and the RPC methods read it (read only).",
             },
         )
         if pressed:

@@ -1,9 +1,7 @@
 """The native QuEst window of the plugin (the Structure Tools card hosted on its own), on temporary settings.
 
-HERE a simulation cannot run: QuEst's core still imports Python modules of IMP.bff that moved to C++ (``IMP.bff.av``,
-``IMP.bff.quenching.*``; see okf/references/known-issues.md). So the tests prove what is provable: the window builds Qt-free,
-every control draws with a tooltip, a press on Simulate with a loaded structure ends in a readable failure, never in a
-crash, the form accepts typed values, and the PET chemistry the form edits is the compiled core's.
+The window builds Qt-free, every control draws with a tooltip, the form accepts typed values, and a press on Simulate
+with a loaded structure ends in a result (``QY ...``) computed on IMP.bff.
 """
 
 import json
@@ -16,8 +14,8 @@ from emtk.testing import RecordingPainter
 
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, hermetic_env
 
-PDB = Path(os.path.expanduser("~")).joinpath("dev/quest/tests/148l.pdb")
-quest = pytest.importorskip("quest")
+#: T4 lysozyme (PDB 148L), shipped beside these tests.
+PDB = Path(__file__).resolve().parent / "148l.pdb"
 
 
 @pytest.fixture(autouse=True)
@@ -27,10 +25,7 @@ def hermetic(tmp_path, monkeypatch):
 
 @pytest.fixture
 def pdb():
-    path = Path(quest.__file__).resolve().parents[1] / "tests" / "148l.pdb"
-    if not path.is_file():
-        pytest.skip("the quest test structure is not there")
-    return path
+    return PDB
 
 
 @pytest.fixture
@@ -83,14 +78,14 @@ def test_a_typed_value_reaches_the_project(app):
     assert app.session.model.project["n_photons"] == 12345
 
 
-def test_simulate_without_a_structure_says_why_and_with_one_ends_in_a_readable_message(app, pdb):
+def test_simulate_without_a_structure_says_why_and_with_one_computes_a_result(app, pdb):
     ui = Driver(app, (1200, 800))
     ui.draw(3)
     ui.click("simulate")
     assert any("Cannot simulate" in s for s in ui.draw(2).strings)
     app.session.load_structure(str(pdb))
     m = app.session.model
-    m.attachment_chain, m.attachment_residue, m.attachment_atom = "E", 117, "CB"
+    m.attachment_chain, m.attachment_residue, m.attachment_atom = "E", 36, "CB"
     m.n_photons, m.t_max, m.parallel_trajectories = 1000, 50.0, 1
     ui.draw(2)
     ui.click("simulate")
@@ -101,6 +96,4 @@ def test_simulate_without_a_structure_says_why_and_with_one_ends_in_a_readable_m
     ui.draw(3)
     assert not app.session.running
     state = app.session.model.status
-    assert state.startswith(("Failed", "QY")), (
-        state
-    )  # a result where IMP.bff serves the core, else a readable failure
+    assert state.startswith("QY"), state

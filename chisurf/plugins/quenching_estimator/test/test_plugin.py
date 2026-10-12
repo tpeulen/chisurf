@@ -1,4 +1,4 @@
-"""The plugin declares QuEst; it must not reimplement or eagerly import it."""
+"""The plugin's shape: its manifest, its method table, and that nothing heavy is imported at discovery."""
 
 from __future__ import annotations
 
@@ -9,12 +9,6 @@ from pathlib import Path
 
 PLUGIN_DIR = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((PLUGIN_DIR / "manifest.json").read_text(encoding="utf8"))
-
-
-def _quest_manifest() -> dict:
-    import quest
-
-    return json.loads((Path(quest.__file__).parent / "manifest.json").read_text(encoding="utf8"))
 
 
 class TestTheManifest:
@@ -28,15 +22,6 @@ class TestTheManifest:
         assert "register_services" in entrypoints["services"]
         assert entrypoints["cli"].startswith("quest=")
 
-    def test_the_method_table_is_quests_verbatim(self) -> None:
-        """Copied, not restated.
-
-        A second hand-maintained list of methods is the drift this split exists
-        to remove — if QuEst adds a method and this file is not regenerated,
-        this fails rather than a host discovering the gap.
-        """
-        assert MANIFEST["rpc_methods"] == _quest_manifest()["rpc_methods"]
-
     def test_it_declares_what_the_registry_will_register(self) -> None:
         from chisurf.plugins.quenching_estimator.rpc.services import (
             registered_method_names,
@@ -44,24 +29,41 @@ class TestTheManifest:
 
         assert {m["name"] for m in MANIFEST["rpc_methods"]} == set(registered_method_names())
 
-    def test_the_version_tracks_quest(self) -> None:
-        assert MANIFEST["version"] == _quest_manifest()["version"]
+
+def _preloaded() -> set[str]:
+    """What an empty interpreter of this environment already has of IMP.
+
+    A ``.pth`` file of an editable install can import the ``IMP`` namespace package at
+    interpreter start; that is the environment's, not the plugin's.
+    """
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; print('PRE:' + ','.join(m for m in sys.modules "
+            "if m.split('.')[0] in {'IMP'}))",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    line = next(l for l in result.stdout.splitlines() if l.startswith("PRE:"))
+    return {name for name in line[len("PRE:") :].split(",") if name}
 
 
-class TestItDoesNotImportQuestAtStartup:
+class TestItDoesNotImportTheEngineAtStartup:
     """ChiSurf imports every plugin at discovery.
 
-    The previous single-file plugin did `from quest.gui import
-    TransientDecayGenerator` at module scope, so launching ChiSurf pulled in
-    QuEst, IMP and numba whether or not anyone opened the tool — and a broken
-    QuEst install became a broken ChiSurf startup.
+    The engine (``core/``) reaches IMP; importing the plugin, or its RPC
+    module, must not, or every ChiSurf start pays for IMP whether or not anyone
+    opens the tool.
     """
 
-    def test_importing_the_plugin_does_not_import_quest(self) -> None:
+    def test_importing_the_plugin_does_not_import_imp(self) -> None:
         script = (
             "import sys\n"
             "import chisurf.plugins.quenching_estimator as plugin\n"
-            "leaked = sorted(m for m in sys.modules if m.split('.')[0] in {'quest', 'IMP'})\n"
+            "leaked = sorted(m for m in sys.modules if m.split('.')[0] in {'IMP'})\n"
             "print('LEAKED:' + ','.join(leaked))\n"
             "assert plugin.icon\n"
         )
@@ -74,13 +76,14 @@ class TestItDoesNotImportQuestAtStartup:
             for line in result.stdout.splitlines()
             if line.startswith("LEAKED:")
         ][0]
+        leaked = ",".join(sorted(set(filter(None, leaked.split(","))) - _preloaded()))
         assert leaked == "", f"importing the plugin pulled in: {leaked}"
 
     def test_the_rpc_module_is_also_clean(self) -> None:
         script = (
             "import sys\n"
             "import chisurf.plugins.quenching_estimator.rpc.services as services\n"
-            "leaked = sorted(m for m in sys.modules if m.split('.')[0] in {'quest', 'IMP'})\n"
+            "leaked = sorted(m for m in sys.modules if m.split('.')[0] in {'IMP'})\n"
             "print('LEAKED:' + ','.join(leaked))\n"
             "assert callable(services.register_services)\n"
         )
@@ -93,17 +96,15 @@ class TestItDoesNotImportQuestAtStartup:
             for line in result.stdout.splitlines()
             if line.startswith("LEAKED:")
         ][0]
+        leaked = ",".join(sorted(set(filter(None, leaked.split(","))) - _preloaded()))
         assert leaked == "", f"importing rpc.services pulled in: {leaked}"
 
 
 class TestTheServicesRegisterIntoAHostDispatcher:
     def test_quests_handlers_serve_the_host(self) -> None:
-        """No handler is written in the plugin.
-
-        `quest.rpc.services.register_services` is duck-typed on
-        `register(name, handler)` for exactly this, so both surfaces run the
-        same code rather than two copies that can drift (`LAY-01`).
-        """
+        """`register_services` is duck-typed on `register(name, handler)`, so
+        ChiSurf's dispatcher and the plugin's own in-process client run the same
+        handlers rather than two copies that can drift."""
         from chisurf.plugins.quenching_estimator.rpc.services import register_services
 
         registered: dict[str, object] = {}
@@ -156,9 +157,9 @@ class TestTheServicesRegisterIntoAHostDispatcher:
         assert response["result"]["project"]["fret"]["enabled"] is False
 
 
-class TestTheContractIsQuestsOwn:
+class TestTheContractIsDefinedOnce:
     def test_it_reexports_rather_than_restates(self) -> None:
-        from quest.rpc.contract import CONTRACT_VERSION, ERROR_CODES
+        from chisurf.plugins.quenching_estimator.rpc.contract import CONTRACT_VERSION, ERROR_CODES
 
         from chisurf.plugins.quenching_estimator.api import contract
 
@@ -187,24 +188,18 @@ class TestTheGuiIsDockable:
         assert QuEstWindow is QuEstTool
 
 
-class TestTheToolbarDoesNotRepeatTheForm:
-    """The embedded form has its own footer: Simulate, Load project, Save project.
+class TestTheToolHostsTheNativeWindow:
+    """The Qt tool is only a host: its central widget draws the emtk window."""
 
-    A first draft of the toolbar repeated the last two. Caught by rendering the
-    widget and looking at the image — no assertion would have.
-    """
-
-    def test_it_only_adds_what_the_form_lacks(self, qapp) -> None:
-        from qtpy import QtWidgets
+    def test_the_central_widget_is_the_emtk_host(self, qapp) -> None:
+        from emtk.qt_host import host_class
 
         from chisurf.plugins.quenching_estimator import QuEstTool
 
         tool = QuEstTool()
-        labels = {
-            action.text()
-            for bar in tool.findChildren(QtWidgets.QToolBar)
-            for action in bar.actions()
-            if action.text()
-        }
-        assert labels == {"Load PDB…"}
-        assert not {"Load project…", "Save project…"} & labels
+        try:
+            assert isinstance(tool.centralWidget(), host_class())
+            assert tool.quest_app.session.ready, tool.quest_app.session.error
+        finally:
+            tool.quest_app.close()
+            tool.close()

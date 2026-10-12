@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: 'QuEst: predicting dye quenching at a labelling site'
-description: Simulating the PET-quenched donor decay of a dye tethered to a protein with QuEst (accessible volume, Brownian dynamics, photon Monte-Carlo), choosing its settings, reading the quantum yield and decay, the headless CLI, and the current state of the plugin, which does not run against the installed IMP.bff.
+description: Simulating the PET-quenched donor decay of a dye tethered to a protein with QuEst (accessible volume, Brownian dynamics, photon Monte-Carlo), choosing its settings, reading the quantum yield and decay, the built-in T4 lysozyme demo, the headless CLI and the Python API.
 tags: [guides, fret, tcspc, decay, dynamics, photons, settings, headless]
 ---
 
@@ -18,54 +18,52 @@ is comparative: which of several candidate sites is least quenched.
 For the physics (PET at contact, why the dye's motion matters, the rate table),
 see {ref}`concept-dye-quenching`.
 
-```{warning}
-**QuEst opens, but a simulation cannot run in ChiSurf yet.** The PET chemistry (the quencher
-tables and the per-residue interaction table) is now read from IMP.bff's compiled core, so the
-tool, `quest template` and `quest validate` work. A simulation still stops at the accessible
-volume: the core of `quest` imports Python modules of IMP.bff that moved to C++
-(`IMP.bff.av.compute`, `IMP.bff.av._kernels`, `IMP.bff.quenching.*`,
-`IMP.bff.distance_metrics`), so Simulate ends in a readable failure message. The settings and
-outputs below are documented from the QuEst code and its parameter catalogue; no simulation
-result is shown, because none could be computed. See [Known defects](#known-defects).
-```
+QuEst is part of ChiSurf: the engine is the `quenching_estimator` plugin
+(`chisurf/plugins/quenching_estimator/core/`), built on IMP.bff's accessible
+volume, Brownian walk and photon kernels. It used to be a separate package
+(`quest`), which ChiSurf no longer needs.
 
 ## Open the tool
 
-**Structure → Modelling → Structure Tools**, then **💡 QuEst** in the left list. It has no
-ribbon button of its own. In the current state the panel shows the form, and Simulate
-ends in the failure described below:
+**Structure → Modelling → Structure Tools**, then **💡 QuEst** in the left list,
+or the plugin's own window (`csg_quest`, or `csc quest gui`). Both are the same
+window. Press **Guide** for a walk-through and **Load demo** to start from the
+shipped example: T4 lysozyme (PDB 148L), the dye on the C$_\beta$ of Ser 36,
+FRET off, a short seeded run. **Simulate** then ends in a few seconds:
 
-```{figure} figures/quest_native_failure.png
+```{figure} figures/quest_demo_result.png
 :name: fig-quest-structure-tools
 :width: 100%
 
-The native QuEst window with the T4 lysozyme structure (148L) loaded and chain E, residue 117 as the attachment
-site, after a press on **Simulate**: the State line reports the failure of the accessible-volume step (see Known defects).
+The QuEst window after **Load demo** and **Simulate** (800 × 600): T4 lysozyme (148L), dye on E36 C$_\beta$ at the
+default accessible volume. The State line reads QY = 0.913 and ⟨τ⟩ = 4.11 ns; the panels are the donor decay, the dye's
+distance from its mean position along the trajectory and its position autocorrelation.
 ```
-
-When it works, the panel is QuEst's own form, with a **Load PDB…** action on
-the toolbar and **Run Simulation** in the form.
 
 ## Set it up
 
 All lengths are in Å and all times in ns. The defaults are those of
-`quest template`.
+`quest template`; the accessible-volume defaults are IMP.bff's (`IMP.bff.AV_DEFAULT_*`),
+the same ones every AV in ChiSurf uses.
 
 **Structure**
 
 1. **Structure file**: a PDB or mmCIF file, or a four-character RCSB ID,
    which is downloaded. Remove crystal waters first, because they block the
-   accessible volume and hide quenchers. QuEst's demonstration project uses
-   T4 lysozyme, 148L.
+   accessible volume and hide quenchers. **Load demo** uses T4 lysozyme, 148L,
+   which ships with the plugin (`examples/148l.pdb`).
 2. **Attachment chain / residue / atom**: where the linker starts, usually the
    C$_\beta$ of the labelled residue (for 148L, chain `E`; the demo uses
-   residue 118).
+   residue 36). After **Load PDB…** a valid site is picked for you.
 
 **Dye** (the accessible volume, {ref}`concept-accessible-volume`)
 
-3. **Linker length** (21.5), **linker width** (0.5) and **dye radius** (3.5):
-   the single-sphere AV of the dye centre.
-4. **Grid resolution** $d_g$ (0.5): the AV grid, which is also the grid the dye
+3. **Linker length** (20), **linker width** (4.5) and **dye radius** (3.5):
+   the single-sphere AV of the dye centre. At the default width a third of the
+   C$_\beta$ sites of 148L have **no** accessible volume and the run stops
+   with *Accessible Volume is empty*; a narrower width (0.5) labels every site
+   (see [Known defects](#known-defects)).
+4. **Grid resolution** $d_g$ (0.9): the AV grid, which is also the grid the dye
    walks on. A coarser grid is faster and moves the contact boundaries.
 
 **Simulation**
@@ -144,28 +142,34 @@ residue, is the design decision the number supports.
 
 ## Headless
 
-The plugin's CLI is QuEst's own, under `csc quest`. The intended workflow:
+The plugin's CLI is `csc quest` (`template`, `validate`, `simulate`, `scan`,
+`runs`, `gui`). The demo, from a shell:
 
 ```bash
-csc quest template --with-fret > project.quest.json
-csc quest simulate -p project.quest.json --pdb test/data/atomic_coordinates/pdb_files/148l.pdb \
-    --set attachment.chain=E --set attachment.residue=118 -o decay.csv
-csc quest scan ...        # several sites
+csc quest template > project.quest.json
+csc quest simulate -p project.quest.json \
+    --pdb chisurf/plugins/quenching_estimator/examples/148l.pdb \
+    --set attachment.chain=E --set attachment.residue=36 --set fret.enabled=false \
+    --set t_max=2000 --set n_photons=200000 --set random_seed=7 -o decay.csv
+csc quest scan ...        # several sites, fps.json positions
 ```
 
-and the same from Python through `quest.api.simulate(project)`. Over RPC the
-methods are `quest.template`, `quest.validate`, `quest.simulate` and
-`quest.scan`.
+`decay.csv` holds the decay and the scalar results; for this run
+`quantum_yield_donor` is 0.913, the same number the window shows. From Python:
 
-Run in the arm64 environment, `quest template` and `quest validate` work; the first simulation
-fails when the accessible volume is computed:
+```python
+from chisurf.plugins.quenching_estimator.api import local as quest
 
-```text
-$ csc quest simulate project.json
-  File ".../quest/core/av.py", line 52, in _compute_av
-    from IMP.bff.av.compute import compute_av
-ModuleNotFoundError: No module named 'IMP.bff.av'
+project = quest.template(with_fret=False)
+project["pdb"] = "chisurf/plugins/quenching_estimator/examples/148l.pdb"
+project["attachment"] = {"chain": "E", "residue": 36, "atom": "CB"}
+result = quest.simulate(project)          # a DecaySimulationResult
+print(result.quantum_yield_donor, result.lifetime_donor)
 ```
+
+Over RPC (ChiSurf's server registers the plugin's services) the methods are
+`quest.template`, `quest.validate`, `quest.simulate`, `quest.scan` and the rest
+of the table in the plugin's `manifest.json`.
 
 ## Using it well
 
@@ -186,30 +190,21 @@ excitation lower the brightness without changing the simulated decay.
 
 ## Known defects
 
-- **QuEst's core still imports Python modules that IMP.bff moved to C++.** The PET chemistry was
-  repaired (`quest/core/dye_diffusion.py` builds its tables from the top-level `IMP.bff`
-  functions; the project tables are plain dictionaries). What is left, in `quest/core/av.py` and
-  `quest/core/photon.py`: `IMP.bff.av.compute.compute_av`, `IMP.bff.av._kernels`
-  (`density2points`, `random_distances`), `IMP.bff.distance_metrics`, and
-  `IMP.bff.quenching` (`grid_center_index`, `slow_factor_grid`, `quenching_rate_grid`,
-  `av_contact_mask`, `simulate_dye_diffusion`, `sphere_points`, `solvent_accessible_surface`,
-  `fret_rate_trace`, `fret_rate_pair_trace`, `simulate_photon_trace`,
-  `simulate_quenched_decay`). Most have a top-level C++ twin with raw-array signatures
-  (`grid_center_index`, `slow_factor_grid`, `av_contact_mask`, `sphere_points`,
-  `fret_rate_trace`, `simulate_photon_trace`, `simulate_quenched_decay`,
-  `av_pair_statistics`, `mean_position_distance`, `simulate_probe_diffusion`,
-  `density_to_points`); `compute_av` has none in the installed build. Porting `quest.core` to
-  that API, with a baseline simulation to compare against, is the open task.
-- **Two import-hygiene tests fail under the documented `PYTHONPATH`.**
-  `modules/imp-tricks/src/sitecustomize.py` imports IMP when the interpreter
-  starts, so the plugin's "does not import IMP at startup" checks see IMP
-  modules that the plugin did not load.
+- **A third of T4 lysozyme's sites have no accessible volume at the default
+  linker width.** With IMP.bff's defaults (width 4.5 Å, grid 0.9 Å) 51 of the
+  151 C$_\beta$ sites of 148L chain E come back empty (among them 96, 117, 129,
+  132, 139), where FPS finds a volume. IMP.bff's linker search hops out of the
+  attachment seed only, not from every node as FPS does; that is a recorded
+  decision in IMP.bff (speed). A width of 0.5 Å labels all 151.
+- **The trajectory panel concatenates the parallel trajectories.** With
+  *Parallel trajectories* at −1 (all cores, at most 8) the dye-trajectory and
+  autocorrelation panels run over 8 × the simulation time.
 
 ## See also
 
 - Concept: {ref}`concept-dye-quenching`. Related: {ref}`concept-accessible-volume`,
   {ref}`concept-fret`, {ref}`concept-hydrodynamics`,
   {ref}`fundamentals-quenching-mechanisms`.
-- Tool: **QuEst** (`chisurf/plugins/quenching_estimator/`, a shell around
-  `modules/quest`), reached through **Structure Tools**.
+- Tool: **QuEst** (`chisurf/plugins/quenching_estimator/`), reached through
+  **Structure Tools** or its own window.
 - Method: {cite}`peulen2017`.

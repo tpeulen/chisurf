@@ -1,50 +1,34 @@
-# QuEst — quenching estimated from a structure
+# QuEst: quenching and FRET of a tethered dye
 
-QuEst predicts the donor decay of a dye tethered to a protein. The dye diffuses
-inside its accessible volume (AV) around the structure, and it is quenched
-whenever it comes within a critical distance of a quenching residue — **Trp,
-Tyr, His, Met** (and Pro), by photoinduced electron transfer. Integrating the
-quenching along the diffusion trajectory gives a decay histogram, and with an
-acceptor placed, the transient FRET decay.
+QuEst (Peulen, Opanasyuk and Seidel, [10.1021/acs.jpcb.7b03441](https://doi.org/10.1021/acs.jpcb.7b03441)) simulates a dye on a flexible linker diffusing over a protein. Contact with a quenching residue (Trp, Tyr, His, Met, Pro, Cys) quenches the dye by photo-induced electron transfer (PET); with an acceptor dye the transfer of energy (FRET) is simulated too. The result is the donor fluorescence decay, from which the quantum yield and the lifetime follow.
 
-The result is a **non-exponential decay computed from a structure**: a
-multi-exponential donor-only decay need not mean conformational states — it can
-be one dye sampling distances to a fixed set of quenchers.
+If you have not used it before, press **Guide**; **Load demo** gives it T4 lysozyme (PDB 148L) to work on.
 
-## Order of work
+## What you enter
 
-1. **Load PDB…**, then the attachment chain, residue and atom of the dye.
-2. **Dye** — linker length, linker width and dye radius; they define the AV.
-3. **Quenching** — the quencher table; **FRET** — the acceptor, if any.
-4. **Simulate**, and read the decay and the dye trajectory in *Results*.
+| Panel | Meaning |
+|---|---|
+| **Structure** | The structure file and the attachment site (chain, residue, atom) of the donor. |
+| **Dye** | Linker length and width and the dye radius: they define the accessible volume. The grid resolution is the voxel size. |
+| **Simulation** | Unquenched lifetime, the dye's diffusion coefficient, simulation time and step, the number of photons and the decay bins. |
+| **Quenching** | The fallback contact radius; the per-residue chemistry is in the **Quenching Chemistry** tab. |
+| **FRET** | Switch on to add an acceptor dye with its own attachment site, linker and diffusion, the Förster radius and κ². |
+| **Advanced** | Parallel trajectories, slowing radius, random seed and output options. |
 
-## Caution
+Every field has a tooltip with the project path it edits.
 
-- **Quenching is a step in distance.** A quencher inside the critical distance
-  quenches at its full rate, one outside not at all; the rates and distances are
-  a table, not a fit to your data.
-- **The AV and the sticking define the answer.** A wrong linker length or
-  slowing radius (the surface sticking) changes which quenchers the dye
-  reaches, and with it the predicted quantum yield.
-- **A prediction, not a measurement.** Compare with a measured donor-only
-  lifetime; a mismatch is evidence about the structure or the linker.
+## Results
 
-## Current state
+**Simulate** runs the project in the background; **Cancel** discards the result of a run (a single trajectory cannot be interrupted). The state line shows the donor quantum yield QY (1 means no quenching), the mean lifetime and, with FRET, the transfer efficiency E. The plots are the decay, the dye's distance from its mean position over the trajectory and its position autocorrelation. **Project JSON** shows the project as the command line (`quest`) and the RPC methods read it.
 
-QuEst needs the `quest` package and IMP.bff. The installed IMP.bff no longer
-has the `IMP.bff.quenching` Python module that `quest` imports, and until
-`quest` is ported to the C++ functions now in `IMP.bff`, this panel shows
-that import error instead of the form. The guide
-[QuEst — the workflow](docs/guides/80_quenching_estimator.md) has the details.
+## Limits
+
+- **Quenching is a step in distance.** A quencher inside its contact radius quenches at its full rate, one outside not at all; the rates are a reference table, not a fit to your data.
+- **The accessible volume defines the answer.** The defaults are IMP.bff's (linker 20 Å, width 4.5 Å, dye radius 3.5 Å, grid 0.9 Å). At that width a third of the Cβ sites of T4 lysozyme have **no** accessible volume and the run stops with "Accessible Volume is empty"; a narrower linker width (for example 0.5 Å) labels every site.
+- **A prediction, not a measurement.** Compare with a measured donor-only lifetime; a mismatch is evidence about the structure or the linker.
 
 ## Further reading
 
-- [Dye quenching by amino acids](docs/concepts/dye_quenching.md) — the
-  contact model, the rate table and what quenching does to lifetimes, FCS and
-  FRET.
-- [QuEst — the workflow](docs/guides/80_quenching_estimator.md) — every
-  setting, the outputs and the command line.
-- [Quenching mechanisms](docs/fundamentals/quenching_mechanisms.md) — PET, the
-  quenching residues, and how QuEst turns them into a decay.
-- {cite}`peulen2017` — the diffusion-simulation approach QuEst implements for
-  analysing time-resolved FRET of labelled macromolecules.
+- [QuEst — the workflow](docs/guides/80_quenching_estimator.md) — every setting, the outputs, the command line and the Python API.
+- [Dye quenching by amino acids](docs/concepts/dye_quenching.md) — the contact model, the rate table and what quenching does to lifetimes, FCS and FRET.
+- [Structure Tools](docs/guides/88_structure_tools.md) — the hub this window is also a card of.

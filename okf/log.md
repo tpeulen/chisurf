@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+- QuEst is ChiSurf's `quenching_estimator` plugin (owner decision): the engine, settings, local API, RPC, CLI and the
+  Qt-free form model and view specs moved in from the `quest` package and were ported to the flat IMP.bff API
+  (`get_av`, `simulate_probe_diffusion`, the grid, FRET-rate and photon kernels; IMP.bff 2e7f56c32 makes
+  `center_grid_indices` callable). The `quest` dependency, its build task, module link and CI checkouts are gone;
+  `import quest` is banned. The window gains Load demo (148L E36: QY 0.913, ⟨τ⟩ 4.11 ns); guide 80 rewritten.
+  Open: 51 of 151 T4L Cβ sites have no AV at IMP.bff's default width. See [known issues](references/known-issues.md).
 - Expanding tables measure what follows them (emtk 7c94678) and items share vertical room by weight (emtk 31d84a8,
   `"stretch"`/`"min_height"` in view.json, `im.stretch_height` in code). The hand-set `reserve` pixels are gone
   from every view spec; they broke whenever the rows below changed (a translation, a stacked label, 2x). The Datasets

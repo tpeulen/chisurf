@@ -22,9 +22,7 @@ import pytest
 PLUGIN_ROOT = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "plugins"
 
 #: Plugins whose entrypoints may legitimately fail to import here, and why.
-OPTIONAL: dict[str, str] = {
-    "quenching_estimator": "needs the optional QuEsT extension (modules/quest)",
-}
+OPTIONAL: dict[str, str] = {}
 
 
 def _manifests() -> list[pathlib.Path]:

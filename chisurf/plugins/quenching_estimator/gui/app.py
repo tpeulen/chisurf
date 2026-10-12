@@ -6,12 +6,16 @@ It is reused here, not copied; the import is inside the factory so that importin
 
 This window adds to the card's *3D Structure* tab what the Qt tool's molecule widget had: choose Donor or Acceptor, then
 pick the attachment residue from the residue list of the loaded structure (the list stands in for the 3D click of the
-legacy widget: the implot3d plot offers no ray pick), and an *Open Web UI* button for the local QuEst web interface.
+legacy widget: the implot3d plot offers no ray pick).
+
+The ``?`` and **Guide** buttons are drawn by the card itself: ``CardShell`` builds an ``EmTkHelpWindow`` and an
+``EmTkGuidedTour`` from this folder's ``help.md`` and ``guide.json`` (the card's resource folder is this one), so the
+plugin window, its Qt host and the Structure Tools card show one help page and walk one tour. **Load demo** gives the
+tour T4 lysozyme to work on (``demo.py``).
 """
 
 from __future__ import annotations
 
-WEB_UI_URL = "http://localhost:3000"
 _SITE_ATOMS = ("CB", "CA")
 
 
@@ -78,27 +82,20 @@ def residues(session) -> list[tuple[str, int, str]]:
 
 
 def make_app():
-    """Build the QuEst window (the card, as an app of its own, with site picking and the web UI link)."""
+    """Build the QuEst window (the card, as an app of its own, with site picking)."""
     from emtk import im
     from emtk.i18n import tr
 
     from chisurf.plugins.modelling.structure_tools.cards.quest import QuestCard
 
     class QuEstWindow(QuestCard):
-        """The card plus attachment-site picking by residue and the web UI link."""
+        """The card plus attachment-site picking by residue."""
 
         pick_target = "donor"
 
         def pick(self, chain: str, residue: int) -> None:
             self.status = pick_site(self.session, self.pick_target, chain, residue)
             self.used("pick_site")
-            self.sync()
-
-        def open_web_ui(self) -> None:
-            import webbrowser
-
-            webbrowser.open(WEB_UI_URL)
-            self.session.say(f"Opened {WEB_UI_URL}")
             self.sync()
 
         def _draw_structure(self) -> None:
@@ -112,10 +109,7 @@ def make_app():
                 )
                 self.remember(f"pick_{target}")
                 im.same_line()
-            if im.button(tr("Open Web UI")):
-                self.open_web_ui()
-            im.set_item_tooltip(tr(f"Open the local QuEst web interface ({WEB_UI_URL})."))
-            self.remember("open_web_ui")
+            im.new_line()
             rows = residues(self.session)
             if rows:
                 project = self.session.model.project

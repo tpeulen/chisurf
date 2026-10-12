@@ -159,8 +159,12 @@ structure is of a cysteine-free variant, so there is no Cys.
   {ref}`concept-fret` (what donor quenching does to a FRET efficiency),
   {ref}`concept-fcs-correlation` (the bunching term PET-FCS reads),
   {ref}`concept-hydrodynamics` (diffusion coefficients).
-- Implementation: the plugin is a shell around the `quest` package
-  (`modules/quest`); the chemistry tables and kernels live in IMP.bff.
+- Implementation: `chisurf/plugins/quenching_estimator/core/` (the former
+  `quest` package, now part of ChiSurf); the accessible volume
+  (`IMP.bff.get_av`), the chemistry tables, the Brownian walk
+  (`IMP.bff.simulate_probe_diffusion`) and the photon kernels
+  (`IMP.bff.simulate_photon_trace`, `IMP.bff.simulate_quenched_decay`) are
+  IMP.bff's.
 
 ## References
 

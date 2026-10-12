@@ -1,0 +1,119 @@
+{
+    "1-Lifetime":
+    {
+        "equation": "a1*exp(-x/tau1)",
+        "initial":{
+            "a1": 1.0,
+            "tau1": 4.0
+        },
+        "description": "<html><head /><body><h1>1-Lifetime</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "2-Lifetimes":
+    {
+        "equation": "a1*exp(-x/tau1)+a2*exp(-x/tau2)",
+        "initial":{
+            "a1": 1.0,
+            "tau1": 2.0,
+            "a2": 1.0,
+            "tau2": 4.0
+        },
+        "description": "<html><head /><body><h1>2-Lifetimes</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "3-Lifetimes":
+    {
+        "equation": "a1*exp(-x/tau1)+a2*exp(-x/tau2)+a3*exp(-x/tau3)",
+        "initial":{
+            "a1": 1.0,
+            "tau1": 4.0,
+            "a2": 1.0,
+            "tau2": 2.0,
+            "a3": 1.0,
+            "tau3": 1.0
+        },
+        "description": "<html><head /><body><h1>3-Lifetimes</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "Transient-Quenching":
+    {
+        "equation": "p0*exp(-x/tau0-4*pi*Rdye*Ddye*Nq**2/Vav*x*(1+2*Rdye/sqrt(pi*Ddye*x)))",
+        "initial":{
+            "p0": 1.0,
+            "tau0": 4.0,
+            "Rdye": 7.5,
+            "Ddye": 40.0,
+            "Nq": 1.0,
+            "Vav": 16755
+        },
+        "description": "<html><head /><body><h1>Transient-Quenching</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "Transient-Quenching Empirical":
+    {
+        "equation": "p0*exp(-a*x-2*b*sqrt(x))",
+        "initial":{
+            "p0": 1.0,
+            "a": 1.0,
+            "b": 1.0
+        },
+        "description": "<html><head /><body><h1>Transient-Quenching Empirical</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "Transient-Quenching 2-state":
+    {
+        "equation": "a1*exp(-x/tau0-4*pi*Rdye*Ddye*Nq**2/Vav*x*(1+2*Rdye/sqrt(pi*Ddye*x)))+a2*exp(-x/tau0)",
+        "initial":{
+            "a1": 0.5,
+            "a2": 0.5,
+            "tau0": 4.0,
+            "Rdye": 7.5,
+            "Ddye": 40.0,
+            "Nq": 1.0,
+            "Vav": 16755
+        },
+        "description": "<html><head /><body><h1>Transient-Quenching 2-state</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "2-Lifetimes, 1-Rate":
+    {
+        "equation": "a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ))",
+        "initial":{
+            "a1": 1.0,
+            "tau1": 4.0,
+            "a2": 1.0,
+            "tau2": 2.0,
+            "kQ": 0.5
+        },
+        "description": "<html><head /><body><h1>2-Lifetimes, 1-Rate</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "2-Lifetimes, 1-Rate, 0-Rate":
+    {
+        "equation": "p0*((1-xD)*(a1*exp(-x*(1/tau1+kQ))+a2*exp(-x*(1/tau2+kQ)))+xD*(a1*exp(-x*(1/tau1))+a2*exp(-x*(1/tau2))))",
+        "initial":{
+            "p0": 1.0,
+            "xD": 0.5,
+            "a1": 1.0,
+            "tau1": 4.0,
+            "a2": 1.0,
+            "tau2": 2.0,
+            "kQ": 0.5
+        },
+        "description": "<html><head /><body><h1>2-Lifetimes, 1-Rate</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "1-Lifetime, 1-Rate":
+    {
+        "equation": "a1*exp(-x*(1/tau1+kQ))",
+        "initial":{
+            "a1": 1.0,
+            "tau1": 4.0,
+            "kQ": 0.5
+        },
+        "description": "<html><head /><body><h1>1-Lifetime</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    },
+    "1-Lifetime, 1-Rate, 0-Rate":
+    {
+        "equation": "p0*((1-aD)*exp(-x*(1/tau1+kQ))+aD*exp(-x*(1/tau1)))",
+        "initial":{
+            "p0": 1.0,
+            "aD": 0.5,
+            "tau1": 4.0,
+            "kQ": 0.5
+        },
+        "description": "<html><head /><body><h1>1-Lifetime</h1><p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.</p></body></html>"
+    }
+}

@@ -1,0 +1,273 @@
+{
+  "version": 1,
+  "title": "QuEst parameter catalog",
+  "description": "Canonical descriptions for parameters exposed by the command line workflows, default settings, and web UI.",
+  "documentation_path": "/doc/parameters.md",
+  "parameters": {
+    "pdb": {
+      "label": "Structure file",
+      "category": "Structure",
+      "type": "file",
+      "description": "Path to the structure file (PDB/CIF), or a bare four-character RCSB PDB ID used for AV calculation."
+    },
+    "attachment.chain": {
+      "label": "Attachment chain",
+      "category": "Labeling site",
+      "type": "text",
+      "description": "Chain identifier of the amino acid residue where the dye is tethered."
+    },
+    "attachment.residue": {
+      "label": "Attachment residue",
+      "category": "Labeling site",
+      "type": "integer",
+      "description": "Residue sequence number of the amino acid where the dye is tethered."
+    },
+    "attachment.atom": {
+      "label": "Attachment atom",
+      "category": "Labeling site",
+      "type": "text",
+      "description": "Atom name (e.g., CB, CA) used as the tethering point for the dye."
+    },
+    "av_parameter.linker_length": {
+      "label": "Linker length",
+      "category": "Accessible volume",
+      "type": "number",
+      "unit": "Å",
+      "description": "Maximum distance from attachment point to the center of the dye."
+    },
+    "av_parameter.linker_width": {
+      "label": "Linker width",
+      "category": "Accessible volume",
+      "type": "number",
+      "unit": "Å",
+      "description": "Width of the linker tethering the dye."
+    },
+    "av_parameter.radius1": {
+      "label": "Dye radius",
+      "category": "Accessible volume",
+      "type": "number",
+      "unit": "Å",
+      "description": "Exclusion radius representing the dye sphere (single-sphere approximation)."
+    },
+    "dg": {
+      "label": "Grid resolution",
+      "category": "Accessible volume",
+      "type": "number",
+      "unit": "Å",
+      "description": "Grid resolution used to compute the accessible volume (AV) and diffusion search space."
+    },
+    "tau0": {
+      "label": "Unquenched lifetime",
+      "category": "Simulation",
+      "type": "number",
+      "unit": "ns",
+      "description": "Fluorescence lifetime of the donor dye in the absence of quenching."
+    },
+    "fret.dyes.0.D": {
+      "label": "Donor diffusion coefficient",
+      "category": "Simulation",
+      "type": "number",
+      "unit": "Å²/ns",
+      "description": "Diffusion coefficient of the donor dye in solution, when not interacting with the protein surface."
+    },
+    "critical_distance": {
+      "label": "Fallback contact radius",
+      "category": "Quenching",
+      "type": "number",
+      "unit": "Å",
+      "description": "Contact radius used by residue types that do not define their own quench_radius. It is measured from the dye centre to the residue's quenching centre, so it must exceed the dye radius plus van der Waals contact (typically 7-9 A for a 3.5 A dye)."
+    },
+    "t_max": {
+      "label": "Simulation time",
+      "category": "Simulation",
+      "type": "number",
+      "unit": "ns",
+      "description": "Total length of the simulated Brownian dynamics trajectory."
+    },
+    "t_step": {
+      "label": "Time step",
+      "category": "Simulation",
+      "type": "number",
+      "unit": "ns",
+      "description": "Time step size for the Brownian dynamics trajectory calculation."
+    },
+    "n_photons": {
+      "label": "Simulated photons",
+      "category": "Simulation",
+      "type": "integer",
+      "description": "Number of excitation photons simulated to reconstruct the fluorescence decay histogram."
+    },
+    "n_bins": {
+      "label": "Decay bins",
+      "category": "Simulation",
+      "type": "integer",
+      "description": "Number of time channels/bins used to construct the output decay histogram."
+    },
+    "parallel_trajectories": {
+      "label": "Parallel trajectories",
+      "category": "Advanced",
+      "type": "integer",
+      "description": "Number of independent Brownian dynamics trajectories run concurrently and combined before photon sampling. Use -1 to use all CPU cores, capped at 8."
+    },
+    "slow_radius": {
+      "label": "Slowing radius",
+      "category": "Advanced",
+      "type": "number",
+      "unit": "Å",
+      "description": "Radius around each whole-protein amino-acid center where that residue type contributes its slow_factor to the diffusion coefficient grid."
+    },
+    "save_avs": {
+      "label": "Save AV files",
+      "category": "Advanced",
+      "type": "boolean",
+      "description": "Whether to save the calculated accessible volume grids as XYZ files."
+    },
+    "output_file": {
+      "label": "Output file prefix",
+      "category": "Advanced",
+      "type": "text",
+      "description": "Base filename prefix used when saving simulation outputs, trajectories, and decays."
+    },
+    "skip_frame": {
+      "label": "Trajectory skip frames",
+      "category": "Advanced",
+      "type": "integer",
+      "description": "Subsampling factor for writing trajectory frames to coordinates files."
+    },
+    "fret.enabled": {
+      "label": "FRET enabled",
+      "category": "FRET Acceptor",
+      "type": "boolean",
+      "description": "Whether a FRET acceptor dye is simulated to compute FRET efficiency and decay curves."
+    },
+    "fret.R0_matrix": {
+      "label": "Förster radius",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "unit": "Å",
+      "description": "Förster radius R0 of the donor–acceptor pair, in Ångström like every other length in a project. Stored as the donor→acceptor cell of fret.R0_matrix; the transfer rate scales as (R0/r)^6, so entering nanometres makes FRET vanish. Typical xanthene pairs are 45–65 Å."
+    },
+    "fret.kappa2": {
+      "label": "Orientation factor κ²",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "default": 0.6666666666666666,
+      "minimum": 0.0,
+      "maximum": 4.0,
+      "description": "Orientation factor κ² of the transfer, between 0 (perpendicular transition dipoles) and 4 (collinear). QuEst does not model it: the dye is a point diffusing in a volume and has no dipole to orient, so this is the averaging regime you are asserting. The default 2/3 is the isotropic dynamic average, which is what a published Förster radius already assumes — leaving it there reproduces the rate exactly. Raise it only with evidence that both dyes are orientationally restricted."
+    },
+    "fret.dyes.1.attachment.chain": {
+      "label": "Acceptor chain",
+      "category": "FRET Acceptor",
+      "type": "text",
+      "description": "Chain identifier of the residue where the FRET acceptor dye is attached."
+    },
+    "fret.dyes.1.attachment.residue": {
+      "label": "Acceptor residue",
+      "category": "FRET Acceptor",
+      "type": "integer",
+      "description": "Residue sequence number where the FRET acceptor dye is attached."
+    },
+    "fret.dyes.1.attachment.atom": {
+      "label": "Acceptor atom",
+      "category": "FRET Acceptor",
+      "type": "text",
+      "description": "Atom name where the FRET acceptor dye is attached."
+    },
+    "fret.dyes.1.av_parameter.linker_length": {
+      "label": "Acceptor linker length",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "unit": "Å",
+      "description": "Maximum distance from attachment point to the center of the FRET acceptor dye."
+    },
+    "fret.dyes.1.av_parameter.linker_width": {
+      "label": "Acceptor linker width",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "unit": "Å",
+      "description": "Width of the linker tethering the FRET acceptor dye."
+    },
+    "fret.dyes.1.av_parameter.radius1": {
+      "label": "Acceptor dye radius",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "unit": "Å",
+      "description": "Exclusion radius representing the FRET acceptor dye sphere."
+    },
+    "fret.dyes.1.D": {
+      "label": "Acceptor diffusion coefficient",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "unit": "Å²/ns",
+      "description": "Diffusion coefficient of the FRET acceptor dye when not interacting with the protein surface."
+    },
+    "amino_acid_interactions": {
+      "label": "Amino-acid interactions",
+      "category": "Quenching",
+      "type": "table",
+      "description": "Per-residue-type interaction table. Each entry holds slow_factor (0-1, how much the residue slows the diffusing dye), kQ (quenching rate in 1/ns applied on contact), quench_radius (contact radius in Angstrom from the dye centre; null inherits critical_distance) and quench_atoms (atom names whose centroid defines the quenching centre). Only residues with a redox-active side chain quench by default: TRP, TYR, MET, HIS, CYS and PRO."
+    },
+    "amino_acid_interactions.kQ": {
+      "label": "Quenching rate kQ",
+      "category": "Quenching",
+      "type": "number",
+      "unit": "1/ns",
+      "description": "Rate at which this residue type quenches the dye while the two are in contact. Contributions from residues whose contact spheres overlap add up."
+    },
+    "amino_acid_interactions.quench_radius": {
+      "label": "Contact radius",
+      "category": "Quenching",
+      "type": "number",
+      "unit": "Å",
+      "description": "Distance from the dye centre to this residue's quenching centre within which quenching occurs. Leave empty to inherit the project-wide critical_distance."
+    },
+    "amino_acid_interactions.quench_atoms": {
+      "label": "Quenching centre atoms",
+      "category": "Quenching",
+      "type": "list",
+      "description": "Atom names whose centroid defines this residue's quenching centre. The defaults follow the redox-active moiety that mediates photo-induced electron transfer: the indole ring for TRP, the phenol ring for TYR, the imidazole ring for HIS, SD for MET and SG for CYS - not CB."
+    },
+    "amino_acid_interactions.slow_factor": {
+      "label": "Slow factor",
+      "category": "Quenching",
+      "type": "number",
+      "description": "Factor between 0 and 1 scaling the dye's diffusion coefficient near this residue type, modelling unspecific stickiness. Overlapping residues multiply their factors."
+    },
+    "coarse_grained": {
+      "label": "Coarse-grained structure",
+      "category": "Simulation",
+      "type": "boolean",
+      "description": "Reduce the structure to backbone plus CB before simulating, with CB moved to the side-chain centre of mass. Side-chain atoms are then absent, so every residue's quenching centre falls back to that CB pseudo-atom, and the accessible volume grows because side chains no longer block it. This is a modelling choice, not a speed optimisation: QuEst's cost is dominated by the AV grid rather than the atom count."
+    },
+    "random_seed": {
+      "label": "Random seed",
+      "category": "Advanced",
+      "type": "integer",
+      "description": "Seed for the Monte-Carlo simulation. When set, both the diffusion trajectory and the photon trace are seeded, so repeated runs of the same project reproduce the same decay and quantum yield exactly. Leave unset for an independent random run; the photon trace then uses a faster multi-threaded kernel."
+    },
+    "fret.acceptor_dynamics": {
+      "label": "Acceptor dynamics",
+      "category": "FRET Acceptor",
+      "type": "choice",
+      "description": "How the acceptor is treated: 'trajectory' simulates its Brownian walk with its own diffusion coefficient and stickiness and uses the instantaneous donor-acceptor distance, 'averaged' averages over its static accessible volume (the fast-acceptor limit, valid only when it explores that volume quickly compared with the donor lifetime). The two disagree because a cloud is weighted uniformly while a trajectory is weighted by where the dye dwells.",
+      "options": [
+        "trajectory",
+        "averaged"
+      ]
+    },
+    "fret.dyes.1.slow_radius": {
+      "label": "Acceptor slowing radius",
+      "category": "FRET Acceptor",
+      "type": "number",
+      "unit": "Å",
+      "description": "Radius around each amino-acid centre within which that residue slows the acceptor. Separate from the donor's: a cyanine and a rhodamine do not adhere to a protein surface in the same way. Defaults to the donor's value."
+    },
+    "fret.dyes.1.amino_acid_interactions": {
+      "label": "Acceptor interactions",
+      "category": "FRET Acceptor",
+      "type": "table",
+      "description": "Per-residue-type interaction table for the acceptor, same shape as the donor's amino_acid_interactions. Only slow_factor is used, since QuEst reports the donor's decay and the acceptor's own PET quenching would change how bright the acceptor is, not the donor. Defaults to the donor's table."
+    }
+  }
+}

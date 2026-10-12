@@ -120,6 +120,11 @@ RETIRED = {
         "hdbscan",
         "use tttrlib.hdbscan",
     ),
+    "quest": (
+        "quest",
+        "QuEst is the quenching_estimator plugin: chisurf.plugins.quenching_estimator "
+        "(core/ engine, api/local facade, rpc/, cli/, gui/form_model)",
+    ),
     "skimage": (
         "scikit-image",
         "use chisurf.core.roi (regionprops, regionprops_table) and "

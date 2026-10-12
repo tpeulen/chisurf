@@ -1,0 +1,343 @@
+{
+  "locale": "de",
+  "name": "Deutsch",
+  "catalog.title": "QuEst-Parameterkatalog",
+  "catalog.description": "Verbindliche Beschreibungen der Parameter, die von der Kommandozeile, den Voreinstellungen und der Weboberfläche verwendet werden.",
+  "categories": {
+    "Structure": "Struktur",
+    "Labeling site": "Markierungsstelle",
+    "Accessible volume": "Zugängliches Volumen",
+    "Simulation": "Simulation",
+    "Quenching": "Löschung",
+    "FRET Acceptor": "FRET-Akzeptor",
+    "Advanced": "Erweitert"
+  },
+  "parameters": {
+    "pdb": {
+      "label": "Strukturdatei",
+      "description": "Pfad zur Strukturdatei (PDB/CIF) oder eine vierstellige RCSB-PDB-Kennung; wird für die AV-Berechnung verwendet."
+    },
+    "attachment.chain": {
+      "label": "Kette der Anbindung",
+      "description": "Kettenbezeichner der Aminosäure, an die der Farbstoff gebunden ist."
+    },
+    "attachment.residue": {
+      "label": "Rest der Anbindung",
+      "description": "Sequenznummer der Aminosäure, an die der Farbstoff gebunden ist."
+    },
+    "attachment.atom": {
+      "label": "Atom der Anbindung",
+      "description": "Atomname (z. B. CB, CA), der als Anbindungspunkt des Farbstoffs dient."
+    },
+    "av_parameter.linker_length": {
+      "label": "Linkerlänge",
+      "description": "Maximaler Abstand vom Anbindungspunkt zum Mittelpunkt des Farbstoffs."
+    },
+    "av_parameter.linker_width": {
+      "label": "Linkerbreite",
+      "description": "Breite des Linkers, der den Farbstoff hält."
+    },
+    "av_parameter.radius1": {
+      "label": "Farbstoffradius",
+      "description": "Ausschlussradius, der den Farbstoff als Kugel beschreibt (Ein-Kugel-Näherung)."
+    },
+    "dg": {
+      "label": "Gitterauflösung",
+      "description": "Gitterauflösung für die Berechnung des zugänglichen Volumens (AV) und des Diffusionsraums."
+    },
+    "tau0": {
+      "label": "Ungelöschte Lebensdauer",
+      "description": "Fluoreszenzlebensdauer des Donorfarbstoffs ohne Löschung."
+    },
+    "fret.dyes.0.D": {
+      "label": "Diffusionskoeffizient des Donors",
+      "description": "Diffusionskoeffizient des Donorfarbstoffs in Lösung, ohne Wechselwirkung mit der Proteinoberfläche."
+    },
+    "critical_distance": {
+      "label": "Voreingestellter Kontaktradius",
+      "description": "Kontaktradius für Resttypen, die keinen eigenen quench_radius festlegen. Er wird vom Farbstoffmittelpunkt bis zum Löschzentrum des Rests gemessen und muss daher größer sein als der Farbstoffradius zuzüglich des Van-der-Waals-Kontakts (typischerweise 7–9 Å bei einem Farbstoff von 3,5 Å)."
+    },
+    "t_max": {
+      "label": "Simulationsdauer",
+      "description": "Gesamtlänge der simulierten Brownschen Trajektorie."
+    },
+    "t_step": {
+      "label": "Zeitschritt",
+      "description": "Schrittweite für die Berechnung der Brownschen Trajektorie."
+    },
+    "n_photons": {
+      "label": "Simulierte Photonen",
+      "description": "Anzahl der simulierten Anregungsphotonen zur Rekonstruktion des Fluoreszenzabklingens."
+    },
+    "n_bins": {
+      "label": "Kanäle des Abklingens",
+      "description": "Anzahl der Zeitkanäle des ausgegebenen Abklinghistogramms."
+    },
+    "parallel_trajectories": {
+      "label": "Parallele Trajektorien",
+      "description": "Anzahl unabhängiger Brownscher Trajektorien, die gleichzeitig gerechnet und vor der Photonensimulation zusammengeführt werden. −1 nutzt alle CPU-Kerne, höchstens jedoch 8."
+    },
+    "slow_radius": {
+      "label": "Verlangsamungsradius",
+      "description": "Radius um jedes Aminosäurezentrum des gesamten Proteins, innerhalb dessen dieser Resttyp seinen slow_factor zum Gitter der Diffusionskoeffizienten beiträgt."
+    },
+    "save_avs": {
+      "label": "AV-Dateien speichern",
+      "description": "Legt fest, ob die berechneten Gitter des zugänglichen Volumens als XYZ-Dateien gespeichert werden."
+    },
+    "output_file": {
+      "label": "Präfix der Ausgabedateien",
+      "description": "Namenspräfix für gespeicherte Simulationsergebnisse, Trajektorien und Abklingkurven."
+    },
+    "skip_frame": {
+      "label": "Übersprungene Trajektorienbilder",
+      "description": "Unterabtastungsfaktor beim Schreiben von Trajektorienbildern in Koordinatendateien."
+    },
+    "fret.enabled": {
+      "label": "FRET aktiviert",
+      "description": "Legt fest, ob ein FRET-Akzeptorfarbstoff simuliert wird, um FRET-Effizienz und Abklingkurven zu berechnen."
+    },
+    "fret.R0_matrix": {
+      "label": "Förster-Radius",
+      "description": "Förster-Radius R0 des Donor-Akzeptor-Paares, in Ångström wie jede andere Länge im Projekt. Gespeichert wird die Zelle Donor→Akzeptor von fret.R0_matrix; die Transferrate skaliert mit (R0/r)^6, sodass eine Eingabe in Nanometern FRET verschwinden lässt. Typische Xanthen-Paare liegen bei 45–65 Å."
+    },
+    "fret.kappa2": {
+      "label": "Orientierungsfaktor κ²",
+      "description": "Orientierungsfaktor κ² des Transfers, zwischen 0 (senkrecht zueinander stehende Übergangsdipole) und 4 (kollinear). QuEst modelliert ihn nicht: der Farbstoff ist ein Punkt, der in einem Volumen diffundiert, und besitzt keinen Dipol, der sich ausrichten könnte — dieser Wert ist also die Mittelungsannahme, die Sie treffen. Der Standardwert 2/3 ist das isotrope dynamische Mittel, das ein publizierter Förster-Radius bereits voraussetzt; ihn stehen zu lassen reproduziert die Rate exakt. Erhöhen Sie ihn nur, wenn belegt ist, dass beide Farbstoffe in ihrer Orientierung eingeschränkt sind."
+    },
+    "fret.dyes.1.attachment.chain": {
+      "label": "Kette des Akzeptors",
+      "description": "Kettenbezeichner des Rests, an den der FRET-Akzeptorfarbstoff gebunden ist."
+    },
+    "fret.dyes.1.attachment.residue": {
+      "label": "Rest des Akzeptors",
+      "description": "Sequenznummer des Rests, an den der FRET-Akzeptorfarbstoff gebunden ist."
+    },
+    "fret.dyes.1.attachment.atom": {
+      "label": "Atom des Akzeptors",
+      "description": "Atomname, an dem der FRET-Akzeptorfarbstoff gebunden ist."
+    },
+    "fret.dyes.1.av_parameter.linker_length": {
+      "label": "Linkerlänge des Akzeptors",
+      "description": "Maximaler Abstand vom Anbindungspunkt zum Mittelpunkt des FRET-Akzeptorfarbstoffs."
+    },
+    "fret.dyes.1.av_parameter.linker_width": {
+      "label": "Linkerbreite des Akzeptors",
+      "description": "Breite des Linkers, der den FRET-Akzeptorfarbstoff hält."
+    },
+    "fret.dyes.1.av_parameter.radius1": {
+      "label": "Radius des Akzeptorfarbstoffs",
+      "description": "Ausschlussradius, der den FRET-Akzeptorfarbstoff als Kugel beschreibt."
+    },
+    "fret.dyes.1.D": {
+      "label": "Diffusionskoeffizient des Akzeptors",
+      "description": "Diffusionskoeffizient des FRET-Akzeptorfarbstoffs ohne Wechselwirkung mit der Proteinoberfläche."
+    },
+    "amino_acid_interactions": {
+      "label": "Aminosäure-Wechselwirkungen",
+      "description": "Tabelle der Wechselwirkungen je Resttyp. Jeder Eintrag enthält slow_factor (0–1, wie stark der Rest den diffundierenden Farbstoff verlangsamt), kQ (Löschrate in 1/ns bei Kontakt), quench_radius (Kontaktradius in Ångström vom Farbstoffmittelpunkt; null übernimmt critical_distance) und quench_atoms (Atomnamen, deren Schwerpunkt das Löschzentrum bildet). Standardmäßig löschen nur Reste mit redoxaktiver Seitenkette: TRP, TYR, MET, HIS, CYS und PRO."
+    },
+    "amino_acid_interactions.kQ": {
+      "label": "Löschrate kQ",
+      "description": "Rate, mit der dieser Resttyp den Farbstoff bei Kontakt löscht. Beiträge von Resten mit überlappenden Kontaktsphären addieren sich."
+    },
+    "amino_acid_interactions.quench_radius": {
+      "label": "Kontaktradius",
+      "description": "Abstand vom Farbstoffmittelpunkt zum Löschzentrum dieses Rests, innerhalb dessen Löschung stattfindet. Leer lassen, um die projektweite critical_distance zu übernehmen."
+    },
+    "amino_acid_interactions.quench_atoms": {
+      "label": "Atome des Löschzentrums",
+      "description": "Atomnamen, deren Schwerpunkt das Löschzentrum dieses Rests bildet. Die Voreinstellungen folgen der redoxaktiven Gruppe, die den photoinduzierten Elektronentransfer vermittelt: der Indolring bei TRP, der Phenolring bei TYR, der Imidazolring bei HIS, SD bei MET und SG bei CYS – nicht CB."
+    },
+    "amino_acid_interactions.slow_factor": {
+      "label": "Verlangsamungsfaktor",
+      "description": "Faktor zwischen 0 und 1, der den Diffusionskoeffizienten des Farbstoffs in der Nähe dieses Resttyps skaliert und unspezifische Haftung beschreibt. Überlappende Reste multiplizieren ihre Faktoren."
+    },
+    "coarse_grained": {
+      "label": "Grobkörnige Struktur",
+      "description": "Reduziert die Struktur vor der Simulation auf das Rückgrat samt CB, wobei CB in den Schwerpunkt der Seitenkette verschoben wird. Seitenkettenatome fehlen dann, sodass das Löschzentrum jedes Rests auf dieses CB-Pseudoatom zurückfällt und das zugängliche Volumen wächst, weil die Seitenketten es nicht mehr versperren. Das ist eine Modellierungsentscheidung, keine Beschleunigung: Der Aufwand von QuEst wird vom AV-Gitter bestimmt, nicht von der Atomzahl."
+    },
+    "random_seed": {
+      "label": "Zufallsstartwert",
+      "description": "Startwert der Monte-Carlo-Simulation. Ist er gesetzt, werden sowohl die Diffusionstrajektorie als auch die Photonenspur initialisiert, sodass wiederholte Läufe desselben Projekts genau dasselbe Abklingen und dieselbe Quantenausbeute liefern. Ohne Startwert läuft die Simulation unabhängig zufällig; die Photonenspur nutzt dann einen schnelleren, mehrfädigen Kern."
+    },
+    "fret.acceptor_dynamics": {
+      "label": "Akzeptordynamik",
+      "description": "Wie der Akzeptor behandelt wird: „trajectory“ simuliert seine Brownsche Bewegung mit eigenem Diffusionskoeffizienten und eigener Haftung und verwendet den momentanen Donor-Akzeptor-Abstand, „averaged“ mittelt über sein statisches zugängliches Volumen (Grenzfall des schnellen Akzeptors, nur gültig, wenn er dieses Volumen schnell im Vergleich zur Donorlebensdauer durchläuft). Beide unterscheiden sich, weil eine Punktwolke gleichmäßig gewichtet wird, eine Trajektorie hingegen danach, wo sich der Farbstoff tatsächlich aufhält."
+    },
+    "fret.dyes.1.slow_radius": {
+      "label": "Verlangsamungsradius des Akzeptors",
+      "description": "Radius um jedes Aminosäurezentrum, innerhalb dessen dieser Rest den Akzeptor verlangsamt. Getrennt vom Donor: Ein Cyanin und ein Rhodamin haften nicht in gleicher Weise an einer Proteinoberfläche. Voreinstellung ist der Wert des Donors."
+    },
+    "fret.dyes.1.amino_acid_interactions": {
+      "label": "Wechselwirkungen des Akzeptors",
+      "description": "Tabelle der Wechselwirkungen je Resttyp für den Akzeptor, gleiche Form wie amino_acid_interactions des Donors. Verwendet wird nur slow_factor, denn QuEst berichtet das Abklingen des Donors; die eigene PET-Löschung des Akzeptors würde dessen Helligkeit ändern, nicht die des Donors. Voreinstellung ist die Tabelle des Donors."
+    }
+  },
+  "ui": {
+    "app.title": "QuEst",
+    "app.subtitle": "Löschungsschätzer",
+    "panel.structure": "Struktur",
+    "panel.dye": "Farbstoff",
+    "panel.simulation": "Simulation",
+    "panel.quenching": "Löschung",
+    "panel.fret": "FRET",
+    "panel.advanced": "Erweitert",
+    "dock.project": "Projekt",
+    "dock.structure": "Struktur",
+    "dock.results": "Ergebnisse",
+    "help.description": "Kurzanleitung zu QuEst: was einzustellen ist, in welcher Reihenfolge und was die Simulation liefert.",
+    "dock.project.description": "Alle Simulationsparameter des QuEst-Projekts, in einklappbare Bereiche gegliedert.",
+    "panel.structure.description": "Strukturdatei oder RCSB-ID und der Rest, an dem der Farbstoff gebunden ist.",
+    "panel.dye.description": "Linkerlänge, Linkerbreite und Farbstoffradius, die das zugängliche Volumen des Farbstoffs festlegen.",
+    "panel.simulation.description": "Ungelöschte Lebensdauer, Diffusionskoeffizient sowie Dauer und Abtastung der Simulation.",
+    "panel.quenching.description": "Löschabstände und -raten der Aminosäuren, die den Farbstoff bei Kontakt löschen.",
+    "table.quencher.description": "Löschrate, Kontaktradius, löschende Atome und Verlangsamungsfaktor je Rest; eine Zeile zu ändern betrifft nur diese Aminosäure.",
+    "panel.fret.description": "FRET aktivieren und Position des Akzeptors, seine Farbstoffgeometrie und den Förster-Radius R0 festlegen.",
+    "panel.advanced.description": "Selten benötigte numerische Einstellungen wie Binning, Zufallsstartwert und Parallelisierung.",
+    "dock.structure.description": "Die aktuell geladene Struktur, die der Simulation zugrunde liegt.",
+    "dock.results.description": "Simulationsstatus samt Donorzerfall, Farbstofftrajektorie und deren Autokorrelation.",
+    "field.state": "Status",
+    "field.state.description": "Ergebnis der letzten Simulation.",
+    "status.idle": "Noch nicht simuliert.",
+    "status.running": "Simulation läuft…",
+    "status.cancelled": "Abgebrochen.",
+    "status.failed": "Fehlgeschlagen: {error}",
+    "status.no_structure": "Keine Struktur geladen",
+    "status.saved": "{name} gespeichert",
+    "status.loaded": "{name} geladen",
+    "table.residue": "Rest",
+    "table.residue.description": "Dreibuchstabiger Aminosäurecode.",
+    "plot.decay.title": "Fluoreszenzabklingen",
+    "plot.decay.x": "Zeit (ns)",
+    "plot.decay.y": "Ereignisse",
+    "plot.decay.description": "Abklingen des Donors und, bei aktiviertem FRET, das FRET-gelöschte Abklingen.",
+    "plot.decay.donor": "Donor",
+    "plot.decay.fret": "FRET",
+    "plot.trajectory.title": "Farbstofftrajektorie",
+    "plot.trajectory.x": "Zeit (ns)",
+    "plot.trajectory.y": "|r − ⟨r⟩| (Å)",
+    "plot.trajectory.description": "Abstand des Farbstoffs von seiner mittleren Position – wie weit er tatsächlich wandert.",
+    "plot.autocorrelation.title": "Autokorrelation der Position",
+    "plot.autocorrelation.x": "Verzögerung (ns)",
+    "plot.autocorrelation.y": "AKF",
+    "plot.autocorrelation.description": "Wie schnell der Farbstoff seine Position vergisst; bestimmt, ob die Löschung diffusions- oder kontaktbegrenzt ist.",
+    "button.simulate": "▶ Simulieren",
+    "button.simulate.description": "Das aktuelle Projekt über quest.api rechnen.",
+    "button.load_project": "📂 Projekt laden…",
+    "button.load_project.description": "Ein QuEst-Projekt-JSON einlesen, gleich von welcher Oberfläche es stammt.",
+    "button.save_project": "💾 Projekt speichern…",
+    "button.save_project.description": "Das Formular als Projekt-JSON schreiben – dieselbe Datei, die Kommandozeile und Weboberfläche lesen.",
+    "dialog.save_project": "QuEst-Projekt speichern",
+    "dialog.load_project": "QuEst-Projekt laden",
+    "dialog.open_structure": "Struktur öffnen",
+    "action.cancel": "Abbrechen",
+    "filter.project": "QuEst-Projekt (*.json)",
+    "filter.structures": "Strukturen (*.pdb *.cif *.mmcif)",
+    "filter.all": "Alle Dateien (*)",
+    "menu.file": "&Datei",
+    "menu.help": "&Hilfe",
+    "menu.load_structure": "Struktur laden…",
+    "menu.save_project": "Projekt speichern…",
+    "menu.load_project": "Projekt laden…",
+    "menu.exit": "Beenden",
+    "menu.about": "Über / Zitieren…",
+    "about.title": "Über QuEst",
+    "about.cite": "Wenn Sie QuEst in einer wissenschaftlichen Veröffentlichung verwenden, zitieren Sie bitte:",
+    "help.title": "QuEst — Hilfe",
+    "help.text": "# QuEst — transientes Abklingen eines gebundenen Farbstoffs\n\nSagt das Fluoreszenzabklingen eines über einen flexiblen Linker gebundenen\nFarbstoffs allein aus der Struktur voraus: Der Farbstoff diffundiert in seinem\nzugänglichen Volumen, wird bei Kontakt mit benachbarten Aminosäuren gelöscht\n(PET) und überträgt – bei aktiviertem FRET – Energie auf einen Akzeptor.\n\n## Was einzustellen ist\n1. **Struktur** — eine PDB-/CIF-Datei oder eine vierstellige RCSB-Kennung sowie\n   der Rest, an den der Farbstoff gebunden ist.\n2. **Farbstoff** — Linkerlänge, Linkerbreite und Farbstoffradius bestimmen das\n   zugängliche Volumen.\n3. **Simulation** — ungelöschte Lebensdauer, Diffusionskoeffizient und\n   Simulationsdauer. `t_step` muss die schnellste Bewegung auflösen; die\n   Voreinstellungen sind gemessen, nicht geraten.\n4. **Löschung** — Löschraten und Kontaktradien je Rest. Eine geänderte Zeile\n   ändert die Chemie nur dieser einen Aminosäure.\n5. **FRET** — aktivieren, den Akzeptor platzieren und R₀ **in Ångström**\n   angeben.\n\n## Was herauskommt\nQuantenausbeute und mittlere Lebensdauer, das Abklingen des Donors (und mit\nFRET), die Farbstofftrajektorie und deren Autokorrelation.\n\nAlles in diesem Formular ist **ein** QuEst-*Projekt*. **Projekt speichern**\nschreibt genau das JSON, das die Kommandozeile (`quest simulate project.json`)\nund die Weboberfläche lesen; ein hier begonnener Lauf kann also überall\nfortgesetzt werden.\n",
+    "autoform.missing": "Das Desktop-Formular von QuEst wird von ChiSurfs AutoForm dargestellt, die nicht importiert werden konnte.\n\nInstallieren Sie ChiSurf oder setzen Sie CHISURF_ROOT auf ein Arbeitsverzeichnis.\n\nKommandozeile (`quest simulate project.json`) und Weboberfläche benötigen sie nicht.",
+    "web.language": "Sprache",
+    "web.dye": "Farbstoff",
+    "web.run_select": "Einen früheren Simulationslauf auswählen",
+    "web.theme_toggle": "Zwischen hellem und dunklem Modus wechseln",
+    "web.tour": "Rundgang",
+    "web.tour.next": "Weiter",
+    "web.tour.prev": "Zurück",
+    "web.tour.done": "Fertig",
+    "web.tour.close": "Rundgang schließen",
+    "web.tour.step_of": "Schritt {c} von {t}",
+    "web.tour.welcome.title": "Willkommen bei QuEst",
+    "web.tour.welcome.body": "Dieser Rundgang führt Sie durch den gesamten Arbeitsablauf: Protein laden, Farbstoff platzieren, Simulation starten und auswerten, Reste abtasten und erweiterte Einstellungen anpassen. Verwenden Sie die Pfeiltasten oder die Schaltflächen, um weiterzugehen.",
+    "web.tour.step1.title": "Ablaufregisterkarten",
+    "web.tour.step1.body": "Arbeiten Sie die Stufen von links nach rechts durch: Beschriftung, Simulation, Scan und erweiterte Einstellungen. Die aktive Stufe ist hervorgehoben und steuert, welche Einstellungen die Seitenleiste anzeigt.",
+    "web.tour.step2.title": "Struktur laden",
+    "web.tour.step2.body": "Geben Sie eine vierstellige PDB-ID ein und drücken Sie Laden, oder laden Sie eine eigene PDB/CIF-Datei hoch. QuEst löst Ketten, Reste und Atome daraus auf.",
+    "web.tour.step3.title": "Datei hochladen",
+    "web.tour.step3.body": "Ziehen Sie eine lokale Datei einer PDB-ID vor? Laden Sie hier eine PDB- oder CIF-Datei hoch; die Struktur ersetzt die geladene und die Auswahl der Beschriftung aktualisiert sich.",
+    "web.tour.step4.title": "Simulationsläufe",
+    "web.tour.step4.body": "Jede Simulation wird gespeichert. Wählen Sie hier einen früheren Lauf aus, um seine Beschriftungsstelle, Parameter und Ergebnisse erneut zu laden.",
+    "web.tour.step5.title": "Strukturbereich",
+    "web.tour.step5.body": "Bestätigt, was geladen ist: den Dateinamen sowie Ketten- und Atomanzahl. Erst wenn hier eine Struktur angezeigt wird, kann etwas laufen.",
+    "web.tour.step6.title": "Farbstoff platzieren",
+    "web.tour.step6.body": "Wählen Sie Kette, Rest und Atom, an denen der Farbstoff befestigt wird. Ein Farbstoff kann nicht an die Wassermoleküle oder Ionen am Ende der Struktur gebunden werden.",
+    "web.tour.step7.title": "FRET-Akzeptor",
+    "web.tour.step7.body": "Optional einen zweiten Farbstoff hinzufügen und eine Akzeptorstelle festlegen. Der Förster-basierte Energietransfer wird dann mit der PET-Löschung in der Abklingkurve kombiniert.",
+    "web.tour.step8.title": "Zugängliches Volumen",
+    "web.tour.step8.body": "Definiert den Raum, den der Linker den Farbstoff um das Anheftungsatom erkunden lässt. Die Linkerlänge ist der Wert, den die Simulation verwendet.",
+    "web.tour.step9.title": "Strukturansicht",
+    "web.tour.step9.body": "Diese 3D-Ansicht zeichnet die Struktur und die Beschriftungsstelle. Sie aktualisiert sich, wenn Sie Kette, Rest und Atom ändern.",
+    "web.tour.step10.title": "Simulation starten",
+    "web.tour.step10.body": "Ist eine Struktur geladen, drücken Sie Simulation starten. Abklingkurve, Löschung und Farbstoffbahn erscheinen auf der Registerkarte Simulation.",
+    "web.tour.step11.title": "Simulationseinstellungen",
+    "web.tour.step11.body": "Lebensdauer, Viskosität und die übrigen Modellparameter stehen hier auf der Registerkarte Simulation. Der Wert neben jedem Feld ist der des aktuellen Laufs.",
+    "web.tour.step12.title": "Simulationsergebnisse",
+    "web.tour.step12.body": "Die Simulation-Registerkarte liest die Abklingkurven, die Histogramme der Löschraten und die Farbstoffbahn für die fokussierte Stelle und ihre Akzeptoren.",
+    "web.tour.step13.title": "Einstellungen der Abtastung",
+    "web.tour.step13.body": "Wählen Sie, welche Reste ausgewertet werden — eine einzelne Stelle oder jeder Rest der Kette — bevor Sie die Stapelabtastung ausführen.",
+    "web.tour.step14.title": "Abtastungsergebnisse",
+    "web.tour.step14.body": "Die Abtastungstabelle berichtet Lebensdauer, Quantenausbeute, Kontaktanteil und zugängliche/Kontaktvolumina pro Rest. Die Spalten sortieren und filtern, und die Ergebnisse werden in die Zwischenablage exportiert.",
+    "web.tour.step15.title": "Löschungsparameter",
+    "web.tour.step15.body": "Unter den erweiterten Einstellungen können Sie die Löschungsraten je Rest bearbeiten, die das PET-Modell antreiben.",
+    "web.tour.step16.title": "Simulationskonfiguration",
+    "web.tour.step16.body": "Die Einstellungen, die die Berechnung der Simulation formen — Bestätigungen und erweiterte Modellschalter stehen hier.",
+    "web.tour.step17.title": "Klebefestigkeit des Farbstoffs",
+    "web.tour.step17.body": "Farbstoffe verlangsamen sich auch innerhalb des Proteins, nicht nur an ihm; der Verlangsamungsradius erfasst dieses Übergangsverhalten und ist ein Laufparameter, auf den Sie zurückkommen können.",
+    "web.tour.step18.title": "JSON-Modus",
+    "web.tour.step18.body": "Schalten Sie Konfiguration auf JSON-Modus, um das Rohprojektobjekt statt des kuratierten Formulars zu bearbeiten. Beide steuern denselben Zustand.",
+    "web.tour.step19.title": "Voreinstellung speichern",
+    "web.tour.step19.body": "Speichern Sie die aktuellen Parameter als benannte Farbstoffvoreinstellung, die Sie mit dem Farbstoff-Auswahlfeld wiederherstellen können, statt Werte neu einzutippen.",
+    "web.tour.step20.title": "Sprache",
+    "web.tour.step20.body": "Schalten Sie die gesamte Oberfläche — Beschriftungen, Hilfetexte und diesen Rundgang — zwischen Deutsch, Englisch und Französisch um. Ihre Wahl wird gespeichert.",
+    "web.tour.step21.title": "Thema",
+    "web.tour.step21.body": "Wechseln Sie zwischen heller und dunkler Darstellung. Das Thema wird für den nächsten Besuch gespeichert.",
+    "web.tour.step22.title": "QuEst zitieren",
+    "web.tour.step22.body": "Klicken Sie hier, um genau zu sehen, wie Sie QuEst in einem Beitrag zitieren können.",
+    "web.tour.step23.title": "Herunterladen",
+    "web.tour.step23.body": "Laden Sie schließlich die Ergebnisse des aktuellen Laufs als Datei herunter, oder drücken Sie Löschen, um die Anwendung mit einem Neustart zu beginnen.",
+    "web.tour.done.title": "Alles bereit",
+    "web.tour.done.body": "Das ist der vollständige Ablauf: Struktur laden, Farbstoff platzieren, Simulation ausführen, Reste abtasten und Modell verfeinern. Sie können diesen Rundgang jederzeit über die Schaltfläche oben erneut öffnen.",
+    "web.guide": "Anleitung",
+    "web.run": "Simulation starten",
+    "web.running": "Simulation läuft…",
+    "web.results": "Ergebnisse",
+    "web.project": "Projekt",
+    "web.quantum_yield": "Quantenausbeute",
+    "web.lifetime": "Mittlere Lebensdauer",
+    "web.efficiency": "FRET-Effizienz",
+    "doc.title": "QuEst-Parameterreferenz",
+    "doc.summary": "Übersicht des Katalogs",
+    "doc.generated": "Diese Seite wird aus {sources} erzeugt. Ändern Sie zuerst dort den Hilfetext eines Parameters — Weboberfläche, diese Seite und das Desktop-Formular lesen dieselben Dateien.",
+    "doc.col.key": "Schlüssel",
+    "doc.col.category": "Kategorie",
+    "doc.col.type": "Typ",
+    "doc.col.unit": "Einheit",
+    "doc.col.description": "Beschreibung",
+    "doc.label": "Bezeichnung",
+    "doc.type": "Typ",
+    "doc.unit": "Einheit",
+    "table.kQ": "kQ (1/ns)",
+    "table.radius": "Radius (Å)",
+    "table.atoms": "Atome",
+    "table.slow_factor": "Faktor",
+    "web.tab.labeling": "1 – Markierung",
+    "web.tab.simulation": "2 – Simulation",
+    "web.tab.scan": "3 – Abtastung",
+    "web.tab.advanced": "4 – Erweitert",
+    "web.card.runs": "Simulationsläufe",
+    "web.card.settings": "Simulationseinstellungen",
+    "web.card.scan_settings": "Einstellungen der Abtastung",
+    "web.card.derived": "Abgeleitete Größen",
+    "web.tagline": "Struktur hochladen, Markierungsstelle wählen, Löschung bzw. FRET simulieren."
+  }
+}
