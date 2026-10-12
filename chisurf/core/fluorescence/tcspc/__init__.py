@@ -120,6 +120,49 @@ def combined_counting_noise_parallel_perpendicular(
 counting_noise_combined_parallel_perpendicular = combined_counting_noise_parallel_perpendicular
 
 
+def _trim_rising_tail(
+    decay: np.ndarray, start: int, stop: int, rise: float = 1.25
+) -> int:
+    """Return *stop*, moved in front of a rise at the end of the decay.
+
+    A fluorescence decay only falls between two excitation pulses. A gated or
+    time-windowed recording (TAC edge, gate closing, the last channels of a
+    stacked polarisation) shows the instrument instead: the counts climb again over
+    the last channels before the data stop. No decay model describes that rise, and
+    its residuals dominate chi2. The edge is found from the decay itself, not from
+    channel numbers: the decay is smoothed over about 2.5 % of the range and, when
+    the smoothed curve ends at least *rise* times above its own minimum, the range
+    is cut one smoothing window before that minimum.
+
+    Parameters
+    ----------
+    decay : numpy.ndarray
+        Photon counts per channel.
+    start, stop : int
+        The range found so far (``stop`` exclusive).
+    rise : float, optional
+        How far above its minimum the smoothed tail has to climb to count as an
+        edge (default 1.25).
+
+    Returns
+    -------
+    int
+        The (possibly smaller) stop channel.
+    """
+    span = int(stop) - int(start)
+    window = max(3, span // 40)
+    if span < 8 * window:
+        return stop
+    kernel = np.ones(window) / window
+    y = np.asarray(decay, dtype=np.float64)[int(start) : int(stop)]
+    smooth = np.convolve(y, kernel, mode="valid")  # smooth[i] covers y[i : i + window]
+    kmin = int(np.argmin(smooth))
+    floor = smooth[kmin]
+    if floor <= 0 or smooth[kmin:].max() < rise * floor:
+        return stop
+    return max(int(start) + 8 * window, int(start) + kmin - window)
+
+
 def get_analysis_range(
     fluorescence_decay: np.ndarray,
     count_threshold: float = 10.0,
@@ -180,6 +223,7 @@ def get_analysis_range(
             break
         else:
             x_max += 1
+    x_max = _trim_rising_tail(fluorescence_decay, x_min, x_max)
     a_min = x_min + skip_first_channels
     a_max = min(x_max, len(fluorescence_decay) - skip_last_channels - 1)
 

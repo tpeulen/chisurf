@@ -28,6 +28,7 @@ from emtk import im
 from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.fitting import prior_families
 from chisurf.emtk.background_build import BackgroundBuild
 
 _log = logging.getLogger("chisurf.emtk.fit_docks")
@@ -139,6 +140,8 @@ class DatasetsModel:
         self.docks = docks
         self.model = ""
         self.selected: dict = {}
+        #: Every selected dataset row (click, ctrl/shift-click): the table writes it, + Analysis reads it.
+        self.selection: list = []
         self.datasets = _Rows()
         self.fits = _Rows()
 
@@ -157,9 +160,39 @@ class DatasetsModel:
             found = lookup(name) if callable(lookup) else None
         return found
 
+    def selected_dataset(self) -> Any:
+        """The dataset object of the selected row (read only), ``None`` when absent.
+
+        A member of a group stands for its group, which is what a fit is added to.
+        """
+        uid = str(self.selected.get("parent") or self.selected.get("uid") or "")
+        state = getattr(getattr(self.docks.session, "server", None), "state", None)
+        for dataset in list(getattr(state, "datasets", None) or ()):
+            if uid and str(getattr(dataset, "unique_identifier", "")) == uid:
+                return dataset
+        return None
+
     def model_names(self) -> list[str]:
+        """The models the selected dataset can be fitted with, as the Qt shell lists them.
+
+        One experiment holds data of more than one shape (PDA reads two- and three-colour data), so
+        the experiment's list is filtered by the dataset; models the user disabled are left out.
+        """
         experiment = self.selected_experiment()
-        return [str(n) for n in getattr(experiment, "model_names", ())] if experiment else []
+        if experiment is None:
+            return []
+        dataset = self.selected_dataset()
+        try:
+            names = [str(n) for n in experiment.get_model_names(dataset)]
+        except Exception:  # noqa: BLE001 - an experiment that cannot filter lists everything
+            names = [str(n) for n in getattr(experiment, "model_names", ())]
+        try:
+            from chisurf.core import settings
+
+            disabled = settings.cs_settings.get("plugins", {}).get("disabled_models", [])
+        except Exception:  # noqa: BLE001 - no settings: nothing is disabled
+            disabled = []
+        return [name for name in names if name not in disabled]
 
     def select_dataset(self, record: Any) -> None:
         self.selected = dict(record) if isinstance(record, dict) else {}
@@ -178,21 +211,95 @@ class DatasetsModel:
             return bool(self.selected) and not self.docks.busy
         return True
 
+    def selected_rows(self) -> list:
+        """The rows + Analysis acts on: the table's selection, else (a program chose) the one selected."""
+        uid = str(self.selected.get("uid") or "")
+        chosen = [r for r in self.selection if isinstance(r, dict) and r.get("uid")]
+        if not any(str(r["uid"]) == uid for r in chosen):
+            chosen = [self.selected] if uid else []
+        live = {str(r["uid"]): r for r in self.datasets}
+        # A member of a group stands for its group: a fit, a removal or a save acts on whole datasets.
+        tops: dict[str, dict] = {}
+        for r in chosen:
+            row = live.get(str(r.get("parent") or r["uid"]))
+            if row is not None:
+                tops.setdefault(str(row["uid"]), row)
+        return list(tops.values())
+
+    # -- the context menu (Save, Load, Remove, Group, Ungroup, Refresh) ---------- #
+    def remove_selected_row(self, record: Any = None) -> None:
+        """*Remove* in the context menu: every selected dataset."""
+        self.remove_selected()
+
+    def can_remove(self, record: Any = None) -> bool:
+        """Remove acts on the selected datasets."""
+        return bool(self.selected_rows()) and not self.docks.busy
+
+    def can_group(self, record: Any = None) -> bool:
+        """Group needs two or more selected datasets."""
+        return len(self.selected_rows()) > 1 and not self.docks.busy
+
+    def can_ungroup(self, record: Any = None) -> bool:
+        """Ungroup acts on selected groups."""
+        return any(r.get("group") for r in self.selected_rows()) and not self.docks.busy
+
+    def can_save(self, record: Any = None) -> bool:
+        """Save writes one dataset (the first selected)."""
+        return bool(self.selected_rows()) and not self.docks.busy
+
+    def save_dataset(self, record: Any = None) -> None:
+        """*Save*: the first selected dataset to a pickle file, as the Qt list did."""
+        rows = self.selected_rows()
+        if rows:
+            self.docks.save_dataset(str(rows[0]["uid"]), str(rows[0].get("name", "")))
+
+    def load_dataset(self, record: Any = None) -> None:
+        """*Load*: a pickled dataset file into the session."""
+        self.docks.load_dataset_file()
+
+    def group_datasets(self, record: Any = None) -> None:
+        """*Group*: the selected datasets into one group (a fit over it has one curve per member)."""
+        rows = self.selected_rows()
+        if len(rows) > 1:
+            self.docks.group_datasets([int(r["index"]) for r in rows])
+
+    def ungroup_datasets(self, record: Any = None) -> None:
+        """*Ungroup*: the selected groups back into their members."""
+        rows = [r for r in self.selected_rows() if r.get("group")]
+        if rows:
+            self.docks.ungroup_datasets([int(r["index"]) for r in rows])
+
+    def refresh_datasets(self, record: Any = None) -> None:
+        """*Refresh*: read the dataset and fit lists from the session again."""
+        self.docks.refresh()
+
     def add_fit(self) -> None:
-        """Add a fit of the chosen model to the selected dataset."""
-        if self.selected:
-            self.docks.add_fit(int(self.selected["index"]), self.model)
+        """Add a fit of the chosen model to each selected dataset (one fit per curve, as the Qt shell does)."""
+        rows = self.selected_rows()
+        if rows:
+            self.docks.add_fit([int(r["index"]) for r in rows], self.model)
 
     def remove_selected(self) -> None:
-        self.remove_dataset(self.selected)
+        """Remove every selected dataset (a member of a group removes its group)."""
+        rows = self.selected_rows()
+        if rows:
+            self.docks.remove_datasets([str(r["uid"]) for r in rows])
+            self.selected, self.selection = {}, []
 
     def drag_dataset(self, record: Any, x: float, y: float, dropped: bool) -> None:
         """A dataset row dragged out of the table; dropped on a fit window, the fit takes it."""
         self.docks.dataset_dragged(record if isinstance(record, dict) else None, x, y, dropped)
 
     def remove_dataset(self, record: Any) -> None:
-        if isinstance(record, dict) and record.get("uid"):
-            self.docks.remove_dataset(str(record["uid"]))
+        """Delete on a row: the whole selection when the row is in it, else that row."""
+        if not (isinstance(record, dict) and record.get("uid")):
+            return
+        uid = str(record.get("parent") or record["uid"])
+        rows = self.selected_rows()
+        if any(str(r["uid"]) == uid for r in rows):
+            self.remove_selected()
+        else:
+            self.docks.remove_datasets([uid])
             self.selected = {}
 
 
@@ -252,6 +359,7 @@ class AnalysisModel:
                     "lo": _number(bounds[0]) if len(bounds) > 0 else None,
                     "hi": _number(bounds[1]) if len(bounds) > 1 else None,
                     "bounds_on": bool(entry.get("bounds_on")),
+                    "prior": prior_families.describe(entry.get("prior")),
                     "error": _number(entry.get("error_estimate")),
                     "linked": str(entry.get("linked_to") or ""),
                     "output": bool(entry.get("is_output")),
@@ -450,6 +558,8 @@ class DataDocks:
         self._lengths: dict[str, int] = {}
         self._dirty: set[str] = set()
         self._known_datasets: set[str] = set()
+        #: ``(focused window, centre tab)`` as of the last frame: a change is the user's choice of a fit.
+        self._seen_focus: tuple = (None, None)
         self._reader_apps: dict[int, Any] = {}
         self._reader_errors: dict[int, str] = {}
         self._starting = BackgroundBuild(wake=self.request_frame)
@@ -636,8 +746,10 @@ class DataDocks:
             "fit.group.member_selected",
         ) or topic.startswith("parameter."):
             self._dirty |= {"fits", "current"}
-            targets = [self.windows[uid]] if uid in self.windows else list(self.windows.values())
-            for window in targets:
+            # A completed run names the fits it moved (a global fit's local fits): their windows too.
+            moved = [uid, *(str(m) for m in payload.get("member_fit_uids") or ())]
+            targets = [self.windows[u] for u in dict.fromkeys(moved) if u in self.windows]
+            for window in targets or list(self.windows.values()):
                 window.refresh()
         elif topic.startswith("model."):
             self._dirty |= {"current"}
@@ -661,8 +773,33 @@ class DataDocks:
                     }
                     for i, d in enumerate(listed)
                 )
-                rows.revision = self.datasets.datasets.revision + 1
-                self.datasets.datasets = rows
+                tree = _Rows()
+                for row, d in zip(rows, listed):
+                    # A file read is a group of one curve; that is not drawn as a group. A group made by
+                    # *Group*, or a file of several curves, is: it unfolds into its members.
+                    members = d.get("members") or []
+                    if row["experiment"] == "Global" or not (
+                        len(members) > 1 or d.get("type") == "ExperimentDataGroup"
+                    ):
+                        members = []
+                    row["group"] = bool(members)
+                    row["number"] = str(row["index"])
+                    row["parent"] = ""
+                    tree.append(row)
+                    for position, member in enumerate(members):
+                        tree.append(
+                            {
+                                "index": row["index"],
+                                "number": f"{row['index']}.{position + 1}",
+                                "uid": str(member.get("uid", "")),
+                                "name": str(member.get("name", "")),
+                                "experiment": str(member.get("experiment", "")),
+                                "parent": row["uid"],
+                                "group": False,
+                            }
+                        )
+                tree.revision = self.datasets.datasets.revision + 1
+                self.datasets.datasets = tree
                 self._lengths = {}
                 for d in listed:
                     members = d.get("members") or []
@@ -680,7 +817,9 @@ class DataDocks:
                 self._known_datasets = uids
                 if fresh:
                     self.datasets.select_dataset(fresh[-1])
-                if self.datasets.selected.get("uid") not in uids:
+                if (
+                    self.datasets.selected.get("parent") or self.datasets.selected.get("uid")
+                ) not in uids:
                     self.datasets.selected = {}
                     for row in rows:
                         if row["experiment"] and row["experiment"] != "Global":
@@ -699,6 +838,10 @@ class DataDocks:
                     }
                     for i, f in enumerate(fits)
                 )
+                from chisurf.core.fitting.fit_labels import unique_labels
+
+                for row, label in zip(rows, unique_labels([(r["name"], r["data"]) for r in rows])):
+                    row["label"] = label
                 rows.revision = self.datasets.fits.revision + 1
                 self.datasets.fits = rows
                 live = {row["uid"]: row for row in rows}
@@ -710,7 +853,9 @@ class DataDocks:
                         self.close_window(uid)
                     for uid, row in live.items():
                         if uid not in self.windows:
-                            self.open_window(uid, row["name"])
+                            self.open_window(uid, row["label"])
+                        else:
+                            self._retitle(uid, row["label"])
             if "current" in dirty:
                 if self.current_uid:
                     info = api.get_fit_info(fit_uid=self.current_uid) or {}
@@ -753,10 +898,15 @@ class DataDocks:
             lambda: api.load_dataset(experiment_reader=reader, **kwargs),
         )
 
-    def add_fit(self, dataset_index: int, model_name: str) -> bool:
-        """Add a fit of *model_name* to the dataset at *dataset_index*."""
+    def add_fit(self, dataset_index: int | list[int], model_name: str) -> bool:
+        """Add a fit of *model_name* to the dataset at *dataset_index*, or one fit to each of a list."""
         api = self.session.api if self.session is not None else None
-        if api is None or not model_name:
+        indices = (
+            [int(i) for i in dataset_index]
+            if isinstance(dataset_index, (list, tuple))
+            else [int(dataset_index)]
+        )
+        if api is None or not model_name or not indices:
             return False
 
         def after(result: Any) -> None:
@@ -766,11 +916,17 @@ class DataDocks:
                 self._dirty |= {"windows", "current"}
 
         def call() -> Any:
-            result = api.add_fit([int(dataset_index)], model_name=model_name)
-            uid = str((result or {}).get("uid") or "") if isinstance(result, dict) else ""
-            if uid:
-                # Compute the model once, so the new window shows its curve and χ² at once.
-                api.fit_update(fit_uid=uid)
+            # One fit per curve: the server's ``fit.create`` with several indices would build one fit
+            # over all of them, which is a group, not what + Analysis on a selection means.
+            result: Any = None
+            for index in indices:
+                result = api.add_fit([index], model_name=model_name)
+                uid = str((result or {}).get("uid") or "") if isinstance(result, dict) else ""
+                if uid:
+                    # Compute the model once, so the new window shows its curve and χ² at once.
+                    api.fit_update(fit_uid=uid)
+                if isinstance(result, dict) and result.get("ok") is False:
+                    break
             return result
 
         return self._start(tr("Adding a {model} fit…").format(model=model_name), call, after)
@@ -931,6 +1087,13 @@ class DataDocks:
             change = lambda: api.set_parameter_bounds(name, (lo, hi), fit_uid=uid)  # noqa: E731
         elif key == "bounds_on":
             change = lambda: api.set_parameter_bounds_on(name, bool(value), fit_uid=uid)  # noqa: E731
+        elif key == "prior":
+            state = self._typed_prior(value, record)
+            if state is False:
+                return False
+            change = lambda: api.edit_parameter(  # noqa: E731
+                str(record.get("uid") or name), fit_uid=uid, parameter_name=name, prior=state
+            )
         else:
             return False
 
@@ -967,6 +1130,20 @@ class DataDocks:
             lambda: api.model_state_set({key: value}, fit_uid=uid),
         )
 
+    def _typed_prior(self, text: Any, record: dict) -> Any:
+        """A typed *Prior* cell (``Gaussian(4, 0.4)``, ``Box``) as a prior state (``None``: Box).
+
+        ``False`` when the text names no family; the status line then lists them.
+        """
+        ok, state = prior_families.parse(str(text or ""), _number(record.get("value")) or 1.0)
+        if not ok:
+            names = ", ".join(["Box"] + [label for label, _k, _p in prior_families.PRIOR_FAMILY_SPECS])
+            self.status = tr("Unknown prior {text!r}; use one of: {names}").format(
+                text=str(text), names=names
+            )
+            return False
+        return state
+
     def edit_model_parameter(
         self, record: dict, key: str, value: Any, owner_uid: str | None = None
     ) -> bool:
@@ -990,6 +1167,11 @@ class DataDocks:
             fields["bounds"] = (lo, hi)
         elif key == "bounds_on":
             fields["bounds_on"] = bool(value)
+        elif key == "prior":
+            state = self._typed_prior(value, record)
+            if state is False:
+                return False
+            fields["prior"] = state
         else:
             return False
         name = str(record.get("name", ""))
@@ -1167,6 +1349,87 @@ class DataDocks:
             tr("Removing the dataset…"), lambda: api.remove_datasets(dataset_uids=[uid])
         )
 
+    def remove_datasets(self, uids: list[str]) -> bool:
+        """Remove the datasets (or groups) with these uids in one call."""
+        uids = [u for u in uids if u]
+        if not uids or self.session is None:
+            return False
+        api = self.session.api
+        return self._start(
+            tr("Removing the dataset…"), lambda: api.remove_datasets(dataset_uids=uids)
+        )
+
+    def group_datasets(self, indices: list[int]) -> bool:
+        """Group the datasets at *indices* (``dataset.group``, as the Qt list's *Group*)."""
+        if len(indices) < 2 or self.session is None:
+            return False
+        api = self.session.api
+        return self._start(
+            tr("Grouping the datasets…"), lambda: api.group_datasets(dataset_indices=indices)
+        )
+
+    def ungroup_datasets(self, indices: list[int]) -> bool:
+        """Ungroup the groups at *indices* (``dataset.ungroup``, as the Qt list's *Ungroup*)."""
+        if not indices or self.session is None:
+            return False
+        api = self.session.api
+        return self._start(
+            tr("Ungrouping the datasets…"), lambda: api.ungroup_datasets(dataset_indices=indices)
+        )
+
+    def refresh(self) -> None:
+        """Read the dataset and fit lists again."""
+        self._dirty |= {"datasets", "fits"}
+        self.request_frame()
+
+    def _live_dataset(self, uid: str) -> Any:
+        state = getattr(getattr(self.session, "server", None), "state", None)
+        for dataset in list(getattr(state, "datasets", None) or ()):
+            if str(getattr(dataset, "unique_identifier", "")) == uid:
+                return dataset
+        return None
+
+    def save_dataset(self, uid: str, name: str = "") -> None:
+        """Ask for a file, then pickle the dataset *uid* into it (the Qt list's *Save*)."""
+        if not uid or self.session is None:
+            return
+        stem = Path(name or "dataset").stem or "dataset"
+
+        def chosen(path: str) -> None:
+            target = path if Path(path).suffix else path + ".pkl"
+            dataset = self._live_dataset(uid)
+            if dataset is None:
+                self.status = tr("The dataset is no longer in the session.")
+                return
+
+            def write() -> Any:
+                from chisurf.core.data_io.dataset_pickle import save_dataset
+
+                save_dataset(dataset, target)
+                return {"ok": True}
+
+            self._start(tr("Saving {name}…").format(name=Path(target).name), write)
+
+        self.open_file_dialog(
+            tr("Save the dataset"), mode="save", done=chosen, filename=stem + ".pkl"
+        )
+
+    def load_dataset_file(self) -> None:
+        """Ask for a pickle file, then add the dataset in it to the session (the Qt list's *Load*)."""
+        if self.session is None:
+            return
+        api = self.session.api
+
+        def chosen(path: str) -> None:
+            def read() -> Any:
+                from chisurf.core.data_io.dataset_pickle import load_dataset
+
+                return api.load_dataset(dataset=load_dataset(path))
+
+            self._start(tr("Loading {name}…").format(name=Path(path).name), read)
+
+        self.open_file_dialog(tr("Load a dataset"), mode="open", done=chosen)
+
     def drop(self, paths: list[str]) -> bool:
         """Files dropped onto the shell: read the first with the selected file type."""
         if not paths or self.session is None:
@@ -1176,6 +1439,13 @@ class DataDocks:
         return self.load(self.read.reader(), self.read.path)
 
     # -- fit windows --------------------------------------------------------------- #
+    def _retitle(self, uid: str, title: str) -> None:
+        """Give fit *uid*'s window *title* (a second fit of the same name was added or removed)."""
+        window = self.windows.get(uid)
+        dock = self.shell.docks.window(window.key) if window is not None else None
+        if dock is not None and dock.title != title:
+            dock.title = dock.tooltip = window.title = title
+
     def open_window(self, uid: str, title: str) -> Any:
         """Open (or bring forward) the window of fit *uid*."""
         from chisurf.emtk.fit_window import FitWindow
@@ -1207,7 +1477,7 @@ class DataDocks:
         self.current_uid = uid
         self._dirty.add("current")
         row = next((r for r in self.datasets.fits if r["uid"] == uid), None)
-        window = self.open_window(uid, row["name"] if row else uid)
+        window = self.open_window(uid, row["label"] if row else uid)
         if window is not None:
             self.shell.docks.show(window.key)
             self.shell.docks.focus(window.key)
@@ -1228,12 +1498,23 @@ class DataDocks:
                 self.close_window(uid)
 
     def focused_window(self) -> None:
-        """The fit whose window tab is active in the centre becomes the current fit."""
-        key = self.shell.docks.active_tab("center")
-        for uid, window in self.windows.items():
-            if window.key == key and uid != self.current_uid:
-                self.current_uid = uid
-                self._dirty.add("current")
+        """The fit window the user last worked in becomes the current fit.
+
+        That is the window pressed in (any tile, floating or tabbed) or named by ``focus``, and the
+        tab on top of the centre when it changes; each is acted on once, when it changes, so the
+        Datasets panel's own choice of a fit is not undone by the window that was focused before.
+        """
+        docks = self.shell.docks
+        seen = (docks.focused, docks.active_tab("center"))
+        before = self._seen_focus
+        self._seen_focus = seen
+        for index, key in enumerate(seen):
+            if key is None or key == before[index]:
+                continue
+            for uid, window in self.windows.items():
+                if window.key == key and uid != self.current_uid:
+                    self.current_uid = uid
+                    self._dirty.add("current")
 
     def current_window(self) -> Any:
         return self.windows.get(self.current_uid)
@@ -1280,6 +1561,7 @@ class DataDocks:
         mode: str = "open",
         directory: str | None = None,
         done: Callable[[str], None] | None = None,
+        filename: str = "",
     ) -> None:
         """Open a file dialog over the shell; *done* gets the chosen path (default: the file to read)."""
         from emtk.dialog_window import DialogWindow
@@ -1288,7 +1570,7 @@ class DataDocks:
         title = title or tr("Read data")
         if directory is None and self.read.path:
             directory = str(Path(self.read.path).expanduser().parent)
-        self.file_dialog = FileDialog(title, mode=mode, directory=directory)
+        self.file_dialog = FileDialog(title, mode=mode, directory=directory, filename=filename)
         self._file_window = DialogWindow(title, size=(760, 540))
         self._file_done = done
         self.request_frame()

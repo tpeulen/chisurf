@@ -27,6 +27,8 @@ from emtk import im
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.core.fitting import prior_families
+
 #: Columns of a parameter table, as the Qt editor's ``ParameterGroupTableWidget`` shows them.
 PARAMETER_COLUMNS = [
     {
@@ -73,6 +75,16 @@ PARAMETER_COLUMNS = [
         "label": "Error",
         "format": "%.3g",
         "description": "Uncertainty estimate from the last fit.",
+    },
+    {
+        "key": "prior",
+        "label": "Prior",
+        "editable": True,
+        "description": (
+            "Box keeps the plain lower/upper bounds; a family (Gaussian, Log-normal, ...) "
+            "attaches a smooth prior pulling the fit toward a value. Type a family and its "
+            "shape parameters, e.g. Gaussian(4, 0.4); right-click the row for the list."
+        ),
     },
 ]
 
@@ -247,9 +259,13 @@ def _row(entry: dict) -> dict:
         "lo": fit_control and _number(entry.get("lo")),
         "hi": fit_control and _number(entry.get("hi")),
         "bounds_on": fit_control and bool(entry.get("bounds_on")),
+        "prior": None if output else prior_families.describe(entry.get("prior")),
+        "prior_state": entry.get("prior"),
         "error": _number(entry.get("error_estimate")),
         "output": output,
         "linked": linked,
+        #: The master a follower borrows its value from: drawn in the linked ink, named in its tooltip.
+        "master": str(entry.get("linked_to") or (tr("another parameter") if linked else "")),
         "muted": bool(entry.get("fixed")) or output or linked,
     }
 
@@ -386,6 +402,7 @@ class ModelEditor:
                     "edited_call": "edit_cell",
                     "editable_call": "cell_editable",
                     "muted_key": "muted",
+                    "link_key": "master",
                     "fit_rows": True,
                     "fit_columns": True,
                     "context_call": "section_context",
@@ -502,6 +519,7 @@ class ModelEditor:
                                 "editable_call": "cell_editable",
                                 "context_call": "section_context",
                                 "muted_key": "muted",
+                                "link_key": "master",
                                 "fit_rows": True,
                                 "fit_columns": True,
                                 "columns": PARAMETER_COLUMNS,

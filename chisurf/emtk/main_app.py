@@ -78,6 +78,35 @@ def parse_shortcut(text: str) -> tuple[int, int] | None:
     return (ord(key.lower()) if len(key) == 1 else 0), modifiers
 
 
+#: The smallest tile *Tile Windows* makes, in logical pixels: below it a fit window is a sliver.
+MIN_TILE = (380.0, 280.0)
+
+
+def tile_grid(count: int, width: float, height: float) -> tuple[int, int]:
+    """``(rows, cols)`` of the grid *Tile Windows* lays *count* windows into a *width* x *height* area.
+
+    The grid is the most square-tiled one (tiles near 4:3, few empty cells) that keeps every tile at
+    least :data:`MIN_TILE`; when even the largest such grid holds fewer than *count*, that largest
+    grid is returned and the caller stacks the rest as tabs.
+    """
+    import math
+
+    max_cols = max(1, int(width // MIN_TILE[0]))
+    max_rows = max(1, int(height // MIN_TILE[1]))
+    best: tuple[tuple[float, float], int, int] | None = None
+    for cols in range(1, min(count, max_cols) + 1):
+        rows = math.ceil(count / cols)
+        if rows > max_rows:
+            continue
+        aspect = abs(math.log((width / cols) / (height / rows)) - math.log(4.0 / 3.0))
+        score = (rows * cols - count, aspect)
+        if best is None or score < best[0]:
+            best = (score, rows, cols)
+    if best is None:
+        return max_rows, max_cols
+    return best[1], best[2]
+
+
 @dataclass(frozen=True)
 class MenuEntry:
     """One plugin the shell can open: its id and its menu path from ``display_name``."""
@@ -989,14 +1018,36 @@ class EmtkShellApp(ImApp):
             self.docks.show(key)
 
     def tile_fit_windows(self) -> None:
-        """*Tile Windows*: the fit windows side by side, each in a region of its own."""
+        """*Tile Windows*: the fit windows in a near-square grid, none smaller than a usable size.
+
+        When the centre cannot hold them all at :data:`MIN_TILE`, the grid is as large as fits and
+        the remaining windows are tabs inside its tiles (round-robin), as a tab strip rather than a sliver.
+        """
         keys = self._fit_window_keys()
         self.tab_fit_windows()
-        region = "center"
-        for index, key in enumerate(keys[1:], start=1):
-            zone = "right" if index % 2 else "bottom"
-            region = self.docks.split_region(region, zone, ratio=1.0 / (len(keys) - index + 1))
-            self.docks.dock(key, region)
+        if len(keys) < 2:
+            return
+        self.docks.prune_empty()
+        boxes, _bars = self.docks.compute_layout(self.docks.box)
+        _x, _y, width, height = boxes.get("center") or self.docks.box
+        rows, cols = tile_grid(len(keys), width, height)
+        columns = ["center"]
+        for column in range(1, cols):
+            columns.append(
+                self.docks.split_region(columns[-1], "right", ratio=(cols - column) / (cols - column + 1))
+            )
+        cells: list[list[str]] = []
+        for region in columns:
+            cell = [region]
+            for row in range(1, rows):
+                cell.append(self.docks.split_region(cell[-1], "bottom", ratio=(rows - row) / (rows - row + 1)))
+            cells.append(cell)
+        capacity = rows * cols
+        for index, key in enumerate(keys):
+            slot = index % capacity
+            region = cells[slot % cols][slot // cols]
+            if region != "center" or index >= capacity:
+                self.docks.dock(key, region, select=index < capacity)
 
     def cascade_fit_windows(self) -> None:
         """*Cascade Fit Windows*: the fit windows float, each offset from the last."""

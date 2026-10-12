@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import pathlib
-import pickle
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -97,14 +96,18 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
             working_path=base_name,
             file_type="Pickle file (*.pkl)",
         )
-        self.selected_dataset.save(filename=filename, file_type="pkl")
+        if filename:
+            from chisurf.core.data_io.dataset_pickle import save_dataset
+
+            save_dataset(self.selected_dataset, str(filename))
 
     def onLoadDataset(self):
         filename: pathlib.Path = chisurf.gui.widgets.get_filename(
             description="Pickled data ", file_type="Pickle files (*.pkl)"
         )
-        obj = pickle.load(open(filename, "rb"))
-        add_dataset(obj)
+        from chisurf.core.data_io.dataset_pickle import load_dataset
+
+        add_dataset(load_dataset(filename))
         self.update()
 
     def onGroupDatasets(self):

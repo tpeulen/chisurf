@@ -1,11 +1,22 @@
 {
   "title": "Datasets",
   "sections": [
-    {"type": "table", "source": "dataset_rows", "row_key": "uid", "selected_call": "select_dataset",
+    {"type": "table", "source": "dataset_rows", "row_key": "uid", "selected_call": "select_dataset", "selected_attr": "selected", "selection_attr": "selection",
+     "tree_key": "parent",
+     "context_menu": [
+       {"label": "Save", "call": "save_dataset", "enabled_when": "can_save", "description": "Save the selected dataset to a pickle file."},
+       {"label": "Load", "call": "load_dataset", "description": "Load a dataset saved with Save into the session."},
+       {"label": "Remove", "call": "remove_selected_row", "enabled_when": "can_remove", "description": "Remove the selected datasets (a member of a group removes its group)."},
+       {"separator": true},
+       {"label": "Group", "call": "group_datasets", "enabled_when": "can_group", "description": "Join the selected datasets into one group; a fit of the group has one curve per member."},
+       {"label": "Ungroup", "call": "ungroup_datasets", "enabled_when": "can_ungroup", "description": "Split the selected groups back into their datasets."},
+       {"separator": true},
+       {"label": "Refresh", "call": "refresh_datasets", "description": "Read the dataset and fit lists from the session again."}
+     ],
      "delete_call": "remove_dataset", "drag_call": "drag_dataset", "height": 170, "stretch": 1, "min_height": 52,
-     "description": "The loaded datasets. Select one to add a fit to it; drag one onto a fit window to fit that dataset instead; Delete removes it.",
+     "description": "The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Group, Ungroup and Refresh; a group unfolds with its triangle.",
      "columns": [
-       {"key": "index", "label": "#", "width": 30, "description": "Position of the dataset in the session."},
+       {"key": "number", "label": "#", "width": 76, "description": "Position of the dataset in the session; a member of a group is numbered under it (3.1, 3.2)."},
        {"key": "name", "label": "Data name", "description": "The dataset's name (its file name by default)."},
        {"key": "experiment", "label": "Data type", "description": "The experiment the dataset was read for."}
      ]},

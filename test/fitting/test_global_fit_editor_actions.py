@@ -38,11 +38,34 @@ def test_add_and_remove_a_local_fit_from_the_editor(monkeypatch):
     model.selected_candidate_fit = "second"
     model.add_selected_fit()
     assert model.fits == [members[1]]
-    assert model.local_fit_rows() == [{"name": "second"}]
+    assert model.local_fit_rows() == [{"name": "second", "index": 0}]
     assert model.candidate_fit_names == ["first"]
     model.selected_local_fit = 0
     model.remove_selected_local_fit()
     assert model.fits == [] and model.selected_local_fit == -1
+
+
+def test_fits_with_the_same_name_are_chosen_by_identity(monkeypatch):
+    """Two wizard runs name their fits alike; the picker listed one name twice and took the first."""
+    group, members = _fits()
+    for member in members:
+        member.name = "Lifetime - Anisotropy VV"
+    monkeypatch.setattr(cs, "fits", [group, *members])
+    model = group.model
+    labels = model.candidate_fit_names
+    assert len(labels) == 2 and len(set(labels)) == 2
+    model.selected_candidate_fit = labels[1]
+    model.add_selected_fit()
+    assert model.fits == [members[1]]
+    assert len(model.candidate_fit_names) == 1
+    model.selected_candidate_fit = model.candidate_fit_names[0]
+    model.add_selected_fit()
+    assert model.fits == [members[1], members[0]]
+    rows = model.local_fit_rows()
+    assert len({row["name"] for row in rows}) == 2
+    model.selected_local_fit = rows[0]
+    model.remove_selected_local_fit()
+    assert model.fits == [members[0]]
 
 
 def test_add_a_global_parameter_from_the_editor_and_the_macro():

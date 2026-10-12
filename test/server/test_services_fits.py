@@ -686,3 +686,23 @@ class TestGraphService:
             and any(n["node_idx"] == e["target"] and n["node_type"] == "parameter" for n in nodes)
         ]
         assert len(cross_param) >= 1
+
+
+def test_fit_create_resolves_a_shared_model_name_through_the_datasets_experiment():
+    """"Parse-Model" names a TCSPC, an FCS and a PCF model: the dataset's experiment picks the FCS one."""
+    from chisurf.core.data import DataCurve
+    from chisurf.core.experiments.bootstrap import ensure_experiments_registered
+    from chisurf.core.experiments.fcs.demo import DEMO  # noqa: F401 - ensures the FCS experiment imports
+    import chisurf as cs
+    import numpy as np
+
+    ensure_experiments_registered()
+    experiment = cs.experiment["FCS"]
+    curve = DataCurve(x=np.logspace(-6, 0, 50), y=np.linspace(1.0, 0.0, 50), ey=np.ones(50))
+    curve.experiment = experiment
+    state = SessionState(datasets=[curve])
+    result = fit_create(state, dataset_index=0, model_name="Parse-Model")
+    assert result["ok"], result
+    fit = state.fits[-1]
+    model_class = type(fit.model)
+    assert model_class.__module__.startswith("chisurf.core.models.fcs"), model_class

@@ -33,6 +33,24 @@ def configure_components(model, key, pairs):
         parameter.value = float(value)
 
 
+def tag_experiment(*items):
+    """Give curves and groups without an experiment the TCSPC one.
+
+    The curves come from the wizard's pure readers, which are not registered with an
+    experiment; without it the session lists them under no experiment, and the shell cannot
+    offer the TCSPC models for them.
+    """
+    import chisurf
+
+    experiment = getattr(chisurf, "experiment", {}).get("TCSPC")
+    if experiment is None:
+        return
+    for item in items:
+        for part in (item, *(item if hasattr(item, "__iter__") else ())):
+            if getattr(part, "_experiment", experiment) is None:
+                part.experiment = experiment
+
+
 class LocalLinkClient:
     """Replay the established link plan against live pure fitting parameters."""
 
@@ -94,6 +112,63 @@ def set_response_window(model, window, dt):
     model.set_scalar("response_stop", stop * dt * eps)
 
 
+def start_near_the_peak(group, fraction=0.9):
+    """Start the fit range where the rising edge first reaches *fraction* of the peak.
+
+    The generic range starts at half the maximum, in the steepest part of the edge, where the
+    model is the most sensitive function of the IRF timing: a few channels of misalignment leave
+    residuals of several sigma and chi2r stays at 4-5 for a decay the rest of the range describes
+    to ~1 (bundled VV/VH recording). Starting at 90 % of the peak keeps the whole fast part of the
+    decay (a start after the peak lets r0 run into its bound on a simulated decay). Both
+    polarisations of a pair start at their own peaks.
+
+    Parameters
+    ----------
+    group : FitGroup
+        The polarised fit; its range stop is kept.
+    fraction : float, optional
+        Fraction of the peak that marks the start (default 0.9).
+    """
+    y = np.asarray(group.data.y, dtype=float)
+    start, stop = (int(v) for v in group.fit_range)
+    if y.size < 2 or stop <= start:
+        return
+    peak = start + int(np.argmax(y[start:stop]))
+    above = np.flatnonzero(y[start : peak + 1] >= fraction * y[peak])
+    if above.size:
+        group.fit_range = (start + int(above[0]), stop)
+
+
+def bound_the_time_shift(model, data, role):
+    """Keep the IRF-to-decay time shift within a plausible window of the peak offset.
+
+    The shift is born with the bounds of the whole histogram (+/-1024 channels). A polarised
+    decay fitted from a poor start then trades the shift against r0 and the rotation time: it
+    slides the IRF hundreds of channels away, r0 collapses to ~0 and chi2r settles at 5-10 (or
+    far above) with every parameter "converged". The shift between the two curves cannot exceed
+    the offset of their peaks by more than the width of the response, so that is the window.
+
+    Parameters
+    ----------
+    model : DescriptionModel_tcspc_polarized
+        The polarised model whose ``instrument.timeshift`` is bounded (channels).
+    data : dict
+        The wizard's curves (``data_<role>`` and ``irf_<role>_bg_norm``).
+    role : str
+        ``"vv"`` or ``"vh"``.
+    """
+    decay = np.asarray(data[f"data_{role}"].y, dtype=float)
+    irf = np.asarray(data[f"irf_{role}_bg_norm"].y, dtype=float)
+    if not decay.size or not irf.size or irf.max() <= 0:
+        return
+    offset = abs(int(np.argmax(decay)) - int(np.argmax(irf)))
+    width = int(np.count_nonzero(irf >= 0.5 * irf.max()))  # FWHM in channels
+    limit = float(offset + max(width, 1))
+    for parameter in model.parameters_all:
+        if parameter.canonical_id == "instrument.timeshift":
+            parameter.bounds = (-limit, limit)
+
+
 def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None):
     """Register four datasets, two polarized fits and their shared global fit.
 
@@ -121,12 +196,21 @@ def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None)
             or np.any(values[:, 1] <= 0)
         ):
             raise ValueError(f"{label} require nonnegative amplitudes and positive times.")
+    tag_experiment(*(data[key] for key in required))
     model_class = for_family("tcspc_polarized")
     groups = []
     for role in ("vv", "vh"):
         dataset = ExperimentDataCurveGroup([data[f"data_{role}"]])
         dataset.name = f"Anisotropy {role.upper()}"
+        tag_experiment(dataset)
         dataset.meta_data.update(corrections)
+        # The laser's repetition rate the wizard was given is the model's excitation period;
+        # without it the model keeps its own default period, a systematically wrong periodic
+        # convolution for any other laser.
+        rate = float(getattr(getattr(data[f"data_{role}"], "data_reader", None), "rep_rate", 0) or 0)
+        if rate > 0:
+            dataset.meta_data["excitation_period_ns"] = 1000.0 / rate
+            data[f"data_{role}"].meta_data["excitation_period_ns"] = 1000.0 / rate
         group = build_fit_group(dataset, model_class, model_kw=corrections)
         model = group.model
         model.anisotropy.polarization_type = role
@@ -136,6 +220,8 @@ def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None)
             set_response_window(
                 model, irf_window, float(np.mean(np.diff(x))) if x.size > 1 else 0.0
             )
+        start_near_the_peak(group)
+        bound_the_time_shift(model, data, role)
         configure_components(model, "lifetimes", lifetimes)
         configure_components(model, "rotations", rotations)
         for parameter in model.parameters_all:
@@ -150,6 +236,7 @@ def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None)
     # Use the existing GlobalFitModel rather than duplicating its objective.
     global_data = ExperimentDataCurveGroup([data["data_vv"]])
     global_data.name = "Global anisotropy"
+    tag_experiment(global_data)
     global_group = build_fit_group(global_data, GlobalFitModel, model_kw={"fits": groups})
     global_group.name = "Global anisotropy"
     for key in required:

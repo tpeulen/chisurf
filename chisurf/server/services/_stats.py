@@ -148,6 +148,18 @@ def _group_names(model: Any) -> dict[int, str]:
     return names
 
 
+def _smooth_prior_state(p: Any) -> dict[str, Any] | None:
+    """A parameter's smooth prior as a state dict; ``None`` for none or the plain bounds (box)."""
+    try:
+        prior = getattr(p, "prior", None)
+        state = prior.get_state() if prior is not None else None
+    except Exception:  # noqa: BLE001 - a prior that cannot describe itself is shown as none
+        return None
+    if not isinstance(state, dict) or state.get("kind") in (None, "uniform"):
+        return None
+    return {k: (float(v) if isinstance(v, (int, float)) else v) for k, v in state.items()}
+
+
 def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> dict[str, Any]:
     """Serialise one parameter for a fit DTO."""
     return {
@@ -163,6 +175,7 @@ def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> dict[str, Any]:
         "bounds_on": bool(getattr(p, "bounds_on", False)),
         "is_linked": bool(getattr(p, "is_linked", False)),
         "linked_to": str(getattr(getattr(p, "link", None), "name", "") or ""),
+        "prior": _smooth_prior_state(p),
         "error_estimate": getattr(p, "error_estimate", None),
     }
 

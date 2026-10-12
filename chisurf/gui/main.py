@@ -1929,6 +1929,8 @@ class Main(
             active window for existing local callers.
         """
         uid = str((payload or {}).get("fit_uid") or "")
+        # A completed run also names the fits it moved (a global fit's local fits).
+        wanted = {uid, *(str(m) for m in (payload or {}).get("member_fit_uids") or ())}
         if uid:
             targets = []
             for sub in self.mdiarea.subWindowList():
@@ -1939,7 +1941,7 @@ class Main(
                     if fit is None or id(fit) in seen:
                         continue
                     seen.add(id(fit))
-                    if str(getattr(fit, "unique_identifier", "") or "") == uid:
+                    if str(getattr(fit, "unique_identifier", "") or "") in wanted:
                         targets.append(sub)
                         break
                     pending.extend(getattr(fit, "grouped_fits", None) or [])

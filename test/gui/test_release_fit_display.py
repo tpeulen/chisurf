@@ -46,6 +46,18 @@ def test_leaf_completion_refreshes_the_window_presenting_its_group():
     assert calls == {"A": [], "B": ["chi2", "plot"]}
 
 
+def test_a_global_fit_completion_refreshes_the_windows_of_its_member_fits():
+    """``fit.ran`` names the fits the run moved; their windows refresh though the owner has none."""
+    from chisurf.gui.main import Main
+
+    main, calls, _a, _b = _windows()
+    Main._refresh_fit_display(main, {"fit_uid": "global", "member_fit_uids": ["A", "B"]})
+    assert calls == {"A": ["chi2", "plot"], "B": ["chi2", "plot"]}
+    main, calls, _a, _b = _windows()
+    Main._refresh_fit_display(main, {"fit_uid": "global", "member_fit_uids": ["B"]})
+    assert calls == {"A": [], "B": ["chi2", "plot"]}
+
+
 def test_unknown_owner_does_not_repaint_an_unrelated_window():
     """A late event for a closed window cannot masquerade as an active-fit update."""
     from chisurf.gui.main import Main

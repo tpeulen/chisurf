@@ -20,6 +20,9 @@ from chisurf.core.api.live_edit import (  # noqa: F401 -- the live-object write 
 )
 from chisurf.server.session import SessionState
 
+#: "Argument not given" for a field whose ``None`` is a value (a cleared prior).
+_UNSET: Any = object()
+
 
 def _extract_curve_data(dataset: Any) -> dict[str, Any] | None:
     """Snapshot a cached curve/group without reading or changing its active child.
@@ -1278,6 +1281,7 @@ class ChiSurfAPI:
         fixed: bool | None = None,
         bounds: tuple | None = None,
         bounds_on: bool | None = None,
+        prior: Any = _UNSET,
     ) -> dict[str, Any]:
         """Change one parameter addressed by its unique identifier.
 
@@ -1297,6 +1301,9 @@ class ChiSurfAPI:
             The name, for messages only.
         value, fixed, bounds, bounds_on : optional
             The fields to set; ``None`` leaves a field as it is.
+        prior : dict or None, optional
+            A prior state dict (``{"kind": "normal", "mu": .., "sigma": ..}``) to attach, or
+            ``None`` to clear the smooth prior (Box: the plain bounds); omitted leaves it alone.
 
         Returns
         -------
@@ -1314,6 +1321,8 @@ class ChiSurfAPI:
             changes.append(("set_bounds", "bounds", tuple(bounds)))
         if bounds_on is not None:
             changes.append(("set_bounds_on", "bounds_on", bool(bounds_on)))
+        if prior is not _UNSET:
+            changes.append(("set_prior", "prior", dict(prior) if prior else None))
         result: dict[str, Any] = {"ok": True}
         for rpc, key, field_value in changes:
             address = {
@@ -1323,6 +1332,11 @@ class ChiSurfAPI:
                 "fit_uid": fit_uid,
             }
             if self.mode == "server" and self.client is not None:
+                if key == "prior":
+                    result = self.client.call("parameter.set_prior", {key: field_value, **address})
+                    if isinstance(result, dict) and result.get("ok") is False:
+                        return result
+                    continue
                 method = getattr(self.client, f"parameter__{rpc}")
                 if key == "bounds":
                     result = method(lower=field_value[0], upper=field_value[1], **address)

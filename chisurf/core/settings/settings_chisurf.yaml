@@ -382,7 +382,9 @@ optimization:
     full_output: true
     gtol: 0
     maxfev: 0
-    xtol: 1.49012e-08
+    # Step-bound tolerance. MINPACK's 1.49e-8 stalled a global anisotropy fit at its
+    # start values (chi2r 1e4 unchanged); 1e-10 reaches chi2r 1.4 from the same start.
+    xtol: 1.0e-10
   sampling:
     chi2max: 1000000000
     # blocked: per-block covariance proposal seeded from the curvature at the

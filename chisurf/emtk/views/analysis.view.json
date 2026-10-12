@@ -158,13 +158,14 @@
       "edited_call": "edit_parameter",
       "editable_call": "cell_editable",
       "muted_key": "muted",
+      "link_key": "linked",
       "expand": true,
       "fit_columns": true,
       "hidden_when": {
         "attr": "flat_table_hidden",
         "equals": "true"
       },
-      "description": "The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs and linked parameters are dimmed and read only.",
+      "description": "The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs are dimmed; a linked parameter follows its master (drawn in blue, its tooltip names the master) and is read only.",
       "columns": [
         {
           "key": "name",
@@ -209,6 +210,12 @@
           "label": "Error",
           "format": "%.3g",
           "description": "Uncertainty estimate from the last fit."
+        },
+        {
+          "key": "prior",
+          "label": "Prior",
+          "editable": true,
+          "description": "Box keeps the plain lower/upper bounds; a family (Gaussian, Log-normal, ...) attaches a smooth prior pulling the fit toward a value. Type a family and its shape parameters, e.g. Gaussian(4, 0.4)."
         }
       ]
     }

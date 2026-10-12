@@ -219,6 +219,26 @@ def get_fit_info(
     }
 
 
+def _member_fit_uids(fit: Any) -> list[str]:
+    """The uids of the fits *fit* is built from (a group's members, a global fit's local fits), all depths."""
+    found: list[str] = []
+    pending = [fit]
+    seen = {id(fit)}
+    while pending:
+        current = pending.pop()
+        children = list(getattr(current, "grouped_fits", None) or [])
+        children += list(getattr(getattr(current, "model", None), "fits", None) or [])
+        for child in children:
+            if id(child) in seen:
+                continue
+            seen.add(id(child))
+            uid = str(getattr(child, "unique_identifier", "") or "")
+            if uid and uid not in found:
+                found.append(uid)
+            pending.append(child)
+    return found
+
+
 def run_fit(
     state: SessionState,
     fit_index: int | None = None,
@@ -255,7 +275,16 @@ def run_fit(
         chi2_after = _safe_chi2(fit, compute=True)
         fit_uid_val = str(getattr(fit, "unique_identifier", "") or "")
         if event_bus is not None:
-            event_bus.publish("fit.ran", {"fit_index": idx, "fit_uid": fit_uid_val})
+            event_bus.publish(
+                "fit.ran",
+                {
+                    "fit_index": idx,
+                    "fit_uid": fit_uid_val,
+                    # A global fit moves the parameters of the fits it takes in; their windows
+                    # show them, so the completion names them too.
+                    "member_fit_uids": _member_fit_uids(fit),
+                },
+            )
         return {
             "ok": True,
             "fit_index": idx,
@@ -581,7 +610,21 @@ def fit_create(
                         return r
                 return None
 
-            model_class = _find_model(Model)
+            # Several experiments name a model alike ("Parse-Model" is a TCSPC, an FCS
+            # and a PCF model): the dataset's own experiment says which one is meant,
+            # as the ``core_fit.add_fit`` macro resolves it. Only a name the experiment
+            # does not list falls back to the global scan.
+            experiment = getattr(data_groups[0], "experiment", None)
+            wanted = str(model_name).strip()
+            for listed, candidate in zip(
+                list(getattr(experiment, "model_names", None) or ()),
+                list(getattr(experiment, "model_classes", None) or ()),
+            ):
+                if str(listed or "").strip() == wanted:
+                    model_class = candidate
+                    break
+            if model_class is None:
+                model_class = _find_model(Model)
         if model_class is None:
             return service_error(
                 f"model '{model_name}' not found. Available: {sorted(_model_names())}",

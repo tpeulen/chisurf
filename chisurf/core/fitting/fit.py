@@ -44,6 +44,18 @@ from chisurf.core.math.optimization import OptimizationCancelled
 #: ``epsfcn = 0`` to 83/88 at this value.
 DEFAULT_EPSFCN = 1.0e-6
 
+#: MINPACK's step-bound tolerance. Its textbook default (1.49e-8) ends a fit as
+#: soon as the trust region has shrunk that far relative to the parameter vector.
+#: From a poor start of a global polarised-decay fit (the anisotropy wizard on
+#: the bundled VV/VH recording) every early trial step is rejected, the region
+#: collapses and the fit stops at its start values -- chi2r unchanged at 1e4 --
+#: while ``xtol = 1e-10`` lets the same fit reach chi2r 1.4. Cases that already
+#: converged end where they did.
+DEFAULT_XTOL = 1.0e-10
+#: The value shipped before :data:`DEFAULT_XTOL`; persisted user settings still
+#: carry it, so it is read as "unset" (as ``epsfcn = 0`` is).
+_OLD_DEFAULT_XTOL = 1.49012e-8
+
 
 def _leastsq_options(options: dict) -> dict:
     """Return ``options`` with a usable ``epsfcn``.
@@ -63,6 +75,11 @@ def _leastsq_options(options: dict) -> dict:
             options["epsfcn"] = DEFAULT_EPSFCN
     except (TypeError, ValueError):
         options["epsfcn"] = DEFAULT_EPSFCN
+    try:
+        if float(options.get("xtol", 0.0)) >= _OLD_DEFAULT_XTOL * (1 - 1e-6):
+            options["xtol"] = DEFAULT_XTOL
+    except (TypeError, ValueError):
+        options["xtol"] = DEFAULT_XTOL
     return options
 
 
@@ -3298,7 +3315,12 @@ def get_chi2(
     >>> float(round(get_chi2([], m, reduced=True), 1))
     2.0
     """
-    chi2 = (get_wres(parameter_values, model) ** 2.0).sum()
+    wres = get_wres(parameter_values, model)
+    if np.size(wres) == 0:
+        # A model that compares nothing (ProteinMC samples a structure, not a
+        # curve) has no goodness of fit: say so rather than report a perfect 0.
+        return float("nan")
+    chi2 = (wres**2.0).sum()
     chi2 = np.inf if np.isnan(chi2) else chi2
     chi2r = chi2 / float(model.n_points - model.n_free - 1.0)
     if reduced:

@@ -62,11 +62,18 @@ def test_garbage_falls_back_rather_than_raising():
 
 
 def test_other_options_are_passed_through_untouched():
-    opts = {"epsfcn": 0, "ftol": 1.5e-8, "xtol": 1.5e-8, "factor": 100}
+    opts = {"epsfcn": 0, "ftol": 1.5e-8, "xtol": 1e-12, "factor": 100}
     out = _leastsq_options(opts)
     assert out["ftol"] == pytest.approx(1.5e-8)
-    assert out["xtol"] == pytest.approx(1.5e-8)
+    assert out["xtol"] == pytest.approx(1e-12)
     assert out["factor"] == 100
+
+
+def test_the_old_xtol_default_is_read_as_unset():
+    """Persisted settings carry MINPACK's 1.49e-8, which stalled a global fit at its start."""
+    from chisurf.core.fitting.fit import DEFAULT_XTOL
+
+    assert _leastsq_options({"xtol": 1.49012e-8})["xtol"] == DEFAULT_XTOL
 
 
 def test_the_caller_s_dict_is_not_mutated():

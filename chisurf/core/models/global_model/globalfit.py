@@ -16,6 +16,21 @@ if TYPE_CHECKING:
     from chisurf.core.fitting.fit import Fit, FitGroup
 
 
+def _stack_per_fit(arrays: list) -> np.ndarray:
+    """One row per local fit: a 2-D array, or an object array of rows when their lengths differ.
+
+    ``np.array`` of unequal rows raises (numpy >= 1.24), which made a global fit over curves of
+    different lengths impossible to capture into a project.
+    """
+    try:
+        return np.array(arrays)
+    except ValueError:
+        out = np.empty(len(arrays), dtype=object)
+        for i, row in enumerate(arrays):
+            out[i] = np.asarray(row)
+        return out
+
+
 class GlobalFitModel(model.Model, Curve):
     name = "Global fit"
     view_spec_file = "globalfit.view.json"
@@ -115,29 +130,51 @@ class GlobalFitModel(model.Model, Curve):
     #: Fit chosen to be added next, written by the ``choice`` of candidates.
     selected_candidate_fit: str = ""
 
-    @property
-    def candidate_fit_names(self) -> typing.List[str]:
-        """Names of fits that could be added to this global fit.
+    def _fit_labels(self) -> typing.Dict[int, str]:
+        """``id(fit)`` -> the name shown for it, distinguishable among the fits this model can see.
 
-        Every fit except this one and those already included -- the list the
-        hand-written editor filled a combo box with.
+        Fits are chosen by identity, never by name: two wizard runs name their fits alike
+        ("Lifetime - Anisotropy VV"). A name used twice gets the fit's dataset appended, and a
+        number when even that repeats.
         """
-        included = set(self.fit_names)
+        fits = list(self._pool())
+        fits += [f for f in self.fits if not any(f is g for g in fits)]
+        from chisurf.core.fitting.fit_labels import unique_labels
+
+        labels = unique_labels(
+            [
+                (
+                    str(getattr(f, "name", "") or ""),
+                    str(getattr(getattr(f, "data", None), "name", "") or ""),
+                )
+                for f in fits
+            ]
+        )
+        return {id(f): label for f, label in zip(fits, labels)}
+
+    def _candidates(self) -> typing.List[typing.Tuple[str, "Fit"]]:
+        """``(label, fit)`` of every fit that could be added (not this one, not already included)."""
+        labels = self._fit_labels()
         out = []
         for f in self._pool():
             name = str(getattr(f, "name", "") or "")
             # ``self.fit`` is this model's member fit; the session lists the group holding it.
             own = f is self.fit or any(m is self.fit for m in getattr(f, "grouped_fits", ()) or ())
-            if not name or name in included or own:
+            if not name or own or any(f is g for g in self.fits):
                 continue
-            out.append(name)
+            out.append((labels[id(f)], f))
         return out
 
+    @property
+    def candidate_fit_names(self) -> typing.List[str]:
+        """Labels of fits that could be added to this global fit (distinguishable, see ``_fit_labels``)."""
+        return [label for label, _f in self._candidates()]
+
     def add_selected_fit(self) -> None:
-        """Add the fit named by :attr:`selected_candidate_fit` to the global fit."""
+        """Add the fit chosen by :attr:`selected_candidate_fit` to the global fit."""
         name = str(self.selected_candidate_fit or "")
-        for f in self._pool():
-            if str(getattr(f, "name", "") or "") == name:
+        for label, f in self._candidates():
+            if label == name:
                 self.append_fit(f)
                 return
         cs.logging.warning(f"GlobalFitModel: no fit named {name!r} to add")
@@ -151,7 +188,10 @@ class GlobalFitModel(model.Model, Curve):
         selected = self.selected_local_fit
         if isinstance(selected, dict):
             name = selected.get("name")
-            row = self.fit_names.index(name) if name in self.fit_names else -1
+            if isinstance(selected.get("index"), int):
+                row = selected["index"]
+            else:
+                row = self.fit_names.index(name) if name in self.fit_names else -1
         else:
             try:
                 row = int(selected)
@@ -176,7 +216,8 @@ class GlobalFitModel(model.Model, Curve):
 
     def local_fit_rows(self) -> typing.List[dict]:
         """The local-fit table's rows (a method: a table ``source`` is called)."""
-        return [{"name": name} for name in self.fit_names]
+        labels = self._fit_labels()
+        return [{"name": labels.get(id(f), str(f.name)), "index": i} for i, f in enumerate(self.fits)]
 
     @property
     def fit_names(self) -> typing.List[str]:
@@ -721,7 +762,7 @@ class GlobalFitModel(model.Model, Curve):
         x = list()
         for f in self.fits:
             x.append(f.model.x)
-        return np.array(x)
+        return _stack_per_fit(x)
 
     @x.setter
     def x(self, v):
@@ -734,7 +775,7 @@ class GlobalFitModel(model.Model, Curve):
         y = list()
         for f in self.fits:
             y.append(f.model.y)
-        return np.array(y)
+        return _stack_per_fit(y)
 
     @y.setter
     def y(self, v):

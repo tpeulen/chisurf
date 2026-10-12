@@ -66588,6 +66588,110 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>With window: one control inside that window, by the name its panel registers (chimol). Rings the button rather than the whole window.</source>
             <translation>Avec window : une commande dans cette fenêtre, par le nom que son panneau enregistre (chimol). Entoure le bouton plutôt que toute la fenêtre.</translation>
         </message>
+        <message>
+            <source>Grouping the datasets…</source>
+            <translation>Regroupement des jeux de données…</translation>
+        </message>
+        <message>
+            <source>Ungrouping the datasets…</source>
+            <translation>Dissociation des jeux de données…</translation>
+        </message>
+        <message>
+            <source>Saving {name}…</source>
+            <translation>Enregistrement de {name}…</translation>
+        </message>
+        <message>
+            <source>Save the dataset</source>
+            <translation>Enregistrer le jeu de données</translation>
+        </message>
+        <message>
+            <source>Load a dataset</source>
+            <translation>Charger un jeu de données</translation>
+        </message>
+        <message>
+            <source>The dataset is no longer in the session.</source>
+            <translation>Le jeu de données n'est plus dans la session.</translation>
+        </message>
+        <message>
+            <source>Unknown prior {text!r}; use one of: {names}</source>
+            <translation>Prior inconnu {text!r} ; valeurs admises : {names}</translation>
+        </message>
+        <message>
+            <source>another parameter</source>
+            <translation>autre paramètre</translation>
+        </message>
+        <message>
+            <source>Box (bounds only)</source>
+            <translation>Boîte (bornes seules)</translation>
+        </message>
+        <message>
+            <source>Truncated Gaussian</source>
+            <translation>Gaussienne tronquée</translation>
+        </message>
+        <message>
+            <source>Log-normal</source>
+            <translation>Log-normale</translation>
+        </message>
+        <message>
+            <source>Half-normal</source>
+            <translation>Demi-normale</translation>
+        </message>
+        <message>
+            <source>Exponential</source>
+            <translation>Exponentielle</translation>
+        </message>
+        <message>
+            <source>Beta</source>
+            <translation>Bêta</translation>
+        </message>
+        <message>
+            <source>Ungroup</source>
+            <translation>Dissocier</translation>
+        </message>
+        <message>
+            <source>Save the selected dataset to a pickle file.</source>
+            <translation>Enregistrer le jeu de données choisi dans un fichier pickle.</translation>
+        </message>
+        <message>
+            <source>Load a dataset saved with Save into the session.</source>
+            <translation>Charger dans la session un jeu de données enregistré avec Enregistrer.</translation>
+        </message>
+        <message>
+            <source>Remove the selected datasets (a member of a group removes its group).</source>
+            <translation>Supprimer les jeux de données choisis (un membre d'un groupe supprime son groupe).</translation>
+        </message>
+        <message>
+            <source>Join the selected datasets into one group; a fit of the group has one curve per member.</source>
+            <translation>Réunir les jeux de données choisis en un groupe ; un ajustement du groupe a une courbe par membre.</translation>
+        </message>
+        <message>
+            <source>Split the selected groups back into their datasets.</source>
+            <translation>Séparer les groupes choisis en leurs jeux de données.</translation>
+        </message>
+        <message>
+            <source>Read the dataset and fit lists from the session again.</source>
+            <translation>Relire les listes de jeux de données et d'ajustements depuis la session.</translation>
+        </message>
+        <message>
+            <source>Position of the dataset in the session; a member of a group is numbered under it (3.1, 3.2).</source>
+            <translation>Position du jeu de données dans la session ; un membre d'un groupe est numéroté dessous (3.1, 3.2).</translation>
+        </message>
+        <message>
+            <source>The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Group, Ungroup and Refresh; a group unfolds with its triangle.</source>
+            <translation>Les jeux de données chargés. En choisir un (Ctrl ou Maj-clic pour plusieurs) pour ajouter un ajustement à chacun ; le glisser sur une fenêtre d'ajustement pour ajuster celui-ci ; Suppr le retire ; clic droit pour Enregistrer, Charger, Supprimer, Grouper, Dissocier et Actualiser ; un groupe se déplie avec son triangle.</translation>
+        </message>
+        <message>
+            <source>Box keeps the plain lower/upper bounds; a family (Gaussian, Log-normal, ...) attaches a smooth prior pulling the fit toward a value. Type a family and its shape parameters, e.g. Gaussian(4, 0.4); right-click the row for the list.</source>
+            <translation>Boîte garde les bornes basse/haute simples ; une famille (gaussienne, log-normale, ...) ajoute un prior lisse qui tire l'ajustement vers une valeur. Saisir une famille et ses paramètres de forme, p. ex. Gaussian(4, 0.4) ; clic droit sur la ligne pour la liste.</translation>
+        </message>
+        <message>
+            <source>Box keeps the plain lower/upper bounds; a family (Gaussian, Log-normal, ...) attaches a smooth prior pulling the fit toward a value. Type a family and its shape parameters, e.g. Gaussian(4, 0.4).</source>
+            <translation>Boîte garde les bornes basse/haute simples ; une famille (gaussienne, log-normale, ...) ajoute un prior lisse qui tire l'ajustement vers une valeur. Saisir une famille et ses paramètres de forme, p. ex. Gaussian(4, 0.4).</translation>
+        </message>
+        <message>
+            <source>The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs are dimmed; a linked parameter follows its master (drawn in blue, its tooltip names the master) and is read only.</source>
+            <translation>Les paramètres du modèle. Double-cliquer une valeur ou une borne pour la saisir ; cliquer Fixé ou Bornes pour basculer. Les sorties calculées sont atténuées ; un paramètre lié suit son maître (dessiné en bleu, l'infobulle nomme le maître) et est en lecture seule.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

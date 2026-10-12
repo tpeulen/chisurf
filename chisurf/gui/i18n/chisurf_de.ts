@@ -66450,6 +66450,110 @@ fortgesetzt werden.
             <source>With window: one control inside that window, by the name its panel registers (chimol). Rings the button rather than the whole window.</source>
             <translation>Mit window: ein Bedienelement in diesem Fenster, unter dem Namen, den sein Panel registriert (chimol). Markiert den Knopf statt des ganzen Fensters.</translation>
         </message>
+        <message>
+            <source>Grouping the datasets…</source>
+            <translation>Datensätze werden gruppiert…</translation>
+        </message>
+        <message>
+            <source>Ungrouping the datasets…</source>
+            <translation>Gruppierung wird aufgehoben…</translation>
+        </message>
+        <message>
+            <source>Saving {name}…</source>
+            <translation>{name} wird gespeichert…</translation>
+        </message>
+        <message>
+            <source>Save the dataset</source>
+            <translation>Datensatz speichern</translation>
+        </message>
+        <message>
+            <source>Load a dataset</source>
+            <translation>Datensatz laden</translation>
+        </message>
+        <message>
+            <source>The dataset is no longer in the session.</source>
+            <translation>Der Datensatz ist nicht mehr in der Sitzung.</translation>
+        </message>
+        <message>
+            <source>Unknown prior {text!r}; use one of: {names}</source>
+            <translation>Unbekannter Prior {text!r}; erlaubt: {names}</translation>
+        </message>
+        <message>
+            <source>another parameter</source>
+            <translation>anderer Parameter</translation>
+        </message>
+        <message>
+            <source>Box (bounds only)</source>
+            <translation>Box (nur Grenzen)</translation>
+        </message>
+        <message>
+            <source>Truncated Gaussian</source>
+            <translation>Gestutzte Gauß-Verteilung</translation>
+        </message>
+        <message>
+            <source>Log-normal</source>
+            <translation>Log-Normal</translation>
+        </message>
+        <message>
+            <source>Half-normal</source>
+            <translation>Halb-Normal</translation>
+        </message>
+        <message>
+            <source>Exponential</source>
+            <translation>Exponentiell</translation>
+        </message>
+        <message>
+            <source>Beta</source>
+            <translation>Beta</translation>
+        </message>
+        <message>
+            <source>Ungroup</source>
+            <translation>Gruppierung aufheben</translation>
+        </message>
+        <message>
+            <source>Save the selected dataset to a pickle file.</source>
+            <translation>Den gewählten Datensatz in eine Pickle-Datei speichern.</translation>
+        </message>
+        <message>
+            <source>Load a dataset saved with Save into the session.</source>
+            <translation>Einen mit Speichern gesicherten Datensatz in die Sitzung laden.</translation>
+        </message>
+        <message>
+            <source>Remove the selected datasets (a member of a group removes its group).</source>
+            <translation>Die gewählten Datensätze entfernen (ein Gruppenmitglied entfernt seine Gruppe).</translation>
+        </message>
+        <message>
+            <source>Join the selected datasets into one group; a fit of the group has one curve per member.</source>
+            <translation>Die gewählten Datensätze zu einer Gruppe verbinden; ein Fit der Gruppe hat eine Kurve je Mitglied.</translation>
+        </message>
+        <message>
+            <source>Split the selected groups back into their datasets.</source>
+            <translation>Die gewählten Gruppen wieder in ihre Datensätze aufteilen.</translation>
+        </message>
+        <message>
+            <source>Read the dataset and fit lists from the session again.</source>
+            <translation>Die Datensatz- und Fitlisten erneut aus der Sitzung lesen.</translation>
+        </message>
+        <message>
+            <source>Position of the dataset in the session; a member of a group is numbered under it (3.1, 3.2).</source>
+            <translation>Position des Datensatzes in der Sitzung; ein Gruppenmitglied wird darunter nummeriert (3.1, 3.2).</translation>
+        </message>
+        <message>
+            <source>The loaded datasets. Select one (ctrl or shift-click for several) to add a fit to each; drag one onto a fit window to fit that dataset instead; Delete removes it; right-click for Save, Load, Remove, Group, Ungroup and Refresh; a group unfolds with its triangle.</source>
+            <translation>Die geladenen Datensätze. Einen (Strg- oder Umschalt-Klick für mehrere) wählen, um je einen Fit hinzuzufügen; auf ein Fit-Fenster ziehen, um stattdessen diesen Datensatz zu fitten; Entf entfernt ihn; Rechtsklick für Speichern, Laden, Entfernen, Gruppieren, Gruppierung aufheben und Aktualisieren; eine Gruppe klappt mit ihrem Dreieck auf.</translation>
+        </message>
+        <message>
+            <source>Box keeps the plain lower/upper bounds; a family (Gaussian, Log-normal, ...) attaches a smooth prior pulling the fit toward a value. Type a family and its shape parameters, e.g. Gaussian(4, 0.4); right-click the row for the list.</source>
+            <translation>Box behält die einfachen unteren/oberen Grenzen; eine Familie (Gauß, Log-Normal, ...) legt einen glatten Prior an, der den Fit zu einem Wert zieht. Familie und Formparameter eintippen, z. B. Gaussian(4, 0.4); Rechtsklick auf die Zeile für die Liste.</translation>
+        </message>
+        <message>
+            <source>Box keeps the plain lower/upper bounds; a family (Gaussian, Log-normal, ...) attaches a smooth prior pulling the fit toward a value. Type a family and its shape parameters, e.g. Gaussian(4, 0.4).</source>
+            <translation>Box behält die einfachen unteren/oberen Grenzen; eine Familie (Gauß, Log-Normal, ...) legt einen glatten Prior an, der den Fit zu einem Wert zieht. Familie und Formparameter eintippen, z. B. Gaussian(4, 0.4).</translation>
+        </message>
+        <message>
+            <source>The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs are dimmed; a linked parameter follows its master (drawn in blue, its tooltip names the master) and is read only.</source>
+            <translation>Die Parameter des Modells. Doppelklick auf Wert oder Grenze zum Eintippen; Klick auf Fixiert oder Grenzen schaltet um. Berechnete Ausgaben sind abgedunkelt; ein verknüpfter Parameter folgt seinem Master (blau gezeichnet, der Tooltip nennt den Master) und ist schreibgeschützt.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

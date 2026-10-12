@@ -27,33 +27,14 @@ from chisurf.macros.core_fit import link_fit_group
 parameter_settings = chisurf.core.settings.parameter
 
 
-#: Smooth-prior families offered by the advanced prior editor. Each entry maps a
-#: display label to the prior ``kind`` (see :mod:`chisurf.core.fitting.priors`)
-#: and its editable parameters ``(key, label, default)``. Box/uniform bounds are
-#: the degenerate uniform prior and are edited through the radio selector's
-#: inline bound spinboxes, not here.
-_PRIOR_FAMILY_SPECS = [
-    ("Gaussian", "normal", [("mu", "Mean μ", 0.0), ("sigma", "Std σ", 1.0)]),
-    (
-        "Truncated Gaussian",
-        "truncated_normal",
-        [
-            ("mu", "Mean μ", 0.0),
-            ("sigma", "Std σ", 1.0),
-            ("lb", "Lower", 0.0),
-            ("ub", "Upper", 1.0),
-        ],
-    ),
-    ("Log-normal", "lognormal", [("mu", "Mean of ln x", 0.0), ("sigma", "Std of ln x", 0.5)]),
-    ("Half-normal", "half_normal", [("sigma", "Std σ", 1.0), ("loc", "Edge", 0.0)]),
-    ("Exponential", "exponential", [("scale", "Mean scale", 1.0), ("loc", "Edge", 0.0)]),
-    ("Gamma", "gamma", [("alpha", "Shape α", 2.0), ("beta", "Rate β", 1.0), ("loc", "Edge", 0.0)]),
-    ("Beta", "beta", [("alpha", "Shape α", 2.0), ("beta", "Shape β", 2.0)]),
-]
-_PRIOR_KIND_TO_SPEC = {kind: (label, params) for (label, kind, params) in _PRIOR_FAMILY_SPECS}
-
-#: Combo entry for the uniform/box prior, i.e. "no smooth prior, just bounds".
-_PRIOR_KIND_BOX = "box"
+#: Smooth-prior families offered by the advanced prior editor (shared with the emtk shell, see
+#: :mod:`chisurf.core.fitting.prior_families`). Box/uniform bounds are the degenerate uniform
+#: prior and are edited through the radio selector's inline bound spinboxes, not here.
+from chisurf.core.fitting.prior_families import (  # noqa: E402
+    PRIOR_FAMILY_SPECS as _PRIOR_FAMILY_SPECS,
+    PRIOR_KIND_BOX as _PRIOR_KIND_BOX,
+    PRIOR_KIND_TO_SPEC as _PRIOR_KIND_TO_SPEC,
+)
 
 #: Combo entry standing in for a prior this editor cannot express (callback and
 #: product priors, typically attached from a script). Selecting it is a no-op;

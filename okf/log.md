@@ -2,6 +2,19 @@
 
 ## 2026-10-12
 
+- emtk shell reaches Qt parity on the fit panels: Datasets multi-select (one fit per selected curve), a context menu
+  (Save, Load, Remove, Group, Ungroup, Refresh) and unfolding groups; member windows redraw after a global fit
+  (`fit.ran` carries `member_fit_uids`); the Link-to menu lists the equation's parameters only; Tile Windows makes a
+  near-square grid and tabs what does not fit; the Analysis dock follows the focused tile; a Prior column and row
+  menu (shared `prior_families`); linked rows drawn in the linked ink naming their master; repeated fit names get
+  distinguishable labels (`fit_labels.unique_labels`). Fixed on the way: nested global models were not frozen
+  (frozen_structure warning), project capture failed for global fits over unequal curves, Qt dataset Save wrote no
+  file (`dataset_pickle`), and `fit_create` resolved a shared model name ("Parse-Model") across experiments.
+- Anisotropy wizard fits register through the running shell session, carry the TCSPC experiment, and the model list is
+  filtered by dataset. Global fits no longer stall at their start values (leastsq `xtol` 1e-10; the old shipped
+  default is read as unset); the default TCSPC range stops before a rising gate edge (`_trim_rising_tail`); the wizard
+  starts at 90 % of the peak and its repetition rate reaches the model's period. The bundled 8 ps recording fits to
+  chi2r 1.1-1.5 from the defaults; g/l1/l2 are not identifiable from one fast dye.
 - Chat transcripts, Ask Docs and the documentation viewer render inline Markdown as rich-text runs: links drawn in
   place and clickable (also across a wrap), real bold and code spans, no duplicate link-chip rows and no literal
   backticks in table cells (emtk `draw_inline`, 8f2053a..20ffaf4). Ask Docs links open the docs browser; the

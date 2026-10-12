@@ -376,14 +376,32 @@ def _publish(topic, payload):
         logging.getLogger(__name__).exception("Could not publish %s", topic)
 
 
+def _session_lists():
+    """The ``(datasets, fits)`` lists a registration goes to.
+
+    A running shell owns its lists in the embedded server's :class:`SessionState`; they are the
+    process-wide ``chisurf`` lists only when the shell was started on the live session. Writing
+    to the globals alone would leave a fit made by a tool invisible to a session with its own
+    state, so the server's lists win whenever one is published.
+    """
+    import chisurf as cs
+
+    server = getattr(cs, "__chisurf_rpc_server__", None)
+    state = getattr(server, "state", None)
+    datasets, fits = getattr(state, "datasets", None), getattr(state, "fits", None)
+    if isinstance(datasets, list) and isinstance(fits, list):
+        return datasets, fits
+    return cs.imported_datasets, cs.fits
+
+
 def register_dataset(dataset):
     """Register an already constructed dataset and publish its state change."""
-    import chisurf as cs
+    datasets, _ = _session_lists()
 
     name = str(getattr(dataset, "name", "dataset"))
     uid = str(getattr(dataset, "unique_identifier", ""))
-    cs.imported_datasets.append(dataset)
-    index = len(cs.imported_datasets) - 1
+    datasets.append(dataset)
+    index = len(datasets) - 1
     _record_history(
         "dataset_add",
         f"add dataset(s): {name}",
@@ -420,10 +438,10 @@ def build_fit_group(dataset, model_class, model_kw=None):
 
 def publish_fit_group(group, dataset, model_name):
     """Register a fully configured group with shared linking/history/events."""
-    import chisurf as cs
+    datasets, fits = _session_lists()
 
     masters, followers = _auto_link_non_nuisance_group_parameters(group)
-    cs.fits.append(group)
+    fits.append(group)
     name = str(getattr(group, "name", ""))
     uid = str(getattr(group, "unique_identifier", ""))
     _record_history(
@@ -434,7 +452,7 @@ def publish_fit_group(group, dataset, model_name):
             "dataset_name": getattr(dataset, "name", ""),
             "model_name": model_name,
             "dataset_indices": [
-                i for i, item in enumerate(cs.imported_datasets) if item is dataset
+                i for i, item in enumerate(datasets) if item is dataset
             ],
         },
         source_uid=uid,
@@ -451,7 +469,7 @@ def publish_fit_group(group, dataset, model_name):
             },
             source_uid=uid,
         )
-    _publish("fit.added", {"fit_uid": uid, "fit_index": len(cs.fits) - 1, "fit_name": name})
+    _publish("fit.added", {"fit_uid": uid, "fit_index": len(fits) - 1, "fit_name": name})
     return group
 
 

@@ -526,7 +526,10 @@ class LinkMenu:
                 items = []
                 for p in parameters:
                     uid = str(p.get("uid", ""))
-                    if not uid or uid == source:
+                    # Only the equation the fit shows: a catalogue model keeps its other ports as
+                    # parameters too (``active_in_structure`` false), and offering all 100+ drowns
+                    # the few it fits with. A server that does not say lists everything.
+                    if not uid or uid == source or not p.get("active_in_structure", True):
                         continue
                     item = MenuItem(str(p.get("name", "")))
                     self.calls[id(item)] = lambda target=uid: views.link(self.record, target)
@@ -539,14 +542,31 @@ class LinkMenu:
         unlink = MenuItem(tr("Unlink"), enabled=bool(record.get("linked")))
         self.calls[id(unlink)] = lambda: views.unlink(self.record)
         self.unlink_item = unlink
-        self.panel = Popup(
-            [Menu(tr("🔗 Link {name} to").format(name=name), fit_menus), unlink],
-            title=name,
-        )
+        menus: list = [Menu(tr("🔗 Link {name} to").format(name=name), fit_menus), unlink]
+        if "prior" in record and not record.get("output"):
+            menus.insert(1, self._prior_menu(record))
+        self.panel = Popup(menus, title=name)
         if anchor is not None:
             self.panel.open_at(float(anchor[0]), float(anchor[1]))
         else:
             self.panel.open_at()
+
+    def _prior_menu(self, record: dict):
+        """The *Prior* submenu: Box (the plain bounds) and the smooth families, the current one ticked."""
+        from emtk.widgets.menus import Menu, MenuItem
+
+        from chisurf.core.fitting import prior_families
+
+        current = prior_families.family_label(record.get("prior_state"))
+        items = []
+        for label in [prior_families.BOX_LABEL] + [s[0] for s in prior_families.PRIOR_FAMILY_SPECS]:
+            item = MenuItem(tr(label), checked=label == current, checkable=True)
+            typed = "Box" if label == prior_families.BOX_LABEL else label
+            self.calls[id(item)] = lambda text=typed: self.views.docks.edit_model_parameter(
+                self.record, "prior", text
+            )
+            items.append(item)
+        return Menu(tr("Prior"), items)
 
     @property
     def open(self) -> bool:

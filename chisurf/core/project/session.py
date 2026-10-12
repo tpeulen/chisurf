@@ -1126,15 +1126,22 @@ def capture_session(
         if hasattr(live, "y"):
             expected = np.asarray(live.y)
             actual = np.asarray(restored_model.y)
-            if (
-                expected.shape != actual.shape
-                or expected.dtype != actual.dtype
-                or not np.allclose(expected, actual, rtol=1e-12, atol=1e-12, equal_nan=False)
-            ):
+            same = _same_prediction(expected, actual)
+            if not same:
                 raise SessionCodecError(f"model {key[1]!r} prediction changed after reconstruction")
         if _model_state(live)["adapter_state"] != _model_state(restored_model)["adapter_state"]:
             raise SessionCodecError(f"model {key[1]!r} state changed after reconstruction")
     return project
+
+
+def _same_prediction(expected: Any, actual: Any) -> bool:
+    """Whether two predictions agree to rounding; rows of unequal length (object arrays) are compared row by row."""
+    expected, actual = np.asarray(expected), np.asarray(actual)
+    if expected.shape != actual.shape or expected.dtype != actual.dtype:
+        return False
+    if expected.dtype == object:
+        return all(_same_prediction(e, a) for e, a in zip(expected, actual))
+    return bool(np.allclose(expected, actual, rtol=1e-12, atol=1e-12, equal_nan=False))
 
 
 def _resolve_model(state: dict[str, Any]) -> type:

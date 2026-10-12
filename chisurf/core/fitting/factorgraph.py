@@ -356,28 +356,43 @@ def frozen(*argument_names):
     return decorate
 
 
-def _models_of(target) -> typing.List:
-    """Return the models a freeze target covers (global model plus members)."""
+def _models_of(target, _seen: typing.Optional[set] = None) -> typing.List:
+    """Return the models a freeze target covers (global model plus members, at every depth).
+
+    A global fit takes in fits whose model is itself a global model (a ``FitGroup`` over a
+    ``Global fit`` over the local ``FitGroup``\ s). Freezing only the first level left the
+    innermost models unfrozen, so each objective evaluation re-ran their ``find_parameters`` and
+    bumped the structure counter -- the ``frozen_structure`` warning at the end of every global fit.
+    """
     if target is None:
         return []
+    seen = set() if _seen is None else _seen
+    if id(target) in seen:
+        return []
+    seen.add(id(target))
     out = []
     model = getattr(target, "model", None)
     global_model = getattr(target, "_model", None)
     if global_model is not None and getattr(global_model, "fits", None) is not None:
-        out.append(global_model)
-        for local in list(getattr(global_model, "fits", []) or []):
-            local_model = getattr(local, "model", None)
-            if local_model is not None:
-                out.append(local_model)
+        owner = global_model
     elif getattr(target, "fits", None) is not None:
         # A global model was passed directly.
-        out.append(target)
-        for local in list(getattr(target, "fits", []) or []):
-            local_model = getattr(local, "model", None)
-            if local_model is not None:
-                out.append(local_model)
+        owner = target
+    else:
+        owner = None
+    if owner is not None:
+        out.append(owner)
+        for local in list(getattr(owner, "fits", []) or []):
+            out.extend(m for m in _models_of(local, seen) if m not in out)
+        # Members of a group other than the one its ``model`` answers with.
+        for member in list(getattr(target, "grouped_fits", None) or []):
+            out.extend(m for m in _models_of(member, seen) if m not in out)
     elif model is not None:
         out.append(model)
+        if getattr(model, "fits", None) is not None:
+            out.extend(m for m in _models_of(model, seen) if m not in out)
+        for member in list(getattr(target, "grouped_fits", None) or []):
+            out.extend(m for m in _models_of(member, seen) if m not in out)
     elif hasattr(target, "parameters"):
         out.append(target)
     return out
