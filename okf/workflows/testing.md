@@ -422,6 +422,14 @@ Where to pick this up:
    alone. A `hosted_glfw` variant needs a display session, so it cannot run in CI.
 4. Open: a Qt-host driver is still missing. emtk docks hosted in the Qt main window go through `emtk/qt_host.py`,
    which this driver does not exercise; that is where the resize-click lane fixed its bug.
+5. Measure: the settle phase (2026-10-12), `CHISURF_E2E_PHASES=settle CHISURF_E2E_MATRIX=off pytest
+   test/e2e/test_click_all_plugins.py -k survives_every_control -m e2e` against emtk b82aa06: 123 workers passed,
+   40 tools offered 130 targets (114 plots, 16 overflowing scroll regions), and every one settled. Trap: run it
+   against the *installed* emtk (reinstall arm64 after an emtk push). The workers import it, and a stale install
+   tests the old frame loop. The phase measures only what is on screen in the first frame and after the tour, so
+   a scroll region that overflows only once data is loaded is not visited. Open: it notches only; drag, click and
+   key settles over every plot run in emtk's `tests/test_settle_sweep.py`, not per tool. `swipe` is not used in
+   the e2e phase yet.
 
 ## Simple user sequences: open every popup, close it every way, click elsewhere
 
