@@ -89,9 +89,51 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | PSF r step (um) | `sim_psf_r_step` | float |  | 0.0 … 1000000.0 (step 0.01) | Radial step of the PSF table. |
 | PSF z step (um) | `sim_psf_z_step` | float |  | 0.0 … 1000000.0 (step 0.01) | Axial step of the PSF table. |
 
+### Interface
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Face | `ui_family` | choice |  | choices: `families` | Face of the interface text. monospace is the built-in face: the sharpest and fastest. Any installed family works; a proportional one lays out from its measured widths. |
+| Size | `ui_size` | float |  | 6.0 … 24.0 (step 0.5) | Size of all interface text. Headings, captions and code follow it unless they have a size of their own. 8 pt is the shipped size. |
+| Magnification | `zoom` | float |  | 0.5 … 3.0 (step 0.05) | Magnifies the whole window -- text, spacing, icons and plots together, as a browser zoom does. 1.00 is actual size; 1.25 suits a high-resolution screen viewed from a distance. |
+
+### Editor and console
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Face | `code_family` | choice |  | choices: `mono_families` | Face of code. Only monospaced families are listed: the editor lines its columns up on a fixed character width. The code editor's own font setting, when changed there, takes precedence in that tool. |
+| Size | `code_size` | float |  | 0.0 … 32.0 (step 0.5) | Size of code in points. Same as interface (0) follows the interface size. |
+
+### Documentation
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Text face | `prose_family` | choice |  | choices: `families` | Face of running text and captions. prose picks Verdana, else DejaVu Sans: the proportional relatives of the built-in interface face. |
+| Text size | `prose_size` | float |  | 0.0 … 32.0 (step 0.5) | Size of running text. Headings and captions are set relative to it. Same as interface (0) follows the interface size. The A− / A+ buttons of the Documentation dock zoom on top of it. |
+| Heading face | `heading_family` | choice |  | choices: `families` | Face of headings. |
+| Heading scale | `heading_step` | float |  | 1.0 … 1.6 (step 0.025) | Ratio between neighbouring heading levels: a fourth-level heading is the text size times this, a page title times its fourth power. 1.125 is the shipped scale; 1.0 sets headings at the text size. |
+| Bold headings | `heading_bold` | bool |  |  | Set headings in the bold weight of their face. |
+| Caption size | `caption_size` | float |  | 0.0 … 32.0 (step 0.5) | Size of figure captions and footnotes. One step below text (0) sets them one step of the heading scale below the text size. |
+
+### Formulas
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Face | `math_family` | choice |  | choices: `math_families` | Text face of formulas; it needs an italic style. auto picks the first installed of STIX Two, Times New Roman and DejaVu Serif. Symbols the face lacks come from the installed mathematical faces. |
+| Size | `math_size` | float |  | 0.0 … 32.0 (step 0.5) | Size of formulas. Same as text (0) follows the documentation text size. |
+
+### Rendering
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Resolution | `oversample` | choice |  | choices: `oversample_choices` | Glyph raster scale. 1× draws one glyph pixel per screen pixel, placed on the pixel grid: the sharpest text. Higher values rasterise finer and scale down: smoother curves, slightly softer stems, more memory. |
+| Smooth edges | `antialias` | bool |  |  | Grey-scale anti-aliasing of glyph edges. Off draws hard black-and-white edges, which some people read more easily at small sizes. Hinting cannot be chosen: the rasteriser does not offer it. |
+| Fallback faces | `fallbacks` | str |  |  | Comma-separated faces tried, in order, for a character the chosen face does not have (CJK, mathematical symbols, subscripts), before the faces the system provides. A face may also be given a chain of its own: Inter, Verdana, prose. |
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/setup/`
 - Manifest: {src}`chisurf/plugins/core/setup/manifest.json`
 - UI spec: {src}`chisurf/plugins/core/setup/gui/acq_settings_emtk.view.json`
 - UI spec: {src}`chisurf/plugins/core/setup/gui/app.view.json`
+- UI spec: {src}`chisurf/plugins/core/setup/gui/fonts.view.json`

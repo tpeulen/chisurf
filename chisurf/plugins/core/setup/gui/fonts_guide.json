@@ -1,0 +1,34 @@
+{
+ "_comment": "Guided tour of Settings > Fonts. 'name' is a field's attr, a button's action, or 'preview.<role>' for a sample line. Steps with 'await' wait for the user to use the control.",
+ "steps": [
+  {
+   "title": "One size for the whole window",
+   "text": "<b>Size</b> sets the interface text: buttons, labels, tables, menus. Headings, captions and code follow it unless you give them a size of their own. Step it up with the arrows or type a value and press Enter -- the window redraws at once, and the sample line below shows the result.",
+   "target": {"name": "ui_size"},
+   "await": {"hint": "Change the interface size."}
+  },
+  {
+   "title": "Magnify everything",
+   "text": "<b>Magnification</b> scales the whole window -- text, spacing, icons and plots together -- the way a browser zoom does. Use it when the window is right but small on a large or distant screen; use <b>Size</b> when only the text should grow.",
+   "target": {"name": "zoom"},
+   "await": {"hint": "Change the magnification."}
+  },
+  {
+   "title": "The editor and the console",
+   "text": "Pick a <b>Face</b> for code. Only monospaced families are listed, because the editor lines its columns up on a fixed character width. The sample below is drawn in the new face as soon as you pick it.",
+   "target": {"name": "code_family"},
+   "await": {"hint": "Pick a code face."}
+  },
+  {
+   "title": "Reading the documentation",
+   "text": "<b>Text size</b> sets the running text of the Documentation dock and the help windows; headings and captions keep their steps above and below it. Open the Documentation dock beside this one to watch a real page change.",
+   "target": {"name": "prose_size"},
+   "await": {"hint": "Change the documentation text size."}
+  },
+  {
+   "title": "Back to the shipped look",
+   "text": "<b>Reset to defaults</b> returns every font setting to the shipped look, applies it and saves it. Every change you make here is saved as you make it, so there is no separate Save.",
+   "target": {"name": "reset_defaults"}
+  }
+ ]
+}

@@ -560,6 +560,19 @@ class EditorModel:
         self.display_colors[name] = value
         return True
 
+    def editor_font(self) -> dict:
+        """The font the document is drawn in: this tool's own choice, else Settings ▸ Fonts' code face.
+
+        The defaults here (``monospace`` at size 0) mean "no choice of my own", so the editor
+        follows the application's editor font (:mod:`emtk.fonts` ``code`` role); a face or a
+        size picked in this tool's settings wins.
+        """
+        if self.font_family == "monospace" and not self.font_size:
+            from emtk.type_scale import text_font
+
+            return text_font("code")
+        return {"family": self.font_family, "size": self.font_size}
+
     def apply_editor_preferences(self, editor: TextEditor, *, apply_language: bool = True) -> None:
         editor.config.show_line_numbers = self.show_line_numbers
         editor.config.show_spaces = self.show_whitespace
@@ -2179,7 +2192,7 @@ class CodeEditorGui:
             self.model.apply_editor_preferences(
                 active.editor, apply_language=active.notebook is None
             )
-            im.push_font({"family": self.model.font_family, "size": self.model.font_size})
+            im.push_font(self.model.editor_font())
             im.push_font_scale(self.model.font_scale * CODE_EDITOR_UI_SCALE)
             if active.notebook is not None:
                 for cell in active.notebook.cells:

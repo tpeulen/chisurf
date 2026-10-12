@@ -270,11 +270,16 @@ def update_settings_section(section: str, values: dict) -> bool:
     """
     settings_file = get_path("settings") / "settings_chisurf.yaml"
     try:
-        data = safe_open_file(
-            file_path=settings_file,
-            processor=yaml.safe_load,
-            default_value={},
-            error_message=f"Error opening settings file {settings_file}",
+        # No user file yet is the normal first write, not an error to report.
+        data = (
+            safe_open_file(
+                file_path=settings_file,
+                processor=yaml.safe_load,
+                default_value={},
+                error_message=f"Error opening settings file {settings_file}",
+            )
+            if settings_file.is_file()
+            else {}
         )
         if not isinstance(data, dict):
             data = {}

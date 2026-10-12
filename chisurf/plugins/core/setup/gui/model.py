@@ -50,6 +50,15 @@ PANELS = [
         icon="🛠️",
     ),
     Panel(
+        "fonts",
+        "Fonts",
+        None,
+        "settings_chisurf.yaml",
+        "Interface, editor and documentation fonts; magnification of the window.",
+        entry="chisurf.plugins.core.setup.gui.fonts_app:make_app",
+        icon="🔤",
+    ),
+    Panel(
         "acq",
         "Acquisition",
         None,

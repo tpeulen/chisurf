@@ -34,6 +34,8 @@ QT_PANEL_NAMES = [
     "TTTR LUT Tools",
     "Plugin Check",
 ]
+#: Destinations the emtk hub has and the retired Qt hub had not (the Qt shell has no font settings).
+EMTK_ONLY = ["Fonts"]
 #: The dedicated panel (class name) each destination must host: never the generic file editor.
 EXPECTED = {
     "boarding": "BoardingApp",
@@ -51,6 +53,7 @@ EXPECTED = {
     "fcs": "PresetApp",
     "lut": "LutToolsApp",
     "check": "PluginCheckApp",
+    "fonts": "FontSettingsApp",
 }
 
 
@@ -103,11 +106,12 @@ def test_the_hub_opens_on_getting_started_and_lists_the_fifteen_qt_destinations(
     assert hub.app.selected == "boarding"
     assert type(hub.app.child).__name__ == "BoardingApp"
     assert in_sidebar(hub) == LABELS
-    assert len(LABELS) == 15
+    assert len(LABELS) == 16
 
 
 def test_the_destinations_equal_the_qt_hub_in_name_and_order():
-    assert LABELS == QT_PANEL_NAMES
+    assert [label for label in LABELS if label not in EMTK_ONLY] == QT_PANEL_NAMES
+    assert LABELS[LABELS.index("ChiSurf Settings") + 1] == "Fonts"
 
 
 @pytest.mark.parametrize("size", SIZES, ids=lambda s: f"{s[0]}x{s[1]}")
@@ -244,7 +248,9 @@ def test_next_and_back_equal_the_qt_stepper(world):
     walked = [PANELS[0].key]
     while (nxt := step_target(PANELS, walked[-1], 1)) is not None:
         walked.append(nxt)
-    assert [next(p.label for p in PANELS if p.key == k) for k in walked] == qt_names
+    labels = [next(p.label for p in PANELS if p.key == k) for k in walked]
+    assert [label for label in labels if label not in EMTK_ONLY] == qt_names
+    assert labels == LABELS
     assert step_target(PANELS, PANELS[0].key, -1) is None
 
 
@@ -264,9 +270,9 @@ def test_fast_forward_visits_every_remaining_destination_and_says_so(hub):
             break
     assert hub.app.selected == "check"
     assert hub.app.status == "Fast-forward finished - the pipeline is done"
-    assert any(s.startswith("Fast-forward 1/15: Getting Started") for s in statuses)
-    assert any(s == "Fast-forward 15/15: Plugin Check" for s in statuses)
-    assert len(hub.app.children) == 15  # every destination was built on the way
+    assert any(s.startswith("Fast-forward 1/16: Getting Started") for s in statuses)
+    assert any(s == "Fast-forward 16/16: Plugin Check" for s in statuses)
+    assert len(hub.app.children) == 16  # every destination was built on the way
     assert not hub.app.fast_forward
 
 

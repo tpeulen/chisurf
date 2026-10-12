@@ -96,6 +96,15 @@ def test_breadcrumb_matches_the_qt_window(app, qt_facts):
 
 
 # 2. the tree opens to the page that is shown, once, and can be collapsed again
+def _drawn(title, strings):
+    """*title* drawn whole, or shortened to a prefix plus "…" in a row narrower than it."""
+    return any(
+        text == title
+        or (text.endswith("…") and len(text) > 4 and title.startswith(text[:-1].rstrip()))
+        for text in strings
+    )
+
+
 def test_tree_opens_to_the_open_page(app):
     target = str(PAGE.resolve())
 
@@ -114,10 +123,10 @@ def test_tree_opens_to_the_open_page(app):
         c.title for c in group.children if not (c.path and str(Path(c.path).resolve()) == target)
     )
     painter = _draw(app)
-    assert sibling not in painter.strings
+    assert not _drawn(sibling, painter.strings)
     app.model.open_page(PAGE)
     painter = _draw(app)
-    assert sibling in painter.strings
+    assert _drawn(sibling, painter.strings)
     assert app.help_gui._reveal_keys == set()  # revealed once, not forced open
 
 

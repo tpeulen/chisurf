@@ -64,7 +64,22 @@ def console_settings() -> dict[str, typing.Any]:
     for key, value in block.items():
         if key in resolved:
             resolved[key] = value
+    if not resolved["font_family"]:
+        # No console face of its own: the editor face of Settings ▸ Fonts (``gui.fonts.code``),
+        # when it names a family -- a generic such as ``monospace`` leaves the view's default.
+        resolved["font_family"] = _named_code_family(chisurf.core.settings.gui.get("fonts"))
     return resolved
+
+
+def _named_code_family(fonts: typing.Any) -> str:
+    """The first named (non-generic) family of ``gui.fonts.code``, or ``""``."""
+    code = fonts.get("code") if isinstance(fonts, dict) else None
+    family = code.get("family", "") if isinstance(code, dict) else code
+    generics = {"monospace", "prose", "sans-serif", "sans", "serif", "auto"}
+    for part in str(family or "").split(","):
+        if part.strip() and part.strip().casefold() not in generics:
+            return part.strip()
+    return ""
 
 
 def console_init_source() -> str:

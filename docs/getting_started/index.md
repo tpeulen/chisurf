@@ -131,6 +131,12 @@ click it and the view fits all the data again (as in pyqtgraph). It goes away
 once the plot follows its data, and new data then refits the view on its own —
 a zoomed plot keeps your zoom until you press **A**.
 
+## Settings and fonts
+
+**Settings** (*File → Setup* in the **Tools** tree) holds every preference; its **Fonts**
+destination sets the interface, editor and documentation fonts and the magnification of the
+whole window, applied at once. See [Settings and fonts](settings.md).
+
 ## Your first analysis
 
 The fastest way to see ChiSurf work end-to-end is one of the guides:

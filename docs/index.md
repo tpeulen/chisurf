@@ -35,6 +35,7 @@ page. See [Asking the documentation](guides/70_ask_the_documentation.md).
 :caption: Getting started
 
 getting_started/index
+getting_started/settings
 ```
 
 ```{toctree}

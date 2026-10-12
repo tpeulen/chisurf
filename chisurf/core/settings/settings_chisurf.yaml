@@ -85,6 +85,25 @@ gui:
   # Global application UI font point size. On macOS this compensates for the
   # low-resolution stability mode; set 0 to keep the platform default.
   application_font_size: 13
+  # Fonts of the ChiSurf window (Settings > Fonts; emtk.fonts). Per role: a
+  # family -- a name, a generic (monospace = the built-in interface face,
+  # prose, sans-serif, serif) or a comma-separated fallback chain --, a size in
+  # points (0 follows the interface size; headings and captions follow the
+  # prose size by the type scale) and bold. zoom magnifies the whole interface,
+  # oversample is the glyph raster scale of system fonts, fallbacks are tried
+  # for characters a face lacks. These defaults are the shipped look.
+  fonts:
+    ui: {family: monospace, size: 8.0, bold: false}
+    code: {family: monospace, size: 0.0, bold: false}
+    prose: {family: prose, size: 0.0, bold: false}
+    heading: {family: prose, size: 0.0, bold: true}
+    math: {family: auto, size: 0.0, bold: false}
+    caption: {family: prose, size: 0.0, bold: false}
+    heading_step: 1.125
+    zoom: 1.0
+    oversample: 1.0
+    antialias: true
+    fallbacks: []
   tooltip:
     # Fold long tooltips app-wide so they don't render as one very wide line.
     enabled: true

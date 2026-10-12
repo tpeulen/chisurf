@@ -1,0 +1,274 @@
+{
+  "window": {
+    "width": 900,
+    "height": 760
+  },
+  "_comment": "Settings > Fonts: the faces, sizes and magnification of the ChiSurf window, bound to FontSettingsModel (fonts_model.py). Every change applies on the next frame and is saved to gui.fonts. The 'font_preview' custom sections draw a sample line in a role's font (fonts_app.py): drawing in a chosen face is what a spec cannot express.",
+  "title": "Fonts",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Interface",
+      "description": "The text of buttons, labels, menus, tables and tooltips, and the magnification of the whole window.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "ui_family",
+          "label": "Face",
+          "options_source": "families",
+          "filter": true,
+          "description": "Face of the interface text. monospace is the built-in face: the sharpest and fastest. Any installed family works; a proportional one lays out from its measured widths."
+        },
+        {
+          "type": "value",
+          "attr": "ui_size",
+          "label": "Size",
+          "kind": "float",
+          "decimals": 1,
+          "minimum": 6.0,
+          "maximum": 24.0,
+          "step": 0.5,
+          "style": "spin",
+          "suffix": " pt",
+          "description": "Size of all interface text. Headings, captions and code follow it unless they have a size of their own. 8 pt is the shipped size."
+        },
+        {
+          "type": "value",
+          "attr": "zoom",
+          "label": "Magnification",
+          "kind": "float",
+          "decimals": 2,
+          "minimum": 0.5,
+          "maximum": 3.0,
+          "step": 0.05,
+          "style": "spin",
+          "suffix": "×",
+          "description": "Magnifies the whole window -- text, spacing, icons and plots together, as a browser zoom does. 1.00 is actual size; 1.25 suits a high-resolution screen viewed from a distance."
+        },
+        {
+          "type": "custom",
+          "key": "font_preview",
+          "source": "ui",
+          "title": "",
+          "description": "A sample line in the interface face and size."
+        }
+      ],
+      "collapsible": true,
+      "collapsed": false
+    },
+    {
+      "type": "panel",
+      "title": "Editor and console",
+      "description": "The Console dock, the code editor and code blocks in the documentation.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "code_family",
+          "label": "Face",
+          "options_source": "mono_families",
+          "filter": true,
+          "description": "Face of code. Only monospaced families are listed: the editor lines its columns up on a fixed character width. The code editor's own font setting, when changed there, takes precedence in that tool."
+        },
+        {
+          "type": "value",
+          "attr": "code_size",
+          "label": "Size",
+          "kind": "float",
+          "decimals": 1,
+          "minimum": 0.0,
+          "maximum": 32.0,
+          "step": 0.5,
+          "style": "spin",
+          "suffix": " pt",
+          "special_text": "Same as interface",
+          "description": "Size of code in points. Same as interface (0) follows the interface size."
+        },
+        {
+          "type": "custom",
+          "key": "font_preview",
+          "source": "code",
+          "title": "",
+          "description": "A sample line of code in the editor face and size."
+        }
+      ],
+      "collapsible": true,
+      "collapsed": false
+    },
+    {
+      "type": "panel",
+      "title": "Documentation",
+      "description": "Running text, headings and captions of the Documentation dock and the help windows.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "prose_family",
+          "label": "Text face",
+          "options_source": "families",
+          "filter": true,
+          "description": "Face of running text and captions. prose picks Verdana, else DejaVu Sans: the proportional relatives of the built-in interface face."
+        },
+        {
+          "type": "value",
+          "attr": "prose_size",
+          "label": "Text size",
+          "kind": "float",
+          "decimals": 1,
+          "minimum": 0.0,
+          "maximum": 32.0,
+          "step": 0.5,
+          "style": "spin",
+          "suffix": " pt",
+          "special_text": "Same as interface",
+          "description": "Size of running text. Headings and captions are set relative to it. Same as interface (0) follows the interface size. The A− / A+ buttons of the Documentation dock zoom on top of it."
+        },
+        {
+          "type": "choice",
+          "attr": "heading_family",
+          "label": "Heading face",
+          "options_source": "families",
+          "filter": true,
+          "description": "Face of headings."
+        },
+        {
+          "type": "value",
+          "attr": "heading_step",
+          "label": "Heading scale",
+          "kind": "float",
+          "decimals": 3,
+          "minimum": 1.0,
+          "maximum": 1.6,
+          "step": 0.025,
+          "style": "spin",
+          "suffix": "×",
+          "description": "Ratio between neighbouring heading levels: a fourth-level heading is the text size times this, a page title times its fourth power. 1.125 is the shipped scale; 1.0 sets headings at the text size."
+        },
+        {
+          "type": "toggle",
+          "attr": "heading_bold",
+          "label": "Bold headings",
+          "description": "Set headings in the bold weight of their face."
+        },
+        {
+          "type": "value",
+          "attr": "caption_size",
+          "label": "Caption size",
+          "kind": "float",
+          "decimals": 1,
+          "minimum": 0.0,
+          "maximum": 32.0,
+          "step": 0.5,
+          "style": "spin",
+          "suffix": " pt",
+          "special_text": "One step below text",
+          "description": "Size of figure captions and footnotes. One step below text (0) sets them one step of the heading scale below the text size."
+        },
+        {
+          "type": "custom",
+          "key": "font_preview",
+          "source": "heading",
+          "title": "",
+          "description": "A sample second-level heading."
+        },
+        {
+          "type": "custom",
+          "key": "font_preview",
+          "source": "prose",
+          "title": "",
+          "description": "A sample line of running text."
+        },
+        {
+          "type": "custom",
+          "key": "font_preview",
+          "source": "caption",
+          "title": "",
+          "description": "A sample caption."
+        }
+      ],
+      "collapsible": true,
+      "collapsed": false
+    },
+    {
+      "type": "panel",
+      "title": "Formulas",
+      "description": "Mathematics in the documentation and in model descriptions.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "math_family",
+          "label": "Face",
+          "options_source": "math_families",
+          "filter": true,
+          "description": "Text face of formulas; it needs an italic style. auto picks the first installed of STIX Two, Times New Roman and DejaVu Serif. Symbols the face lacks come from the installed mathematical faces."
+        },
+        {
+          "type": "value",
+          "attr": "math_size",
+          "label": "Size",
+          "kind": "float",
+          "decimals": 1,
+          "minimum": 0.0,
+          "maximum": 32.0,
+          "step": 0.5,
+          "style": "spin",
+          "suffix": " pt",
+          "special_text": "Same as text",
+          "description": "Size of formulas. Same as text (0) follows the documentation text size."
+        },
+        {
+          "type": "custom",
+          "key": "font_preview",
+          "source": "math",
+          "title": "",
+          "description": "A sample formula."
+        }
+      ],
+      "collapsible": true,
+      "collapsed": false
+    },
+    {
+      "type": "panel",
+      "title": "Rendering",
+      "collapsed": true,
+      "description": "How the glyphs of installed faces are put on screen. The built-in interface face is a fixed bitmap and is not affected.",
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "oversample",
+          "label": "Resolution",
+          "options_source": "oversample_choices",
+          "description": "Glyph raster scale. 1× draws one glyph pixel per screen pixel, placed on the pixel grid: the sharpest text. Higher values rasterise finer and scale down: smoother curves, slightly softer stems, more memory."
+        },
+        {
+          "type": "toggle",
+          "attr": "antialias",
+          "label": "Smooth edges",
+          "description": "Grey-scale anti-aliasing of glyph edges. Off draws hard black-and-white edges, which some people read more easily at small sizes. Hinting cannot be chosen: the rasteriser does not offer it."
+        },
+        {
+          "type": "value",
+          "attr": "fallbacks",
+          "label": "Fallback faces",
+          "kind": "str",
+          "placeholder": "e.g. Noto Sans CJK JP, Noto Sans Math",
+          "description": "Comma-separated faces tried, in order, for a character the chosen face does not have (CJK, mathematical symbols, subscripts), before the faces the system provides. A face may also be given a chain of its own: Inter, Verdana, prose."
+        }
+      ],
+      "collapsible": true
+    },
+    {
+      "type": "button_row",
+      "buttons": [
+        {
+          "action": "reset_defaults",
+          "label": "Reset to defaults",
+          "description": "Every font setting back to the shipped look, applied at once and saved."
+        }
+      ]
+    },
+    {
+      "type": "info",
+      "source": "status",
+      "description": "What the last change did."
+    }
+  ]
+}

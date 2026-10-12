@@ -2,6 +2,12 @@
 
 ## 2026-10-12
 
+- Fonts: emtk `emtk.fonts` (136d300) gives every text role (interface, code, prose, headings, math, captions) a
+  face with a fallback chain, a size and a weight, plus interface magnification, glyph oversampling, antialiasing and
+  the heading step, applied live. ChiSurf Settings -> Fonts stores it in `gui.fonts` (defaults are today's look) and
+  applies it at startup; the code editor and console follow the editor face. emtk 334c83c elides over-wide row
+  labels; 7bffd4f makes realistic screenshots the GPU's device-size frame. A `zoom_125` sweep variant finds the
+  same small-window defects as a 640x480 window. See [fonts](subsystems/fonts.md).
 - The dock tab menu gained *Close other panels* and *Close all panels* (emtk cbe66f3: `DockWindow.core`,
   `DockManager.close_panels`); the shell keeps Tools, Start, Log, Console, the fit docks and fit windows. The blank
   last row of that menu is gone (its height is measured, not counted with the separator as a row). Tab titles are

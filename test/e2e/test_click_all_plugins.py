@@ -65,6 +65,8 @@ VARIANTS = {
     "lang_de": {"size": (1100, 720), "lang": "de"},
     "lang_fr": {"size": (1100, 720), "lang": "fr"},
     "realistic": {"size": (1100, 720), "driver": "realistic"},
+    # Settings > Fonts magnification 1.25 in an 800 x 600 window: a 640 x 480 layout drawn larger.
+    "zoom_125": {"size": (800, 600), "driver": "realistic", "zoom": 1.25},
 }
 #: The variant this worker runs (``--variant``); ``{}`` is the base sweep.
 VARIANT: dict = {}
@@ -736,7 +738,7 @@ def exercise_auto_range(driver, result):
     still zoomable that way); a plot neither reaches is a finding. Plots that opted out (no inputs,
     or the per-plot opt-out flag) are only listed.
     """
-    size = driver.size
+    size = _layout_size(driver)
 
     def on_screen(rect, smallest=24.0):
         return (
@@ -982,7 +984,7 @@ def exercise_context_menus(driver, recorder, result):
         driver.frame()
         targets = [("plot", p["area"]) for p in plots if p.get("area") and not p["opted_out"]]
         targets += [("table", rect) for rect, _header in list(recorder.tables)]
-        size = driver.size
+        size = _layout_size(driver)
         seen, picked = set(), []
         for kind, rect in targets:
             if rect is None or visible_rectangle(
@@ -1122,6 +1124,13 @@ def exercise_context_menus(driver, recorder, result):
                 outcome["landed"] = landed
 
 
+def _layout_size(driver):
+    """The box the app lays itself out in: the window size divided by the interface zoom."""
+    surface = getattr(driver, "surface", None)
+    box = surface._box() if surface is not None and hasattr(surface, "_box") else None
+    return (box[2], box[3]) if box is not None else tuple(driver.size)
+
+
 def reveal_control(driver, recorder, visit_id):
     """Scroll a real scrolling region to a target, or fail its coverage explicitly."""
     for attempt in range(80):
@@ -1131,7 +1140,7 @@ def reveal_control(driver, recorder, visit_id):
         row = latest.get(visit_id)
         if row is None:
             return None
-        visible = visible_rectangle(row, driver.size)
+        visible = visible_rectangle(row, _layout_size(driver))
         if visible is not None:
             return row, visible
         assert row.get("scrollable"), (
@@ -1139,7 +1148,7 @@ def reveal_control(driver, recorder, visit_id):
             f"({visit_id!r} rect={row.get('rect')} clip={row.get('clip_rect')})"
         )
         clip = row["clip_rect"]
-        area = visible_rectangle({"rect": clip, "clip_rect": clip}, driver.size)
+        area = visible_rectangle({"rect": clip, "clip_rect": clip}, _layout_size(driver))
         assert area is not None, f"coverage: scrolling region for {row['id']!r} is not visible"
         direction = -1 if row["rect"][1] + row["rect"][3] / 2 > area[1] + area[3] / 2 else 1
         # A notch moves 40 px: take bigger steps toward a control far down a long document.
@@ -1178,7 +1187,7 @@ def reach_by_navigation(driver, recorder, visit_id, controls, epoch=None):
             for row in recorder.rows
             if row["kind"] in ("selectable", "begin_tab_item")
             and row.get("enabled", True)
-            and visible_rectangle(row, driver.size) is not None
+            and visible_rectangle(row, _layout_size(driver)) is not None
             and not skip_reason(row["id"] + " " + row["label"])
         }
 
@@ -1186,7 +1195,7 @@ def reach_by_navigation(driver, recorder, visit_id, controls, epoch=None):
         row = navigation().get(nav_id)
         if row is None:
             return None
-        driver.click(visible_rectangle(row, driver.size))
+        driver.click(visible_rectangle(row, _layout_size(driver)))
         driver.frame(2)
         return reveal_control(driver, recorder, visit_id)
 
@@ -1496,13 +1505,13 @@ def settle_held_jobs(driver, recorder, result, exercised):
             and row.get("enabled", True)
             and row["visit_id"] not in exercised
             and STOP_CONTROL.search(row["id"])
-            and visible_rectangle(row, driver.size) is not None
+            and visible_rectangle(row, _layout_size(driver)) is not None
         ]
         for stop in stops:
             before = job_gate.stopped()
             result["phase"] = "stop"
             checkpoint(result)
-            driver.click(visible_rectangle(stop, driver.size))
+            driver.click(visible_rectangle(stop, _layout_size(driver)))
             end = time.monotonic() + 5
             while job_gate.stopped() == before and time.monotonic() < end:
                 driver.frame()
@@ -1826,7 +1835,7 @@ def exercise_settle(driver, result):
     """
     from emtk.testing_realistic import assert_settles
 
-    size = driver.size
+    size = _layout_size(driver)
     report = result.setdefault("settle", [])
     with recorded_views() as views:
         driver.frame(2)
@@ -2014,6 +2023,10 @@ def _native(plugin_id, result, png_path):
     global CURRENT_APP
     app = CURRENT_APP = load_plugin(plugin_id, persist=False)
     size = tuple(VARIANT.get("size", SIZE))
+    if VARIANT.get("zoom"):
+        from emtk import fonts
+
+        fonts.update(zoom=float(VARIANT["zoom"]))
     if VARIANT.get("driver") == "realistic":
         from emtk.testing_realistic import RealisticDriver
 
@@ -2272,7 +2285,7 @@ def _native(plugin_id, result, png_path):
                 exercise_settle(driver, result)
             recorder.rows.clear()
             driver.frame()
-        inventory = emtk_inventory(app, tuple(driver.size))
+        inventory = emtk_inventory(app, _layout_size(driver))
         result["inventory"] = inventory
         findings.report(result)
         missing = sorted(

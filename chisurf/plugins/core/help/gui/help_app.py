@@ -1785,6 +1785,13 @@ class HelpGui:
             badge_col, badge_text = self._status_badge(self.model.review_status)
             im.text_colored(badge_col, badge_text)
         im.same_line()
+        # The three zoom buttons stay together and move to the next row when they do not fit
+        # beside the others (a narrow dock, or the window magnified in Settings ▸ Fonts).
+        pad = 2.0 * im.get_style().frame_padding[0]
+        zoom_w = sum(im.calc_text_size(t)[0] + pad for t in ("A−", "Reset zoom", "A+"))
+        zoom_w += 2.0 * im.get_style().item_spacing[0]
+        if im.get_content_region_avail()[0] < zoom_w:
+            im.new_line()
         if im.small_button("A−"):
             self.model.zoom(-1)
         im.set_item_tooltip(

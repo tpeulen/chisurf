@@ -14,7 +14,10 @@ timestamp: '2026-08-06T00:00:00Z'
 `EmTkHelpWindow` draw through `emtk.type_scale` roles (body = the interface
 size, caption −1 step, h4…h1 +1…+4 steps of 1.125, code = monospace at body);
 the one size setting is `emtk.type_scale.ui_font_pt()` (style editor:
-"Interface font size", env `EMTK_FONT_PT`). `HelpModel.font_size` is the
+"Interface font size", env `EMTK_FONT_PT`). Since 2026-10-12 faces, own sizes
+and the heading step per role come from `emtk.fonts` (Settings → Fonts, stored
+in `gui.fonts`; see [Fonts and magnification](fonts.md)) — change them there,
+not in the reader. `HelpModel.font_size` is the
 reader's body in emtk points and A-/A+ is `zoom_factor()` on the whole scale —
 **not** the Qt `gui.application_font_size` (13 Qt pt under an 8 pt interface was
 the "documentation too large" bug). Measure: `/tmp`-style capture through the

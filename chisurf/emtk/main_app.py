@@ -1354,9 +1354,12 @@ def main(argv: list[str] | None = None) -> int:
     ``--screenshot PATH`` (and ``--backend offscreen``) render one frame of the shell offscreen
     through :func:`emtk.native.main`, without a splash; ``--size WxH`` sets the main window's size.
     """
+    from chisurf.core.settings.fonts import apply_stored
     from chisurf.emtk.i18n import install
 
     install(None)
+    # The font settings (Settings ▸ Fonts) before the first window draws: sizes, faces, zoom.
+    apply_stored()
     args = list(argv or [])
     headless = "--screenshot" in args or any(
         arg == "offscreen" or arg.endswith("=offscreen") for arg in args
