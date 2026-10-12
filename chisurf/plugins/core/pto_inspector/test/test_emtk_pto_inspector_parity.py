@@ -474,7 +474,9 @@ def test_guide_steps_point_at_controls_the_app_draws(app):
     ]
 
 
-def test_the_tour_waits_for_the_example_and_the_verify_press(shared_container, tmp_path, monkeypatch):
+def test_the_tour_waits_for_the_example_and_the_verify_press(
+    shared_container, tmp_path, monkeypatch
+):
     monkeypatch.setattr("chisurf.plugins.demo_cache.cache_folder", lambda plugin: tmp_path / plugin)
     app = make_app()
     try:

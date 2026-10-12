@@ -30,7 +30,9 @@ def test_await_hints_name_the_button_by_its_caption():
     for step in steps:
         name = (step.get("target") or {}).get("name")
         if name in buttons and "await" in step:
-            named = re.findall(r"<b>([^<]+)</b>", step["await"].get("hint", "") + step.get("text", ""))
+            named = re.findall(
+                r"<b>([^<]+)</b>", step["await"].get("hint", "") + step.get("text", "")
+            )
             assert buttons[name] in named, (name, buttons[name], named)
             checked += 1
     assert checked

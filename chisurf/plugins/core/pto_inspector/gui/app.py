@@ -375,7 +375,9 @@ class PtoInspectorApp(TourTarget, ImApp):
         im.set_item_tooltip(
             action_tooltip(
                 "example",
-                tr("Write a small known container (bursts and the lifetimes fitted to them) and open it."),
+                tr(
+                    "Write a small known container (bursts and the lifetimes fitted to them) and open it."
+                ),
             )
         )
         self.remember("load_example")

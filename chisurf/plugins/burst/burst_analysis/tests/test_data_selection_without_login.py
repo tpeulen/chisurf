@@ -28,7 +28,9 @@ class _Client:
         self.calls.append(method)
         if not self.token:
             raise RuntimeError("Authentication required")
-        return {"object": {"object_uuid": "u1"}} if method == "mmfdb.objects.put" else {"raw_data": {}}
+        return (
+            {"object": {"object_uuid": "u1"}} if method == "mmfdb.objects.put" else {"raw_data": {}}
+        )
 
 
 def _files(tmp_path, n=3):

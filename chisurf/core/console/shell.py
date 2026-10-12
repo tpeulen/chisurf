@@ -349,7 +349,9 @@ class Shell:
         if text is not None:
             self.write(text if text.endswith("\n") else text + "\n")
 
-    def display(self, *objects: typing.Any, raw: bool = False, metadata: dict | None = None) -> None:
+    def display(
+        self, *objects: typing.Any, raw: bool = False, metadata: dict | None = None
+    ) -> None:
         """Show *objects* in the console, richest form first: ``display(obj)``.
 
         Images (matplotlib figures, emtk figures, PIL images, anything with

@@ -13,7 +13,13 @@ import numpy as np
 from chisurf.core.datastore import numeric_column, row_count
 from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis
 
-HEADER = ["First Photon", "Last Photon", "Number of Photons", "Green Count Rate (KHz)", "First File"]
+HEADER = [
+    "First Photon",
+    "Last Photon",
+    "Number of Photons",
+    "Green Count Rate (KHz)",
+    "First File",
+]
 
 
 def _write(path, rate):

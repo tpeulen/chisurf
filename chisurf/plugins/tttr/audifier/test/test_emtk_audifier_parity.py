@@ -14,13 +14,13 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 from chisurf.plugins.tttr.audifier.core import TTTRData
 from chisurf.plugins.tttr.audifier.gui.app import create_app
 from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
 from chisurf.plugins.tttr.audifier.native_playback import NativeSoundPlayer
-from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 BH = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"

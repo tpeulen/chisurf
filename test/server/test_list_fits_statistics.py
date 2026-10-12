@@ -25,8 +25,13 @@ def fits(monkeypatch):
     out = []
     for seed, tau in ((1, 2.0), (2, 4.0)):
         x, vv, _vh = simulate_decay_channels([1.0, tau], n_tac=256, dt=0.1, p0=5000.0, seed=seed)
-        curve = DataCurve(x=x, y=vv, ey=np.sqrt(np.maximum(vv, 1.0)), name=f"decay{seed}",
-                          load_filename_on_init=False)
+        curve = DataCurve(
+            x=x,
+            y=vv,
+            ey=np.sqrt(np.maximum(vv, 1.0)),
+            name=f"decay{seed}",
+            load_filename_on_init=False,
+        )
         group = build_fit_group(ExperimentDataCurveGroup([curve]), for_family("tcspc_polarized"))
         group.fit_range = (10, 250)
         group.update()

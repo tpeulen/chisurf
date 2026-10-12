@@ -70,7 +70,12 @@ def test_the_editor_is_the_view_json_resolved_against_the_model(session):
     gauss = sections["3D Gaussian (single-focus)"]
     assert not gauss["hidden"] and sections["MDF (Gauss-Lorentz)"]["hidden"]
     rows = gauss["sections"][0]["rows"]
-    assert [r["label"] for r in rows][:4] == ["N", "D[µm²/s]", "w<sub>r</sub>[nm]", "w<sub>z</sub>[nm]"]
+    assert [r["label"] for r in rows][:4] == [
+        "N",
+        "D[µm²/s]",
+        "w<sub>r</sub>[nm]",
+        "w<sub>z</sub>[nm]",
+    ]
     assert all(r["uid"] for r in rows)
     bunching = sections["Bunching terms"]["sections"][0]
     assert bunching["type"] == "components" and bunching["count"] == 0
@@ -176,7 +181,9 @@ def test_local_first_reaches_the_group_run(session, monkeypatch):
 
     api, uid = session
     seen = []
-    monkeypatch.setattr(FitGroup, "run", lambda self, local_first=None, **kw: seen.append(local_first))
+    monkeypatch.setattr(
+        FitGroup, "run", lambda self, local_first=None, **kw: seen.append(local_first)
+    )
     assert run_fit(api._state, fit_uid=uid, local_first=True)["ok"]
     assert run_fit(api._state, fit_uid=uid)["ok"]
     assert seen == [True, None]

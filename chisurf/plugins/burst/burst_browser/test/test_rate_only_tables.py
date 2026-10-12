@@ -46,10 +46,16 @@ def test_counts_are_preferred_over_rates_when_both_are_present(tmp_path):
     folder = tmp_path / "bi4_bur"
     folder.mkdir()
     header = [
-        "First Photon", "Last Photon", "Duration (ms)", "Number of Photons",
-        "Number of Photons (green)", "Number of Photons (red)",
-        "S prompt green (kHz) | 0-2048", "S prompt green (photons) | 0-2048",
-        "S prompt red (kHz) | 0-2048", "S prompt red (photons) | 0-2048",
+        "First Photon",
+        "Last Photon",
+        "Duration (ms)",
+        "Number of Photons",
+        "Number of Photons (green)",
+        "Number of Photons (red)",
+        "S prompt green (kHz) | 0-2048",
+        "S prompt green (photons) | 0-2048",
+        "S prompt red (kHz) | 0-2048",
+        "S prompt red (photons) | 0-2048",
     ]
     # one photon in the red stream: its rate is NaN, its count is 1
     rows = [[0, 9, 1.0, 10, 9, 1, 9.0, 9, float("nan"), 1]]

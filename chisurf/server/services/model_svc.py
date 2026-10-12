@@ -633,9 +633,13 @@ def _hidden(section: Any, model: Any) -> bool:
     if not cond:
         return False
     owner = _resolve_target(model, cond.get("target")) if cond.get("target") else model
-    found, value = _read_path(owner, str(cond.get("attr", ""))) if owner is not None else (
-        False,
-        None,
+    found, value = (
+        _read_path(owner, str(cond.get("attr", "")))
+        if owner is not None
+        else (
+            False,
+            None,
+        )
     )
     if not found:
         return False
@@ -712,9 +716,13 @@ def _options(section: Any, owner: Any) -> list[list[Any]]:
     values = list(getattr(section, "options", ()) or ())
     labels = list(getattr(section, "labels", ()) or ())
     if not values and getattr(section, "options_source", None):
-        found, produced = _read_path(owner, str(section.options_source)) if owner is not None else (
-            False,
-            None,
+        found, produced = (
+            _read_path(owner, str(section.options_source))
+            if owner is not None
+            else (
+                False,
+                None,
+            )
         )
         if callable(produced):
             produced = produced()
@@ -859,7 +867,11 @@ def _resolve_section(
     if isinstance(section, vs.ToggleRowSection):
         items = []
         for item in section.items:
-            key = f"{item['target']}.{item['attr']}" if item.get("target") else str(item.get("attr", ""))
+            key = (
+                f"{item['target']}.{item['attr']}"
+                if item.get("target")
+                else str(item.get("attr", ""))
+            )
             found, value = _read_path(model, key) if key else (False, None)
             items.append(
                 {

@@ -17,7 +17,10 @@ def test_opposite_directions_are_separated_on_the_count_axis():
         fret=np.array([0.03, 0.42]), trans_rates=np.array([[0.0, 33.0], [45.0, 0.0]])
     )
     y_node = 45_000.0
-    arrows = {(i, j): (y0, y1) for i, j, _x0, y0, _x1, y1, _w in result_view.transition_arrows(ana, y_node)}
+    arrows = {
+        (i, j): (y0, y1)
+        for i, j, _x0, y0, _x1, y1, _w in result_view.transition_arrows(ana, y_node)
+    }
     forward, back = arrows[(0, 1)], arrows[(1, 0)]
     assert forward[0] == forward[1] and back[0] == back[1]  # horizontal
     # apart by a visible fraction of the axis, one above and one below the node line

@@ -13,10 +13,10 @@ from pathlib import Path
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.spot_finder.gui.app import make_app
 from chisurf.plugins.microscopy.spot_finder.tests.test_native_app import write_field
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
-from chisurf.plugins.emtk_layout import action_caption
 
 SIZES = [(1200, 800), (900, 650)]
 

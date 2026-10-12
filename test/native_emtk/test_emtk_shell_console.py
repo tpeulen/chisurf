@@ -91,12 +91,14 @@ def _behaviours(driver: Driver, shell, tmp: Path) -> dict[str, tuple[bool, objec
     seen["stdout"] = ("hello s4" in text(), "")
     before = text()
     _submit(driver, "s4_x = 7")
-    silent = "Out[" not in text()[len(before):]
+    silent = "Out[" not in text()[len(before) :]
     _submit(driver, "s4_x")
-    seen["statement_silent"] = (silent and "7" in text()[len(before):], silent)
+    seen["statement_silent"] = (silent and "7" in text()[len(before) :], silent)
     _submit(driver, "1/0")
-    seen["stderr_traceback"] = ("ZeroDivisionError" in text()
-                                and any(k == "stderr" for _t, k in console.transcript.lines), "")
+    seen["stderr_traceback"] = (
+        "ZeroDivisionError" in text() and any(k == "stderr" for _t, k in console.transcript.lines),
+        "",
+    )
 
     console.set_input("")
     driver.type("for s4_i in range(2):")
@@ -127,21 +129,28 @@ def _behaviours(driver: Driver, shell, tmp: Path) -> dict[str, tuple[bool, objec
     driver.type("s4_")
     driver.press(KEY_TAB)
     listed = list(console.completions)
-    seen["completion_list"] = ({"s4_alpha_value", "s4_beta_value"} <= set(listed)
-                               and "s4_alpha_value" in driver.painter.strings, listed)
+    seen["completion_list"] = (
+        {"s4_alpha_value", "s4_beta_value"} <= set(listed)
+        and "s4_alpha_value" in driver.painter.strings,
+        listed,
+    )
     driver.screenshot(SHOTS / "emtk_console_completion.png")
     driver.press(KEY_ESCAPE)
 
     console.set_input("")
     driver.type("max(")
-    seen["calltip"] = (bool(console.calltip_text) and "calltip" in console.control.boxes,
-                       console.calltip_text)
+    seen["calltip"] = (
+        bool(console.calltip_text) and "calltip" in console.control.boxes,
+        console.calltip_text,
+    )
     driver.screenshot(SHOTS / "emtk_console_calltip.png")
     driver.press(KEY_ESCAPE)
 
     _submit(driver, "max?")
-    seen["pinfo_pager"] = (bool(console.pager_title) and "builtin" in console.control.pager.text,
-                           console.pager_title)
+    seen["pinfo_pager"] = (
+        bool(console.pager_title) and "builtin" in console.control.pager.text,
+        console.pager_title,
+    )
     driver.screenshot(SHOTS / "emtk_console_pager.png")
     driver.press(KEY_ESCAPE)
 
@@ -168,8 +177,10 @@ def _behaviours(driver: Driver, shell, tmp: Path) -> dict[str, tuple[bool, objec
     events_before = len(history.list_events())
     chisurf.run("s4_from_run = 5")
     driver.frame(1)
-    seen["cs_run"] = (console.engine.user_ns.get("s4_from_run") == 5,
-                      console.engine.user_ns.get("s4_from_run"))
+    seen["cs_run"] = (
+        console.engine.user_ns.get("s4_from_run") == 5,
+        console.engine.user_ns.get("s4_from_run"),
+    )
     recorded = [str(e.get("summary", "")) for e in history.list_events()[events_before:]]
     seen["cs_run_history"] = (any(r.startswith("run command") for r in recorded), recorded)
 
@@ -187,7 +198,10 @@ def _behaviours(driver: Driver, shell, tmp: Path) -> dict[str, tuple[bool, objec
     driver.click("Run Macro…")
     shell.project.choose_file(tmp / "s4.cm.py")
     driver.frame(1)
-    seen["replay_macro"] = (console.engine.user_ns.get("s4_m") == 3, console.engine.user_ns.get("s4_m"))
+    seen["replay_macro"] = (
+        console.engine.user_ns.get("s4_m") == 3,
+        console.engine.user_ns.get("s4_m"),
+    )
 
     logged = console.session_file.read_text("utf-8") if console.session_file else ""
     seen["session_log"] = ("2 + 40" in logged, str(console.session_file))
@@ -276,8 +290,9 @@ def test_the_console_gives_chisurf_run_back_on_close(isolated):
     import chisurf
 
     before = chisurf.run
-    app = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                       console_session_file=False)
+    app = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     assert chisurf.run == app.console.run_threadsafe and chisurf.console is app.console
     app.close()
     assert chisurf.run is before
@@ -286,8 +301,12 @@ def test_the_console_gives_chisurf_run_back_on_close(isolated):
 def test_the_history_persists_across_consoles(shell, isolated, driver):
     _submit(driver, "s4_persisted = 1")
     shell.close()
-    again = EmtkShellApp({}, loader=lambda plugin_id: None,
-                         console_history=isolated / "history.txt", console_session_file=False)
+    again = EmtkShellApp(
+        {},
+        loader=lambda plugin_id: None,
+        console_history=isolated / "history.txt",
+        console_session_file=False,
+    )
     try:
         assert "s4_persisted = 1" in again.console.engine.history.entries
     finally:
@@ -317,12 +336,12 @@ def test_the_console_reaches_the_session_through_its_own_connection(isolated):
     science is one undo step, named after the command."""
     from chisurf.emtk.session import start_session
     from chisurf.server.session import SessionState
-
     from test.native_emtk.test_emtk_shell_session import _demo_fit, _idle, _settle, _value
 
     session = start_session(state=SessionState())
-    app = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                       console_session_file=False)
+    app = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     app.data.adopt(session)
     try:
         driver = Driver(app, size=(1500, 950))
@@ -335,11 +354,16 @@ def test_the_console_reaches_the_session_through_its_own_connection(isolated):
         import chisurf
 
         chisurf.run(f"api.set_parameter_value('N', {before + 1.0}, fit_uid={uid!r})")
-        _settle(driver, lambda: _idle(app) and _value(app, "N") == pytest.approx(before + 1.0),
-                "the command's edit")
+        _settle(
+            driver,
+            lambda: _idle(app) and _value(app, "N") == pytest.approx(before + 1.0),
+            "the command's edit",
+        )
         _settle(driver, lambda: _idle(app) and app.project.can_undo(), "the undo step")
         summaries = [str(e.get("summary", "")) for e in app.project.history.list_events()]
-        assert any(s.startswith("run command: api.set_parameter_value") for s in summaries), summaries
+        assert any(s.startswith("run command: api.set_parameter_value") for s in summaries), (
+            summaries
+        )
     finally:
         app.close()
         session.close()

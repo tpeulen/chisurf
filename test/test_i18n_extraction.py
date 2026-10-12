@@ -159,7 +159,10 @@ def _catalogue_paths():
     import pathlib
 
     root = pathlib.Path(__file__).resolve().parents[1]
-    dirs = [root / "chisurf" / "gui" / "i18n", root / "modules" / "ndxplorer" / "ndxplorer" / "locale"]
+    dirs = [
+        root / "chisurf" / "gui" / "i18n",
+        root / "modules" / "ndxplorer" / "ndxplorer" / "locale",
+    ]
     try:
         import emtk.i18n as emtk_i18n
 
@@ -211,4 +214,6 @@ def test_finished_translations_keep_whitespace_and_placeholders():
                 or _format_fields(source) != _format_fields(text)
             ):
                 problems.append(f"{path.name}: {source[:60]!r} -> {text[:60]!r}")
-    assert not problems, f"{len(problems)} translations drift from their source:\n" + "\n".join(problems[:20])
+    assert not problems, f"{len(problems)} translations drift from their source:\n" + "\n".join(
+        problems[:20]
+    )

@@ -131,8 +131,12 @@ class DatasetPicker:
             index = next((i for i, row in enumerate(self.panel.entries) if row is item), -1)
             self.pick(index)
 
-        overlays.popup(("shell-dataset-picker", id(self)), self.panel,
-                       on_close=lambda: self.on_pick(None), on_pick=picked)
+        overlays.popup(
+            ("shell-dataset-picker", id(self)),
+            self.panel,
+            on_close=lambda: self.on_pick(None),
+            on_pick=picked,
+        )
 
 
 __all__ = ["DatasetPicker", "SettingsDialog"]

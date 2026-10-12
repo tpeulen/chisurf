@@ -118,9 +118,7 @@ class MEMJobs:
                 corner = result["corner_index"]
                 if corner is not None:
                     self.model.settings.nu = float(10.0 ** result["log10_nu"][corner])
-                    status = (
-                        f"L-curve corner at nu = {self.model.settings.nu:.4g} (set): press Run MEM to use it."
-                    )
+                    status = f"L-curve corner at nu = {self.model.settings.nu:.4g} (set): press Run MEM to use it."
                 else:
                     status = "L-curve has no corner in this span: widen it and sweep again."
             else:

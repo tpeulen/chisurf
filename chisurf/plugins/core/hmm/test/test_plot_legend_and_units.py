@@ -55,7 +55,11 @@ def test_markers_of_a_series_are_not_a_second_legend_entry(monkeypatch):
     app = _fitted_app()
     for method in ("dwell_plot", "scan_plot"):
         calls = _draw(monkeypatch, app, method)
-        shown = [args[0].split("##", 1)[0] for name, args, _ in calls if name in ("plot_line", "plot_scatter")]
+        shown = [
+            args[0].split("##", 1)[0]
+            for name, args, _ in calls
+            if name in ("plot_line", "plot_scatter")
+        ]
         shown = [label for label in shown if label]
         assert shown and len(shown) == len(set(shown)), (method, shown)
 
@@ -63,10 +67,15 @@ def test_markers_of_a_series_are_not_a_second_legend_entry(monkeypatch):
 def test_time_axes_name_seconds_once_a_bin_width_is_set(monkeypatch):
     app = _fitted_app()
     axes = {
-        method: next(args for name, args, _ in _draw(monkeypatch, app, method) if name == "setup_axes")
+        method: next(
+            args for name, args, _ in _draw(monkeypatch, app, method) if name == "setup_axes"
+        )
         for method in ("trace_plot", "dwell_plot")
     }
     assert axes["trace_plot"][0] == "time (s)"
     assert axes["dwell_plot"][0] == "dwell time (s)"
     app.model.time_step = 1.0
-    assert next(a for n, a, _ in _draw(monkeypatch, app, "trace_plot") if n == "setup_axes")[0] == "bin"
+    assert (
+        next(a for n, a, _ in _draw(monkeypatch, app, "trace_plot") if n == "setup_axes")[0]
+        == "bin"
+    )

@@ -66,7 +66,10 @@ def test_a_row_of_translated_buttons_wraps_on_the_width_it_draws():
                     {"label": "Clear picks", "key": "clear"},
                     {"label": "Save settings", "key": "save"},
                 ],
-                width=1.0 + button_width("Clear picks") + im.get_style().item_spacing[0] + widths["save"],
+                width=1.0
+                + button_width("Clear picks")
+                + im.get_style().item_spacing[0]
+                + widths["save"],
                 remember=remember,
             )
         im.end()

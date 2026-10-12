@@ -102,7 +102,7 @@ def test_the_reported_snippet_draws_the_plot_in_the_transcript(driver, shell):
     assert abs(h / w - image.height / image.width) < 0.01
     png = driver.screenshot(SHOTS / "emtk_console_inline_plot.png")
     shot = _rgba(png)
-    region = shot[int(max(y, oy)): int(min(y + h, oy + oh)), int(x): int(x + w)]
+    region = shot[int(max(y, oy)) : int(min(y + h, oy + oh)), int(x) : int(x + w)]
     assert _blue(region) > 30, "the plot's pixels reach the screen"
 
 
@@ -164,8 +164,8 @@ def test_display_and_rich_reprs_are_images(driver, shell):
     _submit(driver, "from PIL import Image; Image.new('RGB', (40, 20), 'red')")
     _submit(
         driver,
-        "class Box:\n    def _repr_svg_(self):\n        return '<svg width=\"30\" height=\"10\">"
-        "<rect width=\"30\" height=\"10\" fill=\"lime\"/></svg>'\n\nBox()",
+        'class Box:\n    def _repr_svg_(self):\n        return \'<svg width="30" height="10">'
+        '<rect width="30" height="10" fill="lime"/></svg>\'\n\nBox()',
     )
     sizes = [(image.width, image.height) for image in console.transcript.images]
     assert sizes == [(48, 32), (40, 20), (30, 10)]

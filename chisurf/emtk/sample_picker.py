@@ -32,9 +32,21 @@ class _Rows(list):
 class NewSample:
     """The fields of a new MMFDB sample and what *Fetch* / *Diff vs Reference* fill in (no toolkit)."""
 
-    FIELDS = ("name", "description", "entity_name", "entity_sequence", "entity_type", "donor",
-              "acceptor", "buffer", "uniprot", "pdb_id", "pdb_chain", "organism",
-              "reference_sequence")
+    FIELDS = (
+        "name",
+        "description",
+        "entity_name",
+        "entity_sequence",
+        "entity_type",
+        "donor",
+        "acceptor",
+        "buffer",
+        "uniprot",
+        "pdb_id",
+        "pdb_chain",
+        "organism",
+        "reference_sequence",
+    )
 
     def __init__(self) -> None:
         for field in self.FIELDS:
@@ -53,8 +65,15 @@ class NewSample:
         self._rows = rows
 
     def add_mutation(self) -> None:
-        self.mutations.append({"seq_id": "", "mut_comp_id": "", "wt_comp_id": "", "auth_name": "",
-                               "kind": "engineered_mutation"})
+        self.mutations.append(
+            {
+                "seq_id": "",
+                "mut_comp_id": "",
+                "wt_comp_id": "",
+                "auth_name": "",
+                "kind": "engineered_mutation",
+            }
+        )
         self._changed()
 
     def clear_mutations(self) -> None:
@@ -84,8 +103,10 @@ class NewSample:
 
         result = fetch_uniprot(accession)
         if result is None:
-            self.message = tr("Could not fetch UniProt entry {accession}. Check the accession and "
-                              "network connectivity.").format(accession=accession)
+            self.message = tr(
+                "Could not fetch UniProt entry {accession}. Check the accession and "
+                "network connectivity."
+            ).format(accession=accession)
             return
         self.organism = str(result.get("organism") or self.organism)
         self.reference_sequence = str(result.get("sequence") or self.reference_sequence)
@@ -109,13 +130,21 @@ class NewSample:
             self.message = str(exc)
             return
         self.mutations = [
-            {"seq_id": str(m.seq_id), "mut_comp_id": m.mut_comp_id, "wt_comp_id": m.wt_comp_id,
-             "auth_name": m.auth_name, "kind": m.kind}
+            {
+                "seq_id": str(m.seq_id),
+                "mut_comp_id": m.mut_comp_id,
+                "wt_comp_id": m.wt_comp_id,
+                "auth_name": m.auth_name,
+                "kind": m.kind,
+            }
             for m in found
         ]
         self._changed()
-        self.message = (tr("Found {count} mutation(s); review them in the table.").format(count=len(found))
-                        if found else tr("No differences found — construct matches reference."))
+        self.message = (
+            tr("Found {count} mutation(s); review them in the table.").format(count=len(found))
+            if found
+            else tr("No differences found — construct matches reference.")
+        )
 
     # -- the definition ------------------------------------------------------- #
     def sample_data(self) -> dict:
@@ -139,25 +168,36 @@ class NewSample:
                 seq_id = int(str(m.get("seq_id", "")).strip())
             except ValueError:
                 continue
-            mutations.append({"seq_id": seq_id, "mut_comp_id": str(m.get("mut_comp_id", "")).strip(),
-                              "wt_comp_id": str(m.get("wt_comp_id", "")).strip(),
-                              "auth_name": str(m.get("auth_name", "")).strip(),
-                              "kind": str(m.get("kind", "")).strip() or "engineered_mutation"})
-        probes = [{"name": dye, "entity_index": 0} for dye in (text(self.donor), text(self.acceptor)) if dye]
+            mutations.append(
+                {
+                    "seq_id": seq_id,
+                    "mut_comp_id": str(m.get("mut_comp_id", "")).strip(),
+                    "wt_comp_id": str(m.get("wt_comp_id", "")).strip(),
+                    "auth_name": str(m.get("auth_name", "")).strip(),
+                    "kind": str(m.get("kind", "")).strip() or "engineered_mutation",
+                }
+            )
+        probes = [
+            {"name": dye, "entity_index": 0}
+            for dye in (text(self.donor), text(self.acceptor))
+            if dye
+        ]
         return {
             "name": name,
             "description": str(self.description or "").strip(),
-            "entities": [{
-                "name": text(self.entity_name) or name,
-                "entity_type": text(self.entity_type) or "protein",
-                "sequence": str(self.entity_sequence or "").strip(),
-                "uniprot_accession": text(self.uniprot),
-                "pdb_id": text(self.pdb_id),
-                "pdb_chain_id": text(self.pdb_chain),
-                "organism": text(self.organism),
-                "reference_sequence": text(self.reference_sequence),
-                "mutations": mutations,
-            }],
+            "entities": [
+                {
+                    "name": text(self.entity_name) or name,
+                    "entity_type": text(self.entity_type) or "protein",
+                    "sequence": str(self.entity_sequence or "").strip(),
+                    "uniprot_accession": text(self.uniprot),
+                    "pdb_id": text(self.pdb_id),
+                    "pdb_chain_id": text(self.pdb_chain),
+                    "organism": text(self.organism),
+                    "reference_sequence": text(self.reference_sequence),
+                    "mutations": mutations,
+                }
+            ],
             "probes": probes,
             "fret_pairs": [{"probe_1_index": 0, "probe_2_index": 1}] if len(probes) == 2 else [],
             "buffer_description": str(self.buffer or "").strip(),
@@ -169,8 +209,12 @@ class NewSampleDialog:
 
     TITLE = "New Sample"
 
-    def __init__(self, client: Any, on_close: Callable[[str | None], None],
-                 wake: Callable[[], None] | None = None) -> None:
+    def __init__(
+        self,
+        client: Any,
+        on_close: Callable[[str | None], None],
+        wake: Callable[[], None] | None = None,
+    ) -> None:
         import json
         from pathlib import Path
 
@@ -179,11 +223,14 @@ class NewSampleDialog:
         self.client = client
         self.on_close = on_close
         self.model = NewSample()
-        self.spec = json.loads((Path(__file__).parent / "views" / "new_sample.view.json")
-                               .read_text(encoding="utf-8"))
+        self.spec = json.loads(
+            (Path(__file__).parent / "views" / "new_sample.view.json").read_text(encoding="utf-8")
+        )
         self.form = FormState()
         self.rects: dict[str, tuple] = {}
-        self.window = DialogWindow(tr("New Sample"), size=(560, 680), key="new-sample", fit_height=True)
+        self.window = DialogWindow(
+            tr("New Sample"), size=(560, 680), key="new-sample", fit_height=True
+        )
         self.window.show()
         self._creating = BackgroundBuild(wake=wake)
 
@@ -199,8 +246,9 @@ class NewSampleDialog:
             self.model.message = str(exc)
             return False
         client = self.client
-        self._creating.start({"sample": lambda: client.create_structured_sample(data)},
-                             name="chisurf-sample-create")
+        self._creating.start(
+            {"sample": lambda: client.create_structured_sample(data)}, name="chisurf-sample-create"
+        )
         self.model.message = tr("Creating the sample…")
         return True
 
@@ -210,7 +258,9 @@ class NewSampleDialog:
             return
         made, error = results.get("sample", (None, None))
         if error is not None:
-            self.model.message = tr("The sample could not be created ({error}).").format(error=error)
+            self.model.message = tr("The sample could not be created ({error}).").format(
+                error=error
+            )
             return
         sample_id = str((made or {}).get("sample_id") or "")
         self.window.hide()
@@ -230,8 +280,9 @@ class NewSampleDialog:
         im.set_item_tooltip(tr("Create the sample in MMFDB and use it for this file."))
         im.end_disabled()
         im.same_line()
-        cancel = action_button("cancel", id="new-sample-cancel",
-                               tooltip=tr("Close without creating a sample."))
+        cancel = action_button(
+            "cancel", id="new-sample-cancel", tooltip=tr("Close without creating a sample.")
+        )
         self.rects["cancel"] = im.get_item_rect()
         self.rects.update(self.form.rects)
         self.window.end()
@@ -246,7 +297,9 @@ def sample_options(samples: list[dict]) -> list[tuple[str, str]]:
     for sample in samples or []:
         sample_id = str(sample.get("sample_id") or sample.get("id") or "")
         if sample_id:
-            out.append((sample_id, str(sample.get("name") or sample.get("display_name") or sample_id)))
+            out.append(
+                (sample_id, str(sample.get("name") or sample.get("display_name") or sample_id))
+            )
     return out
 
 
@@ -269,10 +322,18 @@ class SamplePickerDialog:
     SPEC = {
         "sections": [
             {"type": "info", "source": "note"},
-            {"type": "panel", "sections": [
-                {"type": "choice", "attr": "sample_id", "label": "Sample", "options_source": "options",
-                 "description": "The MMFDB sample this measurement is of; its provenance will name it."},
-            ]},
+            {
+                "type": "panel",
+                "sections": [
+                    {
+                        "type": "choice",
+                        "attr": "sample_id",
+                        "label": "Sample",
+                        "options_source": "options",
+                        "description": "The MMFDB sample this measurement is of; its provenance will name it.",
+                    },
+                ],
+            },
         ]
     }
 
@@ -313,8 +374,9 @@ class SamplePickerDialog:
             self.new_dialog = None
             if sample_id:
                 self.sample_id = sample_id
-                self._loading.start({"samples": lambda: self._list(client)},
-                                    name="chisurf-sample-list")
+                self._loading.start(
+                    {"samples": lambda: self._list(client)}, name="chisurf-sample-list"
+                )
 
         self.new_dialog = NewSampleDialog(client, on_close=closed, wake=self.wake)
 
@@ -337,9 +399,9 @@ class SamplePickerDialog:
         if self.loading:
             return tr("Reading the samples…")
         if self.error:
-            return tr("The samples could not be read ({error}); Skip reads the file without one.").format(
-                error=self.error
-            )
+            return tr(
+                "The samples could not be read ({error}); Skip reads the file without one."
+            ).format(error=self.error)
         return tr("Which sample is this measurement of? New… defines one.")
 
     def enabled(self, name: str) -> bool:

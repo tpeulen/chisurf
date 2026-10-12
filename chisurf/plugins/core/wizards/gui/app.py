@@ -96,7 +96,10 @@ class WizardHubApp(CalculatorHubApp):
         # captions in the active language (measured, not a pixel guess), whatever the cap on the list.
         style = im.get_style()
         buttons = (
-            sum(im.calc_text_size(action_caption(k))[0] + 2.0 * style.frame_padding[0] for k in ("guide", "help"))
+            sum(
+                im.calc_text_size(action_caption(k))[0] + 2.0 * style.frame_padding[0]
+                for k in ("guide", "help")
+            )
             + style.item_spacing[0]
             + 2.0 * (style.item_spacing[0] + style.window_border_size)
         )
@@ -106,7 +109,9 @@ class WizardHubApp(CalculatorHubApp):
         if im.begin(tr("Wizards"), flags=im.WindowFlags.NO_RESIZE):
             first = last = None
             for entry in self.entries:
-                if im.selectable(tr_domain(entry.label), self.selected == entry.id, icon=entry.icon):
+                if im.selectable(
+                    tr_domain(entry.label), self.selected == entry.id, icon=entry.icon
+                ):
                     self.select(entry.id)
                     self.tour.notify_used("wizards_list")
                 im.set_item_tooltip(tr_domain(entry.description))

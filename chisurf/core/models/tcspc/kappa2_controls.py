@@ -150,7 +150,9 @@ def kappa2_distribution(model: Any, use_fast: bool = True, n_bins: int = 256) ->
     return out
 
 
-def apply_kappa2_distribution(model: Any, k2: Any, p_k2: Any, k2_mean: float | None = None) -> float:
+def apply_kappa2_distribution(
+    model: Any, k2: Any, p_k2: Any, k2_mean: float | None = None
+) -> float:
     """Use a computed κ² distribution: its pairs for the static average, its mean as the scalar κ².
 
     What *compute κ²* does with the κ²-distribution calculator's result.
@@ -193,8 +195,10 @@ def apply_kappa2_distribution(model: Any, k2: Any, p_k2: Any, k2_mean: float | N
     parameter = getattr(model, "orientation_parameter", None)
     if parameter is not None:
         parameter.orientation_spectrum = interleaved
-    mean = float(k2_mean) if k2_mean is not None and np.isfinite(k2_mean) else float(
-        np.sum(k2 * weights)
+    mean = (
+        float(k2_mean)
+        if k2_mean is not None and np.isfinite(k2_mean)
+        else float(np.sum(k2 * weights))
     )
     model.fret_parameters.kappa2 = mean
     model.update()

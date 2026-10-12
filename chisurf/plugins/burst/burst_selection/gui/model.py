@@ -203,6 +203,7 @@ def _cell_text(value: Any) -> str:
         return f"{value:.4g}" if abs(value) < 1e4 else f"{value:.1f}"
     return str(value)
 
+
 class SearchParameters:
     """The selected search's parameters as attributes, so a spec form can bind them (``attr`` = parameter name).
 

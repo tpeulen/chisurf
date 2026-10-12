@@ -397,7 +397,7 @@ def _shown(caption: str) -> str:
     core = text.strip()
     if not core:
         return text
-    return text[: len(text) - len(text.lstrip())] + tr(core) + text[len(text.rstrip()):]
+    return text[: len(text) - len(text.lstrip())] + tr(core) + text[len(text.rstrip()) :]
 
 
 def button_width(label: str) -> float:

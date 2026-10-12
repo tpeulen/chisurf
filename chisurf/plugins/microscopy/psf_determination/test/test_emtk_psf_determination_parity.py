@@ -347,8 +347,6 @@ def test_fit_all_lists_every_bead_and_the_profile_tabs_show_the_fit(detected):
 def test_buttons_are_greyed_while_a_job_runs(demo, monkeypatch):
     import threading
 
-    from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
-
     # Hold the detection until the click is done: a fast detection finished during the click's frames and
     # enabled Fit all, so the test failed about every second run of the suite.
     release = threading.Event()

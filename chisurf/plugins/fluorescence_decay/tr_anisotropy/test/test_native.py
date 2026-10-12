@@ -190,7 +190,9 @@ def test_example_global_fit_recovers_the_simulated_lifetime_and_rotation(tmp_pat
     assert global_fit.chi2r < 1.3, global_fit.chi2r
 
 
-def test_example_fit_with_the_readers_range_is_a_good_fit_and_recovers_the_truth(tmp_path, monkeypatch):
+def test_example_fit_with_the_readers_range_is_a_good_fit_and_recovers_the_truth(
+    tmp_path, monkeypatch
+):
     """Load example → Create fits → Fit, untouched: chi2r ~1 and the simulated tau, rho, r0 (found 2026-10-11).
 
     The model clips the background-subtracted IRF at zero; over the whole range that keeps the

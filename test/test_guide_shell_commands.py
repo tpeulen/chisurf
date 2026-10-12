@@ -9,14 +9,46 @@ reader a command their shell answered with "command not found".
 from __future__ import annotations
 
 import pathlib
+
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 #: Tools a reader's shell has anyway (and shell syntax), not provided by ChiSurf.
 SHELL = {
-    "awk", "brew", "cat", "cd", "conda", "cp", "curl", "done", "do", "echo", "env", "export", "for", "git",
-    "jupyter", "ls", "make", "mamba", "mkdir", "mv", "open", "pip", "pixi", "pytest", "python", "python3",
-    "rm", "set", "source", "sudo", "tar", "unzip", "wget", "which",
+    "awk",
+    "brew",
+    "cat",
+    "cd",
+    "conda",
+    "cp",
+    "curl",
+    "done",
+    "do",
+    "echo",
+    "env",
+    "export",
+    "for",
+    "git",
+    "jupyter",
+    "ls",
+    "make",
+    "mamba",
+    "mkdir",
+    "mv",
+    "open",
+    "pip",
+    "pixi",
+    "pytest",
+    "python",
+    "python3",
+    "rm",
+    "set",
+    "source",
+    "sudo",
+    "tar",
+    "unzip",
+    "wget",
+    "which",
 }
 FENCES = ("```bash", "```sh", "```console", "```shell")
 
@@ -32,7 +64,9 @@ def _commands(text: str):
         if not in_block:
             continue
         stripped = line.strip()
-        starts_command = stripped and not continued and not line[:1].isspace() and not stripped.startswith("#")
+        starts_command = (
+            stripped and not continued and not line[:1].isspace() and not stripped.startswith("#")
+        )
         continued = line.rstrip().endswith("\\")
         if not starts_command:
             continue

@@ -131,7 +131,9 @@ class AcquisitionNativeModel:
         self.source = "simulation"
         self.hardware_contacted = False
         stored = stored_acquisition_settings() if settings is None else settings
-        self.device_type = SETTINGS_DEVICE_TYPES.get(str(stored.get("device_type", "")), "SIMULATION")
+        self.device_type = SETTINGS_DEVICE_TYPES.get(
+            str(stored.get("device_type", "")), "SIMULATION"
+        )
         simulation = stored.get("simulation_params")
         #: The simulator parameters stored by Setup -> Settings -> Acquisition (``None``: built-in defaults).
         self.stored_simulation = copy.deepcopy(simulation) if isinstance(simulation, dict) else None

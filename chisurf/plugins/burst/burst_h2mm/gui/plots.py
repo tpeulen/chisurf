@@ -46,7 +46,6 @@ def state_colour(i: int, alpha: int = 255) -> tuple[int, int, int, int]:
     return rgba(STATE_COLORS[i % len(STATE_COLORS)], alpha)
 
 
-
 #: Dash pattern ``(on, off)`` in pixels per state: the colour of a per-state decay is the light that produced it, so
 #: the state is the line style -- S0 solid, S1 dashed, S2 dotted, ... Every state of one colour was drawn as the same
 #: solid line, which made the per-state decays (the point of the panel) indistinguishable.
@@ -56,6 +55,7 @@ STATE_DASHES = (None, (10.0, 5.0), (2.0, 4.0), (14.0, 4.0), (5.0, 5.0), (1.0, 7.
 def state_dash(state: int):
     """The dash pattern of state *state* (``None``: solid), cycling for more states than patterns."""
     return STATE_DASHES[int(state) % len(STATE_DASHES)]
+
 
 class ResultPlots:
     """Holds the TDP gate and draws the plots of an ``H2mmAnalysis`` (or says there is none)."""

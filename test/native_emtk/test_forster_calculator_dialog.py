@@ -94,9 +94,7 @@ def _pick(driver: Driver, field: str, name: str) -> None:
     driver.click(field)
     fx, fy, fw, fh = driver.rect(field)
     entry = next(
-        entry[:4]
-        for entry in driver.painter.texts
-        if entry[5] == name and entry[1] >= fy + fh - 1
+        entry[:4] for entry in driver.painter.texts if entry[5] == name and entry[1] >= fy + fh - 1
     )
     driver.click(entry)
     driver.frame(2)
@@ -183,7 +181,9 @@ def test_control_parity_with_the_qt_calculator(calculator):
             missing += [f"{control} -> {alt}" for alt in DELIBERATE[control] if alt not in found]
             continue
         missing.append(control)
-    assert not missing, f"Qt controls absent from the emtk dialog: {missing}; drawn: {sorted(found)}"
+    assert not missing, (
+        f"Qt controls absent from the emtk dialog: {missing}; drawn: {sorted(found)}"
+    )
     # The state, too: the same pair, the same R0.
     assert qt["state"]["donor"] == "Dye488" and qt["state"]["acceptor"] == "Dye594"
     assert f"{dialog.model.r0:.1f}" in qt["state"]["result"]

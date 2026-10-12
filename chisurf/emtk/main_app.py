@@ -266,11 +266,13 @@ class EmtkShellApp(ImApp):
         self.docks.add_window("tools", tr("Tools"), self._draw_tools, dock="left", closable=False)
         self.docks.add_window("start", tr("Start"), self._draw_start, dock="center")
         self.docks.add_window("log", tr("Log"), self._draw_log, dock="bottom", scrollable=False)
-        self.docks.add_window("console", tr("Console"), self._draw_console, dock="bottom",
-                              scrollable=False)
+        self.docks.add_window(
+            "console", tr("Console"), self._draw_console, dock="bottom", scrollable=False
+        )
         _log.setLevel(logging.INFO)
         super().__init__(self.render)
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
+
         self.data = DataDocks(self, session_factory)
         self.project = ShellProject(self)
         from chisurf.emtk.shell_log import ShellLog
@@ -549,15 +551,24 @@ class EmtkShellApp(ImApp):
                     im.separator()
             group = action.group
             selected = bool(action.checked()) if action.checked is not None else False
-            icon = ACTION_ICONS.get(action.key) or (ACTION_ICONS["recent"] if action.key.startswith("recent.") else None)
-            if im.menu_item(action.label, action.shortcut, selected=selected, enabled=action.enabled(),
-                            icon=icon):
+            icon = ACTION_ICONS.get(action.key) or (
+                ACTION_ICONS["recent"] if action.key.startswith("recent.") else None
+            )
+            if im.menu_item(
+                action.label,
+                action.shortcut,
+                selected=selected,
+                enabled=action.enabled(),
+                icon=icon,
+            ):
                 action.run()
             self.item_rects[f"menu.{action.key}"] = im.get_item_rect()
             if action.description:
                 im.set_item_tooltip(action.description)
 
-    def _draw_plugin_entries(self, groups: dict[str, list[MenuEntry]], separate: bool = False) -> None:
+    def _draw_plugin_entries(
+        self, groups: dict[str, list[MenuEntry]], separate: bool = False
+    ) -> None:
         """The plugins of one menu, each group a captioned section, each row with the plugin's icon."""
         from chisurf.emtk.shell_ribbon import entry_label
 
@@ -568,8 +579,11 @@ class EmtkShellApp(ImApp):
                 im.separator()
             separate = True
             for entry in entries:
-                if im.menu_item(entry_label(entry), selected=entry.plugin_id in self.hosted,
-                                icon=entry.icon or None):
+                if im.menu_item(
+                    entry_label(entry),
+                    selected=entry.plugin_id in self.hosted,
+                    icon=entry.icon or None,
+                ):
                     self.open_plugin(entry.plugin_id)
 
     # ── session menus ─────────────────────────────────────────────────────
@@ -580,101 +594,294 @@ class EmtkShellApp(ImApp):
         has_session = lambda: project.channel is not None  # noqa: E731
         has_fits = lambda: bool(data.datasets.fits)  # noqa: E731
         file_menu = [
-            MenuAction("add_dataset", tr("Add dataset"), data.read.load, "Ctrl+N",
-                       description=tr("Read the file in Read data with the selected file type."),
-                       enabled=lambda: data.session is not None),
-            MenuAction("save_project", tr("Save Project"), project.save, "Ctrl+S", tr("Project"),
-                       tr("Save the project to its file, or choose one."), has_session),
-            MenuAction("export_project", tr("Export Project…"), project.save_as, "Ctrl+Shift+S",
-                       tr("Project"), tr("Save the project under a new .cs.pto file (save as)."),
-                       has_session),
-            MenuAction("open_project", tr("Open Project…"), project.open_project, "", tr("Project"),
-                       tr("Replace the session with a saved project."), has_session),
-            MenuAction("import_project", tr("Import Project…"), project.import_project, "",
-                       tr("Project"), tr("Open a .cs.pto, or import a copy into the database."),
-                       has_session),
-            MenuAction("load_fit", tr("Load Fit"), project.load_fit, "", tr("Fits"),
-                       tr("Add the fit of a .fit.cs.pto file (written by Current Fit) to the session."),
-                       has_session),
-            MenuAction("save_fit", tr("Current Fit"), project.save_current_fit, "Ctrl+Alt+S", tr("Fits"),
-                       tr("Write the current fit's curves, its fit file and a Word report into a folder."),
-                       lambda: bool(data.current_uid)),
-            MenuAction("save_all_fits", tr("All Fits"), project.save_all_fits, "", tr("Fits"),
-                       tr("Write every fit into a folder of its own, and all reports into all_fits.docx."),
-                       has_fits),
-            MenuAction("close_fit", tr("Close Fit"), project.close_fit, "", tr("Fits"),
-                       tr("Remove the current fit (asks first)."),
-                       lambda: bool(data.current_uid)),
-            MenuAction("close_all_fits", tr("Close all fits"), project.close_all_fits, "", tr("Fits"),
-                       tr("Remove every fit from the session."), has_fits),
-            MenuAction("close_project", tr("Close Project"), project.close_project, "", "",
-                       tr("Start an empty session (asks to save unsaved work)."), has_session),
-            MenuAction("reinitialize", tr("Reinitialize"),
-                       lambda: project.close_project(reinitialize=True), "Ctrl+R", "",
-                       tr("Clear all data and start again (asks to save unsaved work)."), has_session),
+            MenuAction(
+                "add_dataset",
+                tr("Add dataset"),
+                data.read.load,
+                "Ctrl+N",
+                description=tr("Read the file in Read data with the selected file type."),
+                enabled=lambda: data.session is not None,
+            ),
+            MenuAction(
+                "save_project",
+                tr("Save Project"),
+                project.save,
+                "Ctrl+S",
+                tr("Project"),
+                tr("Save the project to its file, or choose one."),
+                has_session,
+            ),
+            MenuAction(
+                "export_project",
+                tr("Export Project…"),
+                project.save_as,
+                "Ctrl+Shift+S",
+                tr("Project"),
+                tr("Save the project under a new .cs.pto file (save as)."),
+                has_session,
+            ),
+            MenuAction(
+                "open_project",
+                tr("Open Project…"),
+                project.open_project,
+                "",
+                tr("Project"),
+                tr("Replace the session with a saved project."),
+                has_session,
+            ),
+            MenuAction(
+                "import_project",
+                tr("Import Project…"),
+                project.import_project,
+                "",
+                tr("Project"),
+                tr("Open a .cs.pto, or import a copy into the database."),
+                has_session,
+            ),
+            MenuAction(
+                "load_fit",
+                tr("Load Fit"),
+                project.load_fit,
+                "",
+                tr("Fits"),
+                tr("Add the fit of a .fit.cs.pto file (written by Current Fit) to the session."),
+                has_session,
+            ),
+            MenuAction(
+                "save_fit",
+                tr("Current Fit"),
+                project.save_current_fit,
+                "Ctrl+Alt+S",
+                tr("Fits"),
+                tr("Write the current fit's curves, its fit file and a Word report into a folder."),
+                lambda: bool(data.current_uid),
+            ),
+            MenuAction(
+                "save_all_fits",
+                tr("All Fits"),
+                project.save_all_fits,
+                "",
+                tr("Fits"),
+                tr("Write every fit into a folder of its own, and all reports into all_fits.docx."),
+                has_fits,
+            ),
+            MenuAction(
+                "close_fit",
+                tr("Close Fit"),
+                project.close_fit,
+                "",
+                tr("Fits"),
+                tr("Remove the current fit (asks first)."),
+                lambda: bool(data.current_uid),
+            ),
+            MenuAction(
+                "close_all_fits",
+                tr("Close all fits"),
+                project.close_all_fits,
+                "",
+                tr("Fits"),
+                tr("Remove every fit from the session."),
+                has_fits,
+            ),
+            MenuAction(
+                "close_project",
+                tr("Close Project"),
+                project.close_project,
+                "",
+                "",
+                tr("Start an empty session (asks to save unsaved work)."),
+                has_session,
+            ),
+            MenuAction(
+                "reinitialize",
+                tr("Reinitialize"),
+                lambda: project.close_project(reinitialize=True),
+                "Ctrl+R",
+                "",
+                tr("Clear all data and start again (asks to save unsaved work)."),
+                has_session,
+            ),
         ]
         recent = [
-            MenuAction(f"recent.{index}", f"{index + 1} {path}",
-                       lambda p=path: project.open_recent(p), "", tr("Recent Projects"),
-                       enabled=has_session)
+            MenuAction(
+                f"recent.{index}",
+                f"{index + 1} {path}",
+                lambda p=path: project.open_recent(p),
+                "",
+                tr("Recent Projects"),
+                enabled=has_session,
+            )
             for index, path in enumerate(project.recent)
-        ] or [MenuAction("recent.none", tr("No recent projects"), lambda: None, "",
-                         tr("Recent Projects"), enabled=lambda: False)]
+        ] or [
+            MenuAction(
+                "recent.none",
+                tr("No recent projects"),
+                lambda: None,
+                "",
+                tr("Recent Projects"),
+                enabled=lambda: False,
+            )
+        ]
         file_menu += recent
         file_menu += [
-            MenuAction("clear_recent", tr("Clear Recent Projects"), project.clear_recent, "",
-                       tr("Recent Projects"), enabled=lambda: bool(project.recent)),
-            MenuAction("quit", tr("Quit"), project.request_quit, "Ctrl+Q", "",
-                       tr("Close ChiSurf (asks to save unsaved work).")),
+            MenuAction(
+                "clear_recent",
+                tr("Clear Recent Projects"),
+                project.clear_recent,
+                "",
+                tr("Recent Projects"),
+                enabled=lambda: bool(project.recent),
+            ),
+            MenuAction(
+                "quit",
+                tr("Quit"),
+                project.request_quit,
+                "Ctrl+Q",
+                "",
+                tr("Close ChiSurf (asks to save unsaved work)."),
+            ),
         ]
         docks = [
-            ("data.read", tr("Read data")), ("data.sets", tr("Datasets")),
-            ("fit.analysis", tr("Analysis")), ("fit.plot", tr("Plot settings")), ("tools", tr("Tools")),
-            ("start", tr("Start")), ("log", tr("Log")), ("console", tr("Console")),
+            ("data.read", tr("Read data")),
+            ("data.sets", tr("Datasets")),
+            ("fit.analysis", tr("Analysis")),
+            ("fit.plot", tr("Plot settings")),
+            ("tools", tr("Tools")),
+            ("start", tr("Start")),
+            ("log", tr("Log")),
+            ("console", tr("Console")),
         ]
         view_menu = [
-            MenuAction(f"dock.{key}", title, lambda k=key: self.docks.toggle(k), "", tr("Docks"),
-                       checked=lambda k=key: self.docks.is_visible(k))
+            MenuAction(
+                f"dock.{key}",
+                title,
+                lambda k=key: self.docks.toggle(k),
+                "",
+                tr("Docks"),
+                checked=lambda k=key: self.docks.is_visible(k),
+            )
             for key, title in docks
         ]
         view_menu += [
-            MenuAction("tile_windows", tr("Tile Windows"), self.tile_fit_windows, "", "",
-                       tr("Show every fit window side by side."), has_fits),
-            MenuAction("tab_windows", tr("Tab Windows"), self.tab_fit_windows, "", "",
-                       tr("Show the fit windows as tabs."), has_fits),
-            MenuAction("cascade_windows", tr("Cascade Fit Windows"), self.cascade_fit_windows, "", "",
-                       tr("Float the fit windows, each a little below the last."), has_fits),
-            MenuAction("reset_layout", tr("Reset layout"), self.docks.reset, "", "",
-                       tr("Put every dock back where it started.")),
-            MenuAction("undo", tr("Undo"), project.undo, "Ctrl+Z", "",
-                       tr("Go back one change of the science."), project.can_undo),
-            MenuAction("redo", tr("Redo"), project.redo, "Ctrl+Y", "",
-                       tr("Go forward one change of the science."), project.can_redo),
+            MenuAction(
+                "tile_windows",
+                tr("Tile Windows"),
+                self.tile_fit_windows,
+                "",
+                "",
+                tr("Show every fit window side by side."),
+                has_fits,
+            ),
+            MenuAction(
+                "tab_windows",
+                tr("Tab Windows"),
+                self.tab_fit_windows,
+                "",
+                "",
+                tr("Show the fit windows as tabs."),
+                has_fits,
+            ),
+            MenuAction(
+                "cascade_windows",
+                tr("Cascade Fit Windows"),
+                self.cascade_fit_windows,
+                "",
+                "",
+                tr("Float the fit windows, each a little below the last."),
+                has_fits,
+            ),
+            MenuAction(
+                "reset_layout",
+                tr("Reset layout"),
+                self.docks.reset,
+                "",
+                "",
+                tr("Put every dock back where it started."),
+            ),
+            MenuAction(
+                "undo",
+                tr("Undo"),
+                project.undo,
+                "Ctrl+Z",
+                "",
+                tr("Go back one change of the science."),
+                project.can_undo,
+            ),
+            MenuAction(
+                "redo",
+                tr("Redo"),
+                project.redo,
+                "Ctrl+Y",
+                "",
+                tr("Go forward one change of the science."),
+                project.can_redo,
+            ),
         ]
         settings_menu = [
-            MenuAction("settings_edit", tr("Edit"), project.edit_settings, "", "",
-                       tr("Open the settings editor."), lambda: "setup" in self.by_id),
-            MenuAction("fret_rda_axis", tr("FRET RDA axis…"), project.rda_axis, "", "",
-                       tr("The distance grid FRET models use.")),
-            MenuAction("data_loading", tr("Data loading…"), project.data_loading, "", "",
-                       tr("Staging of files on slow storage, and the plot point budget.")),
-            MenuAction("reset_local_settings", tr("Reset local settings"),
-                       project.reset_local_settings, "", "",
-                       tr("Return your settings folder to the shipped defaults.")),
-            MenuAction("clear_logging_files", tr("Clear logging files"),
-                       project.clear_logging_files),
+            MenuAction(
+                "settings_edit",
+                tr("Edit"),
+                project.edit_settings,
+                "",
+                "",
+                tr("Open the settings editor."),
+                lambda: "setup" in self.by_id,
+            ),
+            MenuAction(
+                "fret_rda_axis",
+                tr("FRET RDA axis…"),
+                project.rda_axis,
+                "",
+                "",
+                tr("The distance grid FRET models use."),
+            ),
+            MenuAction(
+                "data_loading",
+                tr("Data loading…"),
+                project.data_loading,
+                "",
+                "",
+                tr("Staging of files on slow storage, and the plot point budget."),
+            ),
+            MenuAction(
+                "reset_local_settings",
+                tr("Reset local settings"),
+                project.reset_local_settings,
+                "",
+                "",
+                tr("Return your settings folder to the shipped defaults."),
+            ),
+            MenuAction(
+                "clear_logging_files", tr("Clear logging files"), project.clear_logging_files
+            ),
             MenuAction("clear_user_styles", tr("Clear user styles"), project.clear_user_styles),
             MenuAction("clear_user_plugins", tr("Clear user plugins"), project.clear_user_plugins),
         ]
         macro_menu = [
-            MenuAction("record", tr("Record"), self.toggle_macro_recording, "", "",
-                       tr("Record what runs in the console; click again to stop and save it as a macro."),
-                       checked=lambda: self.console.recording),
-            MenuAction("run_macro", tr("Run Macro…"), self.run_macro, "", "",
-                       tr("Run a saved macro (.cm.py) in the console's namespace.")),
+            MenuAction(
+                "record",
+                tr("Record"),
+                self.toggle_macro_recording,
+                "",
+                "",
+                tr("Record what runs in the console; click again to stop and save it as a macro."),
+                checked=lambda: self.console.recording,
+            ),
+            MenuAction(
+                "run_macro",
+                tr("Run Macro…"),
+                self.run_macro,
+                "",
+                "",
+                tr("Run a saved macro (.cm.py) in the console's namespace."),
+            ),
         ]
-        return [(tr("File"), file_menu), (tr("View"), view_menu), (tr("Macro"), macro_menu),
-                (tr("Settings"), settings_menu)]
+        return [
+            (tr("File"), file_menu),
+            (tr("View"), view_menu),
+            (tr("Macro"), macro_menu),
+            (tr("Settings"), settings_menu),
+        ]
 
     # ── console and macros ────────────────────────────────────────────────
 
@@ -730,7 +937,11 @@ class EmtkShellApp(ImApp):
         from chisurf.emtk.console import MACRO_FILTER
 
         self.project.open_file_dialog(
-            tr("Save macro"), "save", console.save_macro, filters=MACRO_FILTER, filename="macro.cm.py"
+            tr("Save macro"),
+            "save",
+            console.save_macro,
+            filters=MACRO_FILTER,
+            filename="macro.cm.py",
         )
 
     def run_macro(self) -> None:
@@ -785,8 +996,14 @@ class EmtkShellApp(ImApp):
     def window_actions(self) -> list[MenuAction]:
         """The Main tab's own window actions that no menu carries (*Screenshot*)."""
         return [
-            MenuAction("screenshot", tr("Screenshot"), self.request_screenshot, "", "",
-                       tr("Copy a picture of the window to the clipboard.")),
+            MenuAction(
+                "screenshot",
+                tr("Screenshot"),
+                self.request_screenshot,
+                "",
+                "",
+                tr("Copy a picture of the window to the clipboard."),
+            ),
         ]
 
     def request_screenshot(self) -> None:
@@ -837,7 +1054,9 @@ class EmtkShellApp(ImApp):
 
         shown = 0
         for menu, groups in self.menus.items():
-            found = {caption: [e for e in entries if matches(e)] for caption, entries in groups.items()}
+            found = {
+                caption: [e for e in entries if matches(e)] for caption, entries in groups.items()
+            }
             found = {caption: entries for caption, entries in found.items() if entries}
             if not found:
                 continue
@@ -857,8 +1076,11 @@ class EmtkShellApp(ImApp):
                 for entry in entries:
                     shown += 1
                     label = entry_label(entry)
-                    if im.selectable(f"{label}##{entry.plugin_id}", entry.plugin_id in self.hosted,
-                                     icon=entry.icon or None):
+                    if im.selectable(
+                        f"{label}##{entry.plugin_id}",
+                        entry.plugin_id in self.hosted,
+                        icon=entry.icon or None,
+                    ):
                         self.open_plugin(entry.plugin_id)
                     self.item_rects["tools." + entry.plugin_id] = im.get_item_rect()
                     accents.mark_item(accent(self.task_categories.get(entry.plugin_id)))

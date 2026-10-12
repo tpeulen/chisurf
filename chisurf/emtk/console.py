@@ -254,8 +254,10 @@ class ConsoleControl:
         """
         editor = self.output
         margin = editor.config.text_margin * max(editor._glyph_w, 1.0)
-        return (max(16.0, w - 2.0 * margin - editor.vbar.width - 4.0),
-                max(MIN_IMAGE_HEIGHT, h - line_h - 2.0))
+        return (
+            max(16.0, w - 2.0 * margin - editor.vbar.width - 4.0),
+            max(MIN_IMAGE_HEIGHT, h - line_h - 2.0),
+        )
 
     def _sync_output(self, w: float = 0.0, line_h: float = 0.0, h: float = 0.0) -> None:
         """Rebuild the transcript editor when the transcript, the width or the font changed.
@@ -265,8 +267,11 @@ class ConsoleControl:
         """
         transcript = self.console.transcript
         line_h = line_h or self._line_h
-        key = (transcript.revision, round(w), round(h), round(line_h, 2)) if transcript.images else (
-            transcript.revision,)
+        key = (
+            (transcript.revision, round(w), round(h), round(line_h, 2))
+            if transcript.images
+            else (transcript.revision,)
+        )
         if key == self._layout_key:
             return
         editor = self.output
@@ -361,8 +366,15 @@ class ConsoleControl:
             from emtk.style import FRAME_BG, TEXT
 
             p.fill_rect(x, top, w, line_h, FRAME_BG)
-            p.text(x + 6.0, top, w - 30.0, line_h, ALIGN_LEFT | ALIGN_VCENTER,
-                   console.pager_title, OUTPUT_PALETTE[Token.DECLARATION])
+            p.text(
+                x + 6.0,
+                top,
+                w - 30.0,
+                line_h,
+                ALIGN_LEFT | ALIGN_VCENTER,
+                console.pager_title,
+                OUTPUT_PALETTE[Token.DECLARATION],
+            )
             self.boxes["pager.close"] = (x + w - 22.0, top, 22.0, line_h)
             p.text(x + w - 18.0, top, 18.0, line_h, ALIGN_LEFT | ALIGN_VCENTER, "✕", TEXT)
             self.boxes["pager"] = (x, top + line_h, w, pager_h)
@@ -377,8 +389,15 @@ class ConsoleControl:
         first = self.input.first_visible_line
         for row in range(rows):
             text = prompt if first + row == 0 else CONTINUATION
-            p.text(x + 4.0, iy + row * line_h, prompt_w, line_h, ALIGN_LEFT | ALIGN_VCENTER,
-                   text, OUTPUT_PALETTE[Token.DECLARATION])
+            p.text(
+                x + 4.0,
+                iy + row * line_h,
+                prompt_w,
+                line_h,
+                ALIGN_LEFT | ALIGN_VCENTER,
+                text,
+                OUTPUT_PALETTE[Token.DECLARATION],
+            )
         self.input.config.carets_visible = self.has_focus and self.target == "input"
         self.input.draw(p, *self.boxes["input"])
         self._draw_calltip(p, x, iy, w)
@@ -399,8 +418,15 @@ class ConsoleControl:
         p.fill_rect(x, top, width, height, POPUP_BG)
         p.stroke_rect(x, top, width, height, BORDER)
         for row, line in enumerate(lines):
-            p.text(x + 6.0, top + 2.0 + row * self._line_h, width - 8.0, self._line_h,
-                   ALIGN_LEFT | ALIGN_VCENTER, line, TEXT)
+            p.text(
+                x + 6.0,
+                top + 2.0 + row * self._line_h,
+                width - 8.0,
+                self._line_h,
+                ALIGN_LEFT | ALIGN_VCENTER,
+                line,
+                TEXT,
+            )
 
     def _draw_completions(self, p, x: float, iy: float, w: float) -> None:
         matches = self.console.completions
@@ -424,8 +450,9 @@ class ConsoleControl:
             if row == self.console.completion_index:
                 p.fill_rect(left + 1.0, ry, width - 2.0, self._line_h, HEADER_ACTIVE)
             self.boxes[f"completion.{row}"] = (left, ry, width, self._line_h)
-            p.text(left + 8.0, ry, width - 10.0, self._line_h, ALIGN_LEFT | ALIGN_VCENTER, match,
-                   TEXT)
+            p.text(
+                left + 8.0, ry, width - 10.0, self._line_h, ALIGN_LEFT | ALIGN_VCENTER, match, TEXT
+            )
 
     # ── input ─────────────────────────────────────────────────────────────
 
@@ -582,9 +609,7 @@ class ShellConsole:
             read_input=None,
             clear=self.clear,
             edit_file=self._edit_file,
-            history=HistoryManager(
-                history_path, max_entries=int(self.settings["history_length"])
-            ),
+            history=HistoryManager(history_path, max_entries=int(self.settings["history_length"])),
         )
         self.control = ConsoleControl(self)
         self.recording = False
@@ -649,8 +674,13 @@ class ShellConsole:
         except Exception:  # noqa: BLE001
             version = "?"
         python = ".".join(str(part) for part in sys.version_info[:3])
-        return tr("ChiSurf {version} console  |  Python {python}  |  "
-                  "%quickref for help, obj? for details").format(version=version, python=python) + "\n"
+        return (
+            tr(
+                "ChiSurf {version} console  |  Python {python}  |  "
+                "%quickref for help, obj? for details"
+            ).format(version=version, python=python)
+            + "\n"
+        )
 
     def _write(self, name: str, text: str) -> None:
         self.transcript.append(text, "stderr" if name == "stderr" else "stdout")
@@ -690,7 +720,9 @@ class ShellConsole:
                 except Exception as exc:  # noqa: BLE001 - say so, show the text form
                     self.transcript.append(
                         tr("could not decode the {fmt} image: {error}").format(fmt=fmt, error=exc)
-                        + "\n", "stderr")
+                        + "\n",
+                        "stderr",
+                    )
                     return None
         if "image/svg+xml" in data:
             from emtk.svg import svg_to_png
@@ -700,7 +732,8 @@ class ShellConsole:
                 return InlineImage(svg_to_png(svg.encode("utf-8") if isinstance(svg, str) else svg))
             except Exception as exc:  # noqa: BLE001
                 self.transcript.append(
-                    tr("could not draw the SVG image: {error}").format(error=exc) + "\n", "stderr")
+                    tr("could not draw the SVG image: {error}").format(error=exc) + "\n", "stderr"
+                )
         return None
 
     def copy_image(self, image: InlineImage) -> bool:
@@ -871,7 +904,9 @@ class ShellConsole:
         import chisurf
 
         if self._installed is None:
-            self._installed = {name: getattr(chisurf, name, None) for name in ("run", "log", "console")}
+            self._installed = {
+                name: getattr(chisurf, name, None) for name in ("run", "log", "console")
+            }
         chisurf.run = self.run_threadsafe
         chisurf.log = self.log_threadsafe
         chisurf.console = self
@@ -1005,7 +1040,7 @@ class ShellConsole:
             return True
         line_text = editor.document.get_line_text(pos.line)
         if letter == "k":
-            killed = line_text[pos.index:]
+            killed = line_text[pos.index :]
             if killed:
                 self._kill_ring.append(killed)
                 editor.replace_section(pos, Pos(pos.line, len(line_text)), "")
@@ -1025,7 +1060,8 @@ class ShellConsole:
             return True
         if letter == "e" or (key == KEY_END and not chord):
             editor.set_cursor(Pos(pos.line, len(line_text))) if not shift else editor.move_end(
-                select=True)
+                select=True
+            )
             return True
         if letter == "d":
             return not self.input_text.strip()
@@ -1095,7 +1131,7 @@ class ShellConsole:
         if not result:
             return
         if result.common_prefix:
-            typed = line[result.start: cursor]
+            typed = line[result.start : cursor]
             if len(result.common_prefix) > len(typed):
                 self._replace(result.start, cursor, result.common_prefix)
                 if len(result.matches) == 1:

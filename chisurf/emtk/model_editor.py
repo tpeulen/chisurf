@@ -29,20 +29,51 @@ from emtk.view_form import FormState, draw_form
 
 #: Columns of a parameter table, as the Qt editor's ``ParameterGroupTableWidget`` shows them.
 PARAMETER_COLUMNS = [
-    {"key": "label", "label": "Name", "display": "script",
-     "description": "The parameter, with its unit."},
-    {"key": "value", "label": "Value", "editable": True, "format": "%.5g",
-     "description": "The parameter's value; double-click to type a new one."},
-    {"key": "fixed", "label": "Fixed", "editable": True,
-     "description": "A fixed parameter keeps its value when the fit runs."},
-    {"key": "lo", "label": "Lo", "editable": True, "format": "%.4g",
-     "description": "Lower bound, used while Bounds is on."},
-    {"key": "hi", "label": "Hi", "editable": True, "format": "%.4g",
-     "description": "Upper bound, used while Bounds is on."},
-    {"key": "bounds_on", "label": "Bounds", "editable": True,
-     "description": "Keep the parameter between Lo and Hi while fitting."},
-    {"key": "error", "label": "Error", "format": "%.3g",
-     "description": "Uncertainty estimate from the last fit."},
+    {
+        "key": "label",
+        "label": "Name",
+        "display": "script",
+        "description": "The parameter, with its unit.",
+    },
+    {
+        "key": "value",
+        "label": "Value",
+        "editable": True,
+        "format": "%.5g",
+        "description": "The parameter's value; double-click to type a new one.",
+    },
+    {
+        "key": "fixed",
+        "label": "Fixed",
+        "editable": True,
+        "description": "A fixed parameter keeps its value when the fit runs.",
+    },
+    {
+        "key": "lo",
+        "label": "Lo",
+        "editable": True,
+        "format": "%.4g",
+        "description": "Lower bound, used while Bounds is on.",
+    },
+    {
+        "key": "hi",
+        "label": "Hi",
+        "editable": True,
+        "format": "%.4g",
+        "description": "Upper bound, used while Bounds is on.",
+    },
+    {
+        "key": "bounds_on",
+        "label": "Bounds",
+        "editable": True,
+        "description": "Keep the parameter between Lo and Hi while fitting.",
+    },
+    {
+        "key": "error",
+        "label": "Error",
+        "format": "%.3g",
+        "description": "Uncertainty estimate from the last fit.",
+    },
 ]
 
 _SUB = re.compile(r"<sub>(.*?)</sub>", re.IGNORECASE | re.DOTALL)
@@ -143,18 +174,28 @@ def _paired(entries: list, width: int, section: dict) -> tuple[list, list]:
             for field, _sid, _label, _edit, _fmt in fields:
                 row[f"{field}{j}"] = p[field]
         rows.append(row)
-    columns = [{"key": "index", "label": "" if row_labels else "#",
-                "description": "The component (or the quantity) of the row."}]
+    columns = [
+        {
+            "key": "index",
+            "label": "" if row_labels else "#",
+            "description": "The component (or the quantity) of the row.",
+        }
+    ]
     for j in range(width):
         if j < len(slot_labels):
             title = slot_labels[j]
         elif j < len(entries):
-            title = plain_label(_group_header(entries[j].get("label") or entries[j].get("name", "")))
+            title = plain_label(
+                _group_header(entries[j].get("label") or entries[j].get("name", ""))
+            )
         else:
             title = str(j + 1)
         for field, _sid, label, editable, fmt in fields:
-            column = {"key": f"{field}{j}", "label": title if field == "value" else label,
-                      "editable": editable}
+            column = {
+                "key": f"{field}{j}",
+                "label": title if field == "value" else label,
+                "editable": editable,
+            }
             if fmt:
                 column["format"] = fmt
             columns.append(column)
@@ -324,9 +365,15 @@ class ModelEditor:
                             out[bound] = section[bound]
                 return out
             if kind == "info":
-                return {"type": "custom", "key": "model_info", "options": {
-                    "text": section.get("text", ""), "is_markdown": section.get("is_markdown")},
-                    **common}
+                return {
+                    "type": "custom",
+                    "key": "model_info",
+                    "options": {
+                        "text": section.get("text", ""),
+                        "is_markdown": section.get("is_markdown"),
+                    },
+                    **common,
+                }
             if kind in ("parameters", "components"):
                 source = f"rows_{n}"
                 entries = section.get("rows") or []
@@ -344,8 +391,10 @@ class ModelEditor:
                     "context_call": "section_context",
                     "columns": PARAMETER_COLUMNS,
                     "description": section.get("description")
-                    or tr("Double-click a value or bound to type it; click Fixed or Bounds "
-                          "to toggle. Outputs and linked parameters are dimmed and read only."),
+                    or tr(
+                        "Double-click a value or bound to type it; click Fixed or Bounds "
+                        "to toggle. Outputs and linked parameters are dimmed and read only."
+                    ),
                 }
                 width = max(1, int(section.get("row_width") or 1))
                 if width > 1 and (kind == "parameters" or section.get("style") == "table"):
@@ -355,8 +404,9 @@ class ModelEditor:
                     paired_rows = _Rows(rows)
                     paired_rows.revision = self._sources[source].revision
                     self._sources[source] = paired_rows
-                    table.update(columns=columns, edited_call="edit_paired",
-                                 editable_call="paired_editable")
+                    table.update(
+                        columns=columns, edited_call="edit_paired", editable_call="paired_editable"
+                    )
                 if kind == "parameters":
                     # A group with no parameters draws nothing, as in the Qt editor.
                     return {**table, **common} if entries else None
@@ -370,10 +420,16 @@ class ModelEditor:
                 buttons = {
                     "type": "button_row",
                     "buttons": [
-                        {"label": section.get("add_label") or "add", "action": add,
-                         "description": tr("Add a component.")},
-                        {"label": section.get("remove_label") or "del", "action": remove,
-                         "description": tr("Remove the selected component, or the last one.")},
+                        {
+                            "label": section.get("add_label") or "add",
+                            "action": add,
+                            "description": tr("Add a component."),
+                        },
+                        {
+                            "label": section.get("remove_label") or "del",
+                            "action": remove,
+                            "description": tr("Remove the selected component, or the last one."),
+                        },
                     ],
                     **common,
                 }
@@ -391,19 +447,26 @@ class ModelEditor:
                     attr = f"control_{n}_{i}"
                     controls[attr] = item
                     self._values[attr] = bool(item.get("value"))
-                    items.append({"attr": attr, "label": item.get("label", ""),
-                                  "description": item.get("description", "")})
+                    items.append(
+                        {
+                            "attr": attr,
+                            "label": item.get("label", ""),
+                            "description": item.get("description", ""),
+                        }
+                    )
                 return {"type": "toggle_row", "items": items, **common}
             if kind == "buttons":
                 buttons = []
                 for i, button in enumerate(section.get("buttons") or []):
                     name = f"press_{n}_{i}"
                     self._actions[name] = ("press", str(button.get("action", "")), section)
-                    buttons.append({
-                        "label": button.get("label", ""),
-                        "action": name,
-                        "description": button.get("description", ""),
-                    })
+                    buttons.append(
+                        {
+                            "label": button.get("label", ""),
+                            "action": name,
+                            "description": button.get("description", ""),
+                        }
+                    )
                 return {"type": "button_row", "buttons": buttons, **common}
             if kind == "records":
                 source = f"records_{n}"
@@ -430,18 +493,27 @@ class ModelEditor:
                         source = f"rows_{n}_fractions"
                         rows_for(source, fractions)
                         parts = made if isinstance(made, list) else [made]
-                        return parts + [{
-                            "type": "table", "source": source, "row_key": "uid",
-                            "edited_call": "edit_cell", "editable_call": "cell_editable",
-                            "context_call": "section_context", "muted_key": "muted",
-                            "fit_rows": True, "fit_columns": True,
-                            "columns": PARAMETER_COLUMNS, **common,
-                        }]
+                        return parts + [
+                            {
+                                "type": "table",
+                                "source": source,
+                                "row_key": "uid",
+                                "edited_call": "edit_cell",
+                                "editable_call": "cell_editable",
+                                "context_call": "section_context",
+                                "muted_key": "muted",
+                                "fit_rows": True,
+                                "fit_columns": True,
+                                "columns": PARAMETER_COLUMNS,
+                                **common,
+                            }
+                        ]
                 return made
             return {
                 "type": "info",
                 "text": tr("{kind}: not drawn in this window yet.").format(
-                    kind=section.get("title") or str(section.get("kind") or "?").replace("_", " ")),
+                    kind=section.get("title") or str(section.get("kind") or "?").replace("_", " ")
+                ),
                 **common,
             }
 
@@ -599,7 +671,9 @@ class ModelEditor:
         source = self.table_for(key)
         rows = list(self._sources.get(source, [])) if source else []
         # A paired table holds a component a row; its parameters are the rows asked for.
-        return [p for row in rows for p in row["_params"]] if rows and "_params" in rows[0] else rows
+        return (
+            [p for row in rows for p in row["_params"]] if rows and "_params" in rows[0] else rows
+        )
 
     def visible_titles(self) -> list[str]:
         """Titles of the panels drawn now (hidden ones left out)."""
@@ -650,6 +724,7 @@ class ModelEditor:
 
         for section in (self.editor or {}).get("sections", []):
             walk(section)
+
         def columns(section: dict) -> None:
             for column in section.get("columns") or []:
                 if isinstance(column, dict) and column.get("label"):

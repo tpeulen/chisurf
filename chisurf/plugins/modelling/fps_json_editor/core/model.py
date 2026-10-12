@@ -70,7 +70,11 @@ class FpsJsonModel:
         self.fps_json_payload = payload
         folder = Path(path).resolve().parent
         for params in self.positions.values():
-            pdb = str((params or {}).get("pdb_path") or "").strip() if isinstance(params, dict) else ""
+            pdb = (
+                str((params or {}).get("pdb_path") or "").strip()
+                if isinstance(params, dict)
+                else ""
+            )
             if pdb and not Path(pdb).is_absolute() and (folder / pdb).is_file():
                 params["pdb_path"] = str(folder / pdb)
 

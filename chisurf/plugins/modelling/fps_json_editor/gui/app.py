@@ -7,6 +7,11 @@ card's PDB-ID fetch.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # the names __getattr__ serves, for linters and type checkers
+    from chisurf.plugins.modelling.structure_tools.cards.fps_json import FpsJsonCard, make_app
+
 __all__ = ["FpsJsonCard", "make_app"]
 
 

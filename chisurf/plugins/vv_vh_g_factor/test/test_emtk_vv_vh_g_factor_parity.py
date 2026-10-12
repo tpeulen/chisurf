@@ -163,7 +163,9 @@ def field(ui, name):
         x, y, w, h = rect
         if y >= 0 and y + h <= ui.size[1] - 4:
             break
-        ui.wheel(x + w / 2, min(max(y, 40.0), ui.size[1] - 40.0), -1.0 if y + h > ui.size[1] else 1.0)
+        ui.wheel(
+            x + w / 2, min(max(y, 40.0), ui.size[1] - 40.0), -1.0 if y + h > ui.size[1] else 1.0
+        )
         rect = ui.rect(name)
     return rect
 
@@ -782,7 +784,9 @@ def test_the_tour_waits_for_the_real_controls(ui, files, tmp_path):
     ui.app.example_folder = tmp_path / "demo"
     ui.click_name("guide")
     tour = ui.app.guide
-    assert tour.active and tour.get_target_rect("load_fast")  # what G is, at the fast-reference button
+    assert tour.active and tour.get_target_rect(
+        "load_fast"
+    )  # what G is, at the fast-reference button
     ui.click_text("Next ►")
     assert tour.step_idx == 1 and tour.awaiting
     ui.click_text("Next ►")

@@ -49,8 +49,7 @@ def _reader_texts(driver, reader):
         string = str(entry[5])
         if not string.strip():
             continue
-        if not any(abs(cx - rx) < 2.0 and abs(cy - ry) < 2.0 for cx, cy, _w, _h in
-                   meta["clips"]):
+        if not any(abs(cx - rx) < 2.0 and abs(cy - ry) < 2.0 for cx, cy, _w, _h in meta["clips"]):
             continue
         out.append((string, meta["measured_bounds"]))
     return out
@@ -61,11 +60,13 @@ def _overlaps(texts, min_x: float = 2.0, min_y: float = 3.0):
     boxes = [(s, b) for s, b in texts if b[2] > 0 and b[3] > 0]
     boxes.sort(key=lambda item: item[1][1])
     for i, (s1, (x1, y1, w1, h1)) in enumerate(boxes):
-        for s2, (x2, y2, w2, h2) in boxes[i + 1:]:
+        for s2, (x2, y2, w2, h2) in boxes[i + 1 :]:
             if y2 >= y1 + h1:
                 break
-            if (min(x1 + w1, x2 + w2) - max(x1, x2) > min_x
-                    and min(y1 + h1, y2 + h2) - max(y1, y2) > min_y):
+            if (
+                min(x1 + w1, x2 + w2) - max(x1, x2) > min_x
+                and min(y1 + h1, y2 + h2) - max(y1, y2) > min_y
+            ):
                 found.append((s1[:40], s2[:40]))
     return found
 
@@ -77,7 +78,7 @@ def _figure_problem(texture) -> str | None:
     if region is None:
         return "declined by the image atlas (drawn as a blank box)"
     _ref, _rev, x, y, w, h = atlas._placed[id(texture)]
-    pixels = atlas.pixels[y:y + h, x:x + w]
+    pixels = atlas.pixels[y : y + h, x : x + w]
     if pixels[:, :, 3].max() == 0:
         return "fully transparent"
     if pixels.reshape(-1, 4).std(axis=0).max() < 1.0:
@@ -137,16 +138,20 @@ def test_every_page_renders_without_clipped_or_overlapping_text(app, size):
             failures.append(f"{name}: the reader was not drawn")
             continue
         rx, ry, rw, _rh = reader
-        crumbs = [b for k, b in app.help_gui.item_rects.items()
-                  if k in ("home", "go", "zoom_in", "guide") and b]
+        crumbs = [
+            b
+            for k, b in app.help_gui.item_rects.items()
+            if k in ("home", "go", "zoom_in", "guide") and b
+        ]
         if any(b[1] + b[3] > ry + 0.5 for b in crumbs):
             failures.append(f"{name}: the reader starts under the toolbar")
         texts = _reader_texts(driver, reader)
         right = rx + rw
         for string, (x, _y, w, _h) in texts:
             if x + w > right + 1.0 and len(string.strip()) > 1:
-                failures.append(f"{name}: runs {x + w - right:.0f} px past the reader: "
-                                f"{string[:60]!r}")
+                failures.append(
+                    f"{name}: runs {x + w - right:.0f} px past the reader: {string[:60]!r}"
+                )
                 break
         overlaps = _overlaps(texts)
         if overlaps:
@@ -161,8 +166,10 @@ def test_every_page_renders_without_clipped_or_overlapping_text(app, size):
 def test_a_missing_figure_is_a_visible_placeholder_and_a_warning(app, tmp_path, caplog):
     """Never a blank box: the reader says which file is missing, and the log says so too."""
     page = tmp_path / "page.md"
-    page.write_text("# Page\n\n```{figure} figures/not_there.png\n\nA caption that\nwraps.\n```\n",
-                    encoding="utf-8")
+    page.write_text(
+        "# Page\n\n```{figure} figures/not_there.png\n\nA caption that\nwraps.\n```\n",
+        encoding="utf-8",
+    )
     driver = RealisticDriver(app, (800, 600))
     with caplog.at_level("WARNING"):
         app.model.open_page(page)
@@ -179,7 +186,9 @@ def test_an_svg_figure_is_drawn_at_its_css_size(app, tmp_path):
     (tmp_path / "f.svg").write_text(
         '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100">'
         '<rect width="300" height="100" fill="#3070c0"/><circle cx="50" cy="50" r="40" '
-        'fill="#f0c000"/></svg>', encoding="utf-8")
+        'fill="#f0c000"/></svg>',
+        encoding="utf-8",
+    )
     page = tmp_path / "svg.md"
     page.write_text("# SVG\n\n![a figure](f.svg)\n", encoding="utf-8")
     driver = RealisticDriver(app, (800, 600))

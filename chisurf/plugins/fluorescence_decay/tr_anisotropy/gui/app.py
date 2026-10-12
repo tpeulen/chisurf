@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import copy
-import math
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -96,9 +96,15 @@ class AnisotropyApp(ImApp):
         self.split = Split("h", 0.22, Region("navigation"), Region("step"), name="tr_anisotropy")
         self.docks = DockManager(self.split, name="tr_anisotropy")
         self.docks.add_window(
-            "navigation", tr("Anisotropy workflow"), self.navigation, dock="navigation", closable=False
+            "navigation",
+            tr("Anisotropy workflow"),
+            self.navigation,
+            dock="navigation",
+            closable=False,
         )
-        self.docks.add_window("step", tr("Workflow step"), self.content, dock="step", closable=False)
+        self.docks.add_window(
+            "step", tr("Workflow step"), self.content, dock="step", closable=False
+        )
         super().__init__(self.render, continuous=False)
 
     # -- settings, tour, files ----------------------------------------------------------------- #
@@ -410,7 +416,9 @@ class AnisotropyApp(ImApp):
         )
         self.item_rects["create_fits"] = im.get_item_rect()
         if m.fit_groups:
-            im.text(tr("Created:") + " " + ", ".join(str(getattr(g, "name", g)) for g in m.fit_groups))
+            im.text(
+                tr("Created:") + " " + ", ".join(str(getattr(g, "name", g)) for g in m.fit_groups)
+            )
 
     def content(self, box):
         m = self.model

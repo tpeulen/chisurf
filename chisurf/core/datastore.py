@@ -981,9 +981,7 @@ def read_csv_table(
     import tttrlib
 
     try:
-        store = tttrlib.read_csv(
-            str(path), delimiter=delimiter, has_header=header, comment=comment
-        )
+        store = tttrlib.read_csv(str(path), delimiter=delimiter, has_header=header, comment=comment)
     except Exception:
         return None
     return store if store.n_columns() > 0 else None

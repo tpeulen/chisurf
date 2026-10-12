@@ -250,13 +250,9 @@ class BurstDataSelectionModel:
         if not self._paths:
             self.status_text = "No TTTR files selected."
         elif any("skipped" in (self.imports.get(str(p)) or {}) for p in self._paths):
-            self.status_text = (
-                f"{len(self._paths)} TTTR file(s) selected; not signed in to MMFDB, so they are not registered."
-            )
+            self.status_text = f"{len(self._paths)} TTTR file(s) selected; not signed in to MMFDB, so they are not registered."
         else:
-            self.status_text = (
-                f"{len(self._paths)} TTTR file(s) selected; {self.imported_count()} imported to MMFDB."
-            )
+            self.status_text = f"{len(self._paths)} TTTR file(s) selected; {self.imported_count()} imported to MMFDB."
         if notify and callable(self.on_change):
             self.on_change()
 

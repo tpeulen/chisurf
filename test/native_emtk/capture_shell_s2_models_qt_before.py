@@ -193,7 +193,9 @@ def main() -> None:
             "models": {k: v for k, v in inventory.items() if not k.startswith("read:")},
             "readers": {k[5:]: v for k, v in inventory.items() if k.startswith("read:")},
         }
-        (out / "qt_models_inventory.json").write_text(json.dumps(payload, indent=1), encoding="utf-8")
+        (out / "qt_models_inventory.json").write_text(
+            json.dumps(payload, indent=1), encoding="utf-8"
+        )
 
     def grab_reader(key: str) -> None:
         dock = gui.dockWidgetReadData
@@ -226,7 +228,10 @@ def main() -> None:
 
         index = list(chisurf.fits).index(fit)
         for section in fit.model.view_spec().flat_sections():
-            if not isinstance(section, vs.CurveInputSection) or section.label not in ("IRF", "Background"):
+            if not isinstance(section, vs.CurveInputSection) or section.label not in (
+                "IRF",
+                "Background",
+            ):
                 continue
             payload = dict(section.action_fixed or {})
             payload.update({section.index_key: irf, section.name_key: irf_name, "fit_index": index})

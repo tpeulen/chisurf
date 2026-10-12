@@ -160,7 +160,11 @@ def _held_curve(model: Any, section: Any) -> Any:
 def resolve_curve_input(section: Any, model: Any) -> dict[str, Any]:
     """A ``curve_input`` as data: the curve it holds now (its name; the IRF's FWHM)."""
     curve = _held_curve(model, section)
-    name = (getattr(curve, "name", None) or getattr(curve, "filename", None)) if curve is not None else None
+    name = (
+        (getattr(curve, "name", None) or getattr(curve, "filename", None))
+        if curve is not None
+        else None
+    )
     fwhm = None
     if str(getattr(section, "name_attr", "") or "") == "irf" and curve is not None:
         fwhm = _plain(getattr(curve, "fwhm", None))
@@ -288,7 +292,7 @@ def model_curve_unload(
 def _scalar_table(model, section, fit, state) -> dict:
     owner = _model_svc()._resolve_target(model, section.target) if section.target else model
     rows = []
-    for row in (dict(section.options or {}).get("rows") or []):
+    for row in dict(section.options or {}).get("rows") or []:
         attr = str(row.get("attr", ""))
         rows.append(
             {
@@ -308,7 +312,9 @@ def _rate_binding(model, section):
 
     options = dict(section.options or {})
     return RateMatrixBinding(
-        model, str(section.target or options.get("attr", "")), size_attr=options.get("size_attr", "")
+        model,
+        str(section.target or options.get("attr", "")),
+        size_attr=options.get("size_attr", ""),
     )
 
 
@@ -371,7 +377,12 @@ def _lcurve_data(model, section):
 
 def _lcurve(model, section, fit, state) -> dict:
     data = _lcurve_data(model, section)
-    out: dict[str, Any] = {"reg": [], "residual_norm": [], "solution_norm": [], "corner_index": None}
+    out: dict[str, Any] = {
+        "reg": [],
+        "residual_norm": [],
+        "solution_norm": [],
+        "corner_index": None,
+    }
     if data is not None and getattr(data, "reg", None) is not None and len(data.reg):
         out.update(
             reg=_plain(np.asarray(data.reg, dtype=float)),
@@ -497,7 +508,9 @@ _RESOLVERS: dict[str, Callable[..., dict]] = {
 }
 
 
-def resolve_custom(section: Any, model: Any, fit: Any, state: SessionState | None) -> dict[str, Any]:
+def resolve_custom(
+    section: Any, model: Any, fit: Any, state: SessionState | None
+) -> dict[str, Any]:
     """A ``custom`` section as data: its key, address, options and what its resolver reads now.
 
     A key without a resolver is ``type: "unsupported"``, as before.
@@ -529,7 +542,9 @@ class _Refused(ValueError):
 
 
 def _set_scalar(model, section, fit, state, attr: str, value: Any) -> dict:
-    rows = {str(r.get("attr", "")): dict(r) for r in (dict(section.options or {}).get("rows") or [])}
+    rows = {
+        str(r.get("attr", "")): dict(r) for r in (dict(section.options or {}).get("rows") or [])
+    }
     if str(attr) not in rows:
         raise _Refused(f"the table has no row {attr!r}")
     kind = str(rows[str(attr)].get("kind", "float"))
@@ -596,7 +611,9 @@ def _rt(model, section, fit, state, factors: dict | None = None) -> dict:
     return decays(dict(factors or {}))
 
 
-def _lcurve_compute(model, section, fit, state, n_points: int, log10_min: float, log10_max: float) -> dict:
+def _lcurve_compute(
+    model, section, fit, state, n_points: int, log10_min: float, log10_max: float
+) -> dict:
     action = str(dict(section.options or {}).get("compute_action", "") or "")
     fn = getattr(model, action, None) if action else None
     if not callable(fn):
@@ -651,7 +668,9 @@ def _paths_add(model, section, fit, state, paths: list) -> dict:
     options = dict(section.options or {})
     if not isinstance(paths, (list, tuple)):
         raise _Refused("paths is a list of file names")
-    new = _expand(list(paths), list(options.get("extensions") or []), bool(options.get("add_folders", True)))
+    new = _expand(
+        list(paths), list(options.get("extensions") or []), bool(options.get("add_folders", True))
+    )
     current = [str(p) for p in (_read(model, str(section.target)) or [])]
     _write_paths(model, section, current + [p for p in new if p not in current])
     return {"added": len([p for p in new if p not in current])}

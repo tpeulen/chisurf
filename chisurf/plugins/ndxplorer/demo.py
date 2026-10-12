@@ -38,7 +38,9 @@ def demo_folder() -> Path:
     return cache_folder("ndxplorer")
 
 
-def make_demo(folder: str | Path | None = None, *, overwrite: bool = False, seed: int | None = None) -> Path:
+def make_demo(
+    folder: str | Path | None = None, *, overwrite: bool = False, seed: int | None = None
+) -> Path:
     """Write or reuse the demo burst table.
 
     Parameters

@@ -2,6 +2,9 @@
 
 ## 2026-10-12
 
+- Tree-wide ruff check and format clean again (123 files reformatted, import order fixed). The plugin-dependency
+  extractor no longer counts an import under `if TYPE_CHECKING:` as a load-time edge, so a lazy shim can declare
+  its names for type checkers without making two plugins require each other.
 - AV search default is FPS's (owner decision): three-voxel cube hops from every node (IMP.bff e4a3e2b9d, stencil 342;
   `link_search="fast"` keeps the seed-only search), also for docking, at 1.05-1.12x the seed-only cost after exact
   shortcuts (ring skipping, SIMD rows). Fixed on the way: `av_distance_quadrature` diverged for overlapping clouds.

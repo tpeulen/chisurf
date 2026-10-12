@@ -55,9 +55,20 @@ FIT_FILTER = (("ChiSurf Fit", ("*.fit.cs.pto",)), ("ChiSurf Project", ("*.cs.pto
 PROJECT_SUFFIX = ".cs.pto"
 #: Server events after which the science may have changed (one undo step is recorded).
 RECORD_TOPICS = (
-    "fit.updated", "fit.ran", "fit.created", "fit.added", "fit.removed", "fit.cleared",
-    "fit.dataset_changed", "fit.mask_changed", "fit.result_idx_changed", "fit.group.",
-    "model.", "dataset.added", "dataset.removed", "dataset.cleared",
+    "fit.updated",
+    "fit.ran",
+    "fit.created",
+    "fit.added",
+    "fit.removed",
+    "fit.cleared",
+    "fit.dataset_changed",
+    "fit.mask_changed",
+    "fit.result_idx_changed",
+    "fit.group.",
+    "model.",
+    "dataset.added",
+    "dataset.removed",
+    "dataset.cleared",
 )
 #: The question of the close guard.
 SAVE_OPTIONS = (("save", "Save"), ("discard", "Don't Save"), ("cancel", "Cancel"))
@@ -111,7 +122,9 @@ class ProjectChannel:
 
         server = session.server
         self.client = ChisurfClient(
-            cmd_port=server.cmd_port, pub_port=server.pub_port, host=server.host,
+            cmd_port=server.cmd_port,
+            pub_port=server.pub_port,
+            host=server.host,
             timeout_ms=CALL_TIMEOUT_MS,
         )
         self.client.connect()
@@ -379,7 +392,9 @@ class ShellProject:
         """Connect to *session*, follow its events and take the undo baseline."""
         self._session = session
         if getattr(session, "server", None) is None:
-            self.status = tr("This session has no local server: the project actions are not available.")
+            self.status = tr(
+                "This session has no local server: the project actions are not available."
+            )
             return
         try:
             self.channel = ProjectChannel(session)
@@ -495,8 +510,11 @@ class ShellProject:
             self._last_fingerprint = snapshot_fingerprint(self.channel.capture(self.document.name))
             return result
 
-        return self._run(tr("Going to the history step…"), call,
-                         lambda result: result is not None and self._refresh_docks())
+        return self._run(
+            tr("Going to the history step…"),
+            call,
+            lambda result: result is not None and self._refresh_docks(),
+        )
 
     def clear_history(self) -> bool:
         """Forget the history's steps; what is open stays and is the new starting point."""
@@ -560,7 +578,10 @@ class ShellProject:
                 )
             elif quitting and not content and _setting("gui", "confirm_close_program", True):
                 self.dialogs.confirm(
-                    tr("Quit"), tr("Quit ChiSurf?"), lambda yes: yes and then(), default=False,
+                    tr("Quit"),
+                    tr("Quit ChiSurf?"),
+                    lambda yes: yes and then(),
+                    default=False,
                 )
             else:
                 then()
@@ -589,7 +610,9 @@ class ShellProject:
         title = tr("Export Project as .cs.pto") if save_as else tr("Save Project")
         name = display_name(self.document.name if self.document.name != "untitled" else None)
         self.open_file_dialog(
-            title, "save", lambda path: self._save_file(Path(path), then),
+            title,
+            "save",
+            lambda path: self._save_file(Path(path), then),
             filename=f"{name}{PROJECT_SUFFIX}",
         )
         return True
@@ -620,7 +643,9 @@ class ShellProject:
                 then()
 
         return self._run(
-            tr("Saving the project…"), call, after,
+            tr("Saving the project…"),
+            call,
+            after,
             failed=lambda error: self.dialogs.message(tr("Save Failed"), str(error)),
         )
 
@@ -666,7 +691,9 @@ class ShellProject:
                 then()
 
         return self._run(
-            tr("Saving the project…"), call, after,
+            tr("Saving the project…"),
+            call,
+            after,
             failed=lambda error: self.dialogs.message(tr("Save Failed"), str(error)),
         )
 
@@ -685,12 +712,12 @@ class ShellProject:
                 return True
             self.dialogs.message(
                 tr("Open Project Failed"),
-                tr("Projects in the database are opened with the project browser, which is not available here."),
+                tr(
+                    "Projects in the database are opened with the project browser, which is not available here."
+                ),
             )
             return False
-        return self.guard(
-            lambda: self.open_file_dialog(tr("Open Project"), "open", self.open_path)
-        )
+        return self.guard(lambda: self.open_file_dialog(tr("Open Project"), "open", self.open_path))
 
     def open_recent(self, path: str) -> bool:
         """A *Recent Projects* entry: guard, then open it."""
@@ -730,7 +757,9 @@ class ShellProject:
             self.status = tr("Opened {path}.").format(path=path)
 
         return self._run(
-            tr("Opening the project…"), call, after,
+            tr("Opening the project…"),
+            call,
+            after,
             failed=lambda error: self.dialogs.message(tr("Open Project Failed"), str(error)),
         )
 
@@ -793,7 +822,9 @@ class ShellProject:
             return storage.import_preview(path, client=self._import_client)
 
         self._run(
-            tr("Checking the archive…"), preview, ask,
+            tr("Checking the archive…"),
+            preview,
+            ask,
             failed=lambda error: self.dialogs.message(tr("Import Failed"), str(error)),
         )
 
@@ -834,9 +865,13 @@ class ShellProject:
                         tr("ChiSurf has been reinitialized. All scientific data has been cleared."),
                     )
 
-            failed_title = tr("Reinitialization Error") if reinitialize else tr("Close Project Failed")
+            failed_title = (
+                tr("Reinitialization Error") if reinitialize else tr("Close Project Failed")
+            )
             self._run(
-                tr("Closing the project…"), call, after,
+                tr("Closing the project…"),
+                call,
+                after,
                 failed=lambda error: self.dialogs.message(failed_title, str(error)),
             )
 
@@ -937,9 +972,9 @@ class ShellProject:
             name = next((r["name"] for r in self.data.datasets.fits if r["uid"] == uid), uid)
             self.dialogs.confirm(
                 tr("Close fit"),
-                tr("Remove the fit {name}? Its window closes and the fit leaves the session.").format(
-                    name=name
-                ),
+                tr(
+                    "Remove the fit {name}? Its window closes and the fit leaves the session."
+                ).format(name=name),
                 lambda yes, u=uid: self._fit_answer(u, yes),
                 default=False,
             )
@@ -977,7 +1012,9 @@ class ShellProject:
 
     def _fits_loaded(self, result: dict, path: str) -> None:
         count = len(result.get("fit_uids") or [])
-        self.status = tr("{count} fit(s) loaded from {name}.").format(count=count, name=Path(path).name)
+        self.status = tr("{count} fit(s) loaded from {name}.").format(
+            count=count, name=Path(path).name
+        )
         self.data._dirty |= {"datasets", "fits", "windows", "current"}
         self.shell.request_frame()
 
@@ -1092,7 +1129,10 @@ class ShellProject:
 
         model = RdaAxisForm(on_saved=updated)
         self.form = FormDialog(
-            tr("FRET RDA axis"), load_view("fret_rda_axis"), model, (("close", "Close"),),
+            tr("FRET RDA axis"),
+            load_view("fret_rda_axis"),
+            model,
+            (("close", "Close"),),
             lambda key: self._close_form(),
         )
 
@@ -1108,7 +1148,10 @@ class ShellProject:
 
         spec = json.loads(VIEW_JSON.read_text(encoding="utf-8"))
         self.form = FormDialog(
-            tr("Data loading"), spec, DataLoadingSettingsModel(), (("close", "Close"),),
+            tr("Data loading"),
+            spec,
+            DataLoadingSettingsModel(),
+            (("close", "Close"),),
             lambda key: self._close_form(),
         )
 
@@ -1123,9 +1166,13 @@ class ShellProject:
         self.dialogs.confirm(
             tr("Reset local settings"),
             tr("Reset your local settings to the shipped defaults?"),
-            lambda yes: yes and self._done(
-                clear_settings_folder, tr("Settings Reset"),
-                tr("Local settings have been reset successfully."),
+            lambda yes: (
+                yes
+                and self._done(
+                    clear_settings_folder,
+                    tr("Settings Reset"),
+                    tr("Local settings have been reset successfully."),
+                )
             ),
         )
 
@@ -1133,7 +1180,9 @@ class ShellProject:
         """*Clear logging files*."""
         from chisurf.core.settings.cleanup import clear_logging_files
 
-        self._done(clear_logging_files, tr("Logging files"), tr("The logging files have been cleared."))
+        self._done(
+            clear_logging_files, tr("Logging files"), tr("The logging files have been cleared.")
+        )
 
     def clear_user_styles(self) -> None:
         """*Clear user styles*: the style files in the settings folder."""
@@ -1148,7 +1197,9 @@ class ShellProject:
                 _log.warning("could not delete style file %s: %s", path, exc)
         self.dialogs.message(
             tr("Styles Reset"),
-            tr("User style files have been cleared. Restart the application to apply default styles.")
+            tr(
+                "User style files have been cleared. Restart the application to apply default styles."
+            )
             if files
             else tr("No user style files found."),
         )
@@ -1158,7 +1209,8 @@ class ShellProject:
         from chisurf.core.settings.cleanup import clear_user_plugins_folder
 
         self._done(
-            clear_user_plugins_folder, tr("User Plugins Reset"),
+            clear_user_plugins_folder,
+            tr("User Plugins Reset"),
             tr("User plugins folder has been cleared. Restart the application to apply changes."),
         )
 
@@ -1173,14 +1225,21 @@ class ShellProject:
     # ── drawing ───────────────────────────────────────────────────────────
 
     def open_file_dialog(
-        self, title: str, mode: str, done: Callable[[str], Any], *, filename: str = "",
+        self,
+        title: str,
+        mode: str,
+        done: Callable[[str], Any],
+        *,
+        filename: str = "",
         filters: Any = PROJECT_FILTER,
     ) -> None:
         """A file dialog over the shell (project files unless *filters* says otherwise); *done(path)* gets the choice."""
         from emtk.dialog_window import DialogWindow
         from emtk.file_dialog import FileDialog
 
-        directory = str(Path(self.document.path).parent) if self.document.path else str(_working_path())
+        directory = (
+            str(Path(self.document.path).parent) if self.document.path else str(_working_path())
+        )
         self.file_dialog = FileDialog(
             title, mode=mode, filters=filters, directory=directory, filename=filename
         )

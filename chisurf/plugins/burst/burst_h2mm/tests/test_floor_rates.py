@@ -32,7 +32,10 @@ def _analysis(observed=T_BURSTS):
     rates = trans / BASE
     np.fill_diagonal(rates, 0.0)
     return SimpleNamespace(
-        fret=np.array([0.03, 0.42, 0.87]), trans_rates=rates, base_time_s=BASE, observed_time_s=observed
+        fret=np.array([0.03, 0.42, 0.87]),
+        trans_rates=rates,
+        base_time_s=BASE,
+        observed_time_s=observed,
     )
 
 
@@ -49,7 +52,9 @@ def test_the_bound_is_one_event_in_the_burst_time():
 
 
 def test_burst_time_is_first_to_last_photon_of_each_burst():
-    data = prepare_bursts([np.array([0, 10, 30]), np.array([100, 105])], [np.zeros(3), np.zeros(2)], 2)
+    data = prepare_bursts(
+        [np.array([0, 10, 30]), np.array([100, 105])], [np.zeros(3), np.zeros(2)], 2
+    )
     assert data.total_time == 30 + 5
 
 

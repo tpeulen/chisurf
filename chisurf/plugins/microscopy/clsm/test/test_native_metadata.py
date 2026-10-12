@@ -25,7 +25,9 @@ def test_simulated_ptu_preserves_timing_and_photons(tmp_path):
     assert len(actual) == 1 and actual[0]["value"] == 128
     assert data.header.number_of_micro_time_channels == 128
     assert np.isclose(data.header.micro_time_resolution, 0.064e-9)
-    assert np.isclose(data.header.macro_time_resolution, 128 * 0.064e-9)  # the laser sync, not the 10 ms window
+    assert np.isclose(
+        data.header.macro_time_resolution, 128 * 0.064e-9
+    )  # the laser sync, not the 10 ms window
     np.testing.assert_array_equal(data.micro_times, sim.tttr.micro_times)
     image = clsm_from_scan(data, n_pixel=4, channels=[0, 1])
     counts = representation(image, data)

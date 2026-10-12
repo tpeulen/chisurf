@@ -549,7 +549,9 @@ class SpotFinderApp(ImApp):
     def image_view(self, box):
         # The two captions share one column, as wide as the longer translation ("Région sélectionnée" ran into its combo
         # at the fixed 110 px the English captions fit in).
-        column = 8.0 + max(im.calc_text_size(tr(t))[0] for t in ("Filter regions", "Selected region"))
+        column = 8.0 + max(
+            im.calc_text_size(tr(t))[0] for t in ("Filter regions", "Selected region")
+        )
         im.text(tr("Filter regions"))
         im.same_line(column)
         im.set_next_item_width(-1)

@@ -16,9 +16,15 @@ from chisurf.core.datastore import column_names, numeric_column
 from chisurf.plugins.burst.burst_browser.view_model import BurstBrowserViewModel
 
 HEADER = [
-    "First Photon", "Last Photon", "Duration (ms)", "Number of Photons",
-    "Number of Photons (green)", "Number of Photons (red)", "Number of Photons (yellow)",
-    "S prompt green (kHz) | 0-2048", "S prompt red (kHz) | 0-2048",
+    "First Photon",
+    "Last Photon",
+    "Duration (ms)",
+    "Number of Photons",
+    "Number of Photons (green)",
+    "Number of Photons (red)",
+    "Number of Photons (yellow)",
+    "S prompt green (kHz) | 0-2048",
+    "S prompt red (kHz) | 0-2048",
     "S delayed yellow (kHz) | 2048-4095",
 ]
 # donor-only burst (no red, no yellow photon), FRET burst, burst with no yellow photon

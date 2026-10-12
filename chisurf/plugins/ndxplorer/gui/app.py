@@ -149,10 +149,9 @@ def _add_guide(app):
     ``guide.json`` beside this module, its targets are the controls ndX's own forms drew last frame, and
     it opens the demo table when nothing is loaded, and is drawn in the same frame as the window so the card lies over the plots.
     """
+    from emtk.i18n import tr
     from ndxplorer.app.features import Feature
     from ndxplorer.app.menus import build_menu_bar
-
-    from emtk.i18n import tr
 
     from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
     from chisurf.plugins.emtk_layout import action_caption, action_tooltip

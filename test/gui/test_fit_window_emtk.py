@@ -467,7 +467,9 @@ def test_the_auto_range_button_restores_a_zoomed_decay_panel(window, qapp, tmp_p
     rect = canvas._auto_button_rect
     assert rect is not None, "a zoomed panel shows its A"
     x, y, w, h = decay.box
-    assert x <= rect[0] and rect[0] + rect[2] <= x + w and y <= rect[1] and rect[1] + rect[3] <= y + h
+    assert (
+        x <= rect[0] and rect[0] + rect[2] <= x + w and y <= rect[1] and rect[1] + rect[3] <= y + h
+    )
     _move(window, _point(rect))
     _frames(qapp, window)
     _host(window).grab().save(str(tmp_path / "fit_window_zoomed.png"))

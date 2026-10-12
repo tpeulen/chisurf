@@ -202,7 +202,9 @@ def test_closing_a_fit_window_keeps_the_fit(shell, monkeypatch):
     ``test_emtk_shell_session.py``), as in the Qt shell."""
     from chisurf.core.settings import cs_settings
 
-    monkeypatch.setitem(cs_settings, "gui", {**(cs_settings.get("gui") or {}), "confirm_close_fit": False})
+    monkeypatch.setitem(
+        cs_settings, "gui", {**(cs_settings.get("gui") or {}), "confirm_close_fit": False}
+    )
     driver = Driver(shell, size=(1200, 900))
     _load(driver, shell, KRISTINE)
     uid = _add_fit(driver, shell)
@@ -358,7 +360,9 @@ def test_the_model_editor_is_the_models_view_json_written_through_the_api(shell)
     driver.click(f"editor.{attr}.0")
     _settle(
         driver,
-        lambda: _idle(shell) and (editor.editor or {}).get("state", {}).get("diffusion_mode") == "mdf",
+        lambda: (
+            _idle(shell) and (editor.editor or {}).get("state", {}).get("diffusion_mode") == "mdf"
+        ),
         "the MDF mode",
     )
     assert api.model_state_get(fit_uid=uid)["state"]["diffusion_mode"] == "mdf"
@@ -410,9 +414,9 @@ def test_the_model_editor_is_the_models_view_json_written_through_the_api(shell)
     names = [doc.name for doc in window.code_face.documents]
     assert names[:2] == ["general.view.json", "general.py"], names
     applied = []
-    data.session.api.model_code_apply = lambda path, code, fit_uid=None: applied.append(
-        (path, fit_uid)
-    ) or {"ok": True, "message": "Saved (test)"}
+    data.session.api.model_code_apply = lambda path, code, fit_uid=None: (
+        applied.append((path, fit_uid)) or {"ok": True, "message": "Saved (test)"}
+    )
     window.code_face.apply()
     _settle(driver, lambda: _idle(shell) and applied, "the apply call")
     assert applied[0][0].endswith("general.py") and applied[0][1] == uid
@@ -541,8 +545,12 @@ def test_a_global_fit_is_made_and_run_in_the_emtk_session(shell):
         _settle(driver, lambda: _idle(shell), "the candidate")
         driver.click(f"editor.{add}")
         _settle(driver, lambda: _idle(shell), "the fit added")
-    local = [r["name"] for r in data.editor._sources[next(
-        k for k in data.editor._sources if k.startswith("records_"))]]
+    local = [
+        r["name"]
+        for r in data.editor._sources[
+            next(k for k in data.editor._sources if k.startswith("records_"))
+        ]
+    ]
     assert local == [names[first], names[second]]
     driver.frame(3)
     driver.screenshot(SHOTS / "emtk_shell_global_fit.png")
@@ -567,8 +575,10 @@ def test_a_global_fit_is_made_and_run_in_the_emtk_session(shell):
     data.analysis.dataset_changed(1)
     _settle(
         driver,
-        lambda: _idle(shell)
-        and next(m for m in data.analysis.info["members"] if m["selected"])["local_idx"] == 1,
+        lambda: (
+            _idle(shell)
+            and next(m for m in data.analysis.info["members"] if m["selected"])["local_idx"] == 1
+        ),
         "the second member",
     )
 
@@ -600,7 +610,10 @@ def test_a_dataset_dragged_onto_a_fit_window_is_attached_to_that_fit(shell):
     surface.on_pointer_press(*start, LEFT_BUTTON, 0)
     driver.frame()
     for step in range(1, 9):
-        point = (start[0] + (end[0] - start[0]) * step / 8, start[1] + (end[1] - start[1]) * step / 8)
+        point = (
+            start[0] + (end[0] - start[0]) * step / 8,
+            start[1] + (end[1] - start[1]) * step / 8,
+        )
         surface.on_pointer_move(*point, LEFT_BUTTON, 0)
         driver.frame()
     assert data.dragged is not None and data.window_at(*end) == uid

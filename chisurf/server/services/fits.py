@@ -756,7 +756,10 @@ def fit_import(state: SessionState, filename: str, event_bus: Any = None) -> Ser
         for offset, dataset in enumerate(restored.datasets):
             event_bus.publish(
                 "dataset.added",
-                {"dataset_index": first_dataset + offset, "name": str(getattr(dataset, "name", ""))},
+                {
+                    "dataset_index": first_dataset + offset,
+                    "name": str(getattr(dataset, "name", "")),
+                },
             )
         for offset, uid in enumerate(uids):
             event_bus.publish("fit.created", {"fit_index": first_fit + offset, "fit_uid": uid})
@@ -1380,9 +1383,7 @@ def fit_set_grid_range(
     else:
         yy, xx = np.indices((ny, nx))
         mask = ((xx >= x0) & (xx <= x1) & (yy >= y0) & (yy <= y1)).ravel()
-    return fit_mask_set(
-        state, mask.astype(float).tolist(), fit_index=idx, event_bus=event_bus
-    )
+    return fit_mask_set(state, mask.astype(float).tolist(), fit_index=idx, event_bus=event_bus)
 
 
 def fit_model_search_available(
@@ -1741,7 +1742,9 @@ def fit_posterior(
     try:
         eng.run(p_value=float(p_value), **(options or {}))
     except Exception as e:
-        return service_error(f"{engine} engine failed: {e}", error_code=OPERATION_FAILED, exception=e)
+        return service_error(
+            f"{engine} engine failed: {e}", error_code=OPERATION_FAILED, exception=e
+        )
 
     payload: dict[str, Any] = {
         "ok": True,
@@ -1906,7 +1909,9 @@ def fit_derived(
             max_draws=int(max_draws),
         )
     except Exception as e:
-        return service_error(f"derived-quantity report failed: {e}", error_code=OPERATION_FAILED, exception=e)
+        return service_error(
+            f"derived-quantity report failed: {e}", error_code=OPERATION_FAILED, exception=e
+        )
 
     # nan/inf do not survive JSON; a missing end is None rather than a number
     # the caller would have to know to distrust.

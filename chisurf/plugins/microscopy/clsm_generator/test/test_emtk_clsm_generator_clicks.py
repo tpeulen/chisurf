@@ -14,10 +14,10 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.microscopy.clsm_generator.gui.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
-from chisurf.plugins.emtk_layout import action_caption
 
 SIZES = [(1200, 800), (900, 650)]
 

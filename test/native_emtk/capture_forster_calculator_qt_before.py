@@ -57,12 +57,16 @@ def main() -> None:
         "acceptor": widget.acceptor_combo.currentText(),
         "result": widget.result_label.text(),
         "apply_enabled": widget.apply_btn.isEnabled(),
-        "donor_options": [widget.donor_combo.itemText(i) for i in range(widget.donor_combo.count())],
+        "donor_options": [
+            widget.donor_combo.itemText(i) for i in range(widget.donor_combo.count())
+        ],
         "acceptor_options": [
             widget.acceptor_combo.itemText(i) for i in range(widget.acceptor_combo.count())
         ],
     }
-    (out / "qt_forster_calculator.json").write_text(json.dumps(inventory, indent=2, ensure_ascii=False))
+    (out / "qt_forster_calculator.json").write_text(
+        json.dumps(inventory, indent=2, ensure_ascii=False)
+    )
     print(json.dumps(inventory, indent=2, ensure_ascii=False))
     widget.close()
 

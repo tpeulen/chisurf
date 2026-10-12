@@ -101,9 +101,11 @@ def image_array_png(value: typing.Any) -> bytes | None:
     array = value
     if array.ndim == 3 and array.shape[2] == 1:
         array = array[:, :, 0]
-    if not (
-        array.ndim == 2 or (array.ndim == 3 and array.shape[2] in (3, 4))
-    ) or min(array.shape[:2]) < 1 or array.dtype.kind not in "biuf":
+    if (
+        not (array.ndim == 2 or (array.ndim == 3 and array.shape[2] in (3, 4)))
+        or min(array.shape[:2]) < 1
+        or array.dtype.kind not in "biuf"
+    ):
         return None
     if array.ndim == 2:
         data = array.astype(float)

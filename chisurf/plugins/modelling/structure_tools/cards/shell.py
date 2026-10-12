@@ -358,7 +358,7 @@ class CardShell(TourTarget, ImApp):
             ],
             remember=self.remember,
         )
-        return None if pressed is None else str(pressed)[len("tab_"):]
+        return None if pressed is None else str(pressed)[len("tab_") :]
 
     def help_buttons(self) -> list[dict]:
         return [

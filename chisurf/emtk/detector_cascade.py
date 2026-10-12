@@ -92,17 +92,36 @@ class DetectorCascade:
 
     SPEC = {
         "sections": [
-            {"type": "choice", "attr": "setup", "label": "Setup", "options_source": "setup_names",
-             "description": "A saved detector setup: its detectors, LUTs and file type."},
-            {"type": "choice", "attr": "detector", "label": "Detector",
-             "options_source": "detector_names",
-             "description": "The detector of the setup whose routing channels are read."},
-            {"type": "choice", "attr": "routine", "label": "Routine", "options_source": "routine_names",
-             "description": "The TTTR container type of the file."},
-            {"type": "value", "attr": "channels", "kind": "str", "label": "Routing chs",
-             "placeholder": "e.g. 0,3 or from detector setup",
-             "description": "Routing channels used for the histogram; populated from the detector "
-                            "setup or entered manually (comma-separated)."},
+            {
+                "type": "choice",
+                "attr": "setup",
+                "label": "Setup",
+                "options_source": "setup_names",
+                "description": "A saved detector setup: its detectors, LUTs and file type.",
+            },
+            {
+                "type": "choice",
+                "attr": "detector",
+                "label": "Detector",
+                "options_source": "detector_names",
+                "description": "The detector of the setup whose routing channels are read.",
+            },
+            {
+                "type": "choice",
+                "attr": "routine",
+                "label": "Routine",
+                "options_source": "routine_names",
+                "description": "The TTTR container type of the file.",
+            },
+            {
+                "type": "value",
+                "attr": "channels",
+                "kind": "str",
+                "label": "Routing chs",
+                "placeholder": "e.g. 0,3 or from detector setup",
+                "description": "Routing channels used for the histogram; populated from the detector "
+                "setup or entered manually (comma-separated).",
+            },
         ]
     }
 
@@ -205,7 +224,11 @@ class DetectorCascade:
             windows = info.get("micro_time_ranges")
             if hasattr(reader, "micro_time_ranges"):
                 reader.micro_time_ranges = windows
-            elif hasattr(reader, "micro_time_range") and isinstance(windows, (list, tuple)) and windows:
+            elif (
+                hasattr(reader, "micro_time_range")
+                and isinstance(windows, (list, tuple))
+                and windows
+            ):
                 first = windows[0]
                 if isinstance(first, dict):
                     first = first.get("range", first.get("values", first))
@@ -235,14 +258,38 @@ class IcsRoi:
 
     SPEC = {
         "sections": [
-            {"type": "value", "attr": "x0", "kind": "int", "label": "X range", "minimum": 0,
-             "description": "First column of each frame that enters the correlation."},
-            {"type": "value", "attr": "x1", "kind": "int", "label": "to", "minimum": -1,
-             "description": "Last column (−1: the last of the frame)."},
-            {"type": "value", "attr": "y0", "kind": "int", "label": "Y range", "minimum": 0,
-             "description": "First row of each frame that enters the correlation."},
-            {"type": "value", "attr": "y1", "kind": "int", "label": "to", "minimum": -1,
-             "description": "Last row (−1: the last of the frame)."},
+            {
+                "type": "value",
+                "attr": "x0",
+                "kind": "int",
+                "label": "X range",
+                "minimum": 0,
+                "description": "First column of each frame that enters the correlation.",
+            },
+            {
+                "type": "value",
+                "attr": "x1",
+                "kind": "int",
+                "label": "to",
+                "minimum": -1,
+                "description": "Last column (−1: the last of the frame).",
+            },
+            {
+                "type": "value",
+                "attr": "y0",
+                "kind": "int",
+                "label": "Y range",
+                "minimum": 0,
+                "description": "First row of each frame that enters the correlation.",
+            },
+            {
+                "type": "value",
+                "attr": "y1",
+                "kind": "int",
+                "label": "to",
+                "minimum": -1,
+                "description": "Last row (−1: the last of the frame).",
+            },
         ]
     }
 

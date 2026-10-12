@@ -927,7 +927,9 @@ class MleViewModel(RunPickerMixin):
         try:
             fingerprint = self.session.batch_fingerprint()
             if not force and self.burst_results and fingerprint == self.held_fingerprint:
-                self.status_text = "Unchanged — kept the previous Burst MLE result (Restart fits again)"
+                self.status_text = (
+                    "Unchanged — kept the previous Burst MLE result (Restart fits again)"
+                )
                 self.restart_attention = True
                 self.notify("batch")
                 return

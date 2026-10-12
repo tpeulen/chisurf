@@ -462,14 +462,18 @@ class ChannelDefinitionWidget:
                     mark("Micro Time Ranges"),
                     150,
                     True,
-                    mark("Micro-time gates as start:end in raw TAC channels; several with , or ; (0:10;20:30). A reversed range is swapped."),
+                    mark(
+                        "Micro-time gates as start:end in raw TAC channels; several with , or ; (0:10;20:30). A reversed range is swapped."
+                    ),
                 ),
                 (
                     "g",
                     mark("G-Factor"),
                     70,
                     True,
-                    mark("Polarization sensitivity correction of the detector; an empty cell means 1.0."),
+                    mark(
+                        "Polarization sensitivity correction of the detector; an empty cell means 1.0."
+                    ),
                 ),
                 ("l1", "l1", 60, True, mark("Polarization mixing correction l1.")),
                 ("l2", "l2", 60, True, mark("Polarization mixing correction l2.")),
@@ -478,7 +482,9 @@ class ChannelDefinitionWidget:
                     mark("G-Factor Channels"),
                     120,
                     True,
-                    mark("TAC range start-end used to calculate the G factor from the loaded decays."),
+                    mark(
+                        "TAC range start-end used to calculate the G factor from the loaded decays."
+                    ),
                 ),
                 ("calc", "", 62, False, mark("Calculate the G factor of this detector.")),
                 ("delete", "", 62, False, mark("Remove this detector.")),
@@ -489,7 +495,9 @@ class ChannelDefinitionWidget:
             {
                 "calc": (
                     mark("Calc G"),
-                    mark("Choose an independent TTTR reference and open full native G-factor calibration, including background, mixing and archived provenance."),
+                    mark(
+                        "Choose an independent TTTR reference and open full native G-factor calibration, including background, mixing and archived provenance."
+                    ),
                     self._calc_g,
                 ),
                 "delete": (
@@ -509,7 +517,9 @@ class ChannelDefinitionWidget:
                     mark("Window Name"),
                     160,
                     True,
-                    mark("Name of the PIE window. Double-click, type and press Enter to rename it."),
+                    mark(
+                        "Name of the PIE window. Double-click, type and press Enter to rename it."
+                    ),
                 ),
                 ("start", mark("Start"), 90, True, mark("First TAC channel of the window.")),
                 ("end", mark("End"), 90, True, mark("Exclusive upper TAC channel of the window.")),
@@ -533,14 +543,18 @@ class ChannelDefinitionWidget:
                     "LUT",
                     0,
                     False,
-                    mark("The TAC linearization table assigned to the channel, or none (raw reading)."),
+                    mark(
+                        "The TAC linearization table assigned to the channel, or none (raw reading)."
+                    ),
                 ),
                 (
                     "shift",
                     mark("Shift"),
                     110,
                     True,
-                    mark("Micro-time shift in bins applied after linearization. Double-click, type and press Enter."),
+                    mark(
+                        "Micro-time shift in bins applied after linearization. Double-click, type and press Enter."
+                    ),
                 ),
             ),
         )
@@ -857,7 +871,9 @@ class ChannelDefinitionWidget:
         changed, picked = im.combo("##setup_choice", index, [tr(names[0]), *names[1:]])
         self._item(
             "setup_choice",
-            tr("Choose a saved detector setup; its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition."),
+            tr(
+                "Choose a saved detector setup; its detectors, PIE windows, reading routine, LUTs and optical setup replace the working definition."
+            ),
         )
         if changed:
             bar.select("" if picked == 0 else names[picked])
@@ -869,7 +885,12 @@ class ChannelDefinitionWidget:
             self._used("save")
         self.item_rects["save"] = im.get_item_rect()
         for name, label, tip, action in (
-            ("rename", tr("Rename"), tr("Give the selected saved setup another name."), bar.request_rename),
+            (
+                "rename",
+                tr("Rename"),
+                tr("Give the selected saved setup another name."),
+                bar.request_rename,
+            ),
             (
                 "delete",
                 tr("Delete"),
@@ -887,7 +908,9 @@ class ChannelDefinitionWidget:
         changed, value = im.checkbox(tr("Public"), bool(self.public))
         self._item(
             "public",
-            tr("When checked, the setup is visible to all users in the MMFDB; it takes effect with Save. Only the owner of a saved setup can change this."),
+            tr(
+                "When checked, the setup is visible to all users in the MMFDB; it takes effect with Save. Only the owner of a saved setup can change this."
+            ),
         )
         im.end_disabled()
         if changed:
@@ -903,7 +926,9 @@ class ChannelDefinitionWidget:
         changed, picked = im.combo("##calibration_choice", picked_index, shown_items)
         self._item(
             "calibration",
-            tr("Pick a stored calibration snapshot of the selected setup: its G factor, l1 and l2 are applied to the detectors. Latest leaves the factors as they are."),
+            tr(
+                "Pick a stored calibration snapshot of the selected setup: its G factor, l1 and l2 are applied to the detectors. Latest leaves the factors as they are."
+            ),
         )
         if changed:
             bar.select_calibration(items[picked])
@@ -920,7 +945,9 @@ class ChannelDefinitionWidget:
         im.pop_style_color(3)
         self._item(
             "page_help",
-            tr("Explain the page: setups, reading routine, PIE windows, detectors and the units of micro-time ranges."),
+            tr(
+                "Explain the page: setups, reading routine, PIE windows, detectors and the units of micro-time ranges."
+            ),
         )
 
     # ------------------------------------------------------------------ TTTR reading
@@ -937,7 +964,9 @@ class ChannelDefinitionWidget:
             changed, index = im.combo("##tttr_format", options.index(shown), options)
             self._item(
                 "file_type",
-                tr("The TTTR container format used to read measurements; Auto detects it from the file."),
+                tr(
+                    "The TTTR container format used to read measurements; Auto detects it from the file."
+                ),
             )
             if changed:
                 reading["file_type"] = options[index]
@@ -949,7 +978,9 @@ class ChannelDefinitionWidget:
                 self._used("read")
             self._item(
                 "read",
-                tr("Read a measurement or BH SET calibration: macro and micro time resolution from the header, and the decay of every routing channel."),
+                tr(
+                    "Read a measurement or BH SET calibration: macro and micro time resolution from the header, and the decay of every routing channel."
+                ),
             )
 
         def number(key, label, tip):
@@ -988,7 +1019,8 @@ class ChannelDefinitionWidget:
         file_width = max(
             90.0,
             min(
-                FIELD_W + 40.0, im.get_content_region_avail()[0] - left - self._width(tr("Read")) - 16.0
+                FIELD_W + 40.0,
+                im.get_content_region_avail()[0] - left - self._width(tr("Read")) - 16.0,
             ),
         )
         self._grid(
@@ -1030,7 +1062,9 @@ class ChannelDefinitionWidget:
             im.pop_style_color()
         self._item(
             "plot",
-            tr("Show or hide the micro-time decay preview with the PIE windows and detector gates overlaid."),
+            tr(
+                "Show or hide the micro-time decay preview with the PIE windows and detector gates overlaid."
+            ),
         )
 
     # ------------------------------------------------------------------ tables
@@ -1703,7 +1737,9 @@ class ChannelDefinitionWidget:
                 self._used("add_detector")
             self._item(
                 "add_detector",
-                tr("Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table."),
+                tr(
+                    "Add a detector (channels 0, 1; range 0:2048) with a free name; rename and edit it in the table."
+                ),
             )
         width = im.get_content_region_avail()[0]
         self._compact = width < 520.0
@@ -1739,7 +1775,9 @@ class ChannelDefinitionWidget:
         )
         self._item(
             "apply_lut",
-            tr("When checked, each routing channel's assigned LUT linearizes the raw micro-times at read time (needed for e.g. SPC-130). If a used channel has no LUT, you are offered the LUT calculator."),
+            tr(
+                "When checked, each routing channel's assigned LUT linearizes the raw micro-times at read time (needed for e.g. SPC-130). If a used channel has no LUT, you are offered the LUT calculator."
+            ),
         )
         if changed:
             self._toggle_apply_lut(value)
@@ -1750,17 +1788,23 @@ class ChannelDefinitionWidget:
                 {
                     "label": tr("Assign LUT..."),
                     "key": "assign",
-                    "tip": tr("Assign a LUT file (.npy / .npz / .txt) to the selected channel row."),
+                    "tip": tr(
+                        "Assign a LUT file (.npy / .npz / .txt) to the selected channel row."
+                    ),
                 },
                 {
                     "label": tr("Configure LUTs..."),
                     "key": "configure",
-                    "tip": tr("Open the LUT tools: compute a LUT from the loaded calibration decay (linear region or automatic), assign, export or remove it."),
+                    "tip": tr(
+                        "Open the LUT tools: compute a LUT from the loaded calibration decay (linear region or automatic), assign, export or remove it."
+                    ),
                 },
                 {
                     "label": tr("Adjust shifts..."),
                     "key": "shifts",
-                    "tip": tr("Visually align the per-channel micro-time shifts on the (LUT-corrected) calibration decay; read a calibration file first."),
+                    "tip": tr(
+                        "Visually align the per-channel micro-time shifts on the (LUT-corrected) calibration decay; read a calibration file first."
+                    ),
                 },
             ],
             remember=lambda key: None,
@@ -1784,7 +1828,9 @@ class ChannelDefinitionWidget:
     def open_shift_adjuster(self):
         """Open the shift adjuster, or say that a calibration has to be read first."""
         if not self.model.preview:
-            self.status = tr("Adjust shifts: read a calibration TTTR file first (Read in the TTTR Reading routine) so the per-channel decays can be shown.")
+            self.status = tr(
+                "Adjust shifts: read a calibration TTTR file first (Read in the TTTR Reading routine) so the per-channel decays can be shown."
+            )
             return
         self._shift_draft = {
             int(k): int(v) for k, v in self.model.data.get("channel_shifts", {}).items()
@@ -1865,7 +1911,9 @@ class ChannelDefinitionWidget:
             tip = {
                 "reading": tr("File type, timing and binning used to read TTTR files."),
                 "windows": tr("PIE excitation windows (start and end TAC channel)."),
-                "detectors": tr("Detectors: routing channels, micro-time gates and polarization factors."),
+                "detectors": tr(
+                    "Detectors: routing channels, micro-time gates and polarization factors."
+                ),
                 "lut": tr("TAC linearization tables and micro-time shifts per routing channel."),
             }[key]
             if key == "detectors":
@@ -1878,7 +1926,9 @@ class ChannelDefinitionWidget:
                 )
                 self._item(
                     "polarization",
-                    tr("ON: each detector's routing channels are interleaved parallel/perpendicular (VV/VH) for anisotropy. OFF: one unpolarized stream per detector."),
+                    tr(
+                        "ON: each detector's routing channels are interleaved parallel/perpendicular (VV/VH) for anisotropy. OFF: one unpolarized stream per detector."
+                    ),
                 )
                 if changed:
                     self.model.data["polarization_resolved"] = value
@@ -1898,7 +1948,9 @@ class ChannelDefinitionWidget:
             draw_form(self._io_view, self, self._io_state)
             self.item_rects.update(self._io_state.rects)
         im.same_line()
-        optical = tr("Optical Setup...")  # measured as drawn: the translation is longer than the source
+        optical = tr(
+            "Optical Setup..."
+        )  # measured as drawn: the translation is longer than the source
         width = self._width(optical)
         im.dummy(
             max(im.get_content_region_avail()[0] - width - im.get_style().item_spacing[0], 0.0), 1.0
@@ -1909,7 +1961,9 @@ class ChannelDefinitionWidget:
             self._used("optical")
         self._item(
             "optical",
-            tr("Open the light-path editor: configure filters, dyes and detectors, and compute Foerster radii and cross-talk."),
+            tr(
+                "Open the light-path editor: configure filters, dyes and detectors, and compute Foerster radii and cross-talk."
+            ),
         )
         im.end_disabled()
         if self._future is not None or self._reference_future is not None:
@@ -2049,7 +2103,11 @@ class ChannelDefinitionWidget:
             im.text_wrapped(
                 tr("Are you sure you want to delete the setup '{name}'?").format(name=bar.selected)
             )
-            ok, ok_tip, keep = tr("Delete"), tr("Delete this saved setup from its store."), tr("Keep setup")
+            ok, ok_tip, keep = (
+                tr("Delete"),
+                tr("Delete this saved setup from its store."),
+                tr("Keep setup"),
+            )
         else:
             im.text_wrapped(
                 tr("A setup named '{name}' already exists. Do you want to overwrite it?").format(
@@ -2154,7 +2212,9 @@ class ChannelDefinitionWidget:
                 {
                     "label": tr("Compute TAC LUT"),
                     "key": "compute",
-                    "tip": tr("Build a TAC table from the selected channel histogram and the entered linear region."),
+                    "tip": tr(
+                        "Build a TAC table from the selected channel histogram and the entered linear region."
+                    ),
                 },
                 {
                     "label": tr("Auto-detect TAC LUT"),
@@ -2199,8 +2259,8 @@ class ChannelDefinitionWidget:
     def _compute_lut(self, start=None, stop=None):
         channel = self.lut_channel()
         if channel is None:
-            self.status = (
-                tr("Error: Define a detector or read a measurement to discover routing channels.")
+            self.status = tr(
+                "Error: Define a detector or read a measurement to discover routing channels."
             )
             return
         if self._call(self.model.compute_lut, channel, start, stop) is not None:
@@ -2233,9 +2293,9 @@ class ChannelDefinitionWidget:
             value = self._number_input(
                 f"shift_{channel}",
                 int(self._shift_draft.get(channel, 0)),
-                tr("Micro-time shift of routing channel {channel}, in bins (the histogram wraps).").format(
-                    channel=channel
-                ),
+                tr(
+                    "Micro-time shift of routing channel {channel}, in bins (the histogram wraps)."
+                ).format(channel=channel),
                 int,
                 f"shift_{channel}",
             )
@@ -2364,7 +2424,9 @@ class ChannelDefinitionWidget:
                 self.lut_stop = len(next(iter(self.model.raw_preview.values()))) - 1
             self.status = tr("Header timing and per-routing-channel decay histograms loaded.")
         except Exception as exc:
-            self.status = str(exc) if self._cancel.is_set() else tr("Error: {error}").format(error=exc)
+            self.status = (
+                str(exc) if self._cancel.is_set() else tr("Error: {error}").format(error=exc)
+            )
 
     def cancel_read(self):
         self._cancel.set()

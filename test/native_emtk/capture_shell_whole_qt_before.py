@@ -115,8 +115,14 @@ def _ribbon_corner(gui) -> list:
         else:
             continue
         if text:
-            rows.append({"kind": kind, "text": text, "tooltip": _clean(widget.toolTip())[:200],
-                         "visible": widget.isVisible()})
+            rows.append(
+                {
+                    "kind": kind,
+                    "text": text,
+                    "tooltip": _clean(widget.toolTip())[:200],
+                    "visible": widget.isVisible(),
+                }
+            )
     return rows
 
 

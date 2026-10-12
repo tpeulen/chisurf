@@ -57,7 +57,11 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
 
     folder = demo_folder() if folder is None else Path(folder)
     names = _names()
-    if not overwrite and all((folder / n).is_file() for n in names) and is_current(folder, names, DEMO):
+    if (
+        not overwrite
+        and all((folder / n).is_file() for n in names)
+        and is_current(folder, names, DEMO)
+    ):
         return folder
     folder.mkdir(parents=True, exist_ok=True)
     for name, seed in zip(names, DEMO["seeds"]):

@@ -127,7 +127,7 @@ def dock_category(key: str, known: dict[str, str | None]) -> str | None:
     *known* is :func:`plugin_categories` of the shell's plugins. ``None`` is core chrome.
     """
     if key.startswith(_PLUGIN_KEY):
-        return known.get(key[len(_PLUGIN_KEY):])
+        return known.get(key[len(_PLUGIN_KEY) :])
     docks = palette().get("docks") or {}
     if key in docks:
         return docks[key]

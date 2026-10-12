@@ -26,7 +26,10 @@ def test_each_state_of_a_colour_gets_its_own_dash(monkeypatch):
     monkeypatch.setattr(plots, "implot", fake)
     counts = np.ones((3, 1, 8))  # [state, colour, bin]
     decays = SimpleNamespace(
-        centers_ns=lambda: np.arange(8.0), micro_time_ns=True, colours=["green"], n_states=3,
+        centers_ns=lambda: np.arange(8.0),
+        micro_time_ns=True,
+        colours=["green"],
+        n_states=3,
         colour_counts=counts,
     )
     owner = plots.ResultPlots()

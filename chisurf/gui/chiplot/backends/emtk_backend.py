@@ -304,7 +304,6 @@ def _texture(data: np.ndarray, colormap, levels) -> tuple[Any, int, int]:
 LOG_AUTOSCALE_DECADES = 12.0
 
 
-
 def _on_screen(pixel: float, start: float, size: float) -> float:
     """A pixel coordinate kept on the plot area's edge when the axis sends it off to infinity.
 
@@ -317,6 +316,7 @@ def _on_screen(pixel: float, start: float, size: float) -> float:
     if pixel != pixel:  # NaN: the bound is meaningless here; sit on the near edge
         return float(start)
     return min(max(pixel, float(start) - 1.0), float(start) + float(size) + 1.0)
+
 
 class _Entry:
     """One item in a canvas's display list, and the handle the caller holds."""

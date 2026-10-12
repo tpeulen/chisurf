@@ -38,7 +38,12 @@ DEMO: dict[str, Any] = {
     "irf_sigma_ns": 0.1,
     "background_counts": 3.0,
     #: (key, rho in ns, scale)
-    "decays": [["fast", 0.2, 2000.0], ["slow", 16.0, 2000.0], ["batch1", 8.0, 1500.0], ["batch2", 30.0, 1500.0]],
+    "decays": [
+        ["fast", 0.2, 2000.0],
+        ["slow", 16.0, 2000.0],
+        ["batch1", 8.0, 1500.0],
+        ["batch2", 30.0, 1500.0],
+    ],
 }
 
 

@@ -117,10 +117,16 @@ def _expected(qy=0.8, emax=92000.0, n=1.33, donor=520.0, acceptor=590.0):
 def test_options_list_probes_by_the_spectrum_their_role_needs(db):
     model = ForsterCalculatorModel(open_database=db.opener())
     assert model.available
-    assert model.donor_options() == [("", ""), (db.ids["Acceptor"], "Acceptor"),
-                                     (db.ids["Donor"], "Donor")]
-    assert model.acceptor_options() == [("", ""), (db.ids["Acceptor"], "Acceptor"),
-                                        (db.ids["Donor"], "Donor")]
+    assert model.donor_options() == [
+        ("", ""),
+        (db.ids["Acceptor"], "Acceptor"),
+        (db.ids["Donor"], "Donor"),
+    ]
+    assert model.acceptor_options() == [
+        ("", ""),
+        (db.ids["Acceptor"], "Acceptor"),
+        (db.ids["Donor"], "Donor"),
+    ]
     assert db.opened == db.closed == 1
 
 
@@ -175,9 +181,12 @@ def test_spectra_without_a_shared_range_give_zero():
     model.set_donor(donor)
     model.set_acceptor(acceptor)
     assert model.r0 == 0.0 and "no spectral overlap" in model.status
-    assert overlap_curves(
-        {"wavelengths": blue, "intensity": blue}, {"wavelengths": red, "intensity": red}, 1.0
-    ) is None
+    assert (
+        overlap_curves(
+            {"wavelengths": blue, "intensity": blue}, {"wavelengths": red, "intensity": red}, 1.0
+        )
+        is None
+    )
 
 
 def test_unavailable_database_explains_itself():

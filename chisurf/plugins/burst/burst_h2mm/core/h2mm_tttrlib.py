@@ -163,7 +163,12 @@ def fit_states(
     for r in range(restarts):
         init = factory_model(n_states, data.n_streams, seed=None if seed is None else int(seed) + r)
         fit = eng.optimize(
-            _to_engine_model(init), int(max_iter), float(tol), MIN_TRANS, True, bool(single_precision)
+            _to_engine_model(init),
+            int(max_iter),
+            float(tol),
+            MIN_TRANS,
+            True,
+            bool(single_precision),
         )
         cand = _from_engine_model(fit, data.n_photons)
         if best is None or cand.loglik > best.loglik:

@@ -44,7 +44,9 @@ def test_the_native_reader_settings_take_the_height(qtbot):
     panel, inner, drop = _panel(qtbot)
     host = ControlHost(ReaderSettingsApp(TCSPCReader(record_provenance=False)), parent=panel)
     inner.addWidget(host)
-    SetupMixin._give_reader_settings_the_height(SimpleNamespace(layout_experiment_reader=inner), host)
+    SetupMixin._give_reader_settings_the_height(
+        SimpleNamespace(layout_experiment_reader=inner), host
+    )
     _settle(panel)
     assert host.height() > 500, host.height()
     assert drop.height() > 0, "the drop target stays visible"

@@ -36,7 +36,7 @@ def test_the_tables_take_the_dock_and_the_status_one_line(shell, size, share):  
     content = h - TAB_STRIP
     tables = data[3] + fits[3]
     assert tables >= share * content, (tables, content)
-    assert abs(data[3] - fits[3]) <= 1                     # 1:1
+    assert abs(data[3] - fits[3]) <= 1  # 1:1
     # Everything is inside the dock -- nothing scrolled away -- and what is left under the
     # buttons is the status line (one text line and its rule), not a slab of empty space.
     assert buttons[1] + buttons[3] <= bottom

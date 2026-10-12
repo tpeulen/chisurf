@@ -97,13 +97,19 @@ def test_kappa2_controls_regime_distribution_and_forster_radius(session):
     api, state = session
     uid = _fit(state, "FRET: Gaussian distances")
     model = state.fits[0].model
-    assert api.model_section_call("kappa2_controls:", "set_mode", {"mode": "slow"}, fit_uid=uid)["ok"]
+    assert api.model_section_call("kappa2_controls:", "set_mode", {"mode": "slow"}, fit_uid=uid)[
+        "ok"
+    ]
     assert model.orientation_parameter.mode == "slow"
-    shown = api.model_section_call("kappa2_controls:", "distribution", {"use_fast": True}, fit_uid=uid)
+    shown = api.model_section_call(
+        "kappa2_controls:", "distribution", {"use_fast": True}, fit_uid=uid
+    )
     assert shown["ok"] and shown["result"]["k2"] and shown["result"]["ratio"]
     applied = api.model_section_call(
-        "kappa2_controls:", "apply_distribution",
-        {"k2": [0.0, 0.5, 1.0, 1.5], "p_k2": [1.0, 2.0, 1.0]}, fit_uid=uid,
+        "kappa2_controls:",
+        "apply_distribution",
+        {"k2": [0.0, 0.5, 1.0, 1.5], "p_k2": [1.0, 2.0, 1.0]},
+        fit_uid=uid,
     )
     # One edge too many is dropped, as the calculator returns bin edges.
     assert applied["ok"] and applied["result"]["kappa2"] == pytest.approx(1.0)
@@ -168,27 +174,34 @@ def test_rate_matrix_scalar_table_and_global_table():
     data = _sections(api.model_editor(fit_uid=kinetics))[ident]["data"]
     n = data["n"]
     assert len(data["labels"]) == n and len(data["values"]) == n * n
-    assert api.model_section_call(ident, "set_cell", {"source": 0, "target": 1, "value": 4.5},
-                                  fit_uid=kinetics)["ok"]
+    assert api.model_section_call(
+        ident, "set_cell", {"source": 0, "target": 1, "value": 4.5}, fit_uid=kinetics
+    )["ok"]
     assert list(state.fits[0].model.saturation.dark.rate_values)[1] == pytest.approx(4.5)
-    diagonal = api.model_section_call(ident, "set_cell", {"source": 1, "target": 1, "value": 1.0},
-                                      fit_uid=kinetics)
+    diagonal = api.model_section_call(
+        ident, "set_cell", {"source": 1, "target": 1, "value": 1.0}, fit_uid=kinetics
+    )
     assert not diagonal["ok"]
 
     pda = _fit(state, "PDA2c-discrete", dataset=1)
-    table = next(s for s in _sections(api.model_editor(fit_uid=pda)).values()
-                 if s["key"] == "scalar_table")
+    table = next(
+        s for s in _sections(api.model_editor(fit_uid=pda)).values() if s["key"] == "scalar_table"
+    )
     row = next(r for r in table["data"]["rows"] if r["kind"] == "float")
-    assert api.model_section_call(table["id"], "set", {"attr": row["attr"], "value": 0.125},
-                                  fit_uid=pda)["ok"]
-    assert not api.model_section_call(table["id"], "set", {"attr": "__class__", "value": 1},
-                                      fit_uid=pda)["ok"]
+    assert api.model_section_call(
+        table["id"], "set", {"attr": row["attr"], "value": 0.125}, fit_uid=pda
+    )["ok"]
+    assert not api.model_section_call(
+        table["id"], "set", {"attr": "__class__", "value": 1}, fit_uid=pda
+    )["ok"]
 
     from chisurf.server.services.fits import fit_create
 
     glob = fit_create(state, dataset_index=0, model_name="Global fit")
     if glob.get("ok"):
-        rows = _sections(api.model_editor(fit_uid=glob["uid"]))["global_parameter_table:"]["data"]["rows"]
+        rows = _sections(api.model_editor(fit_uid=glob["uid"]))["global_parameter_table:"]["data"][
+            "rows"
+        ]
         assert rows and rows[0]["row"] == 1 and "owner" in rows[0]
 
 

@@ -17,21 +17,32 @@ from chisurf.plugins.core.setup.gui.acq_app import simulation_defaults
 
 def _stored(**changes):
     params = simulation_defaults()
-    params.update(excitation_mode="Pulsed", pulsed_exc=1, N_species=2, q=[[100.0, 40.0], [50.0, 20.0]])
+    params.update(
+        excitation_mode="Pulsed", pulsed_exc=1, N_species=2, q=[[100.0, 40.0], [50.0, 20.0]]
+    )
     params.update(changes)
     return {"device_type": "Simulation", "simulation_params": params}
 
 
 def test_the_stored_device_type_is_the_tools_device():
-    for stored, expected in (("Becker-Hickl", "BH_SPC"), ("PicoQuant", "PICOQUANT"), ("BrickMic", "BRICKMIC"),
-                             ("Simulation", "SIMULATION"), ("", "SIMULATION")):
+    for stored, expected in (
+        ("Becker-Hickl", "BH_SPC"),
+        ("PicoQuant", "PICOQUANT"),
+        ("BrickMic", "BRICKMIC"),
+        ("Simulation", "SIMULATION"),
+        ("", "SIMULATION"),
+    ):
         assert AcquisitionNativeModel(settings={"device_type": stored}).device_type == expected
 
 
 def test_the_stored_simulator_parameters_are_the_runs_parameters():
     model = AcquisitionNativeModel(settings=_stored(rmt1seed=4242))
     params = model.simulation_params()
-    assert params["pulsed_exc"] == 1 and params["excitation_mode"] == "Pulsed" and params["N_species"] == 2
+    assert (
+        params["pulsed_exc"] == 1
+        and params["excitation_mode"] == "Pulsed"
+        and params["N_species"] == 2
+    )
     assert model.brightness_khz == 100.0 and model.seed == 4242
     np.testing.assert_allclose(params["q"], [[100.0, 40.0], [50.0, 20.0]])
     assert params["N_ph_max"] == model.photon_limit

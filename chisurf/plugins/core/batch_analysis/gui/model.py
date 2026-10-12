@@ -38,9 +38,7 @@ logger = logging.getLogger(__name__)
 
 #: The steps, with the titles, subtitles and completion conditions of ``batch.view.json``.
 STEPS: tuple[Step, ...] = (
-    Step(
-        "welcome", mark("Welcome"), mark("Apply one template fit to many datasets or files.")
-    ),
+    Step("welcome", mark("Welcome"), mark("Apply one template fit to many datasets or files.")),
     Step(
         "datasets",
         mark("Loaded data"),

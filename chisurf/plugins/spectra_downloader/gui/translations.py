@@ -123,7 +123,9 @@ SOURCES = (
     mark("Property value."),
     mark("Proteins + organic dyes + other fluorophores."),
     mark("Provenance source (fpbase, atto, spectra_db, user, ...)."),
-    mark("Purge the existing reference probes before importing (a backup is made for local files)."),
+    mark(
+        "Purge the existing reference probes before importing (a backup is made for local files)."
+    ),
     mark("Push"),
     mark("Push complete"),
     mark("Push every component of this staging database into the connected MMFDB (asks first)."),
@@ -148,10 +150,14 @@ SOURCES = (
     mark("The probe row, its properties and a spectrum summary as JSON."),
     mark("The scraper to run into the staging database."),
     mark("The scraper's output."),
-    mark("The staging components. Tick the box of the ones to push, click a row to inspect it; the wheel scrolls."),
+    mark(
+        "The staging components. Tick the box of the ones to push, click a row to inspect it; the wheel scrolls."
+    ),
     mark("Tick to include the component in Push selected."),
     mark("Timestamp of the verification decision."),
-    mark("Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator."),
+    mark(
+        "Translational diffusion coefficient in water at 25 °C (µm²/s); used by the FCS diffusion/volume calculator."
+    ),
     mark("Type"),
     mark("User who approved/rejected this probe."),
     mark("Value"),
@@ -195,9 +201,15 @@ TOOLTIPS = {
     "Browse this source": mark("Open the browser with this source selected."),
     "Endpoint": mark("Choose a local SQLite file or a ZMQ server."),
     "Local MMFDB": mark("Blank uses the connected MMFDB path."),
-    "Replace existing reference set": mark("Purge old references before importing; local files receive a backup."),
-    "Mark imported as approved": mark("Approve imported components instead of leaving them unverified."),
-    "Advanced — connection & authentication": mark("Reuse a cached session or authenticate with these credentials."),
+    "Replace existing reference set": mark(
+        "Purge old references before importing; local files receive a backup."
+    ),
+    "Mark imported as approved": mark(
+        "Approve imported components instead of leaving them unverified."
+    ),
+    "Advanced — connection & authentication": mark(
+        "Reuse a cached session or authenticate with these credentials."
+    ),
     "Check session": mark("Recheck administrator permission for the configured endpoint."),
     "Add all to MMFDB": mark("Import the staging database using the endpoint and flags above."),
     "Language": mark("Change interface language without changing scientific data."),

@@ -17,7 +17,10 @@ def _fit(counts):
     k = np.arange(counts.size, dtype=float)
     total = counts.sum()
     data = DataCurve(
-        name="synthetic PCH", load_filename_on_init=False, x=k, y=counts / total,
+        name="synthetic PCH",
+        load_filename_on_init=False,
+        x=k,
+        y=counts / total,
         ey=np.sqrt(np.maximum(counts, 1.0)) / total,
     )
     fit = fit_mod.Fit(model_class=FidaModel, data=data)

@@ -144,7 +144,9 @@ def _recorded_container(slices: dict[str, Any]) -> str | None:
     found = set()
     for path in slices:
         try:
-            found.add(reading_settings_for(path, read_analysis_manifest(path)).get("container_type"))
+            found.add(
+                reading_settings_for(path, read_analysis_manifest(path)).get("container_type")
+            )
         except Exception:  # an unreadable manifest is no recorded type
             found.add(None)
     found.discard(None)

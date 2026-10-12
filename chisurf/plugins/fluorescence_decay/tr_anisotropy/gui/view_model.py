@@ -63,7 +63,10 @@ _FINISH_PIECES = (
 
 def _built(pieces) -> str:
     """The marked *pieces* in the active language, one per line."""
-    return "\n".join(piece if piece.startswith(("<ol", "</ol")) else tr(piece) for piece in pieces) + "\n"
+    return (
+        "\n".join(piece if piece.startswith(("<ol", "</ol")) else tr(piece) for piece in pieces)
+        + "\n"
+    )
 
 
 class AnisotropyViewModel:

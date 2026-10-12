@@ -218,7 +218,9 @@ class AlexHubApp(BurstAnalysisHubApp):
         app = AlexDataSelectionApp(model, on_proceed=lambda: self.select("alternation"))
         own = app.track
 
-        def track(name: str) -> None:  # the step's controls (Load example) also advance the hub's tour
+        def track(
+            name: str,
+        ) -> None:  # the step's controls (Load example) also advance the hub's tour
             own(name)
             self.tour.notify_used(name)
 

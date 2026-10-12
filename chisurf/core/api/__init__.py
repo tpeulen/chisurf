@@ -1027,7 +1027,9 @@ class ChiSurfAPI:
 
     def auto_fit_range(self, fit_uid: str | None = None, fit_index: int | None = None) -> Any:
         """Set the fit range from the data (the reader's ``autofitrange``); returns it."""
-        return self._fit_call("fit__range_auto", "fit_range_auto", fit_index=fit_index, fit_uid=fit_uid)
+        return self._fit_call(
+            "fit__range_auto", "fit_range_auto", fit_index=fit_index, fit_uid=fit_uid
+        )
 
     def set_fit_grid_range(
         self,
@@ -1050,7 +1052,9 @@ class ChiSurfAPI:
             fit_uid=fit_uid,
         )
 
-    def model_search_available(self, fit_uid: str | None = None, fit_index: int | None = None) -> bool:
+    def model_search_available(
+        self, fit_uid: str | None = None, fit_index: int | None = None
+    ) -> bool:
         """Whether BFF can search the fit's model structure."""
         result = self._fit_call(
             "fit__model_search_available",
@@ -1503,9 +1507,7 @@ class ChiSurfAPI:
             )
         from chisurf.server.services.model_svc import model_component_add
 
-        return model_component_add(
-            self._state, fit_index=fit_index, fit_uid=fit_uid, target=target
-        )
+        return model_component_add(self._state, fit_index=fit_index, fit_uid=fit_uid, target=target)
 
     def model_component_remove(
         self,

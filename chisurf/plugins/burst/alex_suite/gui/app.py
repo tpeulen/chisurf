@@ -1029,7 +1029,6 @@ def make_app(**kwargs: Any) -> AlexSuiteApp:
     return AlexSuiteApp(**kwargs)
 
 
-
 def _draw_summary(summary: str) -> None:
     """Draw the fit summary: its text lines, and its population table as a table.
 
@@ -1064,10 +1063,13 @@ def _draw_summary(summary: str) -> None:
         flush()
         if stripped:
             text = stripped.replace("**", "")
-            if len(text) > 1 and text.startswith("_") and text.endswith("_"):  # an _emphasised_ line
+            if (
+                len(text) > 1 and text.startswith("_") and text.endswith("_")
+            ):  # an _emphasised_ line
                 text = text[1:-1]
             im.text_wrapped(text)
     flush()
+
 
 __all__ = [
     "WINDOW_BG",

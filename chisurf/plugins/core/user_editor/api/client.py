@@ -16,6 +16,7 @@ from typing import Any
 # plugin. Importing here pins it to a predictable moment.
 from chisurf.core.settings import cs_settings
 
+
 def mmfdb_settings() -> dict[str, Any]:
     """The ``mmfdb`` settings block."""
     block = cs_settings.get("mmfdb", {})

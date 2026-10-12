@@ -16,10 +16,10 @@ import pytest
 from emtk import keys
 from emtk.app import ImApp
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 from chisurf.plugins.tttr.tttr_toolbox.gui.app import HEADER, make_app
 from test.gui import emtk_layout_checks as lay
-from chisurf.plugins.emtk_layout import action_caption
 
 PLUGIN = Path(__file__).resolve().parents[1]
 SIZES = [(1200, 800), (800, 600)]

@@ -220,9 +220,7 @@ class GFactorModel:
                 self.batch_files.append(str(files[key]))
         if client is not None:
             self.compute(client)
-        self.message = (
-            f"Example loaded (simulated, true G = {DEMO['g_factor']}): {self.message}"
-        )
+        self.message = f"Example loaded (simulated, true G = {DEMO['g_factor']}): {self.message}"
 
     @property
     def g_factor(self):

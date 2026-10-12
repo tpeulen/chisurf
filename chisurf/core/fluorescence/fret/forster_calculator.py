@@ -369,7 +369,9 @@ class ForsterCalculatorModel:
                     "emax": lookup_optical_property(db, pid, EXT_COEFF_ALIASES),
                 }
             self.donors = [
-                p["probe_id"] for p in donors if "emission" in self.probe_spectra.get(p["probe_id"], {})
+                p["probe_id"]
+                for p in donors
+                if "emission" in self.probe_spectra.get(p["probe_id"], {})
             ]
             self.acceptors = [
                 p["probe_id"]

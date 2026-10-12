@@ -111,22 +111,38 @@ def _escape(driver):
 
 CLOSE = {
     "escape": lambda d, h, p: _escape(d),
-    "click_outside_in_ndx": lambda d, h, p: d.click(_child(h, h.app.forms["plot_corner"].rects["count_total"])),
+    "click_outside_in_ndx": lambda d, h, p: d.click(
+        _child(h, h.app.forms["plot_corner"].rects["count_total"])
+    ),
     "click_on_another_dock": lambda d, h, p: d.click("tools.filter"),
     "click_on_the_ribbon": lambda d, h, p: d.click("ribbon.tab.Main"),
-    "right_click_again": lambda d, h, p: (d.click(_map_point(h), button=RIGHT_BUTTON), d.frame(2), _escape(d)),
+    "right_click_again": lambda d, h, p: (
+        d.click(_map_point(h), button=RIGHT_BUTTON),
+        d.frame(2),
+        _escape(d),
+    ),
     "wheel_over_the_map": lambda d, h, p: (d.wheel(-1, at=_map_point(h)), d.frame(2), _escape(d)),
-    "wheel_over_the_menu": lambda d, h, p: (d.wheel(-1, at=_row(h, p, "Copy 2D")), d.frame(2), _escape(d)),
+    "wheel_over_the_menu": lambda d, h, p: (
+        d.wheel(-1, at=_row(h, p, "Copy 2D")),
+        d.frame(2),
+        _escape(d),
+    ),
     "pick_copy_2d": lambda d, h, p: d.click(_row(h, p, "Copy 2D")),
     "pick_copy_1d": lambda d, h, p: d.click(_row(h, p, "Copy 1D")),
     "pick_fit_gate": lambda d, h, p: d.click(_row(h, p, "Fit gate")),
     # The rows that say why they are disabled: inert to a click, and the submenu row is where the
     # menu fell over (it had no tooltip). Hover them, click them, then Escape.
     "disabled_napari_then_escape": lambda d, h, p: (d.click(_row(h, p, "Napari")), _escape(d)),
-    "hover_send_then_escape": lambda d, h, p: (d.hover(_row(h, p, "Send selection")), d.frame(3),
-                                               _escape(d)),
-    "hover_send_then_pick_fit_gate": lambda d, h, p: (d.hover(_row(h, p, "Send selection")), d.frame(3),
-                                                      d.click(_row(h, p, "Fit gate"))),
+    "hover_send_then_escape": lambda d, h, p: (
+        d.hover(_row(h, p, "Send selection")),
+        d.frame(3),
+        _escape(d),
+    ),
+    "hover_send_then_pick_fit_gate": lambda d, h, p: (
+        d.hover(_row(h, p, "Send selection")),
+        d.frame(3),
+        d.click(_row(h, p, "Fit gate")),
+    ),
 }
 
 
@@ -140,14 +156,23 @@ def test_after_the_map_menu_closes_the_next_click_lands(session, path):
     # A control inside ndX: the header's log-scale toggle (clicked twice, so the state is kept).
     log_counts = _child(hosted, hosted.app.forms["plot_header"].rects["log_counts"])
     used.clear()
-    assert_input_released(driver, log_counts, lambda: "log_counts" in used,
-                          apps=(shell, hosted.app), label=f"{path}, ndX control")
+    assert_input_released(
+        driver,
+        log_counts,
+        lambda: "log_counts" in used,
+        apps=(shell, hosted.app),
+        label=f"{path}, ndX control",
+    )
     driver.click(log_counts)
     # And the shell's own chrome.
     target = "Structure" if shell.ribbon.ribbon.current != "Structure" else "Spectroscopy"
-    assert_input_released(driver, f"ribbon.tab.{target}",
-                          lambda: shell.ribbon.ribbon.current == target,
-                          apps=(shell, hosted.app), label=f"{path}, ribbon")
+    assert_input_released(
+        driver,
+        f"ribbon.tab.{target}",
+        lambda: shell.ribbon.ribbon.current == target,
+        apps=(shell, hosted.app),
+        label=f"{path}, ribbon",
+    )
 
 
 def test_the_long_disabled_row_stays_inside_the_window_and_says_why_on_hover(session):

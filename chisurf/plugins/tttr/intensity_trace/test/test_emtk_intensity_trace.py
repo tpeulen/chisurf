@@ -18,9 +18,9 @@ import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.intensity_trace.gui.app import make_app
 from chisurf.plugins.tttr.intensity_trace.model import IntensityTraceModel
-from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
 SPC = REPO / "test/data/tttr/BH/132/BH_SPC132.spc"

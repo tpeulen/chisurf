@@ -19,7 +19,10 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 REPO = Path(__file__).resolve().parents[1]
-SCRIPTS = [REPO / "docs/guides/make_screenshots.py", *sorted((REPO / "docs/guides/screenshots").glob("*.py"))]
+SCRIPTS = [
+    REPO / "docs/guides/make_screenshots.py",
+    *sorted((REPO / "docs/guides/screenshots").glob("*.py")),
+]
 ALLOW = REPO / "test/guide_screenshot_dead_import_allowlist.txt"
 
 
@@ -32,7 +35,11 @@ def _imports():
     for script in SCRIPTS:
         rel = script.relative_to(REPO).as_posix()
         for node in ast.walk(ast.parse(script.read_text(encoding="utf-8"))):
-            if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith("chisurf"):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module
+                and node.module.startswith("chisurf")
+            ):
                 for alias in node.names:
                     yield rel, node.module, alias.name
 
@@ -60,7 +67,9 @@ def dead():
 
 def test_no_new_grabber_imports_a_missing_module(dead):
     new = sorted(dead - _allowed())
-    assert not new, f"guide grabbers import modules that do not exist (port them to the native app): {new}"
+    assert not new, (
+        f"guide grabbers import modules that do not exist (port them to the native app): {new}"
+    )
 
 
 def test_the_allowlist_only_shrinks(dead):

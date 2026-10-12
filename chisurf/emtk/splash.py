@@ -246,24 +246,53 @@ class SplashApp:
         self.drawn["bar"] = ((bx, by, bw, bh), f"{self.state.progress}")
 
         line = float(painter.line_height())
-        self._text(painter, "stage", lines["stage"], box(10, STAGE_TOP, 512, 0)[:3], line,
-                   paint.ALIGN_CENTER, TEXT, bold=True)
+        self._text(
+            painter,
+            "stage",
+            lines["stage"],
+            box(10, STAGE_TOP, 512, 0)[:3],
+            line,
+            paint.ALIGN_CENTER,
+            TEXT,
+            bold=True,
+        )
         paint.set_font_scale(painter, SMALL)
         try:
             small = float(painter.line_height())
-            self._text(painter, "log", lines["log"], box(10, LOG_TOP, 512, 0)[:3], small,
-                       paint.ALIGN_CENTER, MUTED)
+            self._text(
+                painter,
+                "log",
+                lines["log"],
+                box(10, LOG_TOP, 512, 0)[:3],
+                small,
+                paint.ALIGN_CENTER,
+                MUTED,
+            )
             lx, ly, lw = box(*LEFT_COLUMN, 0.0)[:3]
             for key in ("copyright", "version", "license"):
-                self._text(painter, key, lines[key], (lx, ly, lw), small,
-                           paint.ALIGN_LEFT | paint.ALIGN_VCENTER, TEXT)
+                self._text(
+                    painter,
+                    key,
+                    lines[key],
+                    (lx, ly, lw),
+                    small,
+                    paint.ALIGN_LEFT | paint.ALIGN_VCENTER,
+                    TEXT,
+                )
                 ly += small
             rx, ry, rw = box(*RIGHT_COLUMN, 0.0)[:3]
             rows = [lines["contributors_title"], *self._wrap(painter, lines["contributors"], rw)]
             for index, row in enumerate(rows[:4]):
                 key = "contributors_title" if index == 0 else f"contributors.{index}"
-                self._text(painter, key, row, (rx, ry, rw), small,
-                           paint.ALIGN_LEFT | paint.ALIGN_VCENTER, TEXT)
+                self._text(
+                    painter,
+                    key,
+                    row,
+                    (rx, ry, rw),
+                    small,
+                    paint.ALIGN_LEFT | paint.ALIGN_VCENTER,
+                    TEXT,
+                )
                 ry += small
         finally:
             paint.set_font_scale(painter, 1.0)
@@ -317,9 +346,14 @@ class SplashRun:
         nothing is built or opened inside a frame.
     """
 
-    def __init__(self, state: SplashState, make_app: Callable[..., Any],
-                 open_main: Callable[[Any], Any], close_splash: Callable[[], None],
-                 later: Callable[[Callable[[], None]], None]) -> None:
+    def __init__(
+        self,
+        state: SplashState,
+        make_app: Callable[..., Any],
+        open_main: Callable[[Any], Any],
+        close_splash: Callable[[], None],
+        later: Callable[[Callable[[], None]], None],
+    ) -> None:
         self.state = state
         self.make_app = make_app
         self.open_main = open_main
@@ -358,7 +392,9 @@ class SplashRun:
     def _open(self) -> None:
         try:
             self.main = self.open_main(self.shell)
-        except BaseException as error:  # a main window that cannot open must not leave the splash up
+        except (
+            BaseException
+        ) as error:  # a main window that cannot open must not leave the splash up
             self.error = error
             self.step = "done"
             _log.exception("opening the ChiSurf window failed")
@@ -372,8 +408,9 @@ class SplashRun:
         self.close_splash()
 
 
-def run_with_splash(make_app: Callable[..., Any], title: str = "ChiSurf",
-                    size: tuple[int, int] | None = None) -> int:
+def run_with_splash(
+    make_app: Callable[..., Any], title: str = "ChiSurf", size: tuple[int, int] | None = None
+) -> int:
     """Show the splash window, build the shell behind it, open the main window when ready.
 
     Returns when the main window closes.
@@ -385,8 +422,15 @@ def run_with_splash(make_app: Callable[..., Any], title: str = "ChiSurf",
     state = SplashState()
     app = SplashApp(state)
     surface = ControlSurface(app, background=(0, 0, 0, 0), images=ImageAtlas(2048, 2048))
-    splash = NativeHost(surface, size=ART_SIZE, title=title, decorated=False, floating=True,
-                        transparent=True, centred=True)
+    splash = NativeHost(
+        surface,
+        size=ART_SIZE,
+        title=title,
+        decorated=False,
+        floating=True,
+        transparent=True,
+        centred=True,
+    )
     state._wake = app.request_frame
     state.start()
     loop = splash._loop

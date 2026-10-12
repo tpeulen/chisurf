@@ -9,10 +9,27 @@ from __future__ import annotations
 
 from chisurf.emtk.model_editor import _paired, _row
 
-OUTPUT = {"uid": "u-s", "name": "s", "label": "s", "value": 0.4, "fixed": True,
-          "lo": 0.0, "hi": 1.0, "bounds_on": False, "is_output": True}
-FREE = {"uid": "u-t", "name": "t0", "label": "τ", "value": 4.0, "fixed": False,
-        "lo": 0.0, "hi": 10.0, "bounds_on": True}
+OUTPUT = {
+    "uid": "u-s",
+    "name": "s",
+    "label": "s",
+    "value": 0.4,
+    "fixed": True,
+    "lo": 0.0,
+    "hi": 1.0,
+    "bounds_on": False,
+    "is_output": True,
+}
+FREE = {
+    "uid": "u-t",
+    "name": "t0",
+    "label": "τ",
+    "value": 4.0,
+    "fixed": False,
+    "lo": 0.0,
+    "hi": 10.0,
+    "bounds_on": True,
+}
 
 
 def test_an_output_row_has_empty_fixed_and_bounds_cells():
@@ -63,8 +80,12 @@ def test_the_shell_editor_shows_no_fixed_or_bounds_for_a_lifetime_fits_outputs(t
         assert rows, "the lifetime fit lists its derived outputs"
         for row in rows:
             assert row["fixed"] is None and row["bounds_on"] is None, row["name"]
-        fitted = [r for rows in shell.data.editor._sources.values() for r in rows
-                  if "output" in r and not r["output"]]
+        fitted = [
+            r
+            for rows in shell.data.editor._sources.values()
+            for r in rows
+            if "output" in r and not r["output"]
+        ]
         assert fitted and all(isinstance(r["fixed"], bool) for r in fitted)
         (tmp_path / "editor.png").write_bytes(driver.screenshot())
     finally:

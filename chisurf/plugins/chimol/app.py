@@ -274,9 +274,14 @@ class ChimolHostApp(ImApp):
         """
         style = im.get_style()
         keys = ("example", "help", "guide")
-        needed = sum(
-            im.calc_text_size(action_caption(key))[0] + 2.0 * style.frame_padding[0] for key in keys
-        ) + style.item_spacing[0] * (len(keys) - 1) + 2.0 * style.item_spacing[0]
+        needed = (
+            sum(
+                im.calc_text_size(action_caption(key))[0] + 2.0 * style.frame_padding[0]
+                for key in keys
+            )
+            + style.item_spacing[0] * (len(keys) - 1)
+            + 2.0 * style.item_spacing[0]
+        )
         im.same_line(max(0.0, width - needed))
         if action_button("example"):
             self.load_example()

@@ -109,18 +109,28 @@ def _demo_fit(driver: Driver, shell) -> str:
     driver.click("read.use_demo")
     driver.frame(2)
     driver.click("read.load")
-    _settle(driver, lambda: _idle(shell) and any(r["name"] == "fcs_demo" for r in data.datasets.datasets),
-            "the demo dataset")
+    _settle(
+        driver,
+        lambda: _idle(shell) and any(r["name"] == "fcs_demo" for r in data.datasets.datasets),
+        "the demo dataset",
+    )
     shell.docks.focus(DATASETS_KEY)
     driver.frame(2)
     driver.click("datasets.add_fit")
-    _settle(driver, lambda: _idle(shell) and data.windows and data.analysis.info and shell.project.history_ready,
-            "the fit window")
+    _settle(
+        driver,
+        lambda: (
+            _idle(shell) and data.windows and data.analysis.info and shell.project.history_ready
+        ),
+        "the fit window",
+    )
     return data.current_uid
 
 
 def _value(shell, name: str) -> float:
-    return float(shell.data.session.api.get_parameter(name, fit_uid=shell.data.current_uid)["value"])
+    return float(
+        shell.data.session.api.get_parameter(name, fit_uid=shell.data.current_uid)["value"]
+    )
 
 
 def _row(shell, name: str) -> dict:
@@ -155,7 +165,9 @@ def test_the_session_menus_bind_the_qt_shortcuts(shell):
         for action in actions:
             if action.shortcut:
                 by_label[action.key] = action.shortcut
-    labels = {action.label: action.shortcut for _m, actions in shell.session_menus() for action in actions}
+    labels = {
+        action.label: action.shortcut for _m, actions in shell.session_menus() for action in actions
+    }
     for qt_label, keys in BEFORE["shortcuts"].items():
         if qt_label in SHORTCUT_GAPS:
             continue
@@ -228,10 +240,14 @@ def test_parity_with_the_qt_project_dialogs(shell, monkeypatch):
 
     # The collision question of an import.
     monkeypatch.setattr(storage, "database_client", lambda *a, **k: object())
-    monkeypatch.setattr(storage, "import_preview", lambda path, client=None: {
-        "collisions": {"datasets": ["ds-1", "ds-2"], "fits": ["fit-1"]},
-        "origin": {"project_id": "proj_x", "version_number": 3},
-    })
+    monkeypatch.setattr(
+        storage,
+        "import_preview",
+        lambda path, client=None: {
+            "collisions": {"datasets": ["ds-1", "ds-2"], "fits": ["fit-1"]},
+            "origin": {"project_id": "proj_x", "version_number": 3},
+        },
+    )
     shell.project.import_project()
     shell.project.choose_file("/tmp/x.cs.pto")
     _settle(driver, lambda: shell.project.dialogs.modal, "the collision question")
@@ -245,8 +261,11 @@ def test_parity_with_the_qt_project_dialogs(shell, monkeypatch):
 
     # The unsaved-changes guard: Save / Don't Save / Cancel.
     shell.project.dialogs.choice(
-        "Unsaved Project", "Save changes to the current project before continuing?",
-        [("save", "Save"), ("discard", "Don't Save"), ("cancel", "Cancel")], None, default="cancel",
+        "Unsaved Project",
+        "Save changes to the current project before continuing?",
+        [("save", "Save"), ("discard", "Don't Save"), ("cancel", "Cancel")],
+        None,
+        default="cancel",
     )
     driver.frame(2)
     qt = {_norm(c) for c in BEFORE["dialogs"]["close_guard"]["controls"]}
@@ -291,7 +310,9 @@ def test_save_then_reopen_restores_datasets_fits_and_parameters(shell, isolated)
 
     # The recent entry reopens it: the dataset, the fit, its model and N come back.
     project.open_recent(str(target))
-    _settle(driver, lambda: _idle(shell) and data.datasets.fits and data.windows, "the reopened project")
+    _settle(
+        driver, lambda: _idle(shell) and data.datasets.fits and data.windows, "the reopened project"
+    )
     assert "fcs_demo" in [r["name"] for r in data.datasets.datasets]
     assert [r["model"] for r in data.datasets.fits] == [model]
     assert _value(shell, "N") == pytest.approx(3.25)
@@ -309,11 +330,19 @@ def test_undo_and_redo_of_a_parameter_edit(shell):
     _settle(driver, lambda: _idle(shell) and _value(shell, "N") == before + 1.5, "the edit")
     assert project.can_undo()
     driver.press(ord("z"), CONTROL_MODIFIER)
-    _settle(driver, lambda: _idle(shell) and _value(shell, "N") == pytest.approx(before), "the undo")
-    assert _row(shell, "N")["value"] == pytest.approx(before), "the Analysis dock shows the undone value"
+    _settle(
+        driver, lambda: _idle(shell) and _value(shell, "N") == pytest.approx(before), "the undo"
+    )
+    assert _row(shell, "N")["value"] == pytest.approx(before), (
+        "the Analysis dock shows the undone value"
+    )
     assert project.can_redo()
     driver.press(ord("y"), CONTROL_MODIFIER)
-    _settle(driver, lambda: _idle(shell) and _value(shell, "N") == pytest.approx(before + 1.5), "the redo")
+    _settle(
+        driver,
+        lambda: _idle(shell) and _value(shell, "N") == pytest.approx(before + 1.5),
+        "the redo",
+    )
     assert not project.can_redo()
     assert data.windows, "the fit window is open over the restored fit"
 
@@ -425,9 +454,17 @@ def test_import_remaps_through_one_client(shell, monkeypatch):
     seen = []
     monkeypatch.setattr(storage, "select_backend", lambda *a, **k: "mmfdb")
     monkeypatch.setattr(storage, "database_client", lambda *a, **k: client)
-    monkeypatch.setattr(storage, "import_preview", lambda path, client=None: seen.append(client) or {
-        "collisions": {"fits": ["fit-1"]}, "origin": {"project_id": "proj_x", "version_number": 2},
-    })
+    monkeypatch.setattr(
+        storage,
+        "import_preview",
+        lambda path, client=None: (
+            seen.append(client)
+            or {
+                "collisions": {"fits": ["fit-1"]},
+                "origin": {"project_id": "proj_x", "version_number": 2},
+            }
+        ),
+    )
 
     def imported(path, resolve_collisions, client=None):
         seen.append((client, resolve_collisions))
@@ -470,11 +507,17 @@ def test_the_settings_forms_draw_their_controls(shell):
     project = shell.project
     for run, wanted, name in (
         (project.rda_axis, {"R_DA min", "R_DA max", "N points", "Scale", "Save axis"}, "rda_axis"),
-        (project.data_loading, {"Enable staging", "Slow below", "Max points per plot"}, "data_loading"),
+        (
+            project.data_loading,
+            {"Enable staging", "Slow below", "Max points per plot"},
+            "data_loading",
+        ),
     ):
         run()
         driver.frame(3)
-        assert wanted <= set(driver.painter.strings), f"{name}: {wanted - set(driver.painter.strings)}"
+        assert wanted <= set(driver.painter.strings), (
+            f"{name}: {wanted - set(driver.painter.strings)}"
+        )
         driver.screenshot(SHOTS / f"emtk_shell_settings_{name}.png")
         driver.click(project.form.rects["close"])
         driver.frame(2)

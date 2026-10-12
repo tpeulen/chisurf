@@ -236,6 +236,21 @@ class _ImportVisitor(ast.NodeVisitor):
         # A class body runs at import time, so an import in it is still hard.
         self.generic_visit(node)
 
+    def visit_If(self, node: ast.If) -> None:
+        # ``if TYPE_CHECKING:`` never runs: its imports exist for type checkers only.
+        test = node.test
+        name = test.id if isinstance(test, ast.Name) else getattr(test, "attr", None)
+        if name == "TYPE_CHECKING":
+            previous = self._top_level
+            self._top_level = False
+            for child in node.body:
+                self.visit(child)
+            self._top_level = previous
+            for child in node.orelse:
+                self.visit(child)
+            return
+        self.generic_visit(node)
+
     def visit_Try(self, node: ast.Try) -> None:
         previous = self._in_try
         self._in_try = True

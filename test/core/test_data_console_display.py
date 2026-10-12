@@ -22,7 +22,10 @@ def test_a_curve_and_a_group_print_their_names():
     curve = _curve()
     group = DataCurveGroup([curve], name="Kristine_with_error")
     assert repr(curve) == "<DataCurve 'Kristine_with_error' n=15>"
-    assert repr(group) == "<DataCurveGroup 'Kristine_with_error' [<DataCurve 'Kristine_with_error' n=15>]>"
+    assert (
+        repr(group)
+        == "<DataCurveGroup 'Kristine_with_error' [<DataCurve 'Kristine_with_error' n=15>]>"
+    )
     assert "Swig" not in repr([group])
 
 
@@ -35,7 +38,11 @@ def test_str_of_a_group_is_a_string():
 
 def test_every_row_of_a_short_curve_is_its_own_line():
     text = str(_curve(4, "short"))
-    rows = [line for line in text.splitlines() if line.startswith(("0.000e", "1.000e", "2.000e", "3.000e"))]
+    rows = [
+        line
+        for line in text.splitlines()
+        if line.startswith(("0.000e", "1.000e", "2.000e", "3.000e"))
+    ]
     assert len(rows) == 4
 
 

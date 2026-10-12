@@ -63,14 +63,22 @@ def make_demo(
     config = {**DEMO, **({} if n_curves is None else {"n_curves": int(n_curves)})}
     folder = demo_folder() if folder is None else Path(folder)
     names = _names(config["n_curves"])
-    if not overwrite and all((folder / n).is_file() for n in names) and is_current(folder, names, config):
+    if (
+        not overwrite
+        and all((folder / n).is_file() for n in names)
+        and is_current(folder, names, config)
+    ):
         return folder
     folder.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(config["seed"])
     lo, hi = config["lag_ms"]
     x = np.logspace(np.log10(lo), np.log10(hi), config["n_lags"])
     for name in names:
-        y = 1.0 + 0.5 / (1.0 + x / 0.5) / np.sqrt(1.0 + x / 5.0) + rng.normal(0, config["noise"], x.size)
+        y = (
+            1.0
+            + 0.5 / (1.0 + x / 0.5) / np.sqrt(1.0 + x / 5.0)
+            + rng.normal(0, config["noise"], x.size)
+        )
         curve = {
             "x": x.tolist(),
             "y": y.tolist(),

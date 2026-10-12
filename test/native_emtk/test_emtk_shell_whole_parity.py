@@ -38,6 +38,7 @@ def _key(text: str) -> str:
         out = out[:-1]
     return out
 
+
 BEFORE = json.loads((HERE / "shell_whole_qt_inventory.json").read_text("utf-8"))
 SIZE = (1440, 900)
 
@@ -52,7 +53,9 @@ KNOWN_GAPS: dict[str, str] = {}
 ALIASES: dict[str, tuple[str, str]] = {
     "ribbon_corner:?": ("ribbon.help", "the shared Help action, drawn ❓ Help in every window"),
     "ribbon_corner:Language: English": (
-        "ribbon.language", "🌍 EN; the full 'Language: English' is its tooltip"),
+        "ribbon.language",
+        "🌍 EN; the full 'Language: English' is its tooltip",
+    ),
     "ribbon_corner:P": ("ribbon.pin", "a drawn push-pin; its tooltip says pin / unpin (auto-fold)"),
     "dock_control:Console/?": ("console.help", "the shared Help action, drawn ❓ Help"),
 }
@@ -114,8 +117,9 @@ def reached():
     from chisurf.server.session import SessionState
 
     session = start_session(state=SessionState())
-    shell = EmtkShellApp(loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     shell.data.adopt(session)
     recorder = ControlRecorder()
     texts: set[str] = set()
@@ -143,8 +147,11 @@ def reached():
             driver = Driver(shell, SIZE)
             driver.frame(4)
             gather(driver)
-            menus = [key for key in list(shell.item_rects) if key.startswith("menu.")
-                     and "." not in key[len("menu."):]]
+            menus = [
+                key
+                for key in list(shell.item_rects)
+                if key.startswith("menu.") and "." not in key[len("menu.") :]
+            ]
             for key in menus:
                 driver.click(key)
                 driver.frame(2)
@@ -190,8 +197,10 @@ def _missing(reached) -> dict[str, str]:
             present = norm in tabs
         elif key.startswith("experimental_marker:"):
             # The warning travels with the name: a drawn entry carrying both.
-            present = any("\u26a0" in text and norm in _key(text.replace("\u26a0", ""))
-                          for text in reached["raw"])
+            present = any(
+                "\u26a0" in text and norm in _key(text.replace("\u26a0", ""))
+                for text in reached["raw"]
+            )
         else:
             present = norm in texts
         if not present:

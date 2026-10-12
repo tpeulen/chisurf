@@ -24,6 +24,7 @@ from chisurf.core.fitting.optimization_settings import (  # noqa: F401 - re-expo
 
 _VIEW = pathlib.Path(__file__).with_name("fitting_controls.view.json")
 
+
 class FittingControlsModel:
     """Values and actions of the fit controller, bound by AutoForm.
 

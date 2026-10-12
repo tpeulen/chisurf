@@ -296,6 +296,7 @@ class GsAnalysis:
         inside = np.isfinite(delta) & (delta >= np.nanmax(delta) - drop)
         last = int(np.argmin(inside)) - 1 if not inside.all() else times.size - 1
         return float(times[max(last, 0)])
+
     def report(self) -> str:
         """Return a human-readable summary of the run."""
         lines: list[str] = []

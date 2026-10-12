@@ -46,8 +46,10 @@ def test_no_method_defined_twice_in_a_class(path):
         for fn in cls.body:
             if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 has_decorator = any(
-                    isinstance(d, ast.Attribute) and d.attr in ("setter", "getter", "deleter")
-                    or isinstance(d, ast.Name) and d.id == "overload"
+                    isinstance(d, ast.Attribute)
+                    and d.attr in ("setter", "getter", "deleter")
+                    or isinstance(d, ast.Name)
+                    and d.id == "overload"
                     for d in fn.decorator_list
                 )
                 if fn.name in seen and not has_decorator:

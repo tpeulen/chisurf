@@ -37,29 +37,60 @@ from chisurf.plugins.emtk_layout import action_button
 
 #: Columns of a ``scalar_table`` (the Qt section's Name / Value).
 SCALAR_COLUMNS = [
-    {"key": "label", "label": "Name", "display": "script",
-     "description": "The setting, with its unit."},
-    {"key": "value", "label": "Value", "editable": True, "format": "%.6g",
-     "description": "Double-click to type a new value; click a check box to toggle it."},
+    {
+        "key": "label",
+        "label": "Name",
+        "display": "script",
+        "description": "The setting, with its unit.",
+    },
+    {
+        "key": "value",
+        "label": "Value",
+        "editable": True,
+        "format": "%.6g",
+        "description": "Double-click to type a new value; click a check box to toggle it.",
+    },
 ]
 
 #: Columns of the ``global_parameter_table`` (the Qt section's, in its order).
 GLOBAL_COLUMNS = [
     {"key": "row", "label": "Row", "shade": False, "description": "The row number a link names."},
-    {"key": "owner", "label": "Owner", "description": "The fit (or tool) the parameter belongs to."},
+    {
+        "key": "owner",
+        "label": "Owner",
+        "description": "The fit (or tool) the parameter belongs to.",
+    },
     {"key": "local", "label": "Local", "description": "The member fit of a fit group."},
     {"key": "label", "label": "Parameter", "display": "script", "description": "The parameter."},
-    {"key": "value", "label": "Value", "editable": True, "format": "%.5g",
-     "description": "The parameter's value; double-click to type a new one."},
-    {"key": "fixed", "label": "Fixed", "editable": True,
-     "description": "A fixed parameter keeps its value when the fit runs."},
+    {
+        "key": "value",
+        "label": "Value",
+        "editable": True,
+        "format": "%.5g",
+        "description": "The parameter's value; double-click to type a new one.",
+    },
+    {
+        "key": "fixed",
+        "label": "Fixed",
+        "editable": True,
+        "description": "A fixed parameter keeps its value when the fit runs.",
+    },
     {"key": "lo", "label": "Lo", "editable": True, "format": "%.4g", "description": "Lower bound."},
     {"key": "hi", "label": "Hi", "editable": True, "format": "%.4g", "description": "Upper bound."},
-    {"key": "bounds_on", "label": "Bounds", "editable": True,
-     "description": "Keep the parameter between Lo and Hi while fitting."},
+    {
+        "key": "bounds_on",
+        "label": "Bounds",
+        "editable": True,
+        "description": "Keep the parameter between Lo and Hi while fitting.",
+    },
     {"key": "error", "label": "Error", "format": "%.3g", "description": "From the last fit."},
-    {"key": "link_row", "label": "Link row", "editable": True, "format": "%d",
-     "description": "Type another row's number to link this parameter to it; clear it to unlink."},
+    {
+        "key": "link_row",
+        "label": "Link row",
+        "editable": True,
+        "format": "%d",
+        "description": "Type another row's number to link this parameter to it; clear it to unlink.",
+    },
 ]
 
 _RT_CURVES = (
@@ -125,12 +156,19 @@ class _Window:
 class RtWindow(_Window):
     """*show r(t)*: r(t) of data and model, uncorrected and corrected, with live correction factors."""
 
-    FACTORS = (("g", "g:"), ("l1", "l1:"), ("l2", "l2:"), ("bg_vv", "BgVV:"), ("bg_vh", "BgVH:"),
-               ("shift", "dVH-VV:"))
+    FACTORS = (
+        ("g", "g:"),
+        ("l1", "l1:"),
+        ("l2", "l2:"),
+        ("bg_vv", "BgVV:"),
+        ("bg_vh", "BgVH:"),
+        ("shift", "dVH-VV:"),
+    )
 
     def __init__(self, views: SectionViews, section: str) -> None:
-        super().__init__(tr("Anisotropy decays (corrected vs uncorrected)"), (640.0, 520.0),
-                         key=f"rt-{section}")
+        super().__init__(
+            tr("Anisotropy decays (corrected vs uncorrected)"), (640.0, 520.0), key=f"rt-{section}"
+        )
         self.views = views
         self.section = section
         self.data: dict = {}
@@ -157,8 +195,15 @@ class RtWindow(_Window):
         factors = dict(self.factors)
         if self.link_l and "l1" in factors:
             factors["l2"] = factors["l1"]
-        self.views.call(self.section, "rt", {"factors": factors}, tr("Computing r(t)…"),
-                        after=self.received, update=False, failed=self.failed)
+        self.views.call(
+            self.section,
+            "rt",
+            {"factors": factors},
+            tr("Computing r(t)…"),
+            after=self.received,
+            update=False,
+            failed=self.failed,
+        )
 
     def body(self) -> None:
         if self.pending:
@@ -187,8 +232,9 @@ class RtWindow(_Window):
         if changed:
             self.pending = True
         im.same_line()
-        if action_button("reset", id="rt-reset",
-                         tooltip=tr("Restore the factors the fit is currently using")):
+        if action_button(
+            "reset", id="rt-reset", tooltip=tr("Restore the factors the fit is currently using")
+        ):
             self.factors = dict(self.defaults)
             self.link_l = True
             self.pending = True
@@ -203,16 +249,20 @@ class RtWindow(_Window):
                 x, y = self.data.get(axis), self.data.get(key)
                 if x and y:
                     implot.set_next_line_style(colour, 2.0)
-                    implot.plot_line(tr(name), [float(v) for v in x],
-                                     [float("nan") if v is None else float(v) for v in y])
+                    implot.plot_line(
+                        tr(name),
+                        [float(v) for v in x],
+                        [float("nan") if v is None else float(v) for v in y],
+                    )
                     drawn = True
             if not drawn:
                 implot.plot_dummy(tr("no anisotropy decay yet"))
             implot.end_plot()
         self.rect("plot")
         if im.button(tr("Save CSV") + "##rt-save"):
-            self.views.docks.open_file_dialog(tr("Save anisotropy decay"), mode="save",
-                                              done=self.save_csv)
+            self.views.docks.open_file_dialog(
+                tr("Save anisotropy decay"), mode="save", done=self.save_csv
+            )
         im.set_item_tooltip(tr("Save the anisotropy decay r(t) as a CSV file."))
         self.rect("save")
         im.same_line()
@@ -250,9 +300,15 @@ class Kappa2ShowWindow(_Window):
         self.views = views
         self.data: dict = {}
         self.error = ""
-        views.call(section, "distribution", {"use_fast": bool(use_fast)},
-                   tr("Reading the κ² distribution…"), after=self._received, update=False,
-                   failed=self._failed)
+        views.call(
+            section,
+            "distribution",
+            {"use_fast": bool(use_fast)},
+            tr("Reading the κ² distribution…"),
+            after=self._received,
+            update=False,
+            failed=self._failed,
+        )
 
     def _received(self, result: Any) -> None:
         self.data = (result or {}).get("result") or {}
@@ -282,27 +338,51 @@ class Kappa2ShowWindow(_Window):
             im.text_disabled(tr("Reading…"))
         else:
             mean = float(d.get("k2_mean") or 0.0)
-            im.text_wrapped(tr("Transformation: R_app/R_DA = (⟨κ²⟩/κ²)^(1/6) | ⟨κ²⟩ = {mean:.3f}").format(
-                mean=mean))
-            im.text_disabled(tr("Current orientation mode: {mode} | dynamic κ² = {k2:.3f}").format(
-                mode=d.get("mode", "fast"), k2=float(d.get("kappa2") or 0.0)))
+            im.text_wrapped(
+                tr("Transformation: R_app/R_DA = (⟨κ²⟩/κ²)^(1/6) | ⟨κ²⟩ = {mean:.3f}").format(
+                    mean=mean
+                )
+            )
+            im.text_disabled(
+                tr("Current orientation mode: {mode} | dynamic κ² = {k2:.3f}").format(
+                    mode=d.get("mode", "fast"), k2=float(d.get("kappa2") or 0.0)
+                )
+            )
             rows = 3 if d.get("r_da") else 2
             height = max(110.0, (im.get_content_region_avail()[1] - 40.0) / rows)
-            self._plot("##k2-dist", tr("κ²"), tr("Probability"), [
-                (tr("ρ(κ²)"), d.get("k2"), d.get("p_k2"), (255, 100, 100), None),
-                (tr("⟨κ²⟩ = {mean:.3f}").format(mean=mean), None, None, (255, 160, 80), mean),
-            ], height)
+            self._plot(
+                "##k2-dist",
+                tr("κ²"),
+                tr("Probability"),
+                [
+                    (tr("ρ(κ²)"), d.get("k2"), d.get("p_k2"), (255, 100, 100), None),
+                    (tr("⟨κ²⟩ = {mean:.3f}").format(mean=mean), None, None, (255, 160, 80), mean),
+                ],
+                height,
+            )
             self.rect("k2_plot")
-            self._plot("##k2-ratio", tr("R_app/R_DA"), tr("Probability Density"), [
-                (tr("ρ(R_app/R_DA)"), d.get("ratio"), d.get("p_ratio"), (80, 160, 255), None),
-                (tr("mean (1.0)"), None, None, (255, 160, 80), 1.0),
-            ], height)
+            self._plot(
+                "##k2-ratio",
+                tr("R_app/R_DA"),
+                tr("Probability Density"),
+                [
+                    (tr("ρ(R_app/R_DA)"), d.get("ratio"), d.get("p_ratio"), (80, 160, 255), None),
+                    (tr("mean (1.0)"), None, None, (255, 160, 80), 1.0),
+                ],
+                height,
+            )
             self.rect("ratio_plot")
             if d.get("r_da"):
-                self._plot("##k2-distance", tr("Distance (Å)"), tr("Normalized Intensity"), [
-                    (tr("ρ(R_DA)"), d.get("r_da"), d.get("p_r_da"), (80, 255, 160), None),
-                    (tr("ρ(R_app)"), d.get("r_app"), d.get("p_r_app"), (255, 80, 160), None),
-                ], height)
+                self._plot(
+                    "##k2-distance",
+                    tr("Distance (Å)"),
+                    tr("Normalized Intensity"),
+                    [
+                        (tr("ρ(R_DA)"), d.get("r_da"), d.get("p_r_da"), (80, 255, 160), None),
+                        (tr("ρ(R_app)"), d.get("r_app"), d.get("p_r_app"), (255, 80, 160), None),
+                    ],
+                    height,
+                )
                 self.rect("distance_plot")
         if im.button(tr("OK") + "##k2-show-ok"):
             self.close()
@@ -322,8 +402,11 @@ class Kappa2ComputeDialog(_Window):
         from chisurf.plugins.calculator.kappa2_dist.gui.client import Kappa2DistClient
         from chisurf.plugins.calculator.kappa2_dist.gui.model import _Kappa2DistModel
 
-        super().__init__(tr("Experimental k2 (orientation factor distribution)"), (620.0, 700.0),
-                         key=f"k2c-{section}")
+        super().__init__(
+            tr("Experimental k2 (orientation factor distribution)"),
+            (620.0, 700.0),
+            key=f"k2c-{section}",
+        )
         self.views = views
         self.section = section
         self.model = _Kappa2DistModel()
@@ -331,8 +414,13 @@ class Kappa2ComputeDialog(_Window):
         self.client = Kappa2DistClient()
         spec = json.loads(Path(_SPEC_PATH).read_text(encoding="utf-8"))
         # The inputs, as the calculator's own window shows them (its Results panel is a line here).
-        self.spec = {"sections": [s for s in spec["sections"]
-                                  if s.get("type") == "panel" and s.get("title") != "Results"]}
+        self.spec = {
+            "sections": [
+                s
+                for s in spec["sections"]
+                if s.get("type") == "panel" and s.get("title") != "Results"
+            ]
+        }
         self.form = FormState()
         self.error = ""
         self.compute()
@@ -340,8 +428,11 @@ class Kappa2ComputeDialog(_Window):
     def compute(self) -> None:
         try:
             self.model.compute(self.client)
-            self.error = "" if self.model._k2hist is not None else tr(
-                "No kappa2 distribution computed in plugin.")
+            self.error = (
+                ""
+                if self.model._k2hist is not None
+                else tr("No kappa2 distribution computed in plugin.")
+            )
         except Exception as exc:  # noqa: BLE001 - said in the dialog
             self.error = str(exc)
 
@@ -351,9 +442,13 @@ class Kappa2ComputeDialog(_Window):
             self.error = tr("No kappa2 distribution computed in plugin.")
             return
         self.views.call(
-            self.section, "apply_distribution",
-            {"k2": [float(v) for v in m._k2scale], "p_k2": [float(v) for v in m._k2hist],
-             "k2_mean": float(m.k2_mean)},
+            self.section,
+            "apply_distribution",
+            {
+                "k2": [float(v) for v in m._k2scale],
+                "p_k2": [float(v) for v in m._k2hist],
+                "k2_mean": float(m.k2_mean),
+            },
             tr("Applying the κ² distribution…"),
         )
         self.close()
@@ -368,8 +463,11 @@ class Kappa2ComputeDialog(_Window):
         im.set_item_tooltip(tr("Compute the kappa-squared distribution for these settings."))
         self.rect("compute")
         im.same_line()
-        im.text_disabled(tr("⟨κ²⟩ = {mean:.3f} ± {sd:.3f}").format(
-            mean=float(self.model.k2_mean or 0.0), sd=float(self.model.k2_sd or 0.0)))
+        im.text_disabled(
+            tr("⟨κ²⟩ = {mean:.3f} ± {sd:.3f}").format(
+                mean=float(self.model.k2_mean or 0.0), sd=float(self.model.k2_sd or 0.0)
+            )
+        )
         if self.error:
             im.text_wrapped(self.error)
         series = self.model.kappa2_plot_series()
@@ -387,8 +485,9 @@ class Kappa2ComputeDialog(_Window):
         im.set_item_tooltip(tr("Use the computed kappa-squared distribution in the model."))
         self.rect("ok")
         im.same_line()
-        if action_button("cancel", id="k2c-cancel",
-                         tooltip=tr("Close without changing the model's κ².")):
+        if action_button(
+            "cancel", id="k2c-cancel", tooltip=tr("Close without changing the model's κ².")
+        ):
             self.close()
         self.rect("cancel")
 
@@ -408,10 +507,21 @@ class LinkMenu:
         for fit in fits:
             entries = []
             members = fit.get("members") or []
-            groups = [(m.get("name", ""), m.get("parameters_all") or []) for m in members] \
-                if len(members) > 1 else [("", (members[0].get("parameters_all") if members
-                                                 else (fit.get("model") or {}).get("parameters_all"))
-                                                or [])]
+            groups = (
+                [(m.get("name", ""), m.get("parameters_all") or []) for m in members]
+                if len(members) > 1
+                else [
+                    (
+                        "",
+                        (
+                            members[0].get("parameters_all")
+                            if members
+                            else (fit.get("model") or {}).get("parameters_all")
+                        )
+                        or [],
+                    )
+                ]
+            )
             for member_name, parameters in groups:
                 items = []
                 for p in parameters:
@@ -419,7 +529,7 @@ class LinkMenu:
                     if not uid or uid == source:
                         continue
                     item = MenuItem(str(p.get("name", "")))
-                    self.calls[id(item)] = (lambda target=uid: views.link(self.record, target))
+                    self.calls[id(item)] = lambda target=uid: views.link(self.record, target)
                     items.append(item)
                 if member_name:
                     entries.append(Menu(str(member_name), items))
@@ -451,8 +561,12 @@ class LinkMenu:
     def draw(self, box) -> None:
         from emtk import overlays
 
-        overlays.popup(("model-editor-link", id(self)), self.panel,
-                       on_close=lambda: setattr(self.panel, "open", False), on_pick=self.pick)
+        overlays.popup(
+            ("model-editor-link", id(self)),
+            self.panel,
+            on_close=lambda: setattr(self.panel, "open", False),
+            on_pick=self.pick,
+        )
 
 
 class _PathAdapter:
@@ -532,13 +646,24 @@ class SectionViews:
             return {"type": "custom", "key": "section_error", "options": {"id": ident}, **common}
         data = section.get("data") or {}
         if key == "scalar_table":
-            return self._table(ident, n, "scalar", data.get("rows") or [], SCALAR_COLUMNS,
-                               section, common, title=(section.get("options") or {}).get("title"))
+            return self._table(
+                ident,
+                n,
+                "scalar",
+                data.get("rows") or [],
+                SCALAR_COLUMNS,
+                section,
+                common,
+                title=(section.get("options") or {}).get("title"),
+            )
         if key == "global_parameter_table":
-            rows = [dict(r, label=self.editor.label_markup(r.get("label") or r.get("name", "")))
-                    for r in data.get("rows") or []]
-            return self._table(ident, n, "global", rows, GLOBAL_COLUMNS, section, common,
-                               context=True)
+            rows = [
+                dict(r, label=self.editor.label_markup(r.get("label") or r.get("name", "")))
+                for r in data.get("rows") or []
+            ]
+            return self._table(
+                ident, n, "global", rows, GLOBAL_COLUMNS, section, common, context=True
+            )
         if key == "rate_matrix":
             return self._rate_table(ident, n, section, common)
         return {"type": "custom", "key": key, "options": {"id": ident}, **common}
@@ -567,10 +692,15 @@ class SectionViews:
             table["muted_key"] = "muted"
             table["height"] = 320
             table.pop("fit_rows")
-            table.update(filter=True, column_picker=True, status=True,
-                         colour_source="section_shading")
-            tools = {"type": "custom", "key": "table_tools", "options": {"id": ident, "source": source},
-                     **common}
+            table.update(
+                filter=True, column_picker=True, status=True, colour_source="section_shading"
+            )
+            tools = {
+                "type": "custom",
+                "key": "table_tools",
+                "options": {"id": ident, "source": source},
+                **common,
+            }
             return [table, tools]
         if context:
             table["context_call"] = "section_context"
@@ -597,15 +727,25 @@ class SectionViews:
             rows.append(row)
         columns = [{"key": "state", "label": "", "description": tr("The source state of a row.")}]
         for j in range(size):
-            columns.append({"key": f"c{j}", "label": labels[j], "editable": True,
-                            "format": "%." + str(int(options.get("decimals", 4))) + "g",
-                            "description": tr("Rate from the row's state to {state}; right-click "
-                                              "for Fixed and the link menu.").format(state=labels[j])})
+            columns.append(
+                {
+                    "key": f"c{j}",
+                    "label": labels[j],
+                    "editable": True,
+                    "format": "%." + str(int(options.get("decimals", 4))) + "g",
+                    "description": tr(
+                        "Rate from the row's state to {state}; right-click "
+                        "for Fixed and the link menu."
+                    ).format(state=labels[j]),
+                }
+            )
         source = f"section_rows_{n}"
         self.editor._sources[source] = self._rows(source, rows)
         title = str(options.get("title", "") or "")
         unit = str(data.get("unit") or "")
-        caption = tr("row → column rate ({unit})").format(unit=unit) if unit else tr("row → column rate")
+        caption = (
+            tr("row → column rate ({unit})").format(unit=unit) if unit else tr("row → column rate")
+        )
         header = "  ·  ".join(([title] if title else []) + [caption])
         return [
             {"type": "info", "text": header, **common},
@@ -644,18 +784,24 @@ class SectionViews:
 
     def edit_scalar(self, record: Any, key: str, value: Any) -> None:
         record = record or {}
-        self.call(str(record.get("_section", "")), "set",
-                  {"attr": str(record.get("attr", "")), "value": value},
-                  tr("Setting {name}…").format(name=record.get("label", "")))
+        self.call(
+            str(record.get("_section", "")),
+            "set",
+            {"attr": str(record.get("attr", "")), "value": value},
+            tr("Setting {name}…").format(name=record.get("label", "")),
+        )
 
     def edit_rate(self, record: Any, key: str, value: Any) -> None:
         record = record or {}
         number = _number(value)
         if number is None or not key.startswith("c"):
             return
-        self.call(str(record.get("_section", "")), "set_cell",
-                  {"source": int(record.get("_i", 0)), "target": int(key[1:]), "value": number},
-                  tr("Setting a rate…"))
+        self.call(
+            str(record.get("_section", "")),
+            "set_cell",
+            {"source": int(record.get("_i", 0)), "target": int(key[1:]), "value": number},
+            tr("Setting a rate…"),
+        )
 
     def edit_global(self, record: Any, key: str, value: Any) -> None:
         record = dict(record or {})
@@ -667,8 +813,9 @@ class SectionViews:
             else:
                 self.unlink(record)
             return
-        self.docks.edit_model_parameter(record, key, value, owner_uid=record.get("owner_uid")
-                                        or record.get("fit_uid"))
+        self.docks.edit_model_parameter(
+            record, key, value, owner_uid=record.get("owner_uid") or record.get("fit_uid")
+        )
 
     def _source_of(self, record: dict) -> str:
         ident = str(record.get("_section", ""))
@@ -697,10 +844,12 @@ class SectionViews:
             self.open_link_menu(record, at)
 
     # -- writes ---------------------------------------------------------------- #
-    def call(self, section: str, op: str, args: dict, label: str, after=None, update=True,
-             failed=None) -> bool:
-        return self.docks.section_call(section, op, args, label, after=after, update=update,
-                                       failed=failed)
+    def call(
+        self, section: str, op: str, args: dict, label: str, after=None, update=True, failed=None
+    ) -> bool:
+        return self.docks.section_call(
+            section, op, args, label, after=after, update=update, failed=failed
+        )
 
     def link(self, record: dict, target_uid: str) -> bool:
         return self.docks.link_model_parameter(record, target_uid)
@@ -710,6 +859,7 @@ class SectionViews:
 
     def open_link_menu(self, record: dict, at: Any, fixed_toggle: bool = False) -> None:
         """Read the session's fits, then open the link menu at *at*."""
+
         def opened(fits: Any) -> None:
             menu = LinkMenu(self, record, list(fits or []), at)
             if fixed_toggle:
@@ -717,7 +867,8 @@ class SectionViews:
 
                 fixed = MenuItem(tr("Fixed"), checked=bool(record.get("fixed")), checkable=True)
                 menu.calls[id(fixed)] = lambda: self.docks.edit_model_parameter(
-                    record, "fixed", not bool(record.get("fixed")))
+                    record, "fixed", not bool(record.get("fixed"))
+                )
                 menu.panel.entries.insert(0, fixed)
             self.dialogs.append(menu)
 
@@ -741,8 +892,11 @@ class SectionViews:
         im.same_line()
         if im.button(f"📤##tools-export-{ident}"):
             rows = list(self._sources.get(str(options.get("source", "")), []))
-            self.docks.open_file_dialog(tr("Export the parameters"), mode="save",
-                                        done=lambda path: self.export_rows(path, rows))
+            self.docks.open_file_dialog(
+                tr("Export the parameters"),
+                mode="save",
+                done=lambda path: self.export_rows(path, rows),
+            )
         self._rect(state, "table.export")
         im.set_item_tooltip(tr("Write the table to a CSV file."))
         im.same_line()
@@ -759,14 +913,24 @@ class SectionViews:
             writer = csv.writer(handle)
             writer.writerow([c["label"] for c in GLOBAL_COLUMNS])
             for row in rows:
-                writer.writerow([self.editor.plain_label(str(row.get(k, ""))) if k == "label"
-                                 else ("" if row.get(k) is None else row.get(k)) for k in keys])
+                writer.writerow(
+                    [
+                        self.editor.plain_label(str(row.get(k, "")))
+                        if k == "label"
+                        else ("" if row.get(k) is None else row.get(k))
+                        for k in keys
+                    ]
+                )
         self.docks.status = tr("Saved to {name}").format(name=Path(path).name)
 
     def _draw_error(self, section, model, state, width) -> None:
         d = self._section(section)
-        im.text_colored((220, 90, 90), tr("{kind}: {error}").format(
-            kind=d.get("title") or d.get("key", ""), error=d.get("error", "")))
+        im.text_colored(
+            (220, 90, 90),
+            tr("{kind}: {error}").format(
+                kind=d.get("title") or d.get("key", ""), error=d.get("error", "")
+            ),
+        )
 
     def _draw_curve(self, section, model, state, width) -> None:
         d = self._section(section)
@@ -779,9 +943,13 @@ class SectionViews:
         buttons = 2 * (im.get_frame_height() + 6.0)
         fwhm_w = (im.calc_text_size(tr("FWHM"))[0] + 80.0) if d.get("shows_fwhm") else 0.0
         im.set_next_item_width(max(60.0, im.get_content_region_avail()[0] - buttons - fwhm_w))
-        im.input_text(f"##curve-{key}", str(d.get("curve_name") or ""),
-                      tr("load {label} →").format(label=tr(label)), im.InputTextFlags.READ_ONLY,
-                      elide_start=True)
+        im.input_text(
+            f"##curve-{key}",
+            str(d.get("curve_name") or ""),
+            tr("load {label} →").format(label=tr(label)),
+            im.InputTextFlags.READ_ONLY,
+            elide_start=True,
+        )
         self._rect(state, f"curve.{key}.name")
         im.set_item_tooltip(str(d.get("curve_name") or "") or tr("No curve loaded."))
         im.same_line()
@@ -814,12 +982,18 @@ class SectionViews:
         busy = self.docks.busy
         mode = str(data.get("mode", "fast"))
         im.begin_disabled(busy or not data.get("available"))
-        if im.radio_button(tr("dynamic κ²") + f"##k2-dyn-{ident}", mode == "fast") and mode != "fast":
+        if (
+            im.radio_button(tr("dynamic κ²") + f"##k2-dyn-{ident}", mode == "fast")
+            and mode != "fast"
+        ):
             self.call(ident, "set_mode", {"mode": "fast"}, tr("Setting the κ² regime…"))
         self._rect(state, "kappa2.dynamic")
         im.set_item_tooltip(tr("One κ² for every donor-acceptor pair (fast reorientation)."))
         im.same_line()
-        if im.radio_button(tr("static κ²") + f"##k2-stat-{ident}", mode == "slow") and mode != "slow":
+        if (
+            im.radio_button(tr("static κ²") + f"##k2-stat-{ident}", mode == "slow")
+            and mode != "slow"
+        ):
             self.call(ident, "set_mode", {"mode": "slow"}, tr("Setting the κ² regime…"))
         self._rect(state, "kappa2.static")
         im.set_item_tooltip(tr("Average over a static κ² distribution (slow reorientation)."))
@@ -827,11 +1001,14 @@ class SectionViews:
         im.same_line()
         _changed, self.k2_fast = im.checkbox(tr("Fast") + f"##k2-fast-{ident}", self.k2_fast)
         self._rect(state, "kappa2.fast")
-        im.set_item_tooltip(tr(
-            "Use fast loop-based convolution for static κ² distributions.\n"
-            "Provides speedup for large κ² distributions by looping over\n"
-            "ratio values and accumulating shifted distance histograms.\n"
-            "Disable for exact outer product."))
+        im.set_item_tooltip(
+            tr(
+                "Use fast loop-based convolution for static κ² distributions.\n"
+                "Provides speedup for large κ² distributions by looping over\n"
+                "ratio values and accumulating shifted distance histograms.\n"
+                "Disable for exact outer product."
+            )
+        )
         im.begin_disabled(busy)
         if im.button(tr("show κ²") + f"##k2-show-{ident}"):
             self.dialogs.append(Kappa2ShowWindow(self, ident, self.k2_fast))
@@ -839,7 +1016,9 @@ class SectionViews:
         im.set_item_tooltip(tr("The κ² distribution and what it does to the apparent distance."))
         im.same_line()
         if im.button(tr("compute κ²") + f"##k2-compute-{ident}"):
-            self.dialogs.append(Kappa2ComputeDialog(self, ident, float(data.get("kappa2") or 2 / 3)))
+            self.dialogs.append(
+                Kappa2ComputeDialog(self, ident, float(data.get("kappa2") or 2 / 3))
+            )
         self._rect(state, "kappa2.compute")
         im.set_item_tooltip(tr("Compute a κ² distribution from the dyes' anisotropies and use it."))
         im.same_line()
@@ -847,7 +1026,9 @@ class SectionViews:
         if im.button(tr("calc R0") + f"##k2-r0-{ident}"):
             self.open_forster(ident)
         self._rect(state, "kappa2.r0")
-        im.set_item_tooltip(tr("Open the Förster radius calculator to compute R₀ from MMFDB spectra"))
+        im.set_item_tooltip(
+            tr("Open the Förster radius calculator to compute R₀ from MMFDB spectra")
+        )
         im.end_disabled()
         im.end_disabled()
 
@@ -857,8 +1038,12 @@ class SectionViews:
 
         def closed(r0: Any) -> None:
             if _number(r0) is not None:
-                self.call(ident, "set_forster_radius", {"r0": float(r0)},
-                          tr("Setting the Förster radius…"))
+                self.call(
+                    ident,
+                    "set_forster_radius",
+                    {"r0": float(r0)},
+                    tr("Setting the Förster radius…"),
+                )
 
         self.dialogs.append(ForsterCalculatorDialog(on_close=closed))
 
@@ -869,7 +1054,9 @@ class SectionViews:
         shown = ident in self.diag_shown
         changed, shown = im.toggle_button(tr("VV/VH diag") + f"##diag-{ident}", shown)
         self._rect(state, "anisotropy.diag")
-        im.set_item_tooltip(tr("Show the background-corrected VV and VH integrals (computed outputs)"))
+        im.set_item_tooltip(
+            tr("Show the background-corrected VV and VH integrals (computed outputs)")
+        )
         if changed:
             (self.diag_shown.add if shown else self.diag_shown.discard)(ident)
         im.same_line()
@@ -877,9 +1064,12 @@ class SectionViews:
         if im.button(tr("show r(t)") + f"##rt-{ident}"):
             self.dialogs.append(RtWindow(self, ident))
         self._rect(state, "anisotropy.rt")
-        im.set_item_tooltip(tr(
-            "Open the anisotropy decay of data and model, uncorrected and corrected,\n"
-            "with g / l1 / l2 / backgrounds / VH-VV shift as live controls"))
+        im.set_item_tooltip(
+            tr(
+                "Open the anisotropy decay of data and model, uncorrected and corrected,\n"
+                "with g / l1 / l2 / backgrounds / VH-VV shift as live controls"
+            )
+        )
         im.end_disabled()
         if shown:
             outputs = data.get("outputs") or []
@@ -887,8 +1077,10 @@ class SectionViews:
                 im.text_disabled(tr("This model reports no corrected VV/VH integrals."))
             for row in outputs:
                 value = _number(row.get("value"))
-                im.text(f"{self.editor.plain_label(row.get('label') or row.get('name', ''))}  "
-                        f"{'' if value is None else f'{value:.3g}'}")
+                im.text(
+                    f"{self.editor.plain_label(row.get('label') or row.get('name', ''))}  "
+                    f"{'' if value is None else f'{value:.3g}'}"
+                )
 
     def _draw_lcurve(self, section, model, state, width) -> None:
         d = self._section(section)
@@ -899,10 +1091,13 @@ class SectionViews:
         eta = [float(v) for v in data.get("solution_norm") or [] if v is not None]
         height = float(options.get("max_height", 260))
         w = im.get_content_region_avail()[0]
-        if implot.begin_plot(f"##lcurve-{ident}", (w, max(float(options.get("min_height", 160)),
-                                                          min(height, 220.0)))):
-            implot.setup_axes(tr(options.get("x_label", "residual norm")),
-                              tr(options.get("y_label", "solution norm")))
+        if implot.begin_plot(
+            f"##lcurve-{ident}", (w, max(float(options.get("min_height", 160)), min(height, 220.0)))
+        ):
+            implot.setup_axes(
+                tr(options.get("x_label", "residual norm")),
+                tr(options.get("y_label", "solution norm")),
+            )
             implot.setup_axis_scale(implot.AXIS_X1, implot.SCALE_LOG10)
             implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
@@ -913,8 +1108,12 @@ class SectionViews:
                 if corner is not None and 0 <= int(corner) < len(rho):
                     implot.set_next_marker_style(implot.MARKER_CIRCLE, 6.0, (220, 50, 50))
                     implot.plot_scatter(tr("chosen"), [rho[int(corner)]], [eta[int(corner)]])
-                if options.get("select_action") and implot.is_plot_hovered() \
-                        and im.is_mouse_clicked(0) and not self.docks.busy:
+                if (
+                    options.get("select_action")
+                    and implot.is_plot_hovered()
+                    and im.is_mouse_clicked(0)
+                    and not self.docks.busy
+                ):
                     pos = implot.get_plot_mouse_pos()
                     index = self._nearest(rho, eta, float(pos.x), float(pos.y))
                     if index is not None:
@@ -925,10 +1124,17 @@ class SectionViews:
         self._rect(state, f"lcurve.{ident}.plot")
         if not (options.get("compute_action") or options.get("select_action")):
             return
-        window = self.sweep.setdefault(ident, [float(options.get("log10_min", -3.0)),
-                                               float(options.get("log10_max", 0.0)),
-                                               float(options.get("n_points", 32))])
-        for i, (label, fmt) in enumerate(((tr("min"), "%.2f"), (tr("max"), "%.2f"), (tr("N"), "%.0f"))):
+        window = self.sweep.setdefault(
+            ident,
+            [
+                float(options.get("log10_min", -3.0)),
+                float(options.get("log10_max", 0.0)),
+                float(options.get("n_points", 32)),
+            ],
+        )
+        for i, (label, fmt) in enumerate(
+            ((tr("min"), "%.2f"), (tr("max"), "%.2f"), (tr("N"), "%.0f"))
+        ):
             if i:
                 im.same_line()
             im.align_text_to_frame_padding()
@@ -946,12 +1152,20 @@ class SectionViews:
             if im.button(tr("⟳ sweep") + f"##sweep-{ident}"):
                 lo, hi = sorted((window[0], window[1]))
                 n = int(min(256, max(2, round(window[2]))))
-                self.call(ident, "compute", {"n_points": n, "log10_min": lo, "log10_max": hi},
-                          tr("Sampling the L-curve…"))
+                self.call(
+                    ident,
+                    "compute",
+                    {"n_points": n, "log10_min": lo, "log10_max": hi},
+                    tr("Sampling the L-curve…"),
+                )
             self._rect(state, f"lcurve.{ident}.sweep")
-            im.set_item_tooltip(tr("Sample the regularization weight over the range above and redraw "
-                                   "the L-curve. The corner is the weight balancing misfit against "
-                                   "smoothness."))
+            im.set_item_tooltip(
+                tr(
+                    "Sample the regularization weight over the range above and redraw "
+                    "the L-curve. The corner is the weight balancing misfit against "
+                    "smoothness."
+                )
+            )
             im.same_line()
             corner = data.get("corner_index")
             im.begin_disabled(corner is None or not options.get("select_action"))
@@ -984,30 +1198,38 @@ class SectionViews:
         target = str(d.get("target", "")) or "paths"
         view = self.path_views.get(ident)
         if view is None:
-            view = PathListView(self, actions={
-                "add": lambda: self._choose_paths(ident, options, folder=False),
-                "folder": lambda: self._choose_paths(ident, options, folder=True),
-                "database": lambda: self._database_paths(ident, options),
-                "remove": lambda path: self._remove_path(ident, path),
-                "clear": lambda: self.call(ident, "clear", {}, tr("Clearing the list…")),
-            })
+            view = PathListView(
+                self,
+                actions={
+                    "add": lambda: self._choose_paths(ident, options, folder=False),
+                    "folder": lambda: self._choose_paths(ident, options, folder=True),
+                    "database": lambda: self._database_paths(ident, options),
+                    "remove": lambda path: self._remove_path(ident, path),
+                    "clear": lambda: self.call(ident, "clear", {}, tr("Clearing the list…")),
+                },
+            )
             self.path_views[ident] = view
         adapter = _PathAdapter(target, (d.get("data") or {}).get("paths") or [], self.docks.busy)
-        spec = {"title": options.get("title") or d.get("title") or target,
-                "description": d.get("description", ""),
-                "options": {"target": target, "empty": tr("No file. Add or drop one.")}}
+        spec = {
+            "title": options.get("title") or d.get("title") or target,
+            "description": d.get("description", ""),
+            "options": {"target": target, "empty": tr("No file. Add or drop one.")},
+        }
         view.draw(spec, adapter, state)
 
     def _choose_paths(self, ident: str, options: dict, folder: bool) -> None:
         self.docks.open_file_dialog(
-            tr("Add folder") if folder else tr("Add files"), mode="folder" if folder else "open",
-            done=lambda path: self.call(ident, "add", {"paths": [path]}, tr("Adding files…")))
+            tr("Add folder") if folder else tr("Add files"),
+            mode="folder" if folder else "open",
+            done=lambda path: self.call(ident, "add", {"paths": [path]}, tr("Adding files…")),
+        )
 
     def _database_paths(self, ident: str, options: dict) -> None:
         """MMFDB's datasets of the kinds the list takes, picked like any other dataset."""
         self.docks.pick_database_paths(
             options.get("mmfdb_kinds") or [],
-            lambda paths: self.call(ident, "add", {"paths": list(paths)}, tr("Adding files…")))
+            lambda paths: self.call(ident, "add", {"paths": list(paths)}, tr("Adding files…")),
+        )
 
     def _remove_path(self, ident: str, path: str) -> None:
         paths = ((self.data.get(ident) or {}).get("data") or {}).get("paths") or []
@@ -1054,9 +1276,13 @@ class SectionViews:
             mine["pick"] = uids[0] if uids else ""
         names = [c["name"] for c in candidates]
         busy = self.docks.busy
-        im.set_next_item_width(max(80.0, im.get_content_region_avail()[0] - im.get_frame_height() - 8.0))
+        im.set_next_item_width(
+            max(80.0, im.get_content_region_avail()[0] - im.get_frame_height() - 8.0)
+        )
         index = uids.index(mine["pick"]) if mine["pick"] in uids else -1
-        if im.begin_combo(f"##mixer-fit-{ident}", names[index] if index >= 0 else tr("no lifetime fit")):
+        if im.begin_combo(
+            f"##mixer-fit-{ident}", names[index] if index >= 0 else tr("no lifetime fit")
+        ):
             for i, name in enumerate(names):
                 if im.selectable(f"{name}##mixer-{i}", i == index):
                     mine["pick"] = uids[i]
@@ -1073,8 +1299,9 @@ class SectionViews:
         im.text(tr("Name"))
         im.same_line()
         im.set_next_item_width(90.0)
-        _c, mine["name"] = im.input_text(f"##mixer-name-{ident}", mine["name"],
-                                         tr("fraction name…"))
+        _c, mine["name"] = im.input_text(
+            f"##mixer-name-{ident}", mine["name"], tr("fraction name…")
+        )
         self._rect(state, f"mixer.{ident}.name")
         im.set_item_tooltip(tr("Name for the fraction parameter (default: x_N)."))
         im.same_line()
@@ -1085,8 +1312,12 @@ class SectionViews:
         im.begin_disabled(busy or not uids)
         if im.button(tr("add") + f"##mixer-add-{ident}"):
             picked = list(uids) if mine["all"] else [mine["pick"]]
-            self.call(ident, "add", {"fit_uids": picked, "name": mine["name"]},
-                      tr("Adding to the mixture…"))
+            self.call(
+                ident,
+                "add",
+                {"fit_uids": picked, "name": mine["name"]},
+                tr("Adding to the mixture…"),
+            )
         self._rect(state, f"mixer.{ident}.add")
         im.set_item_tooltip(tr("Add the selected fit to the mixture."))
         im.end_disabled()
@@ -1112,14 +1343,17 @@ class SectionViews:
         data = d.get("data") or {}
         busy = self.docks.busy
         im.begin_disabled(busy)
-        changed, absolute = im.checkbox(tr("Abs.") + f"##abs-{ident}", bool(data.get("absolute", True)))
+        changed, absolute = im.checkbox(
+            tr("Abs.") + f"##abs-{ident}", bool(data.get("absolute", True))
+        )
         self._rect(state, f"amplitudes.{ident}.abs")
         im.set_item_tooltip(tr("Take absolute value of amplitudes (no negative amplitudes)."))
         if changed:
             self.call(ident, "set", {"absolute": absolute}, tr("Setting the amplitudes…"))
         im.same_line()
-        changed, normalize = im.checkbox(tr("Norm.") + f"##norm-{ident}",
-                                         bool(data.get("normalize", True)))
+        changed, normalize = im.checkbox(
+            tr("Norm.") + f"##norm-{ident}", bool(data.get("normalize", True))
+        )
         self._rect(state, f"amplitudes.{ident}.norm")
         im.set_item_tooltip(tr("Normalize amplitudes so they sum to one."))
         if changed:
@@ -1146,9 +1380,14 @@ class SectionViews:
                 for target in targets:
                     item = MenuItem(str(target.get("label", "")))
                     args = {k: target[k] for k in ("fit_uid", "member", "group")}
-                    menu.calls[id(item)] = (lambda a=args: self.call(
-                        ident, op, a, tr("Reading the lifetimes…") if op == "read"
-                        else tr("Linking the lifetimes…")))
+                    menu.calls[id(item)] = lambda a=args: self.call(
+                        ident,
+                        op,
+                        a,
+                        tr("Reading the lifetimes…")
+                        if op == "read"
+                        else tr("Linking the lifetimes…"),
+                    )
                     items.append(item)
                 if not items:
                     items = [MenuItem(tr("No other lifetime group"), enabled=False)]
@@ -1169,8 +1408,12 @@ class SectionViews:
                     if call is not None:
                         call()
 
-                overlays.popup(("model-editor-targets", id(menu)), menu.panel,
-                               on_close=lambda: setattr(menu.panel, "open", False), on_pick=picked)
+                overlays.popup(
+                    ("model-editor-targets", id(menu)),
+                    menu.panel,
+                    on_close=lambda: setattr(menu.panel, "open", False),
+                    on_pick=picked,
+                )
 
         self.dialogs.append(_Menu())
 
@@ -1197,7 +1440,9 @@ class SectionViews:
         for d in self.data.values():
             key = d.get("key", "")
             if d.get("type") == "curve_input":
-                found |= {str(d.get("label", "")), "…", "✕"} | ({"FWHM"} if d.get("shows_fwhm") else set())
+                found |= {str(d.get("label", "")), "…", "✕"} | (
+                    {"FWHM"} if d.get("shows_fwhm") else set()
+                )
                 continue
             data = d.get("data") or {}
             options = d.get("options") or {}
@@ -1210,15 +1455,26 @@ class SectionViews:
                 if options.get("compute_action"):
                     found |= {"min", "max", "N", "⟳ sweep", "⌾ corner"}
             elif key == "fit_mixer":
-                found |= {"Name", "all", "add", "🔄", "Fraction"} | {c["name"] for c in data.get("candidates") or []}
+                found |= {"Name", "all", "add", "🔄", "Fraction"} | {
+                    c["name"] for c in data.get("candidates") or []
+                }
             elif key == "lifetime_amplitude_options":
                 found |= {"Abs.", "Norm.", "read", "link"}
             elif key == "path_list":
-                found |= {str(options.get("title", "")), "Add files", "Folder", "Database", "Remove", "Clear"}
+                found |= {
+                    str(options.get("title", "")),
+                    "Add files",
+                    "Folder",
+                    "Database",
+                    "Remove",
+                    "Clear",
+                }
             elif key == "background_run":
                 found |= {str(options.get("start_label", "")), str(options.get("stop_label", ""))}
             elif key == "scalar_table":
-                found |= {"Name", "Value"} | {str(r.get("label", "")) for r in data.get("rows") or []}
+                found |= {"Name", "Value"} | {
+                    str(r.get("label", "")) for r in data.get("rows") or []
+                }
                 if options.get("title"):
                     found.add(str(options["title"]))
             elif key == "rate_matrix":

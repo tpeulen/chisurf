@@ -370,3 +370,25 @@ def test_the_extractor_does_not_read_prose_as_an_edge():
     visitor = _ImportVisitor("chisurf.plugins.demo.thing")
     visitor.visit(ast.parse(source))
     assert visitor.found == [], f"comments became edges: {visitor.found}"
+
+
+def test_an_import_under_type_checking_is_not_a_hard_edge():
+    """``if TYPE_CHECKING:`` never runs, so its imports cannot make plugins require each other."""
+    import ast
+
+    from chisurf.core.plugin.edges import _ImportVisitor
+
+    source = (
+        "from typing import TYPE_CHECKING\n"
+        "import typing\n"
+        "if TYPE_CHECKING:\n"
+        "    from chisurf.plugins.a.core import A\n"
+        "if typing.TYPE_CHECKING:\n"
+        "    import chisurf.plugins.b.core\n"
+        "else:\n"
+        "    import chisurf.plugins.c.core\n"
+    )
+    visitor = _ImportVisitor("chisurf.plugins.demo.thing")
+    visitor.visit(ast.parse(source))
+    hard = {dotted for dotted, is_hard, _ in visitor.found if is_hard}
+    assert hard == {"chisurf.plugins.c.core"}, visitor.found

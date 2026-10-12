@@ -488,7 +488,9 @@ class CorrelatorStepApp(ImApp):
         def run():
             with job_gate.hold(ticket, lambda: self._stop) as go:
                 self.status = (
-                    self.model.correlate_data(progress=progress) if go else "Stopped before it started."
+                    self.model.correlate_data(progress=progress)
+                    if go
+                    else "Stopped before it started."
                 )
             self.request_frame()
 
@@ -555,7 +557,8 @@ class CorrelatorStepApp(ImApp):
         )
         self.item_rects["load_filters"] = im.get_item_rect()
         used = _same_line_if_fits(
-            "Unload", im.calc_text_size(tr("Load filters..."))[0] + 2 * im.get_style().frame_padding[0]
+            "Unload",
+            im.calc_text_size(tr("Load filters..."))[0] + 2 * im.get_style().frame_padding[0],
         )
         im.begin_disabled(not self.model.filter_mode)
         if im.button(tr("Unload")):

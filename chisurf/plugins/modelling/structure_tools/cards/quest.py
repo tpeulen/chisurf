@@ -599,9 +599,7 @@ class QuestCard(CardShell):
             if self.session.ready:
                 self.spec = quest_spec()
             self.sync()
-        im.set_item_tooltip(
-            tr("Try to load QuEst again (after installing IMP.bff).")
-        )
+        im.set_item_tooltip(tr("Try to load QuEst again (after installing IMP.bff)."))
         self.remember("retry")
         im.same_line()
         pressed = self.toolbar(self.help_buttons())

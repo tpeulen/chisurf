@@ -15,11 +15,11 @@ from pathlib import Path
 import pytest
 from emtk import keys
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.modelling.fret.api.project import save_docking_project
 from chisurf.plugins.modelling.structure_tools.cards.docking import make_app
 from chisurf.plugins.modelling.structure_tools.cards.docking_model import DockingSession
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
-from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(path for path in Path(__file__).parents if (path / "pyproject.toml").exists())
 EXAMPLE = REPO / "chisurf/plugins/modelling/fret/examples/fps_hiv_rt"

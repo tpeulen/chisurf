@@ -132,7 +132,8 @@ def _recording_failures(caplog) -> list[str]:
     return [
         r.getMessage()
         for r in caplog.records
-        if r.levelno >= logging.ERROR and ("Recording" in r.getMessage() or "Autosav" in r.getMessage())
+        if r.levelno >= logging.ERROR
+        and ("Recording" in r.getMessage() or "Autosav" in r.getMessage())
     ]
 
 
@@ -156,7 +157,9 @@ def test_two_files_of_one_reader_and_a_bunching_term_are_recorded(shell, caplog)
 
     unfold(editor.spec.get("sections", []))
     _click_editor(driver, shell, editor.action_for("add", "bunching"))
-    _settle(driver, lambda: _idle(shell) and len(_model(shell, uid).bunching) == 1, "the bunching term")
+    _settle(
+        driver, lambda: _idle(shell) and len(_model(shell, uid).bunching) == 1, "the bunching term"
+    )
     assert _recording_failures(caplog) == []
     assert project.can_undo(), "the changes were recorded"
     # And the recorded project restores: undo the bunching term, redo it.

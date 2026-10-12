@@ -105,7 +105,9 @@ def test_the_phase_tag_names_the_position_it_marks(drv, monkeypatch):
     tags = []
     real = app_module.implot.tag_x
     monkeypatch.setattr(
-        app_module.implot, "tag_x", lambda x, colour, fmt="", **kw: (tags.append((x, fmt)), real(x, colour, fmt=fmt, **kw))[1]
+        app_module.implot,
+        "tag_x",
+        lambda x, colour, fmt="", **kw: (tags.append((x, fmt)), real(x, colour, fmt=fmt, **kw))[1],
     )
     drv.draw(2)
     assert tags, "no phase tag drawn"

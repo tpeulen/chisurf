@@ -155,9 +155,9 @@ def main() -> None:
     note("stdout", "hello s4" in text(), "hello s4" in text())
     before = text()
     submit("s4_x = 7")
-    silent = text()[len(before):].count("Out[") == 0
+    silent = text()[len(before) :].count("Out[") == 0
     submit("s4_x")
-    note("statement_silent", silent and "7" in text()[len(before):], silent)
+    note("statement_silent", silent and "7" in text()[len(before) :], silent)
     submit("1/0")
     note("stderr_traceback", "ZeroDivisionError" in text(), "ZeroDivisionError" in text())
 
@@ -170,7 +170,9 @@ def main() -> None:
     key(QtCore.Qt.Key_Return)
     key(QtCore.Qt.Key_Return)
     pump(0.3)
-    note("multiline_block", "10" in text().split("for s4_i")[-1], text().split("for s4_i")[-1][-40:])
+    note(
+        "multiline_block", "10" in text().split("for s4_i")[-1], text().split("for s4_i")[-1][-40:]
+    )
 
     submit("s4_x + 1")
     view.set_input_buffer("")
@@ -238,8 +240,11 @@ def main() -> None:
     events_before = len(history.list_events())
     chisurf.run("s4_from_run = 5")
     pump(0.5)
-    note("cs_run", console.shell.user_ns.get("s4_from_run") == 5,
-         console.shell.user_ns.get("s4_from_run"))
+    note(
+        "cs_run",
+        console.shell.user_ns.get("s4_from_run") == 5,
+        console.shell.user_ns.get("s4_from_run"),
+    )
     recorded = [str(e.get("summary", "")) for e in history.list_events()[events_before:]]
     note("cs_run_history", any(r.startswith("run command") for r in recorded), recorded)
 
@@ -255,7 +260,11 @@ def main() -> None:
     note("replay_macro", console.shell.user_ns.get("s4_m") == 3, console.shell.user_ns.get("s4_m"))
 
     session = console.session_file
-    logged = Path(session).read_text("utf-8", errors="ignore") if session and Path(session).exists() else ""
+    logged = (
+        Path(session).read_text("utf-8", errors="ignore")
+        if session and Path(session).exists()
+        else ""
+    )
     note("session_log", "2 + 40" in logged, session)
 
     gui.dockWidget_console.grab().save(str(out / "qt_console.png"))

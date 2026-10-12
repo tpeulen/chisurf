@@ -33,7 +33,11 @@ def test_default_cache_is_reused_then_rewritten(module, tmp_path, monkeypatch):
     except RuntimeError as exc:  # a tttrlib build without the photon simulator
         pytest.skip(str(exc))
     assert tmp_path in first.parents
-    stamps = {p: p.stat().st_mtime_ns for p in _files(first) if p.suffix != ".json" or "meta" not in p.name}
+    stamps = {
+        p: p.stat().st_mtime_ns
+        for p in _files(first)
+        if p.suffix != ".json" or "meta" not in p.name
+    }
     assert stamps
     assert demo.make_demo() == first
     assert {p: p.stat().st_mtime_ns for p in stamps} == stamps

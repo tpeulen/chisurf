@@ -56,7 +56,9 @@ def test_every_shipped_plugin_resolves_to_a_task_colour():
     entries = menu_entries(manifests())
     known = tc.plugin_categories(entries)
     missing = sorted(e.plugin_id for e in entries if not known.get(e.plugin_id))
-    assert not missing, f"plugins without a task colour (add their group to task_colors.yaml): {missing}"
+    assert not missing, (
+        f"plugins without a task colour (add their group to task_colors.yaml): {missing}"
+    )
     assert known["help"] == "documentation"
     assert known["wizards"] == "wizards"
     assert known["imaging_tools"] == "imaging"
@@ -105,7 +107,9 @@ class _Tool(ImApp):
 
 
 def test_a_hosted_dock_tab_is_drawn_in_its_category_colour():
-    shell = EmtkShellApp(loader=lambda _pid: _Tool(), console_history=False, console_session_file=False)
+    shell = EmtkShellApp(
+        loader=lambda _pid: _Tool(), console_history=False, console_session_file=False
+    )
     driver = Driver(shell, (1200, 800))
     driver.frame(2)
     for plugin_id in ("help", "wizards"):

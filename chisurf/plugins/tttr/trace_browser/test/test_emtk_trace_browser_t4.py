@@ -871,7 +871,10 @@ def test_load_example_on_the_setup_page_opens_the_simulated_files(tmp_path, monk
             time.sleep(0.05)
         frames(app, n=3)
         assert app.model.page == "browser"
-        assert sorted(pathlib.Path(r["path"]).name for r in app.model.rows) == ["trace_1.spc", "trace_2.spc"]
+        assert sorted(pathlib.Path(r["path"]).name for r in app.model.rows) == [
+            "trace_1.spc",
+            "trace_2.spc",
+        ]
         assert not app.tour.awaiting
     finally:
         app.close()

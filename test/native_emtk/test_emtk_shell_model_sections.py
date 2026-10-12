@@ -147,7 +147,9 @@ def _model(shell, uid: str):
 
 def _section(shell, key: str) -> dict:
     """A resolved curve picker (by its key) or custom section (by its key or address)."""
-    return next(s for s in shell.data.editor.sections.data.values() if key in (s.get("key"), s.get("id")))
+    return next(
+        s for s in shell.data.editor.sections.data.values() if key in (s.get("key"), s.get("id"))
+    )
 
 
 def _click_editor(driver: Driver, shell, name: str) -> None:
@@ -197,8 +199,11 @@ def test_the_irf_and_background_pickers_load_and_unload_a_session_curve(shell, c
     assert "updating the Fit page failed" not in caplog.text
     driver.screenshot(SHOTS / "emtk_shell_tcspc_curves.png")
     _click_editor(driver, shell, "curve.generic.background_curve.unload")
-    _settle(driver, lambda: _idle(shell) and not _section(shell, "generic.background_curve")["loaded"],
-            "the background unloaded")
+    _settle(
+        driver,
+        lambda: _idle(shell) and not _section(shell, "generic.background_curve")["loaded"],
+        "the background unloaded",
+    )
     assert model.generic.background_curve is None
     from chisurf.core.api._client import RemoteError
 
@@ -213,7 +218,9 @@ def test_kappa2_controls_switch_the_regime_and_open_their_windows(shell):
     _show(driver, shell, uid)
     model = _model(shell, uid)
     _click_editor(driver, shell, "kappa2.static")
-    _settle(driver, lambda: _idle(shell) and model.orientation_parameter.mode == "slow", "static κ²")
+    _settle(
+        driver, lambda: _idle(shell) and model.orientation_parameter.mode == "slow", "static κ²"
+    )
     assert _section(shell, "kappa2_controls:")["data"]["mode"] == "slow"
     _click_editor(driver, shell, "kappa2.show")
     window = shell.data.editor.sections.dialogs[-1]
@@ -282,8 +289,12 @@ def test_the_l_curve_is_swept_and_its_corner_adopted(shell):
     ident = "lcurve:l_curve"
     shell.data.editor.sections.sweep[ident] = [-3.0, 1.0, 8.0]
     _click_editor(driver, shell, f"lcurve.{ident}.sweep")
-    _settle(driver, lambda: _idle(shell) and _section(shell, "lcurve")["data"]["reg"], "the sweep",
-            timeout=600)
+    _settle(
+        driver,
+        lambda: _idle(shell) and _section(shell, "lcurve")["data"]["reg"],
+        "the sweep",
+        timeout=600,
+    )
     data = _section(shell, "lcurve")["data"]
     assert len(data["reg"]) == 8
     driver.screenshot(SHOTS / "emtk_shell_lcurve.png")
@@ -300,9 +311,16 @@ def test_rate_matrix_cells_and_the_link_menu(shell):
     _show(driver, shell, uid)
     sections = shell.data.editor.sections
     ident = "rate_matrix:saturation.dark.rate_values"
-    row = next(r for name, rows in shell.data.editor._sources.items() if name.startswith("section_rows_")
-               for r in rows if r.get("_section") == ident and r["_i"] == 1)
-    assert sections.editable(row, "c0") and not sections.editable(row, "c1"), "the diagonal is no rate"
+    row = next(
+        r
+        for name, rows in shell.data.editor._sources.items()
+        if name.startswith("section_rows_")
+        for r in rows
+        if r.get("_section") == ident and r["_i"] == 1
+    )
+    assert sections.editable(row, "c0") and not sections.editable(row, "c1"), (
+        "the diagonal is no rate"
+    )
     shell.data.editor.section_edit_rate(row, "c2", 7.5)
     _settle(driver, lambda: _idle(shell), "the rate")
     model = _model(shell, uid)
@@ -311,24 +329,38 @@ def test_rate_matrix_cells_and_the_link_menu(shell):
     driver.screenshot(SHOTS / "emtk_shell_rate_matrix.png")
 
     # The link menu: a right click on a parameter row, a fit, its parameter.
-    table_row = next(r for name, rows in shell.data.editor._sources.items()
-                     if name.startswith("rows_") for r in rows if r["name"] == "N")
+    table_row = next(
+        r
+        for name, rows in shell.data.editor._sources.items()
+        if name.startswith("rows_")
+        for r in rows
+        if r["name"] == "N"
+    )
     shell.data.editor.section_context(table_row, "value", (100.0, 100.0))
     _settle(driver, lambda: _idle(shell) and shell.data.editor.sections.dialogs, "the link menu")
     menu = shell.data.editor.sections.dialogs[-1]
     info = shell.data.session.api.get_fit_info(fit_uid=other) or {}
     info = info.get("fit", info)
     target = next(p for p in info["model"]["parameters_all"] if p["name"] == "N")
-    call = next(c for item_id, c in menu.calls.items()
-                if getattr(c, "__defaults__", None) and c.__defaults__[0] == target["uid"])
+    call = next(
+        c
+        for item_id, c in menu.calls.items()
+        if getattr(c, "__defaults__", None) and c.__defaults__[0] == target["uid"]
+    )
     menu.panel.open = False
     call()
     _settle(driver, lambda: _idle(shell), "the link")
-    linked = next(p for p in _model(shell, uid).parameters_all if
-                  str(p.unique_identifier) == table_row["uid"])
+    linked = next(
+        p for p in _model(shell, uid).parameters_all if str(p.unique_identifier) == table_row["uid"]
+    )
     assert str(linked.link.unique_identifier) == target["uid"]
-    row = next(r for name, rows in shell.data.editor._sources.items()
-               if name.startswith("rows_") for r in rows if r["uid"] == table_row["uid"])
+    row = next(
+        r
+        for name, rows in shell.data.editor._sources.items()
+        if name.startswith("rows_")
+        for r in rows
+        if r["uid"] == table_row["uid"]
+    )
     assert row["linked"], "the editor shows the parameter as linked"
 
 
@@ -365,16 +397,22 @@ def test_scalar_table_file_list_and_global_table(shell):
     # the model's (an AV on 148L samples no states today: okf/references/known-issues.md).
     model = _model(shell, structure)
     model.load_structures = lambda paths: model.__dict__.__setitem__(
-        "_structure_files", [str(p) for p in paths])
+        "_structure_files", [str(p) for p in paths]
+    )
     assert api.model_section_call(ident, "add", {"paths": [str(PDB)]}, fit_uid=structure)["ok"]
     shell.data.reread_current()
-    _settle(driver, lambda: _idle(shell) and _section(shell, "path_list")["data"]["paths"], "the file")
+    _settle(
+        driver, lambda: _idle(shell) and _section(shell, "path_list")["data"]["paths"], "the file"
+    )
     assert model.structure_files == [str(PDB)]
     driver.frame(3)
     assert "148l.pdb" in driver.painter.strings
     _click_editor(driver, shell, "structure_files.clear")
-    _settle(driver, lambda: _idle(shell) and not _section(shell, "path_list")["data"]["paths"],
-            "the list cleared")
+    _settle(
+        driver,
+        lambda: _idle(shell) and not _section(shell, "path_list")["data"]["paths"],
+        "the list cleared",
+    )
 
     lifetime = _add_fit(driver, shell, decay, "Lifetime")
     global_row = next(r for r in shell.data.datasets.datasets if r["experiment"] == "Global")
@@ -396,6 +434,7 @@ def _inventory(driver: Driver, shell) -> set[str]:
     from migration_parity import _normalize_control_text
 
     editor = shell.data.editor
+
     # Every panel open, as the Qt inventory counts folded widgets too.
     def walk(sections):
         for section in sections:
@@ -458,7 +497,8 @@ def test_parity_with_the_qt_model_editors(shell):
         driver.screenshot(SHOTS / f"emtk_shell_model_{key}.png")
         qt = set(before[key]["controls"])
         lost = {
-            c for c in qt - after
+            c
+            for c in qt - after
             if not _NUMBER.match(c) and "/users/" not in c and not ENVIRONMENT.match(c)
         }
         unexplained = lost - KNOWN_GAPS.get(key, set()) - set(RENAMED)

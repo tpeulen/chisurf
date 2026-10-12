@@ -31,7 +31,9 @@ def _sections(node):
 
 
 def test_every_bound_call_takes_the_committed_value():
-    calls = {s["call"] for s in _sections(json.loads(VIEW.read_text())) if "call" in s and "attr" in s}
+    calls = {
+        s["call"] for s in _sections(json.loads(VIEW.read_text())) if "call" in s and "attr" in s
+    }
     assert "apply_dye_selection" in calls
     for name in calls:
         signature = inspect.signature(getattr(AccurateFretViewModel, name))

@@ -90,7 +90,9 @@ def test_ptu_roundtrip_retains_calibrated_axes_and_events(producer, tmp_path, dt
     ticks = np.asarray(restored.macro_times)[photons]
     assert bins.size > 100
     np.testing.assert_allclose(bins * restored.header.micro_time_resolution * 1e9, bins * dt)
-    np.testing.assert_allclose(ticks * restored.header.macro_time_resolution, ticks * n_micro * dt * 1e-9)
+    np.testing.assert_allclose(
+        ticks * restored.header.macro_time_resolution, ticks * n_micro * dt * 1e-9
+    )
 
 
 def test_writer_replaces_placeholder_microtime_metadata(producer, tmp_path):
@@ -197,8 +199,13 @@ def test_a_written_scan_reconstructs_and_phasors_without_being_told_the_scanner(
     brightness = 0.2 + np.exp(-0.5 * (((x - 6) / 3) ** 2 + ((y - 6) / 3) ** 2))
     tau = 2.0
     simulation = producer.simulate_clsm_from_maps(
-        brightness, np.full((12, 12), tau), brightness_scale=3000.0, n_lifetime_levels=2,
-        n_intensity_levels=3, irf_sigma=0.01, irf_center=0.0,
+        brightness,
+        np.full((12, 12), tau),
+        brightness_scale=3000.0,
+        n_lifetime_levels=2,
+        n_intensity_levels=3,
+        irf_sigma=0.01,
+        irf_center=0.0,
     )
     expected = np.asarray(simulation.intensity)
     for suffix in ("ptu", "pto"):

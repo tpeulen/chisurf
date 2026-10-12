@@ -303,7 +303,9 @@ def import_preview(
     """
     settings = _settings(mmfdb_settings)
     if select_backend(settings) != "mmfdb":
-        raise ProjectStorageError("MMFDB import requested without a configured real MMFDB deployment")
+        raise ProjectStorageError(
+            "MMFDB import requested without a configured real MMFDB deployment"
+        )
     preview = _client_for(settings, client).import_preview(file_path=str(file_path))
     if preview.get("ok") is not True:
         raise ProjectStorageError(preview.get("error") or "Import preview failed")
@@ -334,7 +336,9 @@ def import_database(
 
     settings = _settings(mmfdb_settings)
     if select_backend(settings) != "mmfdb":
-        raise ProjectStorageError("MMFDB import requested without a configured real MMFDB deployment")
+        raise ProjectStorageError(
+            "MMFDB import requested without a configured real MMFDB deployment"
+        )
     transport = _client_for(settings, client)
     result = transport.import_csp(file_path=str(file_path), resolve_collisions=resolve_collisions)
     if result.get("ok") is not True:
@@ -348,7 +352,10 @@ def import_database(
     if restored.get("ok") is not True:
         raise ProjectStorageError("Imported project version readback failed")
     for field in ("version_id", "project_id", "version_number"):
-        if type(restored.get(field)) is not type(result[field]) or restored.get(field) != result[field]:
+        if (
+            type(restored.get(field)) is not type(result[field])
+            or restored.get(field) != result[field]
+        ):
             raise ProjectStorageError(f"Imported project {field} readback mismatch")
     payload = _validate_project_payload(result.get("project_payload"))
     if restored.get("project_payload") != payload:

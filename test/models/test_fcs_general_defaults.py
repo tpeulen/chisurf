@@ -19,7 +19,14 @@ import chisurf.core.data
 import chisurf.core.fitting.fit as F
 from chisurf.core.models.fcs.general import GeneralFCSModel
 
-VIEW = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "models" / "fcs" / "general.view.json"
+VIEW = (
+    Path(__file__).resolve().parents[2]
+    / "chisurf"
+    / "core"
+    / "models"
+    / "fcs"
+    / "general.view.json"
+)
 
 
 def _fit():

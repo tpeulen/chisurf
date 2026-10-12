@@ -110,10 +110,12 @@ def render_fit_images(
             if editor:
                 resolved = resolved_editor(fit, index)
                 if resolved is not None:
-                    picture = _EditorPicture(str(getattr(member, "unique_identifier", "") or uid),
-                                             resolved)
-                    images.append((f"{prefix} · Model",
-                                   png_bytes(picture.app, EDITOR_SIZE, painter="pil")))
+                    picture = _EditorPicture(
+                        str(getattr(member, "unique_identifier", "") or uid), resolved
+                    )
+                    images.append(
+                        (f"{prefix} · Model", png_bytes(picture.app, EDITOR_SIZE, painter="pil"))
+                    )
     finally:
         if selected is not None:
             fit.selected_fit = selected

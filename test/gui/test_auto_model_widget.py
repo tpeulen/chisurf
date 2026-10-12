@@ -647,7 +647,9 @@ def test_mixture_new_model_build_editor(qapp, mixture_model):
     assert editor.model is mixture_model
 
 
-def test_the_irf_field_shows_the_datasets_name_not_its_path(qapp, registered_lifetime_model, monkeypatch):
+def test_the_irf_field_shows_the_datasets_name_not_its_path(
+    qapp, registered_lifetime_model, monkeypatch
+):
     """Qt shows the picked IRF as the emtk shell does: ``Prompt.txt``, not ``/…/Prompt.txt`` (2026-10-11).
 
     The selector handed its dataset's *file path* as the curve name and the field printed it;
@@ -662,8 +664,9 @@ def test_the_irf_field_shows_the_datasets_name_not_its_path(qapp, registered_lif
     from chisurf.macros.model import CURVE_SELECT
 
     x = np.linspace(0, 25, 256)
-    prompt = DataCurve(x=x, y=np.exp(-0.5 * ((x - 2) / 0.1) ** 2), name="Prompt.txt",
-                       load_filename_on_init=False)
+    prompt = DataCurve(
+        x=x, y=np.exp(-0.5 * ((x - 2) / 0.1) ** 2), name="Prompt.txt", load_filename_on_init=False
+    )
     prompt.filename = "/very/long/measurement/folder/Prompt.txt"
 
     class _Picked:

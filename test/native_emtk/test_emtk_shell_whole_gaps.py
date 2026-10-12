@@ -150,7 +150,9 @@ def test_menu_switch_hides_and_shows_the_ribbon_and_keeps_the_choice(tmp_path):
         driver.click("ribbon.button.plugin.menu_switch")
         driver.frame(2)
         assert not shell.ribbon_enabled
-        assert not any(key.startswith("ribbon.tab.") for key in shell.item_rects), "ribbon still drawn"
+        assert not any(key.startswith("ribbon.tab.") for key in shell.item_rects), (
+            "ribbon still drawn"
+        )
         settings = yaml.safe_load((tmp_path / "settings" / "settings_chisurf.yaml").read_text())
         assert settings["gui"]["use_ribbon_interface"] is False
         _shot(driver, "menu_switch_menu_bar")
@@ -172,8 +174,9 @@ def test_the_log_dock_filters_hides_pauses_clears_and_goes_back_in_history():
     from chisurf.server.session import SessionState
 
     session = start_session(state=SessionState())
-    shell = EmtkShellApp(loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     shell.data.adopt(session)
     driver = _driver(shell)
     log = shell.log
@@ -255,8 +258,10 @@ def test_screenshot_copies_the_window_to_the_clipboard():
         driver.frame(2)
         count, png = last_copied_image()
         assert count == before + 1 and png[:8] == b"\x89PNG\r\n\x1a\n"
-        assert shell.status in ("Screenshot copied to clipboard.",
-                                "Screenshot failed: the window could not be grabbed.")
+        assert shell.status in (
+            "Screenshot copied to clipboard.",
+            "Screenshot failed: the window could not be grabbed.",
+        )
         _shot(driver, "main_tab")
     finally:
         shell.close()
@@ -275,16 +280,23 @@ def fitted():
     from chisurf.server.session import SessionState
 
     session = start_session(state=SessionState())
-    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
-                         console_session_file=False)
+    shell = EmtkShellApp(
+        {}, loader=lambda plugin_id: None, console_history=False, console_session_file=False
+    )
     shell.data.adopt(session)
     driver = _driver(shell)
     shell.docks.focus(READ_KEY)
     driver.frame(2)
     driver.click("read.use_demo")
     driver.click("read.load")
-    _wait(driver, lambda: fits_test._idle(shell)
-          and any(r["name"] == "fcs_demo" for r in shell.data.datasets.datasets), "the demo")
+    _wait(
+        driver,
+        lambda: (
+            fits_test._idle(shell)
+            and any(r["name"] == "fcs_demo" for r in shell.data.datasets.datasets)
+        ),
+        "the demo",
+    )
     fits_test._add_fit(driver, shell, shell.data.datasets.model)
     yield shell, driver, session
     shell.close()
@@ -338,8 +350,11 @@ def test_current_fit_all_fits_and_load_fit_round_trip(fitted, tmp_path):
     fits_before = len(state.fits)
     _menu(driver, shell, "Load Fit")
     project.choose_file(out / "fcs_demo.fit.cs.pto")
-    _wait(driver, lambda: not project.busy and len(shell.data.datasets.fits) == fits_before + 1,
-          "the loaded fit")
+    _wait(
+        driver,
+        lambda: not project.busy and len(shell.data.datasets.fits) == fits_before + 1,
+        "the loaded fit",
+    )
     assert len(state.fits) == fits_before + 1
     _shot(driver, "load_fit")
     # Loading the same document again is refused with its reason, not a second copy.

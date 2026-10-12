@@ -28,7 +28,9 @@ from chisurf.core.console.mpl_inline import BACKEND  # noqa: E402
 
 #: The exact cell of the bug report.
 SNIPPET = "import pylab as plt; x = np.linspace(0, 10); y = np.sin(x); plt.plot(x, y)"
-SHOTS = pathlib.Path(os.environ.get("CHISURF_CONSOLE_SCREENSHOTS", "/private/tmp/chisurf-console-plots"))
+SHOTS = pathlib.Path(
+    os.environ.get("CHISURF_CONSOLE_SCREENSHOTS", "/private/tmp/chisurf-console-plots")
+)
 #: matplotlib's first colour, the colour of the plotted line.
 C0 = (0x1F, 0x77, 0xB4)
 
@@ -170,7 +172,7 @@ def test_pil_images_and_emtk_figures_and_repr_svg_objects_are_images(shell):
     assert pixels(images(shell)[-1]).shape[:2] == (120, 200)
     shell.run_cell(
         "class Box:\n    def _repr_svg_(self):\n"
-        "        return '<svg width=\"10\" height=\"10\"><rect width=\"10\" height=\"10\"/></svg>'\n"
+        '        return \'<svg width="10" height="10"><rect width="10" height="10"/></svg>\'\n'
         "Box()"
     )
     assert "image/svg+xml" in shell.shown[-1][0]

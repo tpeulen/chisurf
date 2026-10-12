@@ -18,6 +18,7 @@ import numpy as np
 import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
+
 from chisurf.plugins.emtk_layout import action_caption
 
 REPO = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())

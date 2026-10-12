@@ -21,13 +21,13 @@ import numpy as np
 import pytest
 from emtk import i18n
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import CTRL, Driver, assert_tour_card_clear
 from chisurf.plugins.spectra_downloader.gui import native
 from chisurf.plugins.spectra_downloader.gui.app import PANELS, create_app, translated
 from chisurf.plugins.spectra_downloader.gui.translations import LOCALES, tr
 from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
 from test.gui import emtk_layout_checks as lay
-from chisurf.plugins.emtk_layout import action_caption
 
 SIZES = [(1200, 800), (800, 600)]
 REAL_HOME = Path(pwd.getpwuid(os.getuid()).pw_dir)

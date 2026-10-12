@@ -524,4 +524,3 @@ class Pda2cAnisotropyModel(Pda2cModelMixin, ModelCurve):
             pass
 
         return mask_zero_photon_bins(fit, xmin, masked)
-

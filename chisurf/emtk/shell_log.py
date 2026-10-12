@@ -241,7 +241,9 @@ class ShellLog:
             with self.rpc.lock:
                 calls = list(self.rpc.calls)
             keys = ("time", "origin", "target", "what", "status", "params")
-            return [dict(row, index=i) for i, row in enumerate(calls) if _matches(row, needle, keys)]
+            return [
+                dict(row, index=i) for i, row in enumerate(calls) if _matches(row, needle, keys)
+            ]
 
         return self._rows("rpc", (self.rpc.revision, needle), build)
 
@@ -277,8 +279,9 @@ class ShellLog:
         index = int(record.get("index", -1))
         if 0 <= index < len(self._history_events):
             try:
-                self.details = json.dumps(self._history_events[index], indent=2, sort_keys=True,
-                                          default=str)
+                self.details = json.dumps(
+                    self._history_events[index], indent=2, sort_keys=True, default=str
+                )
             except Exception:  # noqa: BLE001 - details are a convenience
                 self.details = str(self._history_events[index])
         go = getattr(self.project, "go_to_history", None)

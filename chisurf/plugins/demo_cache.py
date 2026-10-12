@@ -43,6 +43,8 @@ def is_current(folder: Path, names: Iterable[str], demo: dict[str, Any]) -> bool
 def record(folder: Path, names: Iterable[str], demo: dict[str, Any]) -> None:
     """Stamp *names* in *folder* as written for these *demo* parameters."""
     (folder / STAMP).write_text(
-        json.dumps({"demo": demo, "sha256": {n: _digest(folder / n) for n in names}}, sort_keys=True),
+        json.dumps(
+            {"demo": demo, "sha256": {n: _digest(folder / n) for n in names}}, sort_keys=True
+        ),
         encoding="utf-8",
     )

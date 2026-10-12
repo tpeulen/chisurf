@@ -13,8 +13,8 @@ import time
 import pytest
 from emtk import keys
 
-from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 SIZE = (1000, 700)
 

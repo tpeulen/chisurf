@@ -27,7 +27,8 @@ def test_irf_estimator_draws_its_padded_captions_in_french():
             assert "Régularisation" in shown, sorted(s for s in shown if "gulari" in s)
             assert "Regularization" not in shown
             caption = next(
-                (x, w) for (x, _y, w, _h, _a, s, _c, _b), in zip(painter.visible_texts)
+                (x, w)
+                for ((x, _y, w, _h, _a, s, _c, _b),) in zip(painter.visible_texts)
                 if s.strip() == "Régularisation"
             )
             assert caption[1] > 0, "the translated caption is not clipped away"

@@ -764,7 +764,9 @@ def _data_histogram(fit, pda_obj, pda_meta, s1s2_data, settings, nmin, nmax):
     return value
 
 
-def pda_1d_residual_size(fit, pda_obj, nuisance=None, settings: Pda2cFitSettings | None = None) -> int:
+def pda_1d_residual_size(
+    fit, pda_obj, nuisance=None, settings: Pda2cFitSettings | None = None
+) -> int:
     """Number of bins of the 1D histogram the fit compares: the ``n_points`` of a 1D PDA fit.
 
     It is a function of the data and the settings alone (the binning and the photon gate), so it reads the

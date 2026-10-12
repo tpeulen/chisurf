@@ -130,8 +130,13 @@ def test_a_main_window_that_cannot_open_closes_the_splash_and_keeps_the_error():
     def cannot_open(shell):
         raise RuntimeError("no window")
 
-    run = SplashRun(state, make, open_main=cannot_open,
-                    close_splash=lambda: events.append("close"), later=queued.append)
+    run = SplashRun(
+        state,
+        make,
+        open_main=cannot_open,
+        close_splash=lambda: events.append("close"),
+        later=queued.append,
+    )
     state.start()
     run.frame()
     while queued:
@@ -151,8 +156,9 @@ def test_the_state_follows_stages_and_keeps_the_last_log_line():
     state.start()
     try:
         state.stage_started({"id": "emtk_imports", "label": "Loading modules", "progress": 10})
-        state.stage_started({"id": "emtk_server", "label": "Starting the server and its plugins",
-                             "progress": 45})
+        state.stage_started(
+            {"id": "emtk_server", "label": "Starting the server and its plugins", "progress": 45}
+        )
         logging.getLogger("chisurf.emtk.session").info("session server on 127.0.0.1:1")
         assert state.stages == ["emtk_imports", "emtk_server"]
         assert state.stage == "Starting the server and its plugins" and state.progress == 45
@@ -218,8 +224,9 @@ def test_the_splash_draws_the_art_transparent_around_it_with_the_stage(device, s
 
     state = SplashState()
     app = SplashApp(state)
-    state.stage_started({"id": "emtk_server", "label": "Starting the server and its plugins",
-                         "progress": 45})
+    state.stage_started(
+        {"id": "emtk_server", "label": "Starting the server and its plugins", "progress": 45}
+    )
     surface = ControlSurface(app, background=(0, 0, 0, 0), images=ImageAtlas(2048, 2048))
     canvas = RenderCanvas(size=ART_SIZE, pixel_ratio=scale)
     host = NativeHost(surface, canvas=canvas, device=device)
@@ -242,17 +249,22 @@ def test_the_session_reports_the_declared_stages_in_order():
     from chisurf.server.session import SessionState
     from chisurf.startup.services import AppStartupServiceManager
 
-    declared = [s.id for s in AppStartupServiceManager().ordered_specs(surface="emtk",
-                                                                         phase="splash")]
+    declared = [
+        s.id for s in AppStartupServiceManager().ordered_specs(surface="emtk", phase="splash")
+    ]
     assert declared == [s["id"] for s in json.loads(STAGES.read_text())["services"]]
     state = SplashState()
     session = start_session(state=SessionState(), on_stage=state.stage_started)
     try:
         assert state.stages == declared
-        assert state.progress == max(s["progress"] for s in json.loads(STAGES.read_text())["services"])
+        assert state.progress == max(
+            s["progress"] for s in json.loads(STAGES.read_text())["services"]
+        )
         datasets = session.api.list_datasets() or []
         assert [d["name"] for d in datasets] == ["Global Dataset"], "the last stage adds it, once"
-        assert session.ensure_global_dataset() is False, "a second call (the shell's adopt) adds none"
+        assert session.ensure_global_dataset() is False, (
+            "a second call (the shell's adopt) adds none"
+        )
         assert len(session.api.list_datasets()) == 1
     finally:
         session.close()

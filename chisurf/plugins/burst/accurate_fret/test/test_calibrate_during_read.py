@@ -17,7 +17,10 @@ from .test_accurate_fret_plugin import TAU_D0, _simulate
 def _table(path):
     dd, da, aa, tau = _simulate(n=100)
     np.savetxt(
-        path, np.column_stack([dd, da, aa, tau]), delimiter=",", comments="",
+        path,
+        np.column_stack([dd, da, aa, tau]),
+        delimiter=",",
+        comments="",
         header="Green Count Rate (KHz),Red Count Rate (KHz),S delayed yellow (kHz),Tau (green)",
     )
     return path

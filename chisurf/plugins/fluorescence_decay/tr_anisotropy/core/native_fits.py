@@ -133,7 +133,9 @@ def create_linked_fits(data, lifetimes, rotations, corrections, irf_window=None)
         model.convolve._irf = data[f"irf_{role}_bg_norm"]
         if irf_window is not None:
             x = np.asarray(data[f"irf_{role}_bg_norm"].x, dtype=float)
-            set_response_window(model, irf_window, float(np.mean(np.diff(x))) if x.size > 1 else 0.0)
+            set_response_window(
+                model, irf_window, float(np.mean(np.diff(x))) if x.size > 1 else 0.0
+            )
         configure_components(model, "lifetimes", lifetimes)
         configure_components(model, "rotations", rotations)
         for parameter in model.parameters_all:

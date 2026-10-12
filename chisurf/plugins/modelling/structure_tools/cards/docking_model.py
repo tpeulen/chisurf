@@ -19,7 +19,6 @@ from typing import Any
 
 import numpy as np
 
-
 from .fps_model import Rows
 
 OPERATIONS = ("dock", "refine", "screen", "score")

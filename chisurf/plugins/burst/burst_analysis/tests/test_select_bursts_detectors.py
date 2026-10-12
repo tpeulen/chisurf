@@ -42,7 +42,9 @@ def test_bursts_carry_per_detector_counts_and_recurrence_runs(workflow, names):
     n_a = numeric_column(bursts.table, f"Number of Photons ({acceptor})")
     total = numeric_column(bursts.table, "Number of Photons")
     assert n_d.size == total.size > 100
-    np.testing.assert_array_equal(n_d + n_a, total)  # channels 0/8 and 1/9 are every photon of this file
+    np.testing.assert_array_equal(
+        n_d + n_a, total
+    )  # channels 0/8 and 1/9 are every photon of this file
     recurrence = bursts.recurrence()
     expected = n_a / (n_d + n_a)
     np.testing.assert_allclose(recurrence.efficiency, expected)

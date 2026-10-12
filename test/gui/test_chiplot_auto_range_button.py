@@ -150,7 +150,9 @@ def test_new_data_refits_only_while_auto_ranged(plot):
     zoomed = plot.get_range()
     plot.curve.set_data(x * 4.0, 9000.0 * np.exp(-x / 30.0))
     _draw(plot)
-    assert _flat(plot.get_range()) == pytest.approx(_flat(zoomed)), "a zoomed panel jumped to new data"
+    assert _flat(plot.get_range()) == pytest.approx(_flat(zoomed)), (
+        "a zoomed panel jumped to new data"
+    )
     _click(plot._canvas, *_button_centre(plot._canvas))
     _draw(plot)
     assert plot.get_range()[0][1] >= 400.0

@@ -236,8 +236,11 @@ def install(shell: typing.Any) -> bool:
     if matplotlib is None:
         os.environ["MPLBACKEND"] = BACKEND
     else:
-        current = str(matplotlib.rcParams._get_backend_or_none() or "").lower() if hasattr(
-            matplotlib.rcParams, "_get_backend_or_none") else ""
+        current = (
+            str(matplotlib.rcParams._get_backend_or_none() or "").lower()
+            if hasattr(matplotlib.rcParams, "_get_backend_or_none")
+            else ""
+        )
         if current != BACKEND.lower():
             matplotlib.use(BACKEND, force=True)
     shell._matplotlib_backend = "inline"

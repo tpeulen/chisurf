@@ -421,4 +421,3 @@ class Pda2cDynamicTwoStateModel(Pda2cModelMixin, ModelCurve):
             xmax = fit.xmax
         wres = _fitting.calculate_weighted_residuals(fit.data, self, xmin=xmin, xmax=xmax)
         return mask_zero_photon_bins(fit, xmin, wres)
-

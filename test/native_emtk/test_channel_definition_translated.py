@@ -16,7 +16,13 @@ from chisurf.plugins.core.setup_channel_definition.gui.app import create_app
 
 EXPECTED = {
     "de": {"Löschen", "G berechnen", "PIE-Fenster", "TTTR-Leseroutine", "Mikrozeit-Bereiche"},
-    "fr": {"Supprimer", "Calc. G", "Fenêtres PIE", "Routine de lecture TTTR", "Plages de micro-temps"},
+    "fr": {
+        "Supprimer",
+        "Calc. G",
+        "Fenêtres PIE",
+        "Routine de lecture TTTR",
+        "Plages de micro-temps",
+    },
 }
 # the English *Delete* / *Calc G* the table draws under its opaque button cells are not visible, so not listed
 ENGLISH = {"PIE Windows", "TTTR Reading routine", "Micro Time Ranges"}

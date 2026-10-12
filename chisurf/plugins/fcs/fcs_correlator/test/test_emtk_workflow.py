@@ -16,13 +16,13 @@ import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.fcs.fcs_correlator.correlator_model import CorrelatorSettingsModel
 from chisurf.plugins.fcs.fcs_correlator.demo import make_demo
 from chisurf.plugins.fcs.fcs_correlator.filter_model import FilterSettingsModel
 from chisurf.plugins.fcs.fcs_correlator.gui.app import make_app as make_correlator
 from chisurf.plugins.fcs.fcs_correlator.workflow import FcsWorkflow, filter_step_allowed
 from chisurf.plugins.fcs.fcs_toolbox.gui.app import make_app as make_hub
-from chisurf.plugins.emtk_layout import action_caption
 
 CTRL_A = 0x04000000
 SIZES = [(1200, 800), (800, 600)]
