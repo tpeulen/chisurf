@@ -76,9 +76,10 @@ def movie_frames():
 
 @pytest.fixture
 def tiff(tmp_path, movie_frames):
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imwrite
+
     path = tmp_path / "movie.tif"
-    tifffile.imwrite(str(path), movie_frames.astype(np.float32))
+    imwrite(path, movie_frames.astype(np.float32), axes="TYX")
     return path
 
 
@@ -1098,35 +1099,17 @@ def test_port_is_qt_free():
     assert result["ok"], result["output"]
 
 
-def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, tiff):
-    pytest.importorskip("qtpy")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui, QtWidgets
+def test_the_native_host_delivers_a_dropped_file_to_the_app(app, tiff):
+    """A file dropped on the window opens in the app.
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    host = ControlHost(app)
-    host.resize(900, 600)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(tiff))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted(), "the host refused the drag: the app has no drop hook"
-    drop = QtGui.QDropEvent(
-        QtCore.QPointF(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dropEvent(drop)
-    assert Path(app.model.filename) == tiff and qapp is not None
-    host.close()
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
+    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
+    the Qt half.
+    """
+    from emtk.app import ControlSurface
+
+    assert ControlSurface(app).on_files_dropped([str(tiff)]) is True
+    assert Path(app.model.filename) == tiff
 
 
 def test_independent_msd_oracle_rejects_wrong_transport_parameters():

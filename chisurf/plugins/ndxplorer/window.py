@@ -16,7 +16,7 @@ ChiSurf):
 
 * the in-process ChiSurf RPC client (``app.chisurf_rpc``), which the app's
   "Send selection to" menu talks to;
-* :func:`push_overlay_lines`: tabulated lines another tool computed (the
+* :func:`push_overlay_lines` (from :mod:`.overlay_lines`): tabulated lines another tool computed (the
   FRET-line tool's *Push to ndX*) drawn in every open ndX window;
 * the Global View slot: the app publishes its constants group under
   :data:`GLOBAL_VIEW_OWNER` itself (through ``ndxplorer.core.chisurf_binding``);
@@ -46,7 +46,7 @@ __all__ = [
     "push_overlay_lines",
 ]
 
-# The Global View slot lives in a Qt-free module the emtk app shares.
+# The Global View slot and the line push live in Qt-free modules the emtk app shares.
 from chisurf.plugins.ndxplorer.global_view_slot import (  # noqa: E402
     GLOBAL_VIEW_OWNER,
     published_group,
@@ -57,6 +57,7 @@ from chisurf.plugins.ndxplorer.global_view_slot import (
 from chisurf.plugins.ndxplorer.global_view_slot import (
     withdraw_constants as _withdraw_constants,  # noqa: E402
 )
+from chisurf.plugins.ndxplorer.overlay_lines import push_overlay_lines  # noqa: E402
 
 #: The window's first size, in logical pixels: the parity captures' size.
 WINDOW_SIZE = (1400, 900)
@@ -70,41 +71,6 @@ def _ndx_version() -> str:
         return version("ndxplorer")
     except Exception:  # noqa: BLE001 - not installed as a distribution
         return str(getattr(__import__("ndxplorer"), "__version__", "") or "unknown")
-
-
-def push_overlay_lines(lines, source: str = "ChiSurf") -> int:
-    """Draw tabulated lines in every open ndX window (``NdxApp.add_overlay_lines``).
-
-    Every app of :func:`ndxplorer.app.frame.live_apps` takes them, whichever
-    route opened it (this module's :class:`NdxWindow`, or the emtk entry point
-    hosted directly); each becomes a data curve of its Overlays tab.
-
-    Parameters
-    ----------
-    lines : sequence of dict
-        A LineSet: ``{"name", "x", "y", "style": {"color"}}`` per line.
-    source : str
-        Who sent them, shown with the curves.
-
-    Returns
-    -------
-    int
-        How many windows took them (0: no ndX window is open).
-    """
-    from ndxplorer.app.frame import live_apps
-
-    taken = 0
-    for app in live_apps():
-        try:
-            app.add_overlay_lines(list(lines), source=source)
-        except Exception:  # noqa: BLE001 - one window failing does not stop the rest
-            logger.warning("ndX window did not take the lines", exc_info=True)
-            continue
-        wake = getattr(app, "request_frame", None)
-        if callable(wake):
-            wake()
-        taken += 1
-    return taken
 
 
 class NdxWindow(ChisurfDockTool):

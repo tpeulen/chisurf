@@ -539,7 +539,14 @@ def test_import_and_restore_a_regular_chisurf_pto_project(
     assert_scientific_roundtrip(restored_payload)
 
 
-def test_restore_preserves_global_fit_and_window_state(project_db, sample_project_payload, qapp):
+def test_restore_preserves_global_fit_and_window_state(
+    project_db, sample_project_payload, monkeypatch
+):
+    """A global fit and the window layout (neutral record + the front end's hint) survive save/restore.
+
+    The front end is a registered stand-in toolkit: the layout record is toolkit-neutral, and which
+    toolkit wrote the hint does not matter to the project service.
+    """
     from chisurf.core.data import DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
     from chisurf.core.fitting.parameter import FittingParameter
@@ -562,15 +569,29 @@ def test_restore_preserves_global_fit_and_window_state(project_db, sample_projec
         local.model.func = "amp*x+tau"
         local.model.parameters_all[1].link = shared
         local.model.update()
-    from qtpy import QtWidgets
-
+    from chisurf.core.project import ui_layout
     from chisurf.core.project.ui_state import get_ui_state
 
-    window = QtWidgets.QMainWindow()
-    window.resize(1100, 700)
-    ui = {**get_ui_state(window), "current_fit_index": 0, "current_fit_uid": "global-fit"}
-    window.close()
-    assert ui["layout"]["window"] and set(ui["backend"]["qt"]) == {"geometry", "dock_state"}
+    class Window:
+        """A front end's main window: 1100x700, one dock, the global fit's view."""
+
+    monkeypatch.setattr(ui_layout, "_BACKENDS", {})
+    monkeypatch.setattr(ui_layout, "KNOWN_BACKENDS", ())
+    ui_layout.register_backend(
+        ui_layout.LayoutBackend(
+            "tk",
+            lambda w: isinstance(w, Window),
+            lambda w: {
+                "window": {"x": 10, "y": 20, "width": 1100, "height": 700},
+                "docks": {"datasets": {"visible": True, "area": "left"}},
+                "views": [{"uid": "global-fit", "state": "maximized"}],
+            },
+            lambda w, layout: [],
+            lambda w: {"geometry": "01d9", "dock_state": "00ff"},
+        )
+    )
+    ui = {**get_ui_state(Window()), "current_fit_index": 0, "current_fit_uid": "global-fit"}
+    assert ui["layout"]["window"] and set(ui["backend"]["tk"]) == {"geometry", "dock_state"}
     payload = capture_session([curves], [group], name="Global Project", ui_state=ui).to_dict()
 
     saved = save_project_handler(

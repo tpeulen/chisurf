@@ -79,14 +79,6 @@ def data_app(setups_file):
     tool.close()
 
 
-@pytest.fixture
-def qapp():
-    pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 def legacy_reference():
     """Load the immutable measured original form, with explicit source provenance."""
     return json.loads((HERE / "fixtures/detector_page_legacy.json").read_text())

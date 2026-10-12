@@ -4,6 +4,25 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Microscopy parity: two native tests red on 2026-10-12, independent of the Qt-host port
+
+status: open
+
+**Found 2026-10-12** while porting the microscopy tests' Qt-host drop to the native host (the drop tests
+pass; these fail alone, with the port's hunks not involved).
+
+1. `img_pixel_mle/test/test_emtk_img_pixel_mle_parity.py::test_layout_empty_and_populated_has_no_clipped_or_overlapping_text[800x600]`:
+   `fit_model is cut off at the bottom: (6.0, 632.0, 279.0, 20.0)` from `test/gui/emtk_layout_checks.py`. The
+   1200x800 case passes; the settings column at 600 px high no longer scrolls or fits the Fit-model row. Re-derive
+   with `-k layout_empty`.
+2. `img_flow/test/test_emtk_img_flow_parity.py::test_the_actions_and_the_form_are_greyed_while_a_worker_runs`:
+   deterministic (2/2 alone). The status already reads "flow.tif: 80 frames of 48x48 ... Ready." when the test
+   clicks the *method* combo, so the opened list is drawn: the 48x48 test stack loads before the click, and the
+   test's `assert app.job.busy` holds only for the first frame. The test needs a worker that cannot finish (a
+   blocked open), not a faster product; the app's greying itself is not shown to be broken.
+
+---
+
 ## An emoji with a skin-tone modifier drew as two glyphs (found 2026-10-12)
 
 status: resolved 2026-10-12 — emtk 807cdbc: `emtk/grapheme.py` segments extended grapheme clusters; painters draw one cell per cluster, editors move, select and delete whole clusters.
@@ -8041,4 +8060,3 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
-

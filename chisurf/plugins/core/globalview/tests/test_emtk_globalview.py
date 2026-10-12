@@ -3,8 +3,7 @@
 ``GraphWizard`` and this app draw the same :class:`GlobalViewSurface`; what the
 app must replace is what the Qt window answered for the model -- file dialogs,
 warnings, help, the guided tour, the refresh on fit events, the layout file.
-The Qt facts come from ``GraphWizard`` built in a subprocess (this process
-stays Qt-free).
+The Qt facts were recorded from ``GraphWizard`` into ``qt_reference.json``.
 """
 
 from __future__ import annotations
@@ -12,8 +11,6 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
-import os
-import subprocess
 import sys
 import types
 from pathlib import Path
@@ -52,43 +49,14 @@ def _draw(app, size=(1200, 800), times=3):
     return painter
 
 
-_QT_FACTS = r"""
-import importlib.util, json, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-spec = importlib.util.spec_from_file_location("_gv_test_model", sys.argv[1])
-t = importlib.util.module_from_spec(spec); spec.loader.exec_module(t)
-model, fits, mutator = t._session(3)
-from chisurf.plugins.core.globalview.gui.tool import GraphWizard
-w = GraphWizard(fit_list=fits, remember_layout=False)
-w.resize(1200, 800)
-m = w.model
-print("FACTS" + json.dumps({
-    "status": m.status,
-    "records": len(m.parameter_records()),
-    "hooks": sorted(k for k in ("ask_open_path", "ask_save_path", "warn", "open_help", "open_guide")
-                    if getattr(m, k) is not None),
-}))
-"""
+#: What the legacy Qt tool showed for the same inputs, recorded before the Qt host is retired
+#: (GraphWizard on test_model._session(3), 1200x800; captured 2026-10-12, QT_QPA_PLATFORM=offscreen).
+QT_REFERENCE = HERE / "qt_reference.json"
 
 
 @pytest.fixture(scope="module")
 def qt_facts():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT_FACTS, str(HERE / "test_model.py")],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None:
-        pytest.skip(f"GraphWizard could not be built here: {proc.stderr[-800:]}")
-    return json.loads(line[len("FACTS") :])
+    return json.loads(QT_REFERENCE.read_text(encoding="utf-8"))
 
 
 # 1. the same fits give the same network summary and parameter table as the Qt window

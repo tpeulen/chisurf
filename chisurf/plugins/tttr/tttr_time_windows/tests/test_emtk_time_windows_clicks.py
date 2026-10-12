@@ -311,34 +311,20 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(ui):
 
 
 # -- drops on the hosts -------------------------------------------------------------------------------------
-def test_a_drop_reaches_the_native_and_the_qt_host(ui, folder, qapp):
+def test_a_drop_reaches_the_app_through_the_native_host(ui, folder):
+    """A dropped file is queued, in this app and in a fresh one.
+
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
+    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
+    the Qt half.
+    """
     from emtk.app import ControlSurface
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
 
     assert ControlSurface(ui.app).on_files_dropped([str(folder / "a.ptu")]) is True
     assert [p.name for p in ui.app.tool._file_paths] == ["a.ptu"]
     other = create_app(client=_FakeClient())
-    host = ControlHost(other)
-    host.resize(1200, 800)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(folder / "b.ptu"))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted()
-    drop = QtGui.QDropEvent(
-        QtCore.QPointF(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dropEvent(drop)
-    assert drop.isAccepted() and [p.name for p in other.tool._file_paths] == ["b.ptu"]
-    other.close()
+    try:
+        assert ControlSurface(other).on_files_dropped([str(folder / "b.ptu")]) is True
+        assert [p.name for p in other.tool._file_paths] == ["b.ptu"]
+    finally:
+        other.close()

@@ -50,7 +50,7 @@ def push_to_ndx(lines) -> int:
     The host connection ChiSurf gives this tool: ndX draws them as data curves
     of its Overlays tab (E vs τ_F), named "FRET line — <name> · <sweep>".
     """
-    from chisurf.plugins.ndxplorer.window import push_overlay_lines
+    from chisurf.plugins.ndxplorer.overlay_lines import push_overlay_lines
 
     from ..core.algorithms import computed_lines_as_overlays
 

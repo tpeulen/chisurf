@@ -1,8 +1,8 @@
 """The native F-test calculator at parity with the Qt FTestTool.
 
-The Qt tool is driven in a subprocess (this process stays Qt-free): the same two
-fits are loaded into the same targets through its "From fit" menu actions, the
-same fields are edited, and the resulting statistics and menu entries are compared
+The Qt tool's results were recorded in ``qt_reference.json``: the same two
+fits were loaded into the same targets through its "From fit" menu actions, the
+same fields edited; the resulting statistics and menu entries are compared
 with the emtk app's. The menu itself is driven with pointer presses on the rows
 where the pixel painter draws them.
 """
@@ -10,8 +10,6 @@ where the pixel painter draws them.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -49,62 +47,14 @@ def _fits():
     ]
 
 
-_QT = r"""
-import json, sys
-from types import SimpleNamespace
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-data, loads, edits, stats = (json.loads(a) for a in sys.argv[1:5])
-fits = [SimpleNamespace(name=n, chi2r=c, model=SimpleNamespace(n_points=p, n_free=f)) for n, c, p, f in data]
-import chisurf.gui.widgets.fitting.fitting_client as fc
-fc.get_fitting_client = lambda: SimpleNamespace(get_fit_objects=lambda: [fits])
-from chisurf.plugins.core.f_test.gui.tool import FTestTool
-w = FTestTool()
-w._rebuild_fit_menu()
-menu = []
-for sub_action in w._from_fit_btn.menu().actions():
-    sub = sub_action.menu()
-    menu += [f"{sub_action.text()}  {a.text()}" for a in sub.actions()]
-actions = {f"{f.name}  {a.text()}": a for f in fits
-           for s in w._from_fit_btn.menu().actions() if s.text() == f.name for a in s.menu().actions()}
-labels = {"model1": "model 1", "model2": "model 2", "chi2max": "max"}
-trail = []
-for index, target in loads:
-    name = fits[index].name
-    key = next(k for k in actions if k.startswith(name + "  ") and labels[target] in k)
-    actions[key].trigger()
-    trail.append({k: getattr(w._model, k) for k in stats})
-for attr, value in edits:
-    setattr(w._model, attr, value)
-    w._on_field_edited(attr)
-    trail.append({k: getattr(w._model, k) for k in stats})
-print("FACTS" + json.dumps({"menu": menu, "trail": trail,
-                            "tooltip": w._from_fit_btn.toolTip()}))
-w.close()
-"""
+#: What the legacy Qt tool showed for the same inputs, recorded before the Qt host is retired
+#: (FTestTool on FIT_DATA, LOADS, EDITS and STATS, driven through its From-fit menu; captured 2026-10-12, QT_QPA_PLATFORM=offscreen).
+QT_REFERENCE = HERE / "qt_reference.json"
 
 
 @pytest.fixture(scope="module")
 def qt():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, *(json.dumps(x) for x in (FIT_DATA, LOADS, EDITS, STATS))],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None and (
-        "No module named" in proc.stderr or "could not connect to display" in proc.stderr
-    ):
-        pytest.skip(f"no Qt here: {proc.stderr[-400:]}")
-    # Any other failure is the Qt tool's own: skipping it hid a broken Qt host.
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])
+    return json.loads(QT_REFERENCE.read_text(encoding="utf-8"))
 
 
 #: Pointer tests draw small: the toolbar and its menu sit top-left, and the pixel painter's cost

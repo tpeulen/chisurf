@@ -1,0 +1,12 @@
+{
+ "_source": "GraphWizard on test_model._session(3), 1200x800; captured 2026-10-12, QT_QPA_PLATFORM=offscreen",
+ "status": "3 owners · 6 parameters · 2 linked. Drag a parameter onto the one it should follow.",
+ "records": 6,
+ "hooks": [
+  "ask_open_path",
+  "ask_save_path",
+  "open_guide",
+  "open_help",
+  "warn"
+ ]
+}

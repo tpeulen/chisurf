@@ -2,8 +2,6 @@
 # plugin half of the Qt retirement (test/test_plugin_qt_free.py). Strike a path when its
 # plugin moves to emtk; adding a path is a test failure. Goal: empty.
 chisurf/plugins/__init__.py
-chisurf/plugins/calculator/fret_calculator/tests/test_emtk_fret_calculator_clicks.py
-chisurf/plugins/calculator/hub/test/test_emtk_hub_parity.py
 chisurf/plugins/chimol/__init__.py
 chisurf/plugins/chimol/test/chrome_baseline.py
 chisurf/plugins/chimol/test/compare_wgsl.py
@@ -140,9 +138,7 @@ chisurf/plugins/core/code_editor/test/test_widgets.py
 chisurf/plugins/core/code_editor/text_editor.py
 chisurf/plugins/core/code_editor/window.py
 chisurf/plugins/core/f_test/gui/tool.py
-chisurf/plugins/core/f_test/test/test_emtk_f_test_parity.py
 chisurf/plugins/core/globalview/gui/tool.py
-chisurf/plugins/core/globalview/tests/test_emtk_globalview.py
 chisurf/plugins/core/globalview/wizard.py
 chisurf/plugins/core/help/api/theme.py
 chisurf/plugins/core/help/gui/ask_panel.py
@@ -188,21 +184,11 @@ chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
 chisurf/plugins/core/project_browser/gui/tool.py
 chisurf/plugins/core/project_browser/test/test_emtk_project_browser_parity.py
 chisurf/plugins/core/project_browser/test/test_gui_headless.py
-chisurf/plugins/core/project_browser/test/test_project_browser_services.py
-chisurf/plugins/core/setup_channel_definition/test/test_emtk_channel_page.py
-chisurf/plugins/core/setup_channel_definition/test/test_emtk_setup_channel_definition_parity.py
 chisurf/plugins/core/switch_user/test/test_emtk_switch_user_parity.py
-chisurf/plugins/core/updater/test/test_emtk_updater_parity.py
 chisurf/plugins/fret_line/__main__.py
 chisurf/plugins/fret_line/gui/tool.py
 chisurf/plugins/icon_utils.py
 chisurf/plugins/microscopy/imaging_emtk/pixel_checks.py
-chisurf/plugins/microscopy/img_drift/test/test_emtk_img_drift_parity.py
-chisurf/plugins/microscopy/img_flow/test/conftest.py
-chisurf/plugins/microscopy/img_flow/test/test_emtk_img_flow_parity.py
-chisurf/plugins/microscopy/img_frc/test/test_emtk_img_frc_parity.py
-chisurf/plugins/microscopy/img_pixel_mle/test/test_emtk_img_pixel_mle_parity.py
-chisurf/plugins/microscopy/img_tracking/test/test_emtk_img_tracking_parity.py
 chisurf/plugins/misc/games/__init__.py
 chisurf/plugins/misc/games/breakout/__init__.py
 chisurf/plugins/misc/games/breakout/breakout.py
@@ -217,9 +203,6 @@ chisurf/plugins/misc/games/pong/__init__.py
 chisurf/plugins/misc/games/pong/pong.py
 chisurf/plugins/misc/games/pong/test/capture_qt.py
 chisurf/plugins/misc/games/test/capture_hub.py
-chisurf/plugins/misc/games/test/test_game_keys_through_qt_host.py
-chisurf/plugins/misc/games/test/test_games_real_input.py
-chisurf/plugins/misc/games/test/test_modifier_keys.py
 chisurf/plugins/misc/games/tetris/__init__.py
 chisurf/plugins/misc/games/tetris/test/capture_qt.py
 chisurf/plugins/misc/games/tetris/tetris.py
@@ -229,11 +212,8 @@ chisurf/plugins/modelling/hydropro/hydrogui.py
 chisurf/plugins/modelling/hydropro/test/conftest.py
 chisurf/plugins/modelling/hydropro/test/hermetic.py
 chisurf/plugins/modelling/hydropro/test/test_emtk_hydropro_parity.py
-chisurf/plugins/modelling/hydropro/test/test_widgets.py
 chisurf/plugins/ndxplorer/__init__.py
 chisurf/plugins/ndxplorer/calibration_bridge.py
-chisurf/plugins/ndxplorer/test/test_emtk_ndxplorer_parity.py
-chisurf/plugins/ndxplorer/tests/test_push_fret_lines.py
 chisurf/plugins/ndxplorer/tests/test_window_routes.py
 chisurf/plugins/ndxplorer/window.py
 chisurf/plugins/spectra_downloader/browser.py
@@ -242,6 +222,3 @@ chisurf/plugins/spectra_downloader/gui/add_to_mmfdb_panel.py
 chisurf/plugins/spectra_downloader/gui/overview_panel.py
 chisurf/plugins/tttr/trace_browser/gui/host.py
 chisurf/plugins/tttr/trace_browser/test/test_emtk_trace_browser_t5.py
-chisurf/plugins/tttr/tttr_count_rate_analysis/tests/test_emtk_count_rate_clicks.py
-chisurf/plugins/tttr/tttr_time_windows/tests/test_emtk_time_windows_clicks.py
-chisurf/plugins/vv_vh_anisotropy/test/test_emtk_vv_vh_clicks.py

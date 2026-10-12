@@ -450,36 +450,17 @@ def test_a_drop_loads_the_file_and_a_drop_while_a_worker_runs_is_refused(app, dr
     assert Path(app.model.filename) == flow_tif and app.files_dropped([]) is False
 
 
-def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flow_tif):
-    pytest.importorskip("qtpy")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui, QtWidgets
+def test_the_native_host_delivers_a_dropped_file_to_the_app(app, flow_tif):
+    """A file dropped on the window opens in the app.
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    host = ControlHost(app)
-    host.resize(900, 600)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(flow_tif))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted()
-    host.dropEvent(
-        QtGui.QDropEvent(
-            QtCore.QPointF(10, 10),
-            QtCore.Qt.CopyAction,
-            mime,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-        )
-    )
-    assert Path(app.model.filename) == flow_tif and qapp is not None
-    host.close()
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
+    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
+    the Qt half.
+    """
+    from emtk.app import ControlSurface
+
+    assert ControlSurface(app).on_files_dropped([str(flow_tif)]) is True
+    assert Path(app.model.filename) == flow_tif
 
 
 # ── 4. errors ──────────────────────────────────────────────────────────────────────────────────────────────── #

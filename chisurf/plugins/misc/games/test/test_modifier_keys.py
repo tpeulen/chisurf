@@ -33,11 +33,15 @@ def test_shift_and_keypad_are_not_application_shortcuts(module):
 
 
 @pytest.mark.parametrize("module", FACTORIES)
-def test_keypad_arrows_reach_games_through_qt_host(module):
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui, QtWidgets
+def test_keypad_arrows_reach_games_through_the_host(module):
+    """A Shift+keypad arrow arrives as the plain arrow with Shift, and the game takes it.
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    Every host strips the keypad bit before the control sees the key: emtk's
+    ``tests/test_qt_host.py`` proves it for the Qt host; here the native host
+    (:class:`emtk.testing.Driver`, the glfw window's surface) delivers the press and release.
+    """
+    from emtk.testing import Driver
+
     app = importlib.import_module(module).make_app()
     seen = []
     original = app.key
@@ -48,13 +52,13 @@ def test_keypad_arrows_reach_games_through_qt_host(module):
         return accepted
 
     app.key = record
-    host = ControlHost(app)
     try:
+        drv = Driver(app, size=(800, 600))
+        drv.frame()
         key = KEY_UP if module.endswith("pong.app") else KEY_RIGHT
-        qt_key = QtCore.Qt.Key_Up if key == KEY_UP else QtCore.Qt.Key_Right
-        mods = QtCore.Qt.KeypadModifier | QtCore.Qt.ShiftModifier
-        qapp.sendEvent(host, QtGui.QKeyEvent(QtCore.QEvent.KeyPress, qt_key, mods))
-        qapp.sendEvent(host, QtGui.QKeyEvent(QtCore.QEvent.KeyRelease, qt_key, mods))
+        drv.press(key, SHIFT_MODIFIER)
         assert seen == [(key, SHIFT_MODIFIER, True)]
     finally:
-        host.close()
+        close = getattr(app, "close", None)
+        if close is not None:
+            close()

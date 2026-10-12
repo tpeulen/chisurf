@@ -346,42 +346,23 @@ def test_a_help_section_button_shows_only_that_section(app):
     )
 
 
-# ── file drop through the Qt host -------------------------------------------------------------------------- #
+# ── file drop through the native host ---------------------------------------------------------------------- #
 
 
 def test_a_file_dropped_on_the_host_reaches_the_app_and_says_the_calculator_has_no_file_input(app):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
+    """The host takes the drop (the app has a drop hook) and the app says it reads no files.
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    host = ControlHost(app)
-    host.resize(*SIZE)
-    host.show()
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile("/tmp/run.ptu")])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and the Qt
+    host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves the Qt half.
+    """
+    from emtk.app import ControlSurface
+
+    draw(app)
+    assert ControlSurface(app).on_files_dropped(["/tmp/run.ptu"]) is True, (
+        "the host refuses a drop on this app"
     )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted(), "the host refuses a drop on this app"
-    drop = QtGui.QDropEvent(
-        QtCore.QPointF(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dropEvent(drop)
-    qapp.processEvents()
-    assert drop.isAccepted()
     assert app.model.hetero.status == "The FRET Calculator takes no dropped files."
     assert "takes no dropped files" in " ".join(draw(app).strings)
-    host.close()
 
 
 # ── the same flow at the small size ------------------------------------------------------------------------- #

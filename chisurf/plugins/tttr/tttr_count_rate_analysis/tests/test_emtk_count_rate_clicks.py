@@ -271,10 +271,14 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(ui):
     assert ui.app.count_rate_gui.tour.step_idx == 3
 
 
-def test_a_drop_reaches_the_native_and_the_qt_host(ui, folder, qapp):
+def test_a_drop_reaches_the_app_through_the_native_host(ui, folder):
+    """A folder and a single file dropped on the window both queue their files.
+
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
+    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
+    the Qt half, so a second, fresh app here takes the single-file drop natively.
+    """
     from emtk.app import ControlSurface
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
 
     assert (
         ControlSurface(ui.app).on_files_dropped([str(folder)]) is True
@@ -283,41 +287,28 @@ def test_a_drop_reaches_the_native_and_the_qt_host(ui, folder, qapp):
     ui.frame(2)
     assert ui.drawn("a.ptu")
     other = create_app()
-    host = ControlHost(other)
-    host.resize(1200, 800)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(folder / "b.ptu"))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted()
-    drop = QtGui.QDropEvent(
-        QtCore.QPointF(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dropEvent(drop)
-    assert drop.isAccepted() and [Path(p).name for p in other.tool._model.files] == ["b.ptu"]
-    other.close()
+    try:
+        assert ControlSurface(other).on_files_dropped([str(folder / "b.ptu")]) is True
+        assert [Path(p).name for p in other.tool._model.files] == ["b.ptu"]
+    finally:
+        other.close()
 
 
 # -- the channel editor (the shared detector-channel widget) -----------------------------------------------------------
+def _window_table_drawn(ui):
+    """The PIE window table's name column is drawn ("Name" when the page is compact)."""
+    return ui.drawn("Window Name") or ui.drawn("Name")
+
+
 def test_the_editor_section_headers_fold_and_unfold(ui):
     editor = ui.app.tool.channel_editor
-    assert ui.drawn("File Type:") and not ui.drawn("Window Name")
+    assert ui.drawn("File Type:") and not _window_table_drawn(ui)
     ui.click("▼ TTTR Reading routine")  # folds the section
     assert editor.open_sections["reading"] is False and not ui.drawn("File Type:")
     ui.click("▶ TTTR Reading routine")
     assert ui.drawn("File Type:")
     ui.click("▶ PIE Windows")  # folded at first, as in the Qt page
-    assert editor.open_sections["windows"] is True and ui.drawn("Window Name")
+    assert editor.open_sections["windows"] is True and _window_table_drawn(ui)
 
 
 def test_the_detector_setup_combo_lists_the_setups_and_a_pick_selects_it(ui):

@@ -407,39 +407,20 @@ def test_help_text_is_plain_with_live_links():
 
 
 def test_a_file_dropped_on_the_host_goes_to_the_embedded_calculator(app):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
+    """A drop on the hub reaches the calculator it shows, which answers for it.
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and the Qt
+    host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves the Qt half.
+    """
+    from emtk.app import ControlSurface
+
     draw(app)  # the selected calculator is built by the first frame
-    host = ControlHost(app)
-    host.resize(*SIZE)
-    host.show()
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile("/tmp/run.ptu")])
+    surface = ControlSurface(app)
 
     def drop():
-        enter = QtGui.QDragEnterEvent(
-            QtCore.QPoint(300, 300),
-            QtCore.Qt.CopyAction,
-            mime,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-        )
-        host.dragEnterEvent(enter)
-        event = QtGui.QDropEvent(
-            QtCore.QPointF(300, 300),
-            QtCore.Qt.CopyAction,
-            mime,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-        )
-        host.dropEvent(event)
-        qapp.processEvents()
-        return enter.isAccepted(), event.isAccepted()
+        return surface.on_files_dropped(["/tmp/run.ptu"])
 
-    assert drop() == (True, True)
+    assert drop() is True
     assert (
         app.child.model.hetero.status == "The FRET Calculator takes no dropped files."
     )  # the FRET calculator's own answer
@@ -449,12 +430,11 @@ def test_a_file_dropped_on_the_host_goes_to_the_embedded_calculator(app):
     )  # taken by the child
     assert "takes no dropped files" in " ".join(draw(app).strings)
     click_entry(app, "kappa2_dist")
-    drop()  # the host accepts a drop on any control that has a drop hook ...
+    assert drop() is False  # the host offers the drop to the hub's hook ...
     assert (
         app.files_dropped(["/tmp/run.ptu"]) is False
     )  # ... the hub answers False: the kappa2 calculator takes none
     assert app.child.export_settings()["model_type"] == "cone"  # and nothing changed
-    host.close()
 
 
 def test_settings_round_trip_restores_the_selection_and_the_calculators_inputs(app):

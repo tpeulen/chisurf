@@ -1,0 +1,98 @@
+{
+ "_source": "FTestTool on FIT_DATA, LOADS, EDITS and STATS, driven through its From-fit menu; captured 2026-10-12, QT_QPA_PLATFORM=offscreen",
+ "menu": [
+  "decay 1-exp  → F-test model 1 (χ²₁, n₁)",
+  "decay 1-exp  → F-test model 2 (χ²₂, n₂)",
+  "decay 1-exp  → χ²-max (χ²min, params, ν)",
+  "decay 2-exp  → F-test model 1 (χ²₁, n₁)",
+  "decay 2-exp  → F-test model 2 (χ²₂, n₂)",
+  "decay 2-exp  → χ²-max (χ²min, params, ν)"
+ ],
+ "trail": [
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.2121293345417241,
+   "n2": 98,
+   "conf_level": 0.6815720518202641,
+   "chi2_min": 1.0,
+   "npars": 1,
+   "dof": 100,
+   "conf_level_2": 0.95,
+   "chi2_max": 1.0393614298631264
+  },
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.02,
+   "n2": 1019,
+   "conf_level": 0.9999668810115253,
+   "chi2_min": 1.0,
+   "npars": 1,
+   "dof": 100,
+   "conf_level_2": 0.95,
+   "chi2_max": 1.0393614298631264
+  },
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.02,
+   "n2": 1019,
+   "conf_level": 0.9999668810115253,
+   "chi2_min": 1.02,
+   "npars": 5,
+   "dof": 1019,
+   "conf_level_2": 0.95,
+   "chi2_max": 1.031125333090918
+  },
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.1322882597648756,
+   "n2": 1019,
+   "conf_level": 0.99,
+   "chi2_min": 1.02,
+   "npars": 5,
+   "dof": 1019,
+   "conf_level_2": 0.95,
+   "chi2_max": 1.031125333090918
+  },
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.1322882597648756,
+   "n2": 900,
+   "conf_level": 0.9877195844816835,
+   "chi2_min": 1.02,
+   "npars": 5,
+   "dof": 1019,
+   "conf_level_2": 0.95,
+   "chi2_max": 1.031125333090918
+  },
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.1322882597648756,
+   "n2": 900,
+   "conf_level": 0.9877195844816835,
+   "chi2_min": 1.02,
+   "npars": 1,
+   "dof": 1019,
+   "conf_level_2": 0.95,
+   "chi2_max": 1.0238543794644734
+  },
+  {
+   "chi2_1": 1.31,
+   "n1": 1021,
+   "chi2_2": 1.1322882597648756,
+   "n2": 900,
+   "conf_level": 0.9877195844816835,
+   "chi2_min": 1.02,
+   "npars": 1,
+   "dof": 1019,
+   "conf_level_2": 0.68,
+   "chi2_max": 1.0209908837855999
+  }
+ ],
+ "tooltip": "Load n_points / n_free / χ²r from an open fit."
+}

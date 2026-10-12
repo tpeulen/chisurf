@@ -294,38 +294,24 @@ def test_the_tour_next_and_prev_buttons_can_be_clicked(ui, files):
     assert ui.app.tour.step_idx == 2
 
 
-def test_a_file_dropped_on_the_native_and_the_qt_host(ui, files, qapp):
+def test_a_file_dropped_on_the_native_host_is_loaded(ui, files):
+    """A dropped file is loaded, in this app and in a fresh one.
+
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
+    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
+    the Qt half.
+    """
     from emtk.app import ControlSurface
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui
 
     a, b = files
     assert ControlSurface(ui.app).on_files_dropped([str(a)]) is True  # native window and page hosts
     assert ui.app.model.loaded_file == str(a)
     other = create_app()
-    host = ControlHost(other)
-    host.resize(1200, 800)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(b))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted()  # the host takes the drag
-    drop = QtGui.QDropEvent(
-        QtCore.QPointF(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dropEvent(drop)
-    assert drop.isAccepted() and other.model.loaded_file == str(b)
-    other.close()
+    try:
+        assert ControlSurface(other).on_files_dropped([str(b)]) is True  # the host takes the drop
+        assert other.model.loaded_file == str(b)
+    finally:
+        other.close()
 
 
 # -- the batch window -----------------------------------------------------------------------------

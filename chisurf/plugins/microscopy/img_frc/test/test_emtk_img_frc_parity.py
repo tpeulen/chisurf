@@ -468,36 +468,17 @@ def test_dropping_while_a_worker_runs_is_refused(app, drv, stack_a):
     drv.settle()
 
 
-def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, stack_a):
-    pytest.importorskip("qtpy")
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui, QtWidgets
+def test_the_native_host_delivers_a_dropped_file_to_the_app(app, stack_a):
+    """A file dropped on the window opens in the app.
 
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    host = ControlHost(app)
-    host.resize(900, 600)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(stack_a))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted()
-    host.dropEvent(
-        QtGui.QDropEvent(
-            QtCore.QPointF(10, 10),
-            QtCore.Qt.CopyAction,
-            mime,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-        )
-    )
-    assert Path(app.model.filename) == stack_a and qapp is not None
-    host.close()
+    The native host (:class:`emtk.app.ControlSurface`, the glfw window and the page) and
+    the Qt host deliver a drop by the same rule; emtk's ``tests/test_qt_host.py`` proves
+    the Qt half.
+    """
+    from emtk.app import ControlSurface
+
+    assert ControlSurface(app).on_files_dropped([str(stack_a)]) is True
+    assert Path(app.model.filename) == stack_a
 
 
 # ── 4. errors ──────────────────────────────────────────────────────────────────────────────────────────────── #

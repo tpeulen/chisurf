@@ -827,14 +827,6 @@ def test_the_page_fits_the_width_and_the_setup_row_wraps_instead_of_clipping(mak
 
 
 # ============================================================================== 8. numeric parity against the Qt page
-@pytest.fixture(scope="module")
-def qapp():
-    pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 @pytest.fixture
 def legacy_reference():
     """Read immutable original Qt outputs, not a native implementation as its own oracle."""

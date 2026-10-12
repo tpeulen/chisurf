@@ -2,15 +2,13 @@
 
 Both hosts run ndX's own ``NdxApp``; what can differ is the construction
 (``build_ndxplorer_window`` vs ``gui.app.make_app``) and the closing. The Qt
-facts come from ``build_ndxplorer_window`` in a subprocess, so this process
-stays Qt-free.
+facts were recorded from ``build_ndxplorer_window`` into ``qt_reference.json``
+(the window's emtk inventory and menu bar), so this test needs no Qt.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -27,8 +25,11 @@ from test.gui.emtk_port_parity import build_emtk_app, emtk_inventory, qt_free  #
 
 @pytest.fixture(autouse=True)
 def _scratch_ndx_settings(tmp_path, monkeypatch):
-    """ndX's settings folder (dock layout, session store) is a scratch one."""
+    """ndX's settings folders (dock layout, session store) are scratch ones."""
     monkeypatch.setenv("NDXPLORER_SETTINGS_DIR", str(tmp_path / "ndxplorer"))
+    # The factory keeps its dock layout in ChiSurf's native-state store: a scratch one too, or the
+    # owner's last focused tab decides which controls the inventory sees.
+    monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "chisurf"))
 
 
 def _columns():
@@ -91,53 +92,18 @@ def test_the_factory_wires_what_the_qt_window_wires(tmp_path):
         app.close()
 
 
-_QT = r"""
-import json, sys
-import numpy as np
-from test.gui.emtk_port_parity import emtk_inventory   # before ndX (its own `test` package)
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from ndxplorer.core.data_source import DataSource
-from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-cols = {k: np.asarray(v) for k, v in json.loads(sys.argv[1]).items()}
-def flat(entries, prefix=""):
-    out = []
-    for e in entries:
-        label = getattr(e, "label", "")
-        if label:
-            out.append(prefix + label)
-        out.extend(flat(getattr(e, "entries", ()) or (), prefix + label + "/" if label else prefix))
-    return out
-w = build_ndxplorer_window(data_source=DataSource.from_columns(cols), session_autosave=False,
-                           layout_store=None)
-inv = emtk_inventory(w.app)
-print("FACTS" + json.dumps({"controls": inv["controls"], "menus": flat(w.app.menubar.menus)}))
-w.close()
-"""
+#: What the legacy Qt window (build_ndxplorer_window) drew on _columns(): its emtk
+#: inventory and its flattened menu bar, recorded before the Qt host is retired.
+QT_REFERENCE = HERE / "qt_reference.json"
 
 
 def test_same_controls_as_the_qt_window_on_the_same_table():
-    pytest.importorskip("qtpy")
     from ndxplorer.core.data_source import DataSource
 
-    columns = _columns()
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT, json.dumps({k: v.tolist() for k, v in columns.items()})],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None:
-        pytest.skip(f"NdxWindow could not be built here: {proc.stderr[-800:]}")
-    qt = json.loads(line[len("FACTS") :])
+    qt = json.loads(QT_REFERENCE.read_text(encoding="utf-8"))
     app = _make(session_autosave=False)
     try:
-        app.model.set_source(DataSource.from_columns(columns))
+        app.model.set_source(DataSource.from_columns(_columns()))
         app.data_changed()
         inv = emtk_inventory(app)
         ours = {"controls": inv["controls"], "menus": _flat(app.menubar.menus)}
@@ -238,6 +204,11 @@ def test_load_example_button_opens_the_simulated_table_and_releases_the_tour(tmp
         assert app.model.source is not None
         assert not app.tour.awaiting
         driver.frame(3)
-        assert app.tour.get_target_rect("load_example") is None  # offered only over an empty map
+        # While the tour stays on its example step the button is kept within reach ...
+        assert app.tour.get_target_rect("load_example") is not None
+        app.tour.next()
+        driver.frame(3)
+        # ... and once it moves on, the example is offered only over an empty map.
+        assert app.tour.get_target_rect("load_example") is None
     finally:
         app.close()

@@ -107,13 +107,10 @@ def test_the_start_up_check_matches_the_qt_tool_and_asks_the_same_notice(fakes):
         "Update Available",
         "A new version of ChiSurf (26.10.02) is available.",
     )
-    from qtpy import QtGui
-
-    doc = QtGui.QTextDocument()
-    doc.setHtml(model.changelog_html)
-    assert doc.toPlainText() == today(
-        ref["changelog_plain"]
-    )  # the Qt text area's own reading of the same HTML
+    drawn = [f"{b[1]}: {b[2]}" if b[0] == "link" else b[1] for b in model.changelog_blocks]
+    assert [d.strip() for d in drawn] == [
+        ln.strip() for ln in today(ref["changelog_plain"]).splitlines() if ln.strip()
+    ]  # the blocks the window draws read as the Qt text area read the same changelog
     assert model.update_enabled and not model.suppress_initial_notification
 
 
@@ -173,11 +170,9 @@ def test_the_changelog_formatting_equals_the_qt_widgets_for_a_recorded_sample():
     assert format_changelog_html(None) == "<i>No changelog available.</i>"
 
 
-def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said(qtbot):
+def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said():
     """Characters a Markdown renderer would eat (``<b>``, ``_``, ``*``) are shown as written, in the Qt tool's order."""
-    from qtpy import QtGui
-
-    from chisurf.plugins.core.updater.gui.model import changelog_blocks, format_changelog_html
+    from chisurf.plugins.core.updater.gui.model import changelog_blocks
 
     text = (
         "Changes between 1 and 2:\n- 2026-10-01 fix snake_case_name and *star* <b>x</b> (by Ada)\n- second\nplain & line\n"
@@ -185,9 +180,14 @@ def test_the_blocks_the_window_draws_say_what_the_qt_text_area_said(qtbot):
     )
     blocks = changelog_blocks(text)
     assert [b[0] for b in blocks] == ["header", "item", "item", "paragraph", "link"]
-    doc = QtGui.QTextDocument()
-    doc.setHtml(format_changelog_html(text))
-    lines = [ln for ln in doc.toPlainText().splitlines() if ln.strip()]
+    # The Qt text area (QTextDocument.toPlainText of format_changelog_html(text)), recorded 2026-10-12.
+    lines = [
+        "Changes between 1 and 2:",
+        "2026-10-01 fix snake_case_name and *star* <b>x</b> (by Ada)",
+        "second",
+        "plain & line",
+        "More details: https://github.com/o/my_repo_x/commits",
+    ]
     drawn = [blocks[0][1]] + [b[1] for b in blocks[1:4]] + [f"{blocks[4][1]}: {blocks[4][2]}"]
     assert [ln.strip() for ln in lines] == [d.strip() for d in drawn]
     assert blocks[4] == ("link", "More details", "https://github.com/o/my_repo_x/commits")

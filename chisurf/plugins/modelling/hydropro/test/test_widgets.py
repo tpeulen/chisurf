@@ -1,34 +1,43 @@
+"""The HydroPro window (the native emtk app), its view spec, and its settings model."""
+
 import pytest
-from qtpy import QtWidgets
 
 
-def test_hydropro_tool_creation(qapp, qtbot):
-    from chisurf.plugins.modelling.hydropro.gui.tool import HydroGui, HydroProTool
+def test_hydropro_tool_creation():
+    """The window is built with its title, the parameter form and the results table drawn."""
+    from emtk.testing import Driver
 
-    widget = HydroProTool()
-    qtbot.addWidget(widget)
-    assert isinstance(widget, QtWidgets.QMainWindow)
-    assert "HYDRO" in widget.windowTitle()
-    # AutoForm + controls are present.
-    assert hasattr(widget, "_form")
-    assert hasattr(widget, "table")
-    assert HydroGui is HydroProTool  # backwards-compat alias
+    from chisurf.plugins.modelling.hydropro.app import HydroProApp, make_app
+
+    app = make_app()
+    try:
+        assert isinstance(app, HydroProApp)
+        assert "HYDRO" in app.window_title
+        drv = Driver(app, size=app.window_size)
+        strings = drv.draw(frames=3).strings
+        # AutoForm + controls are present: the parameter panels and the results table.
+        assert app.form is not None and app.panels and app.results_sections
+        assert "Executable & input" in strings and "Primary model" in strings
+        table = next(s for s in app.results_sections if s.get("key") == "data_table")
+        assert [c["title"] for c in table["options"]["columns"]][0] == "File"
+        assert "File" in strings  # the results table's header is drawn
+    finally:
+        app.close()
 
 
-def test_view_spec_loads(qapp, qtbot):
-    from chisurf.plugins.modelling.hydropro.gui.tool import _HydroModel
+def test_view_spec_loads():
+    from chisurf.plugins.modelling.hydropro.app import build_spec
 
-    view = _HydroModel().view_spec()
-    titles = [s.title for s in view.sections]
+    titles = [s.get("title") for s in build_spec()["params"]]
     assert "Executable & input" in titles
     assert "Primary model" in titles
 
 
 def test_model_to_settings_roundtrip():
     from chisurf.plugins.modelling.hydropro.core import HydroProSettings
-    from chisurf.plugins.modelling.hydropro.gui.tool import _HydroModel
+    from chisurf.plugins.modelling.hydropro.gui.model import HydroProModel
 
-    m = _HydroModel()
+    m = HydroProModel()
     m.indmode = "4"
     m.idif = False
     s = m.to_settings()

@@ -28,13 +28,29 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
 through the Qt ribbon's own placement rules, and the menu bar and Tools dock list the same tree with the manifest
 icons. The status strip of S5 is still open; the splash window and its startup stages landed 2026-10-12 (item 13). The Qt shell is still the default.
 
-1. Measure: the allow-list has 245 entries. Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The
-   per-area split comes from `cut -d/ -f1 test/plugin_qt_allowlist.txt | sort | uniq -c` once comments are dropped:
-   chimol 111, core 76, misc 20, microscopy 7, modelling 7, ndxplorer 6, spectra_downloader 4, tttr 4, root 3,
-   calculator 2, fret_line 2, cookiecutter 1, quenching_estimator 1, vv_vh_anisotropy 1. Trap: about 171 of the 245
-   are **tests**. They import Qt to drive the legacy host, not because the plugin needs it. A slice removes a test
-   line by porting the test to `emtk.testing.Driver`, never by deleting the test. Open: S2's lines (microscopy, tttr
-   and ndxplorer tests) still drive the Qt host.
+1. Measure: the allow-list has 221 entries (244 before the 2026-10-12 test-port slice). Re-derive with
+   `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
+   `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 | sort | uniq -c`: chimol 111, core 70, misc 17,
+   modelling 6, ndxplorer 4, spectra_downloader 4, fret_line 2, tttr 2, microscopy 1, root 3, cookiecutter 1.
+   Of these 36 outside chimol are still **tests** (chimol's 110 are in `~/dev/chimol`). A test line goes by
+   porting the test to `emtk.testing.Driver` (a drop: `Driver(app).surface.on_files_dropped`, or
+   `emtk.app.ControlSurface`), never by deleting it. How the Qt host turns a `QDropEvent` / `QKeyEvent` / focus
+   change into the control's hooks is emtk's own `tests/test_qt_host.py`, so a plugin test needs only the native
+   half. A parity test whose Qt "before" side ran in a subprocess keeps it as a recorded `qt_reference.json` beside
+   the test (ndX, F-test, Global View). Ported: S2's microscopy, tttr and ndX tests, the calculators, vv/vh,
+   updater, setup channel definition, the games' key and pointer tests, HydroPro's widget test; ndX's line push
+   moved to the Qt-free `chisurf/plugins/ndxplorer/overlay_lines.py`. Open, and why: host tests
+   (`ndxplorer/tests/test_window_routes.py`, `tttr/trace_browser/test/test_emtk_trace_browser_t5.py`,
+   `lightpath_simulator/tests/test_native_ui.py` test the Qt host modules themselves and go with them); live-Qt
+   parity whose facts cannot be frozen (`help/test/test_emtk_help_parity.py`: home links follow docs/;
+   `project_browser/test/test_emtk_project_browser_parity.py`: rows carry fresh project ids;
+   `switch_user/test/test_emtk_switch_user_parity.py` drives `LoginDialog` per case; hydropro's parity, `conftest.py`
+   and `hermetic.py` isolate QSettings for the Qt tool); legacy Qt widget tests with no native twin yet (code_editor
+   4, help widgets / figures / ask panel 3, mmfdb_admin 12 in another lane's files, project_browser
+   `test_gui_headless.py`, acq `test_setup_widgets.py`); capture scripts (the five games `capture_*.py` and
+   `capture_hub.py` record the Qt "before" renders).
+   Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
+   `emtk.events`, not `emtk.app`).
 2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
    `lifetime_amplitude_options`) are resolved by `chisurf/server/services/model_sections.py` and drawn by
    `chisurf/emtk/model_sections.py`; writes go through `model.curve.set` / `model.curve.unload` /

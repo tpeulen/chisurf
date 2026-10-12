@@ -1,8 +1,9 @@
 """The FRET-line tool's *Push to ndX* draws its lines in every open ndX window.
 
 The lines arrive as data curves of ndX's Overlays tab (E vs tau_F), through
-:func:`chisurf.plugins.ndxplorer.window.push_overlay_lines` and the app's
-``add_overlay_lines``. ``NDX_PUSH_SHOT=<png>`` saves the window with the lines.
+:func:`chisurf.plugins.ndxplorer.overlay_lines.push_overlay_lines` and the app's
+``add_overlay_lines``. The window is the native emtk app (``gui.app.make_app``), driven
+by :class:`emtk.testing.Driver`. ``NDX_PUSH_SHOT=<png>`` saves the window with the lines.
 """
 
 from __future__ import annotations
@@ -13,14 +14,6 @@ import numpy as np
 import pytest
 
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
-from qtpy import QtWidgets  # noqa: E402
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 @pytest.fixture(autouse=True)
@@ -51,15 +44,25 @@ def _bursts(line):
     return DataSource.from_columns({"tau_f (ns)": tau, "E": e})
 
 
-def test_push_draws_the_lines_in_an_open_window_and_none_after_it_closes(qapp):
+def _open(source=None):
+    """A native ndX window (the emtk app), showing *source* when given."""
+    from chisurf.plugins.ndxplorer.gui.app import make_app
+
+    app = make_app(session_autosave=False)
+    if source is not None:
+        app.model.set_source(source)
+        app.data_changed()
+    return app
+
+
+def test_push_draws_the_lines_in_an_open_window_and_none_after_it_closes():
+    from emtk.testing import Driver
+
     from chisurf.plugins.fret_line.gui.model import push_to_ndx
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
     tool = _two_lines()
-    window = build_ndxplorer_window(session_autosave=False, layout_store=None)
+    app = _open(_bursts(tool.lines[0]))
     try:
-        window.show_source(_bursts(tool.lines[0]))
-        app = window.app
         app.model.set_parameter("x", "tau_f (ns)")
         app.model.set_parameter("y", "E")
         tool.push_callback = push_to_ndx
@@ -82,16 +85,15 @@ def test_push_draws_the_lines_in_an_open_window_and_none_after_it_closes(qapp):
             app.docks.focus("Overlays")
         except Exception:  # noqa: BLE001 - only the screenshot's tab
             pass
-        window.resize(1400, 900)
-        window.show()
-        qapp.processEvents()
+        drv = Driver(app, size=(1400, 900))
+        drv.draw(frames=3)
         shot = os.environ.get("NDX_PUSH_SHOT")
         if shot:
-            window.grab().save(shot)
+            drv.screenshot(shot)
     finally:
-        window.close()
+        app.close()
     tool.dialog_ok()
-    assert window.app._closed
+    assert app._closed
     from ndxplorer.app.frame import live_apps
 
     if not live_apps():
@@ -100,18 +102,13 @@ def test_push_draws_the_lines_in_an_open_window_and_none_after_it_closes(qapp):
     tool.close()
 
 
-def test_an_open_window_with_incompatible_axes_reports_rejection_not_absence(qapp):
+def test_an_open_window_with_incompatible_axes_reports_rejection_not_absence():
     from ndxplorer.core.data_source import DataSource
 
     from chisurf.plugins.fret_line.gui.model import push_to_ndx
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 
     tool = _two_lines()
-    window = build_ndxplorer_window(
-        data_source=DataSource.from_columns({"x": [1.0, 2.0], "y": [3.0, 4.0]}),
-        session_autosave=False,
-        layout_store=None,
-    )
+    app = _open(DataSource.from_columns({"x": [1.0, 2.0], "y": [3.0, 4.0]}))
     try:
         tool.push_callback = push_to_ndx
 
@@ -120,5 +117,5 @@ def test_an_open_window_with_incompatible_axes_reports_rejection_not_absence(qap
         assert "rejected the lines" in tool.dialog_text, tool.dialog_text
         assert "No ndX window is open" not in tool.dialog_text
     finally:
-        window.close()
+        app.close()
         tool.close()
