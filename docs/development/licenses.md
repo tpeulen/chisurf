@@ -1,3 +1,11 @@
+---
+type: Development Note
+title: ChiSurf dependency licenses
+description: Every declared dependency's license, its permissiveness class, and the binding constraint on ChiSurf's own license.
+tags: [development, licensing]
+audience: developer
+---
+
 # ChiSurf dependency licenses
 
 *Generated 2026-10-05 by `build_tools/license_tracker.py`. Regenerate after adding a dependency; do not edit by hand.*

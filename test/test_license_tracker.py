@@ -17,13 +17,13 @@ def test_every_runtime_dependency_is_classified():
     unknown = [e["name"] for e in runtime if e["class"] is None]
     assert not unknown, (
         f"unclassified licenses: {unknown} — add metadata or an override in "
-        "build_tools/license_tracker.py, then regenerate doc/licenses.md"
+        "build_tools/license_tracker.py, then regenerate docs/development/licenses.md"
     )
 
 
 def test_the_binding_constraint_is_stated():
     """GPL via PyQt5/sip today. If this fails, the dependency graph's
-    licensing changed — regenerate doc/licenses.md and read the diff before
+    licensing changed — regenerate docs/development/licenses.md and read the diff before
     adjusting the assertion.
     """
     data = collect()

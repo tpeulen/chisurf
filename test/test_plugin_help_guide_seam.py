@@ -6,7 +6,7 @@ two different questions and a tool needs both — ``?`` says what a control
 well-documented settings is still unusable without the second one.
 
 A tool ships ``help.md`` and ``guide.json`` beside the module its
-``entrypoints.gui`` names. ``NavigationPanelTool`` (and the bases built on it)
+``entrypoints.emtk`` (else ``entrypoints.gui``) names. ``NavigationPanelTool`` (and the bases built on it)
 draws the buttons by itself; a ``ChisurfDockTool`` must call
 ``ensure_help_toolbar()`` once, and a tool on neither base calls
 :func:`~chisurf.gui.widgets.tools.help_guide.attach_help_and_guide`. Shipping the
@@ -44,6 +44,11 @@ _SKIP_MARKERS = ("cookiecutter",)
 #: thing that can say where to start, what the setting means and what to check.
 _MIN_STEPS = 3
 
+#: ``GUIDE = "tour <name>"`` in a ChiMOL-hosted tool's emtk module: its Guide
+#: runs that chimol tour (see :meth:`GuiPlugin._delegated_tour`).
+_DELEGATED_TOUR = re.compile(r"""^GUIDE\s*=\s*["']tour\s+([\w-]+)["']""", re.MULTILINE)
+_CHIMOL_TOURS = _ROOT / "modules" / "chimol" / "chimol" / "data" / "tours"
+
 #: Below this a help page is a stub — a sentence restating the tool's name.
 _MIN_HELP_CHARS = 400
 
@@ -54,13 +59,16 @@ class GuiPlugin:
     def __init__(self, manifest: pathlib.Path, data: dict) -> None:
         self.manifest = manifest
         self.id = str(data.get("id") or manifest.parent.name)
-        self.gui = str(
-            (data.get("entrypoints") or {}).get("gui")
-            or (data.get("entrypoints") or {}).get("emtk")
-            or ""
-        )
+        entrypoints = data.get("entrypoints") or {}
+        # The emtk surface is the one a user opens (Qt is the legacy host behind
+        # ``--qt``), so it is the one whose ``?`` and Guide are checked. A
+        # plugin's ``gui`` entry may name a legacy Qt host that lives somewhere
+        # else entirely -- chimol's is ``chimol.hosts.qt`` in the sibling
+        # checkout -- and anchoring on it demanded a tour for a Qt window nobody
+        # is to grow. Only a plugin with no emtk entry is anchored on ``gui``.
+        self.gui = str(entrypoints.get("emtk") or entrypoints.get("gui") or "")
         self.directory = self._module_directory()
-        self.native_only = not (data.get("entrypoints") or {}).get("gui")
+        self.native = bool(entrypoints.get("emtk"))
 
     def _module_directory(self) -> pathlib.Path | None:
         """Resolve the directory the help files are looked for in.
@@ -105,11 +113,11 @@ class GuiPlugin:
         return self.directory.relative_to(_ROOT).as_posix()
 
     def _resource(self, name: str) -> pathlib.Path | None:
-        """Resolve native plugin-root resources without changing legacy Qt anchoring."""
+        """Resolve an emtk plugin's resources; a Qt-only plugin's sit beside its module."""
         if self.directory is None:
             return None
         direct = self.directory / name
-        if self.native_only and not direct.is_file():
+        if self.native and not direct.is_file():
             # An emtk-only plugin: the app module may sit at the plugin root or in
             # ``gui/``, and its help/guide live in the plugin root, ``gui/`` or
             # ``gui_parts/``. The files must still exist.
@@ -127,7 +135,30 @@ class GuiPlugin:
 
     @property
     def guide_file(self) -> pathlib.Path | None:
-        return self._resource("guide.json")
+        own = self._resource("guide.json")
+        if own is not None and own.is_file():
+            return own
+        return self._delegated_tour() or own
+
+    def _delegated_tour(self) -> pathlib.Path | None:
+        """The chimol tour a ChiMOL-hosted tool's Guide button starts, if it names one.
+
+        A tool that opens one of chimol's own windows inside ``ChimolHostApp``
+        (Structure > FRET > FPS JSON Editor) has no tour of its own to ship: its
+        Guide runs a chimol ``tour <name>``, whose steps live in chimol's
+        ``data/tours/<name>.json``. The module declares that as
+        ``GUIDE = "tour <name>"``; the tour file must exist and pass the same
+        checks as a ``guide.json``.
+        """
+        module = self.gui.split(":")[0]
+        source = _ROOT / pathlib.Path(module.replace(".", "/")).with_suffix(".py")
+        if not module or not source.is_file():
+            return None
+        match = _DELEGATED_TOUR.search(source.read_text(encoding="utf-8"))
+        if match is None:
+            return None
+        tour = _CHIMOL_TOURS / f"{match.group(1)}.json"
+        return tour if tour.is_file() else None
 
     def has_help(self) -> bool:
         return self.help_file is not None and self.help_file.is_file()
@@ -267,7 +298,9 @@ def test_guide_is_a_tour_not_a_slideshow(plugin: GuiPlugin):
         assert isinstance(step, dict), f"{plugin.relative}/guide.json step {index} is not an object"
         assert step.get("title"), f"{plugin.relative}/guide.json step {index} has no title"
         assert step.get("text"), f"{plugin.relative}/guide.json step {index} has no text"
-    assert any(step.get("await") for step in steps), (
+    # A chimol tour (a ChiMOL-hosted tool's delegated Guide) waits on the
+    # command a control runs and spells it ``expect``; a ChiSurf tour, ``await``.
+    assert any(step.get("await") or step.get("expect") for step in steps), (
         f"{plugin.relative}/guide.json never waits for the user — every step "
         "narrates. Give at least one step an 'await' so the user presses the "
         "button themselves."
@@ -284,7 +317,15 @@ def test_guide_steps_point_at_real_widgets(plugin: GuiPlugin):
     view spec; a tool with no view spec (``action`` targets, hand-built widgets)
     is out of scope here.
     """
-    view_specs = sorted(plugin.directory.glob("*view.json"))
+    # The spec sits beside the tool module or beside its guide (an emtk app at
+    # the plugin root keeps both under ``gui/``).
+    view_specs = sorted(
+        {
+            spec
+            for folder in (plugin.directory, plugin.guide_file.parent)
+            for spec in folder.glob("*view.json")
+        }
+    )
     if not view_specs:
         pytest.skip(f"{plugin.relative} has no view spec to check targets against")
 
@@ -400,7 +441,7 @@ def test_help_is_substantive_and_links_live(plugin: GuiPlugin):
 _DRAWS_HELP = re.compile(
     r"\b(ensure_help_toolbar|add_toolbar_help|attach_help_and_guide"
     r"|NavigationPanelTool|BurstAnalysisTool|AutoFormMleTool|TrajToolApp|ImagingToolApp|PixelToolApp"
-    r"|EmTkHelpWindow|EmTkGuidedTour|ToolHubApp|FcsHubApp|GameApp|CardShell)\b"
+    r"|EmTkHelpWindow|EmTkGuidedTour|ToolHubApp|FcsHubApp|GameApp|CardShell|ChimolHostApp)\b"
 )
 
 #: Tools that ship help files but do not draw them yet. **Shrinking**; never

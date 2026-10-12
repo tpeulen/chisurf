@@ -1,7 +1,8 @@
 """License tracker: what ChiSurf depends on, and what that permits.
 
-Generates ``doc/licenses.md`` (the human report, compatibility matrix on top)
-and ``doc/licenses.json`` (the machine-readable inventory) from the
+Generates ``docs/development/licenses.md`` (the human report, compatibility
+matrix on top) and ``docs/development/licenses.json`` (the machine-readable
+inventory) from the
 dependencies declared in ``pyproject.toml``, resolved against the running
 environment's package metadata. Run it after adding a dependency; run it with
 ``--check`` in CI to fail on a dependency whose license is unknown or more
@@ -187,8 +188,23 @@ def collect() -> dict:
     }
 
 
+#: Where the report is written: a developer page of the documentation bundle.
+OUT_DIR = ROOT / "docs" / "development"
+
+
 def render_markdown(data: dict) -> str:
     lines = [
+        # The page is part of the docs OKF bundle, so it carries the header every
+        # page there must (test/test_docs_okf.py).
+        "---",
+        "type: Development Note",
+        "title: ChiSurf dependency licenses",
+        "description: Every declared dependency's license, its permissiveness class, "
+        "and the binding constraint on ChiSurf's own license.",
+        "tags: [development, licensing]",
+        "audience: developer",
+        "---",
+        "",
         "# ChiSurf dependency licenses",
         "",
         f"*Generated {data['generated']} by `build_tools/license_tracker.py`. "
@@ -263,11 +279,11 @@ def main(argv=None) -> int:
               f"({', '.join(data['blockers'])})")
         return 0
 
-    (ROOT / "doc").mkdir(exist_ok=True)
-    (ROOT / "doc" / "licenses.md").write_text(render_markdown(data), encoding="utf-8")
-    (ROOT / "doc" / "licenses.json").write_text(
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    (OUT_DIR / "licenses.md").write_text(render_markdown(data), encoding="utf-8")
+    (OUT_DIR / "licenses.json").write_text(
         json.dumps(data, indent=2), encoding="utf-8")
-    print("wrote doc/licenses.md and doc/licenses.json")
+    print(f"wrote {OUT_DIR.relative_to(ROOT).as_posix()}/licenses.md and licenses.json")
     if missing:
         print("note, not installed here:", ", ".join(missing))
     return 0

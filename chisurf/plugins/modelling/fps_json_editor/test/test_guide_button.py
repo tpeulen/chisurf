@@ -24,3 +24,21 @@ def test_guide_button_starts_the_labelling_editor_tour():
         assert not app.tour.active, "the general viewer tour must not start"
     finally:
         app.close()
+
+
+def test_help_button_opens_the_labelling_plan_help():
+    """The ``?`` explains the labelling plan, not the viewer: the editor ships its own page."""
+    from chisurf.plugins.modelling.fps_json_editor.gui.app import HELP, make_app
+
+    assert HELP.is_file()
+    app = make_app()
+    try:
+        driver = Driver(app, (1100, 800))
+        driver.draw(3)
+        assert not app.help_window.open
+        driver.click(app.item_rects["help"])
+        driver.draw(2)
+        assert app.help_window.open
+        assert app.help_window.resource == HELP
+    finally:
+        app.close()

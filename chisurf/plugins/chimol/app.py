@@ -46,6 +46,7 @@ class ChimolHostApp(ImApp):
         size: tuple[int, int] = (900, 620),
         commands: tuple[str, ...] = (),
         guide_command: str = "",
+        help_resource: Path | None = None,
     ):
         #: chimol commands run once the viewer is up: a launcher opens one of chimol's own panels this way
         #: (Structure › FRET › FPS JSON Editor runs ``fps_circle , , Positions``).
@@ -68,8 +69,9 @@ class ChimolHostApp(ImApp):
         self._objects_seen: int | None = None
         self._drag_from: tuple[float, float] | None = None
         self.item_rects: dict[str, tuple[float, float, float, float]] = {}
+        # The ``?`` page: the launcher's own (the FPS JSON Editor explains the labelling plan), else the viewer's.
         self.help_window = EmTkHelpWindow(
-            title=tr("ChiMOL — Help"), resource=HERE / "help.md", owner=self
+            title=tr("ChiMOL — Help"), resource=Path(help_resource or HERE / "help.md"), owner=self
         )
         self.tour = EmTkGuidedTour(
             steps=HERE / "guide.json",
@@ -459,7 +461,9 @@ class ChimolHostApp(ImApp):
             self._chimol = None
 
 
-def make_app(commands: tuple[str, ...] = (), guide_command: str = "") -> ChimolHostApp:
+def make_app(
+    commands: tuple[str, ...] = (), guide_command: str = "", help_resource: Path | None = None
+) -> ChimolHostApp:
     """The embedded viewer, speaking ChiSurf's language.
 
     :func:`chisurf.emtk.i18n.install` selects ChiSurf's configured language in
@@ -471,4 +475,6 @@ def make_app(commands: tuple[str, ...] = (), guide_command: str = "") -> ChimolH
     from chisurf.emtk.i18n import install
 
     install()
-    return ChimolHostApp(commands=commands, guide_command=guide_command)
+    return ChimolHostApp(
+        commands=commands, guide_command=guide_command, help_resource=help_resource
+    )
