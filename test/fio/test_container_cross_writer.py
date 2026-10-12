@@ -37,23 +37,54 @@ from chisurf.core.fio.pto import Measurement
 DATA = Path(__file__).resolve().parents[1] / "data"
 
 
-def _find_tttr() -> tuple[Path | None, Path | None]:
-    """The `tttr` binary and the directory holding its shared library."""
+def _candidates() -> list[tuple[Path, Path | None]]:
+    """Every `tttr` binary worth trying, best first, with the directory of its shared library."""
+    out: list[tuple[Path, Path | None]] = []
     override = os.environ.get("TTTRLIB_CLI")
     if override and os.access(override, os.X_OK):
         p = Path(override).resolve()
-        return p, p.parent.parent
+        out.append((p, p.parent.parent))
     root = Path(__file__).resolve().parents[2] / "modules" / "tttrlib"
-    found = [
+    built = [
         c
         for c in (root / b / "bin" / "tttr" for b in ("build", "build_new"))
         if c.is_file() and os.access(c, os.X_OK)
     ]
-    if found:
-        newest = max(found, key=lambda p: p.stat().st_mtime)
-        return newest.resolve(), newest.resolve().parent.parent
+    for newest in sorted(built, key=lambda p: p.stat().st_mtime, reverse=True):
+        out.append((newest.resolve(), newest.resolve().parent.parent))
     on_path = shutil.which("tttr")
-    return (Path(on_path), None) if on_path else (None, None)
+    if on_path:
+        out.append((Path(on_path), None))
+    return out
+
+
+def _runs(binary: Path, lib_dir: Path | None) -> bool:
+    """Whether the binary starts at all (a stale build can fail to load a library it links)."""
+    env = dict(os.environ)
+    if lib_dir:
+        for var in ("DYLD_LIBRARY_PATH", "LD_LIBRARY_PATH"):
+            env[var] = str(lib_dir) + os.pathsep + env.get(var, "")
+    try:
+        return (
+            subprocess.run(
+                [str(binary), "--help"], capture_output=True, text=True, env=env, timeout=60
+            ).returncode
+            == 0
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def _find_tttr() -> tuple[Path | None, Path | None]:
+    """The first `tttr` binary that starts, and the directory holding its shared library.
+
+    A dev build tree whose binary cannot load a library it was linked against is skipped for the
+    next candidate rather than chosen and failed on (the stale-build case in the known issues).
+    """
+    for binary, lib_dir in _candidates():
+        if _runs(binary, lib_dir):
+            return binary, lib_dir
+    return None, None
 
 
 TTTR_BIN, LIB_DIR = _find_tttr()
@@ -62,8 +93,8 @@ SPC = DATA / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 pytestmark = [
     pytest.mark.skipif(
         TTTR_BIN is None,
-        reason="the tttr CLI is not built; looked in modules/tttrlib/build*/bin "
-        "and on PATH, and TTTRLIB_CLI is unset",
+        reason="no tttr CLI starts here; tried TTTRLIB_CLI, modules/tttrlib/build*/bin and PATH "
+        "(a stale build tree links libraries the environment no longer has)",
     ),
     pytest.mark.skipif(not SPC.exists(), reason="no instrument test data"),
 ]

@@ -725,7 +725,7 @@ class Main(
         from chisurf.core.fitting.fit_export import existing_folders
 
         existing = "skip"
-        there = existing_folders(list(cs.fits), path)
+        there = existing_folders(list(fit_objects()), path)
         if there:
             answer = dialogs.choice(
                 None,

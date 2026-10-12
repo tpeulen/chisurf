@@ -119,15 +119,27 @@ def _hold_instrument(
     parameters = _parameters(model)
     for canonical, is_free in free.items():
         parameters[canonical].fixed = not is_free
-    if fit_irf and irf is None and abs(float(irf_width)) > 0.0:
-        # The description bounds the prompt's width by the whole window (tens of ns). A start that
-        # close to one edge of so wide a box sits where the optimiser's sine bounds transform is
-        # flat: Levenberg-Marquardt overshoots on the first step, finds every trial worse, shrinks
-        # its trust region below tolerance and returns the start unchanged -- with no error.
-        # (Measured: a 0.2 ns start in 1e-4..4 ns converges; in 1e-4..5 ns it never moves.) A decade
-        # either side of the start is where a prompt width can sensibly be, and keeps it central.
-        width = abs(float(irf_width))
-        parameters["instrument.irf_width"].bounds = (width / 10.0, width * 10.0)
+
+
+def _run(fit, *, irf, fit_irf) -> None:
+    """Optimise *fit*; a generated prompt is aligned before its shape is released.
+
+    Freeing the prompt's width and skew together with its position from the first step is the
+    badly conditioned start: the width is by far the most sensitive parameter, the position is
+    still channels off, and Levenberg-Marquardt finds every trial step worse, shrinks its trust
+    region below tolerance and returns the start unchanged, with no error. So the first pass
+    leaves width and skew at their starting values (timing, lifetimes and amplitudes are fitted),
+    the second frees them.
+    """
+    shape = ("instrument.irf_width", "instrument.irf_shape")
+    if fit_irf and irf is None:
+        parameters = _parameters(fit.model)
+        for canonical in shape:
+            parameters[canonical].fixed = True
+        fit.run()
+        for canonical in shape:
+            parameters[canonical].fixed = False
+    fit.run()
 
 
 def _irf_report(model, *, irf, bin_width) -> dict:
@@ -338,7 +350,7 @@ def fit_lifetime_model(
         irf_skew=irf_skew,
         period=period,
     )
-    fit.run()
+    _run(fit, irf=irf, fit_irf=fit_irf)
     m = fit.model
     m.update()
     n = max(1, int(n_components))
@@ -516,7 +528,7 @@ def fit_fret_model(decay, **kwargs) -> dict:
         distance efficiency of each state, not the distribution-averaged one.
     """
     fit = build_fret_fit(decay, **kwargs)
-    fit.run()
+    _run(fit, irf=kwargs.get("irf"), fit_irf=bool(kwargs.get("fit_irf", False)))
     m = fit.model
     m.update()
     n = max(1, int(kwargs.get("n_states", 2)))

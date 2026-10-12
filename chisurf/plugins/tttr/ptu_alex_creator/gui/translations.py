@@ -152,7 +152,10 @@ Each row is one excitation phase found in the folded histogram and drawn as a sh
 def install_translations():
     for index, locale in enumerate(("en", "de", "fr", "es", "pt", "ru")):
         entries = [line.split("|") for line in ROWS.splitlines()]
-        add_translations(locale, {row[0]: row[index] for row in entries})
+        # The domain's own context wins an ambiguous source (emtk.i18n), over the catalogue's entry.
+        add_translations(
+            locale, {row[0]: row[index] for row in entries}, context="chisurf", domain="chisurf"
+        )
 
 
 HELP = {

@@ -24,6 +24,7 @@
   "optional_requires": {
     "fret_docking": "*",
     "hydropro": "*",
+    "quenching_estimator": "*",
     "traj_tools": "*"
   },
   "requires": {

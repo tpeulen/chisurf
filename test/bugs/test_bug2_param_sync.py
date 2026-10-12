@@ -1,6 +1,8 @@
 import sys
 import time
 
+import pytest
+
 import chisurf as cs
 import chisurf.core.actions
 from chisurf.core.fitting.fit import Fit
@@ -32,7 +34,7 @@ def test_fitting_parameter_update_trigger():
     assert ctrl.finalize_called == 1
 
 
-def test_parameter_sync_via_dispatch():
+def test_parameter_sync_via_dispatch(monkeypatch):
     """
     Test that changing a parameter value via dispatch triggers UI refresh.
     """
@@ -57,7 +59,8 @@ def test_parameter_sync_via_dispatch():
     print(f"DEBUG: parameters_all: {model.parameters_all}")
 
     # Register the fit in cs.fits so the action can find it
-    cs.fits = [fit]
+    # monkeypatch: a leaked cs.fits made every later test in the process see this fit
+    monkeypatch.setattr(cs, "fits", [fit], raising=False)
 
     # 2. Attach a mock controller to the parameter
     ctrl = MockController()
@@ -78,7 +81,7 @@ def test_parameter_sync_via_dispatch():
     assert ctrl.finalize_called >= 1
 
 
-def test_rapid_parameter_updates():
+def test_rapid_parameter_updates(monkeypatch):
     """
     Test that rapid parameter updates (simulating a slider drag)
     eventually synchronize to the final value.
@@ -95,7 +98,8 @@ def test_rapid_parameter_updates():
     model.parameter_groups = [pg]
     fit.model = model
     model.find_parameters()
-    cs.fits = [fit]
+    # monkeypatch: a leaked cs.fits made every later test in the process see this fit
+    monkeypatch.setattr(cs, "fits", [fit], raising=False)
 
     # Fire multiple updates rapidly
     values = [1.1, 1.2, 1.3, 1.4, 1.5]
@@ -117,9 +121,9 @@ if __name__ == "__main__":
     try:
         test_fitting_parameter_update_trigger()
         print("test_fitting_parameter_update_trigger PASSED")
-        test_parameter_sync_via_dispatch()
+        test_parameter_sync_via_dispatch(pytest.MonkeyPatch())
         print("test_parameter_sync_via_dispatch PASSED")
-        test_rapid_parameter_updates()
+        test_rapid_parameter_updates(pytest.MonkeyPatch())
         print("test_rapid_parameter_updates PASSED")
         print("All tests passed!")
     except AssertionError as e:

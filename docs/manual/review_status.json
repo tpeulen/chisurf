@@ -7,10 +7,10 @@
     "status": "ai-reviewed"
   },
   "analysis_dock.md": {
-    "date": "2026-10-11",
+    "date": "2026-10-12",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "1f99e1b7bb8fe2956f3efbcd65433ecc97a2251040aeeea0d0f2fbb662ff1dad",
+    "sha256": "e67cb21d9dfd3a30de0025d3ea5b6e511d60682e4afe79f78bf8b356e9b457c1",
     "status": "ai-reviewed"
   },
   "analysis_of_live_cell_experiments.md": {
@@ -476,10 +476,10 @@
     "status": "ai-reviewed"
   },
   "saving__exporting_the_results.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-11",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "21a1a0d7ff533faf477a2933a3be967943b5b4becb2e7163d6aa6427117c5aa5",
+    "sha256": "c0e486ad40513e87152e3be5c49cf2d1fd8bd34ec3c553863fd69b3aeb900abd",
     "status": "ai-reviewed"
   },
   "saving_and_loading_networks.md": {

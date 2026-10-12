@@ -54,6 +54,10 @@ def _wait(app, timeout=60.0):
 
 # 1. the Process button writes the Qt tool's energies (on a worker)
 def test_process_writes_the_qt_tools_energies(qt, trajectory):
+    pytest.importorskip(
+        "IMP.atom",
+        reason="the Qt capture used CHARMM radii from IMP.atom; without the IMP kernel the structure falls back to element radii (known issue: the pixi test environment builds IMP.bff without IMP)",
+    )
     dcd, pdb, tmp = trajectory
     app = make_app()
     try:

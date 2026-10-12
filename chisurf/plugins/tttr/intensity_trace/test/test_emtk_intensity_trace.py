@@ -188,6 +188,7 @@ def test_example_hmm_and_results_by_pointer_and_keyboard(size):
     ui.app.close()
 
 
+@pytest.mark.slow  # scans 15 HMM state counts over the whole example trace: about 200 s, over the 120 s default timeout
 def test_bic_elbow_and_the_save_dialogs(tmp_path):
     ui = Ui(make_app())
     ui.click("load_example")

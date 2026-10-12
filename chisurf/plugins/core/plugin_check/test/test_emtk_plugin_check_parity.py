@@ -131,6 +131,54 @@ def test_the_list_equals_the_qt_trees_rows_in_the_same_order(discovered):
     assert {"plugin", "status", "source", "depends", "error"} <= set(rows[0])
 
 
+#: Plugins whose declared dependencies were repaired after the Qt capture: the guard in
+#: ``test/test_plugin_dependencies.py`` made every manifest say what its code imports (hubs that
+#: moved to id tables lost children they no longer reach, tools that import ``tttr_splitter`` or
+#: the games hub gained it). Their cells now follow the manifests, not the retired tool.
+REPAIRED_DECLARATIONS = {
+    "ALEX Creator",
+    "Audifier",
+    "Breakout",
+    "Burst MLE",
+    "Burst Selection",
+    "Burst-wise FCS",
+    "CLSM-Draw",
+    "ChiMOL",
+    "Code Editor",
+    "Count Rate Analysis",
+    "Decay Analysis",
+    "Docking & Screening",
+    "Documentation",
+    "FCS Filter Calculator",
+    "FCS-Merger",
+    "FPS JSON Editor",
+    "FRET Line Generator",
+    "H2MM",
+    "Histogram-Microtime",
+    "Image Browser",
+    "Image Tools",
+    "Imaging Common",
+    "MaxEnt MEM",
+    "Microtime Shifter",
+    "Minesweeper",
+    "Number Quest",
+    "Pixel-wise MLE",
+    "Pong",
+    "QuEst",
+    "Spot Finder",
+    "Structure Tools",
+    "Switch User",
+    "TTTR Header editor",
+    "TTTR→Time-Window BIDs",
+    "Tetris",
+    "Trace Browser",
+    "Traj Tools",
+    "VV/VH G-Factor Calculator",
+    "Wizards",
+    "⇄ .pto",
+}
+
+
 def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discovered):
     """The committed Qt capture (``qt_rows_listed.json``) is the independent reference for the Depends-on cells."""
     baseline = json.loads((EVIDENCE / "qt_rows_listed.json").read_text())["rows"]
@@ -150,8 +198,8 @@ def test_the_baseline_rows_the_qt_tool_showed_are_matched_cell_for_cell(discover
 
     now = unique([(r["plugin"], r["depends"]) for r in rows])
     old = unique([(name, depends) for name, _status, _source, depends, _error in baseline])
-    common = set(now) & set(old)
-    assert len(common) > 100
+    common = (set(now) & set(old)) - REPAIRED_DECLARATIONS
+    assert len(common) > 60
     assert {n: stable(now[n]) for n in common} == {n: stable(old[n]) for n in common}
 
 
@@ -192,7 +240,7 @@ def test_the_details_equal_the_qt_details_pane(discovered):
         assert (
             {"Plugin", "Module", "Source"}
             <= set(qt_captions)
-            <= set(blocks) | {"Status", "Features"}
+            <= set(blocks) | {"Status", "Features", "Optional"}
         )
         compared += 1
     assert compared == 5

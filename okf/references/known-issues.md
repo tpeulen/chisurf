@@ -4,6 +4,40 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## The pixi test environment builds IMP.bff without RMF and without IMP (found 2026-10-12)
+
+status: open — owner: the IMP.bff build in the pixi environment.
+
+`pixi run -e test test` installs `imp-bff` from the fork's `dev` branch through uv, which builds the `core` flavour:
+`IMP.bff.get_build()` is `core`, with no `RmfStructureWriter`, no docking engine (`IMP.bff.dock`) and no IMP kernel
+(`import IMP.atom` fails; only the `IMP` namespace and `IMP.bff`/`IMP.cgmol` exist). The wheel is built without RMF
+because RMF pulls Boost.Iostreams, and without IMP because the build links it only when asked. The shipped app uses all
+three: ProteinMC writes its trajectory through `RmfStructureWriter`, FRET docking runs `IMP.bff.dock`, and the PDB
+reader's CHARMM radii come from `IMP.atom`. The tests that need them skip, each naming this entry:
+`test/project/test_structure_snapshot_contracts.py` (three sampling cases),
+`chisurf/plugins/modelling/proteinmc/test/test_plugin.py` (four RMF cases),
+`chisurf/plugins/modelling/structure_tools/test/test_cards.py` (two docking runs) and `test/fio/test_pdb_native.py`.
+Fix path: build imp-bff with RMF and IMP in the pixi environment (`rmf`, `eigen`, `cereal`, `libboost-headers` are
+already declared there for a from-source build; the build needs `-DIMP_BFF_WITH_RMF=ON`-style options passed through
+scikit-build-core, or a conda-forge `imp` for the kernel), then delete the skips. The `arm64` conda env has the local IMP
+kernel build but no `IMP.cgmol`, so the ProteinMC sampling cases skip there too.
+The same missing IMP kernel changes `Structure.vdw` (CHARMM radii fall back to element radii), so the clash potential of
+`chisurf/plugins/traj/potential_energy` reads 0.574 where the Qt capture says 0.776; the two energy-parity tests there skip
+on `IMP.atom` for the same reason.
+
+## A generated IRF fitted jointly from the first step never moves (found 2026-10-11)
+
+status: resolved 2026-10-12 — the prompt is aligned before its shape is released.
+
+`build_lifetime_fit(decay, irf=None, fit_irf=True, irf_width=0.2, ...)` freed the prompt's width, skew and timing
+together. The width is by far the most sensitive parameter and the timing starts channels off, so every
+Levenberg-Marquardt trial step was worse, the trust region collapsed below tolerance after 16 evaluations and the
+start came back unchanged (status 2, no error). It is not the minimiser's step arithmetic: the Jacobian equals a finite
+difference of the residual, and a plain MINPACK `leastsq` on the same sine-transformed problem stalls the same way. The
+box mattered only through the start's position in it (a 1e-4..4 ns width box converged, 1e-4..5 ns did not).
+`decay_fit_model._run` now fits timing, lifetimes and amplitudes with width and skew held, then frees them. An earlier
+version bounded the width to a decade around its start; that was a workaround and is gone.
+
 ## 2026-10-07: QuEst legacy surface clips controls and imports retired ChiMOL paths
 
 status: resolved 2026-10-12 — the legacy PyQt form is retired with the `quest` package; `QuEstTool` hosts the native
@@ -93,22 +127,6 @@ Each was re-checked against the pre-change baseline where it touched a changed s
 - In-process plugin suites, also red at the old emtk with the old specs: TTTR image browser drag/wheel/resize
   clicks (3), VV/VH `test_save_outputs_and_its_error_path`; the shell suites fail on
   `emtk.overlays.dismiss` (chisurf code calling an unpushed emtk function).
-
-## IMP.bff's bounded least squares returns a start near the edge of a wide box unchanged (found 2026-10-11)
-
-status: open
-
-`FitMinimizer` (the sine bounds transform over MINPACK `lmdif`) stops on its first trust-region collapse and
-returns the start with status 2 ("relative error between two consecutive iterates") and no error when a parameter
-starts close to one edge of a very wide box. Re-derive: `build_lifetime_fit(decay, irf=None, fit_irf=True,
-irf_width=0.2, ...)` in `chisurf/core/fluorescence/decay_fit_model.py` with the description's own width box
-`(1e-4, decay_size*dt)` = 1e-4..32.768 ns. The 16 evaluations never move a single parameter, so lifetimes come
-back as the starting guesses; the same fit with the width box 1e-4..4 ns recovers tau 4.001 ns and width 0.251 ns
-(truth 4.0, 0.25), and 1e-4..5 ns stalls again (the start's position in the box, `2*(x-lo)/(hi-lo)-1`, is about
--0.9 at the threshold). ChiSurf now bounds the fitted prompt width to a decade either side of its start, which
-removes the symptom for that model only. Root cause belongs in `src/fit/FitMinimizer.cpp` (`fdjac2_step` and the
-first trust radius for a start in the flat part of the transform); every other fit that frees a parameter far from
-the middle of a wide box can fail the same silent way.
 
 ## QA walk of the imaging, microscopy and structure guides (found 2026-10-11)
 

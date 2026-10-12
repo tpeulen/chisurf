@@ -75,8 +75,20 @@ def test_actual_sdk_identification_flags_survive_adapter(monkeypatch, tmp_path, 
         )
     )
     for key, identified in raw["estimated"].items():
-        assert origins[key] == ("data estimate" if identified else "not identified; retained value")
-    assert result.calibration.factor_provenance["beta"] in ("stoichiometry_assumption", "unknown")
+        if identified:
+            assert origins[key] == "data estimate"
+        elif key == "beta":
+            # One FRET population reads as the 1:1 labelling assumption, no ALEX as not identified.
+            assert origins[key].startswith("stoichiometry") or origins[key].startswith(
+                "not identified"
+            )
+        else:
+            assert origins[key] == "not identified; retained value"
+    provenance = result.calibration.factor_provenance["beta"]
+    if raw["estimated"].get("beta"):
+        assert provenance == "data"
+    else:
+        assert provenance in ("stoichiometry_assumption", "not_identified", "unknown")
 
 
 @pytest.mark.parametrize("use_priors", [False, True])

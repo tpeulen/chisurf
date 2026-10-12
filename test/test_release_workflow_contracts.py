@@ -58,7 +58,7 @@ def test_e2e_uses_the_same_module_sources_as_unit_tests():
     """Plugin tests must exercise the same source builds as ordinary tests."""
     jobs = _workflow("test-coverage.yml")["jobs"]
     regular, e2e = jobs["tests"]["steps"], jobs["e2e"]["steps"]
-    for module in ("mmfdb", "tttrlib", "quest", "chimol"):
+    for module in ("mmfdb", "tttrlib", "chimol"):  # QuEst is a plugin now, no sibling checkout
         assert _checkout(e2e, module)["run"] == _checkout(regular, module)["run"]
     assert any("xvfb" in step.get("run", "") and "libgl1-mesa-dev" in step["run"] for step in e2e)
 

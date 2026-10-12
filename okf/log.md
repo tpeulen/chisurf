@@ -2,6 +2,13 @@
 
 ## 2026-10-12
 
+- Release gate 1 measured (not met): pixi `test` 119 -> 21 failed in the last complete run (13623 passed),
+  `test-gui` 6 failed / 1120 passed, `test-e2e` red against a then-unpinned emtk. Fixed: test isolation (the
+  hermetic settings dir is removed at exit, mmfdb resolvers and the UI language restored, a leaked `cs.fits`), a
+  generated IRF fitted in stages instead of stalling from a joint free start, the i18n install order, the agent
+  tool refusing derived quantities, ALEX Creator's plot area. Pixi's IMP.bff wheel lacks RMF, IMP.atom and docking
+  (recorded). Open: emtk shell tests, chimol long menus, QuEst leftovers, startup-failure tests. See
+  [PRD-154](prds/prd-154.md).
 - One wheel notch is one step everywhere (emtk b82aa06): the frame loop spends one-shot input (wheel, key, click,
   char, drop) when the outermost frame ends, so a widget that leaves a notch unconsumed can no longer repeat it every
   frame while hovered (the runaway plot zoom). Three plugins' hand-written wheel resets are removed; chiplot gets a

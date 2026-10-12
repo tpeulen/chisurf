@@ -275,7 +275,7 @@ _ROWS = (
         "Colormap",
         "Farbskala",
         "Palette de couleurs",
-        "Mapa de colores",
+        "Mapa de color",
         "Mapa de cores",
         "Цветовая карта",
     ),

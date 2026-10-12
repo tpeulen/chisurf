@@ -37,6 +37,33 @@ def _restore_ui_language():
         i18n.set_locale(before)
 
 
+@pytest.fixture(autouse=True)
+def _restore_mmfdb_runtime_config():
+    """Give every test the host-registered mmfdb resolvers the application installs at import.
+
+    ``mmfdb.config.reset_runtime_config()`` also drops the resolvers ``chisurf.core.settings``
+    registers once (default user, auth, accounts). A test that resets and does not restore left
+    every later test in the process resolving ``user_default`` instead of the configured user.
+    """
+    import sys
+
+    module = sys.modules.get("mmfdb.config")
+    names = (
+        "_CONFIG",
+        "_DEFAULT_USER_ID_RESOLVER",
+        "_AUTH_CONFIG_RESOLVER",
+        "_ADMIN_BOOTSTRAP_RESOLVER",
+        "_DEFAULT_ACCOUNTS_RESOLVER",
+    )
+    saved = (
+        {name: getattr(module, name) for name in names if hasattr(module, name)} if module else {}
+    )
+    yield
+    if module is not None:
+        for name, value in saved.items():
+            setattr(module, name, value)
+
+
 @pytest.fixture(scope="session")
 def qapp():
     from qtpy.QtWidgets import QApplication

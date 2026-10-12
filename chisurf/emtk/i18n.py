@@ -96,8 +96,10 @@ def install(locale: str | None = None, directory: str | Path | None = None) -> s
 
     from chisurf.emtk.shared_i18n import install_shared_translations
 
-    install_shared_translations()
+    # The catalogue directories first: a domain merges its sources in order, so the shared
+    # controls' hand translations (an overlay on the same domain) must come after them to win.
     core_i18n.register_catalogues()
+    install_shared_translations()
     if directory is not None:
         toolkit_i18n.add_catalogue(core_i18n.DOMAIN, Path(directory))
     # A language already switched live (set_locale, not persisted) must survive a child tool's install().

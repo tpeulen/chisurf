@@ -2679,9 +2679,6 @@ class CodeEditorApp(ImApp):
         finally:
             im.pop_font_scale()
         self.model._sync_document_store()
-        # One wheel notch scrolls once: an unconsumed notch would repeat on every later frame (emtk keeps it until a
-        # widget takes it, and the editor and the text areas do not clear it).
-        self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0
 
 
 def make_editor_app(project_root: str | None = None) -> CodeEditorApp:

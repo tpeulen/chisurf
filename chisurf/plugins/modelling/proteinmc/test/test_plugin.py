@@ -63,6 +63,17 @@ def _as_text(value) -> str:
     return str(value).strip()
 
 
+def _require_rmf_writer() -> None:
+    """Skip where this IMP.bff build cannot write RMF (known issue: ProteinMC RMF output missing)."""
+    import IMP.bff as bff
+
+    if not hasattr(bff, "RmfStructureWriter"):
+        pytest.skip(
+            "this IMP.bff build has no RmfStructureWriter (the pip wheel is built without RMF); "
+            "known issue: ProteinMC RMF output missing from canonical core provider"
+        )
+
+
 def test_normalize_settings_maps_legacy_keys() -> None:
     settings = normalize_settings({"n_out": 3, "pdbOut": 4, "movemap": [1, 0]})
     assert settings["pdb_nOut"] == 3
@@ -93,6 +104,7 @@ def test_direct_labeling_potential_scores_148l(tmp_path: Path) -> None:
 def test_runner_writes_rmf3_readable_by_chimol(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
+    _require_rmf_writer()
     from chimol.io.rmf import load_rmf_full
 
     structure = load_structure(PDB_148L)
@@ -122,6 +134,7 @@ def test_runner_writes_rmf3_readable_by_chimol(tmp_path: Path) -> None:
 def test_rmf_writer_replaces_blank_chain_ids(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
+    _require_rmf_writer()
     from chisurf.plugins.modelling.proteinmc.rmf import ProteinMCRmfWriter
 
     structure = load_structure(PDB_148L)
@@ -136,6 +149,7 @@ def test_rmf_writer_replaces_blank_chain_ids(tmp_path: Path) -> None:
 def test_rmf_writer_writes_pmi_stat_metadata(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
+    _require_rmf_writer()
     from chimol.io.rmf import load_rmf_full
 
     from chisurf.plugins.modelling.proteinmc.rmf import ProteinMCRmfWriter
@@ -175,6 +189,7 @@ def test_rmf_writer_writes_pmi_stat_metadata(tmp_path: Path) -> None:
 def test_cli_writes_rmf3(tmp_path: Path) -> None:
     pytest.importorskip("RMF")
     pytest.importorskip("IMP")
+    _require_rmf_writer()
     output = tmp_path / "cli.rmf3"
     result = CliRunner().invoke(
         cli,

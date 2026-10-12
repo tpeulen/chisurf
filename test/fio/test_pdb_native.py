@@ -50,7 +50,9 @@ def pair(request):
     path = PDB_DIR / request.param
     if not path.is_file():
         pytest.skip(f"missing fixture {path}")
-    imp = pytest.importorskip("IMP")  # noqa: F841
+    # The reference reader takes CHARMM radii from IMP's atom module; the IMP.bff-only wheel has the
+    # `IMP` namespace but not the kernel, and without it both readers return element radii.
+    pytest.importorskip("IMP.atom", reason="the IMP kernel (IMP.atom) is not installed")
     native = parse_pdb_native(str(path), keep_water=True, only_standard_residues=False)
     reference = read_coordinates(
         str(path), keep_water=True, only_standard_residues=False, radii="charmm"

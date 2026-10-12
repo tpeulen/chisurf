@@ -702,7 +702,7 @@ class AlexApp(TourTarget, ImApp):
             ctx.request_frame_at(ctx.io.now + 0.05)
         vp = im.get_main_viewport()
         width, height = float(vp.size[0]), float(vp.size[1])
-        left = min(max(380.0, width * 0.36), 470.0)
+        left = min(max(360.0, width * 0.36), 470.0)
         im.set_next_window_pos((4.0, 4.0), im.Cond.ALWAYS)
         im.set_next_window_size((left, height - 8.0), im.Cond.ALWAYS)
         if im.begin("ALEX Creator"):
@@ -733,9 +733,6 @@ class AlexApp(TourTarget, ImApp):
         self.dataset_picker.render((0, 0, width, height))
         if self.help.open:
             self.help.draw((0, 0, width, height))
-        # One wheel notch is one step: a spin field does not consume the notch it stepped on, and an unconsumed wheel
-        # would step it again on every later frame (emtk gap, repro in the report).
-        self.io.mouse_wheel = self.io.mouse_wheel_h = 0.0
 
 
 def make_app(**kwargs):

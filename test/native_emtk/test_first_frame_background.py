@@ -145,6 +145,8 @@ def test_setup_store_is_read_off_the_first_frame_and_a_newer_read_wins(tmp_path,
 def test_registry_prefetch_reports_ready_once_read():
     from chisurf.core.registry import catalog
 
+    catalog.refresh()  # an earlier test in the process may have read the registries already
+    assert not catalog.ready()
     catalog.prefetch()
     catalog._prefetch_thread.join(60)
     assert catalog.ready() and catalog.prefetch()

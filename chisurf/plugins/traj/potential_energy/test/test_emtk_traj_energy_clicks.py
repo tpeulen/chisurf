@@ -361,6 +361,10 @@ def test_process_says_what_is_missing_before_it_asks_for_a_file(folder):
 def test_processing_through_the_ui_writes_the_energies_the_qt_widgets_model_wrote(
     qt, trajectory, tmp_path
 ):  # noqa: F811
+    pytest.importorskip(
+        "IMP.atom",
+        reason="the Qt capture used CHARMM radii from IMP.atom; without the IMP kernel the structure falls back to element radii (known issue: the pixi test environment builds IMP.bff without IMP)",
+    )
     dcd, pdb, _tmp = trajectory
     ui = _ui()
     try:
