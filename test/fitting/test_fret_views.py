@@ -282,7 +282,11 @@ def test_a_structure_ensemble():
     settings (radius 4 Å, grid 0.5 Å) the new search stays within 0.52 % of the classic
     curve (data/fret_structure_reference.json). Regenerated again 2026-10-12 when the AV
     search became FPS's link search (IMP.bff e4a3e2b9d; at most 0.85 % per channel, the
-    replaced curve kept under ``_previous``).
+    replaced curve kept under ``_previous``), and again the same day when the AV obstacle
+    radii took IMP.bff 3b1751b7e's declared radius scale 0.84 (at most 0.41 % per channel),
+    and once more when BasicAV's obstacles became IMP's radii by residue and atom name times
+    that scale instead of the reader's radius column (IMP.bff 113a0b1d6; at most 0.48 % per
+    channel, and no longer dependent on whether IMP is linked).
     """
     import json
     import pathlib

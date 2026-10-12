@@ -25,6 +25,25 @@ timestamp: '2026-10-12T00:00:00Z'
    could become its own ribbon entry if the owner wants the same "normal tool" rule there.
 5. Shared card shell: `chisurf/emtk/card_shell.py` (`CardShell`, `Rows`) — used by the docking, pair-selection and
    QuEst cards.
+6. **AV obstacle radii are one set (owner, 2026-10-12): IMP's radii × `AV_DEFAULT_RADIUS_SCALE` (0.84).** See
+   "Accessible-volume obstacle radii" below. Guard: `test/core/test_av_single_radius_set.py`. Open: IMP.bff's file
+   door reads **every** PDB record (waters and HETATM at IMP's 1.7 Å default) while the structure door drops waters —
+   same radii, different atom sets; decide whether the file door should drop waters too.
+
+## Accessible-volume obstacle radii (one set)
+
+Every AV door takes the obstacle radius of an atom as **IMP's radius for its residue and atom name** (the all-atom
+CHARMM radius `IMP::atom::read_pdb` assigns; IMP's 1.7 Å default for an untyped atom) **times
+`IMP.bff.AV_DEFAULT_RADIUS_SCALE`**. In the IMP-free `imp-bff` wheel ChiSurf runs on, IMP's mapping is
+`IMP.bff.imp_atom_radius` (a table regenerated from IMP, held equal to `read_pdb` by IMP.bff's
+`test/representation/test_imp_atom_radii.py`); `IMP.bff.load_structure_with_vdw` / `get_av_from_pdb` apply it
+with the scale. ChiSurf's one accessor is `chisurf/core/structure/av/radii.py` (`radius_scale`, `imp_radii`,
+`obstacle_radii`, `obstacle_xyzr`), used by `core/structure/av` (`BasicAV`/`ACV`/`DynamicAV`: radii from the
+atoms' residue and name, *not* the structure's `radius` column, which is whatever its reader chose) and by the
+FRET plugin (`modelling/fret/core/av.py`, trajectory evaluation in `core/evaluate.py`). QuEst reads IMP's particle
+radii and scales them itself (same numbers). The FRET plugin's Bondi `VDW_RADII` table (FPS's `vdW.txt`) is gone;
+so is chimol's copy (`chimol/plugins/labelling/av.py`). Bondi element radii remain only where they are not AV
+obstacles: the molecular viewer's element table (`core/fio/structure/elements.py`) and IMP.bff's Labelizer surface areas.
 
 The modelling group turns fluorescence observables (FRET efficiencies, anisotropies,
 diffusion coefficients) into and out of molecular structure. Most tools live under

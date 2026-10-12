@@ -286,93 +286,13 @@ def compute_avs_for_structure(
 
 
 # ---------------------------------------------------------------------------
-# Helper: vdW radii
+# Helper: the structure's records and its obstacle radii
 # ---------------------------------------------------------------------------
 
-# From FPS data/vdW.txt (selected common elements)
-VDW_RADII = {
-    1: 1.20,
-    2: 1.40,
-    3: 1.82,
-    4: 1.53,
-    5: 1.92,
-    6: 1.70,
-    7: 1.55,
-    8: 1.52,
-    9: 1.47,
-    12: 1.73,
-    14: 2.10,
-    15: 1.80,
-    16: 1.80,
-    17: 1.75,
-    19: 2.27,
-    20: 1.97,
-    26: 1.56,
-    30: 1.39,
-}
-_DEFAULT_VDW = 1.70
-_ELEMENT_NUMBERS = {
-    "H": 1,
-    "HE": 2,
-    "LI": 3,
-    "BE": 4,
-    "B": 5,
-    "C": 6,
-    "N": 7,
-    "O": 8,
-    "F": 9,
-    "MG": 12,
-    "SI": 14,
-    "P": 15,
-    "S": 16,
-    "CL": 17,
-    "K": 19,
-    "CA": 20,
-    "FE": 26,
-    "ZN": 30,
-}
-
-
-def _element_symbol_from_pdb_line(line: str) -> str:
-    """Return an element symbol parsed from a PDB ATOM/HETATM line.
-
-    Columns 77-78 carry the element in a modern PDB and are used verbatim when
-    present. Older files (the shipped FPS screening structures are 66-character
-    records) leave them empty, so the element is read from the atom-name field
-    instead. There the element is *right-justified in columns 13-14*: a blank or
-    numeric column 13 means a one-letter element, so ``" CA "`` is an
-    α-carbon while ``"CA  "`` is calcium. A two-letter reading is additionally
-    rejected when columns 15-16 contain a digit, which is how a four-character
-    hydrogen name such as ``"HE21"`` is written — helium would otherwise win.
-
-    Parameters
-    ----------
-    line : str
-        PDB ATOM or HETATM record.
-
-    Returns
-    -------
-    str
-        Uppercase element symbol, or an empty string when it cannot be parsed.
-    """
-    symbol = line[76:78].strip().upper() if len(line) >= 78 else ""
-    if symbol:
-        return symbol
-
-    name_field = line[12:16].ljust(4).upper()
-    candidate = name_field[:2].strip()
-    if (
-        len(candidate) == 2
-        and candidate in _ELEMENT_NUMBERS
-        and not any(ch.isdigit() for ch in name_field[2:])
-    ):
-        return candidate
-    letters = "".join(ch for ch in name_field if ch.isalpha())
-    if letters[:1] not in _ELEMENT_NUMBERS and letters[:2] in _ELEMENT_NUMBERS:
-        # Left-padding a two-letter element (" ZN ") breaks the column rule, but
-        # here the strict reading is not an element at all, so take the pair.
-        return letters[:2]
-    return letters[:1]
+# The obstacle radii are not this module's: they are IMP's radii times IMP.bff's
+# one declared scale (``chisurf.core.structure.av.radii``), the same set every
+# AV door uses. The records below carry identity only -- chain, residue, atom
+# name, coordinates -- for resolving a site and stripping its residue.
 
 
 def _pdb_cache_token(pdb_path: str) -> tuple[str, int, int]:
@@ -398,7 +318,7 @@ def _load_pdb_records_cached(
     pdb_path: str,
     mtime_ns: int,
     size: int,
-) -> tuple[tuple[str, int, str, float, float, float, float], ...]:
+) -> tuple[tuple[str, int, str, float, float, float], ...]:
     """Load ATOM/HETATM records from a PDB file.
 
     Parameters
@@ -413,7 +333,7 @@ def _load_pdb_records_cached(
     Returns
     -------
     tuple
-        Records containing chain, residue number, atom name, xyz, and vdW radius.
+        Records containing chain, residue number, atom name and xyz.
     """
     del mtime_ns, size
     rows = []
@@ -428,19 +348,7 @@ def _load_pdb_records_cached(
                 continue
             chain = line[21].strip()
             atom_name = line[12:16].strip()
-            element = _element_symbol_from_pdb_line(line)
-            atomic_number = _ELEMENT_NUMBERS.get(element, 0)
-            rows.append(
-                (
-                    chain,
-                    resseq,
-                    atom_name,
-                    xyz[0],
-                    xyz[1],
-                    xyz[2],
-                    VDW_RADII.get(atomic_number, _DEFAULT_VDW),
-                )
-            )
+            rows.append((chain, resseq, atom_name, xyz[0], xyz[1], xyz[2]))
     if not rows:
         raise ValueError(f"No ATOM/HETATM coordinates found in '{pdb_path}'")
     return tuple(rows)
@@ -448,7 +356,7 @@ def _load_pdb_records_cached(
 
 def _cached_pdb_records(
     pdb_path: str,
-) -> tuple[tuple[str, int, str, float, float, float, float], ...]:
+) -> tuple[tuple[str, int, str, float, float, float], ...]:
     """Return cached PDB records for a path.
 
     Parameters
@@ -464,26 +372,6 @@ def _cached_pdb_records(
     return _load_pdb_records_cached(*_pdb_cache_token(pdb_path))
 
 
-def _load_pdb_xyzr_direct(pdb_path: str) -> np.ndarray:
-    """Load PDB ATOM/HETATM coordinates and vdW radii without IMP.
-
-    Parameters
-    ----------
-    pdb_path : str
-        Path to a PDB file.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``(N, 4)`` array with ``x, y, z, vdw_radius`` columns.
-    """
-    records = _cached_pdb_records(pdb_path)
-    return np.asarray(
-        [(x, y, z, radius) for _, _, _, x, y, z, radius in records],
-        dtype=np.float64,
-    )
-
-
 def load_structure_with_vdw(pdb_path: str) -> np.ndarray:
     """Load a PDB as the obstacle array the solver takes.
 
@@ -495,23 +383,20 @@ def load_structure_with_vdw(pdb_path: str) -> np.ndarray:
     Returns
     -------
     numpy.ndarray
-        ``(N, 4)`` of x, y, z and van der Waals radius.
+        ``(N, 4)`` of x, y, z and obstacle radius: IMP's radius times
+        ``AV_DEFAULT_RADIUS_SCALE``, the one radius set of every AV door.
 
     Notes
     -----
-    ``IMP.bff.load_structure_with_vdw`` is the same read, cached on
+    ``IMP.bff.load_structure_with_vdw`` reads it (through
+    :func:`chisurf.core.structure.av.radii.obstacle_xyzr`), cached on
     ``(path, mtime, size)`` inside the library -- an ``fps.json`` with a dozen
-    positions reads one file a dozen times. The fallback that used to sit here,
-    building an IMP hierarchy and reading an element per particle through
-    SWIG, is gone: the C++ reader is the fast path *and* the correct one, and a
-    fallback that silently produced different radii was a way to get a
-    plausible, wrong volume.
+    positions reads one file a dozen times. It used to carry FPS's Bondi
+    element radii, a second radius set beside IMP's.
     """
-    import IMP.bff as bff
+    from chisurf.core.structure.av.radii import obstacle_xyzr
 
-    return np.ascontiguousarray(
-        np.asarray(bff.load_structure_with_vdw(str(pdb_path)), dtype=np.float64).reshape(-1, 4)
-    )
+    return obstacle_xyzr(pdb_path)
 
 
 def _find_attachment_point(
@@ -533,7 +418,7 @@ def _find_attachment_point(
     Parameters
     ----------
     atoms : (N, 4) ndarray
-        The atoms array (x, y, z, vdw_radius).
+        The atoms array (x, y, z, radius).
     chain : str
         The chain identifier.
     resseq : int
@@ -554,7 +439,7 @@ def _find_attachment_point(
         except Exception:
             logger.warning("Could not read atom records from %s", pdb_path, exc_info=True)
             return None
-        for line_chain, line_resseq, line_atom_name, x, y, z, _ in records:
+        for line_chain, line_resseq, line_atom_name, x, y, z in records:
             if line_resseq == resseq and line_atom_name == atom_name:
                 if not chain or line_chain == chain:
                     return np.array([x, y, z], dtype=np.float64)
@@ -581,7 +466,7 @@ def _strip_residue_atoms(
     Parameters
     ----------
     atoms : (N, 4) ndarray
-        The atoms array (x, y, z, vdw_radius).
+        The atoms array (x, y, z, radius).
     chain : str
         The chain identifier of the residue to exclude.
     resseq : int
@@ -606,7 +491,7 @@ def _strip_residue_atoms(
         keep_mask = np.asarray(
             [
                 not (line_resseq == resseq and (not chain or line_chain == chain))
-                for line_chain, line_resseq, _, _, _, _, _ in records
+                for line_chain, line_resseq, _, _, _, _ in records
             ],
             dtype=bool,
         )
@@ -614,7 +499,7 @@ def _strip_residue_atoms(
 
     coords_to_exclude = [
         [x, y, z]
-        for line_chain, line_resseq, _, x, y, z, _ in records
+        for line_chain, line_resseq, _, x, y, z in records
         if line_resseq == resseq and (not chain or line_chain == chain)
     ]
     if not coords_to_exclude:

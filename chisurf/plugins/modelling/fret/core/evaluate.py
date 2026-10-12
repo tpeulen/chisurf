@@ -209,15 +209,16 @@ def evaluate_trajectory(
     t = md.load(traj_path, top=top_path)
     storage = EvaluationStorage()
 
-    # Get vdW radii map. The topology reports the element as its symbol, and
-    # av already carries the symbol-to-number table, so use that rather than a
-    # second one; carbon is the fallback for an atom whose element is blank,
-    # which plenty of PDB files leave so.
-    vdw_radii = []
-    for atom in t.topology.atoms:
-        atomic_number = _av._ELEMENT_NUMBERS.get((atom.element or "").upper(), 6)
-        vdw_radii.append(_av.VDW_RADII.get(atomic_number, _av._DEFAULT_VDW))
-    vdw_radii = np.array(vdw_radii, dtype=np.float64)
+    # The obstacle radii: IMP's radius by residue and atom name, times
+    # IMP.bff's one scale -- the radius set of every AV door, the PDB door
+    # (``_av.load_structure_with_vdw``) included.
+    from chisurf.core.structure.av.radii import obstacle_radii
+
+    topology_atoms = list(t.topology.atoms)
+    vdw_radii = obstacle_radii(
+        [atom.residue.name for atom in topology_atoms],
+        [atom.name for atom in topology_atoms],
+    )
 
     # Trajectories are read in Ångström (fix(structure) 7c4bce932), the unit
     # this module works in.

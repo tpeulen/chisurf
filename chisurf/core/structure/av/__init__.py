@@ -49,6 +49,7 @@ import chisurf.core.fio.structure
 import chisurf.core.fio.structure.coordinates
 import chisurf.core.settings
 import chisurf.core.support.common
+from chisurf.core.structure.av import radii as _radii
 
 package_directory = os.path.dirname(__file__)
 dye_file = os.path.join(chisurf.core.settings.package_directory, "dye_definition.json")
@@ -113,8 +114,8 @@ def av_defaults() -> dict:
         # sphere in linker widths (FPS's rule, 0.5 W, for any other width).
         "allowed_sphere_radius": float(IMP.bff.AV_DEFAULT_ALLOWED_SPHERE),
         "linker_initial_sphere": float(IMP.bff.AV_DEFAULT_LINKER_INITIAL_SPHERE),
-        # The one factor IMP's united-atom radii are scaled by as the AV's
-        # obstacles, fitted to FPS's Bondi radii (no second radii table).
+        # The one factor IMP's radii are scaled by as the AV's obstacles,
+        # fitted to FPS's (no second radii table; see av/radii.py).
         "radius_scale": float(IMP.bff.AV_DEFAULT_RADIUS_SCALE),
     }
 
@@ -171,6 +172,8 @@ class BasicAV:
             radius3 = defaults["av3_radii"][2]
         if link_search is None:
             link_search = defaults["link_search"]
+        #: The factor on IMP's radii as the obstacle set (IMP.bff's default).
+        self.radius_scale = _radii.radius_scale(kwargs.pop("radius_scale", None))
         #: "fps" (FPS's link search, IMP.bff's default) or "fast" (seed-only).
         self.link_search = str(link_search)
         self.dg = simulation_grid_resolution
@@ -239,9 +242,14 @@ class BasicAV:
         # IMP.bff finds the attachment among the obstacles by its coordinate
         # and drops it from them, as FPS does.
         source_xyz = np.ascontiguousarray(atoms["xyz"][attachment_atom_index], dtype=np.float64)
-        atoms_xyzr = np.ascontiguousarray(
-            np.hstack([xyz, np.asarray(obstacle_atoms["radius"], dtype=np.float64)[:, None]])
+        # The obstacles are IMP's radii times IMP.bff's one scale, by residue
+        # and atom name -- not the radius column the structure was read with,
+        # which is whatever its reader chose (the native PDB reader gives
+        # element radii). One radius set at every AV door (av/radii.py).
+        radii = _radii.obstacle_radii(
+            obstacle_atoms["res_name"], obstacle_atoms["atom_name"], self.radius_scale
         )
+        atoms_xyzr = np.ascontiguousarray(np.hstack([xyz, radii[:, None]]))
 
         result = _compute_av()(
             atoms_xyzr,

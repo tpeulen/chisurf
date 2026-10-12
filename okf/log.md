@@ -2,6 +2,13 @@
 
 ## 2026-10-12
 
+- One atom-radius set for accessible volumes everywhere (owner): IMP's radius by residue and atom name times
+  `IMP.bff.AV_DEFAULT_RADIUS_SCALE` (0.84). IMP.bff 113a0b1d6 adds `imp_atom_radius` (IMP's CHARMM mapping, usable
+  without IMP linked) and makes the file door use it; ChiSurf's one accessor is `chisurf/core/structure/av/radii.py`.
+  `BasicAV`/`ACV`/`DynamicAV` took the reader's radius column (env-dependent) and now take the accessor's radii. The
+  FRET plugin's and chimol's Bondi tables are gone (chimol 0bb73d6). Guard `test/core/test_av_single_radius_set.py`;
+  `fret_structure_reference.json` regenerated (at most 0.48 % per channel). Lock: imp-bff 113a0b1d6, emtk e0f8b67.
+  See [modelling](plugins/modelling.md).
 - emtk 807cdbc: an extended grapheme cluster (skin tone, ZWJ, VS16, keycap, flag, tag, combining mark) is one glyph,
   one caret step and one delete in every painter and editor (`emtk/grapheme.py`, no new dependency); a skin-tone emoji
   no longer draws as two glyphs. Reaches ChiSurf with the next emtk pin.

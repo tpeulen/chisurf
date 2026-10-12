@@ -92,7 +92,11 @@ CB-site volume of T4L (PDB 148L) agrees with FPS's own routine to 1 %
 (0.91 with IMP's radii unscaled); against FPS's distances on T4L 3GUN the bias
 falls from +1.2 to +0.9 Å at unchanged rmsd. The factor applies to the AV's
 obstacles only; the clash term of a docking score keeps IMP's radii. 1.0 uses
-IMP's radii as they are. The search starts from the grid point nearest the
+IMP's radii as they are. It is **one radius set at every door**: the structure
+AVs of the fitting models, the FRET docking and screening tools, QuEst and
+ChiMOL's labelling editor all take IMP's radius for the atom's residue and name
+(`IMP.bff.imp_atom_radius`, IMP's own CHARMM mapping, available without IMP
+linked) times the same factor; none carries a radius table of its own. The search starts from the grid point nearest the
 attachment atom, so a site whose atom sits off-grid in a narrow pocket can come
 back empty at a fine grid where FPS, which centres its grid on the atom, finds
 a volume (T4L N132 CB at 0.5 Å).
