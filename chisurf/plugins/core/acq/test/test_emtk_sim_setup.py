@@ -186,9 +186,9 @@ def test_edits_reach_the_simulated_photons(drv):
     assert set(counts) == {8}
 
     # Flip it: perpendicular only. The channel the photons land in follows the edit (the second
-    # detector, which the tool's default routing lists as channel 0).
+    # detector, green perpendicular, decoded as routing 9).
     again = dict(params, q=[0.0, 300.0, 0.0, 0.0], N_ph_max=400)
-    assert set(channel_counts(again)) == {0}
+    assert set(channel_counts(again)) == {9}
 
 
 def test_start_runs_the_dialogs_values(drv):
