@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- The dock tab menu gained *Close other panels* and *Close all panels* (emtk cbe66f3: `DockWindow.core`,
+  `DockManager.close_panels`); the shell keeps Tools, Start, Log, Console, the fit docks and fit windows. The blank
+  last row of that menu is gone (its height is measured, not counted with the separator as a row). Tab titles are
+  kept as source text and translated as drawn, so a live language switch retitles them.
 - AV: attachment atom excluded and allowed sphere on by default (owner decision; IMP.bff 8ce0dcc28, chimol b250441).
   FPS drops the attachment atom alone, which IMP.bff already did at every lattice door (now tested exactly);
   `AV_DEFAULT_ALLOWED_SPHERE` = 2.25 Å (FPS's LinkerInitialSphere 0.5 x 4.5), a position without one takes 0.5 W.

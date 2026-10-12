@@ -46,7 +46,7 @@ from typing import Any, Callable
 from emtk import accents, im, overlays
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.i18n import tr
+from emtk.i18n import mark, tr
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
 from chisurf.emtk.shell_ribbon import ACTION_ICONS
@@ -263,11 +263,22 @@ class EmtkShellApp(ImApp):
             ),
             name="shell",
         )
-        self.docks.add_window("tools", tr("Tools"), self._draw_tools, dock="left", closable=False)
-        self.docks.add_window("start", tr("Start"), self._draw_start, dock="center")
-        self.docks.add_window("log", tr("Log"), self._draw_log, dock="bottom", scrollable=False)
+        # ``core``: the shell's own docks, which "Close all panels" / "Close other panels" leave
+        # open -- only the hosted tools (and what the user opened) go.
         self.docks.add_window(
-            "console", tr("Console"), self._draw_console, dock="bottom", scrollable=False
+            "tools", mark("Tools"), self._draw_tools, dock="left", closable=False, core=True
+        )
+        self.docks.add_window("start", mark("Start"), self._draw_start, dock="center", core=True)
+        self.docks.add_window(
+            "log", mark("Log"), self._draw_log, dock="bottom", scrollable=False, core=True
+        )
+        self.docks.add_window(
+            "console",
+            mark("Console"),
+            self._draw_console,
+            dock="bottom",
+            scrollable=False,
+            core=True,
         )
         _log.setLevel(logging.INFO)
         super().__init__(self.render)
@@ -326,13 +337,15 @@ class EmtkShellApp(ImApp):
         self.hosted[plugin_id] = hosted
         self.docks.add_window(
             hosted.key,
-            tr(entry.label),
+            # The source text, not tr(): the tab translates it each frame, so a language
+            # switched while the tool is open retitles it (a stored translation would not).
+            mark(entry.label),
             lambda box, pid=plugin_id: self._draw_plugin(pid, box),
             dock="center",
             scrollable=False,
             padding=0.0,
             min_size=(240.0, 160.0),
-            tooltip=tr(entry.description),
+            tooltip=mark(entry.description),
         )
         self.docks.focus(hosted.key)
         self.status = tr("Opening {name}…").format(name=tr(entry.label))

@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
-from emtk.i18n import tr
+from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.background_build import BackgroundBuild
@@ -464,15 +464,15 @@ class DataDocks:
             )
             self.status = tr("Starting the session…")
         docks = shell.docks
-        docks.add_window(READ_KEY, tr("Read data"), self._draw_read, dock="left", closable=False)
+        docks.add_window(READ_KEY, mark("Read data"), self._draw_read, dock="left", closable=False)
         docks.add_window(
-            DATASETS_KEY, tr("Datasets"), self._draw_datasets, dock="left", closable=False
+            DATASETS_KEY, mark("Datasets"), self._draw_datasets, dock="left", closable=False
         )
         docks.add_window(
-            ANALYSIS_KEY, tr("Analysis"), self._draw_analysis, dock="left", closable=False
+            ANALYSIS_KEY, mark("Analysis"), self._draw_analysis, dock="left", closable=False
         )
         docks.add_window(
-            PLOT_KEY, tr("Plot settings"), self._draw_plot, dock="left", closable=False
+            PLOT_KEY, mark("Plot settings"), self._draw_plot, dock="left", closable=False
         )
 
     # -- plumbing ------------------------------------------------------------ #
@@ -1197,6 +1197,7 @@ class DataDocks:
             padding=0.0,
             min_size=(240.0, 160.0),
             tooltip=title,
+            core=True,
         )
         self.shell.docks.focus(window.key)
         return window
