@@ -36,7 +36,7 @@ def test_simulation_settings_model_serializes_enabled_channels():
     assert params["N_species"] == 2
     assert params["N_channels"] == 4
     assert params["q"] == [11.0, 12.0, 21.0, 22.0, 11.0, 12.0, 21.0, 22.0]
-    assert params["ch_conversion"] == [8, 0, 9, 1, 10, 2, 11, 3]
+    assert params["ch_conversion"] == [8, 9, 10, 11]
     assert params["N_ph_max"] == 123
     assert params["N_ph_per_file"] == 10
 
@@ -105,3 +105,52 @@ def test_tttrlib_streaming_writes_split_spc_files(tmp_path):
     assert files
     assert tttrlib.TTTR(str(files[0]), "SPC-130").get_n_valid_events() > 0
     assert (tmp_path / "simulation_config.json").exists()
+
+
+def _decoded_channels(params, tmp_path):
+    """Run the simulation for ``params`` and return decoded routing channels."""
+    import numpy as np
+    import tttrlib
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.core import algorithms as alg
+
+    engine = alg.build_engine(params)
+    engine.run()
+    words = alg.encode_records(engine, params)
+    path = str(tmp_path / "sim.spc")
+    enc = tttrlib.SimMicrotimeEncoder()
+    with open(path, "wb") as fh:
+        fh.write(bytes(enc.file_bytes(bytes(words.tobytes()))))
+    tttr = tttrlib.TTTR(path, "SPC-130")
+    return set(int(c) for c in np.unique(tttr.routing_channels))
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "red,yellow,expected",
+    [(False, False, {8, 9}), (True, False, {8, 9, 10, 11}), (True, True, set(range(8, 14)))],
+)
+def test_simulation_detectors_decode_to_declared_channels(tmp_path, red, yellow, expected):
+    """Each simulated detector must decode to the hardware channel the model declares.
+
+    ``ch_conversion`` is tttrlib's index map (entry ``i`` = hardware channel of
+    simulated channel ``i``). A flat ``det, src`` pair list silently sends the
+    second detector to channel 0.
+    """
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
+        SimulationSettingsModel,
+    )
+
+    model = SimulationSettingsModel(
+        n_species=1,
+        green_enabled=True,
+        red_enabled=red,
+        yellow_enabled=yellow,
+        species_q=[50.0] * 6,
+        n_ph_max=20000,
+        n_ph_per_file=20000,
+    )
+    params = model.to_parameters()
+    assert params["ch_conversion"] == sorted(expected)
+    assert _decoded_channels(params, tmp_path) == expected

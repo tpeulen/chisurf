@@ -332,9 +332,14 @@ def encode_records(engine, params: dict[str, Any]) -> np.ndarray:
     enc.pulsed_exc = int(params.get("pulsed_exc", 0))
     enc.n_channels = int(params.get("N_channels", 2))
     enc.tw = float(params.get("dt", 0.01))
-    enc.ch_conversion = tttrlib.VectorUint16(
-        [int(v) for v in params.get("ch_conversion", [8, 0, 9, 1, 10, 2])]
-    )
+    # Index map: ch_conversion[sim_channel] = hardware channel.
+    conv = [int(v) for v in params.get("ch_conversion") or [8 + i for i in range(enc.n_channels)]]
+    if len(conv) < enc.n_channels:
+        raise ValueError(
+            f"ch_conversion has {len(conv)} entries for {enc.n_channels} channels; it is an "
+            "index map (one hardware channel per simulated channel), not det/src pairs"
+        )
+    enc.ch_conversion = tttrlib.VectorUint16(conv)
     enc.n_microtime_channels = int(params.get("N_tac_channels", 4096))
     enc.microtime_resolution = float(params.get("tac_dt", 0.004069))
     enc.laser_period = float(params.get("laser_period", 13.596))

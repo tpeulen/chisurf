@@ -16,9 +16,7 @@
  "box_z": 4.0,
  "ch_conversion": [
   8,
-  0,
-  9,
-  1
+  9
  ],
  "coast_safety": 3.0,
  "decay_lifetimes": [

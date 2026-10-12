@@ -80,7 +80,7 @@ class SimulationDevice(TCSPCDeviceABC):
             "N_ph_max": 1_000_000,
             "N_ph_per_file": 100_000,
             "pulsed_exc": 0,
-            "ch_conversion": [8, 0, 9, 1, 10, 2],
+            "ch_conversion": [8, 9],
             "N_tac_channels": 4096,
             "tac_dt": 0.004069,
             "laser_period": 13.596,

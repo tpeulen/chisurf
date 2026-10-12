@@ -84,7 +84,7 @@ DEFAULT_PARAMS: dict[str, Any] = {
     "N_ph_per_file": 50000,
     # BH_SPC conversion - 6 channel mapping
     "pulsed_exc": 0,
-    "ch_conversion": [8, 0, 9, 1, 10, 2, 11, 3, 12, 4, 13, 5],
+    "ch_conversion": [8, 9, 10, 11, 12, 13],
     # RNG parameters
     "rng_mode": 0,
     "rmt1seed": 12345,
@@ -252,7 +252,7 @@ def _prepare_conversion_params(config: dict[str, Any]) -> dict[str, Any]:
         )
 
     N_channels = int(config.get("N_channels", 6))
-    ch_conversion = list(config.get("ch_conversion", [8, 0, 9, 1, 10, 2, 11, 3, 12, 4, 13, 5]))
+    ch_conversion = list(config.get("ch_conversion", [8, 9, 10, 11, 12, 13]))
 
     N_tac_channels = int(config.get("N_tac_channels", 4096))
     tac_dt = float(config.get("tac_dt", 0.004069))

@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- Acquisition simulation: `ch_conversion` is tttrlib's index map (hardware channel per simulated channel), not
+  detector/source pairs; the pair layout decoded the second detector as channel 0. The settings model, wrapper, CLI,
+  `encode_records` fallback (now raises on a pair-length list) and `acq_sim_defaults.json` are fixed, and a test
+  decodes each detector's photons to its declared channel.
 - The emtk Acquisition tool has a Simulation setup dialog (`acq/gui/sim_setup.py`, AutoForm specs): species,
   brightness and background as one editable table, the k_rad/k_nrad rate grids, and the per-species decay editor, all
   editing the Qt-free `SimulationSettingsModel` (split out of the Qt dialog, which now subclasses it). OK validates via

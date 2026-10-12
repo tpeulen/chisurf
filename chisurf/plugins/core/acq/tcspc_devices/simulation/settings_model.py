@@ -375,7 +375,6 @@ class SimulationSettingsModel:
             self.green_enabled = True
         q_bg = []
         ch_conversion = []
-        next_source = 0
         for enabled, bg_values, detectors in (
             (self.green_enabled, (self.bg_green_p, self.bg_green_s), (8, 9)),
             (self.red_enabled, (self.bg_red_p, self.bg_red_s), (10, 11)),
@@ -385,8 +384,10 @@ class SimulationSettingsModel:
                 continue
             for bg_value, detector in zip(bg_values, detectors):
                 q_bg.append(float(bg_value))
-                ch_conversion.extend([int(detector), int(next_source)])
-                next_source += 1
+                # tttrlib's ``SimMicrotimeEncoder.ch_conversion`` is an index
+                # map: entry ``i`` is the hardware channel of simulated channel
+                # ``i`` (not a flat list of ``det, src`` pairs).
+                ch_conversion.append(int(detector))
         return q_bg, ch_conversion
 
     def to_parameters(self) -> dict[str, Any]:
