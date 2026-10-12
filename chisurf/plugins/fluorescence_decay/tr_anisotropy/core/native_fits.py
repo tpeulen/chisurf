@@ -139,6 +139,10 @@ def start_near_the_peak(group, fraction=0.9):
         group.fit_range = (start + int(above[0]), stop)
 
 
+#: How many response widths beyond the peak offset the shift may reach.
+SHIFT_WIDTHS = 3
+
+
 def bound_the_time_shift(model, data, role):
     """Keep the IRF-to-decay time shift within a plausible window of the peak offset.
 
@@ -161,9 +165,16 @@ def bound_the_time_shift(model, data, role):
     irf = np.asarray(data[f"irf_{role}_bg_norm"].y, dtype=float)
     if not decay.size or not irf.size or irf.max() <= 0:
         return
-    offset = abs(int(np.argmax(decay)) - int(np.argmax(irf)))
-    width = int(np.count_nonzero(irf >= 0.5 * irf.max()))  # FWHM in channels
-    limit = float(offset + max(width, 1))
+    def pulse(y):
+        # the pulse is in the first half of what was recorded; the gate edge can be higher
+        nz = np.flatnonzero(y > 0)
+        stop = int(nz[0]) + max(1, (int(nz[-1]) - int(nz[0])) // 2) if nz.size else len(y)
+        return int(np.argmax(y[:stop])), stop
+
+    irf_peak, irf_stop = pulse(irf)
+    offset = abs(pulse(decay)[0] - irf_peak)
+    width = int(np.count_nonzero(irf[:irf_stop] >= 0.5 * irf[irf_peak]))  # FWHM in channels
+    limit = float(offset + SHIFT_WIDTHS * max(width, 1))
     for parameter in model.parameters_all:
         if parameter.canonical_id == "instrument.timeshift":
             parameter.bounds = (-limit, limit)

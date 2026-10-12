@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 
+from chisurf.core.fluorescence.tcspc import _trim_rising_tail
+
 
 def initial_region(n: int, lo: float = 0.3, hi: float = 0.8) -> tuple[int, int]:
     """Return a default background region as ``(lower, upper)`` channel indices.
@@ -148,13 +150,19 @@ def response_window(
         dark = y[lo:hi]
         bg = float(np.nanmean(dark)) if dark.size else 0.0
         sd = float(np.nanstd(dark)) if dark.size > 1 else 0.0
-        corrected.append((y - bg, sd))
-    peak = max(float(np.nanmax(c)) for c, _ in corrected)
-    for c, sd in corrected:
+        corrected.append((y - bg, sd, y))
+    peak = max(float(np.nanmax(c)) for c, _, _ in corrected)
+    for c, sd, raw in corrected:
         above = np.flatnonzero(c > max(n_sigma * sd, relative * peak))
         if above.size:
-            starts.append(int(above[0]))
-            stops.append(int(above[-1]) + 1)
+            # The channels past the end of the gate carry the instrument's edge (the counts climb
+            # again before they stop), not the response; the trimmed window ends in front of it.
+            first, last = int(above[0]), int(above[-1]) + 1
+            # the response is the pulse at the start of the window; the edge can be higher
+            peak_at = first + int(np.argmax(c[first : first + max(1, (last - first) // 2)]))
+            last = _trim_rising_tail(raw, peak_at, last)
+            starts.append(first)
+            stops.append(last)
     if not starts:
         return 0, n
     return min(starts), max(stops)

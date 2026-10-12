@@ -16,6 +16,29 @@ from ..core.native_fits import create_linked_fits
 from .view_model import AnisotropyViewModel
 
 
+def recorded_rep_rate(metadata):
+    """The laser repetition rate (MHz) a file's metadata names, or ``None``.
+
+    Reads ``rep_rate`` / ``repetition_rate`` (MHz) or ``excitation_period_ns`` / ``period_ns``
+    from a VV/VH footer.
+    """
+    for key in ("rep_rate", "repetition_rate", "rep_rate_mhz"):
+        try:
+            value = float(metadata[key])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if value > 0:
+            return value
+    for key in ("excitation_period_ns", "period_ns"):
+        try:
+            value = float(metadata[key])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if value > 0:
+            return 1000.0 / value
+    return None
+
+
 class SpectrumTable:
     """One editable ``[amplitude, value]`` spectrum as the rows a ``data_table`` section reads.
 
@@ -165,6 +188,7 @@ class NativeAnisotropyModel(AnisotropyViewModel):
         if not self.files_ready():
             raise ValueError("Select every required file before loading.")
         loaded = {}
+        self._rate_from_files = None
         for key, role, path in self._pairs():
             width = self.bin_width
             if self.stacked_files:
@@ -172,6 +196,8 @@ class NativeAnisotropyModel(AnisotropyViewModel):
 
                 _, metadata = read_vv_vh(path, split=True, return_metadata=True)
                 width = float(metadata.get("dt", metadata.get("dt_ns", width)))
+                if self._rate_from_files is None:
+                    self._rate_from_files = recorded_rep_rate(metadata)
             elif self.first_column_is_time:
                 width = 1.0
             reader = TCSPCReader(
@@ -213,6 +239,12 @@ class NativeAnisotropyModel(AnisotropyViewModel):
                 reader.dt = float(np.mean(np.diff(curve.x)))
             loaded[key] = curve
         self.data.update(loaded)
+        if self._rate_from_files:
+            # the laser rate the recording itself names is the default of the wizard's field
+            self.rep_rate = self._rate_from_files
+            for curve in loaded.values():
+                if getattr(curve, "data_reader", None) is not None:
+                    curve.data_reader.rep_rate = self.rep_rate
         self.loaded_signature = self.input_signature()
         from ..core.irf import initial_region
 

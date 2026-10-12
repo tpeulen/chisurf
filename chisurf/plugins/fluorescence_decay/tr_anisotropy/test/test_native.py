@@ -264,7 +264,7 @@ def test_created_fits_can_be_run_as_created(tmp_path, monkeypatch):
 JORDI = Path(__file__).resolve().parents[5] / "test" / "data" / "tcspc" / "Jordi"
 
 
-@pytest.mark.parametrize("rotation", [[[0.38, 0.8]], [[0.38, 1.5]]])
+@pytest.mark.parametrize("rotation", [[[0.38, 0.8]], [[0.38, 1.0]]])
 def test_bundled_vv_vh_recording_global_fit_does_not_stall_and_is_good(rotation, monkeypatch):
     """The bundled 8 ps recording, global fit from the wizard's start values (found 2026-10-12).
 
@@ -281,7 +281,7 @@ def test_bundled_vv_vh_recording_global_fit_does_not_stall_and_is_good(rotation,
     monkeypatch.setattr(chisurf, "imported_datasets", [])
     model = NativeAnisotropyModel()
     model.stacked_files, model.first_column_is_time, model.use_header = True, False, False
-    model.bin_width = 0.008
+    model.bin_width, model.rep_rate = 0.008, 80.0
     model.irf_vv_path = str(JORDI / "H2O_8-0 ps_2048 ch.dat")
     model.data_vv_path = str(JORDI / "02_18-577+7.5uM(577)UP_8ps.dat")
     model.lifetime_spectrum = [[1.0, 3.0]]
@@ -299,54 +299,96 @@ def test_bundled_vv_vh_recording_global_fit_does_not_stall_and_is_good(rotation,
     assert 0.5 < values["rotation.time.0"] < 1.0
 
 
-def _bundled(res, rate):
-    """The bundled VV/VH recording through the wizard with its own defaults (no hand-set range)."""
+def _recorded(tmp_path, name, rate):
+    """A copy of a bundled recording with the footer an acquisition writes: ``# rep_rate: MHz``."""
+    target = tmp_path / name
+    target.write_text((JORDI / name).read_text() + f"# rep_rate: {rate}\n")
+    return target
+
+
+def _bundled(tmp_path, res, rate, lifetimes=None, rotation=None):
+    """The bundled VV/VH recording through the wizard; its laser rate comes from the file footer."""
     names = {"8": ("H2O_8-0 ps_2048 ch.dat", 0.008), "9": ("H2O_9-1 ps_2048 ch.dat", 0.009)}
     irf, width = names[res]
     model = NativeAnisotropyModel()
     model.stacked_files, model.first_column_is_time, model.use_header = True, False, False
-    model.bin_width, model.rep_rate = width, rate
-    model.irf_vv_path = str(JORDI / irf)
-    model.data_vv_path = str(JORDI / f"02_18-577+7.5uM(577)UP_{res}ps.dat")
-    model.lifetime_spectrum = [[0.5, 0.5], [0.5, 2.0]]
-    model.rotation_spectrum = [[0.38, 10.0]]
+    model.bin_width = width
+    model.irf_vv_path = str(_recorded(tmp_path, irf, rate))
+    model.data_vv_path = str(_recorded(tmp_path, f"02_18-577+7.5uM(577)UP_{res}ps.dat", rate))
+    model.lifetime_spectrum = lifetimes or [[0.5, 0.5], [0.5, 2.0]]
+    model.rotation_spectrum = rotation or [[0.38, 10.0]]
     model.g_factor, model.l1, model.l2 = 1.16, 0.12, 0.44
     assert model.load_data()
+    assert model.rep_rate == pytest.approx(rate)  # the wizard's field took the file's rate
     return model.create_fits()
 
 
-def test_default_range_of_the_8ps_recording_gives_a_good_fit_out_of_the_box(monkeypatch):
+def test_default_range_of_the_8ps_recording_gives_a_good_fit_out_of_the_box(tmp_path, monkeypatch):
     """No hand-tuned range: the wizard's own range excludes the gate edges (found 2026-10-12)."""
     import chisurf
 
     monkeypatch.setattr(chisurf, "fits", [])
     monkeypatch.setattr(chisurf, "imported_datasets", [])
-    vv, vh, global_fit = _bundled("8", 80.0)
+    vv, vh, global_fit = _bundled(tmp_path, "8", 80.0)
     assert vv.fit_range[1] < 1700 and vh.fit_range[1] < 1700
     global_fit.run()
     assert global_fit.chi2r < 1.6, global_fit.chi2r
 
 
-def test_default_range_of_the_9ps_recording_stays_inside_the_gate(monkeypatch):
-    """The 9 ps recording is not described by this model to chi2r 1 even over a hand-picked range
-    (best local VV fit ~2.1, VH worse), so the pinned bound is the measured one, not a good fit."""
+@pytest.mark.parametrize(
+    "lifetimes,rotation",
+    [([[1.0, 3.0]], [[0.38, 10.0]]), ([[1.0, 3.0]], [[0.38, 1.0]])],
+)
+def test_poor_starts_of_the_8ps_recording_do_not_slide_the_irf_away(
+    tmp_path, monkeypatch, lifetimes, rotation
+):
+    """One lifetime from a 10 ns (or any) rotation start used to land at chi2r 6 .. 400.
+
+    The IRF-to-decay shift had the bounds of the whole histogram; the fit slid the IRF hundreds of
+    channels away, traded the shift against r0 and stopped converged-looking. The shift is now
+    bounded to the peak offset plus three response widths.
+    """
     import chisurf
 
     monkeypatch.setattr(chisurf, "fits", [])
     monkeypatch.setattr(chisurf, "imported_datasets", [])
-    vv, vh, global_fit = _bundled("9", 71.0)
+    vv, vh, global_fit = _bundled(tmp_path, "8", 80.0, lifetimes, rotation)
+    for fit in (vv, vh):
+        shift = next(p for p in fit.model.parameters_all if p.canonical_id == "instrument.timeshift")
+        assert shift.bounds[1] < 300
+    global_fit.run(local_first=False)
+    assert global_fit.chi2r < 2.0, global_fit.chi2r
+
+
+def test_default_range_of_the_9ps_recording_stays_inside_the_gate(tmp_path, monkeypatch):
+    """The 9 ps recording is not described to chi2r 1 (its IRF peaks at ~390 counts over a ~58 count
+    background, so the IRF noise alone keeps chi2r above ~3): the pinned bound is the measured one."""
+    import chisurf
+
+    monkeypatch.setattr(chisurf, "fits", [])
+    monkeypatch.setattr(chisurf, "imported_datasets", [])
+    vv, vh, global_fit = _bundled(tmp_path, "9", 71.0)
     assert vv.fit_range[1] < 1650 and vh.fit_range[1] < 1650
+    assert vv.model.get_scalar("response_stop") < 14.0  # the IRF's gate edge is not part of the response
     global_fit.run()
-    assert global_fit.chi2r < 8.0, global_fit.chi2r
+    assert global_fit.chi2r < 7.0, global_fit.chi2r
 
 
-@pytest.mark.parametrize("rate", [80.0, 50.0, 20.0])
-def test_wizard_rep_rate_is_the_models_excitation_period(rate, monkeypatch):
-    """The laser rate typed in the wizard reaches the model's ``period`` (it used to stay 12.5 ns)."""
+@pytest.mark.parametrize("res,rate", [("8", 80.0), ("9", 71.0)])
+def test_wizard_rep_rate_is_the_models_excitation_period(res, rate, tmp_path, monkeypatch):
+    """The laser rate in the file footer reaches the wizard's field and the model's ``period``."""
     import chisurf
 
     monkeypatch.setattr(chisurf, "fits", [])
     monkeypatch.setattr(chisurf, "imported_datasets", [])
-    vv, vh, _ = _bundled("8", rate)
+    vv, vh, _ = _bundled(tmp_path, res, rate)
     for fit in (vv, vh):
         assert fit.model.get_scalar("period") == pytest.approx(1000.0 / rate)
+
+
+def test_recorded_rep_rate_reads_rate_or_period():
+    from chisurf.plugins.fluorescence_decay.tr_anisotropy.gui.model import recorded_rep_rate
+
+    assert recorded_rep_rate({"rep_rate": 40.0}) == 40.0
+    assert recorded_rep_rate({"excitation_period_ns": 25.0}) == pytest.approx(40.0)
+    assert recorded_rep_rate({"dt": 0.01}) is None

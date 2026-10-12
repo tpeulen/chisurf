@@ -2,6 +2,10 @@
 
 ## 2026-10-12
 
+- Anisotropy wizard: the repetition rate defaults from the file's footer (`rep_rate` or period keys) and reaches the
+  model's period; the IRF-to-decay shift is bounded to the peak offset plus three response widths, so a one-lifetime
+  global fit from a far start no longer slides the IRF away (chi2r 12947 → 1.65); the IRF response window excludes
+  the gate-edge rise. The bundled 9 ps recording stays near chi2r 5, limited by its noisy IRF.
 - emtk shell reaches Qt parity on the fit panels: Datasets multi-select (one fit per selected curve), a context menu
   (Save, Load, Remove, Group, Ungroup, Refresh) and unfolding groups; member windows redraw after a global fit
   (`fit.ran` carries `member_fit_uids`); the Link-to menu lists the equation's parameters only; Tile Windows makes a
