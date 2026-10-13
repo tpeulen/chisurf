@@ -217,3 +217,30 @@ changed and why* from durable artifacts alone:
 
 If a change is not worth a log bullet and a commit, it is either trivial (a typo)
 or it is not really done — decide which and act accordingly.
+
+## Editing the shared files: `safe_edit`, never an ad-hoc script
+
+`okf/log.md` and the `chisurf/gui/i18n/chisurf_<lang>.ts` catalogues are co-written
+by every agent in the shared tree. Two incidents in one day (a script that opened
+`chisurf_de.ts` for writing before reading it, and one that truncated `okf/log.md`)
+destroyed other agents' uncommitted work. So these files are edited **only** through
+[`build_tools/dev_utils/safe_edit.py`](../../build_tools/dev_utils/safe_edit.py) --
+no `open(path, "w")`, no `sed -i`, no whole-file rewrite from a stale buffer:
+
+```bash
+python -m build_tools.dev_utils.safe_edit log "bullet text"            # today's heading
+python -m build_tools.dev_utils.safe_edit log "bullet" --date 2026-10-13
+python -m build_tools.dev_utils.safe_edit log --dedupe                  # merge repeated date headings
+python -m build_tools.dev_utils.safe_edit ts de --json entries.json     # [{context, source, translation}]
+```
+
+From Python: `append_log_bullet(text, date)`, `add_ts_entries(lang, entries)` and the
+primitive `edit_file(path, fn)` for any other shared file. `edit_file` reads first,
+applies `fn(old) -> new`, writes through a temp file plus `os.replace` (atomic), and
+raises `UnsafeEditError` when the result is empty, shrinks the file by more than
+`max_shrink` (default 20 %) unless `allow_shrink=True`, or when the file changed under
+it. The log helper creates a date heading once and never a duplicate; the `.ts`
+helper touches only the messages it is given (everything else stays byte-for-byte).
+The catalogue *extraction* (`lupdate`-style regeneration) stays in
+`build_tools/i18n/extract_strings.py`; `safe_edit` is for hand-added entries.
+Guard: `test/dev_utils/test_safe_edit.py`.
