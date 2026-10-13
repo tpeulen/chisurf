@@ -14,10 +14,11 @@ enough that no earlier pulse is left. The nuisance search is BFF's fit of the
 free instrument parameters instead of a coordinate walk.
 """
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 
 MIN_PROB = 1e-12
 
@@ -284,19 +285,28 @@ def _solve(
         search.set_config(config)
         problem.activate_state(search.run().get_best_state())
 
-    def port(node, name):
+    def structure_port(node, name):
         return np.asarray(problem.get_structure_port(key, f"{key}.{node}", name), dtype=float)
 
     # The spectrum the basis was built over: the grid, or the FRET-quenched donor.
     source = "fret" if family.endswith("fret") else "grid"
     spectrum = np.asarray(problem.get_structure_output(key, f"{key}.{source}"), dtype=float)
-    basis = port("basis", "basis").reshape(n, -1)
-    amplitudes = port("maxent", "amplitudes")
+    basis = structure_port("basis", "basis").reshape(n, -1)
+    amplitudes = structure_port("maxent", "amplitudes")
 
-    def value(canonical):
+    def parameter_value(canonical):
         return float(problem.get_parameter(canonical).value)
 
-    return problem, key, port, spectrum, basis, amplitudes, (start, stop), value
+    return (
+        problem,
+        key,
+        structure_port,
+        spectrum,
+        basis,
+        amplitudes,
+        (start, stop),
+        parameter_value,
+    )
 
 
 def _result(decay, design, amplitudes, prepared, window, value, port, nu_input, prior, bins, dt):
@@ -347,10 +357,10 @@ def _result(decay, design, amplitudes, prepared, window, value, port, nu_input, 
 
 
 def solve_lifetime_mem(
-    decay: Sequence[float],
-    lamp: Sequence[float],
+    decay: npt.ArrayLike,
+    lamp: npt.ArrayLike,
     dt: float,
-    tau: Sequence[float] | None = None,
+    tau: npt.ArrayLike | None = None,
     timeshift: float = 0.0,
     background: float = 0.0,
     lamp_scatter: float = 0.0,
@@ -369,7 +379,7 @@ def solve_lifetime_mem(
     nuisance_step_irf_background: float | None = None,
     nuisance_step_x_donly: float | None = None,
     nuisance_param_tol: float = 1e-3,
-    prior: Sequence[float] | None = None,
+    prior: npt.ArrayLike | None = None,
 ) -> dict[str, Any]:
     """MEM analysis of TCSPC lifetimes over an evenly spaced lifetime grid.
 
@@ -422,13 +432,13 @@ def solve_lifetime_mem(
 
 
 def solve_fret_mem(
-    decay: Sequence[float],
-    lamp: Sequence[float],
+    decay: npt.ArrayLike,
+    lamp: npt.ArrayLike,
     dt: float,
-    R: Sequence[float] | None = None,
+    R: npt.ArrayLike | None = None,
     tau0: float = 4.1,
     R0: float = 52.0,
-    donly: Sequence[float] | None = None,
+    donly: npt.ArrayLike | None = None,
     x_donly: float = 0.0,
     timeshift: float = 0.0,
     background: float = 0.0,
@@ -448,7 +458,7 @@ def solve_fret_mem(
     nuisance_step_irf_background: float | None = None,
     nuisance_step_x_donly: float | None = None,
     nuisance_param_tol: float = 1e-3,
-    prior: Sequence[float] | None = None,
+    prior: npt.ArrayLike | None = None,
 ) -> dict[str, Any]:
     """Maximum-entropy inversion of a FRET decay to a distance distribution.
 

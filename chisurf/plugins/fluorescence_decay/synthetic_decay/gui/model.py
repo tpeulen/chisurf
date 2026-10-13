@@ -3,9 +3,22 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any
+from typing import Any, TypedDict
 
 from ..core.algorithms import compute_aniso_decay, compute_decay, compute_rt
+
+
+class _DecayGrid(TypedDict):
+    """The histogram and noise arguments the decay and VV/VH generators share."""
+
+    n_bins: int
+    bin_width: float
+    start_bin: int
+    irf: str | None
+    normalize: bool
+    photon_count: float | None
+    seed: int | None
+
 
 _VIEW = pathlib.Path(__file__).with_name("synthetic_decay.view.json")
 
@@ -60,7 +73,7 @@ class SyntheticDecayModel:
         self._form: Any = None
         self.choose_file = None
         self.fit_sink = None
-        self._generated_metadata = None
+        self._generated_metadata: dict[str, Any] | None = None
 
     # ── view / table binding ─────────────────────────────────────────
     def view_spec(self):
@@ -197,15 +210,15 @@ class SyntheticDecayModel:
             amps = [float(r.get("amp", 1.0)) for r in self.spectrum_rows]
             taus = [float(r.get("tau", 1.0)) for r in self.spectrum_rows]
             noisy = bool(self.shot_noise)
-            common = dict(
-                n_bins=int(self.n_bins),
-                bin_width=float(self.bin_width),
-                start_bin=int(self.start_bin),
-                irf=(self.irf_path or None),
-                normalize=not noisy,
-                photon_count=(float(self.photon_count) if noisy else None),
-                seed=(int(self.seed) if noisy else None),
-            )
+            common: _DecayGrid = {
+                "n_bins": int(self.n_bins),
+                "bin_width": float(self.bin_width),
+                "start_bin": int(self.start_bin),
+                "irf": (self.irf_path or None),
+                "normalize": not noisy,
+                "photon_count": (float(self.photon_count) if noisy else None),
+                "seed": (int(self.seed) if noisy else None),
+            }
             self._vv, self._vh = [], []
             if self.is_vv_vh():
                 # Polarized measurement: the VV/VH pair carries the anisotropy;
@@ -512,13 +525,13 @@ class SyntheticDecayModel:
             except (KeyError, TypeError, ValueError):
                 continue
             setattr(self, key, min(max(value, low), high))
-        for key, (low, high) in self._FLOAT_SETTINGS.items():
+        for key, (lower, upper) in self._FLOAT_SETTINGS.items():
             try:
-                value = float(settings[key])
+                number = float(settings[key])
             except (KeyError, TypeError, ValueError):
                 continue
-            if value == value:  # not NaN
-                setattr(self, key, min(max(value, low), high))
+            if number == number:  # not NaN
+                setattr(self, key, min(max(number, lower), upper))
         if isinstance(settings.get("irf_path"), str):
             self.irf_path = settings["irf_path"]
         if isinstance(settings.get("shot_noise"), bool):

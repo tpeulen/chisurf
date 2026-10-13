@@ -173,3 +173,11 @@ def test_view_spec_loads():
     spec = FretTrajectoryViewModel().view_spec()
     assert spec is not None
     assert getattr(spec, "sections", None)
+
+
+def test_command_line_atom_selection_maps_chain_letters_to_numbers():
+    """A chain letter selects by number (``string.letters`` was Python 2 and raised)."""
+    from chisurf.plugins.traj.fret_trajectory.traj2fret import mdtraj_selection_string
+
+    assert mdtraj_selection_string("B", 10, "CB").startswith("(chainid == 2) and (resid == 9)")
+    assert mdtraj_selection_string("0", 1, "CA").startswith("(chainid == 0)")

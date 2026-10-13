@@ -64,6 +64,18 @@ class AISettingsModel:
     and pasting a token also verifies the endpoint (:meth:`apply_token`).
     """
 
+    # The persisted fields (filled by :meth:`_apply_settings`).
+    provider: str
+    base_url: str
+    api_key: str
+    text_model: str
+    image_model: str
+    temperature: float
+    top_p: float
+    max_tokens: int
+    command: str
+    acp_backend_provider: str
+
     def __init__(self) -> None:
         # Guards read by __setattr__; set before any persisted attribute exists.
         self._ready = False
@@ -76,7 +88,7 @@ class AISettingsModel:
         #: the GUI thread. ``None`` runs synchronously (headless/tests).
         self.async_runner: (
             typing.Callable[
-                [typing.Callable[[], typing.Any], typing.Callable[[typing.Any], None]], None
+                [typing.Callable[[], typing.Any], typing.Callable[[typing.Any], None]], object
             ]
             | None
         ) = None
@@ -330,7 +342,7 @@ class AISettingsModel:
         try:
             base_url = (self.base_url or "").strip()
             if self.provider != "custom" and not base_url:
-                base_url = DEFAULT_PROVIDER_SETTINGS.get(self.provider, {}).get("base_url", "")
+                base_url = str(DEFAULT_PROVIDER_SETTINGS.get(self.provider, {}).get("base_url", ""))
             ok = ai_settings.save_api_settings(
                 {
                     "provider": self.provider,
@@ -455,6 +467,8 @@ class BackgroundCall:
 
     def run(self) -> None:
         """Run the request (in the worker thread)."""
+        if self.work is None:
+            raise RuntimeError("no request prepared")
         self.result = self.work()
 
     def notify(self, event: str) -> None:

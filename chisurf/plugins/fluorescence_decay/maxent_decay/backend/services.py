@@ -202,6 +202,8 @@ def run_lcurve_handler(
     """Sweep nu and return L-curve data."""
     try:
         settings_obj = _settings(settings)
+        # JSON carries the channel range as a list
+        span = None if fitrange is None else (int(fitrange[0]), int(fitrange[1]))
         if nu_grid is None:
             center = float(settings_obj.nu)
             nu_grid = np.geomspace(
@@ -228,7 +230,7 @@ def run_lcurve_handler(
                     timeshift=settings_obj.timeshift,
                     background=settings_obj.background,
                     lamp_scatter=settings_obj.lamp_scatter,
-                    fitrange=fitrange,
+                    fitrange=span,
                     irf_background=settings_obj.irf_background,
                     fit_start_fraction=settings_obj.fit_start_fraction,
                     nu=nu_val,
@@ -252,7 +254,7 @@ def run_lcurve_handler(
                     timeshift=settings_obj.timeshift,
                     background=settings_obj.background,
                     lamp_scatter=settings_obj.lamp_scatter,
-                    fitrange=fitrange,
+                    fitrange=span,
                     irf_background=settings_obj.irf_background,
                     fit_start_fraction=settings_obj.fit_start_fraction,
                     nu=nu_val,

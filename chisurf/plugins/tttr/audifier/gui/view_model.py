@@ -26,6 +26,7 @@ import numpy as np
 from ..core import (
     CHORD_TYPE_NAMES,
     ChannelConfig,
+    TTTRData,
     compute_microtime_waterfall,
     load_tttr_with_tttrlib,
     make_default_channel_cfg,
@@ -36,10 +37,7 @@ logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "audifier.view.json"
 
-try:
-    from ..lifetime_analysis import compute_lifetime_waterfall
-except Exception:  # pragma: no cover
-    compute_lifetime_waterfall = None
+from ..lifetime_analysis import compute_lifetime_waterfall
 
 
 class AudifierViewModel:
@@ -79,7 +77,7 @@ class AudifierViewModel:
 
         # ── runtime state (single source of truth for the mixing UI) ────
         self.input_file = ""
-        self.data = None
+        self.data: TTTRData | None = None
         self.channels: list[int] = []
         #: detector dicts ``{name, channels, color(r,g,b), enabled}``.
         self.detectors: list[dict] = []
@@ -118,6 +116,12 @@ class AudifierViewModel:
     def has_data(self) -> bool:
         """Whether a TTTR file is loaded."""
         return self.data is not None
+
+    def _loaded(self) -> TTTRData:
+        """The loaded photons; raises when no file is loaded."""
+        if self.data is None:
+            raise ValueError("No TTTR file loaded.")
+        return self.data
 
     # ── loading ─────────────────────────────────────────────────────────
     def load(self, path: str) -> None:
@@ -169,15 +173,13 @@ class AudifierViewModel:
         cfg = self.channel_configs.get(ch)
         if cfg is None:
             return
-        changes = {}
         if chord_type is not None:
-            changes["chord_type"] = chord_type
+            cfg = dataclasses.replace(cfg, chord_type=chord_type)
         if pitch_semitones is not None:
-            changes["pitch_semitones"] = float(pitch_semitones)
+            cfg = dataclasses.replace(cfg, pitch_semitones=float(pitch_semitones))
         if gain is not None:
-            changes["gain"] = float(gain)
-        if changes:
-            self.channel_configs[ch] = dataclasses.replace(cfg, **changes)
+            cfg = dataclasses.replace(cfg, gain=float(gain))
+        self.channel_configs[ch] = cfg
         if enabled is not None:
             self.channel_enabled[ch] = bool(enabled)
 
@@ -225,8 +227,9 @@ class AudifierViewModel:
         return payload
 
     def _microtime_waterfall(self, dets: list[dict]) -> dict:
+        data = self._loaded()
         w0, macro_t_s, micro_centers = compute_microtime_waterfall(
-            data=self.data,
+            data=data,
             channels=dets[0]["channels"],
             macro_bin_width_s=self.wf_bin_width,
             n_micro_bins=self.wf_micro_bins,
@@ -236,7 +239,7 @@ class AudifierViewModel:
         total = np.zeros((n_macro, n_micro), dtype=np.float32)
         for det in dets:
             w_det, _, _ = compute_microtime_waterfall(
-                data=self.data,
+                data=data,
                 channels=det["channels"],
                 macro_bin_width_s=self.wf_bin_width,
                 n_micro_bins=self.wf_micro_bins,
@@ -265,9 +268,8 @@ class AudifierViewModel:
         }
 
     def _lifetime_waterfall(self, dets: list[dict]) -> dict | None:
-        if compute_lifetime_waterfall is None:
-            raise RuntimeError("Lifetime analysis not available.")
-        if not self.data.micro_time_unit_s or self.data.micro_time_unit_s <= 0:
+        data = self._loaded()
+        if not data.micro_time_unit_s or data.micro_time_unit_s <= 0:
             raise ValueError("A positive micro-time resolution is required for lifetime analysis.")
         chans = [(ch, det) for det in dets for ch in det["channels"]]
         if not chans:
@@ -276,7 +278,7 @@ class AudifierViewModel:
         for ch, det in chans:
             try:
                 a, macro_t_s, tau = compute_lifetime_waterfall(
-                    data=self.data,
+                    data=data,
                     channel=ch,
                     macro_bin_width_s=self.lt_bin_width,
                     micro_gate=None,
@@ -336,13 +338,13 @@ class AudifierViewModel:
             wav = self.save_wav(str(pathlib.Path(folder) / "preview.wav"))
         return wav, len(wav) / self.sample_rate
 
-    def save_wav(self, path: str) -> None:
-        """Render audio for the enabled channels and write it to *path* as WAV."""
+    def save_wav(self, path: str) -> np.ndarray:
+        """Render audio for the enabled channels, write it to *path* as WAV and return it."""
         reason = self.can_render()
         if reason:
             raise ValueError(reason)
         wav, _, _ = tttr_to_wav(
-            data=self.data,
+            data=self._loaded(),
             out_wav_path=path,
             channels=self.selected_channels(),
             channel_cfg=self.selected_configs(),

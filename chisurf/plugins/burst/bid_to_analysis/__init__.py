@@ -44,7 +44,7 @@ from chisurf.core.datastore import (
 try:
     import tttrlib
 except Exception:  # pragma: no cover
-    tttrlib = None  # type: ignore
+    tttrlib = None
 
 from chisurf.core.fio.fluorescence.burst import (
     generate_burst_dataframe,
@@ -237,7 +237,7 @@ def _write_info_files(
     info_dir.mkdir(parents=True, exist_ok=True)
 
     # Derive channels and microtime ranges from detectors
-    channels = []
+    channels: list[int] = []
     microtime_ranges = []
     for det in detectors.values():
         chs = det.get("chs", [])
@@ -347,7 +347,9 @@ def _per_file_process(
     detectors: dict | None,
     output_types: set[str],
     bid_index: int = 1,
-) -> tuple[pathlib.Path, tttrlib.TTTR, dict, dict, tttrlib.DataStore, np.ndarray]:
+) -> tuple[
+    pathlib.Path | None, tttrlib.TTTR, dict, dict, tttrlib.DataStore | None, np.ndarray | None
+]:
     bid_path = pathlib.Path(bid_path)
     stem = bid_path.stem
     tttr_path = _find_tttr_by_stem(bid_path.parent, stem)
@@ -583,7 +585,7 @@ def convert_bid_file(
 
 
 def convert_many(
-    bid_paths: Iterable[os.PathLike | str],
+    bid_files: Iterable[os.PathLike | str],
     analysis_folder: os.PathLike | str | None = None,
     *,
     output_types: set[str] | None = None,
@@ -595,7 +597,7 @@ def convert_many(
     remove_folder: bool = False,
     selected_setup: str | None = None,
 ) -> list[pathlib.Path]:
-    bid_paths = [pathlib.Path(p) for p in bid_paths]
+    bid_paths = [pathlib.Path(p) for p in bid_files]
     if not bid_paths:
         return []
 
@@ -627,8 +629,10 @@ def convert_many(
                 bur_paths.append(bur_path)
             if df is not None:
                 dfs_for_hdf5.append(df)
-            # track tttr path for info listing
-            tttr_paths_for_info.append(_find_tttr_by_stem(p.parent, p.stem))
+            # track tttr path for info listing (found: the file was just converted)
+            tttr_path = _find_tttr_by_stem(p.parent, p.stem)
+            if tttr_path is not None:
+                tttr_paths_for_info.append(tttr_path)
         except Exception as exc:
             logging.error(f"Failed to convert {p}: {exc}")
 

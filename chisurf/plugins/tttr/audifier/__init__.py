@@ -17,26 +17,20 @@ from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
 
+# Qt-free lifetime-analysis helpers exposed for direct access (numpy only at import;
+# the plotting helpers import emtk when called).
+from chisurf.plugins.tttr.audifier.lifetime_analysis import (
+    compute_lifetime_waterfall,
+    lifetime_spectrum_ilt,
+    plot_lifetime_waterfall,
+    plot_lifetime_waterfall_multichannel,
+)
+
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 name = _manifest.display_name if _manifest is not None else "TTTR:Analysis:Audifier"
 menu_hidden = True
 
 icon = "🎵"
-
-
-# Qt-free lifetime-analysis helpers exposed for direct access.
-try:
-    from chisurf.plugins.tttr.audifier.lifetime_analysis import (
-        compute_lifetime_waterfall,
-        lifetime_spectrum_ilt,
-        plot_lifetime_waterfall,
-        plot_lifetime_waterfall_multichannel,
-    )
-except ImportError:  # pragma: no cover
-    lifetime_spectrum_ilt = None
-    compute_lifetime_waterfall = None
-    plot_lifetime_waterfall = None
-    plot_lifetime_waterfall_multichannel = None
 
 
 __all__ = [

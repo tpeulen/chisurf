@@ -7,10 +7,10 @@ text files.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ..api.models import MEMRequest, MEMResult
 from ..core.solver import (
@@ -18,9 +18,6 @@ from ..core.solver import (
     solve_fret_mem,
     solve_lifetime_mem,
 )
-
-ArrayLike = Sequence[float]
-
 
 # ---------------------------------------------------------------------------
 # Grid builders
@@ -245,6 +242,18 @@ def run_fret_mem_from_files(
     return run_fret_mem_from_arrays(decay=decay_arr, irf=irf_arr, dt=float(dt), R=R, **kwargs)
 
 
+def _fitrange(values: Any) -> tuple[int, int]:
+    """The ``(start, stop)`` channel pair of a solver result."""
+    start, stop = values
+    return int(start), int(stop)
+
+
+def _history_row(values: Any) -> tuple[float, float, float, float]:
+    """One iteration record of a solver result, four numbers."""
+    a, b, c, d = values
+    return float(a), float(b), float(c), float(d)
+
+
 def request_to_result(request: MEMRequest) -> MEMResult:
     """Run a MaxEnt request and normalize the solver dictionary."""
     settings = request.settings
@@ -322,8 +331,8 @@ def request_to_result(request: MEMRequest) -> MEMResult:
         background=float(raw.get("background", settings.background)),
         fit_curve=fit_curve.tolist(),
         residuals=residuals,
-        fitrange=tuple(int(x) for x in raw.get("fitrange", request.fitrange or (0, 0))),
-        history=[tuple(float(x) for x in item) for item in raw.get("history", [])],
+        fitrange=_fitrange(raw.get("fitrange", request.fitrange or (0, 0))),
+        history=[_history_row(item) for item in raw.get("history", [])],
         mode=settings.mode,
         raw=raw,
     )

@@ -163,9 +163,9 @@ def _decode(vec: np.ndarray, n: int, p: int) -> H2mmModel:
 class SurrogateModel:
     """A trained amortised estimator plus the scalers and regime metadata."""
 
-    net: object
-    x_scaler: object
-    y_scaler: object
+    net: MLPRegressor
+    x_scaler: StandardScaler
+    y_scaler: StandardScaler
     n_states: int
     n_streams: int
     features_version: int

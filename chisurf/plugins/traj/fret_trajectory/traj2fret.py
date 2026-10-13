@@ -9,11 +9,15 @@ import chisurf.core.fluorescence.anisotropy.kappa2  # noqa: F401  (not auto-impo
 import chisurf.core.fluorescence.general  # noqa: F401
 from chisurf.core.structure import trajectory_data as md
 
+#: A dye's atom indices: the anchor and, for a dipole, the second atom.
+DyeAtoms = tuple[int, int | None]
+
 
 def convert_chain_id_to_numbers(chain_id):
     import string
 
-    di = dict(zip(string.letters, [ord(c) % 32 for c in string.letters]))
+    # ``string.letters`` was Python 2; it raised AttributeError on every call here.
+    di = {c: ord(c) % 32 for c in string.ascii_letters}
     try:
         return int(chain_id)
     except ValueError:
@@ -148,8 +152,8 @@ class CalculateTransfer:
         self._kappa2 = float(kappa2)
         self.__forster_radius = forster_radius
 
-        self.__donorAtomID = None
-        self.__acceptorAtomID = None
+        self.__donorAtomID: DyeAtoms | None = None
+        self.__acceptorAtomID: DyeAtoms | None = None
         self._kappa2s = None
         self.__distances = None
 
@@ -178,19 +182,25 @@ class CalculateTransfer:
         self._trajectory_file = v
 
     @property
-    def donor(self) -> int:
+    def donor(self) -> DyeAtoms:
+        """The donor's ``(first, second)`` dipole atom indices."""
+        if self.__donorAtomID is None:
+            raise ValueError("no donor atoms set")
         return self.__donorAtomID
 
     @donor.setter
-    def donor(self, v: int):
+    def donor(self, v: DyeAtoms):
         self.__donorAtomID = v
 
     @property
-    def acceptor(self) -> int:
+    def acceptor(self) -> DyeAtoms:
+        """The acceptor's ``(first, second)`` dipole atom indices."""
+        if self.__acceptorAtomID is None:
+            raise ValueError("no acceptor atoms set")
         return self.__acceptorAtomID
 
     @acceptor.setter
-    def acceptor(self, v: int):
+    def acceptor(self, v: DyeAtoms):
         self.__acceptorAtomID = v
 
     @property
@@ -286,8 +296,8 @@ class CalculateTransfer:
 
         if verbose:
             print(f"Trajectory: {trajectory_file}")
-            print("Donor-Dipole atoms: {}, {}".format(*tuple(donor)))
-            print("Acceptor-Dipole atoms: {}, {}".format(*tuple(acceptor)))
+            print("Donor-Dipole atoms: {}, {}".format(*donor))
+            print("Acceptor-Dipole atoms: {}, {}".format(*acceptor))
             print(f"Stride: {stride}")
             print(f"time_step: {time_step}")
             print(f"Calculate kappa: {dipoles}")
@@ -304,8 +314,11 @@ class CalculateTransfer:
             trajectory_file, stride=stride, chunk=chunk, top=self.topology_file or None
         ):
             if dipoles:
+                d2, a2 = donor[1], acceptor[1]
+                if d2 is None or a2 is None:
+                    raise ValueError("an orientation (dipoles) needs two atoms per dye")
                 ds, ks = chisurf.core.fluorescence.anisotropy.kappa2.calculate_kappa_distance(
-                    chunk_traj.xyz, donor[0], donor[1], acceptor[0], acceptor[1]
+                    chunk_traj.xyz, donor[0], d2, acceptor[0], a2
                 )
                 k2 = ks**2
             else:
@@ -526,10 +539,10 @@ python traj2fret.py traj.h5 -a A 22 CA A 32 CA -d A 101 CA A 152 CA -o output.cs
         print("Opening first frame of trajectory.")
     frame = md.load_frame(args.trajectory_file, 0, top=args.topology_file)
     if kwargs["t_step"] is None:
-        try:
-            kwargs["t_step"] = frame.timestep
-        except ValueError:
-            kwargs["t_step"] = 1.0
+        # One frame carries no time step (mdtraj raised ValueError there, and the
+        # in-tree Trajectory has no ``timestep`` at all, so this crashed): the
+        # step defaults to one time unit per frame.
+        kwargs["t_step"] = 1.0
 
     calc_fret = CalculateTransfer(**kwargs)
     if args.verbose:
