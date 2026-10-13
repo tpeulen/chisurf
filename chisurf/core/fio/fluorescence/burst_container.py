@@ -262,10 +262,12 @@ def analysis_run(
         search of the container is the source.
     kind : str
         What the analysis is (``"mle"``, ``"h2mm"``, ``"burst fcs"``); the run is
-        ``"<kind> <settings hash>"``, so a re-run with the same settings
-        replaces it and other settings add a run.
+        ``"<kind> <hash>"`` of the settings *and the burst run read*, so a
+        re-run with the same settings on the same search replaces it, and other
+        settings or another search add a run.
     parameters : mapping, optional
-        The settings, hashed exactly as :meth:`Measurement.put_table` hashes them.
+        The settings, hashed as :meth:`Measurement.put_table` hashes them, with
+        the burst run added under ``"burst run"``.
     out_dir : str or Path, optional
 
     Returns
@@ -281,21 +283,52 @@ def analysis_run(
 
     container, source_run = split_container_path(source)
     target = container if container is not None else container_for(source, out_dir)
-    digest = str(_tttrlib().pto_settings_hash(dict(parameters) if parameters else None))[:8]
-    run = f"{kind} {digest}"
     parent = ""
     if target.exists() and is_measurement(target):
         with Measurement.open(target, writable=False) as m:
-            for obj in m.artifacts():
-                if m.tag(obj.uid, "_mmfdb_operation.operation_type") != "burst_selection":
-                    continue
-                name = str(obj.name)
-                if not name.endswith(".bur"):
-                    continue
-                if source_run and split_artifact_name(name)[0] != source_run:
-                    continue
-                parent = name  # the most recent burst table of the run
-    return run, parent
+            parent = burst_table_name(m, source_run)
+    # The search read is part of the run's identity: the same settings applied
+    # to two searches of one measurement are two results, and hashing only the
+    # settings made the second replace the first -- and take its lineage along.
+    settings = dict(parameters) if parameters else {}
+    burst_run = split_artifact_name(parent)[0] if parent else source_run
+    if burst_run:
+        settings["burst run"] = burst_run
+    digest = str(_tttrlib().pto_settings_hash(settings or None))[:8]
+    return f"{kind} {digest}", parent
+
+
+def burst_table_name(measurement, run: str = "") -> str:
+    """Return the name of the burst-search table of *run*, or of the newest search.
+
+    Parameters
+    ----------
+    measurement : chisurf.core.fio.pto.Measurement
+        Open container.
+    run : str, optional
+        The burst search wanted; empty takes the most recently written one.
+
+    Returns
+    -------
+    str
+        The artifact name (``<run>/bi4_bur/<stem>.bur`` or ``<run>/bursts``), or
+        ``""`` when the container holds no such table.
+    """
+    from chisurf.core.fio.analysis_path import split_artifact_name
+    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, TABLE
+
+    found = ""
+    for obj in measurement.artifacts():
+        if measurement.tag(obj.uid, "_mmfdb_operation.operation_type") != OPERATION:
+            continue
+        name = str(obj.name)
+        owner, table = split_artifact_name(name)
+        if not (name.endswith(".bur") or table == TABLE):
+            continue
+        if run and owner != run:
+            continue
+        found = name  # the most recent burst table of the run
+    return found
 
 
 def write_burst_artifact(
@@ -347,7 +380,9 @@ def write_burst_artifact(
     parameters : mapping, optional
         Settings. Their hash is the identity of the run.
     derived_from : str or sequence of str, optional
-        Names of the objects this was computed from. Missing names are skipped,
+        Names of the objects this was computed from. ``"bursts"`` names the
+        burst table of the run *source* addresses (``m.pto/<run>``), or of the
+        newest search when it addresses none. Missing names are skipped,
         so an analysis run against a container that has no burst table yet still
         records what it can. Several is normal: a fused burst has more than one
         parent.
@@ -372,10 +407,20 @@ def write_burst_artifact(
     # unpacking reproduces it and a reader that has always applied the stride
     # keeps applying it. See `chisurf.core.fio.analysis_path`.
     table = deinterleave_bursts(df) if deinterleave else as_table(df)
+    from chisurf.core.fio.analysis_path import split_container_path
+    from chisurf.core.fio.fluorescence.burst_tree import TABLE
+
+    _container, source_run = split_container_path(source)
     with open_measurement(source, out_dir) as m:
         parents = []
         for label in wanted:
             uid = m._f.find(label)
+            if not uid and label == TABLE:
+                # "the burst table" means the one of the run the result was
+                # computed from (`m.pto/<run>`), else the newest search. Stored
+                # as `<run>/bi4_bur/<stem>.bur`, it is never found by that name.
+                searched = burst_table_name(m, source_run)
+                uid = m._f.find(searched) if searched else 0
             if uid:
                 parents.append(uid)
         m.put_table(
@@ -444,7 +489,9 @@ def destination_for(analysis_folder: str | Path | None) -> tuple[Path | None, Pa
     Returns
     -------
     container : Path or None
-        The container that receives every row, when the bursts came from one.
+        The container that receives every row, when the bursts came from one --
+        with the run kept (``m.pto/<run>``) when the path named one, so the
+        result is written as that search's.
     search_from : Path or None
         The folder relative ``First File`` names are resolved from, otherwise.
     """
@@ -452,10 +499,30 @@ def destination_for(analysis_folder: str | Path | None) -> tuple[Path | None, Pa
         return None, None
     from chisurf.core.fio.analysis_path import split_container_path
 
-    container, _run = split_container_path(analysis_folder)
+    container, run = split_container_path(analysis_folder)
     if container is not None:
-        return container, None
+        return (container / run if run else container), None
     return None, Path(str(analysis_folder))
+
+
+def run_column(df) -> list[str]:
+    """Return ``[RUN_COLUMN]`` when *df* carries the burst run, else ``[]``.
+
+    For a writer that selects the columns it stores: the run is what routes a
+    row to its search, so it has to survive that selection.
+
+    Parameters
+    ----------
+    df : tttrlib.DataStore, pandas.DataFrame or mapping of str to array
+
+    Returns
+    -------
+    list of str
+    """
+    from chisurf.core.datastore import column_names
+    from chisurf.core.fio.fluorescence.burst_tree import RUN_COLUMN
+
+    return [RUN_COLUMN] if RUN_COLUMN in column_names(as_table(df)) else []
 
 
 def write_per_source(
@@ -481,7 +548,8 @@ def write_per_source(
     container : str or Path, optional
         Write every row into this one container instead of splitting. The right
         call when the analysis *was read from* a container: one container is one
-        measurement, whatever the ``First File`` values say.
+        measurement, whatever the ``First File`` values say. ``m.pto/<run>``
+        writes the result into that run.
     search_from : str or Path, optional
         Where relative ``First File`` values are resolved from
         (see :func:`resolve_source`).
@@ -499,8 +567,19 @@ def write_per_source(
         If *source_column* is not in *df*; without it there is no way to know
         which measurement a row belongs to, and guessing would put results in
         the wrong file.
+
+    Notes
+    -----
+    Rows read from a container carry
+    :data:`~chisurf.core.fio.fluorescence.burst_tree.RUN_COLUMN`, the search
+    they belong to. Those are grouped by it and each group is written into its
+    run (``<run>/<name>``, derived from that run's burst table) -- several
+    searches of one measurement in one batch stay apart, and none of them
+    becomes the parent of another's result. The column itself is not stored.
     """
     from chisurf.core.datastore import column_names, take_columns, take_where
+    from chisurf.core.fio.analysis_path import artifact_name, split_container_path
+    from chisurf.core.fio.fluorescence.burst_tree import RUN_COLUMN
 
     # Converted here, at the entry point, rather than in `deinterleave_bursts`
     # further down: the split below reaches for `take_where` first, and the
@@ -512,9 +591,23 @@ def write_per_source(
             f"{source_column!r} is not in the table, so the rows cannot be "
             "attributed to a measurement"
         )
-    keep = [c for c in names if c != source_column]
+    keep = [c for c in names if c not in (source_column, RUN_COLUMN)]
+
+    def into_run(target, group) -> str:
+        _box, run = split_container_path(target)
+        options = dict(kwargs)
+        if run and "name" in options:
+            options["name"] = artifact_name(run, options["name"])
+        return write_burst_artifact(str(target), group, **options)
+
+    if RUN_COLUMN in names:
+        runs = np.asarray(df[RUN_COLUMN]).astype(str)
+        return [
+            into_run(target, take_columns(take_where(df, runs == target), keep))
+            for target in dict.fromkeys(runs.tolist())
+        ]
     if container is not None:
-        return [write_burst_artifact(str(container), take_columns(df, keep), **kwargs)]
+        return [into_run(container, take_columns(df, keep))]
     sources = np.asarray(df[source_column])
     written: list[str] = []
     # dict.fromkeys, not a sort: the groups come back in the order the

@@ -123,6 +123,8 @@ def write_fcs_results_container(rows, burst_counts, *, parameters=None, cancel_c
     ----------
     rows : sequence of mapping
         Results with First File, Burst Folder, Burst Index and diffusion times.
+        For bursts read from a container, Burst Folder is the search they came
+        from (``m.pto/<run>``), and the result is derived from that search.
     burst_counts : mapping
         Actual input-range count by (analysis folder, measurement stem).
     parameters : mapping, optional
@@ -146,6 +148,7 @@ def write_fcs_results_container(rows, burst_counts, *, parameters=None, cancel_c
     import numpy as np
 
     from chisurf.core.datastore import store_from_arrays
+    from chisurf.core.fio.analysis_path import split_container_path
     from chisurf.core.fio.fluorescence.burst_container import container_for
 
     groups = {}
@@ -205,9 +208,15 @@ def write_fcs_results_container(rows, burst_counts, *, parameters=None, cancel_c
                     shutil.copy2(target, stage / target.name)
                 if source.suffix == ".pto":
                     staged_source = stage / source.name
+            # A ``Burst Folder`` inside a container is the search the bursts
+            # were read from (``m.pto/<run>``); the result is that search's.
+            _box, run = split_container_path(root)
             written = Path(
                 write_fcs_container(
-                    staged_source, store_from_arrays(sparse), parameters=parameters, out_dir=stage
+                    Path(staged_source) / run if run else staged_source,
+                    store_from_arrays(sparse),
+                    parameters=parameters,
+                    out_dir=stage,
                 )
             )
             if target not in staged_containers:

@@ -237,6 +237,7 @@ def write_2cde_container(
     from chisurf.core.fio.fluorescence.burst_container import (
         as_table,
         destination_for,
+        run_column,
         write_per_source,
     )
 
@@ -244,7 +245,7 @@ def write_2cde_container(
     column = column_for_variant(variant)
     settings = {"variant": variant, **(parameters or {})}
     written = write_per_source(
-        take_columns(as_table(df), ["First File", column]),
+        take_columns(as_table(df), ["First File", *run_column(df), column]),
         name=f"2cde {variant}",
         artifact_kind="burst_table",
         operation_type="burst_2cde",

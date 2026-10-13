@@ -626,20 +626,32 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     Returns
     -------
     tuple
-        ``(store, tttrs)``.
+        ``(store, tttrs)``. Every row carries
+        :data:`~chisurf.core.fio.fluorescence.burst_tree.RUN_COLUMN`, the run
+        it was read from as ``m000.pto/<run>``.
 
     Raises
     ------
     FileNotFoundError
         If the container holds no burst table, or none under the named run.
     """
-    from chisurf.core.fio.analysis_path import read_tables, split_container_path
+    from chisurf.core.datastore import set_constant
+    from chisurf.core.fio.analysis_path import (
+        read_tables,
+        resolve_run,
+        run_path,
+        split_container_path,
+    )
     from chisurf.core.fio.fluorescence.burst_container import deinterleave_bursts
-    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, TABLE
+    from chisurf.core.fio.fluorescence.burst_tree import OPERATION, RUN_COLUMN, TABLE
     from chisurf.core.fio.staging import open_tttr
 
     container, _run = split_container_path(path)
     tables = read_tables(path, operation=OPERATION)
+    # The run actually read, named even when *path* named none: a result
+    # computed from these rows is written as derived from this run, not from
+    # whichever search happens to be the newest when it is written.
+    run = resolve_run(path, operation=OPERATION)
     # The container stores the `.bur` as that file holds it, interleave and all,
     # so the padding comes off here -- the same stride the folder reader applies
     # to the same rows. Storing the file 1:1 is what makes the two layouts
@@ -672,6 +684,8 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     # into it, so every burst points at the same photon stream. Keyed by each
     # distinct `First File` value so a caller's lookup resolves whichever name
     # the search recorded.
+    set_constant(df, RUN_COLUMN, run_path(container, run))
+
     tttr = open_tttr(str(container))
     names = set()
     if "First File" in column_names(df):

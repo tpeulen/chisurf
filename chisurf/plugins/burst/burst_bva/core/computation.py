@@ -344,6 +344,7 @@ def write_bva_container(
     from chisurf.core.fio.fluorescence.burst_container import (
         as_table,
         destination_for,
+        run_column,
         write_per_source,
     )
 
@@ -352,7 +353,7 @@ def write_bva_container(
     written = write_per_source(
         take_columns(
             as_table(df),
-            ["First File", "Proximity Ratio Mean", "Proximity Ratio Std"],
+            ["First File", *run_column(df), "Proximity Ratio Mean", "Proximity Ratio Std"],
         ),
         name="bva",
         artifact_kind="burst_table",

@@ -27,6 +27,7 @@ __all__ = [
     "SUFFIX",
     "TABLE",
     "OPERATION",
+    "RUN_COLUMN",
     "is_container_path",
     "split_container_path",
     "split_artifact_name",
@@ -42,6 +43,13 @@ TABLE = "bursts"
 #: The operation that produces it, as opposed to the per-burst results computed
 #: from it (a BVA, a 2CDE), which are also at burst grain.
 OPERATION = "burst_selection"
+
+#: The column a burst row read from a container carries to name the run it
+#: belongs to, as a path (``m000.pto/<run>``). One container holds several
+#: searches, and a result computed from a row -- a batch over many files, many
+#: runs -- has no other way to say which of them is its parent. Writers group by
+#: it and drop it; it is never stored as a result column.
+RUN_COLUMN = "Burst Run"
 
 
 def run_artifact_name(run: str, table: str = TABLE) -> str:

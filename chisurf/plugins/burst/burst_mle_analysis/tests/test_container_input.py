@@ -70,18 +70,25 @@ def test_picking_a_run_makes_that_run_the_burst_table(model, container):
 
 
 def test_the_picked_run_is_fitted_and_written_into_the_container(model, container):
+    picked = model.run_rows()[1]["run"]
     model.select_run(model.run_rows()[1])
     for det in model.session.detectors:
         model.session.current_detector = det
         model.session.auto_extract()
     model.run_batch()
     assert model.burst_results, model.status_text
-    assert {str(r["First File"]) for r in model.burst_results} == {str(container.resolve())}
+    # Each batch row names the search it was fitted from, not just the container.
+    assert {str(r["First File"]) for r in model.burst_results} == {
+        str(container.resolve() / picked)
+    }
 
     assert model.export_results() >= 1
     with Measurement.open(container, writable=False) as m:
-        names = [str(o.name) for o in m.artifacts()]
-    assert any(n.endswith("mle green") for n in names), names
+        names = {o.uid: str(o.name) for o in m._f.objects()}
+        fits = [o for o in m.artifacts() if str(o.name).endswith("mle green")]
+        assert fits, list(names.values())
+        # The parent is the picked search, whichever of the two is the newest.
+        assert [names[u] for u in m.parents(fits[0].uid)][0].startswith(f"{picked}/")
     assert not list(container.parent.glob("**/bg4")), "a container run must not write a b?4 folder"
 
 

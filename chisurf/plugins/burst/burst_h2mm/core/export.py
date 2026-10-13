@@ -429,6 +429,8 @@ def write_burst_states(
     ----------
     burst_df : tttrlib.DataStore
         The burst table the analysis was built from (needs ``First File``).
+        Rows read from a container also carry ``Burst Run``, the search they
+        belong to; each search's rows are written into a run derived from it.
     burst_rows : array_like
         Row position in *burst_df* of each analysed burst, from
         ``extract_burst_photons(..., with_rows=True)``. This is the mapping that
@@ -485,18 +487,27 @@ def write_burst_states(
         photons[b] = float(seg.size)
 
     from chisurf.core.fio.fluorescence.burst_container import resolve_source
+    from chisurf.core.fio.fluorescence.burst_tree import RUN_COLUMN
 
     files = np.asarray(burst_df["First File"]).astype(str)
+    # The search each row came from, when it was read from a container: two
+    # searches of one measurement are two burst grids, and the result of each
+    # is derived from its own -- not from whichever was written last.
+    runs = (
+        np.asarray(burst_df[RUN_COLUMN]).astype(str)
+        if RUN_COLUMN in column_names(burst_df)
+        else np.full(files.shape, "", dtype=object)
+    )
     where = {int(r): i for i, r in enumerate(rows[:n_analysed])}
     written = []
-    for name in dict.fromkeys(files.tolist()):
+    for name, run in dict.fromkeys(zip(files.tolist(), runs.tolist())):
         # ``.bur`` tables are zero-interleaved, and the loader keeps those
         # padding rows: their "First File" reads as "0". They are not a
         # measurement and must not become a result.
         if "." not in name:
             continue
-        # Every burst of this measurement, in burst-table order.
-        mine = np.flatnonzero(files == name)
+        # Every burst of this measurement (of this search), in burst-table order.
+        mine = np.flatnonzero((files == name) & (runs == run))
         table = np.zeros((mine.size, len(H2MM_COMPANION_COLUMNS)), dtype=float)
         for local, global_row in enumerate(mine):
             b = where.get(int(global_row))
@@ -514,7 +525,8 @@ def write_burst_states(
         )
         written.append(
             write_h2mm_container(
-                container if container is not None else resolve_source(name, search_from),
+                run
+                or (container if container is not None else resolve_source(name, search_from)),
                 frame,
                 None,
                 parameters=parameters,

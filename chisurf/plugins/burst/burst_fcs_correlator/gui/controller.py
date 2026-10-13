@@ -241,7 +241,8 @@ class BurstFcsController(RunPickerMixin):
     def resolve_files(self):
         results = []
         self._resolved_roots = []
-        from chisurf.core.fio.analysis_path import is_container_path
+        from chisurf.core.fio.analysis_path import is_container_path, resolve_run, run_path
+        from chisurf.core.fio.fluorescence.burst_tree import OPERATION
 
         for entry in self.checked_files():
             path = Path(entry)
@@ -250,7 +251,12 @@ class BurstFcsController(RunPickerMixin):
                 raw, ranges = core.parse_burst_container(path)
                 if raw is not None and ranges:
                     results.append((raw, ranges))
-                    self._resolved_roots.append(raw.parent)
+                    # The search read is the "burst folder": the rows carry it,
+                    # so the result is derived from it and not from whichever
+                    # search of the container is newest when it is written.
+                    self._resolved_roots.append(
+                        Path(run_path(raw, resolve_run(path, operation=OPERATION)))
+                    )
                 continue
             if path.is_dir():
                 bur = list(path.glob("bi4_bur/*.bur")) + list(path.glob("bur/*.bur"))

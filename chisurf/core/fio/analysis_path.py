@@ -45,6 +45,8 @@ __all__ = [
     "BUR_DIR",
     "split_artifact_name",
     "list_runs",
+    "resolve_run",
+    "run_path",
     "read_tables",
     "write_tables",
     "export_tree",
@@ -261,6 +263,73 @@ def list_runs(path, *, operation: str = "") -> list[str]:
             if run not in runs:
                 runs.append(run)
     return runs
+
+
+def resolve_run(path, *, operation: str = "") -> str:
+    """Return the run *path* reads: the one it names, else the most recent.
+
+    The same choice :func:`read_tables` makes, as a name, so a reader can stamp
+    every row it returns with where it came from. Without that a result computed
+    from those rows can only be attached to "the most recent run" — which is the
+    wrong parent as soon as a second search is written into the container.
+
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        A container, or one run inside it.
+    operation : str, optional
+        Restrict to one operation type when choosing the most recent run.
+
+    Returns
+    -------
+    str
+        The run name; ``""`` for tables stored without one.
+
+    Raises
+    ------
+    FileNotFoundError
+        If *path* names no container, or the container holds no analysis.
+    """
+    container, wanted = split_container_path(path)
+    if container is None:
+        raise FileNotFoundError(f"{path} does not name a {SUFFIX} container")
+    if wanted:
+        return wanted
+    from chisurf.core.fio.pto import Measurement
+
+    latest = None
+    with Measurement.open(container, writable=False) as measurement:
+        for obj in measurement.artifacts():
+            kind = measurement.tag(obj.uid, "_mmfdb_operation.operation_type")
+            if not kind or (operation and kind != operation):
+                continue
+            latest = split_artifact_name(obj.name)[0]
+    if latest is None:
+        raise FileNotFoundError(f"{container.name} holds no analysis")
+    return latest
+
+
+def run_path(container, run: str) -> str:
+    """Return the path that addresses *run* inside *container*.
+
+    Parameters
+    ----------
+    container : str or pathlib.Path
+    run : str
+        ``""`` addresses the container itself.
+
+    Returns
+    -------
+    str
+
+    Examples
+    --------
+    >>> run_path("a/m000.pto", "countrate_All 0.2000#60")
+    'a/m000.pto/countrate_All 0.2000#60'
+    >>> run_path("a/m000.pto", "")
+    'a/m000.pto'
+    """
+    return str(pathlib.Path(container, run)) if run else str(pathlib.Path(container))
 
 
 def read_tables(path, *, operation: str = "") -> dict[str, Any]:

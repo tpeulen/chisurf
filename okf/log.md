@@ -32105,3 +32105,10 @@ front, not this).
   the generated `docs/concepts/flrcif_vocabulary.md`. Parser fix: a category kept
   its description/key only for the last frame of a file. mmfdb filter
   `error::ihm.reader.UnknownCategoryWarning`. Record: [mmfdb](architecture/mmfdb.md).
+- 2026-10-13 — PRD-154 W4 remainder closed: burst rows read from a `.pto` carry
+  `Burst Run` (`m.pto/<run>`), and BVA/2CDE, MLE, H2MM and burst-FCS batch writers
+  route by it, so a result's parent is the search it was computed from, not the
+  container's newest; run names hash the burst run, so one setting on two searches
+  is two runs. Part D gate 3 now says 4 runs. Record:
+  [burst companions](subsystems/burst-companions.md),
+  [photon container](subsystems/photon-container.md).

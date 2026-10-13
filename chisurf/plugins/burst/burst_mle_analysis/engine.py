@@ -67,21 +67,25 @@ def read_burst_container(path: Any) -> tuple[Any, Path]:
     Returns
     -------
     table : tttrlib.DataStore
-        The bursts, tagged with ``burst_file`` and the resolved identities ``_burst_path`` (the run) and
-        ``_measurement_path`` (the container).
+        The bursts, tagged with ``burst_file`` and the resolved identities ``_burst_path`` (the path as given) and
+        ``_measurement_path`` -- the *run* read (``m.pto/<run>``, named even when *path* named none), because that
+        identity is what a fit result is written back under: two searches of one container are two measurements
+        of burst grid, and the fits of each are derived from their own.
     container : Path
         The resolved container, which is also the measurement's photon source.
     """
     from chisurf.core.fio.analysis_path import split_container_path
     from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
+    from chisurf.core.fio.fluorescence.burst_tree import RUN_COLUMN
 
     container, _run = split_container_path(path)
     table, _tttrs = _read_burst_analysis_from_container(Path(path))
     container = container.resolve()
     n = row_count(table)
+    run = split_container_path(str(np.asarray(table[RUN_COLUMN], dtype=object)[0]))[1] if n else _run
     set_constant(table, "burst_file", Path(path).name)
     set_constant(table, "_burst_path", str(Path(path).resolve()))
-    table["_measurement_path"] = [str(container)] * n
+    table["_measurement_path"] = [str(container / run) if run else str(container)] * n
     return table, container
 
 
@@ -802,19 +806,21 @@ class LazyTTTRs(collections.abc.MutableMapping):
                     f"Measurement {key!r} is missing or ambiguous; use its complete path."
                 )
             key = matches[0]
-        if key not in self._cache:
-            path = self.paths[key]
+        # Cached by the physical file: several runs of one container are several identities of one photon stream,
+        # and reading it once per run would hold the same photons in memory twice.
+        physical = str(self.paths[key])
+        if physical not in self._cache:
             file_type = self.file_type
             if not file_type or str(file_type).lower() == "auto":
                 file_type = None
-            self._cache[key] = open_tttr(path, file_type, cache=False, **self.read_kwargs)
-        return self._cache[key]
+            self._cache[physical] = open_tttr(self.paths[key], file_type, cache=False, **self.read_kwargs)
+        return self._cache[physical]
 
     def __setitem__(self, key, value) -> None:
-        self._cache[key] = value
+        self._cache[str(self.paths.get(key, key))] = value
 
     def __delitem__(self, key) -> None:
-        self._cache.pop(key, None)
+        self._cache.pop(str(self.paths.get(key, key)), None)
         self.paths.pop(key, None)
 
     def __iter__(self):
@@ -1045,7 +1051,9 @@ class MleSession:
         for path in (p for p in self.bur_files if _is_container(p)):
             table, container = read_burst_container(path)
             tables.append(table)
-            raw_paths[str(container)] = container
+            # Keyed by the run read; the photons are the container's, opened once however many runs name it.
+            for identity in dict.fromkeys(str(v) for v in np.asarray(table["_measurement_path"], dtype=object)):
+                raw_paths[identity] = container
         self.df_bursts = concat_stores(tables)
         changed_paths = self.tttr_paths != raw_paths
         self.tttr_paths.clear()

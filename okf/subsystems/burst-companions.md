@@ -15,14 +15,17 @@ is made is
 [`legacy_export.export_legacy`](../../chisurf/core/fio/fluorescence/legacy_export.py) (PTO inspector
 *Export legacy…*, `csg_pto_inspect export-legacy`). Open front, in order:
 
-1. Open: **MLE and burst FCS write beside no particular run.** Both now read a run picked in the Runs table
-   (`MleViewModel(RunPickerMixin)`, `BurstFcsController(RunPickerMixin)`; `engine.read_burst_container`,
-   `algorithms.parse_burst_container`) and write `mle <detector>` / `burst fcs` into the container, but under the
-   container's top level, not under the picked run, and `derived_from="bursts"` names the burst table without saying
-   which run. Two runs fitted with different settings therefore give two objects of the same name that only the
-   settings hash tells apart. Scope the name by run (as the burst search does) before a reader has to choose.
-   Measure with `grep -n run_rows chisurf/plugins/burst/*/gui/*.json` (burst_selection, h2mm, mle, fcs) and
-   `Measurement.artifacts()` after fitting two runs.
+1. Done 2026-10-13: **a result is derived from the search its rows came from.** MLE, H2MM and burst FCS are runs
+   of their own (`analysis_run`, 3e9a3071a); since 2026-10-13 every burst row read from a container carries
+   `Burst Run` (`burst_tree.RUN_COLUMN`, `m.pto/<run>`, named even when the path named none), and every batch writer
+   routes by it: BVA/2CDE are written into `<run>/bva` / `<run>/2cde <variant>` (`write_per_source` groups by the
+   column and drops it), MLE uses the run as its `_measurement_path` identity (photons cached once per physical
+   file in `LazyTTTRs`), H2MM groups `(First File, run)`, burst FCS carries the run as its `Burst Folder`. The run
+   name's hash includes the burst run, so the same settings on two searches are two runs, not a replacement.
+   Measure: `pytest test/fio/test_batch_run_lineage.py` (two searches, the *older* read explicitly; each writer's
+   parent is checked by name). Trap: rows without the column (folder reads, hand-built frames) still fall back to
+   the container's newest search; `write_burst_artifact(derived_from="bursts")` resolves to the run *source*
+   addresses, else the newest.
 2. Open: **MLE "Split by H2MM state" does not apply to a container**: the per-photon states are read from the loose
    `h2mm/` folder next to a `.bur` (`state_split.load_state_arrays`), and the H2MM run now lives in the container.
    `MleSession.run_batch` silently skips the split when every input is a container. Needs `state_split` to read the
