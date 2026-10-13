@@ -69,7 +69,13 @@ class NCurve(chisurf.core.base.Base):
     #: readable before ``__init__`` has assigned anything.
     _unlock_depth: int = 0
 
-    def __init__(self, d: np.ndarray = None, copy_array: bool = True, *args, **kwargs):
+    #: Per-class memo of :meth:`unlocked`'s name resolution, created on first use
+    #: in each class's own ``__dict__``.
+    _unlock_name_cache: typing.ClassVar[typing.Dict[typing.Tuple[str, ...], typing.List[str]]]
+
+    d: np.ndarray
+
+    def __init__(self, d: np.ndarray | None = None, copy_array: bool = True, *args, **kwargs):
         """Initialize an NCurve with an optional 1D numpy array.
 
         Parameters
@@ -445,13 +451,20 @@ class Curve(NCurve):
             x, y = self[x_min:x_max]
             csv.save(data=np.vstack([x, y]), filename=filename)
 
-    def load(self, filename: str, file_type: str = "csv", skiprows: int = 0, **kwargs) -> None:
+    def load(
+        self,
+        filename: str,
+        file_type: str = "csv",
+        verbose: bool = False,
+        skiprows: int = 0,
+        **kwargs,
+    ) -> None:
         """Load curve data from disk.
 
         For ``file_type == 'csv'`` the first two rows are interpreted
         as ``x`` and ``y``.
         """
-        super().load(filename=filename, file_type=file_type)
+        super().load(filename=filename, file_type=file_type, verbose=verbose)
         if file_type == "csv":
             csv = chisurf.core.fio.ascii.Csv()
             csv.load(filename=filename, skiprows=skiprows, file_type=file_type, **kwargs)
@@ -503,7 +516,9 @@ class Curve(NCurve):
         d = np.vstack([x, y])
         self.d = d
 
-    def __init__(self, x: np.ndarray = None, y: np.ndarray = None, *args, **kwargs):
+    def __init__(
+        self, x: np.ndarray | None = None, y: np.ndarray | None = None, *args, **kwargs
+    ):
         """Create a curve from x/y arrays.
 
         Parameters
@@ -544,10 +559,15 @@ class Curve(NCurve):
             elif y.size == 0:
                 y = np.zeros_like(x)
         d = np.vstack([x, y])
-        super().__init__(*args, d=d, **kwargs)
+        # Positionally: a further positional argument is ``copy_array`` and
+        # must not collide with ``d=`` (that raised a TypeError).
+        super().__init__(d, *args, **kwargs)
 
     def normalize(
-        self, mode: str = "max", curve: chisurf.core.curve.Curve = None, inplace: bool = True
+        self,
+        mode: str = "max",
+        curve: chisurf.core.curve.Curve | None = None,
+        inplace: bool = True,
     ) -> float:
         """Calculates a scaling parameter for the Curve object and (optionally)
         scales the Curve object.
@@ -593,7 +613,7 @@ class Curve(NCurve):
             self.y = self.y / factor
         return factor
 
-    def __add__(self, c: T) -> Curve:
+    def __add__(self, c: Curve | np.ndarray | float) -> Curve:
         """Return the pointwise sum of two curves or curve and array."""
         if isinstance(c, Curve):
             if not np.array_equal(self.x, c.x):
@@ -601,7 +621,7 @@ class Curve(NCurve):
             c = c.y
         return self.__class__(x=self.x, y=self.y.__add__(c))
 
-    def __sub__(self, c: T) -> Curve:
+    def __sub__(self, c: Curve | np.ndarray | float) -> Curve:
         """Return the pointwise difference between two curves or curve and array."""
         if isinstance(c, Curve):
             if not np.array_equal(self.x, c.x):
@@ -609,7 +629,7 @@ class Curve(NCurve):
             c = c.y
         return self.__class__(x=self.x, y=self.y.__sub__(c))
 
-    def __mul__(self, c: T) -> Curve:
+    def __mul__(self, c: Curve | np.ndarray | float) -> Curve:
         """Return the pointwise product of two curves or curve and array."""
         if isinstance(c, Curve):
             if not np.array_equal(self.x, c.x):
@@ -617,7 +637,7 @@ class Curve(NCurve):
             c = c.y
         return self.__class__(x=self.x, y=self.y.__mul__(c))
 
-    def __truediv__(self, c: T) -> Curve:
+    def __truediv__(self, c: Curve | np.ndarray | float) -> Curve:
         """Return the pointwise ratio of two curves or curve and array."""
         if isinstance(c, Curve):
             if not np.array_equal(self.x, c.x):
@@ -691,7 +711,7 @@ class CurveGroup:
         self._curves = curve_list
 
     @abc.abstractmethod
-    def add_curve(self, v: chisurf.core.curve.Curve = None, *args, **kwargs):
+    def add_curve(self, v: chisurf.core.curve.Curve | None = None, *args, **kwargs):
         """Append ``v`` to the group, positionally or by keyword.
 
         ``v`` used to be keyword-only behind ``*args``, so ``add_curve(curve)``

@@ -39,25 +39,25 @@ class ExperimentalData(chisurf.core.base.Data):
     """
 
     meta_data: typing.Dict | None = None
-    data_reader: ExperimentReader = None
-    _experiment: Experiment = None
+    data_reader: ExperimentReader | None = None
+    _experiment: Experiment | None = None
 
     @property
-    def experiment(self) -> Experiment:
+    def experiment(self) -> Experiment | None:
         """Return the experiment associated with this dataset.
 
         If ``_experiment`` is not set, attempts to retrieve it from the
-        associated :attr:`data_reader`.
+        associated :attr:`data_reader`; ``None`` when neither knows one.
         """
-        if self._experiment is None:
-            try:
-                from chisurf.core.experiments.core.reader import ExperimentReader
-            except Exception:
-                ExperimentReader = None
-            if ExperimentReader is not None and isinstance(self.data_reader, ExperimentReader):
-                return self.data_reader.experiment
-        else:
+        if self._experiment is not None:
             return self._experiment
+        try:
+            from chisurf.core.experiments.core.reader import ExperimentReader as _Reader
+        except Exception:
+            return None
+        if isinstance(self.data_reader, _Reader):
+            return self.data_reader.experiment
+        return None
 
     @experiment.setter
     def experiment(self, v: Experiment) -> None:
@@ -71,8 +71,8 @@ class ExperimentalData(chisurf.core.base.Data):
 
     def __init__(
         self,
-        data_reader: ExperimentReader = None,
-        experiment: Experiment = None,
+        data_reader: ExperimentReader | None = None,
+        experiment: Experiment | None = None,
         filename: str = "None",
         data: bytes | None = None,
         embed_data: bool | None = None,
@@ -124,28 +124,19 @@ class ExperimentalData(chisurf.core.base.Data):
             convert_values_to_elementary=convert_values_to_elementary,
             skip_qt_widgets=skip_qt_widgets,
         )
-        try:
-            d["data_reader"] = self.data_reader.to_dict(
+        for key, owner in (("data_reader", self.data_reader), ("experiment", self.experiment)):
+            to_dict = getattr(owner, "to_dict", None)
+            if to_dict is None:
+                import logging
+
+                logging.debug(f"{key} has no to_dict method")
+                d[key] = None
+                continue
+            d[key] = to_dict(
                 remove_protected=remove_protected,
                 copy_values=copy_values,
                 convert_values_to_elementary=convert_values_to_elementary,
             )
-        except AttributeError:
-            import logging
-
-            logging.debug("data_reader has no to_dict method")
-            d["data_reader"] = None
-        try:
-            d["experiment"] = self.experiment.to_dict(
-                remove_protected=remove_protected,
-                copy_values=copy_values,
-                convert_values_to_elementary=convert_values_to_elementary,
-            )
-        except AttributeError:
-            import logging
-
-            logging.debug("experiment has no to_dict method")
-            d["experiment"] = None
         return d
 
 
@@ -257,15 +248,15 @@ class DataCurve(*_DATACURVE_BASES):
 
     def __init__(
         self,
-        x: np.ndarray = None,
-        y: np.ndarray = None,
-        ex: np.ndarray = None,
-        ey: np.ndarray = None,
-        mask: np.ndarray = None,
+        x: np.ndarray | None = None,
+        y: np.ndarray | None = None,
+        ex: np.ndarray | None = None,
+        ey: np.ndarray | None = None,
+        mask: np.ndarray | None = None,
         copy_array: bool = True,
         filename: str = "",
-        data_reader: ExperimentReader = None,
-        experiment: Experiment = None,
+        data_reader: ExperimentReader | None = None,
+        experiment: Experiment | None = None,
         load_filename_on_init: bool = True,
         *args,
         **kwargs,
@@ -600,9 +591,9 @@ class DataCurve(*_DATACURVE_BASES):
         self,
         x: np.ndarray,
         y: np.ndarray,
-        ex: np.ndarray = None,
-        ey: np.ndarray = None,
-        mask: np.ndarray = None,
+        ex: np.ndarray | None = None,
+        ey: np.ndarray | None = None,
+        mask: np.ndarray | None = None,
     ) -> None:
         """Assign x, y, error, and mask arrays to the curve.
 
@@ -893,7 +884,7 @@ class DataGroup(list, chisurf.core.base.Base):
                     list.append(self, d)
 
     def __init__(self, seq: typing.Sequence, *args, **kwargs):
-        self._current_dataset: int = 0
+        self._current_dataset = 0
         list.__init__(self, seq)
         chisurf.core.base.Base.__init__(self, *args, **kwargs)
 
@@ -1029,7 +1020,7 @@ def get_data(
     curve_type: str = "experiment",
     data_set: typing.List[chisurf.core.data.ExperimentalData] | None = None,
     excludes_names: typing.List[str] | None = None,
-) -> typing.List[chisurf.core.data.ExperimentalData]:
+) -> typing.List[ExperimentalData | ExperimentDataGroup]:
     """Return experimental datasets, optionally excluding some by name.
 
     Parameters
@@ -1062,6 +1053,9 @@ def get_data(
     """
     if excludes_names is None:
         excludes_names = ["Global-fit"]
+    if data_set is None:
+        # Iterating the default raised a TypeError.
+        data_set = []
     if curve_type == "experiment":
         return [
             d
