@@ -16,7 +16,6 @@ drawn over the view (a dialog, the guide's card).
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any, Callable
 
 import numpy as np
@@ -91,9 +90,8 @@ class ChimolView:
 
     def _make(self, warm: bool = False):
         """Construct chimol (with *warm*, also render one frame, which compiles its pipelines). Thread-agnostic."""
-        # Before chimol.core.viewer is imported: with ChiSurf's Qt loaded, "auto" binds a QWidget base, and
-        # building one without a QApplication aborts. "none" is what chimol's toolkit-free host sets.
-        os.environ.setdefault("CHIMOL_TOOLKIT", "none")
+        # ChimolApp builds chimol's HeadlessViewer, never a QWidget, whatever this process imported first; no
+        # CHIMOL_TOOLKIT here -- that variable is process-wide and bound at the viewer's first import.
         from chimol.hosts.native.app import ChimolApp
 
         app = ChimolApp(size=self.min_size, backend="offscreen", **self.viewer_options)

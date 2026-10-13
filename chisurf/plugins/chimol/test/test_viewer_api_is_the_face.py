@@ -29,7 +29,9 @@ ROOT = pathlib.Path(chimol.__file__).resolve().parent
 #: other. An exemption list that nobody can add to without proving the name is
 #: absent is the point of `test_an_exemption_has_to_earn_its_place` below.
 SPECULATIVE = {"device"}
-_ATTR = re.compile(r"\b(?:viewer|ctx\.viewer|self\.viewer|self\._viewer)\.([a-zA-Z]\w*)")
+#: Not preceded by a dot: ``chimol.core.viewer.volumes`` in a docstring is a
+#: module path, not an attribute of a viewer.
+_ATTR = re.compile(r"(?<![\w.])(?:viewer|ctx\.viewer|self\.viewer|self\._viewer)\.([a-zA-Z]\w*)")
 _GETATTR = re.compile(
     r'getattr\((?:viewer|ctx\.viewer|self\.viewer|self\._viewer), "([a-zA-Z]\w*)"'
 )

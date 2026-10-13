@@ -28,9 +28,6 @@ def qapp():
 @pytest.fixture
 def app():
     """The toolkit-free host over an offscreen canvas: a chrome, no window."""
-    import os
-
-    os.environ.setdefault("CHIMOL_TOOLKIT", "none")
     from chimol.hosts.native.app import ChimolApp
 
     return ChimolApp(backend="offscreen", size=(800, 600))

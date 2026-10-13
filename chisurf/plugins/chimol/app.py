@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -109,11 +108,9 @@ class ChimolHostApp(ImApp):
     def _start(self, surface: tuple[int, int] | None = None):
         """Construct chimol (and, with *surface*, render its first frame there): ``(app, frame)``. Runs on the
         start thread or, from :meth:`_ensure_chimol`, on the caller's."""
-        # The choice has to precede chimol.core.viewer's import: with the
-        # default "auto" and ChiSurf's Qt already loaded, Viewer binds a
-        # QWidget base and building one without a QApplication aborts.
-        # "none" is exactly what chimol's own toolkit-free host sets.
-        os.environ.setdefault("CHIMOL_TOOLKIT", "none")
+        # ChimolApp builds chimol's HeadlessViewer, never a QWidget, so no
+        # CHIMOL_TOOLKIT is set here: that variable is process-wide, bound at
+        # the viewer's first import, and setting it broke the Qt window.
         from chimol.hosts.native.app import ChimolApp
 
         app = ChimolApp(size=self._chimol_size, backend="offscreen")

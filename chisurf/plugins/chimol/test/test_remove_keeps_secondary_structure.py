@@ -9,7 +9,6 @@ The codes are re-addressed by ``(chain, resi)`` now.
 
 from __future__ import annotations
 
-import os
 import pathlib
 
 import numpy as np
@@ -22,7 +21,6 @@ _PDB = pathlib.Path.home() / ".chisurf" / "structures" / "chimol" / "chimol_pdb_
     not _PDB.exists(), reason="needs the fetched 148l with its waters and substrate"
 )
 def test_removing_the_waters_keeps_the_helices():
-    os.environ.setdefault("CHIMOL_TOOLKIT", "none")
     from chimol.hosts.native.app import ChimolApp
 
     app = ChimolApp(backend="offscreen", size=(400, 300))
