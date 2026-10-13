@@ -390,13 +390,13 @@ def main() -> int:
             continue
         if args.plugins and plugin_id not in args.plugins:
             continue
+        if plugin_id in ("code_editor", "help"):
+            # Their Qt widgets were retired 2026-10-13; the Qt facts are frozen beside their tests
+            # (qt_reference.json) and okf/plugins/emtk-ports/<id>/.
+            continue
         entrypoint = manifest.get("entrypoints", {}).get("gui")
         if plugin_id == "tttr_splitter":
             entrypoint = "chisurf.plugins.tttr.tttr_splitter.wizard:PTUSplitter"
-        elif plugin_id == "code_editor":
-            entrypoint = "chisurf.plugins.core.code_editor.editor:CodeEditor"
-        elif plugin_id == "help":
-            entrypoint = "chisurf.plugins.core.help.gui.tool:HelpWidget"
         elif plugin_id == "fcs_correlator":
             entrypoint = "chisurf.plugins.fcs.fcs_correlator.tool:FcsCorrelatorTool"
         elif plugin_id == "switch_user":

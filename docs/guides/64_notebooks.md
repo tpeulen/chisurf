@@ -20,29 +20,32 @@ There is no Jupyter kernel and no browser here. A notebook tab executes its
 cells through the same interpreter as the [console](59_console.md), so the two
 share variables and there is nothing to synchronise or export.
 
-![A notebook tab: the toolbar, cells with their prompts in the left gutter, an embedded figure, and the kernel terminal docked beside Diagnostics and Output](figures/notebook_editor.png)
+![A notebook tab: the toolbar, cells with their prompts in their headers, an embedded figure, and the kernel terminal docked beside Diagnostics and Output](figures/notebook_editor.png)
 
 ## Running cells
 
-`Ctrl+Enter` or `Shift+Enter` runs the cell the cursor is in, and the `▶` in
-the cell's left gutter does the same. The `[n]` under it is the execution
-count, shared with the Kernel dock — one kernel, two surfaces.
+`Ctrl+Enter` runs the cell the cursor is in, `Shift+Enter` runs it and moves to
+the next one, and **▶ Run · Shift+Enter** in the cell's header does the same. The
+`In [n]` in the header is the execution count, shared with the Kernel dock — one
+kernel, two surfaces.
 
 A cell's output appears directly under it and is **exactly as tall as what it
 holds**: one line for one line, the whole figure for a figure. Output past
-360px scrolls inside the cell rather than pushing the next cell off screen.
+360 px scrolls inside the cell rather than pushing the next cell off screen.
 
-Markdown cells are shown rendered. Double-click one to edit it, `Ctrl+Enter` to
-render it back.
+Markdown cells are shown rendered. **Edit Markdown** in the header opens the
+source, **Preview** (or running the cell) renders it back.
 
 ## The toolbar
 
 | Control | What it does |
 | --- | --- |
-| **▶▶ Run all** | Every code cell, top to bottom |
-| **⟳ Restart** | Discards the kernel's variables; the cells keep their source and lose their prompts |
-| **⌫ Clear** | Empties every output panel |
-| **▤ Terminal** | Shows or hides the **Kernel** dock at the bottom of the window |
+| **▶ Run all** | Every code cell, top to bottom |
+| **＋ Code cell** / **＋ Markdown** | Append a cell |
+| **Restart** | Discards the kernel's variables; the cells keep their source |
+| **Clear outputs** | Empties every output and execution count |
+| **Terminal** | Shows or hides the **Kernel** dock at the bottom of the window |
+| **Reload notebook** / **Export Python** | Re-read the file from disk (asks before discarding edits) / write the cells as a `.py` script |
 
 ## Plots
 
@@ -89,24 +92,27 @@ In [2]: for name, value in [('tau', 2.4), …  … (+1 lines)
 
 ## Adding and removing cells
 
-`＋ Code` and `＋ Markdown` at the bottom append a cell. The hairline `＋`
-between any two cells inserts one *there*. The `✕` in a cell's gutter deletes
-it — including a rendered markdown cell, without opening it for editing first.
+`＋ Code cell` and `＋ Markdown` on the toolbar append a cell. The `＋` in a
+cell's header inserts an empty code cell *below it*, `↑`/`↓` move it, and the
+`×` deletes it — including a rendered markdown cell, without opening it for
+editing first. The type box switches a cell between code, markdown and raw.
 
 ## Saving
 
-`Ctrl+S` writes the tab back through `nbformat`, so cell metadata the notebook
-arrived with survives the round-trip and the outputs currently on screen are
-written into the file. A notebook that fails to parse opens as a plain text tab
+`Ctrl+S` writes the tab back as notebook format 4 (byte for byte what
+`nbformat` writes; `code_editor/ipynb.py`), so cell metadata the notebook arrived
+with survives the round-trip and the outputs currently on screen are written into
+the file. A notebook that fails to parse opens as a plain text tab
 instead, which is how you fix a corrupt one.
 
 ## Where this sits
 
-The notebook tab is a widget of the code editor plugin
-(`chisurf/plugins/core/code_editor/notebook_editor.py`), and the interpreter
+The notebook tab is part of the code editor plugin's emtk window
+(`chisurf/plugins/core/code_editor/gui/notebook_app.py`), and the interpreter
 behind it is `chisurf.core.console.shell.Shell` — the same class documented in
 [Driving ChiSurf from its console](59_console.md). Every panel of that window,
-Kernel included, is a `ChisurfDock`, so they move, float and tab together.
+Kernel included, is a dock of the same dock manager, so they move, float and
+tab together.
 
 ## Theory
 

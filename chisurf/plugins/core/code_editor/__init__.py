@@ -1,8 +1,8 @@
-"""
-Code editor module providing syntax highlighting and editing capabilities.
+"""ChiSurf Code Editor: a multi-document editor, notebooks and an AI assistant, drawn by emtk.
 
-This module provides a text editor with syntax highlighting for Python, JSON, and YAML.
-It uses QSyntaxHighlighter and QPlainTextEdit instead of QScintilla2.
+The window is the emtk app (``gui/editor_app.py``, ``gui/notebook_app.py``, ``gui/chat_app.py``);
+the toolkit-free parts are the document store, symbols, Ruff runner, ``.ipynb`` I/O, the shipped
+notebooks, assistant file writes and modes. ``gui/tool.py`` hosts the app in the Qt window.
 """
 
 from pathlib import Path
@@ -10,37 +10,8 @@ from pathlib import Path
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
 from chisurf.plugins.core.code_editor.document_store import DocumentSnapshot, DocumentStore
+from chisurf.plugins.core.code_editor.shipped_notebooks import shipped_notebooks
 from chisurf.plugins.core.code_editor.symbols import CodeSymbol, extract_python_symbols
-
-
-def __getattr__(attribute):
-    """Load legacy Qt exports only when a Qt caller explicitly requests them."""
-    if attribute == "SimpleCodeEditor":
-        from chisurf.gui.autoform.sections.code_editor_section import SimpleCodeEditor
-
-        globals()[attribute] = SimpleCodeEditor
-        return SimpleCodeEditor
-
-    import importlib
-
-    modules = {
-        "CodeEditor": "editor",
-        "CodeEditorWindow": "window",
-        "NotebookEditor": "notebook_editor",
-        "shipped_notebooks": "notebook_editor",
-        "JSONHighlighter": "text_editor",
-        "PythonHighlighter": "text_editor",
-        "SyntaxHighlighter": "text_editor",
-        "TextEditor": "text_editor",
-        "YAMLHighlighter": "text_editor",
-    }
-    module = modules.get(attribute)
-    if module is None:
-        raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
-    value = getattr(importlib.import_module(f"{__name__}.{module}"), attribute)
-    globals()[attribute] = value
-    return value
-
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -51,36 +22,23 @@ icon = "📝"  # Memo/notepad emoji for editor
 
 
 def load():
-    """Return the plugin's full editor window."""
-    from .text_editor import CodeEditorWindow
-
-    return CodeEditorWindow()
-
-
-def load_emtk():
-    """Return the plugin's EMTK editor window."""
+    """Return the plugin's editor window (the emtk app in a Qt host)."""
     from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
 
     return CodeEditorEmtkTool()
 
 
+load_emtk = load
+
 __all__ = [
     "name",
     "load",
+    "load_emtk",
     "icon",
-    "CodeEditor",
-    "CodeEditorWindow",
     "DocumentSnapshot",
     "DocumentStore",
     "CodeSymbol",
-    "NotebookEditor",
     "shipped_notebooks",
-    "JSONHighlighter",
-    "PythonHighlighter",
-    "TextEditor",
-    "SimpleCodeEditor",
-    "SyntaxHighlighter",
-    "YAMLHighlighter",
     "extract_python_symbols",
 ]
 

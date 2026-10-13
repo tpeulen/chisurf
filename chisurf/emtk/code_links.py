@@ -154,43 +154,29 @@ def open_source(
             logger.debug("could not spawn EMTK code editor process", exc_info=True)
             return False
 
-    # 2. Qt Environment: route to full Qt code editor
+    # 2. Qt window (--qt): raise an open editor window, else open one (the emtk editor in a Qt host).
     try:
         from qtpy import QtWidgets
 
-        from chisurf.plugins.core.code_editor.editor import CodeEditor
         from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
 
-        for widget in QtWidgets.QApplication.topLevelWidgets():
-            if not widget.isVisible():
-                continue
-            if isinstance(widget, (CodeEditor, CodeEditorEmtkTool)):
-                widget.open_file(str(resolved.path), line=line_num)
-                w = widget.window() if hasattr(widget, "window") else widget
-                w.show()
-                w.raise_()
-                w.activateWindow()
-                return True
-            found = widget.findChild(CodeEditor)
-            if found is not None:
-                found.open_file(str(resolved.path), line=line_num)
-                w = widget.window() if hasattr(widget, "window") else widget
-                w.show()
-                w.raise_()
-                w.activateWindow()
-                return True
-    except Exception:
-        logger.debug("error searching open Qt code editors", exc_info=True)
-
-    try:
-        from chisurf.plugins.core.code_editor.window import CodeEditorWindow
-
-        window = CodeEditorWindow()
+        window = next(
+            (
+                widget
+                for widget in QtWidgets.QApplication.topLevelWidgets()
+                if widget.isVisible() and isinstance(widget, CodeEditorEmtkTool)
+            ),
+            None,
+        )
+        if window is None:
+            window = CodeEditorEmtkTool()
+        window.open_file(str(resolved.path), line=line_num)
         window.show()
-        window.editor.open_file(str(resolved.path), line=line_num)
+        window.raise_()
+        window.activateWindow()
         return True
     except Exception:
-        logger.debug("could not start Qt code editor window", exc_info=True)
+        logger.debug("could not open the code editor window", exc_info=True)
         return False
 
     if resolved.missing_symbol:

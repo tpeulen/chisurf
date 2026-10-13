@@ -234,7 +234,7 @@ def test_the_status_line_has_the_position_and_the_lsp_state(app, driver):
     assert QT["status"][1] == "Ln 1, Col 0" and QT["status"][3] == "LSP idle"
     drawn = " ".join(_drawn(driver))
     assert "Ln 1, Col 1" in drawn  # emtk counts columns from 1, as the line
-    assert app.model.lsp_status in drawn
+    assert app.model.lsp_status.split(":", 1)[0] in drawn  # the short state; the Python dock says why
 
 
 def test_the_settings_menu_toggles_line_numbers_and_whitespace(app, driver):

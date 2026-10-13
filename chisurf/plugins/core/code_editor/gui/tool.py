@@ -1,4 +1,10 @@
-"""EMTK Code Editor and Chat tools with optional Qt host adapters."""
+"""Qt host adapters of the emtk Code Editor and Chat apps, and their standalone launchers.
+
+The editor is the emtk app (``gui/editor_app.py``); the emtk shell opens it as a dock. The Qt main
+window (``--qt``) hosts the same app in a ``ControlHost`` through :class:`CodeEditorEmtkTool`.
+The legacy Qt editor widgets (``CodeEditor``, ``CodeEditorWindow``, ``NotebookEditor``,
+``AgentPanelWidget``) were retired 2026-10-13; their tests run on the emtk app.
+"""
 
 from __future__ import annotations
 
@@ -12,30 +18,7 @@ from chisurf.plugins.core.code_editor.gui.editor_app import (
     make_editor_app,
 )
 
-try:
-    from qtpy import QtWidgets
-
-    from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
-
-    _HAS_QT = True
-except ImportError:
-    _HAS_QT = False
-    QtWidgets = None
-
-    class ChisurfDockTool:  # type: ignore[no-redef]
-        """Fallback base when Qt is not available."""
-
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
-            pass
-
-        def setWindowTitle(self, title: str) -> None:
-            pass
-
-        def resize(self, w: int, h: int) -> None:
-            pass
-
-        def setCentralWidget(self, widget: Any) -> None:
-            pass
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 
 class CodeEditorEmtkTool(ChisurfDockTool):
@@ -59,13 +42,10 @@ class CodeEditorEmtkTool(ChisurfDockTool):
         if filename:
             self.app.model.open_file(filename)
 
-        if _HAS_QT:
-            from emtk.qt_host import ControlHost
+        from emtk.qt_host import ControlHost
 
-            self.host = ControlHost(self.app, background=WINDOW_BG[:3])
-            self.setCentralWidget(self.host)
-        else:
-            self.host = None
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.setCentralWidget(self.host)
 
     def open_file(self, path: str | pathlib.Path, line: int | None = None) -> Any:
         return self.app.model.open_file(path, line=line)
@@ -82,13 +62,10 @@ class AgentChatEmtkTool(ChisurfDockTool):
         self.resize(440, 680)
 
         self.app = ChatApp()
-        if _HAS_QT:
-            from emtk.qt_host import ControlHost
+        from emtk.qt_host import ControlHost
 
-            self.host = ControlHost(self.app, background=WINDOW_BG[:3])
-            self.setCentralWidget(self.host)
-        else:
-            self.host = None
+        self.host = ControlHost(self.app, background=WINDOW_BG[:3])
+        self.setCentralWidget(self.host)
 
 
 def run_code_editor(

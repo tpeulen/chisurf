@@ -2594,6 +2594,9 @@ class CodeEditorGui:
             im.push_font(self.model.editor_font())
             im.push_font_scale(self.model.font_scale * CODE_EDITOR_UI_SCALE)
             if active.notebook is not None:
+                # Hosted here, the notebook's terminal is the Kernel dock: its Terminal button
+                # shows or hides that dock rather than a second terminal under the cells.
+                active.notebook.terminal_toggle = lambda: self.toggle_dock("kernel")
                 for cell in active.notebook.cells:
                     self.model.apply_editor_preferences(cell.editor, apply_language=False)
                 active.notebook.draw(
@@ -2635,9 +2638,10 @@ class CodeEditorGui:
                 pass
             path_label = active.path if active.path else "Untitled"
             state = "Modified" if active.is_modified else ("Saved" if active.path else "Unsaved")
-            tail = (
-                f"  ·  Ln {cur_line}, Col {cur_col}  |  UTF-8  |  {state}  |  {self.model.lsp_status}"
-            )
+            # The LSP state in its short form ("Python LSP unavailable"); the Python dock has the
+            # reason. A long reason must not push the position off a narrow window.
+            lsp = self.model.lsp_status.split(":", 1)[0]
+            tail = f"  ·  Ln {cur_line}, Col {cur_col}  |  UTF-8  |  {state}  |  {lsp}"
             room = max(40.0, box[2] - 16.0 - im.calc_text_size(tail)[0])
             shown = str(path_label)
             while len(shown) > 4 and im.calc_text_size(shown)[0] > room:

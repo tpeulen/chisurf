@@ -270,7 +270,7 @@ def open_in_editor(
     path: str,
     line: int | None = None,
 ) -> bool:
-    """Open a file in the standalone CodeEditorWindow plugin.
+    """Open a file in the Code Editor plugin's window (the emtk editor in a Qt host).
 
     Args:
         main_window: The main ChiSurf window
@@ -287,18 +287,18 @@ def open_in_editor(
         return False
 
     try:
-        from chisurf.plugins.core.code_editor.window import CodeEditorWindow
+        from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
 
-        # Check if an instance of CodeEditorWindow is already open
+        # Check if an instance of the editor window is already open
         editor_window = None
         for widget in QtWidgets.QApplication.topLevelWidgets():
-            if isinstance(widget, CodeEditorWindow):
+            if isinstance(widget, CodeEditorEmtkTool):
                 editor_window = widget
                 break
 
         if editor_window is None:
             # Instantiate and display the plugin's code editor window
-            editor_window = CodeEditorWindow()
+            editor_window = CodeEditorEmtkTool()
             # Apply statefulness from manifest if possible
             try:
                 import pathlib
@@ -334,14 +334,7 @@ def open_in_editor(
         editor_window.raise_()
         editor_window.activateWindow()
 
-        if hasattr(editor_window, "editor") and editor_window.editor is not None:
-            editor_window.editor.open_file(path, line=line)
-            return True
-        else:
-            import logging
-
-            logging.error("open_in_editor: CodeEditorWindow has no editor widget")
-            return False
+        return editor_window.open_file(path, line=line) is not None
 
     except Exception as e:
         import logging

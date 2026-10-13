@@ -1,98 +1,108 @@
+"""The code editor's settings (emtk app), ported from the retired Qt ``EditorSettingsDialog`` tests.
+
+The emtk editor draws its settings in the *Editor settings* dock and keeps them as its own
+preferences (``chisurf.emtk.state``); the global ``gui.editor`` section of the ChiSurf settings
+file is still written by :func:`chisurf.plugins.core.code_editor.settings.save_editor_settings`.
+"""
+
 import yaml
+from emtk.testing import Driver
 
 import chisurf as cs
-from chisurf.plugins.core.code_editor.text_editor import (
-    CodeEditor,
-    EditorSettingsDialog,
-    TextEditor,
-    save_editor_settings,
-)
+from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
+from chisurf.plugins.core.code_editor.settings import save_editor_settings
+
+
+def _app(tmp_path):
+    return make_editor_app(str(tmp_path))
 
 
 class TestCodeEditorSettings:
-    """Tests for persistent code editor settings."""
+    """Persistent code editor settings."""
 
-    def test_settings_button_uses_gear_and_settings_tooltip(self, qapp):
-        """The editor settings button should use a gear icon and Settings tooltip."""
-        widget = CodeEditor()
-        button = widget.create_settings_button()
+    def test_settings_button_uses_gear_and_opens_the_settings(self, tmp_path):
+        """The toolbar's settings button is a gear and opens the Editor settings dock."""
+        app = _app(tmp_path)
+        try:
+            driver = Driver(app, (1400, 900))
+            drawn = [t[5] for t in driver.frame(3).texts]
+            assert "⚙ Settings" in drawn
+            driver.click("⚙ Settings")
+            assert "Apply & Save" in [t[5] for t in driver.frame(2).texts]
+        finally:
+            app.close()
 
-        assert "⚙" in button.text()
-        assert button.toolTip() == "Settings"
+    def test_the_settings_offer_font_language_colours_and_options(self, tmp_path):
+        """Font, size, language and colour scheme, Ruff, display and RPC options are all there."""
+        app = _app(tmp_path)
+        try:
+            driver = Driver(app, (1400, 1400))
+            driver.frame(3)
+            driver.click("⚙ Settings")
+            drawn = [t[5] for t in driver.frame(3).texts]
+            for label in (
+                "Font family",
+                "Color scheme",
+                "Highlight current line",
+                "Enable Ruff",
+                "Ruff after save",
+                "Ruff timeout (ms)",
+                "Ruff extra arguments",
+                "Line numbers",
+                "Enable editor RPC",
+                "RPC host",
+                "RPC command port",
+                "RPC event port",
+            ):
+                assert label in drawn, label
+            settings = app.model.export_settings()
+            for key in (
+                "font_family",
+                "font_size",
+                "language",
+                "color_scheme",
+                "caret_line_visible",
+                "show_line_numbers",
+                "enable_lsp",
+                "enable_ruff",
+                "run_ruff_on_save",
+                "ruff_timeout_ms",
+                "ruff_extra_args",
+                "enable_rpc",
+                "rpc_host",
+                "rpc_cmd_port",
+                "rpc_pub_port",
+            ):
+                assert key in settings, key
+        finally:
+            app.close()
 
-    def test_settings_dialog_has_font_combo_size_spin_and_options(self, qapp):
-        """The settings dialog exposes font, size, language, and color options."""
-        dialog = EditorSettingsDialog()
-
-        assert dialog.font_combo.count() > 0
-        assert dialog.font_size_spin.minimum() == 4
-        assert dialog.font_size_spin.maximum() == 72
-        assert dialog.language_combo.count() == 4
-        assert dialog.color_scheme_combo.count() >= 4
-        assert dialog.line_numbers_check.objectName() == "line_numbers_check"
-        assert dialog.lsp_check.objectName() == "lsp_check"
-        assert dialog.ruff_check.objectName() == "ruff_check"
-        assert dialog.ruff_on_save_check.objectName() == "ruff_on_save_check"
-        assert dialog.ruff_timeout_spin.objectName() == "ruff_timeout_spin"
-        assert dialog.ruff_args_edit.objectName() == "ruff_args_edit"
-        assert dialog.rpc_check.objectName() == "rpc_check"
-        assert dialog.rpc_host_edit.objectName() == "rpc_host_edit"
-        assert dialog.rpc_cmd_spin.objectName() == "rpc_cmd_spin"
-        assert dialog.rpc_pub_spin.objectName() == "rpc_pub_spin"
-
-        settings = dialog.editor_settings()
-        for key in [
-            "font_family",
-            "font_size",
-            "language",
-            "color_scheme",
-            "paper_color",
-            "default_color",
-            "margins_background_color",
-            "marker_background_color",
-            "caret_line_background_color",
-            "caret_line_visible",
-            "line_numbers_visible",
-            "enable_lsp",
-            "enable_ruff",
-            "run_ruff_on_save",
-            "ruff_timeout_ms",
-            "ruff_extra_args",
-            "enable_rpc",
-            "rpc_host",
-            "rpc_cmd_port",
-            "rpc_pub_port",
-        ]:
-            assert key in settings
-
-    def test_text_editor_settings_apply_to_widget(self, qapp):
-        """Editor settings should update font, language, line numbers, and highlight state."""
-        editor = TextEditor(language="JSON", line_numbers_visible=False)
-
-        assert editor.line_numbers_visible is False
-        assert editor.line_number_area.isVisible() is False
-
-        editor.set_editor_settings(
-            {
-                "font_family": "Courier New",
-                "font_size": 12,
-                "language": "Python",
-                "paper_color": "#ffffff",
-                "default_color": "#000000",
-                "caret_line_visible": True,
-                "line_numbers_visible": True,
-            }
-        )
-
-        assert editor.font().family() == "Courier New"
-        assert editor.font().pointSize() == 12
-        assert editor.language == "Python"
-        assert editor.caret_line_visible is True
-        assert editor.line_numbers_visible is True
-        assert editor.line_number_area.isHidden() is False
+    def test_editor_settings_apply_to_the_editor(self, tmp_path):
+        """Settings change the editor's font, language, line numbers and current-line highlight."""
+        app = _app(tmp_path)
+        try:
+            doc = app.model.new_document("data.json", "{}")
+            app.model.restore_settings({"show_line_numbers": False})
+            app.model.apply_editor_preferences(doc.editor)
+            assert doc.editor.config.show_line_numbers is False
+            app.model.restore_settings(
+                {
+                    "font_size": 12,
+                    "language": "Python",
+                    "caret_line_visible": True,
+                    "show_line_numbers": True,
+                }
+            )
+            app.model.apply_editor_preferences(doc.editor)
+            assert app.model.font_size == 12
+            assert doc.editor.language_name.lower() == "python"
+            assert doc.editor.config.highlight_current_line is True
+            assert doc.editor.config.show_line_numbers is True
+        finally:
+            app.close()
 
     def test_save_editor_settings_persists_to_yaml(self, tmp_path, monkeypatch):
-        """Editor settings should be written to the ChiSurf settings YAML."""
+        """Editor settings are written to the ChiSurf settings YAML (``gui.editor``)."""
         settings_file = tmp_path / "settings_chisurf.yaml"
         settings_file.write_text(
             "gui:\n  editor:\n    font_family: Courier New\n    font_size: 9\n",

@@ -121,15 +121,6 @@ chisurf/plugins/core/acq/tcspc_devices/picoquant/setup_dialog.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/core/test/test_setup_widgets.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/setup_dialog.py
 chisurf/plugins/core/batch_analysis/gui/view_model.py
-chisurf/plugins/core/code_editor/agent_panel.py
-chisurf/plugins/core/code_editor/editor.py
-chisurf/plugins/core/code_editor/gui/tool.py
-chisurf/plugins/core/code_editor/lsp_client.py
-chisurf/plugins/core/code_editor/notebook_editor.py
-chisurf/plugins/core/code_editor/settings.py
-chisurf/plugins/core/code_editor/test/test_notebook_editor.py
-chisurf/plugins/core/code_editor/text_editor.py
-chisurf/plugins/core/code_editor/window.py
 chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
 chisurf/plugins/core/lightpath_simulator/gui/tool.py
 chisurf/plugins/core/lightpath_simulator/tests/test_native_ui.py

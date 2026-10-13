@@ -19,6 +19,7 @@ from urllib.parse import unquote, unquote_to_bytes, urlparse
 
 from emtk import im
 from emtk.i18n import tr
+from emtk.im_core import Col
 from emtk.texture import Texture
 from emtk.widgets.text_editor import Language, TextEditor
 
@@ -27,6 +28,17 @@ from chisurf.plugins.emtk_layout import action_button
 from .html_output import html_blocks
 
 SHELL_EXECUTION_LOCK = threading.Lock()
+
+#: Tallest a cell's output grows before it scrolls inside the cell (runaway output must not push
+#: the next cells off screen).
+MAX_OUTPUT_HEIGHT = 360.0
+
+_ANSI = __import__("re").compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+
+
+def strip_ansi(text: str) -> str:
+    """*text* without terminal colour codes (a coloured traceback is drawn, not its escape bytes)."""
+    return _ANSI.sub("", text)
 
 
 def _source(value: Any) -> str:
@@ -67,6 +79,9 @@ class NativeCell:
         self.outputs = copy.deepcopy(node.get("outputs", []))
         self.execution_count = node.get("execution_count")
         self.edit_markdown = False
+        #: Drawn heights of the source editor and the outputs, last frame (0 before drawing).
+        self.editor_height = 0.0
+        self.output_height = 0.0
         self._textures: dict[str, Texture] = {}
         self._html_cache: dict[str, list] = {}
 
@@ -112,6 +127,11 @@ class NativeNotebook:
         self.terminal_output: list[str] = []
         self.terminal_input = ""
         self.show_terminal = False
+        #: Set by a host that shows the terminal in a dock of its own (the editor's Kernel dock):
+        #: the notebook's Terminal button then shows or hides that dock instead.
+        self.terminal_toggle = None
+        self._terminal_open_line = False
+        self._terminal_drawn = 0
         self.error = ""
         self.is_running = False
         self._closed = False
@@ -307,8 +327,11 @@ class NativeNotebook:
             self.respond_input("")
 
     def _start_execution(self, action) -> bool:
-        if self.is_running or self._closed:
-            self.error = "Notebook is busy or closed."
+        if self._closed:
+            self.error = "The notebook is closed."
+            return False
+        if self.is_running:
+            self.error = "The notebook is running a cell: wait for it to finish."
             return False
         self.error = ""
         self._cancelled.clear()
@@ -397,8 +420,15 @@ class NativeNotebook:
         return self._start_execution(lambda: self.run_terminal(source))
 
     def _write(self, name: str, text: str) -> None:
+        # A cell's printed output is mirrored into the terminal under its "In [n]:" marker, so the
+        # log says which cell produced it (figures stay in the cell: _display does not mirror).
+        clean = strip_ansi(text)
+        if self._terminal_open_line and self.terminal_output:
+            self.terminal_output[-1] += clean  # a line printed in pieces stays one line
+        else:
+            self.terminal_output.append(clean)
+        self._terminal_open_line = not clean.endswith("\n")
         if self._active_cell is None:
-            self.terminal_output.append(text)
             return
         self._change_revision += 1
         outputs = self._active_cell.outputs
@@ -473,6 +503,10 @@ class NativeNotebook:
         try:
             shell = self._ensure_shell()
             cell.execution_count = shell.execution_count
+            lines = cell.editor.text.splitlines() or [""]
+            more = f"  … (+{len(lines) - 1} lines)" if len(lines) > 1 else ""
+            self.terminal_output.append(f"In [{cell.execution_count}]: {lines[0]}{more}")
+            self._terminal_open_line = False
             result = shell.run_cell(
                 cell.editor.text,
                 store_history=True,
@@ -608,12 +642,24 @@ class NativeNotebook:
     def _draw_output(self, cell: NativeCell, output: dict, width: float) -> None:
         kind = output.get("output_type")
         if kind == "stream":
-            im.text_wrapped(_source(output.get("text")))
+            text = strip_ansi(_source(output.get("text")))
+            if output.get("name") == "stderr":
+                im.push_style_color(Col.TEXT, (245, 150, 150, 255))
+                im.text_wrapped(text)
+                im.pop_style_color()
+            else:
+                im.text_wrapped(text)
         elif kind == "error":
+            # The shell already printed the traceback to stderr (drawn above, in colour); a saved
+            # notebook without that stream shows the error and its own traceback.
+            if any(
+                o.get("output_type") == "stream" and o.get("name") == "stderr" for o in cell.outputs
+            ):
+                return
             im.text_colored(
                 (245, 110, 110, 255), f"{output.get('ename', 'Error')}: {output.get('evalue', '')}"
             )
-            im.text_wrapped(_source(output.get("traceback", [])))
+            im.text_wrapped(strip_ansi(_source(output.get("traceback", []))))
         else:
             data = output.get("data", {})
             for mime in ("image/png", "image/jpeg", "image/svg+xml"):
@@ -667,6 +713,56 @@ class NativeNotebook:
             else:
                 im.text_disabled(f"Saved output: {', '.join(data)} (preserved in notebook)")
 
+    def _output_height(self, cell: NativeCell, width: float) -> float:
+        """How tall the cell's outputs draw at *width* (text measured wrapped, images scaled)."""
+        spacing = im.get_style().item_spacing[1]
+        total = 0.0
+        for output in cell.outputs:
+            kind = output.get("output_type")
+            if kind == "stream":
+                text = strip_ansi(_source(output.get("text")))
+            elif kind == "error":
+                text = f"{output.get('ename', 'Error')}: {output.get('evalue', '')}"
+            else:
+                data = output.get("data", {})
+                image = next((m for m in ("image/png", "image/jpeg") if m in data), None)
+                texture = cell._textures.get(_source(data[image])) if image else None
+                if texture is not None:
+                    total += texture.height * min(1.0, max(1.0, width) / max(1, texture.width))
+                    total += spacing
+                    continue
+                text = _source(data.get("text/plain", "")) if "text/plain" in data else "…" * 20
+            total += im.calc_text_size(text.rstrip("\n") or " ", wrap_width=max(1.0, width))[1]
+            total += spacing
+        return total
+
+    def _draw_outputs(self, cell: NativeCell, width: float) -> None:
+        """The cell's outputs: as tall as they are, up to MAX_OUTPUT_HEIGHT, then scrolling."""
+        if not cell.outputs:
+            cell.output_height = 0.0
+            return
+        needed = self._output_height(cell, width)
+        if needed <= MAX_OUTPUT_HEIGHT:
+            start = im.get_cursor_screen_pos()[1]
+            for output in list(cell.outputs):
+                self._draw_output(cell, output, width)
+            cell.output_height = im.get_cursor_screen_pos()[1] - start
+            return
+        x, y = im.get_cursor_screen_pos()
+        im.begin_child((x, y, width, MAX_OUTPUT_HEIGHT), child_id=f"outputs_{id(cell)}")
+        for output in list(cell.outputs):
+            self._draw_output(cell, output, width - 14.0)
+        im.end_child()
+        cell.output_height = MAX_OUTPUT_HEIGHT
+
+    @staticmethod
+    def _toolbar_next(left: float, width: float, caption: str) -> None:
+        """Keep the next toolbar button on the row when it fits in *width*, else wrap (narrow tabs)."""
+        x, _y, w, _h = im.get_item_rect()
+        needed = im.calc_text_size(caption)[0] + 2.0 * im.get_style().frame_padding[0] + 24.0
+        if x + w + 8.0 + needed <= left + width:
+            im.same_line()
+
     def draw_terminal(self, width: float, key: str = "notebook_terminal") -> None:
         """The command terminal sharing the notebook's shell: its output and a command line.
 
@@ -674,7 +770,11 @@ class NativeNotebook:
         """
         im.text(tr("Notebook terminal"))
         for line in self.terminal_output[-200:]:
-            im.text_wrapped(line)
+            im.text_wrapped(line.rstrip("\n") or " ")
+        # New output scrolls into view, as a terminal does.
+        if len(self.terminal_output) != self._terminal_drawn:
+            self._terminal_drawn = len(self.terminal_output)
+            im.set_scroll_here_y(1.0)
         _, self.terminal_input = im.input_text(
             f"##{key}", self.terminal_input, hint=tr("Python command…")
         )
@@ -694,6 +794,7 @@ class NativeNotebook:
     ) -> None:
         ui_scale = max(0.5, float(ui_scale))
         self._finish_pending_advance()
+        left = im.get_cursor_screen_pos()[0]
         if self.is_running:
             if im.button(tr("■  Stop execution")):
                 self.cancel_execution()
@@ -704,35 +805,38 @@ class NativeNotebook:
             if im.button(tr("▶ Run all")):
                 self.start_all()
             im.set_item_tooltip(tr("Run every code cell in order (Ctrl+Shift+Enter)"))
-            im.same_line()
+            self._toolbar_next(left, width, tr("＋ Code cell"))
             if im.button(tr("＋ Code cell")):
                 self.add_cell("code")
             im.set_item_tooltip(tr("Append a Python code cell"))
-            im.same_line()
+            self._toolbar_next(left, width, tr("＋ Markdown"))
             if im.button(tr("＋ Markdown")):
                 self.add_cell("markdown")
             im.set_item_tooltip(tr("Append a Markdown cell"))
-            im.same_line()
+            self._toolbar_next(left, width, "Restart")
             if action_button(
                 "restart", tooltip=tr("Reset notebook variables; saved cell outputs remain")
             ):
                 self.restart_shell()
-            im.same_line()
+            self._toolbar_next(left, width, tr("Clear outputs"))
             if im.button(tr("Clear outputs")):
                 self.clear_outputs()
             im.set_item_tooltip(tr("Remove all cell outputs and execution counts"))
-            im.same_line()
+            self._toolbar_next(left, width, "Hide terminal" if self.show_terminal else "Terminal")
             if im.button("Hide terminal" if self.show_terminal else "Terminal"):
-                self.show_terminal = not self.show_terminal
+                if self.terminal_toggle is not None:
+                    self.terminal_toggle()
+                else:
+                    self.show_terminal = not self.show_terminal
             im.set_item_tooltip(tr("Show or hide a command terminal sharing the notebook shell"))
         if on_reload is not None:
-            im.same_line()
+            self._toolbar_next(left, width, tr("Reload notebook"))
             if im.button(tr("Reload notebook")):
                 on_reload()
             im.set_item_tooltip(
                 tr("Reload this notebook from disk; confirm before discarding unsaved changes")
             )
-            im.same_line()
+            self._toolbar_next(left, width, tr("Export Python"))
         if on_export is not None:
             if im.button(tr("Export Python")):
                 on_export()
@@ -843,6 +947,7 @@ class NativeNotebook:
                     cell.editor,
                     (max(100.0 * ui_scale, width - indent), editor_height),
                 )
+                cell.editor_height = editor_height
                 im.unindent(indent)
                 cell.editor.config.read_only = read_only
                 im.set_item_tooltip(
@@ -852,8 +957,7 @@ class NativeNotebook:
                     self.active_index = (
                         self.cells.index(cell) if cell in self.cells else self.active_index
                     )
-            for output in list(cell.outputs):
-                self._draw_output(cell, output, width)
+            self._draw_outputs(cell, width)
             im.separator()
             im.pop_id()
         if self.show_terminal:
