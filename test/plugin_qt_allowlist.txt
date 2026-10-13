@@ -4,7 +4,6 @@
 chisurf/plugins/__init__.py
 chisurf/plugins/chimol/test/chrome_baseline.py
 chisurf/plugins/chimol/test/screenshot.py
-chisurf/plugins/chimol/test/test_display_config_prompt.py
 chisurf/plugins/chimol/test/test_screenshot_helper.py
 chisurf/plugins/conftest.py
 chisurf/plugins/cookiecutter-chisurf-plugin/{{cookiecutter.plugin_name}}/gui/tool.py

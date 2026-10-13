@@ -216,41 +216,52 @@ def test_an_unknown_name_is_ignored_rather_than_invented(settings, shipped):
 # --------------------------------------------------------------------------- #
 # The prompt itself
 # --------------------------------------------------------------------------- #
+# The question is chimol's in-viewport choice window
+# (``chimol.ui.dialogs.display_defaults``), asked by the window the user opens:
+# chimol's own (``run``) and ChiSurf's (``make_app`` -> ``ask_display_defaults``).
+# It used to be a ``QMessageBox`` of the retired Qt window; these tests answer it
+# the way a person does, by pressing its buttons on the rendered viewport.
 @pytest.fixture
-def window(settings, shipped, _qt_app, monkeypatch):
-    """Return a window whose settings differ from the package in one value."""
+def window(settings, shipped):
+    """Return a toolkit-free window whose settings differ from the package in one value."""
+    from native_window import NativeWindow
+
     mine = json.loads(json.dumps(shipped))
     mine["metaball"]["sigma_factor"] = 3.0
     _write(settings, mine)
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    win = NativeWindow(size=(1000, 700))
+    try:
+        yield win
+    finally:
+        win.close()
 
-    win = MolViewPluginWindow()
-    monkeypatch.setattr(win, "status_bar", win.statusBar())
-    return win
 
+def _answer(win, dialog, *controls):
+    """Press each control of the question (``option:<key>``, ``checkbox``) on the canvas."""
+    from emtk.events import LEFT_BUTTON
 
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    win.pump()  # the window is laid out and painted: its boxes are where they are drawn
+    for name in controls:
+        box = dialog._boxes[name]
+        x, y = box.x + box.w / 2.0, box.y + box.h / 2.0
+        assert win.renderer.on_pointer_press(x, y, LEFT_BUTTON), name
+        win.renderer.on_pointer_release(x, y, LEFT_BUTTON)
+        win.pump()
 
 
 def test_choosing_the_new_values_adopts_them(window, shipped):
-    from chisurf.gui import dialogs
-
-    with dialogs.auto_answer(choice=dialogs.Answer("update", False)):
-        window._offer_package_display_defaults()
+    dialog = window.app.offer_display_defaults()
+    assert dialog is not None
+    _answer(window, dialog, "option:update")
 
     assert cfg_mod.diff_against_package() == {}
+    assert window.renderer._internal_gui.status_text.startswith("Adopted 1 display default")
 
 
 def test_keeping_yours_changes_nothing(window):
-    from chisurf.gui import dialogs
-
-    with dialogs.auto_answer(choice=dialogs.Answer("keep", False)):
-        window._offer_package_display_defaults()
+    dialog = window.app.offer_display_defaults()
+    _answer(window, dialog, "option:keep")
 
     assert "metaball.sigma_factor" in cfg_mod.diff_against_package()
     assert cfg_mod.get_update_prompt_enabled() is True
@@ -263,43 +274,58 @@ def test_the_tick_box_stops_the_asking_whichever_button_was_pressed(window):
     things, and both have to be honoured -- otherwise the only way to stop being
     asked is to accept values you did not want.
     """
-    from chisurf.gui import dialogs
-
-    with dialogs.auto_answer(choice=dialogs.Answer("keep", True)):
-        window._offer_package_display_defaults()
+    dialog = window.app.offer_display_defaults()
+    _answer(window, dialog, "checkbox", "option:keep")
 
     assert cfg_mod.get_update_prompt_enabled() is False
     assert "metaball.sigma_factor" in cfg_mod.diff_against_package()
 
 
-def test_nothing_is_asked_once_opted_out(window, monkeypatch):
+def test_the_differences_are_listed_behind_details(window):
+    """What differs is the whole point of asking: both values, one row each."""
+    dialog = window.app.offer_display_defaults()
+    assert "metaball.sigma_factor: 3.0 -> " in dialog.detail
+    _answer(window, dialog, "details")
+    assert dialog.show_detail and dialog.answer is None
+
+
+def test_nothing_is_asked_once_opted_out(window):
     """The whole point of remembering the answer."""
-    from chisurf.gui import dialogs
+    from chimol.ui.dialogs.display_defaults import WINDOW_KEY
 
     cfg_mod.set_update_prompt_enabled(False)
 
-    asked = []
-    monkeypatch.setattr(
-        dialogs, "choice", lambda *a, **k: asked.append(a) or dialogs.Answer(None, False)
-    )
-    window._offer_package_display_defaults()
-    assert asked == []
+    assert window.app.offer_display_defaults() is None
+    assert window.renderer._internal_gui.window(WINDOW_KEY) is None
 
 
-def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped, _qt_app, monkeypatch):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    from chisurf.gui import dialogs
+def test_nothing_is_asked_when_the_settings_already_agree(settings, shipped):
+    from native_window import NativeWindow
 
     _write(settings, shipped)
-    win = MolViewPluginWindow()
+    win = NativeWindow(size=(800, 600))
+    try:
+        assert win.app.offer_display_defaults() is None
+    finally:
+        win.close()
 
-    asked = []
-    monkeypatch.setattr(
-        dialogs, "choice", lambda *a, **k: asked.append(a) or dialogs.Answer(None, False)
-    )
-    win._offer_package_display_defaults()
-    assert asked == []
+
+def test_chisurfs_window_asks_once_when_the_viewer_starts(settings, shipped):
+    """ChiSurf's emtk surface (``make_app``) asks; an app built for a test does not."""
+    from chimol.ui.dialogs.display_defaults import WINDOW_KEY
+
+    from chisurf.plugins.chimol.app import ChimolHostApp, make_app
+
+    mine = json.loads(json.dumps(shipped))
+    mine["metaball"]["sigma_factor"] = 3.0
+    _write(settings, mine)
+    for app, asks in ((make_app(), True), (ChimolHostApp(), False)):
+        try:
+            assert app._ensure_chimol(), app._chimol_error
+            win = app._chimol.renderer._internal_gui.window(WINDOW_KEY)
+            assert (win is not None and win.visible) is asks
+        finally:
+            app.close()
 
 
 # --------------------------------------------------------------------------- #

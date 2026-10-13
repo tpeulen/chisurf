@@ -46,7 +46,12 @@ class ChimolHostApp(ImApp):
         commands: tuple[str, ...] = (),
         guide_command: str = "",
         help_resource: Path | None = None,
+        ask_display_defaults: bool = False,
     ):
+        #: Ask once, when the viewer is up, whether to take the display defaults this chimol ships with
+        #: (chimol's in-viewport question; only when the user's settings differ and they did not opt out).
+        #: The user's window (:func:`make_app`) asks; a test or a capture building the app directly does not.
+        self._ask_display_defaults = bool(ask_display_defaults)
         #: chimol commands run once the viewer is up: a launcher opens one of chimol's own panels this way
         #: (Structure › FRET › FPS JSON Editor runs ``fps_circle , , Positions``).
         self._startup_commands = tuple(commands)
@@ -151,7 +156,20 @@ class ChimolHostApp(ImApp):
         return True
 
     def _run_startup_commands(self) -> None:
-        """Run the commands this window was opened with, once, on the viewer that just started."""
+        """Run the commands this window was opened with, once, on the viewer that just started.
+
+        Then, once, the display-defaults question (``ask_display_defaults``).
+        """
+        if self._ask_display_defaults:
+            self._ask_display_defaults = False
+            offer = getattr(self._chimol_app, "offer_display_defaults", None)
+            if callable(offer):
+                try:
+                    offer()
+                except Exception:  # noqa: BLE001 - the question is a courtesy; the viewer runs
+                    logging.getLogger(__name__).debug(
+                        "could not offer the display defaults", exc_info=True
+                    )
         commands, self._startup_commands = self._startup_commands, ()
         for line in commands:
             try:
@@ -455,5 +473,8 @@ def make_app(
 
     install()
     return ChimolHostApp(
-        commands=commands, guide_command=guide_command, help_resource=help_resource
+        commands=commands,
+        guide_command=guide_command,
+        help_resource=help_resource,
+        ask_display_defaults=True,
     )

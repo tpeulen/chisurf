@@ -936,12 +936,14 @@ nothing rewrites them behind your back. But a default that improves between
 versions has to be able to reach you, or you keep a value nobody intended and
 the viewer quietly stops matching what the documentation describes.
 
-So ChiMOL compares your file with the one it ships with at start-up, and asks:
+So ChiMOL compares your file with the one it ships with at start-up, and asks
+in a window over the viewport (*ChiMOL display settings*):
 
 > *3 display settings differ from the ones this version ships with.*
-> **Use the new defaults** / **Keep mine** — with every difference listed as
-> `metaball.sigma_factor: 3.0 → 4.0`, so you can see which are yours.
+> **Use the new defaults** / **Keep mine** — and **Show details** lists every
+> difference as `metaball.sigma_factor: 3.0 -> 4.0`, so you can see which are yours.
 
+Enter is **Keep mine**; Escape closes the question without changing anything.
 Choosing **Keep mine** changes nothing. Ticking **Don't ask again** stops the
 question for good — independently of which button you press, so you can keep
 your settings *and* stop being asked.
