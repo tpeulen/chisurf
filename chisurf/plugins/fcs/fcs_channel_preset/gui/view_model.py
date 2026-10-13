@@ -431,7 +431,7 @@ class FCSChannelViewModel:
             }
             for key in ("n_bins", "n_casc"):
                 value = pair.get(key)
-                if value not in (None, ""):
+                if value is not None and value != "":
                     try:
                         record[key] = int(value)
                     except (TypeError, ValueError):

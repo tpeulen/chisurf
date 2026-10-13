@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .base import cell
+from .base import Panel, cell
 from .dialogs import ConfirmDialog, MessageDialog
 
 _SPEC = Path(__file__).resolve().parent.parent / "entity_extras.view.json"
@@ -49,8 +49,17 @@ def _columns(columns: tuple) -> list[dict]:
     return [{"key": k, "title": t, "editable": e} for k, t, e in columns]
 
 
-class ExtrasMixin:
+class ExtrasMixin(Panel):
     """Mixed into :class:`~.entity.EntityPanel`; every ``x_`` name is routed here."""
+
+    # Owned by EntityPanel; declared so the mixin's methods type-check.
+    selected_id: str
+    rows: list[dict]
+    columns: list[tuple[str, str]]
+
+    def checked_ids(self) -> list[str]:
+        """The ticked record ids (EntityPanel draws the ticks)."""
+        raise NotImplementedError
 
     def _init_extras(self) -> None:
         self.data_rows: list[dict] = []

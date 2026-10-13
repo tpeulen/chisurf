@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import logging
 import pathlib
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -22,8 +24,35 @@ from chisurf.core.fluorescence.decay import (
 from ..api import FilterResult, compute_filters, synthetic_component_decay
 from .decay_io import load_vector
 
+if TYPE_CHECKING:
+    from .model import Component, Detectors
+
 
 class ScientificOperations:
+    # State and hooks owned by FilterModel, declared so the mixin type-checks.
+    components: list[Component]
+    detectors: Detectors
+    options_model: SimpleNamespace
+    _total_paths: list[Any]
+    _total_vector: np.ndarray | None
+    _total_vectors_by_detector: dict[str, np.ndarray]
+    _detector_settings: dict[str, Any]
+    _detector_fit_ranges: dict[str, Any]
+    _auto_fit_settings: dict[str, Any]
+    _irf_by_detector: dict[str, Any]
+    _synthetic_scatter_fits: dict[str, Any]
+    _decay_cache: dict[Any, Any]
+    _routing_cache: dict[Any, Any]
+
+    if TYPE_CHECKING:
+
+        def _instrument(self) -> dict[str, Any]: ...
+        def _fit_range(self, n_bins: int) -> tuple[int, int]: ...
+        def _init_fit_region(self, total: Any) -> None: ...
+        def _update_status(self, message: Any) -> None: ...
+        def _on_data_changed(self) -> None: ...
+        def add_component(self, source: Any) -> None: ...
+
     def _fit_period_ns(self, n_bins: int, dt: float) -> float | None:
         """Laser period (ns) for periodic convolution, or None when disabled.
 

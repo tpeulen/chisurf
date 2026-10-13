@@ -133,8 +133,8 @@ def walk_mcmc(
     check_cancel: typing.Callable | None = None,
     n_adapt: int | None = None,
     target_acceptance: float = 0.3,
-    model: cs.core.models.Model = None,
-    seed: int | np.random.Generator = None,
+    model: cs.core.models.Model | None = None,
+    seed: int | np.random.Generator | None = None,
 ) -> dict:
     """Sample the free parameters of a fit with a Metropolis random walk.
 
@@ -359,7 +359,7 @@ def _seed_block_covariances(
     blocks: list[np.ndarray],
     state: np.ndarray,
     step_size: float,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
 ) -> list[np.ndarray]:
     """Return an initial proposal covariance for each block.
 
@@ -651,7 +651,7 @@ def sample_differential_evolution(
     n_adapt: int | None = None,
     jitter: float = 1e-4,
     snooker: float = 0.1,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
     seed: int | None = None,
 ) -> dict:
     r"""Sample with Differential-Evolution MCMC (ter Braak).
@@ -905,8 +905,8 @@ def walk_mcmc_blocked(
     check_cancel: typing.Callable | None = None,
     n_adapt: int | None = None,
     blocks: typing.Sequence[typing.Sequence[int]] | None = None,
-    model: cs.core.models.Model = None,
-    seed: int | np.random.Generator = None,
+    model: cs.core.models.Model | None = None,
+    seed: int | np.random.Generator | None = None,
 ) -> dict:
     """Sample a fit block by block, with a per-block correlated proposal.
 
@@ -1201,7 +1201,7 @@ def sample_independent_components(
     callback: typing.Callable | None = None,
     check_cancel: typing.Callable | None = None,
     n_adapt: int | None = None,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
     seed: int | None = None,
 ) -> dict:
     r"""Sample each independent sub-problem separately and merge them exactly.
@@ -1534,7 +1534,7 @@ def sample_marginal_shared(
     callback: typing.Callable | None = None,
     check_cancel: typing.Callable | None = None,
     n_adapt: int | None = None,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
     seed: int | None = None,
 ) -> dict:
     r"""Sample only a global fit's *shared* parameters, integrating the rest out.
@@ -1828,7 +1828,10 @@ def _merge_components(
     joint = np.tile(reference, (n_draws, 1))
     chi2 = np.zeros(n_draws, dtype=np.float64)
     lnprior = np.zeros(n_draws, dtype=np.float64)
-    acceptance, sizes, block_sizes, block_acceptance = [], [], [], []
+    acceptance: list[typing.Any] = []
+    sizes: list[typing.Any] = []
+    block_sizes: list[typing.Any] = []
+    block_acceptance: list[typing.Any] = []
 
     dof = float(model.n_points - model.n_free - 1.0)
     for indices, r in results:
@@ -1863,7 +1866,7 @@ def _merge_components(
 
 
 def _default_blocks(
-    fit: cs.core.fitting.fit.Fit, dim: int, model: cs.core.models.Model = None
+    fit: cs.core.fitting.fit.Fit, dim: int, model: cs.core.models.Model | None = None
 ) -> list[np.ndarray]:
     """Return the factor graph's sampling blocks as parameter-vector indices.
 
@@ -2097,7 +2100,7 @@ def sample_ensemble(
     substeps: int | None = None,
     callback: typing.Callable | None = None,
     check_cancel: typing.Callable | None = None,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
     seed=None,
     stretch_scale: float = 2.0,
 ) -> dict:
@@ -2233,7 +2236,7 @@ def sample_ensemble_slice(
     substeps: int | None = None,
     callback: typing.Callable | None = None,
     check_cancel: typing.Callable | None = None,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
     seed=None,
     moves=None,
     tune: bool = True,
@@ -2321,7 +2324,7 @@ def sample_ensemble_slice(
 
 
 def ensemble_result(
-    sampler, fit: cs.core.fitting.fit.Fit, model: cs.core.models.Model = None
+    sampler, fit: cs.core.fitting.fit.Fit, model: cs.core.models.Model | None = None
 ) -> dict:
     """Extract the flattened chain of an ensemble sampler as a result dict.
 
@@ -2610,7 +2613,9 @@ def _docstring_parameters(func) -> dict:
     except StopIteration:
         return {}
 
-    descriptions, names, buffer = {}, [], []
+    descriptions: dict[str, str] = {}
+    names: list[str] = []
+    buffer: list[str] = []
 
     def flush():
         """Attach the collected text to the names it was written for."""
@@ -2738,7 +2743,7 @@ def optimizer_settings() -> list:
     )
     sections = []
     for name, kind in knobs:
-        section = {
+        section: dict[str, typing.Any] = {
             "type": "value",
             "attr": name,
             "label": setting_label(name),

@@ -42,7 +42,7 @@ def _channels_from_parameters(parameters: dict) -> list[int]:
     for i, entry in enumerate(channels):
         if isinstance(entry, dict) and "value" in entry:
             role = entry.get("role")
-            order = int(role) if role not in (None, "") else i
+            order = int(role) if role is not None and role != "" else i
             entries.append((order, int(entry["value"])))
         else:
             plain.append(int(entry))

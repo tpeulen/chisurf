@@ -697,7 +697,7 @@ class Fit(cs.core.base.Base):
     def __init__(
         self,
         model_class: typing.Type[cs.core.models.Model] = type,
-        data: cs.core.data.DataCurve = None,
+        data: cs.core.data.DataCurve | None = None,
         xmin: int = 0,
         xmax: int = 0,
         model_kw: typing.Dict | None = None,
@@ -747,7 +747,7 @@ class Fit(cs.core.base.Base):
             # `default_noise_model`.
             noise_model = cs.core.fitting.default_noise_model(data, model_class)
         self.noise_model = cs.core.fitting.normalize_noise_model(noise_model)
-        self._model: cs.core.models.Model = None
+        self._model: cs.core.models.Model | None = None
         self._result_current = 0
         self.results: deque = deque(maxlen=500)
         self._mask = None
@@ -1212,7 +1212,7 @@ class Fit(cs.core.base.Base):
             return self.chi2r
 
     def get_chi2(
-        self, parameter=None, model: cs.core.models.Model = None, reduced: bool = True
+        self, parameter=None, model: cs.core.models.Model | None = None, reduced: bool = True
     ) -> float:
         """Convenience wrapper around :func:`get_chi2` using this fit."""
         if model is None:
@@ -1655,7 +1655,7 @@ class Fit(cs.core.base.Base):
         self,
         parameter_name: str,
         rel_range: float | None = None,
-        scan_range: typing.Tuple[float, float] = (None, None),
+        scan_range: typing.Tuple[float | None, float | None] = (None, None),
         n_steps: int = 30,
     ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Perform a chi2-scan on a parameter of the fit.
@@ -1683,7 +1683,7 @@ class Fit(cs.core.base.Base):
     def adaptive_chi2_scan(
         self,
         parameter_name: str,
-        scan_range: typing.Tuple[float, float] = (None, None),
+        scan_range: typing.Tuple[float | None, float | None] = (None, None),
         p_value: float = 0.99,
         max_points_per_side: int = 50,
         **kwargs,
@@ -2045,7 +2045,7 @@ class FitGroup(Fit):
         returned. Otherwise curves are collected from the selected or all
         grouped fits, with keys suffixed by ``"_%02d"``.
         """
-        curves = {}
+        curves: dict[str, cs.core.curve.Curve] = {}
         if idx is None:
             curves = super().get_curves(copy_curves=copy_curves, full_length=full_length)
         else:
@@ -2909,7 +2909,7 @@ def approx_grad(
     epsilon: float | None = None,
     args=(),
     f0=None,
-    model: cs.core.models.Model = None,
+    model: cs.core.models.Model | None = None,
 ) -> typing.Tuple[float, np.ndarray]:
     """Approximate gradient of the weighted residuals with respect to ``xk``.
 
@@ -3048,8 +3048,8 @@ def _error_scale(fit) -> float:
 def covariance_matrix(
     fit: cs.core.fitting.fit.Fit,
     epsilon: float | None = None,
-    model: cs.core.models.Model = None,
-    f0: np.ndarray = None,
+    model: cs.core.models.Model | None = None,
+    f0: np.ndarray | None = None,
     **kwargs,
 ) -> typing.Tuple[np.ndarray, typing.List[int]]:
     """Estimate the covariance matrix of the fit parameters.
@@ -3423,8 +3423,8 @@ def get_chi2(
 def lnprior(
     parameter_values: typing.List[float],
     fit: cs.core.fitting.fit.Fit,
-    bounds: typing.List[typing.Tuple[float, float]] = None,
-    model: cs.core.models.Model = None,
+    bounds: typing.List[typing.Tuple[float, float]] | None = None,
+    model: cs.core.models.Model | None = None,
 ) -> float:
     """Log-prior probability of a set of parameter values.
 
@@ -3505,8 +3505,8 @@ def lnprob_parts(
     parameter_values: typing.List[float],
     fit: Fit,
     chi2max: float = float("inf"),
-    bounds: typing.List[typing.Tuple[float, float]] = None,
-    model: cs.core.models.Model = None,
+    bounds: typing.List[typing.Tuple[float, float]] | None = None,
+    model: cs.core.models.Model | None = None,
 ) -> typing.Tuple[float, float, float]:
     """Return the log-likelihood, log-prior and chi² of a parameter vector.
 
@@ -3548,8 +3548,8 @@ def lnprob(
     parameter_values: typing.List[float],
     fit: Fit,
     chi2max: float = float("inf"),
-    bounds: typing.List[typing.Tuple[float, float]] = None,
-    model: cs.core.models.Model = None,
+    bounds: typing.List[typing.Tuple[float, float]] | None = None,
+    model: cs.core.models.Model | None = None,
 ) -> float:
     """Log-posterior probability for use in MCMC sampling.
 

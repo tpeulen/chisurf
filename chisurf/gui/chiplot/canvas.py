@@ -19,6 +19,8 @@ Design goals versus pyqtgraph call sites:
 
 from __future__ import annotations
 
+from typing import Any, TypeVar
+
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
@@ -31,6 +33,8 @@ from chisurf.gui.chiplot.backends import get_backend
 #: indistinguishable from the default.
 _UNSET = object()
 
+_P = TypeVar("_P", bound="PlotAPI")
+
 
 class PlotAPI:
     """The drawing, axis and export API of a chiplot panel, toolkit-free.
@@ -40,6 +44,12 @@ class PlotAPI:
     layout -- and :class:`Panel`, which is the canvas alone, for a surface
     that draws it as a control (the fit window's emtk surface).
     """
+
+    # Set by the concrete class (``Plot``, ``Panel``, ``PanelPlot``).
+    _canvas: Any
+    _series: list[tuple[str, Any]]
+    _native_menu: bool
+    _extra_menu_actions: list[Any]
 
     # -- drawing --------------------------------------------------------
     def line(
@@ -564,12 +574,12 @@ class PlotAPI:
         return list(self._series)
 
     # -- context menu / export ------------------------------------------
-    def set_context_menu_enabled(self, enabled: bool) -> Plot:
+    def set_context_menu_enabled(self: _P, enabled: bool) -> _P:
         """Enable/disable chiplot's right-click menu. Returns ``self``."""
         self._context_menu_enabled = bool(enabled)
         return self
 
-    def set_menu_enabled(self, enabled: bool) -> Plot:
+    def set_menu_enabled(self: _P, enabled: bool) -> _P:
         """Enable/disable the right-click menu. Returns ``self``.
 
         The backend's own menu where it has one (pyqtgraph), chiplot's menu
@@ -591,7 +601,7 @@ class PlotAPI:
             return bool(self._canvas.menu_enabled())
         return self._context_menu_enabled
 
-    def add_menu_action(self, label: str, callback) -> Plot:
+    def add_menu_action(self: _P, label: str, callback) -> _P:
         """Add a custom entry to the right-click menu. Returns ``self``.
 
         Works whether the menu is the backend's native one (pyqtgraph) or
@@ -698,7 +708,7 @@ class PlotAPI:
 
     # -- axes / view ----------------------------------------------------
     def set_labels(
-        self,
+        self: _P,
         *,
         left=None,
         bottom=None,
@@ -708,7 +718,7 @@ class PlotAPI:
         bottom_units: str | None = None,
         right_units: str | None = None,
         top_units: str | None = None,
-    ) -> Plot:
+    ) -> _P:
         """Set axis text and units independently. Returns ``self``.
 
         ``None`` preserves existing text or units; ``""`` clears that field.
@@ -727,17 +737,17 @@ class PlotAPI:
         )
         return self
 
-    def set_title(self, title) -> Plot:
+    def set_title(self: _P, title) -> _P:
         """Set the panel title. Returns ``self``."""
         self._canvas.set_title(title)
         return self
 
-    def set_log(self, *, x=None, y=None) -> Plot:
+    def set_log(self: _P, *, x=None, y=None) -> _P:
         """Toggle logarithmic scaling per axis. Returns ``self``."""
         self._canvas.set_log(x=x, y=y)
         return self
 
-    def set_tick_spacing(self, side, *, major=None, minor=None) -> Plot:
+    def set_tick_spacing(self: _P, side, *, major=None, minor=None) -> _P:
         """Fix the tick interval on one axis, or restore automatic spacing.
 
         Parameters
@@ -757,7 +767,7 @@ class PlotAPI:
         self._canvas.set_tick_spacing(side, major=major, minor=minor)
         return self
 
-    def on_range_changed(self, callback) -> Plot:
+    def on_range_changed(self: _P, callback) -> _P:
         """Call ``callback(x_range, y_range)`` whenever the view is panned or zoomed.
 
         Parameters
@@ -773,17 +783,17 @@ class PlotAPI:
         self._canvas.on_range_changed(callback)
         return self
 
-    def set_xlim(self, lo, hi, *, padding=None) -> Plot:
+    def set_xlim(self: _P, lo, hi, *, padding=None) -> _P:
         """Set the visible x-range. Returns ``self``."""
         self._canvas.set_range(x=(lo, hi), padding=padding)
         return self
 
-    def set_ylim(self, lo, hi, *, padding=None) -> Plot:
+    def set_ylim(self: _P, lo, hi, *, padding=None) -> _P:
         """Set the visible y-range. Returns ``self``."""
         self._canvas.set_range(y=(lo, hi), padding=padding)
         return self
 
-    def set_range(self, *, x=None, y=None, padding=None) -> Plot:
+    def set_range(self: _P, *, x=None, y=None, padding=None) -> _P:
         """Set visible x and/or y range. Returns ``self``."""
         self._canvas.set_range(x=x, y=y, padding=padding)
         return self
@@ -800,7 +810,7 @@ class PlotAPI:
         """
         return self._canvas.is_auto_range()
 
-    def set_auto_range_button(self, shown: bool = True) -> Plot:
+    def set_auto_range_button(self: _P, shown: bool = True) -> _P:
         """Show (default) or never show the "A" auto-range button. Returns ``self``.
 
         Every panel has it: while an axis is not auto-ranged -- the user panned,
@@ -812,7 +822,7 @@ class PlotAPI:
         self._canvas.set_auto_range_button(shown)
         return self
 
-    def autoscale(self, *, x=True, y=True, continuous=False) -> Plot:
+    def autoscale(self: _P, *, x=True, y=True, continuous=False) -> _P:
         """Fit the view to its contents. Returns ``self``.
 
         Parameters
@@ -828,22 +838,22 @@ class PlotAPI:
             self._canvas.auto_range()
         return self
 
-    def grid(self, *, x=False, y=False, alpha=0.3) -> Plot:
+    def grid(self: _P, *, x=False, y=False, alpha=0.3) -> _P:
         """Toggle axis grid lines. Returns ``self``."""
         self._canvas.set_grid(x=x, y=y, alpha=alpha)
         return self
 
-    def set_background(self, color) -> Plot:
+    def set_background(self: _P, color) -> _P:
         """Set the panel background color. Returns ``self``."""
         self._canvas.set_background(S.to_color(color) if color is not None else None)
         return self
 
-    def set_aspect_locked(self, lock=True, ratio=1.0) -> Plot:
+    def set_aspect_locked(self: _P, lock=True, ratio=1.0) -> _P:
         """Lock the x/y pixel aspect ratio. Returns ``self``."""
         self._canvas.set_aspect_locked(lock, ratio)
         return self
 
-    def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> Plot:
+    def set_interactive(self: _P, *, mouse: bool = True, menu: bool = True) -> _P:
         """Enable/disable mouse pan-zoom and the right-click menu. Returns ``self``.
 
         A convenience for static preview plots (e.g. node thumbnails) that want
@@ -855,12 +865,12 @@ class PlotAPI:
         self.set_menu_enabled(menu)
         return self
 
-    def invert_y(self, invert=True) -> Plot:
+    def invert_y(self: _P, invert=True) -> _P:
         """Invert the y-axis direction. Returns ``self``."""
         self._canvas.invert_y(invert)
         return self
 
-    def set_si_prefix(self, *, x: bool | None = None, y: bool | None = None) -> Plot:
+    def set_si_prefix(self: _P, *, x: bool | None = None, y: bool | None = None) -> _P:
         """Enable or disable an axis's automatic SI prefix.
 
         A renderer will happily relabel a 0-to-1 axis as "(x0.001)" with ticks
@@ -881,7 +891,7 @@ class PlotAPI:
         self._canvas.set_si_prefix(x=x, y=y)
         return self
 
-    def set_axis_visible(self, *, left=None, bottom=None, right=None, top=None) -> Plot:
+    def set_axis_visible(self: _P, *, left=None, bottom=None, right=None, top=None) -> _P:
         """Show/hide individual axes. Only the given sides change. Returns ``self``.
 
         Example: ``plot.set_axis_visible(left=False, bottom=False)`` for a bare
@@ -892,7 +902,7 @@ class PlotAPI:
                 self._canvas.set_axis_visible(side, bool(vis))
         return self
 
-    def set_axis_style(self, *, line=None, text=None) -> Plot:
+    def set_axis_style(self: _P, *, line=None, text=None) -> _P:
         """Colour the axis lines (``line``) and the tick/label text (``text``).
 
         Colours take any spelling :func:`~chisurf.gui.chiplot.style.to_pen`
@@ -902,7 +912,7 @@ class PlotAPI:
         self._canvas.set_axis_style(line=line, text=text)
         return self
 
-    def set_tick_labels(self, side, ticks) -> Plot:
+    def set_tick_labels(self: _P, side, ticks) -> _P:
         """Replace the numeric labels of one axis by ``[(position, text), ...]``.
 
         Use it for categorical axes (detector names under bars). ``ticks=None``
@@ -911,12 +921,12 @@ class PlotAPI:
         self._canvas.set_tick_labels(side, None if ticks is None else list(ticks))
         return self
 
-    def set_legend_style(self, *, text=None) -> Plot:
+    def set_legend_style(self: _P, *, text=None) -> _P:
         """Colour the legend text. Returns ``self``."""
         self._canvas.set_legend_style(text=text)
         return self
 
-    def set_compact(self, compact: bool = True, *, font_size: int = 8) -> Plot:
+    def set_compact(self: _P, compact: bool = True, *, font_size: int = 8) -> _P:
         """Shrink the panel's chrome so a small panel is mostly data.
 
         Margins, tick length, tick-label offset, the view's default padding and
@@ -939,7 +949,7 @@ class PlotAPI:
         self._canvas.set_compact(compact, font_size=font_size)
         return self
 
-    def link_x(self, other: Plot) -> Plot:
+    def link_x(self: _P, other: Plot) -> _P:
         """Link this panel's x-axis to ``other``'s so they pan/zoom together.
 
         Used for stacked diagnostic panels (e.g. residuals above the data) that
@@ -948,12 +958,12 @@ class PlotAPI:
         self._canvas.link_x(other._canvas)
         return self
 
-    def link_y(self, other: Plot) -> Plot:
+    def link_y(self: _P, other: Plot) -> _P:
         """Link this panel's y-axis to ``other``'s so they pan/zoom together. Returns ``self``."""
         self._canvas.link_y(other._canvas)
         return self
 
-    def set_downsampling(self, *, auto: bool = True, mode: str = "peak") -> Plot:
+    def set_downsampling(self: _P, *, auto: bool = True, mode: str = "peak") -> _P:
         """Enable/disable automatic downsampling of dense curves on this panel.
 
         A renderer performance hint for very large series. ``mode`` selects
@@ -963,7 +973,7 @@ class PlotAPI:
         self._canvas.set_downsampling(auto=auto, mode=mode)
         return self
 
-    def set_clip_to_view(self, clip: bool = True) -> Plot:
+    def set_clip_to_view(self: _P, clip: bool = True) -> _P:
         """Hint the backend to skip drawing samples outside the visible range.
 
         A renderer performance hint for large series. Returns ``self``.
