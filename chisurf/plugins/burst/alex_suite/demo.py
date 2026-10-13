@@ -73,40 +73,41 @@ def demo_folder() -> Path:
 
 def photon_stream(seed: int = SEED, seconds: float = SECONDS):
     """The simulated photons: ``(macro_times, routing_channels, species_of_each_burst)``."""
-    cfg = DEMO
+    # The planted constants (``DEMO`` records the same values for the sidecar).
     rng = np.random.default_rng(seed)
-    span = int(seconds / cfg["macro_resolution_s"])
-    n_bursts = int(rng.poisson(cfg["burst_rate"] * seconds))
-    edge = 0.002 / cfg["macro_resolution_s"]
+    span = int(seconds / MACRO_RES)
+    n_bursts = int(rng.poisson(BURST_RATE * seconds))
+    edge = 0.002 / MACRO_RES
     centres = np.sort(rng.uniform(edge, span - edge, n_bursts))
-    weights = np.array([s[4] for s in cfg["species"]], dtype=float)
-    kinds = rng.choice(len(cfg["species"]), n_bursts, p=weights / weights.sum())
-    times, channels = [], []
+    weights = np.array([s[4] for s in SPECIES], dtype=float)
+    kinds = rng.choice(len(SPECIES), n_bursts, p=weights / weights.sum())
+    times: list[np.ndarray] = []
+    channels: list[np.ndarray] = []
     for centre, kind in zip(centres, kinds):
-        _name, has_donor, has_acceptor, efficiency, _w = cfg["species"][kind]
-        n = int(rng.integers(*cfg["photons_per_burst"]))
-        t = rng.normal(centre, 0.3e-3 / cfg["macro_resolution_s"], n)
-        phase = np.mod(t, cfg["period"])
-        donor_exc = (phase >= cfg["donor_gate"][0]) & (phase < cfg["donor_gate"][1])
-        acceptor_exc = (phase >= cfg["acceptor_gate"][0]) & (phase < cfg["acceptor_gate"][1])
+        _name, has_donor, has_acceptor, efficiency, _w = SPECIES[kind]
+        n = int(rng.integers(*PHOTONS_PER_BURST))
+        t = rng.normal(centre, 0.3e-3 / MACRO_RES, n)
+        phase = np.mod(t, PERIOD)
+        donor_exc = (phase >= DONOR_GATE[0]) & (phase < DONOR_GATE[1])
+        acceptor_exc = (phase >= ACCEPTOR_GATE[0]) & (phase < ACCEPTOR_GATE[1])
         detector = np.full(n, -1)
         u = rng.random(n)
         if has_donor:
             # donor excitation: the donor emits, or transfers to the acceptor with probability E
             detector[donor_exc] = np.where(
-                u[donor_exc] < efficiency, cfg["acceptor_channel"], cfg["donor_channel"]
+                u[donor_exc] < efficiency, ACCEPTOR_CHANNEL, DONOR_CHANNEL
             )
         else:
             # direct excitation of the acceptor by the donor laser (a few per cent)
-            detector[donor_exc] = np.where(u[donor_exc] < 0.06, cfg["acceptor_channel"], -1)
+            detector[donor_exc] = np.where(u[donor_exc] < 0.06, ACCEPTOR_CHANNEL, -1)
         if has_acceptor:
-            detector[acceptor_exc] = cfg["acceptor_channel"]
+            detector[acceptor_exc] = ACCEPTOR_CHANNEL
         else:
-            detector[acceptor_exc] = np.where(u[acceptor_exc] < 0.02, cfg["donor_channel"], -1)
+            detector[acceptor_exc] = np.where(u[acceptor_exc] < 0.02, DONOR_CHANNEL, -1)
         keep = detector >= 0
         times.append(t[keep])
         channels.append(detector[keep])
-    n_background = int(rng.poisson(cfg["background_hz"] * seconds))
+    n_background = int(rng.poisson(BACKGROUND_HZ * seconds))
     times.append(rng.uniform(0, span, n_background))
     channels.append(rng.integers(0, 2, n_background))
     t = np.clip(np.concatenate(times), 0, span - 1).astype(np.uint64)
@@ -135,14 +136,14 @@ def make_demo(
         except (OSError, ValueError):
             pass
     folder.mkdir(parents=True, exist_ok=True)
-    macro, routing, kinds = photon_stream(seed, seconds=settings["seconds"])
+    macro, routing, kinds = photon_stream(seed, seconds=SECONDS)
     stream = tttrlib.TTTR()
     stream.append_events(
         macro, np.zeros(macro.size, dtype=np.uint16), routing, np.zeros(macro.size, dtype=np.int8)
     )
     header = stream.header
-    header.set_macro_time_resolution(settings["macro_resolution_s"])
-    header.set_micro_time_resolution(settings["macro_resolution_s"] / 4096)
+    header.set_macro_time_resolution(MACRO_RES)
+    header.set_micro_time_resolution(MACRO_RES / 4096)
     with tempfile.TemporaryDirectory(prefix=".alex-demo-", dir=folder) as temporary:
         generated = Path(temporary) / STREAM_NAME
         if not stream.write(str(generated), "SPC-130", header):

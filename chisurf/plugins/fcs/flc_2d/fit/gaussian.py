@@ -110,10 +110,10 @@ def fit_gaussian_multi(
         raise ValueError("n_components must be >= 1")
 
     if initial is None:
-        p0 = [0.0]
+        seeds = [0.0]
         for amp, x0, dx in _seed_components(x, y, n_components):
-            p0 += [amp, x0, dx]
-        p0 = np.array(p0, dtype=float)
+            seeds += [amp, x0, dx]
+        p0 = np.array(seeds, dtype=float)
     else:
         p0 = np.asarray(initial, dtype=float)
         if p0.size != 1 + 3 * n_components:

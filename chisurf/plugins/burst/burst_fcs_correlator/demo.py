@@ -13,7 +13,9 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
+from typing import TypedDict
 
 import numpy as np
 
@@ -31,7 +33,31 @@ TABLE_NAME = "burst_fcs_demo.spc.bst"
 
 SPC_FILENAME = STREAM_NAME
 MEMBERS = (SPC_FILENAME, TABLE_NAME)
-DEMO = {
+
+
+class DemoConfig(TypedDict):
+    """The generator's parameters, as recorded in ``demo.json``."""
+
+    seed: int
+    n_bursts: int
+    photons_per_burst: int
+    macro_resolution_s: float
+    micro_resolution_s: float
+    micro_channels: int
+    lifetime_s: float
+    initial_ticks: int
+    centre_ticks: int
+    width_ticks: int
+    width_base: float
+    width_range: float
+    signal_fraction: float
+    burst_span_ticks: int
+    gap_ticks: int
+    routing_channels: int
+    format: str
+
+
+DEMO: DemoConfig = {
     "seed": SEED,
     "n_bursts": N_BURSTS,
     "photons_per_burst": PHOTONS_PER_BURST,
@@ -52,11 +78,14 @@ DEMO = {
 }
 
 
-def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS, *, config: dict | None = None):
+def photon_stream(seed: int = SEED, n_bursts: int = N_BURSTS, *, config: DemoConfig | None = None):
     """The photons and the burst ranges: ``(macro, micro, routing, ranges)`` as numpy arrays and (first, last) index pairs."""
-    values = dict(DEMO) if config is None else config
+    values = DEMO.copy() if config is None else config
     rng = np.random.default_rng(seed)
-    macro, micro, routing, ranges = [], [], [], []
+    macro: list[np.ndarray] = []
+    micro: list[np.ndarray] = []
+    routing: list[np.ndarray] = []
+    ranges: list[tuple[int, int]] = []
     t0, index = values["initial_ticks"], 0
     for _ in range(n_bursts):
         centre = (
@@ -99,7 +128,7 @@ def demo_folder() -> Path:
     return get_path("settings") / "demos" / "burst_fcs_correlator"
 
 
-def _cache_is_good(folder: Path, config: dict) -> bool:
+def _cache_is_good(folder: Path, config: Mapping[str, object]) -> bool:
     """Reuse only a complete artifact set with matching parameters and byte hashes."""
     try:
         record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
@@ -135,7 +164,7 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
     import tttrlib
 
     folder = Path(folder) if folder is not None else demo_folder()
-    config = dict(DEMO)
+    config = DEMO.copy()
     if not overwrite and _cache_is_good(folder, config):
         return folder / TABLE_NAME
     folder.mkdir(parents=True, exist_ok=True)

@@ -542,7 +542,7 @@ class SimulationSetupDialog:
     def __init__(
         self,
         params: dict[str, Any] | None,
-        on_apply: Callable[[dict[str, Any]], None],
+        on_apply: Callable[[dict[str, Any]], object],
         request_file: Callable[[str], None] | None = None,
     ) -> None:
         self.model = SimulationSetupModel.from_parameters(params)

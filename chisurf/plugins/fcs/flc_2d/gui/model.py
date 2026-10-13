@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -21,6 +21,9 @@ from chisurf.core.math.regularization import LCurveData
 from chisurf.core.support.i18n import tr
 
 from .client import FlcClient
+
+if TYPE_CHECKING:
+    from ..api import TttrData
 
 _GUI_DIR = pathlib.Path(__file__).parent
 logger = logging.getLogger(__name__)
@@ -74,14 +77,14 @@ class _FlcModel:
         # The loaded photon stream, the active IRF and what the analysis produced
         # (the Qt tool kept these on the window).
         self.client: FlcClient | None = None
-        self.tttr = None
+        self.tttr: TttrData | None = None
         self.tttr_path: str | None = None
-        self.irf = None
-        self.irf_time_ns = None
-        self.irf_file = None
-        self.irf_file_time_ns = None
+        self.irf: np.ndarray | None = None
+        self.irf_time_ns: np.ndarray | None = None
+        self.irf_file: np.ndarray | None = None
+        self.irf_file_time_ns: np.ndarray | None = None
         self.irf_path: str | None = None
-        self.spectrum2d = None
+        self.spectrum2d: dict[str, Any] | None = None
         self.kinetics = None
         # Window state of a drawn (native) host; the Qt tool ignores these.
         self.status_text = "Open a TTTR file to begin."
@@ -266,7 +269,7 @@ class _FlcModel:
 
     # -- loading ---------------------------------------------------------- #
     @staticmethod
-    def tttr_from_payload(payload: dict[str, Any]):
+    def tttr_from_payload(payload: dict[str, Any]) -> TttrData:
         """Reconstruct ``TttrData`` from an RPC payload."""
         from .. import api
 
@@ -282,9 +285,9 @@ class _FlcModel:
     def open_tttr(self, path: str) -> None:
         """Open a TTTR file through the RPC client (raises when it cannot be read)."""
         self.error_text = ""
-        self.tttr = self.tttr_from_payload(self.get_client().load_tttr(path, include_arrays=True))
+        data = self.tttr_from_payload(self.get_client().load_tttr(path, include_arrays=True))
+        self.tttr = data
         self.tttr_path = path
-        data = self.tttr
         if data.micro_time_resolution_ns:
             self.tmax_ns = round(data.n_microtime_channels * data.micro_time_resolution_ns, 3)
         self._status(
@@ -367,7 +370,7 @@ class _FlcModel:
             n_microtime_channels=n_channels,
             seed=1,
         )
-        self.tttr = api.TttrData(
+        simulated = api.TttrData(
             macro_times=stream.macro_times,
             micro_times=stream.micro_times,
             routing_channels=np.zeros(stream.macro_times.size, dtype=np.int64),
@@ -375,10 +378,11 @@ class _FlcModel:
             micro_time_resolution_ns=stream.micro_time_resolution_ns,
             n_microtime_channels=stream.n_microtime_channels,
         )
+        self.tttr = simulated
         self.tttr_path = None
         self.tmax_ns = round(stream.n_microtime_channels * stream.micro_time_resolution_ns, 3)
         self._status(
-            f"Simulated {self.tttr.n_photons:,} photons "
+            f"Simulated {simulated.n_photons:,} photons "
             f"(tau={self.sim_tau1_ns:g}/{self.sim_tau2_ns:g} ns, "
             f"k12={self.sim_k12:g} k21={self.sim_k21:g}/s). Press Run."
         )

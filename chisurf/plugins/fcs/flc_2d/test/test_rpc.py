@@ -48,3 +48,14 @@ def test_flc_client_lifetime_spectrum():
     assert len(result["tau_grid"]) == 12
     assert len(result["amplitudes"]) == 12
     assert np.isfinite(result["chi2"])
+
+
+def test_fit_handler_without_a_bin_cap_uses_the_api_default():
+    """An ``flc2d.fit`` request that omits ``max_bins`` fits instead of failing on ``max(1, None)``."""
+    from chisurf.plugins.fcs.flc_2d.backend.services import fit_handler
+
+    t = np.linspace(0.0, 10.0, 32)
+    decay = np.exp(-t / 2.0)
+    reply = fit_handler(np.outer(decay, decay).tolist(), t.tolist(), n_components=8)
+    assert reply["ok"], reply.get("error")
+    assert len(reply["result"]["tau_grid"]) == 8

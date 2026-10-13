@@ -84,7 +84,7 @@ def record_type_for_device(device) -> int:
         return int(explicit)
     device_type = getattr(device, "device_type", None)
     try:
-        return DEVICE_RECORD_TYPES[device_type]
+        return DEVICE_RECORD_TYPES[str(device_type)]
     except KeyError:
         raise ValueError(
             f"no record type known for device type {device_type!r}; give the "
@@ -323,18 +323,19 @@ class AcquisitionPipeline:
 
         self.total_photons = 0
         self.last_macro_time = 0
-        self._first_macro_time = None
+        self._first_macro_time: int | None = None
         self._channel_totals = [0] * n_windows
 
-        self._count_rate_times = deque(maxlen=cfg.max_countrate_points)
-        self._count_rate_data = [
+        self._count_rate_times: deque[float] = deque(maxlen=cfg.max_countrate_points)
+        self._count_rate_data: list[deque[float]] = [
             deque(maxlen=cfg.max_countrate_points) for _ in range(n_windows + 1)
         ]
-        self._macrotime_diffs = deque(maxlen=cfg.max_macrotime_points)
-        self._macrotime_stamps = deque(maxlen=cfg.max_macrotime_points)
-        self._last_photon_of_chunk = None
+        self._macrotime_diffs: deque[float] = deque(maxlen=cfg.max_macrotime_points)
+        self._macrotime_stamps: deque[float] = deque(maxlen=cfg.max_macrotime_points)
+        self._last_photon_of_chunk: int | None = None
 
-        self.stop_reason = None
+        #: why the acquisition stopped (a limit reached), ``None`` while it runs
+        self.stop_reason: str | None = None
 
     # ------------------------------------------------------------------
     # The push

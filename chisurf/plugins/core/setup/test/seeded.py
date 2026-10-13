@@ -70,7 +70,7 @@ def prepare(root, monkeypatch=None):
         monkeypatch.setattr(user_view_model, "make_mmfdb_client", lambda: client)
         monkeypatch.setattr(user_model, "make_mmfdb_client", lambda: client, raising=False)
         # Settings are read once at import; show the seeded acquisition section.
-        from chisurf.settings import gui as gui_settings
+        from chisurf.core.settings import gui as gui_settings
 
         gui_settings["acquisition"] = {
             "chunk_size": 8192,

@@ -31,6 +31,7 @@ the averaging driver fixes the amplitudes at the scaled start distribution
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -183,7 +184,8 @@ def fit_2d_mem_workflow(
     A0 = gaussian_initial_distribution(tau, estimates)
     A0 = scale_initial_distribution(A0, E_fit, float(np.max(lags_fit)))
     width = float(lin_axis[1] - lin_axis[0])
-    common = dict(
+    fit_q = functools.partial(
+        minimize_q,
         tau_ns=tau,
         mi_type=mi_type,
         t_min_ns=t_min_ns,
@@ -195,7 +197,7 @@ def fit_2d_mem_workflow(
         regulator_factor=regulator_factor,
     )
 
-    short = minimize_q(
+    short = fit_q(
         short_fit,
         axis_fit,
         E_fit,
@@ -205,13 +207,12 @@ def fit_2d_mem_workflow(
         fix_correlations=fix_correlations,
         fix_y0=fix_y0,
         n_regulator_trials=n_short_trials,
-        **common,
     )
     short_y0 = float(short.y0[0]) * width
 
     per_lag, G_init, y_init = [], [], []
     for t in range(lags_fit.shape[0]):
-        r = minimize_q(
+        r = fit_q(
             lags_fit[t],
             axis_fit,
             E_fit,
@@ -221,13 +222,12 @@ def fit_2d_mem_workflow(
             fix_correlations=fix_correlations,
             fix_y0=fix_y0,
             n_regulator_trials=n_lag_trials,
-            **common,
         )
         per_lag.append(r)
         G_init.append(r.correlations[0])
         y_init.append(r.y0[0])
 
-    glob = minimize_q(
+    glob = fit_q(
         lags_fit,
         axis_fit,
         E_fit,
@@ -238,21 +238,23 @@ def fit_2d_mem_workflow(
         fix_correlations=fix_correlations,
         fix_y0=fix_y0,
         n_regulator_trials=n_global_trials,
-        **common,
     )
-    kw = dict(floor_zeros=False, mi=glob.mi, regulator=glob.regulator)
-    rep_lin = reproduce_global_2d(
-        glob.amplitudes, glob.correlations, E_lin, lin_axis, y0=glob.y0, data=lags_lin, **kw
+    reproduce = functools.partial(
+        reproduce_global_2d, floor_zeros=False, mi=glob.mi, regulator=glob.regulator
     )
-    rep_log = reproduce_global_2d(
+    rep_lin = reproduce(
+        glob.amplitudes, glob.correlations, E_lin, lin_axis, y0=glob.y0, data=lags_lin
+    )
+    rep_log = reproduce(
         glob.amplitudes,
         glob.correlations,
         basis.binned_log,
         log_axis,
         y0=glob.y0,
         data=lags_log,
-        **kw,
     )
+    if rep_lin.flc_map is None:  # reproduce_global_2d always builds the lag stack
+        raise RuntimeError("the global reproduction returned no FLC maps")
     return Mem2DWorkflowResult(
         rise_point_irf=int(rise_point_irf),
         tau_ns=tau,

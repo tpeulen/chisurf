@@ -80,6 +80,28 @@ def _coerce(name: str, value: Any) -> Any:
 class LivePlots:
     """Settings, derived series and drawing of the five live acquisition plots."""
 
+    # The scalar settings (set from ``DEFAULTS``; the per-curve ``*_ch{i}`` /
+    # ``*_show{i}`` ones are read by name).
+    decay_log_y: bool
+    decay_every: int
+    corr_log_x: bool
+    corr_every: int
+    rate_all_show: bool
+    rate_log_y: bool
+    rate_rolling: bool
+    rate_window: int
+    rate_binning: int
+    rate_every: int
+    mcs_bin_width_ms: float
+    mcs_rollaround_s: float
+    mcs_every: int
+    mcs_manual_y: bool
+    mcs_y_min: float
+    mcs_y_max: float
+    macro_show: bool
+    macro_type: str
+    macro_every: int
+
     def __init__(self) -> None:
         """Build with the legacy tool's defaults and no data."""
         for name, value in DEFAULTS.items():

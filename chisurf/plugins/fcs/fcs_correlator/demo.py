@@ -13,7 +13,9 @@ import hashlib
 import json
 import os
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
+from typing import TypedDict
 
 import numpy as np
 
@@ -33,7 +35,26 @@ STREAM_NAME = "fcs_demo.spc"
 
 SPC_FILENAME = STREAM_NAME
 MEMBERS = (SPC_FILENAME,)
-DEMO = {
+
+
+class DemoConfig(TypedDict):
+    """The generator's parameters, as recorded in ``demo.json``."""
+
+    seed: int
+    duration_s: float
+    molecule_rate_hz: float
+    transit_s: float
+    photons_per_transit: float
+    background_hz: float
+    macro_resolution_s: float
+    micro_resolution_s: float
+    micro_channels: int
+    lifetime_s: float
+    routing_channels: int
+    format: str
+
+
+DEMO: DemoConfig = {
     "seed": SEED,
     "duration_s": DURATION_S,
     "molecule_rate_hz": MOLECULE_RATE,
@@ -49,9 +70,9 @@ DEMO = {
 }
 
 
-def photon_stream(seed: int = SEED, *, config: dict | None = None):
+def photon_stream(seed: int = SEED, *, config: DemoConfig | None = None):
     """``(macro, micro, routing)``: the demo photons, sorted by arrival."""
-    values = dict(DEMO) if config is None else config
+    values = DEMO.copy() if config is None else config
     rng = np.random.default_rng(seed)
     n_mol = rng.poisson(values["molecule_rate_hz"] * values["duration_s"])
     centres = rng.uniform(0.0, values["duration_s"], n_mol)
@@ -79,7 +100,7 @@ def demo_folder() -> Path:
     return get_path("settings") / "demos" / "fcs_correlator"
 
 
-def _cache_is_good(folder: Path, config: dict) -> bool:
+def _cache_is_good(folder: Path, config: Mapping[str, object]) -> bool:
     """Reuse only a complete artifact set with matching parameters and byte hashes."""
     try:
         record = json.loads((folder / "demo.json").read_text(encoding="utf-8"))
@@ -115,7 +136,7 @@ def make_demo(folder: str | Path | None = None, *, overwrite: bool = False) -> P
     import tttrlib
 
     folder = Path(folder) if folder is not None else demo_folder()
-    config = dict(DEMO)
+    config = DEMO.copy()
     if not overwrite and _cache_is_good(folder, config):
         return folder / SPC_FILENAME
     folder.mkdir(parents=True, exist_ok=True)

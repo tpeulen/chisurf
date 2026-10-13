@@ -69,7 +69,7 @@ class AcquisitionSettingsModel:
 
     def __init__(self, config: dict | None = None, persist=None) -> None:
         if config is None:
-            from chisurf.settings import gui as gui_settings
+            from chisurf.core.settings import gui as gui_settings
 
             config = gui_settings.setdefault("acquisition", {})
         self.config = config

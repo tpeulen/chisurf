@@ -310,16 +310,31 @@ def reproduce_result(result, basis: np.ndarray, *, data: np.ndarray | None = Non
     ``data`` (a decay, a matrix, or the lag stack) adds the MATLAB chi-square.
     """
     E = np.asarray(basis, dtype=float)
-    kw = dict(per_bin_width=False, floor_zeros=False, data=data)
     axis = np.arange(E.shape[0], dtype=float)
     if hasattr(result, "correlations"):  # global multi-lag MEM
-        return reproduce_global_2d(result.amplitudes, result.correlations, E, axis, **kw)
+        return reproduce_global_2d(
+            result.amplitudes,
+            result.correlations,
+            E,
+            axis,
+            per_bin_width=False,
+            floor_zeros=False,
+            data=data,
+        )
     if hasattr(result, "spectrum"):  # 2D ILT / MEM: the map is the fitted parameter
         P = np.asarray(result.spectrum, dtype=float)
         model = fdc_model(E, P, result.offset)
         chi2 = None if data is None else _chi2(data, data, model)
         return Reproduction(model, P, flc_map=P, y0=float(result.offset), chi2=chi2)
-    return reproduce_1d(result.amplitudes, E, axis, y0=result.offset, **kw)
+    return reproduce_1d(
+        result.amplitudes,
+        E,
+        axis,
+        y0=result.offset,
+        per_bin_width=False,
+        floor_zeros=False,
+        data=data,
+    )
 
 
 # ------------------------------------------------------------------ estimates vectors
@@ -343,9 +358,11 @@ def _unpack_A(cur: _Cursor, initial_A, fix_A, n_comp: int, n_states: int) -> np.
     init = None if initial_A is None else np.atleast_2d(np.asarray(initial_A, float).T).T
     flags = np.broadcast_to(np.asarray(fix_A).ravel(), (n_states,))
     for k in range(n_states):
-        if flags[k] == 1:
+        if flags[k] in (1, 3) and init is None:
+            raise ValueError("fixed (1) or scaled (3) amplitudes need initial amplitudes")
+        if flags[k] == 1 and init is not None:
             A[:, k] = init[:, k]
-        elif flags[k] == 3:
+        elif flags[k] == 3 and init is not None:
             A[:, k] = init[:, k] * cur.take(True)
         else:
             for i in range(n_comp):

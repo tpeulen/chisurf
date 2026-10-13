@@ -45,6 +45,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
+import numpy.typing as npt
 
 from .core import earlier_same_time_pairs, fdc_bin_index
 
@@ -96,7 +97,7 @@ class SeparateDataFDC:
         """Number of molecules."""
         return int(self.photon_counts.size)
 
-    def total(self, order: Sequence[int] | None = None) -> dict[str, np.ndarray]:
+    def total(self, order: npt.ArrayLike | None = None) -> dict[str, np.ndarray]:
         """Sum the molecules in ``order`` (repeats allowed) into the driver's matrices."""
         idx = np.arange(self.n_molecules) if order is None else np.asarray(order, dtype=int)
         s = {k: v[idx].sum(axis=0) for k, v in self.raw.items()}
@@ -286,7 +287,7 @@ def separate_data_2d_fdc(
     lint_imax = t_imax // f
     dT_longest = int(lags.max())
 
-    per = {
+    per: dict[str, list[np.ndarray]] = {
         k: []
         for k in (
             "lags_lin",
@@ -404,12 +405,12 @@ def _drop_earlier_same_time(macro, micro, lin0, log0, t_start, cap, t_min, axes)
 
 
 def bootstrap_order(
-    photon_counts: Sequence[int],
+    photon_counts: npt.ArrayLike,
     *,
     photon_factor: float = 1.0,
     group_factor: int = 1,
     rng: np.random.Generator | None = None,
-    permutation: Sequence[int] | None = None,
+    permutation: npt.ArrayLike | None = None,
 ) -> tuple[np.ndarray, int]:
     """Draw molecules the way the reference driver does.
 
@@ -453,7 +454,10 @@ def bootstrap_2d_fdc(
     sum and the spread is zero.
     """
     rng = np.random.default_rng(seed)
-    orders, photons, spans, reps = [], [], [], {}
+    orders: list[np.ndarray] = []
+    photons: list[int] = []
+    spans: list[int] = []
+    reps: dict[str, list[np.ndarray]] = {}
     for _ in range(int(n_replicates)):
         order, total = bootstrap_order(
             separate.photon_counts, photon_factor=photon_factor, group_factor=group_factor, rng=rng

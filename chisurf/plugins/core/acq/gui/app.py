@@ -60,7 +60,7 @@ SETTINGS_DEVICE_TYPES = {
 def stored_acquisition_settings() -> dict[str, Any]:
     """The ``gui.acquisition`` section Setup -> Settings -> Acquisition writes (``{}`` when there is none)."""
     try:
-        from chisurf.settings import gui as gui_settings
+        from chisurf.core.settings import gui as gui_settings
 
         stored = gui_settings.get("acquisition") or {}
     except Exception:  # noqa: BLE001 - a missing or unreadable settings file means "nothing configured"
@@ -167,7 +167,8 @@ class AcquisitionNativeModel:
         self.device: Any | None = None
         self.progress_percent = 0.0
         self._events: queue.Queue[tuple[str, Any]] = queue.Queue()
-        self._cancel, self._thread = threading.Event(), None
+        self._cancel = threading.Event()
+        self._thread: threading.Thread | None = None
         self._device_started = threading.Event()
         self._device_stop_sent = threading.Event()
         self._device_stop_lock = threading.Lock()
@@ -182,8 +183,11 @@ class AcquisitionNativeModel:
     @property
     def channels(self) -> tuple[int, int, int, int]:
         """Return the legacy four-window routing order for :class:`PipelineConfig`."""
-        return tuple(
-            int(v) for v in (self.channel_0, self.channel_1, self.channel_2, self.channel_3)
+        return (
+            int(self.channel_0),
+            int(self.channel_1),
+            int(self.channel_2),
+            int(self.channel_3),
         )
 
     def enabled(self, action: str) -> bool:
@@ -366,6 +370,8 @@ class AcquisitionNativeModel:
         self._cancel.clear()
         self._device_started.clear()
         self._device_stop_sent.clear()
+        target: Callable[..., None]
+        args: tuple[Any, ...]
         if self.device_type == "SIMULATION":
             # The form's photon limit, seed and brightness reach the run (they were read once, at open, into
             # the advanced JSON, so editing them afterwards changed nothing).
@@ -510,7 +516,7 @@ class AcquisitionNativeModel:
             # initialization, rather than retaining a hardware handle invisibly.
             if self.device is not None:
                 self.close()
-            self.__init__(self.device_factory, self.settings_path_provider)
+            type(self).__init__(self, self.device_factory, self.settings_path_provider)
             self.status = "Settings restored to defaults; no new hardware was contacted."
 
     def open_simulation_setup(self) -> bool:
@@ -697,7 +703,8 @@ class AcquisitionApp(ImApp):
         self.sections = json.loads((HERE / "acq_emtk.view.json").read_text(encoding="utf-8"))[
             "sections"
         ]
-        self.form, self.item_rects = FormState(), {}
+        self.form = FormState()
+        self.item_rects: dict[str, tuple] = {}
         self.setup_buffers: dict[str, str] = {}
         self.form.custom["pipeline_results"] = self._draw_results
         for plot_key in (
@@ -708,8 +715,10 @@ class AcquisitionApp(ImApp):
             "live_macrotime",
         ):
             self.form.custom[plot_key] = lambda *a: self.model.live.draw_plot(*a)
-        self.dialog, self.dialog_action = None, ""
-        self.setup_open, self.setup_kind, self.setup_model = False, "", None
+        self.dialog: FileDialog | None = None
+        self.dialog_action = ""
+        self.setup_open, self.setup_kind = False, ""
+        self.setup_model: BHSetupModel | PicoQuantSetupModel | BrickMicSetupModel | None = None
         #: The simulation setup dialog while one is open (its own windows; not a device card).
         self.sim_setup: SimulationSetupDialog | None = None
         self.setup_window = DialogWindow("Device Setup", size=(760, 560), key="acq_device_setup")
@@ -764,30 +773,31 @@ class AcquisitionApp(ImApp):
         """Open a native file or folder dialog requested by the model."""
         self.dialog_action = action
         if action == "output_folder":
-            self.dialog = FileDialog("Choose acquisition output folder", mode="folder")
-        else:
-            self.dialog = FileDialog(
-                action.replace("_", " ").title(),
-                mode="save" if action == "save_settings" else "open",
-                filters="JSON (*.json)",
-                filename="acquisition_settings.json",
-            )
-        if action.startswith("sim_setup_"):
+            dialog = FileDialog("Choose acquisition output folder", mode="folder")
+        elif action.startswith("sim_setup_"):
             saving = action == "sim_setup_save"
-            self.dialog = FileDialog(
+            dialog = FileDialog(
                 "Save simulation JSON" if saving else "Load simulation JSON",
                 mode="save" if saving else "open",
                 filters="JSON (*.json)",
                 filename="simulation_config.json",
             )
-        if action.startswith("bh_"):
-            self.dialog = FileDialog(
+        elif action.startswith("bh_"):
+            dialog = FileDialog(
                 "Save BH settings" if action == "bh_save" else "Load BH settings",
                 mode="save" if action == "bh_save" else "open",
                 filters="JSON (*.json)",
                 filename="bh_spc_settings.json",
             )
-        self.file_window.title = self.dialog.title
+        else:
+            dialog = FileDialog(
+                action.replace("_", " ").title(),
+                mode="save" if action == "save_settings" else "open",
+                filters="JSON (*.json)",
+                filename="acquisition_settings.json",
+            )
+        self.dialog = dialog
+        self.file_window.title = dialog.title
         self.file_window.show()
 
     def _draw_file_dialog(self, box: tuple) -> None:
@@ -805,10 +815,13 @@ class AcquisitionApp(ImApp):
             elif self.dialog_action.startswith("sim_setup_"):
                 if self.sim_setup is not None:
                     self.sim_setup.file_chosen(self.dialog_action[len("sim_setup_") :], path)
-            elif self.dialog_action == "bh_save":
-                self.setup_model.save_json(path)
-            elif self.dialog_action == "bh_load":
-                self.setup_model.load_json(path)
+            elif self.dialog_action in ("bh_save", "bh_load"):
+                # only the BH card offers these; a card closed meanwhile ignores the file
+                if isinstance(self.setup_model, BHSetupModel):
+                    if self.dialog_action == "bh_save":
+                        self.setup_model.save_json(path)
+                    else:
+                        self.setup_model.load_json(path)
             else:
                 self.model.output_folder = str(path)
                 self.model.status = (
@@ -825,8 +838,9 @@ class AcquisitionApp(ImApp):
         if self.setup_kind == "BH_SPC":
             self.setup_model = BHSetupModel(self.model.device, self.model.bh_simulation_mode)
         elif self.setup_kind == "PICOQUANT":
-            self.setup_model = PicoQuantSetupModel(self.model.device, self.model.photon_limit)
-            self.setup_model.detect_status()
+            picoquant = PicoQuantSetupModel(self.model.device, self.model.photon_limit)
+            picoquant.detect_status()
+            self.setup_model = picoquant
         elif self.setup_kind == "BRICKMIC":
             self.setup_model = BrickMicSetupModel(self.model.device)
         else:
@@ -909,9 +923,8 @@ class AcquisitionApp(ImApp):
             value = min(maximum, value)
         return value
 
-    def _draw_bh_setup(self) -> None:
+    def _draw_bh_setup(self, setup: BHSetupModel) -> None:
         """Render all retained BH setup groups using stable native input IDs."""
-        setup: BHSetupModel = self.setup_model
         if im.button(tr("Detect Cards") + "##bh_detect"):
             setup.detect_cards()
         im.set_item_tooltip(
@@ -1022,9 +1035,8 @@ class AcquisitionApp(ImApp):
         )
         self.item_rects["setup_apply"] = im.get_item_rect()
 
-    def _draw_picoquant_setup(self) -> None:
+    def _draw_picoquant_setup(self, setup: PicoQuantSetupModel) -> None:
         """Render retained PicoQuant information and the global stop mapping."""
-        setup: PicoQuantSetupModel = self.setup_model
         im.text_wrapped(
             tr(
                 "PicoQuant devices are configured by snAPI, firmware, and INI files. This card does not claim a physical connection."
@@ -1058,9 +1070,8 @@ class AcquisitionApp(ImApp):
         )
         self.item_rects["setup_apply"] = im.get_item_rect()
 
-    def _draw_brickmic_setup(self) -> None:
+    def _draw_brickmic_setup(self, setup: BrickMicSetupModel) -> None:
         """Render the retained BrickMic configuration fields with stable native IDs."""
-        setup: BrickMicSetupModel = self.setup_model
         im.text_wrapped(
             tr(
                 "BrickMic hardware acquisition and SPC output settings. "
@@ -1094,12 +1105,13 @@ class AcquisitionApp(ImApp):
         if not self.setup_open:
             return
         close = self.setup_window.begin(box)
-        if self.setup_kind == "BH_SPC":
-            self._draw_bh_setup()
-        elif self.setup_kind == "PICOQUANT":
-            self._draw_picoquant_setup()
-        elif self.setup_kind == "BRICKMIC":
-            self._draw_brickmic_setup()
+        setup = self.setup_model
+        if isinstance(setup, BHSetupModel):
+            self._draw_bh_setup(setup)
+        elif isinstance(setup, PicoQuantSetupModel):
+            self._draw_picoquant_setup(setup)
+        elif isinstance(setup, BrickMicSetupModel):
+            self._draw_brickmic_setup(setup)
         if im.button(tr("OK / close") + "##setup_ok"):
             self._close_device_setup()
         im.set_item_tooltip(

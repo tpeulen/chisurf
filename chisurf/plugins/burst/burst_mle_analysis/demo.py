@@ -6,6 +6,7 @@ import hashlib
 import json
 import tempfile
 from pathlib import Path
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -16,7 +17,7 @@ SIGNAL_LIFETIME_NS = 2.0
 MICRO_RESOLUTION_S = 32e-12
 CHANNELS = 1024
 MACRO_RESOLUTION_S = MICRO_RESOLUTION_S * CHANNELS
-SETUP = {
+SETUP: dict[str, Any] = {
     "detectors": {
         "synthetic": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0, "l1": 0.0, "l2": 0.0}
     },
@@ -34,7 +35,26 @@ SETUP = {
 }
 
 
-DEMO = {
+class DemoConfig(TypedDict):
+    """The generator's parameters, as recorded in ``demo.json``."""
+
+    seed: int
+    burst_count: int
+    photons_per_burst: int
+    signal_lifetime_ns: float
+    micro_resolution_s: float
+    channels: int
+    macro_resolution_s: float
+    reference_photons: int
+    background_photons: int
+    prompt_mean_channels: float
+    prompt_sigma_channels: float
+    macro_ticks_per_photon: int
+    #: the Setup tool's settings document (detectors, windows, reading)
+    setup: dict[str, Any]
+
+
+DEMO: DemoConfig = {
     "seed": SEED,
     "burst_count": BURST_COUNT,
     "photons_per_burst": BURST_PHOTONS,
@@ -82,7 +102,8 @@ def make_demo(
     raw = folder / "synthetic_mle.ptu"
     bur = folder / "analysis" / "bur4" / "synthetic_mle.bur"
     manifest = folder / "demo.json"
-    settings = {**DEMO, "seed": seed}
+    settings = DEMO.copy()
+    settings["seed"] = seed
     artifacts = (
         Path("synthetic_mle.ptu"),
         Path("analysis/bur4/synthetic_mle.bur"),

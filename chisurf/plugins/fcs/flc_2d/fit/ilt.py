@@ -367,13 +367,13 @@ def lcurve_1d(
         regs = np.geomspace(1e-6, 1e2, n_points)
     else:
         regs = np.geomspace(s2.max() * 1e-6, s2.max() * 1e2, n_points)
-    res, sol = [], []
+    residual_norms, solution_norms = [], []
     for r in regs:
         c = _solve_reg_L(Wd, wy, L, float(r), method)
-        res.append(float(np.linalg.norm(Wd @ c - wy)))
-        sol.append(float(np.linalg.norm(L @ c)))
-    res = np.asarray(res)
-    sol = np.asarray(sol)
+        residual_norms.append(float(np.linalg.norm(Wd @ c - wy)))
+        solution_norms.append(float(np.linalg.norm(L @ c)))
+    res = np.asarray(residual_norms)
+    sol = np.asarray(solution_norms)
     chosen = _lcurve_reg(Wd, wy) if reg_order <= 0 else _lcurve_reg_general(Wd, wy, L, method)
     j = int(np.argmin(np.abs(np.log(regs) - np.log(chosen))))
     return LCurveData(reg=regs, residual_norm=res, solution_norm=sol, corner_index=j)

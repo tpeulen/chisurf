@@ -33,6 +33,16 @@ def _array_or_none(values: Any, *, dtype: Any = float) -> np.ndarray | None:
     return np.asarray(values, dtype=dtype)
 
 
+#: the default bin cap of :func:`api.two_d_spectrum`
+_MAX_BINS = 80
+
+
+def _tau_range(values: Any) -> tuple[float, float]:
+    """The ``(min, max)`` lifetime range of a request, 0.3-8 ns when it gives none."""
+    low, high = values or (0.3, 8.0)
+    return float(low), float(high)
+
+
 def _tttr_payload(data: api.TttrData, *, include_arrays: bool = False) -> dict[str, Any]:
     """Serialize TTTR metadata and optionally photon arrays."""
     payload: dict[str, Any] = {
@@ -108,19 +118,24 @@ def fit_handler(
     """Handle ``flc2d.fit`` by inverting a 2D-FDC matrix."""
     try:
         fit_mode = str(mode).lower()
-        kwargs = {
-            "tau_range": tuple(tau_range or (0.3, 8.0)),
-            "n_components": int(n_components),
-            "irf": _array_or_none(irf),
-            "irf_time_ns": _array_or_none(irf_time_ns),
-            "max_bins": max_bins,
-        }
         mat = np.asarray(matrix, dtype=float)
         time_axis = np.asarray(time_axis_ns, dtype=float)
         if fit_mode == "mem":
             result = api.fit_mem_2d(mat, time_axis)
         else:
-            result = api.two_d_spectrum(mat, time_axis, method=fit_mode, reg=reg, **kwargs)
+            result = api.two_d_spectrum(
+                mat,
+                time_axis,
+                method=fit_mode,
+                reg=reg,
+                tau_range=_tau_range(tau_range),
+                n_components=int(n_components),
+                irf=_array_or_none(irf),
+                irf_time_ns=_array_or_none(irf_time_ns),
+                # an omitted bin cap is the API's 80; ``None`` itself reached
+                # ``max(1, None)`` in the rebinning and failed the request
+                max_bins=_MAX_BINS if max_bins is None else int(max_bins),
+            )
         return _ok(
             {
                 "spectrum": result.spectrum.tolist(),
@@ -154,7 +169,7 @@ def lifetime_spectrum_handler(
             np.asarray(micro_times, dtype=np.int64),
             n_microtime_bins=int(n_microtime_bins),
             micro_time_resolution_ns=float(micro_time_resolution_ns),
-            tau_range=tuple(tau_range or (0.3, 8.0)),
+            tau_range=_tau_range(tau_range),
             n_components=int(n_components),
             irf=_array_or_none(irf),
             irf_time_ns=_array_or_none(irf_time_ns),
@@ -192,7 +207,7 @@ def lifetime_lcurve_handler(
             np.asarray(micro_times, dtype=np.int64),
             n_microtime_bins=int(n_microtime_bins),
             micro_time_resolution_ns=float(micro_time_resolution_ns),
-            tau_range=tuple(tau_range or (0.3, 8.0)),
+            tau_range=_tau_range(tau_range),
             n_components=int(n_components),
             irf=_array_or_none(irf),
             irf_time_ns=_array_or_none(irf_time_ns),
