@@ -57,14 +57,14 @@ def add_backbone_amide_hydrogens(
     tetrahedral_cos = -1.0 / 3.0
     tetrahedral_sin = (1.0 - tetrahedral_cos**2) ** 0.5
 
-    residues: list[tuple[str, int, list[int]]] = []
+    residues: list[tuple[str, tuple[str, int], list[int]]] = []
     index_by_key: dict[tuple[str, int], int] = {}
     for i in range(atoms.size):
         key = (str(atoms["chain"][i]), int(atoms["res_id"][i]))
         pos = index_by_key.get(key)
         if pos is None:
             index_by_key[key] = len(residues)
-            residues.append([str(atoms["res_name"][i]), key, [i]])
+            residues.append((str(atoms["res_name"][i]), key, [i]))
         else:
             residues[pos][2].append(i)
 
@@ -221,6 +221,10 @@ class Structure(chisurf.core.base.Base):
 
     """
 
+    #: The PDB the structure was read from or is written to, if any.
+    filename: str | None
+    _filename: str | None
+
     def __init__(
         self,
         p_object=None,
@@ -259,8 +263,8 @@ class Structure(chisurf.core.base.Base):
         self._filename = filename
         self._atoms = None
         self._residue_dict = None
-        self._potentials = list()
-        self._sequence = None
+        self._potentials: list = list()
+        self._sequence: typing.Dict | None = None
         self.verbose = verbose
         self.io = chisurf.core.fio.structure.coordinates
         self.pdbid = None
@@ -472,6 +476,8 @@ class Structure(chisurf.core.base.Base):
         """
         if filename is None:
             filename = self._filename
+        if filename is None:
+            raise ValueError("the structure has no file; pass a filename to write to")
         aw = np.copy(self.atoms)
         aw["xyz"] = self.xyz
         self.io.write_pdb(
@@ -858,18 +864,19 @@ def average(
     'c:\\users\\peulen\\appdata\\local\\temp\\average.pdb'
     """
     if weights is None:
-        weights = np.ones(len(structures), dtype=np.float64)
-        weights /= weights.sum()
+        w = np.ones(len(structures), dtype=np.float64)
+        w /= w.sum()
     else:
-        weights = np.array(weights)
+        w = np.array(weights)
     avg = chisurf.core.structure.Structure()
     avg.atoms = np.copy(structures[0].atoms)
     avg.xyz *= 0.0
 
     for i, s in enumerate(structures):
-        avg.xyz += weights[i] * s.xyz
+        avg.xyz += w[i] * s.xyz
     if filename is None:
-        filename = os.path.join(tempfile.tempdir, "average.pdb")
+        # ``tempfile.tempdir`` stays None until something asks for it.
+        filename = os.path.join(tempfile.gettempdir(), "average.pdb")
     if write:
         if verbose:
             print(f"Writing average to file: {filename}")

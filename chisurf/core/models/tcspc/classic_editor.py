@@ -121,10 +121,15 @@ class _Group:
 
     name = ""
 
-    def __init__(self, view, name: str = ""):
+    def __init__(self, view: ClassicTCSPCEditor, name: str = ""):
         self._view = view
         self.name = name
         self._rows: dict[str, FittingParameter] = {}
+
+    @property
+    def parameters_all(self) -> list:
+        """The group's rows; each group defines its own."""
+        raise NotImplementedError
 
     @property
     def parameters_all_dict(self) -> dict:
@@ -139,7 +144,7 @@ class _Group:
         return len(self.parameters_all)
 
     # -- BFF parameters -------------------------------------------------------
-    def _by_id(self) -> dict[str, FittingParameter]:
+    def _by_id(self) -> dict[str | None, FittingParameter]:
         return {getattr(p, "canonical_id", None): p for p in self._view.parameters_all}
 
     def _parameters(self, ids: typing.Sequence[str]) -> list:
@@ -172,6 +177,8 @@ class _Group:
 
     def _n_channels(self) -> int:
         data = getattr(self._view.fit, "data", None)
+        if data is None:
+            return 0
         try:
             return int(len(data.x))
         except Exception:
@@ -293,21 +300,24 @@ class Convolve(_Group):
         ):
             if not self._has(scalar):
                 continue
-            rows.append(
-                self._row(
-                    key,
-                    lambda scalar=scalar, key=key, label=label: ScalarRow(
-                        key,
-                        (lambda: self._stop_ns(scalar))
-                        if key == "irf_stop"
-                        else (lambda: self._get(scalar, 0.0)),
-                        lambda v, scalar=scalar: self._set(scalar, v),
-                        display_binding=model_scalar_binding(scalar),
-                        label_text=label,
-                        description="Region of the IRF used for the convolution (ns).",
-                    ),
+
+            # Defaults bind this iteration's names; the row reads them later.
+            def irf_row(scalar: str = scalar, key: str = key, label: str = label) -> ScalarRow:
+                getter: typing.Callable[[], float] = (
+                    (lambda: self._stop_ns(scalar))
+                    if key == "irf_stop"
+                    else (lambda: self._get(scalar, 0.0))
                 )
-            )
+                return ScalarRow(
+                    key,
+                    getter,
+                    lambda v: self._set(scalar, v),
+                    display_binding=model_scalar_binding(scalar),
+                    label_text=label,
+                    description="Region of the IRF used for the convolution (ns).",
+                )
+
+            rows.append(self._row(key, irf_row))
         rows += self._parameters(
             [
                 "instrument.response_background",
@@ -381,18 +391,17 @@ class Generic(_Group):
             ("tMeas", "t_decay", "Measurement time of the main TCSPC experiment."),
         ):
             if self._has(scalar):
-                rows.append(
-                    self._row(
+
+                def time_row(key: str = key, scalar: str = scalar, text: str = text) -> ScalarRow:
+                    return ScalarRow(
                         key,
-                        lambda key=key, scalar=scalar, text=text: ScalarRow(
-                            key,
-                            lambda: self._get(scalar, 1.0),
-                            lambda v: self._set(scalar, v),
-                            display_binding=model_scalar_binding(scalar),
-                            description=text,
-                        ),
+                        lambda: self._get(scalar, 1.0),
+                        lambda v: self._set(scalar, v),
+                        display_binding=model_scalar_binding(scalar),
+                        description=text,
                     )
-                )
+
+                rows.append(self._row(key, time_row))
         rows.append(
             self._row(
                 "PhB",
@@ -817,17 +826,16 @@ class PDDEMGroup(_Group):
         reports = self._view.presentation.get("reports", {})
         for key in ("alpha_a", "alpha_b"):
             if key in reports:
-                rows.append(
-                    self._row(
+
+                def efficiency_row(key: str = key) -> OutputRow:
+                    return OutputRow(
                         key,
-                        lambda key=key: OutputRow(
-                            key,
-                            lambda key=key: getattr(self, key),
-                            display_binding=computed_output_binding(f"pddem.{key}"),
-                            description="Energy transfer efficiency of the fluorophore.",
-                        ),
+                        lambda: getattr(self, key),
+                        display_binding=computed_output_binding(f"pddem.{key}"),
+                        description="Energy transfer efficiency of the fluorophore.",
                     )
-                )
+
+                rows.append(self._row(key, efficiency_row))
         return rows
 
     @property
@@ -838,8 +846,21 @@ class PDDEMGroup(_Group):
         return self.parameters_all
 
 
-class ClassicTCSPCEditor:
-    """Mixed into a TCSPC family's view class: the groups the classic editor addresses."""
+if typing.TYPE_CHECKING:
+    from chisurf.core.models.description import DescriptionModel
+
+    _Host = DescriptionModel
+else:
+    _Host = object
+
+
+class ClassicTCSPCEditor(_Host):
+    """Mixed into a TCSPC family's view class: the groups the classic editor addresses.
+
+    The host is a :class:`~chisurf.core.models.description.DescriptionModel`
+    (``description.py`` builds the class from both); type checkers see it as the
+    base so the scalar and parameter accessors used here resolve.
+    """
 
     def _classic(self, key: str, factory):
         groups = self.__dict__.setdefault("_classic_groups", {})

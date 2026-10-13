@@ -15,11 +15,11 @@ from .trajectory_data import rmsd as _rmsd
 
 
 class Universe:
-    def __init__(self, structure: Structure = None):
+    def __init__(self, structure: Structure | None = None):
         """Initialize Universe with an optional starting structure."""
         self.structures = [] if structure is None else [structure]
-        self.potentials = list()
-        self.scaling = list()
+        self.potentials: list = list()
+        self.scaling: list[float] = list()
 
     def addPotential(self, potential, scale: float = 1.0) -> None:
         """Add a potential with a scaling factor."""
@@ -28,7 +28,8 @@ class Universe:
 
     def removePotential(self, potentialNbr: int | None = None) -> None:
         """Remove a potential by index (default: last)."""
-        if potentialNbr == -1:
+        # ``None`` is the documented "last" too; ``pop(None)`` raised TypeError.
+        if potentialNbr is None or potentialNbr == -1:
             self.potentials.pop()
             self.scaling.pop()
         else:
@@ -40,7 +41,7 @@ class Universe:
         self.potentials = list()
         self.scaling = list()
 
-    def getEnergy(self, structure: Structure = None) -> float:
+    def getEnergy(self, structure: Structure | None = None) -> float:
         """Calculate total energy as sum of all potentials for a given structure."""
         for p in self.potentials:
             p.structure = structure
@@ -48,7 +49,7 @@ class Universe:
         E = Es.sum()
         return E
 
-    def getEnergies(self, structure: Structure = None) -> np.ndarray:
+    def getEnergies(self, structure: Structure | None = None) -> np.ndarray:
         """Calculate individual scaled energies for all potentials."""
         for p in self.potentials:
             p.structure = structure
@@ -185,7 +186,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         self.verbose = verbose
         self.center = center
         self._invert = inverse_trajectory
-        self._structure = None
+        self._structure: Structure | None = None
         self._filename = filename
 
         from . import trajectory_data as traj_data
@@ -227,10 +228,10 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
             self.center_coordinates()
 
         self.rmsd_ref_state = rmsd_ref_state
-        self.rmsd = list()
-        self.drmsd = list()
-        self.energy = list()
-        self.chi2r = list()
+        self.rmsd: list[float] = list()
+        self.drmsd: list[float] = list()
+        self.energy: list[float] = list()
+        self.chi2r: list[float] = list()
         self.offset = 0
 
     @staticmethod
@@ -268,7 +269,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         self._xyz = np.ascontiguousarray(v, dtype=np.float32)
 
     @property
-    def structure(self) -> Structure:
+    def structure(self) -> Structure | None:
         """The template structure used for the trajectory."""
         return self._structure
 
@@ -288,7 +289,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         self._invert = bool(v)
 
     @property
-    def filename(self) -> str:
+    def filename(self) -> str | None:
         """The filename of the trajectory"""
         return self._filename
 
@@ -301,12 +302,15 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
 
     @property
     def name(self) -> str:
-        """The name of the trajectory composed of the directory and the filename"""
-        try:
-            fn = copy.copy(self.directory + self.filename)
-            return fn.replace("/", "/ ")
-        except AttributeError:
+        """The name of the trajectory: its file path, or ``"None"`` without a file.
+
+        The path already holds the directory. Prefixing ``directory`` repeated
+        it, and a trajectory without a file raised TypeError (``str + None``)
+        past the ``except AttributeError`` meant to catch it.
+        """
+        if self.filename is None:
             return "None"
+        return self.filename.replace("/", "/ ")
 
     @property
     def rmsd_ref_state(self) -> int:
@@ -319,12 +323,14 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
     def rmsd_ref_state(self, ref_frame: int):
         """Set the reference frame for RMSD calculations and compute RMSDs."""
         self._rmsd_ref_state = ref_frame
-        self.rmsd = _rmsd(self, self, ref_frame)
+        # A list, as everywhere else: appending a frame extends it, which an
+        # array (what ``_rmsd`` returns) cannot do.
+        self.rmsd = [float(v) for v in _rmsd(self, self, ref_frame)]
 
     @property
     def directory(self) -> str:
         """Directory in which the filename of the trajectory is located in"""
-        return os.path.dirname(self.filename)
+        return os.path.dirname(self.filename or "")
 
     @property
     def reference(self) -> Structure:
@@ -434,8 +440,8 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
             next_drmsd = _rmsd(new_frame, frame_at(-2))
             next_rmsd = _rmsd(new_frame, frame_at(self.rmsd_ref_state))
         else:
-            next_drmsd = [0.0]
-            next_rmsd = [0.0]
+            next_drmsd = np.zeros(1)
+            next_rmsd = np.zeros(1)
         self.drmsd.append(float(next_drmsd[0]))
         self.rmsd.append(float(next_rmsd[0]))
         self.energy.append(energy)
