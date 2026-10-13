@@ -189,7 +189,11 @@ def test_python_m_chisurf_opens_the_emtk_surface(argv, tmp_path):
     pytest.importorskip("rendercanvas")
     shot = tmp_path / "shell.png"
     argv = [str(shot) if arg == "SHOT" else arg for arg in argv]
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
+    # A scratch settings folder: the run must never reach the user's layout or preferences.
+    settings = tmp_path / "settings"
+    env = dict(os.environ, QT_QPA_PLATFORM="offscreen", CHISURF_SETTINGS_DIR=str(settings))
+    real = Path.home() / ".chisurf" / "emtk" / "emtk_shell.docks.layout.json"
+    before = real.stat().st_mtime_ns if real.exists() else None
     result = subprocess.run(
         [sys.executable, "-m", "chisurf", *argv],
         capture_output=True,
@@ -201,6 +205,11 @@ def test_python_m_chisurf_opens_the_emtk_surface(argv, tmp_path):
         pytest.skip("no GPU adapter for the offscreen canvas")
     assert result.returncode == 0, result.stderr[-2000:]
     assert shot.is_file() and shot.stat().st_size > 1000
+    after = real.stat().st_mtime_ns if real.exists() else None
+    assert after == before, "a screenshot run wrote the user's shell layout"
+    assert not list(settings.glob("emtk/emtk_shell.docks.layout.json")), (
+        "a headless frame persists nothing, not even into the scratch folder"
+    )
 
 
 class _Opened(Exception):

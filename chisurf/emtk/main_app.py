@@ -1533,6 +1533,15 @@ def make_app(persist: bool = True, splash: Any = None) -> EmtkShellApp:
     return app
 
 
+def make_headless_app() -> EmtkShellApp:
+    """The shell for a headless frame (``--screenshot``, an offscreen canvas): nothing persisted.
+
+    A screenshot must not read the user's layout (the picture would depend on it) nor write it
+    back (it would replace the user's own), and it does not ask the update server.
+    """
+    return make_app(persist=False)
+
+
 def main(argv: list[str] | None = None) -> int:
     """Open the emtk shell (``python -m chisurf``): the splash window first, the main window when ready.
 
@@ -1553,7 +1562,9 @@ def main(argv: list[str] | None = None) -> int:
         from emtk.native import main as run_native
 
         return int(
-            run_native(["--app", "chisurf.emtk.main_app:make_app", "--title", "ChiSurf", *args])
+            run_native(
+                ["--app", "chisurf.emtk.main_app:make_headless_app", "--title", "ChiSurf", *args]
+            )
             or 0
         )
     size = None
@@ -1584,6 +1595,7 @@ __all__ = [
     "host_in_shell",
     "main",
     "make_app",
+    "make_headless_app",
     "menu_entries",
     "tile_grid",
 ]
