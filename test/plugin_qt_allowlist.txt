@@ -141,7 +141,6 @@ chisurf/plugins/core/help/gui/ask_panel.py
 chisurf/plugins/core/help/gui/figure_view.py
 chisurf/plugins/core/help/gui/tool.py
 chisurf/plugins/core/help/test/test_ask_panel_widget.py
-chisurf/plugins/core/help/test/test_emtk_help_parity.py
 chisurf/plugins/core/help/test/test_figures.py
 chisurf/plugins/core/help/test/test_widgets.py
 chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
@@ -178,9 +177,7 @@ chisurf/plugins/core/mmfdb_admin/test/test_protocols_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
 chisurf/plugins/core/project_browser/gui/tool.py
-chisurf/plugins/core/project_browser/test/test_emtk_project_browser_parity.py
 chisurf/plugins/core/project_browser/test/test_gui_headless.py
-chisurf/plugins/core/switch_user/test/test_emtk_switch_user_parity.py
 chisurf/plugins/icon_utils.py
 chisurf/plugins/misc/games/__init__.py
 chisurf/plugins/misc/games/breakout/__init__.py

@@ -1,15 +1,13 @@
 """The emtk help browser at parity with the Qt HelpWidget: start page, tree, breadcrumb, labels.
 
-The Qt facts come from the legacy ``HelpWidget`` built in a subprocess, so this
-process stays Qt-free for ``test_port_is_qt_free``.
+The Qt facts are ``qt_reference.json``, recorded from the legacy ``HelpWidget`` and frozen as a rule
+over the docs tree (see ``QT`` below), so this file imports no Qt.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -23,42 +21,70 @@ REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
 PAGE = REPO / "docs" / "concepts" / "fret.md"
 EMOJI = re.compile("[\U0001f000-\U0001ffff☀-➿️]")
 
-_QT_FACTS = r"""
-import html, json, re, sys, pathlib
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.core.help.gui.tool import HelpWidget
-w = HelpWidget()
-w.resize(1200, 800)
-home = w._home_html()
-w.navigate(pathlib.Path(sys.argv[1]))
-for _ in range(5):
-    qapp.processEvents()
-links = re.findall(r'<a href="([^"]+)">(?:<b>)?([^<]+)', home)
-print("FACTS" + json.dumps({
-    "home_links": [[pathlib.Path(html.unescape(h)).name, html.unescape(t)] for h, t in links],
-    "breadcrumb": w.breadcrumb_label.text(),
-}))
-"""
+#: The legacy Qt ``HelpWidget``'s facts, recorded from the live widget (offscreen) and frozen.
+#: Its start page and breadcrumb are a *function of the docs tree*, so what is frozen is the rule:
+#: ``qt_home_links`` / ``qt_breadcrumb`` below restate it Qt-free, and the record holds the live
+#: widget's output next to the rule's output on the same tree (``rule_*``), which were equal at
+#: ``_recorded.source_commit``. A docs edit then moves both sides together instead of going stale.
+QT = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-@pytest.fixture(scope="module")
-def qt_facts():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT_FACTS, str(PAGE)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None:
-        pytest.skip(f"Qt HelpWidget could not be built here: {proc.stderr[-800:]}")
-    return json.loads(line[len("FACTS") :])
+def qt_home_links(toc, root: Path) -> list[tuple[str, str]]:
+    """The Qt start page's links ``(file name, title)``: *Start here*, then one per top section.
+
+    Parameters
+    ----------
+    toc : Node
+        The documentation's table of contents (``app.model.toc``).
+    root : Path
+        The repository root the *Start here* paths are relative to.
+
+    Returns
+    -------
+    list of tuple of str
+    """
+    from chisurf.plugins.core.help.api import toc as help_toc
+
+    links = []
+    for relative, _description in QT["start_here"]:
+        path = root / relative
+        if path.is_file():
+            links.append((path.name, help_toc.page_title(path) or path.stem))
+    for section in toc.children if toc else []:
+        target = section.path or (section.children[0].path if section.children else None)
+        if target is not None:
+            links.append((Path(str(target)).name, section.title))
+    return links
+
+
+def qt_breadcrumb(toc, page: Path) -> str:
+    """The Qt breadcrumb of *page*: the titles of the sections above it, joined by `` › ``.
+
+    Parameters
+    ----------
+    toc : Node
+        The documentation's table of contents.
+    page : Path
+        An open documentation page.
+
+    Returns
+    -------
+    str
+    """
+    target = str(page.resolve())
+
+    def walk(node, trail):
+        for child in node.children:
+            here = trail + [child.title]
+            if child.path and str(Path(str(child.path)).resolve()) == target:
+                return here
+            found = walk(child, here)
+            if found is not None:
+                return found
+        return None
+
+    trail = walk(toc, []) or []
+    return " › ".join(part for part in trail[:-1] if part)
 
 
 @pytest.fixture
@@ -76,22 +102,35 @@ def _draw(app, size=(1200, 800), times=3):
     return painter
 
 
+# 0. the record: the live Qt widget's output was the rule's output on the same docs tree
+def test_the_recorded_qt_facts_are_the_rule():
+    assert [tuple(x) for x in QT["home_links"]] == [tuple(x) for x in QT["rule_home_links"]]
+    assert QT["breadcrumb"] == QT["rule_breadcrumb"] and QT["breadcrumb"]
+    from chisurf.plugins.core.help.gui.help_app import HelpModel
+
+    assert [(f"{stem}.md", text) for stem, text in HelpModel.START_HERE] == [
+        tuple(x) for x in QT["start_here"]
+    ]
+
+
 # 1. the start page lists the same pages, with the same titles, as the Qt start page
-def test_start_page_matches_the_qt_start_page(app, qt_facts):
+def test_start_page_matches_the_qt_start_page(app):
+    from chisurf.plugins.core.help.api import toc as help_toc
+
     home = app.model._build_home_content()
     ours = [
         (Path(target).name, title) for title, target in re.findall(r"\[([^\]]+)\]\(([^)]+)\)", home)
     ]
-    assert ours == [tuple(x) for x in qt_facts["home_links"]]
+    assert ours == qt_home_links(app.model.toc, help_toc.repository_root())
     assert "Welcome to ChiSurf Documentation" not in home  # the earlier hard-coded page
 
 
 # 1b. the breadcrumb of an open page is the Qt one
-def test_breadcrumb_matches_the_qt_window(app, qt_facts):
+def test_breadcrumb_matches_the_qt_window(app):
     app.model.open_page(PAGE)
     painter = _draw(app)
     crumb = " › ".join(app.model.breadcrumb())
-    assert crumb and crumb == qt_facts["breadcrumb"]
+    assert crumb and crumb == qt_breadcrumb(app.model.toc, PAGE)
     assert crumb in painter.strings
 
 

@@ -1,0 +1,127 @@
+{
+ "_recorded": {
+  "date": "2026-10-13",
+  "from": "chisurf.plugins.core.help.gui.tool.HelpWidget (the live Qt widget, offscreen, 1200x800): _home_html() links and the breadcrumb after navigate(docs/concepts/fret.md); rule_* are the test's Qt-free restatement on the emtk model's toc of the same docs tree",
+  "source_commit": "0a6e81d8c177a757228eef9511266660fcf5dbdb"
+ },
+ "breadcrumb": "Concepts — the theory › Core methods",
+ "home_links": [
+  [
+   "index.md",
+   "Getting started"
+  ],
+  [
+   "data_import.md",
+   "Data import"
+  ],
+  [
+   "fit_interface.md",
+   "Fit interface"
+  ],
+  [
+   "index.md",
+   "Guides — how to do it in ChiSurf"
+  ],
+  [
+   "index.md",
+   "Getting started"
+  ],
+  [
+   "index.md",
+   "Fundamentals — photophysics"
+  ],
+  [
+   "index.md",
+   "Concepts — the theory"
+  ],
+  [
+   "index.md",
+   "Guides — how to in ChiSurf"
+  ],
+  [
+   "index.md",
+   "Fitting interface & examples"
+  ],
+  [
+   "index.md",
+   "Reference"
+  ],
+  [
+   "index.md",
+   "Literature"
+  ],
+  [
+   "README.md",
+   "About ChiSurf"
+  ]
+ ],
+ "rule_breadcrumb": "Concepts — the theory › Core methods",
+ "rule_home_links": [
+  [
+   "index.md",
+   "Getting started"
+  ],
+  [
+   "data_import.md",
+   "Data import"
+  ],
+  [
+   "fit_interface.md",
+   "Fit interface"
+  ],
+  [
+   "index.md",
+   "Guides — how to do it in ChiSurf"
+  ],
+  [
+   "index.md",
+   "Getting started"
+  ],
+  [
+   "index.md",
+   "Fundamentals — photophysics"
+  ],
+  [
+   "index.md",
+   "Concepts — the theory"
+  ],
+  [
+   "index.md",
+   "Guides — how to in ChiSurf"
+  ],
+  [
+   "index.md",
+   "Fitting interface & examples"
+  ],
+  [
+   "index.md",
+   "Reference"
+  ],
+  [
+   "index.md",
+   "Literature"
+  ],
+  [
+   "README.md",
+   "About ChiSurf"
+  ]
+ ],
+ "start_here": [
+  [
+   "docs/getting_started/index.md",
+   "Install, launch, and find your way around"
+  ],
+  [
+   "docs/manual/data_import.md",
+   "Import data and create your first fit"
+  ],
+  [
+   "docs/manual/fit_interface.md",
+   "The fitting interface, parameter by parameter"
+  ],
+  [
+   "docs/guides/index.md",
+   "Pick the workflow you want to run"
+  ]
+ ]
+}

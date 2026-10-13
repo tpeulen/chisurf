@@ -1,0 +1,565 @@
+{
+ "_recorded": {
+  "date": "2026-10-13",
+  "from": "chisurf.gui.LoginDialog (the live Qt dialog, offscreen), driven per case through the parity test's qt_login with the hermetic world fixture (BASE settings, stubbed credential store)",
+  "source_commit": "0a6e81d8c177a757228eef9511266660fcf5dbdb"
+ },
+ "empty_user": {
+  "calls": [
+   {
+    "password": "x",
+    "user_id": "alice"
+   }
+  ]
+ },
+ "exception": {
+  "accepted": false,
+  "shown": [
+   [
+    "error",
+    "Error",
+    "Login failed: Connection refused"
+   ]
+  ]
+ },
+ "initial": {
+  "autologin": false,
+  "password_echo_is_normal": false,
+  "port": 9100,
+  "port_bounds": [
+   1,
+   65535
+  ],
+  "save_login": true,
+  "server": "lab-server.example.org",
+  "server_items": [
+   "127.0.0.1",
+   "lab-server.example.org",
+   "10.0.0.7"
+  ],
+  "user": "alice",
+  "user_items": [
+   "alice",
+   "user",
+   "admin"
+  ]
+ },
+ "rejected": [
+  {
+   "accepted": false,
+   "answer": {
+    "error": "Incorrect credentials",
+    "ok": false
+   },
+   "settings_unchanged": true,
+   "shown": [
+    [
+     "warning",
+     "Login Failed",
+     "Incorrect credentials"
+    ]
+   ],
+   "token_calls": [],
+   "yaml": null
+  },
+  {
+   "accepted": false,
+   "answer": {
+    "authenticated": false,
+    "error": {
+     "message": "Account locked"
+    }
+   },
+   "settings_unchanged": true,
+   "shown": [
+    [
+     "warning",
+     "Login Failed",
+     "Account locked"
+    ]
+   ],
+   "token_calls": [],
+   "yaml": null
+  },
+  {
+   "accepted": false,
+   "answer": {
+    "ok": false
+   },
+   "settings_unchanged": true,
+   "shown": [
+    [
+     "warning",
+     "Login Failed",
+     "Incorrect credentials"
+    ]
+   ],
+   "token_calls": [],
+   "yaml": null
+  }
+ ],
+ "remote": {
+  "labels": [
+   "",
+   "ChiSurf",
+   "Sign in to the MMFDB workspace",
+   "MMFDB URL:",
+   "Select User:",
+   "Password:"
+  ],
+  "port_visible": false,
+  "server": "http://127.0.0.1:8080",
+  "server_items": [
+   "http://127.0.0.1:8080"
+  ],
+  "user_items": [
+   "alice"
+  ]
+ },
+ "success": {
+  "10.0.0.7:9200:save=False:auto=False": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "alice"
+    },
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": false,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   },
+   "runtime_tokens": [
+    "10.0.0.7:9200:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "delete",
+     "10.0.0.7",
+     9200,
+     "admin"
+    ]
+   ],
+   "yaml": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "alice"
+    },
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": false,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   }
+  },
+  "10.0.0.7:9200:save=False:auto=True": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": false,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   },
+   "runtime_tokens": [
+    "10.0.0.7:9200:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "store",
+     "10.0.0.7",
+     9200,
+     "admin",
+     "fake-token"
+    ]
+   ],
+   "yaml": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": false,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   }
+  },
+  "10.0.0.7:9200:save=True:auto=False": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": true,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   },
+   "runtime_tokens": [
+    "10.0.0.7:9200:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "delete",
+     "10.0.0.7",
+     9200,
+     "admin"
+    ]
+   ],
+   "yaml": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": true,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   }
+  },
+  "10.0.0.7:9200:save=True:auto=True": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": true,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   },
+   "runtime_tokens": [
+    "10.0.0.7:9200:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "store",
+     "10.0.0.7",
+     9200,
+     "admin",
+     "fake-token"
+    ]
+   ],
+   "yaml": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 9200,
+     "host": "10.0.0.7",
+     "mode": "embedded",
+     "pub_port": 9201,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 9200,
+    "last_server": "10.0.0.7",
+    "save_login": true,
+    "server_history": [
+     "10.0.0.7",
+     "127.0.0.1",
+     "lab-server.example.org"
+    ]
+   }
+  },
+  "new-host:7000:save=False:auto=False": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "alice"
+    },
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": false,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   },
+   "runtime_tokens": [
+    "new-host:7000:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "delete",
+     "new-host",
+     7000,
+     "admin"
+    ]
+   ],
+   "yaml": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "alice"
+    },
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": false,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   }
+  },
+  "new-host:7000:save=False:auto=True": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": false,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   },
+   "runtime_tokens": [
+    "new-host:7000:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "store",
+     "new-host",
+     7000,
+     "admin",
+     "fake-token"
+    ]
+   ],
+   "yaml": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": false,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   }
+  },
+  "new-host:7000:save=True:auto=False": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": true,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   },
+   "runtime_tokens": [
+    "new-host:7000:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "delete",
+     "new-host",
+     7000,
+     "admin"
+    ]
+   ],
+   "yaml": {
+    "autologin": false,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": true,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   }
+  },
+  "new-host:7000:save=True:auto=True": {
+   "accepted": true,
+   "mmfdb": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": true,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   },
+   "runtime_tokens": [
+    "new-host:7000:admin"
+   ],
+   "shown": [],
+   "token_calls": [
+    [
+     "store",
+     "new-host",
+     7000,
+     "admin",
+     "fake-token"
+    ]
+   ],
+   "yaml": {
+    "autologin": true,
+    "client": {
+     "cmd_port": 7000,
+     "host": "new-host",
+     "mode": "embedded",
+     "pub_port": 7001,
+     "username": "admin"
+    },
+    "default_user_id": "admin",
+    "last_port": 7000,
+    "last_server": "new-host",
+    "save_login": true,
+    "server_history": [
+     "new-host",
+     "127.0.0.1",
+     "lab-server.example.org",
+     "10.0.0.7"
+    ]
+   }
+  }
+ },
+ "token_refused": {
+  "accepted": true,
+  "mmfdb_autologin": false,
+  "shown": [
+   [
+    "warning",
+    "Autologin Not Saved",
+    "Login succeeded, but ChiSurf could not store the session token in the OS credential store."
+   ]
+  ],
+  "yaml_autologin": false
+ }
+}

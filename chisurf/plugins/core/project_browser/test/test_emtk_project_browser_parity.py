@@ -1,8 +1,8 @@
 """The native Project Browser at parity with the Qt ProjectBrowserTool.
 
-Both talk to the same project service. The Qt tool runs in a subprocess on the same
-scratch database (this process stays Qt-free) and the tree it shows is compared with
-the emtk app's rows; save, restore, export/import and delete are driven through the
+Both talk to the same project service. The Qt tool's tree on the seeded scratch database is
+``qt_reference.json`` (recorded from the live widget, ids normalised; this file imports no Qt) and
+is compared with the emtk app's rows; save, restore, export/import and delete are driven through the
 emtk app against a real scratch database.
 """
 
@@ -132,79 +132,74 @@ def _project(app, name):
     return next(p for p in app.model.projects if p["project_name"] == name)
 
 
-_QT = r"""
-import json
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-import os
-from chisurf.core.settings import cs_settings
-from chisurf.core.project.storage import _real_client, select_backend
-from chisurf.plugins.core.mmfdb_admin.gui.client import client_config, credential_endpoint
-from mmfdb.security.credentials import store_runtime_session_token
-settings = json.loads(os.environ["BROWSER_TEST_CONFIG"])
-cs_settings["mmfdb"] = settings
-host, port = credential_endpoint(client_config(settings))
-store_runtime_session_token(host, port, settings["client"]["username"], os.environ["BROWSER_TEST_TOKEN"])
-assert select_backend() == "mmfdb"
-w = ProjectBrowserTool()
-w._client = _real_client(settings)
-w.refresh()
-rows = []
-for i in range(w._tree.topLevelItemCount()):
-    top = w._tree.topLevelItem(i)
-    rows.append({"project": [top.text(c) for c in range(9)],
-                 "versions": [[top.child(j).text(c) for c in range(9)] for j in range(top.childCount())]})
-print("FACTS" + json.dumps({"rows": rows}))
-"""
+#: The legacy Qt ``ProjectBrowserTool`` tree on this file's seeded database (fixture ``db``), recorded
+#: from the live widget and frozen. The tree is a function of the service's ``list_projects`` answer;
+#: what changes run to run (project and version ids, ``created_at``, the account) is normalised to
+#: ``<project NAME>`` / ``<version NAME vN>`` / ``<timestamp>`` / ``<user>``, so the record holds.
+QT = json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-def _qt_rows(db):
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    isolated = db["tmp_path"] / "qt-settings"
-    isolated.mkdir()
-    env.update(
-        CHISURF_SETTINGS_DIR=str(isolated),
-        MMFDB_SETTINGS_DIR=str(isolated),
-        BROWSER_TEST_CONFIG=json.dumps(db["settings"]),
-        BROWSER_TEST_TOKEN=db["token"],
-    )
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT],
-        capture_output=True,
-        text=True,
-        timeout=60,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    assert line is not None, f"the Qt run failed: {proc.stderr[-1200:]}"
-    return json.loads(line[len("FACTS") :])["rows"]
+def _normalised_rows(projects, owner):
+    """The emtk model's projects as the Qt tree's nine columns, normalised like the record.
+
+    Parameters
+    ----------
+    projects : list of dict
+        ``app.model.projects``.
+    owner : str
+        The account the database was seeded by.
+
+    Returns
+    -------
+    list of dict
+    """
+    def who(user):
+        return "<user>" if user == owner else user
+
+    rows = []
+    for p in projects:
+        name = p["project_name"]
+        rows.append(
+            {
+                "project": [
+                    f"{name}  ({p['version_count']} versions)",
+                    f"<project {name}>",
+                    who(p.get("owner_user_id", "")),
+                    "",
+                    p.get("visibility", "private"),
+                    "",
+                    "",
+                    "<timestamp>" if p.get("created_at") else "",
+                    "",
+                ],
+                "versions": [
+                    [
+                        f"v{v['version_number']}  {v.get('project_name', name)}",
+                        f"<version {name} v{v['version_number']}>",
+                        who(v.get("owner_user_id", "")),
+                        v.get("status", ""),
+                        "",
+                        str(v.get("dataset_count", 0)),
+                        str(v.get("fit_count", 0)),
+                        "<timestamp>" if v.get("created_at") else "",
+                        (v.get("notes") or "")[:60],
+                    ]
+                    for v in p["versions"]
+                ],
+            }
+        )
+    return rows
 
 
 # 1. the same projects and versions as the Qt tree
 def test_the_list_shows_what_the_qt_tree_shows(db):
-    qt = _qt_rows(db)
     app = _app(db)
     try:
         _settle(app)
-        ours = {p["project_id"]: p for p in app.model.projects}
-        assert sorted(ours) == sorted(r["project"][1] for r in qt)
-        for row in qt:
-            project = ours[row["project"][1]]
-            assert (
-                row["project"][0]
-                == f"{project['project_name']}  ({project['version_count']} versions)"
-            )
-            assert row["project"][4] == project["visibility"]
-            qt_versions = {v[1]: v for v in row["versions"]}
-            assert sorted(qt_versions) == sorted(v["version_id"] for v in project["versions"])
-            for version in project["versions"]:
-                assert qt_versions[version["version_id"]][8] == (version.get("notes") or "")[:60]
-                assert qt_versions[version["version_id"]][0].startswith(
-                    f"v{version['version_number']}"
-                )
+        ours = _normalised_rows(app.model.projects, db["settings"]["client"]["username"])
+        key = lambda row: row["project"][1]  # noqa: E731
+        assert sorted(ours, key=key) == sorted(QT["rows"], key=key)
+        assert len({p["project_id"] for p in app.model.projects}) == len(QT["rows"]) == 2
     finally:
         app.close()
 

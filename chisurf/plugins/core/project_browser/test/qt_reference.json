@@ -1,0 +1,83 @@
+{
+ "_recorded": {
+  "date": "2026-10-13",
+  "from": "chisurf.plugins.core.project_browser.gui.tool.ProjectBrowserTool (the live Qt tree, offscreen) after refresh() on the parity test's seeded scratch database (fixture db); project and version ids are replaced by <project NAME> / <version NAME vN>, created_at by <timestamp>, the account by <user>",
+  "source_commit": "0a6e81d8c177a757228eef9511266660fcf5dbdb"
+ },
+ "columns": [
+  "Project / Version",
+  "ID",
+  "Owner",
+  "Status",
+  "Visibility",
+  "Datasets",
+  "Fits",
+  "Created",
+  "Notes"
+ ],
+ "rows": [
+  {
+   "project": [
+    "fcs titration  (1 versions)",
+    "<project fcs titration>",
+    "<user>",
+    "",
+    "public",
+    "",
+    "",
+    "<timestamp>",
+    ""
+   ],
+   "versions": [
+    [
+     "v1  fcs titration",
+     "<version fcs titration v1>",
+     "<user>",
+     "succeeded",
+     "",
+     "1",
+     "0",
+     "<timestamp>",
+     "public set"
+    ]
+   ]
+  },
+  {
+   "project": [
+    "decay study  (2 versions)",
+    "<project decay study>",
+    "<user>",
+    "",
+    "private",
+    "",
+    "",
+    "<timestamp>",
+    ""
+   ],
+   "versions": [
+    [
+     "v2  decay study",
+     "<version decay study v2>",
+     "<user>",
+     "succeeded",
+     "",
+     "1",
+     "0",
+     "<timestamp>",
+     "refit with IRF"
+    ],
+    [
+     "v1  decay study",
+     "<version decay study v1>",
+     "<user>",
+     "succeeded",
+     "",
+     "1",
+     "0",
+     "<timestamp>",
+     "first fit"
+    ]
+   ]
+  }
+ ]
+}
