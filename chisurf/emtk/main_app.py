@@ -232,6 +232,15 @@ class EmtkShellApp(ImApp):
         splash: Any = None,
         post_show: Any = False,
     ) -> None:
+        from chisurf.emtk.frame_modules import import_frame_modules
+
+        # Before the session, a plugin or the update check imports on a worker (chisurf._import_gate),
+        # with what the shell's own first frames import lazily (measured: they waited on these).
+        import_frame_modules()
+        import chisurf.emtk.child_contract
+        import chisurf.emtk.help_guide
+        import chisurf.emtk.i18n
+        import chisurf.emtk.shared_i18n  # noqa: F401
         if catalog is None:
             from chisurf.emtk.plugins import manifests
 

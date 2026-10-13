@@ -130,9 +130,34 @@ own startup stages (item 5): S5 is done.
    and parking the worker in `find_spec('chisurf.server.app')` for 1 s: about one run in six raises it. Trap: a
    plain `--screenshot` loop never reproduced it (40 runs). The main thread and the worker contend on many shared
    packages (`chisurf.core.project`, `chisurf.core.actions`, `chisurf.history`), so the main thread must not
-   import while the worker runs, not only avoid `chisurf.server`. Open: hosted plugins still build on worker threads (`open_plugin` →
-   `BackgroundBuild`) and the update check imports the updater on one, so a plugin module and a frame-loop import
-   can still meet in one package; no failure seen. Before trusting it, park the plugin worker with the same finder. a newer version asks the Qt window's *Update Available* question and *Yes* opens
+   import while the worker runs, not only avoid `chisurf.server`. Closed 2026-10-13, for the whole class and not just this instance: `chisurf/_import_gate.py` is installed as the first statement of
+   `chisurf/__init__.py`. It puts one re-entrant gate in front of `importlib._bootstrap._find_and_load`, the function every
+   first import goes through (the `import` statement, `import_module`, Cython), so only one thread at a time
+   imports a module for the first time. A module that is already loaded skips the gate. This covers every worker
+   site: the session worker and its server thread, each `BackgroundBuild` (a hosted plugin's build via
+   `open_plugin`, the post-show update check, the hubs, the settings hub, the sample picker, the shell's project
+   jobs, the fit docks, chimol views), `track`ed store reads, `jobs.py`, the channel-definition and dataset-picker
+   executors, background startup services, and about 90 thread or executor sites in plugins. The cost: a frame
+   that first-imports while a worker is importing waits for the worker's whole import. Measure that with the
+   *gate wait* column of `python -m build_tools.dev_utils.plugin_frame_times`. With the gate alone, frames waited
+   up to 640 ms, on modules that emtk imports lazily (fonts, glyph tables, tooltips, tables, colormaps) and on PIL.
+   `chisurf/emtk/frame_modules.py` now imports those on the UI thread, in the shell constructor, in `load_plugin`
+   and in each `BackgroundBuild.start` or `track`. The list comes from recording the UI thread's first imports
+   across all 120 plugins. The shell constructor also imports `child_contract`, `help_guide`, `i18n` and
+   `shared_i18n`, and `fcs_saturation` now imports `native_form` at module level. After that the gate wait is 0
+   for all 119 plugins measured and for the shell's session-start and plugin-open frames (benchmarks page,
+   *Import gate*). Measure: `test/startup/test_startup_import_race.py::test_no_shell_worker_first_import_can_meet_the_main_threads`
+   parks each of the session, plugin-build and update-check workers inside a planted package's `__init__` while
+   the main thread first-imports into that package. Without the gate both the session and the plugin worker fail
+   with `_DeadlockError`. To re-derive that, restore the original `_find_and_load` after `import chisurf` and run
+   `SWEEP`. Ten runs in a row pass with the gate. `test/startup/test_import_gate.py` tests the bare mechanism.
+   Trap: park the worker inside a module body, never in `MetaPathFinder.find_spec`. CPython calls finders while
+   holding its global import lock, which serialises the threads and hides the race. Trap: `import pkg` of a
+   half-initialised package silently returns the half-made module (`_lock_unlock_module` swallows the deadlock),
+   so the planted submodule has to import the package by name. Rule: a module's top-level code never waits on
+   another thread, because the gate is held while that code runs. After 10 s the waiting thread prints which
+   import holds the gate. Open: re-run the frame table at low load. The 2026-10-13 runs were at load average
+   40-60, where first frames are over 100 ms with or without the gate. a newer version asks the Qt window's *Update Available* question and *Yes* opens
    *Settings ▸ Updates*. Same updater preferences as Qt (`plugins.updater.check_on_startup`,
    `ignore_updates_on_startup`). Only the real window runs them (`make_app(persist=True)`); a test's shell
    and a headless frame never ask the update server. Test: `test/native_emtk/test_emtk_shell_post_show.py`

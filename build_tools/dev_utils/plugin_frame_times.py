@@ -15,6 +15,11 @@ Work moved off the first frame must not land on a later one, so the five frames
 after the first (``next5``) and every frame drawn while worker results land
 (``settle``) are reported as maxima too.
 
+``gate wait`` is how long the frames waited, in all, for a worker thread's first import
+(:func:`chisurf._import_gate.main_thread_waits`): one thread imports a module for the first time
+at a time, so a frame that lazily imports a module while a worker imports pays for the worker's
+import. It should be 0; the module named is the one the frame asked for.
+
 Persistent per-user caches (emtk's installed-font table) are shared by the whole
 run and warmed once before measuring, as on every launch after the first; each
 plugin still gets its own scratch settings and database.
@@ -68,11 +73,13 @@ def worker(plugin_id: str) -> dict:
     QApplication.instance() or QApplication([])
     from emtk.testing import Driver
 
+    from chisurf._import_gate import main_thread_waits
     from chisurf.emtk.plugins import load_plugin
 
     t0 = time.perf_counter()
     app = load_plugin(plugin_id, persist=False)
     construct = (time.perf_counter() - t0) * 1000
+    main_thread_waits(clear=True)
     driver = Driver(app, SIZE)
     t = time.perf_counter()
     driver.frame()
@@ -97,9 +104,11 @@ def worker(plugin_id: str) -> dict:
         t = time.perf_counter()
         driver.frame()
         times.append((time.perf_counter() - t) * 1000)
+    waits = main_thread_waits()
     return {"plugin": plugin_id, "construct_ms": construct, "first_ms": first,
             "next5_ms": max(following), "settle_ms": max(settle), "steady_ms": statistics.median(times),
-            "max_ms": max(times), "status": "ok"}
+            "max_ms": max(times), "gate_wait_ms": sum(w[0] for w in waits),
+            "gate_wait_on": max(waits)[1] if waits else "", "status": "ok"}
 
 
 def warm_caches() -> None:
@@ -163,14 +172,16 @@ def plugin_ids() -> list[str]:
 def table(rows: list[dict]) -> str:
     """Markdown table, slowest steady frame first."""
     ok = sorted((r for r in rows if r["status"] == "ok"), key=lambda r: -r["steady_ms"])
-    out = ["| plugin | construct ms | first ms | next5 ms | settle ms | steady ms | max ms | first<100 | steady<16 |",
-           "|---|---:|---:|---:|---:|---:|---:|:-:|:-:|"]
+    out = ["| plugin | construct ms | first ms | next5 ms | settle ms | steady ms | max ms | gate wait ms "
+           "| first<100 | steady<16 |",
+           "|---|---:|---:|---:|---:|---:|---:|---:|:-:|:-:|"]
     for r in ok:
+        wait = f"{r['gate_wait_ms']:.0f}" + (f" ({r['gate_wait_on']})" if r["gate_wait_on"] else "")
         out.append(f"| {r['plugin']} | {r['construct_ms']:.0f} | {r['first_ms']:.0f} | {r['next5_ms']:.0f} | "
                    f"{r['settle_ms']:.0f} | {r['steady_ms']:.1f} | "
-                   f"{r['max_ms']:.1f} | {'yes' if r['first_ms'] < FIRST_BUDGET_MS else 'NO'} | "
+                   f"{r['max_ms']:.1f} | {wait} | {'yes' if r['first_ms'] < FIRST_BUDGET_MS else 'NO'} | "
                    f"{'yes' if r['steady_ms'] < STEADY_BUDGET_MS else 'NO'} |")
-    out += [f"| {r['plugin']} | - | - | - | - | - | - | {r['status']} | |" for r in rows if r["status"] != "ok"]
+    out += [f"| {r['plugin']} | - | - | - | - | - | - | - | {r['status']} | |" for r in rows if r["status"] != "ok"]
     return "\n".join(out)
 
 

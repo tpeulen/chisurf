@@ -15,10 +15,10 @@ reading; edits still go through the API.
 
 The server, the API facade and the event subscriber are imported *here*, at module level, not
 by the session's worker. The shell runs :func:`start_session` on a worker thread while its main
-thread goes on (the Log dock's call monitor imports ``chisurf.server.dispatcher``); two threads
-importing the package ``chisurf.server`` for the first time take CPython's per-module import
-locks in opposite orders and one of them dies with ``_DeadlockError``. Whoever names
-``start_session`` has imported this module, so the package is complete before any worker starts.
+thread goes on (the Log dock's call monitor imports ``chisurf.server.dispatcher``). Two threads
+first-importing into ``chisurf.server`` once died with ``_DeadlockError``; :mod:`chisurf._import_gate`
+now makes them take turns, so what is left is a wait: whoever names ``start_session`` has imported
+this module, so the main thread never waits on the worker for these packages.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-# Imported before any thread starts (see the module docstring); never move these into a stage.
+# Imported before any thread starts, so the frame loop never waits on the worker's import of them.
 import chisurf.core.api
 import chisurf.core.api._client
 import chisurf.core.server_events

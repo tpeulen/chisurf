@@ -58,8 +58,11 @@ def load_plugin(
     persist: bool = True,
 ):
     """Construct a declared EMTK control, preserving source identities in translation."""
+    from .frame_modules import import_frame_modules
     from .i18n import install
 
+    # Before the app can start a worker (a no-op on the shell's build thread, which has them).
+    import_frame_modules()
     spec = native_factory(plugin_id, root)
     install(locale)
     module, attribute = spec.split(":", 1)

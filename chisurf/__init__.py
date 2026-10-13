@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+# First, before anything can start a thread: one thread at a time imports a module for the first
+# time. The shell imports on workers and on its frame loop at once, and two first imports into one
+# package deadlock on CPython's per-module locks (see the module).
+from chisurf import _import_gate
+
+_import_gate.install()
+
 import importlib
 import logging
 import os

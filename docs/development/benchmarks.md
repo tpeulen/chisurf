@@ -923,6 +923,51 @@ The `post_show` phase is not captured by this offscreen harness.
 * The first-frame list above: prefetch the embedded sub-app and database imports after the
   window is shown, instead of on the first draw.
 
+### Import gate (2026-10-13)
+
+`chisurf._import_gate` lets one thread at a time import a module for the first time,
+which stops worker threads and the frame loop deadlocking on CPython's module locks (the
+emtk shell's startup deadlock). The cost is a wait: a frame that first-imports a module
+while a worker is importing waits for that worker's whole import. The **gate wait** column
+of `plugin_frame_times` adds up those waits per plugin, and it should be 0.
+
+With the gate alone, frames waited up to 640 ms. Most of it was spent on emtk's font, glyph,
+tooltip and table modules and on PIL, which every first frame imports lazily. Those modules
+are now imported on the UI thread before any worker starts
+(`chisurf/emtk/frame_modules.py`), and `fcs_saturation` imports `native_form` at module
+level. After that, the gate wait is **0 for all 119 plugins measured**, and also for the
+emtk shell's frames while its session starts and when it opens `setup`, `wizards` or
+`alex_suite`.
+
+The plugins whose open path starts a worker were measured with and without the gate,
+interleaved, three runs each, keeping the minimum. The laptop was under parallel-agent load
+(load average 40-60), so the absolute numbers are inflated and differences under about
+2x are noise.
+
+| plugin | first ms (no gate / gate) | next5 ms | settle ms | steady ms | gate wait ms |
+|---|---:|---:|---:|---:|---:|
+| chimol | 133 / 142 | 0 / 1 | 10 / 7 | 7.5 / 7.0 | 0 |
+| setup | 382 / 610 | 4 / 3 | 46 / 37 | 11.0 / 8.7 | 0 |
+| wizards | 350 / 336 | 0 / 1 | 4 / 3 | 1.3 / 1.2 | 0 |
+| imaging_tools | 318 / 111 | 10 / 12 | 0 / 0 | 5.2 / 5.0 | 0 |
+| fcs_correlator | 215 / 402 | 1 / 3 | 188 / 288 | 1.4 / 1.6 | 0 |
+| fcs_toolbox | 301 / 299 | 1 / 1 | 185 / 233 | 1.4 / 1.4 | 0 |
+| alex_suite | 217 / 264 | 1 / 6 | 16 / 27 | 5.1 / 3.5 | 0 |
+| tttr_toolbox | 189 / 186 | 1 / 2 | 8 / 8 | 2.8 / 2.6 | 0 |
+| calculators | 829 / 531 | 46 / 38 | 0 / 0 | 24.4 / 14.6 | 0 |
+| burst_analysis | 263 / 331 | 1 / 1 | 11 / 20 | 3.5 / 3.3 | 0 |
+| traj_tools | 779 / 714 | 11 / 9 | 0 / 0 | 1.5 / 1.4 | 0 |
+| psf_calculator | 47 / 28 | 12 / 8 | 20 / 45 | 2.1 / 2.0 | 0 |
+| burst_mle_analysis | 181 / 176 | 3 / 119 | 19 / 15 | 3.3 / 2.9 | 0 |
+| setup_channel_definition | 346 / 347 | 7 / 6 | 37 / 19 | 2.6 / 2.6 | 0 |
+
+Emtk shell, with the gate and then without it: first frame while the session starts
+366-370 / 331-342 ms; opening `setup`, `wizards` and `alex_suite` 120-326 / 19-351 ms.
+
+At this load the first frames are over 100 ms with or without the gate, which the
+2026-10-10 table above did not show. Re-run the table at low load before reading
+anything into those numbers.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and

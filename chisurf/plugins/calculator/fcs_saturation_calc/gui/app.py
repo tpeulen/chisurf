@@ -18,6 +18,7 @@ from emtk.im_core import Col
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
+from chisurf.plugins.calculator.native_form import plain
 from chisurf.plugins.emtk_layout import button_row, window_size
 
 from .model import SaturationModel
@@ -528,8 +529,7 @@ class SaturationApp(TourTarget, ImApp):
 
 
 def re_plain(text: str) -> str:
-    from chisurf.plugins.calculator.native_form import plain
-
+    """*text* without markup (the help modal's plain form)."""
     return plain(text)
 
 

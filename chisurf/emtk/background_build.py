@@ -9,6 +9,10 @@ placeholder (:func:`draw_opening`) while :attr:`BackgroundBuild.busy`, and adopt
 
 Factories run off the UI thread, so they must not draw or touch the current emtk context; the hub wires a made tool
 into itself (frame callbacks, saved settings, shared models) when it adopts it, on the UI thread.
+
+A frame that lazily first-imports a module while a worker imports waits for the worker's import
+(:mod:`chisurf._import_gate`); :meth:`BackgroundBuild.start` and :func:`track` first import what frames import
+lazily (:func:`chisurf.emtk.frame_modules.import_frame_modules`).
 """
 
 from __future__ import annotations
@@ -20,6 +24,8 @@ from typing import Any, Callable, Hashable
 from emtk import im
 from emtk.i18n import tr
 
+from chisurf.emtk.frame_modules import import_frame_modules
+
 #: Every build that may be running, and other first-frame reads (:func:`track`), for :func:`join_all`.
 _LIVE: weakref.WeakSet[BackgroundBuild] = weakref.WeakSet()
 _THREADS: weakref.WeakSet[threading.Thread] = weakref.WeakSet()
@@ -27,6 +33,7 @@ _THREADS: weakref.WeakSet[threading.Thread] = weakref.WeakSet()
 
 def track(thread: threading.Thread) -> threading.Thread:
     """Register a worker that reads what a window's first frames show (a store, a registry) for :func:`join_all`."""
+    import_frame_modules()
     _THREADS.add(thread)
     return thread
 
@@ -76,6 +83,7 @@ class BackgroundBuild:
         """Run *jobs* (in order) on a worker thread; ``False`` when a batch is already running or *jobs* is empty."""
         if self._thread is not None or not jobs:
             return False
+        import_frame_modules()
         self._keys = tuple(jobs)
         self._results = {}
 
