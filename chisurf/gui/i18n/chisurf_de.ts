@@ -1983,6 +1983,138 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>A file holds millions of records, so the table shows one page. &lt;b&gt;Next&lt;/b&gt; and &lt;b&gt;Prev&lt;/b&gt; move by a page, &lt;b&gt;First&lt;/b&gt; and &lt;b&gt;Last&lt;/b&gt; jump to the ends. &lt;b&gt;First record&lt;/b&gt; and &lt;b&gt;Rows&lt;/b&gt; set the page by number.</source>
+            <translation>Eine Datei enthält Millionen von Datensätzen, daher zeigt die Tabelle eine Seite. &lt;b&gt;Next&lt;/b&gt; und &lt;b&gt;Prev&lt;/b&gt; blättern um eine Seite, &lt;b&gt;First&lt;/b&gt; und &lt;b&gt;Last&lt;/b&gt; springen an die Enden. &lt;b&gt;First record&lt;/b&gt; und &lt;b&gt;Rows&lt;/b&gt; legen die Seite per Zahl fest.</translation>
+        </message>
+        <message>
+            <source>A scanning measurement interleaves the scanner's marker records with the photons. &lt;b&gt;Kind&lt;/b&gt; keeps every record, only the photons, only the markers, or one marker kind (pixel, line start, line stop, frame, other) the file holds.</source>
+            <translation>Eine Scan-Messung verschränkt die Marker-Datensätze des Scanners mit den Photonen. &lt;b&gt;Kind&lt;/b&gt; behält alle Datensätze, nur die Photonen, nur die Marker oder eine Markerart (Pixel, Zeilenstart, Zeilenende, Bild, andere), die die Datei enthält.</translation>
+        </message>
+        <message>
+            <source>All records</source>
+            <translation>Alle Datensätze</translation>
+        </message>
+        <message>
+            <source>Choose a kind in the list.</source>
+            <translation>Wählen Sie eine Art in der Liste.</translation>
+        </message>
+        <message>
+            <source>First record</source>
+            <translation>Erster Datensatz</translation>
+        </message>
+        <message>
+            <source>How many photons the file holds (and how many marker records besides them), how long the measurement lasted (the last macro-time times the header's resolution) and how many micro-time channels the header declares.</source>
+            <translation>Wie viele Photonen die Datei enthält (und wie viele Marker-Datensätze daneben), wie lange die Messung dauerte (die letzte Makrozeit mal der Auflösung des Headers) und wie viele Mikrozeitkanäle der Header angibt.</translation>
+        </message>
+        <message>
+            <source>How many records of each kind the file holds: photons, and the scanner's pixel, line-start, line-stop and frame markers as the file header names them. Markers the header does not name count as 'other marker'.</source>
+            <translation>Wie viele Datensätze jeder Art die Datei enthält: Photonen sowie die Pixel-, Zeilenstart-, Zeilenende- und Bildmarker des Scanners, wie der Datei-Header sie benennt. Marker, die der Header nicht benennt, zählen als 'anderer Marker'.</translation>
+        </message>
+        <message>
+            <source>Index of the first record shown, counted within the filtered selection. A value past the end is moved back so that the page stays full.</source>
+            <translation>Index des ersten angezeigten Datensatzes, gezählt innerhalb der gefilterten Auswahl. Ein Wert hinter dem Ende wird zurückgesetzt, damit die Seite voll bleibt.</translation>
+        </message>
+        <message>
+            <source>Jump to the first record of the filtered selection.</source>
+            <translation>Zum ersten Datensatz der gefilterten Auswahl springen.</translation>
+        </message>
+        <message>
+            <source>Loading the records...</source>
+            <translation>Datensätze werden geladen...</translation>
+        </message>
+        <message>
+            <source>Markers</source>
+            <translation>Marker</translation>
+        </message>
+        <message>
+            <source>Move through the records</source>
+            <translation>Durch die Datensätze blättern</translation>
+        </message>
+        <message>
+            <source>Move through the records of the filtered selection a page at a time.</source>
+            <translation>Seitenweise durch die Datensätze der gefilterten Auswahl blättern.</translation>
+        </message>
+        <message>
+            <source>One row per record of the page, photons and markers. Record is the index among the filtered records, File idx the index in the file, Kind what the record is (marker kinds are coloured). Click a header to sort the page, click again to reverse; right click a header to choose columns.</source>
+            <translation>Eine Zeile pro Datensatz der Seite, Photonen und Marker. Record ist der Index unter den gefilterten Datensätzen, File idx der Index in der Datei, Kind die Art des Datensatzes (Markerarten sind farbig). Klicken Sie auf eine Kopfzeile, um die Seite zu sortieren, erneut zum Umkehren; rechtsklicken Sie auf eine Kopfzeile, um Spalten zu wählen.</translation>
+        </message>
+        <message>
+            <source>One row per record: the index among the filtered records, the index in the file, the kind (each marker kind in its own colour), the routing channel, the micro time and the macro time in milliseconds. Click a header to sort the page.</source>
+            <translation>Eine Zeile pro Datensatz: der Index unter den gefilterten Datensätzen, der Index in der Datei, die Art (jede Markerart in eigener Farbe), der Routing-Kanal, die Mikrozeit und die Makrozeit in Millisekunden. Klicken Sie auf eine Kopfzeile, um die Seite zu sortieren.</translation>
+        </message>
+        <message>
+            <source>Photons or markers</source>
+            <translation>Photonen oder Marker</translation>
+        </message>
+        <message>
+            <source>Pick a routing channel to keep only its records. The &lt;b&gt;Record&lt;/b&gt; column then counts the filtered records while &lt;b&gt;File idx&lt;/b&gt; keeps the position in the file.</source>
+            <translation>Wählen Sie einen Routing-Kanal, um nur seine Datensätze zu behalten. Die Spalte &lt;b&gt;Record&lt;/b&gt; zählt dann die gefilterten Datensätze, während &lt;b&gt;File idx&lt;/b&gt; die Position in der Datei behält.</translation>
+        </message>
+        <message>
+            <source>Records</source>
+            <translation>Datensätze</translation>
+        </message>
+        <message>
+            <source>Show every record, only the photons, only the marker records, or one kind of marker (pixel, line start, line stop, frame, other) the file holds. Works together with the channel filter; choosing a kind goes back to its first record.</source>
+            <translation>Alle Datensätze, nur die Photonen, nur die Marker-Datensätze oder eine Markerart (Pixel, Zeilenstart, Zeilenende, Bild, andere) der Datei anzeigen. Wirkt zusammen mit dem Kanalfilter; die Wahl einer Art springt zu ihrem ersten Datensatz.</translation>
+        </message>
+        <message>
+            <source>Show only the records of one routing channel. 'All channels' keeps the file's order. Choosing a channel goes back to its first record.</source>
+            <translation>Nur die Datensätze eines Routing-Kanals anzeigen. 'Alle Kanäle' behält die Reihenfolge der Datei. Die Wahl eines Kanals springt zu seinem ersten Datensatz.</translation>
+        </message>
+        <message>
+            <source>The file name, the number of photons (and of marker records besides them), the measurement time and the number of micro-time channels the header declares, then the records of each kind and the routing channels that occur in the data.</source>
+            <translation>Der Dateiname, die Zahl der Photonen (und der Marker-Datensätze daneben), die Messzeit und die Zahl der Mikrozeitkanäle, die der Header angibt, dann die Datensätze jeder Art und die Routing-Kanäle in den Daten.</translation>
+        </message>
+        <message>
+            <source>The micro time: TCSPC channel of a photon after the laser pulse (a marker's micro time carries no arrival time; Leica SP8 files keep the marker bits there).</source>
+            <translation>Die Mikrozeit: TCSPC-Kanal eines Photons nach dem Laserpuls (die Mikrozeit eines Markers trägt keine Ankunftszeit; Leica-SP8-Dateien speichern dort die Markerbits).</translation>
+        </message>
+        <message>
+            <source>The record's index among the filtered records: the row number a script would address.</source>
+            <translation>Der Index des Datensatzes unter den gefilterten Datensätzen: die Zeilennummer, die ein Skript ansprechen würde.</translation>
+        </message>
+        <message>
+            <source>The record's index in the raw file.</source>
+            <translation>Der Index des Datensatzes in der Rohdatei.</translation>
+        </message>
+        <message>
+            <source>The records of the file, photons and markers, one row each, a page at a time.</source>
+            <translation>Die Datensätze der Datei, Photonen und Marker, je eine Zeile, seitenweise.</translation>
+        </message>
+        <message>
+            <source>The routing channel: the detector of a photon, the marker channel of a marker.</source>
+            <translation>Der Routing-Kanal: der Detektor eines Photons, der Markerkanal eines Markers.</translation>
+        </message>
+        <message>
+            <source>What the record is: a photon, or a pixel, line-start, line-stop, frame or other marker. Each marker kind has its own colour.</source>
+            <translation>Was der Datensatz ist: ein Photon oder ein Pixel-, Zeilenstart-, Zeilenende-, Bild- oder anderer Marker. Jede Markerart hat ihre eigene Farbe.</translation>
+        </message>
+        <message>
+            <source>Which records of the filtered selection the table shows now.</source>
+            <translation>Welche Datensätze der gefilterten Auswahl die Tabelle gerade zeigt.</translation>
+        </message>
+        <message>
+            <source>line start</source>
+            <translation>Zeilenstart</translation>
+        </message>
+        <message>
+            <source>line stop</source>
+            <translation>Zeilenende</translation>
+        </message>
+        <message>
+            <source>other marker</source>
+            <translation>anderer Marker</translation>
+        </message>
+        <message>
+            <source>photon</source>
+            <translation>Photon</translation>
+        </message>
+        <message>
+            <source>pixel</source>
+            <translation>Pixel</translation>
+        </message>
+        <message>
             <source>Sampling…</source>
             <translation>Sampling…</translation>
         </message>

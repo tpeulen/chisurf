@@ -1,4 +1,8 @@
-"""Photon Table on a real PicoQuant HT3 file; writes ``figures/108_photon_table.png`` (guide 108)."""
+"""Photon Table on a real Becker & Hickl image scan; writes ``figures/108_photon_table.png`` (guide 108).
+
+The page sits at a frame boundary, where pixel-clock, line-start and frame
+markers interleave with the photons, so every marker kind's colour is in view.
+"""
 import pathlib
 import sys
 
@@ -11,18 +15,20 @@ from emtk.testing import Driver  # noqa: E402
 
 from screenshots.emtk_shot import FIG, app_from  # noqa: E402
 
-FILE = "~/dev/tttr-data/pq/ht3/pq_ht3v1.0_hh_t3.ht3"
+FILE = "~/dev/tttr-data/imaging/bh/spcm/FocalCheck_A1_20x_8xzoom_750nm_m1.spc"
+#: The record 21 rows before the second frame marker.
+FIRST = 456_375
 
 
 def main():
-    """Open the file, filter to one channel, settle and grab."""
+    """Open the scan, page to the frame boundary, settle and grab."""
     app = app_from("photon_table")
     driver = Driver(app, (1300, 760))
     driver.frame(2)
     model = app.model
     assert model.load_path(str(pathlib.Path(FILE).expanduser())), model.notice
-    model.set_first(1000)
-    model.set_rows(25)
+    model.set_rows(30)
+    model.set_first(FIRST)
     driver.frame(4)
     driver.hover((12.0, float(driver.size[1]) - 12.0))
     driver.frame(2)

@@ -4,6 +4,17 @@ Hermetic: the settings folder is a temporary one, the data is a private copy of
 ``test/data/tttr/BH/132/BH_SPC132.spc`` (183,657 photons on routing channels 0, 1, 8 and 9).
 The reference numbers are read straight from tttrlib for the same file, and the recorded Qt tool
 is the second source: its drawn cells and its status messages.
+
+Deliberate differences from the recorded Qt tool (2026-10-13, the table lists every record):
+
+* the table shows marker records too, so it counts *records*: the first column is titled
+  ``Record`` (was ``Photon``), the page field ``First record`` (was ``First photon``), the
+  range line reads ``records 0–200`` (was ``photons 0–200``) and the right window ``Records``;
+* a ``Kind`` column (photon / pixel / line start / line stop / frame / marker, marker kinds
+  coloured), a ``Kind`` filter beside ``Channel`` and a per-kind count line in the summary
+  are new; Copy visible adds a ``kind`` column to its TSV;
+* this sample has no markers, so its summary (``183,657 photons, ...``) and load notice are
+  still the Qt tool's, word for word. A file with markers says ``N photons + M markers``.
 """
 
 from __future__ import annotations
@@ -114,7 +125,9 @@ def test_rows_equal_tttrlib_for_the_same_file(sample, reference):
         assert r["macro"] == pytest.approx(float(reference["macro"][i]) * reference["res"] * 1e3)
     assert len(m.rows) == 200
     assert m.table.used_channels == [0, 1, 8, 9]
-    assert m.range_text == "photons 0–200"
+    assert m.range_text == "records 0–200"  # deliberate: was "photons 0–200"
+    assert {r["kind"] for r in m.rows} == {"photon"}  # the sample holds no markers
+    assert m.kinds_text == "Records: photon 183,657"
 
 
 @needs_sample
@@ -129,7 +142,7 @@ def test_filtered_rows_equal_tttrlib(sample, reference):
     assert {r["channel"] for r in m.rows} == {9}
     m.set_first(1000)
     assert [r["idx"] for r in m.rows] == [int(i) for i in expected[1000:1200]]
-    assert m.range_text == "photons 1,000–1,200"
+    assert m.range_text == "records 1,000–1,200"
 
 
 @needs_sample
@@ -158,12 +171,47 @@ def test_the_native_table_binds_the_same_rows_and_columns(sample):
     control = table(app)
     assert control.row_count() == 200
     assert [c.title for c in control.visible_columns()] == [
-        "Photon",
+        "Record",  # deliberate: was "Photon"
         "File idx",
+        "Kind",  # new
         "Channel",
         "Micro time",
         "Macro time [ms]",
     ]
+
+
+SCAN = REPO / "test" / "data" / "clsm" / "Leica_SP5.ptu"
+
+
+@pytest.mark.skipif(not SCAN.exists(), reason="test data not available")
+def test_a_scan_lists_its_markers_coloured_and_filterable():
+    """New (no Qt counterpart): marker records are rows with a coloured Kind cell and a filter."""
+    import tttrlib
+
+    from chisurf.plugins.tttr.photon_table.gui.app import kind_backgrounds
+
+    if not hasattr(tttrlib.CLSMImage, "get_record_kinds"):
+        pytest.skip("tttrlib predates CLSMImage.get_record_kinds: rebuild tttrlib")
+    app = loaded(SCAN)
+    m = app.model
+    assert m.table.n_markers > 0
+    assert m.summary_text.startswith(f"{m.table.n_photons:,} photons + {m.table.n_markers:,} markers")
+    assert m.kinds_text.startswith("Records: photon ") and "line start" in m.kinds_text
+    values = [v for v, _ in m.kind_labels()]
+    assert values[:3] == ["all", "photon", "markers"]
+    assert {"line_start", "line_stop", "frame"} <= set(values)
+    m.set_kind("frame")
+    assert m.count == m.table.kind_counts()["frame"] and {r["kind"] for r in m.rows} == {"frame"}
+    m.set_kind("no such kind")
+    assert m.kind_filter == "all" and m.count == m.table.n_records
+    draw(app)
+    kind = next(c for c in table(app).visible_columns() if c.key == "kind")
+    colours = kind_backgrounds()
+    assert kind.background is not None
+    for label in ("pixel", "line start", "line stop", "frame", "other marker"):
+        assert label in kind.background and label in colours
+    assert "photon" not in kind.background  # photons keep the plain row
+    assert len({kind.background[k] for k in ("pixel", "line start", "line stop", "frame", "other marker")}) == 5
 
 
 # ── 2. every action ─────────────────────────────────────────────────────
@@ -262,7 +310,7 @@ def test_a_second_load_is_refused_while_one_runs(sample, monkeypatch):
     assert app.load_file(str(sample)) is False
     assert app.files_dropped([str(sample)]) is False
     assert app.model.enabled("request_open") is False
-    assert any("Loading the photons" in s for s in draw(app).strings)
+    assert any("Loading the records" in s for s in draw(app).strings)
     gate.set()
     pump(app)
     assert app.model.loaded and app.model.enabled("request_open")
@@ -280,12 +328,13 @@ def test_copy_visible_puts_the_page_on_the_clipboard(sample, monkeypatch):
     press(app, "request_copy")
     assert len(copied) == 1
     lines = copied[0].splitlines()
-    assert lines[0] == "photon\tidx\tchannel\tmicro\tmacro_ms"
+    assert lines[0] == "photon\tidx\tkind\tchannel\tmicro\tmacro_ms"  # new kind column
     assert len(lines) == 6
     # identical to what the Qt tool's model would copy for the same page
     assert copied[0] == app.model.table.page_tsv(0, 5, 9)
     assert app.model.notice == "Copied 5 rows to the clipboard."
-    assert lines[1].split("\t")[0] == "0" and lines[1].split("\t")[2] == "9"
+    assert lines[1].split("\t")[0] == "0" and lines[1].split("\t")[3] == "9"
+    assert lines[1].split("\t")[2] == "photon"
 
 
 def test_copy_with_nothing_loaded_does_nothing(monkeypatch):
@@ -382,7 +431,7 @@ def test_the_empty_state_is_a_message_and_no_rows():
     assert app.model.rows == []
     assert any("Open a TTTR file, or drop one on this window" in s for s in painter.strings)
     assert not any("photons from" in s for s in painter.strings)
-    assert app.model.range_text == "no photons"
+    assert app.model.range_text == "no records"
     assert app.model.channel_labels() == [[-1, "All channels"]]
     assert app.model.enabled("go_next") is False
 
@@ -436,7 +485,7 @@ def test_every_spec_key_exists_on_the_model():
             assert hasattr(model, options["source"])
         for column in options.get("columns", []):
             assert column.get("tooltip"), column
-    row_keys = {"photon", "idx", "channel", "micro", "macro"}
+    row_keys = {"photon", "idx", "kind", "channel", "micro", "macro"}
     columns = {
         c["key"]
         for s in _walk(spec["sections"])
@@ -492,13 +541,13 @@ def test_guide_steps_point_at_controls_the_app_draws(sample):
     app = loaded(sample)
     draw(app)
     steps = json.loads((GUI / "guide.json").read_text())["steps"]
-    assert len(steps) == 6
+    assert len(steps) == 7
     for step in steps:
         name = EmTkGuidedTour._target_key(step["target"])
         rect = app.item_rects.get(name) or app.form.rects.get(name)
         assert rect is not None, f"{step['title']}: nothing drawn for {name!r}"
     awaiting = [EmTkGuidedTour._target_key(s["target"]) for s in steps if s.get("await")]
-    assert awaiting == ["request_open", "go_next", "channel_filter", "request_copy"]
+    assert awaiting == ["request_open", "go_next", "channel_filter", "kind_filter", "request_copy"]
 
 
 @needs_sample
@@ -521,7 +570,7 @@ def test_the_tour_hears_the_buttons_and_the_channel(sample):
 
 def test_help_exists_and_draws():
     text = (GUI / "help.md").read_text()
-    for word in ("Open TTTR...", "Copy visible", "Channel", "Rows"):
+    for word in ("Open TTTR...", "Copy visible", "Channel", "Kind", "Rows", "line start", "frame"):
         assert word in text
     app = make_app()
     app.help_window.show()

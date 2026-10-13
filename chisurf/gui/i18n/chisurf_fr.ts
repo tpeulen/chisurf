@@ -1988,6 +1988,138 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>A file holds millions of records, so the table shows one page. &lt;b&gt;Next&lt;/b&gt; and &lt;b&gt;Prev&lt;/b&gt; move by a page, &lt;b&gt;First&lt;/b&gt; and &lt;b&gt;Last&lt;/b&gt; jump to the ends. &lt;b&gt;First record&lt;/b&gt; and &lt;b&gt;Rows&lt;/b&gt; set the page by number.</source>
+            <translation>Un fichier contient des millions d'enregistrements, le tableau en montre donc une page. &lt;b&gt;Next&lt;/b&gt; et &lt;b&gt;Prev&lt;/b&gt; avancent ou reculent d'une page, &lt;b&gt;First&lt;/b&gt; et &lt;b&gt;Last&lt;/b&gt; sautent aux extrémités. &lt;b&gt;First record&lt;/b&gt; et &lt;b&gt;Rows&lt;/b&gt; fixent la page par numéro.</translation>
+        </message>
+        <message>
+            <source>A scanning measurement interleaves the scanner's marker records with the photons. &lt;b&gt;Kind&lt;/b&gt; keeps every record, only the photons, only the markers, or one marker kind (pixel, line start, line stop, frame, other) the file holds.</source>
+            <translation>Une mesure à balayage entrelace les enregistrements marqueurs du scanner avec les photons. &lt;b&gt;Kind&lt;/b&gt; garde tous les enregistrements, seulement les photons, seulement les marqueurs, ou un type de marqueur (pixel, début de ligne, fin de ligne, image, autre) présent dans le fichier.</translation>
+        </message>
+        <message>
+            <source>All records</source>
+            <translation>Tous les enregistrements</translation>
+        </message>
+        <message>
+            <source>Choose a kind in the list.</source>
+            <translation>Choisissez un type dans la liste.</translation>
+        </message>
+        <message>
+            <source>First record</source>
+            <translation>Premier enregistrement</translation>
+        </message>
+        <message>
+            <source>How many photons the file holds (and how many marker records besides them), how long the measurement lasted (the last macro-time times the header's resolution) and how many micro-time channels the header declares.</source>
+            <translation>Combien de photons le fichier contient (et combien d'enregistrements marqueurs en plus), combien de temps la mesure a duré (le dernier macro-temps fois la résolution de l'en-tête) et combien de canaux de micro-temps l'en-tête déclare.</translation>
+        </message>
+        <message>
+            <source>How many records of each kind the file holds: photons, and the scanner's pixel, line-start, line-stop and frame markers as the file header names them. Markers the header does not name count as 'other marker'.</source>
+            <translation>Combien d'enregistrements de chaque type le fichier contient : photons, et marqueurs de pixel, de début de ligne, de fin de ligne et d'image du scanner tels que l'en-tête du fichier les nomme. Les marqueurs que l'en-tête ne nomme pas comptent comme 'autre marqueur'.</translation>
+        </message>
+        <message>
+            <source>Index of the first record shown, counted within the filtered selection. A value past the end is moved back so that the page stays full.</source>
+            <translation>Indice du premier enregistrement affiché, compté dans la sélection filtrée. Une valeur au-delà de la fin est ramenée pour que la page reste pleine.</translation>
+        </message>
+        <message>
+            <source>Jump to the first record of the filtered selection.</source>
+            <translation>Aller au premier enregistrement de la sélection filtrée.</translation>
+        </message>
+        <message>
+            <source>Loading the records...</source>
+            <translation>Chargement des enregistrements...</translation>
+        </message>
+        <message>
+            <source>Markers</source>
+            <translation>Marqueurs</translation>
+        </message>
+        <message>
+            <source>Move through the records</source>
+            <translation>Parcourir les enregistrements</translation>
+        </message>
+        <message>
+            <source>Move through the records of the filtered selection a page at a time.</source>
+            <translation>Parcourir les enregistrements de la sélection filtrée page par page.</translation>
+        </message>
+        <message>
+            <source>One row per record of the page, photons and markers. Record is the index among the filtered records, File idx the index in the file, Kind what the record is (marker kinds are coloured). Click a header to sort the page, click again to reverse; right click a header to choose columns.</source>
+            <translation>Une ligne par enregistrement de la page, photons et marqueurs. Record est l'indice parmi les enregistrements filtrés, File idx l'indice dans le fichier, Kind la nature de l'enregistrement (les types de marqueurs sont colorés). Cliquez sur un en-tête pour trier la page, de nouveau pour inverser ; clic droit sur un en-tête pour choisir les colonnes.</translation>
+        </message>
+        <message>
+            <source>One row per record: the index among the filtered records, the index in the file, the kind (each marker kind in its own colour), the routing channel, the micro time and the macro time in milliseconds. Click a header to sort the page.</source>
+            <translation>Une ligne par enregistrement : l'indice parmi les enregistrements filtrés, l'indice dans le fichier, le type (chaque type de marqueur dans sa propre couleur), le canal de routage, le micro-temps et le macro-temps en millisecondes. Cliquez sur un en-tête pour trier la page.</translation>
+        </message>
+        <message>
+            <source>Photons or markers</source>
+            <translation>Photons ou marqueurs</translation>
+        </message>
+        <message>
+            <source>Pick a routing channel to keep only its records. The &lt;b&gt;Record&lt;/b&gt; column then counts the filtered records while &lt;b&gt;File idx&lt;/b&gt; keeps the position in the file.</source>
+            <translation>Choisissez un canal de routage pour ne garder que ses enregistrements. La colonne &lt;b&gt;Record&lt;/b&gt; compte alors les enregistrements filtrés tandis que &lt;b&gt;File idx&lt;/b&gt; garde la position dans le fichier.</translation>
+        </message>
+        <message>
+            <source>Records</source>
+            <translation>Enregistrements</translation>
+        </message>
+        <message>
+            <source>Show every record, only the photons, only the marker records, or one kind of marker (pixel, line start, line stop, frame, other) the file holds. Works together with the channel filter; choosing a kind goes back to its first record.</source>
+            <translation>Afficher tous les enregistrements, seulement les photons, seulement les enregistrements marqueurs, ou un type de marqueur (pixel, début de ligne, fin de ligne, image, autre) présent dans le fichier. Fonctionne avec le filtre de canal ; choisir un type revient à son premier enregistrement.</translation>
+        </message>
+        <message>
+            <source>Show only the records of one routing channel. 'All channels' keeps the file's order. Choosing a channel goes back to its first record.</source>
+            <translation>N'afficher que les enregistrements d'un canal de routage. 'Tous les canaux' garde l'ordre du fichier. Choisir un canal revient à son premier enregistrement.</translation>
+        </message>
+        <message>
+            <source>The file name, the number of photons (and of marker records besides them), the measurement time and the number of micro-time channels the header declares, then the records of each kind and the routing channels that occur in the data.</source>
+            <translation>Le nom du fichier, le nombre de photons (et d'enregistrements marqueurs en plus), la durée de mesure et le nombre de canaux de micro-temps déclarés par l'en-tête, puis les enregistrements de chaque type et les canaux de routage présents dans les données.</translation>
+        </message>
+        <message>
+            <source>The micro time: TCSPC channel of a photon after the laser pulse (a marker's micro time carries no arrival time; Leica SP8 files keep the marker bits there).</source>
+            <translation>Le micro-temps : canal TCSPC d'un photon après l'impulsion laser (le micro-temps d'un marqueur ne porte pas de temps d'arrivée ; les fichiers Leica SP8 y stockent les bits du marqueur).</translation>
+        </message>
+        <message>
+            <source>The record's index among the filtered records: the row number a script would address.</source>
+            <translation>L'indice de l'enregistrement parmi les enregistrements filtrés : le numéro de ligne qu'un script utiliserait.</translation>
+        </message>
+        <message>
+            <source>The record's index in the raw file.</source>
+            <translation>L'indice de l'enregistrement dans le fichier brut.</translation>
+        </message>
+        <message>
+            <source>The records of the file, photons and markers, one row each, a page at a time.</source>
+            <translation>Les enregistrements du fichier, photons et marqueurs, une ligne chacun, page par page.</translation>
+        </message>
+        <message>
+            <source>The routing channel: the detector of a photon, the marker channel of a marker.</source>
+            <translation>Le canal de routage : le détecteur d'un photon, le canal de marqueur d'un marqueur.</translation>
+        </message>
+        <message>
+            <source>What the record is: a photon, or a pixel, line-start, line-stop, frame or other marker. Each marker kind has its own colour.</source>
+            <translation>La nature de l'enregistrement : un photon, ou un marqueur de pixel, de début de ligne, de fin de ligne, d'image ou autre. Chaque type de marqueur a sa propre couleur.</translation>
+        </message>
+        <message>
+            <source>Which records of the filtered selection the table shows now.</source>
+            <translation>Quels enregistrements de la sélection filtrée le tableau affiche maintenant.</translation>
+        </message>
+        <message>
+            <source>line start</source>
+            <translation>début de ligne</translation>
+        </message>
+        <message>
+            <source>line stop</source>
+            <translation>fin de ligne</translation>
+        </message>
+        <message>
+            <source>other marker</source>
+            <translation>autre marqueur</translation>
+        </message>
+        <message>
+            <source>photon</source>
+            <translation>photon</translation>
+        </message>
+        <message>
+            <source>pixel</source>
+            <translation>pixel</translation>
+        </message>
+        <message>
             <source>Sampling…</source>
             <translation>Échantillonnage…</translation>
         </message>

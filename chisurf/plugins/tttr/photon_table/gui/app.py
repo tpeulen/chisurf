@@ -1,10 +1,11 @@
 """Native emtk Photon Table: the photons of a TTTR file, a page at a time.
 
 Both windows -- the file and its summary, the navigation, page fields, channel
-filter and the table of photons -- are the view spec ``photon_table_emtk.view.json``
-drawn by :func:`emtk.view_form.draw_sections`; the table is its ``data_table``.
-Only the Help / Guide buttons, the file dialog and the load progress are drawn
-here. All state and work is in :class:`~.model.PhotonTableViewModel`; the file is
+and kind filters and the table of records -- are the view spec
+``photon_table_emtk.view.json`` drawn by :func:`emtk.view_form.draw_sections`; the
+table is its ``data_table``. The Kind column's colours are filled in here from
+``core/record_kinds.yaml`` (:func:`kind_backgrounds`). Only the Help / Guide
+buttons, the file dialog and the load progress are drawn here. All state and work is in :class:`~.model.PhotonTableViewModel`; the file is
 read on a :class:`~chisurf.emtk.jobs.SnapshotJob`.
 """
 
@@ -25,10 +26,44 @@ from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.jobs import SnapshotJob
 from chisurf.plugins.emtk_layout import action_button, window_size
 
+from ..core.model import record_kinds
 from .model import TTTR_FILTERS, PhotonTableViewModel
 
 HERE = Path(__file__).parent
 TABLE_NAME = "rows"
+#: The table column that names a record's kind.
+KIND_COLUMN = "kind"
+
+
+def kind_backgrounds() -> dict[str, str]:
+    """``{cell text: "#rrggbb"}`` of the Kind column: each declared kind's colour.
+
+    A kind's colour is a category of the shell's colour vocabulary
+    (``chisurf/emtk/task_colors.yaml``); its ``fill`` is the same in the dark and
+    the light theme and the table draws the cell text in the ink that contrasts
+    with it. The English label and the translated one both map to the colour.
+    """
+    from chisurf.emtk.task_colors import categories
+
+    palette = categories()
+    out: dict[str, str] = {}
+    for kind in record_kinds():
+        entry = palette.get(kind.colour or "")
+        if not entry:
+            continue
+        fill = str(entry["dark"]["fill"])
+        out[kind.label] = fill
+        out[tr(kind.label)] = fill
+    return out
+
+
+def _colour_kind_column(spec: dict) -> None:
+    """Give the spec's Kind column its ``background`` map (:func:`kind_backgrounds`)."""
+    for panel in spec.get("sections", []):
+        for section in panel.get("sections", []):
+            for column in (section.get("options") or {}).get("columns", []):
+                if column.get("key") == KIND_COLUMN:
+                    column["background"] = kind_backgrounds()
 
 
 class PhotonTableApp(ImApp):
@@ -38,6 +73,7 @@ class PhotonTableApp(ImApp):
         self.model = model or PhotonTableViewModel()
         self.job = SnapshotJob(self.model)
         spec = json.loads((HERE / "photon_table_emtk.view.json").read_text(encoding="utf-8"))
+        _colour_kind_column(spec)
         self.window_size = window_size(spec, (1100, 720))
         self.panels = {p["name"]: p for p in spec["sections"]}
         self.form = FormState()
@@ -65,7 +101,7 @@ class PhotonTableApp(ImApp):
         )
         self.docks.add_window(
             "photons",
-            "Photons",
+            "Records",
             self.draw_photons,
             dock="photons",
             closable=True,
@@ -128,10 +164,10 @@ class PhotonTableApp(ImApp):
             max(y1 - y0, 1.0),
         )
         if self.job.busy:
-            im.text_disabled(tr("Loading the photons..."))
+            im.text_disabled(tr("Loading the records..."))
 
     def draw_photons(self, box: Any) -> None:
-        """The right window: navigation, page fields, channel filter and the table."""
+        """The right window: navigation, page fields, channel and kind filters and the table."""
         draw_sections(self.panels["photons"]["sections"], self.model, self.form, titles=False)
         if TABLE_NAME in self.form.rects:
             self.item_rects["photon_table"] = self.form.rects[TABLE_NAME]

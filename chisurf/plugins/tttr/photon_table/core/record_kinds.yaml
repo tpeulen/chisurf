@@ -1,0 +1,51 @@
+# The kinds of record the Photon Table tells apart, in the order the summary and
+# the kind filter list them. Read by core/model.py (counts, filter) and gui/app.py
+# (the colour of the Kind cell); nothing else names a kind.
+#
+#   key          stable identifier (filter value, `kind_key` of a row, TSV column)
+#   label        what the Kind cell and the summary say (translated through the catalogue)
+#   codes        tttrlib's CLSMRecordKind values that are this kind
+#                (tttrlib.CLSM_RECORD_PHOTON, _PIXEL_MARKER, _LINE_START_MARKER,
+#                _LINE_STOP_MARKER, _FRAME_MARKER, _OTHER_MARKER). tttrlib decides
+#                the kind from the file header and the scanner's reading routine
+#                (CLSMImage.get_record_kinds), so this file only names and colours.
+#   colour       a category of the shell's colour vocabulary (chisurf/emtk/task_colors.yaml);
+#                its `fill` is the cell colour, the text on it is chosen for contrast,
+#                and the fills are the same in the dark and the light theme. No colour:
+#                the row is drawn as the table draws every row.
+#   description  the tooltip of the kind in the filter and the help.
+#
+# There is no overflow kind: tttrlib folds macro-time overflow records into the
+# macro times while it reads a file, so they never reach the record arrays.
+
+kinds:
+  - key: photon
+    label: photon
+    codes: [0]
+    colour: null
+    description: A detected photon.
+  - key: pixel
+    label: pixel
+    codes: [1]
+    colour: fitting
+    description: A pixel-clock marker (Becker & Hickl pixel-marker scans).
+  - key: line_start
+    label: line start
+    codes: [2]
+    colour: documentation
+    description: The marker that opens a scan line.
+  - key: line_stop
+    label: line stop
+    codes: [3]
+    colour: correlation
+    description: The marker that closes a scan line.
+  - key: frame
+    label: frame
+    codes: [4]
+    colour: wizards
+    description: The marker that opens a frame.
+  - key: other
+    label: other marker
+    codes: [5]
+    colour: decay
+    description: A marker the file header does not name as pixel, line or frame marker (all markers of a file that is not an image scan).

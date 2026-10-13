@@ -1,8 +1,10 @@
 """Tests for the photon table: the model, and the Qt-free native app.
 
 The TTTR object is faked with plain numpy attributes — the model reads only
-``micro_times``, ``macro_times``, ``routing_channels``,
-``header.macro_time_resolution`` and ``get_number_of_micro_time_channels``.
+``micro_times``, ``macro_times``, ``routing_channels``, ``event_types`` (when
+present), ``header.macro_time_resolution`` and
+``get_number_of_micro_time_channels``. The record kinds of real scans are
+checked on ``test/data/clsm`` against tttrlib's own counts.
 """
 
 from __future__ import annotations
@@ -88,9 +90,137 @@ def test_first_index_clamps_into_the_filtered_range(model):
 def test_tsv_copies_the_visible_rows(model):
     tsv = model.page_tsv(0, 3)
     lines = tsv.strip().splitlines()
-    assert lines[0] == "photon\tidx\tchannel\tmicro\tmacro_ms"
+    assert lines[0] == "photon\tidx\tkind\tchannel\tmicro\tmacro_ms"
     assert len(lines) == 4
     assert lines[1].split("\t")[0] == "0"
+
+
+# ── record kinds (photons and markers) ────────────────────────────────────
+
+
+class _FakeMarkerTTTR(_FakeTTTR):
+    """The ten photons with two marker records (event type 1) among them."""
+
+    def __init__(self):
+        super().__init__()
+        self.event_types = np.array([0, 1, 0, 0, 1, 0, 0, 0, 0, 0], dtype=np.int8)
+
+
+def test_a_source_without_event_types_is_all_photons(model):
+    assert model.n_records == model.n_photons == 10
+    assert model.n_markers == 0
+    assert {r["kind_key"] for r in model.page(0, 10)} == {"photon"}
+
+
+def test_markers_of_a_file_that_is_no_scan_are_other_markers():
+    from chisurf.plugins.tttr.photon_table.core.model import PhotonTableModel
+
+    m = PhotonTableModel()
+    m.load_tttr(_FakeMarkerTTTR(), "/data/m.ptu")
+    assert (m.n_records, m.n_photons, m.n_markers) == (10, 8, 2)
+    assert m.kind_counts()["other"] == 2
+    assert [r["idx"] for r in m.page(0, 10, kind="markers")] == [1, 4]
+    assert [r["kind_key"] for r in m.page(0, 10, kind="markers")] == ["other", "other"]
+    assert m.filtered_count(kind="photon") == 8
+    # the two filters combine: channel 1 holds markers 1 and photons 3, 5, 7, 9
+    assert [r["idx"] for r in m.page(0, 10, channel=1, kind="photon")] == [3, 5, 7, 9]
+    assert m.filtered_count(channel=1, kind="markers") == 1
+
+
+def test_the_kinds_are_declared_once_with_vocabulary_colours():
+    from chisurf.emtk.task_colors import categories
+    from chisurf.plugins.tttr.photon_table.core.model import record_kinds
+
+    import tttrlib
+
+    if not hasattr(tttrlib, "CLSM_RECORD_PHOTON"):
+        pytest.skip("tttrlib predates CLSMRecordKind: rebuild tttrlib")
+    kinds = record_kinds()
+    assert [k.key for k in kinds] == ["photon", "pixel", "line_start", "line_stop", "frame", "other"]
+    codes = sorted(c for k in kinds for c in k.codes)
+    assert codes == sorted([
+        tttrlib.CLSM_RECORD_PHOTON, tttrlib.CLSM_RECORD_PIXEL_MARKER,
+        tttrlib.CLSM_RECORD_LINE_START_MARKER, tttrlib.CLSM_RECORD_LINE_STOP_MARKER,
+        tttrlib.CLSM_RECORD_FRAME_MARKER, tttrlib.CLSM_RECORD_OTHER_MARKER,
+    ])
+    palette = categories()
+    fills = [palette[k.colour]["dark"]["fill"] for k in kinds if k.is_marker]
+    assert len(set(fills)) == len(fills), "every marker kind has its own colour"
+    assert all(k.description for k in kinds)
+
+
+def _clsm_file(name):
+    from pathlib import Path
+
+    import tttrlib
+
+    if not hasattr(tttrlib.CLSMImage, "get_record_kinds"):
+        pytest.skip("tttrlib predates CLSMImage.get_record_kinds: rebuild tttrlib")
+
+    repo = next(p for p in Path(__file__).parents if (p / "pyproject.toml").exists())
+    path = repo / "test" / "data" / "clsm" / name
+    if not path.exists():
+        pytest.skip(f"test data not available: {path}")
+    return path
+
+
+@pytest.mark.parametrize("name", ["Leica_SP5.ptu", "Leica_SP8.ptu"])
+def test_scan_kinds_equal_tttrlib_counts(name):
+    """Every record is listed and each kind is counted as tttrlib's image reading names it."""
+    import tttrlib
+
+    from chisurf.plugins.tttr.photon_table.core.model import PhotonTableModel
+
+    path = _clsm_file(name)
+    m = PhotonTableModel()
+    m.load_file(path)
+    tttr = tttrlib.TTTR(str(path))
+    kinds = np.asarray(tttrlib.CLSMImage(tttr, build_pixels=False).get_record_kinds())
+    et = np.asarray(tttr.event_types)
+    assert m.n_records == len(et)
+    assert m.n_photons == int(np.count_nonzero(et == 0))
+    counts = m.kind_counts()
+    for key, code in [
+        ("photon", tttrlib.CLSM_RECORD_PHOTON),
+        ("pixel", tttrlib.CLSM_RECORD_PIXEL_MARKER),
+        ("line_start", tttrlib.CLSM_RECORD_LINE_START_MARKER),
+        ("line_stop", tttrlib.CLSM_RECORD_LINE_STOP_MARKER),
+        ("frame", tttrlib.CLSM_RECORD_FRAME_MARKER),
+        ("other", tttrlib.CLSM_RECORD_OTHER_MARKER),
+    ]:
+        assert counts[key] == int(np.count_nonzero(kinds == code)), key
+    assert sum(counts.values()) == m.n_records
+    assert counts["line_start"] > 0 and counts["frame"] > 0
+
+
+def test_sp5_marker_channels_follow_the_header():
+    """Leica SP5 PTU: the kinds are the marker channels the header declares, counted with numpy.
+
+    The header names frame marker 4, line start 1 and line stop 2; the scanner's
+    second frame channel (6) is not in the header, so those 210 records are
+    *other* markers -- the table shows what the file says, not a routine guess.
+    """
+    import tttrlib
+
+    from chisurf.plugins.tttr.photon_table.core.model import PhotonTableModel
+
+    path = _clsm_file("Leica_SP5.ptu")
+    m = PhotonTableModel()
+    m.load_file(path)
+    tttr = tttrlib.TTTR(str(path))
+    info = tttrlib.CLSMImageInfo.from_header(tttr.header)
+    et = np.asarray(tttr.event_types)
+    rc = np.asarray(tttr.routing_channels)
+    marker = et == 1
+    frames = list(info.marker_frame_start)
+    counts = m.kind_counts()
+    assert counts["frame"] == int(np.count_nonzero(marker & np.isin(rc, frames))) == 21
+    assert counts["line_start"] == int(np.count_nonzero(marker & (rc == info.marker_line_start)))
+    assert counts["line_stop"] == int(np.count_nonzero(marker & (rc == info.marker_line_stop)))
+    assert counts["other"] == int(np.count_nonzero(marker & (rc == 6))) == 210
+    assert counts["pixel"] == 0
+    rows = m.page(0, 5, kind="frame")
+    assert {r["kind"] for r in rows} == {"frame"} and {r["channel"] for r in rows} == set(frames)
 
 
 def test_standalone_factory_blocks_qt_imports():

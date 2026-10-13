@@ -1,10 +1,11 @@
 """Qt-free view model of the Photon Table emtk app.
 
-Wraps :class:`~..core.model.PhotonTableModel` (the photons of one TTTR file,
-paged and channel-filtered) with what the window edits: the first photon shown,
-the page size, the channel filter, the status line and the requests of the
-Open and Copy buttons. The numbers come from the core model, unchanged, so the
-Qt tool and this app show the same rows for the same file.
+Wraps :class:`~..core.model.PhotonTableModel` (every record of one TTTR file --
+photons and marker records -- paged, channel- and kind-filtered) with what the
+window edits: the first record shown, the page size, the channel and kind
+filters, the status line and the requests of the Open and Copy buttons. The
+numbers come from the core model, unchanged, so the Qt tool and this app show
+the same rows for the same file.
 """
 
 from __future__ import annotations
@@ -12,9 +13,11 @@ from __future__ import annotations
 import pathlib
 from typing import Any, Callable
 
+from emtk.i18n import tr
+
 from chisurf.core.fio.staging import TTTR_FILE_FILTER
 
-from ..core.model import PhotonTableModel
+from ..core.model import KIND_ALL, KIND_MARKERS, PhotonTableModel, record_kinds
 
 #: The "All channels" sentinel of the channel filter (the core model's too).
 CHANNEL_ANY = -1
@@ -38,6 +41,8 @@ class PhotonTableViewModel:
         self.first_index = 0
         self.rows_per_page = 200
         self.channel_filter = CHANNEL_ANY
+        #: The kind filter: ``"all"``, ``"markers"`` or a kind key of ``record_kinds.yaml``.
+        self.kind_filter = KIND_ALL
         #: The status line: what was loaded, what failed, what was copied.
         self.notice = ""
         #: ``"open"`` or ``"copy"`` while the app has to act on a button.
@@ -64,7 +69,7 @@ class PhotonTableViewModel:
     # ── state read by the spec ────────────────────────────────────────
     @property
     def loaded(self) -> bool:
-        return self.table.n_photons > 0
+        return self.table.n_records > 0
 
     @property
     def not_loaded(self) -> bool:
@@ -76,9 +81,14 @@ class PhotonTableViewModel:
 
     @property
     def summary_text(self) -> str:
-        """Photon count, acquisition time and micro-time channels, as the Qt tool shows them."""
+        """Photon count (and marker count), acquisition time and micro-time channels.
+
+        A file without markers reads as the Qt tool showed it.
+        """
         t = self.table
         text = f"{t.n_photons:,} photons"
+        if t.n_markers:
+            text += f" + {t.n_markers:,} markers"
         acq = t.acquisition_time_s()
         if acq > 0:
             text += f", {acq:.3g} s"
@@ -92,28 +102,54 @@ class PhotonTableViewModel:
         return f"Routing channels: {', '.join(str(c) for c in channels) or '—'}"
 
     @property
+    def kinds_text(self) -> str:
+        """The records of each kind the file holds, in declaration order (kinds with none left out)."""
+        counts = self.table.kind_counts()
+        parts = [f"{tr(k.label)} {counts[k.key]:,}" for k in record_kinds() if counts[k.key]]
+        return "Records: " + (" · ".join(parts) or "—")
+
+    @property
     def count(self) -> int:
-        """How many photons the channel filter lets through."""
-        return self.table.filtered_count(self.channel_filter)
+        """How many records the channel and kind filters let through."""
+        return self.table.filtered_count(self.channel_filter, self.kind_filter)
 
     @property
     def range_text(self) -> str:
         count = self.count
         if not count:
-            return "no photons"
-        return f"photons {self.first_index:,}–{min(count, self.first_index + self.rows_per_page):,}"
+            return "no records"
+        last = min(count, self.first_index + self.rows_per_page)
+        return f"records {self.first_index:,}–{last:,}"
 
     def channel_labels(self) -> list[list]:
         """``[value, label]`` of the channel choice: All channels, then each used channel."""
-        return [[CHANNEL_ANY, "All channels"]] + [[c, str(c)] for c in self.table.used_channels]
+        return [[CHANNEL_ANY, tr("All channels")]] + [[c, str(c)] for c in self.table.used_channels]
+
+    def kind_labels(self) -> list[list]:
+        """``[value, label]`` of the kind choice: all, photons, markers, then each marker kind present."""
+        counts = self.table.kind_counts()
+        options = [[KIND_ALL, tr("All records")], ["photon", tr("Photons")]]
+        options.append([KIND_MARKERS, tr("Markers")])
+        options += [
+            [k.key, tr(k.label)] for k in record_kinds() if k.is_marker and counts.get(k.key)
+        ]
+        return options
 
     @property
     def rows(self) -> list[dict]:
         """The visible page as table records (rebuilt only when the page changes)."""
-        key = (id(self.table), self.first_index, self.rows_per_page, self.channel_filter)
+        key = (
+            id(self.table), self.first_index, self.rows_per_page, self.channel_filter,
+            self.kind_filter,
+        )
         if key != self._rows_key:
             self._revision += 1
-            rows = _Rows(self.table.page(self.first_index, self.rows_per_page, self.channel_filter))
+            page = self.table.page(
+                self.first_index, self.rows_per_page, self.channel_filter, self.kind_filter
+            )
+            for record in page:
+                record["kind"] = tr(record["kind"])
+            rows = _Rows(page)
             rows.revision = self._revision
             self._rows, self._rows_key = rows, key
         return self._rows
@@ -151,8 +187,14 @@ class PhotonTableViewModel:
         self.table = table
         self.first_index = 0
         self.channel_filter = CHANNEL_ANY
+        self.kind_filter = KIND_ALL
         self.input_file = path
-        self.notice = f"{table.n_photons:,} photons from {path}"
+        if table.n_markers:
+            self.notice = (
+                f"{table.n_records:,} records ({table.n_photons:,} photons) from {path}"
+            )
+        else:
+            self.notice = f"{table.n_photons:,} photons from {path}"
         self.notify("loaded")
         return True
 
@@ -173,7 +215,9 @@ class PhotonTableViewModel:
 
     def copy_text(self) -> str:
         """The visible rows as tab-separated text (the Qt tool's 'Copy visible')."""
-        return self.table.page_tsv(self.first_index, self.rows_per_page, self.channel_filter)
+        return self.table.page_tsv(
+            self.first_index, self.rows_per_page, self.channel_filter, self.kind_filter
+        )
 
     def go_first(self) -> None:
         self.first_index = 0
@@ -189,7 +233,9 @@ class PhotonTableViewModel:
 
     # ── fields ────────────────────────────────────────────────────────
     def _clamp(self, first: int) -> int:
-        return self.table.clamp_first(first, self.rows_per_page, self.channel_filter)
+        return self.table.clamp_first(
+            first, self.rows_per_page, self.channel_filter, self.kind_filter
+        )
 
     def set_first(self, value: Any) -> None:
         """The first photon typed into the field, clamped into the filtered range."""
@@ -205,6 +251,13 @@ class PhotonTableViewModel:
         value = _to_int(value, CHANNEL_ANY)
         valid = [CHANNEL_ANY] + self.table.used_channels
         self.channel_filter = value if value in valid else CHANNEL_ANY
+        self.first_index = self._clamp(0)
+
+    def set_kind(self, value: Any) -> None:
+        """The kind of record to show (``"all"``, ``"markers"`` or a kind key); back to the top."""
+        value = str(value or KIND_ALL)
+        valid = [v for v, _ in self.kind_labels()]
+        self.kind_filter = value if value in valid else KIND_ALL
         self.first_index = self._clamp(0)
 
     # ── persistence ───────────────────────────────────────────────────

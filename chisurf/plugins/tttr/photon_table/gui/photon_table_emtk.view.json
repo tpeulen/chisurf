@@ -1,5 +1,5 @@
 {
-  "_comment": "Photon Table, native emtk window. Drawn by emtk.view_form over PhotonTableViewModel (gui/model.py): 'file' is the left window (open, copy, the file summary), 'photons' the right one (navigation, page fields, channel filter, the table of photons). Help and Guide are drawn by gui/app.py.",
+  "_comment": "Photon Table, native emtk window. Drawn by emtk.view_form over PhotonTableViewModel (gui/model.py): 'file' is the left window (open, copy, the file summary), 'photons' the right one (navigation, page fields, channel and kind filters, the table of records). Help and Guide are drawn by gui/app.py, which also colours the Kind column from core/record_kinds.yaml.",
   "title": "Photon Table",
   "window": {"width": 1100, "height": 720},
   "sections": [
@@ -33,7 +33,12 @@
         {
           "type": "info", "key": "file_summary", "source": "summary_text",
           "hidden_when": {"attr": "not_loaded", "equals": "true"},
-          "description": "How many photons the file holds, how long the measurement lasted (the last macro-time times the header's resolution) and how many micro-time channels the header declares."
+          "description": "How many photons the file holds (and how many marker records besides them), how long the measurement lasted (the last macro-time times the header's resolution) and how many micro-time channels the header declares."
+        },
+        {
+          "type": "info", "key": "file_kinds", "source": "kinds_text",
+          "hidden_when": {"attr": "not_loaded", "equals": "true"},
+          "description": "How many records of each kind the file holds: photons, and the scanner's pixel, line-start, line-stop and frame markers as the file header names them. Markers the header does not name count as 'other marker'."
         },
         {
           "type": "info", "key": "file_channels", "source": "channels_text",
@@ -48,16 +53,16 @@
     },
     {
       "type": "panel",
-      "title": "Photons",
+      "title": "Records",
       "name": "photons",
-      "description": "The photons of the file, one row each, a page at a time.",
+      "description": "The records of the file, photons and markers, one row each, a page at a time.",
       "sections": [
         {
           "type": "button_row",
-          "description": "Move through the photons of the filtered selection a page at a time.",
+          "description": "Move through the records of the filtered selection a page at a time.",
           "buttons": [
             {"action": "go_first", "label": "First",
-             "description": "Jump to the first photon of the filtered selection."},
+             "description": "Jump to the first record of the filtered selection."},
             {"action": "go_prev", "label": "Prev",
              "description": "One page back."},
             {"action": "go_next", "label": "Next",
@@ -68,13 +73,13 @@
         },
         {
           "type": "info", "key": "range_text", "source": "range_text",
-          "description": "Which photons of the filtered selection the table shows now."
+          "description": "Which records of the filtered selection the table shows now."
         },
         {
-          "type": "value", "attr": "first_index", "label": "First photon", "kind": "int",
+          "type": "value", "attr": "first_index", "label": "First record", "kind": "int",
           "minimum": 0, "maximum": 1000000000000, "step": 1, "spin": true,
           "call": "set_first",
-          "description": "Index of the first photon shown, counted within the filtered selection. A value past the end is moved back so that the page stays full."
+          "description": "Index of the first record shown, counted within the filtered selection. A value past the end is moved back so that the page stays full."
         },
         {
           "type": "value", "attr": "rows_per_page", "label": "Rows", "kind": "int",
@@ -85,13 +90,18 @@
         {
           "type": "choice", "attr": "channel_filter", "label": "Channel",
           "options_source": "channel_labels", "call": "set_channel",
-          "description": "Show only the photons of one routing channel. 'All channels' keeps the file's order. Choosing a channel goes back to its first photon."
+          "description": "Show only the records of one routing channel. 'All channels' keeps the file's order. Choosing a channel goes back to its first record."
+        },
+        {
+          "type": "choice", "attr": "kind_filter", "label": "Kind",
+          "options_source": "kind_labels", "call": "set_kind",
+          "description": "Show every record, only the photons, only the marker records, or one kind of marker (pixel, line start, line stop, frame, other) the file holds. Works together with the channel filter; choosing a kind goes back to its first record."
         },
         {
           "type": "custom",
           "key": "data_table",
           "title": "",
-          "description": "One row per photon of the page. Photon is the index among the filtered photons, File idx the index in the file. Click a header to sort the page, click again to reverse; right click a header to choose columns.",
+          "description": "One row per record of the page, photons and markers. Record is the index among the filtered records, File idx the index in the file, Kind what the record is (marker kinds are coloured). Click a header to sort the page, click again to reverse; right click a header to choose columns.",
           "options": {
             "source": "rows",
             "row_key": "idx",
@@ -101,15 +111,17 @@
             "expand": true,
             "min_column_width": 50,
             "columns": [
-              {"key": "photon", "title": "Photon", "width": 90, "shade": false,
-               "tooltip": "The photon's index among the filtered photons: the row number a script would address."},
-              {"key": "idx", "title": "File idx", "width": 90, "shade": false,
-               "tooltip": "The photon's index in the raw file."},
-              {"key": "channel", "title": "Channel", "width": 80, "shade": false,
-               "tooltip": "The routing channel (detector) of the photon."},
-              {"key": "micro", "title": "Micro time", "width": 100, "shade": false,
-               "tooltip": "The micro time: TCSPC channel of the photon after the laser pulse."},
-              {"key": "macro", "title": "Macro time [ms]", "width": 130, "format": "%.6f", "shade": false,
+              {"key": "photon", "title": "Record", "width": 70, "shade": false, "collapse_order": 1,
+               "tooltip": "The record's index among the filtered records: the row number a script would address."},
+              {"key": "idx", "title": "File idx", "width": 80, "shade": false,
+               "tooltip": "The record's index in the raw file."},
+              {"key": "kind", "title": "Kind", "width": 80, "shade": false,
+               "tooltip": "What the record is: a photon, or a pixel, line-start, line-stop, frame or other marker. Each marker kind has its own colour."},
+              {"key": "channel", "title": "Channel", "width": 64, "shade": false,
+               "tooltip": "The routing channel: the detector of a photon, the marker channel of a marker."},
+              {"key": "micro", "title": "Micro time", "width": 80, "shade": false,
+               "tooltip": "The micro time: TCSPC channel of a photon after the laser pulse (a marker's micro time carries no arrival time; Leica SP8 files keep the marker bits there)."},
+              {"key": "macro", "title": "Macro time [ms]", "width": 130, "min_width": 84, "format": "%.6f", "shade": false,
                "tooltip": "The macro time in milliseconds (macro-time units times the header's resolution; raw units when the resolution is unknown)."}
             ]
           }
