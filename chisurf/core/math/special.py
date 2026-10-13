@@ -3,7 +3,7 @@
 The functions ChiSurf used to take from ``scipy.special``, ``scipy.stats`` and
 ``scipy.linalg``, under the same names and argument orders so a call site
 changes its import and nothing else. The arithmetic is IMP.bff's
-(``IMP/bff/Numerics.h``), and bff computes it with **the code scipy runs**:
+(``IMP/bff/util/Numerics.h``), and bff computes it with **the code scipy runs**:
 the special functions are scipy's own ``xsf`` library, the distributions
 scipy hands to Boost.Math use Boost.Math under scipy's policies. So the
 numbers are scipy's to the bit for the special functions and to round-off

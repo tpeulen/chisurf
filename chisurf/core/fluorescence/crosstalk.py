@@ -8,7 +8,7 @@ sensitized-emission FRET needs to *invert* it to recover true fluorophore
 signals, and phasor-FLIM spectral unmixing solves the same constrained inverse.
 
 **The definition and the algebra live in bff** (``IMP.bff.PhotophysicsCrosstalkMatrix`` and
-the ``crosstalk_*`` kernels, from ``IMP/bff/CrosstalkMatrix.h``) — owner,
+the ``crosstalk_*`` kernels, from ``IMP/bff/spectroscopy/PhotophysicsCrosstalkMatrix.h``) — owner,
 2026-09-04: the excitation and emission crosstalk matrix definition must be in
 bff, not in chisurf, per the compute/display line. This module is the Qt-free
 numpy *adapter* those consumers share: it converts payloads and ``(n, ...)``

@@ -556,7 +556,7 @@ class FactorGraph:
         Python.** Moralisation, greedy elimination, the cliques, the junction
         tree, the separators, the sampling blocks and the relevance queries
         are one implementation, in C++, ported from the Python this module
-        used to carry (`IMP/bff/FactorGraph.h`). What stays on this side is
+        used to carry (`IMP/bff/fit/InferenceFactorGraph.h`). What stays on this side is
         what is genuinely ChiSurf's: *what a variable is* -- which parameter,
         at which position of which model's vector -- and *what a factor is*.
         Discovery is the application's knowledge; triangulating a graph is
