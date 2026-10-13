@@ -23,7 +23,8 @@ Quick start
 
 Public surface
 --------------
-- Panels: :class:`Panel` (an emtk control), :class:`PlotAPI` (what every panel shares).
+- Panels: :class:`Panel` (an emtk control), :class:`PlotAPI` (what every panel shares),
+  :class:`ImagePanel` (the image viewer: picture, colour ramp, frame slider; an emtk control).
 - Styles: :class:`Color`, :class:`Pen`, :class:`Brush`, :class:`Colormap`,
   :class:`LineStyle`, and the coercers :func:`to_color` / :func:`to_pen` /
   :func:`to_brush` / :func:`colormap` / :func:`to_colormap` / :func:`int_color`.
@@ -36,6 +37,7 @@ from __future__ import annotations
 from chisurf.chiplot import backends, canvas, handles, style
 from chisurf.chiplot.backends import available_backends, get_backend, set_backend
 from chisurf.chiplot.canvas import Panel, PlotAPI
+from chisurf.chiplot.image_panel import ImagePanel
 from chisurf.chiplot.handles import Orientation, Symbol
 from chisurf.chiplot.style import (
     Brush,
@@ -67,6 +69,7 @@ def configure(**global_opts) -> None:
 
 __all__ = [
     "Panel",
+    "ImagePanel",
     "PlotAPI",
     "Color",
     "Pen",

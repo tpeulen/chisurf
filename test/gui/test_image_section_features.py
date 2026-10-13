@@ -136,7 +136,7 @@ def test_a_non_looping_movie_stops_by_itself_and_the_button_follows(qtbot):
     w._loop_btn.setChecked(False)
     w._start_play()
     for _ in range(4):
-        w.view._advance()
+        w.view.advance()
     assert not w._playing and w._play_btn.text() == "▶"
 
 
@@ -185,9 +185,9 @@ def test_hovering_tells_the_pixel_and_its_value(qtbot):
     m.img[4, 7] = 3.5
     w = _section(qtbot, m, selection_attr="selection")
     w._hover_event(7.5, 4.5)
-    assert w.view.toolTip() == "pixel (4, 7) = 3.5"
+    assert w._view_widget.toolTip() == "pixel (4, 7) = 3.5"
     w._hover_event(-4.0, 4.5)
-    assert w.view.toolTip() == ""
+    assert w._view_widget.toolTip() == ""
 
 
 def test_a_click_picks_a_point_and_draws_its_ring(qtbot):

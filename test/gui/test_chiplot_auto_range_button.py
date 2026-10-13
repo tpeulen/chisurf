@@ -189,9 +189,9 @@ def test_a_caller_set_range_shows_it_as_pyqtgraph_does(plot):
 
 
 def test_the_image_view_has_it_too(qapp):
-    from chisurf.gui import chiplot as cp
+    from chisurf import chiplot as cp
 
-    view = cp.ImageView()
+    view = cp.ImagePanel()
     try:
         view.set_image(np.random.default_rng(1).random((32, 48)))
         canvas = view._iv._canvas
@@ -205,4 +205,4 @@ def test_the_image_view_has_it_too(qapp):
         _draw_canvas()
         assert canvas._auto_button_rect is None
     finally:
-        view.close()
+        view.clear()

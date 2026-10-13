@@ -2,7 +2,7 @@
 
 The other half of the shared region GUI. :class:`RegionOverlay` binds a
 :class:`~chisurf.core.roi.collection.RegionCollection` to a chiplot
-:class:`~chisurf.gui.chiplot.canvas.ImageView` (or any plot exposing
+:class:`~chisurf.chiplot.ImagePanel` (or any plot exposing
 ``add_roi``): every region becomes a draggable handle, and every drag writes the
 new geometry back into the region — so what the list says and what the picture
 shows cannot drift apart.
@@ -90,7 +90,7 @@ class RegionOverlay:
 
     Parameters
     ----------
-    canvas : chisurf.gui.chiplot.canvas.ImageView
+    canvas : chisurf.chiplot.ImagePanel
         Anything with ``add_roi``. Held as-is; the overlay does not own it.
     collection_getter : callable
         Returns the current :class:`RegionCollection`. A callable rather than

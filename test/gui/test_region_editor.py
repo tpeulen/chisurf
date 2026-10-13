@@ -202,9 +202,9 @@ _CANVAS: list = []
 
 @pytest.fixture(scope="module")
 def canvas(qapp):
-    from chisurf.gui.chiplot import canvas as C
+    from chisurf import chiplot
 
-    view = C.ImageView()
+    view = chiplot.ImagePanel()
     view.set_image(np.zeros((64, 64)))
     _CANVAS.append(view)
     return view

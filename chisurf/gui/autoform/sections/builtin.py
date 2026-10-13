@@ -1562,8 +1562,9 @@ class PlotWidget(QtWidgets.QWidget):
     :meth:`refresh` (e.g. via ``AutoForm.refresh_plots``) to re-read the source
     after the model changes.
 
-    Rendering goes through :mod:`chisurf.gui.chiplot`, so every declarative plot
-    in ChiSurf follows the backend seam rather than importing a plotting library.
+    Rendering goes through chiplot: :attr:`plot` is a toolkit-free
+    :class:`chisurf.chiplot.Panel` drawn by emtk, and :attr:`plot_widget` only
+    hosts it in this Qt form (:func:`chisurf.gui.chiplot.host`).
     Anything chiplot cannot express belongs *in* chiplot: reaching
     past the seam here would silently opt every plugin's plot out of the
     migration at once.
@@ -1586,10 +1587,11 @@ class PlotWidget(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.plot = cp.Plot()
+        self.plot = cp.Panel()
+        self.plot_widget = cp.host(self.plot)
         if section.height:
-            self.plot.setMaximumHeight(int(section.height))
-            self.plot.setMinimumHeight(int(section.height))
+            self.plot_widget.setMaximumHeight(int(section.height))
+            self.plot_widget.setMinimumHeight(int(section.height))
         else:
             # Without this, a panel mixing plots with form rows or info blocks
             # adds a trailing stretch that wins over the plot's own expanding
@@ -1618,7 +1620,7 @@ class PlotWidget(QtWidgets.QWidget):
         # Right-click menu (per-axis log/linear toggle, autoscale, export) is
         # on by default; a section can opt out with "context_menu": false.
         self.plot.set_menu_enabled(bool(getattr(section, "context_menu", True)))
-        layout.addWidget(self.plot)
+        layout.addWidget(self.plot_widget)
         if getattr(section, "description", ""):
             self.setToolTip(section.description)
         self.refresh()
@@ -1776,7 +1778,7 @@ class LCurveWidget(QtWidgets.QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(2)
 
-        self._plot = cp.Plot()
+        self._plot = cp.Panel()
         self._plot.set_log(x=True, y=True)
         self._plot.set_labels(
             bottom=options.get("x_label", "residual norm"),
@@ -1789,9 +1791,10 @@ class LCurveWidget(QtWidgets.QWidget):
         self._plot.set_si_prefix(x=False, y=False)
         # An empty L-curve is a large black rectangle; capped, it stays a panel
         # in a stack of parameter tables rather than pushing them off screen.
-        self._plot.setMinimumHeight(int(options.get("min_height", 160)))
-        self._plot.setMaximumHeight(int(options.get("max_height", 260)))
-        lay.addWidget(self._plot)
+        self._plot_widget = cp.host(self._plot)
+        self._plot_widget.setMinimumHeight(int(options.get("min_height", 160)))
+        self._plot_widget.setMaximumHeight(int(options.get("max_height", 260)))
+        lay.addWidget(self._plot_widget)
 
         if options.get("compute_action") or options.get("select_action"):
             lay.addWidget(self._build_controls())
@@ -1937,7 +1940,7 @@ IMAGE_COLORMAPS = ["viridis", "magma", "inferno", "plasma", "cividis", "turbo", 
 
 
 def apply_colormap(image_view, name: str) -> None:
-    """Apply a colormap by name to a :class:`~chisurf.gui.chiplot.ImageView`, best-effort.
+    """Apply a colormap by name to a :class:`~chisurf.chiplot.ImagePanel`, best-effort.
 
     Reusable by any chiplot image plot (AutoForm or not) so the colour handling is
     consistent across tools (2D-FLC, RICS, PDA, ...).
@@ -2130,7 +2133,7 @@ class ImageMapWidget(QtWidgets.QWidget):
             lay.addLayout(self._build_bar(colormap))
         from chisurf.gui import chiplot
 
-        view = chiplot.ImageView()
+        view = chiplot.ImagePanel()
         # A plot needs readable axes. The default view is a bare picture — fine
         # for a detector, useless for a 2-D histogram whose axes carry the
         # quantities being fitted.
@@ -2144,7 +2147,9 @@ class ImageMapWidget(QtWidgets.QWidget):
         view.invert_y(invert_y)
         view.set_aspect_locked(aspect_locked)
         self._view = view
-        lay.addWidget(view, 1)
+        #: The Qt widget hosting the emtk-drawn viewer (picture, ramp, frame slider).
+        self._view_widget = chiplot.host(view)
+        lay.addWidget(self._view_widget, 1)
         if self._selection_attr:
             view.enable_brush(self._brush_kernel, on_stroke=self._on_stroke)
             view.on_hover(self._hover_event)
@@ -2213,7 +2218,7 @@ class ImageMapWidget(QtWidgets.QWidget):
 
     @property
     def view(self):
-        """The :class:`~chisurf.gui.chiplot.ImageView` that draws the map."""
+        """The :class:`~chisurf.chiplot.ImagePanel` that draws the map (hosted by ``_view_widget``)."""
         return self._view
 
     # ── detector-channel / window selector ─────────────────────────────
@@ -2354,11 +2359,11 @@ class ImageMapWidget(QtWidgets.QWidget):
         pixel = self._view.pixel_at(x, y)
         data = self._data
         if pixel is None or data is None:
-            self._view.setToolTip("")
+            self._view_widget.setToolTip("")
             return
         i, j = pixel
         frame = data[self._view.frame] if data.ndim == 3 else data
-        self._view.setToolTip(f"pixel ({i}, {j}) = {frame[i, j]:g}")
+        self._view_widget.setToolTip(f"pixel ({i}, {j}) = {frame[i, j]:g}")
 
     def _on_stroke(self, mask, phase: str) -> None:
         """A brush stamp: hand the mask to the model and let it recompute."""

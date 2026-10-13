@@ -2,7 +2,7 @@
 
 Two capabilities that were being re-implemented per plugin — draw a
 :class:`~chisurf.core.roi.ROI` on an image, and turn a click into a region —
-now live on :class:`chisurf.gui.chiplot.ImageView`. These tests pin the parts
+now live on :class:`chisurf.chiplot.ImagePanel`. These tests pin the parts
 that were getting done differently each time: the ellipse's radius-versus-
 diameter convention, and that a click is a *seed* the fit refines rather than
 the answer itself.
@@ -13,8 +13,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-pytest.importorskip("qtpy")
-
 from chisurf.core.roi import EllipseROI, MaskROI, PolygonROI, RectangleROI
 
 
@@ -23,48 +21,17 @@ def _field(cy=20.0, cx=24.0, sigma=1.8, shape=(48, 56)):
     return 5.0 + 300.0 * np.exp(-0.5 * (((rows - cy) / sigma) ** 2 + ((cols - cx) / sigma) ** 2))
 
 
-#: Views are kept for the life of the module rather than let go between tests.
-#: pyqtgraph registers every ViewBox in a process-wide list and, on destruction,
-#: walks the *other* views' context menus to update it — touching a combo box
-#: whose C++ object Qt has already deleted, which aborts the interpreter after
-#: the tests have all passed. Holding them is cheaper than the alternative.
-_VIEWS: list = []
-
-
 def _image_view(image=None):
-    from chisurf.gui import chiplot
+    from chisurf import chiplot
 
-    iv = chiplot.ImageView()
+    iv = chiplot.ImagePanel()
     iv.set_image(_field() if image is None else image)
-    _VIEWS.append(iv)
     return iv
 
 
 @pytest.fixture
-def view(qapp):
+def view():
     return _image_view()
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _dispose_views():
-    """Destroy the views deterministically, while Qt is still alive.
-
-    Letting them go at interpreter shutdown is what aborts: pyqtgraph's
-    process-wide ViewBox registry walks the *other* views' context menus when
-    one is destroyed, and by then their combo boxes are deleted C++ objects.
-    Taking them down one at a time, with the event loop still running, keeps
-    that walk on live objects.
-    """
-    yield
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance()
-    while _VIEWS:
-        view = _VIEWS.pop()
-        view.setParent(None)
-        view.deleteLater()
-        if app is not None:
-            app.processEvents()
 
 
 def test_an_ellipse_is_drawn_at_the_size_it_describes(view):

@@ -2,7 +2,7 @@
 
 :mod:`chisurf.chiplot` is the plotting API (panels, handles, styles, backends)
 and imports no Qt. This package adds the widgets a Qt layout embeds --
-:class:`Plot`, :class:`Grid`, :class:`ImageView` and :func:`host` (from
+:class:`Plot`, :class:`Grid`, the hosts :class:`PanelHost` / :class:`ImagePanelHost` and :func:`host` (from
 :mod:`chisurf.gui.chiplot.canvas`) -- and re-exports everything else, so a Qt
 call site writes ``from chisurf.gui import chiplot as cp`` and finds the whole
 API in one place. Code that draws on an emtk surface imports
@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from chisurf.chiplot import (  # the toolkit-free API, re-exported for Qt hosts
     Brush,
+    ImagePanel,
     Color,
     Colormap,
     LineStyle,
@@ -42,15 +43,17 @@ from chisurf.chiplot import (  # the toolkit-free API, re-exported for Qt hosts
     to_pen,
 )
 from chisurf.gui.chiplot import canvas  # the Qt widgets' module (not the core's ``canvas``)
-from chisurf.gui.chiplot.canvas import Grid, ImageView, PanelPlot, Plot, host
+from chisurf.gui.chiplot.canvas import Grid, ImagePanelHost, PanelHost, PanelPlot, Plot, host
 
 __all__ = [
     "Plot",
     "Grid",
-    "ImageView",
+    "ImagePanelHost",
     "host",
+    "PanelHost",
     "PanelPlot",
     "Panel",
+    "ImagePanel",
     "PlotAPI",
     "Color",
     "Pen",

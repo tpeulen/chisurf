@@ -409,10 +409,10 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         mode_row.addWidget(self.toolbtn_clear_preview)
         preview_layout.addLayout(mode_row)
 
-        self.preview_view = cp.ImageView()
+        self.preview_view = cp.ImagePanel()
         self.preview_view.set_histogram_width(120)
         self.preview_view.set_interactive(mouse=False, menu=False)
-        preview_layout.addWidget(self.preview_view, 1)
+        preview_layout.addWidget(cp.host(self.preview_view), 1)
 
         self._preview_roi = None
         self._preview_img_shape = None

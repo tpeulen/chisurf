@@ -562,7 +562,7 @@ def test_grid_panels(qapp):
 
 
 def test_image_view_and_roi(qapp):
-    iv = cp.ImageView()
+    iv = cp.ImagePanel()
     iv.set_image(np.random.rand(16, 16))
     iv.set_image(np.random.rand(4, 8, 8), axes={"t": 0, "y": 1, "x": 2})  # stack
     iv.set_colormap("viridis")
@@ -845,8 +845,8 @@ def test_remove_drops_series_from_export(qapp, tmp_path):
 
 
 def test_image_view_clear_removes_overlays(qapp):
-    """ImageView.clear() takes the overlays/ROIs with it (RF-137)."""
-    iv = cp.ImageView()
+    """ImagePanel.clear() takes the overlays/ROIs with it (RF-137)."""
+    iv = cp.ImagePanel()
     iv.set_image(np.random.rand(16, 16))
     overlay = iv.add_overlay(np.zeros((8, 8, 4), dtype=np.uint8))
     roi = iv.add_roi(kind="rect", pos=(1, 2), size=(3, 4), pen="y")

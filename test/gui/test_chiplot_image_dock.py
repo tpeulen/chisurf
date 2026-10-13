@@ -36,13 +36,11 @@ def _emtk_backend():
 
 
 @pytest.fixture
-def view(qapp):
-    from chisurf.gui import chiplot
+def view():
+    """The toolkit-free viewer: no Qt in the way of anything pinned here."""
+    from chisurf import chiplot
 
-    iv = chiplot.ImageView()
-    iv.resize(400, 300)
-    yield iv
-    iv.close()
+    return chiplot.ImagePanel()
 
 
 def _stack(n=5, rows=6, cols=8):
@@ -53,38 +51,85 @@ def _canvas(view):
     return view.native
 
 
-def _paint(view):
-    from emtk.qt_painter import QtPainter
-    from qtpy import QtGui
+class _Picture:
+    """A drawn frame, read the way the tests read pixels (``pixelColor(x, y).red()``)."""
 
-    image = QtGui.QImage(400, 300, QtGui.QImage.Format_ARGB32)
-    image.fill(QtGui.QColor(0, 0, 0))
-    painter = QtGui.QPainter(image)
-    try:
-        view.native.draw(QtPainter(painter), 0.0, 0.0, 400.0, 300.0)
-    finally:
-        painter.end()
-    return image
+    class _Pixel:
+        def __init__(self, rgb):
+            self._rgb = rgb
+
+        def red(self):
+            return self._rgb[0]
+
+        def green(self):
+            return self._rgb[1]
+
+        def blue(self):
+            return self._rgb[2]
+
+    def __init__(self, frame):
+        self._frame = frame
+
+    def width(self):
+        return self._frame.width
+
+    def height(self):
+        return self._frame.height
+
+    def pixelColor(self, x, y):  # noqa: N802 - the spelling the assertions use
+        return self._Pixel(self._frame.getpixel((x, y)))
+
+
+def _paint(view):
+    """Draw the picture's canvas on emtk's CPU rasteriser (400 x 300)."""
+    from emtk.pil_painter import PilPainter
+
+    painter = PilPainter(400, 300, background=(0, 0, 0, 255))
+    view.native.draw(painter, 0.0, 0.0, 400.0, 300.0)
+    return _Picture(painter.frame)
+
+
+def _draw(view, size=(400.0, 300.0)):
+    """Draw the whole viewer (picture, ramp, slider) and return what it recorded."""
+    from emtk.testing import RecordingPainter
+
+    painter = RecordingPainter()
+    view.draw(painter, 0.0, 0.0, *size)
+    return painter
 
 
 # -- frames -------------------------------------------------------------------
 def test_a_stack_shows_a_slider_and_a_single_image_does_not(view):
     view.set_image(np.zeros((6, 8)))
-    assert view.frame_count == 1 and view._frame_bar.isHidden()
+    _draw(view)
+    assert view.frame_count == 1 and not view.frame_bar_visible
+    assert view._boxes["slider"] is None
     view.set_image(_stack())
-    assert view.frame_count == 5 and not view._frame_bar.isHidden()
-    assert view._slider.maximum() == 4
+    _draw(view)
+    assert view.frame_count == 5 and view.frame_bar_visible
+    x, y, w, h = view._boxes["slider"]
+    assert (y + h, w, h) == (300.0, 400.0, view.SLIDER_H), "a row under the picture"
 
 
 def test_the_slider_steps_frames_and_frames_move_the_slider(view):
     seen = []
     view.frame_changed.connect(seen.append)
     view.set_image(_stack())
-    view._slider.setValue(3)
-    assert view.frame == 3
+    _draw(view)
+    tx, ty, tw, th = view._track()
+    view.press(tx + tw * 0.75, ty + th / 2, 0.0, 0.0, 400.0, 300.0, 0, 1)
+    view.release()
+    assert view.frame == 3, "three quarters along a five-frame track"
     assert _canvas(view)._entries[0].state["data"][0, 0] == 3.0
+    view.press(tx, ty + th / 2, 0.0, 0.0, 400.0, 300.0, 0, 1)
+    view.drag(tx + tw, ty + th / 2)
+    view.release()
+    assert view.frame == 4 and seen[-1] == 4, "a drag scrubs to the end"
     view.set_frame(1)
-    assert view._slider.value() == 1 and seen[-1] == 1
+    assert view.frame_label == "2/5" and seen[-1] == 1
+    texts = [call[6] for call in _draw(view).calls if call[0] == "text"]
+    assert "2/5" in texts, "the slider writes the frame it shows"
+    assert view.tooltip_at(tx + 1, ty + th / 2) == "Frame of the stack"
     view.set_frame(7)  # wraps rather than raising
     assert view.frame == 2
 
@@ -105,11 +150,11 @@ def test_playback_loops_or_stops_at_the_end(view):
     view.play(30, loop=False)
     assert view.playing and states == [True]
     for _ in range(5):
-        view._advance()
+        view.advance()
     assert view.frame == 2 and not view.playing and states == [True, False]
     view.set_loop(True)
     view.play(30)
-    view._advance()
+    view.advance()
     assert view.frame == 0, "a looping stack wraps round"
     view.stop()
     assert not view.playing and view.frame == 0
@@ -119,6 +164,35 @@ def test_playing_a_single_image_does_nothing(view):
     view.set_image(np.zeros((4, 4)))
     view.play(10)
     assert not view.playing
+
+
+def test_playback_ticks_on_the_clock_it_is_given(view):
+    """An emtk surface drives playback with ``tick(now)``: one frame per 1/fps second."""
+    view.set_image(_stack(5))
+    view.play(10)
+    assert view.animating()
+    view.tick(100.0)  # the first tick only starts the clock
+    assert view.frame == 0
+    view.tick(100.25)  # 2.5 periods later: two steps are due
+    assert view.frame == 2
+    view.pause()
+    view.tick(200.0)
+    assert view.frame == 2 and not view.animating()
+
+
+def test_a_qt_host_plays_the_stack_on_a_timer(qapp):
+    """The Qt host is the panel's clock: a timer at 1/fps while it plays, stopped after."""
+    from chisurf import chiplot
+    from chisurf.gui import chiplot as qt_chiplot
+
+    panel = chiplot.ImagePanel()
+    widget = qt_chiplot.host(panel)
+    panel.set_image(_stack(3))
+    panel.play(20)
+    assert widget._timer.isActive() and widget._timer.interval() == 50
+    panel.pause()
+    assert not widget._timer.isActive()
+    widget.close()
 
 
 # -- placing the picture ------------------------------------------------------
@@ -346,15 +420,23 @@ def test_a_shape_without_resizable_has_no_grip(view):
 
 # -- the colour ramp ----------------------------------------------------------
 def test_an_image_gets_a_colour_ramp_with_draggable_levels(view):
-    assert view._ramp is None
+    assert view.ramp is None
     view.set_image(np.arange(100.0).reshape(10, 10))
-    assert view._ramp is not None
-    bar = view._iv._bar
+    assert view.ramp is not None
+    bar = view.ramp
     assert bar.get_levels() == (0.0, 99.0)
     bar.set_levels(10.0, 50.0)
     assert _canvas(view)._entries[0].get_levels() == (10.0, 50.0)
+    # The ramp is drawn beside the picture and a drag on its upper half moves the high level.
+    _draw(view)
+    rx, ry, rw, rh = view._boxes["ramp"]
+    assert rw == 80.0 and rx + rw == 400.0
+    view.press(rx + rw / 2, ry + 20.0, 0.0, 0.0, 400.0, 300.0, 0, 1)
+    view.drag(rx + rw / 2, ry + 10.0)
+    view.release()
+    assert bar.get_levels()[1] > 50.0
     view.clear()
-    assert view._ramp is None and view.brush_mask() is None
+    assert view.ramp is None and view.brush_mask() is None
 
 
 # -- colour overlays ----------------------------------------------------------
