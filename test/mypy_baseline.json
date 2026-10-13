@@ -23,8 +23,7 @@
   "chisurf/core/console/transform.py": 1,
   "chisurf/core/data.py": 4,
   "chisurf/core/experiments/bootstrap.py": 1,
-  "chisurf/core/experiments/core/experiment.py": 4,
-  "chisurf/core/experiments/core/reader.py": 10,
+  "chisurf/core/experiments/core/reader.py": 6,
   "chisurf/core/experiments/deer/eprload.py": 1,
   "chisurf/core/experiments/deer/reader.py": 2,
   "chisurf/core/experiments/fcs/reader.py": 6,
@@ -87,7 +86,6 @@
   "chisurf/core/fluorescence/anisotropy/kappa2.py": 1,
   "chisurf/core/fluorescence/burst/decay.py": 1,
   "chisurf/core/fluorescence/burst/gopich_szabo.py": 1,
-  "chisurf/core/fluorescence/burst/simulate.py": 12,
   "chisurf/core/fluorescence/fcs/normalization.py": 1,
   "chisurf/core/fluorescence/fcs/power_series.py": 1,
   "chisurf/core/fluorescence/fcs/saturation.py": 2,
@@ -129,7 +127,6 @@
   "chisurf/core/models/description.py": 1,
   "chisurf/core/models/fcs/general.py": 3,
   "chisurf/core/models/fcs/kinetics.py": 4,
-  "chisurf/core/models/fcs/maxent_models.py": 10,
   "chisurf/core/models/ics/ics.py": 3,
   "chisurf/core/models/ics/models.py": 1,
   "chisurf/core/models/mfd/two_dimensional.py": 1,
@@ -498,7 +495,6 @@
   "chisurf/server/services/plot_svc.py": 2,
   "chisurf/server/services/projects.py": 1,
   "chisurf/server/startup.py": 1,
-  "chisurf/server/transport/zmq.py": 11,
   "chisurf/startup/gui_services.py": 2,
   "chisurf/startup/services.py": 4
  }

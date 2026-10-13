@@ -186,10 +186,13 @@ class ZmqServer:
 
     def _handle_one(self) -> None:
         """Receive and respond to a single JSON-RPC request."""
+        sock = self._rep_socket
+        if sock is None:
+            return
         try:
-            raw = self._rep_socket.recv_json()
+            raw = sock.recv_json()
         except Exception:
-            self._rep_socket.send_json(
+            sock.send_json(
                 {"jsonrpc": "2.0", "error": {"code": -32700, "message": "Parse error"}, "id": None}
             )
             return
@@ -200,7 +203,7 @@ class ZmqServer:
             or not raw.get("method")
         ):
             req_id = raw.get("id") if isinstance(raw, dict) else None
-            self._rep_socket.send_json(
+            sock.send_json(
                 {
                     "jsonrpc": "2.0",
                     "error": {"code": -32600, "message": "Invalid Request"},
@@ -212,9 +215,19 @@ class ZmqServer:
         if raw.get("jsonrpc") != "2.0":
             _log.warning("Request missing 'jsonrpc': '2.0' — treating leniently")
 
-        method = raw.get("method", "")
-        params = raw.get("params", {}) or {}
+        method = str(raw["method"])
+        params = raw.get("params") or {}
         req_id = raw.get("id")
+        if not isinstance(params, dict):
+            # The services take named parameters only.
+            sock.send_json(
+                {
+                    "jsonrpc": "2.0",
+                    "error": {"code": -32602, "message": "Invalid params: expected an object"},
+                    "id": req_id,
+                }
+            )
+            return
 
         try:
             previous = in_server_dispatch()
@@ -227,7 +240,7 @@ class ZmqServer:
             # JSON-RPC error member so callers can distinguish success
             # from failure by the contract, not by sniffing fields.
             if isinstance(result, dict) and result.get("ok") is False:
-                self._rep_socket.send_json(
+                sock.send_json(
                     {
                         "jsonrpc": "2.0",
                         "error": {
@@ -243,7 +256,7 @@ class ZmqServer:
                     default=_json_default,
                 )
             else:
-                self._rep_socket.send_json(
+                sock.send_json(
                     {
                         "jsonrpc": "2.0",
                         "result": result,
@@ -252,7 +265,7 @@ class ZmqServer:
                     default=_json_default,
                 )
         except Exception as e:
-            self._rep_socket.send_json(
+            sock.send_json(
                 {
                     "jsonrpc": "2.0",
                     "error": {"code": -32603, "message": str(e)},
@@ -411,6 +424,9 @@ class ZmqClient:
                 raise RuntimeError("this client is closed; call connect() to reopen it")
             if self._req_socket is None:
                 self.connect()
+            sock = self._req_socket
+            if sock is None:
+                return {"ok": False, "error": "send failed: no request socket"}
 
             import zmq
 
@@ -423,7 +439,7 @@ class ZmqClient:
             }
 
             try:
-                self._req_socket.send_json(msg, default=_json_default)
+                sock.send_json(msg, default=_json_default)
             except zmq.ZMQError as e:
                 self._reset_socket()
                 return {"ok": False, "error": f"send failed: {e}"}
@@ -435,22 +451,25 @@ class ZmqClient:
                 return {"ok": False, "error": f"send failed: {e}"}
 
             poller = zmq.Poller()
-            poller.register(self._req_socket, zmq.POLLIN)
+            poller.register(sock, zmq.POLLIN)
             try:
                 socks = dict(poller.poll(timeout=self._timeout_ms))
             except zmq.ZMQError as e:
                 self._reset_socket()
                 return {"ok": False, "error": f"poll failed: {e}"}
 
-            if self._req_socket not in socks:
+            if sock not in socks:
                 self._reset_socket()
                 return {"ok": False, "error": f"timeout: no response within {self._timeout_ms}ms"}
 
             try:
-                return self._req_socket.recv_json()
+                reply = sock.recv_json()
             except zmq.ZMQError as e:
                 self._reset_socket()
                 return {"ok": False, "error": f"recv failed: {e}"}
+            if not isinstance(reply, dict):
+                return {"ok": False, "error": f"recv failed: not a JSON-RPC object: {reply!r}"}
+            return reply
 
     def subscribe(self, topic: str = "", callback: Callable | None = None) -> Any:
         """Register a subscriber for *topic*.

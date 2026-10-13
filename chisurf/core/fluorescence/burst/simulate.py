@@ -84,8 +84,12 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    import tttrlib
 
 from chisurf.core.fluorescence.fret.lines import (
     distance_for_efficiency,
@@ -704,7 +708,7 @@ class SimulatedSmfret:
         burst can be defined by truth instead of found by threshold.
     """
 
-    tttr: object
+    tttr: tttrlib.TTTR
     parameters: SmfretParameters
     stream: np.ndarray
     species: np.ndarray

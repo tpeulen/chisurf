@@ -109,11 +109,11 @@ class _MaxEntFCSBase(ModelCurve):
 
     def _init_l_curve_state(self) -> None:
         """Reset the cached sweep. Called at the end of each subclass ``__init__``."""
-        self._result = None
-        self._l_curve_log10_reg = None
-        self._l_curve_chi2 = None
-        self._l_curve_solution_norm = None
-        self._l_curve_corner_index = None
+        self._result: dict | None = None
+        self._l_curve_log10_reg: np.ndarray | None = None
+        self._l_curve_chi2: np.ndarray | None = None
+        self._l_curve_solution_norm: np.ndarray | None = None
+        self._l_curve_corner_index: int | None = None
 
     @property
     def last_result(self) -> dict | None:

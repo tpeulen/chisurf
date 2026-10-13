@@ -83,7 +83,7 @@ class ExperimentReader(chisurf.core.base.Base):
     def __init__(
         self,
         *args,
-        controller: ExperimentReaderController = None,
+        controller: ExperimentReaderController | None = None,
         db=None,
         object_store=None,
         record_provenance: bool = True,
@@ -125,8 +125,8 @@ class ExperimentReader(chisurf.core.base.Base):
         self._stage_cancel_cb = None
 
     @property
-    def controller(self) -> ExperimentReaderController:
-        """The controller widget for this reader, built on first access.
+    def controller(self) -> ExperimentReaderController | None:
+        """The controller widget for this reader, built on first access (``None`` headless).
 
         Startup registers a controller *factory* rather than an instance: the
         GUI configures many experiments with several readers each, but only the
@@ -147,7 +147,7 @@ class ExperimentReader(chisurf.core.base.Base):
         return self._controller
 
     @controller.setter
-    def controller(self, value: ExperimentReaderController) -> None:
+    def controller(self, value: ExperimentReaderController | None) -> None:
         """Set the controller instance, discarding any pending factory."""
         self._controller = value
         if value is not None:
@@ -619,7 +619,7 @@ class ExperimentReader(chisurf.core.base.Base):
 
     def _reader_settings_dict(self) -> dict:
         """Serialize reader configuration for provenance recording."""
-        state = {}
+        state: dict[str, typing.Any] = {}
         for key, value in self.__dict__.items():
             if key.startswith("_") or key in ("db", "object_store", "controller", "experiment"):
                 continue
@@ -650,7 +650,7 @@ class ExperimentReaderController(chisurf.core.base.Base):
         """
         super().__init__(*args, **kwargs)
         self.experiment_reader = experiment_reader
-        self._call_dict = dict()
+        self._call_dict: dict = dict()
         if isinstance(experiment_reader, ExperimentReader):
             experiment_reader.controller = self
 

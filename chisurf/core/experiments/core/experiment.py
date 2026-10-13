@@ -88,7 +88,9 @@ class Experiment(chisurf.core.base.Base):
         for model in models:
             self.add_model_class(model)
 
-    def add_reader(self, reader: ExperimentReader, controller: ExperimentReaderController = None):
+    def add_reader(
+        self, reader: ExperimentReader, controller: ExperimentReaderController | None = None
+    ):
         """Register a single reader (optionally with a controller).
 
         Parameters
@@ -219,7 +221,8 @@ class Experiment(chisurf.core.base.Base):
         hidden : bool
             If *True*, the experiment is hidden from user interfaces.
         """
-        super().__init__(*args, name=name, **kwargs)
+        # Positionally: a further positional argument must not collide with name=.
+        super().__init__(name, *args, **kwargs)
         self.hidden = hidden
-        self._model_classes = list()
-        self._readers = list()
+        self._model_classes: list[type] = list()
+        self._readers: list[ExperimentReader | ExperimentReaderController] = list()
