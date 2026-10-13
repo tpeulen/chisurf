@@ -53,8 +53,16 @@ SCALAR_COLUMNS = [
 ]
 
 #: Columns of the ``global_parameter_table`` (the Qt section's, in its order).
+#: Short of width it drops, as the parameter tables do, the bounds first, then
+#: the error, then the link columns, then Fixed; owner, parameter and value stay.
 GLOBAL_COLUMNS = [
-    {"key": "row", "label": "Row", "shade": False, "description": "The row number a link names."},
+    {
+        "key": "row",
+        "label": "Row",
+        "shade": False,
+        "description": "The row number a link names.",
+        "collapse_order": 3,
+    },
     {
         "key": "owner",
         "label": "Owner",
@@ -74,22 +82,45 @@ GLOBAL_COLUMNS = [
         "label": "Fixed",
         "editable": True,
         "description": "A fixed parameter keeps its value when the fit runs.",
+        "collapse_order": 4,
     },
-    {"key": "lo", "label": "Lo", "editable": True, "format": "%.4g", "description": "Lower bound."},
-    {"key": "hi", "label": "Hi", "editable": True, "format": "%.4g", "description": "Upper bound."},
+    {
+        "key": "lo",
+        "label": "Lo",
+        "editable": True,
+        "format": "%.4g",
+        "description": "Lower bound.",
+        "collapse_order": 1,
+    },
+    {
+        "key": "hi",
+        "label": "Hi",
+        "editable": True,
+        "format": "%.4g",
+        "description": "Upper bound.",
+        "collapse_order": 1,
+    },
     {
         "key": "bounds_on",
         "label": "Bounds",
         "editable": True,
         "description": "Keep the parameter between Lo and Hi while fitting.",
+        "collapse_order": 1,
     },
-    {"key": "error", "label": "Error", "format": "%.3g", "description": "From the last fit."},
+    {
+        "key": "error",
+        "label": "Error",
+        "format": "%.3g",
+        "description": "From the last fit.",
+        "collapse_order": 2,
+    },
     {
         "key": "link_row",
         "label": "Link row",
         "editable": True,
         "format": "%d",
         "description": "Type another row's number to link this parameter to it; clear it to unlink.",
+        "collapse_order": 3,
     },
 ]
 

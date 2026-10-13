@@ -310,3 +310,54 @@ def test_export_writes_the_visible_table(emtk_plot, tmp_path):
     lines = (tmp_path / "table.csv").read_text().splitlines()
     assert path and lines[0].split(",") == [c.key for c in plot.table.visible_columns()]
     assert len(lines) == plot.table.row_count() + 1
+
+
+def test_the_model_editor_drops_bounds_then_links_then_fixed_when_narrow(emtk_plot):
+    """Short of width the parameter editor collapses like the Qt parameter tables.
+
+    The bounds go first, then the link columns, then Fixed; the name and the
+    value stay at any width, and widening brings them back in reverse.
+    """
+    from types import SimpleNamespace
+
+    from emtk.testing import RecordingPainter
+
+    plot, _client = emtk_plot
+    a = SimpleNamespace(
+        name="tau",
+        value=4.1,
+        fixed=False,
+        bounds=(0.1, 10.0),
+        bounds_on=True,
+        is_linked=False,
+        link=None,
+    )
+    b = SimpleNamespace(
+        name="x",
+        value=0.5,
+        fixed=True,
+        bounds=(0.0, 1.0),
+        bounds_on=False,
+        is_linked=True,
+        link=a,
+    )
+    plot.fit.model.parameters_all_dict = {"tau": a, "x": b}
+    plot.on_show_model()
+    _records, _params, table, _message = plot.parameter_editor
+
+    def shown(width):
+        table.draw(RecordingPainter(), 0.0, 0.0, width, 200.0)
+        return tuple(c.key for c in table.visible_columns())
+
+    stages = [
+        ("name", "value", "lb", "ub", "fixed", "bounds_on", "linked", "link_target"),
+        ("name", "value", "fixed", "linked", "link_target"),
+        ("name", "value", "fixed"),
+        ("name", "value"),
+    ]
+    seen = []
+    for width in [*range(900, 60, -20), *range(60, 920, 20)]:
+        columns = shown(width)
+        if not seen or seen[-1] != columns:
+            seen.append(columns)
+    assert seen == stages + stages[-2::-1]

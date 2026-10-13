@@ -35,16 +35,18 @@ _BASE_COLUMNS = ("x", "data", "model", "w. res.", "mask")
 #: Columns whose cells the user may edit.
 _EDITABLE_COLUMNS = ("x", "data", "mask")
 
-#: The model-parameter editor's columns: key, tooltip.
+#: The model-parameter editor's columns: key, tooltip, collapse order. Short of
+#: width the table drops the bounds first, then the link columns, then Fixed;
+#: the name and the value stay (``0``), and a dropped cell is in the row tooltip.
 _PARAMETER_COLUMNS = (
-    ("name", "The parameter."),
-    ("value", "Its value."),
-    ("lb", "Lower bound."),
-    ("ub", "Upper bound."),
-    ("fixed", "Fixed: not varied by the fit."),
-    ("bounds_on", "Whether the bounds are enforced."),
-    ("linked", "Linked to another parameter (link_target)."),
-    ("link_target", "The parameter this one is linked to."),
+    ("name", "The parameter.", 0),
+    ("value", "Its value.", 0),
+    ("lb", "Lower bound.", 1),
+    ("ub", "Upper bound.", 1),
+    ("fixed", "Fixed: not varied by the fit.", 3),
+    ("bounds_on", "Whether the bounds are enforced.", 1),
+    ("linked", "Linked to another parameter (link_target).", 2),
+    ("link_target", "The parameter this one is linked to.", 2),
 )
 
 
@@ -656,8 +658,10 @@ class FitTablePlotEmtk(plotbase.Plot):
                 record[key] = _parse_bool(record.get(key))
         table = DataTable(filter_box=True)
         table.columns = [
-            TableColumn(key=key, title=key, editable=key != "name", tooltip=tip)
-            for key, tip in _PARAMETER_COLUMNS
+            TableColumn(
+                key=key, title=key, editable=key != "name", tooltip=tip, collapse_order=order
+            )
+            for key, tip, order in _PARAMETER_COLUMNS
         ]
         table.set_records(records)
         message = "" if records else "The model exposes no editable parameters."

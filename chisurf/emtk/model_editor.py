@@ -30,6 +30,9 @@ from emtk.view_form import FormState, draw_form
 from chisurf.core.fitting import prior_families
 
 #: Columns of a parameter table, as the Qt editor's ``ParameterGroupTableWidget`` shows them.
+#: ``collapse_order`` is the Qt table's width priority: short of room the bounds
+#: (and the prior, their smooth form) go first, then the error, then Fixed; the
+#: name and the value are never dropped, and a dropped cell is in the row tooltip.
 PARAMETER_COLUMNS = [
     {
         "key": "label",
@@ -49,6 +52,7 @@ PARAMETER_COLUMNS = [
         "label": "Fixed",
         "editable": True,
         "description": "A fixed parameter keeps its value when the fit runs.",
+        "collapse_order": 3,
     },
     {
         "key": "lo",
@@ -56,6 +60,7 @@ PARAMETER_COLUMNS = [
         "editable": True,
         "format": "%.4g",
         "description": "Lower bound, used while Bounds is on.",
+        "collapse_order": 1,
     },
     {
         "key": "hi",
@@ -63,18 +68,21 @@ PARAMETER_COLUMNS = [
         "editable": True,
         "format": "%.4g",
         "description": "Upper bound, used while Bounds is on.",
+        "collapse_order": 1,
     },
     {
         "key": "bounds_on",
         "label": "Bounds",
         "editable": True,
         "description": "Keep the parameter between Lo and Hi while fitting.",
+        "collapse_order": 1,
     },
     {
         "key": "error",
         "label": "Error",
         "format": "%.3g",
         "description": "Uncertainty estimate from the last fit.",
+        "collapse_order": 2,
     },
     {
         "key": "prior",
@@ -85,6 +93,7 @@ PARAMETER_COLUMNS = [
             "attaches a smooth prior pulling the fit toward a value. Type a family and its "
             "shape parameters, e.g. Gaussian(4, 0.4); right-click the row for the list."
         ),
+        "collapse_order": 1,
     },
 ]
 
@@ -151,6 +160,12 @@ _SLOT_FIELDS = (
     ("bounds_on", "bounds_on", "Bounds", True, None),
     ("error", "error", "Error", False, "%.3g"),
 )
+#: Which slot columns a paired table drops when short of width, read from the
+#: plain table's declaration so both collapse alike (bounds, error, fixed).
+_SLOT_COLLAPSE = {
+    "value": 0,
+    **{c["key"]: c.get("collapse_order", 0) for c in PARAMETER_COLUMNS if c["key"] != "value"},
+}
 _SLOT_KEY = re.compile(r"^(value|fixed|lo|hi|bounds_on|error)(\d+)$")
 
 
@@ -210,6 +225,8 @@ def _paired(entries: list, width: int, section: dict) -> tuple[list, list]:
             }
             if fmt:
                 column["format"] = fmt
+            if _SLOT_COLLAPSE.get(field):
+                column["collapse_order"] = _SLOT_COLLAPSE[field]
             columns.append(column)
     return rows, columns
 

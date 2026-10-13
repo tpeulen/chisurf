@@ -248,7 +248,27 @@ small checkable "bounds" button in its fold header (`bounds_toggle` defaults to
 *every* table in the panel at once (columns start hidden; bounds stay editable
 in the parameter details popup) — this is the default specifically so a
 `dynamic_group` table's paired Lo/Hi/Bounds/Error columns (doubled per slot)
-don't force horizontal scrolling in a narrow dock. The paired table takes the
+don't force horizontal scrolling in a narrow dock. Independently of that toggle,
+**both tables collapse by width** (`_ContentSizedTable._apply_responsive_columns`):
+on every resize/show they hide whole tiers in `RESPONSIVE_TIERS` order —
+`bounds` (Lo, Hi, Bounds), then `error`, then `fixed` — until the header fits the
+viewport plus 8 px slack (measured by applying a candidate set and reading
+`header.length()`, not by summing hints); name and value are never hidden, no
+decision is made below a 120 px viewport, and a hidden bound or Fixed flag stays
+editable in the parameter details popup (links live in the context menu). The
+emtk renderers do the same through emtk's generic **`collapse_order`** column key
+(`emtk/widgets/data_table.py`; 1 goes first, 0 never): `PARAMETER_COLUMNS` and the
+paired `_SLOT_COLLAPSE` in `chisurf/emtk/model_editor.py` declare bounds and
+prior 1, error 2, fixed 3; `GLOBAL_COLUMNS` (`model_sections.py`) bounds 1, error 2,
+row/link_row 3, fixed 4; the Data-table page's model-parameter editor
+(`chisurf/gui/plots/table_plot_emtk.py`) bounds 1, linked/link_target 2, fixed 3.
+emtk decides from **natural** (measured) widths each frame — an optional column
+goes before a name is squeezed — with 8 px slack to drop and 16 px of room to
+restore (no flicker), and lists a dropped row's cells in its tooltip. Thresholds
+therefore differ from Qt by a few dozen pixels; the drop order is identical
+(guard: `test/gui/test_parameter_table_collapse_parity.py`, which sweeps one
+lifetime fit with a linked parameter through both renderers, narrow and back).
+The paired table takes the
 **same `columns` whitelist** as `parameter_group_table` (`section.columns`), so
 "which columns this table shows" is declared one way for both — a host whose
 parameters no fit optimises leaves out `error` rather than carrying one empty

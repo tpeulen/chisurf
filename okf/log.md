@@ -2,6 +2,7 @@
 
 ## 2026-10-13
 
+- Parameter tables collapse by width in emtk as in Qt (emtk 9bdd67a, generic `collapse_order` column key): short of room a table drops the bounds (and prior) first, then the error or link columns, then Fixed; name and value never. Declared on `PARAMETER_COLUMNS`/`_SLOT_COLLAPSE` (`chisurf/emtk/model_editor.py`), `GLOBAL_COLUMNS` (`model_sections.py`) and the Data-table page's model-parameter editor (`gui/plots/table_plot_emtk.py`); a dropped cell is in the row tooltip; no flicker (8 px slack, 16 px restore margin). Guard `test/gui/test_parameter_table_collapse_parity.py` sweeps one lifetime fit (one linked parameter) through the Qt and emtk tables, narrow and back. Concept: [GUI & AutoForm](/subsystems/gui-autoform.md).
 - Qt retirement, plugin half: allow-list 221 → 211. The TCSPC device wrappers use a Qt-free `Signal` (`acq/tcspc_devices/abc.py`); `fret_line/__main__.py` opens the emtk `FRETLineApp`; the five "Qt host delivers a drop" parity tests and their helper left the microscopy plugins (the Qt host is emtk's own `tests/test_qt_host.py`); the Spectra tool's four legacy Qt widgets (`browser.py`, `download_manager.py`, `gui/overview_panel.py`, `gui/add_to_mmfdb_panel.py`) are deleted, their facts frozen in `spectra_downloader/tests/qt_reference.json` and their behaviour tests ported to the native model (`tests/test_native.py`); `docs/guides/screenshots/spectra_mfd.py` renders the emtk app.
 
 ## 2026-10-13

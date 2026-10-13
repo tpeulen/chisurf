@@ -73,6 +73,13 @@ Unticking the checkbox of the **Convolution** group drops the
 $\mathrm{IRF}\ast(\cdot)$ factor — the model is then the ideal decay itself (tail
 fitting), with the inter-pulse tail kept in the `per`iodic mode.
 
+A parameter table in a narrow dock drops whole columns rather than scrolling
+sideways: first the bounds (**Lo**, **Hi**, **Bounds**, and the **Prior**), then
+**Error** (or the link columns, where a table has them), then **Fixed**. The name
+and the value are always shown. Widen the dock and the columns come back in
+reverse order. While a column is hidden this way, hovering a row lists the
+hidden cells in its tooltip.
+
 ```python
 import numpy as np
 from chisurf.core.fluorescence.tcspc.convolve import convolve_lifetime_spectrum
