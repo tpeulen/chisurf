@@ -12,7 +12,7 @@ module                        owns
 :mod:`~quest.core.photon`      photon-trace and decay kernels
 :mod:`~quest.core.av`          accessible volumes, grids, FRET rate traces
 :mod:`~quest.core.structure`   the ``Structure`` object
-:mod:`~quest.core.structure.reader`         structure reading, through IMP
+:mod:`~quest.core.structure.reader`         structure reading, through IMP.bff
 :mod:`~quest.core.fps_json`    fps.json labeling files
 :mod:`~quest.core.io`          point-cloud output
 ============================  ====================================================

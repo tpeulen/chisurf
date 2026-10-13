@@ -9,7 +9,7 @@ each entry held the union of two residues' atoms — whichever chain came second
 overwrote the first, atom name by atom name — and one chain's side chains were
 folded into the other chain's CB pseudo-atom.
 
-The reader now assigns `residue_index` from IMP's hierarchy, one per distinct
+The reader now assigns `residue_index` from the reader's residues, one per distinct
 `(chain, res_id, insertion_code)`, and everything groups on that.
 
 These tests assert the *mechanism*. The numeric consequence — the dimer's CB

@@ -14,8 +14,8 @@ import numpy as np
 #: merged them: chain B's residue 40 and chain A's residue 40 became one entry,
 #: and the side chains of both folded into a single CB pseudo-atom.
 #:
-#: `residue_index` is assigned here, from IMP's hierarchy, one per distinct
-#: ``(chain, res_id, insertion_code)`` in file order. Group on it; report
+#: `residue_index` is assigned here, one per distinct
+#: ``(chain, res_id, insertion_code)`` in the order the reader returns atoms. Group on it; report
 #: `chain`/`res_id`/`insertion_code` to a human.
 keys = [
     "i",
@@ -108,11 +108,8 @@ def write(filename, atoms=None, append=False):
         fp.close()
 
 
-#: IMP builds decorator objects through SWIG, which is not safe to do from
-#: several threads at once — a scan running sites in a pool hit
-#: "Wrong number or type of arguments for overloaded function 'new_Atom'".
-#: One lock around the parse, and a cache so a scan parses each structure once
-#: instead of once per site.
+#: One lock around the parse, and a cache so a scan running sites in a pool
+#: parses each structure once instead of once per site.
 _PARSE_LOCK = threading.Lock()
 _PARSE_CACHE: dict[tuple, np.ndarray] = {}
 _PARSE_CACHE_LIMIT = 8
@@ -126,54 +123,37 @@ def _cache_key(path: str):
     return (os.path.abspath(path), stat.st_mtime_ns, stat.st_size)
 
 
-def _atom_name(atom) -> str:
-    """The atom's own name, with IMP's hetero-record prefix removed.
-
-    IMP names atoms in HETATM records ``"HET: N  "``, ``"HET: C1 "`` and so on.
-    The ``atom_name`` field is ``|U5``, so storing that verbatim truncates every
-    one of them to the literal string ``"HET:"`` — every hetero atom ends up
-    with the *same* name and its real one is lost. Nothing noticed while HETATM
-    records were stripped at the door; admitting them
-    (see :func:`read`) makes it matter, because atom names are how the quenching
-    chemistry and the coarse-grain templates identify atoms.
-    """
-    name = atom.get_atom_type().get_string().strip()
-    if name.startswith("HET:"):
-        name = name[4:].strip()
-    return name
-
-
 def read(filename, **kwargs):
-    """Read a structure into QuEst's atom array, using IMP as the parser.
+    """Read a structure into QuEst's atom array, through IMP.bff's reader.
 
     Returns a NumPy structured array with the fields in :data:`keys`. PDB and
-    mmCIF are both handled by IMP (``IMP.atom.read_pdb`` / ``read_mmcif``);
-    QuEst no longer carries its own parser for either.
+    mmCIF are both read by :func:`IMP.bff.parse_structure_table`, the IMP-free
+    core's restatement of ``IMP::atom::read_pdb`` / ``read_mmcif`` with their
+    default selector: the same atoms, in the same order (residues sorted by
+    number within a chain), with IMP's element, mass and radius. QuEst carries
+    no parser of its own for either format, and needs no IMP kernel.
 
-    **No selector is passed, so IMP's default applies**: everything except
-    waters and hydrogens. Ligands, cofactors and modified residues are steric
-    obstacles like any other atom, because they physically are — a dye cannot
-    diffuse through a bound sugar. QuEst used to strip every HETATM record,
-    which on 148L discarded 41 atoms of ``FGA``, ``API``, ``DAL``, ``MUB``,
-    ``NAG`` and ``BME`` (1322 against 1363).
+    **The atom set is IMP's default**: everything except waters and alternate
+    locations other than blank/``A``; only the first model. Ligands, cofactors
+    and modified residues are steric obstacles like any other atom, because
+    they physically are -- a dye cannot diffuse through a bound sugar. QuEst
+    used to strip every HETATM record, which on 148L discarded 41 atoms of
+    ``FGA``, ``API``, ``DAL``, ``MUB``, ``NAG`` and ``BME`` (1322 against 1363).
 
-    Waters are deliberately *not* obstacles. Adding them
-    (``IMP.atom.NonHydrogenPDBSelector``, 1503 atoms) costs **17 % of every
+    Waters are deliberately *not* obstacles. Adding them costs **17 % of every
     accessible volume** on the 148l chain-E sites, and crystallographic solvent
-    is mobile on the timescale a tethered dye explores — treating it as a rigid
-    wall is a stronger claim than the physics supports. Measured, not assumed:
-    see [specs/structure-io.md](okf/specs/structure-io.md).
+    is mobile on the timescale a tethered dye explores -- treating it as a
+    rigid wall is a stronger claim than the physics supports.
 
-    As a defensive guarantee, :func:`_strip_waters` runs after the IMP parse and
+    As a defensive guarantee, :func:`_strip_waters` runs after the parse and
     removes every atom whose residue name identifies it as water (``HOH``,
-    ``WAT``, ``TIP3``, ``SOL``, …). IMP's selector already does this, but the
-    explicit filter keeps QuEst correct regardless of which selector a caller
-    or a future parser passes.
+    ``WAT``, ``TIP3``, ``SOL``, ...). The reader drops only ``HOH``/``DOD``;
+    the explicit filter keeps QuEst correct for the other spellings.
 
     Raises
     ------
     ImportError
-        If IMP is unavailable. QuEst needs it for accessible volumes anyway.
+        If the installed IMP.bff predates :func:`IMP.bff.parse_structure_table`.
     """
     verbose = kwargs.get("verbose", True)
     path = str(filename)
@@ -191,7 +171,7 @@ def read(filename, **kwargs):
             return cached.copy()
 
     with _PARSE_LOCK:
-        atoms = _read_with_imp(path)
+        atoms = _read_with_imp_bff(path)
 
     if key is not None:
         if len(_PARSE_CACHE) >= _PARSE_CACHE_LIMIT:
@@ -264,7 +244,7 @@ def water_stripped_pdb_path(source_path: str | os.PathLike) -> tuple[str, str]:
 def _strip_waters(atoms: np.ndarray) -> np.ndarray:
     """Remove every atom whose residue names it as water.
 
-    IMP's default PDB selector already drops waters, but relying on that alone
+    The reader already drops ``HOH`` and ``DOD``, but relying on that alone
     couples QuEst's correctness to an external library's default. This is the
     explicit, defensive guarantee that water is never a steric obstacle — a
     crystallographic solvent molecule is mobile on the timescale a tethered dye
@@ -283,55 +263,48 @@ def _strip_waters(atoms: np.ndarray) -> np.ndarray:
     return atoms[mask].copy()
 
 
-def _read_with_imp(path):
+def _read_with_imp_bff(path):
     """Parse *path* into QuEst's atom array. Call under :data:`_PARSE_LOCK`."""
-    import IMP
-    import IMP.atom
-    import IMP.core
+    import IMP.bff
 
-    model = IMP.Model()
-    # No selector: IMP's default keeps everything but waters and hydrogens,
-    # which is exactly the atom set QuEst wants. See :func:`read`.
-    if path.lower().endswith((".cif", ".mmcif")):
-        hierarchy = IMP.atom.read_mmcif(path, model)
-    else:
-        hierarchy = IMP.atom.read_pdb(path, model)
-
-    leaves = IMP.atom.get_leaves(hierarchy)
-    atoms = np.zeros(len(leaves), dtype={"names": keys, "formats": formats})
-    element_table = IMP.atom.get_element_table()
-
-    # Distinct residues, in file order. IMP already knows chain, number and
-    # insertion code; QuEst threw that away and re-derived residues from
-    # `res_id` alone, which is what merged chains.
-    residue_indices: dict[tuple, int] = {}
-
-    for index, leaf in enumerate(leaves):
-        particle = leaf.get_particle()
-        atom = IMP.atom.Atom(particle)
-        residue = IMP.atom.Residue(IMP.atom.get_residue(atom))
-        chain = IMP.atom.Chain(IMP.atom.get_chain(residue))
-        element = element_table.get_name(atom.get_element())
-        radius = IMP.core.XYZR(particle).get_radius()
-        mass = IMP.atom.Mass(particle).get_mass()
-
-        insertion_code = str(residue.get_insertion_code()).strip()
-        residue_key = (str(chain.get_id()), int(residue.get_index()), insertion_code)
-        atoms["residue_index"][index] = residue_indices.setdefault(
-            residue_key, len(residue_indices)
+    parse = getattr(IMP.bff, "parse_structure_table", None)
+    if parse is None:
+        raise ImportError(
+            "QuEst reads structures with IMP.bff.parse_structure_table, which this "
+            "IMP.bff does not have; update imp-bff (pixi install) to a build that does."
         )
-        atoms["insertion_code"][index] = insertion_code
+    # Every atom IMP's default selector keeps, every residue (ligands too),
+    # and the radius as IMP gives the particle -- R_min, not the zero-crossing.
+    table = parse(
+        path, keep_water=False, only_standard_residues=False, radius_no_interaction=False
+    )
+    n = int(table.n_atoms)
+    atoms = np.zeros(n, dtype={"names": keys, "formats": formats})
+    if n == 0:
+        return atoms
 
-        atoms["i"][index] = index
-        atoms["chain"][index] = chain.get_id()
-        atoms["res_id"][index] = residue.get_index()
-        atoms["res_name"][index] = residue.get_residue_type().get_string()
-        atoms["atom_id"][index] = index
-        atoms["atom_name"][index] = _atom_name(atom)
-        atoms["element"][index] = element
-        atoms["coord"][index] = list(IMP.core.XYZ(particle).get_coordinates())
-        atoms["bfactor"][index] = atom.get_temperature_factor()
-        atoms["radius"][index] = radius
-        atoms["mass"][index] = mass
+    chain = np.asarray(table.chain, dtype=str)
+    res_id = np.asarray(table.res_id, dtype=np.int64)
+    insertion_code = np.asarray(table.insertion_code, dtype=str)
+
+    # Distinct residues, in reader order. The reader reports chain, number and
+    # insertion code; grouping on `res_id` alone is what merged chains.
+    residue_indices: dict[tuple, int] = {}
+    atoms["residue_index"] = [
+        residue_indices.setdefault((c, int(r), i), len(residue_indices))
+        for c, r, i in zip(chain.tolist(), res_id.tolist(), insertion_code.tolist())
+    ]
+    atoms["insertion_code"] = insertion_code
+    atoms["i"] = np.arange(n)
+    atoms["chain"] = chain
+    atoms["res_id"] = res_id
+    atoms["res_name"] = np.asarray(table.res_name, dtype=str)
+    atoms["atom_id"] = np.arange(n)
+    atoms["atom_name"] = np.asarray(table.atom_name, dtype=str)
+    atoms["element"] = np.asarray(table.element, dtype=str)
+    atoms["coord"] = np.asarray(table.xyz, dtype=np.float64).reshape(n, 3)
+    atoms["bfactor"] = np.asarray(table.bfactor, dtype=np.float64)
+    atoms["radius"] = np.asarray(table.radius, dtype=np.float64)
+    atoms["mass"] = np.asarray(table.mass, dtype=np.float64)
 
     return _strip_waters(atoms)
