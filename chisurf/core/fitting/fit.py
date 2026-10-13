@@ -8,7 +8,7 @@ import os
 import re
 import time
 import weakref
-from collections import deque
+from collections import OrderedDict, deque
 
 import numpy as np
 
@@ -34,6 +34,12 @@ import chisurf.core.settings
 import chisurf.logging
 from chisurf import typing
 from chisurf.core.math.optimization import OptimizationCancelled
+
+#: What :attr:`Fit.model` accepts: a model to adopt, a model class to build,
+#: the bare :class:`type` meaning "no model asked for" (leave the current one),
+#: or ``None`` to detach.
+ModelClass = typing.Union[typing.Type["cs.core.models.model.Model"], typing.Type[type]]
+ModelSpec = typing.Union["cs.core.models.model.Model", ModelClass, None]
 
 #: Relative accuracy assumed for the model function when the settings leave it
 #: unset. MINPACK derives its forward-difference step as ``sqrt(epsfcn) * |x|``,
@@ -223,6 +229,9 @@ class Fit(cs.core.base.Base):
     #: real failure, so the fit records it and the caller reads it back.
     _last_run_cancelled = False
 
+    #: ``None`` until a model is attached (see the :attr:`model` setter).
+    _model: cs.core.models.model.Model | None
+
     @contextlib.contextmanager
     def reporting_progress(self, callback):
         """Report optimiser progress to *callback* for the duration of the block.
@@ -344,21 +353,19 @@ class Fit(cs.core.base.Base):
         self._data = v
 
     @property
-    def model(self) -> cs.core.models.ModelCurve:
+    def model(self) -> cs.core.models.model.ModelCurve:
         """Model curve used for fitting.
 
         Returns
         -------
         cs.core.models.ModelCurve
-            The model instance associated with this fit.
+            The model instance associated with this fit (``None`` only for a
+            fit built without a model class, before one is attached).
         """
         return self._model
 
     @model.setter
-    def model(
-        self,
-        model: typing.Union[cs.core.models.model.Model, typing.Type[cs.core.models.model.Model]],
-    ):
+    def model(self, model: ModelSpec):
         """Attach a model, given either the class to build or a built instance.
 
         The getter returns an *instance*, so the setter has to accept one:
@@ -696,7 +703,7 @@ class Fit(cs.core.base.Base):
 
     def __init__(
         self,
-        model_class: typing.Type[cs.core.models.Model] = type,
+        model_class: ModelClass = type,
         data: cs.core.data.DataCurve | None = None,
         xmin: int = 0,
         xmax: int = 0,
@@ -747,7 +754,7 @@ class Fit(cs.core.base.Base):
             # `default_noise_model`.
             noise_model = cs.core.fitting.default_noise_model(data, model_class)
         self.noise_model = cs.core.fitting.normalize_noise_model(noise_model)
-        self._model: cs.core.models.Model | None = None
+        self._model = None
         self._result_current = 0
         self.results: deque = deque(maxlen=500)
         self._mask = None
@@ -1233,12 +1240,18 @@ class Fit(cs.core.base.Base):
         self,
         filename: str,
         file_type: str = "csv",
-        save_curves: bool = False,
         verbose: bool = False,
+        skip_qt_widgets: bool = False,
+        save_curves: bool = False,
         **kwargs,
     ) -> None:
         """Save fit metadata and, optionally, all associated curves."""
-        super().save(filename=filename, file_type=file_type, verbose=verbose)
+        super().save(
+            filename=filename,
+            file_type=file_type,
+            verbose=verbose,
+            skip_qt_widgets=skip_qt_widgets,
+        )
         if save_curves:
             curve_dict = self.get_curves(full_length=True)
             with open(filename + "_info.txt", mode="w") as fp:
@@ -1678,7 +1691,7 @@ class Fit(cs.core.base.Base):
             n_steps=n_steps,
         )
         parameter.parameter_scan = r["parameter_values"], r["chi2r"]
-        return parameter.parameter_scan
+        return r["parameter_values"], r["chi2r"]
 
     def adaptive_chi2_scan(
         self,
@@ -1757,6 +1770,10 @@ class FitGroup(Fit):
     an aggregate model for global optimization.
     """
 
+    #: The global model over :attr:`grouped_fits`; :attr:`model` is the
+    #: selected member's.
+    _model: cs.core.models.global_model.GlobalFitModel
+
     @property
     def selected_fit(self) -> Fit:
         """Currently selected grouped fit.
@@ -1768,19 +1785,8 @@ class FitGroup(Fit):
         """
         return self.grouped_fits[self.selected_fit_index]
 
-    @property
-    def selected_fit_index(self) -> int:
-        """Index of the currently selected grouped fit.
-
-        Returns
-        -------
-        int
-            Selection index.
-        """
-        return self._selected_fit_index
-
     @selected_fit.setter
-    def selected_fit(self, v: int):
+    def selected_fit(self, v: typing.Union[int, Fit]):
         """Set the selected fit index.
 
         Parameters
@@ -1799,6 +1805,17 @@ class FitGroup(Fit):
         self._selected_fit_index = int(v)
 
     @property
+    def selected_fit_index(self) -> int:
+        """Index of the currently selected grouped fit.
+
+        Returns
+        -------
+        int
+            Selection index.
+        """
+        return self._selected_fit_index
+
+    @property
     def data(self) -> cs.core.data.DataCurve:
         """Data of the currently selected grouped fit.
 
@@ -1810,7 +1827,7 @@ class FitGroup(Fit):
         return self.selected_fit.data
 
     @data.setter
-    def data(self, v: cs.core.base.Data):
+    def data(self, v: cs.core.data.DataCurve):
         """Set the data on the currently selected grouped fit.
 
         Parameters
@@ -1821,7 +1838,7 @@ class FitGroup(Fit):
         self.selected_fit.data = v
 
     @property
-    def model(self) -> cs.core.models.Model:
+    def model(self) -> cs.core.models.model.ModelCurve:
         """Model of the currently selected grouped fit.
 
         Returns
@@ -1832,13 +1849,13 @@ class FitGroup(Fit):
         return self.selected_fit.model
 
     @model.setter
-    def model(self, v: typing.Type[cs.core.models.Model]):
+    def model(self, v: ModelSpec):
         """Set the model on the currently selected grouped fit.
 
         Parameters
         ----------
-        v : type
-            Model class to instantiate on the selected fit.
+        v : Model or type
+            Model instance, or model class to instantiate on the selected fit.
         """
         self.selected_fit.model = v
 
@@ -2045,7 +2062,7 @@ class FitGroup(Fit):
         returned. Otherwise curves are collected from the selected or all
         grouped fits, with keys suffixed by ``"_%02d"``.
         """
-        curves: dict[str, cs.core.curve.Curve] = {}
+        curves: typing.OrderedDict[str, cs.core.curve.Curve] = OrderedDict()
         if idx is None:
             curves = super().get_curves(copy_curves=copy_curves, full_length=full_length)
         else:
@@ -2060,7 +2077,15 @@ class FitGroup(Fit):
                         curves[new_curve_key] = fit_curves[curve_key]
         return curves
 
-    def save(self, filename: str, file_type: str = "txt", verbose: bool = False, **kwargs) -> None:
+    def save(
+        self,
+        filename: str,
+        file_type: str = "txt",
+        verbose: bool = False,
+        skip_qt_widgets: bool = False,
+        save_curves: bool = False,
+        **kwargs,
+    ) -> None:
         """Save all grouped fits with derived per-fit filenames.
 
         Parameters
@@ -2145,7 +2170,14 @@ class FitGroup(Fit):
 
             fit_root = f"{root}_{suffix}"
             fit_filename = fit_root + ext if ext else fit_root
-            fit.save(filename=fit_filename, file_type=file_type, verbose=verbose, **kwargs)
+            fit.save(
+                filename=fit_filename,
+                file_type=file_type,
+                verbose=verbose,
+                skip_qt_widgets=skip_qt_widgets,
+                save_curves=save_curves,
+                **kwargs,
+            )
 
     def finalize(self):
         """Finalize the global model and all grouped fits."""
@@ -2250,7 +2282,7 @@ class FitGroup(Fit):
     def __init__(
         self,
         data: cs.core.data.DataGroup,
-        model_class: typing.Type[cs.core.models.Model] = type,
+        model_class: ModelClass = type,
         model_kw: typing.Dict | None = None,
     ):
         """Create a :class:`FitGroup` over a :class:`DataGroup`.
@@ -2355,7 +2387,13 @@ class FitGroup(Fit):
         """
         return len(self.grouped_fits)
 
-    def __getitem__(self, key) -> typing.List[Fit]:
+    @typing.overload
+    def __getitem__(self, key: int) -> Fit: ...
+
+    @typing.overload
+    def __getitem__(self, key: slice) -> typing.List[Fit]: ...
+
+    def __getitem__(self, key: int | slice) -> Fit | typing.List[Fit]:
         """Access grouped fits by index or slice.
 
         Parameters
@@ -2904,7 +2942,7 @@ FINITE_DIFFERENCE_STEP = float(np.sqrt(np.finfo(float).eps))
 
 
 def approx_grad(
-    xk: np.ndarray,
+    xk: typing.Sequence[float] | np.ndarray,
     fit: cs.core.fitting.fit.Fit,
     epsilon: float | None = None,
     args=(),
@@ -3362,7 +3400,7 @@ def get_wres(
 
 def get_chi2(
     parameter_values: typing.List[float],
-    model: cs.core.models.model.ModelCurve,
+    model: cs.core.models.model.Model,
     reduced: bool = True,
 ) -> float:
     """Return either the reduced chi² or the sum of squares (chi²).

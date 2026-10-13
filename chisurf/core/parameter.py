@@ -42,6 +42,16 @@ except ImportError as _exc:  # pragma: no cover - env without IMP
 T = typing.TypeVar("T", bound="Parameter")
 
 
+class ParameterController(typing.Protocol):
+    """What a :class:`Parameter` asks of the widget that displays it."""
+
+    def set_linked(self, is_linked: bool) -> None:
+        """Show whether the parameter follows another one."""
+
+    def finalize(self) -> None:
+        """Repaint from the parameter's current state."""
+
+
 def _bump_fit_structure_version() -> None:
     """Invalidate cached fit factor graphs after a structural change.
 
@@ -112,6 +122,13 @@ class Parameter(chisurf.core.base.Base):
     3.5
     """
 
+    # IMP.bff ships no type information, so its port is untyped by necessity.
+    _port: typing.Any
+    _name: str
+    _callable: typing.Optional[typing.Callable[[], typing.Any]]
+    _link: typing.Optional[Parameter]
+    controller: typing.Optional[ParameterController]
+
     @staticmethod
     def check_recursive_link(current, target):
         """Return ``True`` if linking *target* as a follower of *current* would
@@ -170,7 +187,7 @@ class Parameter(chisurf.core.base.Base):
         self._name = v
 
     @property
-    def bounds(self) -> typing.Tuple[float, float]:
+    def bounds(self) -> typing.Tuple[typing.Optional[float], typing.Optional[float]]:
         """Lower and upper bounds of the parameter as a 2-tuple.
 
         The values are stored on the underlying :class:`IMP.bff.GraphPort`.
@@ -185,7 +202,7 @@ class Parameter(chisurf.core.base.Base):
         return (None if lb != lb else float(lb), None if ub != ub else float(ub))
 
     @bounds.setter
-    def bounds(self, b: typing.Tuple[float, float]):
+    def bounds(self, b: typing.Tuple[typing.Optional[float], typing.Optional[float]]):
         """Set the lower and upper bounds."""
         self._port.bounds = np.array(b, dtype=np.float64)
 
@@ -256,6 +273,7 @@ class Parameter(chisurf.core.base.Base):
         # read otherwise costs collapse to one dict lookup. Reads outnumber
         # writes by orders of magnitude and this is the single largest cost of a
         # decay model evaluation, above the convolution itself.
+        raw: typing.Optional[float]
         frozen = self.__dict__.get("_frozen_flags")
         if frozen is not None:
             linked, callable_, bounded, lb, ub, fixed_ = frozen
@@ -396,7 +414,7 @@ class Parameter(chisurf.core.base.Base):
         self._port.value = val_float
 
     @property
-    def link(self) -> chisurf.core.parameter.Parameter:
+    def link(self) -> typing.Optional[Parameter]:
         """Return the linked parameter, or None if this parameter is not linked."""
         return self._link
 
@@ -476,7 +494,9 @@ class Parameter(chisurf.core.base.Base):
             return pr
         if self.bounds_on:
             lb, ub = self.bounds
-            return UniformPrior(float(lb), float(ub))
+            return UniformPrior(
+                float("-inf") if lb is None else lb, float("inf") if ub is None else ub
+            )
         return None
 
     @prior.setter
@@ -548,49 +568,49 @@ class Parameter(chisurf.core.base.Base):
             # cached factor graphs no longer describe this fit.
             _bump_fit_structure_version()
 
-    def __add__(self, other: T) -> T:
+    def __add__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self + other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a + b))
 
-    def __mul__(self, other: T) -> T:
+    def __mul__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self * other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a * b))
 
-    def __truediv__(self, other: T) -> T:
+    def __truediv__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self / other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a / b))
 
-    def __floordiv__(self, other: T) -> T:
+    def __floordiv__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self // other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a // b))
 
-    def __sub__(self, other: T) -> T:
+    def __sub__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self - other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a - b))
 
-    def __mod__(self, other: T) -> T:
+    def __mod__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self % other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a % b))
 
-    def __pow__(self, other: T) -> T:
+    def __pow__(self: T, other: typing.Union[Parameter, float]) -> T:
         """Return a new parameter whose value is ``self ** other``."""
         a = self.value
         b = other.value if isinstance(other, Parameter) else other
         return self.__class__(value=(a**b))
 
-    def __invert__(self) -> T:
+    def __invert__(self: T) -> T:
         """Return a new parameter whose value is ``1.0 / self``."""
         a = self.value
         return self.__class__(value=(1.0 / a))
@@ -643,7 +663,7 @@ class Parameter(chisurf.core.base.Base):
     def __init__(
         self,
         value: float = 1.0,
-        link: Parameter = None,
+        link: typing.Optional[Parameter] = None,
         lb: float = float("-inf"),
         ub: float = float("inf"),
         bounds_on: bool = False,
@@ -1021,7 +1041,9 @@ class ParameterGroup(chisurf.core.base.Base):
     3.0
     """
 
-    def __init__(self, parameters: typing.List[Parameter] = None, *args, **kwargs):
+    def __init__(
+        self, parameters: typing.Optional[typing.List[Parameter]] = None, *args, **kwargs
+    ):
         """Initialize a ParameterGroup with an optional list of parameters."""
         super().__init__(*args, **kwargs)
         if parameters is None:
@@ -1060,7 +1082,7 @@ class ParameterGroup(chisurf.core.base.Base):
         except Exception:
             pass
 
-    def __setattr__(self, k: str, v: object):
+    def __setattr__(self, k: str, v: typing.Any):
         """Route attribute writes to contained Parameter objects when possible.
 
         If *k* names an existing :class:`Parameter` in the group, the
@@ -1120,8 +1142,13 @@ class ParameterGroup(chisurf.core.base.Base):
         self._parameter = list()
 
     @property
-    def parameters(self) -> typing.List[Parameter]:
-        """Return the list of contained parameters."""
+    def parameters(self) -> typing.Sequence[Parameter]:
+        """Return the contained parameters.
+
+        Typed as a read-only sequence so subclasses may narrow the element
+        type (a fitting group holds fitting parameters); add through
+        :meth:`append`.
+        """
         return self._parameter
 
     @property
@@ -1130,7 +1157,7 @@ class ParameterGroup(chisurf.core.base.Base):
         return [p.name for p in self.parameters]
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self) -> typing.List[float]:
         """Return the current values of all contained parameters."""
         return [p.value for p in self.parameters]
 

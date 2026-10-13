@@ -45,6 +45,10 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
 
     name = "Model name not available"
 
+    #: A model is always constructed for a fit (see ``__init__``), unlike a
+    #: bare parameter group.
+    fit: chisurf.core.fitting.fit.Fit
+
     #: Optional filename of a user-editable ``.view.json`` describing this
     #: model's editor, resolved relative to the module that defines the class.
     #: When set, :meth:`view_spec` loads it instead of auto-deriving.

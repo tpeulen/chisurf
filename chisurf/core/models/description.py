@@ -91,8 +91,9 @@ class DescriptionParameter(FittingParameter):
         """Whether a bound applies: BFF marks every port bounded, an infinite pair bounds nothing."""
         if not self._port.bounded:
             return False
-        low, high = self.bounds
-        return not (np.isinf(float(low)) and np.isinf(float(high)))
+        # ``lb``/``ub`` report an unset side as +/-inf, where ``bounds`` gives
+        # None (and ``float(None)`` raised).
+        return not (np.isinf(self.lb) and np.isinf(self.ub))
 
     @bounds_on.setter
     def bounds_on(self, v: bool) -> None:
@@ -531,7 +532,8 @@ class DescriptionModel(ModelCurve):
         self._scalars: typing.Dict[str, float] = {}
         self._groups: typing.Dict[str, DescriptionGroup] = {}
         #: The models this one reads a published output of (a mixture's species).
-        self._source_models: typing.List[DescriptionModel] = []
+        # A ``kind: values`` description binds plain arrays instead of models.
+        self._source_models: typing.List[DescriptionModel | np.ndarray] = []
         self._source_names: typing.List[str] = []
         self._bound_ports: typing.List[str] = []
         # A port the description gives a default for (a MaxEnt prior) is bound
@@ -1045,7 +1047,7 @@ class DescriptionModel(ModelCurve):
                 ),
             ),
         ]
-        settings = []
+        settings: typing.List[vs.Section] = []
         # A description that presents its scalars lists the ones a user sets;
         # the rest (a fit window the view fills itself) stay out of the editor.
         presented = set(scalar_info) if scalar_info else None
@@ -1439,6 +1441,8 @@ class DescriptionModel(ModelCurve):
                     port.value = list(source)
                     port.fixed = held
                 self._spec.set_port(name, port)
+            elif isinstance(source, np.ndarray):
+                raise TypeError(f"{self.name!r} reads models, not given values")
             else:
                 problem = source.problem
                 if problem is None:
@@ -1741,22 +1745,24 @@ class DescriptionModel(ModelCurve):
         high = center + 2.0 if log10_max is None else float(log10_max)
         weights = np.linspace(low, high, max(2, int(n_points)))
         held = port.fixed
-        misfit, solution = [], []
+        misfit_values: typing.List[float] = []
+        solution_values: typing.List[float] = []
         try:
             port.fixed = False
             for weight in weights:
                 port.value = float(weight)
-                misfit.append(self._node_value(info["misfit"]))
-                solution.append(abs(self._node_value(info["solution"])))
+                misfit_values.append(self._node_value(info["misfit"]))
+                solution_values.append(abs(self._node_value(info["solution"])))
         finally:
             port.value = center
             port.fixed = held
-        misfit, solution = np.asarray(misfit), np.asarray(solution)
+        misfit, solution = np.asarray(misfit_values), np.asarray(solution_values)
         corner = None
         try:
-            corner = int(regularization.discrete_lcurve_corner(misfit, solution))
+            corner = regularization.discrete_lcurve_corner(misfit, solution)
         except Exception:
             pass
+        corner = None if corner is None else int(corner)
         self.__dict__["_l_curve"] = regularization.LCurveData(
             reg=10.0**weights, residual_norm=misfit, solution_norm=solution, corner_index=corner
         )
@@ -1945,7 +1951,8 @@ class DescriptionModel(ModelCurve):
                     for name in source.problem.get_output_names()
                 )
         for structure in problem.get_structure_keys():
-            pending = [problem.get_structure_objective(structure)]
+            # Native graph nodes (IMP.bff), untyped.
+            pending: typing.List[typing.Any] = [problem.get_structure_objective(structure)]
             visited = set()
             while pending:
                 node = pending.pop()
@@ -1963,9 +1970,9 @@ class DescriptionModel(ModelCurve):
                     linked = port.get_link()
                     if linked is not None and str(linked.uid) in external_outputs:
                         continue
-                    source = None if linked is None else linked.get_node()
-                    if source is not None:
-                        pending.append(source)
+                    upstream = None if linked is None else linked.get_node()
+                    if upstream is not None:
+                        pending.append(upstream)
         for name in problem.get_output_names():
             node = problem.get_output_port(name).get_node()
             if node is not None:

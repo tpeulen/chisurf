@@ -218,9 +218,14 @@ _UNRESOLVED = object()
 _SETATTR_PROPERTY_CACHE: dict = {}
 
 
+_T = typing.TypeVar("_T")
+
+
 def find_objects(
-    search_iterable: Iterable, searched_object_type: typing.Type, remove_doublets: bool = True
-) -> typing.List[object]:
+    search_iterable: Iterable,
+    searched_object_type: typing.Type[_T],
+    remove_doublets: bool = True,
+) -> typing.List[_T]:
     """Traverse a list recursively to return all objects of type
     `searched_object_type` as a list
 
@@ -229,7 +234,7 @@ def find_objects(
     :param remove_doublets: boolean
     :return: list of objects with certain object type
     """
-    re = list()
+    re: typing.List[_T] = list()
     for value in search_iterable:
         # Standard isinstance check for speed and correctness
         if isinstance(value, searched_object_type):
@@ -240,13 +245,15 @@ def find_objects(
         elif isinstance(value, list):
             re += find_objects(value, searched_object_type, remove_doublets)
     if remove_doublets:
-        seen = set()
-        return [x for x in re if not (x in seen or seen.add(x))]
+        # dict keys keep first-seen order and drop later equal items.
+        return list(dict.fromkeys(re))
     else:
         return re
 
 
 _QT_MODULE_PREFIXES = ("PyQt5", "PyQt6", "PySide2", "PySide6")
+
+_B = typing.TypeVar("_B", bound="Base")
 
 
 def _is_qt_object(obj) -> bool:
@@ -737,7 +744,7 @@ class Base:
         self.__dict__.update(**kwargs)
         Base._uuid_index[str(self.unique_identifier)] = self
 
-    def __copy__(self) -> typing.Type[Base]:
+    def __copy__(self: _B) -> _B:
         """Return a shallow copy with a deep copy of metadata.
 
         The copy keeps the original's ``unique_identifier``: identity here is
@@ -808,7 +815,7 @@ class Data(Base):
             **kwargs,
         )
         self._data = data
-        self._filename = None
+        self._filename = ""
 
         if embed_data is None:
             embed_data = cs.core.settings.database["embed_data"]
@@ -833,12 +840,12 @@ class Data(Base):
             self._data = None
 
     @property
-    def data(self) -> bytes:
+    def data(self) -> bytes | None:
         """Return the embedded binary data (or None)."""
         return self._data
 
     @data.setter
-    def data(self, v: Data):
+    def data(self, v: bytes | None):
         """Set the embedded binary data."""
         self._data = v
 

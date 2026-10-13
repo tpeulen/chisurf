@@ -34,7 +34,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
     def __init__(
         self,
         value: float = 1.0,
-        link: chisurf.core.parameter.Parameter = None,
+        link: chisurf.core.parameter.Parameter | None = None,
         lb: float = float("-inf"),
         ub: float = float("inf"),
         bounds_on: bool = False,
@@ -59,17 +59,19 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         fixed : bool, optional
             Whether the parameter is fixed during optimization.
         """
-        super().__init__(*args, value=value, link=link, ub=ub, lb=lb, bounds_on=bounds_on, **kwargs)
+        # Positionally, so extra positional arguments land after ``bounds_on``
+        # instead of colliding with ``value`` (a TypeError for any caller).
+        super().__init__(value, link, lb, ub, bounds_on, *args, **kwargs)
         self.fixed = fixed
         # Stored under its public name so the serialised form is unchanged: a
         # property is a data descriptor and wins over the instance dict, so the
         # accessors below still run while ``to_dict``/``__getstate__`` continue
         # to see a plain ``redundant`` entry as they always did.
         self.__dict__["redundant"] = False
-        self._error_estimate = None
-        self._chi2s = None
-        self._values = None
-        self._scan_result = None
+        self._error_estimate: float | None = None
+        self._chi2s: np.ndarray | None = None
+        self._values: np.ndarray | None = None
+        self._scan_result: typing.Dict | None = None
 
     @property
     def redundant(self) -> bool:
@@ -99,7 +101,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
             factorgraph.bump_structure_version()
 
     @property
-    def parameter_scan(self) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def parameter_scan(self) -> typing.Tuple[np.ndarray | None, np.ndarray | None]:
         """Return the stored parameter scan values and chi² curve.
 
         The return value is a pair ``(values, chi2s)`` or ``(None, None)``
@@ -119,8 +121,8 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         If the parameter is linked, the error estimate of the link target is
         returned. If no estimate has been computed yet, ``NaN`` is returned.
         """
-        if self.is_linked:
-            return self._link.error_estimate
+        if self.is_linked and self._link is not None:
+            return getattr(self._link, "error_estimate", float("nan"))
         else:
             if isinstance(self._error_estimate, float):
                 return self._error_estimate
@@ -155,7 +157,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
     def adaptive_scan(
         self,
         fit: chisurf.core.fitting.fit.Fit,
-        scan_range: typing.Tuple[float, float] = (None, None),
+        scan_range: typing.Tuple[float | None, float | None] = (None, None),
         p_value: float = 0.99,
         **kwargs,
     ) -> typing.Dict:
@@ -212,14 +214,20 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
     :meth:`to_dict` / :meth:`from_dict`.
     """
 
+    # ``None`` until :meth:`find_parameters` has walked the group.
+    _parameters: typing.List[FittingParameter] | None
+    _aggregated_parameters: typing.List[FittingParameterGroup] | None
+
     @property
     def parameter_bounds(self) -> typing.List[typing.Tuple[float, float]]:
         """List of ``(lb, ub)`` bounds of all parameters (including fixed)."""
         frozen = self.__dict__.get("_frozen_structure")
         if frozen is not None:
             return frozen["parameter_bounds"]
+        # ``lb``/``ub`` read the stored bound with +/-inf for an unset side,
+        # where ``bounds`` would report ``None``.
         return [
-            pi.bounds if getattr(pi, "bounds_on", True) else (float("-inf"), float("inf"))
+            (pi.lb, pi.ub) if getattr(pi, "bounds_on", True) else (float("-inf"), float("inf"))
             for pi in self.parameters
         ]
 
@@ -311,12 +319,8 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         These are populated by :meth:`find_parameters` and used to implement
         hierarchical parameter collections.
         """
-        a = list()
-        for value in self.__dict__.values():
-            if isinstance(value, FittingParameterGroup):
-                a.append(value)
-        seen = set()
-        return [x for x in a if not (x in seen or seen.add(x))]
+        groups = [v for v in self.__dict__.values() if isinstance(v, FittingParameterGroup)]
+        return list(dict.fromkeys(groups))
 
     @property
     def parameter_dict(self) -> typing.Dict[str, chisurf.core.fitting.parameter.FittingParameter]:
@@ -366,7 +370,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             convert_values_to_elementary=convert_values_to_elementary,
             skip_qt_widgets=skip_qt_widgets,
         )
-        parameters = dict()
+        parameters: typing.Dict[str, typing.Dict] = dict()
         s["parameter"] = parameters
         for p in self.parameters_all:
             parameters[p.name] = p.to_dict(
@@ -422,8 +426,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             # own, and clearing ``_parameters`` above has just hidden them from
             # the ``__dict__`` walk.
             explicit = list(self.__dict__.get("_explicit_parameters") or ())
-            seen = set()
-            self._parameters = [x for x in (explicit + mp + ap) if not (x in seen or seen.add(x))]
+            self._parameters = list(dict.fromkeys(explicit + mp + ap))
         finally:
             self.__dict__.pop("_finding_parameters", None)
 
@@ -433,7 +436,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
 
         factorgraph.bump_structure_version()
 
-    def append_parameter(self, p: parameter.Parameter):
+    def append_parameter(self, p: FittingParameter):
         """Append a new :class:`FittingParameter` to this group."""
         self.parameters_all.append(p)
 
@@ -584,8 +587,8 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
 
     def __init__(
         self,
-        fit: chisurf.core.fitting.fit.Fit = None,
-        model: chisurf.core.models.Model = None,
+        fit: chisurf.core.fitting.fit.Fit | None = None,
+        model: chisurf.core.models.Model | None = None,
         short: str = "",
         parameters: typing.List[chisurf.core.fitting.parameter.FittingParameter] | None = None,
         *args,

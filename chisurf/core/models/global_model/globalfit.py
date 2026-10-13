@@ -35,6 +35,12 @@ class GlobalFitModel(Model, Curve):
     name = "Global fit"
     view_spec_file = "globalfit.view.json"
     _global_parameters: dict[str, cs.core.fitting.parameter.FittingParameter]
+    _factor_graph: cs.core.fitting.factorgraph.FactorGraph | None
+    #: Local fits the next ``update_model`` recomputes; ``None`` means all.
+    _pending_dirty_fits: typing.List[int] | None
+    _current_at_version: int | None
+    _residual_dirty: typing.Set[int] | None
+    _values_at_update: typing.List[float] | None
 
     def get_session_parameters(self) -> list:
         """Return owned global ports; member ports belong to the member fits."""
@@ -94,7 +100,8 @@ class GlobalFitModel(Model, Curve):
         cache = self.__dict__.get("_residual_cache")
         if cache is None or cache[0] != token or len(cache[1]) != n:
             # A window changed (or the group did): nothing cached still applies.
-            cache = (token, [None] * n)
+            pieces_empty: typing.List[np.ndarray | None] = [None] * n
+            cache = (token, pieces_empty)
             self._residual_dirty = set(range(n))
         dirty = getattr(self, "_residual_dirty", None)
         if dirty is None:
@@ -106,7 +113,8 @@ class GlobalFitModel(Model, Curve):
                 pieces[i] = f.model.weighted_residuals.flatten()
         self.__dict__["_residual_cache"] = (token, pieces)
         self._residual_dirty = set()
-        return np.concatenate(pieces)
+        # Every slot was filled by the loop above.
+        return np.concatenate([p for p in pieces if p is not None])
 
     #: Name typed for the next global parameter. Bound by a ``value`` section, so
     #: the editor holds no state of its own -- the button below reads it from here.
@@ -275,8 +283,10 @@ class GlobalFitModel(Model, Curve):
         return [p.name for p in self.global_parameters]
 
     @property
-    def global_parameters_bound_all(self) -> typing.List[typing.Tuple[float, float]]:
-        """Bounds for all global parameters."""
+    def global_parameters_bound_all(
+        self,
+    ) -> typing.List[typing.Tuple[typing.Optional[float], typing.Optional[float]]]:
+        """Bounds for all global parameters (``None`` for an unbounded side)."""
         return [pi.bounds for pi in self.global_parameters_all]
 
     @property
@@ -547,8 +557,7 @@ class GlobalFitModel(Model, Curve):
                 # evaluated at least once since the last structural change.
                 return None
             graph = self.factor_graph
-            keys = [graph.key_at(i) for i in changed_indices]
-            keys = [k for k in keys if k is not None]
+            keys = [k for k in (graph.key_at(i) for i in changed_indices) if k is not None]
             if len(keys) != len(changed_indices):
                 # A changed position is not in the graph: it is out of date.
                 return None
@@ -688,7 +697,9 @@ class GlobalFitModel(Model, Curve):
         if isinstance(lst, list) and fn in lst:
             lst.remove(fn)
 
-    def append_global_parameter(self, parameter: cs.core.parameter.Parameter) -> None:
+    def append_global_parameter(
+        self, parameter: cs.core.fitting.parameter.FittingParameter
+    ) -> None:
         """Add a global parameter to the model.
 
         Parameters
@@ -805,7 +816,7 @@ class GlobalFitModel(Model, Curve):
         for f in self.fits:
             f.model.finalize()
 
-    def update(self) -> None:
+    def update(self, **kwargs) -> None:
         """Update all local-fit models.
 
         ``super().update()`` calls ``self._update_model()``, which selectively
@@ -815,7 +826,7 @@ class GlobalFitModel(Model, Curve):
         ``update()`` a second time, which doubled the compute for every model
         and broke the selective-update counters.
         """
-        super().update()
+        super().update(**kwargs)
         from chisurf.core.fitting import factorgraph
 
         self._current_at_version = factorgraph.structure_version()
@@ -843,7 +854,7 @@ class GlobalFitModel(Model, Curve):
 
         if dirty is None:
             targets = list(self.fits)
-            indices = range(len(self.fits))
+            indices: typing.Sequence[int] = range(len(self.fits))
             # A full pass re-establishes the invariant the selective path needs.
             from chisurf.core.fitting import factorgraph
 

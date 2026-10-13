@@ -81,12 +81,14 @@ anisotropy_data = safe_open_file(
 anisotropy.update(anisotropy_data)
 
 verbose = False
-gui = dict()
-parameter = dict()
-optimization = dict()
-fret = dict()
-tcspc = dict()
-fps = dict()
+# Sections of settings_chisurf.yaml, rebound to the loaded values just below.
+gui: dict = dict()
+parameter: dict = dict()
+optimization: dict = dict()
+fret: dict = dict()
+tcspc: dict = dict()
+fps: dict = dict()
+database: dict = dict()
 locals().update(cs_settings)
 
 # ZMQ server is always auto-started — no setting required.
