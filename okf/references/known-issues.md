@@ -6,11 +6,13 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## Leftovers of the acq / lightpath Qt retirement (found 2026-10-13)
 
-status: open
+status: resolved 2026-10-13
 
-- **acq BH / BrickMic / PicoQuant setup cards are hand-drawn emtk**, not a `view.json`
-  (`acq/gui/app.py` `_draw_bh_setup` and siblings). They hold no Qt and are at control parity with the retired Qt
-  dialogs (`okf/plugins/emtk-ports/acq/retire_compare.json`); moving them to AutoForm is a separate port.
+- ~~acq BH / BrickMic / PicoQuant setup cards are hand-drawn emtk~~ — **resolved 2026-10-13**: they are
+  `acq/gui/{bh,picoquant,brickmic}_setup.view.json` over `acq/gui/setup_forms.py`; the BH module checkboxes are a
+  `data_table` with a *Use* column. Nothing stays hand-drawn. Before/after (hand-drawn vs spec, same state): BH
+  90 → 95, BrickMic 61 → 63, PicoQuant 58 → 58 controls, lost [] (`okf/plugins/emtk-ports/acq/spec_compare.json`);
+  spec and `BH_PARAMETERS` / `BrickMicSetupModel.FIELDS` kept equal by `acq/test/test_setup_specs.py`.
 - ~~Three `test_emtk_lightpath_clicks.py` tests fail~~ — **resolved 2026-10-13**: not MMFDB isolation. The
   window announced a finished backend call only when a frame had seen `controller.running` go True → False, so a
   call that started and finished between two frames (an empty MMFDB list) was never announced — a real defect,

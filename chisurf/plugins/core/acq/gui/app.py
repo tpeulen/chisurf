@@ -15,14 +15,18 @@ from emtk import im
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.file_dialog import FileDialog
-from emtk.flags import InputTextFlags
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.plugins.core.acq.gui.live_plots import LivePlots, stream_words
+from chisurf.plugins.core.acq.gui.setup_forms import SPECS as SETUP_SPECS
+from chisurf.plugins.core.acq.gui.setup_forms import (
+    BHSetupForm,
+    BrickMicSetupForm,
+    PicoQuantSetupForm,
+)
 from chisurf.plugins.core.acq.gui.setup_models import (
-    BH_PARAMETERS,
     BHSetupModel,
     BrickMicSetupModel,
     PicoQuantSetupModel,
@@ -705,7 +709,10 @@ class AcquisitionApp(ImApp):
         ]
         self.form = FormState()
         self.item_rects: dict[str, tuple] = {}
-        self.setup_buffers: dict[str, str] = {}
+        #: The open device card's form binding, sections and form state (``setup_forms``, ``*_setup.view.json``).
+        self._card_form: Any = None
+        self._card_sections: list = []
+        self.setup_form = FormState()
         self.form.custom["pipeline_results"] = self._draw_results
         for plot_key in (
             "live_decay",
@@ -865,274 +872,45 @@ class AcquisitionApp(ImApp):
         self.setup_open = False
         self.setup_window.hide()
 
-    def _typed_field(
-        self,
-        key: str,
-        text: str,
-        minimum: float | None = None,
-        maximum: float | None = None,
-        integer: bool = True,
-    ) -> float | int | None:
-        """A keyboard-editable value field, as the main window's spin fields are.
+    def _setup_form(self) -> Any:
+        """The binding of the open card's ``view.json`` (:mod:`.setup_forms`), made once per opened card."""
+        setup = self.setup_model
+        if self._card_form is None or self._card_form.setup is not setup:
+            if isinstance(setup, BHSetupModel):
 
-        In-progress typing is kept in ``setup_buffers`` (as ``view_form``'s
-        ``FormState.buffers`` does), so a frame never wipes the caret's text.
-        A commit happens on Enter or click-away; it is parsed, clamped to
-        *minimum*/*maximum* and returned; ``None`` when nothing committed.
-        """
-        flags = int(InputTextFlags.ENTER_RETURNS_TRUE) | int(InputTextFlags.AUTO_SELECT_ALL)
-        shown = self.setup_buffers.get(key, text)
-        entered, typed = im.input_text(f"##{key}", shown, "", flags)
-        im.set_item_tooltip(
-            (
-                tr(
-                    "Enter a whole-number acquisition setting. Press Enter or click elsewhere to commit; fractional entries are rounded and values are clamped to {minimum}–{maximum}."
+                def applied(ok: bool) -> None:
+                    if ok:
+                        self.model.bh_simulation_mode = setup.simulation_mode
+
+                self._card_form = BHSetupForm(
+                    setup,
+                    self._close_device_setup,
+                    request_file=lambda kind: setattr(self.model, "_file_request", kind),
+                    on_applied=applied,
                 )
-                if integer
-                else tr(
-                    "Enter a numeric acquisition setting. Press Enter or click elsewhere to commit; values are clamped to {minimum}–{maximum}."
-                )
-            ).format(minimum=minimum, maximum=maximum)
-        )
-        self.item_rects[key] = im.get_item_rect()
-        if typed != shown:
-            self.setup_buffers[key] = typed
-        if entered:
-            committed = self.setup_buffers.pop(key, typed)
-            return self._parse_clamped(committed, minimum, maximum, integer)
-        clicked_away = im.get_io().mouse_clicked[0] and not im.is_item_hovered()
-        if key in self.setup_buffers and clicked_away:
-            committed = self.setup_buffers.pop(key)
-            return self._parse_clamped(committed, minimum, maximum, integer)
-        return None
-
-    @staticmethod
-    def _parse_clamped(
-        text: str, minimum: float | None, maximum: float | None, integer: bool
-    ) -> float | int | None:
-        """Parse committed field text; unparseable input commits nothing."""
-        try:
-            value = float(text)
-        except ValueError:
-            return None
-        if integer:
-            value = int(round(value))
-        if minimum is not None:
-            value = max(minimum, value)
-        if maximum is not None:
-            value = min(maximum, value)
-        return value
-
-    def _draw_bh_setup(self, setup: BHSetupModel) -> None:
-        """Render all retained BH setup groups using stable native input IDs."""
-        if im.button(tr("Detect Cards") + "##bh_detect"):
-            setup.detect_cards()
-        im.set_item_tooltip(
-            tr(
-                "Discover BH modules through the supplied adapter using the selected simulation mode."
-            )
-        )
-        self.item_rects["bh_detect"] = im.get_item_rect()
-        im.same_line()
-        changed, value = im.checkbox(
-            tr("Simulation mode") + "##bh_simulation", setup.simulation_mode
-        )
-        im.set_item_tooltip(
-            tr("Use simulated BH card detection; turn this off to request physical-card detection.")
-        )
-        if changed:
-            setup.simulation_mode = value
-        self.item_rects["bh_simulation"] = im.get_item_rect()
-        im.text_wrapped(setup.status)
-        for card in setup.cards:
-            module = int(card["module_number"])
-            active = module in setup.active_cards
-            changed, selected = im.checkbox(
-                f"Module {module}: {card.get('status', 'Unknown')}##bh_card_{module}", active
-            )
-            im.set_item_tooltip(
-                tr("Include this BH module in the active-card selection written by Apply.")
-            )
-            if changed:
-                setup.active_cards = [item for item in setup.active_cards if item != module]
-                if selected:
-                    setup.active_cards.append(module)
-            self.item_rects[f"bh_card_{module}"] = im.get_item_rect()
-        if im.begin_tab_bar("bh_setup_tabs"):
-            for group in ("CFD", "Sync", "TAC", "Timing", "Mode"):
-                if im.begin_tab_item(group):
-                    for spec in (item for item in BH_PARAMETERS if item.group == group):
-                        value = setup.values[spec.name]
-                        im.text(spec.label)
-                        im.same_line()
-                        if spec.options:
-                            keys = list(spec.options)
-                            old = keys.index(int(value)) if int(value) in keys else 0
-                            changed, index = im.combo(
-                                f"##bh_{spec.name}", old, list(spec.options.values())
-                            )
-                            im.set_item_tooltip(
-                                tr(
-                                    "Select {parameter} from the supported hardware values. Apply writes this choice to the selected BH module."
-                                ).format(parameter=tr(spec.label))
-                            )
-                            if changed:
-                                setup.values[spec.name] = keys[index]
-                        elif spec.integer:
-                            committed = self._typed_field(
-                                f"bh_{spec.name}",
-                                str(int(value)),
-                                minimum=float(spec.minimum),
-                                maximum=float(spec.maximum),
-                            )
-                            if committed is not None:
-                                setup.values[spec.name] = int(committed)
-                        else:
-                            committed = self._typed_field(
-                                f"bh_{spec.name}",
-                                format(value, "g"),
-                                minimum=spec.minimum,
-                                maximum=spec.maximum,
-                                integer=False,
-                            )
-                            if committed is not None:
-                                setup.values[spec.name] = float(committed)
-                        self.item_rects[f"bh_{spec.name}"] = im.get_item_rect()
-                    im.end_tab_item()
-            im.end_tab_bar()
-        if im.button(tr("Read values") + "##bh_read"):
-            setup.read_parameters()
-        im.set_item_tooltip(
-            tr(
-                "Read all retained BH parameter values from the detected module into these editable fields."
-            )
-        )
-        self.item_rects["bh_read"] = im.get_item_rect()
-        im.same_line()
-        if im.button(tr("Save JSON") + "##bh_save"):
-            self.model._file_request = "bh_save"
-        im.set_item_tooltip(
-            tr("Save editable BH parameter values to JSON without writing them to a device.")
-        )
-        self.item_rects["bh_save"] = im.get_item_rect()
-        im.same_line()
-        if im.button(tr("Load JSON") + "##bh_load"):
-            self.model._file_request = "bh_load"
-        im.set_item_tooltip(
-            tr(
-                "Load BH parameter values from JSON into these fields; press Apply to send them to the device."
-            )
-        )
-        self.item_rects["bh_load"] = im.get_item_rect()
-        im.same_line()
-        if im.button(tr("Apply") + "##setup_apply"):
-            if setup.apply():
-                self.model.bh_simulation_mode = setup.simulation_mode
-        im.set_item_tooltip(
-            tr(
-                "Write the active-card selection and validated BH parameters to the selected module."
-            )
-        )
-        self.item_rects["setup_apply"] = im.get_item_rect()
-
-    def _draw_picoquant_setup(self, setup: PicoQuantSetupModel) -> None:
-        """Render retained PicoQuant information and the global stop mapping."""
-        im.text_wrapped(
-            tr(
-                "PicoQuant devices are configured by snAPI, firmware, and INI files. This card does not claim a physical connection."
-            )
-        )
-        im.text(f"Measurement mode (firmware): {setup.measurement_mode}")
-        im.text(f"Reference source (firmware): {setup.reference_source}")
-        im.text(tr("Maximum photons"))
-        im.same_line()
-        committed = self._typed_field(
-            "pico_max_photons", str(int(setup.max_photons)), minimum=0.0, maximum=1_000_000_000.0
-        )
-        if committed is not None:
-            setup.max_photons = int(committed)
-        im.text_wrapped(setup.status)
-        if im.button(tr("Refresh status") + "##pico_status"):
-            setup.detect_status()
-        im.set_item_tooltip(
-            tr(
-                "Query the initialized PicoQuant API for connected devices; an unavailable API does not imply a connection."
-            )
-        )
-        self.item_rects["pico_status"] = im.get_item_rect()
-        im.same_line()
-        if im.button(tr("Apply") + "##setup_apply"):
-            setup.apply(self.model)
-        im.set_item_tooltip(
-            tr(
-                "Use the validated maximum-photon count as the acquisition stop limit; firmware settings remain unchanged."
-            )
-        )
-        self.item_rects["setup_apply"] = im.get_item_rect()
-
-    def _draw_brickmic_setup(self, setup: BrickMicSetupModel) -> None:
-        """Render the retained BrickMic configuration fields with stable native IDs."""
-        im.text_wrapped(
-            tr(
-                "BrickMic hardware acquisition and SPC output settings. "
-                "Apply writes these values to the selected BrickMic backend."
-            )
-        )
-        for key, label, minimum, maximum, step in BrickMicSetupModel.FIELDS:
-            im.text(label)
-            im.same_line()
-            committed = self._typed_field(
-                f"brickmic_{key}",
-                str(int(setup.values[key])),
-                minimum=float(minimum),
-                maximum=float(maximum),
-            )
-            if committed is not None:
-                setup.values[key] = int(committed)
-        im.text(f"Channels (derived): {int(setup.values['channels'])}")
-        im.text_wrapped(setup.status)
-        if im.button(tr("Apply") + "##setup_apply"):
-            setup.apply()
-        im.set_item_tooltip(
-            tr(
-                "Write validated hardware acquisition and SPC output settings to the selected BrickMic backend."
-            )
-        )
-        self.item_rects["setup_apply"] = im.get_item_rect()
+            elif isinstance(setup, PicoQuantSetupModel):
+                self._card_form = PicoQuantSetupForm(setup, self._close_device_setup, self.model)
+            else:
+                self._card_form = BrickMicSetupForm(setup, self._close_device_setup)
+            spec = SETUP_SPECS[type(setup)]
+            self._card_sections = json.loads((HERE / spec).read_text(encoding="utf-8"))["sections"]
+            self.setup_form = FormState()
+        return self._card_form
 
     def _draw_device_setup(self, box: tuple) -> None:
-        """Draw the selected setup card as a bounded topmost native modal."""
+        """Draw the selected setup card (its ``view.json``) as a bounded topmost native modal.
+
+        The card's controls are remembered for the Driver and the tour as ``setup_<name>`` (``setup_apply``,
+        ``setup_CFD_LIMIT_LOW``, ``setup_detect_cards``, ...).
+        """
         if not self.setup_open:
             return
         close = self.setup_window.begin(box)
-        setup = self.setup_model
-        if isinstance(setup, BHSetupModel):
-            self._draw_bh_setup(setup)
-        elif isinstance(setup, PicoQuantSetupModel):
-            self._draw_picoquant_setup(setup)
-        elif isinstance(setup, BrickMicSetupModel):
-            self._draw_brickmic_setup(setup)
-        if im.button(tr("OK / close") + "##setup_ok"):
+        form = self._setup_form()
+        draw_sections(self._card_sections, form, self.setup_form)
+        self.item_rects.update({f"setup_{k}": v for k, v in self.setup_form.rects.items()})
+        if close == "close":
             self._close_device_setup()
-        im.set_item_tooltip(
-            tr(
-                "Close device setup. Only settings already committed with Apply affect the device or acquisition."
-            )
-        )
-        self.item_rects["setup_ok"] = im.get_item_rect()
-        im.same_line()
-        if (
-            action_button(
-                "cancel",
-                id="setup_cancel",
-                tooltip=tr(
-                    "Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."
-                ),
-            )
-            or close == "close"
-        ):
-            self._close_device_setup()
-        self.item_rects["setup_cancel"] = im.get_item_rect()
         self.setup_window.end()
 
     def _draw_advanced(self, box: tuple) -> None:

@@ -545,8 +545,8 @@ def test_device_setup_real_native_click_path_opens_and_cancels_for_all_devices()
                 continue
             assert app.setup_open is True
             if kind == "PICOQUANT":
-                ui.click("pico_status")
-                ui.click("pico_max_photons", fx=0.01)
+                ui.click("setup_refresh_status")
+                ui.click("setup_max_photons", fx=0.01)
                 ui.click("setup_apply")
                 assert app.model.photon_limit == 100_000
             ui.click("setup_cancel")
@@ -568,18 +568,18 @@ def test_real_native_bh_setup_clicks_every_retained_group_and_apply_path():
         ui.click_text("Becker-Hickl")
         app.model.device = fake
         ui.click("open_device_setup")
-        ui.click("bh_detect")
-        ui.click("bh_simulation")
+        ui.click("setup_detect_cards")
+        ui.click("setup_simulation_mode")
         for tab, field in (
-            ("CFD", "bh_CFD_LIMIT_LOW"),
-            ("Sync", "bh_SYNC_FREQ_DIV"),
-            ("TAC", "bh_TAC_RANGE"),
-            ("Timing", "bh_COLLECT_TIME"),
-            ("Mode", "bh_MODE"),
+            ("CFD", "setup_CFD_LIMIT_LOW"),
+            ("Sync", "setup_SYNC_FREQ_DIV"),
+            ("TAC", "setup_TAC_RANGE"),
+            ("Timing", "setup_COLLECT_TIME"),
+            ("Mode", "setup_MODE"),
         ):
             ui.click_text(tab, last=True)
             ui.rect(field)
-        ui.click("bh_read")
+        ui.click("setup_read_values")
         ui.click("setup_apply")
         assert any(call[0] == "set_active_cards" for call in fake.calls)
         assert len([call for call in fake.calls if call[0] == "set_parameter"]) == 24
@@ -649,7 +649,7 @@ def test_real_native_brickmic_setup_click_path_opens_a_brickmic_card():
         assert app.setup_open is True
         assert app.setup_kind == "BRICKMIC"
         assert isinstance(app.setup_model, BrickMicSetupModel)
-        ui.type_into("brickmic_start_ctr", "2")
+        ui.type_into("setup_start_ctr", "2")
         ui.click("setup_apply")
         assert fake.start_ctr == 2
         ui.click("setup_cancel")

@@ -1,0 +1,113 @@
+{
+ "_comment": "Device Setup card of the BrickMic backend, drawn by emtk over setup_forms.BrickMicSetupForm. Bounds are BrickMicSetupModel.FIELDS (test_setup_specs.py keeps them equal). Replaces the hand-drawn card and, before it, the Qt BrickMicSetupDialog.",
+ "sections": [
+  {
+   "type": "info",
+   "text": "BrickMic hardware acquisition and SPC output settings. Apply writes these values to the selected BrickMic backend.",
+   "description": "What this card sets."
+  },
+  {
+   "type": "panel",
+   "title": "Hardware acquisition",
+   "description": "Counters, rate and buffer of the BrickMic backend.",
+   "n_col": 1,
+   "sections": [
+    {
+     "type": "value",
+     "attr": "start_ctr",
+     "label": "Start counter index",
+     "kind": "int",
+     "minimum": 0,
+     "maximum": 31,
+     "step": 1,
+     "description": "Start counter index, 0 to 31. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend."
+    },
+    {
+     "type": "value",
+     "attr": "end_ctr",
+     "label": "End counter index",
+     "kind": "int",
+     "minimum": 0,
+     "maximum": 31,
+     "step": 1,
+     "description": "End counter index, 0 to 31. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend."
+    },
+    {
+     "type": "value",
+     "attr": "acquisition_rate",
+     "label": "Acquisition rate (Hz)",
+     "kind": "int",
+     "minimum": 1000,
+     "maximum": 5000000,
+     "step": 100000,
+     "description": "Acquisition rate (Hz), 1,000 to 5,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend."
+    },
+    {
+     "type": "value",
+     "attr": "buffer_size",
+     "label": "Buffer size / channel",
+     "kind": "int",
+     "minimum": 10000,
+     "maximum": 20000000,
+     "step": 100000,
+     "description": "Buffer size / channel, 10,000 to 20,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend."
+    }
+   ]
+  },
+  {
+   "type": "panel",
+   "title": "SPC file output",
+   "description": "How the photon stream is split into .spc files.",
+   "n_col": 1,
+   "sections": [
+    {
+     "type": "value",
+     "attr": "N_ph_per_file",
+     "label": "Photons per .spc file",
+     "kind": "int",
+     "minimum": 1000,
+     "maximum": 1000000000,
+     "step": 10000,
+     "description": "Photons per .spc file, 1,000 to 1,000,000,000. Press Enter or click elsewhere to commit; Apply writes it to the BrickMic backend."
+    }
+   ]
+  },
+  {
+   "type": "info",
+   "source": "channels_text",
+   "description": "Channels follow the counter window (end - start + 1); Apply writes them with the rest."
+  },
+  {
+   "type": "info",
+   "source": "status_text",
+   "description": "What the last action did, or why it did not."
+  },
+  {
+   "type": "button_row",
+   "description": "Write the settings.",
+   "buttons": [
+    {
+     "label": "Apply",
+     "action": "apply",
+     "description": "Write validated hardware acquisition and SPC output settings to the selected BrickMic backend."
+    }
+   ]
+  },
+  {
+   "type": "button_row",
+   "description": "Close the card.",
+   "buttons": [
+    {
+     "label": "OK / close",
+     "action": "ok",
+     "description": "Close device setup. Only settings already committed with Apply affect the device or acquisition."
+    },
+    {
+     "label": "Cancel",
+     "action": "cancel",
+     "description": "Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."
+    }
+   ]
+  }
+ ]
+}

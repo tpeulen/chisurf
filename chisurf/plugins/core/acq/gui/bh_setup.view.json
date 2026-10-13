@@ -1,0 +1,441 @@
+{
+ "_comment": "Device Setup card of the BH SPC backend (acquisition window, Device Setup...), drawn by emtk over setup_forms.BHSetupForm. Bounds and options are BH_PARAMETERS of setup_models.py (test_setup_specs.py keeps the two equal). Replaces the hand-drawn card and, before it, the Qt BHSPCCardSetupDialog.",
+ "sections": [
+  {
+   "type": "panel",
+   "n_col": 2,
+   "description": "Find the BH modules.",
+   "sections": [
+    {
+     "type": "button_row",
+     "weight": 0,
+     "description": "Discover the BH modules.",
+     "buttons": [
+      {
+       "label": "Detect Cards",
+       "action": "detect_cards",
+       "description": "Discover BH modules through the supplied adapter using the selected simulation mode."
+      }
+     ]
+    },
+    {
+     "type": "toggle",
+     "attr": "simulation_mode",
+     "label": "Simulation mode",
+     "description": "Use simulated BH card detection; turn this off to request physical-card detection."
+    }
+   ]
+  },
+  {
+   "type": "info",
+   "source": "status_text",
+   "description": "What the last action did, or why it did not."
+  },
+  {
+   "type": "custom",
+   "key": "data_table",
+   "title": "Modules",
+   "description": "The detected BH modules; ticked modules form the active-card selection that Apply writes.",
+   "options": {
+    "source": "card_rows",
+    "row_key": "module",
+    "editable": true,
+    "edited_call": "set_card_use",
+    "fit_rows": true,
+    "min_column_width": 50,
+    "columns": [
+     {
+      "key": "use",
+      "title": "Use",
+      "width": 56,
+      "editable": true,
+      "tooltip": "Include this BH module in the active-card selection written by Apply."
+     },
+     {
+      "key": "label",
+      "title": "Module",
+      "width": 120,
+      "editable": false,
+      "tooltip": "Module number."
+     },
+     {
+      "key": "status",
+      "title": "Status",
+      "width": 200,
+      "editable": false,
+      "tooltip": "What the adapter reported for the module."
+     }
+    ]
+   }
+  },
+  {
+   "type": "tabs",
+   "description": "The retained BH parameters, by group.",
+   "sections": [
+    {
+     "type": "panel",
+     "title": "CFD",
+     "description": "The CFD parameters of the selected module.",
+     "n_col": 1,
+     "sections": [
+      {
+       "type": "value",
+       "attr": "CFD_LIMIT_LOW",
+       "label": "CFD Limit Low (mV)",
+       "kind": "float",
+       "minimum": -1000,
+       "maximum": 1000,
+       "description": "CFD Limit Low (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "CFD_LIMIT_HIGH",
+       "label": "CFD Limit High (mV)",
+       "kind": "float",
+       "minimum": -1000,
+       "maximum": 1000,
+       "description": "CFD Limit High (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "CFD_ZC_LEVEL",
+       "label": "CFD Zero Cross Level (mV)",
+       "kind": "float",
+       "minimum": -100,
+       "maximum": 100,
+       "description": "CFD Zero Cross Level (mV), -100 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "CFD_HOLDOFF",
+       "label": "CFD Holdoff (ns)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 100,
+       "description": "CFD Holdoff (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Sync",
+     "description": "The Sync parameters of the selected module.",
+     "n_col": 1,
+     "sections": [
+      {
+       "type": "value",
+       "attr": "SYNC_ZC_LEVEL",
+       "label": "Sync Zero Cross Level (mV)",
+       "kind": "float",
+       "minimum": -100,
+       "maximum": 100,
+       "description": "Sync Zero Cross Level (mV), -100 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "SYNC_FREQ_DIV",
+       "label": "Sync Frequency Divider",
+       "kind": "int",
+       "minimum": 1,
+       "maximum": 16,
+       "description": "Sync Frequency Divider, 1 to 16 (a whole number). Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "SYNC_HOLDOFF",
+       "label": "Sync Holdoff (ns)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 100,
+       "description": "Sync Holdoff (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "SYNC_THRESHOLD",
+       "label": "Sync Threshold (mV)",
+       "kind": "float",
+       "minimum": -1000,
+       "maximum": 1000,
+       "description": "Sync Threshold (mV), -1000 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "TAC",
+     "description": "The TAC parameters of the selected module.",
+     "n_col": 1,
+     "sections": [
+      {
+       "type": "value",
+       "attr": "TAC_RANGE",
+       "label": "TAC Range (ns)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 1000,
+       "description": "TAC Range (ns), 0 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "choice",
+       "attr": "TAC_GAIN",
+       "label": "TAC Gain",
+       "options": [
+        1,
+        2,
+        4,
+        8
+       ],
+       "labels": [
+        "1",
+        "2",
+        "4",
+        "8"
+       ],
+       "description": "TAC Gain: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "TAC_OFFSET",
+       "label": "TAC Offset (%)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 100,
+       "description": "TAC Offset (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "TAC_LIMIT_LOW",
+       "label": "TAC Limit Low (%)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 100,
+       "description": "TAC Limit Low (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "TAC_LIMIT_HIGH",
+       "label": "TAC Limit High (%)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 100,
+       "description": "TAC Limit High (%), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "TAC_ENABLE_HOLD",
+       "label": "TAC Enable Hold (ns)",
+       "kind": "float",
+       "minimum": 0,
+       "maximum": 100,
+       "description": "TAC Enable Hold (ns), 0 to 100. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Timing",
+     "description": "The Timing parameters of the selected module.",
+     "n_col": 1,
+     "sections": [
+      {
+       "type": "value",
+       "attr": "COLLECT_TIME",
+       "label": "Collection Time (s)",
+       "kind": "float",
+       "minimum": 0.001,
+       "maximum": 1000,
+       "description": "Collection Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "DISPLAY_TIME",
+       "label": "Display Time (s)",
+       "kind": "float",
+       "minimum": 0.001,
+       "maximum": 1000,
+       "description": "Display Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "REPEAT_TIME",
+       "label": "Repeat Time (s)",
+       "kind": "float",
+       "minimum": 0.001,
+       "maximum": 1000,
+       "description": "Repeat Time (s), 0.001 to 1000. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "choice",
+       "attr": "STOP_ON_TIME",
+       "label": "Stop on Time",
+       "options": [
+        0,
+        1
+       ],
+       "labels": [
+        "No",
+        "Yes"
+       ],
+       "description": "Stop on Time: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      },
+      {
+       "type": "choice",
+       "attr": "STOP_ON_OVFL",
+       "label": "Stop on Overflow",
+       "options": [
+        0,
+        1
+       ],
+       "labels": [
+        "No",
+        "Yes"
+       ],
+       "description": "Stop on Overflow: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      },
+      {
+       "type": "value",
+       "attr": "RATE_COUNT_TIME",
+       "label": "Rate Count Time (s)",
+       "kind": "float",
+       "minimum": 0.001,
+       "maximum": 10,
+       "description": "Rate Count Time (s), 0.001 to 10. Press Enter or click elsewhere to commit; Apply writes it to the selected BH module."
+      },
+      {
+       "type": "choice",
+       "attr": "MACRO_TIME_CLK",
+       "label": "Macro Time Clock",
+       "options": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "labels": [
+        "25 ns",
+        "50 ns",
+        "100 ns",
+        "200 ns",
+        "400 ns",
+        "800 ns",
+        "1.6 µs",
+        "3.2 µs"
+       ],
+       "description": "Macro Time Clock: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      }
+     ]
+    },
+    {
+     "type": "panel",
+     "title": "Mode",
+     "description": "The Mode parameters of the selected module.",
+     "n_col": 1,
+     "sections": [
+      {
+       "type": "choice",
+       "attr": "MODE",
+       "label": "Mode",
+       "options": [
+        0,
+        1,
+        2,
+        3
+       ],
+       "labels": [
+        "Histogramming",
+        "FIFO",
+        "Scan",
+        "Imaging"
+       ],
+       "description": "Mode: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      },
+      {
+       "type": "choice",
+       "attr": "ROUTING_MODE",
+       "label": "Routing Mode",
+       "options": [
+        0,
+        1,
+        2
+       ],
+       "labels": [
+        "Off",
+        "4 Bits",
+        "16 Bits"
+       ],
+       "description": "Routing Mode: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      },
+      {
+       "type": "choice",
+       "attr": "ADC_RESOLUTION",
+       "label": "ADC Resolution",
+       "options": [
+        6,
+        8,
+        10,
+        12,
+        14,
+        16
+       ],
+       "labels": [
+        "6 Bits",
+        "8 Bits",
+        "10 Bits",
+        "12 Bits",
+        "14 Bits",
+        "16 Bits"
+       ],
+       "description": "ADC Resolution: one of the supported hardware values. Apply writes this choice to the selected BH module."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "type": "button_row",
+   "description": "Read, save, load and write the parameters.",
+   "buttons": [
+    {
+     "label": "Read values",
+     "action": "read_values",
+     "description": "Read all retained BH parameter values from the detected module into these editable fields."
+    },
+    {
+     "label": "Save JSON",
+     "action": "save_json",
+     "description": "Save editable BH parameter values to JSON without writing them to a device."
+    },
+    {
+     "label": "Load JSON",
+     "action": "load_json",
+     "description": "Load BH parameter values from JSON into these fields; press Apply to send them to the device."
+    },
+    {
+     "label": "Apply",
+     "action": "apply",
+     "description": "Write the active-card selection and validated BH parameters to the selected module."
+    }
+   ]
+  },
+  {
+   "type": "button_row",
+   "description": "Close the card.",
+   "buttons": [
+    {
+     "label": "OK / close",
+     "action": "ok",
+     "description": "Close device setup. Only settings already committed with Apply affect the device or acquisition."
+    },
+    {
+     "label": "Cancel",
+     "action": "cancel",
+     "description": "Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."
+    }
+   ]
+  }
+ ]
+}

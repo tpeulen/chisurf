@@ -1,0 +1,79 @@
+{
+ "_comment": "Device Setup card of the PicoQuant backend, drawn by emtk over setup_forms.PicoQuantSetupForm. Replaces the hand-drawn card and, before it, the Qt PicoQuantSetupDialog.",
+ "sections": [
+  {
+   "type": "panel",
+   "description": "What this card can set and what the firmware owns.",
+   "sections": [
+    {
+     "type": "info",
+     "text": "PicoQuant devices are configured by snAPI, firmware, and INI files. This card does not claim a physical connection.",
+     "description": "What this card can and cannot set."
+    },
+    {
+     "type": "info",
+     "source": "modes_text",
+     "description": "Settings the firmware and INI files own (read only)."
+    }
+   ]
+  },
+  {
+   "type": "panel",
+   "description": "The acquisition's stop limit.",
+   "sections": [
+    {
+     "type": "value",
+     "attr": "max_photons",
+     "label": "Maximum photons",
+     "kind": "int",
+     "minimum": 1000,
+     "maximum": 10000000,
+     "description": "Photons after which the acquisition stops, 1,000 to 10,000,000. Press Enter or click elsewhere to commit; Apply makes it the acquisition's stop limit."
+    }
+   ]
+  },
+  {
+   "type": "panel",
+   "description": "Device status and the card's actions.",
+   "sections": [
+    {
+     "type": "info",
+     "source": "status_text",
+     "description": "What the last action did, or why it did not."
+    },
+    {
+     "type": "button_row",
+     "description": "Query the device and apply the stop limit.",
+     "buttons": [
+      {
+       "label": "Refresh status",
+       "action": "refresh_status",
+       "description": "Query the initialized PicoQuant API for connected devices; an unavailable API does not imply a connection."
+      },
+      {
+       "label": "Apply",
+       "action": "apply",
+       "description": "Use the validated maximum-photon count as the acquisition stop limit; firmware settings remain unchanged."
+      }
+     ]
+    },
+    {
+     "type": "button_row",
+     "description": "Close the card.",
+     "buttons": [
+      {
+       "label": "OK / close",
+       "action": "ok",
+       "description": "Close device setup. Only settings already committed with Apply affect the device or acquisition."
+      },
+      {
+       "label": "Cancel",
+       "action": "cancel",
+       "description": "Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
