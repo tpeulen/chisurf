@@ -31,46 +31,55 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list has 210 entries (211 before the S6-blocker slice, 221 before the 2026-10-13 slice, 244
-   before the 2026-10-12 test-port slice). Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
-   `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 | sort | uniq -c`: chimol 111, core 66, misc 17,
-   modelling 6, ndxplorer 4, tttr 2, and one each for the plugins `__init__.py`, `conftest.py`,
-   `icon_utils.py` and the cookiecutter template. Of these 36 outside chimol are still **tests** (chimol's are in
-   `~/dev/chimol`). A test line goes by
-   porting the test to `emtk.testing.Driver` (a drop: `Driver(app).surface.on_files_dropped`, or
-   `emtk.app.ControlSurface`), never by deleting it. How the Qt host turns a `QDropEvent` / `QKeyEvent` / focus
-   change into the control's hooks is emtk's own `tests/test_qt_host.py`, so a plugin test needs only the native
-   half (the five microscopy "Qt host delivers a drop" tests were dropped on that ground). A parity test whose Qt
-   "before" side ran in a subprocess keeps it as a recorded `qt_reference.json` beside
-   the test (ndX, F-test, Global View, Spectra tool). The 2026-10-13 slice: the TCSPC device wrappers got a Qt-free
-   `Signal`, `fret_line/__main__.py` runs the emtk app, and the Spectra tool's four legacy Qt widgets were deleted
-   with their tests ported (native model tests in `spectra_downloader/tests/test_native.py`; the Qt facts frozen in
-   `qt_reference.json`, recorded from the live widgets). The S6-blocker slice (2026-10-13) retired the FRET line
-   generator's Qt tool the same way (`fret_line/test/qt_reference.json`, recorded at 26eeba5f8; the manifest has no
-   `gui` entry). The Qt editor's `static κ²` / `dynamic κ²` buttons were wrongly listed as "no effect on a FRET line":
-   measured, static isotropic κ² moves the standard Gaussian line by up to ΔE = 0.17 (τ_F 1.23 vs 0.12 ns at
-   20 Å). The emtk FRET-line editor now draws the shell's `kappa2_controls` section on its own live components
-   (`fret_line/gui/sections.py` over `call_model_section`), recorded in `qt_reference.json` (`kappa2_static`) and
-   tested (`test_kappa2_regime.py`, parity test). Trap: a full run of the img_coloc parity file is 2.5 min and
-   its last test (`zz_the_real_user_settings_were_never_touched`) fails whenever another agent has the emtk shell open,
-   because the shell rewrites `~/.chisurf/emtk/emtk_shell.docks.layout.json`. Left in non-test files, each Qt by
-   design: the Qt hosts and legacy tools (`code_editor`, `help`, `mmfdb_admin`, `project_browser`, `lightpath_simulator`,
-   `f_test`/`globalview` tools, games, hydropro, ndX window, trace-browser host), `help/api/theme.py` (reads a Qt
-   widget's palette), `ndxplorer/calibration_bridge.find_ndx_windows` (enumerates Qt top-level windows), the
-   env-gated SVG rasterizer in `plugins/__init__.py` (QtSvg), `icon_utils.py`, the `acq` setup dialogs (the Qt
-   dialog tests in `simulation/core/test/test_setup_widgets.py` go with them; the native twin is `acq/gui/sim_setup.py`
-   and a port needs that dialog's parity matrix first). Ported: S2's microscopy, tttr and ndX tests, the calculators, vv/vh,
-   updater, setup channel definition, the games' key and pointer tests, HydroPro's widget test; ndX's line push
-   moved to the Qt-free `chisurf/plugins/ndxplorer/overlay_lines.py`. Open, and why: host tests
-   (`ndxplorer/tests/test_window_routes.py`, `tttr/trace_browser/test/test_emtk_trace_browser_t5.py`,
-   `lightpath_simulator/tests/test_native_ui.py` test the Qt host modules themselves and go with them); live-Qt
-   parity whose facts cannot be frozen (`help/test/test_emtk_help_parity.py`: home links follow docs/;
-   `project_browser/test/test_emtk_project_browser_parity.py`: rows carry fresh project ids;
-   `switch_user/test/test_emtk_switch_user_parity.py` drives `LoginDialog` per case; hydropro's parity, `conftest.py`
-   and `hermetic.py` isolate QSettings for the Qt tool); legacy Qt widget tests with no native twin yet (code_editor
-   4, help widgets / figures / ask panel 3, mmfdb_admin 12 in another lane's files, project_browser
-   `test_gui_headless.py`, acq `test_setup_widgets.py`); capture scripts (the five games `capture_*.py` and
-   `capture_hub.py` record the Qt "before" renders).
+1. Measure: the allow-list has 186 entries (210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
+   slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
+   `grep -vc '^#' test/plugin_qt_allowlist.txt`; per area `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 |
+   sort | uniq -c`: chimol 111, core 58, misc 1, modelling 6, ndxplorer 4, tttr 2, and one each for the plugins
+   `__init__.py`, `conftest.py`, `icon_utils.py` and the cookiecutter template. Trap: `test_the_allowlist_only_shrinks`
+   is red while the chimol lane has struck Qt from its tests but not yet its lines; read only the non-chimol rows.
+   A test line goes by porting the test to the native app (or `emtk.testing.Driver`), never by deleting it; a Qt
+   host module goes when the emtk shell opens its twin (the manifest drops `gui`; the `--qt` window then hosts the
+   emtk app in a `ControlHost`, as for trace_browser). Each retirement re-captures before/after with
+   `python -m test.gui.emtk_port_parity before|after|compare <id> --out DIR` before the code is touched, and keeps
+   `retire_qt_before.json` / `retire_compare.json` in `okf/plugins/emtk-ports/<id>/` (PNGs there are gitignored).
+   **"Cannot be frozen" did not survive** (2026-10-13 leftovers slice): a live-Qt fact is frozen as
+   `qt_reference.json` beside the test, recorded once from the live widget and named by `_recorded.source_commit`.
+   Facts that follow `docs/` are frozen as a *rule*: help's `qt_home_links` / `qt_breadcrumb` restate the Qt start
+   page and breadcrumb Qt-free, and the record holds the widget's output beside the rule's output on the same
+   tree. Fresh ids are normalised (`<project NAME>`, `<version NAME vN>`, `<timestamp>`, `<user>`: project_browser).
+   Per-case dialogs are recorded per case (switch_user: 15 `LoginDialog` cases through the test's own `world`
+   fixture). The recorders are throwaway scripts and are not committed: a Qt importer under `chisurf/plugins/` is a
+   new allow-list entry. Retired that slice: the games' Qt hub and four Qt game containers (each was a chigame canvas
+   plus a *Sound* button; the `capture_qt.py` scripts went because the Qt renders are committed under
+   `games/*/test/renders/`), the F-test `FTestTool`, the Global View `GraphWizard` host and `wizard.py`, and the
+   Project Browser `ProjectBrowserTool` (its `SaveProjectDialog` / `CollisionDialog` are the Qt window's File-menu
+   dialogs and moved to `chisurf/gui/widgets/project_dialogs.py`, which goes with the Qt window).
+   Left, and why (each reason re-checked against the challenge):
+   - **Trace Browser host** (`tttr/trace_browser/gui/host.py` and its test `test_emtk_trace_browser_t5.py`). Not a
+     freezing problem: a missing twin. The *HMM*, *TW* and *NDX* buttons pass a request to `on_request`, and only the
+     Qt adapter fulfils it (`host_lookup.default_request_handler` returns `None` without a `QApplication`). So in the
+     emtk shell, now the default, the three hand-off buttons are **greyed**. What would let the host retire: a
+     shell request handler (`EmtkShellApp.open_plugin` for `intensity_trace`, `tttr_time_windows`, `ndxplorer`, then
+     hand the payload to the built app once `BackgroundBuild` finishes; `open_plugin` returns before the app exists).
+   - **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
+     the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
+   - **lightpath_simulator** (`gui/tool.py`, `gui/easy_mode.py`, `tests/test_native_ui.py`): `easy_mode.py` is a
+     1600-line Qt widget that `chisurf/core/models/pda2c/common.py` imports for the PDA easy mode; it needs an emtk
+     twin first.
+   - **HydroPro** (`gui/tool.py`, `gui/dialogs.py`, `hydrogui.py`, `test/conftest.py`, `test/hermetic.py`,
+     `test_emtk_hydropro_parity.py`): freezable the same way (record the 12 parity cases per parameter set from
+     the Qt tool with the fake HYDRO program), then the Qt tool, its dialogs and the QSettings isolation retire.
+     Not started for time, not for a reason.
+   - **Legacy Qt widgets with tests** (code_editor 13, help `gui/tool.py` + `ask_panel.py` + `figure_view.py` +
+     `api/theme.py` + 3 widget tests, mmfdb_admin about 30 in another lane's files): the emtk twins exist (`code_editor`
+     is still in `emtk_preview.json`, so it is not accepted yet); each needs the before/after pair and its widget
+     tests ported to the twin. help's `api/theme.py` reads a Qt palette for the Qt viewer and goes with `gui/tool.py`.
+   - **acq** (`tcspc_devices/*/setup_dialog.py`, `card_setup_dialog.py`, `simulation/core/test/test_setup_widgets.py`):
+     the native twin is `acq/gui/sim_setup.py`; the port needs that dialog's parity matrix first.
+   - **number_quest** `gui/tool.py` (the Qt widget; its parity test drives the chigame class): left because another
+     lane has uncommitted `number_quest/app.py` and `drawing.py`; it retires like the other four games.
+   - `plugins/__init__.py` (env-gated QtSvg rasteriser), `icon_utils.py`, `conftest.py` (the shared `qapp` fixture,
+     goes when no plugin test asks for `qapp`), the cookiecutter template's Qt tool.
    Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
    `emtk.events`, not `emtk.app`).
 2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
