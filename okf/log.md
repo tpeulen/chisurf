@@ -32113,3 +32113,4 @@ front, not this).
   is two runs. Part D gate 3 now says 4 runs. Record:
   [burst companions](subsystems/burst-companions.md),
   [photon container](subsystems/photon-container.md).
+- 2026-10-13: mypy ratchet 3900 -> 3068 ([PRD-154](prds/prd-154.md) pickup 4). `np.array` used as an annotation (a function, not a type) made mypy treat 107 values as unknown; they are `np.ndarray` now, and implicit-Optional defaults (RUF013) are explicit tree-wide. Real defects fixed on the way: `MMFDBClient.delete_probe` did not exist, `AV.save(mode='xyz')` called a removed `write_points`, `open_maybe_zipped` could neither read nor write `.zip`, `FitGroup` iterated through the legacy `__getitem__` protocol, `SessionState` lacked the attributes the API attaches. Left raised on purpose (other lanes' files): emtk `main_app`, `model_editor`, burst `transformer`, `fcs_channel_preset` view model.
