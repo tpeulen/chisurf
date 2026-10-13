@@ -65,12 +65,23 @@ class GuiPlugin:
         # plugin's ``gui`` entry may name a legacy Qt host that lives somewhere
         # else entirely -- chimol's is ``chimol.hosts.qt`` in the sibling
         # checkout -- and anchoring on it demanded a tour for a Qt window nobody
-        # is to grow. Only a plugin with no emtk entry is anchored on ``gui``.
-        self.gui = str(entrypoints.get("emtk") or entrypoints.get("gui") or "")
-        self.directory = self._module_directory()
+        # is to grow. Only a plugin with no emtk entry is anchored on ``gui`` --
+        # or one whose emtk module is not on disk (a factory declared ahead of
+        # its module), which keeps the Qt surface's resources where they are.
+        candidates = [str(entrypoints.get(key) or "") for key in ("emtk", "gui")]
+        candidates = [entry for entry in candidates if entry]
+        self.gui, self.directory = "", None
+        for entry in candidates:
+            directory = self._module_directory(entry)
+            if directory is not None:
+                self.gui, self.directory = entry, directory
+                break
+        else:
+            self.gui = candidates[0] if candidates else ""
         self.native = bool(entrypoints.get("emtk"))
 
-    def _module_directory(self) -> pathlib.Path | None:
+    @staticmethod
+    def _module_directory(entry: str) -> pathlib.Path | None:
         """Resolve the directory the help files are looked for in.
 
         This mirrors what
@@ -79,7 +90,7 @@ class GuiPlugin:
         path arithmetic rather than by importing it, so a plugin whose import
         raises is still checked.
         """
-        module = self.gui.split(":")[0]
+        module = entry.split(":")[0]
         if not module:
             return None
         path = _ROOT / pathlib.Path(module.replace(".", "/"))

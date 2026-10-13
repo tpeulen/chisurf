@@ -36,4 +36,4 @@ is also a ChiMOL command (`fps_position`, `fps_step`, `fps_compute`,
 - [Accessible-volume modelling](docs/concepts/accessible_volume.md)
 - [Accessible volumes and the FPS JSON editor](docs/guides/23_accessible_volume.md)
 - [FRET docking](docs/guides/88_fret_docking.md)
-- [10.1038/nmeth.2222](https://doi.org/10.1038/nmeth.2222)
+- {cite}`kalinin2012`

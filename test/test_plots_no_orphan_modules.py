@@ -18,11 +18,13 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import re
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _PKG = _ROOT / "chisurf"
 _PLOTS = _PKG / "gui" / "plots"
 _PLOTS_MODULE = "chisurf.gui.plots"
+_DECLARED_PATH = re.compile(r"^(chisurf(?:\.\w+)+):\w+$")
 
 
 def _module_name(path: pathlib.Path) -> str:
@@ -51,7 +53,9 @@ def _imported_paths(path: pathlib.Path) -> set[str]:
 
     Both the imported module and each ``from ... import <name>`` target are
     recorded, because a submodule may be pulled in either way. Relative imports
-    are resolved against the file's own package.
+    are resolved against the file's own package. A string literal of the form
+    ``"chisurf.x.y:Name"`` counts as an import of ``chisurf.x.y``: that is how a
+    declarative registry names what it imports lazily.
 
     Parameters
     ----------
@@ -88,6 +92,13 @@ def _imported_paths(path: pathlib.Path) -> set[str]:
                 continue
             found.add(module)
             found.update(f"{module}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+            # A declared ``"module:Class"`` path that a registry hands to
+            # ``importlib`` (the fit-page table in ``chisurf.emtk.fit_pages.plots``)
+            # imports that module as surely as an import statement does.
+            match = _DECLARED_PATH.match(node.value)
+            if match:
+                found.add(match.group(1))
     return found
 
 

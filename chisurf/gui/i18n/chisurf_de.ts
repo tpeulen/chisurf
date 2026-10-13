@@ -1983,6 +1983,14 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>Sampling…</source>
+            <translation>Sampling…</translation>
+        </message>
+        <message>
+            <source>Cancel failed: {error}</source>
+            <translation>Abbrechen fehlgeschlagen: {error}</translation>
+        </message>
+        <message>
             <source>Show or hide the coding assistant beside the editor.</source>
             <translation>Den Programmierassistenten neben dem Editor ein- oder ausblenden.</translation>
         </message>
