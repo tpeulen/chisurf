@@ -252,8 +252,9 @@ class AdminModel:
         #: ``restorer(project_id, version_id, payload)`` loads a fetched project version into
         #: ChiSurf (default: the ``project.restore`` action); tests inject their own.
         self.restorer: Callable[[str, str, Any], Any] | None = None
-        #: ``ndx_opener(path) -> app`` opens a path in ndX (default: ndX's ``open_in_ndx``).
-        self.ndx_opener: Callable[[Any], Any] | None = None
+        #: ``ndx_opener(path, on_opened)`` opens a path in ndX and calls ``on_opened(app)`` with
+        #: the ndX app once the path is open (default: ndX's ``open_in_ndx``).
+        self.ndx_opener: Callable[[Any, Callable[[Any], Any] | None], Any] | None = None
 
     # ── calls ──────────────────────────────────────────────────────────
     def run(
@@ -410,13 +411,17 @@ class AdminModel:
 
         return dispatch("project.restore", {"project_id": version_id})
 
-    def open_in_ndx(self, path: Any) -> Any:
-        """Open *path* in ndX (the shell's dock, or a window of its own); :attr:`ndx_opener` in tests."""
+    def open_in_ndx(self, path: Any, on_opened: Callable[[Any], Any] | None = None) -> Any:
+        """Open *path* in ndX (the shell's dock, or a window of its own); :attr:`ndx_opener` in tests.
+
+        ``on_opened(app)`` gets the ndX app once *path* is open in it: at once standalone, after
+        the dock's app is built in the emtk shell.
+        """
         if self.ndx_opener is not None:
-            return self.ndx_opener(path)
+            return self.ndx_opener(path, on_opened)
         from chisurf.plugins.ndxplorer.gui.app import open_in_ndx
 
-        return open_in_ndx(path)
+        return open_in_ndx(path, on_opened=on_opened)
 
     def open_location(self, location: str) -> None:
         try:

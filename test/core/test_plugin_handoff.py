@@ -192,6 +192,44 @@ def test_an_undeclared_kind_or_a_missing_key_is_refused_and_opens_nothing(shell)
     assert shell.hosted == {}
 
 
+def test_the_requester_reaches_the_built_app_after_the_payload_is_in(shell):
+    """``on_delivered(app)`` gets the target's app (not the dock record) once it took the payload."""
+    driver = Driver(shell, (1200, 800))
+    reached = []
+
+    def on_delivered(app):
+        reached.append((app, list(app.received)))
+
+    hosted = handoff.hand_off("target", "trace", {"file": "a.spc"}, on_delivered=on_delivered)
+    assert reached == []  # the app is built after the hand-off returns
+    until(driver, lambda: reached)
+    assert reached == [(shell.built[0], [{"file": "a.spc"}])]
+    assert reached[0][0] is not hosted
+    # Already open: delivered and reached at once, in that order.
+    handoff.hand_off("target", "trace", {"file": "b.spc"}, on_delivered=on_delivered)
+    assert reached[1] == (shell.built[0], [{"file": "a.spc"}, {"file": "b.spc"}])
+
+
+def test_a_failing_receiver_never_reaches_the_requester(shell):
+    driver = Driver(shell, (1200, 800))
+    reached = []
+    hosted = handoff.hand_off("target", "bad", {}, on_delivered=reached.append)
+    until(driver, lambda: "handoff_error" in hosted.extra)
+    assert reached == []
+
+
+def test_a_failing_requester_callback_is_said_like_a_failing_receiver(shell):
+    driver = Driver(shell, (1200, 800))
+
+    def on_delivered(app):
+        raise RuntimeError("no recorder")
+
+    hosted = handoff.hand_off("target", "trace", {"file": "a"}, on_delivered=on_delivered)
+    until(driver, lambda: "handoff_error" in hosted.extra)
+    assert hosted.extra["handoff_error"] == "RuntimeError: no recorder"
+    assert "no recorder" in shell.status
+
+
 def test_a_failing_receiver_is_said_and_the_shell_keeps_drawing(shell):
     driver = Driver(shell, (1200, 800))
     hosted = handoff.hand_off("target", "bad", {})

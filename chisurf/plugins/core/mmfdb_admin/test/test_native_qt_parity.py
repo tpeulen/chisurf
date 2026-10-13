@@ -271,7 +271,13 @@ def test_open_in_ndx_hands_the_product_over_and_records_back(driver, app):  # no
         burst_ids_recorder = None
 
     ndx = FakeNdx()
-    app.model.ndx_opener = lambda path: opened.append(str(path)) or ndx
+
+    def opener(path, on_opened):
+        opened.append(str(path))
+        on_opened(ndx)  # standalone: the path is open in the app at once
+        return ndx
+
+    app.model.ndx_opener = opener
     panel = open_panel(driver, "processed_product", "Processed Products")
     driver.click(_cell(driver, "prod_gui"))
     driver.click_name("open_in_ndx")
@@ -280,8 +286,27 @@ def test_open_in_ndx_hands_the_product_over_and_records_back(driver, app):  # no
     assert panel.message == "Opened prod_gui.json in ndX"
 
 
+def test_open_in_ndx_in_the_shell_records_back_once_the_dock_app_exists(driver, app):  # noqa: F811
+    """The shell's hand-off returns a dock record and builds the app later; the recorder still lands."""
+
+    class FakeNdx:
+        burst_ids_recorder = None
+
+    pending = []
+    app.model.ndx_opener = lambda path, on_opened: pending.append(on_opened) or object()
+    open_panel(driver, "processed_product", "Processed Products")
+    driver.click(_cell(driver, "prod_gui"))
+    driver.click_name("open_in_ndx")
+    assert len(pending) == 1 and callable(pending[0])
+    ndx = FakeNdx()
+    pending[0](ndx)  # the shell built ndX's dock and the path is open
+    assert callable(ndx.burst_ids_recorder)
+
+
 def test_open_in_ndx_says_why_when_the_file_is_gone(driver, app, tmp_path):  # noqa: F811
-    app.model.ndx_opener = lambda path: (_ for _ in ()).throw(AssertionError("not opened"))
+    app.model.ndx_opener = lambda path, on_opened: (_ for _ in ()).throw(
+        AssertionError("not opened")
+    )
     panel = open_panel(driver, "processed_product", "Processed Products")
     driver.click(_cell(driver, "prod_gui"))
     Path(panel.selected_record()["location"]).unlink()

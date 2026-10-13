@@ -147,6 +147,29 @@ def test_a_path_handed_over_opens_in_the_open_app(make, tmp_path, monkeypatch):
     assert app.model.has_data and app.model.source.size == 2
 
 
+def test_the_opener_reaches_the_app_once_the_path_is_open(make, tmp_path, monkeypatch):
+    """``on_opened(app)`` gets the app with the path open, standalone and through the shell."""
+    from chisurf.core.plugin import handoff
+    from chisurf.plugins.ndxplorer.gui.app import open_in_ndx
+
+    table = tmp_path / "bursts.csv"
+    table.write_text("I_DD,I_DA\n10,4\n20,8\n")
+    monkeypatch.setattr(handoff, "available", lambda *a: False)
+    app = make(session_autosave=False)
+    reached = []
+    open_in_ndx(table, on_opened=lambda a: reached.append((a, a.model.has_data)))
+    assert reached == [(app, True)]
+    # In the emtk shell the hand-off carries the callback; the shell calls it with the built app.
+    calls = []
+    monkeypatch.setattr(handoff, "available", lambda *a: True)
+    monkeypatch.setattr(
+        handoff, "hand_off", lambda *a, **kw: calls.append((a, kw)) or "dock record"
+    )
+    callback = reached.append
+    assert open_in_ndx(table, on_opened=callback) == "dock record"
+    assert calls == [(("ndxplorer", "open_path", {"path": str(table)}), {"on_delivered": callback})]
+
+
 def test_with_no_app_open_the_chisurf_window_opens_one(make, monkeypatch):
     """No ndX open: the ChiSurf window opens the plugin as its menu does, and the table goes there."""
     import chisurf

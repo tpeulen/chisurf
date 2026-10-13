@@ -22,7 +22,7 @@ from __future__ import annotations
 import importlib
 import logging
 import weakref
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
 from chisurf.core.plugin.manifest import HandoffSpec
 
@@ -54,8 +54,14 @@ class HandoffHost(Protocol):
         """The declaration of *kind* when the host can open *plugin_id* and it takes that kind."""
         ...
 
-    def hand_off(self, plugin_id: str, kind: str, payload: dict) -> Any:
-        """Open *plugin_id* and deliver *payload* (of the declared *kind*) once its app exists."""
+    def hand_off(
+        self,
+        plugin_id: str,
+        kind: str,
+        payload: dict,
+        on_delivered: Callable[[Any], Any] | None = None,
+    ) -> Any:
+        """Open *plugin_id*, deliver *payload* once its app exists, then call ``on_delivered(app)``."""
         ...
 
 
@@ -115,8 +121,20 @@ def check_payload(spec: HandoffSpec, payload: dict) -> None:
         raise HandoffError(f"the {spec.name} payload needs {', '.join(missing)}")
 
 
-def hand_off(plugin_id: str, kind: str, payload: dict) -> Any:
+def hand_off(
+    plugin_id: str,
+    kind: str,
+    payload: dict,
+    *,
+    on_delivered: Callable[[Any], Any] | None = None,
+) -> Any:
     """Ask the host to open *plugin_id* and give it *payload* of the declared *kind*.
+
+    The target's app is built asynchronously, so what this returns is the host's record of
+    the tool, not the app. A requester that has to act on the app itself (attach a hook to
+    what it just opened) passes *on_delivered*: the host calls ``on_delivered(app)`` with the
+    target's app right after its receive hook took the payload, on the draw thread -- at once
+    when the tool is already open. It is not called when the receive hook fails.
 
     Returns
     -------
@@ -133,7 +151,9 @@ def hand_off(plugin_id: str, kind: str, payload: dict) -> Any:
     current = host()
     if current is None:
         raise HandoffError("no ChiSurf window is open to hand this to")
-    return current.hand_off(plugin_id, kind, dict(payload))
+    if on_delivered is None:
+        return current.hand_off(plugin_id, kind, dict(payload))
+    return current.hand_off(plugin_id, kind, dict(payload), on_delivered=on_delivered)
 
 
 def deliver(app: Any, spec: HandoffSpec, payload: dict) -> Any:

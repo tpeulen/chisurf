@@ -433,14 +433,21 @@ class EmtkShellApp(ImApp):
             return None
         return accepted(plugin_id, kind, self.catalog.get(plugin_id))
 
-    def hand_off(self, plugin_id: str, kind: str, payload: dict) -> HostedPlugin:
+    def hand_off(
+        self,
+        plugin_id: str,
+        kind: str,
+        payload: dict,
+        on_delivered: Callable[[Any], Any] | None = None,
+    ) -> HostedPlugin:
         """Open *plugin_id* as a dock and give its app *payload* once the app is built.
 
         The payload goes to the receive hook the target declares for *kind*
         (:func:`chisurf.core.plugin.handoff.deliver`), on the draw thread, after the build finishes
         -- at once when the tool is already open. A tool already open keeps its dock and gets the
         new payload (tools are docks, one per tool). A hook that fails is said in the status line
-        and logged.
+        and logged. After the hook took the payload, ``on_delivered(app)`` gets the target's app
+        (the requester's way to reach what it opened); a failure there is said the same way.
 
         Raises
         ------
@@ -464,6 +471,8 @@ class EmtkShellApp(ImApp):
             app = getattr(app, "_control", app)  # the plugin's own app, not the child wrapper
             try:
                 deliver(app, spec, payload)
+                if on_delivered is not None:
+                    on_delivered(app)
             except Exception as exc:  # noqa: BLE001 - said, never raised into the frame
                 _log.exception("handing %s to %s failed", kind, plugin_id)
                 self.status = tr("{name} could not take it: {error}").format(

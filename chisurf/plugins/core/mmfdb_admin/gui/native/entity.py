@@ -482,12 +482,15 @@ class EntityPanel(ExtrasMixin, Panel):
                 record_burst_ids_against_product,
             )
 
-            ndx = self.admin.open_in_ndx(path)
-            # Save > Burst IDs there records the selection against this product (when the
-            # app itself came back; a shell hand-off returns its dock record instead).
-            if hasattr(ndx, "burst_ids_recorder"):
-                experiment_id = str(data.get("experiment_id") or "") or None
+            experiment_id = str(data.get("experiment_id") or "") or None
+
+            def record_back(ndx) -> None:
+                # Save > Burst IDs there records the selection against this product. Called
+                # once the path is open (opening other data clears the hook): at once in a
+                # window of its own, after the dock's app is built in the emtk shell.
                 record_burst_ids_against_product(ndx, product_id, experiment_id, client=self.client)
+
+            self.admin.open_in_ndx(path, on_opened=record_back)
             self.say(f"Opened {path.name} in ndX")
         except Exception as exc:  # noqa: BLE001 - shown, never raised
             self.admin.show(MessageDialog("Error", f"Failed to open in ndX:\n{exc}"))

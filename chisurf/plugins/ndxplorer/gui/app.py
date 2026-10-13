@@ -425,7 +425,7 @@ def _ndx_app():
     return apps[-1]
 
 
-def open_in_ndx(path) -> object:
+def open_in_ndx(path, on_opened=None) -> object:
     """Open *path* in ndX: the open window when there is one, else a new one.
 
     A ``.cs.pto`` opens its stored sampling chain (ndX asks which, when the
@@ -435,6 +435,10 @@ def open_in_ndx(path) -> object:
     ----------
     path : str or pathlib.Path
         What to open: anything ndX's File > Import reads.
+    on_opened : callable, optional
+        ``on_opened(app)`` with the ndX app once *path* is open in it -- the way to attach
+        something to the app (a Save > Burst IDs recorder) that works both standalone and in
+        the emtk shell, where the app is built after this returns.
 
     Returns
     -------
@@ -450,9 +454,13 @@ def open_in_ndx(path) -> object:
     from chisurf.core.plugin import handoff
 
     if handoff.available("ndxplorer", "open_path"):
-        return handoff.hand_off("ndxplorer", "open_path", {"path": str(path)})
+        return handoff.hand_off(
+            "ndxplorer", "open_path", {"path": str(path)}, on_delivered=on_opened
+        )
     app = _ndx_app()
     app.open_path(str(path))
+    if on_opened is not None:
+        on_opened(app)
     request = getattr(app, "request_frame", None)
     if callable(request):
         request()
