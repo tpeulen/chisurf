@@ -965,7 +965,7 @@ within a family; cross-family repeats are fine since they live in separate menus
 Superseded and dead `icon.png` assets were removed; the resolver order is manifest
 icon → on-disk image → module attribute → name fallback, so a leftover png would
 otherwise shadow a module emoji. Rendering emoji/text/color/file icons into
-`QIcon`s is a separate concern handled by `chisurf/plugins/icon_utils.py` (see
+`QIcon`s is a separate concern handled by `chisurf/gui/plugin_icons.py` (see
 `chisurf/plugins/ICON_SYSTEM.md`).
 
 # Long-term direction (maintainer, 2026-08-14)

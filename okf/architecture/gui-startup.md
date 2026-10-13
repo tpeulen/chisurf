@@ -104,7 +104,7 @@ categories). Anything that installs, renames or removes a plugin must call
 `invalidate_plugin_cache()`.
 
 **Menu construction does not import plugin code.** Names, descriptions and
-icons all come from `manifest.json` and on-disk icon files. `icon_utils.
+icons all come from `manifest.json` and on-disk icon files. `chisurf.gui.plugin_icons.
 create_plugin_icon_with_fallback` accepts a *callable* module provider so the
 import happens only for the few plugins whose icon comes from a module
 attribute. Importing plugins to build a menu is what made the ribbon slow, and

@@ -11,7 +11,7 @@ from typing import Any
 from chisurf.core.plugin.client import InProcessClient
 
 
-class {{ cookiecutter.widget_class_name }}Client:
+class {{ cookiecutter.class_prefix }}Client:
     """Client for {{ cookiecutter.plugin_display_name }} backend services."""
 
     def __init__(self, client: Any = None):
@@ -24,6 +24,11 @@ class {{ cookiecutter.widget_class_name }}Client:
         """Check if the plugin backend is alive."""
         result = self._client.call("{{ cookiecutter.plugin_name }}.ping")
         return result.get("result", {})
+
+    def compute(self, settings: dict[str, Any]) -> float:
+        """The result of *settings* (a ``PluginSettings`` dict), computed by the backend."""
+        result = self._client.call("{{ cookiecutter.plugin_name }}.compute", settings)
+        return result.get("result", {})["result"]
 
     @staticmethod
     def _make_local_client() -> InProcessClient:

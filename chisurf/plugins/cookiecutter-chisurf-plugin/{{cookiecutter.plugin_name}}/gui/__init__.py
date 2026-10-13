@@ -1,3 +1,1 @@
-from .gui.tool import {{ cookiecutter.widget_class_name }}
-
-__all__ = ["{{ cookiecutter.widget_class_name }}"]
+"""The {{ cookiecutter.plugin_display_name }} window: the emtk app (``app.py``) over the view model (``view_model.py``)."""

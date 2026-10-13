@@ -1025,7 +1025,7 @@ class Main(
                 try:
                     import importlib as _il
 
-                    from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
+                    from chisurf.gui.plugin_icons import create_plugin_icon_with_fallback
 
                     icon = create_plugin_icon_with_fallback(
                         lambda: _il.import_module(module_path), package_dir, size=32

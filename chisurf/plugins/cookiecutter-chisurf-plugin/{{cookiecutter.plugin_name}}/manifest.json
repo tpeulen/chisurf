@@ -20,11 +20,20 @@
     "properties": {}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.{{ cookiecutter.plugin_name }}.gui.tool:{{ cookiecutter.widget_class_name }}",
+    "emtk": "chisurf.plugins.{{ cookiecutter.plugin_name }}.gui.app:make_app",
     "cli": "{{ cookiecutter.plugin_name }}=chisurf.plugins.{{ cookiecutter.plugin_name }}.cli:cli",
     "services": "chisurf.plugins.{{ cookiecutter.plugin_name }}.backend.services:register_services"
   },
-  "rpc_methods": [],
+  "rpc_methods": [
+    {
+      "name": "{{ cookiecutter.plugin_name }}.ping",
+      "summary": "Liveness check."
+    },
+    {
+      "name": "{{ cookiecutter.plugin_name }}.compute",
+      "summary": "Compute the example result of a PluginSettings dict."
+    }
+  ],
   "events": [],
   "dependencies": {},
   "requires": {},

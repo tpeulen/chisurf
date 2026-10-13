@@ -1,4 +1,8 @@
-"""Enhanced icon utilities for ChiSurf plugins supporting image, emoji, and text icons."""
+"""Plugin icons for the Qt shell (menus, ribbon, Tools dock): image, emoji and text icons as ``QIcon``.
+
+The emtk shell draws manifest icons itself (``chisurf.emtk.plugin_icons``); this module is the Qt
+shell's twin and lives beside it, not under ``chisurf/plugins``, which imports no Qt.
+"""
 
 import pathlib
 import platform

@@ -160,7 +160,11 @@ The verified checkout has 133 valid plugin manifests, grouped by domain — e.g.
 `user_editor`).
 
 A cookiecutter template for new plugins lives at
-`chisurf/plugins/cookiecutter-chisurf-plugin/`.
+`chisurf/plugins/cookiecutter-chisurf-plugin/`. It generates the standard shape: an
+emtk app (`gui/app.py`, manifest `emtk` entry, no `gui` entry, no Qt) drawn from an
+AutoForm `gui/<name>.view.json` over a toolkit-free view model that reaches the backend
+services only through `gui/client.py`, plus `help.md`, `guide.json` and headless tests of
+the window (since 2026-10-13; it generated a Qt `QMainWindow` before).
 
 # Dependencies and boot order
 

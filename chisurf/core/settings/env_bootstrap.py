@@ -105,7 +105,7 @@ def _add_libpath(path: pathlib.Path) -> None:
         # linked against -- which is fatal rather than best-effort: dyld reads it
         # at process start, so the process that sets it is unaffected while every
         # child it spawns inherits the override. A subprocess that renders any Qt
-        # text or icon (``chisurf.plugins.icon_utils.create_text_icon``) then
+        # text or icon (``chisurf.gui.plugin_icons.create_text_icon``) then
         # bus-errors inside Qt's font engine, which is what made a per-tool
         # construction test crash on exactly one tool while the same code ran
         # fine when started directly.

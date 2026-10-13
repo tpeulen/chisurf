@@ -5,7 +5,7 @@
     "plugin_description": "A brief description of what your plugin does",
     "author_name": "Your Name",
     "author_email": "your.email@example.com",
-    "widget_class_name": "MyPluginWidget",
+    "class_prefix": "MyPlugin",
     "year": "{% now 'utc', '%Y' %}",
     "manifest_version": "1.0.0",
     "state_namespace": "my_plugin"

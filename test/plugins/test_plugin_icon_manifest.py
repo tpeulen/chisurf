@@ -25,7 +25,7 @@ def plugin_dir(tmp_path):
 
 
 def test_the_manifest_icon_is_used_and_the_module_is_not_imported(qapp, plugin_dir, monkeypatch):
-    from chisurf.plugins import icon_utils
+    from chisurf.gui import plugin_icons as icon_utils
 
     resolved = []
     monkeypatch.setattr(

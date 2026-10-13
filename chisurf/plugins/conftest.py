@@ -2,8 +2,6 @@ import os
 import pathlib
 import sys
 
-import pytest
-
 # Matplotlib must not open windows during a test run. The default backend on
 # macOS is ``macosx``, a native GUI backend, so any test that draws a figure
 # pops a real window onto the user's screen — and a run that is meant to be
@@ -18,12 +16,6 @@ _topdir = pathlib.Path(__file__).resolve().parents[2]
 if str(_topdir) not in sys.path:
     sys.path.insert(0, str(_topdir))
 
+# No ``qapp`` fixture here: plugins import no Qt, and the few legacy tests that still ask
+# for a QApplication get pytest-qt's ``qapp`` (a test dependency in pixi.toml/pyproject).
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy.QtWidgets import QApplication
-
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    yield app

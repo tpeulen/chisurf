@@ -17,9 +17,9 @@ from chisurf.core.plugin.ribbon_layout import group_records
 
 # Import enhanced icon utilities for emoji support
 try:
-    from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
+    from chisurf.gui.plugin_icons import create_plugin_icon_with_fallback
 except ImportError:
-    # Fallback if icon_utils is not available
+    # Fallback if plugin_icons is not available
     def create_plugin_icon_with_fallback(module, package_dir, size=64):
         """Fallback icon creation using existing system"""
         from pathlib import Path

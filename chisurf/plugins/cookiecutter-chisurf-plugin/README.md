@@ -1,55 +1,47 @@
 # ChiSurf Plugin Template
 
-This is a [cookiecutter](https://github.com/cookiecutter/cookiecutter) template for creating new plugins for ChiSurf.
+A [cookiecutter](https://github.com/cookiecutter/cookiecutter) template for a new ChiSurf plugin. The
+plugin it generates follows the plugin standard: its window is an **emtk app declared by an AutoForm
+`view.json`** (no Qt), its numbers come from **backend services** reached through a client, and it
+ships a `?` help page and a guided tour.
 
 ## Requirements
 
 - [cookiecutter](https://github.com/cookiecutter/cookiecutter)
-- Python 3.6+
-- PyQt5
+- a ChiSurf environment (`pixi`), which provides emtk
 
 ## Usage
-
-1. Install cookiecutter if you haven't already:
-
-```bash
-pip install cookiecutter
-```
-
-2. Generate a new ChiSurf plugin project:
 
 ```bash
 cookiecutter path/to/cookiecutter-chisurf-plugin
 ```
 
-3. Answer the prompts to configure your plugin:
+Answer the prompts:
 
-- `plugin_name`: The name of your plugin directory (lowercase, no spaces)
-- `plugin_display_name`: The display name of your plugin (will appear in the menu)
-- `plugin_category`: The category of your plugin (e.g., Tools, Structure, Analysis)
-- `plugin_description`: A brief description of what your plugin does
-- `author_name`: Your name
-- `author_email`: Your email
-- `widget_class_name`: The name of the main widget class for your plugin
+- `plugin_name`: the package and plugin id (lowercase, no spaces)
+- `plugin_display_name`: the name in the menus
+- `plugin_category`: the menu it appears in (e.g. Tools, Structure, Analysis)
+- `plugin_description`: one sentence on what it does
+- `author_name`, `author_email`
+- `class_prefix`: the prefix of the generated classes (`<prefix>App`, `<prefix>ViewModel`, `<prefix>Client`)
 
-4. Navigate to your new plugin directory:
+Copy the generated directory into `chisurf/plugins/` (or `~/.chisurf/plugins/`) and open it with
+`python -m chisurf.plugins.<plugin_name>`, or from either ChiSurf shell's menu.
 
-```bash
-cd your_plugin_name
-```
+## What you get
 
-5. Customize your plugin:
-   - Edit `__init__.py` to implement your plugin's functionality
-   - Run `create_icon.py` to generate a custom icon for your plugin
-
-6. Install your plugin:
-   - Copy your plugin directory to the ChiSurf plugins directory
-   - Restart ChiSurf
-
-## Template Structure
-
-- `__init__.py`: The main plugin file with the plugin name, description, and widget class
-- `create_icon.py`: A script to create a custom icon for your plugin
+- `manifest.json`: id, menu path, icon, the `emtk` entry (`gui.app:make_app`), the CLI and the
+  backend services with their `rpc_methods`.
+- `gui/<plugin_name>.view.json`: the window. Every control is a section: `value` edits a view-model
+  attribute, `button_row` calls a view-model method, `info` shows what a method returns, `table` /
+  `data_table` show rows. Each carries a `description` (tooltip and generated docs).
+- `gui/view_model.py`: the window's state, toolkit-free; it reaches the backend only through
+  `gui/client.py`.
+- `gui/app.py`: draws the spec with emtk; hand-write draw code here only for what a spec cannot
+  express (plots, images).
+- `gui/help.md` and `gui/guide.json`: the `?` page and the guided tour; replace both.
+- `backend/services.py`, `core/`, `api/`: the RPC handlers, the pure computation and its DTOs.
+- `tests/`: the manifest, the client, and the window drawn headlessly (no Qt imported).
 
 ## License
 

@@ -2,7 +2,7 @@
 
 This document describes the enhanced icon system for ChiSurf plugins, which supports emojis, text, colors, and traditional image files.
 
-> **Which glyph vs. how to render it.** This file (and `icon_utils.py`) covers
+> **Which glyph vs. how to render it.** This file (and the Qt shell's `chisurf/gui/plugin_icons.py`) covers
 > *rendering* an icon spec into a `QIcon`. For *which* emoji/glyph to use in a
 > label, action or `icon` field, use the canonical registry
 > `chisurf.core.glyphs.Glyphs` (e.g. `Glyphs.SAVE`, `Glyphs.DELETE`,
@@ -49,7 +49,7 @@ icon = "#FF5722"  # Red color
 For more control, you can use the icon utilities directly:
 
 ```python
-from chisurf.plugins.icon_utils import (
+from chisurf.gui.plugin_icons import (
     create_emoji_icon, create_text_icon, create_analysis_icon
 )
 
@@ -173,7 +173,7 @@ icon = my_custom_icon
 
 **After:**
 ```python
-from chisurf.plugins.icon_utils import create_emoji_icon
+from chisurf.gui.plugin_icons import create_emoji_icon
 icon = create_emoji_icon("🎵", size=64, bg_color="#2196F3")
 ```
 
@@ -201,7 +201,7 @@ icon = create_emoji_icon("🎵", size=64, bg_color="#2196F3")
 
 ### Icon Not Loading
 
-- Check import path for icon_utils
+- Check the import path: `chisurf.gui.plugin_icons`
 - Verify icon string format
 - Test with fallback system
 

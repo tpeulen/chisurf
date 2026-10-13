@@ -22,7 +22,7 @@ def _plugin_icon_from_metadata(
     icon = None
     try:
         from chisurf.core.plugin.manifest import load_manifest
-        from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
+        from chisurf.gui.plugin_icons import create_plugin_icon_with_fallback
 
         manifest = load_manifest(Path(package_dir) / "manifest.json")
         icon = create_plugin_icon_with_fallback(

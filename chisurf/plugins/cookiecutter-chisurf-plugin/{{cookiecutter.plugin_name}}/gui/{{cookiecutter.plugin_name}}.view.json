@@ -1,0 +1,73 @@
+{
+  "_comment": "AutoForm layout of the {{ cookiecutter.plugin_display_name }} window, drawn by emtk (gui/app.py) over {{ cookiecutter.class_prefix }}ViewModel. Every control is a section: value (edit an attribute), button_row (call a method), info (show what a method returns); tables are 'table' / 'data_table' sections. Every section and button carries a description: it is the tooltip and the generated docs cell.",
+  "window": {"width": 900, "height": 600},
+  "sections": [
+    {
+      "type": "button_row",
+      "description": "Help and a guided tour of this window.",
+      "buttons": [
+        {
+          "label": "Help",
+          "icon": "❓",
+          "action": "open_help",
+          "description": "Open the help page of this tool."
+        },
+        {
+          "label": "Guide",
+          "icon": "📖",
+          "action": "start_guide",
+          "description": "Start a step-by-step tour that points at the real controls."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Settings",
+      "description": "The inputs of the computation.",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "example_number",
+          "label": "Example number",
+          "kind": "float",
+          "minimum": -1000000.0,
+          "maximum": 1000000.0,
+          "description": "Replace with a real setting: say what it is and what goes wrong when it is wrong."
+        },
+        {
+          "type": "button_row",
+          "description": "Compute the result of the current settings.",
+          "buttons": [
+            {
+              "label": "Run",
+              "icon": "▶",
+              "action": "run",
+              "description": "Ask the backend for the result of the current settings."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Result",
+      "description": "What the last run computed.",
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "info",
+          "source": "result_text",
+          "description": "The result of the last run.",
+          "height": 60
+        },
+        {
+          "type": "info",
+          "source": "status_text",
+          "description": "What the last action did, or why it failed.",
+          "height": 40
+        }
+      ]
+    }
+  ]
+}

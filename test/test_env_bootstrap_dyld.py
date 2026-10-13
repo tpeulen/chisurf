@@ -67,7 +67,7 @@ def test_icon_rendering_survives_a_prepended_dyld_library_path():
         "os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen');"
         "from qtpy import QtWidgets;"
         "app = QtWidgets.QApplication([]);"
-        "from chisurf.plugins.icon_utils import create_emoji_icon;"
+        "from chisurf.gui.plugin_icons import create_emoji_icon;"
         "print('ICON', not create_emoji_icon('\\N{PAGE FACING UP}').isNull())"
     )
     env = dict(os.environ)

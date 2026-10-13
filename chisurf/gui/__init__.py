@@ -989,7 +989,7 @@ def setup_gui(
                 icon = None
                 try:
                     from chisurf.core.plugin.manifest import load_manifest
-                    from chisurf.plugins.icon_utils import create_plugin_icon_with_fallback
+                    from chisurf.gui.plugin_icons import create_plugin_icon_with_fallback
 
                     manifest = load_manifest(package_dir / "manifest.json")
                     icon = create_plugin_icon_with_fallback(
