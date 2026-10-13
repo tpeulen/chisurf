@@ -8162,11 +8162,14 @@ render fix needs its own before/after images.
 
 ## Help: one documentation formula does not typeset (test_render)
 
-`chisurf/plugins/core/help/test/test_render.py::test_every_formula_in_the_documentation_typesets` fails on
-`docs/concepts/protein_monte_carlo.md`: the display block `E_\text{restr} = ... \begin{cases}...\end{cases}`
-is split at its `\\` row break and both halves are refused by the math renderer. Seen 2026-10-13 while retiring
-the Qt help browser; unrelated to that change (the theme module was the only render-side edit). Either the page
-moves the `cases` into its own display line or `help/api/mathtext.py` learns `cases` with row breaks.
+status: resolved 2026-10-13
+
+The in-app math renderer (matplotlib mathtext) has no `cases` environment, so no row split can make it typeset;
+`docs/concepts/protein_monte_carlo.md` now states the asymmetric error as two `\text{for}` conditions on one display line
+(maths identical) and `test_render.py` passes (42/42).
+
+`chisurf/plugins/core/help/test/test_render.py::test_every_formula_in_the_documentation_typesets` failed on the `cases`
+block of that page, split at its `\\` row break with both halves refused. Trap: do not reintroduce `\begin{cases}` in `docs/`.
 
 ---
 

@@ -47,7 +47,9 @@ positions of each distance $j$ against its target $\bar d_j$,
 $$
 E_\text{restr} = \sum_j \left(\frac{d_j - \bar d_j}{\sigma_j^\pm}\right)^2,
 \qquad
-\sigma_j^\pm = \begin{cases}\sigma_j^- & d_j < \bar d_j\\ \sigma_j^+ & d_j \ge \bar d_j\end{cases}
+\sigma_j^\pm = \sigma_j^- \;\text{for}\; d_j < \bar d_j,
+\qquad
+\sigma_j^\pm = \sigma_j^+ \;\text{for}\; d_j \ge \bar d_j
 $$
 
 with the asymmetric errors `error_neg` and `error_pos` of the file. A position is resolved by chain, residue and
