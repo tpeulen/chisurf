@@ -34,8 +34,6 @@ import pathlib
 import sys
 import time
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
@@ -86,20 +84,16 @@ def scene_geometry(scene) -> tuple[int, int]:
 
 def main() -> int:
     """Time every representation, then one of them at four resolutions."""
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-    from chimol.commands.command import Cmd
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    # The toolkit-free window on the offscreen canvas: the viewer ChiSurf embeds.
+    from chimol.hosts.native.app import ChimolApp
     from chimol.render.raytracer import _camera_from_view_state, render_scene
 
-    window = MolViewPluginWindow()
-    window._load_structure_from_path(PDB, name="148l")
-    cmd = Cmd(window)
+    app = ChimolApp(backend="offscreen", size=(BENCH_W * 2, BENCH_H * 2))
+    app.host.load_structure_from_path(PDB, name="148l")
+    cmd = app.cmd
     cmd.set_message_callback(lambda _m: None)
     cmd.set_error_callback(lambda m: print(f"  error: {m}"))
-    viewer = getattr(window, "viewer", None) or window._viewer
+    viewer = app.viewer
 
     def current():
         return (
@@ -145,7 +139,7 @@ def main() -> int:
             f"{elapsed:>11.3f}{elapsed / samples * 1e6:>12.3f}"
         )
 
-    del app
+    app.close()
     return 0
 
 

@@ -2,287 +2,176 @@
 
 Why this exists
 ---------------
-The project rule is that a GUI change is unfinished until the widget has been
-rendered and the image *looked at*. For most widgets ``widget.grab()`` under
-``QT_QPA_PLATFORM=offscreen`` is enough. The 3-D view is not most widgets: its
-pixels do not live in the widget's backing store, so a plain grab comes back a
-uniform rectangle of the right size and no error.
+The project rule is that a GUI change is unfinished until the view has been
+rendered and the image *looked at*. ChiMOL's window is the toolkit-free host
+(:class:`chimol.hosts.native.app.ChimolApp`, the viewer ChiSurf embeds): a
+``rendercanvas`` surface drawn by WebGPU. Its pixels are the renderer's, so the
+screenshot is taken from the renderer:
 
-**Ask the renderer, not the toolkit.** ``CanvasRenderer.grab_image`` re-renders
-the frame into an offscreen texture through the same code the window draws
-with, and composites the chrome. It needs no window server, no GL context and
-no platform plugin, so it works under ``QT_QPA_PLATFORM=offscreen`` and it is
-the route this module takes first.
+* :func:`grab_window` -- the frame the window shows (scene, panel, sequence
+  strip, menus, prompt): the offscreen canvas' ``draw`` hands it back, and a
+  canvas with a real window re-renders it offscreen
+  (``CanvasRenderer.grab_image(chrome=True)``);
+* :func:`grab_view` -- the 3-D view alone (``grab_image(chrome=False)``), or
+  with the chrome composited (``chrome=True``).
 
-That is not how it started, and the previous arrangement is worth stating
-because it cost a rule its teeth. This module was written for a
-``QOpenGLWidget`` and captured with ``grabFramebuffer()``, arguing at length
-about the offscreen plugin's inability to create a GL context. chimol's
-renderer became a plain ``QWidget`` presenting a WebGPU surface during the WGSL
-port -- so the search found nothing, ``grab_window`` fell through to
-``widget.grab()``, and **every chimol screenshot since was a blank**. Silently.
-The fallback still exists for a genuine ``QOpenGLWidget``, and now it is a
-fallback rather than the only path.
+No window server, no GL context and no GUI toolkit: it runs over ssh and in CI
+wherever a WebGPU adapter exists.
 
-Consequences worth knowing:
-
-* the WebGPU route runs anywhere, including CI. The ``QOpenGLWidget`` fallback
-  still needs a window server and refuses the offscreen platform rather than
-  producing a black image;
-* a 3-D view is grabbed separately from the rest of the window and pasted in.
-  ``QWidget.grab()`` captures neither a child GL surface nor a presented WebGPU
-  one, which is what makes a whole-window grab of a 3-D app come out with a
-  hole in it.
+What this replaced, because it cost a rule its teeth once already: the helper
+was written for a ``QOpenGLWidget`` and captured with ``grabFramebuffer()``.
+When the renderer became a plain ``QWidget`` presenting a WebGPU surface the
+search for the GL widget found nothing, the grab fell through to
+``QWidget.grab()``, and **every chimol screenshot was a blank** -- silently.
+So a grab here never falls back to "something": no renderer is an error, and
+:func:`save_png` refuses an empty or uniform image rather than writing one.
 
 Use
 ---
+    from native_window import NativeWindow
     from chisurf.plugins.chimol.test.screenshot import shoot
 
-    paths = shoot(window, "npc_demo", area="all")
+    win = NativeWindow(size=(1280, 860))
+    win.load_structure_from_path(PDB_148L)
+    paths = shoot(win, "t4l", area="all")
 """
 
 from __future__ import annotations
 
-import os
 import pathlib
 
-from qtpy import QtCore, QtGui, QtWidgets
+import numpy as np
 
 __all__ = [
-    "ensure_app",
-    "grab_window",
-    "grab_gl",
+    "assert_view_usable",
     "grab_view",
+    "grab_window",
+    "renderer_of",
+    "save_png",
     "shoot",
-    "OFFSCREEN_REFUSED",
 ]
 
-#: Raised as a message, not an exception type, so a caller can decide.
-OFFSCREEN_REFUSED = (
-    "the offscreen Qt platform cannot create an OpenGL context, so the 3-D view "
-    "would come out black -- unset QT_QPA_PLATFORM and run on a logged-in session"
-)
 
+def renderer_of(target):
+    """The renderer behind *target*: a window, an app, a viewer or the renderer itself.
 
-def ensure_app() -> QtWidgets.QApplication:
-    """Return the application, creating one if there is none.
-
-    Returns
-    -------
-    QtWidgets.QApplication
-    """
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _refuse_offscreen() -> None:
-    """Raise if the offscreen platform cannot serve the route about to be taken.
-
-    Only the ``QOpenGLWidget`` fallback needs this. The renderer's own capture
-    does not touch a platform GL context, so refusing it there would rule out
-    the one route that works.
+    Found by capability -- ``grab_image`` -- rather than by class. The class was
+    the mistake this module once made: a hard-coded widget type that stopped
+    matching, and nothing said so.
 
     Raises
     ------
     RuntimeError
+        If nothing under *target* can photograph itself.
     """
-    if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
-        raise RuntimeError(OFFSCREEN_REFUSED)
+    seen = target
+    for _ in range(3):
+        if callable(getattr(seen, "grab_image", None)):
+            return seen
+        nxt = getattr(seen, "renderer", None)
+        if nxt is None or nxt is seen:
+            break
+        seen = nxt
+    raise RuntimeError(f"no self-rendering 3-D view under {type(target).__name__}")
 
 
-def _renderers(widget: QtWidgets.QWidget) -> list[QtWidgets.QWidget]:
-    """Every 3-D view under *widget* that can photograph itself.
-
-    Found by capability -- a ``grab_image`` method -- rather than by class. The
-    class was the mistake this replaces: ``QOpenGLWidget`` was hard-coded, and
-    when the renderer stopped being one, the search stopped finding anything
-    and nothing said so.
-
-    Returns
-    -------
-    list of QtWidgets.QWidget
-    """
-    candidates = [widget, *widget.findChildren(QtWidgets.QWidget)]
-    return [w for w in candidates if callable(getattr(w, "grab_image", None))]
+def _app_of(target):
+    """The object whose ``draw_frame`` renders the window (an app, a window or the canvas)."""
+    for candidate in (target, getattr(target, "app", None), renderer_of(target)):
+        if candidate is not None and callable(getattr(candidate, "draw_frame", None)):
+            return candidate
+    return None
 
 
-def _as_qimage(array) -> QtGui.QImage:
-    """Wrap an ``(h, w, 3)`` uint8 array as a ``QImage`` that owns its bytes.
-
-    Parameters
-    ----------
-    array : numpy.ndarray
-
-    Returns
-    -------
-    QtGui.QImage
-
-    Raises
-    ------
-    RuntimeError
-        If the array is not a picture -- an empty or wrongly shaped buffer
-        would otherwise become a null image and be written as a black PNG.
-    """
-    import numpy as np
-
-    rgb = np.ascontiguousarray(np.asarray(array)[..., :3], dtype=np.uint8)
+def _rgb(image) -> np.ndarray:
+    """``(h, w, 3)`` uint8 from what a renderer returns, or an error naming what came back."""
+    if image is None:
+        raise RuntimeError("the renderer returned no frame")
+    rgb = np.ascontiguousarray(np.asarray(image)[..., :3], dtype=np.uint8)
     if rgb.ndim != 3 or rgb.shape[0] < 1 or rgb.shape[1] < 1:
         raise RuntimeError(f"the renderer returned {rgb.shape}, which is not a frame")
-    height, width = rgb.shape[0], rgb.shape[1]
-    image = QtGui.QImage(rgb.data, width, height, 3 * width, QtGui.QImage.Format_RGB888)
-    # `.copy()` and not a stored reference: the QImage does not own the NumPy
-    # buffer, and a view outliving the array is a use-after-free that shows up
-    # as a garbled screenshot rather than as a crash.
-    return image.copy()
+    return rgb
 
 
-def grab_view(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) -> QtGui.QImage:
-    """Grab the 3-D view alone, from the renderer itself.
+def _resize(target, size) -> None:
+    if size is not None:
+        renderer_of(target).resize(int(size[0]), int(size[1]))
+
+
+def grab_window(target, size: tuple[int, int] | None = None, frames: int = 2) -> np.ndarray:
+    """Grab the whole window: the 3-D view with the chrome over it.
 
     Parameters
     ----------
-    widget : QtWidgets.QWidget
-        The renderer, or something containing one.
+    target : NativeWindow, ChimolApp, Viewer or CanvasView
+        What to photograph.
     size : tuple of int, optional
-        Resize before grabbing.
+        Resize the canvas (logical pixels) before grabbing.
+    frames : int
+        Frames drawn first, so what a frame computes (layout, readouts) is
+        current -- the first frame after a change can still show the moment before.
 
     Returns
     -------
-    QtGui.QImage
-        The frame as the window shows it -- panel, sequence strip and all.
-
-    Raises
-    ------
-    RuntimeError
-        If nothing under *widget* can photograph itself. Falling back to
-        ``widget.grab()`` here is what made this module return blanks.
+    numpy.ndarray
+        ``(h, w, 3)`` uint8.
     """
-    app = ensure_app()
-    targets = _renderers(widget)
-    if not targets:
-        raise RuntimeError("no self-rendering 3-D view to grab")
-    if size is not None:
-        widget.resize(int(size[0]), int(size[1]))
-    if not widget.isVisible():
-        _prepare(widget, size)
-    _settle(app)
-    return _as_qimage(targets[0].grab_image(chrome=True))
+    _resize(target, size)
+    app = _app_of(target)
+    image = None
+    if app is not None:
+        for _ in range(max(1, int(frames))):
+            image = app.draw_frame()
+    if image is None:
+        # A canvas with a real window presents rather than returns its frame.
+        image = renderer_of(target).grab_image(chrome=True)
+    return _rgb(image)
 
 
-def _settle(app: QtWidgets.QApplication, rounds: int = 12) -> None:
-    """Let Qt lay out, expose and paint before the shutter."""
-    for _ in range(rounds):
-        app.processEvents()
-
-
-def force_render_canvases(widget: QtWidgets.QWidget) -> int:
-    """Make every WebGPU canvas under *widget* present a frame, synchronously.
-
-    ``request_draw`` only *schedules*: a grab taken before the first present
-    captures an unpainted surface, and the result is a solid black viewport in
-    an otherwise perfect screenshot -- which reads as "the renderer draws
-    nothing" and is a shutter-timing bug. Pumping the event loop is not enough,
-    because the canvas decides when to draw.
-
-    Returns
-    -------
-    int
-        How many canvases were forced, so a caller can tell "none present" from
-        "none needed".
-    """
-    forced = 0
-    candidates = [widget, *widget.findChildren(QtWidgets.QWidget)]
-    for child in candidates:
-        force = getattr(child, "force_draw", None)
-        if not callable(force) or not child.isVisible():
-            continue
-        try:
-            force()
-        except Exception:  # pragma: no cover - a canvas without a surface yet
-            continue
-        forced += 1
-    return forced
-
-
-def _prepare(widget: QtWidgets.QWidget, size: tuple[int, int] | None) -> None:
-    """Realise *widget* without putting it on the display."""
-    widget.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
-    if size is not None:
-        widget.resize(int(size[0]), int(size[1]))
-    widget.show()
-
-
-def _gl_children(widget: QtWidgets.QWidget) -> list[QtWidgets.QOpenGLWidget]:
-    """Every GL widget inside *widget*, itself included."""
-    found = []
-    if isinstance(widget, QtWidgets.QOpenGLWidget):
-        found.append(widget)
-    found.extend(widget.findChildren(QtWidgets.QOpenGLWidget))
-    return found
-
-
-def grab_gl(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) -> QtGui.QImage:
-    """Grab the 3-D view alone: from the renderer, or from a GL framebuffer.
+def grab_view(target, size: tuple[int, int] | None = None, chrome: bool = False) -> np.ndarray:
+    """Grab the 3-D view, re-rendered offscreen by the renderer.
 
     Parameters
     ----------
-    widget : QtWidgets.QWidget
-        A 3-D view or something containing one.
+    target : NativeWindow, ChimolApp, Viewer or CanvasView
+        What to photograph.
     size : tuple of int, optional
-        Resize before grabbing.
+        Resize the canvas before grabbing.
+    chrome : bool
+        Composite the panel, sequence strip and labels too (what the window
+        shows); ``False`` is the bare molecule.
 
     Returns
     -------
-    QtGui.QImage
-
-    Raises
-    ------
-    RuntimeError
-        If there is no 3-D view at all, or a GL context never became valid -- a
-        null image saved as a PNG is a black rectangle that reads as a bug in
-        the thing being photographed.
+    numpy.ndarray
+        ``(h, w, 3)`` uint8.
     """
-    if _renderers(widget):
-        return grab_view(widget, size)
-    app = ensure_app()
-    _refuse_offscreen()
-    targets = _gl_children(widget)
-    if not targets:
-        raise RuntimeError("nothing to grab: no self-rendering 3-D view and no QOpenGLWidget")
-    gl = targets[0]
-    if not gl.isVisible():
-        _prepare(widget, size)
-    elif size is not None:
-        widget.resize(int(size[0]), int(size[1]))
-    _settle(app)
-    image = gl.grabFramebuffer()
-    if image.isNull():
-        raise RuntimeError("the GL framebuffer came back null; " + OFFSCREEN_REFUSED)
-    return image
+    _resize(target, size)
+    renderer = renderer_of(target)
+    app = _app_of(target)
+    if app is not None:
+        app.draw_frame()  # the scene is built and laid out before the re-render
+    return _rgb(renderer.grab_image(chrome=bool(chrome)))
 
 
 def assert_view_usable(
-    widget: QtWidgets.QWidget,
+    target,
     *,
     min_px: int = 200,
     min_aspect: float = 0.35,
 ) -> tuple[int, int]:
     """Refuse a 3-D viewport too small or too misshapen to judge anything from.
 
-    A restored dock layout can hand the 3-D view a sliver -- a 1280x90 strip, or
-    in the worst case a single pixel column when the scene column is narrower
-    than the panel beside it. Nothing raises: the grab succeeds, the PNG is
-    written, and the molecule is a speck under a full-width sequence bar. Every
-    assertion taken against that image passes and means nothing.
-
-    A plain size check does not catch it, because a strip is comfortably wider
-    than any pixel floor. The shape has to be checked too.
+    A strip of a viewport grabs fine and every assertion taken against it passes
+    and means nothing: the molecule is a speck. The shape is checked as well as
+    the size, because a strip is comfortably wider than any pixel floor.
 
     Parameters
     ----------
-    widget : QtWidgets.QWidget
-        The window or widget containing the ``QOpenGLWidget``.
+    target : NativeWindow, ChimolApp, Viewer or CanvasView
+        What will be photographed.
     min_px : int
-        Smallest acceptable width and height, in device pixels.
+        Smallest acceptable width and height, in logical pixels.
     min_aspect : float
         Smallest acceptable ratio of the short side to the long side.
 
@@ -294,19 +183,14 @@ def assert_view_usable(
     Raises
     ------
     RuntimeError
-        If there is no GL widget, or its viewport is too small or too extreme to
-        produce a reviewable image.
+        If the viewport is too small or too extreme to produce a reviewable image.
     """
-    targets = _renderers(widget) or _gl_children(widget)
-    if not targets:
-        raise RuntimeError("no 3-D view to measure")
-    gl = targets[0]
-    w, h = gl.width(), gl.height()
+    renderer = renderer_of(target)
+    w, h = int(renderer.width()), int(renderer.height())
     if w < min_px or h < min_px:
         raise RuntimeError(
-            f"3-D viewport is {w}x{h}; needs at least {min_px}x{min_px}. A "
-            f"persisted dock layout is the usual cause -- set CHISURF_SETTINGS_DIR "
-            f"to a scratch directory so the window starts from a known layout."
+            f"3-D viewport is {w}x{h}; needs at least {min_px}x{min_px}. Give the "
+            f"window a size (NativeWindow(size=...), or size= here)."
         )
     aspect = min(w, h) / max(w, h)
     if aspect < min_aspect:
@@ -318,73 +202,46 @@ def assert_view_usable(
     return w, h
 
 
-def grab_window(widget: QtWidgets.QWidget, size: tuple[int, int] | None = None) -> QtGui.QImage:
-    """Grab the whole window, with the 3-D view pasted into its place.
+def save_png(image, path: str | pathlib.Path) -> pathlib.Path:
+    """Write *image* to *path*, raising rather than reporting a silent success.
 
-    ``QWidget.grab`` renders the widget tree itself and does not read back a
-    child's GL surface, so a plain whole-window grab of a 3-D application comes
-    out with a hole where the interesting part is. The GL children are grabbed
-    from their framebuffers and composited in at their own geometry.
+    A blank grab saved as a PNG reads as "the renderer draws nothing" when only
+    the camera failed, so an empty or perfectly uniform image is refused.
 
     Parameters
     ----------
-    widget : QtWidgets.QWidget
-        Usually the main window.
-    size : tuple of int, optional
-        Resize before grabbing.
+    image : numpy.ndarray
+        ``(h, w, 3)`` or ``(h, w, 4)`` uint8.
+    path : str or pathlib.Path
+        Destination PNG.
 
     Returns
     -------
-    QtGui.QImage
+    pathlib.Path
+
+    Raises
+    ------
+    RuntimeError
+        If the image is empty or uniform, or the file did not appear with a
+        plausible size.
     """
-    app = ensure_app()
-    _prepare(widget, size)
-    _settle(app)
-    # A WebGPU viewport paints when its canvas decides to, not when Qt does.
-    if force_render_canvases(widget):
-        _settle(app)
+    from PIL import Image
 
-    views = _renderers(widget)
-    if not views and not _gl_children(widget):
+    rgb = _rgb(image)
+    if int(rgb.max()) == int(rgb.min()):
+        raise RuntimeError(f"refusing to write a uniform {rgb.shape[1]}x{rgb.shape[0]} image to {path}")
+    path = pathlib.Path(path)
+    Image.fromarray(rgb, "RGB").save(path)
+    if not path.exists() or path.stat().st_size < 1024:
         raise RuntimeError(
-            "no 3-D view under this widget, so a whole-window grab would be a "
-            "picture of everything except the part worth looking at. That is "
-            "how this helper came to return blanks for a year; if the window "
-            "genuinely has no 3-D view, grab it with widget.grab() directly."
+            f"{path} is missing or implausibly small after save "
+            f"({path.stat().st_size if path.exists() else 'absent'} bytes)"
         )
-
-    shot = widget.grab().toImage()
-    painter = QtGui.QPainter(shot)
-    try:
-        for view in views:
-            if not view.isVisible() or view.width() <= 0 or view.height() <= 0:
-                continue
-            frame = _as_qimage(view.grab_image(chrome=True))
-            top_left = view.mapTo(widget, QtCore.QPoint(0, 0))
-            painter.drawImage(
-                QtCore.QRect(top_left, view.size()),
-                frame,
-                QtCore.QRect(QtCore.QPoint(0, 0), frame.size()),
-            )
-        for gl in _gl_children(widget):
-            if gl in views or not gl.isVisible() or gl.width() <= 0 or gl.height() <= 0:
-                continue
-            frame = gl.grabFramebuffer()
-            if frame.isNull():
-                continue
-            top_left = gl.mapTo(widget, QtCore.QPoint(0, 0))
-            painter.drawImage(
-                QtCore.QRect(top_left, gl.size()),
-                frame,
-                QtCore.QRect(QtCore.QPoint(0, 0), frame.size()),
-            )
-    finally:
-        painter.end()
-    return shot
+    return path
 
 
 def shoot(
-    widget: QtWidgets.QWidget,
+    target,
     name: str,
     *,
     directory: str | pathlib.Path = "renders",
@@ -395,14 +252,14 @@ def shoot(
 
     Parameters
     ----------
-    widget : QtWidgets.QWidget
-        The window (or widget) to photograph.
+    target : NativeWindow, ChimolApp, Viewer or CanvasView
+        What to photograph.
     name : str
         Stem of the file name.
     directory : str or pathlib.Path
         Where to write.
     size : tuple of int, optional
-        Window size to use.
+        Canvas size to use.
     area : {"all", "window", "view"}
         ``window`` is the whole interface, ``view`` the 3-D view alone, ``all``
         both.
@@ -415,49 +272,8 @@ def shoot(
     out = pathlib.Path(directory)
     out.mkdir(parents=True, exist_ok=True)
     written: dict[str, pathlib.Path] = {}
-
     if area in ("all", "window"):
-        path = out / f"{name}_window.png"
-        _save(grab_window(widget, size), path)
-        written["window"] = path
+        written["window"] = save_png(grab_window(target, size), out / f"{name}_window.png")
     if area in ("all", "view"):
-        path = out / f"{name}_view.png"
-        _save(grab_gl(widget, size), path)
-        written["view"] = path
+        written["view"] = save_png(grab_view(target, size), out / f"{name}_view.png")
     return written
-
-
-def _save(image: QtGui.QImage, path: pathlib.Path) -> None:
-    """Write ``image`` to ``path``, raising rather than reporting a silent success.
-
-    ``QImage.save`` reports failure by returning ``False``; it does not raise. A
-    caller that ignores the return value announces every shot as taken while the
-    disk is full, and the gap is only noticed later by counting files -- which is
-    exactly how a set of migration baselines came back missing its most important
-    scenes with nothing in the log to say so.
-
-    Parameters
-    ----------
-    image : QtGui.QImage
-        The grabbed image.
-    path : pathlib.Path
-        Destination PNG.
-
-    Raises
-    ------
-    RuntimeError
-        If the image is null, or the write failed, or the file did not appear
-        with a plausible size.
-    """
-    if image.isNull():
-        raise RuntimeError(f"refusing to write a null image to {path}")
-    if not image.save(str(path)):
-        raise RuntimeError(
-            f"QImage.save failed for {path} (disk full, or the directory is not "
-            f"writable); {image.width()}x{image.height()}"
-        )
-    if not path.exists() or path.stat().st_size < 1024:
-        raise RuntimeError(
-            f"{path} is missing or implausibly small after save "
-            f"({path.stat().st_size if path.exists() else 'absent'} bytes)"
-        )

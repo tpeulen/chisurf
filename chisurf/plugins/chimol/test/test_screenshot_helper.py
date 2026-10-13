@@ -1,125 +1,83 @@
-"""The screenshot helper itself, since a broken one fails silently as a black image.
+"""The screenshot helper itself, since a broken one fails silently as a blank image.
 
-Every other GUI check in this plugin depends on it: if `grabFramebuffer` quietly
-returns nothing, the saved PNG is a black rectangle, and a black rectangle reads
-as "the renderer is broken" rather than "the camera was". So the helper asserts
-its own preconditions and these tests hold it to them.
-
-These need a window server -- the whole point of the helper is that Qt's
-offscreen platform cannot make an OpenGL context -- so they skip where there is
-none rather than pretending to pass.
+Every other visual check in this plugin depends on it: if a grab quietly
+returns nothing, the saved PNG is a uniform rectangle, and that reads as "the
+renderer is broken" rather than "the camera was". So the helper asserts its own
+preconditions and these tests hold it to them -- on the toolkit-free window
+(the offscreen canvas ChiSurf embeds), with T4 lysozyme loaded.
 """
 
 from __future__ import annotations
 
-import os
-
+import numpy as np
 import pytest
-from qtpy import QtCore, QtWidgets
 
-from chisurf.plugins.chimol.test import screenshot as shot
+pytest.importorskip("wgpu")
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen"
-    or not (os.environ.get("DISPLAY") or os.uname().sysname == "Darwin"),
-    reason="needs a window server; the offscreen platform has no GL context",
-)
+from native_window import PDB_148L, NativeWindow  # noqa: E402
+
+from chisurf.plugins.chimol.test import screenshot as shot  # noqa: E402
 
 
 @pytest.fixture(scope="module")
-def app():
-    """Return the Qt application, skipping if the platform cannot do GL.
-
-    Checked here rather than relying on the module-level mark alone: that mark
-    is evaluated at **import** time, and several modules in this tree set
-    `QT_QPA_PLATFORM=offscreen` with `setdefault` when *they* are imported. Run
-    together with any of them, the mark sees a windowed platform, the fixture
-    then meets an offscreen one, and these turn into errors rather than skips --
-    which reads as a broken screenshot helper instead of an unsuitable
-    environment.
-    """
-    if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
-        pytest.skip("another module set QT_QPA_PLATFORM=offscreen after import")
-    return shot.ensure_app()
+def window():
+    """A 640x480 window with 148L, its view fitted."""
+    win = NativeWindow(size=(640, 480))
+    win.load_structure_from_path(PDB_148L)
+    win.do("orient")
+    yield win
+    win.close()
 
 
-def test_the_offscreen_platform_is_refused(monkeypatch):
-    """Refusing beats returning a black image.
-
-    Under `QT_QPA_PLATFORM=offscreen` the 3-D view cannot render at all, and a
-    screenshot taken there is worse than none: it looks exactly like a broken
-    renderer.
-    """
-    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
-    with pytest.raises(RuntimeError, match="offscreen"):
-        shot.ensure_app()
+def test_the_view_is_grabbed_at_the_canvas_size_and_shows_the_molecule(window):
+    image = shot.grab_view(window)
+    assert image.dtype == np.uint8 and image.ndim == 3 and image.shape[2] == 3
+    height, width = image.shape[:2]
+    # In physical pixels: the canvas may render at a device pixel ratio.
+    ratio = width / 640.0
+    assert ratio >= 1.0 and abs(height - 480 * ratio) <= 1
+    assert image.std() > 5.0, "a uniform view: the molecule is not in the grab"
 
 
-def test_a_gl_widget_can_be_grabbed_without_a_window(app):
-    """The point of the exercise: real GL output, nothing on the display."""
-    widget = QtWidgets.QOpenGLWidget()
+def test_the_window_grab_carries_the_chrome_the_bare_view_does_not(window):
+    """`grab_window` is what the window shows; `grab_view` alone is the molecule."""
+    full = shot.grab_window(window).astype(int)
+    bare = shot.grab_view(window, chrome=False).astype(int)
+    assert full.shape == bare.shape
+    # The menu bar is drawn along the top of the frame; the bare scene has none.
+    top = slice(0, max(full.shape[0] // 40, 4))
+    assert np.abs(full[top] - bare[top]).sum() > 0, "the chrome did not make it into the grab"
+
+
+def test_the_same_target_works_as_window_app_viewer_or_renderer(window):
+    for target in (window, window.app, window.viewer, window.renderer):
+        assert shot.renderer_of(target) is window.renderer
+
+
+def test_grabbing_something_that_cannot_render_says_so():
+    """A thing with no renderer is not a 3-D view, and pretending otherwise hides a mistake."""
+    with pytest.raises(RuntimeError, match="no self-rendering"):
+        shot.grab_view(object())
+
+
+def test_a_uniform_or_empty_image_is_refused(tmp_path):
+    with pytest.raises(RuntimeError, match="uniform"):
+        shot.save_png(np.zeros((40, 60, 3), np.uint8), tmp_path / "blank.png")
+    with pytest.raises(RuntimeError, match="not a frame"):
+        shot.save_png(np.zeros((0, 0, 3), np.uint8), tmp_path / "empty.png")
+
+
+def test_a_strip_of_a_viewport_is_refused():
+    win = NativeWindow(size=(1280, 90))
     try:
-        image = shot.grab_gl(widget, size=(160, 120))
-        assert not image.isNull()
-        # In *logical* pixels: on a high-DPI screen the grab is correctly 2x the
-        # size asked for, and whether it is depends on how the QApplication for
-        # the whole run happened to be created -- so an exact comparison passes
-        # this file alone and fails inside the suite, which reads as a broken
-        # helper rather than as a Retina display.
-        ratio = image.devicePixelRatio() or 1.0
-        assert (image.width() / ratio, image.height() / ratio) == (160, 120)
-        # Never mapped onto the display.
-        assert widget.testAttribute(QtCore.Qt.WA_DontShowOnScreen)
+        with pytest.raises(RuntimeError):
+            shot.assert_view_usable(win)
     finally:
-        widget.deleteLater()
+        win.close()
 
 
-def test_grabbing_something_with_no_gl_says_so(app):
-    """A plain widget is not a 3-D view, and pretending otherwise hides a mistake."""
-    widget = QtWidgets.QLabel("no gl here")
-    try:
-        with pytest.raises(RuntimeError, match="no QOpenGLWidget"):
-            shot.grab_gl(widget)
-    finally:
-        widget.deleteLater()
-
-
-def test_the_window_grab_composites_the_gl_view_in(app):
-    """`QWidget.grab` leaves a hole where a child GL surface is; this fills it.
-
-    The GL child is painted a solid colour, so a whole-window grab that failed
-    to composite would show the parent's background there instead.
-    """
-
-    class _Solid(QtWidgets.QOpenGLWidget):
-        def paintGL(self):  # noqa: N802 - Qt API
-            from OpenGL import GL
-
-            GL.glClearColor(0.0, 1.0, 0.0, 1.0)
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT)
-
-    parent = QtWidgets.QWidget()
-    layout = QtWidgets.QVBoxLayout(parent)
-    layout.setContentsMargins(0, 0, 0, 0)
-    gl = _Solid(parent)
-    layout.addWidget(gl)
-    try:
-        image = shot.grab_window(parent, size=(200, 160))
-        assert not image.isNull()
-        centre = image.pixelColor(image.width() // 2, image.height() // 2)
-        assert centre.green() > 150 and centre.red() < 100, (
-            "the GL surface did not make it into the window grab"
-        )
-    finally:
-        parent.deleteLater()
-
-
-def test_shoot_writes_both_images(app, tmp_path):
-    widget = QtWidgets.QOpenGLWidget()
-    try:
-        written = shot.shoot(widget, "probe", directory=tmp_path, size=(120, 90))
-        assert set(written) == {"window", "view"}
-        for path in written.values():
-            assert path.is_file() and path.stat().st_size > 0
-    finally:
-        widget.deleteLater()
+def test_shoot_writes_both_images(window, tmp_path):
+    written = shot.shoot(window, "probe", directory=tmp_path, size=(640, 480))
+    assert set(written) == {"window", "view"}
+    for path in written.values():
+        assert path.is_file() and path.stat().st_size > 1024

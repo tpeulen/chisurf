@@ -9,17 +9,12 @@ the property the browser port needs, and it is checked by blocking the import
 rather than by reading the source, because a transitive import is exactly the
 kind that gets missed.
 
-*And the pixels did not move.* Replacing thirty-one ``setPen``\\ s, twenty
-``setBrush``\\ es and their ``drawRect``/``drawText`` calls with explicit
-per-call colours is a refactor, so the images must be **byte-identical** to the
-ones captured before it. Asserting anything weaker would let a wiring mistake --
-a swapped colour, a dropped hover fill, an alignment flag lost in translation --
-pass as "close enough", and those are precisely the mistakes this shape of
-change makes.
-
-The baselines are the same PNGs the GPU painter will later be judged against,
-by control inventory rather than by pixels. Here they are compared exactly,
-because here there is no reason for them to differ.
+*And nothing was lost.* The QPainter chrome was photographed per state before
+the quad painter replaced it (:data:`chrome_baseline.BASELINE_DIR`, frozen;
+while both painters existed this file asserted the QPainter repaint
+byte-identical to those PNGs). The painter that draws now is judged against
+them by **control inventory**, not by pixels: a glyph atlas moves text metrics
+on purpose, and what must not change is what is there and reachable.
 """
 
 from __future__ import annotations
@@ -33,20 +28,10 @@ import textwrap
 
 import pytest
 
-#: The baselines were captured under the offscreen platform plugin (see the
-#: capture command in :mod:`chrome_baseline`). The repaint is a QPainter
-#: rasterisation, so it follows the *ambient* platform otherwise: under a
-#: native session plugin the app font is larger and the device pixel ratio is
-#: 2, and the same chrome paints different pixels — not a regression, an
-#: environment dependence. Pin it here, at import time (before any QApplication
-#: exists), so a single-test run matches what the suite and the baseline both
-#: use. ``setdefault`` so a runner that pinned something else keeps it.
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 from chisurf.plugins.chimol.test import chrome_baseline
 
-#: Where the committed before-half lives.
-_BASELINE = pathlib.Path(chrome_baseline.OUT_DIR)
+#: Where the committed, frozen before-half lives.
+_BASELINE = pathlib.Path(chrome_baseline.BASELINE_DIR)
 
 
 def test_the_panel_imports_without_a_gui_toolkit():
@@ -109,24 +94,40 @@ def test_the_panel_imports_without_a_gui_toolkit():
     assert "ok" in result.stdout
 
 
+@pytest.fixture(scope="module")
+def captured(tmp_path_factory):
+    """One capture of every state through the quad painter (no toolkit, no GPU)."""
+    pytest.importorskip("PIL")
+    out = tmp_path_factory.mktemp("chrome_quads")
+    try:
+        record = chrome_baseline.capture(out)
+    except FileNotFoundError as exc:  # the glyph atlas is not baked here
+        pytest.skip(str(exc))
+    return out, record
+
+
 @pytest.mark.parametrize("state", chrome_baseline.STATES)
-def test_the_chrome_is_unchanged_by_the_painter_interface(state, qapp, tmp_path):
-    """Each state repaints byte-identically to its committed baseline."""
-    pytest.importorskip("qtpy")
+def test_every_frozen_state_is_photographed_again_at_its_size(state, captured):
+    """Each QPainter state has its quad-painter photograph, same size, with ink in it."""
+    import numpy as np
+    from PIL import Image
+
+    out, _record = captured
     expected = _BASELINE / f"{state}.png"
     if not expected.exists():
-        pytest.skip(f"no baseline for {state}; run chrome_baseline to capture one")
-
-    chrome_baseline.capture(tmp_path)
-    got = tmp_path / f"{state}.png"
-
-    assert got.read_bytes() == expected.read_bytes(), (
-        f"the {state} chrome changed. If that was intended, look at both "
-        f"images before re-capturing: {got} vs {expected}"
-    )
+        pytest.skip(f"no frozen baseline for {state}")
+    got = np.asarray(Image.open(out / f"{state}.png"))
+    before = Image.open(expected)
+    assert (got.shape[1], got.shape[0]) == before.size
+    assert got[..., 3].max() > 0, f"the {state} chrome painted nothing"
 
 
-def test_no_control_the_baseline_could_reach_has_been_lost(qapp, tmp_path):
+def test_the_capture_never_writes_the_frozen_baseline():
+    with pytest.raises(ValueError, match="frozen"):
+        chrome_baseline.capture(_BASELINE)
+
+
+def test_no_control_the_baseline_could_reach_has_been_lost(captured):
     """Every control the baseline could reach is still reachable.
 
     The inventory, not the image, is what parity is judged on once the GPU
@@ -144,10 +145,10 @@ def test_no_control_the_baseline_could_reach_has_been_lost(qapp, tmp_path):
     """
     expected_path = _BASELINE / "inventory.json"
     if not expected_path.exists():
-        pytest.skip("no baseline inventory; run chrome_baseline to capture one")
+        pytest.skip("no baseline inventory")
 
-    chrome_baseline.capture(tmp_path)
-    got = json.loads((tmp_path / "inventory.json").read_text(encoding="utf-8"))
+    out, _record = captured
+    got = json.loads((out / "inventory.json").read_text(encoding="utf-8"))
     expected = json.loads(expected_path.read_text(encoding="utf-8"))
 
     for state in sorted(expected):

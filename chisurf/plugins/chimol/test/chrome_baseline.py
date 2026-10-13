@@ -1,18 +1,20 @@
-"""The QPainter chrome's before-half, captured before the GPU port replaces it.
+"""The chrome's states, photographed and inventoried -- against the frozen QPainter baseline.
 
 Why this exists
 ---------------
 The panel down the right, the sequence strip across the top, the wizard, the
-prompt, the movie transport and the menus are all drawn by
-``InternalGui.paint`` with a ``QPainter``, rasterised into a full-viewport
-premultiplied RGBA image by ``qt_overlay.paint_chrome``, and uploaded as a
-texture every time the cache expires. Replacing that with GPU quads makes "the
-new panel looks fine" the wrong question -- the question is *whether anything
-was lost* -- and once the paint layer is swapped the old appearance is
-unrecoverable.
+prompt, the movie transport and the menus are drawn by ``InternalGui.paint``.
+They used to be drawn with a ``QPainter`` (``chimol.hosts.qt.overlay``) and are
+now drawn as GPU quads (:class:`emtk.quad_painter.QuadPainter`). Replacing the
+painter makes "the new panel looks fine" the wrong question -- the question is
+*whether anything was lost* -- so the QPainter half was captured while it still
+existed: one PNG per state in :data:`BASELINE_DIR`, and beside it a **control
+inventory** in JSON. Those files are frozen; nothing re-takes them (the QPainter
+chrome is retired with the Qt host).
 
-So this captures the before-half while it still exists: one PNG per state, and
-beside it a **control inventory** in JSON.
+:func:`capture` takes the after-half the same way, with no toolkit: each state
+is painted through the ``QuadPainter`` and rasterised on the CPU
+(:mod:`.quad_raster`, what ``ui.wgsl`` does), written beside a fresh inventory.
 
 The inventory is what parity is judged on, not the PNG
 ------------------------------------------------------
@@ -34,9 +36,10 @@ the same place.
 
 Use
 ---
-    QT_QPA_PLATFORM=offscreen python -m chisurf.plugins.chimol.test.chrome_baseline
+    python -m chisurf.plugins.chimol.test.chrome_baseline
 
-writes ``renders/chrome_baseline/<state>.png`` and ``inventory.json``.
+writes ``renders/chrome_quads/<state>.png`` and ``inventory.json`` (the frozen
+QPainter half stays in ``renders/chrome_baseline``).
 """
 
 from __future__ import annotations
@@ -45,10 +48,17 @@ import json
 import pathlib
 from typing import Any
 
-__all__ = ["STATES", "inventory", "capture", "OUT_DIR"]
+import numpy as np
 
-#: Where the before-half lands.
-OUT_DIR = pathlib.Path(__file__).resolve().parent / "renders" / "chrome_baseline"
+__all__ = ["STATES", "inventory", "capture", "BASELINE_DIR", "OUT_DIR"]
+
+_RENDERS = pathlib.Path(__file__).resolve().parent / "renders"
+
+#: The frozen before-half: the QPainter chrome's PNGs and inventory. Never written.
+BASELINE_DIR = _RENDERS / "chrome_baseline"
+
+#: Where :func:`capture` writes the quad painter's states by default.
+OUT_DIR = _RENDERS / "chrome_quads"
 
 #: The viewport the chrome is laid out for. Fixed so the after-half can be
 #: taken at the same size -- a different width re-flows the panel and would
@@ -174,34 +184,36 @@ def capture(out_dir: pathlib.Path | None = None) -> dict[str, Any]:
 
     Notes
     -----
-    Needs Qt, because it is photographing the Qt implementation -- that is the
-    point of a before-half. The after-half needs no font engine at all.
+    No toolkit and no GPU: the chrome is painted through the quad painter the
+    renderer uses and rasterised on the CPU by :mod:`.quad_raster`, which does
+    what ``ui.wgsl`` does. Must not be pointed at :data:`BASELINE_DIR`, the
+    frozen QPainter half.
     """
-    from chimol.hosts.qt import overlay as qt_overlay
-    from chimol.ui.gui import InternalGui
-    from qtpy import QtGui, QtWidgets
+    from emtk.font import load_atlas
+    from emtk.quad_painter import QuadPainter
+    from PIL import Image
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    assert app is not None  # keep it alive; see test_cmd_viewing's qapp note
+    from chimol.ui.gui import InternalGui
+
+    from . import quad_raster
 
     out_dir = pathlib.Path(out_dir or OUT_DIR)
+    if out_dir.resolve() == BASELINE_DIR.resolve():
+        raise ValueError("the QPainter baseline is frozen; capture somewhere else")
     out_dir.mkdir(parents=True, exist_ok=True)
     width, height = SIZE
+    atlas = load_atlas()
+    ink = np.asarray(Image.open(atlas.image_path).convert("RGBA"))[..., 3] / 255.0
 
     record: dict[str, Any] = {}
     for state in STATES:
         gui = InternalGui()
         _apply_state(gui, state, width, height)
 
-        image = qt_overlay.paint_chrome(gui, None, width, height, 1.0)
-        if image is not None:
-            QtGui.QImage(
-                image.tobytes(),
-                image.shape[1],
-                image.shape[0],
-                image.shape[1] * 4,
-                QtGui.QImage.Format_RGBA8888_Premultiplied,
-            ).save(str(out_dir / f"{state}.png"))
+        painter = QuadPainter(atlas)
+        gui.paint(painter)
+        image = quad_raster.rasterise(painter.vertices(), width, height, ink)
+        Image.fromarray(image, "RGBA").save(out_dir / f"{state}.png")
 
         record[state] = inventory(gui, width, height)
 

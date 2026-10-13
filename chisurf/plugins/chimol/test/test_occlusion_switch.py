@@ -42,70 +42,28 @@ _PDB = str(
 OCCLUDED_REPRESENTATIONS = ("cartoon", "spheres", "surface")
 
 
-def _grab(win, app):
-    from chisurf.plugins.chimol.test.screenshot import grab_gl
-
-    image = grab_gl(win)
-    bits = image.constBits()
-    size = image.sizeInBytes() if hasattr(image, "sizeInBytes") else image.byteCount()
-    bits.setsize(size)
-    arr = np.frombuffer(bits, np.uint8).reshape(image.height(), image.bytesPerLine() // 4, 4)
-    return arr[:, : image.width(), :3].astype(int)
-
-
 @pytest.fixture(scope="module")
 def viewer():
-    """A realised viewer with 148L loaded, or a skip when GL is unavailable."""
-    pytest.importorskip("qtpy")
+    """The toolkit-free window with 148L loaded; ``render(script)`` returns the bare view."""
+    pytest.importorskip("wgpu")
     from pathlib import Path
 
-    from chisurf.plugins.chimol.test.screenshot import (
-        assert_view_usable,
-        ensure_app,
-    )
+    from native_window import NativeWindow
 
-    try:
-        app = ensure_app()
-    except RuntimeError as exc:  # offscreen platform: no GL context at all
-        pytest.skip(str(exc))
+    from chisurf.plugins.chimol.test.screenshot import assert_view_usable, grab_view
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
-    shared = win.cmd
-    win.resize(1280, 860)
-    win.show()
-    for _ in range(12):
-        app.processEvents()
+    win = NativeWindow(size=(1280, 860))
     win.load_structure_from_path(Path(_PDB))
-    for _ in range(25):
-        app.processEvents()
-    shared.set_window(win)
-
-    # A restored layout can leave the 3-D view a strip for several cycles; a
-    # strip makes every pixel assertion below meaningless.
-    for _ in range(40):
-        try:
-            assert_view_usable(win)
-            break
-        except RuntimeError:
-            win.resize(1280, 860)
-            for _ in range(10):
-                app.processEvents()
-    else:
-        assert_view_usable(win)
+    # A strip of a viewport makes every pixel assertion below meaningless.
+    assert_view_usable(win)
 
     def render(script):
         for line in script:
-            shared.do(line)
-            for _ in range(12):
-                app.processEvents()
+            win.do(line)
         # The first grab after a rebuild can be a partially initialised buffer
         # -- it comes back as noise and poisons any brightness comparison.
-        _grab(win, app)
-        for _ in range(8):
-            app.processEvents()
-        return _grab(win, app)
+        grab_view(win)
+        return grab_view(win).astype(int)
 
     render(["hide everything", "show cartoon", "orient"])  # warm the pipeline
     yield render
