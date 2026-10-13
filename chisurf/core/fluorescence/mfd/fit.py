@@ -36,6 +36,7 @@ from chisurf.core.fluorescence.mfd.histogram import (
 )
 from chisurf.core.fluorescence.mfd.moments import mixture_moments
 from chisurf.core.fluorescence.mfd.occupation import (
+    OccupationGrid,
     effective_window_scale,
     relaxation_rate,
 )
@@ -473,7 +474,7 @@ class MfdData:
         """Return the histogram's bin edges."""
         return self.observed.axes
 
-    def arrivals(self) -> tuple | None:
+    def arrivals(self) -> tuple[np.ndarray, np.ndarray, np.ndarray] | None:
         """Return each burst's inter-photon gaps, for the occupation law.
 
         ``(gaps, valid, durations)`` padded to the brightest burst, or ``None``
@@ -501,9 +502,9 @@ class MfdData:
             resolution = float(getattr(tttr.header, "macro_time_resolution", 1.0) or 1.0)
             macro = np.asarray(tttr.macro_times, dtype=np.float64) * resolution
             rows = np.flatnonzero(np.asarray(self.preparation.file_key) == key)
-            for row in rows:
-                lo = int(self.preparation.first_photon[row])
-                hi = int(self.preparation.last_photon[row]) + 1
+            for burst in rows:
+                lo = int(self.preparation.first_photon[burst])
+                hi = int(self.preparation.last_photon[burst]) + 1
                 if hi - lo >= 2:
                     times.append(macro[lo:hi])
         if not times:
@@ -1181,7 +1182,7 @@ def burstwise_log_probabilities(
             occupation_time_distribution,
         )
 
-        grids = [
+        grids: list[OccupationGrid | None] = [
             occupation_time_distribution(
                 np.asarray(rate_matrix, dtype=float),
                 window,
@@ -1393,7 +1394,7 @@ def pooled_decay_score(
     )
 
     weights, p_red, _, _ = model.components(data)
-    patterns = []
+    species_patterns = []
     for has_acceptor, state in model._species()[1]:
         if has_acceptor:
             amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
@@ -1402,14 +1403,19 @@ def pooled_decay_score(
         else:
             amplitudes = np.array([1.0])
             lifetimes = np.array([model.optics.tau_d0])
-        patterns.append(green_response.pattern(amplitudes, lifetimes))
-    patterns = rebin_pattern(np.asarray(patterns), n_decay_channels)
+        species_patterns.append(green_response.pattern(amplitudes, lifetimes))
+    patterns = rebin_pattern(np.asarray(species_patterns), n_decay_channels)
 
     # A kinetic model's components are occupation nodes, not species, so its
     # patterns are the f-weighted mixtures of the state patterns. Built here from
     # the same grid the histogram used rather than recomputed, so the two sources
     # cannot drift apart.
     if weights.shape[1] != patterns.shape[0]:
+        if not isinstance(model, MfdKineticModel):
+            raise ValueError(
+                f"{type(model).__name__} has {weights.shape[1]} components but "
+                f"{patterns.shape[0]} species patterns"
+            )
         donor_only_pattern = patterns[0]
         state_patterns = patterns[1:]
         from chisurf.core.fluorescence.mfd.occupation import (

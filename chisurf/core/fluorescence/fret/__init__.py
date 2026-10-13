@@ -1,19 +1,18 @@
 import numpy as np
 
-import chisurf.core.fluorescence.fret.acceptor as acceptor
-from chisurf.core.fluorescence.intensity import nusiance
+import chisurf.core.fluorescence.fret.acceptor as acceptor  # noqa: F401
 
-# Note: Global parameters assumed to be defined elsewhere in the module/environment:
-#   Bg         : Background signal for the green channel.
-#   Br         : Background signal for the red channel.
-#   crosstalk  : Fraction of green signal that leaks into the red detection channel.
-#   phiA       : Acceptor quantum yield.
-#   phiD       : Donor quantum yield.
-#   Gfactor    : Correction factor for the green channel detector sensitivity.
-#   R0         : Förster radius.
+# The correction constants are keyword arguments of each function, with the
+# defaults the former global-injecting decorator used:
+#   Bg         : Background signal for the green channel (0).
+#   Br         : Background signal for the red channel (0).
+#   crosstalk  : Fraction of green signal that leaks into the red channel (0).
+#   phiA       : Acceptor quantum yield (1).
+#   phiD       : Donor quantum yield (1).
+#   Gfactor    : Detection-efficiency ratio green/red (1).
+#   R0         : Förster radius (52 Å).
 
 
-@nusiance
 def sg_sr(Sg, Sr, **kwargs) -> float:
     """
     Calculate the raw intensity ratio of the green to red signals.
@@ -47,8 +46,7 @@ def sg_sr(Sg, Sr, **kwargs) -> float:
         return float("nan")
 
 
-@nusiance
-def fg_fr(Sg, Sr, **kwargs) -> float:
+def fg_fr(Sg, Sr, Bg: float = 0.0, Br: float = 0.0, crosstalk: float = 0.0, **kwargs) -> float:
     """
     Calculate the ratio of corrected fluorescence intensities.
 
@@ -83,7 +81,6 @@ def fg_fr(Sg, Sr, **kwargs) -> float:
     return Fg / Fr
 
 
-@nusiance
 def proximity_ratio(Sg, Sr, **kwargs) -> float:
     """
     Compute the proximity ratio for FRET experiments.
@@ -113,8 +110,9 @@ def proximity_ratio(Sg, Sr, **kwargs) -> float:
     return Sr / (Sg + Sr)
 
 
-@nusiance
-def apparent_fret_efficiency(Sg, Sr, **kwargs) -> float:
+def apparent_fret_efficiency(
+    Sg, Sr, Bg: float = 0.0, Br: float = 0.0, crosstalk: float = 0.0, **kwargs
+) -> float:
     """
     Calculate the apparent FRET efficiency from corrected fluorescence intensities.
 
@@ -149,8 +147,17 @@ def apparent_fret_efficiency(Sg, Sr, **kwargs) -> float:
     return Fr / (Fg + Fr)
 
 
-@nusiance
-def fret_efficiency(Sg, Sr, **kwargs) -> float:
+def fret_efficiency(
+    Sg,
+    Sr,
+    Bg: float = 0.0,
+    Br: float = 0.0,
+    crosstalk: float = 0.0,
+    phiA: float = 1.0,
+    phiD: float = 1.0,
+    Gfactor: float = 1.0,
+    **kwargs,
+) -> float:
     """
     Calculate the corrected FRET efficiency using fluorescence intensity corrections.
 
@@ -190,8 +197,18 @@ def fret_efficiency(Sg, Sr, **kwargs) -> float:
     return Fa / (Fg / (Gfactor * phiD) + Fa)
 
 
-@nusiance
-def fluorescence_weighted_distance(Sg, Sr, **kwargs) -> float:
+def fluorescence_weighted_distance(
+    Sg,
+    Sr,
+    Bg: float = 0.0,
+    Br: float = 0.0,
+    crosstalk: float = 0.0,
+    phiA: float = 1.0,
+    phiD: float = 1.0,
+    Gfactor: float = 1.0,
+    R0: float = 52.0,
+    **kwargs,
+) -> float:
     """
     Compute the fluorescence-weighted donor–acceptor distance.
 
@@ -229,15 +246,17 @@ def fluorescence_weighted_distance(Sg, Sr, **kwargs) -> float:
     return R0 * np.exp((1.0 / 6.0) * np.log(Fg / (Gfactor * phiD * Fa)))
 
 
-@nusiance
-def fret_efficency_to_fdfa(E, **kwargs):
+def fret_efficency_to_fdfa(E, phiA: float = 1.0, phiD: float = 1.0, **kwargs):
     """
     Convert FRET transfer efficiency to the donor–acceptor intensity ratio (FD/FA).
 
     This function converts the FRET efficiency E to the intensity ratio FD/FA using
     the relationship:
 
-        FD/FA = (phiA / phiD) * (1/E - 1)
+        FD/FA = (phiD / phiA) * (1/E - 1)
+
+    (the donor emits ``phiD (1 - E)`` and the acceptor ``phiA E`` per
+    excitation), the inverse of :func:`fdfa2transfer_efficency`.
 
     where phiA and phiD are the acceptor and donor quantum yields, respectively.
 
@@ -257,12 +276,11 @@ def fret_efficency_to_fdfa(E, **kwargs):
     ----------
     Lakowicz, J.R., *Principles of Fluorescence Spectroscopy*, 3rd ed. (2006).
     """
-    fdfa = phiA / phiD * (1.0 / E - 1.0)
+    fdfa = phiD / phiA * (1.0 / E - 1.0)
     return fdfa
 
 
-@nusiance
-def fdfa2transfer_efficency(fdfa):
+def fdfa2transfer_efficency(fdfa, phiA: float = 1.0, phiD: float = 1.0, **kwargs):
     """
     Convert the donor–acceptor intensity ratio (FD/FA) to the FRET transfer efficiency.
 

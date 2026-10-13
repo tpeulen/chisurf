@@ -143,6 +143,17 @@ def _is_number_token(tok: str, decimal_comma: bool = False) -> bool:
         return False
 
 
+class _TableRegion(typing.TypedDict):
+    """Best delimiter candidate found so far by :func:`_find_table_region`."""
+
+    score: float
+    delim: str | None
+    complete_cols: int
+    first_idx: int
+    header_idx: int | None
+    dec_comma: bool
+
+
 def _find_table_region(
     fp, max_scan_lines: int = 5000
 ) -> tuple[int, int | None, str | None, int, bool, list[str]]:
@@ -171,9 +182,14 @@ def _find_table_region(
     candidates = [",", "\t", ";", "|", None]  # None => whitespace
     has_comma_digits = any(re.search(r"\d,\d", ln) for ln in lines[: min(N, 2000)])
 
-    best = dict(
-        score=-1.0, delim=None, complete_cols=0, first_idx=0, header_idx=None, dec_comma=False
-    )
+    best: _TableRegion = {
+        "score": -1.0,
+        "delim": None,
+        "complete_cols": 0,
+        "first_idx": 0,
+        "header_idx": None,
+        "dec_comma": False,
+    }
 
     for delim in candidates:
         # Build ncols per line (0 for empty / single token -> not a table row)
@@ -187,7 +203,7 @@ def _find_table_region(
             ncols.append(len(toks) if len(toks) >= 2 else 0)
 
         # Frequency of column counts ≥ 2
-        counts = {}
+        counts: dict[int, int] = {}
         for c in ncols:
             if c >= 2:
                 counts[c] = counts.get(c, 0) + 1
@@ -247,14 +263,14 @@ def _find_table_region(
         score = run_len * richness
 
         if score > best["score"]:
-            best.update(
-                score=score,
-                delim=delim,
-                complete_cols=complete_cols,
-                first_idx=first_idx_use,  # NOTE: uses possibly +1 if header promoted
-                header_idx=header_idx,
-                dec_comma=dec_flag,
-            )
+            best = {
+                "score": score,
+                "delim": delim,
+                "complete_cols": complete_cols,
+                "first_idx": first_idx_use,  # NOTE: uses possibly +1 if header promoted
+                "header_idx": header_idx,
+                "dec_comma": dec_flag,
+            }
 
     # Fallback if nothing usable was found
     if best["score"] < 0:
@@ -369,7 +385,7 @@ def load_xy(
         x and y arrays.
     """
     if usecols is None:
-        usecols = [0, 1]
+        usecols = (0, 1)
     if verbose is None:
         verbose = _verbose_default()
     if verbose:
@@ -416,7 +432,7 @@ class Csv:
         self,
         *args,
         filename: str | None = None,
-        colspecs: typing.List[int] | None = None,
+        colspecs: typing.Sequence[int] | str | None = None,
         use_header: bool = False,
         x_on: bool = True,
         y_on: bool = True,
@@ -500,8 +516,8 @@ class Csv:
             self.load(filename)
 
     @property
-    def filename(self) -> str:
-        """The currently open filename."""
+    def filename(self) -> str | None:
+        """The currently open filename (``None`` before one is loaded)."""
         return self._filename
 
     def load(
@@ -543,12 +559,12 @@ class Csv:
             # for the delimiter sniffer to discover. Honor their explicit layout.
             self.directory = os.path.dirname(filename)
             self._filename = filename
-            specs = (
+            raw_specs = (
                 ast.literal_eval(self.colspecs) if isinstance(self.colspecs, str) else self.colspecs
             )
-            if isinstance(specs, int):
-                specs = (specs,)
-            specs = tuple(specs or ())
+            if isinstance(raw_specs, int):
+                raw_specs = (raw_specs,)
+            specs = tuple(raw_specs or ())
             if not specs:
                 raise ValueError("fixed-width input requires column widths or start/stop ranges")
             widths, positions, bounds = [], [], []
@@ -603,7 +619,6 @@ class Csv:
         if os.path.isfile(filename):
             self.directory = os.path.dirname(filename)
             self._filename = filename
-            colspecs = self.colspecs
 
             # ---- Auto-detect table region (column-count logic + header-on-first-row handling) ----
             try:
@@ -667,7 +682,7 @@ class Csv:
 
             # ---- Load data ----
             if file_type == "csv":
-                load_kwargs = dict(
+                load_kwargs: dict[str, typing.Any] = dict(
                     fname=filename,
                     delimiter=delimiter,  # None → any whitespace
                     skip_header=skiprows_eff if skiprows_eff is not None else 0,
@@ -689,20 +704,8 @@ class Csv:
                     }
                     logging.debug(f"Csv.load: np.genfromtxt kwargs: {kw_preview}")
                 d = np.genfromtxt(**load_kwargs)
-
-            else:
-                # fixed-width fallback (rare)
-                d = np.genfromtxt(
-                    fname=filename,
-                    delimiter=colspecs,
-                    skip_header=skiprows_eff if skiprows_eff is not None else 0,
-                    usecols=usecols,
-                    names="infer" if use_header else None,
-                    comments=None,
-                    invalid_raise=False,
-                    filling_values=np.nan,
-                    **kwargs,
-                )
+            # A fixed-width file never gets here: it is read by the explicit
+            # colspecs branch above, which returns.
 
             # Normalize shape for downstream code
             if d is None or (isinstance(d, float) or isinstance(d, np.floating)):
@@ -770,13 +773,13 @@ class Csv:
 
     @property
     def n_cols(self) -> int:
-        """The number of columns."""
-        return self._data.shape[1]
+        """The number of columns (0 before anything is loaded)."""
+        return 0 if self._data is None else self._data.shape[1]
 
     @property
     def n_rows(self) -> int:
-        """The number of rows."""
-        return self._data.shape[0]
+        """The number of rows (0 before anything is loaded)."""
+        return 0 if self._data is None else self._data.shape[0]
 
     @property
     def data(self) -> np.ndarray:

@@ -103,6 +103,24 @@ def test_nusiance_decorator_applies_crosstalk():
     assert np.isclose(r, 100.0 / 90.0)
 
 
+def test_fdfa_conversions_are_inverse_with_unequal_quantum_yields():
+    """FD/FA = (phiD/phiA)(1/E - 1) and back; the forward used phiA/phiD."""
+    from chisurf.core.fluorescence import fret
+
+    for e in (0.2, 0.5, 0.9):
+        fdfa = fret.fret_efficency_to_fdfa(e, phiA=0.3, phiD=0.8)
+        assert np.isclose(fdfa, 0.8 / 0.3 * (1.0 / e - 1.0))
+        assert np.isclose(fret.fdfa2transfer_efficency(fdfa, phiA=0.3, phiD=0.8), e)
+
+
+def test_correction_constants_do_not_leak_between_calls():
+    """A constant passed to one call is not the default of the next one."""
+    from chisurf.core.fluorescence import fret
+
+    fret.fg_fr(100.0, 100.0, crosstalk=0.5)
+    assert np.isclose(fret.fg_fr(100.0, 100.0), 1.0)
+
+
 def test_efficiency_zero_denominator_safe():
     """Zero donor + zero sensitized emission yields 0, not nan."""
     e = three_cube_fret_efficiency(np.array([0.0, 1.0]), np.array([0.0, 1.0]), gamma=1.0)

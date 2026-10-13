@@ -1,5 +1,5 @@
 {
- "total": 2815,
+ "total": 2757,
  "files": {
   "chisurf/chiplot/backends/base.py": 4,
   "chisurf/chiplot/backends/emtk_backend.py": 23,
@@ -42,7 +42,6 @@
   "chisurf/core/experiments/tcspc/reader.py": 7,
   "chisurf/core/experiments/tcspc/simulator.py": 4,
   "chisurf/core/experiments/tcspc/tttr_reader.py": 8,
-  "chisurf/core/fio/ascii.py": 16,
   "chisurf/core/fio/fluorescence/burst.py": 3,
   "chisurf/core/fio/fluorescence/fcs/__init__.py": 8,
   "chisurf/core/fio/fluorescence/fcs/asc_alv.py": 2,
@@ -95,7 +94,6 @@
   "chisurf/core/fluorescence/fcs/power_series.py": 1,
   "chisurf/core/fluorescence/fcs/saturation.py": 2,
   "chisurf/core/fluorescence/fcs/simulate.py": 1,
-  "chisurf/core/fluorescence/fret/__init__.py": 19,
   "chisurf/core/fluorescence/fret/calibration.py": 4,
   "chisurf/core/fluorescence/fret/forster_calculator.py": 7,
   "chisurf/core/fluorescence/fret/fret_line.py": 2,
@@ -105,7 +103,6 @@
   "chisurf/core/fluorescence/imaging/drift.py": 2,
   "chisurf/core/fluorescence/imaging/number_brightness.py": 2,
   "chisurf/core/fluorescence/imaging/tracking.py": 5,
-  "chisurf/core/fluorescence/mfd/fit.py": 14,
   "chisurf/core/fluorescence/mfd/patterns.py": 4,
   "chisurf/core/fluorescence/mfd/prepare.py": 3,
   "chisurf/core/fluorescence/mle/parallel.py": 1,
