@@ -21,7 +21,7 @@ Documentation browser and help resource viewer for ChiSurf.
 | Menu path | Help → **Documentation** |
 | Categories | Help |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `help` |
 
 ## Parameters

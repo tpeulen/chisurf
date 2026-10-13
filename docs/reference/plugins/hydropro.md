@@ -21,7 +21,7 @@ Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic p
 | Menu path | Structure → Computation → **HydroPro** |
 | Categories | Structure, Computation |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `hydropro` |
 
 ## Parameters

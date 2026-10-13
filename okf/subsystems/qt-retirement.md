@@ -72,20 +72,32 @@ own startup stages (item 5): S5 is done.
    click is `hosted.box` origin + rect. Not routed yet (other lanes' files): `mmfdb_admin/gui/tool.py`
    `open_in_ndxplorer` (Qt tool), help/code_editor's `host_in_shell` page/file opening (could become `accepts` kinds
    `open_page` / `open_file`). Under `--qt` the three buttons are now greyed (no Qt adapter); the Qt window is legacy.
+   **HydroPro, Code Editor and Help retired (2026-10-13, 25 lines struck; HEAD then has 159 with the Trace
+   Browser's 2).** HydroPro: the 12 parity cases frozen from the live tool with the fake HYDRO program
+   (`hydropro/test/qt_reference.json`, paths as `<home>`), Qt tool, dialogs, `hydrogui.py` and the QSettings
+   isolation deleted; the real-state guard runs the native capture and `chisurf.emtk.state` round trip. Help: the
+   Qt `HelpWidget`, Ask panel and figure dialog deleted, `gui/tool.py` keeps only the Qt host `HelpEmtkTool`;
+   `api/theme.py` takes emtk's palette (`from_tokens`). Code Editor: control parity first (lost `[]`,
+   `okf/plugins/emtk-ports/code_editor/parity_*`), out of `emtk_preview.json` (now empty), then the six Qt modules
+   deleted. Every Qt widget test was ported to the emtk app, and each behaviour the twin lacked was added to it,
+   not explained away (search ranking, reading measure, figure viewer, Shift+wheel zoom, Ask texts; menus,
+   Symbols/Kernel docks, project table, regex find, assistant file writes and modes, notebook terminal mirroring
+   and output clamp). Both plugins declare hand-offs (`help` `open_page`, `code_editor` `open_file`) and
+   `chisurf/emtk/{doc,code}_links.py` route through `chisurf.core.plugin.handoff`. Open from this slice: emtk
+   `38d6f8a` (0.1.10, regex find) is committed, not pushed, and `EMTK_MIN_VERSION` stays 0.1.8 -- the arm64 env's
+   emtk 0.1.9 shows "Regex search needs emtk 0.1.10" in the find bar until the pin moves; the assistant reports
+   validation issues but no longer re-prompts the model to fix them (known issues). Traps met: a Driver click
+   after a model change needs a frame first (rects are from the last frame); `im.begin_menu` has no nested
+   submenus (File > Open Notebook... is a picker); emtk tooltips need a hover delay, so tests read a state
+   (`hovered_figure`) instead; the global `gui.editor.enable_lsp` now starts pylsp in every editor app built.
    Left, and why (each reason re-checked against the challenge):
    - **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
      the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
    - **lightpath_simulator** (`gui/tool.py`, `gui/easy_mode.py`, `tests/test_native_ui.py`): `easy_mode.py` is a
      1600-line Qt widget that `chisurf/core/models/pda2c/common.py` imports for the PDA easy mode; it needs an emtk
      twin first.
-   - **HydroPro** (`gui/tool.py`, `gui/dialogs.py`, `hydrogui.py`, `test/conftest.py`, `test/hermetic.py`,
-     `test_emtk_hydropro_parity.py`): freezable the same way (record the 12 parity cases per parameter set from
-     the Qt tool with the fake HYDRO program), then the Qt tool, its dialogs and the QSettings isolation retire.
-     Not started for time, not for a reason.
-   - **Legacy Qt widgets with tests** (code_editor 13, help `gui/tool.py` + `ask_panel.py` + `figure_view.py` +
-     `api/theme.py` + 3 widget tests, mmfdb_admin about 30 in another lane's files): the emtk twins exist (`code_editor`
-     is still in `emtk_preview.json`, so it is not accepted yet); each needs the before/after pair and its widget
-     tests ported to the twin. help's `api/theme.py` reads a Qt palette for the Qt viewer and goes with `gui/tool.py`.
+   - **mmfdb_admin** (about 30 lines, in another lane's files): the emtk twin exists; it needs the before/after pair
+     and its widget tests ported to the twin, as code_editor and help did below.
    - **acq** (`tcspc_devices/*/setup_dialog.py`, `card_setup_dialog.py`, `simulation/core/test/test_setup_widgets.py`):
      the native twin is `acq/gui/sim_setup.py`; the port needs that dialog's parity matrix first.
    - **number_quest** `gui/tool.py` (the Qt widget; its parity test drives the chigame class): left because another

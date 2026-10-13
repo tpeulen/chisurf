@@ -8139,3 +8139,23 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
+
+## Help: one documentation formula does not typeset (test_render)
+
+`chisurf/plugins/core/help/test/test_render.py::test_every_formula_in_the_documentation_typesets` fails on
+`docs/concepts/protein_monte_carlo.md`: the display block `E_\text{restr} = ... \begin{cases}...\end{cases}`
+is split at its `\\` row break and both halves are refused by the math renderer. Seen 2026-10-13 while retiring
+the Qt help browser; unrelated to that change (the theme module was the only render-side edit). Either the page
+moves the `cases` into its own display line or `help/api/mathtext.py` learns `cases` with row breaks.
+
+---
+
+## Code Editor assistant: validation issues are reported, not fixed by the model
+
+The retired Qt agent panel re-prompted the model with the py_compile / Ruff issues of the code it had just
+written (`_start_fix_loop`, a few rounds). The emtk assistant applies `WRITE_FILE` answers and reports the issues
+in the transcript (`ChatModel.apply_file_writes`), but does not start a fix round. Left out of the 2026-10-13
+retirement deliberately: no test covered it, and the loop sends follow-up prompts on the user's quota without
+asking. Add it as an opt-in setting if wanted.
+
+---
