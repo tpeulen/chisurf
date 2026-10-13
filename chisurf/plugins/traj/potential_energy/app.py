@@ -12,6 +12,7 @@ chosen (the Qt editor was rebuilt on every change) and the table also removes th
 
 from __future__ import annotations
 
+import functools
 import os
 import pathlib
 from typing import Any
@@ -69,7 +70,7 @@ class EditorModel:
 
     def __setattr__(self, attr: str, value: Any) -> None:
         if attr == "potential_type":
-            type(self).potential_type.fset(self, value)
+            object.__setattr__(self, attr, value)  # the property's setter
             return
         param = self._param(attr)
         if param is None:
@@ -102,7 +103,7 @@ def editor_spec(name: str) -> dict:
     for param in spec.params if spec else ():
         tip = param.tip or param.label
         if param.kind in ("float", "int"):
-            section = {
+            section: dict[str, Any] = {
                 "type": "value",
                 "attr": param.attr,
                 "label": param.label,
@@ -240,7 +241,8 @@ class PotentialEnergyApp(TrajToolApp):
     def extra_captions(self) -> list[str]:
         captions = ["Potential", "Weight"]
         for name in potential_names():
-            captions += [p.label for p in (get_spec(name).params if get_spec(name) else ())]
+            spec = get_spec(name)
+            captions += [p.label for p in (spec.params if spec else ())]
         return captions
 
     def draw_extra_io(self, width: float) -> None:
@@ -254,9 +256,10 @@ class PotentialEnergyApp(TrajToolApp):
         if spec is None:
             spec = self._specs[name] = self.layout_spec(editor_spec(name))
             self.pad_labels(spec["sections"])
+            potential = get_spec(name)
             self.editor_form.custom = {
                 f"file:{p.attr}": self._draw_file_param(p)
-                for p in (get_spec(name).params if get_spec(name) else ())
+                for p in (potential.params if potential else ())
                 if p.kind == "file"
             }
         draw_form(self._choice_spec, self.editor, self.editor_form)
@@ -267,6 +270,10 @@ class PotentialEnergyApp(TrajToolApp):
         for key in ("potential_type", "add"):
             if key in self.editor_form.rects:
                 self.item_rects[key] = self.editor_form.rects[key]
+
+    def _store_editor_value(self, attr: str, value: Any) -> None:
+        """Keep *value* for parameter *attr* of the potential type being edited."""
+        self._editor_values.setdefault(self.editor.potential_type, {})[attr] = value
 
     def _draw_file_param(self, param):
         """A potential file row: the path (typed or chosen) and its ``…``."""
@@ -297,9 +304,7 @@ class PotentialEnergyApp(TrajToolApp):
                         filters=FILE_FILTERS,
                         directory=os.path.dirname(current) or None,
                     ),
-                    lambda path, attr=param.attr: self._editor_values.setdefault(
-                        self.editor.potential_type, {}
-                    ).__setitem__(attr, path),
+                    functools.partial(self._store_editor_value, param.attr),
                 )
             im.set_item_tooltip(f"Choose the {param.label.lower()} file.")
             self.remember(f"{param.attr}_browse")

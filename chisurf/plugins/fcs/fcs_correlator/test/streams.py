@@ -27,7 +27,9 @@ def diffusion_spc(
     folder: Path, name: str, *, rate_hz: float, duration_s: float = 2.0, seed: int = 7
 ) -> Path:
     """Molecules crossing the focus at ``rate_hz`` (the demo's crossing, shorter run)."""
-    config = dict(DEMO, molecule_rate_hz=rate_hz, duration_s=duration_s)
+    config = DEMO.copy()
+    config["molecule_rate_hz"] = rate_hz
+    config["duration_s"] = duration_s
     return write_spc(folder, name, *photon_stream(seed, config=config))
 
 

@@ -60,7 +60,7 @@ class SplitterViewModel:
         self.input_file = ""
         self.output_folder = ""
         self.batch_files: list[str] = []
-        self._tttr = None
+        self._tttr: tttrlib.TTTR | None = None
         self._observers: list[Callable[[str], None]] = []
 
     # ── observer hook ──────────────────────────────────────────────────
@@ -112,7 +112,10 @@ class SplitterViewModel:
     def input_tttr_type_id(self) -> int:
         """Numeric tttrlib container id of the input (inferred when ``Auto``)."""
         if self.tttr_type is None:
-            return tttrlib.inferTTTRFileType(self.tttr_input_filename.as_posix())
+            path = self.tttr_input_filename
+            if path is None:
+                raise ValueError("The input file no longer exists.")
+            return tttrlib.inferTTTRFileType(path.as_posix())
         names = tttrlib.TTTR.get_supported_container_names()
         return names.index(self.input_format)
 
@@ -147,6 +150,8 @@ class SplitterViewModel:
         """Micro-time binning factor (clamped to ≥8 for SPC containers)."""
         default_bin = 1
         try:
+            if self._tttr is None:  # nothing loaded: fall back to the chosen input format
+                raise LookupError("no TTTR loaded")
             names = tttrlib.TTTR.get_supported_container_names()
             container = names[self._tttr.header.tttr_container_type]
             if container in _SPC_TYPES:
@@ -167,6 +172,9 @@ class SplitterViewModel:
             return "Please load a TTTR file first."
         if len(self._tttr) == 0:
             return "No photons to split!"
+        if self.tttr_input_filename is None:
+            # names the output files; reading it as None crashed the split
+            return "The input file no longer exists."
         if self.output_folder_path is None:
             return "Please specify a valid output folder."
         return None
@@ -180,12 +188,12 @@ class SplitterViewModel:
         0–100 percentage as each chunk is written. Returns the output sub-folder.
         """
         reason = self.can_split()
-        if reason is not None:
-            raise ValueError(reason)
-
         t = self._tttr
-        total = len(t)
         out_folder = self.output_folder_path
+        in_path = self.tttr_input_filename
+        if reason is not None or t is None or out_folder is None or in_path is None:
+            raise ValueError(reason or "Nothing to split.")
+        total = len(t)
 
         # Build the photon-index ranges.
         if self.split_files:
@@ -197,7 +205,6 @@ class SplitterViewModel:
             ranges = [(0, total)]
             n = 1
 
-        in_path = self.tttr_input_filename
         subfolder = out_folder / in_path.stem
         subfolder.mkdir(parents=True, exist_ok=True)
 

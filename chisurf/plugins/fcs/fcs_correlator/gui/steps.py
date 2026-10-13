@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import threading
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 from emtk import im, implot
@@ -27,6 +27,9 @@ from chisurf.plugins.emtk_layout import action_caption
 from ..correlator_model import CorrelatorSettingsModel, apply_channel_key, preset_names
 from ..filter_model import FilterSettingsModel
 from ..workflow import FILE_EXTENSIONS, filter_step_allowed
+
+if TYPE_CHECKING:
+    from chisurf.emtk.dataset_picker import DatasetPicker
 
 HERE = Path(__file__).resolve().parents[1]
 TTTR_FILTER = "TTTR files (" + " ".join(f"*{e}" for e in FILE_EXTENSIONS) + ");;All files (*)"
@@ -78,14 +81,16 @@ class _Dialogs:
         self._on_pick = on_pick
 
     def draw(self, frame) -> None:
-        if self.dialog is None:
+        dialog, window = self.dialog, self.window
+        if dialog is None or window is None:
             return
-        pressed = self.window.begin(frame)
-        result = self.dialog.draw()
-        self.window.end()
+        pressed = window.begin(frame)
+        result = dialog.draw()
+        window.end()
         if result:
             self.dialog, pick = None, self._on_pick
-            pick([str(p) for p in result])
+            if pick is not None:
+                pick([str(p) for p in result])
         elif result is False or pressed == "close":
             self.dialog = None
 
@@ -111,7 +116,7 @@ class FilesStepApp(ImApp):
         self.on_change = on_change
         self.client = client
         self.dialogs = _Dialogs()
-        self.picker = None
+        self.picker: DatasetPicker | None = None
         self.item_rects: dict[str, tuple] = {}
         super().__init__(gui=self.render, continuous=False)
 
@@ -169,8 +174,12 @@ class FilesStepApp(ImApp):
     def open_database(self) -> None:
         from chisurf.emtk.dataset_picker import DatasetPicker
 
-        self.picker = DatasetPicker(client=self.client, kinds=["tttr"], on_paths=self.add_paths)
-        self.picker.open()
+        def picked(paths: list[Path]) -> None:
+            self.add_paths(paths)
+
+        picker = DatasetPicker(client=self.client, kinds=["tttr"], on_paths=picked)
+        self.picker = picker
+        picker.open()
 
     def on_paths_dropped(self, paths) -> bool:
         return self.add_paths(paths) > 0
@@ -346,17 +355,19 @@ class FilterStepApp(ImApp):
         self.form.custom["filter_dt_plot"] = self._draw_dt
         self.form.custom["filter_cr_plot"] = self._draw_cr
         self.item_rects: dict[str, tuple] = {}
-        self._spec_mode = None
-        self._spec = None
+        self._spec_mode: str | None = None
+        self._spec: dict | None = None
         super().__init__(gui=self.render, continuous=False)
 
     def spec(self) -> dict:
-        if self._spec is None or self._spec_mode != self.model.filter_mode:
-            self._spec, self._spec_mode = self.model.view_spec_dict(), self.model.filter_mode
-            for section in _walk(self._spec["sections"]):
+        spec = self._spec
+        if spec is None or self._spec_mode != self.model.filter_mode:
+            spec, self._spec_mode = self.model.view_spec_dict(), self.model.filter_mode
+            for section in _walk(spec["sections"]):
                 if section.get("type") == "panel":
                     section.setdefault("collapsible", True)
-        return self._spec
+            self._spec = spec
+        return spec
 
     def _draw_info(self, section, model, state, width) -> None:
         im.text(self.model.info_text())
@@ -571,7 +582,7 @@ class CorrelatorStepApp(ImApp):
         self.item_rects["unload_filters"] = im.get_item_rect()
         _same_line_if_fits("Filter Calc...", used)
         im.begin_disabled(self.open_tool is None)
-        if im.button(tr("Filter Calc...")):
+        if im.button(tr("Filter Calc...")) and self.open_tool is not None:
             self.open_tool("filter_calc")
         im.end_disabled()
         im.set_item_tooltip(

@@ -14,7 +14,7 @@ import pathlib
 
 import numpy as np
 
-from ..api.models import HmmSettings
+from ..api.models import HmmFit, HmmSettings, StateScan
 from ..cli.main import load_trace
 from ..core.analysis import fit_traces, scan_state_counts
 
@@ -55,8 +55,8 @@ class HmmViewModel:
         self.max_points = 5000
         self._traces: list[np.ndarray] = []
         self._labels: list[str] = []
-        self._fit = None
-        self._scan = None
+        self._fit: HmmFit | None = None
+        self._scan: StateScan | None = None
         self._status = "Load one or more traces, then fit."
 
     # -- observer ------------------------------------------------------------
@@ -403,7 +403,7 @@ class HmmViewModel:
         show_rates = self.settings.time_step != 1.0
         rows = []
         for i, row in enumerate(transmat):
-            record = {"from": i}
+            record: dict[str, int | str] = {"from": i}
             for j, probability in enumerate(row):
                 text = f"{probability:.4f}"
                 if show_rates and i != j:

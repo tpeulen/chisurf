@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -61,7 +62,8 @@ class PackagePanel:
         self._stick = 0
         self.loaded = False
         #: Called with the name of a form action (the app's tour listens).
-        self.on_used = None
+        #: told the name of each control used (the guided tour waits on it)
+        self.on_used: Callable[[str], None] | None = None
         self.form.on_used = lambda name: self.on_used(name) if self.on_used else None
 
     def start_job(self, method: str, *args: Any) -> bool:

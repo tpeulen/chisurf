@@ -33,6 +33,7 @@ import re
 import typing
 
 from chisurf.core.fitting import parameter_network as pn
+from chisurf.core.fitting.factorgraph import FactorGraph
 from chisurf.emtk.node_editor.document import GraphDocument, GraphEdge, GraphNode
 from chisurf.emtk.node_editor.model import PortSpec
 from chisurf.plugins.core.globalview.gui import emtk_view as ev
@@ -230,7 +231,7 @@ class GlobalViewModel:
         # -- what is shown --
         self.owners: list = []
         self.rows: list = []
-        self.factor_graph = None
+        self.factor_graph: FactorGraph | None = None
         self.selection: list = []
         self.status = ""
         self.stale = False
@@ -321,6 +322,8 @@ class GlobalViewModel:
 
         picture = _Picture()
         graph = self.factor_graph
+        if graph is None:  # nothing refreshed yet
+            return picture
         readers: dict = {key: len(graph.factors_of(key)) for key in graph.variables}
         roots: dict = {}
         for owner in self.owners:
@@ -565,7 +568,7 @@ class GlobalViewModel:
         """A row picked in the table selects its node in the graph."""
         if not isinstance(record, dict):
             return
-        node_id = record.get("uid")
+        node_id = str(record.get("uid") or "")
         document = self.control.document
         node = document.node(node_id) if node_id else None
         if node is None:
@@ -797,7 +800,7 @@ class GlobalViewModel:
         if not self.owners:
             self.status = "No fits and no registered parameter groups -- nothing to draw."
             return
-        if self.representation == REPRESENTATION_FACTORS:
+        if self.representation == REPRESENTATION_FACTORS and self.factor_graph is not None:
             graph = self.factor_graph
             shared = sorted(
                 {graph.variables[k].name for k in graph.variables if len(graph.factors_of(k)) > 1}

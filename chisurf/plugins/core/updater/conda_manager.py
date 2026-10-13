@@ -54,14 +54,16 @@ class CondaManager:
             self.conda_exe = conda_executable
         else:
             # Leverage existing discovery logic
-            self.conda_exe = ChiSurfUpdater(update_url=None)._get_conda_executable()
+            # (``_get_conda_executable`` no longer exists: this raised AttributeError)
+            self.conda_exe = ChiSurfUpdater(update_url=None)._get_pkg_executable()
         # Discover micromamba
-        self.micromamba_exe = self._discover_micromamba()
+        micromamba_exe = self._discover_micromamba()
         # Enforce micromamba-only operation: if no micromamba, fail early (no conda/mamba fallback)
-        if not self.micromamba_exe:
+        if not micromamba_exe:
             raise CondaCommandError(
                 "Micromamba executable not found. Please install micromamba and ensure it is on PATH. Fallback to conda/mamba is disabled."
             )
+        self.micromamba_exe: str = micromamba_exe
         # Allow toggling preference if needed (kept for API compatibility, but must be True)
         self.prefer_mamba: bool = True
         # Ensure a user-level condarc exists and remember its path
@@ -196,7 +198,7 @@ class CondaManager:
                 shell=False,
                 env=self._base_env(env),
             )
-            if stream:
+            if on_progress is not None:
                 collected: list[str] = []
                 try:
                     assert proc.stdout is not None
@@ -398,7 +400,7 @@ class CondaManager:
                 shell=False,
                 env=self._base_env(env),
             )
-            if stream:
+            if on_progress is not None:
                 collected: list[str] = []
                 try:
                     assert proc.stdout is not None
@@ -589,7 +591,9 @@ class CondaManager:
             - Error message if the command failed, None otherwise
         """
         if self._system != "windows":
-            return self._run_command(cmd)
+            # The updater's plain runner (this class never had a ``_run_command``:
+            # every non-Windows elevated install raised AttributeError).
+            return ChiSurfUpdater(update_url=None)._run_command(cmd)
 
         try:
             # Create a temporary batch file to run the command with logging
@@ -955,12 +959,12 @@ class CondaManager:
         try:
             data = self._run(["config", "list", "--json"], on_progress=on_progress)
             if isinstance(data, dict):
-                cfg = data.get("rc", data) if "rc" in data else data
+                listed = data.get("rc", data) if "rc" in data else data
             else:
-                cfg = {}
+                listed = {}
             # Attach detected rc path for UI convenience
-            cfg.setdefault("rc_path", self._condarc_path)
-            return cfg
+            listed.setdefault("rc_path", self._condarc_path)
+            return listed
         except Exception:
             pass
         # Fallback to plaintext show

@@ -96,7 +96,7 @@ class UpdaterApp(ImApp):
         self._reported_error = ""
         self.exited = False
         #: Opens a link of the changelog in the system browser (a test replaces it).
-        self.open_link: Callable[[str], None] = webbrowser.open
+        self.open_link: Callable[[str], object] = webbrowser.open
         self.help_window = EmTkHelpWindow(
             title="ChiSurf Updater - Help", resource=HERE / "help.md", owner=self
         )

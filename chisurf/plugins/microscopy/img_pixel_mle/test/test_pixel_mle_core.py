@@ -7,6 +7,7 @@ Skips cleanly when tttrlib or the external test image is unavailable.
 from __future__ import annotations
 
 import pathlib
+from typing import Any
 
 import numpy as np
 import pytest
@@ -29,13 +30,14 @@ pytestmark = pytest.mark.skipif(not _FLIM_PTU.exists(), reason="tttr-data FLIM i
 _BINNING = 8
 
 
-def _settings(**overrides) -> PixelMleSettings:
+def _settings(**overrides: Any) -> PixelMleSettings:
     n_ch = 2048 // _BINNING
     window = n_ch
     irf1 = np.exp(-0.5 * ((np.arange(window) - 8) / 2.0) ** 2)
     irf1 /= irf1.sum()
     irf = assemble_vv_vh(irf1, irf1)
-    kwargs = dict(
+    # the test's defaults; a test overrides any field by keyword
+    kwargs: dict[str, Any] = dict(
         channels_parallel=[0],
         channels_perpendicular=[1],
         irf=irf,

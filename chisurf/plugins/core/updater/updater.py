@@ -125,6 +125,7 @@ class ChiSurfUpdater:
         self.current_version = info.__version__
         self.settings_path = get_path("settings")
         # Expose a shared PackageManager for general package management
+        self.pkg_manager: PackageManager | None
         try:
             self.pkg_manager = PackageManager(self)
         except Exception:
