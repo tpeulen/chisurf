@@ -360,7 +360,7 @@
     "date": "2026-10-13",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "5cc1a4e4cd05f2fd98592a893ea050bd9e4a26056e302239f9bf751cf569d65e",
+    "sha256": "77af08a6c5a1decf07c0f47f5d534e1540c354f030d0475826666974c0556028",
     "status": "ai-reviewed"
   },
   "nuisances.md": {
