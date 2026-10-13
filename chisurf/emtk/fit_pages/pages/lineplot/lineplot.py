@@ -369,13 +369,14 @@ class LinePlotSettings:
             im.text(str(spec.label))
             im.next_cell()
             kind = str(spec.kind).lower()
-            value = values.get(spec.key, spec.default)
+            # bool, int, float or a choice key, depending on ``spec.kind``.
+            value: typing.Any = values.get(spec.key, spec.default)
             label = f"##reference-{spec.key}"
             if kind == "bool":
                 changed, value = im.checkbox(label, bool(value))
             elif kind == "int":
-                step = int(spec.step if spec.step is not None else 1)
-                changed, value = im.input_int(label, int(value), step)
+                int_step = int(spec.step if spec.step is not None else 1)
+                changed, value = im.input_int(label, int(value), int_step)
             elif kind == "choice":
                 keys = [
                     c[0] if isinstance(c, (tuple, list)) and len(c) >= 2 else c
@@ -527,10 +528,10 @@ class LinePlot(plotbase.Plot):
         if self.settings.data_is_log_x:
             lb, ub = 10.0**lb, 10.0**ub
 
-        lb_i: int = np.searchsorted(data_x, lb, side="right")
-        ub_i: int = np.searchsorted(data_x, ub, side="left")
+        lb_i = int(np.searchsorted(data_x, lb, side="right"))
+        ub_i = int(np.searchsorted(data_x, ub, side="left"))
 
-        return np.clip(lb_i - 1, 0, x_len), np.clip(ub_i, 0, x_len)
+        return min(max(lb_i - 1, 0), x_len), min(max(ub_i, 0), x_len)
 
     def __init__(
         self,
@@ -783,7 +784,7 @@ class LinePlot(plotbase.Plot):
         stack = self.plot_stack
         if stack is not None and stack.user_sized:
             state["split"] = [round(float(w), 6) for w in stack.weights]
-        views = []
+        views: list[dict[str, list[float] | None]] = []
         for panel in self._panels:
             try:
                 auto_x, auto_y = panel.is_auto_range()
@@ -1086,7 +1087,7 @@ class LinePlot(plotbase.Plot):
         Using plain text avoids Qt rich-text parsing paths that have shown
         instability in some Windows save/switch workflows.
         """
-        grouped_fits = getattr(self.fit, "grouped_fits", None)
+        grouped_fits = getattr(self.fit, "grouped_fits", None) or []
         show_group = (
             bool(self.settings.display_group)
             and isinstance(grouped_fits, (list, tuple))
@@ -1181,7 +1182,7 @@ class LinePlot(plotbase.Plot):
             current_fit = self.fit
             current_data = data
 
-        self._reference_y_label_override = None
+        self._reference_y_label_override: str | None = None
         self._update_reference_modes(current_fit)
 
         x_last = max(0, len(current_data.x) - 1)
@@ -1300,7 +1301,7 @@ class LinePlot(plotbase.Plot):
             font_pt = 8
 
         # Determine whether this is a multi-fit group display.
-        grouped_fits = getattr(self.fit, "grouped_fits", None)
+        grouped_fits = getattr(self.fit, "grouped_fits", None) or []
         show_group = (
             bool(self.settings.display_group)
             and isinstance(grouped_fits, (list, tuple))

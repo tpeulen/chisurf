@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import pathlib
+from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -51,6 +53,19 @@ def _resolve_accessor(accessor):
         return None
 
 
+def _range_property(name: str) -> property:
+    """A property for one end of the shown range, which re-applies the ranges on write."""
+
+    def getter(self) -> int:
+        return getattr(self, "_" + name)
+
+    def setter(self, value: int) -> None:
+        setattr(self, "_" + name, int(value))
+        self.apply_ranges_from_controller()
+
+    return property(getter, setter, doc=f"The shown range's {name} (axis units).")
+
+
 class Residual2DPlot(plotbase.Plot):
     """Generic 2D residual image plot using a model-provided accessor.
 
@@ -78,7 +93,7 @@ class Residual2DPlot(plotbase.Plot):
         frame_label: str | None = None,
         **kwargs,
     ) -> None:
-        super().__init__(fit=fit, *args, **kwargs)
+        super().__init__(fit, *args, **kwargs)
         # Used by some fit widgets (e.g. RICS) to synchronize the 1D fit range
         # with a 2D selection: FitSubWindow connects ``regionChanged`` of any
         # page to the fit controller, as it does for LinePlot.
@@ -99,11 +114,11 @@ class Residual2DPlot(plotbase.Plot):
         # Optional support for multiple named image sources (e.g. residual,
         # data, model, intensity). When provided, the plot controller exposes
         # a selector and this plot switches between the configured accessors.
-        self._sources: dict[str, tuple[callable, dict]] | None = None
+        self._sources: dict[str, tuple[Callable[..., Any], dict]] | None = None
         self._current_source_key: str | None = None
 
         if sources:
-            src_map: dict[str, tuple[callable, dict]] = {}
+            src_map: dict[str, tuple[Callable[..., Any], dict]] = {}
             for key, spec in sources.items():
                 if isinstance(spec, tuple) and len(spec) == 2:
                     fn, kw = spec
@@ -139,7 +154,7 @@ class Residual2DPlot(plotbase.Plot):
 
         # The image handle is created on the first computed frame: chiplot's
         # ``image`` verb draws data, it does not reserve an empty item.
-        self._image_item = None
+        self._image_item: cp.handles.Image | None = None
 
         try:
             self._quality_text = self._plot_widget.text(
@@ -207,21 +222,10 @@ class Residual2DPlot(plotbase.Plot):
         self._vmax = float(value)
         self.apply_levels_from_controller()
 
-    def _range_setter(name):  # noqa: N805 - a property factory, not a method
-        def getter(self) -> int:
-            return getattr(self, "_" + name)
-
-        def setter(self, value: int) -> None:
-            setattr(self, "_" + name, int(value))
-            self.apply_ranges_from_controller()
-
-        return property(getter, setter, doc=f"The shown range's {name} (axis units).")
-
-    xmin = _range_setter("xmin")
-    xmax = _range_setter("xmax")
-    ymin = _range_setter("ymin")
-    ymax = _range_setter("ymax")
-    del _range_setter
+    xmin = _range_property("xmin")
+    xmax = _range_property("xmax")
+    ymin = _range_property("ymin")
+    ymax = _range_property("ymax")
 
     def bounds(self, name: str):
         """Run-time limits of a settings field (emtk's form asks its model)."""
@@ -552,7 +556,8 @@ class Residual2DPlot(plotbase.Plot):
     def apply_ranges_from_controller(self) -> None:
         if self._x is None or self._y is None:
             return
-        xmin, xmax, ymin, ymax = self._xmin, self._xmax, self._ymin, self._ymax
+        xmin, xmax = float(self._xmin), float(self._xmax)
+        ymin, ymax = float(self._ymin), float(self._ymax)
         if xmax <= xmin:
             xmin, xmax = float(self._x.min()), float(self._x.max())
         if ymax <= ymin:

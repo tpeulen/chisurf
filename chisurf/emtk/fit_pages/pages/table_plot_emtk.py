@@ -17,6 +17,7 @@ only marks it stale, and the next frame that shows it reads it.
 from __future__ import annotations
 
 import math
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -25,6 +26,9 @@ from chisurf.core.actions import record_action
 from chisurf.core.api.fitting_client import get_fitting_client
 from chisurf.core.datastore import row_count, rows_from_table, store_from_rows
 from chisurf.emtk.fit_pages.pages import plotbase
+
+if TYPE_CHECKING:
+    from emtk.widgets.data_table import DataTable
 
 #: Curves that already have a dedicated column and must not be repeated.
 _SUPPORT_EXCLUSIONS = {"data", "model", "weighted residuals", "autocorrelation"}
@@ -92,8 +96,9 @@ class FitTablePlotEmtk(plotbase.Plot):
         self._table_box: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
         #: The fit changed since the table last read it (read on the next frame).
         self._stale = True
-        #: The model-parameter editor while it is open: ``(store, DataTable, message)``.
-        self.parameter_editor = None
+        #: The model-parameter editor while it is open:
+        #: ``(records, parameters by name, DataTable, message)``.
+        self.parameter_editor: tuple[list[dict[str, Any]], dict, DataTable, str] | None = None
         self._csv_dialog = None
 
         from emtk.widgets.buttons import SmallButton
@@ -692,6 +697,8 @@ class FitTablePlotEmtk(plotbase.Plot):
 
         from chisurf.plugins.emtk_layout import action_button
 
+        if self.parameter_editor is None:
+            return
         records, _params, table, message = self.parameter_editor
         im.text("Model parameters")
         if message:
@@ -727,7 +734,7 @@ class FitTablePlotEmtk(plotbase.Plot):
             return v is not None and not (isinstance(v, float) and math.isnan(v))
 
         for row in rows_from_table(table):
-            name = row.get("name")
+            name = str(row.get("name") or "")
             if name not in param_dict:
                 continue
 
