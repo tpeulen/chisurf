@@ -186,7 +186,7 @@ def test_main_import_actual_collision_dialog_cancel_preserves_remote_versions(
 ):
     """Cancel the real rendered collision dialog after authenticated HTTP preview."""
     from chisurf.core.project.pto import read_project
-    from chisurf.plugins.core.project_browser.gui.tool import CollisionDialog
+    from chisurf.gui.widgets.project_dialogs import CollisionDialog
 
     client = authenticated_browser["client"]
     saved = client.save_project("Collision source", project_payload=sample_project_payload)

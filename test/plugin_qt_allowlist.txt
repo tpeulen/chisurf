@@ -173,8 +173,6 @@ chisurf/plugins/core/mmfdb_admin/test/test_pipelines_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_protocols_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
-chisurf/plugins/core/project_browser/gui/tool.py
-chisurf/plugins/core/project_browser/test/test_gui_headless.py
 chisurf/plugins/icon_utils.py
 chisurf/plugins/misc/games/number_quest/gui/tool.py
 chisurf/plugins/modelling/hydropro/gui/dialogs.py

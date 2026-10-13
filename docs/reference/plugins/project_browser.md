@@ -21,7 +21,7 @@ Browse, save, restore, export, and import Chisurf projects using the MMFDB datab
 | Menu path | Tools → **Open Project** |
 | Categories | Tools, Project |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `project_browser` |
 
 ## Parameters

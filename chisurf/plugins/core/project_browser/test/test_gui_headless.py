@@ -1,23 +1,18 @@
+"""Headless tests of the project browser window, driven on the native emtk app.
+
+Ported from the retired Qt ``ProjectBrowserTool`` (same cases, same fake client and
+deployment): the tree a fake service fills, one click per toolbar button, the in-process
+services, delete with confirmation, import with collision remap and restore.
+"""
+
 from __future__ import annotations
 
 import copy
-import os
 from types import SimpleNamespace
-from unittest import mock
 
 import pytest
 
-from chisurf.gui import dialogs
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytest.importorskip("qtpy")
-
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+from .test_emtk_project_browser_parity import _app, _project, _settle
 
 
 def _sample_payload(tmp_path):
@@ -95,75 +90,65 @@ class FakeProjectBrowserClient:
         ]
 
 
-def test_project_browser_renders_sample_project_tree_headless(qapp, monkeypatch):
-    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-
+def test_project_browser_renders_sample_project_tree_headless():
     fake_client = FakeProjectBrowserClient()
-    monkeypatch.setattr(ProjectBrowserTool, "_make_client", lambda self: fake_client)
-
-    widget = ProjectBrowserTool()
+    app = _app(client=fake_client)
     try:
-        qapp.processEvents()
+        _settle(app)
+        model = app.model
+        assert len(model.projects) == 1
+        rows = app.panel.tree_rows()
+        assert rows[0]["project_name"].startswith("Sample Project")
+        project = model.projects[0]
+        assert project["version_count"] == 2 and len(project["versions"]) == 2
+        assert project["versions"][0]["version_id"] == "ver_2"
+        assert project["versions"][0]["dataset_count"] == 1
 
-        assert widget._tree.topLevelItemCount() == 1
-        project_item = widget._tree.topLevelItem(0)
-        assert project_item.text(0) == "Sample Project  (2 versions)"
-        assert project_item.childCount() == 2
-        assert project_item.child(0).text(1) == "ver_2"
-        assert project_item.child(0).text(5) == "1"
-
-        widget._tree.setCurrentItem(project_item)
-        selected = widget._selected_restore_version()
+        model.selected_id = project["project_id"]
+        selected = model.selected_version(latest=True)
         assert selected is not None
         assert selected["version_id"] == "ver_2"
 
-        widget._search_edit.setText("sample")
-        qapp.processEvents()
+        model.search = "sample"
+        app.refresh()
+        _settle(app)
         assert fake_client.calls[-1]["search"] == "sample"
     finally:
-        widget.close()
+        app.close()
 
 
-def test_project_browser_toolbar_buttons_fire_their_handler_once(qapp, monkeypatch):
+def test_project_browser_toolbar_buttons_fire_their_handler_once(monkeypatch):
     """One click on a toolbar button must run its handler exactly once (RF-617)."""
-    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-
-    monkeypatch.setattr(ProjectBrowserTool, "_make_client", lambda self: FakeProjectBrowserClient())
+    from chisurf.plugins.core.project_browser.gui.panel import ProjectPanel
+    from chisurf.plugins.core.project_browser.test.driving import BIG, BrowserDriver
 
     calls: dict[str, int] = {}
-    handlers = {
-        "_open_btn": "_on_open",
-        "_save_btn": "_on_save",
-        "_export_btn": "_on_export",
-        "_import_btn": "_on_import",
-        "_delete_btn": "_on_delete",
-        "_refresh_btn": "refresh",
-    }
-    for name in handlers.values():
+    handlers = ("open", "save", "export", "import_project", "delete", "refresh")
+    for name in handlers:
         monkeypatch.setattr(
-            ProjectBrowserTool,
+            ProjectPanel,
             name,
             lambda self, *_args, _name=name: calls.__setitem__(_name, calls.get(_name, 0) + 1),
         )
+    monkeypatch.setattr(ProjectPanel, "enabled", lambda self, name: True)
 
-    widget = ProjectBrowserTool()
+    app = _app(client=FakeProjectBrowserClient())
     try:
-        for button_name, handler_name in handlers.items():
+        drv = BrowserDriver(app, BIG)
+        drv.settle()
+        for name in handlers:
             calls.clear()
-            getattr(widget, button_name).click()
-            qapp.processEvents()
-            assert calls.get(handler_name, 0) == 1, f"{button_name} fired {handler_name} twice"
+            drv.click(name)
+            drv.draw(2)
+            assert calls.get(name, 0) == 1, f"{name} fired {calls.get(name, 0)} times"
     finally:
-        widget.close()
+        app.close()
 
 
 @pytest.fixture
-def deployment(authenticated_browser, sample_project_payload, monkeypatch):
-    """The Qt tool on the authenticated MMFDB deployment the Save path uses."""
-    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-
+def deployment(authenticated_browser, sample_project_payload):
+    """The window on the authenticated MMFDB deployment the Save path uses."""
     client = authenticated_browser["client"]
-    monkeypatch.setattr(ProjectBrowserTool, "_make_client", lambda self: client)
 
     def save(name, visibility="public", notes=""):
         payload = copy.deepcopy(sample_project_payload)
@@ -174,71 +159,51 @@ def deployment(authenticated_browser, sample_project_payload, monkeypatch):
         assert saved["ok"] is True, saved
         return saved, payload
 
-    return SimpleNamespace(client=client, save=save, tmp_path=authenticated_browser["tmp_path"])
-
-
-def test_project_browser_gui_uses_inprocess_chisurf_services_with_sample_data(qapp, deployment):
-    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-
-    saved, _ = deployment.save("Sample Project", notes="headless GUI test")
-
-    widget = ProjectBrowserTool()
-    try:
-        qapp.processEvents()
-
-        assert widget._tree.topLevelItemCount() == 1
-        project_item = widget._tree.topLevelItem(0)
-        assert project_item.text(1) == saved["project_id"]
-        assert project_item.childCount() == 1
-        version_item = project_item.child(0)
-        assert version_item.text(1) == saved["version_id"]
-        assert version_item.text(5) == "1"
-    finally:
-        widget.close()
-
-
-def test_project_browser_gui_deletes_selected_version_with_confirmation(qapp, deployment):
-    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-
-    saved, _ = deployment.save("Delete Project", notes="headless delete GUI test")
-
-    widget = ProjectBrowserTool()
-    try:
-        qapp.processEvents()
-        version_item = widget._tree.topLevelItem(0).child(0)
-        widget._tree.setCurrentItem(version_item)
-        version_item.setSelected(True)
-        widget._tree.selectionModel().select(
-            widget._tree.indexFromItem(version_item),
-            widget._tree.selectionModel().ClearAndSelect | widget._tree.selectionModel().Rows,
-        )
-        assert widget._selected_version()["version_id"] == saved["version_id"]
-
-        with (
-            mock.patch.object(
-                dialogs.ChiSurfMessageBox,
-                "question",
-                return_value=dialogs.ChiSurfMessageBox.Yes,
-            ),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "information"),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "warning"),
-        ):
-            widget._on_delete()
-        qapp.processEvents()
-
-        assert widget._tree.topLevelItemCount() == 0
-    finally:
-        widget.close()
-
-
-def test_project_browser_gui_imports_archive_with_collision_remap(qapp, deployment):
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.core.project_browser.gui.tool import (
-        CollisionDialog,
-        ProjectBrowserTool,
+    return SimpleNamespace(
+        client=client,
+        save=save,
+        tmp_path=authenticated_browser["tmp_path"],
+        db={"client": client, "payload": sample_project_payload},
     )
 
+
+def test_project_browser_gui_uses_inprocess_chisurf_services_with_sample_data(deployment):
+    saved, _ = deployment.save("Sample Project", notes="headless GUI test")
+
+    app = _app(deployment.db)
+    try:
+        _settle(app)
+        assert len(app.model.projects) == 1
+        project = app.model.projects[0]
+        assert project["project_id"] == saved["project_id"]
+        assert len(project["versions"]) == 1
+        version = project["versions"][0]
+        assert version["version_id"] == saved["version_id"]
+        assert version["dataset_count"] == 1
+    finally:
+        app.close()
+
+
+def test_project_browser_gui_deletes_selected_version_with_confirmation(deployment):
+    saved, _ = deployment.save("Delete Project", notes="headless delete GUI test")
+
+    app = _app(deployment.db)
+    try:
+        _settle(app)
+        app.model.selected_id = saved["version_id"]
+        assert app.model.selected_version()["version_id"] == saved["version_id"]
+
+        app.begin_delete()
+        assert app.modal == "delete"  # asks first
+        app.confirm_delete()
+        _settle(app)
+
+        assert [p for p in app.model.projects if p.get("version_count")] == []
+    finally:
+        app.close()
+
+
+def test_project_browser_gui_imports_archive_with_collision_remap(deployment):
     saved, _ = deployment.save("Import Project", notes="headless import GUI test")
     archive_path = deployment.tmp_path / "import-project.cs.pto"
     exported = deployment.client.export_csp(
@@ -246,90 +211,44 @@ def test_project_browser_gui_imports_archive_with_collision_remap(qapp, deployme
     )
     assert exported["ok"] is True
 
-    widget = ProjectBrowserTool()
+    app = _app(deployment.db)
     try:
-        qapp.processEvents()
-        with (
-            mock.patch.object(
-                QtWidgets.QFileDialog,
-                "getOpenFileName",
-                return_value=(str(archive_path), "Chisurf Project (*.cs.pto)"),
-            ),
-            mock.patch.object(
-                CollisionDialog,
-                "exec",
-                return_value=QtWidgets.QDialog.Accepted,
-            ),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "information"),
-        ):
-            widget._on_import()
-        qapp.processEvents()
+        _settle(app)
+        app.import_preview(archive_path)
+        _settle(app)
+        assert app.modal == "import"
+        app.confirm_import()
+        _settle(app)
 
-        assert widget._tree.topLevelItemCount() == 1
-        project_item = widget._tree.topLevelItem(0)
-        assert project_item.text(1) == saved["project_id"]
-        assert project_item.childCount() == 2
+        assert len(app.model.projects) == 1
+        project = _project(app, "Import Project")
+        assert project["project_id"] == saved["project_id"]
+        assert len(project["versions"]) == 2
     finally:
-        widget.close()
+        app.close()
 
 
-def test_project_browser_gui_restores_selected_version_into_chisurf_context(
-    qapp, deployment, monkeypatch
-):
-    from qtpy import QtCore
-
-    import chisurf as cs
-    import chisurf.macros.core_fit as core_fit
-    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
-
+def test_project_browser_gui_restores_selected_version_into_chisurf_context(deployment):
     saved, payload = deployment.save(
         "Restore Project", visibility="private", notes="headless restore GUI test"
     )
 
-    chisurf_context = SimpleNamespace(
-        _current_project_id=None,
-        _current_project_version_id=None,
-        _current_project_name=None,
-        _current_project_visibility=None,
-    )
-    loaded_projects = []
-    gui_restore_projects = []
-
-    monkeypatch.setattr(cs, "cs", chisurf_context, raising=False)
-    monkeypatch.setattr(
-        core_fit,
-        "load_project_payload",
-        lambda proj, project_path=None: loaded_projects.append((proj, project_path)),
-    )
-    monkeypatch.setattr(
-        ProjectBrowserTool,
-        "_restore_gui_from_fits",
-        staticmethod(lambda proj: gui_restore_projects.append(proj)),
-    )
-    monkeypatch.setattr(QtCore.QTimer, "singleShot", lambda _ms, callback: callback())
-
-    widget = ProjectBrowserTool()
+    app = _app(deployment.db)
     try:
-        qapp.processEvents()
-        version_item = widget._tree.topLevelItem(0).child(0)
-        widget._tree.setCurrentItem(version_item)
+        _settle(app)
+        app.model.selected_id = saved["version_id"]
+        app.open_selected()
+        _settle(app)
 
-        with (
-            mock.patch.object(dialogs.ChiSurfMessageBox, "information"),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "warning"),
-        ):
-            widget._on_open()
-        qapp.processEvents()
-
-        assert len(loaded_projects) == 1
-        loaded_project, project_path = loaded_projects[0]
-        assert project_path is None
-        assert loaded_project.name == "Restore Project"
-        assert set(loaded_project.datasets) == set(payload["datasets"])
-        assert gui_restore_projects == [loaded_project]
-        assert chisurf_context._current_project_id == saved["project_id"]
-        assert chisurf_context._current_project_version_id == saved["version_id"]
-        assert chisurf_context._current_project_name == "Restore Project"
-        assert chisurf_context._current_project_visibility == "private"
+        assert len(app.restored) == 1
+        restored = app.restored[0]
+        assert restored["meta"]["name"] == "Restore Project"
+        assert set(restored["datasets"]) == set(payload["datasets"])
+        assert len(app.reopened) == 1
+        context = app.model.context
+        assert context._current_project_id == saved["project_id"]
+        assert context._current_project_version_id == saved["version_id"]
+        assert context._current_project_name == "Restore Project"
+        assert context._current_project_visibility == "private"
     finally:
-        widget.close()
+        app.close()

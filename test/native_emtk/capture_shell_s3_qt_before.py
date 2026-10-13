@@ -157,7 +157,7 @@ def main() -> None:
 
     print("stage: project dialogs", flush=True)
     # -- project dialogs -------------------------------------------------------- #
-    from chisurf.plugins.core.project_browser.gui.tool import CollisionDialog, SaveProjectDialog
+    from chisurf.gui.widgets.project_dialogs import CollisionDialog, SaveProjectDialog
 
     save = SaveProjectDialog(current_name="Kristine_with_error", parent=gui)
     save.show()

@@ -5,12 +5,11 @@ importing, and versioning ChiSurf projects.
 
 ## Runtime Surface
 
-The plugin exposes a Qt GUI entrypoint and backend services:
+The plugin exposes a native emtk window and backend services:
 
 | Surface | Entry point |
 | --- | --- |
 | Native EMTK | `chisurf.plugins.core.project_browser.gui.app:make_app` |
-| Legacy Qt | `chisurf.plugins.core.project_browser.gui.tool:ProjectBrowserTool` |
 | Services | `chisurf.plugins.core.project_browser.backend.services:register_services` |
 
 ## RPC Contract
@@ -39,12 +38,9 @@ objects where available and processed-data JSON artifacts.
 
 ## GUI Behavior
 
-`ProjectBrowserTool` builds an in-process `ProjectBrowserClient` by default. The tree
-lists project groups with child version rows. Selecting a project restores the latest
-version; selecting a child restores that exact version.
-
-The native factory preserves these version and archive actions using the same RPC
-client. Database and archive I/O runs outside the render thread; current-session
+The window (`gui/app.py`, the retired Qt `ProjectBrowserTool`'s replacement) lists
+project groups with child version rows. Selecting a project restores the latest
+version; selecting a child restores that exact version. It uses the same RPC client. Database and archive I/O runs outside the render thread; current-session
 serialization and restoration uses `chisurf.emtk.project` on the main thread.
 The native browser includes search, public visibility filtering, sortable and
 resizable columns, a row context menu, collision previews, deletion confirmation,

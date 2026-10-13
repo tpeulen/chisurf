@@ -367,7 +367,7 @@ def test_ordinary_save_existing_path_still_uses_database_dialog(
         def exec(self):
             return QtWidgets.QDialog.Rejected
 
-    monkeypatch.setattr("chisurf.plugins.core.project_browser.gui.tool.SaveProjectDialog", Dialog)
+    monkeypatch.setattr("chisurf.gui.widgets.project_dialogs.SaveProjectDialog", Dialog)
     assert ProjectMixin._save_project_snapshot(context) is False
     assert calls == ["mmfdb", "dialog"]
     assert context._project_document.project_id == "old"

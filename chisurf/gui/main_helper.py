@@ -215,7 +215,7 @@ class ProjectMixin:
 
             # The database dialog is imported only after backend selection says
             # this is a configured deployment; file-only sessions never import it.
-            from chisurf.plugins.core.project_browser.gui.tool import SaveProjectDialog
+            from chisurf.gui.widgets.project_dialogs import SaveProjectDialog
 
             project = _capture_live_project(name)
 
@@ -405,7 +405,7 @@ class ProjectMixin:
             has_collisions = any(v for v in collisions.values())
 
             if has_collisions:
-                from chisurf.plugins.core.project_browser.gui.tool import CollisionDialog
+                from chisurf.gui.widgets.project_dialogs import CollisionDialog
 
                 dlg = CollisionDialog(collisions, preview["origin"], self)
                 if dlg.exec() != QtWidgets.QDialog.Accepted:
