@@ -13,7 +13,10 @@ What differs from the Qt model is what a Qt-free app must do differently:
 * the file choosers (add files, add folder, the results CSV, the database) are requests the app answers with its in-app
   dialogs;
 * the session (datasets, fit client, action dispatcher, a per-run screenshot) is injectable, so a test runs a whole batch
-  against fakes; without one the process-global ChiSurf session is used exactly as the Qt tool uses it.
+  against fakes; without one the process-global ChiSurf session is used exactly as the Qt tool uses it;
+* the per-run picture for the DOCX report is the template fit's emtk window drawn on the CPU rasteriser
+  (:func:`fit_window_png`) where the Qt run grabbed the fit sub-window. The worker hands each capture to the thread that
+  polls the model (the window's), as the Qt run grabbed between two fits, so the fit is drawn in the state its run left.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import pathlib
 import queue
 import tempfile
 import threading
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -35,6 +39,40 @@ from ..core import runner
 from .view_model import BatchViewModel
 
 logger = logging.getLogger(__name__)
+
+#: Size of the per-run fit picture in the DOCX report (the Qt run grabbed the fit sub-window at its screen size).
+CAPTURE_SIZE = (1000, 640)
+#: How long the worker waits for the window thread to draw one picture before it goes on without it.
+CAPTURE_TIMEOUT = 60.0
+
+
+def fit_window_png(fit: Any, path: str, size: tuple[int, int] = CAPTURE_SIZE) -> str:
+    """Draw *fit*'s emtk window (its first page, as a newly opened fit window shows it) into the PNG *path*.
+
+    Returns *path*, or ``""`` when the fit could not be drawn (the report then has no picture for that run, as the Qt
+    run had none when its grab failed).
+    """
+    try:
+        from emtk.export import save_png
+
+        from chisurf.emtk.fit_window import FitWindow
+
+        window = FitWindow("batch-capture", fit, str(getattr(fit, "name", "") or "Fit"))
+
+        class Frame:
+            """One frame as the shell draws a fit window: read the stale pages from the fit, then draw."""
+
+            def draw(self, painter, x, y, w, h):
+                window.poll()
+                window.app.draw(painter, x, y, w, h)
+
+        # the first frame builds the page, the second reads its curves from the fit, the last is the picture
+        save_png(Frame(), path, size=size, frames=4, painter="pil")
+        return path
+    except Exception:  # noqa: BLE001 - a picture that cannot be drawn must not stop the batch
+        logger.debug("batch: could not draw the fit window", exc_info=True)
+        return ""
+
 
 #: The steps, with the titles, subtitles and completion conditions of ``batch.view.json``.
 STEPS: tuple[Step, ...] = (
@@ -100,7 +138,12 @@ class BatchModel(Stepper, BatchViewModel):
     ) -> None:
         BatchViewModel.__init__(self)
         self.session = session
-        self.capture = capture
+        #: ``capture(out_dir, name, run_index) -> png path`` for the DOCX report, called on the polling thread. With
+        #: the process-global session (no *session*) the default draws the template fit's window, as the Qt run did.
+        self.capture = (
+            capture if capture is not None or session is not None else self.capture_fit_window
+        )
+        self._run_fit_index = -1
         self.init_steps()
         #: Whether a run is in progress (its worker thread is alive).
         self.running = False
@@ -403,11 +446,22 @@ class BatchModel(Stepper, BatchViewModel):
         self.progress = (0, len(items))
         self.progress_name = ""
         fit_index = self.fit_index()
+        self._run_fit_index = fit_index
         save_path = self.save_path.strip()
         self._thread = threading.Thread(
             target=self._work, args=(fit_index, items, save_path), daemon=True
         )
         self._thread.start()
+
+    def capture_fit_window(self, out_dir: str, name: str, run_index: int) -> str:
+        """The default per-run picture: the template fit's window after the run, as ``NNN_<name>.png`` in *out_dir*."""
+        try:
+            fit = self._fit_client().get_fit_objects()[self._run_fit_index]
+        except Exception:  # noqa: BLE001 - no fit to draw: no picture
+            logger.debug("batch: no fit to capture", exc_info=True)
+            return ""
+        png = os.path.join(out_dir, f"{run_index:03d}_{runner.sanitize_filename(name)}.png")
+        return fit_window_png(fit, png)
 
     def _work(self, fit_index: int, items: list, save_path: str) -> None:
         """The worker: restore, fit and collect every item, then write the CSV, the DOCX and the ZIP."""
@@ -422,7 +476,11 @@ class BatchModel(Stepper, BatchViewModel):
             if self.capture is not None:
 
                 def on_complete(item, run_index, key):
-                    return self.capture(shots_dir, item.name, run_index)
+                    # Drawn by the thread that polls the model, while this worker waits: the fit stays as its run left it.
+                    done, path = threading.Event(), [""]
+                    self._events.put(("capture", (shots_dir, item.name, run_index), path, done))
+                    done.wait(CAPTURE_TIMEOUT)
+                    return path[0]
 
             results = runner.run_batch(
                 fit_index,
@@ -467,6 +525,15 @@ class BatchModel(Stepper, BatchViewModel):
             except queue.Empty:
                 break
             changed = True
+            if event[0] == "capture":
+                _, args, path, done = event
+                try:
+                    path[0] = str(self.capture(*args) or "") if self.capture is not None else ""
+                except Exception:  # noqa: BLE001 - a failed picture leaves that run without one
+                    logger.debug("batch: capture failed", exc_info=True)
+                finally:
+                    done.set()
+                continue
             if event[0] == "progress":
                 _, done, total, name = event
                 self.progress, self.progress_name = (done, total), name
@@ -488,8 +555,10 @@ class BatchModel(Stepper, BatchViewModel):
     def wait(self, timeout: float = 30.0) -> None:
         """Block until the run ends (tests and scripts)."""
         thread = self._thread
-        if thread is not None:
-            thread.join(timeout)
+        deadline = time.monotonic() + timeout
+        while thread is not None and thread.is_alive() and time.monotonic() < deadline:
+            self.poll()  # the worker may be waiting for a capture drawn here
+            thread.join(0.02)
         self.poll()
 
     # -- persistence ------------------------------------------------------------------------------------------------- #

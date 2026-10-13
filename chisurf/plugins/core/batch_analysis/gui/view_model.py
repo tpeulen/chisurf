@@ -1,12 +1,11 @@
-"""Qt-free-ish view-model backing the Batch-Analysis wizard.
+"""Qt-free view-model backing the Batch-Analysis wizard.
 
 Holds the wizard's state (selected files, template fit, save path, loaded-dataset
 selection) and exposes the ``source`` methods (HTML info panels), the
 ``options_source`` for the fit combo, the zero-arg ``action`` methods (button-row
 callbacks) and the ``complete_when`` booleans that drive the step ✓ marks. All
-layout lives in ``batch.view.json``; this class carries no Qt layout code — the
-``run`` action imports Qt lazily (progress dialog, screenshots, message boxes)
-while the numeric work is delegated to :mod:`...core.runner`.
+layout lives in ``batch.view.json``; the numeric work is :mod:`...core.runner`, and the run itself (worker thread,
+progress bar, result lines) is :class:`~.model.BatchModel`'s, the model the emtk app draws.
 
 Mirrors :class:`chisurf.plugins.core.boarding.view_model.BoardingViewModel`.
 """
@@ -14,9 +13,7 @@ Mirrors :class:`chisurf.plugins.core.boarding.view_model.BoardingViewModel`.
 from __future__ import annotations
 
 import logging
-import os
 import pathlib
-import tempfile
 from collections.abc import Callable
 
 from ..core import runner
@@ -189,116 +186,12 @@ class BatchViewModel:
         self.save_path = str(value or "")
 
     def run(self) -> None:
-        """Run the batch: assemble the queue, drive the core runner, save outputs.
+        """Run the batch (the *Run batch* button of ``batch.view.json``).
 
-        Imports Qt lazily for the progress dialog, per-run screenshots and the
-        final message box; the numeric work lives in :func:`...core.runner.run_batch`.
+        The run belongs to :class:`~.model.BatchModel`, which drives :func:`...core.runner.run_batch` on a worker
+        thread and reports progress, results and failures as lines in its window.
         """
-        from qtpy import QtCore, QtWidgets
-
-        from chisurf.gui import dialogs
-        from chisurf.gui.progress import ChiSurfProgress
-
-        items = self.build_items()
-        fit_index = self.fit_index()
-        if not items:
-            dialogs.warning(None, "No data", "Select datasets or add files first.")
-            return
-        if fit_index < 0:
-            dialogs.warning(None, "No fit", "Select a template fit first.")
-            return
-
-        save_path = (self.save_path or "").strip()
-        if not save_path:
-            save_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-                None, "Save results", "", "CSV Files (*.csv);;All Files (*)"
-            )
-            if not save_path:
-                return
-            self.save_path = save_path
-
-        exports_dir = tempfile.mkdtemp(prefix="chisurf_batch_fit_exports_")
-        screenshot_dir = tempfile.mkdtemp(prefix="chisurf_batch_")
-
-        progress = ChiSurfProgress(None, "Running fits…", len(items), cancellable=False)
-        progress.setWindowTitle("Batch Analysis")
-        progress.setCancelButton(None)
-        progress.setWindowModality(QtCore.Qt.WindowModal)
-        progress.show()
-        QtWidgets.QApplication.processEvents()
-
-        def _on_progress(i: int, total: int, name: str) -> None:
-            progress.setValue(i)
-            progress.setLabelText(f"{i}/{total}: {os.path.basename(name)}")
-            QtWidgets.QApplication.processEvents()
-
-        def _on_run_complete(item, run_index, key):
-            return self._capture_screenshot(screenshot_dir, item.name, run_index)
-
-        try:
-            results = runner.run_batch(
-                fit_index,
-                items,
-                on_progress=_on_progress,
-                on_run_complete=_on_run_complete,
-                fit_export_dir=exports_dir,
-            )
-        except Exception as exc:
-            progress.close()
-            logger.warning("batch run failed", exc_info=True)
-            dialogs.error(None, "Batch failed", str(exc))
-            return
-        finally:
-            progress.close()
-
-        self._results = results
-        results.write_csv(save_path)
-
-        docx_path = os.path.splitext(save_path)[0] + ".docx"
-        docx_ok, _ = runner.write_docx(
-            results.rows,
-            docx_path,
-            results.file_order,
-            results.screenshot_map,
-            csv_name=os.path.basename(save_path),
-        )
-        zip_base = os.path.splitext(save_path)[0] + "_fit_results"
-        zip_out = runner.zip_directory(exports_dir, zip_base)
-
-        lines = [f"CSV: {save_path}"]
-        if docx_ok:
-            lines.append(f"DOCX: {docx_path}")
-        if zip_out:
-            lines.append(f"Per-run exports (ZIP): {zip_out}")
-        self._status_html = (
-            "<p style='color:#2e7d32'><b>Done.</b></p><pre>" + "\n".join(lines) + "</pre>"
-        )
-        self.notify("refresh")
-        dialogs.information(None, "Batch complete", "\n".join(lines))
-
-    # ── screenshot helper (Qt) ──────────────────────────────────────────
-    def _capture_screenshot(self, out_dir: str, name: str, run_index: int) -> str:
-        """Grab the current fit sub-window to a PNG; return the path (or "")."""
-        try:
-            from qtpy import QtWidgets
-
-            import chisurf as cs
-
-            widget = None
-            try:
-                widget = cs.cs.mdiarea.currentSubWindow()
-            except Exception:
-                widget = None
-            if widget is None:
-                widget = QtWidgets.QApplication.activeWindow()
-            if widget is None:
-                return ""
-            png = os.path.join(out_dir, f"{run_index:03d}_{runner.sanitize_filename(name)}.png")
-            widget.grab().save(png, "PNG")
-            return png
-        except Exception:
-            logger.debug("batch: screenshot failed", exc_info=True)
-            return ""
+        raise NotImplementedError("the batch runs in BatchModel (gui/model.py)")
 
 
 __all__ = ["BatchViewModel"]

@@ -25,7 +25,7 @@ consolidated table) and a **ZIP** of the per-run numeric exports.
 batch_analysis/
   manifest.json           plugin metadata + gui/cli entrypoints
   core/runner.py          Qt-free batch runner + CSV/DOCX/ZIP exporters
-  gui/view_model.py       BatchViewModel (state, info sources, run action)
+  gui/view_model.py       BatchViewModel (state, info sources; the run is gui/model.py)
   gui/tool.py             AutoForm host (BatchProcessingWizard)
   gui/loaded_datasets.py  embedded dataset check-list widget
   batch.view.json         declarative wizard layout (AutoForm)

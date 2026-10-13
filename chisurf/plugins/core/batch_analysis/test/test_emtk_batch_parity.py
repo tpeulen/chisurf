@@ -1,7 +1,8 @@
 """The native Batch Analysis wizard against the Qt wizard: same steps, same selection, same numbers, same files.
 
-The Qt side is built offscreen from the same fakes (``fakes.FakeSession``): the Qt view model's ``run`` writes the CSV, DOCX
-and ZIP, the Qt ``LoadedDatasetSelector`` and ``PathListWidget`` list what the user picked. Everything runs on temporary
+The Qt side is the shared view model (steps, texts, completion) and, for the run, ``qt_reference.json``: what the
+retired Qt ``run`` wrote and showed (CSV, DOCX, ZIP, progress labels, message boxes) on the same fakes
+(``fakes.FakeSession``), recorded once from the live Qt code before it was deleted. Everything runs on temporary
 settings; the real ``~/.chisurf`` is checked unchanged.
 """
 
@@ -211,82 +212,70 @@ def test_remove_and_clear_match_the_qt_buttons(tmp_path):
 
 # -- the run: the same numbers and files as the Qt run ------------------------------------------------------------------- #
 
-
-def qt_run(monkeypatch, tmp_path, session, files, indices, save):
-    """Drive the Qt view model's own ``run`` (dialogs recorded, no real progress dialog) on *session*'s fakes."""
-    import chisurf as cs
-    import chisurf.core.actions
-    from chisurf.core.api import fitting_client
-    from chisurf.gui import dialogs
-
-    shown = []
-    monkeypatch.setattr(
-        dialogs,
-        "information",
-        lambda parent, title, text: shown.append(("information", title, text)),
-    )
-    monkeypatch.setattr(
-        dialogs, "warning", lambda parent, title, text: shown.append(("warning", title, text))
-    )
-    monkeypatch.setattr(
-        dialogs, "error", lambda parent, title, text: shown.append(("error", title, text))
-    )
-    monkeypatch.setattr(fitting_client, "get_fitting_client", lambda: session.client)
-    monkeypatch.setattr(
-        chisurf.core.actions, "dispatch", lambda name, payload: session.dispatch(name, payload)
-    )
-    monkeypatch.setattr(cs, "imported_datasets", session.datasets, raising=False)
-    qt = BatchViewModel()
-    qt.files = list(files)
-    qt.selected_dataset_indices = list(indices)
-    qt.selected_fit_name = "Template fit"
-    qt.save_path = str(save)
-    qt.run()
-    assert qt._results is not None, shown  # noqa: SLF001
-    return qt, shown
+#: The retired Qt run (``BatchViewModel.run``: progress dialog, save dialog, message boxes), recorded once from the live
+#: Qt code on these fakes before it was deleted: files ``run_01.sm``/``run_02.sm``, datasets [0, 2], fit "Template fit".
+#: ``<tmp>`` stands for the test's ``tmp_path``; the Qt run wrote into ``<tmp>/qt``.
+QT = json.loads((Path(__file__).parent / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-def test_a_batch_writes_the_same_csv_zip_and_rows_as_the_qt_run(qapp, monkeypatch, tmp_path):
-    files = make_files(tmp_path)
-    (tmp_path / "qt").mkdir()
-    (tmp_path / "nat").mkdir()
-    qt_session, nat_session = FakeSession(), FakeSession()
-    qt, shown = qt_run(
-        monkeypatch, tmp_path, qt_session, files, [0, 2], tmp_path / "qt" / "results.csv"
-    )
-    native = BatchModel(session=nat_session)
+def native_run(tmp_path, session, files, indices, save):
+    """Run the native model on *session*'s fakes; returns it and the progress texts it showed."""
+    native = BatchModel(session=session)
     native.files = list(files)
-    native.selected_dataset_indices = [0, 2]
+    native.selected_dataset_indices = list(indices)
     native.selected_fit_name = "Template fit"
-    native.save_path = str(tmp_path / "nat" / "results.csv")
+    native.save_path = str(save)
+    shown = []
+    events = native._events  # noqa: SLF001
+
+    class Recording:
+        """The worker's queue, noting the progress bar's text for every progress event."""
+
+        def put(self, event):
+            if event[0] == "progress":
+                _, done, total, name = event
+                bar = type("Bar", (), {"progress": (done, total), "progress_name": name})()
+                shown.append(BatchModel.progress_text(bar))  # the model's own text over the bar
+            events.put(event)
+
+        def get_nowait(self):
+            return events.get_nowait()
+
+    native._events = Recording()  # noqa: SLF001
     native.run()
     native.wait()
-    assert native.message == "Batch complete" and native.message_ok and not native.running
-    assert native.result_rows() == [
-        {c: r.get(c, "") for c in runner.FIELDNAMES} for r in qt._results.rows
-    ]  # noqa: SLF001
-    assert (tmp_path / "nat" / "results.csv").read_text() == (
-        tmp_path / "qt" / "results.csv"
-    ).read_text()
-    names = lambda p: sorted(zipfile.ZipFile(p).namelist())  # noqa: E731
-    assert names(tmp_path / "nat" / "results_fit_results.zip") == names(
-        tmp_path / "qt" / "results_fit_results.zip"
+    return native, shown
+
+
+def test_a_batch_writes_the_same_csv_zip_and_rows_as_the_qt_run(tmp_path):
+    files = make_files(tmp_path)
+    (tmp_path / "nat").mkdir()
+    session = FakeSession()
+    native, progress = native_run(
+        tmp_path, session, files, [0, 2], tmp_path / "nat" / "results.csv"
     )
-    assert (tmp_path / "nat" / "results.docx").exists() == (
-        tmp_path / "qt" / "results.docx"
-    ).exists()
-    assert [name for name, _ in nat_session.log] == [name for name, _ in qt_session.log]
-    assert [(p.name, p.value, p.fixed) for p in nat_session.fits[0].model.parameters_all] == [
-        (p.name, p.value, p.fixed) for p in qt_session.fits[0].model.parameters_all
+    tmp = lambda text: text.replace(str(tmp_path), "<tmp>")  # noqa: E731
+    assert native.message == "Batch complete" and native.message_ok and not native.running
+    assert [
+        {k: tmp(v) if isinstance(v, str) else v for k, v in r.items()} for r in native.result_rows()
+    ] == QT["rows"]
+    assert tmp((tmp_path / "nat" / "results.csv").read_text()) == QT["csv"]
+    assert (
+        sorted(zipfile.ZipFile(tmp_path / "nat" / "results_fit_results.zip").namelist())
+        == QT["zip_names"]
+    )
+    assert (tmp_path / "nat" / "results.docx").exists() == QT["docx_written"]
+    assert [name for name, _ in session.log] == QT["dispatched"]
+    assert [[p.name, p.value, p.fixed] for p in session.fits[0].model.parameters_all] == QT[
+        "parameters_after"
     ]
-    # the Qt box listed the CSV, the DOCX when written and the ZIP; the window lists the same lines
-    qt_lines = shown[-1][2].splitlines()
-    mine = [
-        line.replace("/nat/", "/qt/")
-        for line in native.outputs
-        if not line.startswith("DOCX report not written")
-    ]
-    assert mine == qt_lines
+    # the Qt progress dialog's label, step by step, is the text over the native progress bar
+    assert progress == QT["progress_labels"]
+    # the Qt "Batch complete" box listed the CSV, the DOCX when written and the ZIP; the window lists the same lines
+    ((kind, title, text),) = QT["boxes"]
+    assert (kind, title) == ("information", native.message)
+    mine = [tmp(line).replace("/nat/", "/qt/") for line in native.outputs]
+    assert mine == text.splitlines()
     rows = native.result_rows()
     assert [r["Filename"] for r in rows[::3]] == ["Sample A", "Sample C", files[0], files[1]]
     assert [r["Run"] for r in rows[::3]] == ["1", "2", "3", "4"]
@@ -298,53 +287,80 @@ def test_a_batch_writes_the_same_csv_zip_and_rows_as_the_qt_run(qapp, monkeypatc
     ]  # restored to the template each run
 
 
-def test_the_results_table_cells_equal_the_qt_results_html(qapp, monkeypatch, tmp_path):
-    session = FakeSession()
-    (tmp_path / "o").mkdir()
-    qt, _ = qt_run(
-        monkeypatch, tmp_path, session, make_files(tmp_path), [0], tmp_path / "o" / "r.csv"
-    )
-    native = BatchModel(session=FakeSession())
-    native.files = make_files(tmp_path)
-    native.selected_dataset_indices = [0]
-    native.selected_fit_name = "Template fit"
-    native.save_path = str(tmp_path / "o2.csv")
-    native.run()
-    native.wait()
-    html = qt.results_html()
-    cells = re.findall(r"<td>(.*?)</td>", html)
-    flat = [str(r[c]) for r in native.result_rows() for c in runner.FIELDNAMES]
-    assert cells == flat
+def test_the_results_table_cells_equal_the_qt_results_html(tmp_path):
+    files = make_files(tmp_path)
+    native, _ = native_run(tmp_path, FakeSession(), files, [0, 2], tmp_path / "o2.csv")
+    flat = [
+        str(r[c]).replace(str(tmp_path), "<tmp>")
+        for r in native.result_rows()
+        for c in runner.FIELDNAMES
+    ]
+    assert flat == QT["results_html_cells"]
 
 
-def test_no_data_no_fit_and_a_missing_csv_are_the_qt_warnings_as_lines_and_a_chooser(
-    qapp, monkeypatch, tmp_path
-):
-    shown = []
-    from chisurf.gui import dialogs
-
-    monkeypatch.setattr(dialogs, "warning", lambda parent, title, text: shown.append((title, text)))
-    qt = BatchViewModel()
-    qt.fit_names = lambda: ["Template fit"]
-    qt.run()
+def test_no_data_no_fit_and_a_missing_csv_are_the_qt_warnings_as_lines_and_a_chooser():
+    (no_data, no_fit) = QT["warnings"]
     native = BatchModel(session=FakeSession())
     native.run()
-    assert shown[0] == ("No data", "Select datasets or add files first.")
-    assert (
-        native.message == "No data: Select datasets or add files first." and not native.message_ok
-    )
-    qt2 = BatchViewModel()
-    qt2.files = ["/x/a.sm"]
-    qt2.run()
+    assert native.message == ": ".join(no_data) and not native.message_ok
     native2 = BatchModel(session=FakeSession(fits=()))
     native2.files = ["/x/a.sm"]
     native2.run()
-    assert shown[1] == ("No fit", "Select a template fit first.")
-    assert native2.message == "No fit: Select a template fit first."
+    assert native2.message == ": ".join(no_fit)
     native3 = BatchModel(session=FakeSession())
     native3.files = ["/x/a.sm"]
-    native3.run()  # no CSV path: the Qt tool opened a save dialog
+    native3.run()  # no CSV path: the Qt tool opened a "Save results" CSV dialog
+    assert QT["save_dialog"][0][0] == "Save results"
     assert native3.dialog_request == "results" and not native3.running
+
+
+def test_each_runs_picture_is_drawn_on_the_polling_thread_and_goes_into_the_docx(tmp_path):
+    """The Qt run grabbed the fit sub-window between two fits; the worker hands each capture to the window's thread."""
+    import threading
+
+    from emtk.testing import png_encode
+
+    threads, names = [], []
+
+    def capture(out_dir, name, run_index):
+        threads.append(threading.get_ident())
+        names.append((name, run_index))
+        path = Path(out_dir) / f"{run_index:03d}.png"
+        path.write_bytes(png_encode(2, 2, bytes([200, 30, 30, 255] * 4)))
+        return str(path)
+
+    native = BatchModel(session=FakeSession(), capture=capture)
+    native.files = make_files(tmp_path)
+    native.selected_dataset_indices = [0, 2]
+    native.selected_fit_name = "Template fit"
+    native.save_path = str(tmp_path / "r.csv")
+    native.run()
+    native.wait()
+    assert native.message == "Batch complete", native.message
+    assert threads == [threading.get_ident()] * 4
+    assert [Path(n).name for n, _ in names] == ["Sample A", "Sample C", "run_01.sm", "run_02.sm"]
+    assert len(native._results.screenshot_map) == 4  # noqa: SLF001
+    assert all(Path(p).is_file() for p in native._results.screenshot_map.values())  # noqa: SLF001
+
+
+def test_the_default_picture_is_the_template_fit_window(monkeypatch, tmp_path):
+    """Without an injected session the model draws the template fit's emtk window (the Qt run grabbed its sub-window)."""
+    from ..gui import model as model_module
+
+    session = FakeSession()
+    native = BatchModel(session=session)
+    assert native.capture is None  # an injected session takes no pictures unless asked
+    native.capture = native.capture_fit_window
+    drawn = []
+    monkeypatch.setattr(
+        model_module, "fit_window_png", lambda fit, path: drawn.append((fit, path)) or path
+    )
+    native._run_fit_index = 0  # noqa: SLF001
+    out = native.capture_fit_window(str(tmp_path), "a/b.sm", 3)
+    assert drawn == [(session.fits[0], out)] and Path(out).name == "003_b.png"
+    # a fit that cannot be drawn gives no picture, never an error
+    monkeypatch.undo()
+    assert model_module.fit_window_png(object(), str(tmp_path / "x.png")) == ""
 
 
 def test_a_failing_fit_is_reported_in_the_window_as_the_qt_error_box_reported_it(tmp_path):

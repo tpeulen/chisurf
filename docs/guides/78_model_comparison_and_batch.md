@@ -153,8 +153,9 @@ on the donor-only decay, and the results path.
   asks for it.
 * **▶️ Run batch** — for each item: restore the template's parameter values and
   fixed flags, assign the dataset (or load the file), run the fit, save its
-  curves, grab a screenshot of the fit window, and record every parameter. A
-  progress dialog counts the items; a message box lists the written files.
+  curves, draw a picture of the fit window for the report, and record every
+  parameter. The progress bar under the button counts the items
+  (`2/4: Decay_577D`); when the run ends the window lists the written files.
 
 ### 5. Results
 
