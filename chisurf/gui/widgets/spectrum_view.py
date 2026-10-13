@@ -118,14 +118,16 @@ class SpectrumView(QtWidgets.QWidget):
         self.setLayout(QtWidgets.QVBoxLayout(self))
         self.layout().setContentsMargins(0, 0, 0, 0)
 
-        self.plot = cp.Plot(background=None)
+        # A Qt-free chiplot panel drawn by emtk; ``cp.host`` only hosts it here.
+        self.plot = cp.Panel(background=None)
         self.plot.set_axis_style(line="#b0b0b0", text="#d0d0d0")
         self.plot.set_si_prefix(x=False, y=False)
         self.plot.legend()
         self.plot.set_legend_style(text="#d0d0d0")
         self.plot.set_labels(bottom="Wavelength (nm)", left="Normalized Value (a.u.)")
         self.plot.grid(x=True, y=True, alpha=0.3)
-        self.layout().addWidget(self.plot)
+        self.plot_widget = cp.host(self.plot)
+        self.layout().addWidget(self.plot_widget)
 
         if self._model is not None and self._target:
             self.refresh()

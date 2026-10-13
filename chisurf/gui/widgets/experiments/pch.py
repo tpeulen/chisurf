@@ -317,17 +317,16 @@ class PCHController(reader.ExperimentReaderController, QtWidgets.QWidget):
         header.addWidget(self.toolbtn_clear_preview)
         preview_layout.addLayout(header)
 
-        self.preview_plot = cp.Plot(title="Photon Counting Histogram")
+        # A Qt-free chiplot panel drawn by emtk; ``cp.host`` only hosts it in the form.
+        self.preview_plot = cp.Panel(title="Photon Counting Histogram")
         try:
             self.preview_plot.set_log(y=True)
         except Exception:
             pass
         self.preview_plot.set_labels(bottom="k", left="P(k)")
-        try:
-            self.preview_plot.setMaximumHeight(200)
-        except Exception:
-            pass
-        preview_layout.addWidget(self.preview_plot)
+        self.preview_plot_widget = cp.host(self.preview_plot)
+        self.preview_plot_widget.setMaximumHeight(200)
+        preview_layout.addWidget(self.preview_plot_widget)
 
         layout.addWidget(preview_group)
 

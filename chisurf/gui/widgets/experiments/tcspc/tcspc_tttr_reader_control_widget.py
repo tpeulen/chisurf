@@ -275,13 +275,15 @@ class TCSPCTTTRReaderControlWidget(
         header.addWidget(self.toolbtn_clear)
         preview_layout.addLayout(header)
 
-        self.preview_plot = cp.Plot(title="TCSPC decay preview")
+        # A Qt-free chiplot panel drawn by emtk; ``cp.host`` only hosts it in the form.
+        self.preview_plot = cp.Panel(title="TCSPC decay preview")
         self.preview_plot.set_labels(bottom="Time (ns)", left="Counts")
         try:
             self.preview_plot.set_log(y=True)
         except Exception:
             pass
-        preview_layout.addWidget(self.preview_plot)
+        self.preview_plot_widget = cp.host(self.preview_plot)
+        preview_layout.addWidget(self.preview_plot_widget)
         layout.addWidget(preview_group)
 
         # Internal preview state

@@ -44,9 +44,10 @@ def _bench(n, log_y=False, repeats=REPEATS):
     from chisurf.gui import chiplot as cp
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    plot = cp.Plot()
-    plot.resize(*WIDGET_SIZE)
-    plot.show()
+    plot = cp.Panel()
+    widget = cp.host(plot)
+    widget.resize(*WIDGET_SIZE)
+    widget.show()
     plot.set_log(y=log_y)
 
     rng = np.random.default_rng(0)
@@ -54,14 +55,14 @@ def _bench(n, log_y=False, repeats=REPEATS):
     y = np.abs(rng.standard_normal(n)) + 1e-4
     plot.line(x, y, pen=(255, 255, 0), width=1)
     app.processEvents()
-    plot.grab()  # warm-up
+    widget.grab()  # warm-up
 
     start = time.perf_counter()
     for _ in range(repeats):
-        plot.update()
-        plot.grab()
+        widget.update()
+        widget.grab()
     elapsed = (time.perf_counter() - start) / repeats
-    plot.close()
+    widget.close()
     return elapsed
 
 

@@ -10,7 +10,7 @@ What matplotlib was doing in the tree, and where each use goes instead:
 * **Colour tables and colour parsing** -- ``emtk.colormaps``.
 * **Static figures written to a file** -- ``chiplot.figure``, drawn by emtk on
   the CPU rasteriser, so no window, GPU or Qt is needed.
-* **Interactive plots** -- ``chiplot.Plot``, which is the plotting API anyway.
+* **Interactive plots** -- ``chiplot.Panel``, which is the plotting API anyway.
 * **LaTeX formulas as images** -- a math typesetter in emtk (``emtk.mathtext``
   still hands the layout to matplotlib).
 
@@ -105,7 +105,7 @@ def test_no_new_matplotlib_imports():
         + "\n  ".join(new_offenders)
         + "\n\nDo NOT add these to test/matplotlib_import_allowlist.txt: that "
         "list only shrinks. Colours: emtk.colormaps. A figure written to a "
-        "file: chiplot.figure. A plot in a GUI: chiplot.Plot."
+        "file: chiplot.figure. A plot in a GUI: chiplot.Panel."
     )
 
 

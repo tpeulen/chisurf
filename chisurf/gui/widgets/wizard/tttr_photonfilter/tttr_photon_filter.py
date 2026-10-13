@@ -2658,7 +2658,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         self.update_spinbox_7_state()  # Update spinBox_7 enabled state based on checkBox_5
 
         # Control initial plot visibility
-        self.pw_dT.setVisible(show_dT)
+        self.pw_dT_widget.setVisible(show_dT)
         self.toolButton_4.setChecked(show_filter)
         self.toolButton_2.setChecked(show_mcs)
         self.toolButton_3.setChecked(show_decay)

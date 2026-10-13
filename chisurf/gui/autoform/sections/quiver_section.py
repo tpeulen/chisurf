@@ -77,7 +77,8 @@ class QuiverSectionWidget(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        self.plot = cp.Plot()
+        # The panel is the Qt-free chiplot panel emtk draws; ``cp.host`` only hosts it here.
+        self.plot = cp.Panel()
         self.plot.set_labels(
             bottom=str(options.get("x_label", "x") or "x"),
             left=str(options.get("y_label", "y") or "y"),
@@ -90,7 +91,8 @@ class QuiverSectionWidget(QtWidgets.QWidget):
             self.plot.invert_y(True)
         except Exception:
             logger.debug("chiplot backend cannot orient the axes", exc_info=True)
-        layout.addWidget(self.plot, 1)
+        self.plot_widget = cp.host(self.plot)
+        layout.addWidget(self.plot_widget, 1)
         self.caption = QtWidgets.QLabel("")
         self.caption.setStyleSheet("color: palette(mid);")
         layout.addWidget(self.caption)

@@ -350,11 +350,11 @@ def test_residuals_are_masked_to_the_fit_range():
     assert np.isnan(masked[200:]).all()
 
 
-def test_a_masked_residual_range_is_not_drawn_across(qapp):
+def test_a_masked_residual_range_is_not_drawn_across():
     """Residuals outside the fit window are NaN and must read as a gap (chiplot breaks lines at them)."""
-    from chisurf.gui import chiplot as cp
+    from chisurf import chiplot as cp
 
-    plot = cp.Plot()
+    plot = cp.Panel()
     y = np.array([1.0, 2.0, np.nan, 4.0])
     handle = plot.line(np.arange(y.size), y)
     _, drawn = handle.get_data()

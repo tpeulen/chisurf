@@ -219,7 +219,8 @@ class _RtWindow(QtWidgets.QWidget):
         controls.addWidget(reset, 2, 3)
         layout.addLayout(controls)
 
-        self.plot = cp.Plot(self)
+        # The panel is the Qt-free chiplot panel emtk draws; ``cp.host`` only hosts it here.
+        self.plot = cp.Panel()
         self.plot.grid(x=True, y=True, alpha=0.25)
         self.plot.set_labels(bottom="Time", left="r(t)")
         self.plot.set_ylim(0.0, 0.5, padding=0.0)
@@ -233,7 +234,8 @@ class _RtWindow(QtWidgets.QWidget):
             )
             for name, colour, style in _CURVES
         }
-        layout.addWidget(self.plot)
+        self.plot_widget = cp.host(self.plot, self)
+        layout.addWidget(self.plot_widget)
 
         buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
         save = buttons.addButton("Save CSV", QtWidgets.QDialogButtonBox.ActionRole)

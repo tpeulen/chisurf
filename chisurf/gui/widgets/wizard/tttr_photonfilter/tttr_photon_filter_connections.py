@@ -10,10 +10,10 @@ def setup_connections(page):
     page.actionRegionUpdate.triggered.connect(page.onRegionUpdate)
 
     # Tool button connections
-    page.toolButton_2.toggled.connect(page.pw_mcs.setVisible)
-    page.toolButton_3.toggled.connect(page.pw_decay.setVisible)
-    page.toolButton_4.toggled.connect(page.pw_filter.setVisible)
-    page.toolButton_7.toggled.connect(page.pw_burst_histogram.setVisible)
+    page.toolButton_2.toggled.connect(page.pw_mcs_widget.setVisible)
+    page.toolButton_3.toggled.connect(page.pw_decay_widget.setVisible)
+    page.toolButton_4.toggled.connect(page.pw_filter_widget.setVisible)
+    page.toolButton_7.toggled.connect(page.pw_burst_histogram_widget.setVisible)
     page.toolButton_5.clicked.connect(page.save_selection)
     page.toolButton_6.clicked.connect(page.onClearFiles)
 

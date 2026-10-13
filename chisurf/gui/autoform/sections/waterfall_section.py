@@ -99,7 +99,7 @@ class WaterfallSectionWidget(QtWidgets.QWidget):
             if payload.get("title"):
                 self._plot.set_title(payload["title"])
             if payload.get("x_label"):
-                p = self._plot.get_plot_widget()
+                p = self._plot.get_panel()
                 p.set_labels(bottom=payload["x_label"])
                 p.set_log(x=bool(payload.get("log_x", False)), y=False)
         # Cheap per-refresh position update (e.g. during audio playback).

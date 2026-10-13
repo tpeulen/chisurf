@@ -264,7 +264,7 @@ def show_kappa2_distribution_plot(
     k2_vals_sorted = k2_vals[order]
     weights_sorted = amps[order]
 
-    plot_widget = cp.Plot(dialog)
+    plot_widget = cp.Panel()
     plot_widget.grid(x=True, y=True, alpha=0.3)
     plot_widget.set_labels(bottom="k2", left="Weight")
     plot_widget.legend()
@@ -307,7 +307,7 @@ def show_kappa2_distribution_plot(
     except Exception:
         pass
 
-    layout.addWidget(plot_widget)
+    layout.addWidget(cp.host(plot_widget, dialog))
 
     button_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
     button_box.accepted.connect(dialog.accept)
@@ -391,7 +391,7 @@ def show_rapp_rda_distribution_plot(
     layout.addWidget(info_label)
 
     # First plot: κ² distribution
-    plot_k2 = cp.Plot(dialog)
+    plot_k2 = cp.Panel()
     plot_k2.grid(x=True, y=True, alpha=0.3)
     plot_k2.set_labels(bottom="κ²", left="Probability")
     plot_k2.legend()
@@ -414,10 +414,10 @@ def show_rapp_rda_distribution_plot(
         style="dash",
         name=f"⟨κ²⟩ = {k2_mean:.3f}",
     )
-    layout.addWidget(plot_k2)
+    layout.addWidget(cp.host(plot_k2, dialog))
 
     # Second plot: R_app/R_DA ratio distribution
-    plot_widget = cp.Plot(dialog)
+    plot_widget = cp.Panel()
     plot_widget.grid(x=True, y=True, alpha=0.3)
     plot_widget.set_labels(bottom="Rₐₚₚ/Rᴅᴀ", left="Probability Density")
     plot_widget.legend()
@@ -446,7 +446,7 @@ def show_rapp_rda_distribution_plot(
     except Exception:
         pass
 
-    layout.addWidget(plot_widget)
+    layout.addWidget(cp.host(plot_widget, dialog))
 
     # Second plot: R_DA and R_app distributions after convolution
     # Get distance distribution from fret_model
@@ -502,7 +502,7 @@ def show_rapp_rda_distribution_plot(
                         r_app_hist_norm = r_app_hist
 
                     # Create second plot
-                    plot_widget2 = cp.Plot(dialog)
+                    plot_widget2 = cp.Panel()
                     plot_widget2.grid(x=True, y=True, alpha=0.3)
                     plot_widget2.set_labels(bottom="Distance (Å)", left="Normalized Intensity")
                     plot_widget2.legend()
@@ -527,7 +527,7 @@ def show_rapp_rda_distribution_plot(
                         name="ρ(Rₐₚₚ)",
                     )
 
-                    layout.addWidget(plot_widget2)
+                    layout.addWidget(cp.host(plot_widget2, dialog))
         except Exception:
             # Silently skip if distance distribution cannot be processed
             pass

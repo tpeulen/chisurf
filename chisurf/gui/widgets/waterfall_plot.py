@@ -33,7 +33,8 @@ class WaterfallPlotWidget(QWidget):
         super().__init__(parent)
 
         # Plot components
-        self.plot = cp.Plot(self)
+        # A Qt-free chiplot panel drawn by emtk; ``cp.host`` only hosts it here.
+        self.plot = cp.Panel()
         self.waterfall_img: cp.handles.Image | None = None
         self.position_line: cp.handles.Marker | None = None
 
@@ -59,7 +60,8 @@ class WaterfallPlotWidget(QWidget):
         self.position_line = self.plot.hline(0.0, movable=False, pen=cp.to_pen("y", width=2))
         self.position_line.visible = False
 
-        layout.addWidget(self.plot)
+        self.plot_widget = cp.host(self.plot, self)
+        layout.addWidget(self.plot_widget)
 
     def _connect_signals(self):
         """Connect signals."""
@@ -206,6 +208,6 @@ class WaterfallPlotWidget(QWidget):
         """Set the plot title."""
         self.plot.set_title(title)
 
-    def get_plot_widget(self) -> cp.Plot:
-        """Get the underlying chiplot Plot for advanced customization."""
+    def get_panel(self) -> cp.Panel:
+        """The chiplot panel the waterfall is drawn on, for advanced customization."""
         return self.plot

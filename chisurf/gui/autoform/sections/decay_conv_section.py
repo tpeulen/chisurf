@@ -35,7 +35,8 @@ class DecayConvWidget(QtWidgets.QWidget):
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self._plot = cp.Plot(title=str(options["title"]) if options.get("title") else None)
+        # The panel is the Qt-free chiplot panel emtk draws; ``cp.host`` only hosts it here.
+        self._plot = cp.Panel(title=str(options["title"]) if options.get("title") else None)
         self._plot.set_log(y=True)
         self._plot.set_labels(bottom="micro-time channel", left="counts")
         self._plot.legend(offset=(-10, 10))
@@ -60,7 +61,8 @@ class DecayConvWidget(QtWidgets.QWidget):
             movable=True,
         )
         self._bg_region.on_change(self._on_bg_region, final=True)
-        layout.addWidget(self._plot, 1)
+        self._plot_widget = cp.host(self._plot)
+        layout.addWidget(self._plot_widget, 1)
         self.refresh()
 
     def _payload(self):

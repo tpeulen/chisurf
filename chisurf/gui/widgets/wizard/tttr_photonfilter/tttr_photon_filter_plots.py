@@ -9,39 +9,48 @@ COLOR_SELECTED = (0, 255, 255, 255)
 
 
 def create_plots(page):
-    """Build the page's plots (chiplot panels) and the draggable dT region."""
-    page.pw_burst_histogram = cp.Plot(parent=page, title="Burst histogram")
+    """Build the page's plots (chiplot panels) and the draggable dT region.
+
+    Each ``pw_*`` is a Qt-free :class:`chisurf.chiplot.Panel` drawn by emtk; the
+    page's layout holds its host widget, ``pw_*_widget`` (:func:`chisurf.gui.chiplot.host`).
+    """
+    page.pw_burst_histogram = cp.Panel(title="Burst histogram")
+    page.pw_burst_histogram_widget = cp.host(page.pw_burst_histogram, page)
     page.pw_burst_histogram.set_labels(left="Counts", bottom="Burst size (Nbr. Photons)")
-    page.pw_burst_histogram.resize(100, 80)
+    page.pw_burst_histogram_widget.resize(100, 80)
 
     pen_all = cp.to_pen(COLOR_ALL, width=1)
     pen_selected = cp.to_pen(COLOR_SELECTED, width=1)
 
-    page.pw_dT = cp.Plot(parent=page, title="Delta macro-time")
+    page.pw_dT = cp.Panel(title="Delta macro-time")
+    page.pw_dT_widget = cp.host(page.pw_dT, page)
     page.pw_dT.set_labels(left="dT (ms)", bottom="Photon Index")
     page.plot_unselected = page.pw_dT.line([1.0], [1.0], pen=pen_all)
     page.plot_selected = page.pw_dT.line([1.0], [1.0], pen=pen_selected)
-    page.pw_dT.resize(200, 40)
+    page.pw_dT_widget.resize(200, 40)
 
-    page.pw_mcs = cp.Plot(parent=page, title="Count rate display")
+    page.pw_mcs = cp.Panel(title="Count rate display")
+    page.pw_mcs_widget = cp.host(page.pw_mcs, page)
     page.pw_mcs.set_labels(left="Intensity (kHz)", bottom="Time (s)")
     page.plot_mcs_all = page.pw_mcs.line([1.0], [1.0], pen=pen_all)
     page.plot_mcs_selected = page.pw_mcs.line([1.0], [1.0], pen=pen_selected)
-    page.pw_mcs.resize(200, 80)
+    page.pw_mcs_widget.resize(200, 80)
 
-    page.pw_decay = cp.Plot(parent=page, title="Microtime histogram")
+    page.pw_decay = cp.Panel(title="Microtime histogram")
+    page.pw_decay_widget = cp.host(page.pw_decay, page)
     page.pw_decay.set_labels(left="Counts", bottom="Microtime (ns)")
     page.plot_decay_all = page.pw_decay.line([1.0], [1.0], pen=pen_all)
     page.plot_decay_selected = page.pw_decay.line([1.0], [1.0], pen=pen_selected)
-    page.pw_decay.resize(200, 80)
+    page.pw_decay_widget.resize(200, 80)
 
-    page.pw_filter = cp.Plot(parent=page, title="Filter/selection")
+    page.pw_filter = cp.Panel(title="Filter/selection")
+    page.pw_filter_widget = cp.host(page.pw_filter, page)
     page.pw_filter.set_labels(left="Selected (1) / Unselected (0)", bottom="Photon Index")
     page.pw_filter.link_x(page.pw_dT)
     page.pw_dT.set_interactive(mouse=False)
     page.pw_filter.set_interactive(mouse=False)
     page.plot_select = page.pw_filter.line([1.0], [1.0])
-    page.pw_filter.resize(200, 20)
+    page.pw_filter_widget.resize(200, 20)
 
     #: The dT axis is logarithmic, so the region below lives in log10 units.
     page._dT_log = True
@@ -108,8 +117,8 @@ def create_plots(page):
 
 def place_plots(page):
     # Place plots in layout
-    page.gridLayout_6.addWidget(page.pw_dT, 0, 0, 1, 3)
-    page.gridLayout_6.addWidget(page.pw_filter, 1, 0, 1, 3)
-    page.gridLayout_6.addWidget(page.pw_mcs, 2, 0, 1, 1)
-    page.gridLayout_6.addWidget(page.pw_decay, 2, 1, 1, 1)
-    page.gridLayout_6.addWidget(page.pw_burst_histogram, 0, 1, 2, 1)
+    page.gridLayout_6.addWidget(page.pw_dT_widget, 0, 0, 1, 3)
+    page.gridLayout_6.addWidget(page.pw_filter_widget, 1, 0, 1, 3)
+    page.gridLayout_6.addWidget(page.pw_mcs_widget, 2, 0, 1, 1)
+    page.gridLayout_6.addWidget(page.pw_decay_widget, 2, 1, 1, 1)
+    page.gridLayout_6.addWidget(page.pw_burst_histogram_widget, 0, 1, 2, 1)

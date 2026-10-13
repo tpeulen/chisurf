@@ -47,8 +47,9 @@ class DecayPanel(QtWidgets.QWidget):
     def __init__(self, parent=None, *, title: str = "", x_label: str = "Time (ch.)"):
         super().__init__(parent)
 
-        self.residual_plot = chiplot.Plot()
-        self.decay_plot = chiplot.Plot()
+        # Qt-free chiplot panels drawn by emtk; the Qt layout only hosts them.
+        self.residual_plot = chiplot.Panel()
+        self.decay_plot = chiplot.Panel()
 
         self.residual_plot.set_labels(left="Weighted residuals")
         self.residual_plot.grid(x=True, y=True)
@@ -65,8 +66,8 @@ class DecayPanel(QtWidgets.QWidget):
         inner = QtWidgets.QVBoxLayout()
         inner.setContentsMargins(0, 0, 0, 0)
         inner.setSpacing(0)
-        inner.addWidget(self.residual_plot, 1)
-        inner.addWidget(self.decay_plot, 3)
+        inner.addWidget(chiplot.host(self.residual_plot), 1)
+        inner.addWidget(chiplot.host(self.decay_plot), 3)
 
         outer = QtWidgets.QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)

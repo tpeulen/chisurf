@@ -69,7 +69,8 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         if self._movie:
             layout.addLayout(self._build_movie_bar())
 
-        self._plot = cp.Plot()
+        # The panel is the Qt-free chiplot panel emtk draws; ``cp.host`` only hosts it here.
+        self._plot = cp.Panel()
         self._plot.set_labels(bottom="g", left="s")
         self._plot.set_aspect_locked(True)
         self._plot.grid(x=True, y=True, alpha=0.2)
@@ -85,7 +86,8 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         )
         self._plot.set_xlim(0.0, 1.0)
         self._plot.set_ylim(0.0, 0.6)
-        layout.addWidget(self._plot, 1)
+        self._plot_widget = cp.host(self._plot)
+        layout.addWidget(self._plot_widget, 1)
         self.refresh()
 
     def refresh(self) -> None:
