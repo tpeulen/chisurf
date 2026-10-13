@@ -157,3 +157,5 @@ API with an explicitly selected demo database; its sources and produced table
 are managed objects in that database's object store.
 
 Tool: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`).
+
+Tool: Database Connector, the service-only plugin that opens, backs up, resets and imports the database (`chisurf/plugins/core/database_connector/`).

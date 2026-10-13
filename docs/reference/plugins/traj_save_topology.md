@@ -28,6 +28,11 @@ Save topology or first-frame structure files from trajectories.
 
 This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_save_topology/`

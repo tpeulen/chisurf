@@ -34,7 +34,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Workflow** — [FCS toolbox: from photon stream to a curve worth fitting](/guides/75_fcs_toolbox.md)
+- **Theory** — [FCS: the correlation curve and its models](/concepts/fcs_correlation.md)
+- **Workflow** — [FCS toolbox: from photon stream to a curve worth fitting](/guides/75_fcs_toolbox.md), [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
 
 ## Source
 

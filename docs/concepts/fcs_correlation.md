@@ -516,3 +516,5 @@ separately), and the merger. Splits give the merger repeats to average and rejec
 saved as a `.cor` file. 2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, the diffusion/volume calculator and the fFCS filter
 calculator sit in the same window. Settings, the `.cor` format and the headless equivalent:
 [FCS toolbox](../guides/75_fcs_toolbox.md).
+
+Tools: FCS Definitions (`chisurf/plugins/fcs/fcs_channel_preset/`), FCS Converter (`chisurf/plugins/fcs/fcs_convert/`).

@@ -50,3 +50,5 @@ rendered waveform, range and channel configuration. Reopening restores setup
 and sound preferences; load the recording again to recompute its output.
 
 ![Real BH photon waterfall at the native initial layout](figures/audifier_native_window.png)
+
+Tool: Audifier (`chisurf/plugins/tttr/audifier/`).

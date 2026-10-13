@@ -112,3 +112,5 @@ app.close()
 The standalone launcher is `pixi run -e test python -m chisurf.emtk --plugin number_quest`.
 The richer app's controls, held/released keys, saved round and window dimensions
 are retained; the former alternate native implementation is retired.
+
+Tools: Number Quest (`chisurf/plugins/misc/games/number_quest/`), Minesweeper (`chisurf/plugins/misc/games/minesweeper/`), Tetris (`chisurf/plugins/misc/games/tetris/`), Pong (`chisurf/plugins/misc/games/pong/`), Breakout (`chisurf/plugins/misc/games/breakout/`).

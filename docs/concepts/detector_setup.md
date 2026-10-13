@@ -98,3 +98,5 @@ The native calibration host reads its primary size before preparing controls.
 Saved host geometry does not modify detector histograms, IRF/background windows
 or the deep-copied snapshot published by Apply. The
 [calibration workflow](../guides/99_img_calibration.md) documents this distinction.
+
+Tools: IRF & BG (`chisurf/plugins/microscopy/img_calibration/`), Channel Definition (`chisurf/plugins/core/setup_channel_definition/`), LUT Tools (`chisurf/plugins/tttr/tttr_lut_tools/`).

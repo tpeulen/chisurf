@@ -121,3 +121,5 @@ views use the same persisted data; a saved custom window size takes precedence.
 
 - [The photon container](../concepts/photon_container.md): how a measurement and its results are stored together.
 - [The measurement database](../concepts/measurement_database.md): the optional provenance store a project does not require.
+
+Tool: Open Project (`chisurf/plugins/core/project_browser/`).

@@ -43,6 +43,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
 - **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
 
 ## Source

@@ -43,6 +43,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Administrator | `is_admin` | bool |  |  | Administrators may list, edit and delete users. The server refuses to remove the last one. |
 | Allow sign-in without a password | `allow_autologin` | bool |  |  | Convenient on a single-user machine. Administrators may not use it. |
 
+## Theory and workflow
+
+- **Theory** — [The measurement database: records, provenance and who may change them](/concepts/measurement_database.md)
+- **Workflow** — [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/user_editor/`

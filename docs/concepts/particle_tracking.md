@@ -234,3 +234,5 @@ gives 20 out of 20.
   them, link them, check the recovered *identities* against the truth, and fit
   `D` with a bootstrapped error bar. It also shows how little crowding it takes
   to start merging tracks, and what fitting `alpha` costs.
+
+Tool: Spot Finder (`chisurf/plugins/microscopy/spot_finder/`).

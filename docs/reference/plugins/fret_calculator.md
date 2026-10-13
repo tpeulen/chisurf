@@ -57,6 +57,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Förster resonance energy transfer (FRET)](/concepts/fret.md)
+- **Workflow** — [The FRET calculator](/guides/107_fret_calculator.md)
 
 ## Source
 

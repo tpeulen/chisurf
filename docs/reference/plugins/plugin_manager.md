@@ -58,6 +58,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Endpoint | `icon_endpoint` | str |  |  | Base URL of the provider's API. |
 | Image model | `icon_model` | str |  |  | Image model to request. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [Checking that every plugin starts (Plugin Check)](/guides/96_plugin_check.md), [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/plugin_manager/`

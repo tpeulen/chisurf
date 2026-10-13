@@ -61,6 +61,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Deconvolution](/concepts/deconvolution.md)
+- **Workflow** — [The PSF measured on beads (PSF Determination)](/guides/93_psf_determination.md)
 
 ## Source
 

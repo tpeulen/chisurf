@@ -91,6 +91,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
 - **Workflow** — [Fluorescence lifetime from photon bursts](/guides/21_lifetime_from_bursts.md), [ns-ALEX / PIE: FRET, stoichiometry and lifetime together](/guides/32_nsalex_lifetime.md)
 
 ## Source

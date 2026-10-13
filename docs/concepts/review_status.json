@@ -111,6 +111,13 @@
     "sha256": "ae0331acb32d9dc8f88f6087b060c81145bca44dda52eefc07bf2fb6fff64d4c",
     "status": "ai-reviewed"
   },
+  "protein_monte_carlo.md": {
+    "date": "2026-10-13",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2cf86942bf638c093f25b3b8ae3d7b6146e249c8c204865763b8d991c8f2e32e",
+    "status": "ai-reviewed"
+  },
   "recurrence.md": {
     "date": "2026-10-10",
     "reviewer": "agent",

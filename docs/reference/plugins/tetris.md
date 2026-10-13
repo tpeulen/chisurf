@@ -28,6 +28,11 @@ Spectral Tetris with line clearing, score tracking, pause and restart; contained
 
 This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Games and generated round data](/concepts/games.md)
+- **Workflow** — [Games: a break between fits](/guides/95_games.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/misc/games/tetris/`

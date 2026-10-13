@@ -113,3 +113,5 @@ print(model.message, model.status_of("about"))
 ## Theory
 
 - [Application identity](../concepts/application_identity.md): the version and environment a plugin check reports belong to the same record of what produced a result.
+
+Tools: Plugin-Check (`chisurf/plugins/core/plugin_check/`), Plugins (`chisurf/plugins/core/plugin_manager/`).

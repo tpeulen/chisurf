@@ -45,6 +45,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Format | `ending` | choice |  | choices: `output_formats` | Output file extension / format. |
 | Split into one file per frame | `split` | bool |  |  | Write each frame to its own {filename}_%08d{ending} file instead of one combined file. |
 
+## Theory and workflow
+
+- **Theory** — [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_convert/`

@@ -254,3 +254,5 @@ of the same stored measurement. The [Inspector workflow](../guides/63_pto_inspec
 explains artifact selection, graph preferences and wide-table navigation.
 
 Tool: PTO Inspector (`chisurf/plugins/core/pto_inspector/`).
+
+Tool: Photon Table (`chisurf/plugins/tttr/photon_table/`).

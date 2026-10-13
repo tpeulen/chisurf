@@ -55,6 +55,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `project_browser.artifacts` | no |  |
 | `project_browser.parameters` | no |  |
 
+## Theory and workflow
+
+- **Theory** — [The measurement database: records, provenance and who may change them](/concepts/measurement_database.md)
+- **Workflow** — [Saving and reopening projects](/guides/saving_projects.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/project_browser/`

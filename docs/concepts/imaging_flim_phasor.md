@@ -384,3 +384,5 @@ its selected-photon decay retains its counts and time axis. Named masks and
 acquisition preferences share the existing settings serialization. The
 [CLSM workflow](../guides/24_scan_images.md) distinguishes saved preferences
 from reloading and recomputing the measurement.
+
+Tools: CLSM-Draw (`chisurf/plugins/microscopy/clsm/`), Intensity (`chisurf/plugins/microscopy/img_pixel_intensity/`), Image Browser (`chisurf/plugins/tttr/tttr_image_browser/`), the shared per-pixel tool shell (Imaging Common) (`chisurf/plugins/microscopy/imaging_common/`).

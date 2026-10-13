@@ -104,3 +104,5 @@ n median=1.405` for the whole image — γ-corrected values, not comparable with
 `pixel_dwell`) and estimator (`gamma`, `smoothing`, `radius`, `median`, `ddof`)
 settings directly; `ccnb_maps(stack_a, stack_b)` is cross N&B;
 `analog_calibration(mean, variance)` fits the gain and offset.
+
+Tool: Number & Brightness (`chisurf/plugins/microscopy/img_pixel_nb/`).

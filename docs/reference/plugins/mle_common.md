@@ -25,6 +25,11 @@ Shared maximum-likelihood machinery for the spot/region/pixel MLE tools: the est
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Regions and their properties](/concepts/region_properties.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/mle_common/`

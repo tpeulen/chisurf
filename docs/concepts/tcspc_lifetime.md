@@ -447,3 +447,5 @@ the correction. When region-mean normalization is enabled, the low-count
 threshold compares counts relative to that mean. It can therefore change the
 accepted bins, correction mapping and corrected preview. The
 [LUT workflow](../guides/37_tttr_microtime_lut.md) documents this setting.
+
+Tool: Burst MLE (`chisurf/plugins/burst/burst_mle_analysis/`).

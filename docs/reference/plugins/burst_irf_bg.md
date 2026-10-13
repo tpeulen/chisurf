@@ -40,6 +40,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Single-molecule FRET: burst analysis (E, S, corrections)](/concepts/smfret_bursts.md)
+- **Workflow** — [Background rates](/guides/15_background_rates.md)
 
 ## Source
 

@@ -200,3 +200,5 @@ scan does not substitute a partial curve for the last complete scan; cancelled
 HMM fits do not write partial exports. One already-running lattice sweep is
 indivisible, so stopping waits for that sweep to return.
 See [the native workflow](../guides/22_binned_photon_traces.md).
+
+Tool: Count Rate Analysis (`chisurf/plugins/tttr/tttr_count_rate_analysis/`).

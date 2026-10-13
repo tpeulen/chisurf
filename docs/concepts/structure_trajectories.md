@@ -279,3 +279,5 @@ they are drawn. The [molecular viewer workflow](../guides/44_molecular_viewer.md
 distinguishes host preferences from ChiMOL's display configuration and scene.
 
 Tool: Traj Tools (`chisurf/plugins/traj/traj_tools/`).
+
+Tools: Align (`chisurf/plugins/traj/traj_align/`), Convert (`chisurf/plugins/traj/traj_convert/`), Join (`chisurf/plugins/traj/traj_join/`), Remove Clashed (`chisurf/plugins/traj/traj_remove_clashes/`), Rotate/Translate (`chisurf/plugins/traj/traj_rotate_translate/`), Save Topol (`chisurf/plugins/traj/traj_save_topology/`), Energy Calculator (`chisurf/plugins/traj/potential_energy/`), FRET (`chisurf/plugins/traj/fret_trajectory/`).

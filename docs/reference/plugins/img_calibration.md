@@ -43,6 +43,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [Detector setups: routing, windows, timing and calibration](/concepts/detector_setup.md)
 - **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
 
 ## Source

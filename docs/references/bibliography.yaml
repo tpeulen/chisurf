@@ -4213,3 +4213,38 @@ taniguchi2018:
   doi: 10.1111/php.12860
   note: The PhotochemCAD common-compounds set (absorption, emission, epsilon and quantum yield) that the Spectra Downloader imports.
   topics: [fret, fluorophores, data]
+
+# ── Protein Monte Carlo ─────────────────────────────────────────────
+
+metropolis1953:
+  authors: N. Metropolis, A. W. Rosenbluth, M. N. Rosenbluth, A. H. Teller, E. Teller
+  title: Equation of State Calculations by Fast Computing Machines
+  journal: The Journal of Chemical Physics
+  year: 1953
+  volume: 21
+  pages: 1087-1092
+  doi: 10.1063/1.1699114
+  note: The acceptance rule of the Metropolis Monte Carlo walk - downhill always, uphill with exp(-dE/kT).
+  topics: [structure]
+
+ramachandran1963:
+  authors: G. N. Ramachandran, C. Ramakrishnan, V. Sasisekharan
+  title: Stereochemistry of polypeptide chain configurations
+  journal: Journal of Molecular Biology
+  year: 1963
+  volume: 7
+  pages: 95-99
+  doi: 10.1016/S0022-2836(63)80023-6
+  note: Which backbone torsion pairs (phi, psi) are sterically allowed - the reason moves are made in torsion space.
+  topics: [structure]
+
+miyazawa1996:
+  authors: S. Miyazawa, R. L. Jernigan
+  title: Residue-residue potentials with a favorable contact pair term and an unfavorable high packing density term, for simulation and threading
+  journal: Journal of Molecular Biology
+  year: 1996
+  volume: 256
+  pages: 623-644
+  doi: 10.1006/jmbi.1996.0114
+  note: The contact potential behind the Miyazawa-Jernigan term of ProteinMC.
+  topics: [structure]

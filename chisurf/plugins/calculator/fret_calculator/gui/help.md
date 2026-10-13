@@ -15,3 +15,4 @@ Click a field, type the value and press Enter (or click elsewhere) to apply it. 
 ## Further reading
 
 - [Förster resonance energy transfer (FRET)](docs/concepts/fret.md)
+- [The FRET calculator](docs/guides/107_fret_calculator.md)

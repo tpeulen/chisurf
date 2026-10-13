@@ -303,3 +303,5 @@ observables. The workflow guide records a measured-file regression with exact
 before/after column and settings agreement.
 
 Tool: BID→Analysis (`chisurf/plugins/burst/bid_to_analysis/`).
+
+Tool: Burst Selection (`chisurf/plugins/burst/burst_selection/`).

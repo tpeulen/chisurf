@@ -34,6 +34,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Stride | `stride` | int |  | 1 … 999999 | Read every Nth frame of the source trajectory. |
 | Min distance | `min_distance` | float |  | 0.0 … 100.0 (step 0.1) | Minimum allowed atom-atom distance in Ångström. Frames with any selected atom pair closer than this are removed. |
 
+## Theory and workflow
+
+- **Theory** — [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_remove_clashes/`

@@ -33,6 +33,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Atom selection | `atom_selection` | text |  |  | Comma-separated atom ids used as the reference set for the superposition. Leave empty to align on all atoms. |
 | Stride | `stride` | int |  | 1 … 999999 | Read every Nth frame of the source trajectory. |
 
+## Theory and workflow
+
+- **Theory** — [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_align/`

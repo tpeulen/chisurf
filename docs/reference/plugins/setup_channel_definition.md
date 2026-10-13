@@ -27,6 +27,11 @@ Detector Channel and PIE-window definition wizard
 
 This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Detector setups: routing, windows, timing and calibration](/concepts/detector_setup.md)
+- **Workflow** — [Detector setup: channels, PIE windows, timing and LUTs](/guides/87_channel_definition.md), [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/setup_channel_definition/`

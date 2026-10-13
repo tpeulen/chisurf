@@ -43,6 +43,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | t-step [ns] | `t_step` | float |  | 0.0 … 100000.0 (step 0.1) | Time between successive trajectory frames, in nanoseconds. |
 | Dipole (κ2) | `dipoles` | bool |  |  | If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2 per frame; otherwise only the first atom of each dye defines the distance and the fixed isotropic kappa2 = 2/3 is used. |
 
+## Theory and workflow
+
+- **Theory** — [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/fret_trajectory/`

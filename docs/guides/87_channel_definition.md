@@ -264,3 +264,5 @@ loaded-decay estimate: it does not perform this reference archival.
 The native FCS channel-preset editor starts at 1100×720. Saved custom geometry
 takes precedence. Detector definitions, correlation pairs and exported preset
 bytes are independent of the window size.
+
+Tool: Channel Definition (`chisurf/plugins/core/setup_channel_definition/`).

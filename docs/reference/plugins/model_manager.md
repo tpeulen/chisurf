@@ -39,6 +39,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Disabled | `selected_disabled` | bool |  |  | Keep this model out of the model drop-down. It is not removed; nothing else changes. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/model_manager/`

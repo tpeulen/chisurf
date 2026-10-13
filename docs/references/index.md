@@ -20,7 +20,7 @@ Pages cite a work by its **key** — the name each entry is anchored under below
 and the citation renders as a link to the paper. The source of truth is
 [`bibliography.yaml`](bibliography.yaml) — add a work there and it appears here.
 
-*383 works.*
+*386 works.*
 
 
 ## FRET: mechanism, accuracy and corrections
@@ -1175,6 +1175,16 @@ and the citation renders as a link to the paper. The source of truth is
 **[Lee & Richards (1971)](https://doi.org/10.1016/0022-2836(71)90324-X)** — B. Lee, F. M. Richards. *The interpretation of protein structures: estimation of static accessibility*. Journal of Molecular Biology **55**, 379-400. (1971).  
 *The accessible surface and the rolling probe.*
 
+(metropolis1953)=
+
+**[Metropolis et al. (1953)](https://doi.org/10.1063/1.1699114)** — N. Metropolis, A. W. Rosenbluth, M. N. Rosenbluth, A. H. Teller, E. Teller. *Equation of State Calculations by Fast Computing Machines*. The Journal of Chemical Physics **21**, 1087-1092. (1953).  
+*The acceptance rule of the Metropolis Monte Carlo walk - downhill always, uphill with exp(-dE/kT).*
+
+(miyazawa1996)=
+
+**[Miyazawa & Jernigan (1996)](https://doi.org/10.1006/jmbi.1996.0114)** — S. Miyazawa, R. L. Jernigan. *Residue-residue potentials with a favorable contact pair term and an unfavorable high packing density term, for simulation and threading*. Journal of Molecular Biology **256**, 623-644. (1996).  
+*The contact potential behind the Miyazawa-Jernigan term of ProteinMC.*
+
 (vanoosterom1983)=
 
 **[Oosterom & Strackee (1983)](https://doi.org/10.1109/tbme.1983.325207)** — A. van Oosterom, J. Strackee. *The solid angle of a plane triangle*. IEEE Transactions on Biomedical Engineering **30**, 125-126. (1983).  
@@ -1184,6 +1194,11 @@ and the citation renders as a link to the paper. The source of truth is
 
 **[Ortega et al. (2011)](https://doi.org/10.1016/j.bpj.2011.06.046)** — A. Ortega, D. Amorós, J. García de la Torre. *Prediction of hydrodynamic and other solution properties of rigid proteins from atomic- and residue-level models*. Biophysical Journal **101**, 892-898. (2011).  
 *HYDROPRO 10 - the three INDMODEs and their AER values (2.9, 4.8, 6.1 Å).*
+
+(ramachandran1963)=
+
+**[Ramachandran et al. (1963)](https://doi.org/10.1016/S0022-2836(63)80023-6)** — G. N. Ramachandran, C. Ramakrishnan, V. Sasisekharan. *Stereochemistry of polypeptide chain configurations*. Journal of Molecular Biology **7**, 95-99. (1963).  
+*Which backbone torsion pairs (phi, psi) are sterically allowed - the reason moves are made in torsion space.*
 
 (schroder2005)=
 

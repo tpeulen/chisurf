@@ -249,3 +249,5 @@ split-channel residuals when assessing the fit and do not interpret the fixed
 anisotropy parameters as recovered physical values. The [Region MLE workflow](../guides/48_regions.md)
 explains this limitation. Region intensity measurements use uint32 photon
 counts independently of those lifetime and anisotropy assumptions.
+
+Tool: the shared maximum-likelihood base of the spot, region and pixel MLE tools (MLE Common) (`chisurf/plugins/microscopy/mle_common/`).

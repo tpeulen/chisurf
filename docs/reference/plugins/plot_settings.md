@@ -81,6 +81,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Grid spacing | `ng_grid_spacing` | float |  | 4 … 96 (step 1) | Distance between the grid lines of a node graph, 4 to 96 pixels. |
 | Node size | `ng_node_size` | float |  | 6.0 … 30.0 (step 0.5) | The node radius a newly opened Global View starts its own node-size control at. A window that is already open keeps the value its slider holds. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/plot_settings/`

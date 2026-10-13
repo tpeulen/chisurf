@@ -47,3 +47,5 @@ Audifier share. File-level operations (split, convert, header) live in [File too
 
 [TTTR Tools window](../guides/101_tttr_toolbox.md), [ALEX Creator](../guides/100_alex_creator.md),
 [Micro-time shifter](../guides/88_microtime_shifter.md), [Audifier](../guides/94_tttr_audifier.md).
+
+Tool: Audifier (`chisurf/plugins/tttr/audifier/`).

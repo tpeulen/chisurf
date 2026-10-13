@@ -78,6 +78,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `spot_finder.workflow.prepare` | no | Resolve detection inputs from a cross-plugin workflow context, without running. |
 | `spot_finder.contract.describe` | no | Return the RPC contract. |
 
+## Theory and workflow
+
+- **Theory** — [Single-particle tracking](/concepts/particle_tracking.md)
+- **Workflow** — [Finding spots and objects in an image](/guides/84_spot_finder.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/spot_finder/`

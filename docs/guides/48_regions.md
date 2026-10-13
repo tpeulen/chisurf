@@ -327,3 +327,5 @@ good polarized fit. Longer lifetimes also carry the finite 8.192 ns period
 bias discussed in [region properties](../concepts/region_properties.md).
 
 ![Native known-field demonstration at the initial layout](figures/region_mle_native_wide_counts.png)
+
+Tool: Region MLE (`chisurf/plugins/microscopy/region_mle/`).

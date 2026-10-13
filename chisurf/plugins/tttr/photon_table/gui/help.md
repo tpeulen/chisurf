@@ -23,3 +23,8 @@ Copy visible puts the rows of the page on the clipboard as tab-separated text wi
 
 ## Panels
 Right-click a dock header to close, reopen, undock, or restore the default layout.
+
+## Further reading
+
+- [Reading the photons of a TTTR file](docs/guides/108_photon_table.md)
+- [The photon container](docs/concepts/photon_container.md)

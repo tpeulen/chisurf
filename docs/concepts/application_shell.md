@@ -38,3 +38,5 @@ or DOI to the system browser, and answers questions from the same pages ([asking
 
 See the [workflow](../guides/105_application_shell.md); the identity of the running build is in
 [application identity](application_identity.md).
+
+Tools: AI Settings (`chisurf/plugins/ai_settings/`), Plots (`chisurf/plugins/core/plot_settings/`), Styles (`chisurf/plugins/core/style_manager/`), Models (`chisurf/plugins/core/model_manager/`), Plugins (`chisurf/plugins/core/plugin_manager/`), Plugin Check (`chisurf/plugins/core/plugin_check/`), Updates & Packages (`chisurf/plugins/core/updater/`), Boarding Wizard (`chisurf/plugins/core/boarding/`).

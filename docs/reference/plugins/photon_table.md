@@ -34,6 +34,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Rows | `rows_per_page` | int |  | 1 … 20000 (step 1) | Rows shown at once (1 to 20000). Large pages are fine; the table only draws what fits the window. |
 | Channel | `channel_filter` | choice |  | choices: `channel_labels` | Show only the photons of one routing channel. 'All channels' keeps the file's order. Choosing a channel goes back to its first photon. |
 
+## Theory and workflow
+
+- **Theory** — [The photon container: one measurement, one file](/concepts/photon_container.md)
+- **Workflow** — [Reading the photons of a TTTR file](/guides/108_photon_table.md), [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/photon_table/`

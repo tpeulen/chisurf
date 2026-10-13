@@ -85,6 +85,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Photon-counting histogram (PCH) and FIDA](/concepts/pch_fida.md)
+- **Workflow** — [Number & Brightness](/guides/67_number_and_brightness.md)
 
 ## Source
 

@@ -48,6 +48,7 @@ saving_projects
 63_pto_inspector
 89_microtime_histogram
 94_tttr_audifier
+108_photon_table
 100_alex_creator
 101_tttr_toolbox
 102_mmfdb_admin
@@ -61,6 +62,7 @@ saving_projects
 14_multiparameter_es
 41_accurate_fret
 82_fret_lines
+107_fret_calculator
 83_spectra_and_r0
 104_lightpath_simulator
 61_kappa2_distribution
@@ -166,6 +168,7 @@ irf_estimation
 79_hydropro
 80_quenching_estimator
 81_trajectory_tools
+106_protein_monte_carlo
 ```
 
 ## Exploration, simulation and automation
@@ -287,6 +290,9 @@ irf_estimation
 | [The Settings window: one list, every settings panel](97_settings_hub.md) | `setup` (Setup → Settings), the hub that hosts every settings panel |
 | [Updating ChiSurf](90_updater.md) | `updater` (Setup → Settings → Updates), version check, changelog, Update Now |
 | [Aligning detectors in micro time](88_microtime_shifter.md) | `microtime_shifter` (Tools → TTTR), `csc microtime-shift`, `core.fio.tttr_shift` |
+| [The FRET calculator](107_fret_calculator.md) | `fret_calculator` (Tools → FRET-Calculator), `fret_calculator.*` RPC, `core.algorithms` |
+| [Sampling a protein under FRET distance restraints](106_protein_monte_carlo.md) | `proteinmc` (Structure → Computation), `csc proteinmc`, `ProteinMCRunner` |
+| [Reading the photons of a TTTR file](108_photon_table.md) | `photon_table` (Tools → TTTR), `PhotonTableModel` |
 
 ## Regenerating the figures
 

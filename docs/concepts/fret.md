@@ -270,3 +270,5 @@ scalar starter refuses those before writing; it does not collapse a spectrum or
 break a link silently. Its generic 4 ns/52 Å example supplies no named-dye
 calibration. The [FRET-line guide](../guides/82_fret_lines.md) shows the guided
 entry and retained advanced views.
+
+Calculator workflow: [The FRET calculator](../guides/107_fret_calculator.md).

@@ -69,3 +69,5 @@ for the per-game actions.
 The hub is `chisurf/plugins/misc/games/` (Number Quest, Minesweeper, Tetris, Pong, Breakout). Each game keeps its state
 while another is shown and mutes its sound whenever the window is not in front; the list, the keys and the Help, Restart
 and Guide controls are in the [Games workflow](../guides/95_games.md).
+
+Tools: Number Quest (`chisurf/plugins/misc/games/number_quest/`), Minesweeper (`chisurf/plugins/misc/games/minesweeper/`), Tetris (`chisurf/plugins/misc/games/tetris/`), Pong (`chisurf/plugins/misc/games/pong/`), Breakout (`chisurf/plugins/misc/games/breakout/`).

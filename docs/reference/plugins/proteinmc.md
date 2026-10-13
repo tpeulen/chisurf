@@ -27,6 +27,11 @@ Protein Monte Carlo CLI plugin.  Expose the ProteinMC cmd tool via the unified C
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [Protein Monte Carlo: torsion-angle sampling under distance restraints](/concepts/protein_monte_carlo.md)
+- **Workflow** — [Sampling a protein under FRET distance restraints](/guides/106_protein_monte_carlo.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/modelling/proteinmc/`

@@ -216,3 +216,5 @@ settings now restore automatically on reopening, using the same format as
 **Save settings**. Load the measurement again to rebuild its image and decays.
 
 ![Native CLSM-Draw with a real Leica scan and painted decay](figures/clsm_native_window.png)
+
+Tools: the shared per-pixel tool shell (Imaging Common) (`chisurf/plugins/microscopy/imaging_common/`), the shared maximum-likelihood base of the spot, region and pixel MLE tools (MLE Common) (`chisurf/plugins/microscopy/mle_common/`).

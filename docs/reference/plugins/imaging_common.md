@@ -25,6 +25,11 @@ Shared base classes for the per-pixel imaging tools: the common tool shell, the 
 
 This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
 
+## Theory and workflow
+
+- **Theory** — [FLIM and the phasor approach](/concepts/imaging_flim_phasor.md)
+- **Workflow** — [Confocal scan images (CLSM)](/guides/24_scan_images.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/microscopy/imaging_common/`

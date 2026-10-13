@@ -55,6 +55,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Top-p | `top_p` | float |  | 0.0 … 1.0 (step 0.05) | Nucleus-sampling probability mass. |
 | Max tokens | `max_tokens` | int |  | 1 … 1000000 | Maximum number of tokens to generate per response. |
 
+## Theory and workflow
+
+- **Theory** — [The application shell: settings, interface, account, help and hubs](/concepts/application_shell.md)
+- **Workflow** — [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/ai_settings/`

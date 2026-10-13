@@ -63,3 +63,5 @@ administrator can be created.
   model, inside a single measurement file.
 
 Tool: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`).
+
+Tools: Database Connector (`chisurf/plugins/core/database_connector/`), Open Project (`chisurf/plugins/core/project_browser/`), User Editor (`chisurf/plugins/core/user_editor/`).

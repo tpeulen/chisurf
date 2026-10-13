@@ -85,3 +85,5 @@ open panel (TTTR LUT Tools and Channel Definition read photon files).
 - [Application identity](../concepts/application_identity.md): what the version and support details in the settings establish.
 
 Tool: Settings (`chisurf/plugins/core/setup/`).
+
+Tools: AI Settings (`chisurf/plugins/ai_settings/`), Plots (`chisurf/plugins/core/plot_settings/`), Styles (`chisurf/plugins/core/style_manager/`), Models (`chisurf/plugins/core/model_manager/`), User Editor (`chisurf/plugins/core/user_editor/`), Plugins (`chisurf/plugins/core/plugin_manager/`), Boarding Wizard (Getting Started) (`chisurf/plugins/core/boarding/`), Channel Definition (`chisurf/plugins/core/setup_channel_definition/`), FCS Definitions (`chisurf/plugins/fcs/fcs_channel_preset/`), LUT Tools (`chisurf/plugins/tttr/tttr_lut_tools/`), Updates & Packages (`chisurf/plugins/core/updater/`), Plugin Check (`chisurf/plugins/core/plugin_check/`).

@@ -40,6 +40,11 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 | `database_connector.import_file` | no |  |
 | `database_connector.export_sample` | no |  |
 
+## Theory and workflow
+
+- **Theory** — [The measurement database: records, provenance and who may change them](/concepts/measurement_database.md)
+- **Workflow** — [Administering the measurement database: MMFDB Admin](/guides/102_mmfdb_admin.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/core/database_connector/`

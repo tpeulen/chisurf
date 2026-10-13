@@ -261,3 +261,5 @@ pixels brighter than 65,535 photons, so the maximum and mean describe the
 actual photon population rather than a wrapped count.
 
 ![Native known-field demonstration at the initial layout](figures/spot_finder_native_wide_counts.png)
+
+Tool: Spot Finder (`chisurf/plugins/microscopy/spot_finder/`).

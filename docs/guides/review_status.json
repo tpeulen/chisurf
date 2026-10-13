@@ -1,0 +1,23 @@
+{
+  "106_protein_monte_carlo.md": {
+    "date": "2026-10-13",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "65a3c805bae45299097b3ef2808ca5a02130cde0b41534bf98fe73dc717d3749",
+    "status": "ai-reviewed"
+  },
+  "107_fret_calculator.md": {
+    "date": "2026-10-13",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f631a8e0a2d3e85f9f9fca597a75211dfc54413ec196904ce07d8c2f3cd0e408",
+    "status": "ai-reviewed"
+  },
+  "108_photon_table.md": {
+    "date": "2026-10-13",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5542d6b85f0eb847f7f771c1c25d07869bf3ca0eaf590f87e2ed456dadd053d9",
+    "status": "ai-reviewed"
+  }
+}

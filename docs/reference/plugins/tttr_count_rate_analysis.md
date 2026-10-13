@@ -33,6 +33,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
+- **Theory** — [Intensity traces: counting photons in time bins](/concepts/intensity_traces.md)
 - **Workflow** — [Handling TTTR files (and Photon-HDF5)](/guides/12_handling_tttr_files.md)
 
 ## Source

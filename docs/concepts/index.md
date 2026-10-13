@@ -130,6 +130,7 @@ accessible_volume
 hydrodynamics
 dye_quenching
 structure_trajectories
+protein_monte_carlo
 molecular_surfaces
 molecular_viewer
 imaging_flim_phasor

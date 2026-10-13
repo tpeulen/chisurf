@@ -35,6 +35,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Reverse trajectory 2 | `reverse_traj_2` | bool |  |  | Reverse trajectory 2 in time (last frame first) before joining. |
 | Chunk size | `chunk_size` | int |  | 1 … 9999999 | Frames written per block. The inputs are read whole; the block bounds the copy the join makes. |
 
+## Theory and workflow
+
+- **Theory** — [Structure trajectories: superposition, RMSD, clashes and FRET along a trajectory](/concepts/structure_trajectories.md)
+- **Workflow** — [Trajectory tools: align, convert, filter, score and FRET a structure ensemble](/guides/81_trajectory_tools.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/traj/traj_join/`

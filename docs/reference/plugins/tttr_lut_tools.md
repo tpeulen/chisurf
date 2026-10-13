@@ -88,7 +88,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Workflow** — [TAC linearization: microtime LUTs](/guides/37_tttr_microtime_lut.md)
+- **Theory** — [Detector setups: routing, windows, timing and calibration](/concepts/detector_setup.md)
+- **Workflow** — [TAC linearization: microtime LUTs](/guides/37_tttr_microtime_lut.md), [The Settings window: one list, every settings panel](/guides/97_settings_hub.md)
 
 ## Source
 

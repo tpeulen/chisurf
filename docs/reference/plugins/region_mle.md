@@ -75,6 +75,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [Regions and their properties](/concepts/region_properties.md)
+- **Workflow** — [Regions: selecting pixels, measuring what you selected](/guides/48_regions.md)
 
 ## Source
 

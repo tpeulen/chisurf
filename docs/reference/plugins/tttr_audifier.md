@@ -64,6 +64,11 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | N τ points | `lt_n_tau` | int |  | 20 … 500 | Number of lifetimes of the grid. |
 | Regularization | `lt_reg` | float |  | 1e-06 … 1.0 (step 0.001) | Regularization strength of the lifetime inversion. |
 
+## Theory and workflow
+
+- **Theory** — [TTTR Tools: the two clocks of a photon record](/concepts/tttr_stream_tools.md)
+- **Workflow** — [Audifier: photon streams as sound and as a waterfall](/guides/94_tttr_audifier.md)
+
 ## Source
 
 - Plugin package: `chisurf/plugins/tttr/audifier/`

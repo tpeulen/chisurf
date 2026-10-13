@@ -81,3 +81,5 @@ selected-bead profiles, Gaussian parameters and exported scientific rows retain
 their values across host restoration. In the seeded five-bead demonstration,
 the configured detector resolves four regions because one pair is unresolved;
 this is distinct from a missing GUI control.
+
+Tool: PSF Determination (`chisurf/plugins/microscopy/psf_determination/`).
