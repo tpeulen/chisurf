@@ -62,6 +62,10 @@ class ProbCh0(FittingParameterGroup):
         1.0
     """
 
+    _amplitudes: typing.List[FittingParameter]
+    _pch0: typing.List[FittingParameter]
+    _link: ProbCh0 | None
+
     @property
     def absolute_amplitudes(self) -> bool:
         """Whether amplitudes are forced to be positive."""
@@ -118,14 +122,16 @@ class ProbCh0(FittingParameterGroup):
         if self._link is None:
             return cs.core.math.datatools.two_column_to_interleaved(self.amplitudes, self.pch0)
         else:
-            return self._link.pch0
+            # The linked group's *spectrum*; its ``pch0`` alone is half of it.
+            return self._link.pch0_spectrum
 
     @pch0_spectrum.setter
     def pch0_spectrum(self, v: np.ndarray):
         """Set the interleaved (amplitude, pch0) spectrum."""
+        # Species i owns entries 2i (amplitude) and 2i+1 (pch0).
         for i in range(len(v) // 2):
-            self._amplitudes[2 * i + 0].value = v[2 * i + 0]
-            self._pch0[2 * i + 1].value = v[2 * i + 1]
+            self._amplitudes[i].value = v[2 * i + 0]
+            self._pch0[i].value = v[2 * i + 1]
 
     @property
     def n(self) -> int:
@@ -133,12 +139,12 @@ class ProbCh0(FittingParameterGroup):
         return len(self._amplitudes)
 
     @property
-    def link(self) -> cs.core.fitting.parameter.FittingParameter:
+    def link(self) -> ProbCh0 | None:
         """Return the linked ProbCh0 group, or None."""
         return self._link
 
     @link.setter
-    def link(self, v: cs.core.fitting.parameter.FittingParameter):
+    def link(self, v: ProbCh0 | None):
         """Link to another ProbCh0 group, or unlink by passing None."""
         if isinstance(v, ProbCh0) or v is None:
             self._link = v
@@ -225,7 +231,7 @@ class ProbCh0(FittingParameterGroup):
         """
         n = len(self)
         i = n + 1
-        amplitude = FittingParameter(
+        amplitude_parameter = FittingParameter(
             lb=lower_bound_amplitude,
             ub=upper_bound_amplitude,
             value=amplitude,
@@ -235,7 +241,7 @@ class ProbCh0(FittingParameterGroup):
             bounds_on=bound_on,
             description="Amplitude (population fraction) of this PDA species.",
         )
-        pch0 = FittingParameter(
+        pch0_parameter = FittingParameter(
             lb=lower_bound_pch0,
             ub=upper_bound_pch0,
             value=pch0,
@@ -245,8 +251,8 @@ class ProbCh0(FittingParameterGroup):
             bounds_on=bound_on,
             description="Mean photon count (brightness) of this species.",
         )
-        self._amplitudes.append(amplitude)
-        self._pch0.append(pch0)
+        self._amplitudes.append(amplitude_parameter)
+        self._pch0.append(pch0_parameter)
 
     def pop(
         self,
@@ -266,7 +272,7 @@ class ProbCh0(FittingParameterGroup):
         amplitudes: typing.List[cs.core.fitting.parameter.FittingParameter] | None = None,
         pch0: typing.List[cs.core.fitting.parameter.FittingParameter] | None = None,
         name: str = "pch0",
-        link: FittingParameter = None,
+        link: ProbCh0 | None = None,
         **kwargs,
     ):
         """Initialize the ProbCh0 parameter group.
@@ -294,7 +300,6 @@ class ProbCh0(FittingParameterGroup):
         self.short = short
         self._abs_amplitudes = absolute_amplitudes
         self._normalize_amplitudes = normalize_amplitudes
-        self._pch0 = None
         self._name = name
         self._link = link
 
@@ -344,9 +349,9 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
     def __init__(
         self,
         fit: cs.core.fitting.fit.Fit,
-        background: Background = None,
-        pch0: ProbCh0 = None,
-        nuisance: Pda2cPhotonRange = None,
+        background: Background | None = None,
+        pch0: ProbCh0 | None = None,
+        nuisance: Pda2cPhotonRange | None = None,
         kw_hist: dict | None = None,
         **kwargs,
     ):
@@ -396,7 +401,9 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         self.pda = tttrlib.Pda(**kw_pda)
         self.residual_mode = "1D"
 
-    def _update_model(self, pch0: np.ndarray = None, verbose: bool | None = None, **kwargs):
+    def _update_model(
+        self, pch0: np.ndarray | None = None, verbose: bool | None = None, **kwargs
+    ):
         """Update the model curve from current background and species parameters.
 
         Parameters

@@ -187,10 +187,10 @@ class Pda3cSpecies(FittingParameterGroup):
         # which walks lists of parameters and does not descend into tuples --
         # the parameters would then never become free and the fit would sit
         # still while reporting success.
-        self._amplitudes = []
-        self._means = []
-        self._sigmas = []
-        self._correlations = []
+        self._amplitudes: list[FittingParameter] = []
+        self._means: list[FittingParameter] = []
+        self._sigmas: list[FittingParameter] = []
+        self._correlations: list[FittingParameter] = []
 
     def __len__(self):
         """Return the number of species."""
@@ -586,7 +586,13 @@ class Pda3cModel(ModelCurve):
             setattr(self, name, state[name])
         self.find_parameters()
 
-    def __init__(self, fit, species: Pda3cSpecies = None, setup: Pda3cSetup = None, **kwargs):
+    def __init__(
+        self,
+        fit,
+        species: Pda3cSpecies | None = None,
+        setup: Pda3cSetup | None = None,
+        **kwargs,
+    ):
         """Initialize the three-colour PDA model.
 
         Parameters
@@ -657,7 +663,7 @@ class Pda3cModel(ModelCurve):
         self.dynamic_max_nodes = 2000
         #: Seed for that sampling, so the objective stays deterministic.
         self.dynamic_seed = 1
-        self._counts_cache = None
+        self._counts_cache: BurstCounts | None = None
 
     # -- kinetics --------------------------------------------------------
 
@@ -796,13 +802,14 @@ class Pda3cModel(ModelCurve):
         so the reported chi2r is calibrated rather than an arbitrary
         log-likelihood.
         """
-        total = 0.0
-        for table in (counts.blue, counts.green):
+
+        def saturated(table: np.ndarray) -> np.ndarray:
             n = table.sum(axis=1, keepdims=True)
             with np.errstate(divide="ignore", invalid="ignore"):
                 p = np.where(n > 0, table / np.where(n > 0, n, 1.0), 0.0)
-            total = total + log_multinomial_pmf(table, p)
-        return total
+            return log_multinomial_pmf(table, p)
+
+        return saturated(counts.blue) + saturated(counts.green)
 
     def _labeling_weight(self) -> float:
         """Return the labelling fraction to expand species with.
@@ -865,7 +872,9 @@ class Pda3cModel(ModelCurve):
         self._pmf_cache = tuple(out)
         return self._pmf_cache
 
-    def _species_photon_number_pmfs(self, counts: BurstCounts, component):
+    def _species_photon_number_pmfs(
+        self, counts: BurstCounts, component
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
         """Return this species' photon-number distributions, or ``(None, None)``.
 
         A species whose transfer makes it dim produces smaller bursts. Ignoring
@@ -940,7 +949,8 @@ class Pda3cModel(ModelCurve):
         # this reduces to the static mixture, term for term.
         from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
 
-        pieces, weights = [], []
+        pieces: list[np.ndarray] = []
+        weights: list[float] = []
         for component, weight in ((second, fraction_weights[0]), (first, fraction_weights[-1])):
             if weight <= 1e-12:
                 continue
@@ -971,10 +981,10 @@ class Pda3cModel(ModelCurve):
             pieces.extend(node)
             weights.extend(interior_weights[keep])
 
-        weights = np.asarray(weights, dtype=float)
-        weights = weights / weights.sum()
+        w = np.asarray(weights, dtype=float)
+        w = w / w.sum()
         with np.errstate(divide="ignore"):
-            return logsumexp(np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0)
+            return logsumexp(np.log(w)[:, None] + np.stack(pieces, axis=0), axis=0)
 
     def _multistate_log_likelihood(self, counts: BurstCounts, species, setup) -> np.ndarray:
         """Per-burst log likelihood of N exchanging states, by sampling.
@@ -1104,11 +1114,11 @@ class Pda3cModel(ModelCurve):
         """
         from chisurf.core.math.special import logsumexp
 
-        weights = np.asarray(weights, dtype=float)
-        total = weights.sum()
-        weights = weights / total if total > 0 else np.full(weights.shape, 1.0 / weights.size)
+        w = np.asarray(weights, dtype=float)
+        total = w.sum()
+        w = w / total if total > 0 else np.full(w.shape, 1.0 / w.size)
         with np.errstate(divide="ignore"):
-            return logsumexp(np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0)
+            return logsumexp(np.log(w)[:, None] + np.stack(pieces, axis=0), axis=0)
 
     def _two_state_mixture_log_likelihood(self, counts: BurstCounts, states, setup):
         """Return the likelihood of the first two states exchanging, rest static.
@@ -1363,6 +1373,8 @@ def get_pda3c_ratio_curves(fit) -> list:
         ``[[data_y, x], [model_y, x], [residual, x]]``.
     """
     model = getattr(fit, "model", None)
+    if model is None:
+        return []
     counts = getattr(model, "burst_counts", lambda: None)()
     if counts is None:
         return []
