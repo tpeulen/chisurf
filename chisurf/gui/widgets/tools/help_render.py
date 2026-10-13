@@ -74,7 +74,7 @@ def render_help(
     except Exception:
         logger.debug("could not expand source roles", exc_info=True)
 
-    theme = theme_api.from_palette(widget)
+    theme = theme_api.from_colours(*_palette_colours(widget))
     # A `?` modal is much narrower than the documentation window, and a formula
     # wider than it gives the modal a horizontal scrollbar rather than being
     # stacked or shrunk to fit.
@@ -121,3 +121,22 @@ def show_in_browser(browser, text: str, path: pathlib.Path | None = None) -> Non
         browser.setMarkdown(text)
     else:  # pragma: no cover - very old Qt
         browser.setPlainText(text)
+
+
+def _palette_colours(widget) -> tuple[str | None, str | None]:
+    """``(base, text)`` of *widget*'s Qt palette as ``"#rrggbb"``; ``(None, None)`` without one.
+
+    The help theme is toolkit-free (``help.api.theme.from_colours``); this Qt host
+    reads its own palette and hands the colours over.
+    """
+    if widget is None:
+        return None, None
+    try:
+        from qtpy.QtGui import QPalette
+
+        palette = widget.palette()
+        base = palette.color(QPalette.Base)
+        text = palette.color(QPalette.Text)
+    except Exception:  # pragma: no cover - not a Qt widget
+        return None, None
+    return base.name(), (text.name() if text.isValid() else None)

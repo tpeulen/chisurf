@@ -6,11 +6,15 @@ the page says otherwise it is black text on white, which is exactly what the
 screenshots of ChiSurf's dark theme showed — a bright rectangle in a dark
 window.
 
-So the page carries its own colours, taken from the palette the application is
-actually running with. Everything the renderer needs to colour is named here
-once: body text, headings, links, code, the rules and the admonition boxes. The
-maths renderer takes ``text`` from the same object, so a formula is the colour
-of the sentence it sits in rather than always black.
+So the page carries its own colours, taken from the colours the application is
+actually running with: :func:`from_tokens` reads emtk's palette tokens
+(:mod:`emtk.style`, which an application re-themes with ``use_palette``), and
+:func:`from_colours` takes any background/text pair -- a Qt host converts its
+widget palette to that pair itself, so this module imports no toolkit.
+Everything the renderer needs to colour is named here once: body text,
+headings, links, code, the rules and the admonition boxes. The maths renderer
+takes ``text`` from the same object, so a formula is the colour of the sentence
+it sits in rather than always black.
 
 Qt's rich-text engine implements a subset of CSS 2.1. The stylesheet below
 sticks to what it honours — colour, background, font, margins, padding, borders
@@ -20,9 +24,10 @@ reported.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
-__all__ = ["Theme", "DARK", "LIGHT", "from_palette", "stylesheet"]
+__all__ = ["Theme", "DARK", "LIGHT", "from_colours", "from_tokens", "stylesheet"]
 
 
 @dataclass(frozen=True)
@@ -82,43 +87,69 @@ DARK = Theme(
 )
 
 
-def from_palette(widget) -> Theme:
-    """Return the theme matching *widget*'s palette.
+def _hex(colour) -> str | None:
+    """``"#rrggbb"`` for a ``"#rrggbb"`` string or an ``(r, g, b[, a])`` tuple of 0-255 ints."""
+    if colour is None:
+        return None
+    if isinstance(colour, str):
+        text = colour.strip()
+        return text.lower() if re.fullmatch(r"#[0-9a-fA-F]{6}", text) else None
+    try:
+        r, g, b = (int(round(float(c))) for c in tuple(colour)[:3])
+    except (TypeError, ValueError):
+        return None
+    return "#{:02x}{:02x}{:02x}".format(*(max(0, min(255, c)) for c in (r, g, b)))
+
+
+def from_colours(background, text=None) -> Theme:
+    """Return the theme matching a page *background* (and optionally its *text* colour).
 
     Parameters
     ----------
-    widget : QtWidgets.QWidget or None
-        Widget whose palette decides light or dark. ``None`` selects
-        :data:`LIGHT`.
+    background : str or tuple
+        ``"#rrggbb"`` or ``(r, g, b[, a])``; decides light or dark. An unreadable
+        value selects :data:`LIGHT`.
+    text : str or tuple, optional
+        Body text colour; wins over the preset, so a custom application palette
+        does not end up with documentation in a foreign grey.
 
     Returns
     -------
     Theme
-        :data:`DARK` when the widget's base colour is dark, else :data:`LIGHT`,
-        with the background taken from the palette so the page and the widget
-        agree exactly.
+        :data:`DARK` when the background is dark, else :data:`LIGHT`, with the
+        background (and text) replaced so the page and its window agree exactly.
 
     """
-    if widget is None:
+    base = _hex(background)
+    if base is None:
         return LIGHT
-    try:
-        from qtpy.QtGui import QPalette
-
-        palette = widget.palette()
-        base = palette.color(QPalette.Base)
-        text = palette.color(QPalette.Text)
-    except Exception:  # pragma: no cover - not a Qt widget
-        return LIGHT
-
+    r, g, b = (int(base[i : i + 2], 16) for i in (1, 3, 5))
     # Perceived lightness; the midpoint is well clear of both themes' bases.
-    luminance = (0.299 * base.red() + 0.587 * base.green() + 0.114 * base.blue()) / 255.0
+    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
     theme = DARK if luminance < 0.5 else LIGHT
-    replacements = {"background": base.name()}
-    # A palette with an explicit text colour wins over the preset, so a custom
-    # ChiSurf stylesheet does not end up with documentation in a foreign grey.
-    if text.isValid():
-        replacements["text"] = text.name()
+    replacements = {"background": base}
+    fg = _hex(text)
+    if fg is not None:
+        replacements["text"] = fg
     return Theme(**{**theme.__dict__, **replacements})
+
+
+def from_tokens() -> Theme:
+    """Return the theme of the running emtk palette (``emtk.style`` ``WINDOW_BG`` and ``TEXT``).
+
+    The tokens are read at call time, so an application that re-themed emtk with
+    ``emtk.style.use_palette`` gets pages in its own colours. Without emtk the
+    light theme is returned.
+
+    Returns
+    -------
+    Theme
+    """
+    try:
+        from emtk import style
+    except Exception:  # pragma: no cover - emtk is a hard dependency of the app, not of this module
+        return LIGHT
+    return from_colours(style.WINDOW_BG, style.TEXT)
 
 
 def stylesheet(theme: Theme, *, font_size: float = 12.0) -> str:
