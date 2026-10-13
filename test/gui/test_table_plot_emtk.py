@@ -344,6 +344,10 @@ def test_the_model_editor_drops_bounds_then_links_then_fixed_when_narrow(emtk_pl
     plot.fit.model.parameters_all_dict = {"tau": a, "x": b}
     plot.on_show_model()
     _records, _params, table, _message = plot.parameter_editor
+    # Human headers, each with its tooltip, sized to their contents.
+    titles = {c.key: c.title for c in table.columns}
+    assert titles["link_target"] == "Link target" and titles["lb"] == "Lo"
+    assert all(c.tooltip for c in table.columns) and table.auto_fit
 
     def shown(width):
         table.draw(RecordingPainter(), 0.0, 0.0, width, 200.0)

@@ -36830,6 +36830,22 @@ aux distributions qui se chevauchent.</translation>
             <translation>Lier</translation>
         </message>
         <message>
+            <source>Linked</source>
+            <translation>Lié</translation>
+        </message>
+        <message>
+            <source>Link target</source>
+            <translation>Cible du lien</translation>
+        </message>
+        <message>
+            <source>Linked to another parameter (Link target).</source>
+            <translation>Lié à un autre paramètre (cible du lien).</translation>
+        </message>
+        <message>
+            <source>The parameter this one is linked to.</source>
+            <translation>Le paramètre auquel celui-ci est lié.</translation>
+        </message>
+        <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4861" />
             <source>Link l1/l2</source>
             <translation>Lier l1/l2</translation>

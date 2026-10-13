@@ -35,18 +35,20 @@ _BASE_COLUMNS = ("x", "data", "model", "w. res.", "mask")
 #: Columns whose cells the user may edit.
 _EDITABLE_COLUMNS = ("x", "data", "mask")
 
-#: The model-parameter editor's columns: key, tooltip, collapse order. Short of
-#: width the table drops the bounds first, then the link columns, then Fixed;
-#: the name and the value stay (``0``), and a dropped cell is in the row tooltip.
+#: The model-parameter editor's columns: key, header, tooltip, collapse order.
+#: Short of width the table drops the bounds first, then the link columns, then
+#: Fixed; the name and the value stay (``0``), and a dropped cell is in the row
+#: tooltip. Headers and tooltips are the model editor's wording, so they share
+#: its translations.
 _PARAMETER_COLUMNS = (
-    ("name", "The parameter.", 0),
-    ("value", "Its value.", 0),
-    ("lb", "Lower bound.", 1),
-    ("ub", "Upper bound.", 1),
-    ("fixed", "Fixed: not varied by the fit.", 3),
-    ("bounds_on", "Whether the bounds are enforced.", 1),
-    ("linked", "Linked to another parameter (link_target).", 2),
-    ("link_target", "The parameter this one is linked to.", 2),
+    ("name", "Name", "The parameter.", 0),
+    ("value", "Value", "The parameter's value; double-click to type a new one.", 0),
+    ("lb", "Lo", "Lower bound, used while Bounds is on.", 1),
+    ("ub", "Hi", "Upper bound, used while Bounds is on.", 1),
+    ("fixed", "Fixed", "A fixed parameter keeps its value when the fit runs.", 3),
+    ("bounds_on", "Bounds", "Keep the parameter between Lo and Hi while fitting.", 1),
+    ("linked", "Linked", "Linked to another parameter (Link target).", 2),
+    ("link_target", "Link target", "The parameter this one is linked to.", 2),
 )
 
 
@@ -659,10 +661,12 @@ class FitTablePlotEmtk(plotbase.Plot):
         table = DataTable(filter_box=True)
         table.columns = [
             TableColumn(
-                key=key, title=key, editable=key != "name", tooltip=tip, collapse_order=order
+                key=key, title=title, editable=key != "name", tooltip=tip, collapse_order=order
             )
-            for key, tip, order in _PARAMETER_COLUMNS
+            for key, title, tip, order in _PARAMETER_COLUMNS
         ]
+        # Sized to header and contents, as the model editor's tables (``fit_columns``).
+        table.auto_fit = True
         table.set_records(records)
         message = "" if records else "The model exposes no editable parameters."
         self.parameter_editor = (records, param_dict, table, message)

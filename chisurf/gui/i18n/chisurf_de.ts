@@ -36747,6 +36747,22 @@ mit überlappenden Verteilungen zu erkennen.</translation>
             <translation>Verknüpfen</translation>
         </message>
         <message>
+            <source>Linked</source>
+            <translation>Verknüpft</translation>
+        </message>
+        <message>
+            <source>Link target</source>
+            <translation>Verknüpfungsziel</translation>
+        </message>
+        <message>
+            <source>Linked to another parameter (Link target).</source>
+            <translation>Mit einem anderen Parameter verknüpft (Verknüpfungsziel).</translation>
+        </message>
+        <message>
+            <source>The parameter this one is linked to.</source>
+            <translation>Der Parameter, mit dem dieser verknüpft ist.</translation>
+        </message>
+        <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="4861" />
             <source>Link l1/l2</source>
             <translation>l1/l2 verknüpfen</translation>
