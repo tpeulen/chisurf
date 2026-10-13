@@ -4,6 +4,23 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Leftovers of the ndX / chimol Qt retirement (found 2026-10-13)
+
+status: open
+
+- **MMFDB admin's *Open in ndX* has no emtk twin.** The Qt admin tool's processed-products tab opened a
+  product's folder in ndX and made Save > Burst IDs record the selection against that product. With ChiSurf's
+  Qt ndX window retired (chisurf e84199fe5) the Qt tool now calls `ndxplorer.gui.app.open_in_ndx(path)` and
+  `ndxplorer.selection_provenance.record_burst_ids_against_product(app, product_id, experiment_id, client=...)`
+  (both Qt-free, covered by `chisurf/plugins/ndxplorer/tests/test_window_routes.py`). The emtk admin app
+  (`mmfdb_admin/gui/app.py`, `gui/native/*`) has no such action (`grep -rn ndx` finds none), so when the
+  mmfdb_admin lane retires `gui/tool.py` the action is lost unless its twin calls those two functions. In the
+  emtk shell `open_in_ndx` returns the shell's dock record, not the app, until the dock is built: the recorder
+  has to be attached once the hand-off has delivered (or `receive_path` gains a product id).
+- **chimol `hosts/qt/` is not deleted yet.** The exact importers and the order are in
+  [qt-retirement](../subsystems/qt-retirement.md) item 9; the blocker is `Viewer()` defaulting to
+  `hosts.qt.wgpu_view.default_renderer` on a Qt-bound `WidgetBase`.
+
 ## Code Editor assistant: validation issues are reported, not fixed by the model (found 2026-10-13)
 
 status: open

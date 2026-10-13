@@ -31,12 +31,31 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list has 64 entries (171 before the chimol slice, 184 before the Trace Browser host went
+1. Measure: the allow-list has 33 entries at chisurf 96d3b6f1d (52 when the ndX/chimol-leftovers slice started,
+   64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
    (186 before that), 210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
    slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
    `grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .`; per area `grep -v '^#' test/plugin_qt_allowlist.txt |
-   cut -d/ -f3 | sort | uniq -c`: chimol 4, core 51, misc 1, ndxplorer 4, and one each for the plugins
-   `__init__.py`, `conftest.py`, `icon_utils.py` and the cookiecutter template.
+   cut -d/ -f3 | sort | uniq -c`: core 33 (mmfdb_admin and lightpath_simulator, both lanes in flight; their
+   working trees already strike most). chimol 0 and ndxplorer 0.
+   **ndX + chimol leftovers slice (2026-10-13, 8 lines → 0).** *ndX*: ChiSurf's Qt `NdxWindow`
+   (`plugins/ndxplorer/window.py`, the app in a `ChisurfDockTool`) is deleted; the manifest names only
+   `entrypoints.emtk` (`gui/app.py:make_app`) and declares window statefulness, so the `--qt` shell hosts the app
+   generically (`build_plugin_widget` → `ControlHost`) and keeps its geometry. What the window added is Qt-free:
+   `open_in_ndx` / `show_table_in_ndx` (hand-off in the emtk shell, else the open app, else the ChiSurf window
+   opens the plugin), `selection_provenance.record_burst_ids_against_product` (the MMFDB admin's *Open in ndX*),
+   close-on-host-detach and the Global View slot (already `make_app`'s). `find_ndx_windows` returned nothing for
+   the Qt window (it looked for `constants`/`data_source` on top-level widgets), so Accurate FRET's *Load from /
+   Push to ndX* never found it; it now returns the `"ndx"` session sources. Before/after on ndX's MFD fixture
+   (12237 bursts): 66 drawn / 39 interactive controls equal (`okf/plugins/emtk-ports/ndxplorer/retire_*`).
+   *chimol*: the display-defaults prompt is chimol's in-viewport question (`chimol.ui.dialogs.choice` +
+   `display_defaults`, chimol 19444d1), asked by `ChimolApp.run` and by ChiSurf's `make_app`; before/after in
+   `okf/plugins/emtk-ports/chimol/retire_prompt_*` (every control present; no icon, singular grammar, ASCII
+   arrow). `screenshot.py` grabs the offscreen canvas (`grab_window` / `grab_view` / `save_png`, refuses uniform
+   images); `chrome_baseline.capture` paints through the `QuadPainter` + `quad_raster` into `renders/chrome_quads`
+   and keeps `renders/chrome_baseline` (the QPainter half, byte-checked against the live QPainter just before) frozen;
+   the reachable-control inventory test passes against it. Both chimol benchmarks and `test_occlusion_switch`
+   (which had always skipped offscreen) run on `ChimolApp`.
    **chimol slice (2026-10-13, 111 → 4).** The 110 test files under `chisurf/plugins/chimol/test/` drove
    `chimol.hosts.qt.MolViewPluginWindow` (or a Qt-bound `Viewer()`) and pumped a `QApplication`; they now drive the
    toolkit-free host every embedder uses -- `ChimolApp` on the offscreen canvas -- through the helper
@@ -54,12 +73,8 @@ own startup stages (item 5): S5 is done.
    no 3-D labels and no rubber-band box on screen (now emtk quads, `chimol/viewport/screen_overlays.py`; a
    `distance` showed its dashes and no number), no chain markers / `seq_view` / hidden-object rule in the sequence
    strip (`hosts/base.py::sequence_rows_for_object`), no degraded-load report, no canvas `resize`, a backdrop path
-   that was never validated. Left (4) and why: `test_display_config_prompt.py` -- the "take the shipped display
-   defaults?" prompt exists only in the Qt window (`_offer_package_display_defaults`, a `chisurf.gui.dialogs`
-   choice); it needs an in-viewport choice dialog before it can move. `chrome_baseline.py` + `test_chrome_painter`
-   (pytest-qt `qapp`) photograph the Qt `QPainter` chrome, the before-half of the quad port; `screenshot.py` +
-   `test_screenshot_helper.py` grab Qt widgets and are used by `test/benchmarks/benchmark_chimol_frames.py` --
-   all go when chimol drops `hosts/qt`. Two lighting pixel tests ran for the first time (they had always skipped
+   that was never validated. The 4 left then (the display-defaults prompt test, `chrome_baseline.py`,
+   `screenshot.py`, `test_screenshot_helper.py`) went in the leftovers slice above. Two lighting pixel tests ran for the first time (they had always skipped
    on the Qt offscreen platform) and are strict xfails: silhouettes and the depth cue move no pixels in the
    toolkit-free frame (`okf/references/known-issues.md`).
    A test line goes by porting the test to the native app (or `emtk.testing.Driver`), never by deleting it; a Qt
@@ -321,12 +336,26 @@ own startup stages (item 5): S5 is done.
    and the owner's call. **chimol** (named blocker, 2026-10-13): ChiSurf no longer opens a Qt chimol window (no
    `gui` entry; tests on the toolkit-free host, item 1). chimol itself still ships `hosts/qt/` (`window.py`,
    `wgpu_view.py`, `overlay.py`, `menu_bar.py`, `controls_panel.py`; `demos.py` retired) for its own
-   `python -m chimol --qt`, the Qt-bound `Viewer` base in `hosts/toolkit.py` / `core/viewer/_common.py`, and
-   three ChiSurf callers outside `plugins/`: `chisurf/macros/core_fit.py` (project restore opens the Qt window),
-   `test/gui/test_migrated_tool_windows.py`, `test/benchmarks/benchmark_chimol_{frames,ray}.py`,
-   `test/console/test_command_dispatch_rule.py`. What still blocks `hosts/qt` going: the display-defaults prompt
-   (Qt window only), `Viewer()` with no factory defaulting to `hosts.qt.wgpu_view.default_renderer`, and those
-   callers moving to `ChimolApp`.
+   `python -m chimol --qt`. Gone since (2026-10-13 leftovers slice): the display-defaults prompt is in-viewport
+   (chimol 19444d1), the project restore (`chisurf/macros/core_fit.py`, chisurf 96d3b6f1d) opens the emtk app,
+   both benchmarks and the capture helpers run on `ChimolApp`. **What still imports `chimol.hosts.qt`**, i.e. the
+   exact list a deletion has to move (re-derive: `grep -rn "hosts\.qt\|MolViewPluginWindow" --include=*.py` in
+   both repos):
+   - chimol `core/viewer/viewer.py:~450` -- `Viewer()` with no `renderer_factory` takes
+     `hosts.qt.wgpu_view.default_renderer`, and `Viewer` subclasses the Qt-bound `WidgetBase`
+     (`hosts/toolkit.py`, `core/viewer/_common.py`, which imports `qtpy`); the toolkit-free hosts use
+     `HeadlessViewer`. This is the real blocker: a `Viewer()` default that is not a widget changes every
+     `Viewer()` caller (5 chimol test files, `render/picking.py` typing).
+   - chimol `__init__.py` (lazy `MolViewPluginWindow` export -- that file has another lane's uncommitted
+     notebook-host hunks, so it was not touched), `__main__.py --qt`, `commands/base.py` + `command.py` (type
+     hints only), `tools/check_imports.py` / `tools/plan_moves.py` (name the package), and the chimol tests
+     `test_headless_viewer_after_qt.py`, `test_overlay_rebuild.py`, `test_world_to_screen.py`,
+     `test_labelling_picking.py`, `test_dye_models.py`.
+   - ChiSurf: `chisurf/plugins/chimol/__main__.py` (documents `--qt`), `test/gui/test_migrated_tool_windows.py`
+     and `test/console/test_command_dispatch_rule.py` (both assert things *about* the Qt window and go with it),
+     `test/test_plugin_help_guide_seam.py` (comment only).
+   Order when it is done: give `Viewer()` a toolkit-free default (the `HeadlessViewer` path the hosts already
+   use), then delete `hosts/qt/` with `--qt` and the lazy export, then the two ChiSurf tests.
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit
