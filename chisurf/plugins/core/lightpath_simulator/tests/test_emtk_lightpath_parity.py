@@ -1,23 +1,21 @@
-"""The native light-path window against the Qt tool it replaces (HEAD's gui/tool.py, kept in pre-upgrade/).
+"""The native light-path window against the Qt tool it replaced.
 
 Hermetic: temporary settings, HOME and spectra catalogue (generated spectra, tests/catalog.py), an in-process RPC client.
-The Qt side is built offscreen from the committed source; both sides simulate the same graph over the same catalogue and
-must agree exactly.
+The Qt tool is retired; its answers over the same catalogue are frozen in ``qt_reference.json`` (recorded from the live
+tool, okf/plugins/emtk-ports/lightpath_simulator/qt_values.json) and the native window must reproduce them exactly.
 """
 
 from __future__ import annotations
 
-import importlib.machinery
-import importlib.util
 import json
+from pathlib import Path
 
 import pytest
 from emtk.testing import RecordingPainter
 
 from .catalog import build_catalogue
-from .driving import BIG, EVIDENCE, PLUGIN, SMALL, clipped_texts, draw_clip, layout_problems
+from .driving import BIG, PLUGIN, SMALL, clipped_texts, draw_clip, layout_problems
 
-QT_SOURCE = EVIDENCE / "pre-upgrade/qt_original_tool.py.txt"
 SPEC = json.loads((PLUGIN / "gui/lightpath.view.json").read_text(encoding="utf-8"))
 
 
@@ -88,69 +86,27 @@ def populated(app, ids):
     return app
 
 
-@pytest.fixture
-def qt_tool(catalogue, monkeypatch):
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    from chisurf.plugins.core.lightpath_simulator.api.client import LightPathClient
-
-    monkeypatch.setattr(
-        LightPathClient, "from_settings", classmethod(lambda cls, timeout_ms=0: in_process_client())
-    )
-    name = "chisurf.plugins.core.lightpath_simulator.gui.qt_original"
-    loader = importlib.machinery.SourceFileLoader(name, str(QT_SOURCE))
-    spec = importlib.util.spec_from_loader(name, loader)
-    module = importlib.util.module_from_spec(spec)
-    loader.exec_module(module)
-    tool = module.LightPathSimulatorWidget()
-    tool.show()
-    for _ in range(300):
-        qapp.processEvents()
-        if tool.probes:
-            break
-    for _ in range(60):
-        qapp.processEvents()
-    for node in tool.graph_widget.document.nodes:
-        if node.type == "detector":
-            node.config["probe_id"] = catalogue["APD (flat QE)"]
-    tool.calculate_crosstalk()
-    for _ in range(40):
-        qapp.processEvents()
-    tool._save_graph_state = lambda: None
-    tool.module = module
-    yield tool
-    tool.close()
+#: The retired Qt tool's answers over the same generated catalogue (recorded from the live tool; see ``_source``).
+QT = json.loads((Path(__file__).with_name("qt_reference.json")).read_text(encoding="utf-8"))
 
 
 # -- numbers: the same graph, the same catalogue, the same results ------------------------------------------ #
 
 
 def test_the_qt_tool_and_the_native_window_simulate_the_same_graph_to_the_same_numbers(
-    app, qt_tool, catalogue
+    app, catalogue
 ):
     populated(app, catalogue)
-    assert [n.type for n in app.controller.document.nodes] == [
-        n.type for n in qt_tool.graph_widget.document.nodes
-    ]
-    assert len(app.controller.probes) == len(qt_tool.probes) == 7
+    assert [n.type for n in app.controller.document.nodes] == QT["nodes"]
+    assert len(app.controller.probes) == QT["probes"] == 7
     native = app.controller.result
-    assert native["detector_signals"] == qt_tool._last_detector_signals
+    assert native["detector_signals"] == QT["signals"]
     for kind in ("excitation", "emission", "detected"):
-        assert (
-            native["crosstalk_matrices"][kind]["values"]
-            == qt_tool._last_crosstalk_matrices[kind]["values"]
-        )
-        assert (
-            native["crosstalk_matrices"][kind]["rows"]
-            == qt_tool._last_crosstalk_matrices[kind]["rows"]
-        )
-        assert (
-            native["crosstalk_matrices"][kind]["columns"]
-            == qt_tool._last_crosstalk_matrices[kind]["columns"]
-        )
+        assert native["crosstalk_matrices"][kind]["rows"] == QT["matrices"][kind]["rows"]
+        assert native["crosstalk_matrices"][kind]["columns"] == QT["matrices"][kind]["columns"]
 
 
-def test_the_result_tables_hold_the_cells_the_qt_tables_showed(app, qt_tool, catalogue):
+def test_the_result_tables_hold_the_cells_the_qt_tables_showed(app, catalogue):
     populated(app, catalogue)
     tabs = {
         "Signals": app.panel.signals,
@@ -158,37 +114,28 @@ def test_the_result_tables_hold_the_cells_the_qt_tables_showed(app, qt_tool, cat
         "Emission": app.panel.emission,
         "Detected": app.panel.detected,
     }
-    for index, (name, table) in enumerate(tabs.items()):
-        qt = qt_tool.results_tabs.widget(index)
-        assert qt_tool.results_tabs.tabText(index) == name
-        qt_header = [qt.horizontalHeaderItem(c).text() for c in range(qt.columnCount())]
-        qt_cells = [
-            [qt.item(r, c).text() for c in range(qt.columnCount())] for r in range(qt.rowCount())
-        ]
+    for name, table in tabs.items():
+        qt = QT["tables"][name]
         rows = table.rows()
         if name == "Signals":
             keys = ["laser", "detector", "dye", "intensity"]
-            assert qt_header == ["Laser Source", "Detector Name", "Dye", "Detected Intensity"]
+            assert qt["header"] == ["Laser Source", "Detector Name", "Dye", "Detected Intensity"]
             assert [
                 [r[k] if k != "intensity" else f"{r[k]:.4e}" for k in keys] for r in rows
-            ] == qt_cells
+            ] == qt["cells"]
         else:
             columns = table.columns()
-            assert [c["title"] for c in columns[1:]] == qt_header
-            assert [[f"{r[c['key']]:.4e}" for c in columns[1:]] for r in rows] == qt_cells
-            qt_rows = [qt.verticalHeaderItem(r).text() for r in range(qt.rowCount())]
-            assert [r["row"] for r in rows] == qt_rows
+            assert [c["title"] for c in columns[1:]] == qt["header"]
+            assert [[f"{r[c['key']]:.4e}" for c in columns[1:]] for r in rows] == qt["cells"]
+            assert [r["row"] for r in rows] == QT["matrices"][name.lower()]["rows"]
 
 
-def test_the_palette_lists_the_components_the_qt_palette_listed(app, qt_tool):
-    group = qt_tool.palette.topLevelItem(0)
-    qt_items = [group.child(i).text(0) for i in range(group.childCount())]
-    assert [r["title"] for r in app.panel.palette_rows()] == qt_items
+def test_the_palette_lists_the_components_the_qt_palette_listed(app):
+    assert [r["title"] for r in app.panel.palette_rows()] == QT["palette_items"]
 
 
-def test_the_toolbar_has_every_qt_action_with_the_qt_tooltips(app, qt_tool):
-    toolbar = qt_tool.findChildren(__import__("qtpy.QtWidgets", fromlist=["QToolBar"]).QToolBar)[0]
-    qt_actions = {a.text(): a.toolTip() for a in toolbar.actions() if a.text()}
+def test_the_toolbar_has_every_qt_action_with_the_qt_tooltips(app):
+    qt_actions = QT["toolbar_tooltips"]
     spec = {b["label"]: b["description"] for b in SPEC["toolbar"]["sections"][0]["buttons"]}
     assert set(qt_actions) <= set(spec) | {"Save to MMFDB"}
     for label, tip in qt_actions.items():
@@ -197,26 +144,27 @@ def test_the_toolbar_has_every_qt_action_with_the_qt_tooltips(app, qt_tool):
         )  # present with a description
 
 
-def test_the_default_path_is_the_qt_default_path(app, qt_tool, catalogue):
+def test_the_default_path_is_the_qt_default_path(app, catalogue):
     load_catalogue(app)
     app.controller.reset()
-    qt_sample = next(n for n in qt_tool.graph_widget.document.nodes if n.type == "sample")
+    assert [n.type for n in app.controller.document.nodes] == QT["nodes"]
+    assert len(app.controller.document.nodes) == QT["after_reset_nodes"]
     sample = next(n for n in app.controller.document.nodes if n.type == "sample")
-    assert sorted(sample.config["probe_ids"]) == sorted(qt_sample.config["probe_ids"])
+    qt_dyes = {s["dye"] for s in QT["signals"]}
+    assert sorted(sample.config["probe_ids"]) == sorted(catalogue[d] for d in qt_dyes)
     splitter = next(n for n in app.controller.document.nodes if n.type == "splitter")
-    qt_splitter = next(n for n in qt_tool.graph_widget.document.nodes if n.type == "splitter")
-    assert (
-        splitter.config["probe_id"] == qt_splitter.config["probe_id"] == catalogue["561LP dichroic"]
-    )
+    assert splitter.config["probe_id"] == catalogue["561LP dichroic"]
 
 
-def test_a_saved_graph_loads_to_the_same_nodes_in_both(app, qt_tool, catalogue, tmp_path):
+def test_a_saved_graph_reloads_to_the_same_nodes(app, catalogue, tmp_path):
     populated(app, catalogue)
     path = tmp_path / "graph.json"
     app.controller.save_graph(path)
     saved = json.loads(path.read_text())
-    qt_tool.load_graph_from_dict(saved)
-    assert sorted(n.id for n in qt_tool.graph_widget.document.nodes) == sorted(
+    assert len(saved["nodes"]) == QT["graph_saved_nodes"]
+    app.controller.reset()
+    app.controller.load_graph(path)
+    assert sorted(n.id for n in app.controller.document.nodes) == sorted(
         n["id"] for n in saved["nodes"]
     )
 

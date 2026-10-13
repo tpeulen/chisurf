@@ -233,7 +233,7 @@ def test_export_to_json():
 
 def test_json_safe_strips_runtime_callables():
     """Verify graph state with callbacks can be sent through JSON-RPC."""
-    from chisurf.plugins.core.lightpath_simulator.gui.tool import _json_safe
+    from chisurf.plugins.core.lightpath_simulator.gui.controller import json_safe as _json_safe
 
     graph = _manual_laser_graph()
     graph["nodes"][0]["config"]["_update_plot"] = lambda: None

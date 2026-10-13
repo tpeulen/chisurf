@@ -24,6 +24,11 @@ def easy_mode(app, catalogue):
     for node in app.controller.document.nodes:
         if node.type == "detector":
             node.config["probe_id"] = catalogue["APD (flat QE)"]
+    # A detector edited in the graph reaches Easy Mode through the controller's sync (set here directly, so
+    # sync by hand): Easy Mode projects its whole form, and a stale form would put the old QE back.
+    from chisurf.core.optical_configuration import _graph_to_config
+
+    app.controller.on_easy_sync(_graph_to_config(app.controller.graph()))
     drv.settle()
     drv.click_text("Easy Mode")
     drv.draw(3)
@@ -31,7 +36,22 @@ def easy_mode(app, catalogue):
     return drv
 
 
+#: A column inside the Easy Mode dock (the right-hand dock of the 1200 x 800 window): the wheel scrolls it there.
+EASY_X = 900.0
+
+
+def click_easy(drv, label):
+    """Click *label* in the Easy Mode form, scrolling it into view (the form is taller than the dock)."""
+    drv.click_text_scrolling(label, x=EASY_X)
+
+
 def edit_laser_lines(drv, text):
+    drv.draw(2)
+    for _ in range(14):  # the laser field is near the top of the form: scroll back up to it
+        rect = drv.text_rect("Laser lines wavelength:power:")
+        if rect[1] >= 0:
+            break
+        drv.wheel(EASY_X, 300.0, 3)
     x, y, w, h = [t[:4] for t in drv.draw(2).texts if t[5] == "Laser lines wavelength:power:"][0]
     drv.click_at(x + 40, y + 24)
     drv.select_all()
@@ -58,23 +78,23 @@ def test_an_edited_input_recalculates_by_itself(app, catalogue):
 
 def test_unticking_auto_recalculate_leaves_the_button_as_the_only_trigger(app, catalogue):
     drv = easy_mode(app, catalogue)
-    drv.click_text("Auto recalculate")
+    click_easy(drv, "Auto recalculate")
     assert not app.easy.auto_recalculate
     edit_laser_lines(drv, "488:0.5, 640:1.0")
     wait_for_the_pause(drv)
     assert app.controller.result == {}
-    drv.click_text("Simulate optical setup")
+    click_easy(drv, "Simulate optical setup")
     drv.settle()
     assert app.controller.result["detector_signals"]
 
 
 def test_reticking_after_an_edit_recalculates(app, catalogue):
     drv = easy_mode(app, catalogue)
-    drv.click_text("Auto recalculate")
+    click_easy(drv, "Auto recalculate")
     edit_laser_lines(drv, "488:0.5, 640:1.0")
     wait_for_the_pause(drv)
     assert app.controller.result == {}
-    drv.click_text("Auto recalculate")
+    click_easy(drv, "Auto recalculate")
     assert app.easy.auto_recalculate
     wait_for_the_pause(drv)
     assert app.controller.result["detector_signals"]

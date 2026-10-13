@@ -67152,6 +67152,22 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Show this page</source>
             <translation>Afficher cette page</translation>
         </message>
+        <message>
+            <source>Optical components</source>
+            <translation>Composants optiques</translation>
+        </message>
+        <message>
+            <source>Show or hide this part of the optical setup.</source>
+            <translation>Afficher ou masquer cette partie du montage optique.</translation>
+        </message>
+        <message>
+            <source>Select at least one dye.</source>
+            <translation>Sélectionnez au moins un colorant.</translation>
+        </message>
+        <message>
+            <source>Optical path loaded from Easy Mode.</source>
+            <translation>Chemin optique chargé depuis le mode simple.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

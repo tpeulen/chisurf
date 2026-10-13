@@ -10,7 +10,11 @@ radius of every donor and acceptor pair. The spectra come from the MMFDB catalog
   delete) or the background (add a component, arrange, fit). The toolbar above it saves and loads graphs.
 * **Optical Components**: the list of components to add, Reset to Default, the graph view buttons, the backend settings and a
   numeric form to connect two ports.
-* **Easy Mode**: the same path as a form (lasers, excitation dichroic, dyes, splitters, detectors). It edits the graph.
+* **Easy Mode**: the same path as a form, in four sections: Optical components (lasers, excitation dichroic, emission
+  splitters), Detectors (bandpass and quantum efficiency of each), Fluorophores and Simulation (κ², n, Auto recalculate,
+  Simulate optical setup and the Förster radius and crosstalk matrices). Editing a value changes the graph's nodes; adding or
+  removing a splitter, detector or bandpass, or choosing a template from the list, rebuilds the path. κ² and n are kept as
+  your FRET settings, and every simulation keeps its configuration as the default light path of the PDA models.
 * **Emission Probability**: Calculate Emission Intensity and the result tables.
 
 ## Simulating

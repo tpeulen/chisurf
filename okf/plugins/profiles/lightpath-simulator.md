@@ -30,9 +30,9 @@ integral calculations.
 | Backend | `backend/crosstalk.py`, `backend/simulator.py`, `backend/mmcif_export.py`. |
 | RPC | `rpc/services.py`, `rpc/methods.py`, `rpc/client.py`. |
 | CLI | `cli/main.py`, plus manifest command `lightpath-simulator=...`. |
-| GUI | `gui/tool.py`, `gui/easy_mode.py`, `gui/node_types.py`. |
+| GUI | emtk only: `gui/app.py` (window), `gui/controller.py`, `gui/panel.py`, `gui/node_types.py`; Easy Mode is `chisurf/emtk/optical_configuration.py` with its files in `core/easy_config.py`. The Qt tool and Qt Easy Mode are retired (2026-10-13). |
 | Templates | Several JSON optical-path templates. |
-| Tests | `tests/test_crosstalk.py`, `test_easy_mode.py`, `test_headless.py`. |
+| Tests | `tests/test_crosstalk.py`, `test_easy_mode.py`, `test_easy_mode_window.py`, `test_headless.py`, `test_emtk_lightpath_parity.py` (against the frozen Qt answers `tests/qt_reference.json`). |
 
 Manifest RPC methods include `lightpath.simulate`, `save`, `list`, `get`,
 `get_probes_info`, and `contract.describe`.

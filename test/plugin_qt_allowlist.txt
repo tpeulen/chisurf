@@ -1,9 +1,6 @@
 # Plugin files that still import Qt (qtpy / PyQt / PySide). SHRINKING tracker for the
 # plugin half of the Qt retirement (test/test_plugin_qt_free.py). Strike a path when its
 # plugin moves to emtk; adding a path is a test failure. Goal: empty.
-chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
-chisurf/plugins/core/lightpath_simulator/gui/tool.py
-chisurf/plugins/core/lightpath_simulator/tests/test_native_ui.py
 chisurf/plugins/core/mmfdb_admin/__init__.py
 chisurf/plugins/core/mmfdb_admin/gui/autoform_entity_form.py
 chisurf/plugins/core/mmfdb_admin/gui/calibrations_view.py

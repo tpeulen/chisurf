@@ -11,9 +11,10 @@ against a captured state of what the user actually sees:
 ``node-provenance``
     the MMFDB provenance graph, read-only, which is how ``mmfdb_admin`` uses
     the editor.
-``node-lightpath``
-    the lightpath simulator's tool window, the densest graph: node bodies
-    with spectra, choosers and tables drawn through a content renderer.
+
+The lightpath simulator's graph is not here: its Qt tool window is retired
+and the window is the emtk app, whose before/after evidence is
+``okf/plugins/emtk-ports/lightpath_simulator/``.
 
 Run it as::
 
@@ -96,35 +97,6 @@ def _provenance() -> typing.Any:
     editor = NodeGraphWidget(read_only=True)
     editor.load_graph_dict(mmfdb_graph_to_node_editor_graph(_PROVENANCE_GRAPH))
     return editor
-
-
-@surface("node-lightpath")
-def _lightpath() -> typing.Any:
-    """Build the lightpath simulator's tool window.
-
-    Returns
-    -------
-    typing.Any
-        The simulator widget with its stock optical path, the state a user
-        actually sees.
-    """
-    from chisurf.plugins.core.lightpath_simulator.gui.tool import LightPathSimulatorWidget
-
-    widget = LightPathSimulatorWidget()
-    # An empty canvas proves nothing about node rendering, and the tool opens
-    # empty. Its own "Reset to Default" builds the stock optical path, which is
-    # the state a user actually sees.
-    for name in ("reset_to_default", "_reset_to_default", "on_reset_to_default"):
-        action = getattr(widget, name, None)
-        if callable(action):
-            action()
-            break
-    else:  # pragma: no cover - the button is the fallback path
-        for button in widget.findChildren(QtWidgets.QPushButton):
-            if "reset" in button.text().lower():
-                button.click()
-                break
-    return widget
 
 
 #: A graph small enough to read in a screenshot and wide enough to show a node

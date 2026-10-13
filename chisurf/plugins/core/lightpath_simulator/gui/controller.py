@@ -272,17 +272,28 @@ class LightPathController:
         self.document.remove_edge(edge)
         self.changed()
 
+    @staticmethod
+    def _easy_topology(config):
+        """What of an easy configuration needs nodes: the excitation dichroic, splitters, detectors and filters."""
+        return (
+            config.get("excitation_dichroic_probe_id") is not None,
+            len(config.get("emission_splitters") or []),
+            tuple(
+                detector.get("bandpass_probe_id") is not None
+                for detector in config.get("detectors") or []
+            ),
+        )
+
     def apply_easy(self, config):
+        """Apply an Easy Mode edit: a changed value goes into the current nodes; a changed topology rebuilds.
+
+        The topology is compared in the easy configuration's own terms (an excitation dichroic or none, the
+        number of emission splitters, the detectors and which of them have a bandpass), so an edit of the
+        simulator's default path -- which has no excitation dichroic -- keeps its nodes, positions and wiring.
+        """
         generated = GraphDocument.from_dict(build_easy_graph(copy.deepcopy(config)))
-        current_by_type, generated_by_type = {}, {}
-        for node in self.document.nodes:
-            current_by_type.setdefault(node.type, []).append(node)
-        for node in generated.nodes:
-            generated_by_type.setdefault(node.type, []).append(node)
-        same_structure = {key: len(value) for key, value in current_by_type.items()} == {
-            key: len(value) for key, value in generated_by_type.items()
-        }
-        if same_structure or any(kind not in generated_by_type for kind in current_by_type):
+        previous = _graph_to_config(self.graph())
+        if self._easy_topology(previous) == self._easy_topology(config):
             projected = apply_easy_graph_parameters(self.graph(), config)
             for value in projected["nodes"]:
                 node = self.document.node(value["id"])
@@ -446,6 +457,10 @@ class LightPathController:
             self.start()
 
     def close(self):
+        """Stop the backend, save the state file, release the parameters and the client; a second call does nothing."""
+        if getattr(self, "_closed", False):
+            return
+        self._closed = True
         self.stop()
         if self.state_path is not None:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)

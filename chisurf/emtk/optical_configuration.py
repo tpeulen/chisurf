@@ -23,7 +23,10 @@ class OpticalConfigurationWidget:
         on_changed=None,
         on_open_graph=None,
         auto_recalculate=True,
+        on_loaded=None,
     ):
+        from chisurf.plugins.core.lightpath_simulator.core.easy_config import fret_setting
+
         self.config = copy.deepcopy(
             config
             or {
@@ -31,11 +34,15 @@ class OpticalConfigurationWidget:
                 "dyes": {},
                 "detectors": [{"name": name} for name in (detector_names or ["green", "red"])],
                 "emission_splitters": [],
-                "kappa2": 2 / 3,
-                "n": 1.33,
+                # A new form starts from the user's FRET settings, which every κ² / n edit updates.
+                "kappa2": fret_setting("kappa2"),
+                "n": fret_setting("n"),
             }
         )
         self.on_changed = on_changed
+        #: Called with the configuration of a loaded preset or template instead of ``on_changed``: a load
+        #: replaces the whole optical path (its topology too), an edit only changes parameters of the current one.
+        self.on_loaded = on_loaded
         # "Auto recalculate": a changed input re-runs the simulation after a short pause.
         self.auto_recalculate = bool(auto_recalculate)
         self.recalculate_delay = 0.3
@@ -63,6 +70,18 @@ class OpticalConfigurationWidget:
             self.preset_directory.glob("*.json")
         )
         self.template_index = 0
+        #: What the template list shows: a packaged template's ``name`` ("Template: 2-color (2 detector)"),
+        #: a saved preset's file name ("Preset: …"), as the Qt Easy Mode's preset list did.
+        self.template_labels = [self._template_label(p) for p in self.templates]
+
+    def _template_label(self, path):
+        if Path(path).parent != self.template_directory:
+            return f"Preset: {Path(path).stem}"
+        try:
+            name = json.loads(Path(path).read_text()).get("name") or Path(path).stem
+        except (OSError, ValueError, AttributeError):
+            name = Path(path).stem
+        return f"Template: {name}"
 
     def changed(self):
         if self.auto_recalculate and not self._quiet:
@@ -116,7 +135,10 @@ class OpticalConfigurationWidget:
         self.results = copy.deepcopy(config.get("_cached_results") or {})
         self._quiet = True  # a loaded setup carries its own results
         try:
-            self.changed()
+            if callable(self.on_loaded):
+                self.on_loaded(copy.deepcopy(self.config))
+            else:
+                self.changed()
         finally:
             self._quiet = False
 
@@ -202,6 +224,15 @@ class OpticalConfigurationWidget:
         im.set_item_tooltip(f"Select the measured spectrum used for {label.lower()}.")
         return changed, ids[index]
 
+    @staticmethod
+    def _section(title):
+        """A collapsible group of the form, open at first (the Qt Easy Mode's four sections)."""
+        from emtk import im
+
+        is_open = im.collapsing_header(tr(title) + "##optical_section_" + title, 32)
+        im.set_item_tooltip(tr("Show or hide this part of the optical setup."))
+        return is_open
+
     def draw(self):
         from emtk import im
 
@@ -230,145 +261,158 @@ class OpticalConfigurationWidget:
             changed, index = im.combo(
                 "##optical_template",
                 self.template_index,
-                ["Choose template"] + [p.stem for p in self.templates],
+                ["Choose template"] + self.template_labels,
             )
             self.template_index = index
             im.set_item_tooltip(tr("Load a packaged instrument light-path template."))
             if changed and index > 0:
                 self._action(self.load, self.templates[index - 1])
-        im.text(tr("Laser lines wavelength:power:"))
-        changed, value = im.input_text(
-            "##optical_lasers", self.config.get("lasers", "488:1.0, 640:1.0")
-        )
-        im.set_item_tooltip(
-            tr(
-                "Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0."
-            )
-        )
-        if changed:
-            self.config["lasers"] = value
-            self.changed()
-        for key, label, minimum, maximum in [
-            ("kappa2", "Orientation factor κ²", 0.0, 4.0),
-            ("n", "Refractive index", 1.0, 3.0),
-        ]:
-            im.text(label + ":")
-            changed, value = im.slider_float(
-                "##optical_" + key,
-                float(self.config.get(key, 2 / 3 if key == "kappa2" else 1.33)),
-                minimum,
-                maximum,
+        if self._section("Optical components"):
+            im.text(tr("Laser lines wavelength:power:"))
+            changed, value = im.input_text(
+                "##optical_lasers", self.config.get("lasers", "488:1.0, 640:1.0")
             )
             im.set_item_tooltip(
                 tr(
-                    "Parameter used in the Förster-radius calculation for the selected fluorophores."
+                    "Comma-separated excitation lines in nanometers with relative powers, for example 488:1.0, 640:1.0."
                 )
             )
             if changed:
-                self.config[key] = value
+                self.config["lasers"] = value
                 self.changed()
-        changed, value = self._probe(
-            "Excitation dichroic", self.config.get("excitation_dichroic_probe_id"), "has_trans"
-        )
-        if changed:
-            self.config["excitation_dichroic_probe_id"] = value
-            self.changed()
-        changed, value = self._probe("Add fluorophore", None, "has_em")
-        if changed and value is not None:
-            probe = next(p for p in self.probes if p["probe_id"] == value)
-            self.config.setdefault("dyes", {})[str(value)] = {
-                "qy": probe.get("qy", 1.0),
-                "ec": probe.get("ec", 1.0),
-            }
-            self.changed()
-        for dye, properties in list(self.config.setdefault("dyes", {}).items()):
-            im.push_id(dye)
-            im.text(f"Fluorophore {dye}")
-            for key, label in [("qy", "Quantum yield"), ("ec", "Extinction coefficient")]:
-                changed, value = im.input_float(label, float(properties.get(key, 1.0)))
-                im.set_item_tooltip(f"Optical {label.lower()} of fluorophore {dye}.")
+            changed, value = self._probe(
+                "Excitation dichroic", self.config.get("excitation_dichroic_probe_id"), "has_trans"
+            )
+            if changed:
+                self.config["excitation_dichroic_probe_id"] = value
+                self.changed()
+            self._button(
+                "Add emission splitter",
+                "Add a measured dichroic or polarizer in the detection path.",
+                self._add_splitter,
+            )
+            for index, splitter in enumerate(
+                list(self.config.setdefault("emission_splitters", []))
+            ):
+                im.push_id(f"splitter{index}")
+                options = ["Dichroic", "Polarizer"]
+                current = splitter.get("type", "Dichroic")
+                changed, selected = im.combo(
+                    "Splitter type", options.index(current) if current in options else 0, options
+                )
+                im.set_item_tooltip(tr("Choose a dichroic splitter or polarization splitter."))
                 if changed:
-                    properties[key] = max(0.0, value)
+                    splitter["type"] = options[selected]
                     self.changed()
+                changed, value = self._probe(
+                    "Splitter spectrum", splitter.get("probe_id"), "has_trans"
+                )
+                if changed:
+                    splitter["probe_id"] = value
+                    self.changed()
+                self._button(
+                    "Remove splitter",
+                    "Remove this splitter from the optical chain.",
+                    lambda i=index: self._remove_splitter(i),
+                )
+                im.pop_id()
+        if self._section("Detectors"):
+            im.text(tr("New optical detector name:"))
+            _, self.new_detector = im.input_text("##new_optical_detector", self.new_detector)
+            im.set_item_tooltip(tr("Name of the optical detector channel to add."))
             self._button(
-                "Remove fluorophore",
-                "Remove this dye from the optical sample.",
-                lambda key=dye: self._remove_dye(key),
+                "Add optical detector",
+                "Add a detector channel with its bandpass and quantum-efficiency spectrum.",
+                self._add_detector,
             )
-            im.pop_id()
-        self._button(
-            "Add emission splitter",
-            "Add a measured dichroic or polarizer in the detection path.",
-            self._add_splitter,
-        )
-        for index, splitter in enumerate(list(self.config.setdefault("emission_splitters", []))):
-            im.push_id(f"splitter{index}")
-            options = ["Dichroic", "Polarizer"]
-            current = splitter.get("type", "Dichroic")
-            changed, selected = im.combo(
-                "Splitter type", options.index(current) if current in options else 0, options
-            )
-            im.set_item_tooltip(tr("Choose a dichroic splitter or polarization splitter."))
-            if changed:
-                splitter["type"] = options[selected]
+            for index, detector in enumerate(list(self.config.setdefault("detectors", []))):
+                im.push_id(f"optical_detector{index}")
+                im.text(detector.get("name", f"Detector {index + 1}"))
+                for key, label, filter_key in [
+                    ("bandpass_probe_id", "Bandpass", "has_trans"),
+                    ("qe_probe_id", "Quantum efficiency", "has_qe"),
+                ]:
+                    changed, value = self._probe(label, detector.get(key), filter_key)
+                    if changed:
+                        detector[key] = value
+                        self.changed()
+                self._button(
+                    "Remove optical detector",
+                    "Remove this detector from the simulated light path.",
+                    lambda i=index: self._remove_detector(i),
+                )
+                im.pop_id()
+        if self._section("Fluorophores"):
+            changed, value = self._probe("Add fluorophore", None, "has_em")
+            if changed and value is not None:
+                probe = next(p for p in self.probes if p["probe_id"] == value)
+                self.config.setdefault("dyes", {})[str(value)] = {
+                    "qy": probe.get("qy", 1.0),
+                    "ec": probe.get("ec", 1.0),
+                }
                 self.changed()
-            changed, value = self._probe("Splitter spectrum", splitter.get("probe_id"), "has_trans")
-            if changed:
-                splitter["probe_id"] = value
-                self.changed()
-            self._button(
-                "Remove splitter",
-                "Remove this splitter from the optical chain.",
-                lambda i=index: self._remove_splitter(i),
-            )
-            im.pop_id()
-        im.text(tr("New optical detector name:"))
-        _, self.new_detector = im.input_text("##new_optical_detector", self.new_detector)
-        im.set_item_tooltip(tr("Name of the optical detector channel to add."))
-        self._button(
-            "Add optical detector",
-            "Add a detector channel with its bandpass and quantum-efficiency spectrum.",
-            self._add_detector,
-        )
-        for index, detector in enumerate(list(self.config.setdefault("detectors", []))):
-            im.push_id(f"optical_detector{index}")
-            im.text(detector.get("name", f"Detector {index + 1}"))
-            for key, label, filter_key in [
-                ("bandpass_probe_id", "Bandpass", "has_trans"),
-                ("qe_probe_id", "Quantum efficiency", "has_qe"),
+            for dye, properties in list(self.config.setdefault("dyes", {}).items()):
+                im.push_id(dye)
+                im.text(f"Fluorophore {dye}")
+                for key, label in [("qy", "Quantum yield"), ("ec", "Extinction coefficient")]:
+                    changed, value = im.input_float(label, float(properties.get(key, 1.0)))
+                    im.set_item_tooltip(f"Optical {label.lower()} of fluorophore {dye}.")
+                    if changed:
+                        properties[key] = max(0.0, value)
+                        self.changed()
+                self._button(
+                    "Remove fluorophore",
+                    "Remove this dye from the optical sample.",
+                    lambda key=dye: self._remove_dye(key),
+                )
+                im.pop_id()
+        if self._section("Simulation"):
+            for key, label, minimum, maximum in [
+                ("kappa2", "Orientation factor κ²", 0.0, 4.0),
+                ("n", "Refractive index", 1.0, 3.0),
             ]:
-                changed, value = self._probe(label, detector.get(key), filter_key)
+                im.text(label + ":")
+                changed, value = im.slider_float(
+                    "##optical_" + key,
+                    float(self.config.get(key, 2 / 3 if key == "kappa2" else 1.33)),
+                    minimum,
+                    maximum,
+                )
+                im.set_item_tooltip(
+                    tr(
+                        "Parameter used in the Förster-radius calculation for the selected fluorophores."
+                    )
+                )
                 if changed:
-                    detector[key] = value
+                    self.config[key] = value
+                    from chisurf.plugins.core.lightpath_simulator.core.easy_config import (
+                        persist_fret_setting,
+                    )
+
+                    persist_fret_setting(key, value)
                     self.changed()
+            changed, value = im.checkbox(
+                tr("Auto recalculate") + "##optical_auto", self.auto_recalculate
+            )
+            im.set_item_tooltip(
+                tr(
+                    "Re-run the simulation shortly after any input changes; off, only the button below recalculates."
+                )
+            )
+            if changed:
+                self.auto_recalculate = value
+                self._recalculate_due = time.monotonic() + self.recalculate_delay if value else None
             self._button(
-                "Remove optical detector",
-                "Remove this detector from the simulated light path.",
-                lambda i=index: self._remove_detector(i),
+                "Simulate optical setup",
+                "Calculate Förster radii and excitation/emission/detection crosstalk using the original optical backend.",
+                lambda: self._action(self.simulate),
             )
-            im.pop_id()
-        changed, value = im.checkbox(
-            tr("Auto recalculate") + "##optical_auto", self.auto_recalculate
-        )
-        im.set_item_tooltip(
-            tr(
-                "Re-run the simulation shortly after any input changes; off, only the button below recalculates."
-            )
-        )
-        if changed:
-            self.auto_recalculate = value
-            self._recalculate_due = time.monotonic() + self.recalculate_delay if value else None
-        self._button(
-            "Simulate optical setup",
-            "Calculate Förster radii and excitation/emission/detection crosstalk using the original optical backend.",
-            lambda: self._action(self.simulate),
-        )
-        if self.results:
-            self._draw_matrix(
-                "Förster radius", self.results.get("forster") or extract_forster(self.results)
-            )
-            for title, matrix in self.results.get("crosstalk_matrices", {}).items():
-                self._draw_matrix(f"{title.title()} crosstalk", matrix)
+            if self.results:
+                self._draw_matrix(
+                    "Förster radius", self.results.get("forster") or extract_forster(self.results)
+                )
+                for title, matrix in self.results.get("crosstalk_matrices", {}).items():
+                    self._draw_matrix(f"{title.title()} crosstalk", matrix)
         if self.status:
             im.text_wrapped(self.status)
         self._run_due_recalculation()

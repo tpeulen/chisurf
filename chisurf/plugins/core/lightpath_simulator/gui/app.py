@@ -14,12 +14,13 @@ from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.view_form import FormState, draw_form
 
-from chisurf.core.optical_configuration import _graph_to_config, extract_forster
+from chisurf.core.optical_configuration import _graph_to_config, build_easy_graph, extract_forster
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.emtk.node_editor.control import GraphControl
 from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
 from chisurf.plugins.emtk_layout import action_button, window_size
 
+from ..core.easy_config import load_last_config, save_last_config
 from .controller import LightPathController
 from .emtk_view import BeampathContent
 from .node_types import optical_registry
@@ -301,8 +302,11 @@ class LightPathApp(TourTarget, ImApp):
         )
         self.graph_control.host_app = self
         self.graph_control.controller = self.controller
+        self._restore_last_config()
         self.easy = OpticalConfigurationWidget(
-            _graph_to_config(self.controller.graph()), on_changed=self.controller.apply_easy
+            _graph_to_config(self.controller.graph()),
+            on_changed=self.controller.apply_easy,
+            on_loaded=self._load_easy,
         )
         self.easy.refresh_probes = lambda: self.controller.start("catalogue")
         self.easy.simulate = self._simulate_easy
@@ -406,6 +410,36 @@ class LightPathApp(TourTarget, ImApp):
                 self.graph_control.editor.canvas.origin,
             ) = view
 
+    def _restore_last_config(self) -> None:
+        """Open on the configuration last simulated (as the Qt Easy Mode did), unless a saved graph was loaded.
+
+        The shell's ``restore_settings`` runs after this and replaces it with the window's own saved graph.
+        """
+        if self.controller.revision != self.controller._default_revision:
+            return
+        config = load_last_config()
+        if not config:
+            return
+        graph = config.get("_graph") if isinstance(config.get("_graph"), dict) else None
+        if graph is None and "nodes" in config:
+            graph = config
+        try:
+            self.controller.load_document(graph or build_easy_graph(copy.deepcopy(config)))
+        except Exception as exc:  # noqa: BLE001 - a stale file must not stop the window opening
+            self.controller.reset()
+            self.controller.status = f"The last optical configuration could not be restored: {exc}"
+
+    def _load_easy(self, config):
+        """A preset or template chosen in Easy Mode replaces the optical path, topology included."""
+        graph = config.get("_graph") if isinstance(config.get("_graph"), dict) else None
+        self.controller.load_document(graph or build_easy_graph(copy.deepcopy(config)), update=True)
+        if (
+            graph is None
+        ):  # a generated path: lay it out by signal flow (its stored positions overlap)
+            self.controller.arrange()
+        self.controller.status = tr("Optical path loaded from Easy Mode.")
+        self.graph_control.fit()
+
     def _sync_easy(self, config):
         self.easy.config = copy.deepcopy(config)
 
@@ -420,8 +454,13 @@ class LightPathApp(TourTarget, ImApp):
             "forster": extract_forster(result),
             "crosstalk_matrices": result.get("crosstalk_matrices", {}),
         }
+        # The PDA models read this file as their default light path.
+        save_last_config(_graph_to_config(self.controller.graph()))
 
     def _simulate_easy(self):
+        if not self.easy.config.get("dyes"):
+            self.easy.status = tr("Select at least one dye.")
+            return None
         self.controller.apply_easy(self.easy.config)
         return self.controller.start()
 

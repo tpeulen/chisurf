@@ -17,22 +17,17 @@ else:
     cli_entrypoint = "lightpath-simulator=chisurf.plugins.core.lightpath_simulator.cli:cli"
 
 
-__all__ = ["LightPathSimulatorWidget"]
+__all__ = ["name", "icon", "cli_entrypoint"]
 
 
-def __getattr__(name):
-    if name == "LightPathSimulatorWidget":
-        from .gui.tool import LightPathSimulatorWidget
+if (
+    __name__ == "plugin"
+):  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+    from emtk.qt_host import ControlHost
 
-        return LightPathSimulatorWidget
-    raise AttributeError(name)
+    from chisurf.plugins.core.lightpath_simulator.gui.app import create_app
 
-
-# When the plugin is loaded, this code will be executed
-if __name__ == "plugin":
-    from .gui.tool import LightPathSimulatorWidget
-
-    window = LightPathSimulatorWidget()
+    window = ControlHost(create_app())
     if _manifest is not None:
         apply_manifest_statefulness(window, _manifest)
     window.show()

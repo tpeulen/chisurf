@@ -93,14 +93,23 @@ def _graph_to_config(graph: dict) -> dict:
             sample_id = n["id"]
             break
 
-    # Splitters fed by Sample's output port 1 are excitation dichroics
+    # Port indices are the schema's: a ``source_port`` counts through the node's ``outputs`` (a splitter's
+    # Transmission is 0, its Reflection 1; a sample's Out 0, its Dye Data 1). The splitter fed by the
+    # sample's Out is the excitation dichroic when it is titled so (the easy topology); otherwise -- the
+    # simulator's default path -- the emission cascade starts there and there is no excitation dichroic.
     exci_splitter_ids: set[str] = set()
     exci_bw_id: str | None = None
+    cascade_start: str | None = None
     if sample_id is not None:
+        sample_out = _output_index(nodes_map[sample_id], "Out", 0)
         for sp, tgt, tp in forward.get(sample_id, []):
-            if sp == 1 and node_type_of(tgt) == "splitter":
-                exci_splitter_ids.add(tgt)
-                exci_bw_id = tgt
+            if sp == sample_out and node_type_of(tgt) in ("splitter", "filter", "detector"):
+                title = str(nodes_map[tgt].get("title") or "").lower()
+                if node_type_of(tgt) == "splitter" and "exci" in title:
+                    exci_splitter_ids.add(tgt)
+                    exci_bw_id = tgt
+                else:
+                    cascade_start = tgt
                 break
 
     # Excitation dichroic probe (from ExciBW)
@@ -134,14 +143,16 @@ def _graph_to_config(graph: dict) -> dict:
                 "probe_id": cfg.get("probe_id"),
             }
         )
-        # Detector on transmission port (port 1)
+        transmission = _output_index(nd, "Transmission", 0)
+        reflection = _output_index(nd, "Reflection", 1)
+        # Detector on the transmission port
         for sp, tgt, tp in forward.get(splitter_id, []):
-            if sp == 1:
+            if sp == transmission:
                 _add_detector_from_chain(tgt)
                 break
-        # Next splitter on reflection port (port 2)
+        # Next splitter on the reflection port
         for sp, tgt, tp in forward.get(splitter_id, []):
-            if sp == 2:
+            if sp == reflection:
                 next_type = node_type_of(tgt)
                 if next_type == "splitter" and tgt not in visited:
                     return tgt
@@ -152,29 +163,26 @@ def _graph_to_config(graph: dict) -> dict:
         return None
 
     if exci_bw_id is not None:
-        # Walk from ExciBW's transmission port
-        for sp, tgt, tp in forward.get(exci_bw_id, []):
-            if sp == 1:
-                cur = tgt
-                visited: set[str] = set()
-                while cur is not None and cur not in visited:
-                    visited.add(cur)
-                    nt = node_type_of(cur)
-                    if nt == "splitter":
-                        nxt = _walk_splitter(cur, visited)
-                        cur = nxt
-                    elif nt in ("filter", "detector"):
-                        # Direct connection to detector chain (no splitters)
-                        _add_detector_from_chain(cur)
-                        break
-                    else:
-                        # Unknown — follow single outgoing edge
-                        nxt = None
-                        for sp2, tgt2, tp2 in forward.get(cur, []):
-                            nxt = tgt2
-                            break
-                        cur = nxt
+        exci_transmission = _output_index(nodes_map[exci_bw_id], "Transmission", 0)
+        cascade_start = next(
+            (tgt for sp, tgt, tp in forward.get(exci_bw_id, []) if sp == exci_transmission), None
+        )
+    if cascade_start is not None:
+        # Walk the emission cascade from its first node
+        cur: str | None = cascade_start
+        visited: set[str] = set()
+        while cur is not None and cur not in visited:
+            visited.add(cur)
+            nt = node_type_of(cur)
+            if nt == "splitter":
+                cur = _walk_splitter(cur, visited)
+            elif nt in ("filter", "detector"):
+                # Direct connection to detector chain (no splitters)
+                _add_detector_from_chain(cur)
                 break
+            else:
+                # Unknown — follow single outgoing edge
+                cur = next((tgt2 for _sp2, tgt2, _tp2 in forward.get(cur, [])), None)
 
     # --- Fallbacks when edges are missing or cascade walk found nothing ---
 
@@ -203,6 +211,15 @@ def _graph_to_config(graph: dict) -> dict:
     config["emission_splitters"] = splitters
     config["detectors"] = detectors
     return config
+
+
+def _output_index(node: dict, name: str, default: int) -> int:
+    """The schema index of *node*'s output called *name* (``outputs`` holds names or port dicts)."""
+    for index, port in enumerate(node.get("outputs") or []):
+        port_name = port.get("name") if isinstance(port, dict) else port
+        if port_name == name:
+            return index
+    return default
 
 
 def _resolve_detector_chain(
@@ -785,6 +802,20 @@ def apply_easy_graph_parameters(graph, configuration):
             [node for node in generated.get("nodes", []) if node.get("type") == kind],
             key=lambda node: tuple(node.get("pos") or (0.0, 0.0)),
         )
-        for old, new in zip(current, fresh):
+        if kind == "splitter":
+            # The excitation dichroic pairs with the excitation dichroic, emission splitters with emission
+            # splitters: matched on position alone, a path without an excitation dichroic (the simulator's
+            # default) gave its emission splitter the generated excitation dichroic's spectrum.
+            def is_exci(node):
+                return "exci" in str(node.get("title") or "").lower()
+
+            pairs = list(
+                zip([n for n in current if is_exci(n)], [n for n in fresh if is_exci(n)])
+            ) + list(
+                zip([n for n in current if not is_exci(n)], [n for n in fresh if not is_exci(n)])
+            )
+        else:
+            pairs = list(zip(current, fresh))
+        for old, new in pairs:
             old.setdefault("config", {}).update(new.get("config") or {})
     return result

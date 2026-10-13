@@ -2,18 +2,21 @@
 
 import numpy as np
 
+from chisurf.core.optical_configuration import (
+    _graph_to_config,
+    build_easy_graph,
+    normalize_lightpath_graph,
+)
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import WAVELENGTHS
 from chisurf.plugins.core.lightpath_simulator.backend.simulator import (
     OpticalPathSimulator,
 )
-from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
+from chisurf.plugins.core.lightpath_simulator.core.easy_config import (
     TEMPLATE_LIBRARY_DIR,
-    _graph_to_config,
-    build_easy_graph,
+    last_config_path,
     load_easy_preset,
     load_last_config,
     load_template_library,
-    normalize_lightpath_graph,
     save_easy_preset,
     save_last_config,
 )
@@ -452,20 +455,24 @@ class TestLastConfigPersistence:
     """Tests for auto-save / auto-load of the last config."""
 
     def test_save_and_load_last_config(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            "chisurf.plugins.core.lightpath_simulator.gui.easy_mode.EASY_LAST_CONFIG_PATH",
-            tmp_path / "lightpath_easy_last.json",
-        )
+        monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
         config = {"lasers": "561:1.0", "detectors": [], "dyes": {}}
         save_last_config(config)
+        assert last_config_path() == tmp_path / "settings" / "lightpath_easy_last.json"
+        assert last_config_path().is_file()
         loaded = load_last_config()
         assert loaded == config
 
-    def test_load_last_config_missing(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(
-            "chisurf.plugins.core.lightpath_simulator.gui.easy_mode.EASY_LAST_CONFIG_PATH",
-            tmp_path / "nonexistent.json",
+    def test_runtime_keys_are_not_saved(self, tmp_path, monkeypatch):
+        """``_cached_results`` / ``_spectra_db_path`` are session state; the graph of a custom path is kept."""
+        monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path))
+        save_last_config(
+            {"lasers": "561:1.0", "_cached_results": {"x": 1}, "_graph": {"nodes": []}}
         )
+        assert load_last_config() == {"lasers": "561:1.0", "_graph": {"nodes": []}}
+
+    def test_load_last_config_missing(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "nothing"))
         assert load_last_config() is None
 
 

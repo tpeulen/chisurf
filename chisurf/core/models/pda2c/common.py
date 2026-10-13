@@ -1043,9 +1043,11 @@ class Pda2cModelMixin:
 
         source = str(self.lightpath_graph or "").strip()
         if not source:
-            from chisurf.core.settings.path_utils import get_path
+            from chisurf.plugins.core.lightpath_simulator.core.easy_config import (
+                last_config_path,
+            )
 
-            source = str(get_path("settings") / "settings" / "lightpath_easy_last.json")
+            source = str(last_config_path())
         path = pathlib.Path(source)
         if not path.is_file():
             self._lightpath_status = (
@@ -1057,9 +1059,7 @@ class Pda2cModelMixin:
         try:
             payload = json.loads(path.read_text())
             if "nodes" not in payload:  # an easy-mode config, not a graph
-                from chisurf.plugins.core.lightpath_simulator.gui.easy_mode import (
-                    build_easy_graph,
-                )
+                from chisurf.core.optical_configuration import build_easy_graph
 
                 payload = build_easy_graph(payload)
             from chisurf.plugins.core.lightpath_simulator.core.workflow import (

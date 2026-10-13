@@ -16,7 +16,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.lightpath_simulator.gui.tool:LightPathSimulatorWidget",
     "cli": "lightpath-simulator=chisurf.plugins.core.lightpath_simulator.cli:cli",
     "services": "chisurf.plugins.core.lightpath_simulator.rpc.services:register_services",
     "emtk": "chisurf.plugins.core.lightpath_simulator.gui.app:create_app"

@@ -67014,6 +67014,22 @@ fortgesetzt werden.
             <source>Show this page</source>
             <translation>Diese Seite zeigen</translation>
         </message>
+        <message>
+            <source>Optical components</source>
+            <translation>Optische Komponenten</translation>
+        </message>
+        <message>
+            <source>Show or hide this part of the optical setup.</source>
+            <translation>Diesen Teil des optischen Aufbaus ein- oder ausblenden.</translation>
+        </message>
+        <message>
+            <source>Select at least one dye.</source>
+            <translation>Mindestens einen Farbstoff auswählen.</translation>
+        </message>
+        <message>
+            <source>Optical path loaded from Easy Mode.</source>
+            <translation>Optischer Pfad aus dem Easy Mode geladen.</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>
