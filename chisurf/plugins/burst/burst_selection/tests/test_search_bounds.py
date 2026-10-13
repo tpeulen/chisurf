@@ -26,6 +26,7 @@ from chisurf.plugins.burst.burst_selection.api.io import load_tttr
 from chisurf.plugins.burst.burst_selection.api.models import (
     AnalysisSettings,
     BurstDetectionSettings,
+    BurstFilterMode,
     DeltaMacroTimeFilterSettings,
     PhotonFilterSettings,
 )
@@ -48,7 +49,7 @@ def _count_rate_settings(min_photons: int) -> AnalysisSettings:
     s.photon_filter = PhotonFilterSettings(
         channels=[],
         filter_active=True,
-        used_filter="count_rate",
+        used_filter=BurstFilterMode.COUNT_RATE,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(dT_min=0.0),
     )
     s.burst_detection = BurstDetectionSettings(
@@ -117,7 +118,7 @@ def _tttrlib_settings(dt_max: float, time_window: float) -> AnalysisSettings:
     s.photon_filter = PhotonFilterSettings(
         channels=[],
         filter_active=True,
-        used_filter="tttrlib",
+        used_filter=BurstFilterMode.TTTRLIB,
         delta_macro_time_filter=DeltaMacroTimeFilterSettings(
             dT_min=0.001, dT_max=dt_max, dT_min_active=False, dT_max_active=True
         ),

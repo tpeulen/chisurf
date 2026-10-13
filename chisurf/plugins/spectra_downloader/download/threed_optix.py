@@ -63,7 +63,7 @@ def parse_wl(val: str | None) -> float | None:
 
 def scrape_product_detail(url: str) -> dict[str, Any]:
     """Fetch and parse detailed page for a specific catalog item."""
-    res = {}
+    res: dict[str, Any] = {}
     try:
         response = requests.get(url, headers=HEADERS, timeout=30)
         if response.status_code != 200:
@@ -83,8 +83,8 @@ def scrape_product_detail(url: str) -> dict[str, Any]:
                         res["external_url"] = a["href"]
 
         # 2. Detailed properties & material parameters
-        properties = {}
-        material = {}
+        properties: dict[str, Any] = {}
+        material: dict[str, Any] = {}
         for section in soup.find_all(class_=re.compile("Product-module__parameters")):
             header = section.find("h2")
             if header:
@@ -183,11 +183,8 @@ def download_threed_optix_to_db(
                 continue
 
             consecutive_empty_pages = 0
-            rows = (
-                table.find("tbody").find_all("tr")
-                if table.find("tbody")
-                else table.find_all("tr")[1:]
-            )
+            body = table.find("tbody")
+            rows = body.find_all("tr") if body is not None else table.find_all("tr")[1:]
 
             if not rows:
                 print(f"No rows found on page {page}.")
@@ -206,7 +203,7 @@ def download_threed_optix_to_db(
                     continue
 
                 full_name = a_tag.get_text(strip=True)
-                detail_path = a_tag["href"]
+                detail_path = str(a_tag["href"])  # single-valued attribute
                 detail_url = urllib.parse.urljoin(BASE_URL, detail_path)
 
                 item_brand = cols[4].get_text(strip=True)

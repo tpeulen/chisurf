@@ -54,6 +54,13 @@ class H2mmAnalysisBundle:
         self.analysis = analysis
         self.data = data
         self.settings = settings
+        # Filled by :func:`run_analysis` once the bursts are loaded.
+        self.meta: Any = None
+        self.burst_df: Any = None  # the burst table (a DataStore)
+        self.data_dir: pathlib.Path | None = None
+        self.container: pathlib.Path | None = None
+        self.tttrs: Any = None
+        self.micro_time_ns = 0.0
 
 
 def run_analysis(
@@ -99,6 +106,8 @@ def run_analysis(
         from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
 
         container, _run = split_container_path(analysis_folder)
+        if container is None:  # is_container_path said it is one
+            raise ValueError(f"not a measurement container: {analysis_folder}")
         df, tttrs = _read_burst_analysis_from_container(pathlib.Path(analysis_folder))
         data_dir = container.parent
     else:
@@ -113,7 +122,7 @@ def run_analysis(
     base_time_s = _macro_resolution(tttrs) * max(int(settings.time_scale), 1)
 
     stream_defs = [
-        StreamDef(s.name, list(s.channels), [tuple(r) for r in s.micro_time_ranges])
+        StreamDef(s.name, list(s.channels), [(int(lo), int(hi)) for lo, hi in s.micro_time_ranges])
         for s in settings.streams
     ]
     data, meta = bursts_from_dataframe(

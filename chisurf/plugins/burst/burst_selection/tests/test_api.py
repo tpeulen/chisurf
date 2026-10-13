@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -342,7 +343,7 @@ def test_analyze_request_reuses_first_macro_time_resolution(monkeypatch) -> None
     """Batch output summaries should reuse the first file's macro-time resolution."""
     calls: list[float | None] = []
 
-    def fake_analyze_file(path: str, **kwargs: object):
+    def fake_analyze_file(path: str, **kwargs: Any):
         calls.append(kwargs.get("macro_time_resolution"))
         return selection_module.AnalysisResult(
             files=[path],

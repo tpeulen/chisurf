@@ -145,7 +145,7 @@ def process_archived_page(db, page_url: str, ts: str) -> bool:
 
     spectra: dict[str, tuple] = {}
     for link in soup.find_all("a", href=True):
-        href = link["href"]
+        href = str(link["href"])  # href is single-valued: always one string
         low = href.lower()
         if low.endswith(".txt") and ("abs" in low or "em" in low):
             stype = "absorption" if "abs" in low else "emission"

@@ -47,8 +47,8 @@ def real_data_settings() -> AnalysisSettings:
 
 def test_inspect_command(tmp_path: Path) -> None:
     """The inspect command should summarize a real generated .bur file."""
-    result = analyze_file(DATA_FILE, settings=real_data_settings(), output_dir=tmp_path)
-    bur_path = Path(result.output_paths["bur"])
+    analysis = analyze_file(DATA_FILE, settings=real_data_settings(), output_dir=tmp_path)
+    bur_path = Path(analysis.output_paths["bur"])
     result = CliRunner().invoke(cli_module, ["inspect", str(bur_path)])
     payload = json.loads(result.output)
     assert result.exit_code == 0
@@ -57,8 +57,8 @@ def test_inspect_command(tmp_path: Path) -> None:
 
 def test_fit_gmm_command(tmp_path: Path) -> None:
     """The fit-gmm command should fit features from a real generated .bur file."""
-    result = analyze_file(DATA_FILE, settings=real_data_settings(), output_dir=tmp_path)
-    bur_path = Path(result.output_paths["bur"])
+    analysis = analyze_file(DATA_FILE, settings=real_data_settings(), output_dir=tmp_path)
+    bur_path = Path(analysis.output_paths["bur"])
     result = CliRunner().invoke(
         cli_module,
         ["fit-gmm", str(bur_path), "--settings", '{"covariance_type":"spherical","n_init":1}'],
@@ -74,7 +74,7 @@ def test_entrypoint_is_discoverable() -> None:
     """Plugin CLI metadata should be discoverable by the core CLI scanner."""
     metadata = list(_discover_plugin_metadata())
     burst_selection = [
-        item for item in metadata if item["module_path"].endswith("burst_selection")
+        item for item in metadata if str(item["module_path"]).endswith("burst_selection")
     ][0]
     assert burst_selection["cli_entrypoint"] == cli_entrypoint
 

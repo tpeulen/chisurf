@@ -1509,22 +1509,23 @@ class BurstSelectionModel(RunPickerMixin):
         """``data_table`` delete hook of the metadata table."""
         self.delete_metadata(str((record or {}).get("key", "")))
 
-    def burst_table_columns(self) -> list[dict[str, str]]:
+    def burst_table_columns(self) -> list[dict[str, str | int]]:
         """Columns of the bursts table (the UI columns the table has)."""
         present = set(self.burst_columns())
-        return [
+        columns: list[dict[str, str | int]] = [
             {
                 "key": "row",
                 "title": "#",
                 "width": 46,
                 "tooltip": "Burst number in the displayed table.",
-            },
-            *(
-                {"key": name, "title": name, "width": 110, "tooltip": f"{name} of the burst."}
-                for name in UI_COLUMNS
-                if name in present
-            ),
+            }
         ]
+        columns += [
+            {"key": name, "title": name, "width": 110, "tooltip": f"{name} of the burst."}
+            for name in UI_COLUMNS
+            if name in present
+        ]
+        return columns
 
     def run_container(self) -> str:
         """The ``.pto`` of the file on show, when it has one (what the run picker lists)."""
@@ -1619,7 +1620,7 @@ class BurstSelectionModel(RunPickerMixin):
     # -- persistence ----------------------------------------------------------------------------------------- #
     def export_settings(self) -> dict[str, Any]:
         """Everything a user sets (filter, search, output switches, display, GMM, metadata), JSON-ready."""
-        data = {
+        data: dict[str, Any] = {
             "kind": SETTINGS_KIND,
             "algorithm": self.algorithm,
             "parameters": copy.deepcopy(self.parameters),

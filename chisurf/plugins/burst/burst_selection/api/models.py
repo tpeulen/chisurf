@@ -281,7 +281,7 @@ class AnalysisResult:
     """
 
     files: list[str]
-    dataframes: dict[str, dict[str, Any]] = field(default_factory=dict)
+    dataframes: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     feature_dataframe: dict[str, Any] | None = None
     gmm_fit: dict[str, Any] | None = None
     output_paths: dict[str, str] = field(default_factory=dict)
@@ -295,8 +295,13 @@ class AnalysisResult:
         return asdict(self)
 
 
-def dataclass_to_dict(value: Any) -> dict[str, Any]:
-    """Convert a dataclass to a dictionary with tuple-safe serialization."""
+def dataclass_to_dict(value: Any) -> object:
+    """Convert a dataclass to a dictionary with tuple-safe serialization.
+
+    Recursive: a field's value comes back as its JSON-compatible form (a path
+    as text, a tuple as a list, an enum as its value), so only a dataclass or
+    a mapping returns a dictionary.
+    """
     if hasattr(value, "to_dict"):
         return value.to_dict()
     if hasattr(value, "__dataclass_fields__"):

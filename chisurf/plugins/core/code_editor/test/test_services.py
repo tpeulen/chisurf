@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from chisurf.plugins.core.code_editor.backend import services
 from chisurf.plugins.core.code_editor.document_store import DocumentStore
 
@@ -8,7 +10,7 @@ class Dispatcher:
     """Tiny dispatcher stand-in for register_services tests."""
 
     def __init__(self) -> None:
-        self.handlers = {}
+        self.handlers: dict[str, Callable] = {}
 
     def register(self, name, handler) -> None:
         """Record a handler by RPC method name."""
@@ -103,7 +105,8 @@ def test_dispatch_can_use_explicit_document_store() -> None:
     )
 
     assert result["ok"] is True
-    assert store.get(document_id=doc_id).content == "x = 2\n"
+    stored = store.get(document_id=doc_id)
+    assert stored is not None and stored.content == "x = 2\n"
     assert services.STORE.get(document_id=doc_id) is None
 
 

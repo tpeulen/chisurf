@@ -73,7 +73,10 @@ _FILTER_ALGORITHM = {
 
 def _selection_algorithm(settings) -> str:
     """The mmfdb term for the search `settings` selected, or "" if unrecorded."""
-    used = getattr(settings, "used_filter", None)
+    try:  # an enum member or its string value
+        used = BurstFilterMode(getattr(settings, "used_filter", None))
+    except ValueError:
+        return ""
     if used == BurstFilterMode.TTTRLIB:
         return str(getattr(getattr(settings, "tttrlib_search", None), "algorithm", "") or "")
     return _FILTER_ALGORITHM.get(used, "")

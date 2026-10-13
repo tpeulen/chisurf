@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any, Protocol
 
 from chisurf.plugins.core.code_editor.document_store import DocumentSnapshot, DocumentStore
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
@@ -13,8 +13,12 @@ from chisurf.server.services import (
     service_error,
 )
 
-if TYPE_CHECKING:
-    from chisurf.server.dispatcher import ServiceDispatcher
+
+class _Registry(Protocol):
+    """What :func:`register_services` needs of a dispatcher (``ServiceDispatcher`` or a test's)."""
+
+    def register(self, name: str, handler: Callable[[dict[str, Any]], Any]) -> None: ...
+
 
 STORE = DocumentStore()
 RUNNER = RuffRunner()
@@ -25,7 +29,7 @@ def _keyword_call(handler: Callable[..., ServiceResult]) -> Callable[[dict[str, 
     return lambda params: handler(**params)
 
 
-def register_services(dispatcher: ServiceDispatcher) -> None:
+def register_services(dispatcher: _Registry) -> None:
     """Register editor document RPC methods with a dispatcher."""
     for name, handler in SERVICE_METHODS.items():
         dispatcher.register(name, _keyword_call(handler))

@@ -109,31 +109,30 @@ def compute_kappa2_dist(**params: float | bool | str) -> dict:
     else:
         raise ValueError(f"Unknown model_type: {model_type}")
 
-    if model_type != "isotropic":
-        # ``k2v`` holds the orientation factors themselves, so the moments need
-        # no binning at all. Taking them from the histogram instead made them
-        # depend on ``n_bins``, and the previous code paired the counts with
-        # the *upper* bin edges, shifting every mean up by half a bin.
-        #
-        # A random sample weighs every value the same. The known-delta grid
-        # does not: its points crowd towards the pole, so it carries the
-        # solid-angle weight of each one, and ignoring it pulled <k2> from
-        # 0.668 to 0.633.
-        k2v = np.asarray(k2v, dtype=float)
-        weights = np.ones_like(k2v) if weights is None else np.asarray(weights, dtype=float)
+    # ``k2v`` holds the orientation factors themselves, so the moments need
+    # no binning at all. Taking them from the histogram instead made them
+    # depend on ``n_bins``, and the previous code paired the counts with
+    # the *upper* bin edges, shifting every mean up by half a bin.
+    #
+    # A random sample weighs every value the same. The known-delta grid
+    # does not: its points crowd towards the pole, so it carries the
+    # solid-angle weight of each one, and ignoring it pulled <k2> from
+    # 0.668 to 0.633. (The isotropic branch brings its density as weights.)
+    k2v = np.asarray(k2v, dtype=float)
+    w = np.ones_like(k2v) if weights is None else np.asarray(weights, dtype=float)
 
-    total = max(float(np.sum(weights)), 1e-30)
-    k2_mean = float(np.dot(weights, k2v) / total)
-    k2_sd = float(np.sqrt(np.dot(weights, (k2v - k2_mean) ** 2) / total))
+    total = max(float(np.sum(w)), 1e-30)
+    k2_mean = float(np.dot(w, k2v) / total)
+    k2_sd = float(np.sqrt(np.dot(w, (k2v - k2_mean) ** 2) / total))
 
     k2t = max(kappa2_true, 1e-10)
     r_scale = (np.maximum(k2v, 0.0) / k2t) ** (1.0 / 6.0)
-    Rapp_mean = float(np.dot(weights, r_scale) / total)
-    RappSD = float(np.sqrt(np.dot(weights, (r_scale - Rapp_mean) ** 2) / total))
+    Rapp_mean = float(np.dot(w, r_scale) / total)
+    RappSD = float(np.sqrt(np.dot(w, (r_scale - Rapp_mean) ** 2) / total))
 
     delta_deg = float(delta * 180.0 / np.pi)
 
-    k2v_list: list = k2v.tolist() if isinstance(k2v, np.ndarray) else list(k2v)  # type: ignore[union-attr]
+    k2v_list: list = k2v.tolist()
 
     return {
         "k2_scale": x.tolist(),

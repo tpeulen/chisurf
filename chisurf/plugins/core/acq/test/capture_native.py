@@ -10,6 +10,7 @@ import numpy as np
 from emtk import testing
 
 from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+from chisurf.plugins.core.acq.gui.setup_models import BHSetupModel
 from chisurf.plugins.core.acq.tcspc_devices.simulation.core.algorithms import generate_spc132_uint32
 
 
@@ -23,7 +24,8 @@ class FakeCaptureDevice:
         self.words = words
         self.offset = 0
         self.active_cards = [0]
-        self.parameters = {}
+        #: setup-card writes by (module, parameter id)
+        self.parameters: dict[tuple[int, int], float] = {}
 
     def initialize(self) -> bool:
         """Report deterministic successful initialization."""
@@ -139,8 +141,10 @@ def capture_setup_cards(out: Path) -> list[Path]:
             app.model.open_device_setup()
             app.draw(testing.RecordingPainter(), 0, 0, 1200, 800)
             if kind == "BH_SPC":
-                app.setup_model.detect_cards()
-                app.setup_model.read_parameters()
+                setup = app.setup_model
+                assert isinstance(setup, BHSetupModel)
+                setup.detect_cards()
+                setup.read_parameters()
             for width, height in sizes:
                 painter = testing.PixelPainter(width, height)
                 for _ in range(3):

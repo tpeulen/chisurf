@@ -13,7 +13,7 @@ from __future__ import annotations
 import copy
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from emtk import im, implot
 from emtk.app import ImApp
@@ -37,6 +37,12 @@ from chisurf.plugins.emtk_layout import (
 )
 
 from .model import BurstSelectionModel
+
+if TYPE_CHECKING:
+    from emtk.dialog_window import DialogWindow
+    from emtk.file_dialog import FileDialog
+
+    from chisurf.emtk.dataset_picker import DatasetPicker
 
 HERE = Path(__file__).parent
 #: Seconds without a change before the visible window is filtered again.
@@ -108,15 +114,16 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.gmm_settings_sections = _sections(spec, "GMM settings")
         self.metadata_sections = _sections(spec, "Metadata")
         self.labels = LabelColumn()
-        self.dialog = None
+        self.dialog: FileDialog | None = None
         self.dialog_action = ""
-        self._dialog_window = None
+        self._dialog_window: DialogWindow | None = None
         self.panel_dialog = ""
-        self._panel_window = None
-        self.picker = None
+        self._panel_window: DialogWindow | None = None
+        self.picker: DatasetPicker | None = None
         self._ndx_window = None
         self._diag_due: float | None = time.monotonic()
-        self._signature = None
+        #: (active file, processed, file count) the diagnostics last ran for
+        self._signature: tuple[str, bool, int] | None = None
         self.message = ""
         self.editor = ChannelDefinitionWidget(
             self._editor_settings(),
@@ -290,8 +297,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             title, mode=mode, filename=filename, multiselect=action == "add_files", **options
         )
         self.dialog_action = action
-        self._dialog_window = DialogWindow(title, size=(660.0, 470.0), key="burst-selection-file")
-        self._dialog_window.show()
+        window = DialogWindow(title, size=(660.0, 470.0), key="burst-selection-file")
+        self._dialog_window = window
+        window.show()
 
     def _dialog_done(self, result: list[str]) -> None:
         action = self.dialog_action
@@ -324,10 +332,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
 
         titles = {"metadata": "Metadata", "gmm": "GMM settings"}
         self.panel_dialog = name
-        self._panel_window = DialogWindow(
-            titles[name], size=(460.0, 420.0), key=f"burst-selection-{name}"
-        )
-        self._panel_window.show()
+        window = DialogWindow(titles[name], size=(460.0, 420.0), key=f"burst-selection-{name}")
+        self._panel_window = window
+        window.show()
 
     def send_to_ndx(self) -> bool:
         """Open the last run's burst output in ndX (needs a run)."""
@@ -363,14 +370,15 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             self._ndx_window = open_path_in_ndxplorer(path)
 
         try:
-            self.picker = DatasetPicker(
+            picker = DatasetPicker(
                 kinds=BURST_KINDS,
                 formats=BURST_FORMATS,
                 scope="all",
                 on_paths=lambda _p: None,
                 on_selected=chosen,
             )
-            self.picker.open()
+            self.picker = picker
+            picker.open()
         except Exception as exc:  # noqa: BLE001 - no database
             self.picker = None
             self.model.status_text = f"MMFDB is not available: {exc}"
@@ -627,8 +635,9 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 implot.plot_scatter(tr("Selected photons"), *curves["selected"], size=1.5)
             limits = m.thresholds()
             for n, key in enumerate(("dt_min", "dt_max")):
-                if limits[key] is not None:
-                    moved = implot.drag_line_y(700 + n, float(limits[key]), None, 1.5)
+                limit = limits[key]
+                if limit is not None:
+                    moved = implot.drag_line_y(700 + n, float(limit), None, 1.5)
                     if moved.modified and moved.value > 0:
                         setattr(m, key, float(moved.value))
                         self._used(key)
@@ -759,9 +768,10 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         draw_sections(self.burst_table, m, self.form)
 
     def _panel(self, frame) -> None:
-        if not self.panel_dialog:
+        window = self._panel_window
+        if not self.panel_dialog or window is None:
             return
-        pressed = self._panel_window.begin(frame)
+        pressed = window.begin(frame)
         if self.panel_dialog == "metadata":
             draw_sections(self.metadata_sections, self.model, self.form)
         else:
@@ -772,7 +782,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
                 except Exception as exc:  # noqa: BLE001
                     self.model.status_text = f"GMM fitting failed: {exc}"
             im.set_item_tooltip(tr("Refit the histogram with the settings above."))
-        self._panel_window.end()
+        window.end()
         if pressed == "close":
             self.panel_dialog = ""
 
@@ -810,10 +820,11 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
         self.docks.draw(frame)
         self.editor.draw_dialogs(frame)
         self._panel(frame)
-        if self.dialog is not None:
-            pressed = self._dialog_window.begin(frame)
+        window = self._dialog_window
+        if self.dialog is not None and window is not None:
+            pressed = window.begin(frame)
             result = self.dialog.draw()
-            self._dialog_window.end()
+            window.end()
             if result:
                 self._dialog_done(result)
                 self.dialog = None
