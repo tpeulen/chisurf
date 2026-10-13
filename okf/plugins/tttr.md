@@ -128,7 +128,7 @@ overflow records into the macro times. Docs: guide 108, `gui/help.md`.
 
 ### Where to pick this up
 
-1. **tttrlib rebuild is required for names.** Until the env's tttrlib is at or
+1. Open: **tttrlib rebuild is required for names.** Until the env's tttrlib is at or
    past `54422de06`, `classify_records` warns (`RuntimeWarning` naming the
    missing `CLSMImage.classify_records_events`) and lists every marker as
    *other*; the scan tests skip. Measure: `python -c "import tttrlib;
@@ -136,17 +136,17 @@ overflow records into the macro times. Docs: guide 108, `gui/help.md`.
    env imports tttrlib through an editable `ScikitBuildRedirectingFinder`, so
    `PYTHONPATH=<scratch build>` does **not** override it — drop that finder from
    `sys.meta_path` first (what the session's dev-build runs did).
-2. **Header semantics, not routine guesses.** Leica SP5 PTU
+2. Open: **Header semantics, not routine guesses.** Leica SP5 PTU
    (`test/data/clsm/Leica_SP5.ptu`): the header names frame 4, line 1/2, so the
    210 records on channel 6 (the SP5 routine's second frame channel) are
    *other marker*. Only an explicit `reading_routine='SP5'` would call them
    frames; the table deliberately has no routine picker. Add one only if a user
    needs SP5 conventions on a header that lacks them.
-3. **Narrow windows.** Six columns at 500 px scroll sideways (Macro time has
+3. Open: **Narrow windows.** Six columns at 500 px scroll sideways (Macro time has
    `min_width` 84 so its value never elides). `Record` declares
    `collapse_order: 1`; it drops first once the installed emtk carries the
    column-collapse work (emtk 9bdd67a) — re-render at 500×500 after the arm64
    emtk sync.
-4. Parity baseline: BH_SPC132 (no markers) still matches the recorded Qt tool
+4. Measure: parity baseline: BH_SPC132 (no markers) still matches the recorded Qt tool
    word for word except the deliberate renames listed in the parity test's
    docstring (`Record`, `First record`, `records 0–200`, the Kind column/filter).

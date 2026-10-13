@@ -38,7 +38,7 @@ directory, so the two layouts are the same thing seen from either side.
 
 Consequences worth not re-deriving:
 
-0. Done 2026-10-13: **a row read from a container names its run.** `analysis_path.resolve_run(path)` returns the
+0. Measure: (done 2026-10-13) **a row read from a container names its run.** `analysis_path.resolve_run(path)` returns the
    run a path reads (named, else newest — the same choice `read_tables` makes) and `run_path(container, run)`
    addresses it; the burst reader stamps each row with `Burst Run` so a batch result's parent is the search it
    came from even when several coexist. Any new reader of a container that feeds a writer should do the same —

@@ -115,18 +115,18 @@ own startup stages (item 5): S5 is done.
    submenus (File > Open Notebook... is a picker); emtk tooltips need a hover delay, so tests read a state
    (`hovered_figure`) instead; the global `gui.editor.enable_lsp` now starts pylsp in every editor app built.
    Left, and why (each reason re-checked against the challenge):
-   - **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
+   Open: **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
      the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
-   - **lightpath_simulator** (`gui/tool.py`, `gui/easy_mode.py`, `tests/test_native_ui.py`): `easy_mode.py` is a
+   Open: **lightpath_simulator** (`gui/tool.py`, `gui/easy_mode.py`, `tests/test_native_ui.py`): `easy_mode.py` is a
      1600-line Qt widget that `chisurf/core/models/pda2c/common.py` imports for the PDA easy mode; it needs an emtk
      twin first.
-   - **mmfdb_admin** (about 30 lines, in another lane's files): the emtk twin exists; it needs the before/after pair
+   Open: **mmfdb_admin** (about 30 lines, in another lane's files): the emtk twin exists; it needs the before/after pair
      and its widget tests ported to the twin, as code_editor and help did below.
-   - **acq** (`tcspc_devices/*/setup_dialog.py`, `card_setup_dialog.py`, `simulation/core/test/test_setup_widgets.py`):
+   Open: **acq** (`tcspc_devices/*/setup_dialog.py`, `card_setup_dialog.py`, `simulation/core/test/test_setup_widgets.py`):
      the native twin is `acq/gui/sim_setup.py`; the port needs that dialog's parity matrix first.
-   - **number_quest** `gui/tool.py` (the Qt widget; its parity test drives the chigame class): left because another
+   Open: **number_quest** `gui/tool.py` (the Qt widget; its parity test drives the chigame class): left because another
      lane has uncommitted `number_quest/app.py` and `drawing.py`; it retires like the other four games.
-   - `plugins/__init__.py` (env-gated QtSvg rasteriser), `icon_utils.py`, `conftest.py` (the shared `qapp` fixture,
+   Open: `plugins/__init__.py` (env-gated QtSvg rasteriser), `icon_utils.py`, `conftest.py` (the shared `qapp` fixture,
      goes when no plugin test asks for `qapp`), the cookiecutter template's Qt tool.
    Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
    `emtk.events`, not `emtk.app`).
@@ -262,7 +262,7 @@ own startup stages (item 5): S5 is done.
    so an ast scan of the installed `emtk` package (function-body imports of `emtk.*`, `fontTools.*` and `PIL.*`)
    yields `FRAME_MODULES`. A test would compare the tuple with the scan, so an emtk pin bump that adds a lazy
    import fails it instead of reappearing as a gate wait in `plugin_frame_times`.
-6. Done 2026-10-13: opening a fit window imports no Qt. Measure: `test/native_emtk/test_fit_window_is_qt_free.py`
+6. Measure: (done 2026-10-13) opening a fit window imports no Qt: `test/native_emtk/test_fit_window_is_qt_free.py`
    (subprocess; the full guard `test_opening_a_fit_window_imports_no_qt` passes, xfail removed, and
    `test_every_shipped_page_class_resolves_without_qt` resolves all 24 `PLOT_CLASSES` keys with `qtpy` unloaded).
    What moved: chiplot's core is `chisurf/chiplot/` (panel API `PlotAPI`/`Panel`, handles, styles, backends; no Qt

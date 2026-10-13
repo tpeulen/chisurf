@@ -9,7 +9,7 @@ timestamp: '2026-07-05T00:00:00Z'
 
 ## Where to pick this up
 
-1. **Static κ² from a computed distribution (landed 2026-10-13, imp.bff + chisurf, not pinned).** *compute κ²*'s
+1. Measure: **Static κ² from a computed distribution (landed 2026-10-13, imp.bff + chisurf, not pinned).** *compute κ²*'s
    result reaches the TCSPC FRET models' static average through the families' `kappa2_distribution` port; the rule
    for what *show κ²* draws is `chisurf/core/models/tcspc/kappa2_controls.py#used_kappa2_pairs`. Re-measure with
    `chisurf/plugins/fret_line/test/test_kappa2_regime.py` (narrow `[0.09,0.1,0.11]` vs isotropic: max |ΔE| = 0.24;

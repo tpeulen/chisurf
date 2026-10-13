@@ -15,7 +15,7 @@ is made is
 [`legacy_export.export_legacy`](../../chisurf/core/fio/fluorescence/legacy_export.py) (PTO inspector
 *Export legacy…*, `csg_pto_inspect export-legacy`). Open front, in order:
 
-1. Done 2026-10-13: **a result is derived from the search its rows came from.** MLE, H2MM and burst FCS are runs
+1. Measure: (done 2026-10-13) **a result is derived from the search its rows came from.** MLE, H2MM and burst FCS are runs
    of their own (`analysis_run`, 3e9a3071a); since 2026-10-13 every burst row read from a container carries
    `Burst Run` (`burst_tree.RUN_COLUMN`, `m.pto/<run>`, named even when the path named none), and every batch writer
    routes by it: BVA/2CDE are written into `<run>/bva` / `<run>/2cde <variant>` (`write_per_source` groups by the
