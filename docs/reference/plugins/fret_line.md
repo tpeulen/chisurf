@@ -21,7 +21,7 @@ Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Resul
 | Menu path | Spectroscopy → FRET → **FRET Line Generator** |
 | Categories | Spectroscopy, FRET, Analysis |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `fret_line` |
 
 ## Parameters

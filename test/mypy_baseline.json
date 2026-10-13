@@ -518,7 +518,6 @@
   "chisurf/plugins/fluorescence_decay/maxent_decay/core/solver.py": 2,
   "chisurf/plugins/fluorescence_decay/synthetic_decay/gui/model.py": 13,
   "chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py": 5,
-  "chisurf/plugins/fret_line/gui/tool.py": 1,
   "chisurf/plugins/microscopy/clsm/gui/view_model.py": 42,
   "chisurf/plugins/microscopy/clsm_generator/gui/view_model.py": 6,
   "chisurf/plugins/microscopy/imaging_common/test/test_artifact_name.py": 1,

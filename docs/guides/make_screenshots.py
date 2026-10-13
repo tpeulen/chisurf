@@ -1723,71 +1723,39 @@ def _grab_traj_tools():
 
 
 def _grab_fret_line_tool():
-    """FRET Line Generator: static line (Gaussian sweep) + dynamic line 40<->70 A (guide 82)."""
+    """FRET Line Generator: static line (Gaussian sweep) + dynamic line 40<->70 A (guide 82).
+
+    The emtk app (``chisurf.plugins.fret_line.gui.app``), driven through its model as the
+    guide's steps do: one Gaussian component swept over RDA0 20-120 A, then a second
+    component at 70 A (the first at 40 A) with the fraction of C0 swept 0-1.
+    """
+    from emtk.testing import Driver
+
     from chisurf.core.fluorescence.fret.fret_line import find_parameter
-    from chisurf.plugins.fret_line.gui.tool import FRETLineTool
+    from chisurf.plugins.fret_line.gui.app import make_app
 
-    tool = FRETLineTool()
-    tool.resize(1100, 760)
-    # line 1: static line, sweep RDA0 of the one Gaussian component
-    tool._refresh_sweep_targets()
-    combo = tool._sweep_combo
-
-    def pick(label_part):
-        for i in range(combo.count()):
-            if label_part in combo.itemText(i):
-                combo.setCurrentIndex(i)
-                return
-        raise KeyError(label_part)
-
-    pick("C0 [FRET: FD (Gaussian)] · RDA0")
-    tool._min_spin.setValue(20.0)
-    tool._max_spin.setValue(120.0)
-    tool._tau_d0_spin.setValue(4.0)
-    tool._do_compute()
-    # line 2: dynamic line = mixture of two Gaussians (40 A, 70 A), sweep the fraction
-    m0 = tool._components[0]["model"]
-    find_parameter(m0, "distance.mean.0").value = 40.0
-    tool._add_component()
-    m1 = tool._components[1]["model"]
-    find_parameter(m1, "distance.mean.0").value = 70.0
-    tool._refresh_sweep_targets()
-    pick("fraction · C0")
-    tool._min_spin.setValue(0.0)
-    tool._max_spin.setValue(1.0)
-    tool._do_compute()
-    tool._comp_list.setCurrentRow(1)
-    QApplication.instance().processEvents()
-    # Editor: scroll past the IRF/convolution block to the FRET and distance groups.
-    from qtpy import QtWidgets
-
-    from chisurf.gui.widgets.dock_area.dock_stacked_tab_widget import DockStackedTabWidget
-
-    tool.show()
-    QApplication.instance().processEvents()
-    editor = tool._components[1]["editor"]
-    areas = [editor] if isinstance(editor, QtWidgets.QScrollArea) else []
-    areas += editor.findChildren(QtWidgets.QScrollArea) + [tool._editor_scroll]
-    area = max(areas, key=lambda a: a.verticalScrollBar().maximum())
-    area.verticalScrollBar().setValue(int(area.verticalScrollBar().maximum()))
-
-    def front(page):
-        # The dock's tab groups are QTabWidgets; bring *page*'s tab to the front.
-        groups = tool._dock.findChildren(QtWidgets.QTabWidget)
-        groups += tool._dock.findChildren(DockStackedTabWidget)
-        for tabs in groups:
-            for i in range(tabs.count()):
-                w = tabs.widget(i)
-                if w is page or (w is not None and w.isAncestorOf(page)):
-                    tabs.setCurrentIndex(i)
-                    return
-        print("tab not found for", page)
-
-    front(tool._sweep_combo.parentWidget())
-    _grab(tool, "fret_line_tool.png")
-    front(tool._lines_list.parentWidget())
-    _grab(tool, "fret_line_tool_lines.png")
-    tool.close()
+    app = make_app()
+    m = app.model
+    m.sweep_label = next(s for s in m.sweep_labels() if "C0 [FRET: FD (Gaussian)] · RDA0" in s)
+    m.minimum, m.maximum, m.tau_d0 = 20.0, 120.0, 4.0
+    m.add_line()
+    find_parameter(m.components[0]["model"], "distance.mean.0").value = 40.0
+    m.add_component()
+    find_parameter(m.components[1]["model"], "distance.mean.0").value = 70.0
+    m.sweep_label = next(s for s in m.sweep_labels() if s.startswith("fraction · C0"))
+    m.minimum, m.maximum = 0.0, 1.0
+    m.add_line()
+    driver = Driver(app, (1200, 800))
+    app.show_advanced("components")
+    app.show_advanced("editor")
+    _emtk_park(driver)
+    driver.screenshot(FIG / "fret_line_tool.png")
+    print("wrote fret_line_tool.png")
+    app.show_advanced("lines")
+    _emtk_park(driver)
+    driver.screenshot(FIG / "fret_line_tool_lines.png")
+    print("wrote fret_line_tool_lines.png")
+    app.close()
 
 
 def main():

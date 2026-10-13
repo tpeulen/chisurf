@@ -181,7 +181,6 @@ chisurf/plugins/core/project_browser/gui/tool.py
 chisurf/plugins/core/project_browser/test/test_emtk_project_browser_parity.py
 chisurf/plugins/core/project_browser/test/test_gui_headless.py
 chisurf/plugins/core/switch_user/test/test_emtk_switch_user_parity.py
-chisurf/plugins/fret_line/gui/tool.py
 chisurf/plugins/icon_utils.py
 chisurf/plugins/misc/games/__init__.py
 chisurf/plugins/misc/games/breakout/__init__.py
