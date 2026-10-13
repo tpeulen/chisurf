@@ -4,6 +4,47 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Code Editor assistant: validation issues are reported, not fixed by the model (found 2026-10-13)
+
+status: open
+
+The retired Qt agent panel re-prompted the model with the py_compile / Ruff issues of the code it had just
+written (`_start_fix_loop`, a few rounds). The emtk assistant applies `WRITE_FILE` answers and reports the issues
+in the transcript (`ChatModel.apply_file_writes`), but does not start a fix round. Left out of the 2026-10-13
+retirement deliberately: no test covered it, and the loop sends follow-up prompts on the user's quota without
+asking. Add it as an opt-in setting if wanted.
+
+## chimol silhouette / depth cue in the viewport (found 2026-10-13)
+
+status: open
+
+**2026-10-13.** Two pixel tests in `chisurf/plugins/chimol/test/test_lighting.py` ran for the
+first time when the chimol suite moved off the Qt window: under the Qt offscreen platform they
+had always skipped (no GL context). On the toolkit-free frame (`ChimolApp`, offscreen canvas,
+148L) `lighting silhouette=on` moves **0** pixels, and `set depth_cue, on` fogs **0.008 %** of
+the molecule's pixels where the test wants > 0.5 % fogged and > 20 % untouched. Both are strict
+xfails (`test_an_effect_pass_leaves_the_rest_of_the_frame_alone`,
+`test_the_viewport_depth_cue_grades_instead_of_dimming`) so a fix flips them. Not yet known
+whether the frame is wrong or the assertions were written against the Qt backend's numbers:
+`chimol/render/depth_cue.py::fog_planes` is read per frame by `WgpuMeshRenderer` and the
+`depth_cue` setting does reach it (`test_turning_the_depth_cue_off_reaches_the_viewport`); the
+silhouette's `WgpuMeshRenderer._silhouette_params` reads the display config, and where `lighting
+silhouette=on` writes is the first thing to check. Not fixed in the chimol-off-Qt change: a
+render fix needs its own before/after images.
+
+## Help: one documentation formula does not typeset (found 2026-10-13)
+
+status: resolved 2026-10-13
+
+The in-app math renderer (matplotlib mathtext) has no `cases` environment, so no row split can make it typeset;
+`docs/concepts/protein_monte_carlo.md` now states the asymmetric error as two `\text{for}` conditions on one display line
+(maths identical) and `test_render.py` passes (42/42).
+
+`chisurf/plugins/core/help/test/test_render.py::test_every_formula_in_the_documentation_typesets` failed on the `cases`
+block of that page, split at its `\\` row break with both halves refused. Trap: do not reintroduce `\begin{cases}` in `docs/`.
+
+---
+
 ## A computed κ² distribution does not reach the static κ² average (found 2026-10-13)
 
 status: resolved 2026-10-13 — imp.bff's FRET families' static orientation now reads a `kappa2_distribution`
@@ -2773,32 +2814,6 @@ dwell and no shared marker ticks, and round-trips bit-exactly
 flow tool's demo and guided tour show nothing. Fix either the simulator's marker
 layout or the CLSM line pairing in tttrlib; not done here (outside the PAM
 harvest).
-
-## The image section still draws with raw pyqtgraph, and can crash on teardown
-
-status: resolved 2026-10-13
-
-**Resolved.** pyqtgraph left the tree in W8 (2026-10-10) and the section moved onto
-chiplot's image view then; on 2026-10-13 that view became the toolkit-free
-`chisurf.chiplot.ImagePanel`, one emtk control with the frame slider and brush
-painting this entry asked for, hosted in the Qt form by `chiplot.host` (no
-`QGraphicsScene` left to collect). Re-check: `test/gui/test_image_section_features.py`
-and `test/gui/test_chiplot_image_dock.py` (the latter runs without a `QApplication`).
-History below.
-
-**2026-09-17.** chiplot's default backend is emtk now, but
-`chisurf/gui/autoform/sections/builtin.py::ImageMapWidget` (the `image` custom
-section: 11 view specs -- colour/channel pickers, movie playback, brush
-painting, point picks, rectangle gates) builds `pyqtgraph.ImageView`s directly
-and never went through chiplot. With emtk drawing the tool's other plots, the
-flc_2d plugin tests crash in about two of three runs (bus error in
-`QGraphicsScene::itemsBoundingRect` under `processEvents`); with
-`gc.disable()` 5/5 pass and under the pyqtgraph backend 5/5 pass, so it is a
-cyclic-GC collection destroying part of the widget tree while its scene still
-has events queued. The real fix is porting `ImageMapWidget` onto
-`chiplot.ImageView` (PRD-104): emtk has the image, overlay, ROI, picking and
-inverted-axis pieces; a z/frame slider and brush painting are what it would
-need to gain.
 
 ## 2026-09-17 — 2D-FLC's linear matrix *did* lose its highest bin: it sat one bin off its axis
 
@@ -8140,45 +8155,3 @@ re-inspecting; that is its own change, with its own before/after images.
 
 ---
 
-## chimol silhouette / depth cue in the viewport
-
-status: open
-
-**2026-10-13.** Two pixel tests in `chisurf/plugins/chimol/test/test_lighting.py` ran for the
-first time when the chimol suite moved off the Qt window: under the Qt offscreen platform they
-had always skipped (no GL context). On the toolkit-free frame (`ChimolApp`, offscreen canvas,
-148L) `lighting silhouette=on` moves **0** pixels, and `set depth_cue, on` fogs **0.008 %** of
-the molecule's pixels where the test wants > 0.5 % fogged and > 20 % untouched. Both are strict
-xfails (`test_an_effect_pass_leaves_the_rest_of_the_frame_alone`,
-`test_the_viewport_depth_cue_grades_instead_of_dimming`) so a fix flips them. Not yet known
-whether the frame is wrong or the assertions were written against the Qt backend's numbers:
-`chimol/render/depth_cue.py::fog_planes` is read per frame by `WgpuMeshRenderer` and the
-`depth_cue` setting does reach it (`test_turning_the_depth_cue_off_reaches_the_viewport`); the
-silhouette's `WgpuMeshRenderer._silhouette_params` reads the display config, and where `lighting
-silhouette=on` writes is the first thing to check. Not fixed in the chimol-off-Qt change: a
-render fix needs its own before/after images.
-
----
-
-## Help: one documentation formula does not typeset (test_render)
-
-status: resolved 2026-10-13
-
-The in-app math renderer (matplotlib mathtext) has no `cases` environment, so no row split can make it typeset;
-`docs/concepts/protein_monte_carlo.md` now states the asymmetric error as two `\text{for}` conditions on one display line
-(maths identical) and `test_render.py` passes (42/42).
-
-`chisurf/plugins/core/help/test/test_render.py::test_every_formula_in_the_documentation_typesets` failed on the `cases`
-block of that page, split at its `\\` row break with both halves refused. Trap: do not reintroduce `\begin{cases}` in `docs/`.
-
----
-
-## Code Editor assistant: validation issues are reported, not fixed by the model
-
-The retired Qt agent panel re-prompted the model with the py_compile / Ruff issues of the code it had just
-written (`_start_fix_loop`, a few rounds). The emtk assistant applies `WRITE_FILE` answers and reports the issues
-in the transcript (`ChatModel.apply_file_writes`), but does not start a fix round. Left out of the 2026-10-13
-retirement deliberately: no test covered it, and the loop sends follow-up prompts on the user's quota without
-asking. Add it as an opt-in setting if wanted.
-
----

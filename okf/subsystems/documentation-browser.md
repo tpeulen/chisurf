@@ -99,11 +99,10 @@ image is *inside* that frame, so a wider one is drawn past the right edge and
 gives the whole page a horizontal scrollbar. (Tried and reverted — a
 `figure_width()` of viewport-minus-gutter produced exactly that.) What the
 column cannot give, a click does:
-[`gui/figure_view.py`](../../chisurf/plugins/core/help/gui/figure_view.py) opens
-the figure at the file's real pixels, sized to the screen, with zoom and
-actual-size. Qt has no clickable image, so the hit test is ours —
-`HelpTextBrowser.image_at` probes the char format on both sides of the cursor,
-because a click lands *between* two characters.
+the figure window of [`gui/help_app.py`](../../chisurf/plugins/core/help/gui/help_app.py)
+(`open_figure`, `_figure_click`) opens the figure at the file's real pixels, sized to the
+screen, with zoom and actual-size. The hit test is the app's own: the reader records each
+drawn figure's rectangle, so a click is matched against it directly.
 
 **What is open.**
 
