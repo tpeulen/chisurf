@@ -6,7 +6,7 @@ from copy import copy, deepcopy
 
 import numpy as np
 
-from chisurf.plugins.quenching_estimator.core.structure import reader as PDB
+from chisurf.plugins.quenching_estimator.core.structure.reader import formats, keys
 
 clusterCriteria = ["maxclust", "inconsistent", "distance"]
 
@@ -218,7 +218,9 @@ class Structure:
         self.is_coarse = make_coarse
         self.verbose = verbose
         self.auto_update = auto_update
-        self.io = PDB
+        from chisurf.plugins.quenching_estimator.core.structure import reader
+
+        self.io = reader
 
         if filename is not None:
             self.filename = filename
@@ -286,7 +288,7 @@ class Structure:
             if atom["res_name"] not in residue_atoms_internal
             or atom["atom_name"] in residue_atoms_internal[atom["res_name"]]
         ]
-        atoms = np.empty(len(tmp), dtype={"names": PDB.keys, "formats": PDB.formats})
+        atoms = np.empty(len(tmp), dtype={"names": keys, "formats": formats})
         atoms[:] = tmp
         atoms["i"] = np.arange(atoms.shape[0])
         atoms["atom_id"] = np.arange(atoms.shape[0])

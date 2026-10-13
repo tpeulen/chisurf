@@ -13,7 +13,7 @@ import chisurf.core.fluorescence.fcs
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
-from . import util
+from .util import downsample_trace
 
 
 def openFCS(path, filename=None):
@@ -153,7 +153,7 @@ def openFCS_Multiple(path):
                         trace.append((float(row[3]) * 1000, float(row[4]) / 1000))
                     trace = np.array(trace)
                     # If the trace is too big. Wee need to bin it.
-                    newtrace = util.downsample_trace(trace)
+                    newtrace = downsample_trace(trace)
                     # Finally add the trace to the list
                     traces.append(newtrace)
                     if FoundType[:2] != "AC":
@@ -384,7 +384,7 @@ def openFCS_Single(path):
                         trace.append((float(row[0]) * 1000, float(row[1])))
                     trace = np.array(trace)
                     # If the trace is too big. Wee need to bin it.
-                    newtrace = util.downsample_trace(trace)
+                    newtrace = downsample_trace(trace)
                 tracecurve = False
         if fcscurve:
             if Alldata[i].partition("=")[0].strip() == "##NPOINTS":

@@ -20,10 +20,10 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf.core.console import dispatch
 from chisurf.core.console.history import HistoryManager
 from chisurf.core.console.shell import Shell
-from chisurf.gui.chinsole import settings as console_settings
 from chisurf.gui.chinsole.bridge import OutputPump
 from chisurf.gui.chinsole.completion_popup import CallTipWidget, CompletionPopup
 from chisurf.gui.chinsole.pager import PagerWidget
+from chisurf.gui.chinsole.settings import console_settings, editor_font
 from chisurf.gui.chinsole.theme import ConsoleTheme, resolve_theme, theme_from_settings
 from chisurf.gui.chinsole.view import ConsoleView
 
@@ -132,7 +132,7 @@ class Chinsole(QtWidgets.QWidget):
     ) -> None:
         super().__init__(parent)
         self.config = config or ConsoleConfig()
-        self._settings = console_settings.console_settings()
+        self._settings = console_settings()
         self.theme = (
             resolve_theme(self.config.theme) if self.config.theme else theme_from_settings()
         )
@@ -175,7 +175,7 @@ class Chinsole(QtWidgets.QWidget):
             self.input_line.returnPressed.connect(self._submit_command_line)
             self.input_line.installEventFilter(self)
 
-        font = console_settings.editor_font(self._settings)
+        font = editor_font(self._settings)
         self.set_editor_font(font)
 
         self.pump = OutputPump(

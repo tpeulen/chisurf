@@ -13,6 +13,7 @@ from __future__ import annotations
 import collections.abc
 import copy
 import dataclasses
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -569,7 +570,7 @@ def write_container_tables(
     ]
 
 
-class NumpyEncoder(__import__("json").JSONEncoder):
+class NumpyEncoder(json.JSONEncoder):
     """JSON encoder that writes numpy arrays as lists."""
 
     def default(self, obj):

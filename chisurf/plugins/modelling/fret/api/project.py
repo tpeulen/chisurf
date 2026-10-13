@@ -16,7 +16,7 @@ import json
 import os
 from dataclasses import dataclass, field
 
-from . import pose_codec
+from chisurf.plugins.modelling.fret.api.pose_codec import decode_poses, encode_poses
 
 PROJECT_VERSION = 2
 
@@ -149,7 +149,7 @@ def load_docking_project(path: str) -> DockingProject:
     pose_meta: dict = {}
     blob = data.get("poses")
     if blob:
-        decoded = pose_codec.decode_poses(blob)
+        decoded = decode_poses(blob)
         poses = list(decoded.get("bodies") or [])
         pose_meta = {k: decoded.get(k) for k in ("score", "method", "frame")}
 
@@ -219,7 +219,7 @@ def save_docking_project(
         "params": dict(params or {}),
     }
     if poses:
-        payload["poses"] = pose_codec.encode_poses(
+        payload["poses"] = encode_poses(
             list(poses), score=pose_score, method=pose_method or method
         )
     with open(path, "w", encoding="utf-8") as fh:

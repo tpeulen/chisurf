@@ -19,8 +19,23 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from chisurf.chiplot import handles as H
-from chisurf.chiplot import style as S
+from chisurf.chiplot.handles import (
+    Arrow,
+    Bars,
+    ColorBar,
+    Curve,
+    ErrorBars,
+    Handle,
+    Image,
+    Marker,
+    Orientation,
+    Region,
+    Roi,
+    Scatter,
+    Symbol,
+    Text,
+)
+from chisurf.chiplot.style import Brush, Color, Colormap, Pen
 
 
 class Canvas(abc.ABC):
@@ -37,16 +52,16 @@ class Canvas(abc.ABC):
         x: np.ndarray,
         y: np.ndarray,
         *,
-        pen: S.Pen,
+        pen: Pen,
         name: str | None = None,
-        fill: S.Brush | None = None,
+        fill: Brush | None = None,
         step: bool | str = False,
-        symbol: H.Symbol | None = None,
+        symbol: Symbol | None = None,
         symbol_size: float = 7.0,
-        symbol_brush: S.Brush | None = None,
-        symbol_pen: S.Pen | None = None,
+        symbol_brush: Brush | None = None,
+        symbol_pen: Pen | None = None,
         skip_missing: bool = True,
-    ) -> H.Curve:
+    ) -> Curve:
         """Draw a line/step curve (optionally with markers) and return its handle.
 
         ``step`` may be a bool (``True`` = centered bins, needing ``len(x) ==
@@ -64,11 +79,11 @@ class Canvas(abc.ABC):
         y: np.ndarray,
         *,
         size: float,
-        pen: S.Pen | None,
-        brush: S.Brush | None,
-        symbol: H.Symbol,
+        pen: Pen | None,
+        brush: Brush | None,
+        symbol: Symbol,
         name: str | None = None,
-    ) -> H.Scatter:
+    ) -> Scatter:
         """Draw a scatter cloud and return its handle."""
 
     @abc.abstractmethod
@@ -78,19 +93,19 @@ class Canvas(abc.ABC):
         height: np.ndarray,
         *,
         width: float,
-        pen: S.Pen | None,
-        brush: S.Brush | None,
-    ) -> H.Bars:
+        pen: Pen | None,
+        brush: Brush | None,
+    ) -> Bars:
         """Draw a bar graph and return its handle."""
 
     @abc.abstractmethod
     def add_fill_between(
         self,
-        lower: H.Curve,
-        upper: H.Curve,
+        lower: Curve,
+        upper: Curve,
         *,
-        brush: S.Brush,
-    ) -> H.Handle:
+        brush: Brush,
+    ) -> Handle:
         """Fill the area between two existing curve handles; return its handle."""
 
     @abc.abstractmethod
@@ -102,9 +117,9 @@ class Canvas(abc.ABC):
         height: np.ndarray | None,
         top: np.ndarray | None,
         bottom: np.ndarray | None,
-        pen: S.Pen,
+        pen: Pen,
         beam: float | None = None,
-    ) -> H.ErrorBars:
+    ) -> ErrorBars:
         """Draw error bars and return their handle."""
 
     @abc.abstractmethod
@@ -112,11 +127,11 @@ class Canvas(abc.ABC):
         self,
         data: np.ndarray,
         *,
-        colormap: S.Colormap | None,
+        colormap: Colormap | None,
         levels: tuple[float, float] | None,
         rect: tuple[float, float, float, float] | None,
         axis_order: str = "row-major",
-    ) -> H.Image:
+    ) -> Image:
         """Draw an image/heatmap and return its handle."""
 
     @abc.abstractmethod
@@ -124,11 +139,11 @@ class Canvas(abc.ABC):
         self,
         bounds: tuple[float, float],
         *,
-        orientation: H.Orientation,
+        orientation: Orientation,
         movable: bool,
-        brush: S.Brush | None,
-        pen: S.Pen | None,
-    ) -> H.Region:
+        brush: Brush | None,
+        pen: Pen | None,
+    ) -> Region:
         """Draw a draggable interval selector and return its handle."""
 
     @abc.abstractmethod
@@ -138,11 +153,11 @@ class Canvas(abc.ABC):
         kind: str = "rect",
         pos: tuple[float, float] = (0.0, 0.0),
         size: tuple[float, float] = (10.0, 10.0),
-        pen: S.Pen,
+        pen: Pen,
         movable: bool = True,
         rotatable: bool = False,
         points: Sequence[tuple[float, float]] | None = None,
-    ) -> H.Roi:
+    ) -> Roi:
         """Draw a region-of-interest shape on the plot; return its handle.
 
         The 2-D counterpart of :meth:`add_region`'s interval: a gate on a joint
@@ -155,11 +170,11 @@ class Canvas(abc.ABC):
         self,
         pos: float,
         *,
-        orientation: H.Orientation,
+        orientation: Orientation,
         movable: bool,
-        pen: S.Pen,
+        pen: Pen,
         label: str | None,
-    ) -> H.Marker:
+    ) -> Marker:
         """Draw a movable cursor line and return its handle."""
 
     @abc.abstractmethod
@@ -173,9 +188,9 @@ class Canvas(abc.ABC):
         head_width: float | None,
         tail_length: float | None,
         tail_width: float,
-        pen: S.Pen | None,
-        brush: S.Brush | None,
-    ) -> H.Arrow:
+        pen: Pen | None,
+        brush: Brush | None,
+    ) -> Arrow:
         """Draw an arrow head at a data coordinate and return its handle.
 
         ``angle`` is chiplot's convention — degrees counter-clockwise from the
@@ -191,13 +206,13 @@ class Canvas(abc.ABC):
         text: str,
         pos: tuple[float, float],
         *,
-        color: S.Color,
+        color: Color,
         anchor: tuple[float, float],
         draggable: bool,
-        fill: S.Brush | None = None,
-        border: S.Pen | None = None,
+        fill: Brush | None = None,
+        border: Pen | None = None,
         anchored: bool = False,
-    ) -> H.Text:
+    ) -> Text:
         """Draw a text label and return its handle.
 
         When ``anchored`` is ``True`` the label is pinned to the panel in
@@ -215,11 +230,11 @@ class Canvas(abc.ABC):
         """Stop showing the legend."""
 
     @abc.abstractmethod
-    def readd(self, handle: H.Handle) -> None:
+    def readd(self, handle: Handle) -> None:
         """Re-attach a previously removed handle to this panel."""
 
     @abc.abstractmethod
-    def remove(self, handle: H.Handle) -> None:
+    def remove(self, handle: Handle) -> None:
         """Remove a handle from this panel."""
 
     @abc.abstractmethod
@@ -319,7 +334,7 @@ class Canvas(abc.ABC):
         """Toggle axis grid lines."""
 
     @abc.abstractmethod
-    def set_background(self, color: S.Color | None) -> None:
+    def set_background(self, color: Color | None) -> None:
         """Set the panel background color."""
 
     @abc.abstractmethod
@@ -460,14 +475,14 @@ class GridCanvas(abc.ABC):
     @abc.abstractmethod
     def add_colorbar(
         self,
-        image: H.Image,
+        image: Image,
         *,
-        colormap: S.Colormap | None = None,
+        colormap: Colormap | None = None,
         row: int | None = None,
         col: int | None = None,
         rowspan: int = 1,
         colspan: int = 1,
-    ) -> H.ColorBar:
+    ) -> ColorBar:
         """Add a colour bar / level editor bound to ``image``; return its handle."""
 
     @abc.abstractmethod
@@ -537,8 +552,8 @@ class ImageViewCanvas(abc.ABC):
         self,
         data: np.ndarray,
         *,
-        colormap: S.Colormap | None = None,
-    ) -> H.Image:
+        colormap: Colormap | None = None,
+    ) -> Image:
         """Overlay a second image item on the view; return its handle."""
 
     @abc.abstractmethod
@@ -548,10 +563,10 @@ class ImageViewCanvas(abc.ABC):
         kind: str = "rect",
         pos: tuple[float, float] = (0.0, 0.0),
         size: tuple[float, float] = (10.0, 10.0),
-        pen: S.Pen,
+        pen: Pen,
         movable: bool = True,
         rotatable: bool = False,
-    ) -> H.Roi:
+    ) -> Roi:
         """Add a region-of-interest to the view; return its handle."""
 
     @abc.abstractmethod
@@ -623,11 +638,11 @@ class ImageViewCanvas(abc.ABC):
         """The visible ``((x0, x1), (y0, y1))``."""
         self._unsupported("view range")
 
-    def add_marks(self, x, y, **style) -> H.Scatter:
+    def add_marks(self, x, y, **style) -> Scatter:
         """Draw symbols over the picture."""
         self._unsupported("marks")
 
-    def add_text(self, text, pos, **style) -> H.Text:
+    def add_text(self, text, pos, **style) -> Text:
         """Write text at a data position."""
         self._unsupported("text")
 

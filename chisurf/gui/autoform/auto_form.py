@@ -15,12 +15,12 @@ import inspect
 from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
+import chisurf.gui.autoform.sections  # noqa: F401  (side effect: populate the registry)
 from chisurf import logging
 from chisurf.core import dataspec as vs
 from chisurf.core.api import fit_objects
 from chisurf.gui.widgets.fitting import make_fitting_parameter_widget
 
-from . import sections  # noqa: F401  (side effect: populate the registry)
 from .sections.registry import get_section_factory
 
 #: How many label/field pairs are packed onto one row of the compact field grid.

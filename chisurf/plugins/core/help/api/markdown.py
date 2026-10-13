@@ -24,8 +24,8 @@ from __future__ import annotations
 import html as _html
 import re
 
-from chisurf.plugins.core.help.api import theme as _theme
 from chisurf.plugins.core.help.api.mathtext import MathRenderer, split_math
+from chisurf.plugins.core.help.api.theme import LIGHT, Theme, stylesheet
 
 __all__ = [
     "extract_title",
@@ -63,7 +63,7 @@ _TARGET = re.compile(r"^\((?P<name>[^)]+)\)=\s*$")
 def render_markdown(
     text: str,
     *,
-    theme: _theme.Theme | None = None,
+    theme: Theme | None = None,
     math: MathRenderer | None = None,
     font_size: float = 10.5,
 ) -> str | None:
@@ -88,10 +88,10 @@ def render_markdown(
         the source in that case.
 
     """
-    active = theme or _theme.LIGHT
+    active = theme or LIGHT
     renderer = math or MathRenderer(colour=active.text, font_size=font_size)
     body = render_body(text, math=renderer)
-    css = _theme.stylesheet(active, font_size=font_size)
+    css = stylesheet(active, font_size=font_size)
     return f"<html><head>{css}</head><body>{body}</body></html>"
 
 

@@ -25,10 +25,10 @@ from __future__ import annotations
 import numpy as np
 import wgpu
 
-from . import pixelfont
-
-#: Printable ASCII. Enough for scores, menus and villager dialogue.
-CHARSET = pixelfont.CHARSET
+# CHARSET (printable ASCII) is re-exported: enough for scores, menus and villager dialogue.
+from .pixelfont import CHARSET, HEIGHT, SCALE, SHADOW
+from .pixelfont import atlas as _pixel_atlas
+from .pixelfont import metrics as _pixel_metrics
 
 
 class FontAtlas:
@@ -55,12 +55,12 @@ class FontAtlas:
     """
 
     def __init__(
-        self, device, pixel_size: int = 48, family: str | None = None, scale: int = pixelfont.SCALE
+        self, device, pixel_size: int = 48, family: str | None = None, scale: int = SCALE
     ) -> None:
         self._device = device
-        self._metrics = pixelfont.metrics()
-        self.cell_h = pixelfont.HEIGHT * scale
-        grid = pixelfont.atlas(scale)
+        self._metrics = _pixel_metrics()
+        self.cell_h = HEIGHT * scale
+        grid = _pixel_atlas(scale)
         self.height, self.width = grid.shape
         self._columns = self.width / scale
         self.texture = self._upload(grid)
@@ -138,7 +138,7 @@ class FontAtlas:
         float
             Multiply by the drawn height to get the quad width.
         """
-        return self._box(char)[1] / pixelfont.HEIGHT
+        return self._box(char)[1] / HEIGHT
 
     def advance_of(self, char: str) -> float:
         """How far the pen moves after one character, over the line height.
@@ -153,7 +153,7 @@ class FontAtlas:
         float
             Multiply by the drawn height to get the step.
         """
-        return self._box(char)[2] / pixelfont.HEIGHT
+        return self._box(char)[2] / HEIGHT
 
     def measure(self, text: str, height: float) -> float:
         """How wide a string will actually be.
@@ -254,7 +254,7 @@ def draw_text(
     # Console dialogue is drawn twice, one pixel down and right, in a dark
     # tone. It is why that text stays readable over any background, and it is
     # most of why it reads as of the period rather than merely low-resolution.
-    offset = height * (pixelfont.SHADOW / pixelfont.HEIGHT)
+    offset = height * (SHADOW / HEIGHT)
     passes = (
         ((offset, offset, (0.0, 0.0, 0.0, color[3] * 0.55)), (0.0, 0.0, color))
         if shadow

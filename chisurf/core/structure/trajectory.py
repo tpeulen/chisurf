@@ -6,16 +6,16 @@ import os
 import numpy as np
 
 import chisurf.core.base
-import chisurf.core.structure
 from chisurf import typing
 
-from . import trajectory_data as _traj_data
+from .structure import Structure, average
 from .topology import Topology as _Topology
 from .trajectory_data import Trajectory as _Trajectory
+from .trajectory_data import rmsd as _rmsd
 
 
 class Universe:
-    def __init__(self, structure: chisurf.core.structure.Structure = None):
+    def __init__(self, structure: Structure = None):
         """Initialize Universe with an optional starting structure."""
         self.structures = [] if structure is None else [structure]
         self.potentials = list()
@@ -40,7 +40,7 @@ class Universe:
         self.potentials = list()
         self.scaling = list()
 
-    def getEnergy(self, structure: chisurf.core.structure.Structure = None) -> float:
+    def getEnergy(self, structure: Structure = None) -> float:
         """Calculate total energy as sum of all potentials for a given structure."""
         for p in self.potentials:
             p.structure = structure
@@ -48,7 +48,7 @@ class Universe:
         E = Es.sum()
         return E
 
-    def getEnergies(self, structure: chisurf.core.structure.Structure = None) -> np.ndarray:
+    def getEnergies(self, structure: Structure = None) -> np.ndarray:
         """Calculate individual scaled energies for all potentials."""
         for p in self.potentials:
             p.structure = structure
@@ -163,7 +163,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         """
 
         :param p_object: a path to a .pdb/.cif/.dcd file, a Trajectory,
-            or a chisurf.core.structure.Structure object;
+            or a Structure object;
         :param filename:
         :param rmsd_ref_state:
         :param stride:
@@ -188,7 +188,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         self._structure = None
         self._filename = filename
 
-        traj_data = _traj_data
+        from . import trajectory_data as traj_data
 
         if isinstance(p_object, str):
             lowered = p_object.lower()
@@ -202,16 +202,16 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
                 loaded = traj_data.load(
                     p_object, top=topology, stride=self.stride, atom_indices=atom_indices
                 )
-                structure = chisurf.core.structure.Structure(topology)
+                structure = Structure(topology)
             elif lowered.endswith((".pdb", ".ent", ".cif", ".pqr")):
                 loaded = traj_data.load(p_object, atom_indices=atom_indices)
-                structure = chisurf.core.structure.Structure(p_object)
+                structure = Structure(p_object)
             else:
                 raise ValueError(f"cannot read {p_object!r}: expected .pdb, .cif or .dcd")
         elif isinstance(p_object, traj_data.Trajectory):
             loaded = p_object
             structure = self._structure_from(loaded)
-        elif isinstance(p_object, chisurf.core.structure.Structure):
+        elif isinstance(p_object, Structure):
             structure = p_object
             loaded = traj_data.Trajectory(
                 p_object.xyz[np.newaxis],
@@ -234,9 +234,9 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         self.offset = 0
 
     @staticmethod
-    def _structure_from(trajectory) -> chisurf.core.structure.Structure:
+    def _structure_from(trajectory) -> Structure:
         """Return a :class:`Structure` for a trajectory's first frame."""
-        structure = chisurf.core.structure.Structure()
+        structure = Structure()
         if trajectory.topology is not None:
             atoms = trajectory.topology.atom_array.copy()
             atoms["xyz"] = trajectory.xyz[0]
@@ -268,12 +268,12 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         self._xyz = np.ascontiguousarray(v, dtype=np.float32)
 
     @property
-    def structure(self) -> chisurf.core.structure.Structure:
+    def structure(self) -> Structure:
         """The template structure used for the trajectory."""
         return self._structure
 
     @structure.setter
-    def structure(self, v: chisurf.core.structure.Structure):
+    def structure(self, v: Structure):
         """Set the template structure (a shallow copy is stored)."""
         self._structure = copy.copy(v)
 
@@ -319,7 +319,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
     def rmsd_ref_state(self, ref_frame: int):
         """Set the reference frame for RMSD calculations and compute RMSDs."""
         self._rmsd_ref_state = ref_frame
-        self.rmsd = _traj_data.rmsd(self, self, ref_frame)
+        self.rmsd = _rmsd(self, self, ref_frame)
 
     @property
     def directory(self) -> str:
@@ -327,7 +327,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         return os.path.dirname(self.filename)
 
     @property
-    def reference(self) -> chisurf.core.structure.Structure:
+    def reference(self) -> Structure:
         """The reference structure used for RMSD-calculation. This cannot be
         set directly but has to be set via the number of the reference state
          :py:attribute`.rmsd_ref_state`
@@ -338,12 +338,12 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
             return self[int(self.rmsd_ref_state)]
 
     @property
-    def average(self) -> chisurf.core.structure.Structure:
+    def average(self) -> Structure:
         """
         The average structure (:py:class:`~mfm.structure.mfm.structure.Structure`)
         of the trajectory
         """
-        return chisurf.core.structure.average(self[: len(self)])
+        return average(self[: len(self)])
 
     @property
     def values(self) -> np.ndarray:
@@ -409,7 +409,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         <Trajectory: 93 frames, 2495 atoms>
         """
         verbose = verbose or self.verbose
-        if isinstance(xyz, chisurf.core.structure.Structure):
+        if isinstance(xyz, Structure):
             xyz = xyz.xyz
 
         # Appending grows the trajectory in memory. It used to reopen the file
@@ -428,11 +428,11 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
             # RMSD is taken on plain trajectories built from the coordinates.
             def frame_at(index):
                 """Return frame *index* as a one-frame trajectory."""
-                return _traj_data.Trajectory(self._xyz[index][np.newaxis])
+                return _Trajectory(self._xyz[index][np.newaxis])
 
             new_frame = frame_at(-1)
-            next_drmsd = _traj_data.rmsd(new_frame, frame_at(-2))
-            next_rmsd = _traj_data.rmsd(new_frame, frame_at(self.rmsd_ref_state))
+            next_drmsd = _rmsd(new_frame, frame_at(-2))
+            next_rmsd = _rmsd(new_frame, frame_at(self.rmsd_ref_state))
         else:
             next_drmsd = [0.0]
             next_rmsd = [0.0]
@@ -499,7 +499,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
 
     def slice(self, key, copy=True):
         """Return the selected frames as a new :class:`TrajectoryFile`."""
-        return TrajectoryFile(p_object=_traj_data.Trajectory(self._xyz[key], self.topology))
+        return TrajectoryFile(p_object=_Trajectory(self._xyz[key], self.topology))
 
     def __getitem__(self, key):
         """Return a structure (int key) or list of structures (slice key)."""

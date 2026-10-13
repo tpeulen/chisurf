@@ -10,7 +10,7 @@ import chisurf.core.parameter
 import chisurf.core.support.decorators
 from chisurf import typing
 from chisurf.core.curve import Curve
-from chisurf.core.models import model
+from chisurf.core.models.model import Model
 
 if TYPE_CHECKING:
     from chisurf.core.fitting.fit import Fit, FitGroup
@@ -31,7 +31,7 @@ def _stack_per_fit(arrays: list) -> np.ndarray:
         return out
 
 
-class GlobalFitModel(model.Model, Curve):
+class GlobalFitModel(Model, Curve):
     name = "Global fit"
     view_spec_file = "globalfit.view.json"
     _global_parameters: dict[str, cs.core.fitting.parameter.FittingParameter]

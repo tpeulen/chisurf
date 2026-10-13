@@ -38,7 +38,7 @@ import chisurf as cs
 import chisurf.core.fio as io
 import chisurf.core.support.common
 
-from . import elements
+from .elements import masses_for, radii_for
 
 logger = logging.getLogger(__name__)
 
@@ -676,9 +676,9 @@ def parse_pdb_native(
         element[blank] = derived
     atoms["element"] = np.char.upper(element)
 
-    masses, _unknown = elements.masses_for(atoms["element"])
+    masses, _unknown = masses_for(atoms["element"])
     atoms["mass"] = masses
-    atoms["radius"] = elements.radii_for(atoms["element"])
+    atoms["radius"] = radii_for(atoms["element"])
     atoms["charge"] = 0.0
     return atoms
 

@@ -9,17 +9,26 @@ from pathlib import Path
 
 import numpy as np
 
-from chisurf.plugins.quenching_estimator.core import av as fps
+from chisurf.plugins.quenching_estimator.core.av import (
+    AV,
+    ISOTROPIC_KAPPA2,
+    RDAMeanE,
+    fret_rate_pair_trace,
+    fret_rate_trace,
+    grid_center_index,
+    simulate_traj,
+    spherePoints,
+)
+from chisurf.plugins.quenching_estimator.core.av import asa as _fps_asa
+from chisurf.plugins.quenching_estimator.core.io import write_xyz
 
 # No Qt in this module: the desktop form lives in `quest.gui`, and a headless
 # run must not pay for a GUI toolkit it never uses. Progress is reported through
 # a callback (see DonorDecay.update_all), not by driving a dialog from inside
 # the simulation (okf/specs/plugin-integration.md).
-from chisurf.plugins.quenching_estimator.core import photon
-from chisurf.plugins.quenching_estimator.core.av import AV
-from chisurf.plugins.quenching_estimator.core.io import write_xyz
+from chisurf.plugins.quenching_estimator.core.photon import simulate_photon_trace_rate
 from chisurf.plugins.quenching_estimator.core.structure import Structure
-from chisurf.plugins.quenching_estimator.core.structure import reader as PDB
+from chisurf.plugins.quenching_estimator.core.structure.reader import read as _read_pdb
 
 # ---------------------------------------------------------------------------
 # PET chemistry -- the C++ of `IMP.bff` (``PETQuenching.h``)
@@ -276,7 +285,7 @@ def get_quencher_coordinates(pdb, quencher, verbose=True, all_atoms=True):
     """
     returns coordinates and indices of all atoms of certain
     residue type.
-    pdb: is a numpy-pdb array as returned by PDB.read
+    pdb: is a numpy-pdb array as returned by _read_pdb
     """
     if verbose:
         print("Finding quenchers")
@@ -389,7 +398,7 @@ class SimulateDiffusion:
         self.asa_n_sphere_point = asa_n_sphere_point
         self.asa_probe_radius = asa_probe_radius
         self.asa_n_sphere_point = asa_n_sphere_point
-        self.asa_sphere_points = fps.spherePoints(asa_n_sphere_point) if asa_calc else None
+        self.asa_sphere_points = spherePoints(asa_n_sphere_point) if asa_calc else None
         self._asa = None
 
         self.pdb = av.structure.atoms
@@ -505,7 +514,7 @@ class SimulateDiffusion:
         quencher_atom_index_array = np.hstack(
             [v.flatten() for v in list(self._quencher_atom_indices.values())]
         )
-        asa_v = fps.asa(
+        asa_v = _fps_asa(
             self.av.structure.atoms["coord"],
             self.av.structure.atoms["radius"],
             quencher_atom_index_array,
@@ -567,7 +576,7 @@ class SimulateDiffusion:
         # `(n - 1) / 2` until 2026-07-28, which differs from the kernels'
         # integer offset on every even edge length -- see
         # `quest.core.av.grid_center_index`.
-        center_index = np.array([fps.grid_center_index(n) for n in shape], dtype=np.float64)
+        center_index = np.array([grid_center_index(n) for n in shape], dtype=np.float64)
         # `floor`, not `trunc`: `trunc` maps [-1, 0) to 0, so a position up to
         # one voxel *below* the grid was treated as inside it and read voxel 0's
         # quenching rate. `floor` sends it to -1, which the bounds check below
@@ -610,7 +619,7 @@ class SimulateDiffusion:
     def _simulate_single_trajectory(
         density, slow_density, dg, slow_fact, t_step, t_max, D, random_seed
     ):
-        return fps.simulate_traj(
+        return simulate_traj(
             density,
             slow_density,
             dg,
@@ -1231,7 +1240,7 @@ class DonorDecay:
             print("Quencher-wise kQ rates used.")
 
         t_step = donor_traj.t_step
-        dts, phs = photon.simulate_photon_trace_rate(
+        dts, phs = simulate_photon_trace_rate(
             n_ph=n_photons,
             kQ=k_quench,
             t_step=t_step,
@@ -1403,11 +1412,7 @@ class DonorDecay:
         The default reproduces every number computed before it existed, because
         a published R0 is already quoted at kappa2 = 2/3.
         """
-        return (
-            fps.ISOTROPIC_KAPPA2
-            if self.fret_kappa2_value is None
-            else float(self.fret_kappa2_value)
-        )
+        return ISOTROPIC_KAPPA2 if self.fret_kappa2_value is None else float(self.fret_kappa2_value)
 
     def rda_mean_e(self, n_samples=50000):
         """Forster-averaged donor-acceptor distance <R_DA>_E, in Angstrom.
@@ -1422,7 +1427,7 @@ class DonorDecay:
         )
         if acceptor_av is None:
             return None
-        return float(fps.RDAMeanE(self.av, acceptor_av, self.fret_R0_angstrom, n_samples))
+        return float(RDAMeanE(self.av, acceptor_av, self.fret_R0_angstrom, n_samples))
 
     def calc_fret_rate_trace(self, verbose=False):
         """FRET rate for every frame, in 1/ns.
@@ -1472,7 +1477,7 @@ class DonorDecay:
         r_min = donor_radius + acceptor_radius
 
         if str(self.acceptor_dynamics).lower() == "averaged":
-            rates = fps.fret_rate_trace(
+            rates = fret_rate_trace(
                 trajectory,
                 acceptor_av.points,
                 R0=self.fret_R0_angstrom,
@@ -1488,7 +1493,7 @@ class DonorDecay:
                     "fret.acceptor_dynamics to 'averaged' to use its accessible "
                     "volume instead."
                 )
-            rates = fps.fret_rate_pair_trace(
+            rates = fret_rate_pair_trace(
                 trajectory,
                 acceptor_trajectory,
                 R0=self.fret_R0_angstrom,
@@ -1513,7 +1518,7 @@ class DonorDecay:
         # Quenching and transfer are parallel de-excitation channels, so their
         # rates add frame by frame.
         k_total = (np.asarray(k_quench, dtype=np.float64) + k_fret).astype(np.float32)
-        dts, phs = photon.simulate_photon_trace_rate(
+        dts, phs = simulate_photon_trace_rate(
             n_ph=n_photons,
             kQ=k_total,
             t_step=t_step,

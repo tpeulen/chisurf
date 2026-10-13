@@ -4,7 +4,7 @@ import numpy as np
 
 import chisurf.core.fluorescence
 import chisurf.core.structure.av
-from chisurf.core.structure import Structure
+from chisurf.core.structure.structure import Structure
 
 
 def av_distance_distribution(

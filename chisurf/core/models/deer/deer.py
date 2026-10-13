@@ -20,8 +20,14 @@ import numpy as np
 
 import chisurf as cs
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.models.deer import models as _m
 from chisurf.core.models.deer.kernel import dipolar_kernel
+from chisurf.core.models.deer.models import (
+    gaussian_signal,
+    maxent_signal,
+    rice_signal,
+    tikhonov_distance_distribution,
+    tikhonov_signal,
+)
 from chisurf.core.models.model import ModelCurve
 
 
@@ -644,7 +650,7 @@ class DeerGaussianModel(_DeerModelBase):
     def _distribution(self, r, t, v_data):
         """Build the (multi-)Gaussian signal for the current parameters."""
         g, mo, bg = self.gaussians, self.modulation, self.background
-        return _m.gaussian_signal(
+        return gaussian_signal(
             t,
             r,
             g.means,
@@ -755,7 +761,7 @@ class DeerRiceModel(_DeerModelBase):
     def _distribution(self, r, t, v_data):
         """Build the Rice-distribution signal for the current parameters."""
         rc, mo, bg = self.rice, self.modulation, self.background
-        return _m.rice_signal(
+        return rice_signal(
             t,
             r,
             rc.nu,
@@ -858,7 +864,7 @@ class DeerTikhonovModel(_DeerModelBase):
         """
         mo, bg, reg = self.modulation, self.background, self.regularization
         manual = reg.alpha if reg.alpha and reg.alpha > 1e-6 else None
-        v_model, p_r, alpha_used = _m.tikhonov_signal(
+        v_model, p_r, alpha_used = tikhonov_signal(
             t,
             r,
             v_data,
@@ -881,7 +887,7 @@ class DeerTikhonovModel(_DeerModelBase):
             return None
         k_mat, r, f = ff
         alpha = self._alpha_used if self._alpha_used and self._alpha_used > 0 else None
-        p, _ = _m.tikhonov_distance_distribution(
+        p, _ = tikhonov_distance_distribution(
             k_mat, r, f, alpha=alpha, method=getattr(self.regularization, "method", "gcv")
         )
         return p
@@ -983,7 +989,7 @@ class DeerMaxEntModel(_DeerModelBase):
     def _distribution(self, r, t, v_data):
         """Invert ``P(r)`` by maximum entropy and rebuild the trace."""
         mo, bg, reg = self.modulation, self.background, self.regularization
-        v_model, p_r, alpha_used = _m.maxent_signal(
+        v_model, p_r, alpha_used = maxent_signal(
             t,
             r,
             v_data,

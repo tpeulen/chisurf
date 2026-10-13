@@ -6,7 +6,7 @@ import numpy as np
 
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
-from . import distributions
+from .distributions import normal_distribution
 
 
 def gaussian_chain_ree(segment_length: float, number_of_segments: int) -> float:
@@ -249,10 +249,10 @@ def distance_between_gaussian(
         distances
         / safe_separation
         * (
-            distributions.normal_distribution(
+            normal_distribution(
                 x=distances, loc=safe_separation, scale=sigma, norm=False
             )
-            - distributions.normal_distribution(
+            - normal_distribution(
                 x=distances, loc=-safe_separation, scale=sigma, norm=False
             )
         )
@@ -261,7 +261,7 @@ def distance_between_gaussian(
         2.0
         * distances**2
         / sigma**2
-        * distributions.normal_distribution(x=distances, loc=0.0, scale=sigma, norm=False)
+        * normal_distribution(x=distances, loc=0.0, scale=sigma, norm=False)
     )
     pr = np.where(positive, separated, coincident)
     if normalize:

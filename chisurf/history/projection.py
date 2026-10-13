@@ -10,7 +10,14 @@ from __future__ import annotations
 import typing
 from dataclasses import dataclass, field
 
-from chisurf.history import replay as _hr
+from chisurf.history.replay import (
+    reconstruct_fit_range_state,
+    reconstruct_model_state,
+    reconstruct_navigation_state,
+    reconstruct_parameter_state,
+    reconstruct_setup_state,
+    snapshot_to_replay_state,
+)
 
 
 @dataclass
@@ -56,17 +63,17 @@ def build_target_state(
     del all_events  # reserved; the merge does not need it
 
     if checkpoint_snapshot is not None:
-        replay_state = _hr.snapshot_to_replay_state(checkpoint_snapshot)
+        replay_state = snapshot_to_replay_state(checkpoint_snapshot)
         nav_state = replay_state.get("navigation", {})
         parameter_state = replay_state.get("parameters", {})
         fit_range_state = replay_state.get("fit_ranges", {})
         setup_state = replay_state.get("setup", {})
         model_state = replay_state.get("models", {})
-        nav_state = _hr.reconstruct_navigation_state(events_to_replay, nav_state)
-        param_delta = _hr.reconstruct_parameter_state(events_to_replay)
-        range_delta = _hr.reconstruct_fit_range_state(events_to_replay)
-        setup_delta = _hr.reconstruct_setup_state(events_to_replay)
-        model_delta = _hr.reconstruct_model_state(events_to_replay)
+        nav_state = reconstruct_navigation_state(events_to_replay, nav_state)
+        param_delta = reconstruct_parameter_state(events_to_replay)
+        range_delta = reconstruct_fit_range_state(events_to_replay)
+        setup_delta = reconstruct_setup_state(events_to_replay)
+        model_delta = reconstruct_model_state(events_to_replay)
         for key, delta in param_delta.items():
             parameter_state.setdefault(key, {}).update(delta)
         fit_range_state.update(range_delta)
@@ -104,11 +111,11 @@ def build_target_state(
                                 existing["config"] = {}
                             existing["config"].update(local_data["config"])
     else:
-        nav_state = _hr.reconstruct_navigation_state(events_to_replay)
-        parameter_state = _hr.reconstruct_parameter_state(events_to_replay)
-        fit_range_state = _hr.reconstruct_fit_range_state(events_to_replay)
-        setup_state = _hr.reconstruct_setup_state(events_to_replay)
-        model_state = _hr.reconstruct_model_state(events_to_replay)
+        nav_state = reconstruct_navigation_state(events_to_replay)
+        parameter_state = reconstruct_parameter_state(events_to_replay)
+        fit_range_state = reconstruct_fit_range_state(events_to_replay)
+        setup_state = reconstruct_setup_state(events_to_replay)
+        model_state = reconstruct_model_state(events_to_replay)
 
     return DomainState(
         navigation=nav_state,

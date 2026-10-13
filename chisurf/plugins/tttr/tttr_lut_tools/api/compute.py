@@ -8,7 +8,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from . import io, lut
+from chisurf.plugins.tttr.tttr_lut_tools.api.io import load_microtimes
+from chisurf.plugins.tttr.tttr_lut_tools.api.lut import (
+    autodetect_linear_region,
+    build_linearization_table,
+    histogram_micro,
+    infer_n_bins,
+)
 
 
 def compute_lut_from_counts(
@@ -38,10 +44,10 @@ def compute_lut_from_counts(
     """
     counts = np.asarray(counts)
     if linear_start is None or linear_stop is None:
-        linear_start, linear_stop = lut.autodetect_linear_region(counts, noffset_guess=noffset)
+        linear_start, linear_stop = autodetect_linear_region(counts, noffset_guess=noffset)
     if not ntac_required or ntac_required <= 0:
         ntac_required = int(len(counts))
-    return lut.build_linearization_table(
+    return build_linearization_table(
         counts, int(linear_start), int(linear_stop), int(ntac_required), int(noffset)
     )
 
@@ -81,7 +87,7 @@ def compute_lut_from_files(
     dict
         The LUT table (``NTAC_fract`` + metadata).
     """
-    micro = io.load_microtimes(files, routine=routine, channel=channel)
-    nb = lut.infer_n_bins(micro, n_bins)
-    counts = lut.histogram_micro(micro, nb)
+    micro = load_microtimes(files, routine=routine, channel=channel)
+    nb = infer_n_bins(micro, n_bins)
+    counts = histogram_micro(micro, nb)
     return compute_lut_from_counts(counts, linear_start, linear_stop, ntac_required, noffset)

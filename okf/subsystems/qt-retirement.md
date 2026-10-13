@@ -168,6 +168,43 @@ own startup stages (item 5): S5 is done.
    until the queued translation job, so the German shell still shows *Spectroscopy*. Trap: re-extracting while
    another lane has uncommitted `tr()` edits marks their removed strings obsolete; put such entries back (S5 restored
    *Close Help*) or `test_committed_authored_ui_text_has_german_and_french_catalogue_sources` fails.
+   **Retiring the import gate (2026-10-13).** The gate and `frame_modules.py` are workarounds: a cross-thread
+   import deadlock needs an import *cycle* that two threads enter from opposite ends, or module-level code that
+   imports behind the `import` statements' back. `test/test_import_cycles.py` bans both, with no allow-list.
+   Rule 1: no cycle in the static module-level import graph (ast over `chisurf/**`, tests excluded). Rule 2: no
+   module-level call that imports by name or blocks (`import_module`, `__import__`, `find_spec`,
+   `resources.files`, `pkgutil`, threads `.start/.join/.submit`, `time.sleep`, `subprocess`, `urlopen`,
+   `parse_args`). Measure: `python test/test_import_cycles.py`. At HEAD 0a6e81d8c there were 17 cyclic
+   components (45 modules, 56 cycle edges) and 11 side effects; both counts are now 0. A runtime probe agrees:
+   it imports all 2381 modules and records every request for a module that is still initialising, and it finds
+   16 at the partial fix and 0 now. The probe is the `_find_and_load` / `_lock_unlock_module` hooks in
+   `test_the_graph_model_matches_cpythons_module_locks`, applied to the whole tree.
+   Trap, now pinned by that test: on 3.12, `import pkg.sub as s` waits on `pkg`'s lock while `pkg` is still
+   initialising (the binding falls back to `PyImport_GetModule`), and so do `from . import sub` and
+   `from pkg import sub`. Only `from pkg.sub import name` leaves `pkg` alone, so that is how every cycle was
+   broken (chiplot, help api, chigame, structure, models, deer, dataspec, quenching core, FRET api, LUT api,
+   history, chinsole, autoform, fcs, fio.structure, math.functions). `chisurf.core.dataspec` loads
+   `RpcMethodView` through its module `__getattr__`. Side effects removed: the dead `find_spec("emtk")` guard in
+   `emtk_analysis_form.py` (emtk is a hard dependency), `__import__("json")` in burst MLE `engine.py`, and seven
+   spectra_downloader probe scripts that called FPbase and parsed `sys.argv` on import (now `main()` under
+   `__main__`). Creating an executor is not a side effect, because it starts no thread.
+   **Exit criterion:** both rules at zero (met), plus one residual race that no import graph shows. CPython
+   takes a submodule's lock *before* importing its parent. If a worker first-imports `pkg.sub` while the main
+   thread holds `pkg`'s lock but has not yet put `pkg` in `sys.modules` (the window is `pkg`'s `find_spec`),
+   and `pkg/__init__` imports `pkg.sub`, the main thread raises `_DeadlockError`. Close it before deleting the
+   gate. Either import every package `__init__` that a worker can reach on the UI thread before the first
+   worker starts (`chisurf.core`, `chisurf.server`, `chisurf.history`, `chisurf.core.project`,
+   `chisurf.core.actions`; the session's are already imported by `chisurf.emtk.session`), or measure the window
+   with `test_startup_import_race.py`'s `SWEEP` with the gate off. That test's planted package imports itself by
+   name, which is a deliberate cycle, so it tests the gate mechanism and is retired with it. Then delete
+   `chisurf/_import_gate.py`, its install in `chisurf/__init__.py`, `test/startup/test_import_gate.py` and the
+   *gate wait* column.
+   **`frame_modules.py` after the gate.** Its only job is to spare a frame the gate's wait. Without the gate, a
+   frame waits only when a worker is importing *that same* module, so the list goes with the gate. Until then
+   the list can be derived instead of recorded: emtk's lazy imports are its function-level `import` statements,
+   so an ast scan of the installed `emtk` package (function-body imports of `emtk.*`, `fontTools.*` and `PIL.*`)
+   yields `FRAME_MODULES`. A test would compare the tuple with the scan, so an emtk pin bump that adds a lazy
+   import fails it instead of reappearing as a gate wait in `plugin_frame_times`.
 6. Done 2026-10-13: opening a fit window imports no Qt. Measure: `test/native_emtk/test_fit_window_is_qt_free.py`
    (subprocess; the full guard `test_opening_a_fit_window_imports_no_qt` passes, xfail removed, and
    `test_every_shipped_page_class_resolves_without_qt` resolves all 24 `PLOT_CLASSES` keys with `qtpy` unloaded).

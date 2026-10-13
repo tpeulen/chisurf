@@ -27,10 +27,11 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.chiplot import handles as H
-from chisurf.chiplot import style as S
 from chisurf.chiplot.backends import get_backend
 from chisurf.chiplot.canvas import _Hook
+from chisurf.chiplot.handles import Image, Roi, Scatter, Text
+from chisurf.chiplot.style import colormap as _colormap
+from chisurf.chiplot.style import to_brush, to_color, to_pen
 
 __all__ = ["ImagePanel"]
 
@@ -313,7 +314,7 @@ class ImagePanel:
     # -- symbols and labels over the picture -----------------------------------
     def marks(
         self, x, y, *, symbol="o", size=7.0, pen=None, brush=None, width=1.0, z=None
-    ) -> H.Scatter:
+    ) -> Scatter:
         """Draw a set of symbols over the picture, in axis coordinates.
 
         Parameters
@@ -338,8 +339,8 @@ class ImagePanel:
         style = {
             "symbol": symbol,
             "size": size,
-            "pen": None if pen is None else S.to_pen(pen),
-            "brush": None if brush is None else S.to_brush(brush),
+            "pen": None if pen is None else to_pen(pen),
+            "brush": None if brush is None else to_brush(brush),
             "width": width,
         }
         marks = self._iv.add_marks(np.asarray(x, dtype=float), np.asarray(y, dtype=float), **style)
@@ -347,9 +348,9 @@ class ImagePanel:
             marks.z = float(z)
         return marks
 
-    def label(self, text: str, x: float, y: float, *, color="w", anchor=(0.0, 0.0)) -> H.Text:
+    def label(self, text: str, x: float, y: float, *, color="w", anchor=(0.0, 0.0)) -> Text:
         """Write *text* at axis position ``(x, y)`` over the picture."""
-        return self._iv.add_text(str(text), (x, y), color=S.to_color(color), anchor=anchor)
+        return self._iv.add_text(str(text), (x, y), color=to_color(color), anchor=anchor)
 
     # -- painting ----------------------------------------------------------------
     def enable_brush(self, kernel=None, *, on_stroke=None, color=(255, 255, 255)) -> None:
@@ -371,7 +372,7 @@ class ImagePanel:
         color : color-like
             Colour of the painted layer.
         """
-        tint = S.to_color(color)
+        tint = to_color(color)
         lut = np.zeros((256, 4), dtype=np.uint8)
         lut[:, :3] = (tint.r, tint.g, tint.b)
         lut[:, 3] = np.linspace(0, 170, 256).astype(np.uint8)
@@ -505,11 +506,11 @@ class ImagePanel:
         """Show (default) or never show the "A" auto-range button."""
         self._iv.set_auto_range_button(shown)
 
-    def add_overlay(self, data, *, colormap=None) -> H.Image:
+    def add_overlay(self, data, *, colormap=None) -> Image:
         """Overlay a second image (typically RGBA with transparency) on the view."""
         cmap = colormap
         if isinstance(cmap, str):
-            cmap = S.colormap(cmap)
+            cmap = _colormap(cmap)
         return self._iv.add_overlay(np.asarray(data), colormap=cmap)
 
     def add_roi(
@@ -524,7 +525,7 @@ class ImagePanel:
         points=None,
         angle=0.0,
         resizable=False,
-    ) -> H.Roi:
+    ) -> Roi:
         """Add a region-of-interest shape over the image.
 
         Parameters
@@ -556,7 +557,7 @@ class ImagePanel:
             kind=kind,
             pos=tuple(pos),
             size=tuple(size),
-            pen=S.to_pen(pen),
+            pen=to_pen(pen),
             movable=movable,
             rotatable=rotatable,
             points=points,
@@ -564,7 +565,7 @@ class ImagePanel:
             resizable=resizable,
         )
 
-    def add_region(self, region, *, pen="y", movable=False, name: str = "") -> H.Roi:
+    def add_region(self, region, *, pen="y", movable=False, name: str = "") -> Roi:
         """Draw a :class:`chisurf.core.roi.ROI` (rectangle, ellipse/circle, polygon) over the image.
 
         A region drawn from a measurement is a result, so it is not movable by

@@ -1097,7 +1097,18 @@ class FittingParameterSection(Section):
     suffix: str = ""
 
 
-from .rpc import RpcMethodView  # noqa: E402  (needs the section types above)
+def __getattr__(name: str):
+    """Load :class:`~chisurf.core.dataspec.rpc.RpcMethodView` on first access.
+
+    ``rpc`` builds on the section types above, so importing it from this module's body would be
+    an import cycle (``dataspec`` -> ``rpc`` -> ``dataspec``).
+    """
+    if name == "RpcMethodView":
+        from .rpc import RpcMethodView
+
+        return RpcMethodView
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "RpcMethodView",

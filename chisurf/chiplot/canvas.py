@@ -25,8 +25,23 @@ from typing import Any, TypeVar
 
 import numpy as np
 
-from chisurf.chiplot import handles as H
-from chisurf.chiplot import style as S
+from chisurf.chiplot.handles import (
+    Arrow,
+    Bars,
+    ColorBar,
+    Curve,
+    ErrorBars,
+    Handle,
+    Image,
+    Marker,
+    Orientation,
+    Region,
+    Roi,
+    Scatter,
+    Symbol,
+    Text,
+)
+from chisurf.chiplot.style import to_brush, to_color, to_colormap, to_pen
 
 #: Sentinel for "argument not given", so an explicit ``None`` keeps its own
 #: meaning (a *transparent* background, pyqtgraph's idiom) instead of being
@@ -69,7 +84,7 @@ class PlotAPI:
         symbol_pen=None,
         skip_missing=True,
         max_points=None,
-    ) -> H.Curve:
+    ) -> Curve:
         """Draw a line (or step) curve, optionally with point markers.
 
         Parameters
@@ -131,24 +146,24 @@ class PlotAPI:
             overrides["style"] = style
         sym = None
         if symbol is not None:
-            sym = symbol if isinstance(symbol, H.Symbol) else H.Symbol(symbol)
+            sym = symbol if isinstance(symbol, Symbol) else Symbol(symbol)
         handle = self._canvas.add_curve(
             x,
             y,
-            pen=S.to_pen(pen, **overrides),
+            pen=to_pen(pen, **overrides),
             name=name,
-            fill=S.to_brush(fill) if fill is not None else None,
+            fill=to_brush(fill) if fill is not None else None,
             step=step,
             symbol=sym,
             symbol_size=symbol_size,
-            symbol_brush=S.to_brush(symbol_brush) if symbol_brush is not None else None,
-            symbol_pen=S.to_pen(symbol_pen) if symbol_pen is not None else None,
+            symbol_brush=to_brush(symbol_brush) if symbol_brush is not None else None,
+            symbol_pen=to_pen(symbol_pen) if symbol_pen is not None else None,
             skip_missing=skip_missing,
         )
         self._series.append((name or f"curve{len(self._series)}", handle))
         return handle
 
-    def scatter(self, x, y, *, size=7.0, brush="w", pen=None, symbol="o", name=None) -> H.Scatter:
+    def scatter(self, x, y, *, size=7.0, brush="w", pen=None, symbol="o", name=None) -> Scatter:
         """Draw a scatter cloud.
 
         Parameters
@@ -174,15 +189,15 @@ class PlotAPI:
             np.asarray(x),
             np.asarray(y),
             size=size,
-            pen=S.to_pen(pen) if pen is not None else None,
-            brush=S.to_brush(brush) if brush is not None else None,
-            symbol=symbol if isinstance(symbol, H.Symbol) else H.Symbol(symbol),
+            pen=to_pen(pen) if pen is not None else None,
+            brush=to_brush(brush) if brush is not None else None,
+            symbol=symbol if isinstance(symbol, Symbol) else Symbol(symbol),
             name=name,
         )
         self._series.append((name or f"points{len(self._series)}", handle))
         return handle
 
-    def bars(self, x, height, *, width=1.0, brush="w", pen=None) -> H.Bars:
+    def bars(self, x, height, *, width=1.0, brush="w", pen=None) -> Bars:
         """Draw a bar graph.
 
         Parameters
@@ -206,11 +221,11 @@ class PlotAPI:
             np.asarray(x),
             np.asarray(height),
             width=width,
-            pen=S.to_pen(pen) if pen is not None else None,
-            brush=S.to_brush(brush) if brush is not None else None,
+            pen=to_pen(pen) if pen is not None else None,
+            brush=to_brush(brush) if brush is not None else None,
         )
 
-    def fill_between(self, lower: H.Curve, upper: H.Curve, *, brush="w") -> H.Handle:
+    def fill_between(self, lower: Curve, upper: Curve, *, brush="w") -> Handle:
         """Fill the area between two curves (e.g. a confidence band).
 
         Parameters
@@ -225,11 +240,11 @@ class PlotAPI:
         -------
         handles.Handle
         """
-        return self._canvas.add_fill_between(lower, upper, brush=S.to_brush(brush))
+        return self._canvas.add_fill_between(lower, upper, brush=to_brush(brush))
 
     def errorbars(
         self, x, y, *, height=None, top=None, bottom=None, pen="w", beam=None
-    ) -> H.ErrorBars:
+    ) -> ErrorBars:
         """Draw error bars.
 
         Parameters
@@ -255,13 +270,13 @@ class PlotAPI:
             height=None if height is None else np.asarray(height),
             top=None if top is None else np.asarray(top),
             bottom=None if bottom is None else np.asarray(bottom),
-            pen=S.to_pen(pen),
+            pen=to_pen(pen),
             beam=beam,
         )
 
     def image(
         self, data, *, colormap=None, levels=None, rect=None, axis_order="row-major"
-    ) -> H.Image:
+    ) -> Image:
         """Draw a 2-D image / heatmap.
 
         Parameters
@@ -281,7 +296,7 @@ class PlotAPI:
         -------
         handles.Image
         """
-        cmap = S.to_colormap(colormap)
+        cmap = to_colormap(colormap)
         return self._canvas.add_image(
             np.asarray(data), colormap=cmap, levels=levels, rect=rect, axis_order=axis_order
         )
@@ -296,7 +311,7 @@ class PlotAPI:
         movable=True,
         rotatable=False,
         points=None,
-    ) -> H.Roi:
+    ) -> Roi:
         """Add a region-of-interest shape over the plot.
 
         The same shapes as :meth:`ImageView.add_roi`, on a *data* plane: a gate
@@ -328,7 +343,7 @@ class PlotAPI:
             kind=kind,
             pos=tuple(pos),
             size=tuple(size),
-            pen=S.to_pen(pen),
+            pen=to_pen(pen),
             movable=movable,
             rotatable=rotatable,
             points=points,
@@ -336,7 +351,7 @@ class PlotAPI:
 
     def region(
         self, bounds, *, orientation="vertical", movable=True, brush=None, pen=None
-    ) -> H.Region:
+    ) -> Region:
         """Add a draggable interval selector.
 
         Parameters
@@ -358,13 +373,13 @@ class PlotAPI:
         """
         return self._canvas.add_region(
             tuple(bounds),
-            orientation=H.Orientation(orientation),
+            orientation=Orientation(orientation),
             movable=movable,
-            brush=S.to_brush(brush) if brush is not None else None,
-            pen=S.to_pen(pen) if pen is not None else None,
+            brush=to_brush(brush) if brush is not None else None,
+            pen=to_pen(pen) if pen is not None else None,
         )
 
-    def vline(self, x, *, movable=False, pen="w", label=None) -> H.Marker:
+    def vline(self, x, *, movable=False, pen="w", label=None) -> Marker:
         """Add a vertical cursor line.
 
         Parameters
@@ -383,10 +398,10 @@ class PlotAPI:
         handles.Marker
         """
         return self._canvas.add_marker(
-            x, orientation=H.Orientation.VERTICAL, movable=movable, pen=S.to_pen(pen), label=label
+            x, orientation=Orientation.VERTICAL, movable=movable, pen=to_pen(pen), label=label
         )
 
-    def hline(self, y, *, movable=False, pen="w", label=None) -> H.Marker:
+    def hline(self, y, *, movable=False, pen="w", label=None) -> Marker:
         """Add a horizontal cursor line.
 
         Parameters
@@ -405,7 +420,7 @@ class PlotAPI:
         handles.Marker
         """
         return self._canvas.add_marker(
-            y, orientation=H.Orientation.HORIZONTAL, movable=movable, pen=S.to_pen(pen), label=label
+            y, orientation=Orientation.HORIZONTAL, movable=movable, pen=to_pen(pen), label=label
         )
 
     def arrow(
@@ -421,7 +436,7 @@ class PlotAPI:
         tail_width=3.0,
         pen=None,
         brush="w",
-    ) -> H.Arrow:
+    ) -> Arrow:
         """Add a scale-invariant arrow head at a data coordinate.
 
         Parameters
@@ -466,8 +481,8 @@ class PlotAPI:
             head_width=head_width,
             tail_length=tail_length,
             tail_width=float(tail_width),
-            pen=S.to_pen(pen) if pen is not None else None,
-            brush=S.to_brush(brush) if brush is not None else None,
+            pen=to_pen(pen) if pen is not None else None,
+            brush=to_brush(brush) if brush is not None else None,
         )
 
     def text(
@@ -481,7 +496,7 @@ class PlotAPI:
         fill=None,
         border=None,
         anchored=False,
-    ) -> H.Text:
+    ) -> Text:
         """Add a text label.
 
         Parameters
@@ -514,11 +529,11 @@ class PlotAPI:
         return self._canvas.add_text(
             str(text),
             tuple(pos),
-            color=S.to_color(color),
+            color=to_color(color),
             anchor=tuple(anchor),
             draggable=draggable,
-            fill=S.to_brush(fill) if fill is not None else None,
-            border=S.to_pen(border) if border is not None else None,
+            fill=to_brush(fill) if fill is not None else None,
+            border=to_pen(border) if border is not None else None,
             anchored=anchored,
         )
 
@@ -536,7 +551,7 @@ class PlotAPI:
         """Stop showing the legend (:meth:`legend` shows it again)."""
         self._canvas.remove_legend()
 
-    def add(self, handle: H.Handle) -> None:
+    def add(self, handle: Handle) -> None:
         """Re-attach a previously removed handle.
 
         Parameters
@@ -546,7 +561,7 @@ class PlotAPI:
         """
         self._canvas.readd(handle)
 
-    def remove(self, handle: H.Handle) -> None:
+    def remove(self, handle: Handle) -> None:
         """Remove a handle.
 
         Also drops it from the exportable-series list, so a removed curve stops
@@ -829,7 +844,7 @@ class PlotAPI:
 
     def set_background(self: _P, color) -> _P:
         """Set the panel background color. Returns ``self``."""
-        self._canvas.set_background(S.to_color(color) if color is not None else None)
+        self._canvas.set_background(to_color(color) if color is not None else None)
         return self
 
     def set_aspect_locked(self: _P, lock=True, ratio=1.0) -> _P:
@@ -1024,7 +1039,7 @@ class Panel(PlotAPI):
         if title is not None:
             self._canvas.set_title(title)
         if background is not _UNSET:
-            self._canvas.set_background(None if background is None else S.to_color(background))
+            self._canvas.set_background(None if background is None else to_color(background))
         self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
         self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
 
@@ -1074,12 +1089,12 @@ class PanelGrid:
         return Panel.of(canvas)
 
     def add_colorbar(
-        self, image: H.Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
-    ) -> H.ColorBar:
+        self, image: Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
+    ) -> ColorBar:
         """Add a colour ramp with draggable levels bound to ``image``."""
         return self._grid.add_colorbar(
             image,
-            colormap=S.to_colormap(colormap),
+            colormap=to_colormap(colormap),
             row=row,
             col=col,
             rowspan=rowspan,

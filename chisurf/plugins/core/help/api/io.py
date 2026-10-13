@@ -8,9 +8,9 @@ from dataclasses import dataclass, field
 import chisurf as cs
 import chisurf.core.settings
 import chisurf.plugins
-from chisurf.plugins.core.help.api import review
 from chisurf.plugins.core.help.api.markdown import extract_title
 from chisurf.plugins.core.help.api.render import document_title
+from chisurf.plugins.core.help.api.review import STATUS_REVIEWED, status_of
 
 #: Suffixes discovered under ``docs/`` (the manual is reStructuredText).
 DOC_SUFFIXES = (".md", ".rst")
@@ -33,7 +33,7 @@ class DocEntry:
     category: str
     file_name: str
     size: int
-    review_status: str = review.STATUS_REVIEWED
+    review_status: str = STATUS_REVIEWED
     reviewer: str = ""
     review_date: str = ""
 
@@ -324,7 +324,7 @@ def _is_within(path: pathlib.Path, directory: pathlib.Path) -> bool:
 
 def _make_entry(path: pathlib.Path, title: str, category: str, file_name: str) -> DocEntry:
     """Build a :class:`DocEntry`, attaching review status for tracked pages."""
-    status = review.status_of(path)
+    status = status_of(path)
     return DocEntry(
         path=str(path),
         title=title,
