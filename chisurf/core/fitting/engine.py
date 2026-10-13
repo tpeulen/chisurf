@@ -703,10 +703,12 @@ class LaplaceEngine(PosteriorEngine):
 
                 self._joints = {}
                 for key in self._joint_targets:
-                    rows = [position.get(index.get(n)) for n in key]
-                    if any(r is None for r in rows):
+                    found = [index.get(n) for n in key]
+                    rows = [position.get(i) for i in found if i is not None]
+                    found_rows = [r for r in rows if r is not None]
+                    if len(found_rows) != len(key):
                         continue
-                    sub = cov[np.ix_(rows, rows)]
+                    sub = cov[np.ix_(found_rows, found_rows)]
                     mean = np.array([values[index[n]] for n in key], dtype=np.float64)
                     self._joints[key] = Joint(
                         names=key, mean=mean, covariance=sub, method=self.method
@@ -1008,7 +1010,9 @@ class GaussianEngine(PosteriorEngine):
         return self
 
     def conditional(
-        self, assignments: typing.Dict[str, float], targets: typing.Sequence[str] = None
+        self,
+        assignments: typing.Dict[str, float],
+        targets: typing.Sequence[str] | None = None,
     ) -> typing.List[Marginal]:
         """Return marginals under an arbitrary conditioning, without re-running.
 
@@ -1154,7 +1158,7 @@ class GaussianEngine(PosteriorEngine):
         name: str,
         points: int = 13,
         span: float = 3.0,
-        check_cancel: typing.Callable = None,
+        check_cancel: typing.Callable | None = None,
     ) -> typing.Optional[typing.Dict[str, typing.Any]]:
         r"""Run the same sweep, re-fitting at every point instead of assuming.
 
@@ -1749,13 +1753,13 @@ class SamplingEngine(PosteriorEngine):
             )
 
         self._joints = {}
-        for key in self._joint_targets:
-            cols = [index.get(n) for n in key]
-            if any(c is None for c in cols):
+        for joint_key in self._joint_targets:
+            cols = [c for c in (index.get(n) for n in joint_key) if c is not None]
+            if len(cols) != len(joint_key):
                 continue
             sub = flat[:, cols]
-            self._joints[key] = Joint(
-                names=key,
+            self._joints[joint_key] = Joint(
+                names=joint_key,
                 mean=sub.mean(axis=0),
                 covariance=np.cov(sub, rowvar=False).reshape(len(cols), len(cols)),
                 method=self.method,

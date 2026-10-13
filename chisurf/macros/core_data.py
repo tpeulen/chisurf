@@ -29,7 +29,7 @@ def _is_global_fit_dataset(dataset: typing.Any) -> bool:
 def restore_global_fit_dataset(
     _from_controller: bool = False,
     update_ui: bool = True,
-    experiment_reader: cs.core.experiments.core.reader.ExperimentReader = None,
+    experiment_reader: cs.core.experiments.core.reader.ExperimentReader | None = None,
     name: str = "Global-fit",
 ) -> typing.Dict[str, typing.Any]:
     if not _from_controller:
@@ -185,6 +185,7 @@ def group_datasets(
         return
 
     selected_data = [cs.imported_datasets[i] for i in dataset_indices]
+    dg: cs.core.data.ExperimentDataGroup
     if isinstance(selected_data[0], (cs.core.data.DataCurve, cs.core.data.DataCurveGroup)):
         # TODO: check for double names!!!
         dg = cs.core.data.ExperimentDataCurveGroup(selected_data, name="Data-Group")
@@ -394,8 +395,10 @@ def remove_datasets(
 
 
 def add_dataset(
-    experiment_reader: cs.core.experiments.core.reader.ExperimentReader = None,
-    dataset: cs.core.base.Data = None,
+    experiment_reader: cs.core.experiments.core.reader.ExperimentReader | None = None,
+    # One dataset, a group of them, or a plain sequence (see the normalisation
+    # below).
+    dataset: cs.core.base.Data | cs.core.data.DataGroup | list | tuple | None = None,
     _from_controller: bool = False,
     **kwargs,
 ) -> None:
@@ -573,7 +576,8 @@ def add_dataset(
         # to be converted so that the *elements* become group members,
         # instead of wrapping the group itself as a single element.
         is_experiment_group = isinstance(dataset, cs.core.data.ExperimentDataGroup)
-        if is_experiment_group:
+        dataset_group: cs.core.data.DataGroup
+        if isinstance(dataset, cs.core.data.ExperimentDataGroup):
             # Already in the expected grouped form
             dataset_group = dataset
         elif isinstance(dataset, (cs.core.data.DataGroup, list, tuple)):

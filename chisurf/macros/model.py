@@ -7,6 +7,19 @@ import chisurf.core.data
 import chisurf.core.experiments
 
 
+def _current_fit() -> cs.core.fitting.fit.FitGroup | None:
+    """The fit the running GUI has selected, ``None`` headless.
+
+    The macros used ``cs.cs.current_fit`` directly, which raised
+    AttributeError when no GUI host is installed (``cs.cs is None``) instead
+    of taking their documented "no fit, do nothing" path.
+    """
+    host = cs.cs
+    if host is None:
+        return None
+    return host.current_fit
+
+
 def _sync_editors(fit) -> None:
     """Show a curve an action loaded or unloaded in the fit's open editors.
 
@@ -110,16 +123,15 @@ def detach_curve(fit, unload_action: str, **fixed) -> None:
 
 
 def set_linearization(
-    idx: int | None = None, curve_name: str | None = None, fit: cs.core.fitting.fit.FitGroup = None
+    idx: int | None = None, curve_name: str | None = None, fit: cs.core.fitting.fit.FitGroup | None = None
 ) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None or idx is None:
         return
 
-    lin_table = _resolve_selected_curve(idx, curve_name)
+    lin_table = _resolve_selected_curve(idx, str(curve_name or ""))
     if lin_table is None:
         return
 
@@ -127,10 +139,9 @@ def set_linearization(
     _sync_editors(fit)
 
 
-def unload_lintable(fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def unload_lintable(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None:
         return
@@ -145,11 +156,10 @@ def unload_lintable(fit: cs.core.fitting.fit.FitGroup = None) -> None:
 
 
 def set_correction(
-    correction_type: str, value: typing.Any, fit: cs.core.fitting.fit.FitGroup = None
+    correction_type: str, value: typing.Any, fit: cs.core.fitting.fit.FitGroup | None = None
 ) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None:
         return
@@ -163,11 +173,10 @@ def set_correction(
 
 
 def normalize_amplitudes(
-    normalize: bool = True, name: str = "amplitudes", fit: cs.core.fitting.fit.FitGroup = None
+    normalize: bool = True, name: str = "amplitudes", fit: cs.core.fitting.fit.FitGroup | None = None
 ) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
     if fit is None:
         return
     for f in fit:
@@ -188,11 +197,10 @@ def normalize_amplitudes(
 def absolute_amplitudes(
     use_absolute_amplitudes: bool = True,
     name: str = "amplitudes",
-    fit: cs.core.fitting.fit.FitGroup = None,
+    fit: cs.core.fitting.fit.FitGroup | None = None,
 ) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
     if fit is None:
         return
     for f in fit:
@@ -210,10 +218,11 @@ def absolute_amplitudes(
             continue
 
 
-def remove_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def remove_component(name: str, fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
+    if fit is None:
+        return
     for f in fit:
         try:
             target = getattr(f.model, name)
@@ -314,15 +323,16 @@ def _resolve_selected_curve(
 def change_irf(
     dataset_idx: int,
     irf_name: str,
-    fit: cs.core.fitting.fit.FitGroup = None,
+    fit: cs.core.fitting.fit.FitGroup | None = None,
     *,
     dataset_uid: str | None = None,
     member_uid: str | None = None,
 ) -> None:
     """Attach the selected IRF, retaining optional stable parent/member identities."""
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
+    if fit is None:
+        return
 
     irf_curve = _resolve_selected_curve(
         dataset_idx,
@@ -349,10 +359,9 @@ def change_irf(
             pass
 
 
-def unload_irf(fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def unload_irf(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None:
         return
@@ -374,7 +383,7 @@ def unload_irf(fit: cs.core.fitting.fit.FitGroup = None) -> None:
 
 
 def set_background_curve(
-    dataset_idx: int, curve_name: str, fit: cs.core.fitting.fit.FitGroup = None
+    dataset_idx: int, curve_name: str, fit: cs.core.fitting.fit.FitGroup | None = None
 ) -> None:
     """Attach a measured background decay to the model's `generic` group.
 
@@ -394,8 +403,7 @@ def set_background_curve(
         Target fit group; the current fit when omitted.
     """
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None:
         return
@@ -408,10 +416,9 @@ def set_background_curve(
     _sync_editors(fit)
 
 
-def unload_background_curve(fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def unload_background_curve(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None:
         return
@@ -425,10 +432,9 @@ def unload_background_curve(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     _sync_editors(fit)
 
 
-def _update_model(fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def _update_model(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
 
     if fit is None:
         return
@@ -436,10 +442,11 @@ def _update_model(fit: cs.core.fitting.fit.FitGroup = None) -> None:
     fit.update()
 
 
-def add_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def add_component(name: str, fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
+    if fit is None:
+        return
     for f in fit:
         try:
             target = getattr(f.model, name)
@@ -464,10 +471,9 @@ def add_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
             continue
 
 
-def remove_local_fit(row: int, fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def remove_local_fit(row: int, fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
     if fit is None:
         return
     try:
@@ -476,10 +482,9 @@ def remove_local_fit(row: int, fit: cs.core.fitting.fit.FitGroup = None) -> None
         pass
 
 
-def clear_local_fits(fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def clear_local_fits(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
     if fit is None:
         return
     try:
@@ -488,10 +493,9 @@ def clear_local_fits(fit: cs.core.fitting.fit.FitGroup = None) -> None:
         pass
 
 
-def append_global_parameter(parameter_name: str, fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def append_global_parameter(parameter_name: str, fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
-        gui = cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
     if fit is None:
         return
     from chisurf.core.fitting.parameter import FittingParameter
@@ -499,16 +503,17 @@ def append_global_parameter(parameter_name: str, fit: cs.core.fitting.fit.FitGro
     # The global parameters belong to the global *model*; a Fit has no such method,
     # and this used to fail silently inside a bare except.
     model = getattr(fit, "_model", None) or getattr(fit, "model", None)
+    if model is None:
+        raise ValueError(f"{type(fit).__name__} has no global model to add a parameter to")
     model.append_global_parameter(FittingParameter(name=str(parameter_name)))
 
 
-def append_fit(fit_index: int, fit: cs.core.fitting.fit.FitGroup = None) -> None:
+def append_fit(fit_index: int, fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     # Local import to ensure symbol resolution in static analyzers and at runtime
     import chisurf as _cs
 
     if fit is None:
-        gui = _cs.cs
-        fit = gui.current_fit
+        fit = _current_fit()
     if fit is None:
         return
     try:
@@ -518,13 +523,14 @@ def append_fit(fit_index: int, fit: cs.core.fitting.fit.FitGroup = None) -> None
         )
         # Prefer model-level append when available (GlobalFitModel.append_fit expects a Fit)
         model_obj = getattr(fit, "model", None)
+        model_append = getattr(model_obj, "append_fit", None)
         used_path = None
-        if hasattr(model_obj, "append_fit") and callable(getattr(model_obj, "append_fit", None)):
+        if callable(model_append):
             used_path = "fit.model.append_fit"
             _cs.logging.info(
                 f"macros.model.append_fit: using {used_path}; target_fit type={type(target_fit).__name__}, name={getattr(target_fit, 'name', None)}"
             )
-            model_obj.append_fit(target_fit)
+            model_append(target_fit)
         elif hasattr(fit, "append_fit") and callable(getattr(fit, "append_fit", None)):
             used_path = "fit.append_fit"
             _cs.logging.info(
