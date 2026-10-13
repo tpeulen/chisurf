@@ -1,19 +1,23 @@
 ---
 type: Manual Page
 title: Multiple document interface
-description: The Workspace holds every window that is not docked -- fit windows, tools, floated panels -- and arranges them.
+description: The Workspace is where the fit windows live and are arranged; every tool is a dock beside it.
 tags: [manual, multiple, document, interface, workspace, windows]
 ---
 
 # Multiple document interface
 
-The centre of the main window is the **Workspace**. Every window that is not docked lives in it: the fit
-windows (creating a fit opens one), the tools opened from the menus, the ribbon or the Tools panel, the help
-browser and the code editor, and any panel dragged off its dock. A window in the Workspace can be moved,
-resized, folded to its title bar, minimized and closed, but it cannot leave the Workspace: dragged past its
-edge it stops there, and when the main window shrinks the windows are moved back in. Nothing can end up
-behind the main window or off screen. The Workspace itself cannot be closed or hidden; it keeps its place
-even when it is empty.
+The centre of the main window is the **Workspace**: it is where the fits live. Creating a fit opens its
+window there, and the *Start* page fills it while there is none. A fit window can be moved, resized, folded
+to its title bar, minimized and closed, but it cannot leave the Workspace: dragged past its edge it stops
+there, it cannot be docked in another panel, and when the main window shrinks the windows are moved back
+in. The Workspace itself cannot be closed or hidden; it keeps its place even when it is empty.
+
+Tools are not Workspace windows. A tool opened from the menus, the ribbon or the Tools panel -- and the
+help browser and the code editor -- opens as a **dock**, a tab of the panel right of the Workspace. Like
+the *Read data*, *Analysis* or *Console* docks it can be dragged to another panel, tabbed with other docks,
+floated over the main window or closed; it is never one of the Workspace's windows, and the Workspace's
+commands leave it where it is.
 
 ```{image} figures/main_mdi_tiled.png
 :align: center
@@ -27,15 +31,16 @@ even when it is empty.
 :align: center
 ```
 
-**Fig.17 The Workspace.** Top: two fit windows, the *Histogram-Microtime* tool and the *Start* page, tiled
-(**Tile**). Middle: the same windows cascaded (**Cascade**), the first fit minimized to the strip along the
-Workspace's bottom, and the **Windows** list open. Bottom: the same windows as tabs (**Tabbed**), one shown
-at a time and chosen by its tab. **×** on a fit window closes only the window; the fit stays in the session.
+**Fig.17 The Workspace.** Top: two fit windows tiled in the Workspace (**Tile**); the *Histogram-Microtime*
+and *Calculators* tools are docks right of it. Middle: the fits cascaded (**Cascade**), the first minimized
+to the strip along the Workspace's bottom, and the **Windows** list open -- it lists the fits only. Bottom:
+the fits as tabs (**Tabbed**), one shown at a time and chosen by its tab. The tools stay docked throughout.
+**×** on a fit window closes only the window; the fit stays in the session.
 
 ## Arranging the windows
 
 The Workspace's tool bar (along its top, right) and its right-click menu carry the commands; *View ▸
-Workspace* has the same ones:
+Workspace* has the same ones. They act on the fit windows (and *Start*), never on the tool docks:
 
 | Command | What it does |
 |---|---|
@@ -43,12 +48,15 @@ Workspace* has the same ones:
 | **Cascade** (*Cascade Windows*) | Floats the windows, each a title bar below and right of the last, the last one on top. |
 | **Tabbed** (*Tab Windows*) | Makes every window a tab of the Workspace. |
 | **Windows ▾** | Lists the windows (a minimized one says so); a click brings that window to the front. |
-| *Next Window*, **Ctrl+Tab** | Brings the next window to the front; **Ctrl+Shift+Tab** goes back. Works while a tool has the keyboard. |
+| *Next Window*, **Ctrl+Tab** | Brings the next window to the front; **Ctrl+Shift+Tab** goes back. Works while a tool has the keyboard; skips the tools. |
 
-A window's **_** button minimizes it to the strip along the bottom of the Workspace; a click on its chip
-brings it back. Dragging a window by its title bar onto a drop target docks it in that region; dragging a
-tab off its strip floats it in the Workspace again. The arrangement -- which windows are open, where they
-are, which are minimized -- is saved with the window layout and comes back at the next start.
+A fit window's **_** button minimizes it to the strip along the bottom of the Workspace; a click on its
+chip brings it back. Dragging a fit window's tab off the Workspace's tab strip floats it in the Workspace
+again; dropped elsewhere it stays in the Workspace. Dragging a tool dock by its title bar or tab onto a drop
+target docks it in that panel (or beside the Workspace); the Workspace's own centre is not offered to it. The
+arrangement -- which fits and tools are open, where they are, which are minimized -- is saved with the
+window layout and comes back at the next start; a tool that an older layout had put into the Workspace
+comes back as a dock.
 
 Selecting another fit window calls:
 

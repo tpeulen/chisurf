@@ -38065,7 +38065,7 @@ Switches the open ChiSurf main window between the traditional menu bar and the r
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6127" />
-            <source>Open a tool from the menu bar or the Tools panel. Every tool opens as a window that can be docked, tabbed, floated or closed.</source>
+            <source>Open a tool from the menu bar or the Tools panel: it opens as a dock beside the workspace, which can be moved, tabbed, floated or closed. The fits open here, as windows of the workspace.</source>
             <translation type="unfinished" />
         </message>
         <message>
@@ -63193,6 +63193,30 @@ so a run started here can be finished anywhere.
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6411" />
             <source>Pair Selection</source>
+            <translation type="unfinished" />
+        </message>
+    <message>
+            <source>Update Available</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>A new version of ChiSurf ({version}) is available.</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Changes since your installed version ({version}):</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Do you want to open the Updater now?</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Checking for updates</source>
+            <translation type="unfinished" />
+        </message>
+        <message>
+            <source>Preloading modules</source>
             <translation type="unfinished" />
         </message>
     </context>

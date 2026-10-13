@@ -1474,6 +1474,8 @@ class DataDocks:
             min_size=(240.0, 160.0),
             tooltip=title,
             core=True,
+            # A fit window is a document of the workspace: it lives there and nowhere else.
+            workspace=True,
         )
         self.shell.docks.focus(window.key)
         return window

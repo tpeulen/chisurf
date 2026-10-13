@@ -242,14 +242,17 @@ def run_shell_shots(names: list[str]) -> None:
             _console(s, "fits = api.list_fits(statistics=True)", "fits[0]['name']", "round(fits[0]['chi2r'], 3)")
             s.save("main_overview.png")
         elif name == "mdi_tiled_and_tabbed":
-            # The workspace as a user meets it: two fit windows and a tool, tiled, then cascaded
-            # with one minimized and the Windows list open, then tabbed.
+            # The workspace as a user meets it: two fit windows in the workspace and two tools
+            # docked beside it; the fits tiled, then cascaded with one minimized and the Windows
+            # list open, then tabbed. The tools stay docked throughout.
             _read_four(s)
             _two_fits(s)
             docks = s.app.docks
             docks.confine = True
             s.app.open_plugin("microtime_histogram")
-            s.settle(lambda: all(h.build is None for h in s.app.hosted.values()), "the tool")
+            s.app.open_plugin("calculators")
+            s.settle(lambda: all(h.build is None for h in s.app.hosted.values()), "the tools")
+            docks.hide("start")  # closed with its ×, as a user does once the fits are there
             s.show_analysis()
             s.app.tile_windows()
             s.driver.hover((1495.0, 5.0))

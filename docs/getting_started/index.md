@@ -48,9 +48,10 @@ never by pointing Python at `__main__.py` directly — running the file adds
 
 The window opens with one tabbed column on the left — **Read data**,
 **Datasets**, **Analysis**, **Plot settings** and **Logging** share it, so the
-rest of the width belongs to the workspace where fits and plots open. The
-console keeps the bottom edge (turn it off with the `gui.show_console`
-setting).
+rest of the width belongs to the workspace, where the fit windows open, and to
+the tools, which open as docks right of it. The console keeps the bottom edge
+(turn it off with the `gui.show_console` setting). See
+[Multiple document interface](../manual/multiple_document_interface.md).
 
 Docks are yours to rearrange: drag one out of the stack to the right or bottom
 edge, resize it, or close it. The arrangement is saved when ChiSurf exits and

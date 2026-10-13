@@ -2088,8 +2088,8 @@ p, li { white-space: pre-wrap; }
             <translation>Fenêtre suivante</translation>
         </message>
         <message>
-            <source>Bring the next window of the workspace to the front (Ctrl+Tab).</source>
-            <translation>Amener la fenêtre suivante de l'espace de travail au premier plan (Ctrl+Tab).</translation>
+            <source>Bring the next fit window to the front (Ctrl+Tab).</source>
+            <translation>Amener la fenêtre d’ajustement suivante au premier plan (Ctrl+Tab).</translation>
         </message>
         <message>
             <source>{title} (minimized)</source>
@@ -60194,8 +60194,8 @@ Le workflow du corrélateur n’est plus une entrée de menu autonome : il est h
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6127" />
-            <source>Open a tool from the menu bar or the Tools panel. Every tool opens as a window that can be docked, tabbed, floated or closed.</source>
-            <translation>Ouvrez un outil depuis la barre de menus ou le panneau Outils. Chaque outil s’ouvre dans une fenêtre qui peut être ancrée, placée en onglet, détachée ou fermée.</translation>
+            <source>Open a tool from the menu bar or the Tools panel: it opens as a dock beside the workspace, which can be moved, tabbed, floated or closed. The fits open here, as windows of the workspace.</source>
+            <translation>Ouvrez un outil depuis la barre de menus ou le panneau Outils : il s’ouvre comme un panneau ancré à côté de l’espace de travail, qui peut être déplacé, placé en onglet, détaché ou fermé. Les ajustements s’ouvrent ici, comme fenêtres de l’espace de travail.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6139" />
@@ -66819,6 +66819,30 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
         <message>
             <source>The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs are dimmed; a linked parameter follows its master (drawn in blue, its tooltip names the master) and is read only.</source>
             <translation>Les paramètres du modèle. Double-cliquer une valeur ou une borne pour la saisir ; cliquer Fixé ou Bornes pour basculer. Les sorties calculées sont atténuées ; un paramètre lié suit son maître (dessiné en bleu, l'infobulle nomme le maître) et est en lecture seule.</translation>
+        </message>
+    <message>
+            <source>Update Available</source>
+            <translation>Mise à jour disponible</translation>
+        </message>
+        <message>
+            <source>A new version of ChiSurf ({version}) is available.</source>
+            <translation>Une nouvelle version de ChiSurf ({version}) est disponible.</translation>
+        </message>
+        <message>
+            <source>Changes since your installed version ({version}):</source>
+            <translation>Modifications depuis votre version installée ({version}) :</translation>
+        </message>
+        <message>
+            <source>Do you want to open the Updater now?</source>
+            <translation>Voulez-vous ouvrir le programme de mise à jour maintenant ?</translation>
+        </message>
+        <message>
+            <source>Checking for updates</source>
+            <translation>Recherche de mises à jour</translation>
+        </message>
+        <message>
+            <source>Preloading modules</source>
+            <translation>Préchargement des modules</translation>
         </message>
     </context>
     <context>

@@ -2083,8 +2083,8 @@ p, li { white-space: pre-wrap; }
             <translation>Nächstes Fenster</translation>
         </message>
         <message>
-            <source>Bring the next window of the workspace to the front (Ctrl+Tab).</source>
-            <translation>Das nächste Fenster des Arbeitsbereichs nach vorn holen (Strg+Tab).</translation>
+            <source>Bring the next fit window to the front (Ctrl+Tab).</source>
+            <translation>Das nächste Fit-Fenster nach vorn holen (Strg+Tab).</translation>
         </message>
         <message>
             <source>{title} (minimized)</source>
@@ -60060,8 +60060,8 @@ Der Korrelator-Workflow ist kein eigenständiger Menüeintrag mehr: Er wird als 
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6127" />
-            <source>Open a tool from the menu bar or the Tools panel. Every tool opens as a window that can be docked, tabbed, floated or closed.</source>
-            <translation>Öffnen Sie ein Werkzeug über die Menüleiste oder das Werkzeug-Panel. Jedes Werkzeug öffnet sich als Fenster, das angedockt, als Tab angeordnet, schwebend oder geschlossen werden kann.</translation>
+            <source>Open a tool from the menu bar or the Tools panel: it opens as a dock beside the workspace, which can be moved, tabbed, floated or closed. The fits open here, as windows of the workspace.</source>
+            <translation>Öffnen Sie ein Werkzeug über die Menüleiste oder das Werkzeug-Panel: Es öffnet sich als Dock neben dem Arbeitsbereich und kann verschoben, als Tab angeordnet, schwebend gezeigt oder geschlossen werden. Die Fits öffnen sich hier, als Fenster des Arbeitsbereichs.</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="6139" />
@@ -66681,6 +66681,30 @@ fortgesetzt werden.
         <message>
             <source>The model's parameters. Double-click a value or bound to type it; click Fixed or Bounds to toggle. Computed outputs are dimmed; a linked parameter follows its master (drawn in blue, its tooltip names the master) and is read only.</source>
             <translation>Die Parameter des Modells. Doppelklick auf Wert oder Grenze zum Eintippen; Klick auf Fixiert oder Grenzen schaltet um. Berechnete Ausgaben sind abgedunkelt; ein verknüpfter Parameter folgt seinem Master (blau gezeichnet, der Tooltip nennt den Master) und ist schreibgeschützt.</translation>
+        </message>
+    <message>
+            <source>Update Available</source>
+            <translation>Update verfügbar</translation>
+        </message>
+        <message>
+            <source>A new version of ChiSurf ({version}) is available.</source>
+            <translation>Eine neue Version von ChiSurf ({version}) ist verfügbar.</translation>
+        </message>
+        <message>
+            <source>Changes since your installed version ({version}):</source>
+            <translation>Änderungen seit Ihrer installierten Version ({version}):</translation>
+        </message>
+        <message>
+            <source>Do you want to open the Updater now?</source>
+            <translation>Möchten Sie die Aktualisierung jetzt öffnen?</translation>
+        </message>
+        <message>
+            <source>Checking for updates</source>
+            <translation>Suche nach Aktualisierungen</translation>
+        </message>
+        <message>
+            <source>Preloading modules</source>
+            <translation>Module werden vorgeladen</translation>
         </message>
     </context>
     <context>

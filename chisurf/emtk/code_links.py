@@ -120,7 +120,7 @@ def open_source(
                 except Exception:
                     logger.debug("could not open in active EMTK editor", exc_info=True)
 
-        # No editor yet: the open emtk shell makes one in its workspace (not a second process
+        # No editor yet: the open emtk shell makes one as a dock (not a second process
         # whose OS window falls behind the main one); without a shell, a standalone editor.
         def show_in_editor() -> None:
             for editor in reversed(_ACTIVE_EMTK_EDITORS):

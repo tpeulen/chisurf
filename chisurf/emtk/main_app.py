@@ -56,6 +56,8 @@ from chisurf.emtk.shell_session import MenuAction, ShellProject
 SHELL_ID = "emtk_shell"
 #: Height of the menu bar strip.
 MENU_BAR = 30.0
+#: The region tools open in (tabbed docks right of the workspace; the workspace holds the fits).
+TOOL_REGION = "right"
 #: Prefix of a hosted plugin's dock window key.
 PLUGIN_KEY = "plugin."
 _log = logging.getLogger("chisurf.emtk.shell")
@@ -269,8 +271,14 @@ class EmtkShellApp(ImApp):
                 "h",
                 0.27,
                 Split("v", 0.5, Region("left"), Region("left_lower")),
-                # The workspace: every unbound window (a floated dock, a tool, a fit) lives in it.
-                Split("v", 0.8, Region("center", workspace=True), Region("bottom")),
+                # The workspace is where the fits live (their windows are its documents); the
+                # tools are docks, tabbed on its right by default, and dock anywhere else.
+                Split(
+                    "v",
+                    0.8,
+                    Split("h", 0.6, Region("center", workspace=True), Region(TOOL_REGION)),
+                    Region("bottom"),
+                ),
             ),
             name="shell",
         )
@@ -279,7 +287,10 @@ class EmtkShellApp(ImApp):
         self.docks.add_window(
             "tools", mark("Tools"), self._draw_tools, dock="left", closable=False, core=True
         )
-        self.docks.add_window("start", mark("Start"), self._draw_start, dock="center", core=True)
+        # Start fills the empty workspace (it says where the fits go), so it is one of its documents.
+        self.docks.add_window(
+            "start", mark("Start"), self._draw_start, dock="center", core=True, workspace=True
+        )
         self.docks.add_window(
             "log", mark("Log"), self._draw_log, dock="bottom", scrollable=False, core=True
         )
@@ -375,7 +386,7 @@ class EmtkShellApp(ImApp):
             # switched while the tool is open retitles it (a stored translation would not).
             mark(entry.label),
             lambda box, pid=plugin_id: self._draw_plugin(pid, box),
-            dock="center",
+            dock=self._tool_region(),
             scrollable=False,
             padding=0.0,
             min_size=(240.0, 160.0),
@@ -386,6 +397,17 @@ class EmtkShellApp(ImApp):
         self.status = tr("Opening {name}…").format(name=tr(entry.label))
         _log.info("open %s", plugin_id)
         return hosted
+
+    def _tool_region(self) -> str:
+        """The region a tool opens in: the docks right of the workspace.
+
+        A layout saved before that region existed (or one the user rearranged without it)
+        gets it back as a split of the workspace's right side.
+        """
+        docks = self.docks
+        if TOOL_REGION not in docks.regions:
+            docks.split_region(docks.workspace or "center", "right", TOOL_REGION, ratio=0.6)
+        return TOOL_REGION
 
     def run_plugin_action(self, plugin_id: str) -> dict:
         """Run the command plugin *plugin_id* with this window as its main window; a failure is said."""
@@ -1008,11 +1030,12 @@ class EmtkShellApp(ImApp):
         return table
 
     def workspace_actions(self) -> list[MenuAction]:
-        """The View menu's *Workspace* group: arrange its windows, cycle them, pick one.
+        """The View menu's *Workspace* group: arrange the fit windows, cycle them, pick one.
 
-        The workspace (the centre, :class:`emtk.docking.Region` ``workspace=True``) holds every
-        unbound window -- the tools, the fit windows, any dock floated out -- so none can fall
-        behind the main window; its own tool bar and right-click menu carry the same commands.
+        The workspace (the centre, :class:`emtk.docking.Region` ``workspace=True``) is where the
+        fits live: their windows (and Start) are its documents. Tools, help and the code editor
+        are docks, never workspace windows, so these commands leave them alone. The workspace's
+        own tool bar and right-click menu carry the same commands.
         """
         docks = self.docks
         group = tr("Workspace")
@@ -1024,7 +1047,7 @@ class EmtkShellApp(ImApp):
                 self.tile_windows,
                 "",
                 group,
-                tr("Show every window of the workspace side by side."),
+                tr("Show every fit window side by side."),
                 has_windows,
             ),
             MenuAction(
@@ -1033,7 +1056,7 @@ class EmtkShellApp(ImApp):
                 self.tab_windows,
                 "",
                 group,
-                tr("Show the workspace's windows as tabs."),
+                tr("Show the fit windows as tabs."),
                 has_windows,
             ),
             MenuAction(
@@ -1042,7 +1065,7 @@ class EmtkShellApp(ImApp):
                 self.cascade_windows,
                 "",
                 group,
-                tr("Float the workspace's windows, each a little below the last."),
+                tr("Float the fit windows, each a little below the last."),
                 has_windows,
             ),
             MenuAction(
@@ -1051,7 +1074,7 @@ class EmtkShellApp(ImApp):
                 lambda: docks.cycle_workspace(1),
                 "",
                 group,
-                tr("Bring the next window of the workspace to the front (Ctrl+Tab)."),
+                tr("Bring the next fit window to the front (Ctrl+Tab)."),
                 has_windows,
             ),
         ]
@@ -1191,8 +1214,9 @@ class EmtkShellApp(ImApp):
         im.text_unformatted(tr("ChiSurf"))
         im.text_wrapped(
             tr(
-                "Open a tool from the menu bar or the Tools panel. Every tool opens as a window that "
-                "can be docked, tabbed, floated or closed."
+                "Open a tool from the menu bar or the Tools panel: it opens as a dock beside the "
+                "workspace, which can be moved, tabbed, floated or closed. The fits open here, as "
+                "windows of the workspace."
             )
         )
         im.spacing()
@@ -1496,11 +1520,11 @@ class EmtkShellApp(ImApp):
 
 
 def host_in_shell(plugin_id: str, then: Callable[[], Any] | None = None) -> bool:
-    """Open *plugin_id* in the workspace of the shell open in this process; ``then()`` once it is built.
+    """Open *plugin_id* as a dock of the shell open in this process; ``then()`` once it is built.
 
     The help browser and the code editor used to open as a second process with its own OS window, which
-    went behind the main window on the next click into it. With the shell open they are its windows
-    instead. Returns ``False`` when no shell is open (or it does not offer the plugin), and the caller
+    went behind the main window on the next click into it. With the shell open they are its docks
+    instead (tools are docks, never windows of the workspace). Returns ``False`` when no shell is open (or it does not offer the plugin), and the caller
     goes on as before.
     """
     shell = _ACTIVE_SHELL() if _ACTIVE_SHELL is not None else None
