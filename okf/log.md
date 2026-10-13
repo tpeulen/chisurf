@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-13
+
+- Qt retirement, plugin half: allow-list 221 → 211. The TCSPC device wrappers use a Qt-free `Signal` (`acq/tcspc_devices/abc.py`); `fret_line/__main__.py` opens the emtk `FRETLineApp`; the five "Qt host delivers a drop" parity tests and their helper left the microscopy plugins (the Qt host is emtk's own `tests/test_qt_host.py`); the Spectra tool's four legacy Qt widgets (`browser.py`, `download_manager.py`, `gui/overview_panel.py`, `gui/add_to_mmfdb_panel.py`) are deleted, their facts frozen in `spectra_downloader/tests/qt_reference.json` and their behaviour tests ported to the native model (`tests/test_native.py`); `docs/guides/screenshots/spectra_mfd.py` renders the emtk app.
+
 ## 2026-10-12
 
 - emtk pin 114a011: the image atlas places into the free tail of a closed shelf (253760c; the doc-render sweep refused a 1×1 glyph at 66 % fill) and a spin field steps once per wheel notch (114a011).

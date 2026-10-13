@@ -79,14 +79,15 @@ def _run(argv: list[str]) -> None:
         return
 
     # No flags → launch the GUI.
-    from qtpy import QtWidgets
+    from emtk.native import NativeHost
 
-    from .gui.tool import FRETLineTool
+    from .gui.app import FRETLineApp
 
-    app = QtWidgets.QApplication(sys.argv)
-    win = FRETLineTool()
-    win.show()
-    sys.exit(app.exec_())
+    host = NativeHost(FRETLineApp(), title="ChiSurf FRET Line Generator")
+    try:
+        host.run()
+    finally:
+        host.close()
 
 
 if __name__ == "__main__":

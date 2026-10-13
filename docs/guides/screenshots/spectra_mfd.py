@@ -21,24 +21,35 @@ def _nav(tool, text):
 
 def _grab_spectra_tool():
     # A copy of the staging DB: opening it migrates/backs it up, and the docs
-    # must not mutate the user's reference database.
-    from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
-    from chisurf.plugins.spectra_downloader.gui.tool import SpectraTool
+    # must not mutate the user's reference database. The tool is an emtk app, drawn offscreen.
     import shutil
 
-    from chisurf.plugins.spectra_downloader.mmfdb_adapter import DEFAULT_DATABASE_PATH
+    import numpy as np
+    from emtk.native import NativeHost
+    from PIL import Image
+
+    from chisurf.plugins.spectra_downloader.gui.app import create_app
+    from chisurf.plugins.spectra_downloader.mmfdb_adapter import (
+        DEFAULT_DATABASE_PATH,
+        FluorophoreDatabase,
+    )
 
     shutil.copy2(DEFAULT_DATABASE_PATH, S / "spectra_copy.db")
     db = FluorophoreDatabase(S / "spectra_copy.db"); db.connect()
-    tool = SpectraTool(db); tool.resize(1300, 820); tool.show(); QApplication.processEvents()
-    _nav(tool, "Overview"); _grab(tool, "spectra_overview.png")
-    _nav(tool, "Browse")
-    from chisurf.plugins.spectra_downloader.browser import SpectraBrowserWidget
-    br = tool.findChildren(SpectraBrowserWidget)[0]
-    br._search.setText("ATTO-647N"); QApplication.processEvents()
-    br._table.selectRow(0); QApplication.processEvents()
-    _grab(tool, "spectra_browse.png")
-    
+    for panel, name in (("Overview", "spectra_overview.png"), ("Browse", "spectra_browse.png")):
+        app = create_app(db)
+        app.panel = panel
+        if panel == "Browse":
+            app.model.search = "ATTO-647N"
+            rows = app.model.filtered()
+            if rows:
+                app.model.select(rows[0]["probe_id"])
+        host = NativeHost(app, size=(1300, 820), backend="offscreen")
+        for _ in range(2):
+            pixels = host.draw_frame()
+        Image.fromarray(np.asarray(pixels)).save(str(FIG / name)); print("wrote", name)
+        host.close()
+
 
 def _grab_forster_calculator():
     """The Förster radius calculator (emtk dialog) on the seed MMFDB: Alexa488 -> Alexa594, n = 1.33 (guide 83)."""

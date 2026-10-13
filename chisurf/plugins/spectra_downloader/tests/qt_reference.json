@@ -1,0 +1,201 @@
+{
+ "overview": {
+  "total": "5",
+  "with_spectra": "5",
+  "fluorophores": "2",
+  "filters": "1",
+  "dichroics": "1",
+  "detectors": "1",
+  "light_sources": "0"
+ },
+ "by_category": {
+  "detector": 1,
+  "dichroic": 1,
+  "filter": 1,
+  "organic_dye": 1,
+  "protein": 1
+ },
+ "rows": [
+  "Alexa Fluor 488",
+  "DMLP550",
+  "EGFP",
+  "ET525/50m",
+  "SPAD 650"
+ ],
+ "filters": [
+  {
+   "search": "",
+   "category": "",
+   "source": "",
+   "names": [
+    "Alexa Fluor 488",
+    "DMLP550",
+    "EGFP",
+    "ET525/50m",
+    "SPAD 650"
+   ]
+  },
+  {
+   "search": "a",
+   "category": "",
+   "source": "",
+   "names": [
+    "Alexa Fluor 488",
+    "SPAD 650"
+   ]
+  },
+  {
+   "search": "",
+   "category": "filter",
+   "source": "",
+   "names": [
+    "ET525/50m"
+   ]
+  },
+  {
+   "search": "",
+   "category": "",
+   "source": "thorlabs",
+   "names": [
+    "DMLP550",
+    "SPAD 650"
+   ]
+  },
+  {
+   "search": "spad",
+   "category": "detector",
+   "source": "thorlabs",
+   "names": [
+    "SPAD 650"
+   ]
+  }
+ ],
+ "category_options": [
+  "detector",
+  "dichroic",
+  "filter",
+  "organic_dye",
+  "protein"
+ ],
+ "source_options": [
+  "atto",
+  "chroma",
+  "fpbase",
+  "thorlabs"
+ ],
+ "detail_name": "DMLP550",
+ "detail_probe": {
+  "probe_id": 4,
+  "chromophore_name": "DMLP550",
+  "reactive_probe_flag": "no",
+  "reactive_probe_name": null,
+  "probe_origin": "extrinsic",
+  "probe_link_type": "covalent",
+  "fluorophore_type": "unspecified",
+  "chromophore_chem_descriptor_id": null,
+  "reactive_probe_chem_descriptor_id": null,
+  "chromophore_center_atom": null,
+  "description": "",
+  "category": "dichroic",
+  "is_curated": 0,
+  "quality_flag": 1,
+  "type_id": 4,
+  "source": "thorlabs",
+  "source_ref": null,
+  "verification_status": "unverified",
+  "quality": "unknown",
+  "verified_by": null,
+  "probe_type": null,
+  "vendor": null,
+  "dipole_atoms": null,
+  "positive_atoms": null,
+  "negative_atoms": null
+ },
+ "detail_props": [
+  {
+   "property_name": "Origin",
+   "property_value": "Thorlabs Dichroic Beamsplitter"
+  },
+  {
+   "property_name": "component_kind",
+   "property_value": "dichroic"
+  },
+  {
+   "property_name": "description",
+   "property_value": "Reference fixture"
+  },
+  {
+   "property_name": "em_max",
+   "property_value": "550"
+  }
+ ],
+ "detail_spectra": [
+  {
+   "spectrum_type": "emission",
+   "intensity": [
+    8.04165067570776e-11,
+    3.690675883819983e-10,
+    1.6085480706634978e-09,
+    6.657782679439906e-09,
+    2.616933095821196e-08,
+    9.76839152417407e-08,
+    3.4627483449236665e-07,
+    1.1656984966862665e-06,
+    3.726653172078671e-06,
+    1.131407751390459e-05,
+    3.262021034666123e-05,
+    8.93144644354091e-05,
+    0.00023223318227836914,
+    0.0005734481844298561,
+    0.0013447189485709052,
+    0.0029945826284881265,
+    0.006332985753131171,
+    0.012718859061862214,
+    0.02425801345428228,
+    0.04393693362340742,
+    0.07557387471306078,
+    0.12344715011935546,
+    0.19149519501466308,
+    0.2820993774639842,
+    0.3946515457334271,
+    0.5243157724284693,
+    0.6615146556493746,
+    0.7925988758537418,
+    0.9018511586452826,
+    0.9745042037618818,
+    1.0,
+    0.9745042037618818,
+    0.9018511586452826,
+    0.7925988758537418,
+    0.6615146556493746,
+    0.5243157724284693,
+    0.3946515457334271,
+    0.2820993774639842,
+    0.19149519501466308,
+    0.12344715011935546,
+    0.07557387471306078,
+    0.04393693362340742,
+    0.02425801345428228,
+    0.012718859061862214,
+    0.006332985753131171,
+    0.0029945826284881265,
+    0.0013447189485709052,
+    0.0005734481844298561,
+    0.00023223318227836914,
+    8.93144644354091e-05,
+    3.262021034666123e-05,
+    1.131407751390459e-05,
+    3.726653172078671e-06,
+    1.1656984966862665e-06,
+    3.4627483449236665e-07,
+    9.76839152417407e-08,
+    2.616933095821196e-08,
+    6.657782679439906e-09,
+    1.6085480706634978e-09,
+    3.690675883819983e-10,
+    8.04165067570776e-11
+   ]
+  }
+ ],
+ "_note": "Recorded 2026-10-13 from the retired Qt OverviewPanel and SpectraBrowserWidget on the fixture db of test_emtk_spectra_parity.py (the db fixture). Fresh-run timestamps (*_at) are dropped."
+}

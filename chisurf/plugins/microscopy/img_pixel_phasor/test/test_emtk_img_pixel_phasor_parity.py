@@ -426,10 +426,6 @@ def test_a_drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refuse
     C.drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, flim)
 
 
-def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, flim):
-    C.qt_host_delivers_a_dropped_file_to_the_app(app, flim)
-
-
 # ── 3. running ──────────────────────────────────────────────────────────────────────────────────────────────── #
 
 

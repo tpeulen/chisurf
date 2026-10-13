@@ -264,3 +264,118 @@ def test_descriptive_tooltips_translate(app):
         for text in TOOLTIPS.values():
             assert tr(text) == expected(locale, text)
         assert TOOLTIPS["Push selected"] != "Push selected"
+
+
+# -- the staging browser, the Add-to-MMFDB panel and the overview, ported from the Qt widgets' tests -------------- #
+
+
+@pytest.fixture
+def staged(tmp_path):
+    """A staging database with a protein, a detector and (second source) a bandpass filter."""
+    db = FluorophoreDatabase(tmp_path / "staged.db")
+    db.connect()
+    wl = np.linspace(400, 700, 8)
+    with db:
+        db.register_component(
+            name="EGFP",
+            source="fpbase",
+            kind="fluorescent_protein",
+            spectra={"absorption": (wl, np.ones_like(wl)), "emission": (wl, np.ones_like(wl))},
+        )
+        db.register_component(
+            name="Thorlabs SPCMxxA",
+            source="fpbase",
+            kind="detector",
+            source_ref="9342",
+            spectra={"quantum_efficiency": (wl, np.linspace(0, 1, 8))},
+        )
+        db.conn.commit()
+    a = create_app(db)
+    yield a
+    a.close()
+    db.close()
+    i18n.set_locale("en")
+
+
+def _probes(path):
+    import sqlite3
+
+    return sqlite3.connect(path).execute(
+        "SELECT chromophore_name, category, source FROM probes WHERE deleted_at IS NULL"
+    ).fetchall()
+
+
+def test_browser_lists_and_shows_detail_on_selection(staged):
+    m = staged.model
+    assert len(m.rows) == 2
+    assert {"detector", "protein"} <= set(staged.category_options())
+    m.search = "SPCM"
+    assert len(m.filtered()) == 1
+    m.select(m.filtered()[0]["probe_id"])
+    assert m.detail["probe"]["chromophore_name"] == "Thorlabs SPCMxxA"
+    assert m.detail["probe"]["category"] == "detector"
+    assert "component_kind" in {p["property_name"] for p in m.detail["optical_properties"]}
+    m.search, m.category = "", "protein"
+    assert len(m.filtered()) == 1
+    # the metadata view is the probe plus its spectra
+    assert any(s["spectrum_type"] == "quantum_efficiency" for s in m.detail["spectra"])
+
+
+def test_overview_panel_counts(staged):
+    ov = staged.model.overview()
+    assert ov["by_category"].get("protein") == 1 and ov["by_category"].get("detector") == 1
+    assert ov["detectors"] == 1
+
+
+def test_add_to_mmfdb_local_has_sane_defaults_and_adds_every_category(staged, tmp_path):
+    m = staged.model
+    assert m.endpoint.mode == "local" and m.endpoint.cmd_port == 8765
+    m.endpoint.db_path = str(tmp_path / "fresh.mmfdb")
+    m.add_all()
+    assert {"protein", "detector"} <= {c for _, c, _ in _probes(m.endpoint.db_path)}
+
+
+def test_add_to_mmfdb_session_admin_gate(staged, tmp_path):
+    """Admins add without a login; non-admins are refused (session-first)."""
+    from mmfdb.repository import MFDatabase
+
+    mmfdb = str(tmp_path / "gate.mmfdb")
+    with MFDatabase(mmfdb) as d:
+        d.add_user("user_default", "Default User", is_admin=1)
+        d.add_user("guest", "Guest", is_admin=0)
+    m = staged.model
+    m.endpoint.db_path, m.endpoint.password = mmfdb, ""
+    m.endpoint.user = "user_default"
+    m.add_all()
+    assert len(_probes(mmfdb)) >= 2
+    m.endpoint.user = "guest"
+    with pytest.raises(PermissionError, match="not an administrator"):
+        m.add_all()
+
+
+def test_source_filter_and_push(staged, tmp_path):
+    from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mmfdb
+
+    wl = np.linspace(400, 700, 8)
+    db = staged.model.db
+    with db:
+        db.register_component(
+            name="FB340-10",
+            source="thorlabs",
+            kind="bandpass",
+            spectra={"transmission": (wl, np.ones_like(wl))},
+        )
+        db.conn.commit()
+    m = staged.model
+    m.refresh()
+    m.source = "thorlabs"
+    assert [r["chromophore_name"] for r in m.filtered()] == ["FB340-10"]
+    m.pick(m.filtered()[0]["probe_id"])
+    mmfdb = str(tmp_path / "push.mmfdb")
+    summary = push_staging_to_mmfdb(
+        str(db.db_path), probe_ids=sorted(m.selected), mmfdb_path=mmfdb
+    )
+    assert summary["merged"] == 1
+    assert _probes(mmfdb) == [("FB340-10", "filter", "thorlabs")]
+    push_staging_to_mmfdb(str(db.db_path), mmfdb_path=mmfdb)
+    assert len(_probes(mmfdb)) == 3

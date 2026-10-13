@@ -310,10 +310,6 @@ def test_a_drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refuse
     assert app.model.metric_rows() and app.files_dropped([]) is False
 
 
-def test_the_qt_host_delivers_a_dropped_file_to_the_app(app, pair):
-    C.qt_host_delivers_a_dropped_file_to_the_app(app, pair)
-
-
 # ── 3. running, background, export ─────────────────────────────────────────────────────────────────────── #
 
 

@@ -121,61 +121,37 @@ def choose(ui, field, label):
     ui.click_text(label)
 
 
-# -- parity with the Qt widgets ------------------------------------------------------------------------------------------ #
+# -- parity with the Qt widgets (recorded in qt_reference.json) --------------------------------------------------------- #
+
+QT_REFERENCE = json.loads((HERE / "tests" / "qt_reference.json").read_text(encoding="utf-8"))
 
 
-def test_overview_counts_equal_the_qt_panel(ui, db, qapp, qtbot):
-    from chisurf.plugins.spectra_downloader.gui.overview_panel import OverviewPanel
-
-    qt = OverviewPanel(db)
-    qtbot.addWidget(qt)
-    qt_model = qt._form._model
-    for attr in (
-        "db_path",
-        "total",
-        "with_spectra",
-        "fluorophores",
-        "filters",
-        "dichroics",
-        "detectors",
-        "light_sources",
-    ):
-        assert getattr(ui.app.overview, attr) == getattr(qt_model, attr), attr
-    assert json.loads(qt._json.toPlainText())["by_category"] == ui.app.overview_data["by_category"]
+def test_overview_counts_equal_the_qt_panel(ui):
+    for attr, value in QT_REFERENCE["overview"].items():
+        assert getattr(ui.app.overview, attr) == value, attr
+    assert ui.app.overview_data["by_category"] == QT_REFERENCE["by_category"]
 
 
-def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, qapp, qtbot, monkeypatch):
-    from chisurf.plugins.spectra_downloader.browser import SpectraBrowserWidget
-
-    qt = SpectraBrowserWidget(db)
-    qtbot.addWidget(qt)
-    assert [r["probe_id"] for r in qt._rows] == [r["probe_id"] for r in ui.app.model.rows]
-    for search, category, source in (
-        ("", "", ""),
-        ("a", "", ""),
-        ("", "filter", ""),
-        ("", "", "thorlabs"),
-        ("spad", "detector", "thorlabs"),
-    ):
-        qt._search.setText(search)
-        qt._category.setCurrentText(category or "All")
-        qt._source.setCurrentText(source or "All")
-        ui.app.model.search, ui.app.model.category, ui.app.model.source = search, category, source
-        assert [r["probe_id"] for r in qt._filtered()] == [
-            r["probe_id"] for r in ui.app.model.filtered()
-        ]
-    assert ui.app.category_options()[1:] == [
-        qt._category.itemText(i) for i in range(1, qt._category.count())
-    ]
-    assert ui.app.source_options()[1:] == [
-        qt._source.itemText(i) for i in range(1, qt._source.count())
-    ]
+def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, monkeypatch):
+    ref = QT_REFERENCE
+    assert [r["chromophore_name"] for r in ui.app.model.rows] == ref["rows"]
+    for case in ref["filters"]:
+        ui.app.model.search, ui.app.model.category, ui.app.model.source = (
+            case["search"],
+            case["category"],
+            case["source"],
+        )
+        assert [r["chromophore_name"] for r in ui.app.model.filtered()] == case["names"]
+    assert ui.app.category_options()[1:] == ref["category_options"]
+    assert ui.app.source_options()[1:] == ref["source_options"]
     pid = ui.app.model.rows[1]["probe_id"]
     ui.app.model.show(pid)
-    expected = qt._load_probe(pid)
-    assert ui.app.model.detail["probe"] == expected["probe"]
-    assert ui.app.model.detail["optical_properties"] == expected["optical_properties"]
-    for a, b in zip(ui.app.model.detail["spectra"], expected["spectra"]):
+    detail = ui.app.model.detail
+    assert detail["probe"]["chromophore_name"] == ref["detail_name"]
+    assert {k: v for k, v in detail["probe"].items() if not k.endswith("_at")} == ref["detail_probe"]
+    assert detail["optical_properties"] == ref["detail_props"]
+    for a, b in zip(detail["spectra"], ref["detail_spectra"]):
+        assert a["spectrum_type"] == b["spectrum_type"]
         np.testing.assert_allclose(a["intensity"], b["intensity"])
     calls = []
     monkeypatch.setattr(
@@ -189,9 +165,8 @@ def test_browse_rows_filters_detail_and_push_equal_the_qt_browser(ui, db, qapp, 
     assert calls == [(str(db.db_path), [pid])]
 
 
-def test_the_scraper_list_and_endpoint_defaults_equal_the_qt_panels(ui, qapp, qtbot):
+def test_the_scraper_list_and_endpoint_defaults_equal_the_qt_panels(ui):
     from chisurf.plugins.spectra_downloader.download._base import SCRAPERS
-    from chisurf.plugins.spectra_downloader.download_manager import DownloadPanel
 
     assert ui.app.scraper_labels() == sorted(s.label for s in SCRAPERS)
     qt = json.loads((HERE / "gui" / "endpoint_auth.view.json").read_text())

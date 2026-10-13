@@ -30,9 +30,8 @@ import threading
 import time
 
 import numpy as np
-from qtpy.QtCore import Signal
 
-from ..abc import TCSPCDeviceABC
+from ..abc import Signal, TCSPCDeviceABC
 
 logger = logging.getLogger(__name__)
 

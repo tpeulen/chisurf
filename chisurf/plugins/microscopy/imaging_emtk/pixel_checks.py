@@ -204,37 +204,6 @@ def drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(
     assert app.model._columns and app.files_dropped([]) is False
 
 
-def qt_host_delivers_a_dropped_file_to_the_app(app: Any, path: Any) -> None:
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore, QtGui, QtWidgets
-
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    host = ControlHost(app)
-    host.resize(900, 600)
-    mime = QtCore.QMimeData()
-    mime.setUrls([QtCore.QUrl.fromLocalFile(str(path))])
-    enter = QtGui.QDragEnterEvent(
-        QtCore.QPoint(10, 10),
-        QtCore.Qt.CopyAction,
-        mime,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    host.dragEnterEvent(enter)
-    assert enter.isAccepted()
-    host.dropEvent(
-        QtGui.QDropEvent(
-            QtCore.QPointF(10, 10),
-            QtCore.Qt.CopyAction,
-            mime,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.NoModifier,
-        )
-    )
-    assert Path(app.model.filename) == Path(path) and qapp is not None
-    host.close()
-
-
 # -- running -------------------------------------------------------------------------------------------------- #
 
 

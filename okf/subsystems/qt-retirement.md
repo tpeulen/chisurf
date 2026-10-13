@@ -29,16 +29,29 @@ through the Qt ribbon's own placement rules, and the menu bar and Tools dock lis
 icons. The splash window and its startup stages landed 2026-10-12 (item 12), and S5's status strip reached control
 parity with the Qt status bar on 2026-10-13 (item 5).
 
-1. Measure: the allow-list has 221 entries (244 before the 2026-10-12 test-port slice). Re-derive with
-   `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
-   `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 | sort | uniq -c`: chimol 111, core 70, misc 17,
-   modelling 6, ndxplorer 4, spectra_downloader 4, fret_line 2, tttr 2, microscopy 1, root 3, cookiecutter 1.
-   Of these 36 outside chimol are still **tests** (chimol's 110 are in `~/dev/chimol`). A test line goes by
+1. Measure: the allow-list has 211 entries (221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port
+   slice). Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
+   `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 | sort | uniq -c`: chimol 111, core 66, misc 17,
+   modelling 6, ndxplorer 4, tttr 2, fret_line 1, and one each for the plugins `__init__.py`, `conftest.py`,
+   `icon_utils.py` and the cookiecutter template. Of these 36 outside chimol are still **tests** (chimol's are in
+   `~/dev/chimol`). A test line goes by
    porting the test to `emtk.testing.Driver` (a drop: `Driver(app).surface.on_files_dropped`, or
    `emtk.app.ControlSurface`), never by deleting it. How the Qt host turns a `QDropEvent` / `QKeyEvent` / focus
    change into the control's hooks is emtk's own `tests/test_qt_host.py`, so a plugin test needs only the native
-   half. A parity test whose Qt "before" side ran in a subprocess keeps it as a recorded `qt_reference.json` beside
-   the test (ndX, F-test, Global View). Ported: S2's microscopy, tttr and ndX tests, the calculators, vv/vh,
+   half (the five microscopy "Qt host delivers a drop" tests were dropped on that ground). A parity test whose Qt
+   "before" side ran in a subprocess keeps it as a recorded `qt_reference.json` beside
+   the test (ndX, F-test, Global View, Spectra tool). The 2026-10-13 slice: the TCSPC device wrappers got a Qt-free
+   `Signal`, `fret_line/__main__.py` runs the emtk app, and the Spectra tool's four legacy Qt widgets were deleted
+   with their tests ported (native model tests in `spectra_downloader/tests/test_native.py`; the Qt facts frozen in
+   `qt_reference.json`, recorded from the live widgets). Trap: a full run of the img_coloc parity file is 2.5 min and
+   its last test (`zz_the_real_user_settings_were_never_touched`) fails whenever another agent has the emtk shell open,
+   because the shell rewrites `~/.chisurf/emtk/emtk_shell.docks.layout.json`. Left in non-test files, each Qt by
+   design: the Qt hosts and legacy tools (`code_editor`, `help`, `mmfdb_admin`, `project_browser`, `lightpath_simulator`,
+   `f_test`/`globalview` tools, games, hydropro, ndX window, trace-browser host), `help/api/theme.py` (reads a Qt
+   widget's palette), `ndxplorer/calibration_bridge.find_ndx_windows` (enumerates Qt top-level windows), the
+   env-gated SVG rasterizer in `plugins/__init__.py` (QtSvg), `icon_utils.py`, the `acq` setup dialogs (the Qt
+   dialog tests in `simulation/core/test/test_setup_widgets.py` go with them; the native twin is `acq/gui/sim_setup.py`
+   and a port needs that dialog's parity matrix first). Ported: S2's microscopy, tttr and ndX tests, the calculators, vv/vh,
    updater, setup channel definition, the games' key and pointer tests, HydroPro's widget test; ndX's line push
    moved to the Qt-free `chisurf/plugins/ndxplorer/overlay_lines.py`. Open, and why: host tests
    (`ndxplorer/tests/test_window_routes.py`, `tttr/trace_browser/test/test_emtk_trace_browser_t5.py`,

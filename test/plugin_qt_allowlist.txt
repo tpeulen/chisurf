@@ -115,15 +115,11 @@ chisurf/plugins/chimol/test/web_parity.py
 chisurf/plugins/chimol/test/widget_gallery.py
 chisurf/plugins/conftest.py
 chisurf/plugins/cookiecutter-chisurf-plugin/{{cookiecutter.plugin_name}}/gui/tool.py
-chisurf/plugins/core/acq/tcspc_devices/abc.py
 chisurf/plugins/core/acq/tcspc_devices/bh_spc/card_setup_dialog.py
 chisurf/plugins/core/acq/tcspc_devices/brickmic/setup_dialog.py
-chisurf/plugins/core/acq/tcspc_devices/brickmic/wrapper.py
-chisurf/plugins/core/acq/tcspc_devices/device_factory.py
 chisurf/plugins/core/acq/tcspc_devices/picoquant/setup_dialog.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/core/test/test_setup_widgets.py
 chisurf/plugins/core/acq/tcspc_devices/simulation/setup_dialog.py
-chisurf/plugins/core/acq/tcspc_devices/simulation/wrapper.py
 chisurf/plugins/core/batch_analysis/gui/view_model.py
 chisurf/plugins/core/code_editor/agent_panel.py
 chisurf/plugins/core/code_editor/editor.py
@@ -185,10 +181,8 @@ chisurf/plugins/core/project_browser/gui/tool.py
 chisurf/plugins/core/project_browser/test/test_emtk_project_browser_parity.py
 chisurf/plugins/core/project_browser/test/test_gui_headless.py
 chisurf/plugins/core/switch_user/test/test_emtk_switch_user_parity.py
-chisurf/plugins/fret_line/__main__.py
 chisurf/plugins/fret_line/gui/tool.py
 chisurf/plugins/icon_utils.py
-chisurf/plugins/microscopy/imaging_emtk/pixel_checks.py
 chisurf/plugins/misc/games/__init__.py
 chisurf/plugins/misc/games/breakout/__init__.py
 chisurf/plugins/misc/games/breakout/breakout.py
@@ -216,9 +210,5 @@ chisurf/plugins/ndxplorer/__init__.py
 chisurf/plugins/ndxplorer/calibration_bridge.py
 chisurf/plugins/ndxplorer/tests/test_window_routes.py
 chisurf/plugins/ndxplorer/window.py
-chisurf/plugins/spectra_downloader/browser.py
-chisurf/plugins/spectra_downloader/download_manager.py
-chisurf/plugins/spectra_downloader/gui/add_to_mmfdb_panel.py
-chisurf/plugins/spectra_downloader/gui/overview_panel.py
 chisurf/plugins/tttr/trace_browser/gui/host.py
 chisurf/plugins/tttr/trace_browser/test/test_emtk_trace_browser_t5.py

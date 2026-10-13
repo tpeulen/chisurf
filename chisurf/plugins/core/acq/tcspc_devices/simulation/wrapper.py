@@ -10,9 +10,8 @@ import threading
 from datetime import datetime
 
 import numpy as np
-from qtpy.QtCore import Signal
 
-from ..abc import TCSPCDeviceABC
+from ..abc import Signal, TCSPCDeviceABC
 from .core.streaming import TttrlibSimulator
 
 logger = logging.getLogger(__name__)

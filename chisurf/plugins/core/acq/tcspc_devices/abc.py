@@ -5,11 +5,59 @@ This module defines the common interface that all TCSPC device wrappers must imp
 """
 
 from abc import abstractmethod
+from collections.abc import Callable
 
-from qtpy.QtCore import QObject, Signal
+
+class _BoundSignal:
+    """One instance's signal: ``connect`` callbacks, ``emit`` calls them in the emitting thread."""
+
+    def __init__(self) -> None:
+        self._slots: list[Callable] = []
+
+    def connect(self, slot: Callable) -> None:
+        """Register *slot*; it is called with the emitted arguments."""
+        self._slots.append(slot)
+
+    def disconnect(self, slot: Callable | None = None) -> None:
+        """Remove *slot*, or every slot when none is given."""
+        if slot is None:
+            self._slots.clear()
+        elif slot in self._slots:
+            self._slots.remove(slot)
+
+    def emit(self, *args) -> None:
+        """Call every connected slot with *args*."""
+        for slot in list(self._slots):
+            slot(*args)
 
 
-class TCSPCDeviceABC(QObject):
+class Signal:
+    """Qt-free signal descriptor with the ``connect`` / ``emit`` surface of a Qt signal.
+
+    Parameters
+    ----------
+    *types : type
+        Accepted for spelling parity with a Qt signal; not enforced.
+    """
+
+    def __init__(self, *types: type) -> None:
+        self._name = ""
+
+    def __set_name__(self, owner: type, name: str) -> None:
+        """Remember the attribute name the per-instance signal is stored under."""
+        self._name = "_signal_" + name
+
+    def __get__(self, instance, owner=None):
+        """Return the instance's own signal (created on first access)."""
+        if instance is None:
+            return self
+        bound = instance.__dict__.get(self._name)
+        if bound is None:
+            bound = instance.__dict__[self._name] = _BoundSignal()
+        return bound
+
+
+class TCSPCDeviceABC:
     """Abstract Base Class for TCSPC device wrappers."""
 
     # Signal emitted when a message is logged

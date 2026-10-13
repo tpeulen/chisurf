@@ -4,10 +4,11 @@ Manufacturer-agnostic factory for creating TCSPC devices.
 """
 
 import numpy as np
-from qtpy.QtCore import QObject, Signal
+
+from .abc import Signal
 
 
-class TCSPCDevice(QObject):
+class TCSPCDevice:
     """A manufacturer-agnostic wrapper for TCSPC devices."""
 
     # Signal emitted when a message is logged
