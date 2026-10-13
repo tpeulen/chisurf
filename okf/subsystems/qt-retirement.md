@@ -31,10 +31,11 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list has 186 entries (210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
+1. Measure: the allow-list has 184 entries (186 before the Trace Browser host went, 210 before the 2026-10-13
+   leftovers slice, 211 before the S6-blocker
    slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
    `grep -vc '^#' test/plugin_qt_allowlist.txt`; per area `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 |
-   sort | uniq -c`: chimol 111, core 58, misc 1, modelling 6, ndxplorer 4, tttr 2, and one each for the plugins
+   sort | uniq -c`: chimol 111, core 58, misc 1, modelling 6, ndxplorer 4, and one each for the plugins
    `__init__.py`, `conftest.py`, `icon_utils.py` and the cookiecutter template. Trap: `test_the_allowlist_only_shrinks`
    is red while the chimol lane has struck Qt from its tests but not yet its lines; read only the non-chimol rows.
    A test line goes by porting the test to the native app (or `emtk.testing.Driver`), never by deleting it; a Qt
@@ -54,13 +55,24 @@ own startup stages (item 5): S5 is done.
    `games/*/test/renders/`), the F-test `FTestTool`, the Global View `GraphWizard` host and `wizard.py`, and the
    Project Browser `ProjectBrowserTool` (its `SaveProjectDialog` / `CollisionDialog` are the Qt window's File-menu
    dialogs and moved to `chisurf/gui/widgets/project_dialogs.py`, which goes with the Qt window).
+   **Trace Browser host retired (2026-10-13)** by a general **plugin hand-off**: a plugin calls
+   `chisurf.core.plugin.handoff.hand_off(plugin_id, kind, payload)`; the shell (`EmtkShellApp.hand_off`, installed as
+   the process's host) opens the target as a dock and, once `BackgroundBuild` has made its app, calls the receive hook
+   the target declares in its manifest `accepts` (`HandoffSpec`: `name`, `receive` = `module:function(app, payload)`,
+   `required` keys). Declared: Intensity Trace `tttr_trace`, TTTR Time Window `tttr_files`, ndX `open_path` + `table`.
+   Routed through it: Trace Browser HMM/TW/NDX (`gui/handoffs.py`, replacing `host.py` + `host_lookup.py`), H2MM
+   *dwells → ndX*, Burst Selection *send to ndX* (via `mmfdb_launcher.open_path_in_ndxplorer`) and the sampling
+   diagnostics page (`ndxplorer.gui.app.open_in_ndx`); each keeps its old path only when no shell is open. Evidence in
+   `okf/plugins/emtk-ports/trace_browser/`: `retire_qt_before.json` (the Qt adapter's three windows, recorded live
+   before the change), `retire_after.json`, `retire_compare.json` (0 controls lost in the browser and in each target;
+   deliberate: window → dock, one dock per tool so a second press re-delivers, file shown in the tool rather than the
+   window title). The T5 test is ported to the real shell driven by `emtk.testing.Driver` (real clicks, real
+   `BH_SPC132.spc`, three hand-offs asserted and rendered); mechanism tests in `test/core/test_plugin_handoff.py`.
+   Trap: a hosted child's `form.rects` are local to its dock box (`host_child` draws with `local_coordinates`), so a
+   click is `hosted.box` origin + rect. Not routed yet (other lanes' files): `mmfdb_admin/gui/tool.py`
+   `open_in_ndxplorer` (Qt tool), help/code_editor's `host_in_shell` page/file opening (could become `accepts` kinds
+   `open_page` / `open_file`). Under `--qt` the three buttons are now greyed (no Qt adapter); the Qt window is legacy.
    Left, and why (each reason re-checked against the challenge):
-   - **Trace Browser host** (`tttr/trace_browser/gui/host.py` and its test `test_emtk_trace_browser_t5.py`). Not a
-     freezing problem: a missing twin. The *HMM*, *TW* and *NDX* buttons pass a request to `on_request`, and only the
-     Qt adapter fulfils it (`host_lookup.default_request_handler` returns `None` without a `QApplication`). So in the
-     emtk shell, now the default, the three hand-off buttons are **greyed**. What would let the host retire: a
-     shell request handler (`EmtkShellApp.open_plugin` for `intensity_trace`, `tttr_time_windows`, `ndxplorer`, then
-     hand the payload to the built app once `BackgroundBuild` finishes; `open_plugin` returns before the app exists).
    - **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
      the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
    - **lightpath_simulator** (`gui/tool.py`, `gui/easy_mode.py`, `tests/test_native_ui.py`): `easy_mode.py` is a

@@ -402,13 +402,18 @@ def open_in_ndx(path) -> object:
     Returns
     -------
     object
-        The ndX app the path went to.
+        The ndX app the path went to; with the emtk shell open, the shell's record of the ndX
+        dock the path is handed to (it opens once the dock's app is built).
 
     Raises
     ------
     RuntimeError
         When no ndX window is open and none can be started (no main window).
     """
+    from chisurf.core.plugin import handoff
+
+    if handoff.available("ndxplorer", "open_path"):
+        return handoff.hand_off("ndxplorer", "open_path", {"path": str(path)})
     _load_ndx_app_factory()
     from ndxplorer.app.frame import live_apps
 
@@ -429,3 +434,34 @@ def open_in_ndx(path) -> object:
     if callable(request):
         request()
     return app
+
+
+def receive_path(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``open_path``): open ``payload["path"]``.
+
+    Anything File > Open reads: a burst-analysis folder, a ``.pto``, a table.
+    """
+    path = Path(str(payload["path"]))
+    if not path.exists():
+        raise FileNotFoundError(f"{path} does not exist")
+    if not app.open_path(str(path)):
+        raise ValueError(f"ndX could not read {path.name}")
+    app.request_frame()
+
+
+def receive_table(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``table``): show an in-memory table.
+
+    ``payload["table"]`` is a :class:`ndxplorer.core.data_source.DataSource` or anything it
+    wraps (a column store); ``path``, when given, names where it came from (the window title,
+    where the stored calibration and session are looked up).
+    """
+    from ndxplorer.core.data_source import DataSource
+
+    table = payload["table"]
+    source = table if isinstance(table, DataSource) else DataSource(table)
+    app.model.set_source(source)
+    if payload.get("path"):
+        app.model.path = str(payload["path"])
+    app.data_changed()
+    app.request_frame()

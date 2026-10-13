@@ -80,6 +80,12 @@
     "events": {
       "type": "array"
     },
+    "accepts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/handoff"
+      }
+    },
     "operation_types": {
       "type": "array"
     },
@@ -291,6 +297,33 @@
       },
       "required": [
         "name"
+      ],
+      "additionalProperties": false
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "receive": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)*:[A-Za-z_]\\w*$"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "receive"
       ],
       "additionalProperties": false
     }

@@ -21,23 +21,23 @@ def test_list_files(tmp_path):
 
 
 def test_the_ndxplorer_integration_is_actually_wired():
-    """The one-click button opens ChiSurf's ndX window on the analysis folder.
+    """The one-click button opens ChiSurf's ndX on the analysis folder.
 
     The browser used to reach into ndX's Qt window through guarded imports;
     when ndX reorganised, they went stale and the button did nothing. It now
-    goes through the plugin's single construction, pinned here.
+    hands the folder to ndX's declared receiver (manifest ``accepts``
+    ``open_path``), which opens it the way File > Open does -- pinned here.
     """
     import inspect
 
-    import pytest
+    from chisurf.core.plugin import handoff
+    from chisurf.emtk.plugins import manifests
+    from chisurf.plugins.ndxplorer.gui import app as ndx_app
+    from chisurf.plugins.tttr.trace_browser.gui.handoffs import ROUTES
 
-    pytest.importorskip("ndxplorer")
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-
-    # The Qt workspace is gone; the wiring is the host adapter of the native app.
-    from chisurf.plugins.tttr.trace_browser.gui import host
-
-    assert "path" in inspect.signature(build_ndxplorer_window).parameters
-    source = inspect.getsource(host)
-    assert "build_ndxplorer_window(folder)" in source
-    assert "NDXplorer(" not in source
+    plugin, kind, adapt = ROUTES["open_ndxplorer"]
+    assert (plugin, kind) == ("ndxplorer", "open_path")
+    assert adapt({"folder": "/d/m_TW_10ms", "file": "/d/m.spc"})["path"] == "/d/m_TW_10ms"
+    spec = handoff.accepted("ndxplorer", "open_path", manifests()["ndxplorer"])
+    assert spec.receive == "chisurf.plugins.ndxplorer.gui.app:receive_path"
+    assert "app.open_path(str(path))" in inspect.getsource(ndx_app.receive_path)

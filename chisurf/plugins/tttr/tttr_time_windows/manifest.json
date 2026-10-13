@@ -43,6 +43,14 @@
       "settings_key": null
     }
   },
+  "accepts": [
+    {
+      "name": "tttr_files",
+      "summary": "Queue TTTR files, set the time window and preview the first file.",
+      "receive": "chisurf.plugins.tttr.tttr_time_windows.gui.controller:receive_files",
+      "required": ["files", "window_ms"]
+    }
+  ],
   "entrypoints": {
     "cli": "tttr-time-windows=chisurf.plugins.tttr.tttr_time_windows.cli:cli",
     "services": "chisurf.plugins.tttr.tttr_time_windows.backend.services:register_services",

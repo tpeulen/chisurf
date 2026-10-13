@@ -352,3 +352,24 @@ class _StandaloneApp(TimeWindowApp):
 
 def create_app(client=None, database_picker=None):
     return TimeWindowController(client=client, database_picker=database_picker).app
+
+
+def receive_files(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``tttr_files``): queue ``payload["files"]`` and preview the first.
+
+    ``window_ms`` sets the time window. A file that is missing or not a TTTR file raises (the
+    host says why); the files already queued stay.
+    """
+    tool = app.tool
+    files = [Path(str(f)) for f in payload["files"]]
+    if not files:
+        raise ValueError("no file to open in the Time Window tool")
+    for path in files:
+        if not path.is_file():
+            raise FileNotFoundError(f"{path} does not exist")
+    tool.time_window_ms = float(payload["window_ms"])
+    tool.add_paths(files)
+    queued = [str(p) for p in tool._file_paths]
+    if str(files[0]) not in queued:
+        raise ValueError(f"{files[0].name} is not a TTTR file the Time Window tool reads")
+    app.time_window_gui.select_preview(queued.index(str(files[0])))

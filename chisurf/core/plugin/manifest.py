@@ -41,6 +41,30 @@ class PluginActionEntrypoint:
     requires_main_window: bool
 
 
+#: Shape of a ``module:callable`` reference (an action target, a hand-off receiver).
+CALLABLE_PATTERN = r"^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*:[A-Za-z_]\w*$"
+
+
+@dataclass
+class HandoffSpec:
+    """One kind of payload another plugin may hand this plugin (``"accepts"`` in the manifest).
+
+    A plugin asks the host to "open plugin X with payload P" (:mod:`chisurf.core.plugin.handoff`);
+    the host opens X and, once X's app is built, calls ``receive(app, payload)``. Declaring the
+    kind is what makes the request legal: a host refuses a kind the target does not list, so a
+    hand-off cannot reach a hook nobody wrote.
+    """
+
+    #: The kind of payload, as the requester names it (``"tttr_trace"``, ``"open_path"``).
+    name: str
+    #: ``module:function`` called as ``function(app, payload)`` with the built app.
+    receive: str
+    #: One line: what the target does with the payload.
+    summary: str = ""
+    #: Payload keys the receiver needs; a request without one is refused before anything opens.
+    required: list[str] = field(default_factory=list)
+
+
 @dataclass
 class PluginEntrypoints:
     """Plugin entrypoint strings.
@@ -103,6 +127,9 @@ class PluginManifest:
     entrypoints: PluginEntrypoints = field(default_factory=PluginEntrypoints)
     rpc_methods: list[RPCMethodSpec] = field(default_factory=list)
     events: list[dict[str, Any]] = field(default_factory=list)
+
+    #: Payload kinds other plugins may hand this one (:class:`HandoffSpec`).
+    accepts: list[HandoffSpec] = field(default_factory=list)
 
     #: ``_mmfdb_operation.operation_type`` terms this tool is the analysis step for.
     #: A result in a ``.pto`` records the operation that produced it but not the
@@ -244,6 +271,15 @@ class PluginManifest:
             entrypoints=entrypoints,
             rpc_methods=methods,
             events=data.get("events", []),
+            accepts=[
+                HandoffSpec(
+                    name=a["name"],
+                    receive=a["receive"],
+                    summary=tr(a.get("summary", "")),
+                    required=list(a.get("required", [])),
+                )
+                for a in data.get("accepts", [])
+            ],
             operation_types=data.get("operation_types", []),
             dependencies=data.get("dependencies", {}),
             requires=data.get("requires", {}),
@@ -308,6 +344,7 @@ class PluginManifest:
                 for m in self.rpc_methods
             ],
             "events": list(self.events),
+            "accepts": [dataclasses.asdict(a) for a in self.accepts],
             "operation_types": list(self.operation_types),
             "dependencies": dict(self.dependencies),
             "requires": dict(self.requires),
@@ -462,6 +499,18 @@ def build_manifest_schema() -> dict:
         "additionalProperties": False,
     }
 
+    handoff_def = {
+        "type": "object",
+        "properties": {
+            **_props(HandoffSpec),
+            "name": {"type": "string", "pattern": r"^[a-z][a-z0-9_]*$"},
+            "receive": {"type": "string", "pattern": CALLABLE_PATTERN},
+            "required": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["name", "receive"],
+        "additionalProperties": False,
+    }
+
     #: ``_type_fragment`` reduces ``dict[str, str]`` to a bare ``{"type": "object"}``,
     #: which would accept ``{"burst_bva": 3}`` or a key that is not an id shape. The
     #: dependency maps are the one place a wrong *value* silently means "no bound",
@@ -486,6 +535,7 @@ def build_manifest_schema() -> dict:
         "type": "array",
         "items": {"$ref": "#/$defs/rpc_method"},
     }
+    top_props["accepts"] = {"type": "array", "items": {"$ref": "#/$defs/handoff"}}
     # statefulness: bool or object
     top_props["statefulness"] = {
         "oneOf": [
@@ -523,6 +573,7 @@ def build_manifest_schema() -> dict:
             "action": action_def,
             "window_state": window_state_def,
             "rpc_method": rpc_method_def,
+            "handoff": handoff_def,
         },
     }
 
@@ -879,6 +930,42 @@ def _validate_rpc_methods(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _validate_accepts(data: dict[str, Any]) -> list[str]:
+    """Validate the declared hand-off kinds before ``from_dict`` indexes them."""
+    import re
+
+    accepts = data.get("accepts")
+    if accepts is None:
+        return []
+    if not isinstance(accepts, list):
+        return ["field 'accepts' must be an array"]
+    allowed = {field.name for field in dataclasses.fields(HandoffSpec)}
+    errors: list[str] = []
+    seen: set[str] = set()
+    for index, spec in enumerate(accepts):
+        prefix = f"accepts[{index}]"
+        if not isinstance(spec, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        errors.extend(f"{prefix}: unknown field {key!r}" for key in spec if key not in allowed)
+        name = spec.get("name")
+        if not isinstance(name, str) or not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+            errors.append(f"{prefix}.name must be a lower-case identifier")
+        elif name in seen:
+            errors.append(f"{prefix}.name {name!r} is declared twice")
+        else:
+            seen.add(name)
+        receive = spec.get("receive")
+        if not isinstance(receive, str) or not re.fullmatch(CALLABLE_PATTERN, receive):
+            errors.append(f"{prefix}.receive must be module:function")
+        if "summary" in spec and not isinstance(spec["summary"], str):
+            errors.append(f"{prefix}.summary must be a string")
+        required = spec.get("required", [])
+        if not isinstance(required, list) or any(not isinstance(k, str) for k in required):
+            errors.append(f"{prefix}.required must be an array of strings")
+    return errors
+
+
 def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
     """Validate scalar and collection shapes consumed by ``from_dict``."""
     nullable_fields = {"icon", "state_namespace", "state_schema"}
@@ -925,6 +1012,7 @@ def _validate_field_shapes(data: dict[str, Any]) -> list[str]:
             errors.append(f"field {key!r} must be a boolean")
     errors.extend(_validate_entrypoints(data))
     errors.extend(_validate_rpc_methods(data))
+    errors.extend(_validate_accepts(data))
     return errors
 
 

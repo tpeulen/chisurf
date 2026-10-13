@@ -702,4 +702,25 @@ def make_app(**_kwargs) -> IntensityTraceApp:
     return IntensityTraceApp()
 
 
-__all__ = ["IntensityTraceApp", "make_app"]
+def receive_trace(app: IntensityTraceApp, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``tttr_trace``): read and bin ``payload["file"]``.
+
+    ``window_ms`` sets the bin window; a ``setup_settings`` with detectors replaces the routing
+    setup (its detectors all selected), as the requester had them. The file is read on the app's
+    worker (``app.wait()`` joins it).
+    """
+    path = Path(str(payload["file"]))
+    if not path.is_file():
+        raise FileNotFoundError(f"{path} does not exist")
+    if app.busy:
+        raise RuntimeError(tr("the tool is busy; try again when it has finished"))
+    app.model.window_ms = float(payload["window_ms"])
+    setup = payload.get("setup_settings")
+    if isinstance(setup, dict) and setup.get("detectors"):
+        app.model.setup = setup
+        app.model.selected = []
+        app.setup_name = str(setup.get("setup_name") or "Edited setup")
+    app.open_file(str(path))
+
+
+__all__ = ["IntensityTraceApp", "make_app", "receive_trace"]

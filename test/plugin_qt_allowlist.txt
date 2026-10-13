@@ -179,5 +179,3 @@ chisurf/plugins/ndxplorer/__init__.py
 chisurf/plugins/ndxplorer/calibration_bridge.py
 chisurf/plugins/ndxplorer/tests/test_window_routes.py
 chisurf/plugins/ndxplorer/window.py
-chisurf/plugins/tttr/trace_browser/gui/host.py
-chisurf/plugins/tttr/trace_browser/test/test_emtk_trace_browser_t5.py

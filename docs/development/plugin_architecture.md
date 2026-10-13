@@ -452,6 +452,41 @@ missing target, an unsatisfied bound or a cycle each produce a warning and the
 application still starts. Problems are listed per plugin in the **Plugin Check**
 tool.
 
+### 3.1.4 Handing a payload to another plugin (`accepts`)
+
+A tool that has something another tool works on (a trace for the HMM tool, a
+burst folder for ndX) never builds that tool's window. It asks the host:
+
+```python
+from chisurf.core.plugin import handoff
+
+if handoff.available("ndxplorer", "open_path"):   # greys the button otherwise
+    handoff.hand_off("ndxplorer", "open_path", {"path": folder})
+```
+
+The emtk shell opens the target as a **dock** (tools are docks; the workspace
+holds only fits) and, once the target's app is built, calls the receive hook
+the target **declares** in its manifest:
+
+```json
+"accepts": [
+  {"name": "open_path",
+   "summary": "Open a burst-analysis folder, a .pto or a table file.",
+   "receive": "chisurf.plugins.ndxplorer.gui.app:receive_path",
+   "required": ["path"]}
+]
+```
+
+`receive(app, payload)` gets the target's own app. A kind the target does not
+declare, or a payload without a `required` key, is refused (`HandoffError`)
+before anything opens; a hook that raises is said in the shell's status line. A
+tool that is already open keeps its dock and gets the payload at once. Without
+the shell there is no host and `available()` is `False`. Declared today:
+Intensity Trace `tttr_trace`, TTTR Time Window `tttr_files`, ndX `open_path`
+and `table`; used by the Trace Browser (HMM/TW/NDX), H2MM (dwells → ndX), Burst
+Selection (→ ndX, through `open_path_in_ndxplorer`) and the sampling
+diagnostics page (`open_in_ndx`). Test: `test/core/test_plugin_handoff.py`.
+
 ### 3.2 Schema files
 
 Plugin schemas live under `schemas/` and are JSON Schema draft-07 files referenced from the manifest:

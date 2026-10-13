@@ -39,10 +39,19 @@ def resolve_dataset_path(client: Any, artifact_id: str) -> str | None:
 
 
 def open_path_in_ndxplorer(path: str) -> Any:
-    """Open ``path`` in a new ndX window and show it.
+    """Open ``path`` in ndX: the ndX dock of the open ChiSurf window, else a new ndX window.
 
-    Returns the window, or ``None`` if ndX could not be opened.
+    Returns the window (with the emtk shell open: the shell's record of the ndX dock, which
+    opens the path once it is built), or ``None`` if ndX could not be opened.
     """
+    from chisurf.core.plugin import handoff
+
+    if handoff.available("ndxplorer", "open_path"):
+        try:
+            return handoff.hand_off("ndxplorer", "open_path", {"path": str(path)})
+        except Exception as exc:  # noqa: BLE001 - the caller says "could not be opened"
+            logger.error("ndX could not be opened: %s", exc)
+            return None
     try:
         from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
 

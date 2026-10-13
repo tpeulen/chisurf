@@ -11,6 +11,14 @@
     "Spectroscopy",
     "Single-Molecule"
   ],
+  "accepts": [
+    {
+      "name": "tttr_trace",
+      "summary": "Read and bin a TTTR file with the given bin window and detector setup.",
+      "receive": "chisurf.plugins.tttr.intensity_trace.gui.app:receive_trace",
+      "required": ["file", "window_ms"]
+    }
+  ],
   "entrypoints": {
     "emtk": "chisurf.plugins.tttr.intensity_trace.gui.app:make_app",
     "script": "__init__.py"

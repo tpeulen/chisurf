@@ -694,7 +694,7 @@ def test_the_hand_offs_work_on_the_first_file_of_a_multi_selection(work, monkeyp
 def test_without_a_host_the_hand_off_buttons_are_greyed_and_record_nothing(work, monkeypatch):
     from chisurf.plugins.tttr.trace_browser.gui import app as app_module
 
-    # a session that already runs a QApplication would host the app (card T5): this test is about no host
+    # an open ChiSurf shell would host the hand-offs (card T5): this test is about no host
     monkeypatch.setattr(app_module, "default_request_handler", lambda: None)
     app = app_module.make_app()
     try:

@@ -77,7 +77,7 @@ The buttons under the folder row act on the selected files (click a row, or
 | **CSV** | writes each selected trace (time and one column per series, at the current bin window) into a folder you choose |
 | **DOCX** | writes a Word report (name, folder, rating, annotation, trace picture) into the opened folder; needs the optional `python-docx` package and is greyed without it |
 | **Delete** | after a confirmation, moves the selected files and the files that share their name to the `.trash` folder of the opened folder (nothing is deleted for good); the Delete key in the table does the same |
-| **HMM**, **TW**, **NDX** | open the first selected file in a new *Intensity Trace* window (the bin window and the detector setup are passed on), a new *TTTR Time Window* tool holding the file and the bin window, or a new ndXplorer window; they work inside ChiSurf and are greyed when the Trace Browser runs on its own (**NDX** first writes the burst table next to the data and opens ndX on that folder) |
+| **HMM**, **TW**, **NDX** | hand the first selected file to another tool, which opens as a dock beside the Trace Browser: *Intensity Trace* reads and bins it (the bin window and the detector setup are passed on), *TTTR Time Window* queues and previews it with the bin window, ndX opens the burst table (**NDX** first writes it next to the data, in `<name>_TW_<ms>ms`, and opens ndX on that folder). A tool that is already open keeps its dock and takes the new file. They work inside ChiSurf and are greyed when the Trace Browser runs on its own |
 
 **Help** explains the window and **Guide** walks through the first steps.
 
@@ -88,10 +88,28 @@ The buttons under the folder row act on the selected files (click a row, or
 Trace Browser on the ten BH SPC-132 smFRET files of the burst-selection test
 folder (green 0/8, red 1/9, SPC-130), `m000.spc` selected, 10 ms bins (the
 default). The coincident green/red spikes are FRET bursts; the right column is
-the count histogram of each trace. HMM, TW and NDX are enabled because a
-ChiSurf session (a Qt application) is running; they are greyed when the Trace
-Browser runs without one. DOCX is greyed because `python-docx` is not
-installed.
+the count histogram of each trace. HMM, TW and NDX are enabled because the
+Trace Browser is open in the ChiSurf window, which opens the tools they hand
+the file to; they are greyed when the Trace Browser runs without it. DOCX is
+greyed because `python-docx` is not installed.
+```
+
+```{figure} figures/22_trace_browser_handoff.png
+:name: fig-22-trace-browser-handoff
+:width: 100%
+
+**HMM** pressed on `m001.spc` in the ChiSurf window: *Intensity trace* opened
+as a dock beside the Trace Browser, with the file read and binned at the
+browser's 10 ms and its ALEX detector setup.
+```
+
+For a script, the same hand-off is one call while the ChiSurf window is open
+(the target tool declares what it takes in its manifest's `accepts`):
+
+```python
+from chisurf.core.plugin import handoff
+
+handoff.hand_off("intensity_trace", "tttr_trace", {"file": "m001.spc", "window_ms": 10.0})
 ```
 
 ### Known limits

@@ -323,6 +323,10 @@ class EmtkShellApp(ImApp):
 
         global _ACTIVE_SHELL
         _ACTIVE_SHELL = weakref.ref(self)
+        from chisurf.core.plugin.handoff import install_host
+
+        # Plugins hand payloads to each other through the shell (:meth:`hand_off`).
+        install_host(self)
         from chisurf.emtk.status_strip import StatusStrip
 
         #: The line along the bottom: message, *Ready*, the operation under way
@@ -414,6 +418,67 @@ class EmtkShellApp(ImApp):
             self.docks.focus(hosted.key)
         self.status = tr("Opening {name}…").format(name=tr(entry.label))
         _log.info("open %s", plugin_id)
+        return hosted
+
+    def accepts(self, plugin_id: str, kind: str) -> Any:
+        """The ``accepts`` declaration of *kind* when the shell offers *plugin_id*, else ``None``.
+
+        The hand-off contract (:mod:`chisurf.core.plugin.handoff`): only a payload kind the target's
+        manifest declares may be handed to it.
+        """
+        from chisurf.core.plugin.handoff import accepted
+
+        entry = self.by_id.get(plugin_id)
+        if entry is None or entry.action:
+            return None
+        return accepted(plugin_id, kind, self.catalog.get(plugin_id))
+
+    def hand_off(self, plugin_id: str, kind: str, payload: dict) -> HostedPlugin:
+        """Open *plugin_id* as a dock and give its app *payload* once the app is built.
+
+        The payload goes to the receive hook the target declares for *kind*
+        (:func:`chisurf.core.plugin.handoff.deliver`), on the draw thread, after the build finishes
+        -- at once when the tool is already open. A tool already open keeps its dock and gets the
+        new payload (tools are docks, one per tool). A hook that fails is said in the status line
+        and logged.
+
+        Raises
+        ------
+        chisurf.core.plugin.handoff.HandoffError
+            The shell does not offer *plugin_id*, it does not declare *kind*, or *payload* lacks a
+            required key; nothing is opened then.
+        """
+        from chisurf.core.plugin.handoff import HandoffError, check_payload, deliver
+
+        spec = self.accepts(plugin_id, kind)
+        if spec is None:
+            if plugin_id not in self.by_id:
+                raise HandoffError(f"{plugin_id} is not a tool of this window")
+            raise HandoffError(f"{plugin_id} does not accept a {kind} payload")
+        check_payload(spec, payload)
+        hosted = self.open_plugin(plugin_id)
+        assert hosted is not None  # accepts() refused command plugins
+
+        def receive() -> None:
+            app = hosted.app
+            app = getattr(app, "_control", app)  # the plugin's own app, not the child wrapper
+            try:
+                deliver(app, spec, payload)
+            except Exception as exc:  # noqa: BLE001 - said, never raised into the frame
+                _log.exception("handing %s to %s failed", kind, plugin_id)
+                self.status = tr("{name} could not take it: {error}").format(
+                    name=tr(hosted.entry.label), error=exc
+                )
+                hosted.extra["handoff_error"] = f"{type(exc).__name__}: {exc}"
+                return
+            hosted.extra.pop("handoff_error", None)
+            hosted.extra.setdefault("handoffs", []).append(kind)
+            self.request_frame()
+
+        hosted.on_ready.append(receive)
+        if hosted.app is not None and hosted.build is None:
+            self._run_ready(hosted)
+        self.request_frame()
         return hosted
 
     def _tool_region(self) -> str:
@@ -1527,6 +1592,9 @@ class EmtkShellApp(ImApp):
         global _ACTIVE_SHELL
         if _ACTIVE_SHELL is not None and _ACTIVE_SHELL() is self:
             _ACTIVE_SHELL = None
+        from chisurf.core.plugin.handoff import uninstall_host
+
+        uninstall_host(self)
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
         self.console.close()
