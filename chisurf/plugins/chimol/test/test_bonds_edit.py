@@ -24,6 +24,7 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
 #: Six alanines on a helix, a zinc ion and eight waters. The ion and the waters
 #: are unbonded, which is what makes it usable for bonding something that has no
@@ -38,37 +39,28 @@ _FRAGMENT = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)
-    win.show()
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(_FRAGMENT)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
     def do(line: str) -> None:
         shared.do(line)
         for _ in range(6):
-            qapp.processEvents()
+            process_events()
 
     yield win.viewer, shared, do, errors
     win.close()

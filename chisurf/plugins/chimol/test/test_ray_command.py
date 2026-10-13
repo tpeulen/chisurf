@@ -17,21 +17,14 @@ import shutil
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 @pytest.fixture
-def window(qapp, tmp_path):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+def window(tmp_path):
+    from native_window import NativeWindow
     src = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"
@@ -43,7 +36,7 @@ def window(qapp, tmp_path):
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
 
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.load_structure_from_path(pdb, name="148l")
     return win
 
@@ -83,17 +76,14 @@ def _ray(cmd, out: pathlib.Path, size: str = "120, 100", timeout: float = 180.0)
     """
     import time
 
-    from qtpy import QtWidgets
 
     cmd._test_messages.clear()  # type: ignore[attr-defined]
     cmd._test_errors.clear()  # type: ignore[attr-defined]
     cmd.do(f"ray {out}, {size}")
 
-    app = QtWidgets.QApplication.instance()
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if app is not None:
-            app.processEvents()
+        process_events()
         if out.exists() or cmd._test_errors:  # type: ignore[attr-defined]
             break
         if any(  # a refusal, which never starts a thread
@@ -102,8 +92,7 @@ def _ray(cmd, out: pathlib.Path, size: str = "120, 100", timeout: float = 180.0)
         ):
             break
         time.sleep(0.02)
-    if app is not None:
-        app.processEvents()
+    process_events()
 
 
 def _drawn_pixels(path: pathlib.Path) -> int:
@@ -173,7 +162,7 @@ def test_nothing_shown_is_reported_and_nothing_is_drawn(cmd, tmp_path):
 # --------------------------------------------------------------------------- #
 # Progress reporting
 # --------------------------------------------------------------------------- #
-def test_the_progress_display_survives_the_whole_qprogressdialog_setup(qapp, window):
+def test_the_progress_display_survives_the_whole_qprogressdialog_setup(window):
     """`ray` drove `ChiSurfProgress` as if it were a ``QProgressDialog``.
 
     The facade carries most of that surface on purpose, so five of the six calls
@@ -329,10 +318,10 @@ def test_the_default_size_is_the_scene_column_not_the_widget(window):
     against the viewport's 70 %. PyMOL takes the default "from the current
     viewpoint" and means the same rectangle.
     """
-    view = window.viewer.view
+    view = window.viewer.renderer
     view.resize(900, 600)
     scene_w, scene_h = view.scene_pixel_size()
-    ratio = view.devicePixelRatioF()
+    ratio = view._ratio()
 
     assert (scene_w, scene_h) == (
         round(view.scene_width() * ratio),
@@ -352,7 +341,7 @@ def test_one_size_preserves_the_current_aspect(cmd, tmp_path, window):
     """
     from PIL import Image
 
-    view = window.viewer.view
+    view = window.viewer.renderer
     scene_w, scene_h = view.scene_pixel_size()
     expected = max(1, round(240 * scene_h / scene_w))
 

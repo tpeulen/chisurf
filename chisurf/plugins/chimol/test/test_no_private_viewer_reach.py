@@ -15,7 +15,6 @@ import pathlib
 import re
 
 import chimol
-import pytest
 
 ROOT = pathlib.Path(chimol.__file__).resolve().parent
 SCOPES = ("commands", "plugins", "ui/wizards")
@@ -56,17 +55,10 @@ def test_the_allowlist_only_shrinks():
     assert not found, f"commands/plugins reach viewer privates: {sorted(found)}"
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_the_public_doors_exist(qapp):
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+def test_the_public_doors_exist():
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         for name in (
             "objects",
@@ -81,4 +73,4 @@ def test_the_public_doors_exist(qapp):
         ):
             assert hasattr(view, name), name
     finally:
-        view.deleteLater()
+        view.native_window.close()

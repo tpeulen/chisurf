@@ -214,27 +214,9 @@ class ChimolHostApp(ImApp):
 
     @staticmethod
     def _resize(chimol, w, h) -> None:
-        renderer = chimol.renderer
-        canvas = renderer._canvas
-        try:
-            logical = canvas.get_logical_size()
-        except Exception:  # noqa: BLE001 - a canvas that cannot say is at its size
-            logical = None
-        if logical is not None and (int(w), int(h)) == (int(logical[0]), int(logical[1])):
-            return
-        # The canvas itself must grow first: rendercanvas only reports a new
-        # size after `set_logical_size` (its own resize events come from the
-        # window manager, and an offscreen canvas has no window manager).
-        # Telling the renderer alone (`on_resize`) resizes nothing -- its
-        # canvas answered 900x620 for the rest of the session and the blit
-        # stretched the stale frame over the grown widget.
-        set_logical = getattr(canvas, "set_logical_size", None)
-        if callable(set_logical):
-            try:
-                set_logical(int(w), int(h))
-            except Exception:  # noqa: BLE001 - a fixed-size canvas blits as before
-                pass
-        renderer.on_resize(int(w), int(h), 1.0)
+        # The canvas grows first and the projection follows; chimol owns that
+        # order (`CanvasView.resize`), so this host only says the size.
+        chimol.renderer.resize(int(w), int(h))
 
     def animating(self) -> bool:
         # The host's repaint contract (emtk.qt_host.ControlHost.paintEvent):

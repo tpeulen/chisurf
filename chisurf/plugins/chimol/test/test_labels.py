@@ -175,20 +175,14 @@ def test_the_property_names_are_pymols():
 # --------------------------------------------------------------------------- #
 # In the viewer, and through the command
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def loaded(qapp):
+def loaded():
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
 
     pdb = (
@@ -199,7 +193,7 @@ def loaded(qapp):
         / "pdb_files"
         / "148l.pdb"
     )
-    view = Viewer()
+    view = native_viewer()
     view.add_structure(
         _read_full_model(cs_struct.Structure, pdb),
         name="148l",

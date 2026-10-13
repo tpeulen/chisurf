@@ -250,14 +250,8 @@ def test_the_ribbons_facing_is_never_drafted():
 # --------------------------------------------------------------------------- #
 # ...and entering it is a decision about rate, not a mode the caller sets
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_one_frame_change_on_its_own_is_never_drafted(qapp):
+def test_one_frame_change_on_its_own_is_never_drafted():
     """A headless render or a single click gets the real thing.
 
     This is why the decision is made on rate rather than on a flag somebody sets
@@ -265,35 +259,32 @@ def test_one_frame_change_on_its_own_is_never_drafted(qapp):
     the playback path -- would silently produce a coarse picture and say nothing.
     Nothing here can downgrade an isolated frame.
     """
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         view._note_frame_change()
         assert view._draft_quality is False
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
-def test_frames_arriving_back_to_back_are_drafted(qapp):
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+def test_frames_arriving_back_to_back_are_drafted():
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         view._note_frame_change()  # first: nothing to compare against
         view._note_frame_change()  # hard on its heels -> a scrub
         assert view._draft_quality is True
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
-def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
+def test_a_pause_returns_to_full_quality(monkeypatch):
     """The settle timer is a bonus; the rate test alone must recover."""
     import time as _time
 
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         clock = [1000.0]
         monkeypatch.setattr(_time, "perf_counter", lambda: clock[0])
@@ -305,7 +296,7 @@ def test_a_pause_returns_to_full_quality(qapp, monkeypatch):
         view._note_frame_change()
         assert view._draft_quality is False
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -327,7 +318,7 @@ def test_a_fractional_position_splits_into_a_pair_and_a_weight():
     assert _frame_blend(2.5, 0) == (0, 0.0, 0)
 
 
-def test_interpolation_lands_between_the_two_frames(qapp):
+def test_interpolation_lands_between_the_two_frames():
     """A half-step must be the midpoint, not one of the ends rounded to.
 
     Checked on ``all_atom_coords``, which is the selected frame itself. The
@@ -335,9 +326,8 @@ def test_interpolation_lands_between_the_two_frames(qapp):
     the obvious thing to build a fixture from -- is subtracted straight back out
     of them and every frame compares equal.
     """
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         frames = np.zeros((3, 4, 3), dtype=float)
         frames[1, :, 0] = 10.0  # frame 1 is 10 A along x
@@ -360,14 +350,13 @@ def test_interpolation_lands_between_the_two_frames(qapp):
         # A whole number is the stored frame, untouched.
         assert shown_at(2.0) == pytest.approx(stored[2])
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
-def test_the_whole_frame_setter_does_not_keep_its_own_position(qapp):
+def test_the_whole_frame_setter_does_not_keep_its_own_position():
     """One position, or a spinbox and a picture will disagree about the frame."""
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         frames = np.zeros((5, 4, 3), dtype=float)
         for i in range(5):
@@ -379,10 +368,10 @@ def test_the_whole_frame_setter_does_not_keep_its_own_position(qapp):
         view.set_current_frame(4)
         assert view.get_frame_position() == pytest.approx(4.0)
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
-def test_playback_reschedules_itself_instead_of_repeating(qapp):
+def test_playback_reschedules_itself_instead_of_repeating():
     """The event-loop starvation fix, pinned where it lives.
 
     A repeating timer whose interval is shorter than the redraw never lets the
@@ -391,16 +380,15 @@ def test_playback_reschedules_itself_instead_of_repeating(qapp):
     the difference is that the next frame is asked for only once the last one is
     drawn, so the guarantee to keep is `setSingleShot`.
     """
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     try:
         view.playback.play(33)
         timer = view.playback.timer
         assert timer.isSingleShot(), "playback must not repeat on a fixed interval"
         view.playback.pause()
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -426,7 +414,7 @@ def _ring_shape(s: int):
 # --------------------------------------------------------------------------- #
 # A colour query is not a scene rebuild
 # --------------------------------------------------------------------------- #
-def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
+def test_reading_residue_colours_does_not_rebuild_the_scene():
     """`get_residue_colors` must compute colours and nothing else.
 
     The sequence strip has no signal to tell it that `color`, `spectrum` or `ss`
@@ -447,7 +435,7 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
 
     pdb = (
@@ -459,7 +447,7 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
         / "148l.pdb"
     )
 
-    view = Viewer()
+    view = native_viewer()
     try:
         object_id = view.add_structure(
             _read_full_model(cs_struct.Structure, pdb),
@@ -484,13 +472,13 @@ def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
             "it runs once per object per frame from paintGL"
         )
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
 # --------------------------------------------------------------------------- #
 # Re-enabling an object is not a scene rebuild
 # --------------------------------------------------------------------------- #
-def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
+def test_reenabling_an_object_does_not_rebuild_its_scene():
     """`disable` then `enable` must not re-enter the scene builder.
 
     The report: "when i disable an object and reenable it that is kind of
@@ -519,7 +507,7 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
 
     pdb = (
@@ -531,7 +519,7 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
         / "148l.pdb"
     )
 
-    view = Viewer()
+    view = native_viewer()
     try:
         object_id = view.add_structure(
             _read_full_model(cs_struct.Structure, pdb),
@@ -581,4 +569,4 @@ def test_reenabling_an_object_does_not_rebuild_its_scene(qapp):
             "rebuild, not reuse the pre-change scene"
         )
     finally:
-        view.deleteLater()
+        view.native_window.close()

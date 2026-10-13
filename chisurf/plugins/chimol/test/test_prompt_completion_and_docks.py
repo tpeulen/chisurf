@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("qtpy")
-
-from emtk.keys import KEY_TAB  # noqa: E402
-from emtk.widgets.command_line import CommandLine  # noqa: E402
+from emtk.keys import KEY_TAB
+from emtk.widgets.command_line import CommandLine
 
 
 # --------------------------------------------------------------------------- #
@@ -44,7 +42,7 @@ def test_tab_extends_to_the_common_prefix():
     assert line.text == "colour_"
 
 
-def test_an_ambiguous_tab_lists_rather_than_doing_nothing(qapp):
+def test_an_ambiguous_tab_lists_rather_than_doing_nothing():
     """A shell lists; silence reads as "there is no such command"."""
     line = CommandLine()
     line.completions = lambda _t, _c: ["dist", "disable", "delete"]
@@ -63,24 +61,12 @@ def test_tab_is_consumed_even_with_nothing_to_complete():
     assert line.key(KEY_TAB, "", 0)
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 @pytest.fixture(scope="module")
 def window():
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+    from native_window import NativeWindow
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
-    win.resize(900, 640)
-    win.show()
-    for _ in range(6):
-        app.processEvents()
+    win = NativeWindow(size=(900, 640))
+    win.pump(3)
     yield win
     win.close()
 
@@ -102,18 +88,18 @@ def test_tab_completes_through_the_whole_path(window):
 
 
 def test_the_widget_claims_tab_while_something_is_being_typed(window):
-    """Qt gives Tab to focus navigation first; the widget has to take it back."""
-    from qtpy import QtCore, QtGui
+    """A host may give Tab to focus navigation first; the viewport takes it back.
 
+    Through the renderer's key handler, which is where every host's canvas
+    delivers a key.
+    """
     gui = window.viewer.gui
     renderer = window.viewer.renderer
     gui.command_line.visible = True
     gui.focus_command(True)
     gui.command_line.set_text("zoo")
 
-    event = QtGui.QKeyEvent(QtCore.QEvent.KeyPress, QtCore.Qt.Key_Tab, QtCore.Qt.NoModifier)
-    assert renderer.event(event)
-    assert event.isAccepted()
+    assert renderer.on_key_press(KEY_TAB, "", 0), "Tab was not consumed"
     assert gui.command_line.text.startswith("zoo")
     gui.focus_command(False)
 
@@ -122,51 +108,39 @@ def test_the_widget_claims_tab_while_something_is_being_typed(window):
 # The docks
 # --------------------------------------------------------------------------- #
 def test_the_3d_view_is_the_window(window):
-    """No docks at all, and no dock area to hold one.
+    """No docks at all, and no toolkit widget to hold one.
 
     Every panel that used to sit beside the viewport -- objects, the prompt,
     the hierarchy, the density controls, the menus, the toolbar -- is drawn
     *inside* it. A second widget would be a second copy of something already on
     screen, and one that no browser has.
     """
-    from qtpy import QtWidgets
-
-    assert window.dock_area is None
-    assert window.centralWidget() is window.viewer
-    assert not hasattr(window, "hierarchy"), "the Qt hierarchy dock came back"
-    visible = [bar for bar in window.findChildren(QtWidgets.QToolBar) if bar.isVisible()]
-    assert visible == [], visible
-    assert not window.menuBar().isVisible(), "the menus are drawn in the viewport"
+    viewer = window.viewer
+    assert viewer.uses_toolkit is False
+    assert viewer.view is None, "a toolkit widget came back"
+    assert not hasattr(window, "hierarchy"), "a hierarchy dock came back"
+    gui = viewer.gui
+    assert gui.menubar, "the menus are drawn in the viewport"
+    assert gui.toolbar, "the toolbar is drawn in the viewport"
 
 
 def test_nothing_but_the_viewport_is_drawn_on_the_window(window):
-    """A `QWidget` parented to the window that no layout owns is drawn at
-    (0, 0), 100 x 30 -- a grey `Command line` box over the toolbar row.
+    """The chrome is the renderer's own: one canvas, one painter.
 
-    Four were stacked there once the dock area went (`Chinsole`, `VolumeDock`
-    and two bare containers), all still constructed because a few call sites
-    read them. Hiding is not enough for all of them, so the parent link is cut.
-
-    The viewport is now the *only* one: the Qt status bar went the same way as
-    the Qt menu bar, replaced by the chrome's own status line, which obeys
-    `show_status` and exists in a browser host too.
+    In the Qt window stray child widgets (a grey `Command line` box, the
+    status bar, the menu bar) were drawn beside the viewport; here there is one
+    surface, and the prompt, the status line and the panels are all drawn by
+    the chrome that renderer owns.
     """
-    from qtpy import QtWidgets
-
-    drawn = [
-        type(child).__name__
-        for child in window.findChildren(QtWidgets.QWidget)
-        if child.isVisible() and child.parentWidget() is window
-    ]
-    assert drawn == ["Viewer"], drawn
-    # Cut off the window, not deleted: the call sites that read them still work.
-    assert window.command_panel is not None
-    assert window.volume_panel is not None
+    renderer = window.viewer.renderer
+    assert renderer._internal_gui is window.viewer.gui
+    frame = window.grab()
+    assert frame is not None and frame.shape[:2] == (window.size[1], window.size[0])
 
 
 def test_the_object_list_is_still_there_in_the_viewport(window):
     """Removing the dock must not remove the thing it duplicated."""
-    window.sync_internal_gui()
+    window.refresh_objects()
     gui = window.viewer.gui
     names = [row.name for row in gui.rows]
     assert "all" in names and "sele" in names

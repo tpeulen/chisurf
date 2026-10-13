@@ -152,12 +152,6 @@ def test_a_plain_pdb_has_no_hierarchy(tmp_path):
 # --------------------------------------------------------------------------- #
 # Showing it
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp_hier():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 def _three_level_tree():
     root = HierarchyNode(name="entry", node_type="ROOT")
@@ -178,10 +172,9 @@ def _three_level_tree():
 #
 # The tests below are **not** about either panel: they are about the viewer
 # honouring `set_rows_hidden`, whoever calls it.
-def test_hidden_rows_are_not_drawn(qapp_hier):
+def test_hidden_rows_are_not_drawn():
     """The point of the check box: fewer particles in the picture."""
-    from chimol.core.viewer import Viewer
-
+    from native_window import native_viewer
     n = 40
     rng = np.random.default_rng(1)
     xyz = rng.normal(scale=20.0, size=(n, 3))
@@ -202,7 +195,7 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
     atoms["res_id"] = np.arange(1, n + 1)
     atoms["xyz"] = xyz
 
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         trace_coords=xyz,
@@ -222,9 +215,8 @@ def test_hidden_rows_are_not_drawn(qapp_hier):
     assert view._bead_scene_object(cfg, None).geometry.positions.shape[0] == n
 
 
-def test_hiding_everything_draws_nothing(qapp_hier):
-    from chimol.core.viewer import Viewer
-
+def test_hiding_everything_draws_nothing():
+    from native_window import native_viewer
     n = 12
     xyz = np.arange(n * 3, dtype=float).reshape(n, 3)
     dtype = np.dtype(
@@ -244,7 +236,7 @@ def test_hiding_everything_draws_nothing(qapp_hier):
     atoms["res_id"] = np.arange(1, n + 1)
     atoms["xyz"] = xyz
 
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         trace_coords=xyz,
@@ -257,7 +249,7 @@ def test_hiding_everything_draws_nothing(qapp_hier):
     assert view._bead_scene_object({"impostor_min_atoms": 1}, None) is None
 
 
-def test_hiding_follows_the_atoms_when_they_are_reordered(qapp_hier):
+def test_hiding_follows_the_atoms_when_they_are_reordered():
     """`hidden_mask` is atom-indexed, so a `sort` has to permute it too.
 
     Left out of the atom-indexed list it would keep the *old* order while the
@@ -272,12 +264,11 @@ def test_hiding_follows_the_atoms_when_they_are_reordered(qapp_hier):
     assert "hidden_mask" in ATOM_INDEXED_FIELDS
 
 
-def test_the_viewer_keeps_the_hierarchy_it_is_given(qapp_hier):
+def test_the_viewer_keeps_the_hierarchy_it_is_given():
     """One field, whichever reader filled it."""
-    from chimol.core.viewer import Viewer
-
+    from native_window import native_viewer
     tree = _three_level_tree()
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         np.zeros((3, 3), dtype=float) + np.arange(3)[:, None],
         hierarchy=tree,

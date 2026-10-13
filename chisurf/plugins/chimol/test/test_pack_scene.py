@@ -29,29 +29,16 @@ _PDB = (
 REPRESENTATIONS = ("cartoon", "sticks", "spheres", "surface", "lines")
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    """Keep the QApplication alive for the module.
-
-    It has to be *bound*: an unreferenced ``QApplication([])`` is collected as
-    soon as the expression ends, and the next ``QWidget`` construction aborts the
-    interpreter rather than raising.
-    """
-    pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def scenes(qapp):
+def scenes():
     """One assembled Scene per representation, built without a display."""
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
 
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
     viewer.apply_payload(payload)
 

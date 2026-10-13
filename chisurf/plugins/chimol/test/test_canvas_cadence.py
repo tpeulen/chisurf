@@ -283,6 +283,10 @@ def _fake_host(*, nerd: bool = False, debug: bool = False) -> SimpleNamespace:
     """
     gui = SimpleNamespace(nerd=nerd, debug_overlays=debug)
     host = SimpleNamespace(
+        # `make_timer(self._controller)` picks the timer class from the viewer
+        # (a HeadlessViewer never gets a QTimer); no viewer here, so the
+        # module's `Timer` -- the one the tests patch -- is used.
+        _controller=None,
         _idle_settle_timer=None,
         _idle_settling=False,
         updated=0,

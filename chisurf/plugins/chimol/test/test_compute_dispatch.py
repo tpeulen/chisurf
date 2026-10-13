@@ -20,6 +20,7 @@ import time
 
 import pytest
 from chimol.core.services import compute_dispatch
+from native_window import process_events
 
 
 @pytest.fixture(autouse=True)
@@ -104,16 +105,12 @@ def test_the_worker_lands_on_the_ui_thread_at_poll():
 @pytest.fixture(scope="module")
 def driven_window():
     """A window with one dye and the density panel open, driven headlessly."""
-    pytest.importorskip("qtpy")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+    from native_window import NativeWindow
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.resize(900, 700)
-    win.show()
     for _ in range(4):
-        app.processEvents()
+        process_events()
     yield win
     win.close()
 
@@ -129,7 +126,6 @@ def test_the_drag_tick_is_immediate_and_the_contour_lands_later(driven_window):
     shared = win.cmd
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 

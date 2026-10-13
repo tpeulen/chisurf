@@ -14,8 +14,8 @@ from __future__ import annotations
 import pathlib
 
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -29,38 +29,34 @@ PDB = (
 
 @pytest.fixture(scope="module")
 def session():
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+    from native_window import NativeWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(900, 640)
-    win.show()
     for _ in range(5):
-        app.processEvents()
+        process_events()
 
     errors: list[str] = []
     messages: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(messages.append)
     shared.set_error_callback(errors.append)
 
     def run(line: str) -> list[str]:
         before = len(errors)
-        win._run_object_menu_command(line)
+        win.run_menu_command(line)
         for _ in range(3):
-            app.processEvents()
+            process_events()
         return errors[before:]
 
     run(f"load {PDB}")
     run("distance d1, resi 10 and name CA, resi 20 and name CA")
     run("distance d2, resi 30 and name CA, resi 40 and name CA")
-    win.sync_internal_gui()
+    win.refresh_objects()
     for _ in range(3):
-        app.processEvents()
+        process_events()
     yield win, run, messages
     win.close()
 
@@ -108,14 +104,14 @@ def test_clicking_the_row_switches_the_measurement_off_and_on(session):
 
     # Off, not gone.
     assert "d1" in win.viewer.measurements
-    win._run_object_menu_command("measurement d1, on")
+    win.run_menu_command("measurement d1, on")
     assert _scene_ids(win, "d1")
 
 
 def test_the_command_lists_them(session):
     win, _run, said = session
     said.clear()
-    win._run_object_menu_command("measurement")
+    win.run_menu_command("measurement")
     joined = " ".join(said)
     assert "d1" in joined and "d2" in joined
 
@@ -129,10 +125,10 @@ def test_an_unknown_measurement_says_so(session):
 def test_delete_removes_it_from_the_list(session):
     win, run, _said = session
     run("distance temporary, resi 50 and name CA, resi 60 and name CA")
-    win.sync_internal_gui()
+    win.refresh_objects()
     assert "temporary" in [row.name for row in _rows(win)]
 
     run("measurement temporary, delete")
-    win.sync_internal_gui()
+    win.refresh_objects()
     assert "temporary" not in [row.name for row in _rows(win)]
     assert "temporary" not in win.viewer.measurements

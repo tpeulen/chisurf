@@ -211,14 +211,13 @@ def test_hetero_records_survive_the_parser(parsed):
     assert {"NAG", "BME"} & res_names
 
 
-def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
+def test_the_fallback_assigns_secondary_structure():
     """Without this the cartoon has nothing to shape and draws a loop tube."""
-    from chimol.core.viewer import Viewer
-
+    from native_window import native_viewer
     structure, backbone = load_structure_payload(_FALLBACK_PDB, structure_factory=None)
     assert structure is None
 
-    view = Viewer()
+    view = native_viewer()
     view.add_coordinates(
         backbone.coords,
         name="148l",
@@ -239,8 +238,3 @@ def test_the_fallback_assigns_secondary_structure(qapp_for_fallback):
     assert view._trace_ups.shape[0] == view._coords.shape[0]
 
 
-@pytest.fixture(scope="session")
-def qapp_for_fallback():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

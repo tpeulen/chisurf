@@ -14,7 +14,6 @@ import struct
 import numpy as np
 import pytest
 
-pytest.importorskip("qtpy")
 
 from chimol.core.model.volume import VolumeGrid
 from chimol.io.mesh_export import (
@@ -25,19 +24,12 @@ from chimol.io.mesh_export import (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def shell(qapp):
+def shell():
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     z, y, x = np.mgrid[-10:10, -10:10, -10:10]
     grid = VolumeGrid(
         values=np.exp(-(x * x + y * y + z * z) / 30.0).astype(np.float32),
@@ -129,7 +121,7 @@ def test_save_routes_the_new_extensions(shell, tmp_path):
         assert marker in messages[-1]
 
 
-def test_spheres_and_sticks_are_tessellated_back(qapp, tmp_path):
+def test_spheres_and_sticks_are_tessellated_back(tmp_path):
     """The scene draws them analytically; the file needs triangles again."""
     from chimol.render.scene import Geometry, Scene, SceneObject
 

@@ -21,7 +21,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chimol.hosts.qt:MolViewPluginWindow",
     "emtk": "chisurf.plugins.chimol.app:make_app"
   },
   "menu_hidden": false,

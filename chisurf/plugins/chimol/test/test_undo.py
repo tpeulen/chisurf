@@ -161,22 +161,16 @@ def test_a_state_without_coordinates_cannot_be_pushed():
 # --------------------------------------------------------------------------- #
 # Through the commands
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     """Build a viewer with 148L loaded and a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
 
-    view = Viewer()
+    view = native_viewer()
     view.add_structure(
         _read_full_model(cs_struct.Structure, _PDB_148L),
         name="148l",

@@ -19,8 +19,8 @@ import re
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -32,15 +32,9 @@ PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def cmd(qapp):
+def cmd():
     """A window with 148L loaded, and a runner that returns what was said.
 
     Module-scoped: every test here reads the same structure and none of them
@@ -48,28 +42,25 @@ def cmd(qapp):
     seconds instead of 15. The one test that touches a global setting restores
     it in a ``finally``.
     """
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(700, 520)
-    win.show()
     for _ in range(4):
-        qapp.processEvents()
+        process_events()
 
     messages: list[str] = []
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(messages.append)
     shared.set_error_callback(errors.append)
 
     def run(line: str) -> tuple[str, str]:
         before_m, before_e = len(messages), len(errors)
-        win._run_object_menu_command(line)
+        win.run_menu_command(line)
         for _ in range(3):
-            qapp.processEvents()
+            process_events()
         said = messages[-1] if len(messages) > before_m else ""
         complained = errors[-1] if len(errors) > before_e else ""
         return said, complained

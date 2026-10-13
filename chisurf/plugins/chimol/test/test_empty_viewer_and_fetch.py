@@ -28,24 +28,16 @@ import pytest
 from chimol.commands.builtin.selection import _NOTHING_LOADED
 
 
-@pytest.fixture(scope="session")
-def qapp_empty():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp_empty):
+def session():
     """A plugin window with the shared command object attached to it."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(600, 400)
     errors: list[str] = []
     messages: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(messages.append)
     shared.set_error_callback(errors.append)
     yield win, shared, errors, messages

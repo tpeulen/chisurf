@@ -83,11 +83,11 @@ def background_for(viewer) -> tuple[float, float, float]:
 def build(scene_name: str, entry: dict):
     """Replay one baseline scene headlessly and return ``(viewer, errors)``."""
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from chimol.core.viewer import HeadlessViewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
 
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = HeadlessViewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_DATA / entry["structure"])
     viewer.apply_payload(payload)
 
@@ -139,10 +139,6 @@ def compare(scene_name: str):
 def main(names: list[str]) -> int:
     """Write one contact sheet with a row per scene."""
     from PIL import Image
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    assert app is not None  # bound: an unreferenced QApplication is collected
 
     rows, report = [], []
     for name in names:

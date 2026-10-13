@@ -12,27 +12,19 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
-
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 @pytest.fixture
-def window(qapp):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+def window():
+    from native_window import NativeWindow
+    win = NativeWindow()
     win.resize(800, 600)
-    win.show()
     for _ in range(4):
-        qapp.processEvents()
-    yield win, qapp
+        process_events()
+    yield win, None
     win.close()
 
 
@@ -45,7 +37,7 @@ def _grid(name: str, width: float):
 
 
 def _showing(win) -> str:
-    return win.volume_panel.model.summary().split(" — ")[0]
+    return win.open_panel("density").model.summary().split(" — ")[0]
 
 
 def test_the_panel_follows_the_newest_map(window):
@@ -53,11 +45,11 @@ def test_the_panel_follows_the_newest_map(window):
     viewer = win.viewer
 
     first = viewer.add_volume(_grid("map_ONE", 12.0), name="map_ONE")
-    qapp.processEvents()
+    process_events()
     assert _showing(win) == "map_ONE"
 
     second = viewer.add_volume(_grid("map_TWO", 40.0), name="map_TWO")
-    qapp.processEvents()
+    process_events()
     assert _showing(win) == "map_TWO"
 
     # The reported case: nothing map-like is active any more.
@@ -76,14 +68,14 @@ def test_deleting_a_map_falls_back_to_one_that_is_still_there(window):
     viewer = win.viewer
     first = viewer.add_volume(_grid("map_ONE", 12.0), name="map_ONE")
     second = viewer.add_volume(_grid("map_TWO", 40.0), name="map_TWO")
-    qapp.processEvents()
+    process_events()
 
     viewer.remove_object(second)
-    qapp.processEvents()
+    process_events()
     assert _showing(win) == "map_ONE"
 
     viewer.remove_object(first)
-    qapp.processEvents()
-    assert "No map loaded" in win.volume_panel.model.summary(), (
+    process_events()
+    assert "No map loaded" in win.open_panel("density").model.summary(), (
         "the panel still describes a map that has been unloaded"
     )

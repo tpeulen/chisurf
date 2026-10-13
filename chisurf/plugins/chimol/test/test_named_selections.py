@@ -25,17 +25,10 @@ import numpy as np
 import pytest
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def window(qapp, tmp_path):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+def window(tmp_path):
+    from native_window import NativeWindow
     src = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"
@@ -47,7 +40,7 @@ def window(qapp, tmp_path):
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
 
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.load_structure_from_path(pdb, name="148l")
     return win
 

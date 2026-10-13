@@ -16,8 +16,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from chimol.core.viewer import _DISPLAY_CONFIG, Viewer
+from native_window import native_viewer  # noqa: E402
 from chimol.io.structure import _parse_pdb_backbone
-from qtpy import QtWidgets
 
 _PDB = (
     Path(__file__).resolve().parents[4]
@@ -28,14 +28,6 @@ _PDB = (
     / "148l.pdb"
 )
 
-
-@pytest.fixture
-def _qt_app():
-    """Ensure a QApplication exists for Viewer construction."""
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    return app
 
 
 pytestmark = pytest.mark.usefixtures("bond_family")
@@ -55,9 +47,9 @@ def _load_fallback(view: Viewer) -> int:
     return int(backbone.coords.shape[0])
 
 
-def test_fallback_renders_every_atom(_qt_app) -> None:
+def test_fallback_renders_every_atom() -> None:
     """The atoms representation must draw all atoms, not a CA subsample."""
-    view = Viewer()
+    view = native_viewer()
     n_atoms = _load_fallback(view)
     view.set_atoms_visible(True)
 
@@ -79,9 +71,9 @@ def test_fallback_renders_every_atom(_qt_app) -> None:
     assert drawn == n_atoms, f"drew {drawn} atoms, expected {n_atoms}"
 
 
-def test_fallback_computes_bonds_and_renders_sticks(_qt_app) -> None:
+def test_fallback_computes_bonds_and_renders_sticks() -> None:
     """Bonds are computed from raw coordinates so sticks can render."""
-    view = Viewer()
+    view = native_viewer()
     _load_fallback(view)
 
     assert view._bond_pairs is not None
@@ -96,14 +88,14 @@ def test_fallback_computes_bonds_and_renders_sticks(_qt_app) -> None:
     assert any(o.id.endswith("sticks") for o in objs), "sticks did not render in fallback"
 
 
-def test_fallback_dots_render_every_atom(_qt_app) -> None:
+def test_fallback_dots_render_every_atom() -> None:
     """Dots must render all atoms, not crash on a missing per-atom res-id array.
 
     The fallback populates ``_residue_ids`` (per-CA) but leaves
     ``_all_atom_res_ids`` as ``None``; the per-residue colour path used to build
     ``np.asarray(None)`` and iterate a 0-d array.
     """
-    view = Viewer()
+    view = native_viewer()
     n_atoms = _load_fallback(view)
     view.set_dots_visible(True)
 
@@ -113,14 +105,14 @@ def test_fallback_dots_render_every_atom(_qt_app) -> None:
     assert dots[0].geometry.positions.shape[0] == n_atoms
 
 
-def test_fallback_scene_builds_with_dots_and_metaballs(_qt_app) -> None:
+def test_fallback_scene_builds_with_dots_and_metaballs() -> None:
     """A full scene build must not raise when dots and metaballs are enabled.
 
     Because ``_update_dots`` runs inside the shared scene builder, its previous
     crash aborted the whole build, so metaballs (and everything else) silently
     disappeared even though their own code was correct.
     """
-    view = Viewer()
+    view = native_viewer()
     _load_fallback(view)
     view.set_dots_visible(True)
     view.set_metaballs_visible(True)
@@ -128,7 +120,7 @@ def test_fallback_scene_builds_with_dots_and_metaballs(_qt_app) -> None:
     view.update_view()
 
 
-def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:
+def test_fallback_metaball_surface_spans_the_molecule() -> None:
     """The metaball isosurface must be a connected envelope, not sub-voxel spikes.
 
     Density sigmas derive from ``_all_atom_radii`` in the *scaled* coordinate
@@ -136,7 +128,7 @@ def test_fallback_metaball_surface_spans_the_molecule(_qt_app) -> None:
     a scaled default; without it the sigma is ~``_scale_factor``x too small and
     marching cubes yields a handful of disconnected specks instead of a surface.
     """
-    view = Viewer()
+    view = native_viewer()
     _load_fallback(view)
     view.set_metaballs_visible(True)
 

@@ -9,11 +9,10 @@ PyMOL's name and position, and that nothing on the bar is a dead button.
 from __future__ import annotations
 
 import pytest
-from chimol.hosts.qt.menu_bar import (
+from chimol.ui.menus.bar import (
     EXTRA_MENUS,
     MENU_BAR,
     OMITTED_MENUS,
-    build_menu_bar,
 )
 
 #: PyMOL's own bar, from pymol/_gui.py:get_menudata.
@@ -41,7 +40,7 @@ def test_the_bar_keeps_pymols_names_and_order():
     for one that leaves the bar: it is either OMITTED (chimol cannot fill it)
     or FOLDED (it is complete, one level down), and both are declared.
     """
-    from chimol.hosts.qt.menu_bar import FOLDED_MENUS
+    from chimol.ui.menus.bar import FOLDED_MENUS
 
     ours = [title for title, _ in MENU_BAR if title not in EXTRA_MENUS]
     assert ours == [t for t in _PYMOL_BAR if t not in OMITTED_MENUS and t not in FOLDED_MENUS]
@@ -146,55 +145,53 @@ def test_disabled_entries_explain_themselves():
 
 
 # --------------------------------------------------------------------------- #
-# On a real window
+# On a real window: the bar the viewport draws
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
+def _press(gui, rect) -> None:
+    """Click the middle of *rect* the way a pointer does."""
+    x, y = rect.x + rect.w / 2, rect.y + rect.h / 2
+    gui.mouse_move(x, y)
+    gui.mouse_press(x, y)
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+def _row(gui, label):
+    """The open menu's row labelled *label* (its rect)."""
+    for rect, entry in gui._menus[-1].item_rects:
+        if entry.label == label:
+            return rect
+    raise AssertionError(f"no {label!r} in {gui._menus[-1].title!r}")
 
 
-def test_the_bar_installs_and_acts(qapp):
-    from chimol.core.settings.config import _DISPLAY_CONFIG
-    from qtpy import QtWidgets
+@pytest.fixture
+def window():
+    from native_window import NativeWindow
 
-    issued: list[str] = []
-    window = QtWidgets.QMainWindow()
-    bar = build_menu_bar(window, issued.append)
-    # What a host installs is the shipped bar plus what plugins contribute
-    # (density's "Density" menu, for one), in that order.
+    win = NativeWindow(size=(1000, 700))
+    yield win
+    win.close()
+
+
+def test_the_bar_installs_and_acts(window):
+    """The host's bar is the shipped bar plus what plugins contribute, and acts.
+
+    Pressed through the viewport's own menu bar -- title, submenu row, entry --
+    the path a pointer takes, ending in the command the entry names.
+    """
     from chimol.ui.menus.bar import menu_bar
 
+    gui = window.viewer.gui
+    issued: list[str] = []
+    gui.set_run_command(issued.append)
+    gui.layout(*window.size)
+
     installed = [t for t, _ in menu_bar()]
-    assert [a.text() for a in bar.actions()] == installed
+    assert [title for title, _entries in gui.menubar] == installed
     assert installed[: len(MENU_BAR)] == [t for t, _ in MENU_BAR]
 
-    setting = next(a.menu() for a in bar.actions() if a.text() == "Setting")
-    occlusion = next(a.menu() for a in setting.actions() if a.text() == "Ambient Occlusion")
-    next(a for a in occlusion.actions() if a.text() == "Off").trigger()
+    setting = next(rect for rect, title, _e in gui._menubar_rects if title == "Setting")
+    _press(gui, setting)
+    assert gui._menus and gui._menus[-1].title.startswith("Setting")
+    _press(gui, _row(gui, "Ambient Occlusion"))
+    assert gui._menus[-1].title.startswith("Ambient Occlusion")
+    _press(gui, _row(gui, "Off"))
     assert issued == ["set occlusion.enabled, off"]
-    assert _DISPLAY_CONFIG is not None  # imported for the reader's benefit
-
-
-def test_a_special_entry_calls_its_handler(qapp):
-    """The ``__marker__`` dispatch works, tested on its own entry.
-
-    The bar itself no longer carries a special entry ("Edit All..." became
-    the plain `config` command), so the mechanism is exercised directly
-    rather than through an entry that happens to use it today.
-    """
-    from chimol.hosts.qt.menu_bar import _populate
-    from chimol.ui.menus.objects import MenuEntry
-    from qtpy import QtWidgets
-
-    calls: list[str] = []
-    menu = QtWidgets.QMenu()
-    _populate(
-        menu,
-        (MenuEntry("Special", "__dialog__"),),
-        calls.append,
-        {"dialog": lambda: calls.append("dialog")},
-    )
-    menu.actions()[0].trigger()
-    assert calls == ["dialog"]

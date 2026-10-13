@@ -25,23 +25,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 from chimol.core.model.atoms_util import _is_bead_model
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import bead_mask
 from chimol.io.structure import load_structure_payload
 from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolution_rmf
 
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")
 
-
-@pytest.fixture
-def _qt_app():
-    """Ensure a QApplication exists for Viewer construction."""
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    return app
 
 
 #: Force the impostor branch, whose geometry carries one position per bead --
@@ -68,7 +58,7 @@ def single(tmp_path_factory):
 def _load(path, qt_app=None):
     """Load a file the way the window does and return the viewer."""
     _structure, payload = load_structure_payload(Path(path))
-    view = Viewer()
+    view = native_viewer()
     view.add_payload(payload, name="model", source_path=str(path))
     return view, payload
 
@@ -84,7 +74,7 @@ def _drawn(view) -> int:
 # --------------------------------------------------------------------------- #
 # Read as one payload
 # --------------------------------------------------------------------------- #
-def test_an_rmf_arrives_as_beads_with_their_own_radii(_qt_app, multires):
+def test_an_rmf_arrives_as_beads_with_their_own_radii(multires):
     """The thing the parallel path never delivered: bead rows and real sizes."""
     path, info = multires
     view, payload = _load(path)
@@ -106,7 +96,7 @@ def test_an_rmf_arrives_as_beads_with_their_own_radii(_qt_app, multires):
     assert view._all_atom_radii[coarse].min() > view._all_atom_radii[fine].max()
 
 
-def test_the_trajectory_and_the_hierarchy_both_arrive(_qt_app, multires):
+def test_the_trajectory_and_the_hierarchy_both_arrive(multires):
     """One call carries the frames and the tree, not just coordinates."""
     path, info = multires
     view, payload = _load(path)
@@ -119,7 +109,7 @@ def test_the_trajectory_and_the_hierarchy_both_arrive(_qt_app, multires):
     assert len(view._rmf_hierarchy.atom_indices) == info["n_particles"]
 
 
-def test_measurements_follow_playback(_qt_app, multires):
+def test_measurements_follow_playback(multires):
     """``atoms["xyz"]`` tracks the frame, so distances are not frozen at frame 0.
 
     This is what ``zoom``, ``distance`` and ``select ... within`` read. It used
@@ -140,7 +130,7 @@ def test_measurements_follow_playback(_qt_app, multires):
 # --------------------------------------------------------------------------- #
 # Resolutions
 # --------------------------------------------------------------------------- #
-def test_an_ordinary_rmf_offers_no_choice(_qt_app, single):
+def test_an_ordinary_rmf_offers_no_choice(single):
     """One representation means no resolution dimension and no chooser.
 
     A chooser offering a single option is worse than none, and an array of one
@@ -155,7 +145,7 @@ def test_an_ordinary_rmf_offers_no_choice(_qt_app, single):
     assert _drawn(view) == info["n_fine_total"]
 
 
-def test_a_multiresolution_file_opens_on_the_trees_own_representation(_qt_app, multires):
+def test_a_multiresolution_file_opens_on_the_trees_own_representation(multires):
     """Both depictions are loaded; only the file's own one is drawn."""
     path, info = multires
     view, _payload = _load(path)
@@ -168,7 +158,7 @@ def test_a_multiresolution_file_opens_on_the_trees_own_representation(_qt_app, m
     assert _drawn(view) == info["n_fine_total"]
 
 
-def test_switching_resolution_changes_what_is_drawn(_qt_app, multires):
+def test_switching_resolution_changes_what_is_drawn(multires):
     """The chooser swaps the depiction without reloading anything."""
     path, info = multires
     view, _payload = _load(path)
@@ -183,7 +173,7 @@ def test_switching_resolution_changes_what_is_drawn(_qt_app, multires):
     assert _drawn(view) == info["n_fine_total"]
 
 
-def test_an_unmatched_resolution_keeps_the_current_one(_qt_app, multires):
+def test_an_unmatched_resolution_keeps_the_current_one(multires):
     """A request that matches nothing is refused, not obeyed into an empty view."""
     path, info = multires
     view, _payload = _load(path)
@@ -203,7 +193,7 @@ def _first_molecule_rows(view) -> list[int]:
     raise AssertionError("the fixture has chains")
 
 
-def test_hiding_a_molecule_removes_its_beads(_qt_app, multires):
+def test_hiding_a_molecule_removes_its_beads(multires):
     """The hierarchy check boxes move the picture for an RMF, at last."""
     path, info = multires
     view, _payload = _load(path)
@@ -219,7 +209,7 @@ def test_hiding_a_molecule_removes_its_beads(_qt_app, multires):
     assert before - after == sum(1 for row in rows if view._resolutions[row] == FINE_RESOLUTION)
 
 
-def test_choosing_a_resolution_does_not_unhide_what_you_hid(_qt_app, multires):
+def test_choosing_a_resolution_does_not_unhide_what_you_hid(multires):
     """The two masks answer different questions and are composed, not shared.
 
     Sharing one mask is the tempting simplification, and it means picking a
@@ -271,7 +261,7 @@ def test_the_coordinate_permutation_is_right(multires, monkeypatch):
     np.testing.assert_allclose(buffered, per_node, atol=1e-5)
 
 
-def test_stated_bonds_survive_a_bead_model(_qt_app, multires):
+def test_stated_bonds_survive_a_bead_model(multires):
     """A reader that knows the connectivity outranks the all-beads rule.
 
     A bead model has no bonds to *infer* -- no interatomic distance means
@@ -285,7 +275,7 @@ def test_stated_bonds_survive_a_bead_model(_qt_app, multires):
     stated = np.array([[0, 1], [1, 2]], dtype=int)
     payload.bonds = stated
 
-    view = Viewer()
+    view = native_viewer()
     view.add_payload(payload, name="bonded")
 
     assert view._bond_pairs is not None

@@ -11,7 +11,13 @@ from __future__ import annotations
 import pytest
 from chimol.ui.gui import GuiRow, InternalGui, char_width
 from chimol.ui.menus.objects import OBJECT_MENUS
-from qtpy import QtCore
+from emtk.events import (
+    CONTROL_MODIFIER,
+    LEFT_BUTTON,
+    NO_MODIFIER,
+    RIGHT_BUTTON,
+    SHIFT_MODIFIER,
+)
 
 WIDTH, HEIGHT = 900, 600
 
@@ -787,7 +793,7 @@ def test_shift_click_extends_the_previous_gesture(sequences):
     origin = sequences._seq_origin
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # anchor at 2
-    sequences.mouse_press(origin + char_w * 7.5, row.y + 4, modifiers=QtCore.Qt.ShiftModifier)
+    sequences.mouse_press(origin + char_w * 7.5, row.y + 4, modifiers=SHIFT_MODIFIER)
 
     assert sequences.sequences[0].selected == set(range(2, 8))
     assert picked[-1] == [2, 3, 4, 5, 6, 7]
@@ -803,7 +809,7 @@ def test_ctrl_click_toggles_and_keeps_the_rest(sequences):
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # {2}
     sequences.mouse_press(
-        origin + char_w * 5.5, row.y + 4, modifiers=QtCore.Qt.ControlModifier
+        origin + char_w * 5.5, row.y + 4, modifiers=CONTROL_MODIFIER
     )  # +{5}
 
     assert sequences.sequences[0].selected == {2, 5}
@@ -820,7 +826,7 @@ def test_ctrl_drag_merges_into_the_selection(sequences):
 
     sequences.mouse_press(origin + char_w * 2.5, row.y + 4)  # {2}
     sequences.mouse_press(
-        origin + char_w * 4.5, row.y + 4, modifiers=QtCore.Qt.ControlModifier
+        origin + char_w * 4.5, row.y + 4, modifiers=CONTROL_MODIFIER
     )  # {2,4}
     sequences.drag(origin + char_w * 8.5, row.y + 4)
 
@@ -1135,54 +1141,45 @@ def test_the_table_and_the_mouse_read_the_same_bindings():
     ends up promising `CtSh + L = Sele` while the code does something else, and
     nothing catches it because both look right on their own.
     """
-    from qtpy import QtCore, QtWidgets
-
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chimol.ui.input.mouse_modes import action_of, rows_for
 
     mode = "three_button_viewing"
     cells = dict(rows_for(mode))
 
-    assert action_of(mode, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier) == "rota"
+    assert action_of(mode, LEFT_BUTTON, NO_MODIFIER) == "rota"
     assert cells["& Keys"][0] == "Rota"
 
     assert (
         action_of(
             mode,
-            QtCore.Qt.LeftButton,
-            QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
+            LEFT_BUTTON,
+            CONTROL_MODIFIER | SHIFT_MODIFIER,
         )
         == "sele"
     )
     assert cells["CtSh"][0] == "Sele"
 
-    assert action_of(mode, QtCore.Qt.RightButton, QtCore.Qt.ControlModifier) == "pk1"
+    assert action_of(mode, RIGHT_BUTTON, CONTROL_MODIFIER) == "pk1"
     assert cells["Ctrl"][2] == "Pk1"
 
 
 def test_ctrl_shift_is_its_own_row_not_a_ctrl_row():
     """`CtSh` is a row of its own; testing ctrl first would swallow it."""
-    from qtpy import QtCore, QtWidgets
-
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chimol.ui.input.mouse_modes import modifier_of
 
-    assert modifier_of(QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier) == "ctsh"
-    assert modifier_of(QtCore.Qt.ControlModifier) == "ctrl"
-    assert modifier_of(QtCore.Qt.ShiftModifier) == "shft"
-    assert modifier_of(QtCore.Qt.NoModifier) == "none"
+    assert modifier_of(CONTROL_MODIFIER | SHIFT_MODIFIER) == "ctsh"
+    assert modifier_of(CONTROL_MODIFIER) == "ctrl"
+    assert modifier_of(SHIFT_MODIFIER) == "shft"
+    assert modifier_of(NO_MODIFIER) == "none"
 
 
 def test_the_wheel_bindings_come_from_the_table_too():
-    from qtpy import QtCore, QtWidgets
-
-    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     from chimol.ui.input.mouse_modes import wheel_action_of
 
     mode = "three_button_viewing"
-    assert wheel_action_of(mode, QtCore.Qt.NoModifier) == "slab"
-    assert wheel_action_of(mode, QtCore.Qt.ShiftModifier) == "movs"
-    assert wheel_action_of(mode, QtCore.Qt.ControlModifier) == "mvsz"
+    assert wheel_action_of(mode, NO_MODIFIER) == "slab"
+    assert wheel_action_of(mode, SHIFT_MODIFIER) == "movs"
+    assert wheel_action_of(mode, CONTROL_MODIFIER) == "mvsz"
 
 
 # Selection cost is not tested here for the same reason the mouse routing is
@@ -1435,7 +1432,7 @@ def test_stuck_windows_move_together_and_shift_detaches(gui):
     # A shift-drag pulls A out alone.
     before_b = (b.x, b.y)
     gx, gy = _title_grab(gui, a)
-    gui.mouse_press(gx, gy, modifiers=QtCore.Qt.ShiftModifier)
+    gui.mouse_press(gx, gy, modifiers=SHIFT_MODIFIER)
     gui.drag(gx - 60, gy + 80)
     assert (b.x, b.y) == pytest.approx(before_b), "shift-drag must move alone"
     assert a.x != pytest.approx(b.x - 120)

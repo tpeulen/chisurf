@@ -1,0 +1,1006 @@
+{
+ "_recorded": {
+  "source_commit": "chimol b2a3f2b",
+  "date": "2026-10-13",
+  "widget": "chimol.hosts.qt.MolViewPluginWindow 1200x800, QT_QPA_PLATFORM=offscreen",
+  "action": "load test/data/atomic_coordinates/pdb_files/148l.pdb; orient",
+  "evidence": "okf/plugins/emtk-ports/chimol/retire_*.json"
+ },
+ "menus": [
+  [
+   "File",
+   [
+    [
+     "Open...",
+     "open"
+    ],
+    [
+     "Fetch PDB...",
+     "fetch {text}"
+    ],
+    [
+     "Save Molecule As...",
+     "save {text}"
+    ],
+    [
+     "Save Image As...",
+     "png {text}"
+    ],
+    [
+     "Export",
+     null
+    ],
+    [
+     "Export/glTF for PowerPoint...",
+     "save {text}"
+    ],
+    [
+     "Export/STL...",
+     "save {text}"
+    ],
+    [
+     "Export/WRL (VRML)...",
+     "save {text}"
+    ],
+    [
+     "Save Movie As...",
+     null
+    ],
+    [
+     "Log File",
+     null
+    ],
+    [
+     "Working Directory",
+     null
+    ],
+    [
+     "Reinitialize",
+     "reinitialize"
+    ],
+    [
+     "Quit",
+     "quit"
+    ]
+   ]
+  ],
+  [
+   "Edit",
+   [
+    [
+     "History…",
+     "history_panel toggle"
+    ],
+    [
+     "Undo",
+     "undo"
+    ],
+    [
+     "Redo",
+     "redo"
+    ]
+   ]
+  ],
+  [
+   "Display",
+   [
+    [
+     "Preset",
+     null
+    ],
+    [
+     "Preset/Ribbons",
+     "preset_cx ribbons"
+    ],
+    [
+     "Preset/Cylinders",
+     "preset_cx cylinders"
+    ],
+    [
+     "Preset/Licorice",
+     "preset_cx licorice"
+    ],
+    [
+     "Preset/Ghostly white surface",
+     "preset_cx ghostly_white"
+    ],
+    [
+     "Preset/Surface, atom colours",
+     "preset_cx atomic_transparent"
+    ],
+    [
+     "Preset/Surface, by chain",
+     "preset_cx chain_opaque"
+    ],
+    [
+     "Preset/Publication: silhouettes",
+     "preset_cx publication_silhouettes"
+    ],
+    [
+     "Preset/Publication: depth-cued",
+     "preset_cx publication_depth"
+    ],
+    [
+     "Preset/Interactive",
+     "preset_cx interactive"
+    ],
+    [
+     "Preset/AlphaFold confidence",
+     "preset_cx alphafold"
+    ],
+    [
+     "Preset/List them at the prompt",
+     "preset_cx"
+    ],
+    [
+     "Sequence",
+     null
+    ],
+    [
+     "Sequence/Show",
+     "set seq_view, on"
+    ],
+    [
+     "Sequence/Hide",
+     "set seq_view, off"
+    ],
+    [
+     "Hierarchy",
+     "hierarchy_panel toggle"
+    ],
+    [
+     "Density controls",
+     "density_panel toggle"
+    ],
+    [
+     "Object List",
+     "object_panel toggle"
+    ],
+    [
+     "Mouse Settings",
+     "mouse_panel toggle"
+    ],
+    [
+     "Settings",
+     "settings_panel toggle"
+    ],
+    [
+     "Stereo",
+     null
+    ],
+    [
+     "Zoom",
+     null
+    ],
+    [
+     "Zoom/4 Angstrom",
+     "zoom all, 4"
+    ],
+    [
+     "Zoom/6 Angstrom",
+     "zoom all, 6"
+    ],
+    [
+     "Zoom/8 Angstrom",
+     "zoom all, 8"
+    ],
+    [
+     "Zoom/12 Angstrom",
+     "zoom all, 12"
+    ],
+    [
+     "Zoom/20 Angstrom",
+     "zoom all, 20"
+    ],
+    [
+     "Zoom/All",
+     "zoom"
+    ],
+    [
+     "Zoom/Complete",
+     "zoom all, 0, 1"
+    ],
+    [
+     "Clip",
+     null
+    ],
+    [
+     "Clip/Near in",
+     "clip near, -5"
+    ],
+    [
+     "Clip/Near out",
+     "clip near, 5"
+    ],
+    [
+     "Clip/Far in",
+     "clip far, -5"
+    ],
+    [
+     "Clip/Far out",
+     "clip far, 5"
+    ],
+    [
+     "Section",
+     null
+    ],
+    [
+     "Section/Section panel...",
+     "section toggle"
+    ],
+    [
+     "Section/Cut facing camera",
+     "slice view"
+    ],
+    [
+     "Section/Cut along X",
+     "slice x"
+    ],
+    [
+     "Section/Cut along Y",
+     "slice y"
+    ],
+    [
+     "Section/Cut along Z",
+     "slice z"
+    ],
+    [
+     "Section/Add cut along X",
+     "slice add, x"
+    ],
+    [
+     "Section/Add cut along Y",
+     "slice add, y"
+    ],
+    [
+     "Section/Add cut along Z",
+     "slice add, z"
+    ],
+    [
+     "Section/List cuts",
+     "slice list"
+    ],
+    [
+     "Section/No section",
+     "slice off"
+    ],
+    [
+     "Projection",
+     null
+    ],
+    [
+     "Projection/Perspective",
+     "set orthoscopic, off"
+    ],
+    [
+     "Projection/Orthoscopic",
+     "set orthoscopic, on"
+    ],
+    [
+     "Background",
+     null
+    ],
+    [
+     "Background/White",
+     "bg_color white"
+    ],
+    [
+     "Background/Light Grey",
+     "bg_color grey80"
+    ],
+    [
+     "Background/Grey",
+     "bg_color grey50"
+    ],
+    [
+     "Background/Black",
+     "bg_color black"
+    ],
+    [
+     "Background/Opaque",
+     null
+    ],
+    [
+     "Perspective",
+     null
+    ],
+    [
+     "Perspective/Orthoscopic View",
+     "set orthoscopic, on"
+    ],
+    [
+     "Perspective/Perspective View",
+     "set orthoscopic, off"
+    ],
+    [
+     "Perspective/Field of view 20",
+     "set field_of_view, 20"
+    ],
+    [
+     "Perspective/Field of view 45",
+     "set field_of_view, 45"
+    ],
+    [
+     "Quality",
+     null
+    ],
+    [
+     "Quality/Maximum Quality",
+     "set cartoon_sampling, 14; set cartoon_oval_quality, 30; set cartoon_loop_quality, 20"
+    ],
+    [
+     "Quality/Default Quality",
+     "unset cartoon_sampling; unset cartoon_oval_quality; unset cartoon_loop_quality"
+    ],
+    [
+     "Quality/Maximum Performance",
+     "set cartoon_sampling, 4; set cartoon_oval_quality, 8; set cartoon_loop_quality, 6"
+    ],
+    [
+     "Grid",
+     null
+    ],
+    [
+     "Grid/Show",
+     "show grid"
+    ],
+    [
+     "Grid/Hide",
+     "hide grid"
+    ]
+   ]
+  ],
+  [
+   "Setting",
+   [
+    [
+     "Edit All...",
+     "config"
+    ],
+    [
+     "Label",
+     null
+    ],
+    [
+     "Lines & Sticks",
+     null
+    ],
+    [
+     "Lines & Sticks/Stick radius 0.1",
+     "set stick_radius, 0.1"
+    ],
+    [
+     "Lines & Sticks/Stick radius 0.15",
+     "set stick_radius, 0.15"
+    ],
+    [
+     "Lines & Sticks/Stick radius 0.25",
+     "set stick_radius, 0.25"
+    ],
+    [
+     "Cartoon",
+     null
+    ],
+    [
+     "Cartoon/Flat Sheets",
+     "set cartoon_flat_sheets, on"
+    ],
+    [
+     "Cartoon/Curvy Sheets",
+     "set cartoon_flat_sheets, off"
+    ],
+    [
+     "Cartoon/Round Helices",
+     "set cartoon_round_helices, on"
+    ],
+    [
+     "Cartoon/Trace Helices",
+     "set cartoon_round_helices, off"
+    ],
+    [
+     "Cartoon/Ribbon",
+     "cartoon automatic"
+    ],
+    [
+     "Cartoon/Tube",
+     "cartoon tube"
+    ],
+    [
+     "Ambient Occlusion",
+     null
+    ],
+    [
+     "Ambient Occlusion/On",
+     "set occlusion.enabled, on"
+    ],
+    [
+     "Ambient Occlusion/Off",
+     "set occlusion.enabled, off"
+    ],
+    [
+     "Ambient Occlusion/Subtle",
+     "set occlusion.darkness, 0.4"
+    ],
+    [
+     "Ambient Occlusion/Default",
+     "set occlusion.darkness, 0.7"
+    ],
+    [
+     "Ambient Occlusion/Strong",
+     "set occlusion.darkness, 0.9"
+    ],
+    [
+     "Ambient Occlusion/Occlude with residues",
+     "set occlusion.occluders, residues"
+    ],
+    [
+     "Ambient Occlusion/Occlude with atoms",
+     "set occlusion.occluders, atoms"
+    ],
+    [
+     "Ambient Occlusion/Shade during playback",
+     "set occlusion.during_playback, on"
+    ],
+    [
+     "Ambient Occlusion/Skip during playback",
+     "set occlusion.during_playback, off"
+    ],
+    [
+     "Surface",
+     null
+    ],
+    [
+     "Surface/Solvent radius 1.4",
+     "set solvent_radius, 1.4"
+    ],
+    [
+     "Surface/Fine (slow)",
+     "set surface_quality, 0.5"
+    ],
+    [
+     "Surface/Coarse (fast)",
+     "set surface_quality, 1.2"
+    ],
+    [
+     "Transparency",
+     null
+    ],
+    [
+     "Rendering",
+     null
+    ],
+    [
+     "Rendering/Shadows On",
+     "set ray_shadow, on"
+    ],
+    [
+     "Rendering/Shadows Off",
+     "set ray_shadow, off"
+    ],
+    [
+     "Rendering/Antialias 1",
+     "set antialias, 1"
+    ],
+    [
+     "Rendering/Antialias 2",
+     "set antialias, 2"
+    ],
+    [
+     "Rendering/Antialias 4",
+     "set antialias, 4"
+    ],
+    [
+     "PDB File Loading",
+     null
+    ]
+   ]
+  ],
+  [
+   "Demo",
+   [
+    [
+     "Cartoon and colour",
+     "demo cartoon"
+    ],
+    [
+     "Selections",
+     "demo selections"
+    ],
+    [
+     "Every representation",
+     "demo representations"
+    ],
+    [
+     "Lighting presets",
+     "demo lighting"
+    ],
+    [
+     "Publication figure",
+     "demo publication"
+    ],
+    [
+     "Trajectory + intra_fit",
+     "demo trajectory"
+    ],
+    [
+     "Measuring",
+     "demo measure"
+    ],
+    [
+     "Dye labelling",
+     "demo labelling"
+    ],
+    [
+     "T4L FRET network",
+     "demo t4l_network"
+    ],
+    [
+     "EMDB density map",
+     "demo emdb_map"
+    ],
+    [
+     "Cryo-electron tomogram",
+     "demo cryoet"
+    ],
+    [
+     "NPC (3D SMLM particle average)",
+     "demo npc_smlm"
+    ],
+    [
+     "NPC (ShareLoc Xenopus WGA)",
+     "demo npc_shareloc"
+    ],
+    [
+     "NPC (six-component 3D SMLM averages + human integrative scaffold)",
+     "demo npc_integrative"
+    ],
+    [
+     "NPC (yeast PDB-IHM assembly)",
+     "demo npc_yeast_integrative"
+    ],
+    [
+     "Biofilm growth (simulated)",
+     "demo biofilm"
+    ],
+    [
+     "Gigastructure streaming",
+     "demo gigastream"
+    ],
+    [
+     "PetWorld Gigastructures",
+     null
+    ],
+    [
+     "PetWorld Gigastructures/Bacterial flagellar motor",
+     "demo flagellarmotor"
+    ],
+    [
+     "PetWorld Gigastructures/Mushroom postsynapse",
+     "demo postsynmushroom"
+    ],
+    [
+     "PetWorld Gigastructures/Stubby postsynapse (Largest)",
+     "demo postsynstubby"
+    ],
+    [
+     "PetWorld Gigastructures/Presynaptic bouton",
+     "demo presynapse"
+    ],
+    [
+     "PetWorld Gigastructures/SARS-CoV-2 virion",
+     "demo sarscov2"
+    ],
+    [
+     "PetWorld Gigastructures/HIV viral particle",
+     "demo hiv"
+    ],
+    [
+     "PetWorld Gigastructures/Synaptic vesicle",
+     "demo synvesicle"
+    ],
+    [
+     "PetWorld Gigastructures/T7 bacteriophage",
+     "demo t7phage"
+    ],
+    [
+     "PetWorld Gigastructures/T7 bacteriophage entry",
+     "demo t7phageentry"
+    ],
+    [
+     "PetWorld Gigastructures/Synaptic gap junction",
+     "demo syngap"
+    ],
+    [
+     "List them at the prompt",
+     "demo"
+    ],
+    [
+     "Edit a demo script…",
+     "demo_edit"
+    ],
+    [
+     "New script…",
+     "demo_edit new"
+    ]
+   ]
+  ],
+  [
+   "Tools",
+   [
+    [
+     "Build",
+     null
+    ],
+    [
+     "Build/Bond Picked Pair",
+     "bond"
+    ],
+    [
+     "Build/Unbond Picked Pair",
+     "unbond"
+    ],
+    [
+     "Build/Add Hydrogens",
+     "h_add"
+    ],
+    [
+     "Build/Add Pseudoatom",
+     "pseudoatom"
+    ],
+    [
+     "Build/Remove Selection",
+     "remove sele"
+    ],
+    [
+     "Build/Mutagenesis Wizard",
+     "wizard mutagenesis"
+    ],
+    [
+     "Wizard",
+     null
+    ],
+    [
+     "Wizard/Mutagenesis",
+     "wizard mutagenesis"
+    ],
+    [
+     "Wizard/Measurement",
+     "wizard measurement"
+    ],
+    [
+     "Wizard/Dye Labelling",
+     "wizard labelling"
+    ],
+    [
+     "Wizard/Done",
+     "wizard done"
+    ],
+    [
+     "Map",
+     null
+    ],
+    [
+     "Map/Density Controls",
+     "density_panel toggle"
+    ],
+    [
+     "Map/Map Info",
+     "map_info"
+    ],
+    [
+     "Map/Hide Dust",
+     "hide_dust"
+    ],
+    [
+     "Map/Show Dust",
+     "show_dust"
+    ],
+    [
+     "Map/Gaussian Filter",
+     "volume_gaussian"
+    ],
+    [
+     "Map/Style",
+     null
+    ],
+    [
+     "Map/Style/Surface",
+     "isosurface"
+    ],
+    [
+     "Map/Style/Mesh",
+     "isomesh"
+    ],
+    [
+     "Map/Style/Solid",
+     "volume"
+    ],
+    [
+     "Map/Surface Quality",
+     null
+    ],
+    [
+     "Map/Surface Quality/Coarse",
+     "volume_quality coarse"
+    ],
+    [
+     "Map/Surface Quality/Normal",
+     "volume_quality normal"
+    ],
+    [
+     "Map/Surface Quality/Smooth",
+     "volume_quality smooth"
+    ],
+    [
+     "Map/Surface Quality/Fine",
+     "volume_quality fine"
+    ],
+    [
+     "Measure",
+     null
+    ],
+    [
+     "Measure/Measurement Wizard",
+     "wizard measurement"
+    ],
+    [
+     "Measure/Dye Labelling Wizard",
+     "wizard labelling"
+    ],
+    [
+     "Measure/Distance...",
+     "distance {text}"
+    ],
+    [
+     "Panels",
+     null
+    ],
+    [
+     "Panels/Hierarchy",
+     "hierarchy_panel toggle"
+    ],
+    [
+     "Panels/Density",
+     "density_panel toggle"
+    ],
+    [
+     "Panels/Object List",
+     "object_panel toggle"
+    ],
+    [
+     "Panels/Mouse Settings",
+     "mouse_panel toggle"
+    ],
+    [
+     "Panels/Settings",
+     "settings_panel toggle"
+    ],
+    [
+     "Panels/System Info",
+     "info_panel toggle"
+    ],
+    [
+     "Panels/History",
+     "history_panel toggle"
+    ],
+    [
+     "Labelling",
+     null
+    ],
+    [
+     "Labelling/Attach a dye…",
+     "wizard labelling"
+    ],
+    [
+     "Labelling/Labelling network…",
+     "fps_circle"
+    ],
+    [
+     "Labelling/Positions…",
+     "fps_circle , , Positions"
+    ],
+    [
+     "Labelling/Distances…",
+     "fps_circle , , Distances"
+    ],
+    [
+     "Labelling/FlexFit…",
+     "fps_circle , , FlexFit"
+    ],
+    [
+     "Labelling/Edit fps.json…",
+     "fps_edit"
+    ],
+    [
+     "Labelling/Load a plan…",
+     "fps_load"
+    ],
+    [
+     "Labelling/Save the plan…",
+     "fps_save"
+    ],
+    [
+     "RMF viewer",
+     "rmf"
+    ],
+    [
+     "Scores (per frame)…",
+     "scores"
+    ],
+    [
+     "Place landmarks…",
+     "wizard landmarks"
+    ],
+    [
+     "Crop a region…",
+     "wizard roi"
+    ],
+    [
+     "Volume crosshair",
+     "volume_crosshair on"
+    ],
+    [
+     "Clear annotations",
+     "annotations_clear"
+    ],
+    [
+     "Labelizer (FRET sites)…",
+     "labelizer"
+    ]
+   ]
+  ],
+  [
+   "Help",
+   [
+    [
+     "Commands",
+     "help"
+    ],
+    [
+     "Settings",
+     "help_setting"
+    ],
+    [
+     "Keyboard bindings",
+     "keys"
+    ],
+    [
+     "Tours",
+     null
+    ],
+    [
+     "Tours/Fit a model into a cryo-EM map",
+     "tour fit_in_map"
+    ],
+    [
+     "Tours/Edit a labelling plan",
+     "tour fps_editor"
+    ],
+    [
+     "Tours/Label a protein with dyes",
+     "tour labelling"
+    ],
+    [
+     "Tours/Superpose two structures: align, super, rms",
+     "tour superpose"
+    ],
+    [
+     "Reset GUI",
+     "window_reset"
+    ],
+    [
+     "dbg",
+     "dbg toggle"
+    ]
+   ]
+  ],
+  [
+   "Density",
+   [
+    [
+     "Volume Views…",
+     "volume_views"
+    ],
+    [
+     "slices",
+     "set volume_mode, slices"
+    ],
+    [
+     "MIP",
+     "set volume_mode, mip"
+    ],
+    [
+     "composite",
+     "set volume_mode, composite"
+    ],
+    [
+     "Slice Z 25%",
+     "set slice_z, 0.25"
+    ],
+    [
+     "Slice Z 50%",
+     "set slice_z, 0.50"
+    ],
+    [
+     "Slice Z 75%",
+     "set slice_z, 0.75"
+    ],
+    [
+     "opacity 25%",
+     "set slice_alpha, 0.25"
+    ],
+    [
+     "opacity 100%",
+     "set slice_alpha, 1.0"
+    ]
+   ]
+  ]
+ ],
+ "toolbar": [
+  [
+   "Open",
+   "open",
+   "Load a structure file."
+  ],
+  [
+   "Plane",
+   "toggle_rep plane",
+   "Show or hide the reference plane."
+  ],
+  [
+   "Surf",
+   "toggle_rep surface",
+   "Show or hide the molecular surface."
+  ],
+  [
+   "Cfg",
+   "config",
+   "Open the display configuration."
+  ],
+  [
+   "AA",
+   "color by_residue",
+   "Colour by amino-acid type."
+  ],
+  [
+   "SS",
+   "color by_ss",
+   "Colour by secondary structure."
+  ],
+  [
+   "Seq",
+   "color by_sequence",
+   "Colour N to C."
+  ],
+  [
+   "Info",
+   "info_panel toggle",
+   "Show or hide the system-info panel."
+  ],
+  [
+   "Density",
+   "density_panel toggle",
+   "Contour levels for a loaded map."
+  ],
+  [
+   "Tree",
+   "hierarchy_panel toggle",
+   "The structure's node tree."
+  ]
+ ],
+ "objects": [
+  "148l"
+ ],
+ "n_atoms": -1,
+ "rows": [
+  "all",
+  "148l",
+  "sele"
+ ],
+ "sequences": [
+  [
+   "148l",
+   169
+  ]
+ ]
+}

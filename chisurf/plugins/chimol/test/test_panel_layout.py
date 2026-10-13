@@ -38,57 +38,22 @@ _PDB = (
 pytestmark = pytest.mark.slow
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _settle(widget, width, height, app, passes=8):
-    """Force a real layout pass at a chosen size.
-
-    ``resize`` alone leaves the children with their old geometry until Qt gets
-    round to a layout, and a grab taken before then shows stale positions — which
-    is how a panel can look fine in a screenshot and be misaligned in use.
-    """
-    widget.setMinimumSize(width, height)
-    widget.setMaximumSize(width, height)
-    widget.resize(width, height)
-    widget.show()
-    for _ in range(passes):
-        layout = widget.layout()
-        if layout is not None:
-            layout.activate()
-        app.processEvents()
-    return widget
-
-
 @pytest.fixture
-def window(qapp):
+def window():
     """Build a window with a protein and two derived objects, for comparing rows."""
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from native_window import NativeWindow
 
-    win = MolViewPluginWindow()
+    win = NativeWindow(size=(1300, 850))
     shared = win.cmd
-    win.resize(1300, 850)
-    win.show()
-    for _ in range(10):
-        qapp.processEvents()
     win.load_structure_from_path(_PDB)
-    for _ in range(20):
-        qapp.processEvents()
 
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(lambda _m: None)
-    shared.do("create ligand, organic")
-    shared.do("create pept, chain S and polymer")
-    for _ in range(20):
-        qapp.processEvents()
+    win.do("create ligand, organic")
+    win.do("create pept, chain S and polymer")
 
-    yield win, qapp
+    yield win, None
     win.close()
 
 
@@ -120,9 +85,17 @@ def test_the_info_overlay_is_off_until_it_is_asked_for(window):
     already started it hidden; the toolbar button was checked at construction and
     switched it back on at startup, which is why the default was the opposite of
     the one the viewer declared.
+
+    This host shows a structure's facts the moment it arrives
+    (``ViewerHost.load_structure_from_path``) -- but **unpinned**, so the next click in the scene puts
+    them away; only the Info button keeps the overlay up. That is the property
+    held here: nothing has asked for the overlay to stay.
     """
     win, _ = window
-    assert not win.button_info.isChecked()
+    gui = win.viewer.gui
+    assert not gui.info_pinned, "the overlay is pinned open without being asked"
+    win.viewer.set_system_info_visible(False)
+    win.pump()
     assert not win.viewer._info_visible
 
 
@@ -131,25 +104,20 @@ def test_the_info_panel_is_chrome_not_a_stacked_widget(window):
 
     It was a `QPlainTextEdit` stacked on the surface, and a Qt widget cannot see
     chrome painted *into* the surface -- so it was drawn over the in-viewport
-    prompt, and the fix was a spacer row in the container's layout guessing how
-    tall the prompt was. Now one object lays out both and there is nothing to
-    guess. The guard is that no widget is stacked over the renderer at all.
+    prompt. Now one object lays out both and there is nothing to guess. The
+    guard is that the panel is the chrome's: laid out by the gui that draws the
+    prompt, with no widget of any toolkit anywhere.
     """
-    from qtpy import QtWidgets
+    win, _ = window
+    win.viewer.set_system_info_visible(True)
+    win.viewer.set_system_info_text("System: coordinates")
+    win.resize(900, 600)
+    win.pump()
 
-    win, qapp = window
-    win.button_info.setChecked(True)
-    _settle(win.viewer._view_container, 900, 600, qapp)
-
-    assert not hasattr(win.viewer, "_info_overlay"), "the info panel is a stacked Qt widget again"
-    container = win.viewer._view_container
-    renderer = win.viewer.renderer.widget()
-    stacked = [
-        child
-        for child in container.children()
-        if isinstance(child, QtWidgets.QWidget) and child is not renderer
-    ]
-    assert not stacked, f"widgets stacked over the scene: {stacked}"
+    assert not hasattr(win.viewer, "_info_overlay"), "the info panel is a stacked widget again"
+    assert win.viewer.view is None, "a toolkit widget is stacked over the scene"
+    gui = win.viewer.gui
+    assert gui.info_visible and gui._info_rect.w > 0, "the chrome did not lay the panel out"
 
 
 def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
@@ -159,12 +127,13 @@ def test_the_info_panel_sits_in_the_bottom_left_above_the_prompt(window):
     text, and a framed structure sits centre-high, so a panel anchored to the
     top competes with both. Measured rather than eyeballed.
     """
-    win, qapp = window
-    win.button_info.setChecked(True)
+    win, _ = window
+    win.viewer.set_system_info_visible(True)
     win.viewer.set_system_info_text("System: coordinates\nAtoms: 1363")
-    _settle(win.viewer._view_container, 900, 600, qapp)
+    win.resize(900, 600)
+    win.pump()
 
-    from chimol.hosts.qt.overlay import refresh_gui_state
+    from chimol.ui.gui_state import refresh_gui_state
 
     gui = win.viewer.gui
     # The two calls the renderer makes to build its chrome: the panel's text is

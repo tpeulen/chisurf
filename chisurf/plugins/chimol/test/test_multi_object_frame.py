@@ -14,18 +14,10 @@ own coordinates put them.
 from __future__ import annotations
 
 import numpy as np
-import pytest
-
-pytest.importorskip("qtpy")
-
-from chimol.core.viewer import Viewer  # noqa: E402
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
+from native_window import native_viewer  # noqa: E402
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _blob(centre, n=40, spread=5.0):
@@ -49,8 +41,8 @@ def _load(view, points, name=None):
     return view.get_active_object_id()
 
 
-def test_the_first_object_still_defines_the_origin(qapp):
-    view = Viewer()
+def test_the_first_object_still_defines_the_origin():
+    view = native_viewer()
     points = _blob((100.0, 0.0, 0.0))
     _load(view, points)
 
@@ -59,9 +51,9 @@ def test_the_first_object_still_defines_the_origin(qapp):
     assert np.allclose(np.asarray(view._get_active_state().all_atom_coords).mean(0), 0.0, atol=1e-6)
 
 
-def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
+def test_a_second_object_borrows_the_frame_rather_than_re_centring():
     """Both were landing on the origin; the second must land 40 Å away."""
-    view = Viewer()
+    view = native_viewer()
     first = _blob((0.0, 0.0, 0.0))
     first_id = _load(view, first)
 
@@ -79,14 +71,14 @@ def test_a_second_object_borrows_the_frame_rather_than_re_centring(qapp):
     assert np.allclose(np.asarray(states[first_id].all_atom_coords).mean(0), 0.0, atol=1e-6)
 
 
-def test_the_second_objects_radius_is_measured_about_the_shared_centre(qapp):
+def test_the_second_objects_radius_is_measured_about_the_shared_centre():
     """`update_view` frames the camera from the largest object radius.
 
     Measured about a centre the object no longer uses, that radius is the
     object's own extent -- far too small to reach it -- and the camera clips it
     away.
     """
-    view = Viewer()
+    view = native_viewer()
     _load(view, _blob((0.0, 0.0, 0.0), spread=2.0))
     _load(view, _blob((200.0, 0.0, 0.0), spread=2.0), name="far")
 

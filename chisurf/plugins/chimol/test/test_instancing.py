@@ -136,25 +136,19 @@ def test_a_plain_mesh_still_takes_the_plain_pipeline():
     ) not in renderer._pipelines or True  # built lazily only when used
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_an_object_with_an_instance_set_builds_instanced_meshes(qapp):
+def test_an_object_with_an_instance_set_builds_instanced_meshes():
     """The scene builder attaches the block to every mesh the object produced; the tracer expands."""
     import pathlib
 
     import chimol
     from chimol.core.model.instances import InstanceSet
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
 
     pdb = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     _s, payload = load_structure_payload(pdb)
     viewer.apply_payload(payload)
     viewer.update_view()
@@ -179,17 +173,17 @@ def test_an_object_with_an_instance_set_builds_instanced_meshes(qapp):
     assert grid.bounds_radius(10.0) > 10.0
 
 
-def test_the_instances_command(qapp):
+def test_the_instances_command():
     import pathlib
 
     import chimol
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.viewport.headless import SceneSink
 
     pdb = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
     cmd = Cmd(None, plugins=False)
     host.cmd = cmd

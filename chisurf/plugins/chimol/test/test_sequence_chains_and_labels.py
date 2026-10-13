@@ -21,8 +21,6 @@ import pathlib
 import numpy as np
 import pytest
 
-pytest.importorskip("qtpy")
-
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
     / "test"
@@ -33,38 +31,22 @@ PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 @pytest.fixture(scope="module")
-def session(qapp):
-    from chimol.hosts.qt.window import MolViewPluginWindow
+def session():
+    from native_window import NativeWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    win = MolViewPluginWindow()
+    win = NativeWindow(size=(900, 620))
     shared = win.cmd
-    win.resize(900, 620)
-    win.show()
-    for _ in range(4):
-        qapp.processEvents()
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(lambda _m: None)
 
     def run(line: str) -> None:
-        win._run_object_menu_command(line)
-        for _ in range(3):
-            qapp.processEvents()
+        win.run_menu_command(line)
 
     run(f"load {PDB}")
-    win.sync_internal_gui()
-    for _ in range(3):
-        qapp.processEvents()
+    win.refresh_objects()
     yield run, win
     win.close()
 
@@ -125,9 +107,9 @@ def test_a_click_on_a_residue_column_selects_that_residue(session):
 
 def test_an_object_without_chains_has_no_markers():
     """No chain column is not a reason to invent one."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.hosts.base import sequence_rows_for_object
 
-    rows = MolViewPluginWindow._sequence_rows_for_object(
+    rows = sequence_rows_for_object(
         "o1", "beads", list("ACDEF"), [1, 2, 3, 4, 5], [], None
     )
     assert len(rows) == 1
@@ -151,10 +133,15 @@ def test_the_label_size_setting_is_read(session):
         run(f"set label_size, {before}")
 
 
-def test_paint_labels_honours_the_size_it_is_given(qapp):
-    """The painter, not just the setting: the two were disconnected before."""
-    from chimol.hosts.qt.overlay import DEFAULT_LABEL_SIZE, paint_labels
-    from qtpy import QtGui
+def test_paint_labels_honours_the_size_it_is_given():
+    """The painter, not just the setting: the two were disconnected before.
+
+    The toolkit-free painter every host draws labels with now (the chrome's
+    quad painter); the Qt host's ``QPainter`` version drew them for itself
+    alone, and the other hosts showed a distance's dashes with no number.
+    """
+    from chimol.viewport.screen_overlays import DEFAULT_LABEL_SIZE, paint_labels
+    from emtk.quad_painter import QuadPainter
 
     class _Label:
         pos = (0.0, 0.0, 0.0)
@@ -166,30 +153,13 @@ def test_paint_labels_honours_the_size_it_is_given(qapp):
         return np.full(n, 40.0), np.full(n, 40.0), np.ones(n, dtype=bool)
 
     def _ink(asked):
-        """Width and height of the drawn glyphs, in pixels.
-
-        The rendered ink, not ``painter.font()``: ``paint_labels`` brackets
-        itself in ``save``/``restore``, so the font is already back to the
-        caller's by the time it returns -- and the ink is what was actually
-        reported as too small anyway.
-        """
-        image = QtGui.QImage(400, 200, QtGui.QImage.Format_RGBA8888_Premultiplied)
-        image.fill(0)
-        painter = QtGui.QPainter(image)
-        try:
-            assert paint_labels(painter, [_Label()], _project, asked) == 1
-        finally:
-            painter.end()
-        buffer = image.constBits()
-        try:
-            buffer.setsize(image.sizeInBytes())
-        except AttributeError:
-            pass
-        stride = image.bytesPerLine()
-        arr = np.frombuffer(bytes(buffer), dtype=np.uint8).reshape(200, stride // 4, 4)
-        rows, cols = np.nonzero(arr[:, :400, 3])
-        assert rows.size, "nothing was drawn"
-        return int(cols.max() - cols.min()) + 1, int(rows.max() - rows.min()) + 1
+        """Width and height of the drawn glyph quads, in pixels."""
+        painter = QuadPainter()
+        assert paint_labels(painter, [_Label()], _project, asked) == 1
+        vertices = painter.vertices()
+        assert len(vertices), "nothing was drawn"
+        xs, ys = vertices[:, 0], vertices[:, 1]
+        return float(xs.max() - xs.min()), float(ys.max() - ys.min())
 
     default_w, default_h = _ink(None)
     big_w, big_h = _ink(DEFAULT_LABEL_SIZE * 2)
@@ -198,6 +168,36 @@ def test_paint_labels_honours_the_size_it_is_given(qapp):
     # And the default is the shipped one, not the 10 that was hard-coded.
     small_w, small_h = _ink(10.0)
     assert default_h > small_h, "the default is still the hard-coded 10"
+
+
+def test_a_distance_label_reaches_the_frame():
+    """A ``distance`` draws its number on this host too, not only its dashes.
+
+    On a window of its own: the module's shared session is left in whatever
+    state the tests above put it.
+    """
+    from native_window import PDB_148L, NativeWindow
+
+    win = NativeWindow(size=(900, 620))
+    try:
+        _messages, errors = win.capture_messages()
+        # T4 lysozyme: one chain, so each selection is one atom.
+        win.run_menu_command(f"load {PDB_148L}")
+        win.run_menu_command("distance d1, resi 10 and name CA, resi 40 and name CA")
+        win.pump(2)
+        assert errors == []
+        renderer = win.viewer.renderer
+        assert renderer._labels, (
+            "the measurement carried no label into the scene: "
+            f"{[o.id for o in win.viewer._scene.objects]} {_messages[-2:]}"
+        )
+        assert renderer._labels[0].text.replace(".", "").isdigit()
+        chrome = renderer._chrome_quads()
+        under = renderer._with_screen_overlays(None)
+        assert under is not None and len(under), "the labels drew no glyphs"
+        assert chrome is not None and len(chrome) >= len(under)
+    finally:
+        win.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -319,13 +319,13 @@ def test_a_long_path_is_wrapped_rather_than_run_off_the_panel():
 
 def test_the_panel_pulls_its_text_and_palette_from_the_viewer(session):
     """It is chrome, so it is pulled at paint time rather than pushed."""
-    from chimol.hosts.qt.overlay import refresh_gui_state
+    from chimol.ui.gui_state import refresh_gui_state
 
     _run, win = session
     viewer = win.viewer
     gui = viewer.gui
 
-    win.button_info.setChecked(True)
+    viewer.set_system_info_visible(True)
     viewer.set_system_info_text("System: coordinates")
     refresh_gui_state(gui, viewer)
 
@@ -334,6 +334,6 @@ def test_the_panel_pulls_its_text_and_palette_from_the_viewer(session):
     assert set(gui.info_colors) == {"background", "text", "border"}
     assert len(gui.info_colors["background"]) == 4
 
-    win.button_info.setChecked(False)
+    viewer.set_system_info_visible(False)
     refresh_gui_state(gui, viewer)
     assert gui.info_visible is False

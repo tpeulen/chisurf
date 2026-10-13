@@ -23,7 +23,7 @@ import math
 import numpy as np
 import pytest
 from chimol.core.model.atoms_util import _bead_mask, _is_bead_model
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 
 
@@ -45,10 +45,10 @@ def _bead_atoms(n: int = 64, seed: int = 0):
 
 
 @pytest.fixture
-def bead_view(qapp_chimol):
+def bead_view():
     """Return a Viewer holding a 64-bead model with per-bead radii."""
     atoms, xyz, radii = _bead_atoms()
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         trace_coords=xyz,
@@ -60,12 +60,6 @@ def bead_view(qapp_chimol):
     )
     return view, radii
 
-
-@pytest.fixture(scope="session")
-def qapp_chimol():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 # --------------------------------------------------------------------------- #
@@ -169,10 +163,10 @@ def test_per_bead_colours_need_no_residue_lookup(bead_view):
     assert obj.geometry.colors[:, 0] == pytest.approx(colors[:, 0])
 
 
-def test_a_protein_does_not_take_the_bead_path(qapp_chimol):
+def test_a_protein_does_not_take_the_bead_path():
     atoms, xyz, radii = _bead_atoms(n=16)
     atoms["res_name"] = "ALA"
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         trace_coords=xyz,
@@ -209,9 +203,9 @@ def _hybrid(n_atomic: int = 8, n_beads: int = 40):
 
 
 @pytest.fixture
-def hybrid_view(qapp_chimol):
+def hybrid_view():
     atoms, xyz, radii, trace, res_ids, res_names = _hybrid()
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         trace_coords=trace,
@@ -237,7 +231,7 @@ def test_one_atom_ahead_of_the_beads_does_not_make_it_a_protein(hybrid_view):
     assert not _is_bead_model(atoms), "it is not *wholly* beads"
 
 
-def test_a_bead_first_array_does_not_swallow_its_atoms(qapp_chimol):
+def test_a_bead_first_array_does_not_swallow_its_atoms():
     """The converse: beads at the head used to strip the atomic part's cartoon."""
     atoms, _xyz, _r = _bead_atoms(n=1000)
     atoms["res_name"][900:] = "ALA"
@@ -321,7 +315,7 @@ def test_a_bead_is_not_drawn_twice(hybrid_view):
 # --------------------------------------------------------------------------- #
 # An impostor is a sphere, so it has to be the size of one
 # --------------------------------------------------------------------------- #
-def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
+def test_impostor_point_scale_matches_the_ray_tracer():
     """Both project a vertical field of view onto the frame height.
 
     ``_point_scale`` is what the vertex shader divides by camera-space depth.
@@ -329,12 +323,11 @@ def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
     pixels, which is the same projection the ray tracer builds its ray grid
     from -- so a GL impostor and a ray-traced sphere are the same size.
     """
-    from chimol.hosts.qt import wgpu_view
+    from chimol.hosts.native import canvas
 
-    if not wgpu_view.is_available():
+    if not canvas.is_available():
         pytest.skip("no WebGPU adapter")
-    renderer = wgpu_view.WgpuRenderer(controller=None)
-    renderer.resize(800, 600)
+    renderer = canvas.renderer_factory(backend="offscreen", size=(800, 600))(controller=None)
     renderer._fov = 45.0
 
     height = float(renderer._gpu.height)
@@ -345,10 +338,10 @@ def test_impostor_point_scale_matches_the_ray_tracer(qapp_chimol):
     diameter_px = 2.0 * r * scale / d
     expected = 2.0 * r * height / (2.0 * d * math.tan(math.radians(22.5)))
     assert diameter_px == pytest.approx(expected)
-    renderer.deleteLater()
+    renderer.close()
 
 
-def test_world_radius_reaches_the_draw_call(qapp_chimol):
+def test_world_radius_reaches_the_draw_call():
     """The flag is what tells the shader the radius is not a pixel count.
 
     Read off the packed instance data rather than a draw-call object: the

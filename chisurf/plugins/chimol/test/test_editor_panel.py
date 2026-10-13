@@ -18,12 +18,6 @@ from emtk.testing import RecordingPainter
 _PDB = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
 def app():

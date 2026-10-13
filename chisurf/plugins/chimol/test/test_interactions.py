@@ -483,28 +483,21 @@ def test_rebuilding_a_residue_as_itself_reproduces_it(tmp_path):
 # --------------------------------------------------------------------------- #
 # The wizard panel
 # --------------------------------------------------------------------------- #
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def wizard_cmd(qapp, tmp_path):
+def wizard_cmd(tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
     from chimol.commands.command import Cmd
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     src = _PDB / "148l.pdb"
     if not src.is_file():
         pytest.skip("no 148l fixture")
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
 
-    window = MolViewPluginWindow()
+    window = NativeWindow()
     window.load_structure_from_path(pdb, name="148l")
     cmd = Cmd(window)
     errors: list[str] = []
@@ -518,7 +511,7 @@ def wizard_cmd(qapp, tmp_path):
 
 
 def _panel(window):
-    gui = window.viewer.view._internal_gui
+    gui = window.viewer.renderer._internal_gui
     return [(row.kind, row.label) for row in gui.wizard_rows]
 
 

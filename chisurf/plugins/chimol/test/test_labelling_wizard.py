@@ -19,8 +19,8 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -32,31 +32,22 @@ PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def session(qapp):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+def session():
+    from native_window import NativeWindow
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(700, 520)
-    win.show()
     for _ in range(4):
-        qapp.processEvents()
-    shared.set_window(win)
+        process_events()
     errors: list[str] = []
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
     shared.do(f"load {PDB}")
-    yield win, shared, errors, qapp
+    yield win, shared, errors, None
     shared.do("wizard done")
     shared.do("delete all")
     win.close()

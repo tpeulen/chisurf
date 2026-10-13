@@ -361,20 +361,13 @@ def test_agrees_with_imps_reader(tmp_path, blob):
 # --------------------------------------------------------------------------- #
 # A map in the scene
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def shell(qapp):
+def shell():
     """A blob map, in a viewer, reachable from the command line."""
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
     values = np.exp(-(((xx - 12) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 40.0)).astype(np.float32)
     grid = VolumeGrid.from_array(values, step=(1.0, 1.0, 1.0), name="blob")
@@ -387,7 +380,7 @@ def shell(qapp):
     try:
         yield view, grid, cmd, messages, errors
     finally:
-        view.deleteLater()
+        view.native_window.close()
 
 
 def test_a_map_becomes_a_scene_object(shell):
@@ -861,14 +854,19 @@ def test_each_repository_builds_the_url_it_should(monkeypatch, tmp_path):
     assert "EMD-3061/map/emd_3061.map.gz" in requested[-1]
 
 
-def test_a_map_file_loads_as_a_map_object_not_a_point_cloud(tmp_path, blob, qapp):
-    """The point cloud threw the volume away: no level, nothing for the panel."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
+def test_a_map_file_loads_as_a_map_object_not_a_point_cloud(tmp_path, blob):
+    """The point cloud threw the volume away: no level, nothing for the panel.
+
+    Through ``load``, which routes a map to ``load_map`` on every host -- the Qt
+    window used to special-case map suffixes inside its own structure reader.
+    """
+    from native_window import NativeWindow
 
     path = write_mrc(tmp_path / "loaded.mrc", blob, step=(1.5, 1.5, 1.5))
-    window = MolViewPluginWindow()
+    window = NativeWindow()
     try:
-        object_id = window.load_structure_from_path(path)
+        window.do(f"load {path}")
+        object_id = window.viewer.get_active_object_id()
         assert window.viewer.get_volume(object_id) is not None
         assert window.viewer.get_volume_levels(object_id), "it should open contoured"
     finally:

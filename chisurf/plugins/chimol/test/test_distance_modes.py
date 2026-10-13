@@ -15,6 +15,7 @@ from __future__ import annotations
 import pathlib
 
 import pytest
+from native_window import process_events
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -26,27 +27,19 @@ _PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.load_structure_from_path(_PDB)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     messages: list[str] = []
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(messages.append)
     shared.set_error_callback(errors.append)
 
@@ -55,7 +48,7 @@ def session(qapp):
         errors.clear()
         shared.do(line)
         for _ in range(8):
-            qapp.processEvents()
+            process_events()
 
     yield win, do, messages, errors
     win.close()

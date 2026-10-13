@@ -78,7 +78,7 @@ def test_the_panel_imports_without_a_gui_toolkit():
 
         # The blocker must actually block, or this test proves nothing.
         try:
-            import qtpy
+            __import__("qtpy")  # the blocker must refuse this
         except ImportError:
             pass
         else:

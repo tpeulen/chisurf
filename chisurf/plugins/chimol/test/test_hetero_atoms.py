@@ -104,10 +104,9 @@ def test_a_factory_that_raises_is_not_swallowed():
 # The viewer
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def loaded_view(qapp, structure_factory):
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+def loaded_view(structure_factory):
+    from native_window import native_viewer
+    view = native_viewer()
     view.add_structure(
         _read_full_model(structure_factory, _PDB_148L),
         name="148l",
@@ -115,12 +114,6 @@ def loaded_view(qapp, structure_factory):
     )
     return view
 
-
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def test_hetero_atoms_are_marked_for_display(loaded_view):
@@ -180,23 +173,18 @@ def test_a_degraded_load_is_reported(tmp_path):
     The built-in parser recovers the cartoon, so this costs metadata rather than
     the picture — but the message still has to name the cause, because "the
     reader is unavailable" on its own is not something a user can do anything
-    with.
+    with. Asked of the host every window shares (``ViewerHost``), whose error
+    channel is the in-viewport command line.
     """
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.hosts.base import ViewerHost
 
-    class _Panel:
-        def __init__(self):
-            self.errors: list[str] = []
+    errors: list[str] = []
+    host = ViewerHost(viewer=None)
+    host.on_error = errors.append
+    host.report_degraded_load(tmp_path / "weird.pdb", ValueError("no reader"))
 
-        def append_error(self, text):
-            self.errors.append(text)
-
-    window = MolViewPluginWindow.__new__(MolViewPluginWindow)
-    window.command_panel = _Panel()
-    window._report_degraded_load(tmp_path / "weird.pdb", ValueError("no reader"))
-
-    assert window.command_panel.errors
-    message = window.command_panel.errors[-1]
+    assert errors
+    message = errors[-1]
     assert "weird.pdb" in message
     # The cause has to be quoted, not merely alluded to.
     assert "no reader" in message
@@ -206,10 +194,29 @@ def test_a_degraded_load_is_reported(tmp_path):
 
 def test_a_degraded_load_without_a_panel_does_not_raise(tmp_path):
     """Chimol also runs headless, where there is nothing to append to."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from chimol.hosts.base import ViewerHost
 
-    window = MolViewPluginWindow.__new__(MolViewPluginWindow)
-    window._report_degraded_load(tmp_path / "x.pdb", None)
+    ViewerHost(viewer=None).report_degraded_load(tmp_path / "x.pdb", None)
+
+
+def test_a_reader_that_gives_up_is_reported_on_load(tmp_path, monkeypatch):
+    """The load path says so, not only the method: an injected reader that fails."""
+    from chimol.io import structure as structure_io
+    from native_window import PDB_148L, NativeWindow
+
+    def _broken(_path, **_options):
+        raise ValueError("no reader")
+
+    monkeypatch.setattr(structure_io, "_STRUCTURE_FACTORY", _broken)
+    win = NativeWindow(size=(600, 400))
+    try:
+        _messages, errors = win.capture_messages()
+        win.host.on_error = errors.append
+        win.load_structure_from_path(PDB_148L)
+        assert any("built-in parser" in e and "148l.pdb" in e for e in errors), errors
+        assert win.viewer.list_objects(), "the fallback still loads the structure"
+    finally:
+        win.close()
 
 
 def test_hetero_atoms_reach_the_scene(loaded_view):

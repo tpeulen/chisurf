@@ -17,6 +17,7 @@ from __future__ import annotations
 import pathlib
 
 import pytest
+from native_window import process_events
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -28,38 +29,29 @@ _PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)
-    win.show()
     for _ in range(12):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(_PDB)
     for _ in range(25):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
     messages: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(messages.append)
     shared.set_error_callback(errors.append)
 
     def do(line: str) -> None:
         shared.do(line)
         for _ in range(20):
-            qapp.processEvents()
+            process_events()
 
     yield win, do, messages, errors
     win.close()
@@ -119,9 +111,9 @@ def test_hiding_survives_a_panel_rebuild(session):
     do("split_chains")
     assert _visibility(win)[source] is False
     win.refresh_objects()
-    # The rebuild that used to re-show it. `sync_internal_gui` is what rebuilds
+    # The rebuild that used to re-show it. `refresh_objects` (the host's panel sync) is what rebuilds
     # the panel now the Qt dock is gone -- same act, one list instead of two.
-    win.sync_internal_gui()
+    win.refresh_objects()
     assert _visibility(win)[source] is False, "the rebuild re-showed the source"
 
 
@@ -139,7 +131,7 @@ def test_the_checkbox_matches_the_stored_visibility(session):
     """What the user sees has to agree with what is drawn."""
     win, do, _messages, _errors = session
     do("split_chains")
-    win.sync_internal_gui()
+    win.refresh_objects()
     # The panel's own rows. `enabled` is the eye -- what the user sees switched
     # on -- and it has to agree with the stored visibility for every object.
     rows = [

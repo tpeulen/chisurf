@@ -38,21 +38,14 @@ PDB = (
 NUCLEOTIDES = {"DA", "DC", "DG", "DT", "A", "C", "G", "U", "2DA"}
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def window(qapp):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+def window():
+    from native_window import NativeWindow
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
 
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.load_structure_from_path(PDB, name="1rtd")
     yield win
     win.close()

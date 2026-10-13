@@ -333,20 +333,13 @@ def test_every_command_is_a_registered_chimol_command():
 # object name selected nothing at all.
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def window(qapp, tmp_path):
+def window(tmp_path):
     import pathlib
     import shutil
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     src = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"
@@ -359,7 +352,7 @@ def window(qapp, tmp_path):
     pdb = tmp_path / "1abc.pdb"
     shutil.copyfile(src, pdb)
 
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.load_structure_from_path(pdb, name="1abc")
     return win
 
@@ -397,7 +390,7 @@ def test_a_menu_entry_reaches_the_viewer(window):
     """End to end: an entry on a molecule's own row must change the display."""
     import numpy as np
 
-    window.sync_internal_gui()
+    window.refresh_objects()
     gui = window.viewer.gui
     row = next(r for r in gui.rows if r.name == "1abc")
 
@@ -415,7 +408,7 @@ def test_every_molecule_has_its_own_buttons(window):
     A single shared row would silently retarget every action at whatever is
     selected, which is the one thing a PyMOL user would never expect.
     """
-    window.sync_internal_gui()
+    window.refresh_objects()
     gui = window.viewer.gui
     gui.layout(1000, 700)
     assert gui.rows, "no object rows"
@@ -430,10 +423,10 @@ def test_a_rows_menu_targets_that_row(window, monkeypatch):
     """Two molecules, and each row's menu must name its own."""
     import shutil
 
-    src = next(iter(window._object_store.values()))["path"]
+    src = next(iter(window.viewer.objects.values())).source_path
     other = shutil.copyfile(src, str(src).replace("1abc", "2xyz"))
     window.load_structure_from_path(pathlib.Path(other), name="2xyz")
-    window.sync_internal_gui()
+    window.refresh_objects()
 
     gui = window.viewer.gui
     molecules = [

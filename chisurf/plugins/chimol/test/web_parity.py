@@ -97,21 +97,10 @@ def desktop_report(size: tuple[int, int] = SIZE) -> tuple[dict[str, Any], Any]:
         returns for one forced frame, or ``None`` if it returns nothing.
     """
     from chimol.hosts.native.app import ChimolApp
-    from chimol.hosts.toolkit import HAS_QT
     from chimol.testing import parity
 
-    if HAS_QT:
-        # `Viewer` is a real ``QWidget`` on any machine where Qt *imports*, and
-        # a QWidget needs an application object before it can be constructed.
-        # The browser takes `host.widget`'s stand-ins instead, which is the one
-        # difference this line papers over -- and it papers over nothing that is
-        # measured: the chrome, the commands and the scene are the same objects
-        # either way. Run this with ``QT_QPA_PLATFORM=offscreen``.
-        from qtpy import QtWidgets
-
-        if QtWidgets.QApplication.instance() is None:
-            QtWidgets.QApplication([])
-
+    # No application object first: `ChimolApp` builds the toolkit-free
+    # `HeadlessViewer` whatever was imported, so nothing here is a QWidget.
     app = ChimolApp(size=size, backend="offscreen")
     pdb = _demo_pdb()
 

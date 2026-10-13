@@ -18,8 +18,8 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 #: Deliberately the multi-chain fixture: a single-chain structure cannot tell a
 #: chain-aware lookup from an id-only one, which is how the bug survived.
@@ -34,34 +34,25 @@ PDB = (
 FALLBACK = PDB.with_name("148l.pdb")
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def session(qapp):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+def session():
+    from native_window import NativeWindow
     path = PDB if PDB.is_file() else FALLBACK
     if not path.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(700, 520)
-    win.show()
     for _ in range(4):
-        qapp.processEvents()
-    shared.set_window(win)
+        process_events()
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(lambda _m: None)
 
     def run(line: str) -> None:
-        win._run_object_menu_command(line)
+        win.run_menu_command(line)
         for _ in range(3):
-            qapp.processEvents()
+            process_events()
 
     run(f"load {path}")
     yield run, win.viewer

@@ -3,25 +3,16 @@
 from types import MethodType
 
 import numpy as np
-import pytest
 from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.geometry.surface import (
     _generate_surface_mesh_from_points,
 )
-from qtpy import QtWidgets
 
 
-@pytest.fixture
-def qt_app():
-    # Make sure a QApplication exists
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    return app
 
-
-def test_add_point_overlay_updates_dict(qt_app):
-    widget = Viewer()
+def test_add_point_overlay_updates_dict():
+    widget = native_viewer()
     # Mock update_view to avoid OpenGL calls in headless pytest sessions
     called = []
     widget.update_view = lambda *args, **kwargs: called.append(True)
@@ -35,8 +26,8 @@ def test_add_point_overlay_updates_dict(qt_app):
     assert len(called) > 0
 
 
-def test_remove_point_overlay(qt_app):
-    widget = Viewer()
+def test_remove_point_overlay():
+    widget = native_viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     coords = np.array([[1.0, 2.0, 3.0]])
@@ -51,8 +42,8 @@ def test_remove_point_overlay(qt_app):
     assert removed_nonexistent is False
 
 
-def test_clear_point_overlays(qt_app):
-    widget = Viewer()
+def test_clear_point_overlays():
+    widget = native_viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     coords = np.array([[1.0, 2.0, 3.0]])
@@ -64,8 +55,8 @@ def test_clear_point_overlays(qt_app):
     assert len(widget._point_overlays) == 0
 
 
-def test_add_sphere_returns_key_string(qt_app):
-    widget = Viewer()
+def test_add_sphere_returns_key_string():
+    widget = native_viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     center = np.array([1.0, 2.0, 3.0])

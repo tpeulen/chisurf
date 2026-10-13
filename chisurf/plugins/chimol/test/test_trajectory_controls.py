@@ -15,19 +15,13 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 
 
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def jittery(_qt_app):
+def jittery():
     """Build a steady drift with heavy per-frame jitter laid over it.
 
     The shape of a real trajectory's problem: the motion worth watching is slow,
@@ -39,7 +33,7 @@ def jittery(_qt_app):
     base = rng.normal(scale=5.0, size=(1, n_atoms, 3))
     frames = base + drift + rng.normal(scale=1.2, size=(n_frames, n_atoms, 3))
 
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         frames[0],
         atoms=make_bead_rows(frames[0]),

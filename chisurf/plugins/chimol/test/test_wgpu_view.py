@@ -1,52 +1,46 @@
 """The WebGPU renderer as chimol's viewport.
 
-These need a WebGPU adapter and a Qt widget, so they skip where there is
-neither. What they cover is the seam: that the viewer accepts this backend as a
-renderer, that the camera it reports is the camera the offscreen comparison
-would use, and that the gestures and the chrome do what the OpenGL backend's do.
+These need a WebGPU adapter, so they skip where there is none. They drive the
+renderer every toolkit-free host draws with -- :class:`CanvasView` on the
+offscreen canvas, the one ChiSurf's emtk surface blits -- where they used to
+drive the Qt widget around the same engine. What they cover is the seam: that
+the viewer accepts this backend as a renderer, that the camera it reports is the
+camera the offscreen comparison would use, and that the gestures and the chrome
+do what they say.
 """
 
 from __future__ import annotations
 
 import numpy as np
 import pytest
-from chimol.hosts.qt import wgpu_view
+from chimol.hosts.native import canvas as native_canvas
+from chimol.viewport import canvas as viewport_canvas
 
 pytestmark = pytest.mark.slow
 
 
 @pytest.fixture(scope="module")
-def renderer(qt_app):
-    """A shown WebGPU renderer, or a skip when the machine cannot make one."""
-    if not wgpu_view.is_available():
+def renderer():
+    """A WebGPU renderer on the offscreen canvas, or a skip when there is none."""
+    if not native_canvas.is_available():
         pytest.skip("no WebGPU adapter")
     try:
-        view = wgpu_view.WgpuRenderer()
+        view = native_canvas.renderer_factory(backend="offscreen", size=(640, 480))(
+            controller=None
+        )
     except Exception as exc:  # pragma: no cover - environment dependent
         pytest.skip(f"WebGPU renderer unavailable: {exc!r}")
-    view.resize(640, 480)
-    view.show()
-    for _ in range(10):
-        qt_app.processEvents()
+    view.draw_frame()
     yield view
     view.close()
-
-
-@pytest.fixture(scope="module")
-def qt_app():
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    # Bound, not discarded: an unreferenced QApplication is collected and the
-    # next QWidget aborts the interpreter with no Python traceback.
-    assert app is not None
-    return app
 
 
 class TestFactorySelection:
     """Which renderer the viewer builds, now that there is no OpenGL one."""
 
     def test_wgpu_when_an_adapter_exists(self, monkeypatch):
+        from chimol.hosts.qt import wgpu_view
+
         monkeypatch.setattr(wgpu_view, "is_available", lambda: True)
         assert wgpu_view.default_renderer() is wgpu_view.WgpuRenderer
 
@@ -58,6 +52,7 @@ class TestFactorySelection:
         having no widget -- the viewer already handles that, because
         ``SceneSink`` is what makes headless scene assembly work.
         """
+        from chimol.hosts.qt import wgpu_view
         from chimol.viewport.headless import SceneSink
 
         monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
@@ -66,6 +61,8 @@ class TestFactorySelection:
     def test_the_refusal_is_logged(self, monkeypatch, caplog):
         """ "chimol shows nothing today" is harder to answer than a log line."""
         import logging
+
+        from chimol.hosts.qt import wgpu_view
 
         monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
         with caplog.at_level(logging.WARNING):
@@ -76,11 +73,12 @@ class TestFactorySelection:
 class TestRendererContract:
     """What ``Viewer`` requires of a renderer."""
 
-    def test_it_is_a_widget_and_returns_itself(self, renderer):
-        from qtpy import QtWidgets
-
-        assert isinstance(renderer, QtWidgets.QWidget)
-        assert renderer.widget() is renderer
+    def test_it_has_no_widget_and_draws_frames(self, renderer):
+        """A toolkit-free renderer embeds nothing; it draws, and hands the frame back."""
+        assert renderer.widget() is None
+        frame = renderer.draw_frame()
+        assert frame is not None
+        assert np.asarray(frame).shape[:2] == (renderer.height(), renderer.width())
 
     def test_the_camera_round_trips(self, renderer):
         """A view tuple that does not survive a round trip cannot reproduce a frame."""
@@ -183,17 +181,21 @@ class TestChrome:
         assert renderer._select_rect is None
         assert renderer._chrome_image() is None
 
-    def test_the_image_path_still_serves_labels(self, renderer):
-        """A scene with labels still gets a premultiplied image."""
-        from chimol.hosts.qt.wgpu_view import Label
+    def test_labels_reach_the_gpu_as_quads_not_an_image(self, renderer):
+        """A scene with labels draws glyph quads beside the panel, and no image.
 
+        Labels used to be the reason the image path ran every frame; they are
+        glyphs from the chrome's own atlas now, drawn on every host.
+        """
+        from chimol.viewport.canvas import Label
+
+        plain = renderer._chrome_quads()
         renderer._labels = [Label(np.zeros(3, dtype=float), "ALA", (1.0, 1.0, 1.0, 1.0))]
         try:
-            chrome = renderer._chrome_image()
-            assert chrome is not None
-            assert chrome.shape == (renderer._height, renderer._width, 4)
-            alpha = chrome[..., 3]
-            assert alpha.min() == 0, "the chrome would hide the molecule"
+            assert renderer._chrome_image() is None
+            labelled = renderer._chrome_quads()
+            assert labelled is not None
+            assert len(labelled) > (0 if plain is None else len(plain))
         finally:
             renderer._labels = []
 
@@ -232,8 +234,8 @@ class TestTheDefaultBackend:
         from chimol.core.settings.config import _DISPLAY_CONFIG
 
         monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {})
-        assert wgpu_view.selected_backend() == "wgpu"
-        assert wgpu_view.DEFAULT_BACKEND == "wgpu"
+        assert viewport_canvas.selected_backend() == "wgpu"
+        assert viewport_canvas.DEFAULT_BACKEND == "wgpu"
 
     def test_the_shipped_config_says_so_too(self):
         """The default must be visible where a user would look for it."""
@@ -256,7 +258,7 @@ class TestTheDefaultBackend:
         from chimol.core.settings.config import _DISPLAY_CONFIG
 
         monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "something"})
-        assert wgpu_view.selected_backend() == "something"
+        assert viewport_canvas.selected_backend() == "something"
 
     def test_the_environment_overrides_the_config(self, monkeypatch):
         """What makes a bug report reproducible without editing a config file."""
@@ -264,7 +266,7 @@ class TestTheDefaultBackend:
 
         monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {"backend": "opengl"})
         monkeypatch.setenv("CHIMOL_RENDERER", "wgpu")
-        assert wgpu_view.selected_backend() == "wgpu"
+        assert viewport_canvas.selected_backend() == "wgpu"
 
 
 class TestLabels:
@@ -279,7 +281,7 @@ class TestLabels:
             colors=np.array([[1.0, 0.0, 0.0, 1.0], [0.0, 1.0, 0.0, 1.0]], dtype=np.float32),
             meta={"labels": ["ALA", "GLY"]},
         )
-        labels = wgpu_view._collect_labels(PackedScene([PackedObject("l", geom)], radius=1.0))
+        labels = viewport_canvas.collect_labels(PackedScene([PackedObject("l", geom)], radius=1.0))
         assert [label.text for label in labels] == ["ALA", "GLY"]
         assert labels[0].color == (1.0, 0.0, 0.0, 1.0)
 
@@ -292,28 +294,26 @@ class TestLabels:
             positions=np.zeros((5, 3), dtype=np.float32),
             meta={"labels": ["one"]},
         )
-        labels = wgpu_view._collect_labels(PackedScene([PackedObject("l", geom)], radius=1.0))
+        labels = viewport_canvas.collect_labels(PackedScene([PackedObject("l", geom)], radius=1.0))
         assert len(labels) == 1
 
     def test_labels_are_drawn_into_the_chrome(self, renderer):
         """A label that is collected but never painted is not a label."""
-        from chimol.hosts.qt.overlay import paint_chrome
+        from emtk.quad_painter import QuadPainter
 
-        renderer._internal_gui.visible = False
+        from chimol.viewport.canvas import Label
+        from chimol.viewport.screen_overlays import paint_labels
+
         centre = np.array(renderer._target, dtype=float)
-        labels = [wgpu_view.Label(centre, "XXXXXXXX", (1.0, 1.0, 1.0, 1.0))]
-        blank = paint_chrome(renderer._internal_gui, None, 400, 300, 1.0)
-        with_label = paint_chrome(
-            renderer._internal_gui,
-            None,
-            400,
-            300,
-            1.0,
-            labels=labels,
-            project=lambda pts: (np.array([200.0]), np.array([150.0]), np.array([True])),
+        labels = [Label(centre, "XXXXXXXX", (1.0, 1.0, 1.0, 1.0))]
+        painter = QuadPainter()
+        drawn = paint_labels(
+            painter,
+            labels,
+            lambda pts: (np.array([200.0]), np.array([150.0]), np.array([True])),
         )
-        renderer._internal_gui.visible = True
-        assert with_label[..., 3].sum() > blank[..., 3].sum()
+        assert drawn == 1
+        assert len(painter.vertices()) >= 6 * len("XXXXXXXX"), "the glyphs were not emitted"
 
 
 class TestSilhouette:

@@ -160,7 +160,7 @@ def test_the_engine_imports_without_a_gui_toolkit():
         sys.meta_path.insert(0, _BlockQt())
 
         try:
-            import qtpy
+            __import__("qtpy")  # the blocker must refuse this
         except ImportError:
             pass
         else:
@@ -219,7 +219,7 @@ class _BlockQt:
 sys.meta_path.insert(0, _BlockQt())
 
 try:
-    import qtpy
+    __import__("qtpy")  # the blocker must refuse this
 except ImportError:
     pass
 else:

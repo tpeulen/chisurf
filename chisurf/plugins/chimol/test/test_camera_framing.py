@@ -31,20 +31,14 @@ _PDB_148L = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def view(qapp):
+def view():
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
 
-    v = Viewer()
+    v = native_viewer()
     v.resize(800, 600)
     # The *renderer* is given a real landscape viewport, not left at whatever
     # size Qt gives an unshown widget. Without this the fixture measures the

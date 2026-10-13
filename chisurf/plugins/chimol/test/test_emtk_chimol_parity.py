@@ -2,9 +2,9 @@
 
 Both hosts draw the same chimol viewer, so parity is measured on what each one
 *holds* after the same actions -- the menu and toolbar tables, the object list,
-the atom count -- not on pixels. The Qt window is built in a subprocess: once
-Qt is imported, ``chimol.core.viewer`` binds a QWidget base, and the emtk host
-in this process must stay toolkit-free (``test_port_is_qt_free``).
+the atom count -- not on pixels. The Qt window is retired as ChiSurf's entry
+(both shells open this app; the ``--qt`` shell only hosts it), so its side is
+the recorded ``qt_reference.json``, taken from the live window before it went.
 
 Imported by absolute path (chimol's conftest loads this suite outside the
 chisurf package), hence no relative imports and no ``__init__.py``.
@@ -13,8 +13,6 @@ chisurf package), hence no relative imports and no ``__init__.py``.
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -73,52 +71,16 @@ def app():
     app.close()
 
 
-_QT_FACTS = r"""
-import json, os, sys
-from qtpy import QtWidgets
-qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-from chimol.hosts.qt import MolViewPluginWindow
-def flat(entries, prefix=""):
-    out = []
-    for e in entries:
-        if not e.label:
-            continue
-        out.append((prefix + e.label, e.command))
-        out.extend(flat(e.children, prefix + e.label + "/"))
-    return out
-w = MolViewPluginWindow()
-w.resize(1200, 800)
-gui = w.viewer.renderer._internal_gui
-w.cmd.do("load " + sys.argv[1])
-for _ in range(5):
-    qapp.processEvents()
-names = [str(getattr(o, "name", "")) for o in w.viewer.objects.values()]
-print("FACTS" + json.dumps({
-    "menus": [[t, flat(e)] for t, e in gui.menubar],
-    "toolbar": [list(r) for r in gui.toolbar],
-    "objects": sorted(names),
-    "n_atoms": int(len(w.viewer.atom_xyz) if getattr(w.viewer, "atom_xyz", None) is not None else -1),
-}))
-"""
-
-
 @pytest.fixture(scope="module")
 def qt_facts():
-    pytest.importorskip("qtpy")
-    env = dict(os.environ, QT_QPA_PLATFORM="offscreen")
-    env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(REPO), env.get("PYTHONPATH", "")]))
-    proc = subprocess.run(
-        [sys.executable, "-c", _QT_FACTS, str(_demo_pdb())],
-        capture_output=True,
-        text=True,
-        timeout=300,
-        env=env,
-        cwd=str(REPO),
-    )
-    line = next((ln for ln in proc.stdout.splitlines() if ln.startswith("FACTS")), None)
-    if line is None:
-        pytest.skip(f"Qt window could not be built here: {proc.stderr[-800:]}")
-    return json.loads(line[len("FACTS") :])
+    """What the retired Qt window held after loading 148L, recorded from it live.
+
+    ``qt_reference.json`` beside this file: menus, toolbar, object list, panel
+    rows and sequence rows of ``chimol.hosts.qt.MolViewPluginWindow`` at chimol
+    ``b2a3f2b``, the last commit with that window as ChiSurf's ``gui`` entry.
+    The before/after pair (148L, 1RTD) is ``okf/plugins/emtk-ports/chimol/retire_*``.
+    """
+    return json.loads((HERE / "qt_reference.json").read_text(encoding="utf-8"))
 
 
 # 1. the same data gives the same viewer state as in the Qt window
@@ -130,6 +92,11 @@ def test_loaded_structure_matches_the_qt_window(app, qt_facts):
     viewer = app._chimol.viewer
     n_atoms = int(len(viewer.atom_xyz)) if getattr(viewer, "atom_xyz", None) is not None else -1
     assert n_atoms == qt_facts["n_atoms"]
+    # The panel and the strip: the same rows, the same sequence row (chain
+    # markers inline, PyMOL's one row per object).
+    gui = app._chimol.renderer._internal_gui
+    assert [row.name for row in gui.rows] == qt_facts["rows"]
+    assert [[s.name, len(s.codes)] for s in gui.sequences] == qt_facts["sequences"]
 
 
 def test_menus_and_toolbar_match_the_qt_window(app, qt_facts):

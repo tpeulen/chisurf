@@ -2,7 +2,7 @@
 
 The A/S/H/L/C menus are how most people drive the viewer, and until now nothing
 tested them: the command layer was covered, the *menus* were not. Running them one
-by one through ``MolViewPluginWindow._run_object_menu_command`` — the same path a
+by one through ``the viewport chrome's own command path`` — the same path a
 click takes — found five broken entries at once, including "remove waters", which
 crashed on any structure that actually had waters.
 
@@ -21,6 +21,7 @@ import pathlib
 import pytest
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.ui.menus import objects as om
+from native_window import process_events
 
 
 @pytest.fixture(autouse=True)
@@ -98,30 +99,21 @@ def _disabled():
     return out
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _open(qapp, path, *, second_object=False):
+def _open(path, *, second_object=False):
     """Open a real plugin window on ``path``, with error capture wired in."""
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(700, 500)
-    win.show()
     for _ in range(5):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(path)
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
     panel = getattr(win, "command_panel", None)
@@ -133,27 +125,27 @@ def _open(qapp, path, *, second_object=False):
         # `align to ...` and `super to ...` need something to align *to*.
         shared.do(f"copy other, {path.stem}")
         for _ in range(5):
-            qapp.processEvents()
+            process_events()
         errors.clear()
     return win, errors
 
 
 @pytest.fixture
-def window(qapp):
+def window():
     """Build a window on the fragment, with a second object to align against.
 
     Fresh per test: a menu entry that breaks the session would otherwise make
     every later entry look broken too.
     """
-    win, errors = _open(qapp, _FRAGMENT, second_object=True)
+    win, errors = _open(_FRAGMENT, second_object=True)
     yield win, errors
     win.close()
 
 
 @pytest.fixture
-def solvated(qapp):
+def solvated():
     """Build a window on the fragment that actually has waters and an ion."""
-    win, errors = _open(qapp, _FRAGMENT)
+    win, errors = _open(_FRAGMENT)
     yield win, errors
     win.close()
 
@@ -209,13 +201,11 @@ def test_a_menu_entry_runs(window, template):
     "too many positional arguments" from the viewport and worked from the dock.
     """
     win, errors = window
-    win._run_object_menu_command(_fill(template))
+    win.run_menu_command(_fill(template))
 
-    from qtpy import QtWidgets
 
-    app = QtWidgets.QApplication.instance()
     for _ in range(5):
-        app.processEvents()
+        process_events()
 
     unexpected = [e for e in errors if not any(reason in e for reason in _FIXTURE_CANNOT_ANSWER)]
     assert unexpected == [], f"{template!r} -> {unexpected[-1] if unexpected else ''}"
@@ -237,7 +227,7 @@ def test_remove_waters_removes_the_waters(solvated):
     """The entry the user reported. It crashed on any structure that had any."""
     win, errors = solvated
     before = len(win.viewer._atoms)
-    win._run_object_menu_command(f"remove solvent and {SOLVATED}")
+    win.run_menu_command(f"remove solvent and {SOLVATED}")
     assert errors == []
     assert len(win.viewer._atoms) == before - 8
 
@@ -245,7 +235,7 @@ def test_remove_waters_removes_the_waters(solvated):
 def test_deleting_the_last_object_leaves_a_usable_viewer(solvated):
     """Reading state from an empty viewer used to raise, so the next repaint died."""
     win, errors = solvated
-    win._run_object_menu_command(f"delete {SOLVATED}")
+    win.run_menu_command(f"delete {SOLVATED}")
     assert errors == []
     assert win.viewer.list_objects() == []
     # The crash was here: any reader of a state field, which a repaint is.
@@ -260,7 +250,7 @@ def test_copy_to_object_copies_from_the_right_one(window):
     name the user typed, which does not exist.
     """
     win, errors = window
-    win._run_object_menu_command(f"copy duplicate, {OBJECT}")
+    win.run_menu_command(f"copy duplicate, {OBJECT}")
     assert errors == []
     assert "duplicate" in [str(o["name"]) for o in win.viewer.list_objects()]
 
@@ -269,7 +259,7 @@ def test_copy_to_object_copies_from_the_right_one(window):
 def test_the_colour_menu_spellings_are_accepted(window, mode):
     """The menu writes them without underscores; `color` only knew `by_element`."""
     win, errors = window
-    win._run_object_menu_command(f"color {mode}, {OBJECT}")
+    win.run_menu_command(f"color {mode}, {OBJECT}")
     assert errors == []
 
 

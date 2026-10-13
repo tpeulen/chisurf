@@ -605,27 +605,20 @@ def test_the_origin_shifts_the_whole_box():
 # --------------------------------------------------------------------------- #
 # `cell` resolves the same way `symexp` does
 # --------------------------------------------------------------------------- #
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def crystal_cmd(qapp, tmp_path):
+def crystal_cmd(tmp_path):
     """A window with 1RTD -- a file that carries its own CRYST1 record."""
     import shutil
 
     from chimol.commands.command import Cmd
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     if not _CRYSTAL.is_file():
         pytest.skip("no crystal fixture")
     pdb = tmp_path / "1rtd.pdb"
     shutil.copyfile(_CRYSTAL, pdb)
 
-    window = MolViewPluginWindow()
+    window = NativeWindow()
     window.load_structure_from_path(pdb, name="1rtd")
     command = Cmd(window)
     errors: list[str] = []

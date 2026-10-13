@@ -13,10 +13,8 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("qtpy")
-
-from chimol.hosts.qt.demos import DEMOS  # noqa: E402
-from chimol.hosts.qt.menu_bar import DEMO_MENU, MENU_BAR  # noqa: E402
+from chimol.plugins.demos.catalog import DEMOS
+from chimol.ui.menus.bar import DEMO_MENU, MENU_BAR
 
 
 def test_the_bar_has_a_demo_menu():
@@ -49,72 +47,63 @@ def test_the_editor_entries_are_there_and_run_something():
     assert labels.get("New script…") == "demo_edit new"
 
 
-def test_the_viewport_bar_lists_demo_exactly_once(qapp_window):
+def test_the_viewport_bar_lists_demo_exactly_once(window):
     """It was built twice for a while: once from MENU_BAR, once bolted on.
 
-    Asserted against the **viewport** bar. The Qt one this used to read is not
-    installed any more -- it was drawing a second copy of these same menus
-    directly above them, which is exactly the duplication this test exists to
-    catch, one level up.
+    Asserted against the **viewport** bar, the only bar a window has: the Qt
+    one drew a second copy of these same menus directly above them, which is
+    exactly the duplication this test exists to catch, one level up.
     """
-    win = qapp_window
+    win = window
     gui = win.viewer.gui
     titles = [title for title, _entries in gui.menubar]
     assert titles.count("Demo") == 1
-    assert not win.menuBar().isVisible()
 
 
 @pytest.fixture(scope="module")
-def qapp_window():
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+def window():
+    from native_window import NativeWindow
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
-    win.resize(900, 620)
-    win.show()
-    for _ in range(5):
-        app.processEvents()
+    win = NativeWindow(size=(900, 620))
+    win.pump(3)
     yield win
     win.close()
 
 
-def test_demo_with_no_argument_lists_them(qapp_window):
+def test_demo_with_no_argument_lists_them(window):
     """In the info panel -- the same window `help` uses -- not the prompt.
 
     The prompt's feedback line holds one line at a time and the demo list is
     ten of them; listing there scrolled the whole catalogue away. Each entry
     also carries its `demo <key>` command, so a click on a name runs it.
     """
-    shared = qapp_window.cmd
+    shared = window.cmd
 
     said: list[str] = []
-    shared.set_window(qapp_window)
     shared.set_message_callback(said.append)
     shared.set_error_callback(said.append)
 
-    qapp_window._run_object_menu_command("demo")
-    gui = qapp_window.viewer.gui
+    window.run_menu_command("demo")
+    gui = window.viewer.gui
     assert gui._info_title == "Demos"
     assert [name for name, _doc in gui._info_items] == [key for key, _t, _n in DEMOS]
     for key, _t, _n in DEMOS:
         assert gui._info_commands.get(key) == f"demo {key}"
 
 
-def test_an_unknown_demo_says_so_rather_than_doing_nothing(qapp_window):
-    shared = qapp_window.cmd
+def test_an_unknown_demo_says_so_rather_than_doing_nothing(window):
+    shared = window.cmd
 
     errors: list[str] = []
-    shared.set_window(qapp_window)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
-    qapp_window._run_object_menu_command("demo nonesuch")
+    window.run_menu_command("demo nonesuch")
     assert errors and "no demo called" in errors[-1]
 
 
-def test_the_demo_menu_is_reachable_in_the_viewport(qapp_window):
-    gui = qapp_window.viewer.gui
+def test_the_demo_menu_is_reachable_in_the_viewport(window):
+    gui = window.viewer.gui
     titles = [title for _rect, title, _entries in gui._menubar_rects]
     assert "Demo" in titles
 

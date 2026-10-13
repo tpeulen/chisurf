@@ -107,19 +107,13 @@ def test_a_zero_size_cross_draws_nothing():
 # --------------------------------------------------------------------------- #
 # In the viewer
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def view(qapp, bond_family):
+def view(bond_family):
     import pathlib
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
 
     pdb = (
@@ -130,7 +124,7 @@ def view(qapp, bond_family):
         / "pdb_files"
         / "148l.pdb"
     )
-    v = Viewer()
+    v = native_viewer()
     v.add_structure(
         _read_full_model(cs_struct.Structure, pdb),
         name="148l",

@@ -13,10 +13,10 @@ exactly the coupling being removed) and `info_panel`.
 from __future__ import annotations
 
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
-from chimol.hosts.qt.menu_bar import TOOLBAR  # noqa: E402
+from chimol.ui.menus.bar import TOOLBAR  # noqa: E402
 from chimol.ui.gui import InternalGui, SequenceRow  # noqa: E402
 
 SIZE = (900, 640)
@@ -102,8 +102,7 @@ def test_no_toolbar_when_the_host_supplies_none():
 def window():
     import pathlib
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+    from native_window import NativeWindow
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -116,19 +115,16 @@ def window():
     if not pdb.is_file():
         pytest.skip(f"missing fixture {pdb}")
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(*SIZE)
-    win.show()
     for _ in range(5):
-        app.processEvents()
-    shared.set_window(win)
+        process_events()
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(lambda _m: None)
-    win._run_object_menu_command(f"load {pdb}")
+    win.run_menu_command(f"load {pdb}")
     for _ in range(3):
-        app.processEvents()
+        process_events()
     yield win
     win.close()
 
@@ -136,9 +132,9 @@ def window():
 def test_toggle_rep_flips_rather_than_only_showing(window):
     viewer = window.viewer
     before = bool(viewer._surface_visible)
-    window._run_object_menu_command("toggle_rep surface")
+    window.run_menu_command("toggle_rep surface")
     assert bool(viewer._surface_visible) is not before
-    window._run_object_menu_command("toggle_rep surface")
+    window.run_menu_command("toggle_rep surface")
     assert bool(viewer._surface_visible) is before
 
 
@@ -148,7 +144,7 @@ def test_toggle_rep_refuses_an_unknown_representation(window):
     errors: list[str] = []
     shared.set_error_callback(errors.append)
     try:
-        window._run_object_menu_command("toggle_rep hologram")
+        window.run_menu_command("toggle_rep hologram")
         assert errors and "unknown representation" in errors[-1]
     finally:
         shared.set_error_callback(lambda _m: None)
@@ -156,11 +152,11 @@ def test_toggle_rep_refuses_an_unknown_representation(window):
 
 def test_info_panel_toggles_and_can_be_set(window):
     viewer = window.viewer
-    window._run_object_menu_command("info_panel on")
+    window.run_menu_command("info_panel on")
     assert viewer._info_visible
-    window._run_object_menu_command("info_panel toggle")
+    window.run_menu_command("info_panel toggle")
     assert not viewer._info_visible
-    window._run_object_menu_command("info_panel off")
+    window.run_menu_command("info_panel off")
     assert not viewer._info_visible
 
 

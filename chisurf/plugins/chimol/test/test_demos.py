@@ -17,13 +17,14 @@ import pathlib
 
 import numpy as np
 import pytest
-from chimol.hosts.qt.demos import (
+from chimol.plugins.demos.catalog import (
     DEMO_DIR,
     DEMOS,
     demo_path,
     read_demo,
     resolve_structure,
 )
+from native_window import process_events
 
 _TRAJ_DIR = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -112,31 +113,22 @@ def test_the_structures_the_demos_name_can_be_found():
 # --------------------------------------------------------------------------- #
 # Running them
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def window(qapp):
+def window():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)
-    win.show()
     for _ in range(12):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
-    yield win, shared, errors, qapp
+    yield win, shared, errors, None
     win.close()
 
 
@@ -151,7 +143,6 @@ def _vertices(viewer):
 @pytest.mark.parametrize("key", [key for key, _t, _d in DEMOS])
 def test_a_demo_runs_and_draws_something(window, key):
     """Every line is a real command, so this is a command-surface test."""
-    from chimol.hosts.qt.demos import resolve_structure
     from chimol.plugins.demos.material import GENERATED_DEMO_DATA, DemoDataUnavailable
 
     script = read_demo(key)
@@ -165,7 +156,7 @@ def test_a_demo_runs_and_draws_something(window, key):
     win, _shared, errors, qapp = window
     win.run_demo(key)
     for _ in range(30):
-        qapp.processEvents()
+        process_events()
     assert errors == [], f"{key}: {errors[:2]}"
     # "Drew something" has two shapes now. A container demo puts no objects in
     # the scene at all -- its atoms live on disk and the frame streams the ones
@@ -189,7 +180,7 @@ def test_each_demo_starts_from_a_clean_viewer(window):
     for key, _t, _d in DEMOS[:3]:
         win.run_demo(key)
         for _ in range(25):
-            qapp.processEvents()
+            process_events()
         assert len(win.viewer.list_objects()) == 1, key
 
 
@@ -260,15 +251,16 @@ def test_the_demo_menu_comes_from_the_menu_bar_and_appears_once(window):
     builder is gone: an unused builder that silently adds a *second* Demo menu
     is a trap, not a spare.
     """
-    win, _shared, _errors, qapp = window
-    from chimol.hosts.qt import demos
+    win, _shared, _errors, _ = window
+    from chimol.plugins.demos import catalog
 
-    assert not hasattr(demos, "build_demo_menu"), "the bolted-on demo menu builder is back"
+    assert not hasattr(catalog, "build_demo_menu"), "the bolted-on demo menu builder is back"
 
-    win._install_menu_bar()
-    for _ in range(5):
-        qapp.processEvents()
-    titles = [action.text().replace("&", "") for action in win.menuBar().actions()]
+    gui = win.viewer.gui
+    win.app._install_menus(gui)
+    win.app._install_menus(gui)
+    process_events()
+    titles = [title for title, _entries in gui.menubar]
     assert titles.count("Demo") == 1, titles
 
 
@@ -277,7 +269,7 @@ def test_script_text_runs_line_by_line(window):
     win, _shared, errors, qapp = window
     win.run_script_text("# a comment\n\nload " + resolve_structure("148l.pdb") + "\nshow cartoon\n")
     for _ in range(25):
-        qapp.processEvents()
+        process_events()
     assert errors == []
     assert len(win.viewer.list_objects()) == 1
 
@@ -292,10 +284,10 @@ def trajectory(window):
         pytest.skip("no trajectory fixture")
     win.load_structure_from_path(_TOPOLOGY)
     for _ in range(30):
-        qapp.processEvents()
+        process_events()
     shared.load_traj(str(_TRAJECTORY))
     for _ in range(30):
-        qapp.processEvents()
+        process_events()
     errors.clear()
     return win, shared, errors, qapp
 
@@ -343,7 +335,7 @@ def test_the_cartoon_is_whole_rather_than_fragmented(trajectory):
     shared.do("hide everything")
     shared.do("show cartoon, polymer")
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
     pieces = len(win.viewer.get_current_scene().objects)
     assert 0 < pieces <= 10, f"{pieces} cartoon pieces: the ribbon is fragmented"
 
@@ -373,7 +365,7 @@ def test_intra_fit_removes_the_rigid_body_drift(trajectory):
 
     shared.do("intra_fit all, 1")
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
     assert errors == []
     assert drift(_frames(win.viewer)) < 1e-6
 
@@ -386,7 +378,7 @@ def test_intra_fit_is_rigid(trajectory):
 
     shared.do("intra_fit all, 1")
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
     after = _frames(win.viewer)[10]
     assert np.allclose(np.linalg.norm(after[1:200] - after[0], axis=1), reference, atol=1e-6)
 
@@ -408,7 +400,7 @@ def test_fitting_does_not_change_the_rms(trajectory):
     before = shared.intra_rms("all", "1")
     shared.do("intra_fit all, 1")
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
     after = shared.intra_rms("all", "1")
     assert np.allclose(before, after, atol=1e-6)
 
@@ -417,11 +409,11 @@ def test_intra_fit_on_a_single_state_object_says_so(window):
     win, shared, errors, qapp = window
     win.run_demo("cartoon")
     for _ in range(25):
-        qapp.processEvents()
+        process_events()
     errors.clear()
     shared.do("intra_fit all, 1")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     assert errors and "single state" in errors[-1]
 
 
@@ -430,5 +422,5 @@ def test_get_state_is_one_based(trajectory):
     win, shared, _errors, qapp = trajectory
     shared.do("frame 1")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     assert shared.get_state() == 1

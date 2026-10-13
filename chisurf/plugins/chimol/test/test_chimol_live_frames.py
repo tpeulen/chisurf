@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from chimol.core.model.object_state import _MolViewObjectState
 from chimol.core.viewer import Viewer
 from chimol.testing.mock_viewer import MockViewer
-from qtpy import QtWidgets
+from native_window import native_viewer
 
 
 def test_mock_viewer_append_frame_tracks_raw_frames() -> None:
@@ -143,16 +142,8 @@ def test_select_state_frame_updates_ca_trace_for_same_shape_all_atom_frame() -> 
     np.testing.assert_array_equal(state.all_atom_coords, frame1)
 
 
-@pytest.fixture
-def _qt_app():
-    """Ensure a QApplication exists for Viewer construction."""
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    return app
 
-
-def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> None:
+def test_a_trajectory_payload_scales_frames_and_radii_consistently() -> None:
     """Trajectory coordinates (Angstrom) are scaled like set_frames/add_structure.
 
     An RMF used to arrive through ``set_rmf_data``, which stored raw frames
@@ -166,7 +157,7 @@ def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> N
     from chimol.io.atoms import make_bead_rows
     from chimol.io.structure import StructurePayload
 
-    widget = Viewer()
+    widget = native_viewer()
     widget.update_view = lambda *args, **kwargs: None
 
     raw_frames = np.array(

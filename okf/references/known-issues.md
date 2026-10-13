@@ -8140,6 +8140,26 @@ re-inspecting; that is its own change, with its own before/after images.
 
 ---
 
+## chimol silhouette / depth cue in the viewport
+
+status: open
+
+**2026-10-13.** Two pixel tests in `chisurf/plugins/chimol/test/test_lighting.py` ran for the
+first time when the chimol suite moved off the Qt window: under the Qt offscreen platform they
+had always skipped (no GL context). On the toolkit-free frame (`ChimolApp`, offscreen canvas,
+148L) `lighting silhouette=on` moves **0** pixels, and `set depth_cue, on` fogs **0.008 %** of
+the molecule's pixels where the test wants > 0.5 % fogged and > 20 % untouched. Both are strict
+xfails (`test_an_effect_pass_leaves_the_rest_of_the_frame_alone`,
+`test_the_viewport_depth_cue_grades_instead_of_dimming`) so a fix flips them. Not yet known
+whether the frame is wrong or the assertions were written against the Qt backend's numbers:
+`chimol/render/depth_cue.py::fog_planes` is read per frame by `WgpuMeshRenderer` and the
+`depth_cue` setting does reach it (`test_turning_the_depth_cue_off_reaches_the_viewport`); the
+silhouette's `WgpuMeshRenderer._silhouette_params` reads the display config, and where `lighting
+silhouette=on` writes is the first thing to check. Not fixed in the chimol-off-Qt change: a
+render fix needs its own before/after images.
+
+---
+
 ## Help: one documentation formula does not typeset (test_render)
 
 `chisurf/plugins/core/help/test/test_render.py::test_every_formula_in_the_documentation_typesets` fails on

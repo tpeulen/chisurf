@@ -332,18 +332,11 @@ def test_a_plugin_adds_a_setting_and_a_keybinding():
         settings.resolve("stars_size")
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_a_plugin_hears_the_viewer_through_the_bus(qapp):
+def test_a_plugin_hears_the_viewer_through_the_bus():
     """objects.changed and command.executed reach a subscriber; unload cancels it."""
-    from chimol.core.viewer import Viewer
-
-    viewer = Viewer()
+    from native_window import native_viewer
+    viewer = native_viewer()
     heard: list[tuple[str, object]] = []
 
     class _Ears:
@@ -364,7 +357,7 @@ def test_a_plugin_hears_the_viewer_through_the_bus(qapp):
         loaded.unload("ears")
         assert viewer.bus.count("objects.changed") == 0
     finally:
-        viewer.deleteLater()
+        viewer.native_window.close()
 
 
 def test_a_plugin_adds_a_wizard_and_a_menu_generator():

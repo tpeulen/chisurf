@@ -18,6 +18,7 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -29,35 +30,27 @@ _PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
     from chimol.core.settings.config import _DISPLAY_CONFIG
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(800, 640)
     win.load_structure_from_path(_PDB)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
     def do(line: str) -> None:
         shared.do(line)
         for _ in range(8):
-            qapp.processEvents()
+            process_events()
 
     before = _DISPLAY_CONFIG.get("cartoon", {}).get("side_chain_helper", False)
     yield win, do, errors

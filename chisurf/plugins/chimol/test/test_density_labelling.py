@@ -14,8 +14,8 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -27,26 +27,17 @@ PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def session(qapp, tmp_path_factory):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+def session(tmp_path_factory):
+    from native_window import NativeWindow
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(700, 520)
-    win.show()
     for _ in range(4):
-        qapp.processEvents()
-    shared.set_window(win)
+        process_events()
     shared.set_message_callback(lambda _m: None)
     errors: list[str] = []
     shared.set_error_callback(errors.append)
@@ -54,13 +45,13 @@ def session(qapp, tmp_path_factory):
     shared.do("add_dye resi 119 and name CB, Cy5")
     shared.do("add_dye resi 44 and name CB, ATTO550")
     tmp = tmp_path_factory.mktemp("density")
-    yield win, shared, errors, qapp, tmp
+    yield win, shared, errors, tmp
     shared.do("delete all")
     win.close()
 
 
 def test_the_panel_lists_and_switches_between_densities(session):
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     from chimol.plugins.density.model import VolumeViewModel
 
@@ -97,7 +88,7 @@ def test_the_panel_lists_and_switches_between_densities(session):
 
 
 def test_the_smoothing_slider_pins_and_relaxes(session):
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     oid = [o for o, e in viewer.objects.items() if getattr(e.state, "av", None) is not None][0]
     assert viewer.get_volume_smoothing(oid) == -1, "preset decides by default"
@@ -112,7 +103,7 @@ def test_the_smoothing_slider_pins_and_relaxes(session):
 
 def test_the_alpha_edit_recolors_without_recontouring(session):
     """An alpha change must not pay for marching cubes it already has."""
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     oid = [o for o, e in viewer.objects.items() if getattr(e.state, "av", None) is not None][0]
     mesh = next(
@@ -138,7 +129,7 @@ def test_the_alpha_edit_recolors_without_recontouring(session):
 
 
 def test_the_wizard_measures_fps_distance_types(session):
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     mp = {
         getattr(e, "name", ""): oid
@@ -184,7 +175,7 @@ def test_the_wizard_measures_fps_distance_types(session):
 
 def test_fps_load_draws_the_documents_distances(session):
     """A distance-bearing fps.json becomes labelled lines between the means."""
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     shared.do("fps_save " + str(tmp / "rt.json"))
     document = json.loads((tmp / "rt.json").read_text())
@@ -217,7 +208,7 @@ def test_stacked_rows_carry_their_own_eye_and_alpha(session):
     is gone in stacked mode: a control in two places is two controls to
     keep agreeing.
     """
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
     panel = viewer.gui.panels.get("density")
@@ -320,7 +311,7 @@ def test_a_rows_context_menu_sets_that_densitys_display(session):
     A wireframe dye beside a solid map is a *setting*, not a global mode --
     the menu's choices land on the row's density alone, selected or not.
     """
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
     panel = viewer.gui.panels["density"]
@@ -369,7 +360,7 @@ def test_the_chrome_routes_a_window_right_press(session):
     """`mouse_press(right=True)` on the density window opens the row menu --
     the `on_context` hook, not just the panel method.
     """
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     gui = viewer.gui
     panel = viewer.gui.panels["density"]
@@ -394,7 +385,7 @@ def test_the_smooth_slider_snaps_and_a_click_sets_it(session):
     """
     from emtk.testing import RecordingPainter
 
-    win, shared, errors, qapp, tmp = session
+    win, shared, errors, tmp = session
     viewer = win.viewer
     shared.do("density_panel on")
     panel = viewer.gui.panels.get("density")

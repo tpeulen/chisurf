@@ -29,40 +29,16 @@ _PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from native_window import NativeWindow
 
-    win = MolViewPluginWindow()
-    shared = win.cmd
-    win.resize(700, 500)
-    win.show()
-    for _ in range(12):
-        qapp.processEvents()
+    win = NativeWindow(size=(700, 500))
     win.load_structure_from_path(_PDB)
-    for _ in range(20):
-        qapp.processEvents()
+    messages, errors = win.capture_messages()
 
-    messages: list[str] = []
-    errors: list[str] = []
-    shared.set_window(win)
-    shared.set_message_callback(messages.append)
-    shared.set_error_callback(errors.append)
-
-    def do(line: str) -> None:
-        shared.do(line)
-        for _ in range(10):
-            qapp.processEvents()
-
-    yield win.viewer, do, messages, errors
+    yield win.viewer, win.do, messages, errors
     win.close()
 
 

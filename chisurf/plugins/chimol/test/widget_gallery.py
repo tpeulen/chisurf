@@ -9,9 +9,9 @@ one pixel wide, a label that overhangs its column, a checkbox whose tick lands
 outside its box, an arrow pointing the wrong way -- every one of those passes a
 recording-painter test and is obvious in an image.
 
-This is the image. One PNG, every control, drawn through the same ``QtPainter``
-the chrome uses, laid out by the same :class:`~emtk.layout.Layout`
-a host would use.
+This is the image. One PNG, every control, drawn through emtk's toolkit-free
+``PilPainter`` (the atlas glyphs the chrome draws with), laid out by the same
+:class:`~emtk.layout.Layout` a host would use.
 
 It is a **development tool, not a test**. There is no golden image to compare
 against: the point is that somebody reads it. A pixel threshold over a sheet
@@ -21,8 +21,7 @@ thing being checked, which is the same argument
 
 Use
 ---
-    QT_QPA_PLATFORM=offscreen \\
-        python -m chisurf.plugins.chimol.test.widget_gallery
+    python -m chisurf.plugins.chimol.test.widget_gallery
 
 writes ``renders/widget_gallery/<page>.png``, one page per family.
 """
@@ -623,8 +622,7 @@ def capture(page: str, out_dir: pathlib.Path = OUT_DIR) -> pathlib.Path:
         The file written.
     """
     from emtk import painter as painter_mod
-    from emtk.qt_painter import QtPainter
-    from qtpy import QtGui
+    from emtk.pil_painter import PilPainter
 
     rows = [
         (
@@ -636,31 +634,25 @@ def capture(page: str, out_dir: pathlib.Path = OUT_DIR) -> pathlib.Path:
         for row in _rows(page)
     ]
     height = int(sum(row[2] + ROW_GAP for row in rows) + 2 * ROW_GAP)
-    image = QtGui.QImage(PAGE_WIDTH, height, QtGui.QImage.Format_ARGB32_Premultiplied)
-    image.fill(QtGui.QColor(*BACKDROP))
-
-    qp = QtGui.QPainter(image)
-    try:
-        p = QtPainter(qp, font_pt=10)
-        y = ROW_GAP
-        for caption, build, row_h, row_w in rows:
-            build().draw(p, ROW_GAP, y, row_w, row_h)
-            p.text(
-                CAPTION_X,
-                y,
-                PAGE_WIDTH - CAPTION_X - ROW_GAP,
-                row_h,
-                painter_mod.ALIGN_LEFT | painter_mod.ALIGN_VCENTER,
-                caption,
-                (170, 175, 185),
-            )
-            y += row_h + ROW_GAP
-    finally:
-        qp.end()
+    p = PilPainter(PAGE_WIDTH, height, background=tuple(BACKDROP) + (255,))
+    p.set_font(None, 10)
+    y = ROW_GAP
+    for caption, build, row_h, row_w in rows:
+        build().draw(p, ROW_GAP, y, row_w, row_h)
+        p.text(
+            CAPTION_X,
+            y,
+            PAGE_WIDTH - CAPTION_X - ROW_GAP,
+            row_h,
+            painter_mod.ALIGN_LEFT | painter_mod.ALIGN_VCENTER,
+            caption,
+            (170, 175, 185),
+        )
+        y += row_h + ROW_GAP
 
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f"{page}.png"
-    image.save(str(path))
+    p.frame.save(str(path))
     return path
 
 
@@ -680,15 +672,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     import sys
 
-    from qtpy import QtWidgets
-
     if argv is None:
         argv = sys.argv[1:]
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     wanted = list(argv) if argv else pages()
     for page in wanted:
         print(capture(page))
-    del app
     return 0
 
 

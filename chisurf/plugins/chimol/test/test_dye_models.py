@@ -87,22 +87,16 @@ def test_a_library_loads_and_conformers_are_placed_and_clash_filtered(tmp_path):
     assert w.tolist() == [lib.weights[i] for i in kept]
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_add_dye_with_a_rotamer_library_makes_an_av_object(qapp, tmp_path):
+def test_add_dye_with_a_rotamer_library_makes_an_av_object(tmp_path):
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.viewport.headless import SceneSink
 
     lib_path = tmp_path / "dye.pdb"
     _write_library(lib_path, reach=6.0)
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
     cmd = Cmd(None)
     host.cmd = cmd
@@ -234,19 +228,19 @@ def test_imp_bff_rotamer_positions_and_attributes():
     assert "HETATM" in pdb_text
 
 
-def test_imp_bff_add_dye_and_distance_in_viewer(qapp, tmp_path):
+def test_imp_bff_add_dye_and_distance_in_viewer(tmp_path):
     try:
         import IMP.bff as bff  # noqa: F401
     except ImportError:
         pytest.skip("IMP.bff not available")
 
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.plugins.labelling.distance import Distance
     from chimol.viewport.headless import SceneSink
 
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
     cmd = Cmd(None)
     host.cmd = cmd
@@ -280,9 +274,9 @@ def test_imp_bff_add_dye_and_distance_in_viewer(qapp, tmp_path):
     assert "MODEL     1" in out_bff_pdb.read_text()
 
 
-def test_switch_model_rotamer_or_av_default(qapp):
+def test_switch_model_rotamer_or_av_default():
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.plugins.labelling.dyes import (
         adapt_dye_model,
@@ -339,7 +333,7 @@ def test_switch_model_rotamer_or_av_default(qapp):
     assert any(m.label == "AlexaFluor 488 C1R" for m in dye_menu_rot)
 
     # 4. Interactive runner action and add_dye command switch
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
     cmd = Cmd(None)
     host.cmd = cmd

@@ -17,17 +17,10 @@ shape:
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from chimol.core.model.hierarchy import HierarchyNode
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 
-
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _clustered_beads(n_core: int = 400, n_far: int = 40, seed: int = 0):
@@ -40,7 +33,7 @@ def _clustered_beads(n_core: int = 400, n_far: int = 40, seed: int = 0):
 
 def _viewer(xyz, *, hierarchy=None, radii=None):
     """Return a viewer holding ``xyz`` as beads."""
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         atoms=make_bead_rows(xyz, chain_ids=["A"] * len(xyz)),
@@ -53,7 +46,7 @@ def _viewer(xyz, *, hierarchy=None, radii=None):
 # --------------------------------------------------------------------------- #
 # Ambient occlusion
 # --------------------------------------------------------------------------- #
-def test_buried_beads_are_darker_than_exposed_ones(_qt_app):
+def test_buried_beads_are_darker_than_exposed_ones():
     """The whole point: crowding has to show as shading.
 
     Without it the two groups come out identical and the picture has no depth
@@ -71,7 +64,7 @@ def test_buried_beads_are_darker_than_exposed_ones(_qt_app):
     assert exposed - buried > 0.05, "the difference must be visible, not nominal"
 
 
-def test_occlusion_can_be_switched_off(_qt_app):
+def test_occlusion_can_be_switched_off():
     """``ao_strength = 0`` leaves every colour exactly as it was."""
     xyz, _ = _clustered_beads()
     view = _viewer(xyz)
@@ -85,7 +78,7 @@ def test_occlusion_can_be_switched_off(_qt_app):
     )
 
 
-def test_the_occlusion_radius_follows_the_model_scale(_qt_app):
+def test_the_occlusion_radius_follows_the_model_scale():
     """A radius in Angstrom is meaningless once the scene has been scaled.
 
     Coordinates are centred and multiplied by the viewer's scale factor, and a
@@ -126,7 +119,7 @@ def _two_molecules(n_each: int = 5):
     return xyz, root, n_each
 
 
-def test_rows_can_be_labelled_by_molecule(_qt_app):
+def test_rows_can_be_labelled_by_molecule():
     """Copies of one molecule share a label; different molecules do not."""
     xyz, root, n_each = _two_molecules()
     view = _viewer(xyz, hierarchy=root)
@@ -139,7 +132,7 @@ def test_rows_can_be_labelled_by_molecule(_qt_app):
     assert set(labels[2 * n_each :]) == {"Nsp1"}
 
 
-def test_labelling_by_chain_separates_the_copies(_qt_app):
+def test_labelling_by_chain_separates_the_copies():
     """The same machinery at a finer level gives one label per copy."""
     xyz, root, _ = _two_molecules()
     view = _viewer(xyz, hierarchy=root)
@@ -149,7 +142,7 @@ def test_labelling_by_chain_separates_the_copies(_qt_app):
     assert len(set(labels)) == 4
 
 
-def test_no_hierarchy_means_no_labels(_qt_app):
+def test_no_hierarchy_means_no_labels():
     """A plain coordinate object says so rather than inventing a level."""
     xyz, _ = _clustered_beads(n_core=10, n_far=2)
     view = _viewer(xyz)

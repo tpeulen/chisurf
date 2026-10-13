@@ -22,29 +22,22 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
-
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 @pytest.fixture
-def loaded(qapp):
+def loaded():
     """Build a window with a small map, its view model, and the panel."""
     from chimol.core.model.volume import VolumeGrid
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from native_window import NativeWindow
     from chimol.plugins.density.window import DensityWindow
 
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.resize(900, 640)
-    win.show()
     for _ in range(5):
-        qapp.processEvents()
+        process_events()
 
     z, y, x = np.mgrid[-14:14, -14:14, -14:14]
     grid = VolumeGrid(
@@ -52,9 +45,9 @@ def loaded(qapp):
         name="EMD-demo",
     )
     object_id = win.viewer.add_volume(grid, name="EMD-demo")
-    qapp.processEvents()
+    process_events()
 
-    model = win.volume_panel.model
+    model = win.open_panel("density").model
     panel = DensityWindow(model)
     gui = win.viewer.gui
     window = gui.add_window(panel.window())
@@ -248,17 +241,16 @@ def test_an_unknown_mode_is_refused(loaded):
     assert not win.viewer.set_volume_mode("hologram", object_id=object_id)
 
 
-def test_the_panel_says_so_when_there_is_no_map(qapp):
+def test_the_panel_says_so_when_there_is_no_map():
     """It must not draw a histogram of nothing."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from native_window import NativeWindow
     from chimol.plugins.density.window import DensityWindow
 
-    win = MolViewPluginWindow()
-    win.show()
+    win = NativeWindow()
     for _ in range(3):
-        qapp.processEvents()
+        process_events()
     try:
-        panel = DensityWindow(win.volume_panel.model)
+        panel = DensityWindow(win.open_panel("density").model)
         said: list[str] = []
 
         class _Text(_Recorder):
@@ -616,12 +608,11 @@ def test_hide_dust_drops_the_crumbs_and_keeps_the_blob():
     assert (np.zeros(0) if kept.size else None) is not None or True
 
 
-def _shell(qapp):
+def _shell():
     """Build a viewer plus command shell, mirroring test_volume's fixture."""
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
-
-    view = Viewer()
+    from native_window import native_viewer
+    view = native_viewer()
     messages: list[str] = []
     errors: list[str] = []
     cmd = Cmd()
@@ -631,8 +622,8 @@ def _shell(qapp):
     return view, cmd, messages, errors
 
 
-def test_hide_dust_is_a_map_setting_and_show_dust_clears_it(qapp):
-    view, cmd, messages, errors = _shell(qapp)
+def test_hide_dust_is_a_map_setting_and_show_dust_clears_it():
+    view, cmd, messages, errors = _shell()
     view.add_volume(_speckled_map(), name="speckled")
 
     def triangles():
@@ -650,10 +641,10 @@ def test_hide_dust_is_a_map_setting_and_show_dust_clears_it(qapp):
     assert triangles() == before, "show_dust did not bring the pieces back"
 
 
-def test_volume_gaussian_adds_a_smoothed_copy(qapp):
+def test_volume_gaussian_adds_a_smoothed_copy():
     from chimol.core.model.volume import VolumeGrid
 
-    view, cmd, messages, errors = _shell(qapp)
+    view, cmd, messages, errors = _shell()
     z, y, x = np.mgrid[-14:14, -14:14, -14:14]
     grid = VolumeGrid(
         values=np.exp(-(x * x + y * y + z * z) / 60.0).astype(np.float32),

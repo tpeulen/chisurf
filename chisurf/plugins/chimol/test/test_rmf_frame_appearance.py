@@ -27,7 +27,7 @@ import pytest
 
 RMF = pytest.importorskip("RMF")
 
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.rmf import load_rmf_full
 from chimol.io.structure import load_structure_payload
 
@@ -85,16 +85,10 @@ def constant(tmp_path_factory):
     return path
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _view(path, qapp):
+def _view(path):
     _reader, payload = load_structure_payload(str(path))
-    view = Viewer()
+    view = native_viewer()
     view.add_payload(payload, name="colony", source_path=str(path))
     return view
 
@@ -127,8 +121,8 @@ def test_the_radii_come_from_the_first_frame(varying):
     assert int((data["radii"] > 0).sum()) == 1, data["radii"]
 
 
-def test_the_colour_in_the_file_is_the_colour_it_opens_with(constant, qapp):
-    view = _view(constant, qapp)
+def test_the_colour_in_the_file_is_the_colour_it_opens_with(constant):
+    view = _view(constant)
     override = view._get_active_state().colors_per_atom_override
     assert override is not None
     assert override.shape == (N_BEADS, 4), "colours must reach the viewer as RGBA"
@@ -138,8 +132,8 @@ def test_the_colour_in_the_file_is_the_colour_it_opens_with(constant, qapp):
 # --------------------------------------------------------------------------- #
 # Playing
 # --------------------------------------------------------------------------- #
-def test_stepping_the_movie_recolours_and_resizes(varying, qapp):
-    view = _view(varying, qapp)
+def test_stepping_the_movie_recolours_and_resizes(varying):
+    view = _view(varying)
     seen = []
     for frame in range(N_FRAMES):
         view.set_current_frame(frame)
@@ -155,9 +149,9 @@ def test_stepping_the_movie_recolours_and_resizes(varying, qapp):
     assert not np.allclose(first_colour, last_colour), "colour never followed the frame"
 
 
-def test_a_bead_with_no_radius_is_not_drawn(varying, qapp):
+def test_a_bead_with_no_radius_is_not_drawn(varying):
     """Growth is expressed as a radius, and zero means "not yet"."""
-    view = _view(varying, qapp)
+    view = _view(varying)
     for frame in range(N_FRAMES):
         view.set_current_frame(frame)
         mask = view.visible_row_mask(N_BEADS)
@@ -165,14 +159,14 @@ def test_a_bead_with_no_radius_is_not_drawn(varying, qapp):
         assert int(mask.sum()) == frame + 1, (frame, mask)
 
 
-def test_hiding_survives_stepping_the_movie(varying, qapp):
+def test_hiding_survives_stepping_the_movie(varying):
     """The reason ``absent_mask`` is its own mask.
 
     A single visibility mask serving both questions means the next frame
     silently un-hides whatever the hierarchy panel switched off -- the same
     failure ``representation_mask`` was split out to avoid.
     """
-    view = _view(varying, qapp)
+    view = _view(varying)
     view.set_current_frame(N_FRAMES - 1)
     hidden = np.zeros(N_BEADS, dtype=bool)
     hidden[0] = True
@@ -203,10 +197,10 @@ def restore_recenter():
     set_setting("movie_recenter", before)
 
 
-def test_the_camera_follows_the_frame_when_asked_to(varying, qapp, restore_recenter):
+def test_the_camera_follows_the_frame_when_asked_to(varying, restore_recenter):
     """The default, and what keeps a molecule wandering across a box in view."""
     restore_recenter("movie_recenter", True)
-    view = _view(varying, qapp)
+    view = _view(varying)
     centres = []
     for frame in range(N_FRAMES):
         view.set_current_frame(frame)
@@ -216,7 +210,7 @@ def test_the_camera_follows_the_frame_when_asked_to(varying, qapp, restore_recen
     )
 
 
-def test_the_floor_stays_put_when_it_is_turned_off(varying, qapp, restore_recenter):
+def test_the_floor_stays_put_when_it_is_turned_off(varying, restore_recenter):
     """What a structure that *grows* needs.
 
     Following the centroid of a growing film slides the scene out from under it:
@@ -225,7 +219,7 @@ def test_the_floor_stays_put_when_it_is_turned_off(varying, qapp, restore_recent
     existed, the scene centre swung from 0 to -21 to +52 scene units.
     """
     restore_recenter("movie_recenter", False)
-    view = _view(varying, qapp)
+    view = _view(varying)
     centres = []
     for frame in range(N_FRAMES):
         view.set_current_frame(frame)

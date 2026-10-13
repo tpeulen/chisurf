@@ -26,19 +26,13 @@ import pathlib
 import numpy as np
 import pytest
 from chimol.core.settings.config import get_package_display_config_path
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 
 
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture(scope="module")
-def blob(_qt_app):
+def blob():
     """Return a viewer over a compact, deliberately *non-spherical* cloud.
 
     Two lobes joined by a neck. A single ball would pass every test below by
@@ -57,7 +51,7 @@ def blob(_qt_app):
     ]
     xyz = np.vstack([left, right, bridge])
 
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 1.7))
     view.set_metaballs_visible(True)
     view._draft_quality = False
@@ -217,7 +211,7 @@ def _load(name: str, view_name: str):
         pytest.skip(f"{name} is not in the tree")
 
     _structure, payload = load_structure_payload(candidate)
-    view = Viewer()
+    view = native_viewer()
     view.add_payload(payload, name=view_name)
     view.set_metaballs_visible(True)
     view._draft_quality = False
@@ -225,13 +219,13 @@ def _load(name: str, view_name: str):
 
 
 @pytest.fixture(scope="module")
-def protein(_qt_app):
+def protein():
     """Return a viewer over a real, densely packed protein (T4 lysozyme)."""
     return _load("148l.pdb", "protein")
 
 
 @pytest.fixture(scope="module")
-def helical(_qt_app):
+def helical():
     """Return a viewer over a long helical molecule.
 
     The case a globular test misses.

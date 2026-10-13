@@ -17,10 +17,10 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("qtpy")
 
 from chimol.core.selection.parser import tokenize  # noqa: E402
 from chimol.ui.menus.objects import quote_selection_name  # noqa: E402
+from native_window import process_events
 
 
 # --------------------------------------------------------------------------- #
@@ -66,8 +66,7 @@ def test_anything_else_is_quoted(name):
 def hyphenated(request):
     import pathlib
 
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+    from native_window import NativeWindow
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -80,23 +79,20 @@ def hyphenated(request):
     if not pdb.is_file():
         pytest.skip(f"missing fixture {pdb}")
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
-    win.show()
     for _ in range(4):
-        app.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
     def run(line: str) -> list[str]:
         before = len(errors)
-        win._run_object_menu_command(line)
+        win.run_menu_command(line)
         for _ in range(3):
-            app.processEvents()
+            process_events()
         return errors[before:]
 
     run(f"load {pdb}")

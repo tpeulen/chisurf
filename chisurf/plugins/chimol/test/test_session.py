@@ -27,6 +27,7 @@ import zipfile
 
 import numpy as np
 import pytest
+from native_window import process_events
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -38,50 +39,41 @@ _PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _new_window(qapp):
+def _new_window():
     """A window on 148L, with the shared command layer pointed at it.
 
     Callbacks are wired **after** construction on purpose: a window rebinds the
     shared command layer's output to its own console when it is built, so a test
     that set them earlier would silently stop hearing anything.
     """
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(1000, 700)
-    win.show()
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(_PDB)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     messages: list[str] = []
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(messages.append)
     shared.set_error_callback(errors.append)
 
     def do(line: str) -> None:
         shared.do(line)
         for _ in range(8):
-            qapp.processEvents()
+            process_events()
 
     return win, shared, do, messages, errors
 
 
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
-    win, shared, do, messages, errors = _new_window(qapp)
+    win, shared, do, messages, errors = _new_window()
     yield win, shared, do, messages, errors
     win.close()
 
@@ -119,7 +111,7 @@ def _snapshot(viewer, shared):
 # --------------------------------------------------------------------------- #
 # Round trip
 # --------------------------------------------------------------------------- #
-def test_a_session_round_trips(session, qapp, tmp_path):
+def test_a_session_round_trips(session, tmp_path):
     win, shared, do, _messages, errors = session
     _furnish(do)
     before = _snapshot(win.viewer, shared)
@@ -130,7 +122,7 @@ def test_a_session_round_trips(session, qapp, tmp_path):
     assert errors == []
     assert path.exists()
 
-    win2, shared2, do2, _m2, errors2 = _new_window(qapp)
+    win2, shared2, do2, _m2, errors2 = _new_window()
     try:
         do2(f"session_load {path}")
         assert errors2 == []
@@ -144,7 +136,7 @@ def test_a_session_round_trips(session, qapp, tmp_path):
         win2.close()
 
 
-def test_the_camera_survives_the_panel_refresh(session, qapp, tmp_path):
+def test_the_camera_survives_the_panel_refresh(session, tmp_path):
     """All eighteen floats, not just the rotation.
 
     The distance (slot 11) and the clip planes (15, 16) were the ones lost, and
@@ -157,7 +149,7 @@ def test_the_camera_survives_the_panel_refresh(session, qapp, tmp_path):
     path = tmp_path / "s.cms"
     do(f"session_save {path}")
 
-    win2, _shared2, do2, _m2, _e2 = _new_window(qapp)
+    win2, _shared2, do2, _m2, _e2 = _new_window()
     try:
         do2(f"session_load {path}")
         view_after = [float(v) for v in win2.viewer.get_view_state()]
@@ -168,7 +160,7 @@ def test_the_camera_survives_the_panel_refresh(session, qapp, tmp_path):
         win2.close()
 
 
-def test_a_restored_session_actually_draws(session, qapp, tmp_path):
+def test_a_restored_session_actually_draws(session, tmp_path):
     """State restored but no geometry would be the same class of bug as a mask
     set without its flag: everything looks right and nothing is on screen.
     """
@@ -177,7 +169,7 @@ def test_a_restored_session_actually_draws(session, qapp, tmp_path):
     path = tmp_path / "s.cms"
     do(f"session_save {path}")
 
-    win2, _shared2, do2, _m2, _e2 = _new_window(qapp)
+    win2, _shared2, do2, _m2, _e2 = _new_window()
     try:
         do2(f"session_load {path}")
         scene = win2.viewer.get_current_scene()
@@ -190,7 +182,7 @@ def test_a_restored_session_actually_draws(session, qapp, tmp_path):
         win2.close()
 
 
-def test_manual_bond_edits_survive(session, qapp, tmp_path):
+def test_manual_bond_edits_survive(session, tmp_path):
     """The guard on deriving the field list from the dataclass.
 
     ``bond_edits`` was added by separate work and is named nowhere in the session
@@ -207,7 +199,7 @@ def test_manual_bond_edits_survive(session, qapp, tmp_path):
     path = tmp_path / "s.cms"
     do(f"session_save {path}")
 
-    win2, _shared2, do2, _m2, _e2 = _new_window(qapp)
+    win2, _shared2, do2, _m2, _e2 = _new_window()
     try:
         do2(f"session_load {path}")
         restored = win2.viewer
@@ -218,14 +210,14 @@ def test_manual_bond_edits_survive(session, qapp, tmp_path):
         win2.close()
 
 
-def test_group_collapse_state_survives(session, qapp, tmp_path):
+def test_group_collapse_state_survives(session, tmp_path):
     win, shared, do, _messages, _errors = session
     _furnish(do)
     assert win.viewer.is_group_open("things") is False
     path = tmp_path / "s.cms"
     do(f"session_save {path}")
 
-    win2, _shared2, do2, _m2, _e2 = _new_window(qapp)
+    win2, _shared2, do2, _m2, _e2 = _new_window()
     try:
         do2(f"session_load {path}")
         assert win2.viewer.group_names() == ["things"]
@@ -253,13 +245,13 @@ def test_saving_to_pse_says_it_is_not_pymols_format(session, tmp_path):
     assert any("PyMOL cannot read it" in m for m in messages)
 
 
-def test_load_routes_a_session_extension(session, qapp, tmp_path):
+def test_load_routes_a_session_extension(session, tmp_path):
     win, shared, do, _messages, errors = session
     _furnish(do)
     path = tmp_path / "s.cms"
     do(f"session_save {path}")
 
-    win2, _shared2, do2, _m2, errors2 = _new_window(qapp)
+    win2, _shared2, do2, _m2, errors2 = _new_window()
     try:
         do2(f"load {path}")
         assert errors2 == []

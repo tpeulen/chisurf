@@ -21,6 +21,7 @@ import pathlib
 
 import pytest
 from chimol.ui.menus.objects import OBJECT_MENUS, targets_for
+from native_window import process_events
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -32,38 +33,29 @@ _PDB = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     """A window with three derived objects to group in various ways."""
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(1000, 700)
-    win.show()
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(_PDB)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
     def do(line: str) -> None:
         shared.do(line)
         for _ in range(8):
-            qapp.processEvents()
+            process_events()
 
     do("create lig, organic")
     do("create pep, chain S and polymer")
@@ -350,7 +342,7 @@ def test_a_closed_group_hides_its_members_but_keeps_them_loaded(session):
     assert "lig" not in labels and "nag" not in labels
     # Still loaded: a collapsed row is a display state, not an unload.
     assert {o["name"] for o in win.viewer.list_objects()} >= {"lig", "nag"}
-    assert "lig" in {e["name"] for e in win._object_store.values()}
+    assert "lig" in {o["name"] for o in win.viewer.list_objects()}
 
 
 def test_the_members_are_indented_and_the_header_is_not(session):

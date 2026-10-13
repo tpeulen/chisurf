@@ -11,9 +11,9 @@ click that dismissed the overlay was swallowed instead of reaching the button it
 landed on.
 
 The image belongs *behind* the chrome: absent from the saved file, never from
-the window. These tests paint the widget's screen-space pass onto a plain
-``QImage`` -- the same code the widget runs, with a painter that can be read
-back, since an offscreen GL framebuffer cannot be.
+the window. These tests read back the frame the renderer draws on the offscreen
+canvas -- the traced image composited into the scene column, the chrome over
+it -- which is the frame every host shows.
 """
 
 from __future__ import annotations
@@ -37,75 +37,49 @@ RAY_RGB = (220, 30, 30)
 
 
 @pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-@pytest.fixture(scope="module")
-def viewport(qapp):
-    """Build a laid-out viewport with a structure in it, and its GL widget."""
-    from chimol.hosts.qt.window import MolViewPluginWindow
+def viewport():
+    """Build a laid-out viewport with a structure in it, and its renderer."""
+    from native_window import NativeWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
 
-    window = MolViewPluginWindow()
-    # A viewport that was never laid out is not a viewport: offscreen the
-    # window collapses the 3-D column to a few dozen pixels, and every
-    # measurement below would be taken on a widget with no room in it.
-    window.viewer.setMinimumWidth(760)
-    window.viewer.setMinimumHeight(560)
-    window.resize(1200, 900)
-    window.show()
-    for _ in range(30):
-        qapp.processEvents()
-
+    window = NativeWindow(size=(1200, 900))
     window.load_structure_from_path(PDB, name="148l")
-    for _ in range(20):
-        qapp.processEvents()
+    # This host shows the system info on load, unpinned, so the next click in
+    # the scene would put *it* away first; the clicks below are about the image.
+    window.viewer.set_system_info_visible(False)
+    window.pump(3)
 
-    widget = window.viewer.renderer.widget()
+    widget = window.viewer.renderer
     if widget.height() < 200 or widget.scene_width() < 200:
         pytest.skip(f"viewport is {widget.scene_width()}x{widget.height()}; never laid out")
-    yield window, widget, qapp
+    yield window, widget, window
     window.close()
 
 
 def _ray_image():
-    from qtpy import QtGui
+    import numpy as np
 
-    image = QtGui.QImage(700, 500, QtGui.QImage.Format_RGB32)
-    image.fill(QtGui.QColor(*RAY_RGB))
-    return image
+    return np.tile(np.array(RAY_RGB, dtype=np.uint8), (500, 700, 1))
 
 
-def _compose(widget):
-    """Run the widget's screen-space pass onto a readable canvas."""
-    from qtpy import QtGui
-
-    canvas = QtGui.QImage(widget.width(), widget.height(), QtGui.QImage.Format_RGB32)
-    canvas.fill(QtGui.QColor(0, 0, 255))
-    painter = QtGui.QPainter(canvas)
-    try:
-        widget.paint_screen_space(painter)
-    finally:
-        painter.end()
-    return canvas
+def _compose(window):
+    """Draw a frame and read it back, ``(H, W, 4)``."""
+    window.pump()
+    return window.grab()
 
 
 def _rgb(canvas, x, y):
-    colour = canvas.pixelColor(int(x), int(y))
-    return (colour.red(), colour.green(), colour.blue())
+    return tuple(int(v) for v in canvas[int(y), int(x), :3])
 
 
 def test_the_traced_image_is_shown_in_the_scene_column(viewport):
     """It replaces the scene, and it is really painted."""
-    _window, widget, _qapp = viewport
+    window, widget, _ = viewport
 
     assert widget.show_ray_image(_ray_image())
-    canvas = _compose(widget)
+    canvas = _compose(window)
 
     scene = _rgb(canvas, widget.scene_width() // 2, widget.height() // 2)
     assert scene == RAY_RGB, f"the traced image is not in the scene column (found {scene})"
@@ -120,7 +94,7 @@ def test_the_image_stays_out_of_the_chrome(viewport):
     *darkened* rather than replaced, and a colour comparison would pass on the
     broken case.
     """
-    _window, widget, _qapp = viewport
+    _window, widget, _ = viewport
     gui = widget._internal_gui
     if not (gui.visible and gui.docked):
         pytest.skip("the object panel is not docked in the viewport")
@@ -144,9 +118,9 @@ def test_the_panel_still_takes_a_click_while_the_image_shows(viewport):
     that the panel *took* the press -- not that the image survived it, which it
     should not when the click is one that changes what is drawn.
     """
-    from qtpy import QtCore, QtGui
+    from emtk.events import LEFT_BUTTON, NO_MODIFIER
 
-    _window, widget, _qapp = viewport
+    _window, widget, _ = viewport
     gui = widget._internal_gui
     gui.layout(widget.width(), widget.height())
 
@@ -162,99 +136,74 @@ def test_the_panel_still_takes_a_click_while_the_image_shows(viewport):
         pytest.skip("no panel hot-spot found to click")
 
     assert widget.show_ray_image(_ray_image())
-    event = QtGui.QMouseEvent(
-        QtCore.QEvent.MouseButtonPress,
-        QtCore.QPointF(*hit),
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
     widget._gui_grab = False
-    widget.mousePressEvent(event)
+    consumed = widget.on_pointer_press(float(hit[0]), float(hit[1]), LEFT_BUTTON, NO_MODIFIER)
 
     assert widget._gui_grab, (
         f"the press at {hit} was over the object panel and the panel did not "
         "get it -- it was consumed dismissing the traced image, which is what "
         "made the first click after `ray` do nothing"
     )
-    assert event.isAccepted()
+    assert consumed
+    widget.on_pointer_release(float(hit[0]), float(hit[1]), LEFT_BUTTON, NO_MODIFIER)
     widget.clear_ray_image()
 
 
 def test_a_click_on_the_scene_goes_back_to_the_live_view(viewport):
     """The camera is about to move, so a still frame of where it was must go."""
-    from qtpy import QtCore, QtGui
+    from emtk.events import LEFT_BUTTON, NO_MODIFIER
 
-    _window, widget, _qapp = viewport
+    _window, widget, _ = viewport
     assert widget.show_ray_image(_ray_image())
 
-    event = QtGui.QMouseEvent(
-        QtCore.QEvent.MouseButtonPress,
-        QtCore.QPointF(widget.scene_width() / 2.0, widget.height() / 2.0),
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    widget.mousePressEvent(event)
+    x, y = widget.scene_width() / 2.0, widget.height() / 2.0
+    widget.on_pointer_press(x, y, LEFT_BUTTON, NO_MODIFIER)
+    widget.on_pointer_release(x, y, LEFT_BUTTON, NO_MODIFIER)
     assert widget._ray_image is None
 
 
 def test_nothing_is_laid_over_the_viewport(viewport):
-    """The mechanism, guarded directly.
+    """The mechanism, guarded directly: the panel is still drawn over the image.
 
-    Any widget shown over the 3-D column hides the panel drawn inside it,
-    whatever it is called, so what is checked is that showing a traced image
-    adds no visible child covering the container -- not that one particular
-    ``QLabel`` is gone.
+    Anything laid over the 3-D column hides the panel drawn inside it, whatever
+    it is, so what is checked is the frame: with a traced image showing, the
+    panel's column carries the chrome and not the image's colour.
     """
-    from qtpy import QtCore
+    window, widget, _ = viewport
+    gui = widget._internal_gui
+    if not (gui.visible and gui.docked):
+        pytest.skip("the object panel is not docked in the viewport")
 
-    window, widget, qapp = viewport
-    container = getattr(window.viewer, "_container", None)
-    if container is None:
-        pytest.skip("the viewer has no container widget")
-
-    def covering() -> list:
-        area = QtCore.QRect(QtCore.QPoint(0, 0), container.size())
-        return [
-            child.__class__.__name__
-            for child in container.findChildren(QtCore.QObject)
-            if hasattr(child, "isVisible")
-            and child is not widget
-            and child.isVisible()
-            and child.geometry().contains(area)
-        ]
-
-    before = covering()
     assert window.viewer.show_ray_overlay(_ray_image())
-    for _ in range(5):
-        qapp.processEvents()
-    after = covering()
-
-    assert after == before, (
-        f"showing a traced image put {sorted(set(after) - set(before))} over "
-        "the viewport; the object panel is drawn inside it and is now hidden"
-    )
-    window.viewer.hide_ray_overlay()
+    try:
+        canvas = _compose(window)
+        column = canvas[: int(widget.height()), int(widget.scene_width()) + 2 :, :3]
+        ray = (column == list(RAY_RGB)).all(axis=2)
+        assert not ray.any(), (
+            f"{int(ray.sum())} pixels of the traced image landed in the panel's "
+            "column; the object panel is drawn there and is now hidden"
+        )
+        scene = _rgb(canvas, widget.scene_width() // 2, widget.height() // 2)
+        assert scene == RAY_RGB, f"the traced image is not drawn at all (found {scene})"
+    finally:
+        window.viewer.hide_ray_overlay()
 
 
 def test_changing_what_is_drawn_drops_the_image(viewport):
     """A traced image is a picture of the scene that was."""
     from chimol.commands.command import Cmd
 
-    window, widget, qapp = viewport
+    window, widget, _ = viewport
     assert widget.show_ray_image(_ray_image())
 
-    cmd = Cmd(window)
+    cmd = Cmd(window.host)
     cmd.set_message_callback(lambda _m: None)
     cmd.set_error_callback(lambda _m: None)
     cmd.do("hide everything")
-    for _ in range(10):
-        qapp.processEvents()
+    window.pump()
 
     assert widget._ray_image is None, (
         "the viewport still shows a picture of a scene that has changed"
     )
     cmd.do("show cartoon")
-    for _ in range(10):
-        qapp.processEvents()
+    window.pump()

@@ -13,23 +13,15 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
-
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 @pytest.fixture
-def shell(qapp):
+def shell():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.commands.command import Cmd
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]
         / "test"
@@ -41,18 +33,16 @@ def shell(qapp):
     if not pdb.is_file():
         pytest.skip("148l.pdb fixture not present")
 
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.resize(900, 650)
-    win.show()
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(pdb)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     messages, errors = [], []
-    cmd = Cmd()
-    cmd.set_window(win)
+    cmd = win.cmd
     cmd.set_message_callback(messages.append)
     cmd.set_error_callback(errors.append)
     yield win.viewer, cmd, messages, errors

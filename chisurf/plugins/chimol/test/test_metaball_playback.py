@@ -20,22 +20,17 @@ import numpy as np
 import pytest
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 
 
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def blob(_qt_app):
+def blob():
     """Return a viewer showing metaballs over a few hundred beads."""
     rng = np.random.default_rng(0)
     xyz = rng.normal(scale=9.0, size=(400, 3))
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(
         xyz,
         atoms=make_bead_rows(xyz, chain_ids=["A"] * len(xyz)),

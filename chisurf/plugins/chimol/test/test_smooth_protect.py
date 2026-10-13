@@ -33,6 +33,7 @@ from chimol.analysis.smoothing import (
     END_MODES,
     smooth_frames,
 )
+from native_window import process_events
 
 _FRAGMENT = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -256,37 +257,28 @@ def test_the_wrong_shape_is_refused():
 # --------------------------------------------------------------------------- #
 # protect / deprotect, through the commands that must honour them
 # --------------------------------------------------------------------------- #
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def session(qapp):
+def session():
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(900, 650)
-    win.show()
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(_FRAGMENT)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
     errors: list[str] = []
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(errors.append)
 
     def do(line: str) -> None:
         shared.do(line)
         for _ in range(8):
-            qapp.processEvents()
+            process_events()
 
     yield win.viewer, do, errors
     win.close()

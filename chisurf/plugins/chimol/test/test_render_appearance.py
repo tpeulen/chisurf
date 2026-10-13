@@ -30,42 +30,34 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
 _DATA = pathlib.Path(__file__).resolve().parents[4] / "test" / "data"
 _PDB = _DATA / "atomic_coordinates" / "pdb_files" / "148l.pdb"
 _SOLVATED = _DATA / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def _window(qapp, path):
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
+def _window(path):
+    from native_window import NativeWindow
+    win = NativeWindow()
     shared = win.cmd
     win.resize(1200, 800)
-    win.show()
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     win.load_structure_from_path(path)
     for _ in range(20):
-        qapp.processEvents()
+        process_events()
 
-    shared.set_window(win)
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(lambda _m: None)
     return win, shared
 
 
 @pytest.fixture
-def lysozyme(qapp):
-    win, shared = _window(qapp, _PDB)
-    yield win, shared, qapp
+def lysozyme():
+    win, shared = _window(_PDB)
+    yield win, shared, None
     win.close()
 
 
@@ -97,7 +89,7 @@ def test_a_rainbow_cartoon_actually_contains_green(lysozyme):
     shared.do("show cartoon, polymer")
     shared.do("spectrum count, rainbow, polymer")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
 
     colors = _geometry_colors(win.viewer)
     assert colors.size, "the cartoon should have produced geometry"
@@ -112,7 +104,7 @@ def test_a_rainbow_spans_all_three_channels(lysozyme):
     shared.do("show cartoon, polymer")
     shared.do("spectrum count, rainbow, polymer")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
 
     colors = _geometry_colors(win.viewer)
     # Occlusion is multiplied into the vertex colours, so the maxima sit below
@@ -130,7 +122,7 @@ def test_the_per_atom_override_projects_onto_residues(lysozyme):
     shared.do("show cartoon, polymer")
     shared.do("spectrum count, rainbow, polymer")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
 
     viewer = win.viewer
     n_res = len(viewer._residue_ids)
@@ -150,13 +142,13 @@ def test_no_override_leaves_the_residue_colours_alone(lysozyme):
     """
     win, shared, qapp = lysozyme
     for _ in range(5):
-        qapp.processEvents()
+        process_events()
     viewer = win.viewer
     viewer._colors_per_atom_override = None
     assert viewer._ca_rgba(len(viewer._residue_ids)) is None
 
 
-def test_colouring_one_residue_leaves_the_others_alone(qapp):
+def test_colouring_one_residue_leaves_the_others_alone():
     """A *partial* per-atom override must not flatten the rest of the cartoon.
 
     The override is normally partial -- ``color red, resi 4`` touches one
@@ -164,7 +156,7 @@ def test_colouring_one_residue_leaves_the_others_alone(qapp):
     colour, which the caller then assigned over the whole array. One named
     residue therefore destroyed the load-time gradient everywhere else.
     """
-    win, shared = _window(qapp, _SOLVATED)
+    win, shared = _window(_SOLVATED)
     try:
         viewer = win.viewer
         before = np.asarray(viewer._colors_per_ca, dtype=float).copy()
@@ -174,7 +166,7 @@ def test_colouring_one_residue_leaves_the_others_alone(qapp):
 
         shared.do("color red, resi 4")
         for _ in range(10):
-            qapp.processEvents()
+            process_events()
 
         after = np.asarray(viewer._colors_per_ca, dtype=float)
         i_red = int(np.flatnonzero(np.asarray(viewer._residue_ids) == 4)[0])
@@ -190,19 +182,19 @@ def test_colouring_one_residue_leaves_the_others_alone(qapp):
         win.close()
 
 
-def test_an_untouched_residue_abstains_from_the_projection(qapp):
+def test_an_untouched_residue_abstains_from_the_projection():
     """The projection reports "no colour" as NaN, not as the base colour.
 
     That is what lets the caller blend on the finite mask; a fallback colour
     here is indistinguishable from a residue the user really did paint in the
     base colour.
     """
-    win, shared = _window(qapp, _SOLVATED)
+    win, shared = _window(_SOLVATED)
     try:
         viewer = win.viewer
         shared.do("color red, resi 4")
         for _ in range(10):
-            qapp.processEvents()
+            process_events()
 
         projected = viewer._ca_rgba(len(viewer._residue_ids))
         assert projected is not None
@@ -222,14 +214,14 @@ def test_spectrum_refreshes_the_sequence_strip(lysozyme):
     shared.do("hide everything")
     shared.do("show cartoon, polymer")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
 
     def strip_colors():
         # The in-viewport strip, not the deleted `seq_list` dock: one
         # `SequenceRow` per chain, each carrying the per-residue colours the
         # strip paints. Flattened, so the comparison is the same one as before
         # -- "did the colouring change" -- over the same numbers.
-        win.sync_internal_gui()
+        win.refresh_objects()
         gui = win.viewer.gui
         # Scaled to 0-255. `SequenceRow.colors` is float 0-1 where the dock's
         # `QColor.getRgb()` was an int triple, and the green test below is
@@ -244,7 +236,7 @@ def test_spectrum_refreshes_the_sequence_strip(lysozyme):
     before = strip_colors()
     shared.do("spectrum count, rainbow, polymer")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
     after = strip_colors()
 
     assert before != after, "the sequence strip kept its old colours"
@@ -269,7 +261,7 @@ def test_a_bonded_ligand_keeps_its_van_der_waals_radius(lysozyme):
     shared.do("show cartoon, polymer")
     shared.do("show spheres, organic")
     for _ in range(10):
-        qapp.processEvents()
+        process_events()
 
     viewer = win.viewer
     unbonded = viewer._unbonded_atom_mask()
@@ -328,13 +320,13 @@ def test_a_bonded_ligand_keeps_its_van_der_waals_radius(lysozyme):
     )
 
 
-def test_waters_are_the_atoms_that_do_get_shrunk(qapp):
+def test_waters_are_the_atoms_that_do_get_shrunk():
     """The rule has to still fire for what it was written for.
 
     ``solvated_fragment`` is the fixture with actual waters and a free ion --
     the case every plain-protein fixture in the tree misses.
     """
-    win, shared = _window(qapp, _SOLVATED)
+    win, shared = _window(_SOLVATED)
     try:
         viewer = win.viewer
         unbonded = viewer._unbonded_atom_mask()
@@ -362,7 +354,7 @@ def test_the_unbonded_mask_is_none_without_bonds(lysozyme):
 # --------------------------------------------------------------------------- #
 # the default layout
 # --------------------------------------------------------------------------- #
-def test_the_viewport_gets_most_of_the_window(qapp):
+def test_the_viewport_gets_most_of_the_window():
     """``sizes: [3, 1]`` is pixels, not a ratio, and gave the view 40%.
 
     The mechanism this guarded is gone: the 3-D view **is** the window now, as
@@ -372,25 +364,24 @@ def test_the_viewport_gets_most_of_the_window(qapp):
     tree rather than protecting anything.
 
     The property is still worth asserting, and is now stronger than "the
-    larger half": there is nothing to take a share. Written against the
-    central widget so it keeps meaning if a second widget is ever put back.
+    larger half": there is nothing to take a share. Written against the scene
+    column -- what is left of the canvas once the in-viewport panel has its
+    strip -- so it keeps meaning if a column is ever widened.
     """
-    from chimol.hosts.qt import window as mw
+    from native_window import NativeWindow
 
-    win = mw.MolViewPluginWindow()
-    win.resize(1600, 950)
-    win.show()
-    for _ in range(15):
-        qapp.processEvents()
+    win = NativeWindow(size=(1600, 950))
+    win.pump(3)
     try:
-        assert win.centralWidget() is win.viewer
-        share = win.viewer.width() / win.width()
+        renderer = win.viewer.renderer
+        assert (win.viewer.width(), win.viewer.height()) == (1600, 950)
+        share = renderer.scene_width() / win.viewer.width()
         assert share > 0.5, f"the 3D view got only {share:.0%} of the window"
     finally:
         win.close()
 
 
-def test_the_default_layout_sizes_are_pixels(qapp):
+def test_the_default_layout_sizes_are_pixels():
     """A guard on the value itself, so a ratio cannot creep back in.
 
     Every other ``sizes`` in the state is in pixels; one entry written as a

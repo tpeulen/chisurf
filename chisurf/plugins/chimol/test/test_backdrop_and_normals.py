@@ -18,27 +18,21 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from chimol.core.settings.config import _DISPLAY_CONFIG
-from chimol.core.viewer import Viewer
+from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 from chimol.render import backdrop
 
-
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 # --------------------------------------------------------------------------- #
 # Normals
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def blob(_qt_app):
+def blob():
     """Return a viewer showing a metaball over a compact cloud of beads."""
     rng = np.random.default_rng(0)
     xyz = rng.normal(scale=7.0, size=(300, 3))
-    view = Viewer()
+    view = native_viewer()
     view.set_coordinates(xyz, atoms=make_bead_rows(xyz), atom_radii=np.full(len(xyz), 3.0))
     view.set_metaballs_visible(True)
     view._draft_quality = False
@@ -140,14 +134,14 @@ def test_every_advertised_backdrop_renders(name):
 # Setting it on the renderer
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def gl_widget(_qt_app):
+def gl_widget():
     """Return the GL widget a viewer owns; it is never realised here.
 
     Taken from a `Viewer` rather than constructed directly, because the widget
     takes the viewer as its controller. No GL context is needed: setting a
     background only resolves the source and marks it dirty.
     """
-    return Viewer().renderer
+    return native_viewer().renderer
 
 
 def test_a_named_backdrop_is_accepted_and_reported(gl_widget):
@@ -183,7 +177,7 @@ def test_an_array_can_be_set_directly(gl_widget):
     sky = backdrop.starfield(32, 24)
     gl_widget.set_background_image(sky)
     assert gl_widget._background_image is not None
-    assert gl_widget._background_image.width() == 32
+    assert gl_widget._background_image.shape[1] == 32
 
 
 # --------------------------------------------------------------------------- #

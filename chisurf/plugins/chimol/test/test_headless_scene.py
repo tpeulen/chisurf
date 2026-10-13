@@ -1,4 +1,4 @@
-"""The headless backend must build the same scene the Qt one does.
+"""The headless backend must build the same scene the drawing one does.
 
 Why this test exists
 --------------------
@@ -44,21 +44,18 @@ SCRIPTS = [
 ]
 
 
-def _build_scene(renderer_factory, script, qapp):
+def _build_scene(renderer_factory, script):
     """Run ``script`` through a viewer using ``renderer_factory`` and return its Scene."""
-    from chimol.core.viewer import Viewer
+    from chimol.core.viewer import HeadlessViewer
     from chimol.io.structure import load_structure_payload
 
-    viewer = Viewer(renderer_factory=renderer_factory)
+    viewer = HeadlessViewer(renderer_factory=renderer_factory)
     # The one route from a file into the viewer, and the Qt-free one: the parser
     # falls back to the built-in PDB reader when the core Structure (and IMP
     # behind it) is unavailable, which is exactly the web build's situation.
     _structure, payload = load_structure_payload(_PDB)
     assert payload is not None, f"could not parse {_PDB}"
     viewer.apply_payload(payload)
-    if qapp is not None:
-        for _ in range(10):
-            qapp.processEvents()
 
     from chimol.commands.command import Cmd
 
@@ -66,9 +63,6 @@ def _build_scene(renderer_factory, script, qapp):
     cmd.set_window(_WindowStub(viewer))
     for line in script:
         cmd.do(line)
-        if qapp is not None:
-            for _ in range(6):
-                qapp.processEvents()
     return getattr(viewer, "_scene", None), viewer
 
 
@@ -96,16 +90,9 @@ def _scene_fingerprint(scene):
     return out
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    pytest.importorskip("qtpy")
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.mark.parametrize("script", SCRIPTS, ids=lambda s: s[1].replace(" ", "_"))
-def test_headless_scene_matches_qt_scene(qapp, script):
+def test_headless_scene_matches_the_drawn_scene(script):
     """A windowless viewer and a windowed one must assemble identical geometry.
 
     Against the WebGPU widget, which is the renderer that draws: the comparison
@@ -114,17 +101,19 @@ def test_headless_scene_matches_qt_scene(qapp, script):
     that scene assembly does not depend on having a window.
     """
     pytest.importorskip("chisurf.core.structure")
-    from chimol.hosts.qt import wgpu_view
+    from chimol.hosts.native import canvas
     from chimol.viewport.headless import SceneSink
 
-    if not wgpu_view.is_available():
+    if not canvas.is_available():
         pytest.skip("no WebGPU adapter")
 
-    head_scene, head_viewer = _build_scene(SceneSink, script, qapp)
-    qt_scene, qt_viewer = _build_scene(wgpu_view.WgpuRenderer, script, qapp)
+    head_scene, head_viewer = _build_scene(SceneSink, script)
+    drawn_scene, drawn_viewer = _build_scene(
+        canvas.renderer_factory(backend="offscreen", size=(900, 600)), script
+    )
 
     head = _scene_fingerprint(head_scene)
-    qt = _scene_fingerprint(qt_scene)
+    qt = _scene_fingerprint(drawn_scene)
 
     assert [o[0] for o in head] == [o[0] for o in qt], (
         "the two backends assembled different scene objects: "
@@ -171,11 +160,11 @@ def test_view_state_survives_a_round_trip():
     )
 
 
-def test_scene_sink_builds_a_scene_without_a_widget(qapp):
+def test_scene_sink_builds_a_scene_without_a_widget():
     """The point of the exercise: geometry with no window involved."""
     from chimol.viewport.headless import SceneSink
 
-    scene, viewer = _build_scene(SceneSink, ["hide everything", "show cartoon"], qapp)
+    scene, viewer = _build_scene(SceneSink, ["hide everything", "show cartoon"])
     assert viewer.renderer is not None, (
         "a windowless renderer was discarded as 'no renderer', so update_view "
         "returned before assembling anything"
@@ -190,7 +179,7 @@ def test_scene_sink_builds_a_scene_without_a_widget(qapp):
     assert triangles > 0, "a cartoon with no triangles is not a cartoon"
 
 
-def test_apply_payload_makes_the_viewer_non_empty(qapp):
+def test_apply_payload_makes_the_viewer_non_empty():
     """A viewer with a structure must not report itself empty.
 
     ``is_empty()`` is what every colouring and selection command guards on. A
@@ -203,11 +192,11 @@ def test_apply_payload_makes_the_viewer_non_empty(qapp):
     geometry appeared, and only the colour was missing.
     """
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
 
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
     viewer.apply_payload(payload)
     assert not viewer.is_empty(), "a loaded viewer reports itself empty"

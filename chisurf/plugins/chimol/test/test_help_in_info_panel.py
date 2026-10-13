@@ -13,8 +13,8 @@ from __future__ import annotations
 import pathlib
 
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -28,30 +28,26 @@ PDB = (
 
 @pytest.fixture(scope="module")
 def session():
-    from chimol.hosts.qt.window import MolViewPluginWindow
-    from qtpy import QtWidgets
+    from native_window import NativeWindow
 
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     shared = win.cmd
     win.resize(900, 640)
-    win.show()
     for _ in range(5):
-        app.processEvents()
-    shared.set_window(win)
+        process_events()
     shared.set_message_callback(lambda _m: None)
     shared.set_error_callback(lambda _m: None)
-    win._run_object_menu_command(f"load {PDB}")
+    win.run_menu_command(f"load {PDB}")
     for _ in range(3):
-        app.processEvents()
-    yield win, app
+        process_events()
+    yield win, None
     win.close()
 
 
 def _laid_out(win):
-    from chimol.hosts.qt.overlay import refresh_gui_state
+    from chimol.ui.gui_state import refresh_gui_state
 
     gui = win.viewer.gui
     refresh_gui_state(gui, win.viewer)
@@ -62,7 +58,7 @@ def _laid_out(win):
 def test_help_opens_the_info_panel_and_fills_it(session):
     win, _app = session
     win.viewer.set_system_info_visible(False)
-    win._run_object_menu_command("help")
+    win.run_menu_command("help")
 
     assert win.viewer._info_visible, "help did not open the panel"
     gui = _laid_out(win)
@@ -82,7 +78,7 @@ def test_help_still_returns_its_text(session):
 def test_the_answer_is_longer_than_the_panel(session):
     """Which is why it has to scroll -- pinned so the premise stays true."""
     win, _app = session
-    win._run_object_menu_command("help")
+    win.run_menu_command("help")
     gui = _laid_out(win)
     assert len(gui._info_lines) > gui.info_visible_rows()
     assert gui.info_max_scroll() > 0
@@ -90,7 +86,7 @@ def test_the_answer_is_longer_than_the_panel(session):
 
 def test_the_wheel_scrolls_it_and_stops_at_the_end(session):
     win, _app = session
-    win._run_object_menu_command("help")
+    win.run_menu_command("help")
     gui = _laid_out(win)
     rect = gui._info_rect
     centre = (rect.x + rect.w / 2, rect.y + rect.h / 2)
@@ -111,7 +107,7 @@ def test_the_wheel_scrolls_it_and_stops_at_the_end(session):
 def test_the_wheel_outside_the_panel_is_left_alone(session):
     """Otherwise the panel eats the zoom."""
     win, _app = session
-    win._run_object_menu_command("help")
+    win.run_menu_command("help")
     gui = _laid_out(win)
     rect = gui._info_rect
     assert not gui.scroll_info(rect.x + rect.w + 50, rect.y + rect.h / 2, -3)
@@ -120,20 +116,20 @@ def test_the_wheel_outside_the_panel_is_left_alone(session):
 def test_a_new_answer_starts_at_the_top(session):
     """A position carried over from the last answer lands mid-paragraph."""
     win, _app = session
-    win._run_object_menu_command("help")
+    win.run_menu_command("help")
     gui = _laid_out(win)
     rect = gui._info_rect
     gui.scroll_menu(rect.x + rect.w / 2, rect.y + rect.h / 2, -5)
     assert gui._info_scroll > 0
 
-    win._run_object_menu_command("help zoom")
+    win.run_menu_command("help zoom")
     gui = _laid_out(win)
     assert gui._info_scroll == 0
 
 
 def test_unknown_command_help_says_so_in_the_panel(session):
     win, _app = session
-    win._run_object_menu_command("help nonesuch")
+    win.run_menu_command("help nonesuch")
     gui = _laid_out(win)
     assert any("unknown command" in line for line in gui._info_lines)
 
@@ -143,17 +139,14 @@ def test_unknown_command_help_says_so_in_the_panel(session):
 # --------------------------------------------------------------------------- #
 def test_help_setting_goes_to_the_panel_too(session):
     """92 names do not fit the prompt's one-line feedback strip."""
-    from chimol.hosts.qt import overlay as qt_overlay
-
     window, _app = session
     cmd = window.cmd
-    cmd.set_window(window)
     text = cmd.help_setting()
 
     gui = window.viewer.gui
     # The panel's text is *pulled* by the chrome sync, which runs on a paint --
     # `layout()` alone leaves `info_text` empty and the panel looks broken.
-    qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
+    _sync_chrome(gui, window.viewer, 1000, 700)
     assert window.viewer._info_visible
     assert len(gui._info_lines) > 10, gui._info_lines
     assert "Settings" in gui._info_lines[0]
@@ -164,27 +157,33 @@ def test_the_panel_draws_a_scroll_bar_when_it_overflows(session):
     """It scrolled on the wheel and said nothing: a page that ends
     mid-sentence reads as truncated rather than scrolled.
     """
-    from chimol.hosts.qt import overlay as qt_overlay
-
     window, _app = session
     gui = window.viewer.gui
 
     window.viewer.set_system_info_text("one line only")
     window.viewer.set_system_info_visible(True)
-    qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
+    _sync_chrome(gui, window.viewer, 1000, 700)
     assert gui.info_max_scroll() == 0, "the short fixture already overflows"
-    short = _filled_rects(gui, qt_overlay)
+    short = _filled_rects(gui)
 
     window.viewer.set_system_info_text("\n".join(f"line {i}" for i in range(400)))
-    qt_overlay.paint_chrome(gui, window.viewer, 1000, 700)
+    _sync_chrome(gui, window.viewer, 1000, 700)
     assert gui.info_max_scroll() > 0, "the tall fixture did not overflow"
-    tall = _filled_rects(gui, qt_overlay)
+    tall = _filled_rects(gui)
 
     assert short == 0, f"a bar was drawn for text that fits ({short} fills)"
     assert tall == 2, f"expected a track and a thumb, got {tall} fills"
 
 
-def _filled_rects(gui, qt_overlay) -> int:
+def _sync_chrome(gui, viewer, width: int, height: int) -> None:
+    """What a frame does before it paints the chrome: pull the state, lay out."""
+    from chimol.ui.gui_state import refresh_gui_state
+
+    refresh_gui_state(gui, viewer)
+    gui.layout(width, height)
+
+
+def _filled_rects(gui) -> int:
     """How many filled rectangles the chrome paints (the bar adds two)."""
 
     class _Counter:

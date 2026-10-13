@@ -1,12 +1,12 @@
 """Chimol plugin -- molecular structure viewer for ChiSurf.
 
-Importing this package costs **no GUI toolkit**. That is load-bearing rather
-than tidy: ``python -m chisurf.plugins.chimol`` executes this file before it
-executes ``__main__``, so an eager ``from ...app import MolViewPluginWindow``
-here imported Qt before the Qt-free default entry point was ever reached. The
-window resolves through a module-level ``__getattr__`` instead, which is the
-same shape ``chimol/app/__init__.py`` and ``chimol/renderer/__init__.py`` use
-and for the same reason.
+Importing this package costs **no GUI toolkit**, and the plugin has no Qt
+window: both ChiSurf shells open the emtk app (``app.make_app``), the
+``--qt`` shell by hosting its surface. This file only places chimol's settings
+and hands it ChiSurf's structure reader. The Qt window it used to open
+(``chimol.hosts.qt.MolViewPluginWindow``) was retired at control parity; the
+before/after evidence is ``okf/plugins/emtk-ports/chimol/retire_*`` and the
+recorded facts ``test/qt_reference.json``.
 
 The manifest, the display name and the version stay eager: the plugin loader
 reads them, and none of them touches a toolkit.
@@ -17,12 +17,8 @@ from __future__ import annotations
 import logging
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from chisurf.core.plugin import load_manifest
-
-if TYPE_CHECKING:  # pragma: no cover - for type checkers and IDEs only
-    from chimol.hosts.qt import MolViewPluginWindow
 
 
 def _place_chimol_settings_beside_chisurf_s() -> None:
@@ -72,6 +68,47 @@ def _place_chimol_settings_beside_chisurf_s() -> None:
 
 _place_chimol_settings_beside_chisurf_s()
 
+
+def _chisurf_structure(path: str, **options):
+    """Read *path* with ChiSurf's ``Structure`` (imported on the first load).
+
+    Parameters
+    ----------
+    path : str
+        A structure file.
+    **options
+        Passed to ``Structure`` (``keep_water``, ``radii``, ...).
+
+    Returns
+    -------
+    chisurf.core.structure.Structure
+    """
+    from chisurf.core.structure import Structure
+
+    return Structure(path, **options)
+
+
+def _give_chimol_chisurfs_structure_reader() -> None:
+    """Make ChiSurf's ``Structure`` the reader every chimol host loads with.
+
+    chimol reads a file with its own parsers unless an embedder hands it a
+    full reader (residues, sequence, radius of gyration); injected here, for
+    the same reason as the settings directory above, so chimol names nobody.
+    The reader is imported lazily: building ``Structure`` pulls IMP in, and a
+    plugin import should not.
+    """
+    try:
+        from chimol.io.structure import set_structure_factory
+
+        set_structure_factory(_chisurf_structure)
+    except Exception:  # noqa: BLE001 - a chimol without the hook reads with its own parser
+        logging.getLogger(__name__).debug(
+            "chimol keeps its own structure reader", exc_info=True
+        )
+
+
+_give_chimol_chisurfs_structure_reader()
+
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
     name = _manifest.display_name
@@ -80,79 +117,20 @@ else:
 
 __version__ = "0.2.0"
 
-__all__ = ["MolViewPluginWindow", "main", "name"]
-
-
-def __getattr__(attribute: str):
-    """Resolve the Qt main window on first access.
-
-    Parameters
-    ----------
-    attribute : str
-        The attribute being looked up.
-
-    Returns
-    -------
-    object
-
-    Raises
-    ------
-    AttributeError
-        If *attribute* is not one this module provides.
-    """
-    if attribute == "MolViewPluginWindow":
-        from chimol.hosts.qt import MolViewPluginWindow
-
-        globals()["MolViewPluginWindow"] = MolViewPluginWindow
-        return MolViewPluginWindow
-    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
-
-
-def __dir__() -> list[str]:
-    """List the module's attributes, including the ones not yet imported."""
-    return sorted({*globals(), *__all__})
-
-
-def _create_window():
-    """Build the Qt plugin window at a usable size.
-
-    Returns
-    -------
-    chimol.hosts.qt.MolViewPluginWindow
-    """
-    from chimol.hosts.qt import MolViewPluginWindow
-
-    win = MolViewPluginWindow()
-    try:
-        win.resize(1000, 700)
-    except Exception:
-        pass
-    return win
+__all__ = ["main", "name"]
 
 
 def main() -> None:
-    """Launch Chimol as a standalone **Qt** application.
+    """Launch chimol's own toolkit-free window (:func:`chimol.hosts.native.app.main`).
 
-    The Qt-free window is :func:`chimol.hosts.native.app.run`,
-    and it is what ``python -m chisurf.plugins.chimol`` opens; this is what
-    ``--qt`` asks for.
+    Inside ChiSurf the plugin is the emtk app (``app.make_app``): the emtk shell
+    docks it and the ``--qt`` shell only hosts that surface. There is no Qt
+    window of the plugin's own any more.
     """
-    from qtpy import QtWidgets
+    from chimol.hosts.native.app import main as native_main
 
-    app = QtWidgets.QApplication.instance()
-    owns_app = app is None
-    if app is None:
-        app = QtWidgets.QApplication(sys.argv)
-    win = _create_window()
-    win.show()
-    if owns_app:
-        sys.exit(app.exec())
+    raise SystemExit(native_main(sys.argv[1:]))
 
 
 if __name__ == "__main__":
     main()
-
-
-if __name__ == "plugin":
-    win = _create_window()
-    win.show()

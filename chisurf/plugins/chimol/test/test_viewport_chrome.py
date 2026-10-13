@@ -23,9 +23,6 @@ import shutil
 
 import pytest
 
-pytest.importorskip("qtpy")
-
-from chimol.hosts.qt.window import _INITIALLY_HIDDEN_DOCKS
 from chimol.ui.gui import InternalGui
 
 
@@ -86,16 +83,9 @@ def test_a_click_where_the_transport_would_be_does_not_run_a_movie_command():
 # The window layout
 # --------------------------------------------------------------------------- #
 @pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-@pytest.fixture
-def window(qapp, tmp_path, monkeypatch):
+def window(tmp_path, monkeypatch):
     monkeypatch.setenv("CHISURF_SETTINGS_DIR", str(tmp_path / "settings"))
-    from chimol.hosts.qt.window import MolViewPluginWindow
+    from native_window import NativeWindow
 
     src = (
         pathlib.Path(__file__).resolve().parents[4]
@@ -108,126 +98,88 @@ def window(qapp, tmp_path, monkeypatch):
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(src, pdb)
 
-    win = MolViewPluginWindow()
+    win = NativeWindow(size=(1200, 800))
     win.load_structure_from_path(pdb, name="148l")
-    return win
-
-
-def _tab_names(window) -> dict[str, int]:
-    area = window.dock_area
-    return {area.tabText(i): i for i in range(area.count())}
-
-
-def _is_hidden(window, name: str) -> bool:
-    """Whether the dock called *name* is one the area is holding out of sight."""
-    area = window.dock_area
-    index = _tab_names(window)[name]
-    return area.widget(index) in area._hidden_widgets
+    yield win
+    win.close()
 
 
 def test_an_ordinary_structure_gets_the_window(window):
-    """The side panels have nothing to show, so they do not take the space.
+    """Nothing beside the 3-D view takes the space: the view *is* the window.
 
-    They are hidden, not removed: the View menu and a right-click on a tab
-    bring them back, and a layout that *deleted* them could not.
+    The Qt window hid empty side docks so the molecule kept the room; the
+    panels are drawn inside the viewport now, so the canvas is the whole
+    window and the scene column most of it.
     """
-    if window.dock_area is None:
-        pytest.skip("no dock area in this build")
-    names = _tab_names(window)
-    for name in _INITIALLY_HIDDEN_DOCKS:
-        assert name in names, f"{name} was removed rather than hidden"
-        assert _is_hidden(window, name), f"{name} is showing"
+    renderer = window.renderer
+    assert (renderer.width(), renderer.height()) == window.size
+    assert renderer.scene_width() > 0.5 * renderer.width()
 
 
 def test_the_command_console_is_not_behind_a_tab(window):
     """PyMOL always shows a prompt; typing commands *is* the interface."""
-    if window.dock_area is None:
-        pytest.skip("no dock area in this build")
-    assert "Command" in _tab_names(window)
-    assert not _is_hidden(window, "Command")
+    assert window.viewer.gui.command_line.visible
 
 
-def test_the_console_runs_what_is_typed_and_shows_the_answer(window, qapp):
-    from qtpy import QtCore, QtTest
+def test_the_console_runs_what_is_typed_and_shows_the_answer(window):
+    gui = window.viewer.gui
+    line = gui.command_line
+    line.set_text("count_atoms polymer")
+    line.submit()
+    window.pump(2)
 
-    window.resize(1200, 800)
-    window.show()
-    for _ in range(10):
-        qapp.processEvents()
-
-    line = window.command_panel.input_line
-    line.setText("count_atoms polymer")
-    QtTest.QTest.keyClick(line, QtCore.Qt.Key_Return)
-    for _ in range(10):
-        qapp.processEvents()
-
-    text = window.command_panel.view.toPlainText()
-    assert "> count_atoms polymer" in text, text
+    text = "\n".join(str(getattr(entry, "text", entry)) for entry in line.log)
+    assert "count_atoms polymer" in text, text
     assert "1314" in text, text
-    assert line.text() == "", "the prompt kept the command after running it"
+    assert line.text == "", "the prompt kept the command after running it"
 
 
 def test_the_sequence_toggle_drives_the_strip_that_exists(window):
-    """It used to toggle a dock retired when the strip moved into the viewport.
+    """The strip follows the ``seq_view`` setting, which every toggle writes.
 
-    ``_set_tab_visible`` looped over every tab, matched the name "Sequence"
-    against none of them, and returned -- so the menu entry ticked and unticked
-    and nothing moved.
+    It used to toggle a dock retired when the strip moved into the viewport:
+    the menu entry ticked and unticked and nothing moved.
     """
     from chimol.core.settings.registry import get_setting
 
-    window._set_sequence_visible(False)
+    window.do("set seq_view, 0")
     assert bool(get_setting("seq_view")) is False
-    window._set_sequence_visible(True)
+    window.do("set seq_view, 1")
     assert bool(get_setting("seq_view")) is True
 
 
-def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
+def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window):
     """It used to be skipped: clicked, and nothing happened at all.
 
     The in-viewport panel has nowhere to type, so ``_emit`` dropped every
     template carrying ``{text}`` -- which is a menu entry that does nothing, in
     the panel that is now the primary one. The command line is one row below it,
-    so the entry goes *there*, with the placeholder selected.
+    so the entry goes *there*, with the caret on the placeholder.
     """
     from chimol.ui.menus.objects import MenuEntry
 
-    window.resize(1200, 800)
-    window.show()
-    for _ in range(10):
-        qapp.processEvents()
-
     gui = window.viewer.gui
-    gui.on_prompt_command = window._prefill_command_line
     gui._emit(
         "group {text}, {sele}",
         "lig",
         prompt=MenuEntry("x", prompt=("Move to group", "Group name:")).prompt,
     )
-    for _ in range(5):
-        qapp.processEvents()
+    window.pump()
 
-    line = window.command_panel.input_line
-    assert line.text() == "group <group name>, lig", line.text()
-    assert line.selectedText() == "<group name>", (
-        "the placeholder is not selected, so typing appends instead of replacing"
+    line = gui.command_line
+    assert line.text == "group <group name>, lig", line.text
+    assert line.cursor == line.text.index("<group name>"), (
+        "the caret is not on the placeholder, so typing lands elsewhere"
     )
 
 
-def test_a_menu_entry_naming_a_file_opens_the_host_dialog(window, qapp):
+def test_a_menu_entry_naming_a_file_opens_the_host_dialog(window):
     """``Save Molecule As...`` clicked in the viewport bar must open a dialog.
 
-    The viewport menu bar is the one the user sees -- the Qt bar is hidden --
-    and its ``{text}`` path used to feed *every* prompted entry into the
-    command line, ``file_prompt`` or not. A filename typed blind lands
-    wherever the process is running, which for a menu action is nowhere the
-    user chose.
+    Its ``{text}`` path used to feed *every* prompted entry into the command
+    line, ``file_prompt`` or not. A filename typed blind lands wherever the
+    process is running, which for a menu action is nowhere the user chose.
     """
-    window.resize(1200, 800)
-    window.show()
-    for _ in range(10):
-        qapp.processEvents()
-
     gui = window.viewer.gui
     assert gui.on_file_prompt is not None, "the app did not wire the file-dialog hook"
 
@@ -244,36 +196,23 @@ def test_a_menu_entry_naming_a_file_opens_the_host_dialog(window, qapp):
     assert ran == [], "the template must not run before the dialog fills it"
 
 
-def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(window, qapp):
+def test_without_a_dialog_a_file_entry_falls_back_to_the_command_line(window):
     """In the browser there is no dialog; the CLI placeholder is the fallback."""
-    window.resize(1200, 800)
-    window.show()
-    for _ in range(10):
-        qapp.processEvents()
-
     gui = window.viewer.gui
     gui.on_file_prompt = None
-    gui.on_prompt_command = window._prefill_command_line
     gui._emit(
         "save {text}",
         "",
         prompt=("Save", "File name:"),
         file_prompt=("save", "Save molecule", "Structures (*.pdb)"),
     )
-    for _ in range(5):
-        qapp.processEvents()
+    window.pump()
 
-    line = window.command_panel.input_line
-    assert line.text() == "save <file name>", line.text()
+    assert gui.command_line.text == "save <file name>", gui.command_line.text
 
 
-def test_an_ordinary_menu_entry_still_runs(window, qapp):
+def test_an_ordinary_menu_entry_still_runs(window):
     """The prompt path must not swallow the commands that need no value."""
-    window.resize(1200, 800)
-    window.show()
-    for _ in range(10):
-        qapp.processEvents()
-
     gui = window.viewer.gui
     ran: list[str] = []
     gui.set_run_command(ran.append)

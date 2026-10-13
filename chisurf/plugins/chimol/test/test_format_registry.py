@@ -12,7 +12,6 @@ from __future__ import annotations
 import pathlib
 
 import numpy as np
-import pytest
 from chimol.io.registry import FETCH, FORMATS, FetchSource, FormatSpec
 from chimol.plugins import load_plugins
 
@@ -60,16 +59,10 @@ class _XyzPlugin:
         )
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_a_plugin_format_is_read_by_its_reader_and_routed_by_load(qapp, tmp_path):
+def test_a_plugin_format_is_read_by_its_reader_and_routed_by_load(tmp_path):
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
@@ -84,7 +77,7 @@ def test_a_plugin_format_is_read_by_its_reader_and_routed_by_load(qapp, tmp_path
         assert payload is not None and payload.coords.shape == (3, 3)
 
         # through the whole load path: host, viewer, command
-        viewer = Viewer(renderer_factory=SceneSink)
+        viewer = native_viewer(renderer_factory=SceneSink)
         host = ViewerHost(viewer)
         host.cmd = cmd
         cmd.set_window(host)

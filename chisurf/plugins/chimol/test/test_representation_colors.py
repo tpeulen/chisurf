@@ -26,8 +26,8 @@ import pathlib
 
 import numpy as np
 import pytest
+from native_window import process_events
 
-pytest.importorskip("qtpy")
 
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
@@ -46,31 +46,23 @@ CASES = (
 )
 
 
-@pytest.fixture(scope="session")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def viewer(qapp):
+def viewer():
     """A window with 148L shown as cartoon, sticks and surface at once."""
     from chimol.core.settings.registry import set_setting
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     if not PDB.is_file():
         pytest.skip(f"missing fixture {PDB}")
-    win = MolViewPluginWindow()
+    win = NativeWindow()
     win.resize(900, 650)
-    win.show()
     for _ in range(6):
-        qapp.processEvents()
+        process_events()
 
     def run(line: str) -> None:
-        win._run_object_menu_command(line)
+        win.run_menu_command(line)
         for _ in range(4):
-            qapp.processEvents()
+            process_events()
 
     run(f"load {PDB}")
     for rep in ("cartoon", "sticks", "surface"):

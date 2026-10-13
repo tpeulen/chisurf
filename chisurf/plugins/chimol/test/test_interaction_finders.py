@@ -382,27 +382,20 @@ def test_a_protein_without_halogens_reports_none(protein):
 # --------------------------------------------------------------------------- #
 # Through the command layer -- the modes PyMOL's own menu sends
 # --------------------------------------------------------------------------- #
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 @pytest.fixture
-def cmd(qapp, tmp_path):
+def cmd(tmp_path):
     """A loaded window with the command layer wired to it."""
     import shutil
 
     from chimol.commands.command import Cmd
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
+    from native_window import NativeWindow
     if not PDB.is_file():
         pytest.skip("no 148l fixture")
     pdb = tmp_path / "148l.pdb"
     shutil.copyfile(PDB, pdb)
 
-    window = MolViewPluginWindow()
+    window = NativeWindow()
     window.load_structure_from_path(pdb, name="148l")
     command = Cmd(window)
     errors: list[str] = []

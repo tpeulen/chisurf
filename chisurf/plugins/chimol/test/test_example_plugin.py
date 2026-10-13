@@ -25,25 +25,19 @@ def stars_module(monkeypatch):
     return importlib.import_module("chimol_stars")
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-def test_the_example_plugin_does_everything_it_says(stars_module, qapp, tmp_path):
+def test_the_example_plugin_does_everything_it_says(stars_module, tmp_path):
     from chimol.commands.command import Cmd
     from chimol.core.services.representations import REPRESENTATIONS
     from chimol.core.settings.registry import get_setting
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.io.registry import FORMATS
     from chimol.ui.input import keybindings
     from chimol.ui.menus import bar as menus
     from chimol.viewport.headless import SceneSink
 
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
     cmd = Cmd(None, plugins=False)
     host.cmd = cmd

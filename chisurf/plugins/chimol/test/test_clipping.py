@@ -17,21 +17,15 @@ from __future__ import annotations
 import pytest
 
 
-@pytest.fixture(scope="module")
-def _qt_app():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
 @pytest.fixture
-def viewer(_qt_app):
+def viewer():
     """Return a viewer framed on a 30 Å scene, so the planes have a baseline."""
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
 
-    view = Viewer()
+    view = native_viewer()
     view.renderer.fit_to_radius(30.0)
-    return view
+    yield view
+    view.native_window.close()
 
 
 def test_framing_defines_what_unclipped_means(viewer):
@@ -83,47 +77,27 @@ def test_the_wheel_says_what_it_did(viewer):
     Clipping by mouse wheel left no trace at all: no status line, no visible
     control, nothing in the log. The picture changed and nothing said why.
     """
-    from qtpy import QtCore, QtGui
+    from emtk.events import SHIFT_MODIFIER
 
     messages: list[str] = []
     viewer.statusMessage.connect(messages.append)
     renderer = viewer.renderer
 
-    event = QtGui.QWheelEvent(
-        QtCore.QPointF(10, 10),
-        QtCore.QPointF(10, 10),
-        QtCore.QPoint(0, 0),
-        QtCore.QPoint(0, 120),
-        QtCore.Qt.NoButton,
-        QtCore.Qt.ShiftModifier,
-        QtCore.Qt.NoScrollPhase,
-        False,
-    )
-    renderer.wheelEvent(event)
+    # One shifted notch at (10, 10), as the host's canvas delivers it.
+    renderer.on_wheel(10.0, 10.0, 1, SHIFT_MODIFIER)
 
     assert messages, "clipping by wheel said nothing"
     assert "clip reset" in messages[-1], "the message must name the way back"
 
 
 def test_the_message_reports_when_clipping_is_off_again(viewer):
-    from qtpy import QtCore, QtGui
+    from emtk.events import SHIFT_MODIFIER
 
     messages: list[str] = []
     viewer.statusMessage.connect(messages.append)
     renderer = viewer.renderer
 
-    for direction in (120, -120):
-        renderer.wheelEvent(
-            QtGui.QWheelEvent(
-                QtCore.QPointF(10, 10),
-                QtCore.QPointF(10, 10),
-                QtCore.QPoint(0, 0),
-                QtCore.QPoint(0, direction),
-                QtCore.Qt.NoButton,
-                QtCore.Qt.ShiftModifier,
-                QtCore.Qt.NoScrollPhase,
-                False,
-            )
-        )
+    for notches in (1, -1):
+        renderer.on_wheel(10.0, 10.0, notches, SHIFT_MODIFIER)
 
     assert messages[-1] == "Clipping: off"

@@ -14,7 +14,6 @@ import pathlib
 
 import chimol
 import numpy as np
-import pytest
 from chimol.core.services.representations import (
     REPRESENTATIONS,
     BuildContext,
@@ -25,12 +24,6 @@ from chimol.render.scene import Geometry, Material, SceneObject
 
 _PDB = str(pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb")
 
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _atom_stars(ctx: BuildContext):
@@ -74,13 +67,13 @@ class _WindowStub:
         raise AttributeError(name)
 
 
-def _viewer_and_cmd(qapp):
+def _viewer_and_cmd():
     from chimol.commands.command import Cmd
-    from chimol.core.viewer import Viewer
+    from native_window import native_viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
 
-    viewer = Viewer(renderer_factory=SceneSink)
+    viewer = native_viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)
     viewer.apply_payload(payload)
     cmd = Cmd(None, plugins=False)
@@ -97,8 +90,8 @@ def _stars_in(viewer):
     return sum(int(o.geometry.positions.shape[0]) for o in objs)
 
 
-def test_a_registered_representation_shows_hides_and_scopes(qapp):
-    viewer, cmd, errors = _viewer_and_cmd(qapp)
+def test_a_registered_representation_shows_hides_and_scopes():
+    viewer, cmd, errors = _viewer_and_cmd()
     loaded = load_plugins(cmd, [_StarsPlugin()])
     assert "stars" in REPRESENTATIONS
     try:
@@ -134,7 +127,7 @@ def test_a_registered_representation_shows_hides_and_scopes(qapp):
     assert errors and "stars" in errors[-1]
 
 
-def test_a_broken_builder_does_not_take_the_scene_down(qapp):
+def test_a_broken_builder_does_not_take_the_scene_down():
     def boom(ctx):
         raise RuntimeError("no")
 
@@ -144,7 +137,7 @@ def test_a_broken_builder_does_not_take_the_scene_down(qapp):
         def register(self, api):
             api.add_representation(RepresentationSpec(name="boom", build=boom))
 
-    viewer, cmd, errors = _viewer_and_cmd(qapp)
+    viewer, cmd, errors = _viewer_and_cmd()
     loaded = load_plugins(cmd, [_Bad()])
     try:
         cmd.do("show cartoon")
