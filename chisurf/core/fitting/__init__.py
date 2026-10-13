@@ -249,7 +249,7 @@ def calculate_weighted_residuals(
 
 
 def find_fit_idx(
-    fit: chisurf.core.fitting.fit.Fit, fits: list[chisurf.core.fitting.fit.Fit] = None
+    fit: chisurf.core.fitting.fit.Fit, fits: list[chisurf.core.fitting.fit.Fit] | None = None
 ) -> int | None:
     """Find the position of a fit in the global fit list.
 
@@ -289,7 +289,7 @@ def find_fit_idx(
 
 def find_fit_idx_of_parameter(
     parameter: chisurf.core.fitting.parameter.FittingParameter,
-    fit_list: list[chisurf.core.fitting.fit.Fit] = None,
+    fit_list: list[chisurf.core.fitting.fit.Fit] | None = None,
 ) -> list[int]:
     """Find indices of fits that contain a specific parameter.
 
@@ -352,7 +352,7 @@ def find_fit_idx_of_parameter(
 
 
 def find_fit_idx_of_model(
-    model: chisurf.core.models.Model, fits: list[chisurf.core.fitting.fit.Fit] = None
+    model: chisurf.core.models.Model, fits: list[chisurf.core.fitting.fit.Fit] | None = None
 ) -> int:
     """Returns index of the fit of a model in chisurf.fits array
 

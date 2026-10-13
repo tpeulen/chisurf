@@ -7,8 +7,9 @@ solely because another plugin can discover it.
 """
 
 import weakref
+from typing import Any
 
-_sources = {}
+_sources: dict[str, list[weakref.ReferenceType[Any]]] = {}
 
 
 def register_source(kind, source):

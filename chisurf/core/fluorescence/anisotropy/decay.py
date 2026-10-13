@@ -57,13 +57,13 @@ def anisotropy_rt(times: np.ndarray, anisotropy_spectrum: np.ndarray) -> np.ndar
 
 
 def vm_rt_to_vv_vh(
-    times: np.array,
-    vm: np.array,
+    times: np.ndarray,
+    vm: np.ndarray,
     anisotropy_spectrum: np.ndarray,
     g_factor: float = 1.0,
     l1: float = 0.0,
     l2: float = 0.0,
-) -> typing.Tuple[np.array, np.array]:
+) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Compute the VV and VH decays from a VM decay given an anisotropy spectrum.
 

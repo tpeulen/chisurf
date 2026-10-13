@@ -18,8 +18,8 @@ __all__ = ["rescale_w_bg", "scale_model_to_data"]
 
 
 def scale_model_to_data(
-    model_decay: np.array,
-    experimental_decay: np.array,
+    model_decay: np.ndarray,
+    experimental_decay: np.ndarray,
     start: int,
     stop: int,
     experimental_background: float = 0.0,

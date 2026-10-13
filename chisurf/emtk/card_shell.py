@@ -269,12 +269,16 @@ class CardShell(TourTarget, ImApp):
         raise NotImplementedError
 
     def _draw_file_dialog(self, box) -> None:
+        dialog = self.dialog
+        if dialog is None:
+            return
         pressed = self.dialog_window.begin(box)
-        result = self.dialog.draw()
+        result = dialog.draw()
         self.dialog_window.end()
         if result:
             pick, self.dialog = self._on_pick, None
-            pick(result[0])
+            if pick is not None:
+                pick(result[0])
         elif result is False or pressed == "close":
             cancel, self.dialog = self._on_cancel, None
             if cancel is not None:
@@ -282,6 +286,8 @@ class CardShell(TourTarget, ImApp):
 
     def _draw_modal(self, box) -> None:
         modal = self.modal
+        if modal is None:
+            return
         pressed = self.modal_window.begin(box)
         im.text_wrapped(modal["text"])
         done = None

@@ -525,7 +525,7 @@ def two_column_to_interleaved(x: np.ndarray, t: np.ndarray) -> np.ndarray:
     return c
 
 
-def elte2(e1: np.array, e2: np.array) -> np.array:
+def elte2(e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
     """
     Combine two interleaved lifetime spectra into a new spectrum.
 
@@ -560,7 +560,7 @@ def elte2(e1: np.array, e2: np.array) -> np.array:
     return r
 
 
-def ere2(e1: np.ndarray, e2: np.ndarray) -> np.array:
+def ere2(e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
     """
     Combine two interleaved rate spectra into a new spectrum.
 
@@ -616,7 +616,7 @@ def invert_interleaved(interleaved_spectrum: np.ndarray) -> np.ndarray:
     return r
 
 
-def e1tn(e1: np.array, n: float) -> np.array:
+def e1tn(e1: np.ndarray, n: float) -> np.ndarray:
     """
     Multiply the amplitude components of an interleaved spectrum by a constant factor.
 
@@ -642,7 +642,7 @@ def e1tn(e1: np.array, n: float) -> np.array:
     return e1
 
 
-def e1ti2(e1: np.array, e2: np.array) -> np.array:
+def e1ti2(e1: np.ndarray, e2: np.ndarray) -> np.ndarray:
     """
     Combine two interleaved spectra by multiplying corresponding amplitude and rate/lifetime components.
 

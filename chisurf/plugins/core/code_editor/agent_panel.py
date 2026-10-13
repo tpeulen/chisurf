@@ -6,24 +6,9 @@ import logging as std_logging
 import pathlib
 import re
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from qtpy import QtCore, QtGui, QtWidgets
-
-from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
-from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
-from chisurf.plugins.core.code_editor.validation import validate_writes
-from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
-
-try:
-    from chisurf.gui.widgets.general import EnterAwarePlainTextEdit
-    from chisurf.settings import ai_settings
-    from chisurf.settings.path_utils import get_path
-except ImportError:
-    from chisurf.core.settings import ai_settings
-    from chisurf.core.settings.path_utils import get_path
-    from chisurf.gui.widgets.general import EnterAwarePlainTextEdit  # noqa: E402
 
 from chisurf.core.agent import (
     SAFETY_DANGEROUS,
@@ -35,6 +20,17 @@ from chisurf.core.agent import (
     LLMSettings,
     build_default_registry,
 )
+from chisurf.core.settings import ai_settings
+from chisurf.core.settings.path_utils import get_path
+from chisurf.gui import dialogs
+from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.general import EnterAwarePlainTextEdit
+from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
+from chisurf.plugins.core.code_editor.validation import validate_writes
+from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
+
+if TYPE_CHECKING:
+    from chisurf.plugins.core.code_editor.editor import CodeEditor
 
 
 class AgentMode(enum.Enum):
@@ -135,8 +131,8 @@ class WikiDialog(QtWidgets.QDialog):
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
-        populate_callback: callable | None = None,
-        progress_callback: callable | None = None,
+        populate_callback: Callable[..., Any] | None = None,
+        progress_callback: Callable[..., Any] | None = None,
     ):
         super().__init__(parent)
         self._populate_callback = populate_callback
@@ -309,10 +305,10 @@ class AgentPanelWidget(QtWidgets.QWidget):
     def __init__(
         self,
         parent: QtWidgets.QWidget | None = None,
-        get_context_callback: callable | None = None,
+        get_context_callback: Callable[..., Any] | None = None,
     ):
         super().__init__(parent)
-        self.editor = None
+        self.editor: CodeEditor | None = None
         self._get_context_callback = get_context_callback
         self._chat_history: list = _load_history()
         self._input_history: list[str] = _load_input_history()
@@ -607,7 +603,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
         except Exception:
             ready = False
             settings = None
-        if ready:
+        if ready and settings is not None:
             self.rpc_status_label.setStyleSheet(
                 "color: #98c379; font-size: 10pt; margin-right: 4px;"
             )
@@ -641,7 +637,7 @@ class AgentPanelWidget(QtWidgets.QWidget):
         )
         dialog.exec()
 
-    def _set_wiki_progress(self, callback: callable) -> None:
+    def _set_wiki_progress(self, callback: Callable[..., Any]) -> None:
         """Set the wiki progress callback."""
         self._wiki_progress_callback = callback
 
@@ -1065,7 +1061,7 @@ updated: 2026-06-09
         """Process user's prompt using the ACP agent client."""
         client = getattr(self.editor, "ensure_acp", None)
         if callable(client):
-            acp = self.editor.ensure_acp()
+            acp = client()
         else:
             if getattr(self, "_acp_client", None) is None:
                 from chisurf.plugins.core.code_editor.acp_client import AcpClient
@@ -1686,10 +1682,10 @@ updated: 2026-06-09
         else:
             if self.editor._is_real_file(filename) or "/" in filename or "\\" in filename:
                 try:
-                    path = pathlib.Path(filename).resolve()
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_text(content, encoding="utf-8")
-                    self.editor.load_file(str(path))
+                    target = pathlib.Path(filename).resolve()
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(content, encoding="utf-8")
+                    self.editor.load_file(str(target))
                 except Exception as e:
                     std_logging.error(f"Failed to write file to disk: {e}")
                     editor, idx = self.editor._create_editor_tab(filename=filename)
@@ -1784,7 +1780,7 @@ updated: 2026-06-09
             return self._get_context_callback()
         return ""
 
-    def set_context_callback(self, callback: callable) -> None:
+    def set_context_callback(self, callback: Callable[..., Any]) -> None:
         """Set the callback to get editor context."""
         self._get_context_callback = callback
 

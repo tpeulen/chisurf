@@ -832,7 +832,7 @@ class Pda3cModel(ModelCurve):
         free_cells = (counts.blue.shape[1] - 1) + (counts.green.shape[1] - 1)
         return int(round(n_bursts * free_cells))
 
-    def get_wres(self, fit, xmin: int = None, xmax: int = None) -> np.ndarray:
+    def get_wres(self, fit, xmin: int | None = None, xmax: int | None = None) -> np.ndarray:
         """Return per-burst multinomial deviance residuals.
 
         ``sum(wres**2)`` equals ``const - 2 log L``, so least-squares
@@ -1198,7 +1198,7 @@ class Pda3cModel(ModelCurve):
 
     # -- display ---------------------------------------------------------
 
-    def _update_model(self, verbose: bool = None, **kwargs):
+    def _update_model(self, verbose: bool | None = None, **kwargs):
         """Recompute the predicted proximity-ratio histograms.
 
         Analytic, not resampled: each displayed ratio is a *marginal* of the

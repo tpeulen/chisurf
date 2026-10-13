@@ -136,10 +136,10 @@ def circular_layout(
 
 def shell_layout(
     graph: Graph,
-    nlist: typing.Sequence[typing.Sequence] = None,
+    nlist: typing.Sequence[typing.Sequence] | None = None,
     scale: float = 1.0,
     center=None,
-    rotate: float = None,
+    rotate: float | None = None,
 ) -> dict[typing.Any, np.ndarray]:
     r"""Return positions on concentric circles, one circle per shell.
 
@@ -235,8 +235,8 @@ def spectral_layout(
 
 def spring_layout(
     graph: Graph,
-    k: float = None,
-    pos: dict = None,
+    k: float | None = None,
+    pos: dict | None = None,
     iterations: int = 50,
     threshold: float = 1e-4,
     weight: str = "weight",
@@ -340,7 +340,7 @@ def _distance_matrix(graph: Graph, weight: str) -> np.ndarray:
 def kamada_kawai_layout(
     graph: Graph,
     dist: np.ndarray = None,
-    pos: dict = None,
+    pos: dict | None = None,
     weight: str = "weight",
     scale: float = 1.0,
     center=None,
@@ -457,7 +457,7 @@ def _smacof(
 
 def arf_layout(
     graph: Graph,
-    pos: dict = None,
+    pos: dict | None = None,
     scaling: float = 1.0,
     a: float = 1.1,
     etol: float = 1e-6,

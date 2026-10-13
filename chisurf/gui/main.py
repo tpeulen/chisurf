@@ -548,7 +548,11 @@ class Main(
         console.save_macro()
 
     def onRunMacro(
-        self, filename: pathlib.Path = None, executor: str = "console", globals=None, locals=None
+        self,
+        filename: pathlib.Path | None = None,
+        executor: str = "console",
+        globals=None,
+        locals=None,
     ):
         misc_helpers.run_macro(
             filename=filename, executor=executor, globals=globals, locals=locals, main_window=self
@@ -644,7 +648,7 @@ class Main(
                 return registered
         return experiment
 
-    def onAddFit(self, *args, data_idx: typing.List[int] = None):
+    def onAddFit(self, *args, data_idx: typing.List[int] | None = None):
         if data_idx is None:
             data_idx = [r.row() for r in self.dataset_selector.selectedIndexes()]
         # If multiple datasets are selected, schedule per-dataset fit
@@ -1112,7 +1116,7 @@ class Main(
         cs.console.pushVariables({"QtGui": QtGui})
         cs.console.set_default_style("linux")
 
-        def _run_with_history(code: str = None):
+        def _run_with_history(code: str | None = None):
             if code is None:
                 return None
             try:
@@ -1900,7 +1904,7 @@ class Main(
 
             chisurf.logging.exception("Error handling server event: %s", payload)
 
-    def _refresh_active_parameter_display(self, payload: dict = None) -> None:
+    def _refresh_active_parameter_display(self, payload: dict | None = None) -> None:
         """Refresh parameter display in the currently visible fit subwindow.
 
         Parameters
@@ -2200,7 +2204,7 @@ class Main(
         except Exception:
             pass
 
-    def _rebuild_gui_from_server_state(self, payload: dict = None) -> None:
+    def _rebuild_gui_from_server_state(self, payload: dict | None = None) -> None:
         """Rebuild all MDI fit subwindows from the current server session.
 
         Called on ``session.restored`` and ``project.loaded`` events.

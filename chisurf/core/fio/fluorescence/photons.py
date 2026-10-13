@@ -29,7 +29,9 @@ from chisurf import typing
 COLUMN_NAMES = ("MT", "TAC", "ROUT", "EVENT")
 
 
-def read_burst_ids(filenames: typing.List[str], stack_files: bool = True) -> np.array:
+def read_burst_ids(
+    filenames: str | typing.List[str], stack_files: bool = True
+) -> dict[str, list[np.ndarray]] | list[np.ndarray]:
     """
     Reads Seidel-BID files and returns a list of numpy
     arrays. Each numpy array contains the indexes of
@@ -102,7 +104,9 @@ class Photons:
     10
     """
 
-    def __init__(self, p_object=None, reading_routine: str = None, verbose: bool = None):
+    def __init__(
+        self, p_object=None, reading_routine: str | None = None, verbose: bool | None = None
+    ):
         """Read the given files, wrap a TTTR object, or build an empty stream."""
         import tttrlib
 

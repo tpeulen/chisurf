@@ -194,7 +194,7 @@ def species_filtered_correlation(
     return SpeciesFilteredCorrelation(lag_s=lag, auto=auto, cross=cross, labels=labels)
 
 
-def calc_lifetime_filter(decays, experimental_decay, normalize_patterns: bool = True) -> np.array:
+def calc_lifetime_filter(decays, experimental_decay, normalize_patterns: bool = True) -> np.ndarray:
     """
     Calculate lifetime filters for fluorescence lifetime correlation spectroscopy.
 
@@ -223,7 +223,7 @@ def calc_lifetime_filter(decays, experimental_decay, normalize_patterns: bool = 
     decays : list of np.array
         A list of 1D arrays representing fluorescence decay curves for different
         components.
-    experimental_decay : np.array
+    experimental_decay : np.ndarray
         A 1D array representing the experimental fluorescence decay (a linear
         combination of the decay patterns).
     normalize_patterns : bool, optional

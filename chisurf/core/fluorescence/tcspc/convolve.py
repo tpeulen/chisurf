@@ -144,11 +144,11 @@ def periodic_shift(arr: np.ndarray, shift: float) -> np.ndarray:
 
 
 def convolve_lifetime_spectrum(
-    output_decay: np.array,
-    lifetime_spectrum: np.array,
-    instrument_response_function: np.array,
+    output_decay: np.ndarray,
+    lifetime_spectrum: np.ndarray,
+    instrument_response_function: np.ndarray,
     convolution_stop: int = -1,
-    time_axis: np.array = None,
+    time_axis: np.ndarray = None,
     amplitude_threshold: float = 0,
     use_amplitude_threshold: bool = False,
 ) -> None:

@@ -11,7 +11,7 @@ from chisurf import typing
 
 
 def _safe_float(
-    value: typing.Any, default: typing.Optional[float] = None
+    value: typing.Any, default: typing.Optional[float] | None = None
 ) -> typing.Optional[float]:
     """Convert a value to float, returning default on failure.
 
@@ -92,8 +92,8 @@ def _describe(curve) -> None:
 
 
 def read_tcspc_csv(
-    filename: str = None,
-    skiprows: int = None,
+    filename: str | None = None,
+    skiprows: int | None = None,
     rebin: typing.Tuple[int, int] = (1, 1),
     dt: float = 1.0,
     matrix_columns: typing.Tuple[int, int] = (0, 1),

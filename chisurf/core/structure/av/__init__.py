@@ -137,21 +137,21 @@ class BasicAV:
     def __init__(
         self,
         structure,
-        simulation_grid_resolution: float = None,
-        allowed_sphere_radius: float = None,
-        radius1: float = None,
-        radius2: float = None,
-        radius3: float = None,
-        linker_width: float = None,
-        linker_length: float = None,
+        simulation_grid_resolution: float | None = None,
+        allowed_sphere_radius: float | None = None,
+        radius1: float | None = None,
+        radius2: float | None = None,
+        radius3: float | None = None,
+        linker_width: float | None = None,
+        linker_length: float | None = None,
         simulation_type: str = "AV1",
-        chain_identifier: str = None,
-        residue_name: str = None,
-        residue_seq_number: int = None,
-        atom_name: str = None,
-        position_name: str = None,
+        chain_identifier: str | None = None,
+        residue_name: str | None = None,
+        residue_seq_number: int | None = None,
+        atom_name: str | None = None,
+        position_name: str | None = None,
         verbose: bool = False,
-        link_search: str = None,
+        link_search: str | None = None,
         **kwargs,
     ):
         # ``None`` is "not chosen": the parameter takes IMP.bff's default
@@ -278,7 +278,7 @@ class BasicAV:
         #: `_density`, so re-weighting twice cannot compound.
         self._base_density = density
         self._density = density
-        self._points = None
+        self._points: np.ndarray | None = None
 
     # -- the grid -----------------------------------------------------------
 
@@ -349,15 +349,11 @@ class BasicAV:
             )
         else:
             p = kwargs.get("points", self.points)
-            d = p[:, [3]].flatten()
-            d /= max(d) * 50.0
-            io.structure.write_points(
-                filename=filename + "." + mode,
-                points=p[:, [0, 1, 2]],
-                mode=mode,
-                verbose=self.verbose,
-                density=d,
-            )
+            xyz = np.asarray(p[:, [0, 1, 2]], dtype=np.float64)
+            with open(filename + "." + mode, "w", encoding="utf-8") as fp:
+                fp.write(f"{len(xyz)}\n{os.path.basename(filename)}\n")
+                for x, y, z in xyz:
+                    fp.write(f"X {x:.4f} {y:.4f} {z:.4f}\n")
 
     # -- distances to a second accessible volume ----------------------------
     #
@@ -371,7 +367,7 @@ class BasicAV:
     N_DISTANCE_SAMPLES = 50_000
     DISTANCE_SEED = 0
 
-    def _pair_sample(self, av, n_samples: int = None, seed: int = None):
+    def _pair_sample(self, av, n_samples: int | None = None, seed: int | None = None):
         from IMP.bff import random_distances
 
         sample = random_distances(
@@ -382,7 +378,9 @@ class BasicAV:
         )
         return sample[:, 0], sample[:, 1]
 
-    def _pair_statistics(self, av, forster_radius: float = 52.0, n_samples: int = None, **kwargs):
+    def _pair_statistics(
+        self, av, forster_radius: float = 52.0, n_samples: int | None = None, **kwargs
+    ):
         from IMP.bff import av_pair_statistics
 
         return av_pair_statistics(
@@ -726,10 +724,10 @@ class DynamicAV(BasicAV):
 
     def get_donor_only_decay(
         self,
-        t_max: float = None,
+        t_max: float | None = None,
         t_step: float = 0.004,
-        n_out: int = None,
-        n_it: int = None,
+        n_out: int | None = None,
+        n_it: int | None = None,
         **kwargs,
     ):
         """Integrate the donor decay on the grid.

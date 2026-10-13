@@ -218,7 +218,7 @@ def bayesian_information_criterion(k: int, n: int, value: float, case="gaussian"
     return float(k * np.log(n) - 2.0 * np.log(value))
 
 
-def durbin_watson(residuals: np.array) -> float:
+def durbin_watson(residuals: np.ndarray) -> float:
     """
     Compute the Durbin-Watson statistic for a series of residuals.
 

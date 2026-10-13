@@ -370,7 +370,7 @@ def join(trajectories) -> Trajectory:
     )
 
 
-def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajectory:
+def load(filename, top=None, stride: int | None = None, atom_indices=None) -> Trajectory:
     """Read a trajectory or a structure.
 
     Parameters
@@ -435,7 +435,7 @@ def load_frame(filename, index: int, top=None) -> Trajectory:
     return load(filename, top=top)[int(index)]
 
 
-def iterload(filename, chunk: int = 100, stride: int = None, top=None):
+def iterload(filename, chunk: int = 100, stride: int | None = None, top=None):
     """Yield a trajectory in chunks of *chunk* frames.
 
     The whole file is decoded once and handed out in slices, which is enough

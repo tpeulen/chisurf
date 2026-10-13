@@ -282,9 +282,11 @@ class ShellRibbon:
                         self._plugin_button(entry, large, accent(own) if own != kind else None)
                     )
                 built.setdefault(tab, []).append(RibbonGroup(group, buttons))
-        for tab, groups in built.items():
-            for group in groups:
-                group.accent = group.accent or accent(group_category(tab, group.title))
+        for tab, tab_groups in built.items():
+            for ribbon_group in tab_groups:
+                ribbon_group.accent = ribbon_group.accent or accent(
+                    group_category(tab, ribbon_group.title)
+                )
         return [RibbonTab(tab, built[tab]) for tab in ordered_tabs(built)]
 
     # -- drawing ------------------------------------------------------------ #

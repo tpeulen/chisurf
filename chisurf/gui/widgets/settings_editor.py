@@ -1081,8 +1081,8 @@ class SettingsEditor(QtWidgets.QWidget):
     def __init__(
         self,
         *args,
-        filename: str = None,
-        documentation_dict: dict = None,
+        filename: str | None = None,
+        documentation_dict: dict | None = None,
         window_title: str = "Settings Editor",
         **kwargs,
     ):
@@ -1249,7 +1249,7 @@ class SettingsEditor(QtWidgets.QWidget):
         """
         return SettingsItemDelegate(self.documentation_dict)
 
-    def load_file(self, filename: str = None):
+    def load_file(self, filename: str | None = None):
         """
         Load settings from a file.
 

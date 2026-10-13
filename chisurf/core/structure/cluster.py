@@ -23,7 +23,7 @@ def cluster(
     criterion: str = "maxclust",
     Z=None,
     distances=None,
-    directory: str = None,
+    directory: str | None = None,
 ):
     """Perform hierarchical clustering on a list of structures using RMSD distances."""
     # http://www.mathworks.de/de/help/stats/hierarchical-clustering.html

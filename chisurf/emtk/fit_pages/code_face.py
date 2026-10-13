@@ -22,9 +22,12 @@ from __future__ import annotations
 
 import pathlib
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from emtk.i18n import tr
+
+if TYPE_CHECKING:
+    from chisurf.plugins.core.code_editor.gui.chat_app import ChatGui, ChatModel
 
 __all__ = ["FitCodeFace", "CodeDocument"]
 
@@ -82,8 +85,8 @@ class FitCodeFace:
         self.history: list[tuple[str, int]] = []
         self.history_index: int = -1
         self.agent_open = False
-        self._chat_model = None
-        self._chat_gui = None
+        self._chat_model: ChatModel | None = None
+        self._chat_gui: ChatGui | None = None
         self.find_open = False
         self.find_text = ""
         self.status = ""
@@ -201,8 +204,10 @@ class FitCodeFace:
         if line <= 0:
             from emtk.widgets.text_editor import Pos
 
-            self.active_doc.editor.set_cursor(Pos(0, 0))
-            self.active_doc.editor.scroll_to_line(0, "top")
+            doc = self.active_doc
+            if doc is not None:
+                doc.editor.set_cursor(Pos(0, 0))
+                doc.editor.scroll_to_line(0, "top")
 
     # -- apply ----------------------------------------------------------------- #
     def apply(self) -> None:
@@ -286,7 +291,8 @@ class FitCodeFace:
 
         rect = im.get_item_rect()
         if rect is not None:
-            self.item_rects[name] = tuple(float(v) for v in rect)
+            x, y, w, h = (float(v) for v in rect)
+            self.item_rects[name] = (x, y, w, h)
 
     def draw(self, box: tuple[float, float, float, float]) -> None:
         """Draw the face into *box* (inside an emtk frame)."""

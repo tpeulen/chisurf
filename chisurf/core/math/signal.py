@@ -7,7 +7,7 @@ from chisurf import typing
 window_function_types = ["flat", "hanning", "hamming", "bartlett", "blackman"]
 
 
-def window(data: np.array, window_len: int, window_function_type: str = "bartlett") -> np.array:
+def window(data: np.ndarray, window_len: int, window_function_type: str = "bartlett") -> np.ndarray:
     """
     Smooth the data using a window with the requested size.
 
@@ -63,7 +63,7 @@ def window(data: np.array, window_len: int, window_function_type: str = "bartlet
 
 def shift_array(
     v: np.ndarray, shift: float, set_outside: bool = True, outside_value: float = 0.0
-) -> np.array:
+) -> np.ndarray:
     """
     Calculate a shifted version of the input array using linear interpolation for non-integer shifts.
 
@@ -129,7 +129,7 @@ def shift_array(
     return ysh
 
 
-def autocorr(x: np.ndarray, axis: int = 0, normalize: bool = True) -> np.array:
+def autocorr(x: np.ndarray, axis: int = 0, normalize: bool = True) -> np.ndarray:
     """
     Estimate the autocorrelation function of a time series using the FFT.
 

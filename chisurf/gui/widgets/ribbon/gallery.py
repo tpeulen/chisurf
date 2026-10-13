@@ -365,7 +365,7 @@ class RibbonGallery(QtWidgets.QFrame):
 
     def addButton(
         self,
-        text: str = None,
+        text: str | None = None,
         icon: QtGui.QIcon = None,
         slot=None,
         shortcut=None,
@@ -470,7 +470,7 @@ class RibbonGallery(QtWidgets.QFrame):
 
     def addToggleButton(
         self,
-        text: str = None,
+        text: str | None = None,
         icon: QtGui.QIcon = None,
         slot=None,
         shortcut=None,

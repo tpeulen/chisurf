@@ -99,7 +99,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
             factorgraph.bump_structure_version()
 
     @property
-    def parameter_scan(self) -> typing.Tuple[np.array, np.array]:
+    def parameter_scan(self) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Return the stored parameter scan values and chi² curve.
 
         The return value is a pair ``(values, chi2s)`` or ``(None, None)``
@@ -108,7 +108,7 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         return self._values, self._chi2s
 
     @parameter_scan.setter
-    def parameter_scan(self, v: typing.Tuple[np.array, np.array]):
+    def parameter_scan(self, v: typing.Tuple[np.ndarray, np.ndarray]):
         """Store the parameter scan values and chi² curve."""
         self._values, self._chi2s = v
 
@@ -142,7 +142,9 @@ class FittingParameter(chisurf.core.parameter.Parameter):
         """Store the full result dict from a smart scan."""
         self._scan_result = v
 
-    def scan(self, fit: chisurf.core.fitting.fit.Fit, rel_range: float = None, **kwargs) -> None:
+    def scan(
+        self, fit: chisurf.core.fitting.fit.Fit, rel_range: float | None = None, **kwargs
+    ) -> None:
         """Trigger a chi² scan for this parameter on the given fit.
 
         This is a thin wrapper around :meth:`chisurf.core.fitting.fit.Fit.chi2_scan`
@@ -585,7 +587,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         fit: chisurf.core.fitting.fit.Fit = None,
         model: chisurf.core.models.Model = None,
         short: str = "",
-        parameters: typing.List[chisurf.core.fitting.parameter.FittingParameter] = None,
+        parameters: typing.List[chisurf.core.fitting.parameter.FittingParameter] | None = None,
         *args,
         **kwargs,
     ):

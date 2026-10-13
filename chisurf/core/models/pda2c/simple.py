@@ -83,7 +83,7 @@ class ProbCh0(FittingParameterGroup):
         self._normalize_amplitudes = v
 
     @property
-    def amplitudes(self) -> np.array:
+    def amplitudes(self) -> np.ndarray:
         """Return per-species amplitudes, optionally absolute and normalized."""
         vs = np.array([x.value for x in self._amplitudes])
         if self.absolute_amplitudes:
@@ -99,7 +99,7 @@ class ProbCh0(FittingParameterGroup):
             self._amplitudes[i].value = v
 
     @property
-    def pch0(self) -> np.array:
+    def pch0(self) -> np.ndarray:
         """Return per-species channel-0 probabilities (always positive)."""
         vs = np.array([math.sqrt(x.value**2) for x in self._pch0])
         for i, v in enumerate(vs):
@@ -113,7 +113,7 @@ class ProbCh0(FittingParameterGroup):
             self._pch0[i].value = v
 
     @property
-    def pch0_spectrum(self) -> np.array:
+    def pch0_spectrum(self) -> np.ndarray:
         """Return interleaved (amplitude, pch0) spectrum for tttrlib.Pda."""
         if self._link is None:
             return cs.core.math.datatools.two_column_to_interleaved(self.amplitudes, self.pch0)
@@ -121,7 +121,7 @@ class ProbCh0(FittingParameterGroup):
             return self._link.pch0
 
     @pch0_spectrum.setter
-    def pch0_spectrum(self, v: np.array):
+    def pch0_spectrum(self, v: np.ndarray):
         """Set the interleaved (amplitude, pch0) spectrum."""
         for i in range(len(v) // 2):
             self._amplitudes[2 * i + 0].value = v[2 * i + 0]
@@ -263,8 +263,8 @@ class ProbCh0(FittingParameterGroup):
         short: str = "0",
         absolute_amplitudes: bool = True,
         normalize_amplitudes: bool = True,
-        amplitudes: typing.List[cs.core.fitting.parameter.FittingParameter] = None,
-        pch0: typing.List[cs.core.fitting.parameter.FittingParameter] = None,
+        amplitudes: typing.List[cs.core.fitting.parameter.FittingParameter] | None = None,
+        pch0: typing.List[cs.core.fitting.parameter.FittingParameter] | None = None,
         name: str = "pch0",
         link: FittingParameter = None,
         **kwargs,
@@ -347,7 +347,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         background: Background = None,
         pch0: ProbCh0 = None,
         nuisance: Pda2cPhotonRange = None,
-        kw_hist: dict = None,
+        kw_hist: dict | None = None,
         **kwargs,
     ):
         """Initialize the discrete-species PDA model.
@@ -396,12 +396,12 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         self.pda = tttrlib.Pda(**kw_pda)
         self.residual_mode = "1D"
 
-    def _update_model(self, pch0: np.array = None, verbose: bool = None, **kwargs):
+    def _update_model(self, pch0: np.ndarray = None, verbose: bool | None = None, **kwargs):
         """Update the model curve from current background and species parameters.
 
         Parameters
         ----------
-        pch0 : np.array, optional
+        pch0 : np.ndarray, optional
             Override probability spectrum.
         verbose : bool, optional
             Whether to log debug output.
@@ -460,7 +460,7 @@ class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
         return wres
 
     def get_wres(
-        self, fit: cs.core.fitting.fit.Fit, xmin: int = None, xmax: int = None
+        self, fit: cs.core.fitting.fit.Fit, xmin: int | None = None, xmax: int | None = None
     ) -> np.ndarray:
         """Compute weighted residuals for the discrete PDA model.
 

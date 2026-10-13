@@ -1432,7 +1432,7 @@ class FittingControllerWidget(Controller):
     def xmax2(self, v: int):
         self.spinBox_6.setValue(v)
 
-    def onFitRangeChanged(self, event, xmin: int = None, xmax: int = None):
+    def onFitRangeChanged(self, event, xmin: int | None = None, xmax: int | None = None):
         cs.logging.info(f"onFitRangeChanged: {xmin, xmax}")
         if xmin is not None:
             self.xmin = xmin

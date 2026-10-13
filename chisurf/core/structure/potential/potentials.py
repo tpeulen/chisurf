@@ -276,7 +276,7 @@ def go(ca_dist: np.ndarray, energy_matrix: np.ndarray, rm_matrix: np.ndarray):
 
 
 class Ramachandran:
-    def __init__(self, structure: chisurf.core.structure.Structure, filename: str = None):
+    def __init__(self, structure: chisurf.core.structure.Structure, filename: str | None = None):
         """
         :param filename:
         :return:
@@ -340,7 +340,7 @@ class HPotential:
         structure: chisurf.core.structure.Structure,
         cutoff_ca: float = 8.0,
         cutoff_hbond: float = 3.0,
-        potential: str = None,
+        potential: str | None = None,
         **kwargs,
     ):
         """Initialize the hydrogen bond potential with cutoff and parameter settings."""
@@ -468,7 +468,7 @@ class MJPotential:
     def __init__(
         self,
         structure: chisurf.core.structure.Structure,
-        filename: str = None,
+        filename: str | None = None,
         ca_cutcoff: float = 6.5,
     ):
         """Initialize a Miyazawa-Jernigan potential for *structure*."""
@@ -522,7 +522,7 @@ class CEPotential:
     name = "Iso-UNRES"
 
     def __init__(
-        self, structure: chisurf.core.structure.Structure, potential: str = None, **kwargs
+        self, structure: chisurf.core.structure.Structure, potential: str | None = None, **kwargs
     ):
         """
         scaling_factor : factor to scale energies from kCal/mol to kT=1.0 at 298K

@@ -413,7 +413,7 @@ def _spanning_tree(graph: Graph, weight: str, maximise: bool) -> Graph:
 
 def shortest_path_length(
     graph: Graph,
-    weight: str = None,
+    weight: str | None = None,
 ) -> dict[typing.Any, dict[typing.Any, float]]:
     """Return all-pairs shortest path lengths.
 

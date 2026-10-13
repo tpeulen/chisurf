@@ -149,7 +149,7 @@ class ReactionSystem:
     types, define associated properties, and simulate temporal dynamics.
     """
 
-    def __init__(self, verbose: bool = None, **kwargs):
+    def __init__(self, verbose: bool | None = None, **kwargs):
         """
         Initializes the class with optional configurations for verbosity and additional
         attributes used within the model. The class includes attributes for managing

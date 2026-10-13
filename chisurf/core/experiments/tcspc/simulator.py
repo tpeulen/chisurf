@@ -44,7 +44,7 @@ def gaussian_irf(time_axis: np.ndarray, mean: float = 5.0, sigma: float = 0.2) -
 
 
 def resolve_irf(
-    time_axis: np.ndarray, irf: typing.Any = None, mean: float = 5.0, sigma: float = 0.2
+    time_axis: np.ndarray, irf: typing.Any | None = None, mean: float = 5.0, sigma: float = 0.2
 ) -> np.ndarray:
     """Return an instrument response sampled on *time_axis*.
 
@@ -91,11 +91,11 @@ def simulate_decay(
     n_tac: int = 4096,
     dt: float = 0.0141,
     p0: float = 10000.0,
-    irf: typing.Any = None,
+    irf: typing.Any | None = None,
     irf_mean: float = 5.0,
     irf_sigma: float = 0.2,
     add_noise: bool = True,
-    seed: int = None,
+    seed: int | None = None,
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Simulate a TCSPC decay histogram.
 
@@ -169,7 +169,7 @@ def simulate_decay(
 
 def simulate_decay_channels(
     lifetime_spectrum: typing.Any,
-    anisotropy_spectrum: typing.Any = None,
+    anisotropy_spectrum: typing.Any | None = None,
     *,
     n_tac: int = 4096,
     dt: float = 0.0141,
@@ -177,11 +177,11 @@ def simulate_decay_channels(
     g_factor: float = 1.0,
     l1: float = 0.0,
     l2: float = 0.0,
-    irf: typing.Any = None,
+    irf: typing.Any | None = None,
     irf_mean: float = 5.0,
     irf_sigma: float = 0.2,
     add_noise: bool = True,
-    seed: int = None,
+    seed: int | None = None,
 ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Simulate the polarized VV/VH pair of a decay with anisotropy.
 
@@ -291,15 +291,15 @@ class TCSPCSimulatorSetup(TCSPCReader):
         dt: float = 0.0141,
         p0: float = 10000.0,
         rep_rate: float = 10.0,
-        lifetime_spectrum: typing.List[float] = None,
+        lifetime_spectrum: typing.List[float] | None = None,
         instrument_response_function: chisurf.core.data.DataCurve = None,
         irf_mean: float = 5.0,
         irf_sigma: float = 0.2,
         add_noise: bool = True,
-        seed: int = None,
+        seed: int | None = None,
         sample_name: str = "TCSPC-Dummy",
         polarization: str = "vm",
-        rotation_spectrum: typing.List[float] = None,
+        rotation_spectrum: typing.List[float] | None = None,
         **kwargs,
     ):
         """Initialize a TCSPC simulator.
@@ -501,7 +501,9 @@ class TCSPCSimulatorSetup(TCSPCReader):
         x = np.arange(int(max(1, self.n_tac)), dtype=float) * float(self.dt)
         return x, anisotropy_rt(x, self.rotation_spectrum)
 
-    def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.data.DataCurveGroup:
+    def read(
+        self, filename: str | None = None, *args, **kwargs
+    ) -> chisurf.core.data.DataCurveGroup:
         """Generate a simulated TCSPC decay curve.
 
         The curve is produced by :meth:`simulate`, i.e. by the same generator

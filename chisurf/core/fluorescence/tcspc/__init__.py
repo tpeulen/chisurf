@@ -38,7 +38,7 @@ def __dir__():
 
 def counting_noise(
     decay: np.ndarray, treat_zeros: bool = True, zero_value: float = 1.0
-) -> np.array:
+) -> np.ndarray:
     """Calculated Poisson noise (sqrt of counts) for TCSPC fluorescence decays
 
     Parameters

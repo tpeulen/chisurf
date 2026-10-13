@@ -323,7 +323,7 @@ def _scan_one_side(
     is_fixed: bool,
     max_points: int,
     target_dchi2: float,
-    p_boundary: float = None,
+    p_boundary: float | None = None,
 ):
     """Scan in one direction from v0, using adaptive step sizes.
 

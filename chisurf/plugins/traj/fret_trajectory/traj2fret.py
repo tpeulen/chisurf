@@ -83,7 +83,7 @@ def integrate_rate_traj(k: np.ndarray, t_step: float, t_max: float):
     return sk * t_step
 
 
-def traj2decay(k: np.ndarray, t_step: float, t_max: float, tau0: float = None):
+def traj2decay(k: np.ndarray, t_step: float, t_max: float, tau0: float | None = None):
     """Converts a FRET-rate constant trajectory to a FRET-induced donor decay
     or a fluorescence intensity decay.
     If the parameter tau0 is None the FRET-induced donor decay is calculated. If tau0
@@ -110,8 +110,8 @@ def traj2decay(k: np.ndarray, t_step: float, t_max: float, tau0: float = None):
 class CalculateTransfer:
     def __init__(
         self,
-        trajectory_file: str = None,
-        topology_file: str = None,
+        trajectory_file: str | None = None,
+        topology_file: str | None = None,
         dipoles: bool = True,
         tau0: float = 2.6,
         stride: int = 1,
@@ -240,8 +240,8 @@ class CalculateTransfer:
     def calc(
         self,
         output_file: str,
-        trajectory_file: str = None,
-        stride: int = None,
+        trajectory_file: str | None = None,
+        stride: int | None = None,
         chunk: int = 1000,
         **kwargs,
     ) -> np.ndarray:

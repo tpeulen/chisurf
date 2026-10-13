@@ -35,7 +35,7 @@ def fretrate_to_distance(fretrate, forster_radius, tau0, kappa2=2.0 / 3.0):
 
 def combine_interleaved_spectra(
     lifetime_spectra: typing.List[np.ndarray],
-    fractions: typing.List[float] = None,
+    fractions: typing.List[float] | None = None,
     normalize_fractions: bool = True,
     normalize_spectra: bool = False,
 ) -> np.ndarray:
@@ -141,7 +141,10 @@ def fret_efficiency_from_spectra(fret_lifetime_spectrum, donor_lifetime_spectrum
 
 
 def fluorescence_averaged_lifetime(
-    fluorescence, taux: float = None, normalize: bool = True, is_lifetime_spectrum: bool = True
+    fluorescence,
+    taux: float | None = None,
+    normalize: bool = True,
+    is_lifetime_spectrum: bool = True,
 ) -> float:
     """
 
@@ -450,7 +453,7 @@ def transfer_space(
 
 
 def calc_transfer_matrix(
-    times: np.array,
+    times: np.ndarray,
     rDA_min: float = 1.0,
     rDA_max: float = 200.0,
     n_steps: int = 200,
@@ -509,7 +512,7 @@ def calc_transfer_matrix(
 
 
 def calc_decay_matrix(
-    times: np.array,
+    times: np.ndarray,
     tau_min: float = 0.01,
     tau_max: float = 200.0,
     n_steps: int = 200,
@@ -615,7 +618,7 @@ def distribution2rates(
     forster_radius: float = 50.0,
     remove_negative: bool = False,
     use_fast: bool = True,
-    k2_transform_cache: tuple = None,
+    k2_transform_cache: tuple | None = None,
 ):
     """
     Gets distribution in form: (1,2,3)
@@ -826,7 +829,7 @@ def rates2lifetimes_old(rates, donors, x_donly: float = 0.0):
 
 
 def rates2lifetimes_new(
-    fret_rate_spectrum: np.array, donor_rate_spectrum: np.array, x_donly: float = 0.0
+    fret_rate_spectrum: np.ndarray, donor_rate_spectrum: np.ndarray, x_donly: float = 0.0
 ):
     """Converts an interleaved rate spectrum to an interleaved lifetime spectrum
     given an interleaved donor spectrum and the fraction of donor-only

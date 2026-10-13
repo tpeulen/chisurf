@@ -297,14 +297,14 @@ class TextEditor(QtWidgets.QPlainTextEdit):
     def __init__(
         self,
         parent=None,
-        font_family: str = None,
-        font_point_size: float = None,
-        margins_background_color: str = None,
-        marker_background_color: str = None,
-        caret_line_background_color: str = None,
-        caret_line_visible: bool = None,
-        line_numbers_visible: bool = None,
-        language: str = None,
+        font_family: str | None = None,
+        font_point_size: float | None = None,
+        margins_background_color: str | None = None,
+        marker_background_color: str | None = None,
+        caret_line_background_color: str | None = None,
+        caret_line_visible: bool | None = None,
+        line_numbers_visible: bool | None = None,
+        language: str | None = None,
         **kwargs,
     ):
         """

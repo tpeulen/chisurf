@@ -262,7 +262,9 @@ class AutoForm(QtWidgets.QWidget):
             self._layout.addStretch(1)  # push panels to the top; prevent height distribution
         self.rebuilt.emit()
 
-    def set_field_label(self, target: str, text: str = None, html: str = None) -> bool:
+    def set_field_label(
+        self, target: str, text: str | None = None, html: str | None = None
+    ) -> bool:
         """Retitle a field's caption at run time.
 
         The counterpart of a :class:`FittingParameterWidget`'s ``label_text``:

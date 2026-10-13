@@ -110,7 +110,7 @@ def detach_curve(fit, unload_action: str, **fixed) -> None:
 
 
 def set_linearization(
-    idx: int = None, curve_name: str = None, fit: cs.core.fitting.fit.FitGroup = None
+    idx: int | None = None, curve_name: str | None = None, fit: cs.core.fitting.fit.FitGroup = None
 ) -> None:
     if fit is None:
         gui = cs.cs
@@ -242,7 +242,7 @@ def remove_component(name: str, fit: cs.core.fitting.fit.FitGroup = None) -> Non
 def _resolve_selected_curve(
     dataset_idx: int,
     curve_name: str,
-    selector: typing.Any = None,
+    selector: typing.Any | None = None,
     *,
     dataset_uid: str | None = None,
     member_uid: str | None = None,

@@ -105,7 +105,7 @@ class DatasetPicker:
         self,
         rows: list[dict],
         anchor: Any,
-        on_pick: Callable[[dict | None], None],
+        on_pick: Callable[[dict | None], object],
         title: str = "",
     ):
         from emtk.widgets.menus import MenuItem, Popup

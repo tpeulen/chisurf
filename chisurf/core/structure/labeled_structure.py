@@ -77,7 +77,7 @@ def av_fret_rate_spectrum(
         return rs
 
 
-def av_lifetime_spectrum(structure: Structure, donor_lifetime_spectrum: np.array, **kwargs):
+def av_lifetime_spectrum(structure: Structure, donor_lifetime_spectrum: np.ndarray, **kwargs):
     """Get an interleaved lifetime spectrum for a given donor lifetime spectrum given two definitions of
     a donor and an acceptor accessible volume. This function uses :py:meth:`~Structure.av_fret_rate_spectrum`
     to calculate the FRET-rate spectrum and uses this rate-spectrum to calculate the lifetime spectrum.
@@ -104,7 +104,9 @@ def av_lifetime_spectrum(structure: Structure, donor_lifetime_spectrum: np.array
     )
 
 
-def av_filtered_fcs_weights(structure: Structure, lifetime_filters, time_axis: np.array, **kwargs):
+def av_filtered_fcs_weights(
+    structure: Structure, lifetime_filters, time_axis: np.ndarray, **kwargs
+):
     """Passes all ``kwargs`` parameters to the method in :py:meth:`~Structure.av_lifetime_spectrum` and
     calculates the filters weights for a set of lifetime filters ``lifetime_filters``.
 
@@ -244,12 +246,12 @@ class LabeledStructure(Structure):
     """
 
     @property
-    def donor_lifetime_spectrum(self) -> np.array:
+    def donor_lifetime_spectrum(self) -> np.ndarray:
         """Interleaved donor lifetime spectrum (amplitudes and lifetimes)."""
         return self._ds
 
     @donor_lifetime_spectrum.setter
-    def donor_lifetime_spectrum(self, v: np.array):
+    def donor_lifetime_spectrum(self, v: np.ndarray):
         """Set the donor lifetime spectrum (amplitudes and lifetimes)."""
         self._ds = v
 
@@ -289,7 +291,7 @@ class LabeledStructure(Structure):
         return amplitude, distance
 
     @property
-    def fret_rate_spectrum(self) -> np.array:
+    def fret_rate_spectrum(self) -> np.ndarray:
         """Interleaved FRET-rate constant spectrum."""
         forster_radius = self.forster_radius
         kappa2 = self.kappa2
@@ -302,7 +304,7 @@ class LabeledStructure(Structure):
         return np.hstack(rs).ravel([-1])
 
     @property
-    def lifetime_spectrum(self) -> np.array:
+    def lifetime_spectrum(self) -> np.ndarray:
         """Interleaved donor lifetime spectrum in presence of FRET."""
         rs = self.fret_rate_spectrum
         ds = self.donor_lifetime_spectrum

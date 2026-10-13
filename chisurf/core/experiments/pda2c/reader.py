@@ -98,7 +98,7 @@ class Pda2cReader(ExperimentReader):
         minimum_number_of_photons: int = 5,
         minimum_time_window_length: float = 2e-3,
         tw_configs=None,
-        n_colors: int = None,
+        n_colors: int | None = None,
         segmentation: str = "burst",
         *args,
         **kwargs,
@@ -571,7 +571,7 @@ class Pda2cReader(ExperimentReader):
         return 0, len(data.y.flatten())
 
     def read(
-        self, filename: typing.List[str] = None, *args, **kwargs
+        self, filename: typing.List[str] | None = None, *args, **kwargs
     ) -> chisurf.core.data.ExperimentDataGroup:
         """Read PDA TTTR data and return S1S2 histograms.
 
@@ -606,6 +606,8 @@ class Pda2cReader(ExperimentReader):
               string), ``tw_configs`` (list of time-window configurations
               used).
         """
+        if filename is None:
+            raise ValueError("Pda2cReader.read needs at least one file name")
         # Burst tables, burst-analysis folders and TTTR files with a burst
         # folder beside them all name photon intervals; resolve them unless
         # the caller already did (the burst bridge hands its own).

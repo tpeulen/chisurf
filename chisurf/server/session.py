@@ -21,6 +21,10 @@ class SessionState:
     current_fit_uid: str | None = None
     flr_database: Any | None = None
     native_session: Any | None = None
+    #: Process-local handles the in-process API attaches (not part of the served state).
+    project_resources: Any | None = field(default=None, repr=False)
+    history: Any | None = field(default=None, repr=False)
+    _project_gui: Any | None = field(default=None, repr=False)
 
     def __post_init__(self):
         """Initialise the project registry after dataclass field assignment."""

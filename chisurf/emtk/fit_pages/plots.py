@@ -148,7 +148,7 @@ def _resolve_options(opts: dict) -> dict:
 
 def fit_plot_specs(present: set) -> list[tuple[type, dict]]:
     """The fit-level pages (:data:`FIT_PLOT_KEYS`) a model did not declare itself."""
-    specs = []
+    specs: list[tuple[type, dict]] = []
     for key in FIT_PLOT_KEYS:
         cls = get_plot_class(key)
         if cls is not None and cls not in present:

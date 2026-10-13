@@ -599,7 +599,7 @@ def read_times(path):
     return np.load(sidecar) if sidecar.is_file() else None
 
 
-def read_time_axis(path, stride: int = None) -> np.ndarray:
+def read_time_axis(path, stride: int | None = None) -> np.ndarray:
     """Return one time per frame of *path*.
 
     A DCD header carries a first step, an interval and a timestep, which

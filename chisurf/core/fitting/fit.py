@@ -660,7 +660,7 @@ class Fit(cs.core.base.Base):
         self._mask = arr
 
     @property
-    def grad(self) -> np.array:
+    def grad(self) -> np.ndarray:
         """Approximate gradient of the residuals at current parameters.
 
         The step scales with each parameter and is floored at 1.0 --
@@ -681,7 +681,7 @@ class Fit(cs.core.base.Base):
         return grad
 
     @property
-    def covariance_matrix(self) -> typing.Tuple[np.array, typing.typing.List[int]]:
+    def covariance_matrix(self) -> typing.Tuple[np.ndarray, typing.List[int]]:
         """Approximate covariance matrix and indices of relevant parameters.
 
         The matrix is computed from numerical partial derivatives obtained
@@ -700,9 +700,9 @@ class Fit(cs.core.base.Base):
         data: cs.core.data.DataCurve = None,
         xmin: int = 0,
         xmax: int = 0,
-        model_kw: typing.Dict = None,
-        group: list = None,
-        noise_model: str = None,
+        model_kw: typing.Dict | None = None,
+        group: list | None = None,
+        noise_model: str | None = None,
         **kwargs,
     ):
         """Create a :class:`Fit` with a given model class and data.
@@ -749,12 +749,12 @@ class Fit(cs.core.base.Base):
         self.noise_model = cs.core.fitting.normalize_noise_model(noise_model)
         self._model: cs.core.models.Model = None
         self._result_current = 0
-        self.results = deque(maxlen=500)
+        self.results: deque = deque(maxlen=500)
         self._mask = None
         if data is None:
             data = cs.core.data.DataCurve(x=np.arange(10), y=np.arange(10))
         self._data = data
-        self.plots = list()
+        self.plots: list = list()
         self._xmin, self._xmax = xmin, xmax
         cs.core.fitting.factorgraph.bump_window_version()
         if model_kw is None:
@@ -973,15 +973,15 @@ class Fit(cs.core.base.Base):
             "none": "no estimate",
         }
         skewed = []
-        for e in rows:
-            if e["method"] == "none" or not np.isfinite(e.get("low", np.nan)):
-                interval = e.get("warning") or "n/a"
+        for est in rows:
+            if est["method"] == "none" or not np.isfinite(est.get("low", np.nan)):
+                interval = est.get("warning") or "n/a"
             else:
-                interval = f"[{e['low']:.5g}, {e['high']:.5g}]"
-            method = method_text.get(e["method"], e["method"])
-            lines.append(f"    {e['name']:<32s}  {e['value']:<11.5g}  {interval:<27s}  {method}")
-            if "skewed" in (e.get("warning") or ""):
-                skewed.append(e["name"])
+                interval = f"[{est['low']:.5g}, {est['high']:.5g}]"
+            method = method_text.get(est["method"], est["method"])
+            lines.append(f"    {est['name']:<32s}  {est['value']:<11.5g}  {interval:<27s}  {method}")
+            if "skewed" in (est.get("warning") or ""):
+                skewed.append(est["name"])
         if skewed:
             lines.append(f"    (skewed, so the interval is not value ± σ: {', '.join(skewed)})")
         elif rows and rows[0]["method"] == "delta":
@@ -1588,11 +1588,11 @@ class Fit(cs.core.base.Base):
 
     def grid_scan(
         self,
-        parameters: typing.Sequence = None,
-        budget: int = None,
-        points: int = None,
+        parameters: typing.Sequence | None = None,
+        budget: int | None = None,
+        points: int | None = None,
         apply_best: bool = True,
-        progress_callback: typing.Callable = None,
+        progress_callback: typing.Callable | None = None,
     ):
         """Scan a coarse grid over free parameters and jump to the best point.
 
@@ -1642,7 +1642,7 @@ class Fit(cs.core.base.Base):
                 progress_callback(state["n"], None)
             return float(self.chi2r)
 
-        kwargs = {"apply_best": apply_best}
+        kwargs: dict[str, typing.Any] = {"apply_best": apply_best}
         if budget is not None:
             kwargs["budget"] = int(budget)
         if points is not None:
@@ -1654,10 +1654,10 @@ class Fit(cs.core.base.Base):
     def chi2_scan(
         self,
         parameter_name: str,
-        rel_range: float = None,
+        rel_range: float | None = None,
         scan_range: typing.Tuple[float, float] = (None, None),
         n_steps: int = 30,
-    ) -> typing.Tuple[np.array, np.array]:
+    ) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Perform a chi2-scan on a parameter of the fit.
 
         :param parameter_name: the parameter name
@@ -2037,7 +2037,7 @@ class FitGroup(Fit):
             f.xmax = v
 
     def get_curves(
-        self, copy_curves: bool = False, idx: int = None, *, full_length: bool = False
+        self, copy_curves: bool = False, idx: int | None = None, *, full_length: bool = False
     ) -> typing.OrderedDict[str, cs.core.curve.Curve]:
         """Return curves for one or all grouped fits.
 
@@ -2158,7 +2158,7 @@ class FitGroup(Fit):
             f.update()
         self._notify_update(include_members=False)
 
-    def run(self, local_first: bool = None, **kwargs):
+    def run(self, local_first: bool | None = None, **kwargs):
         """Run local fits followed by a global least-squares optimization."""
         fit: FitGroup = self
         record_result = bool(kwargs.pop("record_result", True))
@@ -2251,7 +2251,7 @@ class FitGroup(Fit):
         self,
         data: cs.core.data.DataGroup,
         model_class: typing.Type[cs.core.models.Model] = type,
-        model_kw: typing.Dict = None,
+        model_kw: typing.Dict | None = None,
     ):
         """Create a :class:`FitGroup` over a :class:`DataGroup`.
 
@@ -2260,7 +2260,7 @@ class FitGroup(Fit):
         from these.
         """
         self._selected_fit_index = 0
-        self.grouped_fits = list()
+        self.grouped_fits: list[Fit] = list()
 
         for d in data:
             if model_kw is None:
@@ -2341,6 +2341,10 @@ class FitGroup(Fit):
             self._selected_fit_index += 1
             return self.grouped_fits[self._selected_fit_index - 1]
 
+    def __iter__(self) -> typing.Iterator[Fit]:
+        """Iterate over the grouped fits (independent of the selection index)."""
+        return iter(self.grouped_fits)
+
     def __len__(self):
         """Number of grouped fits.
 
@@ -2395,9 +2399,9 @@ def sample_fit(
     n_runs: int = 10,
     step_size: float = 0.1,
     temp: float = 1.0,
-    check_cancel: typing.Callable = None,
-    progress_callback: typing.Callable = None,
-    chain_format: str = None,
+    check_cancel: typing.Callable | None = None,
+    progress_callback: typing.Callable | None = None,
+    chain_format: str | None = None,
     **kwargs,
 ):
     """Sample free parameters of a fit and save the chain to disk.
@@ -2900,13 +2904,13 @@ FINITE_DIFFERENCE_STEP = float(np.sqrt(np.finfo(float).eps))
 
 
 def approx_grad(
-    xk: np.array,
+    xk: np.ndarray,
     fit: cs.core.fitting.fit.Fit,
-    epsilon: float = None,
+    epsilon: float | None = None,
     args=(),
     f0=None,
     model: cs.core.models.Model = None,
-) -> typing.Tuple[float, np.array]:
+) -> typing.Tuple[float, np.ndarray]:
     """Approximate gradient of the weighted residuals with respect to ``xk``.
 
     Parameters
@@ -3043,11 +3047,11 @@ def _error_scale(fit) -> float:
 
 def covariance_matrix(
     fit: cs.core.fitting.fit.Fit,
-    epsilon: float = None,
+    epsilon: float | None = None,
     model: cs.core.models.Model = None,
     f0: np.ndarray = None,
     **kwargs,
-) -> typing.Tuple[np.array, typing.List[int]]:
+) -> typing.Tuple[np.ndarray, typing.List[int]]:
     """Estimate the covariance matrix of the fit parameters.
 
     With ``J = d(weighted residuals)/dp``, the curvature matrix of
@@ -3172,7 +3176,7 @@ def _covariance_from_gradient(fit, model, xk, epsilon, f0):
     return cov_m, important_parameters
 
 
-def _apply_fit_mask(model: cs.core.models.Model, wres: np.array) -> np.array:
+def _apply_fit_mask(model: cs.core.models.Model, wres: np.ndarray) -> np.ndarray:
     """Apply an optional Fit-level mask to a residual vector.
 
     The mask is taken from ``model.fit.mask`` if available. Boolean masks are
@@ -3290,7 +3294,7 @@ def _smooth_prior(parameter) -> typing.Optional[cs.core.fitting.priors.Prior]:
     return getattr(parameter, "prior", None)
 
 
-def _prior_residuals(model: cs.core.models.Model) -> np.array:
+def _prior_residuals(model: cs.core.models.Model) -> np.ndarray:
     """Return the concatenated prior-residual contributions of a model.
 
     Each free parameter that carries a prior contributes its
@@ -3328,7 +3332,7 @@ def _prior_residuals(model: cs.core.models.Model) -> np.array:
 
 def get_wres(
     parameter_values: typing.List[float], model: cs.core.models.Model, include_priors: bool = False
-) -> np.array:
+) -> np.ndarray:
     """Return weighted residuals for a list of model parameters.
 
     Parameters

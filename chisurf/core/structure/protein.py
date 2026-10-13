@@ -158,13 +158,13 @@ def make_residue_lookup_table(structure: Structure):
 
 
 def internal_to_cartesian(
-    bond: np.array,
-    angle: np.array,
-    dihedral: np.array,
+    bond: np.ndarray,
+    angle: np.ndarray,
+    dihedral: np.ndarray,
     ans,
-    i_b: np.array,
-    i_a: np.array,
-    i_d: np.array,
+    i_b: np.ndarray,
+    i_a: np.ndarray,
+    i_d: np.ndarray,
     n_atoms: int,
     r,
     p,
@@ -287,7 +287,7 @@ def _measure_internal_coordinates(structure: Structure, plans: list) -> int:
     return ai
 
 
-def calc_internal_coordinates_bb(structure: Structure, verbose: bool = None, **kwargs):
+def calc_internal_coordinates_bb(structure: Structure, verbose: bool | None = None, **kwargs):
     """Calculate backbone and side-chain internal coordinates for a protein structure."""
     if verbose is None:
         verbose = cs.core.settings.cs_settings["verbose"]

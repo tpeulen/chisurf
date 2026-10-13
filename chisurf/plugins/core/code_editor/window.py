@@ -24,7 +24,7 @@ class CodeEditorWindow(ChisurfDockTool):
     def __init__(
         self,
         *args,
-        filename: str = None,
+        filename: str | None = None,
         project_root: str | pathlib.Path | None = None,
         **kwargs,
     ):

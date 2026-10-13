@@ -374,7 +374,7 @@ class MMFDBWidget(NavigationPanelTool):
     def __init__(self, parent: QtWidgets.QWidget | None = None, client: Any | None = None):
         # -- prep that does not need a live QWidget (must precede super()) --
         client_was_provided = client is not None
-        self.client = client or MMFDBClient()
+        self.client: MMFDBClient = client or MMFDBClient()
         self._loading = False
         self._auth_login_user: str | None = None
         self._checkable_tables: list[QtWidgets.QTableWidget] = []
@@ -389,10 +389,10 @@ class MMFDBWidget(NavigationPanelTool):
         self._object_preview_dir = tempfile.TemporaryDirectory(prefix="chisurf-mmfdb-preview-")
 
         # Selection state
-        self.current_sample_id = None
-        self.current_experiment_id = None
+        self.current_sample_id: str | None = None
+        self.current_experiment_id: str | None = None
         self.current_provenance_seed_type = "processed_data"
-        self.current_provenance_seed_id = None
+        self.current_provenance_seed_id: str | None = None
 
         # Dictionary and schema map for dictionary-driven docks
         self._dictionary: MmcifDictionary | None = None
@@ -1472,7 +1472,8 @@ class MMFDBWidget(NavigationPanelTool):
         dock = self._entity_docks.get(entity_key)
         if not isinstance(dock, EntityDock):
             return {}
-        data = dock.form.get_data() if getattr(dock, "form", None) is not None else {}
+        form = getattr(dock, "form", None)
+        data = form.get_data() if form is not None else {}
         if data:
             return data
         row_id = dock.selected_row_id()
@@ -4197,6 +4198,8 @@ class MMFDBWidget(NavigationPanelTool):
     def _set_transport_connected(self, connected: bool) -> None:
         self.transport_connected = bool(connected)
         for action in getattr(self, "_transport_actions", []):
+            if action is None:
+                continue
             if action is getattr(self, "refresh_action", None):
                 action.setEnabled(True)
             else:
@@ -4512,7 +4515,7 @@ class MMFDBWidget(NavigationPanelTool):
 
     def fill_entities(self, entities: list[dict[str, Any]]) -> None:
         try:
-            scoped_entities = (
+            scoped_entities: list[dict[str, Any]] = (
                 self.client.list_entities(self.current_sample_id) if self.current_sample_id else []
             )
             if scoped_entities:
@@ -4786,7 +4789,7 @@ class MMFDBWidget(NavigationPanelTool):
 
         probe["name"] = data.get("chromophore_name")
         probe_id_val = data.get("probe_id")
-        if probe_id_val not in (None, "", 0):
+        if probe_id_val is not None and probe_id_val not in ("", 0):
             probe["probe_id"] = int(probe_id_val)
 
         saved = self.client.save_probe(probe)

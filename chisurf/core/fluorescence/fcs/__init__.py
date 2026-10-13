@@ -35,9 +35,9 @@ def noise(
     starchev_a1: float = 2.0e-3,
     starchev_a2: float = 1.8e-1,
     starchev_c1: float = 1.0e-4,
-    diffusion_time: float = None,
+    diffusion_time: float | None = None,
     verbose: bool = False,
-) -> np.array:
+) -> np.ndarray:
     """
     Calculate noise weights for fluorescence correlation spectroscopy (FCS)
     correlation curves.

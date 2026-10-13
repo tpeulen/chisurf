@@ -201,7 +201,7 @@ class Topology:
         self._chain_index = None
 
     # -- incremental construction -------------------------------------------
-    def add_chain(self, chain_id: str = None) -> Chain:
+    def add_chain(self, chain_id: str | None = None) -> Chain:
         """Append a chain and return it.
 
         Parameters
@@ -219,7 +219,7 @@ class Topology:
             chain_id = chr(ord("A") + index % 26)
         return Chain(index, str(chain_id))
 
-    def add_residue(self, name: str, chain: Chain, resSeq: int = None) -> Residue:
+    def add_residue(self, name: str, chain: Chain, resSeq: int | None = None) -> Residue:
         """Append a residue to *chain* and return it.
 
         Parameters

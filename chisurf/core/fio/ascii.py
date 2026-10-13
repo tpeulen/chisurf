@@ -314,9 +314,9 @@ def save_xy(
     filename: str,
     x: np.ndarray,
     y: np.ndarray,
-    verbose: bool = None,
+    verbose: bool | None = None,
     fmt: str = "%.3f\t%.3f",
-    header_string: str = None,
+    header_string: str | None = None,
 ) -> None:
     """
     Saves data x, y to file in format (csv/tsv). x and y should have the same length.
@@ -343,11 +343,11 @@ def save_xy(
 
 def load_xy(
     filename: str,
-    verbose: bool = None,
-    usecols: typing.Tuple[int, int] = None,
+    verbose: bool | None = None,
+    usecols: typing.Tuple[int, int] | None = None,
     skiprows: int = 0,
     delimiter: str = "\t",
-) -> typing.Tuple[np.array, np.array]:
+) -> typing.Tuple[np.ndarray, np.ndarray]:
     """Load x,y data from a text file.
 
     Parameters
@@ -415,8 +415,8 @@ class Csv:
     def __init__(
         self,
         *args,
-        filename: str = None,
-        colspecs: typing.List[int] = None,
+        filename: str | None = None,
+        colspecs: typing.List[int] | None = None,
         use_header: bool = False,
         x_on: bool = True,
         y_on: bool = True,
@@ -428,7 +428,7 @@ class Csv:
         error_x_on: bool = False,
         directory: str = ".",
         skiprows: int = 9,
-        verbose: bool = None,
+        verbose: bool | None = None,
         file_type: str = "csv",
         **kwargs,
     ):
@@ -507,13 +507,13 @@ class Csv:
     def load(
         self,
         filename: str,
-        skiprows: int = None,
-        use_header: bool = None,
-        verbose: bool = None,
-        delimiter: str = None,
-        file_type: str = None,
+        skiprows: int | None = None,
+        use_header: bool | None = None,
+        verbose: bool | None = None,
+        delimiter: str | None = None,
+        file_type: str | None = None,
         infer_delimiter: bool = True,
-        usecols: typing.List[int] = None,
+        usecols: typing.List[int] | None = None,
         **kwargs,
     ) -> None:
         """
@@ -779,7 +779,7 @@ class Csv:
         return self._data.shape[0]
 
     @property
-    def data(self) -> np.array:
+    def data(self) -> np.ndarray:
         """Numpy array of the data (transposed to match historical behavior)."""
         arr = np.array(self._data, dtype=np.float64).T
         return arr[::-1] if self.reverse else arr

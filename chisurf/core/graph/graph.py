@@ -86,7 +86,7 @@ class NodeView:
         """Return ``(node, attributes)`` pairs."""
         return self._nodes.items()
 
-    def data(self, key: str = None, default=None):
+    def data(self, key: str | None = None, default=None):
         """Return ``(node, attributes)`` pairs, or ``(node, attributes[key])``."""
         if key is None:
             return list(self._nodes.items())
@@ -143,7 +143,7 @@ class EdgeView:
         u, v = edge
         return self._graph._edge_attr(u, v)
 
-    def data(self, key: str = None, default=None):
+    def data(self, key: str | None = None, default=None):
         """Return ``(u, v, attributes)`` triples, or ``(u, v, attributes[key])``."""
         if key is None:
             return [(u, v, self._graph._edge_attr(u, v)) for u, v in self]

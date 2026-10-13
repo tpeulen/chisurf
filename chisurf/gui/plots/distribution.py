@@ -290,7 +290,7 @@ class DistributionPlot(plotbase.Plot):
         self,
         fit: chisurf.core.fitting.fit.FitGroup,
         parent=None,
-        distribution_options: dict = None,
+        distribution_options: dict | None = None,
         **kwargs,
     ):
         super().__init__(fit=fit, parent=parent)

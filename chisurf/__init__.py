@@ -53,7 +53,7 @@ def run(x):
 
 
 cs = None  # The current instance of ChiSurf
-console = None
+console: typing.Any = None
 experiment: dict[str, chisurf.core.experiments.core.experiment.Experiment] = dict()
 working_path = pathlib.Path().home()
 verbose = False  # Updated lazily when settings are loaded

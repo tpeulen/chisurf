@@ -48,7 +48,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
     #: Optional filename of a user-editable ``.view.json`` describing this
     #: model's editor, resolved relative to the module that defines the class.
     #: When set, :meth:`view_spec` loads it instead of auto-deriving.
-    view_spec_file: typing.Optional[str] = None
+    view_spec_file: typing.Optional[str] | None = None
 
     @classmethod
     def supports_data(cls, data) -> bool:
@@ -263,7 +263,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
                     chisurf.logging.error(f"Failed to finalize parameter group: {e}")
 
     def get_wres(
-        self, fit: chisurf.core.fitting.fit.Fit, xmin: int = None, xmax: int = None
+        self, fit: chisurf.core.fitting.fit.Fit, xmin: int | None = None, xmax: int | None = None
     ) -> np.ndarray:
         """Compute weighted residuals for a given :class:`Fit` instance.
 
@@ -502,7 +502,7 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
             self.__dict__["d"][0] = v
 
     @property
-    def y(self) -> np.array:
+    def y(self) -> np.ndarray:
         """Ordinate array of the model curve."""
         return self.__dict__["d"][1]
 

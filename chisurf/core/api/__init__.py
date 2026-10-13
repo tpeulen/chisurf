@@ -702,13 +702,8 @@ class ChiSurfAPI:
             )
         from chisurf.server.services import fits as _fits
 
-        class _State:
-            """Adapter presenting the process-local fits to the service layer."""
-
-            fits = property(lambda self: _local_fits())
-
         return _fits.fit_posterior(
-            _State(),
+            SessionState(fits=_local_fits()),
             fit_index=fit_index,
             fit_uid=fit_uid,
             engine=engine,
@@ -775,13 +770,8 @@ class ChiSurfAPI:
             )
         from chisurf.server.services import fits as _fits
 
-        class _State:
-            """Adapter presenting the process-local fits to the service layer."""
-
-            fits = property(lambda self: _local_fits())
-
         return _fits.fit_reweight_prior(
-            _State(),
+            SessionState(fits=_local_fits()),
             priors=priors,
             fit_index=fit_index,
             fit_uid=fit_uid,
@@ -844,13 +834,8 @@ class ChiSurfAPI:
             )
         from chisurf.server.services import fits as _fits
 
-        class _State:
-            """Adapter presenting the process-local fits to the service layer."""
-
-            fits = property(lambda self: _local_fits())
-
         return _fits.fit_derived(
-            _State(),
+            SessionState(fits=_local_fits()),
             fit_index=fit_index,
             fit_uid=fit_uid,
             names=names,
@@ -1312,7 +1297,7 @@ class ChiSurfAPI:
         """
         from chisurf.server.services import parameters as svc
 
-        changes = []
+        changes: list[tuple[str, str, Any]] = []
         if value is not None:
             changes.append(("set_value", "value", float(value)))
         if fixed is not None:
@@ -1440,7 +1425,7 @@ class ChiSurfAPI:
         owner_uid: str | None = None,
     ) -> dict[str, Any]:
         """Link the parameter *parameter_uid* (of fit *fit_uid*) to *target_parameter_uid*, anywhere."""
-        address = {
+        address: dict[str, Any] = {
             "parameter_uid": str(parameter_uid),
             "owner_uid": owner_uid or fit_uid,
             "fit_uid": fit_uid,
@@ -1456,7 +1441,7 @@ class ChiSurfAPI:
         self, parameter_uid: str, fit_uid: str | None = None, owner_uid: str | None = None
     ) -> dict[str, Any]:
         """Drop the link of the parameter *parameter_uid*."""
-        address = {
+        address: dict[str, Any] = {
             "parameter_uid": str(parameter_uid),
             "owner_uid": owner_uid or fit_uid,
             "fit_uid": fit_uid,

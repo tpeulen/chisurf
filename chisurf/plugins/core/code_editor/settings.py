@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import yaml
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -116,7 +118,7 @@ def normalize_editor_language(language: str | None) -> str:
     return "Python"
 
 
-def default_editor_settings() -> dict[str, str | int | bool | list[str]]:
+def default_editor_settings() -> dict[str, Any]:
     """Return the default editor settings dictionary."""
     settings: dict[str, str | int | bool | list[str]] = {
         "font_family": "Courier New",
@@ -156,7 +158,7 @@ def default_editor_settings() -> dict[str, str | int | bool | list[str]]:
     return settings
 
 
-def get_editor_settings() -> dict[str, str | int | bool | list[str]]:
+def get_editor_settings() -> dict[str, Any]:
     """Return editor settings merged with the current ChiSurf GUI settings."""
     settings = default_editor_settings()
     cfg = cs.core.settings.gui.get("editor", {})

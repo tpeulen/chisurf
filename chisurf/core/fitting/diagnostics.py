@@ -570,8 +570,8 @@ def suggest_burn_in(samples: np.ndarray) -> int:
 
 def summarize(
     samples: np.ndarray,
-    names: typing.Sequence[str] = None,
-    burn_in: int = None,
+    names: typing.Sequence[str] | None = None,
+    burn_in: int | None = None,
     quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.List[typing.Dict[str, typing.Any]]:
     r"""Summarise a set of chains, one entry per parameter.

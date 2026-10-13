@@ -14,7 +14,7 @@ class MJPotentialWidget(MJPotential, QtWidgets.QWidget):
     def __init__(
         self,
         structure: chisurf.core.structure.Structure,
-        filename: str = None,
+        filename: str | None = None,
         ca_cutoff: float = 6.5,
         parent=None,
     ):

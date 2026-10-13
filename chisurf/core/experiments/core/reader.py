@@ -243,7 +243,7 @@ class ExperimentReader(chisurf.core.base.Base):
         return state
 
     @abc.abstractmethod
-    def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.base.Data:
+    def read(self, filename: str | None = None, *args, **kwargs) -> chisurf.core.base.Data:
         """Read experimental data from a file.
 
         Parameters

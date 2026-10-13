@@ -96,7 +96,7 @@ class FCS(ExperimentReader):
         self.error_y_on: bool = True
 
     def read(
-        self, filename: str = None, verbose: bool = None, **kwargs
+        self, filename: str | None = None, verbose: bool | None = None, **kwargs
     ) -> chisurf.core.data.ExperimentDataCurveGroup:
         """Read an FCS data file.
 

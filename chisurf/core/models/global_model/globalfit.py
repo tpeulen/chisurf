@@ -152,7 +152,7 @@ class GlobalFitModel(model.Model, Curve):
         )
         return {id(f): label for f, label in zip(fits, labels)}
 
-    def _candidates(self) -> typing.List[typing.Tuple[str, "Fit"]]:
+    def _candidates(self) -> typing.List[typing.Tuple[str, Fit]]:
         """``(label, fit)`` of every fit that could be added (not this one, not already included)."""
         labels = self._fit_labels()
         out = []
@@ -372,7 +372,7 @@ class GlobalFitModel(model.Model, Curve):
         return re
 
     @property
-    def data(self) -> typing.Tuple[np.array, np.array, np.array]:
+    def data(self) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Concatenated (x, y, weight) data from all local fits.
 
         Returns
@@ -391,7 +391,7 @@ class GlobalFitModel(model.Model, Curve):
         xn = np.arange(0, dn.shape[0], 1)
         return xn, dn, wn
 
-    def __init__(self, fit: Fit, fits: typing.List[Fit] = None, *args, **kwargs):
+    def __init__(self, fit: Fit, fits: typing.List[Fit] | None = None, *args, **kwargs):
         """Initialize the global fit model.
 
         Parameters
@@ -589,7 +589,7 @@ class GlobalFitModel(model.Model, Curve):
         """
         return self.factor_graph.describe()
 
-    def get_wres(self, fit: Fit, xmin: int = None, xmax: int = None) -> np.array:
+    def get_wres(self, fit: Fit, xmin: int | None = None, xmax: int | None = None) -> np.ndarray:
         """Compute weighted residuals for a given fit within a range.
 
         Parameters
@@ -757,7 +757,7 @@ class GlobalFitModel(model.Model, Curve):
         return s
 
     @property
-    def x(self) -> np.array:
+    def x(self) -> np.ndarray:
         """x-data from all local fits, one array per fit."""
         x = list()
         for f in self.fits:
@@ -770,7 +770,7 @@ class GlobalFitModel(model.Model, Curve):
         pass
 
     @property
-    def y(self) -> np.array:
+    def y(self) -> np.ndarray:
         """y-data from all local fits, one array per fit."""
         y = list()
         for f in self.fits:

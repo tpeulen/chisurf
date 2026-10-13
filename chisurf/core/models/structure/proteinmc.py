@@ -171,8 +171,9 @@ def _residue_keys(atoms: np.ndarray) -> list[tuple[str, int]]:
     """Return residue keys in atom-table order."""
     keys = []
     seen = set()
+    names = atoms.dtype.names or ()
     for atom in atoms:
-        chain = _as_text(atom["chain"]) if "chain" in atoms.dtype.names else "A"
+        chain = _as_text(atom["chain"]) if "chain" in names else "A"
         key = (chain, int(atom["res_id"]))
         if key not in seen:
             seen.add(key)
@@ -602,7 +603,7 @@ class ProteinMCRunner:
 
     def _append_frame(
         self,
-        writer: ProteinMCRmfWriter,
+        writer: ProteinMCRmfWriter | _NoTrajectoryFile,
         energy: float,
         labeling_energy: float,
         *,

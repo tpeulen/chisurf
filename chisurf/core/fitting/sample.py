@@ -129,9 +129,9 @@ def walk_mcmc(
     temp: float = 1.0,
     thin: int = 1,
     chi2max: float = np.inf,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
-    n_adapt: int = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
+    n_adapt: int | None = None,
     target_acceptance: float = 0.3,
     model: cs.core.models.Model = None,
     seed: int | np.random.Generator = None,
@@ -642,17 +642,17 @@ def _regularised_covariance(draws: np.ndarray) -> np.ndarray | None:
 def sample_differential_evolution(
     fit: cs.core.fitting.fit.Fit,
     steps: int,
-    n_chains: int = None,
+    n_chains: int | None = None,
     thin: int = 1,
     chi2max: float = np.inf,
     temp: float = 1.0,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
-    n_adapt: int = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
+    n_adapt: int | None = None,
     jitter: float = 1e-4,
     snooker: float = 0.1,
     model: cs.core.models.Model = None,
-    seed: int = None,
+    seed: int | None = None,
 ) -> dict:
     r"""Sample with Differential-Evolution MCMC (ter Braak).
 
@@ -901,10 +901,10 @@ def walk_mcmc_blocked(
     temp: float = 1.0,
     thin: int = 1,
     chi2max: float = np.inf,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
-    n_adapt: int = None,
-    blocks: typing.Sequence[typing.Sequence[int]] = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
+    n_adapt: int | None = None,
+    blocks: typing.Sequence[typing.Sequence[int]] | None = None,
     model: cs.core.models.Model = None,
     seed: int | np.random.Generator = None,
 ) -> dict:
@@ -1198,11 +1198,11 @@ def sample_independent_components(
     temp: float = 1.0,
     thin: int = 1,
     chi2max: float = np.inf,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
-    n_adapt: int = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
+    n_adapt: int | None = None,
     model: cs.core.models.Model = None,
-    seed: int = None,
+    seed: int | None = None,
 ) -> dict:
     r"""Sample each independent sub-problem separately and merge them exactly.
 
@@ -1531,11 +1531,11 @@ def sample_marginal_shared(
     step_size: float = 0.1,
     temp: float = 1.0,
     thin: int = 1,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
-    n_adapt: int = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
+    n_adapt: int | None = None,
     model: cs.core.models.Model = None,
-    seed: int = None,
+    seed: int | None = None,
 ) -> dict:
     r"""Sample only a global fit's *shared* parameters, integrating the rest out.
 
@@ -1814,7 +1814,7 @@ def _merge_components(
     chi2_0: float,
     lnprior_0: float,
     model: cs.core.models.Model,
-    seed: int = None,
+    seed: int | None = None,
 ) -> dict:
     """Stack per-component chains into one joint chain.
 
@@ -1990,10 +1990,10 @@ def _sample_ensemble(
     model,
     steps: int,
     thin: int,
-    substeps: int = None,
+    substeps: int | None = None,
     progress_bar=None,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
 ) -> dict:
     """Drive an ensemble sampler in chunks and return its chain as a result dict.
 
@@ -2089,14 +2089,14 @@ def _sample_ensemble(
 def sample_ensemble(
     fit: cs.core.fitting.fit.Fit,
     steps: int,
-    nwalkers: int = None,
+    nwalkers: int | None = None,
     thin: int = 10,
     std: float = 1e-3,
     chi2max: float = np.inf,
     progress_bar=None,
-    substeps: int = None,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
+    substeps: int | None = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
     model: cs.core.models.Model = None,
     seed=None,
     stretch_scale: float = 2.0,
@@ -2225,14 +2225,14 @@ def sample_ensemble(
 def sample_ensemble_slice(
     fit: cs.core.fitting.fit.Fit,
     steps: int,
-    nwalkers: int = None,
+    nwalkers: int | None = None,
     thin: int = 1,
     std: float = 1e-3,
     chi2max: float = np.inf,
     progress_bar=None,
-    substeps: int = None,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
+    substeps: int | None = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
     model: cs.core.models.Model = None,
     seed=None,
     moves=None,
@@ -2479,11 +2479,11 @@ def sample_registered_kernel(
     thin: int = 1,
     chi2max: float = np.inf,
     temp: float = 1.0,
-    callback: typing.Callable = None,
-    check_cancel: typing.Callable = None,
+    callback: typing.Callable | None = None,
+    check_cancel: typing.Callable | None = None,
     model=None,
     seed=None,
-    sampler: str = None,
+    sampler: str | None = None,
     **settings,
 ) -> dict:
     """Run an IMP.bff sampler kernel that has no chisurf function of its own.

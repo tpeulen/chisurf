@@ -709,10 +709,10 @@ class RibbonPanel(QtWidgets.QFrame):
 
     def addButton(
         self,
-        text: str = None,
+        text: str | None = None,
         icon: QtGui.QIcon = None,
         showText: bool = True,
-        slot: Callable = None,
+        slot: Callable | None = None,
         shortcut: (
             QtCore.Qt.Key
             | QtGui.QKeySequence
@@ -721,8 +721,8 @@ class RibbonPanel(QtWidgets.QFrame):
             | str
             | int
         ) = None,
-        tooltip: str = None,
-        statusTip: str = None,
+        tooltip: str | None = None,
+        statusTip: str | None = None,
         checkable: bool = False,
         *,
         rowSpan: RibbonButtonStyle = Large,
@@ -800,10 +800,10 @@ class RibbonPanel(QtWidgets.QFrame):
 
     def addMenuButton(
         self,
-        text: str = None,
+        text: str | None = None,
         icon: QtGui.QIcon = None,
         showText: bool = True,
-        slot: Callable = None,
+        slot: Callable | None = None,
         shortcut: (
             QtCore.Qt.Key
             | QtGui.QKeySequence
@@ -812,8 +812,8 @@ class RibbonPanel(QtWidgets.QFrame):
             | str
             | int
         ) = None,
-        tooltip: str = None,
-        statusTip: str = None,
+        tooltip: str | None = None,
+        statusTip: str | None = None,
         *,
         rowSpan: RibbonButtonStyle = Large,
         **kwargs,
@@ -880,10 +880,10 @@ class RibbonPanel(QtWidgets.QFrame):
 
     def addDelayedMenuButton(
         self,
-        text: str = None,
+        text: str | None = None,
         icon: QtGui.QIcon = None,
         showText: bool = True,
-        slot: Callable = None,
+        slot: Callable | None = None,
         shortcut: (
             QtCore.Qt.Key
             | QtGui.QKeySequence
@@ -892,8 +892,8 @@ class RibbonPanel(QtWidgets.QFrame):
             | str
             | int
         ) = None,
-        tooltip: str = None,
-        statusTip: str = None,
+        tooltip: str | None = None,
+        statusTip: str | None = None,
         *,
         rowSpan: RibbonButtonStyle = Large,
         **kwargs,
@@ -960,10 +960,10 @@ class RibbonPanel(QtWidgets.QFrame):
 
     def addSplitButton(
         self,
-        text: str = None,
+        text: str | None = None,
         icon: QtGui.QIcon = None,
         showText: bool = True,
-        slot: Callable = None,
+        slot: Callable | None = None,
         shortcut: (
             QtCore.Qt.Key
             | QtGui.QKeySequence
@@ -972,8 +972,8 @@ class RibbonPanel(QtWidgets.QFrame):
             | str
             | int
         ) = None,
-        tooltip: str = None,
-        statusTip: str = None,
+        tooltip: str | None = None,
+        statusTip: str | None = None,
         *,
         rowSpan: RibbonButtonStyle = Large,
         **kwargs,
@@ -1054,7 +1054,7 @@ class RibbonPanel(QtWidgets.QFrame):
         self,
         *args,
         cls,
-        initializer: Callable = None,
+        initializer: Callable | None = None,
         rowSpan: int | RibbonButtonStyle = Small,
         colSpan: int = 1,
         mode: RibbonSpaceFindMode = ColumnWise,

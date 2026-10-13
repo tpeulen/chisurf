@@ -14,8 +14,8 @@ def write_kristine(
     correlation_time: np.ndarray,
     mean_countrate: float,
     acquisition_time: float,
-    correlation_amplitude_uncertainty: np.ndarray = None,
-    mask: np.ndarray = None,
+    correlation_amplitude_uncertainty: np.ndarray | None = None,
+    mask: np.ndarray | None = None,
     verbose: bool = True,
 ) -> None:
     """Write a correlation curve as a Kristine ``.cor`` file.

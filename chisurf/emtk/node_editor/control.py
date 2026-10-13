@@ -595,12 +595,12 @@ class GraphControl:
 
         destroyed = nodes.is_link_destroyed(self.editor)
         if destroyed is not None:
-            edge = document.edge_for_link(destroyed)
-            if edge is not None:
+            dead_edge = document.edge_for_link(destroyed)
+            if dead_edge is not None:
                 if self.on_unlink is not None:
-                    self.on_unlink(edge.source, edge.target)
+                    self.on_unlink(dead_edge.source, dead_edge.target)
                 else:
-                    document.remove_edge(edge)
+                    document.remove_edge(dead_edge)
                     changed = True
 
         return changed

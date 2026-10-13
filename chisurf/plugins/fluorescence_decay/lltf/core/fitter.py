@@ -350,7 +350,10 @@ class Decay:
         return (self.start, self.stop)
 
     def estimate_background(
-        self, irf_fwhm_range: tuple[int, int] = None, average_window: int = 10, verbose: bool = True
+        self,
+        irf_fwhm_range: tuple[int, int] | None = None,
+        average_window: int = 10,
+        verbose: bool = True,
     ) -> float:
         """
         Estimate the background level in the decay.
@@ -389,7 +392,7 @@ class Decay:
 
     def estimate_irf_shift(
         self,
-        irf_fwhm_range: tuple[int, int] = None,
+        irf_fwhm_range: tuple[int, int] | None = None,
         irf_time_shift_scan_range: tuple[float, float] = (-8.0, 8.0),
         irf_time_shift_scan_n_steps: int = 20,
         verbose: bool = True,
@@ -505,7 +508,7 @@ class Decay:
 
         self.model_decay = model
 
-    def objective_function(self, params: np.ndarray, fixed: list[bool] = None) -> np.ndarray:
+    def objective_function(self, params: np.ndarray, fixed: list[bool] | None = None) -> np.ndarray:
         """
         Objective function for fitting.
 
@@ -579,7 +582,7 @@ class Decay:
         max_lifetime: float = 5.0,
         selection_mode: str = "lower",
         save_intermediate_results: bool = True,
-        intermediate_results_base_filename: str = None,
+        intermediate_results_base_filename: str | None = None,
         fixed: list[bool] | None = None,
         seed: int | None = 0,
         amplitude_variation: float = 0.5,
@@ -909,7 +912,7 @@ class Decay:
     def fit(
         self,
         n_lifetimes: int = 1,
-        fixed: list[bool] = None,
+        fixed: list[bool] | None = None,
         verbose: bool = False,
         randomize_initial_values: bool = False,
         min_lifetime: float = 0.5,
@@ -922,7 +925,7 @@ class Decay:
         plot_weighted_residuals: bool = True,
         selection_mode: str = "lower",
         save_intermediate_results: bool = True,
-        intermediate_results_base_filename: str = None,
+        intermediate_results_base_filename: str | None = None,
         seed: int | None = 0,
         initial_lifetime_spectrum: typing.Sequence[float] | np.ndarray | None = None,
     ) -> dict:
@@ -1277,7 +1280,7 @@ class Decay:
         residuals = self.decay[sl] - self.model_decay[sl]
         return residuals / np.sqrt(np.maximum(self.decay[sl], 1.0))
 
-    def plot(self, filename: str = None):
+    def plot(self, filename: str | None = None):
         """
         Plot the decay data and fit, and write the figure to a PNG file.
 
@@ -1308,7 +1311,7 @@ class Decay:
         figure.save(filename)
         return figure
 
-    def plot_decay_curve(self, n_lifetimes: int = None):
+    def plot_decay_curve(self, n_lifetimes: int | None = None):
         """
         Draw the decay curve for the selected fit, similar to ucfret's approach.
 
@@ -1357,7 +1360,7 @@ class Decay:
         self.figures["decay_curve"] = figure
         return figure
 
-    def to_json(self, filename: str = None) -> str:
+    def to_json(self, filename: str | None = None) -> str:
         """
         Convert fit results to JSON.
 
@@ -1421,15 +1424,15 @@ def fit_lifetime(
     irf_file: str,
     n_lifetimes: int = 1,
     skiprows: int = 0,
-    delimiter: str = None,
+    delimiter: str | None = None,
     time_column: int = 0,
     counts_column: int = 1,
-    output_file: str = None,
-    plot_file: str = None,
+    output_file: str | None = None,
+    plot_file: str | None = None,
     verbose: bool = False,
-    config: dict = None,
+    config: dict | None = None,
     save_intermediate_results: bool = True,
-    intermediate_results_base_filename: str = None,
+    intermediate_results_base_filename: str | None = None,
 ) -> dict:
     """
     Fit a lifetime to decay data.

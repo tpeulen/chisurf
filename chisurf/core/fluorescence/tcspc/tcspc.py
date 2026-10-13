@@ -8,8 +8,8 @@ import chisurf.core.math.datatools
 
 # bin_lifetime_spectrum = skf.decay.rate_spectra.bin_lifetime_spectrum
 def bin_lifetime_spectrum(
-    lifetime_spectrum: np.array, n_lifetimes: int, discriminate: bool, discriminator=None
-) -> np.array:
+    lifetime_spectrum: np.ndarray, n_lifetimes: int, discriminate: bool, discriminator=None
+) -> np.ndarray:
     """Takes an interleaved lifetime spectrum
 
     :param lifetime_spectrum: interleaved lifetime spectrum
@@ -45,9 +45,9 @@ def bin_lifetime_spectrum(
 
 
 def rescale_w_bg(
-    model_decay: np.array,
-    experimental_decay: np.array,
-    experimental_weights: np.array,
+    model_decay: np.ndarray,
+    experimental_decay: np.ndarray,
+    experimental_weights: np.ndarray,
     experimental_background: float,
     start: int,
     stop: int,

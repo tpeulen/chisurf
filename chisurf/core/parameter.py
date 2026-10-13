@@ -1130,7 +1130,7 @@ class ParameterGroup(chisurf.core.base.Base):
         return [p.name for p in self.parameters]
 
     @property
-    def values(self) -> np.array:
+    def values(self) -> np.ndarray:
         """Return the current values of all contained parameters."""
         return [p.value for p in self.parameters]
 

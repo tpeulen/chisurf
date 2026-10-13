@@ -483,7 +483,7 @@ class Base:
         self,
         indent: int = 4,
         sort_keys: bool = True,
-        d: typing.Dict = None,
+        d: typing.Dict | None = None,
         remove_protected: bool = False,
         skip_qt_widgets: bool = False,
     ) -> str:
@@ -552,7 +552,7 @@ class Base:
         )
 
     def from_yaml(
-        self, yaml_string: str = None, filename: str = None, verbose: bool = False
+        self, yaml_string: str | None = None, filename: str | None = None, verbose: bool = False
     ) -> None:
         """Restore the object's state from a YAML file
 
@@ -579,7 +579,7 @@ class Base:
         self.from_dict(j)
 
     def from_json(
-        self, json_string: str = None, filename: str = None, verbose: bool = False
+        self, json_string: str | None = None, filename: str | None = None, verbose: bool = False
     ) -> None:
         """Restore the object's state from a JSON file
 
@@ -676,8 +676,8 @@ class Base:
         self,
         name: object = None,
         verbose: bool = False,
-        unique_identifier: str = None,
-        meta_data: typing.Dict = None,
+        unique_identifier: str | None = None,
+        meta_data: typing.Dict | None = None,
         *args,
         **kwargs,
     ):
@@ -791,13 +791,13 @@ class Data(Base):
     def __init__(
         self,
         filename: str = "None",
-        data: bytes = None,
-        embed_data: bool = None,
-        read_file_size_limit: int = None,
+        data: bytes | None = None,
+        embed_data: bool | None = None,
+        read_file_size_limit: int | None = None,
         name: object = None,
         verbose: bool = False,
-        unique_identifier: str = None,
-        meta_data: typing.Dict = None,
+        unique_identifier: str | None = None,
+        meta_data: typing.Dict | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -915,7 +915,7 @@ def set_safe_import_notify(callback):
     _safe_import_notify = callback
 
 
-def safe_import(module_name: str, package_name: str = None, parent=None):
+def safe_import(module_name: str, package_name: str | None = None, parent=None):
     """
     Safely import a module with user-friendly error handling for conda packages.
 

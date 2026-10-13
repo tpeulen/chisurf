@@ -43,7 +43,7 @@ class EquationCatalogueMixin:
     #: widget -- so the compute model had `_models = dict()` that nothing ever
     #: filled, and picking a model was not something a script or a view spec could
     #: do. It is data (a YAML file), so it belongs here.
-    catalogue_file: typing.Optional[str] = None
+    catalogue_file: typing.Optional[str] | None = None
 
     #: Catalogue entry key holding the source, and the model property it is assigned
     #: to. A parse model stores an ``equation:`` in ``func``; a parameter transform
@@ -148,7 +148,7 @@ class EquationCatalogueMixin:
         if not self.model_name and self.catalogue_names:
             self.model_name = self.catalogue_names[0]
 
-    def apply_initial_values(self, name: str = None) -> None:
+    def apply_initial_values(self, name: str | None = None) -> None:
         """Set the parsed parameters to the catalogue entry's ``initial:`` values.
 
         A name in ``initial:`` that the equation does not use is skipped rather

@@ -32,7 +32,11 @@ parameter_settings = chisurf.core.settings.parameter
 #: prior and are edited through the radio selector's inline bound spinboxes, not here.
 from chisurf.core.fitting.prior_families import (  # noqa: E402
     PRIOR_FAMILY_SPECS as _PRIOR_FAMILY_SPECS,
+)
+from chisurf.core.fitting.prior_families import (
     PRIOR_KIND_BOX as _PRIOR_KIND_BOX,
+)
+from chisurf.core.fitting.prior_families import (
     PRIOR_KIND_TO_SPEC as _PRIOR_KIND_TO_SPEC,
 )
 
@@ -770,7 +774,9 @@ class ParameterActionsMixin:
             chisurf.logging.exception("could not resolve the group owning a parameter")
         return ""
 
-    def _rpc_address(self, parameter, source: dict[str, str] = None) -> dict[str, typing.Any]:
+    def _rpc_address(
+        self, parameter, source: dict[str, str] | None = None
+    ) -> dict[str, typing.Any]:
         """Return the keyword arguments that address ``parameter`` on the backend.
 
         Every parameter RPC takes the same address, and it has to carry the
@@ -796,7 +802,7 @@ class ParameterActionsMixin:
         return {k: v for k, v in address.items() if v is not None}
 
     def _trace_operation(
-        self, action_type: str, summary: str, payload: dict[str, typing.Any] = None
+        self, action_type: str, summary: str, payload: dict[str, typing.Any] | None = None
     ) -> None:
         payload_data = payload or {}
         try:
@@ -1484,17 +1490,17 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         self,
         fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
         layout: QtWidgets.QLayout = None,
-        decimals: int = None,
-        hide_label: bool = None,
-        hide_error: bool = None,
-        fixable: bool = None,
-        hide_bounds: bool = None,
-        name: str = None,
-        label_text: str = None,
-        hide_link: bool = None,
+        decimals: int | None = None,
+        hide_label: bool | None = None,
+        hide_error: bool | None = None,
+        fixable: bool | None = None,
+        hide_bounds: bool | None = None,
+        name: str | None = None,
+        label_text: str | None = None,
+        hide_link: bool | None = None,
         suffix: str = "",
-        label_width: int = None,
-        callback: typing.Callable = None,
+        label_width: int | None = None,
+        callback: typing.Callable | None = None,
     ):
         super().__init__()
         try:
@@ -2354,7 +2360,7 @@ class FittingParameterGroupWidget(QtWidgets.QGroupBox):
     def __init__(
         self,
         parameter_group: chisurf.core.fitting.parameter.FittingParameterGroup,
-        n_col: int = None,
+        n_col: int | None = None,
         layout: QtWidgets.QVBoxLayout = None,
         *args,
         **kwargs,
@@ -2386,18 +2392,18 @@ class FittingParameterGroupWidget(QtWidgets.QGroupBox):
 
 def make_fitting_parameter_widget(
     fitting_parameter: chisurf.core.fitting.parameter.FittingParameter,
-    label_text: str = None,
+    label_text: str | None = None,
     layout: QtWidgets.QLayout = None,
-    decimals: int = None,
-    hide_label: bool = None,
-    hide_error: bool = None,
-    fixable: bool = None,
-    hide_bounds: bool = None,
-    name: str = None,
-    hide_link: bool = None,
+    decimals: int | None = None,
+    hide_label: bool | None = None,
+    hide_error: bool | None = None,
+    fixable: bool | None = None,
+    hide_bounds: bool | None = None,
+    name: str | None = None,
+    hide_link: bool | None = None,
     suffix: str = "",
-    label_width: int = None,
-    callback: typing.Callable = None,
+    label_width: int | None = None,
+    callback: typing.Callable | None = None,
 ) -> FittingParameterWidget:
     if label_text is None:
         # Safely get label_text from parameter's __dict__ or use name as fallback

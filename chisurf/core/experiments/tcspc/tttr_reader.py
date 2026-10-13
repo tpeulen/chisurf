@@ -231,7 +231,9 @@ class TCSPCTTTRReader(TCSPCReader):
             return np.zeros(0, dtype=float), np.zeros(0, dtype=float)
         return y[:n].astype(float), x[:n].astype(float)
 
-    def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.data.DataCurveGroup:
+    def read(
+        self, filename: str | None = None, *args, **kwargs
+    ) -> chisurf.core.data.DataCurveGroup:
         """Read a TTTR file and return a TCSPC decay curve.
 
         Parameters

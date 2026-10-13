@@ -40,7 +40,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
     """
 
     @property
-    def means(self) -> np.array:
+    def means(self) -> np.ndarray:
         """Return the mean distances of all Gaussian components."""
         try:
             return np.array([p.value for p in self._means])
@@ -48,7 +48,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
             return np.array([])
 
     @property
-    def sigmas(self) -> np.array:
+    def sigmas(self) -> np.ndarray:
         """Return the standard deviations of all Gaussian components."""
         try:
             return np.array([p.value for p in self._sigmas])
@@ -56,7 +56,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
             return np.array([])
 
     @property
-    def amplitudes(self) -> np.array:
+    def amplitudes(self) -> np.ndarray:
         """Return the normalized amplitudes of all Gaussian components."""
         try:
             a = np.sqrt(np.array([p.value for p in self._amplitudes]) ** 2)
@@ -68,7 +68,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
             return np.array([])
 
     @property
-    def distribution(self) -> np.array:
+    def distribution(self) -> np.ndarray:
         """Return the combined distance distribution as a 2xN array (r, p(r))."""
         means = self.means
         sigmas = self.sigmas

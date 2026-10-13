@@ -8,11 +8,11 @@ import chisurf.core.fluorescence.tcspc.convolve
 
 
 def da_a0_to_ad(
-    times: np.array,
-    decay_da: np.array,
-    acceptor_lifetime_spectrum: np.array,
+    times: np.ndarray,
+    decay_da: np.ndarray,
+    acceptor_lifetime_spectrum: np.ndarray,
     transfer_efficiency: float = 0.5,
-) -> np.array:
+) -> np.ndarray:
     """Convolves the donor decay in presence of FRET with the acceptor decay in the absence of FRET to yield the
      FRET-sensitized decay of the acceptor
 

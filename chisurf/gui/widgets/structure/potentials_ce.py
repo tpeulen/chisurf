@@ -14,7 +14,7 @@ class CEPotentialWidget(CEPotential, QtWidgets.QWidget):
     def __init__(
         self,
         structure: chisurf.core.structure.Structure,
-        potential: str = None,
+        potential: str | None = None,
         ca_cutoff: float = 25.0,
         parent=None,
     ):

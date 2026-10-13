@@ -558,7 +558,9 @@ class SplashLogHandler(logging.Handler):
             pass
 
 
-def setup_gui(app: QtWidgets.QApplication, window: cs.gui.main.Main = None, stage: str = None):
+def setup_gui(
+    app: QtWidgets.QApplication, window: cs.gui.main.Main = None, stage: str | None = None
+):
     def gui_imports():
         # Phase 1: Only what's needed for the main window scaffold
         import chisurf.core.base

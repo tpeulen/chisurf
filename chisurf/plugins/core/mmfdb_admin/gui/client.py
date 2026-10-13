@@ -606,6 +606,10 @@ class MMFDBClient:
             {"entity_id": entity_id},
         )
 
+    def delete_probe(self, probe_id: int) -> dict[str, Any]:
+        """Soft-delete a probe identity row."""
+        return self._call("mmfdb.probes.delete", {"probe_id": probe_id})
+
     def save_probe(self, probe: dict[str, Any]) -> dict[str, Any]:
         return self._call(
             "mmfdb.probes.save",
@@ -672,14 +676,14 @@ class MMFDBClient:
         return self._call("mmfdb.users.save", {"user": user}).get("users", [])
 
     def delete_user(
-        self, user_id: str, force: bool = False, requester_id: str = None
+        self, user_id: str, force: bool = False, requester_id: str | None = None
     ) -> list[dict[str, Any]]:
         return self._call(
             "mmfdb.users.delete", {"user_id": user_id, "force": force, "requester_id": requester_id}
         ).get("users", [])
 
     def change_password(
-        self, user_id: str, password: str, requester_id: str = None
+        self, user_id: str, password: str, requester_id: str | None = None
     ) -> dict[str, Any]:
         return self._call("mmfdb.security.auth.change_password", {"password": password})
 

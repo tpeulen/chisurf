@@ -263,8 +263,8 @@ def combine_distributions(
 
 
 def distance_between_gaussian(
-    distances: np.array, separation_distance: float, sigma: float, normalize: bool = False
-) -> np.array:
+    distances: np.ndarray, separation_distance: float, sigma: float, normalize: bool = False
+) -> np.ndarray:
     """
     Calculate the distance distribution between two Gaussian distributions.
 

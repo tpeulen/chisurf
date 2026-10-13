@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
@@ -229,12 +230,12 @@ class TwoDFDCreatorNumbaInt:
         return create_2d_fdc_numba_int(
             macro_times=macro_times,
             micro_times=micro_times,
-            dT_ticks=np.int64(dT_ticks),
-            ddT_ticks=np.int64(ddT_ticks),
-            Tstart_ticks=np.int64(Tstart_ticks),
-            Tend_ticks=np.int64(Tend_ticks),
-            tMin_over_tStep=np.int64(tMin_over_tStep),
-            tMax_over_tStep=np.int64(tMax_over_tStep),
+            dT_ticks=int(dT_ticks),
+            ddT_ticks=int(ddT_ticks),
+            Tstart_ticks=int(Tstart_ticks),
+            Tend_ticks=int(Tend_ticks),
+            tMin_over_tStep=int(tMin_over_tStep),
+            tMax_over_tStep=int(tMax_over_tStep),
             lint_bin_factor=int(lint_bin_factor),
             logt_imax_in=int(logt_imax),
             build_lin=bool(build_lin),
@@ -348,7 +349,7 @@ class TwoDFDCreator:
         max_chunks = max(1, int(512 * 1024 * 1024 / max(1, bytes_per_chunk)))
         return max(1, min(threads, max_chunks))
 
-    def _create_with_numba(self, params: dict, progress_callback: callable | None):
+    def _create_with_numba(self, params: dict, progress_callback: Callable[..., Any] | None):
         if progress_callback:
             progress_callback(0.0)
 

@@ -12,7 +12,7 @@ from chisurf.gui.widgets.warning_once import show_warning_once
 
 class RamachandranWidget(Ramachandran, QtWidgets.QWidget):
     def __init__(
-        self, structure: chisurf.core.structure.Structure, filename: str = None, parent=None
+        self, structure: chisurf.core.structure.Structure, filename: str | None = None, parent=None
     ):
         QtWidgets.QWidget.__init__(self, parent=parent)
 

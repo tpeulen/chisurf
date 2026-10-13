@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -390,9 +391,9 @@ def two_d_fdc_scan(
         macro,
         micro,
         lags,
-        np.int64(round(ddT)),
-        np.int64(round(tMin)),
-        np.int64(round(tMax)),
+        int(round(ddT)),
+        int(round(tMin)),
+        int(round(tMax)),
         int(logt_imax),
         int(n_chunks),
     )
@@ -743,10 +744,12 @@ def reproduce_2d_fdc(
     """
     E = _basis(time_axis_ns, tau_grid, irf, irf_time_ns, basis)
     G = np.asarray(correlation, dtype=float)
-    kw = dict(data=matrix, data_cor=matrix_cor, mi=mi, regulator=regulator, floor_zeros=floor_zeros)
+    kw: dict[str, Any] = dict(
+        data=matrix, data_cor=matrix_cor, mi=mi, regulator=regulator, floor_zeros=floor_zeros
+    )
     if G.ndim == 3:
         return reproduce_global_2d(amplitudes, G, E, time_axis_ns, y0=np.asarray(y0), **kw)
-    return reproduce_2d(amplitudes, G, E, time_axis_ns, y0=float(y0), **kw)
+    return reproduce_2d(amplitudes, G, E, time_axis_ns, y0=float(np.asarray(y0).item()), **kw)
 
 
 def reproduce_fit(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import pathlib
 import warnings
+from typing import Any
 
 import numpy as np
 
@@ -401,12 +402,12 @@ def openASC_ALV_7004(path: pathlib.Path) -> typing.Dict:
     # Find the different arrays
     # correlation array: "  "
     # trace array: "       "
-    allcorr = []
-    alltrac = []
+    corr_rows: list[list[float]] = []
+    trac_rows: list[list[float]] = []
     count_rates = []
     i = 0
     intrace = False
-    mode = False
+    mode = ""
     duration_sec = None
 
     for item in Alldata:
@@ -429,15 +430,11 @@ def openASC_ALV_7004(path: pathlib.Path) -> typing.Dict:
         i += 1
         if item.count("\t") == 4:
             if intrace:
-                it = item.split("\t")
-                it = [float(t.strip()) for t in it]
-                alltrac.append(it)
+                trac_rows.append([float(t.strip()) for t in item.split("\t")])
             else:
-                ic = item.split("\t")
-                ic = [float(c.strip()) for c in ic]
-                allcorr.append(ic)
-    allcorr = np.array(allcorr)
-    alltrac = np.array(alltrac)
+                corr_rows.append([float(c.strip()) for c in item.split("\t")])
+    allcorr = np.array(corr_rows)
+    alltrac = np.array(trac_rows)
 
     tau = allcorr[:, 0]
     time = alltrac[:, 0] * 1000
@@ -558,7 +555,7 @@ def openASC_ALV_7004(path: pathlib.Path) -> typing.Dict:
         msg = f"ALV mode '{mode}' not implemented yet."
         raise NotImplementedError(msg)
 
-    dictionary = dict()
+    dictionary: dict[str, Any] = dict()
     dictionary["Correlation"] = np.array(corrlist)
     # The trace list stays a plain Python list: a cross-correlation carries a
     # *pair* of traces while an autocorrelation carries a single one, so the

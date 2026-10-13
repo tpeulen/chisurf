@@ -195,7 +195,7 @@ def kappasq_all(
     k2_max: float = 4.0,
     n_samples: int = 10000,
     seed: typing.Optional[int] = None,
-) -> typing.Tuple[np.array, np.array, np.array]:
+) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Computes an orientation factor distribution for a wobbling-in-a-cone model
     based on random sampling of donor and acceptor orientations.
@@ -273,7 +273,7 @@ def kappasq_all(
 
 
 def kappa_distance(
-    d1: np.array, d2: np.array, a1: np.array, a2: np.array
+    d1: np.ndarray, d2: np.ndarray, a1: np.ndarray, a2: np.ndarray
 ) -> typing.Tuple[float, float]:
     """
     Calculates the distance between the centers of two dipoles and the
@@ -290,13 +290,13 @@ def kappa_distance(
 
     Parameters
     ----------
-    d1 : np.array
+    d1 : np.ndarray
         3D coordinates of the first point of the donor dipole.
-    d2 : np.array
+    d2 : np.ndarray
         3D coordinates of the second point of the donor dipole.
-    a1 : np.array
+    a1 : np.ndarray
         3D coordinates of the first point of the acceptor dipole.
-    a2 : np.array
+    a2 : np.ndarray
         3D coordinates of the second point of the acceptor dipole.
 
     Returns
@@ -408,7 +408,7 @@ def s2delta(
 
 
 def calculate_kappa_distance(
-    xyz: np.array, aid1: int, aid2: int, aia1: int, aia2: int
+    xyz: np.ndarray, aid1: int, aid2: int, aia1: int, aia2: int
 ) -> typing.Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the dipole center distance and the orientation factor kappa
@@ -420,7 +420,7 @@ def calculate_kappa_distance(
 
     Parameters
     ----------
-    xyz : np.array
+    xyz : np.ndarray
         A 3D array of shape (n_frames, n_atoms, 3) containing the coordinates.
     aid1 : int
         Atom index for the first point of the donor dipole.

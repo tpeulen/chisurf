@@ -362,7 +362,7 @@ class ICSReader(ExperimentReader):
         return images
 
     def read(
-        self, filename: str = None, *args, **kwargs
+        self, filename: str | None = None, *args, **kwargs
     ) -> chisurf.core.data.ExperimentDataCurveGroup:
         """Read an image stack and return its spatiotemporal correlation carpet.
 

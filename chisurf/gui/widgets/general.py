@@ -425,7 +425,9 @@ class EnterAwarePlainTextEdit(QtWidgets.QPlainTextEdit):
 
 
 def get_filename(
-    description: str = "", file_type: str = "All files (*.*)", working_path: pathlib.Path = None
+    description: str = "",
+    file_type: str = "All files (*.*)",
+    working_path: pathlib.Path | None = None,
 ) -> pathlib.Path:
     """Open a file within a working path. If no path is specified the last
     path is used. After using this function the current working path of the
@@ -454,7 +456,9 @@ def get_filename(
 
 
 def open_files(
-    description: str = "", file_type: str = "All files (*.*)", working_path: pathlib.Path = None
+    description: str = "",
+    file_type: str = "All files (*.*)",
+    working_path: pathlib.Path | None = None,
 ):
     """Open a file within a working path. If no path is specified the last
     path is used. After using this function the current working path of the
@@ -486,7 +490,9 @@ def open_files(
 
 
 def save_file(
-    description: str = "", file_type: str = "All files (*.*)", working_path: pathlib.Path = None
+    description: str = "",
+    file_type: str = "All files (*.*)",
+    working_path: pathlib.Path | None = None,
 ) -> str:
     """Opens a file save dialog. If cancel is clicked, returns None.
 
@@ -517,10 +523,10 @@ def save_file(
 
 
 def get_directory(
-    filename_ending: str = None,
+    filename_ending: str | None = None,
     get_files: bool = False,
-    directory: pathlib.Path = None,
-    caption: str = None,
+    directory: pathlib.Path | None = None,
+    caption: str | None = None,
 ) -> typing.Tuple[pathlib.Path, typing.List[str]]:
     """Opens a new window where you can choose a directory. The current
     working path is updated to this directory.

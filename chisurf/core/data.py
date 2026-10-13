@@ -38,7 +38,7 @@ class ExperimentalData(chisurf.core.base.Data):
     types such as :class:`DataCurve` derive from this class.
     """
 
-    meta_data: typing.Dict = None
+    meta_data: typing.Dict | None = None
     data_reader: ExperimentReader = None
     _experiment: Experiment = None
 
@@ -74,12 +74,12 @@ class ExperimentalData(chisurf.core.base.Data):
         data_reader: ExperimentReader = None,
         experiment: Experiment = None,
         filename: str = "None",
-        data: bytes = None,
-        embed_data: bool = None,
-        read_file_size_limit: int = None,
+        data: bytes | None = None,
+        embed_data: bool | None = None,
+        read_file_size_limit: int | None = None,
         name: object = None,
         verbose: bool = False,
-        unique_identifier: str = None,
+        unique_identifier: str | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -491,8 +491,8 @@ class DataCurve(*_DATACURVE_BASES):
         filename: str,
         file_type: str = "yaml",
         verbose: bool = False,
-        xmin: int = None,
-        xmax: int = None,
+        xmin: int | None = None,
+        xmax: int | None = None,
     ) -> None:
         """Save the curve data to a file.
 
@@ -598,11 +598,11 @@ class DataCurve(*_DATACURVE_BASES):
 
     def set_data(
         self,
-        x: np.array,
-        y: np.array,
-        ex: np.array = None,
-        ey: np.array = None,
-        mask: np.array = None,
+        x: np.ndarray,
+        y: np.ndarray,
+        ex: np.ndarray = None,
+        ey: np.ndarray = None,
+        mask: np.ndarray = None,
     ) -> None:
         """Assign x, y, error, and mask arrays to the curve.
 
@@ -726,7 +726,7 @@ class DataCurve(*_DATACURVE_BASES):
             raise NotImplementedError(_NO_BFF_DATASET)
         return _bff.FitDataset.residuals(self, model, kind)
 
-    def set_weights(self, w: np.array):
+    def set_weights(self, w: np.ndarray):
         """Set y-weights (inverse of y-errors).
 
         Parameters
@@ -906,52 +906,52 @@ class DataCurveGroup(DataGroup):
     """
 
     @property
-    def x(self) -> np.array:
+    def x(self) -> np.ndarray:
         """Return the x-values of the current dataset."""
         return self.current_dataset.x
 
     @x.setter
-    def x(self, v: np.array):
+    def x(self, v: np.ndarray):
         """Set the x-values of the current dataset."""
         self.current_dataset.x = v
 
     @property
-    def y(self) -> np.array:
+    def y(self) -> np.ndarray:
         """Return the y-values of the current dataset."""
         return self.current_dataset.y
 
     @y.setter
-    def y(self, v: np.array):
+    def y(self, v: np.ndarray):
         """Set the y-values of the current dataset."""
         self.current_dataset.y = v
 
     @property
-    def ex(self) -> np.array:
+    def ex(self) -> np.ndarray:
         """Return the x-errors of the current dataset."""
         return self.current_dataset.ex
 
     @ex.setter
-    def ex(self, v: np.array):
+    def ex(self, v: np.ndarray):
         """Set the x-errors of the current dataset."""
         self.current_dataset.ex = v
 
     @property
-    def ey(self) -> np.array:
+    def ey(self) -> np.ndarray:
         """Return the y-errors of the current dataset."""
         return self.current_dataset.ey
 
     @ey.setter
-    def ey(self, v: np.array):
+    def ey(self, v: np.ndarray):
         """Set the y-errors of the current dataset."""
         self.current_dataset.ey = v
 
     @property
-    def mask(self) -> np.array:
+    def mask(self) -> np.ndarray:
         """Return the fit mask of the current dataset."""
         return self.current_dataset.mask
 
     @mask.setter
-    def mask(self, v: np.array):
+    def mask(self, v: np.ndarray):
         """Set the fit mask of the current dataset."""
         self.current_dataset.mask = v
 
@@ -1027,8 +1027,8 @@ class ExperimentDataCurveGroup(ExperimentDataGroup, DataCurveGroup):
 
 def get_data(
     curve_type: str = "experiment",
-    data_set: typing.List[chisurf.core.data.ExperimentalData] = None,
-    excludes_names: typing.List[str] = None,
+    data_set: typing.List[chisurf.core.data.ExperimentalData] | None = None,
+    excludes_names: typing.List[str] | None = None,
 ) -> typing.List[chisurf.core.data.ExperimentalData]:
     """Return experimental datasets, optionally excluding some by name.
 

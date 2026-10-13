@@ -131,7 +131,7 @@ class DeerReader(ExperimentReader):
 
         return load_view_spec(pathlib.Path(__file__).with_name("deer_reader.view.json"))
 
-    def read(self, filename: str = None, *args, **kwargs):
+    def read(self, filename: str | None = None, *args, **kwargs):
         """Read a DEER file and return an :class:`ExperimentDataCurveGroup`."""
         group = chisurf.core.data.ExperimentDataCurveGroup([])
         if filename is None:

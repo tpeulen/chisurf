@@ -249,10 +249,10 @@ def render_series_thumbnail(
     *,
     width: int = 300,
     height: int = 140,
-    x_tick_step: float = None,
+    x_tick_step: float | None = None,
     log_y: bool = False,
     share_y: bool = False,
-    caption: str = None,
+    caption: str | None = None,
 ) -> str:
     """Render one or more ``(x, y, color)`` series as an HTML ``<img>`` thumbnail.
 
@@ -390,7 +390,13 @@ def _prefers_log(y) -> bool:
 
 
 def render_curve_thumbnail(
-    x, y, *, width: int = 300, height: int = 140, color: str = DEFAULT_COLORS[0], log_y: bool = None
+    x,
+    y,
+    *,
+    width: int = 300,
+    height: int = 140,
+    color: str = DEFAULT_COLORS[0],
+    log_y: bool | None = None,
 ) -> str:
     """Render a single ``(x, y)`` curve as an HTML ``<img>`` thumbnail.
 
@@ -493,7 +499,7 @@ def curve_of(obj) -> tuple[typing.Any, typing.Any]:
     return None, None
 
 
-def dataset_tooltip_html(dataset, title: str = None) -> str:
+def dataset_tooltip_html(dataset, title: str | None = None) -> str:
     """Return the hover tooltip for a dataset: file name plus a curve preview.
 
     Parameters
@@ -524,7 +530,7 @@ def plot_color(name: str, default: str) -> str:
         return default
 
 
-def fit_tooltip_html(fit, title: str = None) -> str:
+def fit_tooltip_html(fit, title: str | None = None) -> str:
     """Return the hover tooltip for a fit: its name plus data and model curves.
 
     Parameters

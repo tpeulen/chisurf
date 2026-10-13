@@ -13,7 +13,7 @@ class FcsMergerClient:
     def __init__(self, client: Any = None):
         self._client = client if client is not None else self._make_local_client()
 
-    def merge_folder(self, folder: str, output: str = None) -> dict[str, Any]:
+    def merge_folder(self, folder: str, output: str | None = None) -> dict[str, Any]:
         return self._client.call(
             "fcs_merger.merge_folder", {"folder": str(folder), "output": output}
         )

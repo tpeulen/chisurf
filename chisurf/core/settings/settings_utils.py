@@ -463,9 +463,9 @@ def apply_fret_rda_axis(
 
 
 def set_optimization_settings(
-    sampling: dict = None,
-    leastsq: dict = None,
-    mcts: dict = None,
+    sampling: dict | None = None,
+    leastsq: dict | None = None,
+    mcts: dict | None = None,
 ) -> bool:
     """Persist optimisation settings in the user's settings YAML.
 

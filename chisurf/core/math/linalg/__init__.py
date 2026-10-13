@@ -23,7 +23,7 @@ import numpy as np
 from chisurf import typing
 
 
-def cartesian(arrays: typing.List[np.array], out=None):
+def cartesian(arrays: typing.List[np.ndarray], out=None):
     """Compute the cartesian product of input arrays.
 
     :param arrays: list of arrays

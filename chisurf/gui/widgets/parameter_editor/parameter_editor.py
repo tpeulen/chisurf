@@ -70,10 +70,10 @@ class ParameterEditor(QtWidgets.QWidget):
 
     def __init__(
         self,
-        target: typing.Dict = None,
-        json_file: pathlib.Path = None,
-        windows_title: str = None,
-        callback: typing.Callable = None,
+        target: typing.Dict | None = None,
+        json_file: pathlib.Path | None = None,
+        windows_title: str | None = None,
+        callback: typing.Callable | None = None,
         *args,
         **kwargs,
     ):
@@ -393,7 +393,7 @@ class ParameterEditor(QtWidgets.QWidget):
         """
         return _normalize_none(self._dict)
 
-    def save(self, *args, filename: str = None) -> None:
+    def save(self, *args, filename: str | None = None) -> None:
         if filename is None:
             filename = self._json_file
         with open(filename, "w+") as fp:

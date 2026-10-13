@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ctypes
+import functools
 import json
 import os
 import pathlib
@@ -53,7 +54,7 @@ try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
 
-    def persist_plugin_state(_name):
+    def persist_plugin_state(plugin_name: str):
         """Return an identity decorator when plugin-state persistence is unavailable."""
         return lambda cls: cls
 
@@ -75,7 +76,7 @@ class CodeEditor(QtWidgets.QWidget):
     def __init__(
         self,
         *args,
-        filename: str = None,
+        filename: str | None = None,
         language: str = "Python",
         can_load: bool = True,
         project_root: str | pathlib.Path | None = None,
@@ -104,6 +105,7 @@ class CodeEditor(QtWidgets.QWidget):
         self._rpc_server: EditorRpcServer | None = None
         self._agent_panel_visible = False
         self._run_process: QtCore.QProcess | None = None
+        self.project_root: pathlib.Path
         if project_root is None and filename is None:
             default_scripts = self._default_scripts_dir()
             self.project_root = (
@@ -570,7 +572,7 @@ class CodeEditor(QtWidgets.QWidget):
             name = f"{base}-{n}"
         self._create_editor_tab(filename=name)
 
-    def _create_editor_tab(self, filename: str = None, language: str = "Python"):
+    def _create_editor_tab(self, filename: str | None = None, language: str = "Python"):
         """Create a new editor tab."""
         editor = TextEditor(parent=self, language=language or get_editor_settings()["language"])
         editor._definition_uses_host = True
@@ -583,7 +585,7 @@ class CodeEditor(QtWidgets.QWidget):
         editor.filePathChanged.connect(self.currentFileChanged.emit)
         editor.definitionRequested.connect(self.go_to_definition)
         editor.textChanged.connect(self._on_editor_text_changed)
-        if self._is_real_file(filename):
+        if filename and self._is_real_file(filename):
             editor.set_current_file(str(pathlib.Path(filename).resolve()))
         tab_index = self.tab_widget.indexOf(editor)
         if hasattr(self, "_on_editor_created"):
@@ -591,7 +593,7 @@ class CodeEditor(QtWidgets.QWidget):
         self._sync_editor_document(editor)
         return editor, tab_index
 
-    def _create_notebook_tab(self, filename: str = None) -> tuple[NotebookEditor, int]:
+    def _create_notebook_tab(self, filename: str | None = None) -> tuple[NotebookEditor, int]:
         """Create a new notebook editor tab."""
         editor = NotebookEditor(parent=self)
         self.tab_widget.addTab(editor, filename or "Untitled.ipynb")
@@ -604,7 +606,7 @@ class CodeEditor(QtWidgets.QWidget):
         editor.definitionRequested.connect(self.go_to_definition)
         editor.textChanged.connect(self._on_editor_text_changed)
         editor.cellAdded.connect(self._connect_notebook_cell)
-        if self._is_real_file(filename):
+        if filename and self._is_real_file(filename):
             editor.set_current_file(str(pathlib.Path(filename).resolve()))
         tab_index = self.tab_widget.indexOf(editor)
         if hasattr(self, "_on_editor_created"):
@@ -882,11 +884,12 @@ class CodeEditor(QtWidgets.QWidget):
         path = editor.current_file or self._current_path()
         if self._enable_lsp and path and self._ensure_lsp():
             self._notify_lsp_open(editor)
+            assert self._lsp_client is not None  # _ensure_lsp() started it
             self._lsp_client.definition(
                 path,
                 line,
                 column,
-                lambda result, w=word, e=editor: self._handle_definition_result(result, w, e),
+                functools.partial(self._handle_definition_result, word=word, editor=editor),
             )
             return
         editor.jump_to_definition(word)
@@ -899,11 +902,12 @@ class CodeEditor(QtWidgets.QWidget):
             return
         line, column = editor.line_column()
         self._notify_lsp_open(editor)
+        assert self._lsp_client is not None  # _ensure_lsp() started it
         self._lsp_client.completion(
             path,
             line,
             column,
-            lambda result, e=editor: self._show_completion_result(result, e),
+            functools.partial(self._show_completion_result, editor=editor),
         )
 
     def _show_completion_result(self, result: object, editor: TextEditor) -> None:
@@ -1389,11 +1393,11 @@ class CodeEditor(QtWidgets.QWidget):
         cb = QtWidgets.QApplication.clipboard()
         cb.setText(text)
 
-    def load_file_event(self, event, filename: str = None, **kwargs):
+    def load_file_event(self, event, filename: str | None = None, **kwargs):
         """Load a file from an event-compatible callback."""
         self.load_file(filename)
 
-    def load_file(self, filename: str = None, **kwargs):
+    def load_file(self, filename: str | None = None, **kwargs):
         """Load a file into the current or a new tab."""
         filename = filename or cs.gui.widgets.get_filename()
         if not filename:
@@ -1433,7 +1437,7 @@ class CodeEditor(QtWidgets.QWidget):
         editor.refresh_symbols()
         self._notify_lsp_open(editor)
 
-    def open_file(self, path: str, line: int = None, col: int = None):
+    def open_file(self, path: str, line: int | None = None, col: int | None = None):
         """Open a file in a new tab or switch to existing tab, optionally jump to line."""
         path_str = str(pathlib.Path(path).resolve())
 

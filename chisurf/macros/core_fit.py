@@ -571,13 +571,13 @@ def _decode_curve_payload(
 
 
 def add_fit(
-    dataset_indices: typing.List[int] = None,
-    model_name: str = None,
-    model_kw: typing.Dict = None,
-    model_module: str = None,
-    model_class_name: str = None,
+    dataset_indices: typing.List[int] | None = None,
+    model_name: str | None = None,
+    model_kw: typing.Dict | None = None,
+    model_module: str | None = None,
+    model_class_name: str | None = None,
     group_datasets: bool = False,
-    data_group_name: str = None,
+    data_group_name: str | None = None,
     _defer_cs_update: bool = False,
     _ui_updates_frozen: bool = False,
     _force_local: bool = False,
@@ -981,7 +981,7 @@ def _current_fit_group(fit_window=None):
     return cs.fits[-1] if cs.fits else None
 
 
-def save_fit(target_path: str = None, use_complex_name: bool = False, fit_window=None):
+def save_fit(target_path: str | None = None, use_complex_name: bool = False, fit_window=None):
     """*File ▸ Fits ▸ Current Fit*: the fit's curves, fit document and report in *target_path*.
 
     Qt-free: the report's pictures are drawn by emtk (:func:`chisurf.emtk.fit_report.render_fit_images`)
@@ -1026,7 +1026,7 @@ def save_fits(target_path: str, use_complex_name: bool = False, existing: str = 
     return result
 
 
-def close_fit(idx: int = None):
+def close_fit(idx: int | None = None):
     gui = getattr(cs, "cs", None)
     if gui is None:
         cs.logging.error("close_fit: no active main window (cs.cs is missing)")
@@ -1673,7 +1673,7 @@ def save_fit_project(target_path: str, fit_window=None, fit_name: str = "chisurf
 
 def load_project_payload(
     proj: CSProject,
-    project_path: typing.Optional[str] = None,
+    project_path: typing.Optional[str] | None = None,
     _skip_gui_creation: bool = False,
     _history_transaction: bool = True,
 ):

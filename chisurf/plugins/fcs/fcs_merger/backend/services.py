@@ -7,7 +7,7 @@ from typing import Any
 from ..core import compute_average_correlations, merge_folder, parse_correlation_folder
 
 
-def merge_folder_handler(folder: str, output: str = None) -> dict[str, Any]:
+def merge_folder_handler(folder: str, output: str | None = None) -> dict[str, Any]:
     try:
         return {"ok": True, "result": merge_folder(folder, output)}
     except Exception as exc:

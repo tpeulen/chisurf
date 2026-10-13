@@ -6,11 +6,16 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 from emtk.i18n import tr
 
 from chisurf.plugins.emtk_layout import action_button
+
+if TYPE_CHECKING:
+    from concurrent.futures import Future
+
+    from emtk.dialog_window import DialogWindow
 
 DEFAULT_KINDS = ("raw_data", "raw_measurement", "external_reference")
 _SESSION_CLIENT: Any = None
@@ -115,8 +120,8 @@ class DatasetPicker:
         self.selection: DatasetSelection | None = None
         self.error = ""
         self.is_open = False
-        self._dialog = None
-        self._pending = None
+        self._dialog: DialogWindow | None = None
+        self._pending: Future[Any] | None = None
         self._pending_kind = ""
         self._pending_frame_hooked = False
 
@@ -138,9 +143,10 @@ class DatasetPicker:
             ctx = im.get_current_context()
         except RuntimeError:
             return
-        if ctx is not None and not self._pending_frame_hooked:
+        pending = self._pending
+        if ctx is not None and pending is not None and not self._pending_frame_hooked:
             self._pending_frame_hooked = True
-            self._pending.add_done_callback(lambda future: ctx.request_frame())
+            pending.add_done_callback(lambda future: ctx.request_frame())
 
     def _poll(self) -> None:
         if self._pending is None or not self._pending.done():
@@ -155,6 +161,8 @@ class DatasetPicker:
             elif kind == "open":
                 if not result:
                     raise ValueError("MMFDB did not return a local path for this dataset.")
+                if self.selection is None:
+                    raise ValueError("No dataset is selected.")
                 self.selection.local_path = str(result)
                 self.accept()
         except Exception as exc:
@@ -317,7 +325,7 @@ class DatasetPicker:
         if im.button(tr("Open selected") + "##dataset_open_selected"):
             if self.on_paths is None:
                 self.accept()
-            else:
+            elif self.selection is not None:
                 self._pending_kind = "open"
                 self._pending = _EXECUTOR.submit(resolve_local_path, self.client, self.selection)
                 self._pending_frame_hooked = False

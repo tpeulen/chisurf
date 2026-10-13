@@ -26,7 +26,7 @@ class Universe:
         self.potentials.append(potential)
         self.scaling.append(scale)
 
-    def removePotential(self, potentialNbr: int = None) -> None:
+    def removePotential(self, potentialNbr: int | None = None) -> None:
         """Remove a potential by index (default: last)."""
         if potentialNbr == -1:
             self.potentials.pop()
@@ -150,15 +150,15 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
     def __init__(
         self,
         p_object,
-        filename: str = None,
+        filename: str | None = None,
         rmsd_ref_state: int = 0,
         stride: int = 1,
         inverse_trajectory: bool = False,
         center: bool = False,
         verbose: bool = False,
-        atom_indices: typing.List[int] = None,
+        atom_indices: typing.List[int] | None = None,
         mode: str = "r",
-        topology: str = None,
+        topology: str | None = None,
     ):
         """
 
@@ -346,7 +346,7 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         return chisurf.core.structure.average(self[: len(self)])
 
     @property
-    def values(self) -> np.array:
+    def values(self) -> np.ndarray:
         """A 2D-numpy array containing the RMSD, dRMSD, energy and the chi2
         values of the trajectory
 

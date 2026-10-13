@@ -226,9 +226,9 @@ class Structure(chisurf.core.base.Base):
         p_object=None,
         *args,
         auto_update: bool = False,
-        filename: str = None,
+        filename: str | None = None,
         verbose: bool = False,
-        pdb_id: str = None,
+        pdb_id: str | None = None,
         protonate: bool = False,
         keep_water: bool = False,
         only_standard_residues: bool = True,
@@ -316,7 +316,7 @@ class Structure(chisurf.core.base.Base):
         return sum(energies)
 
     @property
-    def atoms(self) -> np.array:
+    def atoms(self) -> np.ndarray:
         """The full atom array containing coordinates, names, b-factors, etc."""
         if isinstance(self._atoms, np.ndarray):
             return self._atoms
@@ -330,28 +330,28 @@ class Structure(chisurf.core.base.Base):
             )
 
     @atoms.setter
-    def atoms(self, v: np.array):
+    def atoms(self, v: np.ndarray):
         """Set the array of atoms (must be a NumPy structured array)."""
         if isinstance(v, np.ndarray):
             self._atoms = v
 
     @property
-    def xyz(self) -> np.array:
+    def xyz(self) -> np.ndarray:
         """Cartesian coordinates of all atoms"""
         return self.atoms["xyz"]
 
     @xyz.setter
-    def xyz(self, v: np.array):
+    def xyz(self, v: np.ndarray):
         """Set cartesian coordinates of all atoms."""
         self.atoms["xyz"] = v
 
     @property
-    def vdw(self) -> np.array:
+    def vdw(self) -> np.ndarray:
         """Van der Waals radii of all atoms"""
         return self.atoms["radius"]
 
     @vdw.setter
-    def vdw(self, v: np.array):
+    def vdw(self, v: np.ndarray):
         """Set Van der Waals radii of all atoms."""
         self.atoms["radius"] = v
 
@@ -430,7 +430,7 @@ class Structure(chisurf.core.base.Base):
         rG = np.sqrt(((coord - rM) ** 2).sum(axis=1).mean())
         return float(rG)
 
-    def append_potential(self, function, kwargs: typing.Dict = None):
+    def append_potential(self, function, kwargs: typing.Dict | None = None):
         """
 
         :param function:
@@ -459,7 +459,7 @@ class Structure(chisurf.core.base.Base):
 
     def write(
         self,
-        filename: str = None,
+        filename: str | None = None,
         append_model: bool = False,
         append_coordinates: bool = False,
     ):
@@ -536,7 +536,7 @@ class Structure(chisurf.core.base.Base):
         return new
 
 
-def onRMSF(structures, selectedNbrs: typing.List[int], atomName: str = None, **kwargs):
+def onRMSF(structures, selectedNbrs: typing.List[int], atomName: str | None = None, **kwargs):
     """Calculates the root mean square deviation with respect to the average structure
     for a given set of structures. The structures do not have to be aligned.
 
@@ -835,9 +835,9 @@ def count_atoms(topology_dict):
 
 def average(
     structures: typing.List[chisurf.core.structure.Structure],
-    weights: typing.List[float] = None,
+    weights: typing.List[float] | None = None,
     write: bool = True,
-    filename: str = None,
+    filename: str | None = None,
     verbose: bool = True,
 ) -> chisurf.core.structure.Structure:
     """

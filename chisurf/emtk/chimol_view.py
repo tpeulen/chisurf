@@ -244,6 +244,8 @@ class ChimolView:
     # ── input ─────────────────────────────────────────────────────────────
 
     def _to_frame(self, x: float, y: float) -> tuple[float, float]:
+        if self.rect is None:
+            return x, y
         rx, ry, rw, rh = self.rect
         fw, fh = self._render_size
         return (x - rx) * fw / max(rw, 1.0), (y - ry) * fh / max(rh, 1.0)

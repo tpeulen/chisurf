@@ -5,7 +5,14 @@ import numpy as np
 from chisurf import typing
 
 
-class FCSDataset(typing.TypedDict):
+class _FCSDatasetOptional(typing.TypedDict, total=False):
+    """Keys a reader may omit (set later by masking / trace naming)."""
+
+    mask: np.ndarray
+    intensity_trace_name: str
+
+
+class FCSDataset(_FCSDatasetOptional):
     filename: str
     measurement_id: str
     acquisition_time: float
@@ -13,8 +20,6 @@ class FCSDataset(typing.TypedDict):
     correlation_times: np.ndarray
     correlation_amplitudes: np.ndarray
     correlation_amplitude_weights: np.ndarray
-    mask: np.ndarray
     intensity_trace_times: np.ndarray
     intensity_trace: np.ndarray
-    intensity_trace_name: str
     meta_data: typing.Dict

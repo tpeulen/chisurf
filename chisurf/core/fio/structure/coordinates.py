@@ -254,7 +254,7 @@ _STANDARD_RESIDUES = {
 
 
 def find_atom_index(
-    atoms: np.array,
+    atoms: np.ndarray,
     chain_identifier: str,
     residue_seq_number: int,
     atom_name: str,
@@ -801,7 +801,7 @@ def read_coordinates(
 def read(
     filename: str,
     assign_charge: bool = False,
-    verbose: bool = None,
+    verbose: bool | None = None,
     keep_water: bool = False,
     only_standard_residues: bool = True,
     radii: str = "charmm",

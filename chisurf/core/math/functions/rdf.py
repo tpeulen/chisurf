@@ -151,7 +151,7 @@ def Qd(r, kappa) -> float:
 
 
 def worm_like_chain(
-    distances: np.array,
+    distances: np.ndarray,
     kappa: float,
     chain_length: float = 0.0,
     normalize: bool = True,
@@ -222,8 +222,8 @@ def worm_like_chain(
 
 
 def distance_between_gaussian(
-    distances: np.array, separation_distance: float, sigma: float, normalize: bool = False
-) -> np.array:
+    distances: np.ndarray, separation_distance: float, sigma: float, normalize: bool = False
+) -> np.ndarray:
     """Calculates the distance distribution between two separated Gaussians a distance
 
     :param distances:
@@ -270,12 +270,12 @@ def distance_between_gaussian(
 
 
 def worm_like_chain_linker(
-    distances: np.array,
+    distances: np.ndarray,
     kappa: float,
     chain_length: float = 0.0,
     sigma: float = 6.0,
     normalize: bool = True,
-) -> np.array:
+) -> np.ndarray:
     """
     Calculates the radial distribution function of a worm-like-chain given the multiple piece-solution
     according to:

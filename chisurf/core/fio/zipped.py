@@ -6,7 +6,39 @@ import pathlib
 import zipfile
 
 
-def open_maybe_zipped(filename: pathlib.Path, mode: str = "r", force_overwrite: bool = True):
+class _ZipMemberWriter(io.StringIO):
+    """A text buffer that is stored as the single member of a ``.zip`` archive on close."""
+
+    def __init__(self, filename: str | pathlib.Path):
+        super().__init__()
+        self._archive_path = pathlib.Path(filename)
+
+    def close(self) -> None:
+        """Write the buffered text into the archive, then close."""
+        if not self.closed:
+            member = self._archive_path.with_suffix("").name or "data"
+            with zipfile.ZipFile(self._archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr(member, self.getvalue().encode("utf-8"))
+        super().close()
+
+
+class _ZipMemberBinaryWriter(io.BytesIO):
+    """A byte buffer that is stored as the single member of a ``.zip`` archive on close."""
+
+    def __init__(self, filename: str | pathlib.Path):
+        super().__init__()
+        self._archive_path = pathlib.Path(filename)
+
+    def close(self) -> None:
+        """Write the buffered bytes into the archive, then close."""
+        if not self.closed:
+            member = self._archive_path.with_suffix("").name or "data"
+            with zipfile.ZipFile(self._archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr(member, self.getvalue())
+        super().close()
+
+
+def open_maybe_zipped(filename: str | pathlib.Path, mode: str = "r", force_overwrite: bool = True):
     """Open a file in name (not binary) reading_routine, transparently handling
     .gz or .bz2 compression, with utf-8 encoding.
 
@@ -36,21 +68,18 @@ def open_maybe_zipped(filename: pathlib.Path, mode: str = "r", force_overwrite: 
                 return io.StringIO(bz2_f.read().decode("utf-8"))
         elif extension == ".zip":
             with zipfile.ZipFile(filename, "r") as zip_f:
-                return io.StringIO(zip_f.read().decode("utf-8"))
+                return io.StringIO(zip_f.read(zip_f.namelist()[0]).decode("utf-8"))
         else:
             return open(filename)
     elif mode == "w":
         if os.path.exists(filename) and not force_overwrite:
             raise OSError(f'"{filename}" already exists')
         if extension == ".gz":
-            binary_fh = gzip.GzipFile(filename, "wb")
-            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+            return io.TextIOWrapper(gzip.GzipFile(filename, "wb"), encoding="utf-8")
         elif extension == ".bz2":
-            binary_fh = bz2.BZ2File(filename, "wb")
-            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+            return io.TextIOWrapper(bz2.BZ2File(filename, "wb"), encoding="utf-8")
         elif extension == ".zip":
-            binary_fh = zipfile.ZipFile(filename, "w")
-            return io.TextIOWrapper(binary_fh, encoding="utf-8")
+            return _ZipMemberWriter(filename)
         else:
             return open(filename, "w")
     elif mode in ("a", "a+"):
@@ -72,7 +101,7 @@ def open_maybe_zipped(filename: pathlib.Path, mode: str = "r", force_overwrite: 
         elif extension == ".bz2":
             return bz2.BZ2File(filename, "wb")
         elif extension == ".zip":
-            return zipfile.ZipFile(filename, "wb")
+            return _ZipMemberBinaryWriter(filename)
         else:
             return open(filename, "wb")
     else:

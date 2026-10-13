@@ -25,8 +25,8 @@ def save_bvox(data: np.ndarray, filename: str) -> None:
 
 def write_open_dx(
     filename: str,
-    density: np.array,
-    r0: np.array,
+    density: np.ndarray,
+    r0: np.ndarray,
     nx: int,
     ny: int,
     nz: int,
@@ -54,7 +54,7 @@ def write_open_dx(
         fp.write(s)
 
 
-def open_dx(density: np.array, ro: np.array, rn: np.array, dr: np.array) -> str:
+def open_dx(density: np.ndarray, ro: np.ndarray, rn: np.ndarray, dr: np.ndarray) -> str:
     """Returns a open_dx string compatible with PyMOL
 
     :param density: 3d-grid with values (densities)

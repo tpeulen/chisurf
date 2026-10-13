@@ -17,6 +17,7 @@ to the step being opened).
 from __future__ import annotations
 
 import copy
+import functools
 import importlib
 import json
 from pathlib import Path
@@ -233,7 +234,7 @@ class ToolHubApp(ImApp):
             if p["role"] == r and r not in self.children and r not in self.errors
         ]
         self._builder.start(
-            {p["role"]: (lambda p=p: self._construct(p)) for p in panels},
+            {p["role"]: functools.partial(self._construct, p) for p in panels},
             name=f"chisurf-hub-{role}",
         )
 
@@ -243,7 +244,7 @@ class ToolHubApp(ImApp):
         if built is None:
             return False
         for role, (made, _exc) in built.items():  # _construct never raises: its error is in *made*
-            self._adopt(role, *made)
+            self._adopt(str(role), *made)
         return True
 
     @property

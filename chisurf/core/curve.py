@@ -431,8 +431,8 @@ class Curve(NCurve):
         filename: str,
         file_type: str = "yaml",
         verbose: bool = False,
-        x_min: int = None,
-        x_max: int = None,
+        x_min: int | None = None,
+        x_max: int | None = None,
     ) -> None:
         """Save the curve to disk via :mod:`chisurf.core.fio`.
 
@@ -659,7 +659,7 @@ class CurveGroup:
 
     _curves: typing.List[chisurf.core.curve.Curve]
 
-    def __init__(self, seq: typing.List[chisurf.core.curve.Curve] = None):
+    def __init__(self, seq: typing.List[chisurf.core.curve.Curve] | None = None):
         """Initialize a CurveGroup with an optional list of curves.
 
         Parameters
@@ -680,7 +680,7 @@ class CurveGroup:
         return self._curves
 
     @abc.abstractmethod
-    def remove_curve(self, selected_index: typing.List[int] = None):
+    def remove_curve(self, selected_index: typing.List[int] | None = None):
         """Remove curves whose indices are listed in ``selected_index``."""
         if selected_index is None:
             selected_index = list()

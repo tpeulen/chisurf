@@ -48,6 +48,21 @@ class NewSample:
         "reference_sequence",
     )
 
+    # Set from FIELDS in __init__; declared so the type checker sees them.
+    name: str
+    description: str
+    entity_name: str
+    entity_sequence: str
+    entity_type: str
+    donor: str
+    acceptor: str
+    buffer: str
+    uniprot: str
+    pdb_id: str
+    pdb_chain: str
+    organism: str
+    reference_sequence: str
+
     def __init__(self) -> None:
         for field in self.FIELDS:
             setattr(self, field, "")

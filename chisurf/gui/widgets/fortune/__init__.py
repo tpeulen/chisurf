@@ -7,7 +7,7 @@ import random
 
 
 def get_fortune(
-    fortunepath: str = None,
+    fortunepath: str | None = None,
     min_length: int = 0,
     max_length: int = 100,
     maximum_number_of_attempts: int = 1000,
