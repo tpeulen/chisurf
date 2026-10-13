@@ -22,6 +22,7 @@ import numpy as np
 
 from chisurf import chiplot as cp
 from chisurf import logging
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages import plotbase
 
 #: The colormaps offered; the spec's default is added when it is not among them.
@@ -150,24 +151,26 @@ class MfdMapPlot(plotbase.Plot):
 
         channels = self.channels()
         if channels:
-            im.text("Channel")
+            im.text(tr("Channel"))
             im.same_line()
             current = channels.index(self.channel()) if self.channel() in channels else 0
             im.set_next_item_width(130.0)
             changed, picked = im.combo("##mfd-channel", current, channels)
             im.set_item_tooltip(
-                "Which map to show on these axes: the measured histogram, the model, "
-                "the weighted residual or the difference."
+                tr(
+                    "Which map to show on these axes: the measured histogram, the model, "
+                    "the weighted residual or the difference."
+                )
             )
             if changed:
                 self.set_channel(channels[picked])
             im.same_line()
-        im.text("Colormap")
+        im.text(tr("Colormap"))
         im.same_line()
         index = self.colormaps.index(self.colormap) if self.colormap in self.colormaps else 0
         im.set_next_item_width(110.0)
         changed, picked = im.combo("##mfd-colormap", index, self.colormaps)
-        im.set_item_tooltip("Colour scale of the map; the counts are unchanged.")
+        im.set_item_tooltip(tr("Colour scale of the map; the counts are unchanged."))
         if changed:
             self.set_colormap(self.colormaps[picked])
         im.host_control("##mfd-map", self.panel_items[0])

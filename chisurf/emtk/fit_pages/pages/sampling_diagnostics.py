@@ -105,11 +105,11 @@ class SamplingDiagnosticsPlot(Plot):
         def body(index: int) -> None:
             if index == 0:
                 if self._names:
-                    im.text("Parameter")
+                    im.text(tr("Parameter"))
                     im.same_line()
                     im.set_next_item_width(-1.0)
                     changed, picked = im.combo("##chain-parameter", self.parameter, self._names)
-                    im.set_item_tooltip("The parameter whose per-chain ranks are drawn.")
+                    im.set_item_tooltip(tr("The parameter whose per-chain ranks are drawn."))
                     if changed:
                         self.set_parameter(picked)
                 N.panel_and_notes("chain-rank", self.panel_items[0], self.rank_notes)

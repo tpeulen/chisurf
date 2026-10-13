@@ -18,6 +18,7 @@ import chisurf.core.settings
 import chisurf.core.support.decorators
 from chisurf import chiplot as cp
 from chisurf import typing
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages import plotbase
 
 _BUILTIN_PRESETS_PATH = Path(__file__).parent / "reference_presets.json"
@@ -392,6 +393,7 @@ class LinePlotSettings:
             else:
                 step = float(spec.step if spec.step is not None else 0.1)
                 changed, value = im.input_float(label, float(value), step, step * 10, "%.6g")
+            im.set_item_tooltip(tr(str(spec.description or spec.label)))
             if changed:
                 if kind in ("int", "float") or kind not in ("bool", "choice"):
                     low, high = spec.minimum, spec.maximum

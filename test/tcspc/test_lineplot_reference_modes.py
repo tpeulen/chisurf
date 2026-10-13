@@ -155,3 +155,16 @@ def test_the_rt_defaults_come_from_the_described_model():
     (mode,) = reference_modes.modes_named(["tcspc_anisotropy_rt"], model=_Model())
     defaults = {p.key: p.default for p in mode.parameters}
     assert defaults["g"] == 1.3 and defaults["l1"] == 0.03 and defaults["l2"] == 0.0
+
+
+def test_every_reference_parameter_explains_itself():
+    """Each plot-controller control takes its tooltip from ``description``; none may be empty."""
+    modes = reference_modes.modes_named(list(reference_modes.REFERENCE_MODES))
+    assert len(modes) == len(reference_modes.REFERENCE_MODES)
+    blank = [
+        f"{mode.key}.{spec.key}"
+        for mode in modes
+        for spec in mode.parameters
+        if not spec.description.strip() or spec.description.strip() == spec.label
+    ]
+    assert blank == []

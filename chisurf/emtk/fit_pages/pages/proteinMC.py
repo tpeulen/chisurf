@@ -16,6 +16,7 @@ import chisurf as cs
 import chisurf.core.plotting.appearance as appearance
 import chisurf.core.settings
 from chisurf import chiplot as cp
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.chimol_view import ChimolView
 from chisurf.emtk.fit_pages.pages.plotbase import Plot
 
@@ -166,7 +167,7 @@ class ProteinMCPlot(Plot):
 
         grid = self._grid()
         if grid is None:
-            im.text_disabled("No trajectory curve is shown; tick one in Plot settings.")
+            im.text_disabled(tr("No trajectory curve is shown; tick one in Plot settings."))
             return
         width, height = im.get_content_region_avail()
         im.host_control("##proteinmc-traces", grid, (width, height))

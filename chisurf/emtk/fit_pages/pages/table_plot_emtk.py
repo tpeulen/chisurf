@@ -25,6 +25,7 @@ import chisurf.core.fitting
 from chisurf.core.actions import record_action
 from chisurf.core.api.fitting_client import get_fitting_client
 from chisurf.core.datastore import row_count, rows_from_table, store_from_rows
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages import plotbase
 
 if TYPE_CHECKING:
@@ -700,16 +701,16 @@ class FitTablePlotEmtk(plotbase.Plot):
         if self.parameter_editor is None:
             return
         records, _params, table, message = self.parameter_editor
-        im.text("Model parameters")
+        im.text(tr("Model parameters"))
         if message:
             im.text_disabled(message)
         else:
             width, height = im.get_content_region_avail()
             row = im.get_frame_height_with_spacing()
             im.host_control("##fit-table-parameters", table, (width, max(height - row - 4.0, 60.0)))
-        if im.button("Apply"):
+        if im.button(tr("Apply")):
             self.apply_parameter_editor()
-        im.set_item_tooltip("Write the edited values, bounds, fixes and links to the fit.")
+        im.set_item_tooltip(tr("Write the edited values, bounds, fixes and links to the fit."))
         im.same_line()
         if action_button("cancel", tooltip="Close the editor; nothing changes."):
             self.cancel_parameter_editor()

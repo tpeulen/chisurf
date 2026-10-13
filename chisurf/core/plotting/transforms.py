@@ -30,6 +30,9 @@ class PlotReferenceParameter:
     choices : tuple, optional
         Choices for ``"choice"`` parameters. Entries may be plain values or
         ``(value, label)`` pairs.
+    description : str, optional
+        What the parameter does, shown as the control's tooltip. The plot
+        controller falls back to ``label`` when it is empty.
     """
 
     key: str
@@ -40,6 +43,7 @@ class PlotReferenceParameter:
     maximum: float | None = None
     step: float | None = None
     choices: tuple = ()
+    description: str = ""
 
 
 @dataclass(frozen=True)

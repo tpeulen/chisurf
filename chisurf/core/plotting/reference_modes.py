@@ -63,7 +63,11 @@ def peak_photons(
 
 def _fit_range_parameter() -> plot_transforms.PlotReferenceParameter:
     return plot_transforms.PlotReferenceParameter(
-        key="fit_range_only", label="fit range", kind="bool", default=False
+        key="fit_range_only",
+        label="fit range",
+        kind="bool",
+        default=False,
+        description="Take the normalisation from the fit range only, not the whole curve.",
     )
 
 
@@ -155,18 +159,61 @@ def _anisotropy_rt_mode(model=None) -> plot_transforms.PlotReferenceMode:
         label="r(t) anisotropy",
         callback=anisotropy_rt,
         parameters=(
-            P("g", "g", "float", _parameter(model, "anisotropy.g", 1.0), step=0.01),
-            P("l1", "l1", "float", _parameter(model, "anisotropy.l1", 0.0), step=0.001),
-            P("l2", "l2", "float", _parameter(model, "anisotropy.l2", 0.0), step=0.001),
-            P("bg_vv", "BgVV", "float", 0.0, step=1.0),
-            P("bg_vh", "BgVH", "float", 0.0, step=1.0),
-            P("vh_shift", "dVH", "float", 0.0, step=0.01),
+            P(
+                "g",
+                "g",
+                "float",
+                _parameter(model, "anisotropy.g", 1.0),
+                step=0.01,
+                description="ChiSurf's g factor (the reciprocal of the literature G).",
+            ),
+            P(
+                "l1",
+                "l1",
+                "float",
+                _parameter(model, "anisotropy.l1", 0.0),
+                step=0.001,
+                description="Polarisation mixing l1 of the objective (high-NA correction).",
+            ),
+            P(
+                "l2",
+                "l2",
+                "float",
+                _parameter(model, "anisotropy.l2", 0.0),
+                step=0.001,
+                description="Polarisation mixing l2 of the objective (high-NA correction).",
+            ),
+            P(
+                "bg_vv",
+                "BgVV",
+                "float",
+                0.0,
+                step=1.0,
+                description="Background counts per channel subtracted from VV.",
+            ),
+            P(
+                "bg_vh",
+                "BgVH",
+                "float",
+                0.0,
+                step=1.0,
+                description="Background counts per channel subtracted from VH.",
+            ),
+            P(
+                "vh_shift",
+                "dVH",
+                "float",
+                0.0,
+                step=0.01,
+                description="Time shift applied to VH before r(t) is formed (axis units).",
+            ),
             P(
                 "variant",
                 "variant",
                 "choice",
                 "corrected",
                 choices=(("corrected", "corrected"), ("uncorrected", "uncorrected")),
+                description="Which r(t) to draw: the corrected or the uncorrected curve.",
             ),
         ),
         applies_to=("data", "model"),
@@ -238,6 +285,10 @@ def _donor_reference_mode(model=None) -> plot_transforms.PlotReferenceMode:
                     ("reference_peak", "reference peak"),
                     ("none", "none"),
                 ),
+                description=(
+                    "How the donor reference is scaled before dividing: to the data's "
+                    "peak, to a peak of one, or left as computed."
+                ),
             ),
         ),
         applies_to=("data", "model"),
@@ -294,6 +345,9 @@ def fcs_molecules(
     )
 
 
+_FCS_OFFSET = "Correlation offset subtracted from G; starts at the model's value."
+
+
 def _fcs_parameter(model, key: str, **kw) -> plot_transforms.PlotReferenceParameter:
     return plot_transforms.PlotReferenceParameter(
         key=key, label=key, kind="float", default=_model_value(model, key, 1.0), **kw
@@ -305,7 +359,7 @@ def _fcs_diffusion_mode(model=None) -> plot_transforms.PlotReferenceMode:
         key="fcs_diffusion",
         label="FCS diffusion",
         callback=fcs_diffusion,
-        parameters=(_fcs_parameter(model, "b", step=0.01),),
+        parameters=(_fcs_parameter(model, "b", step=0.01, description=_FCS_OFFSET),),
         applies_to=("data", "model"),
         y_label="(G - b) / Gdiff",
         y_range=(0, 1.0),
@@ -319,8 +373,14 @@ def _fcs_molecules_mode(model=None) -> plot_transforms.PlotReferenceMode:
         label="FCS molecules",
         callback=fcs_molecules,
         parameters=(
-            _fcs_parameter(model, "N", minimum=1e-12, step=0.1),
-            _fcs_parameter(model, "b", step=0.01),
+            _fcs_parameter(
+                model,
+                "N",
+                minimum=1e-12,
+                step=0.1,
+                description="Mean number of molecules in the focus; starts at the model's value.",
+            ),
+            _fcs_parameter(model, "b", step=0.01, description=_FCS_OFFSET),
         ),
         applies_to=("data", "model"),
         y_label="N * (G - b)",

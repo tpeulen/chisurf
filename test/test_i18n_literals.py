@@ -49,6 +49,13 @@ def test_explicit_translation_identifiers_and_numeric_labels_are_exempt():
     assert audit_translation_python(source, "probe.py") == []
 
 
+def test_only_the_label_before_an_id_suffix_is_prose():
+    """``"¶##whitespace"`` draws ``¶``; the id after ``##`` is never shown, so it is not prose."""
+    assert audit_translation_python('im.checkbox("¶##toolbar_whitespace", on)', "probe.py") == []
+    findings = audit_translation_python('im.checkbox("Wrap##toolbar_wrap", on)', "probe.py")
+    assert [f.detail for f in findings] == ["Wrap##toolbar_wrap"]
+
+
 def test_nested_calls_unicode_labels_and_repeated_source_stay_distinct():
     """Each authored occurrence is actionable, including a text sink inside another call."""
     source = 'if im.button("Données"):\n    print(im.text("Données"))\n'

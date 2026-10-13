@@ -21,6 +21,7 @@ import chisurf.core.fitting
 from chisurf import chiplot as cp
 from chisurf.chiplot import style as S
 from chisurf.core.fitting import engine as E
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages import emtk_notes as N
 from chisurf.emtk.fit_pages.pages.plotbase import Plot
 
@@ -96,20 +97,20 @@ class ConditionalScanPlot(Plot):
         from emtk import im
 
         if self._full_names and im.begin_grid("##what-if-bar", (0, 0, 0, 1, 0, 0)):
-            im.text("Fix")
+            im.text(tr("Fix"))
             im.next_cell()
             im.set_next_item_width(120.0)
             changed, picked = im.combo("##what-if-parameter", self.parameter, self.parameters)
-            im.set_item_tooltip("The parameter to hold fixed.")
+            im.set_item_tooltip(tr("The parameter to hold fixed."))
             if changed:
                 self.set_parameter(picked)
             im.next_cell()
-            im.text("at")
+            im.text(tr("at"))
             im.next_cell()
             changed, z = im.slider_float(
                 "##what-if-held", self.held_z, -SCAN_SPAN, SCAN_SPAN, "%+.2f sd"
             )
-            im.set_item_tooltip("Where to hold it, in its own standard deviations.")
+            im.set_item_tooltip(tr("Where to hold it, in its own standard deviations."))
             if changed:
                 self.set_held(z)
             im.next_cell()
@@ -119,12 +120,14 @@ class ConditionalScanPlot(Plot):
             im.next_cell()
             checking = self._check_pending > 0
             im.begin_disabled(checking or self._scan is None)
-            if im.button("re-fitting…" if checking else "🔍 Check (re-fit)"):
+            if im.button(tr("re-fitting…") if checking else tr("🔍 Check (re-fit)")):
                 self._check_pending = 2
             im.end_disabled()
             im.set_item_tooltip(
-                "Re-fit at each held value instead of assuming the posterior is "
-                "Gaussian, and report how far the straight lines can be trusted."
+                tr(
+                    "Re-fit at each held value instead of assuming the posterior is "
+                    "Gaussian, and report how far the straight lines can be trusted."
+                )
             )
             im.end_grid()
         N.panel_and_notes("what-if", self.panel_items[0], self.readout)

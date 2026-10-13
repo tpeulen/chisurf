@@ -378,11 +378,11 @@ def audit_translation_python(text: str, path: str) -> list[Finding]:
         if method == "input_text":
             values.extend(("hint", kw.value) for kw in node.keywords if kw.arg == "hint")
         for position, value in values:
+            # Only the text before an ``##`` id suffix is shown ("¶##whitespace" draws "¶").
             if (
                 isinstance(value, ast.Constant)
                 and isinstance(value.value, str)
-                and not value.value.startswith("##")
-                and any(character.isalpha() for character in value.value)
+                and any(character.isalpha() for character in value.value.split("##", 1)[0])
             ):
                 findings.append(
                     Finding(

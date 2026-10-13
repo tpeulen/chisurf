@@ -28,6 +28,7 @@ from typing import Any, Callable
 
 import numpy as np
 
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages.plotbase import Plot
 
 __all__ = ["SchemeBinding", "SchemeCanvas", "StateSchemePlot", "Edge", "edge_route"]
@@ -680,22 +681,24 @@ class StateSchemePlot(Plot):
             current = names.index(binding.preset()) if binding.preset() in names else 0
             im.set_next_item_width(200.0)
             changed, picked = im.combo("##scheme-preset", current, names)
-            im.set_item_tooltip("Kinetic scheme template; picking one replaces the rate matrix.")
+            im.set_item_tooltip(
+                tr("Kinetic scheme template; picking one replaces the rate matrix.")
+            )
             if changed:
                 binding.set_preset(names[picked])
             if binding.can_load():
                 im.same_line()
-                if im.small_button("📂 Load"):
+                if im.small_button(tr("📂 Load")):
                     self.open_dialog(save=False)
-                im.set_item_tooltip("Load a kinetics scheme from a JSON file.")
+                im.set_item_tooltip(tr("Load a kinetics scheme from a JSON file."))
             if binding.can_save():
                 im.same_line()
                 if action_button("save", tooltip="Save this kinetics scheme to a JSON file."):
                     self.open_dialog(save=True)
             im.same_line()
-        if im.small_button("Reset view"):
+        if im.small_button(tr("Reset view")):
             self.canvas.reset_view()
-        im.set_item_tooltip("Back to 1:1 zoom, unpanned.")
+        im.set_item_tooltip(tr("Back to 1:1 zoom, unpanned."))
         im.host_control("##scheme-canvas", self.canvas)
         self._draw_rate_field()
 

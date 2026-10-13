@@ -9,6 +9,7 @@ import chisurf.core.fluorescence
 import chisurf.core.math.datatools
 import chisurf.core.plotting.appearance as appearance
 from chisurf import chiplot as cp
+from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages import plotbase
 
 
@@ -440,9 +441,9 @@ class DistributionPlot(plotbase.Plot):
             return
         im.set_next_item_width(-1.0)
         changed, text = im.input_text_with_hint(
-            "##distribution-filter", "Filter parameters…", self._filter
+            "##distribution-filter", tr("Filter parameters…"), self._filter
         )
-        im.set_item_tooltip("Show only the options whose name contains this text.")
+        im.set_item_tooltip(tr("Show only the options whose name contains this text."))
         if changed:
             self._filter = text
         form = self._options_form()
