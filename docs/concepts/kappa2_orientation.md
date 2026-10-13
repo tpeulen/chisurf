@@ -63,6 +63,17 @@ this case is closed-form and ChiSurf provides it
 it is sharply peaked near zero and has a long tail, which is exactly the shape
 that makes a static ensemble dangerous.
 
+On an E–lifetime plot the two averages are different FRET lines, not one line
+with a shifted label. A static ensemble at one distance is a mixture of rates
+$k_i = (\kappa_i^2/\tfrac{2}{3})\,(R_0/R)^6/\tau_0$, so its fluorescence-weighted
+lifetime $\langle\tau\rangle_F$ is pulled towards the slowly transferring
+(small-$\kappa^2$) molecules. For a Gaussian distance distribution
+($R_0 = 52$ Å, $\sigma = 6$ Å, $\tau_{D(0)} = 4$ ns) the static-isotropic line lies
+up to $\Delta E = 0.17$ below the dynamic one at the same mean distance; at $R = 20$ Å it gives
+$\langle\tau\rangle_F = 1.2$ ns where dynamic averaging gives 0.1 ns. The FRET
+Line Generator's editor switches the regime per component
+({doc}`/guides/82_fret_lines`).
+
 **Restricted.** The realistic case. Each dye reorients, but only within a cone
 set by its linker and its local environment. This is what the models below
 describe.

@@ -202,6 +202,38 @@ def test_the_dynamic_line_equals_the_qt_tools_from_the_same_start(model):
     assert a["tau_f"].min() < a["tau_f"].max() and "fraction" in line["sweep_label"]
 
 
+def test_the_editors_kappa2_regime_is_drawn_and_its_static_line_equals_the_qt_editors():
+    """The Qt editor's dynamic / static κ² radios moved the line; the emtk editor draws the same control.
+
+    Pressed as a user presses it (at its drawn rectangle): static κ² gives the recorded static-κ² line, which
+    lies well away from the dynamic one; dynamic κ² brings the ordinary static line back.
+    """
+    from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
+
+    qt = QT["kappa2_static"]
+    app = FRETLineApp()
+    try:
+        app.show_advanced("editor")
+        drv = Driver(app, BIG)
+        drawn = {t[5] for t in drv.draw(4).texts}
+        assert set(qt["editor_controls"]) <= drawn, set(qt["editor_controls"]) - drawn
+        app.model.minimum, app.model.maximum = 20.0, 120.0
+        drv.click(app.form.rects["kappa2.static"])
+        drv.draw(2)
+        assert app.model.selected["model"].orientation_parameter.mode == qt["mode"] == "slow"
+        line = app.model.add_line()
+        a = line_arrays(line["result"])
+        assert_arrays_equal(a, qt["arrays"])
+        assert line["sweep_label"] == qt["sweep_label"] == QT["static"]["sweep_label"]
+        assert np.max(np.abs(a["e_fret"] - np.asarray(QT["static"]["arrays"]["e_fret"]))) > 0.1
+        drv.click(app.form.rects["kappa2.dynamic"])
+        drv.draw(2)
+        assert app.model.selected["model"].orientation_parameter.mode == "fast"
+        assert_arrays_equal(line_arrays(app.model.add_line()["result"]), QT["static"]["arrays"])
+    finally:
+        app.close()
+
+
 def test_a_sweep_leaves_the_users_parameters_where_they_were(model):
     parameter = next(
         p

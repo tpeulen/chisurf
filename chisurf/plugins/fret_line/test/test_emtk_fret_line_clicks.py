@@ -592,7 +592,15 @@ def test_the_tour_is_walked_with_the_user_operating_each_awaited_control(fresh):
             )
         tour.next()
     assert not tour.active
-    assert seen == ["load_example", "add_line", "Advanced.fold", "show_components", "save_csv"]
+    assert seen == [
+        "load_example",
+        "add_line",
+        "Advanced.fold",
+        "show_components",
+        "kappa2.static",
+        "save_csv",
+    ]
+    assert drv.app.model.selected["model"].orientation_parameter.mode == "slow"
     assert len(drv.app.model.lines) == 1
 
 

@@ -76,6 +76,17 @@ cell to type a number, click a *Fixed* or *Bounds* box to flip it. The groups th
   donor.
 * **FRET parameters**: τ0, R0, κ² and the donor-only fraction x_D,0 (keep it 0
   for a line).
+* **Orientation factor κ²** (above the subcomponents): **dynamic κ²** gives
+  every donor-acceptor pair the one scalar κ² of the model (the dyes reorient
+  within the donor lifetime); **static κ²** gives every molecule its own κ² from
+  the isotropic distribution of frozen random orientations, so even one
+  distance becomes a spread of rates. The two are different lines: for the
+  standard Gaussian line (R0 = 52 Å, σ = 6 Å, τ_D0 = 4 ns) the static-κ² line
+  lies up to ΔE = 0.17 below the dynamic one at the same mean distance, and at R_DA = 20 Å its τ_F is
+  1.2 ns instead of 0.1 ns, because the molecules with small κ² still emit.
+  **show κ²** draws the distribution and what it does to the apparent distance,
+  **compute κ²** derives one from the dyes' anisotropies, **calc R0** opens the
+  Förster-radius calculator. See {ref}`concept-kappa2-orientation`.
 * **Gaussian distances** (or **Discrete distances**, or the chain parameters):
   R_DA, the width w (= σ, the linker width), the shape k, and the amplitude x
   of each distance. **add** / **del** change the number of distances within
@@ -263,6 +274,11 @@ closed form (see below). The curve $E(\tau_F)$ is the same either way.
   directly, as `lines.static_fret_line` does, gives 0.804 (60 Å: 0.330 against
   0.317). The line as a curve $E(\tau_F)$ agrees to within 0.002. Only the
   distance labels along it differ.
+* **The static κ² average is always the isotropic one.** **compute κ²** sets
+  the scalar κ² to the computed mean (which the dynamic line uses) and stores the
+  distribution, but the native static average does not read it: a static-κ²
+  line is the same for any computed distribution and any scalar κ². Recorded in
+  `okf/references/known-issues.md`.
 * **σ = 0 in *FD (Gaussian)* returns NaN** at some distances (50, 80 and
   100 Å tested), and 0.2919 instead of 0.2976 at 60 Å. Use *FD (Discrete)* for
   the no-linker line.

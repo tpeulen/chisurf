@@ -4,6 +4,22 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## A computed κ² distribution does not reach the static κ² average (found 2026-10-13)
+
+- **Measurement:** `kappa2_controls.apply_kappa2_distribution(model, [0.09, 0.1, 0.11], [1, 2, 1])` on a
+  *FD (Gaussian)* view, then `set_orientation_mode(model, "slow")`: the FRET line (RDA0 20-100 Å) is identical to
+  the one without the distribution (max |ΔE| = 0.0), and a static line does not change with the scalar κ² either
+  (`test_kappa2_regime.py` asserts the latter as current behaviour). *show κ²* in static mode draws a spike at the
+  scalar κ², not the isotropic distribution the model actually averages.
+- **Cause:** the BFF families' `static_orientation` structure index selects `dynamic` / `static_isotropic`
+  (imp.bff `data/model_search/tcspc_fret_*.json`); there is no κ²-spectrum input. `OrientationParameter.orientation_spectrum`
+  (`chisurf/core/models/tcspc/classic_editor.py`) is a plain Python attribute nothing reads. imp.bff's log already
+  lists "a kappa-squared *spectrum* (`orientation_mode = "slow"`)" among the native-kernel gaps.
+- **Blocks:** *compute κ²* in the fit editor and the FRET-line editor only sets the scalar (dynamic) κ²; a restricted
+  (non-isotropic) static ensemble cannot be modelled.
+- **Fix belongs in imp.bff:** a κ² spectrum input on the static path of the FRET families, then wire
+  `orientation_spectrum` to it and let `kappa2_pairs` report the isotropic distribution in static mode.
+
 ## chimol's in-browser labelling circle draws no positions (found 2026-10-13)
 
 status: open

@@ -48,6 +48,16 @@
       }
     },
     {
+      "title": "Choose how \u03ba\u00b2 is averaged",
+      "text": "In the Live model editor, press static \u03ba\u00b2: every molecule keeps its own orientation factor, so one distance becomes a spread of rates. Press Add FRET line again and the new line lies below the dynamic-\u03ba\u00b2 one. Press dynamic \u03ba\u00b2 to go back.",
+      "target": {
+        "name": "kappa2.static"
+      },
+      "await": {
+        "hint": "Press static \u03ba\u00b2 yourself."
+      }
+    },
+    {
       "title": "Keep the line",
       "text": "Save CSV writes the computed quantities. Push to ndX overlays them when an ndX window is open.",
       "target": {

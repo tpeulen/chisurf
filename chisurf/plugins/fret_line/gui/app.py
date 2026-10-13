@@ -25,6 +25,7 @@ from chisurf.emtk.typed_field import typed_number_field
 from chisurf.plugins.emtk_layout import action_button, cap_widths, window_size
 
 from .model import FretLineModel, hex_rgba
+from .sections import LineSections
 
 HERE = Path(__file__).parent
 COMPONENTS_TABLE, LINES_TABLE = "component_rows", "line_rows"
@@ -69,9 +70,18 @@ class FRETLineApp(ImApp):
         )
         self.help_window.on_start_guide = self.tour.start
         self.form.on_used = self.tour.notify_used
+        # The κ² regime and its distribution change the lifetime spectrum a line reads: the shell
+        # fit editor's ``kappa2_controls`` drawer, run on the selected component.
+        self.line_sections = LineSections(
+            lambda: self.model.selected["model"],
+            self.form,
+            self._section_error,
+            self._section_called,
+        )
         self._last_component = self.model.component_index
         self._pending: dict = {}
         self._initial_layout_selected = False
+        self._unfold_orientation = False
         self.docks = DockManager(
             Split(
                 "v",
@@ -125,6 +135,10 @@ class FRETLineApp(ImApp):
         if key == "Advanced.fold":
             self.docks.focus("your_dyes")
             return
+        if str(key).startswith("kappa2."):
+            self.show_advanced("editor")
+            self._unfold_orientation = True
+            return
         for panel_name in ("your_dyes", "components", "sweep", "lines", "editor"):
             pending = list(self._sections(panel_name))
             while pending:
@@ -168,6 +182,7 @@ class FRETLineApp(ImApp):
         self._requests()
         self._draw_notice(box)
         self._draw_file_dialog(box)
+        self.line_sections.draw_dialogs(box)
         self.help_window.draw(box)
         self.tour.draw(*vp.size)
 
@@ -397,6 +412,22 @@ class FRETLineApp(ImApp):
                     "Copy the reference amplitudes and lifetimes into this component; the source stays unchanged."
                 )
             )
+        specs = self.line_sections.specs(model)
+        if specs:
+            # Folded in a narrow window, as the subcomponents are, so the parameter table stays in view.
+            compact = im.get_main_viewport().size[0] < 900
+            orientation_open = True
+            if compact:
+                # A tour step pointing into the fold opens it once; the user's clicks own it after.
+                unfold = True if self._unfold_orientation else None
+                self._unfold_orientation = False
+                orientation_open = im.collapsing_header(tr("Orientation factor κ²"), unfold)
+            else:
+                im.text_unformatted(tr("Orientation factor κ²"))
+            im.set_item_tooltip(tr(str(specs[0].get("description") or "")))
+            self.item_rects["orientation"] = im.get_item_rect()
+            if orientation_open:
+                draw_sections(specs, m, self.form, titles=False)
         subcomponents_open = True
         if im.get_main_viewport().size[0] < 900:
             subcomponents_open = im.collapsing_header(tr("Subcomponents"))
@@ -451,6 +482,16 @@ class FRETLineApp(ImApp):
         if self.error:
             im.text_wrapped(self.error)
         draw_sections(self._sections("editor"), m, self.form, titles=False)
+
+    def _section_error(self, message: str) -> None:
+        self.error = message
+
+    def _section_called(self, section: str, op: str, args: dict) -> None:
+        """Tell the tour which κ² control was used (it waits for the user's own press)."""
+        if op == "set_mode":
+            self.tour.notify_used(
+                "kappa2.static" if args.get("mode") == "slow" else "kappa2.dynamic"
+            )
 
     def _set_scalar(self, model: Any, name: str, previous: float, new: float) -> None:
         """Apply a typed scalar; a value the model rejects (e.g. a negative threshold) is rolled back and reported.

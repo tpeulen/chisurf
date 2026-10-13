@@ -413,10 +413,22 @@ def _background_run(model, section, fit, state) -> dict:
     }
 
 
+def _session_uid(state, member) -> str:
+    """The uid the session lists *member* under: its own, or that of the fit group holding it.
+
+    A session fit is a group (iterating it yields its member fits); a mixture's sources are the
+    members, but the client names fits by the session's uids.
+    """
+    for entry in list(getattr(state, "fits", None) or []):
+        if entry is member or member in (list(entry) if hasattr(entry, "__iter__") else []):
+            return str(getattr(entry, "unique_identifier", "") or "")
+    return str(getattr(member, "unique_identifier", "") or "")
+
+
 def _fit_mixer(model, section, fit, state) -> dict:
     uid = str(getattr(fit, "unique_identifier", "") or "")
     candidates = [
-        {"uid": str(getattr(f, "unique_identifier", "") or ""), "name": str(getattr(f, "name", ""))}
+        {"uid": _session_uid(state, f), "name": str(getattr(f, "name", ""))}
         for f in (_read(model, "lifetime_fits", []) or [])
     ]
     try:
@@ -701,10 +713,10 @@ def _run(model, section, fit, state, which: str) -> dict:
 
 
 def _mixer_add(model, section, fit, state, fit_uids: list, name: str = "") -> dict:
-    by_uid = {
-        str(getattr(f, "unique_identifier", "") or ""): f
-        for f in (_read(model, "lifetime_fits", []) or [])
-    }
+    by_uid = {}
+    for f in _read(model, "lifetime_fits", []) or []:
+        by_uid[str(getattr(f, "unique_identifier", "") or "")] = f
+        by_uid[_session_uid(state, f)] = f
     picked = [by_uid.get(str(u)) for u in (fit_uids or [])]
     if not picked or any(f is None for f in picked):
         raise _Refused("pick fits the mixture lists")
@@ -822,7 +834,37 @@ def model_section_call(
     if fit is None:
         return service_error("fit not found", error_code=NOT_FOUND)
     model = getattr(fit, "model", None)
-    declared = declared_sections(model)[1].get(str(section)) if model is not None else None
+    if model is None:
+        return service_error(
+            f"the model's editor declares no section {section!r}", error_code=INVALID_INPUT
+        )
+    result = call_model_section(model, section, op, args, fit=fit, state=state)
+    if result.get("ok") and not result.get("read_only"):
+        _publish(event_bus, fit, section=str(section), op=str(op))
+    result.pop("read_only", None)
+    return result
+
+
+def call_model_section(
+    model: Any,
+    section: str,
+    op: str,
+    args: dict | None = None,
+    fit: Any = None,
+    state: SessionState | None = None,
+) -> ServiceResult:
+    """Run operation *op* of the custom section *section* on *model* itself, no session needed.
+
+    The same declared-section check and operation table as :func:`model_section_call`, for a
+    tool that holds its own live models (the FRET-line generator's components) and draws their
+    editor sections locally.
+
+    Returns
+    -------
+    dict
+        ``{"ok": True, "result": {...}, "read_only": bool}`` or a service error.
+    """
+    declared = declared_sections(model)[1].get(str(section))
     if declared is None:
         return service_error(
             f"the model's editor declares no section {section!r}", error_code=INVALID_INPUT
@@ -833,20 +875,22 @@ def model_section_call(
             f"section {section!r} has no operation {op!r}", error_code=INVALID_INPUT
         )
     try:
-        result = operation(model, declared, fit, state, **dict(args or {}))
+        result = operation(
+            model, declared, fit, state if state is not None else SessionState(), **dict(args or {})
+        )
     except (_Refused, TypeError) as e:
         return service_error(str(e), error_code=INVALID_INPUT, exception=e)
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
-    if (str(declared.key), str(op)) not in _READ_ONLY:
-        if callable(getattr(model, "find_parameters", None)):
-            model.find_parameters()
-        _publish(event_bus, fit, section=str(section), op=str(op))
-    return {"ok": True, "result": _plain(result)}
+    read_only = (str(declared.key), str(op)) in _READ_ONLY
+    if not read_only and callable(getattr(model, "find_parameters", None)):
+        model.find_parameters()
+    return {"ok": True, "result": _plain(result), "read_only": read_only}
 
 
 __all__ = [
     "CUSTOM_KEYS",
+    "call_model_section",
     "curve_id",
     "declared_sections",
     "model_curve_set",

@@ -47,9 +47,11 @@ own startup stages (item 5): S5 is done.
    with their tests ported (native model tests in `spectra_downloader/tests/test_native.py`; the Qt facts frozen in
    `qt_reference.json`, recorded from the live widgets). The S6-blocker slice (2026-10-13) retired the FRET line
    generator's Qt tool the same way (`fret_line/test/qt_reference.json`, recorded at 26eeba5f8; the manifest has no
-   `gui` entry). Open there: whether the Qt editor's `static κ²` / `dynamic κ²` mode buttons, listed as "no effect
-   on a FRET line" in `okf/plugins/emtk-ports/fret_line/compare.json`, really have none (the emtk editor's Model
-   settings have no κ²-mode control). Trap: a full run of the img_coloc parity file is 2.5 min and
+   `gui` entry). The Qt editor's `static κ²` / `dynamic κ²` buttons were wrongly listed as "no effect on a FRET line":
+   measured, static isotropic κ² moves the standard Gaussian line by up to ΔE = 0.17 (τ_F 1.23 vs 0.12 ns at
+   20 Å). The emtk FRET-line editor now draws the shell's `kappa2_controls` section on its own live components
+   (`fret_line/gui/sections.py` over `call_model_section`), recorded in `qt_reference.json` (`kappa2_static`) and
+   tested (`test_kappa2_regime.py`, parity test). Trap: a full run of the img_coloc parity file is 2.5 min and
    its last test (`zz_the_real_user_settings_were_never_touched`) fails whenever another agent has the emtk shell open,
    because the shell rewrites `~/.chisurf/emtk/emtk_shell.docks.layout.json`. Left in non-test files, each Qt by
    design: the Qt hosts and legacy tools (`code_editor`, `help`, `mmfdb_admin`, `project_browser`, `lightpath_simulator`,
