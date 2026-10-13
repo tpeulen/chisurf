@@ -303,13 +303,17 @@ def _load_ndx_app_factory():
 
 
 def make_app(session_autosave: bool = True, chisurf_rpc=None):
-    """Construct native ndX the way ChiSurf's Qt window builds it, and share its source.
+    """Construct ChiSurf's ndX window (the manifest's ``entrypoints.emtk``) and share its source.
+
+    The one construction every route uses: the emtk shell docks the app, the
+    ``--qt`` shell hosts it in a ``ControlHost``, and :func:`open_in_ndx` /
+    :func:`show_table_in_ndx` reach it through either.
 
     Parameters
     ----------
     session_autosave : bool
         Keep the analysis view in the opened measurement when ndX leaves it (the
-        Qt window's default). A test or a capture passes ``False``: it must never
+        user's window does). A test or a capture passes ``False``: it must never
         write into a measurement unasked.
     chisurf_rpc : object, optional
         The ChiSurf RPC client "Send selection to" talks to; the in-process client
@@ -342,11 +346,11 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
     guide_feature = _add_guide(app)
 
     def set_frame_request_callback(callback):
-        # emtk's Qt host (what ChiSurf's menu wraps the app in) never calls the
-        # app's close(); it only detaches this callback when its window closes.
-        # A callback removed after one was set therefore means "the window is
-        # gone": close as the Qt NdxWindow does (session kept, layout saved,
-        # Global View slot emptied).
+        # emtk's Qt host (what the --qt shell wraps the app in) never calls the
+        # app's close(); it only detaches this callback when its window closes
+        # or is destroyed (also when it was embedded in another window). A
+        # callback removed after one was set therefore means "the window is
+        # gone": close (session kept, layout saved, Global View slot emptied).
         had_host = app._chisurf_request_frame_callback is not None
         app._chisurf_request_frame_callback = callback
         if callback is None and had_host and not app._chisurf_closed:
@@ -370,8 +374,7 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
         guide_feature.close()
         app._chisurf_request_frame_callback = None
         original_close()
-        # Empty the Global View slot if it still holds this app's constants, as
-        # the Qt window does when it closes.
+        # Empty the Global View slot if it still holds this app's constants.
         withdraw_constants(app)
 
     def exit_app():
@@ -386,6 +389,40 @@ def make_app(session_autosave: bool = True, chisurf_rpc=None):
 
     attach_native_state("ndxplorer", app)
     return app
+
+
+def open_ndx_apps() -> list:
+    """The ChiSurf ndX apps of this process that are open, oldest first."""
+    _load_ndx_app_factory()
+    from ndxplorer.app.frame import live_apps
+
+    return [app for app in live_apps() if not getattr(app, "_chisurf_closed", False)]
+
+
+def _ndx_app():
+    """The newest open ndX app; ChiSurf's window opens one when there is none.
+
+    The window opens the plugin the way its menu does: the manifest's emtk
+    entry point, docked in the emtk shell and hosted in a ``ControlHost`` by
+    the ``--qt`` shell -- so a tool reaches the same app whichever shell runs.
+
+    Raises
+    ------
+    RuntimeError
+        When no ndX window is open and none can be started (no main window).
+    """
+    apps = open_ndx_apps()
+    if not apps:
+        import chisurf as cs
+
+        window = getattr(cs, "cs", None)
+        if window is None or not hasattr(window, "load_and_show_plugin"):
+            raise RuntimeError("ndX is not open and there is no ChiSurf window to open it in")
+        window.load_and_show_plugin("chisurf.plugins.ndxplorer")
+        apps = open_ndx_apps()
+        if not apps:
+            raise RuntimeError("ndX did not start")
+    return apps[-1]
 
 
 def open_in_ndx(path) -> object:
@@ -414,25 +451,43 @@ def open_in_ndx(path) -> object:
 
     if handoff.available("ndxplorer", "open_path"):
         return handoff.hand_off("ndxplorer", "open_path", {"path": str(path)})
-    _load_ndx_app_factory()
-    from ndxplorer.app.frame import live_apps
-
-    apps = [app for app in live_apps() if not getattr(app, "_chisurf_closed", False)]
-    if not apps:
-        import chisurf as cs
-
-        window = getattr(cs, "cs", None)
-        if window is None or not hasattr(window, "load_and_show_plugin"):
-            raise RuntimeError("ndX is not open and there is no ChiSurf window to open it in")
-        window.load_and_show_plugin("chisurf.plugins.ndxplorer")
-        apps = [app for app in live_apps() if not getattr(app, "_chisurf_closed", False)]
-        if not apps:
-            raise RuntimeError("ndX did not start")
-    app = apps[-1]
+    app = _ndx_app()
     app.open_path(str(path))
     request = getattr(app, "request_frame", None)
     if callable(request):
         request()
+    return app
+
+
+def show_table_in_ndx(table, path=None) -> object:
+    """Show an in-memory table in ndX (what a tool that has just computed bursts hands over).
+
+    Parameters
+    ----------
+    table : DataSource or column store
+        What :func:`receive_table` takes.
+    path : str, optional
+        Where the table came from, when there is such a place.
+
+    Returns
+    -------
+    object
+        The ndX app that shows it; with the emtk shell open, the shell's record of the ndX dock.
+
+    Raises
+    ------
+    RuntimeError
+        When no ndX window is open and none can be started (no main window).
+    """
+    from chisurf.core.plugin import handoff
+
+    payload = {"table": table}
+    if path:
+        payload["path"] = str(path)
+    if handoff.available("ndxplorer", "table"):
+        return handoff.hand_off("ndxplorer", "table", payload)
+    app = _ndx_app()
+    receive_table(app, payload)
     return app
 
 
@@ -464,4 +519,6 @@ def receive_table(app, payload: dict) -> None:
     if payload.get("path"):
         app.model.path = str(payload["path"])
     app.data_changed()
-    app.request_frame()
+    request = getattr(app, "request_frame", None)
+    if callable(request):
+        request()

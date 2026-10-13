@@ -86,18 +86,18 @@ def test_lines_service_phasor_and_fret_over_inprocess_client(phasor_client):
     assert len(fret_lines[0]["x"]) == 6
 
 
-def test_chisurf_window_draws_phasor_geometry_as_overlays(client, qtbot, tmp_path, monkeypatch):
+def test_chisurf_window_draws_phasor_geometry_as_overlays(client, tmp_path, monkeypatch):
     """ChiSurf's ndX window has the client, and phasor geometry without it: overlays."""
     monkeypatch.setenv("NDXPLORER_SETTINGS_DIR", str(tmp_path))
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+    from chisurf.plugins.ndxplorer.gui.app import make_app
 
-    window = build_ndxplorer_window(chisurf_rpc=client, session_autosave=False, layout_store=None)
+    app = make_app(chisurf_rpc=client, session_autosave=False)
     try:
-        assert window.app.chisurf_rpc is client
-        assert all(f.name != "phasor" for f in window.app.features)
-        overlays = next(f for f in window.app.features if f.name == "overlays")
+        assert app.chisurf_rpc is client
+        assert all(f.name != "phasor" for f in app.features)
+        overlays = next(f for f in app.features if f.name == "overlays")
         assert {"Universal circle", "Lifetime points", "FRET trajectory"} <= set(
             overlays.overlays.equation_options()
         )
     finally:
-        window.close()
+        app.close()

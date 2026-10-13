@@ -86,6 +86,20 @@ ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
 Phasor plots are not a hosted extra: they are ordinary overlays, the same in
 and outside ChiSurf ([below](#phasor-plots-are-overlays)).
 
+Both ChiSurf shells open the same app: the emtk shell docks it, the `--qt`
+shell shows it in a window of its own (there is no separate Qt ndX window). A
+script or a tool reaches the open window — or has ChiSurf open one — with:
+
+```python
+from ndxplorer.core.data_source import DataSource
+from chisurf.plugins.ndxplorer.gui.app import open_in_ndx, show_table_in_ndx
+from chisurf.plugins.ndxplorer.calibration_bridge import find_ndx_windows
+
+open_in_ndx("burstwise_All 0.1500#30")    # a folder, a .pto or a table file
+show_table_in_ndx(DataSource.from_columns({"I_DD": dd, "I_DA": da}))  # in-memory
+find_ndx_windows()                          # the open windows' constants and data
+```
+
 (guide-ndx-playback)=
 ## Play the measurement back
 

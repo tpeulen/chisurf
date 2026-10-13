@@ -1,9 +1,10 @@
-"""The native ndX factory builds the app the way ChiSurf's Qt NdxWindow does.
+"""The native ndX factory builds the app the way ChiSurf's Qt NdxWindow did.
 
-Both hosts run ndX's own ``NdxApp``; what can differ is the construction
-(``build_ndxplorer_window`` vs ``gui.app.make_app``) and the closing. The Qt
-facts were recorded from ``build_ndxplorer_window`` into ``qt_reference.json``
-(the window's emtk inventory and menu bar), so this test needs no Qt.
+Both hosts ran ndX's own ``NdxApp``; what could differ was the construction
+(the retired ``window.build_ndxplorer_window`` vs ``gui.app.make_app``) and the
+closing. The Qt facts were recorded from ``build_ndxplorer_window`` into
+``qt_reference.json`` (the window's emtk inventory and menu bar) before the Qt
+window was retired, so this test needs no Qt.
 """
 
 from __future__ import annotations

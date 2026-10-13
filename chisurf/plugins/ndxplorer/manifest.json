@@ -12,6 +12,13 @@
   ],
   "icon": "\ud83d\udd2d",
   "state_namespace": "ndxplorer",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": "ndxplorer"
+    }
+  },
   "accepts": [
     {
       "name": "open_path",
@@ -27,7 +34,6 @@
     }
   ],
   "entrypoints": {
-    "gui": "chisurf.plugins.ndxplorer.window:build_ndxplorer_window",
     "emtk": "chisurf.plugins.ndxplorer.gui.app:make_app",
     "cli": "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"
   },

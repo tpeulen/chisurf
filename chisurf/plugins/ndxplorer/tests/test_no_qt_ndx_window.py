@@ -2,11 +2,14 @@
 
 ndX's Qt window (``ndxplorer.core.plot_main.NDXplorer``, its ``ui`` /
 ``widgets`` packages and the pyqtgraph plotting modules) was deleted from
-ndXplorer; the emtk app is its only GUI. Every route in ChiSurf goes through
-:func:`chisurf.plugins.ndxplorer.window.build_ndxplorer_window`, which hosts the
-emtk app. An import of one of the deleted modules would fail at run time,
-usually inside a ``try`` that turns it into a silently dead button, so it fails
-here instead.
+ndXplorer; the emtk app is its only GUI. ChiSurf's own Qt window around it
+(the plugin's ``window`` module, ``NdxWindow`` in a ``ChisurfDockTool``) is
+retired too: every route goes through :func:`chisurf.plugins.ndxplorer.gui.app.make_app`
+(the manifest's ``entrypoints.emtk``; the ``--qt`` shell hosts it in a
+``ControlHost``) or reaches the open app through ``open_in_ndx`` /
+``show_table_in_ndx``. An import of one of the deleted modules would fail at
+run time, usually inside a ``try`` that turns it into a silently dead button,
+so it fails here instead.
 """
 
 from __future__ import annotations
@@ -30,6 +33,8 @@ QT_WINDOW = re.compile(
     r"|\bndxplorer\.plotting\.(?:curve_overlay|pg_image_widget|plot_control|plot_helpers"
     r"|plot_umap|image_items|colormaps|histograms|plot_update_helpers|api|scatter)\b"
     r"|\bndxplorer\.io\.(?:file_operations|file_open_helpers|async_loader)\b"
+    # ChiSurf's retired Qt host window for the app.
+    r"|\bchisurf\.plugins\.ndxplorer\.window\b"
 )
 
 

@@ -119,33 +119,28 @@ def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict
 
 
 def find_ndx_windows() -> list:
-    """Return the open in-process ndX windows.
+    """Return the open in-process ndX windows, as their calibration surfaces.
 
-    ndX runs inside the ChiSurf process, so a tool that wants to push a
-    calibration (or read burst columns) only has to find the window among the
-    top-level Qt widgets. Returns an empty list when Qt is not running — the
-    callers stay usable head-less.
+    ndX runs inside the ChiSurf process, and every ndX app ChiSurf opens
+    (:func:`chisurf.plugins.ndxplorer.gui.app.make_app`, whichever shell hosts
+    it) registers its :class:`~chisurf.plugins.ndxplorer.gui.app.ChiSurfNdxSource`
+    -- ``data_source``, ``constants``, ``update_plots`` -- as an ``"ndx"``
+    session source while it is open. A tool that pushes a calibration or reads
+    burst columns finds the windows there, with or without a GUI toolkit.
+
+    This used to scan Qt's top-level widgets for one with ``constants`` and
+    ``data_source``; ChiSurf's Qt ndX window had neither (it held the app), so
+    the scan found nothing and *Load from ndX* / *Push to ndX* said no window
+    was open while one was.
 
     Returns
     -------
     list
-        Every ndX-like top-level window, newest last.
+        One source per open ndX window, newest last.
     """
-    try:
-        from qtpy import QtWidgets
-    except Exception:  # pragma: no cover - head-less
-        return []
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        return []
-    windows = []
-    for widget in app.topLevelWidgets():
-        looks_like_ndx = type(widget).__name__ == "NDXplorer" or (
-            hasattr(widget, "constants") and hasattr(widget, "data_source")
-        )
-        if looks_like_ndx:
-            windows.append(widget)
-    return windows
+    from chisurf.emtk.session_sources import sources
+
+    return list(sources("ndx"))
 
 
 def _artifacts(measurement):
@@ -500,7 +495,7 @@ def optimize_calibration_from_ndx(
     (``lightpath``, keyword arguments of
     :func:`~chisurf.core.fluorescence.fret.calibration.set_priors_from_lightpath`,
     which also seed gamma/alpha/delta at the optics values) -- and writes the
-    result into the Qt window: the constants through its parameter table, the
+    result into the ndX window: the constants through its parameter table, the
     accurate columns into its data source.
 
     Parameters are the options of the calibration (see ``calibrate_columns``);

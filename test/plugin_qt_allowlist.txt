@@ -43,7 +43,3 @@ chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
 chisurf/plugins/icon_utils.py
 chisurf/plugins/misc/games/number_quest/gui/tool.py
-chisurf/plugins/ndxplorer/__init__.py
-chisurf/plugins/ndxplorer/calibration_bridge.py
-chisurf/plugins/ndxplorer/tests/test_window_routes.py
-chisurf/plugins/ndxplorer/window.py

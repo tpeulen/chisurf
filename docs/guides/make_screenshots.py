@@ -49,17 +49,21 @@ def _grab(widget, name):
 
 def _grab_ndx_overlay_axes():
     """Measured MFD bursts: pushing a FRET line selects its lifetime/E projection."""
-    from chisurf.plugins.fret_line.gui.model import FretLineModel, push_to_ndx
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
+    from emtk.qt_host import ControlHost
 
-    source = pathlib.Path("modules/ndxplorer/test/mfd/burstwise_All 0.1500#30")
+    from chisurf.plugins.fret_line.gui.model import FretLineModel, push_to_ndx
+    from chisurf.plugins.ndxplorer.gui.app import make_app
+
+    source = pathlib.Path("modules/ndxplorer/tests/mfd/burstwise_All 0.1500#30")
     with tempfile.TemporaryDirectory(prefix="ndx-overlay-", dir=os.environ.get("TMPDIR")) as folder:
         copied = pathlib.Path(folder) / source.name
         shutil.copytree(source, copied)
-        window = build_ndxplorer_window(str(copied), session_autosave=False, layout_store=None)
+        # The emtk app in the host the --qt shell gives it.
+        app = make_app(session_autosave=False)
+        app.open_path(str(copied))
+        window = ControlHost(app)
         tool = FretLineModel()
         try:
-            app = window.app
             assert app.model.has_data, app.model.error
             app.model.set_parameter("x", "FRET efficiency")
             app.model.set_parameter("y", "Tau (green)")
@@ -73,10 +77,11 @@ def _grab_ndx_overlay_axes():
             window.resize(900, 600)
             for _ in range(4):
                 QApplication.instance().processEvents()
-                window.host.update()
+                window.update()
             _grab(window, "ndxplorer_overlay_axes.png")
         finally:
             window.close()
+            app.close()
             tool.close()
 
 

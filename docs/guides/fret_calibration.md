@@ -376,8 +376,9 @@ The optimized calibration can also be pushed into an open
 FRET uses the data-optimized factors:
 
 ```python
-from chisurf.plugins.ndxplorer.calibration_bridge import push_calibration_to_ndx
-push_calibration_to_ndx(ndx_window, calib)
+from chisurf.plugins.ndxplorer.calibration_bridge import find_ndx_windows, push_calibration_to_ndx
+for ndx_window in find_ndx_windows():      # every open ndX window, newest last
+    push_calibration_to_ndx(ndx_window, calib)
 ```
 
 ## Validating with simulated data

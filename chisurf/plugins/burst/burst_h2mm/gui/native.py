@@ -193,18 +193,10 @@ class H2mmNativeApp(TourTarget, ImApp):
             self.model.status_text = "No dwells to explore: run a fit first."
             return False
         try:
-            from chisurf.core.plugin import handoff
+            from chisurf.plugins.ndxplorer.gui.app import show_table_in_ndx
 
-            if handoff.available("ndxplorer", "table"):
-                # The ndX dock of the ChiSurf window takes the table once it is built.
-                self._ndx_window = handoff.hand_off("ndxplorer", "table", {"table": table})
-            else:
-                from ndxplorer.core.data_source import DataSource
-
-                from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-
-                self._ndx_window = build_ndxplorer_window(data_source=DataSource(table))
-                self._ndx_window.show()
+            # The ndX dock of the emtk shell, else the ndX window of the --qt shell.
+            self._ndx_window = show_table_in_ndx(table)
         except Exception as exc:
             self.model.status_text = f"ndX could not be opened: {exc}"
             return False

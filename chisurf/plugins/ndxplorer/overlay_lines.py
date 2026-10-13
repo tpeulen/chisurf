@@ -3,8 +3,8 @@
 Another tool computes lines (the FRET-line tool's *Push to ndX*) and ndX draws
 each one as a data curve of its Overlays tab. Every live
 :class:`ndxplorer.app.frame.NdxApp` takes them, whichever host shows it (the
-native emtk window, or the legacy Qt :class:`~chisurf.plugins.ndxplorer.window.NdxWindow`),
-so this lives apart from any host.
+emtk shell's dock, the ``--qt`` shell's ``ControlHost``, a native window), so
+this lives apart from any host.
 """
 
 from __future__ import annotations
@@ -20,8 +20,7 @@ def push_overlay_lines(lines, source: str = "ChiSurf") -> int:
     """Draw tabulated lines in every open ndX window (``NdxApp.add_overlay_lines``).
 
     Every app of :func:`ndxplorer.app.frame.live_apps` takes them, whichever
-    route opened it (the Qt :class:`~chisurf.plugins.ndxplorer.window.NdxWindow`, or the emtk entry point
-    hosted directly); each becomes a data curve of its Overlays tab.
+    route opened it; each becomes a data curve of its Overlays tab.
 
     Parameters
     ----------

@@ -25,6 +25,13 @@ various correction factors and calculation methods.
 When working with image spectroscopy data, ndX allows pixel-by-pixel analysis
 of multiparameter fluorescence information, enabling spatial correlation of
 spectroscopic properties.
+
+The window is ndX's emtk app (:func:`chisurf.plugins.ndxplorer.gui.app.make_app`,
+the manifest's ``entrypoints.emtk``): the emtk shell docks it and the ``--qt``
+shell hosts it in a ``ControlHost``. Importing this package costs no GUI toolkit
+and opens nothing. A tool that hands ndX a file or a table calls
+:func:`~chisurf.plugins.ndxplorer.gui.app.open_in_ndx` or
+:func:`~chisurf.plugins.ndxplorer.gui.app.show_table_in_ndx`.
 """
 
 name = "Tools:Views:ndX"
@@ -34,39 +41,38 @@ import chisurf as cs
 log = cs.logging.info
 
 
+def main(path=None) -> int:
+    """Open ndX on its own, with no ChiSurf window: the emtk app in emtk's native host.
+
+    Parameters
+    ----------
+    path : str, optional
+        A burst-analysis folder, a ``.pto`` or a table to open.
+
+    Returns
+    -------
+    int
+        A process exit code.
+    """
+    from emtk.native import NativeHost
+
+    from chisurf.plugins.ndxplorer.gui.app import make_app
+
+    app = make_app()
+    if path:
+        app.open_path(str(path))
+    host = NativeHost(app, title=app.window_title)
+    try:
+        host.run()
+    finally:
+        app.close()
+    return 0
+
+
 if __name__ == "__main__":
     import sys
 
-    from qtpy.QtWidgets import QApplication
-
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-
-    app = QApplication(sys.argv)
-    ndx = build_ndxplorer_window(sys.argv[1] if len(sys.argv) > 1 else None)
-    ndx.show()
-    sys.exit(app.exec())
-
-if __name__ == "plugin":
-    # The GUI imports live here, not at module level: importing this package
-    # (as every ``chisurf.plugins.ndxplorer.*`` import does) must not pull in
-    # Qt, and only running it as a plugin opens a window.
-    import pathlib
-    import sys
-
-    _ndxplorer_module = pathlib.Path(__file__).resolve().parents[3] / "modules" / "ndxplorer"
-    if _ndxplorer_module.is_dir():
-        p = str(_ndxplorer_module)
-        if p not in sys.path:
-            sys.path.insert(0, p)
-
-    # The same window the menu opens (manifest ``entrypoints.gui``): one
-    # construction, so the two routes cannot drift apart again.
-    from chisurf.plugins.ndxplorer.window import build_ndxplorer_window
-
-    ndx = build_ndxplorer_window()
-    ndx.show()
-    ndx.raise_()
-    ndx.activateWindow()
+    raise SystemExit(main(sys.argv[1] if len(sys.argv) > 1 else None))
 
 
 cli_entrypoint = "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"

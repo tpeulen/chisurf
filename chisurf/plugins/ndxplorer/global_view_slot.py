@@ -1,8 +1,8 @@
 """ndX's slot in ChiSurf's Global View, without Qt.
 
 The ndX app registers its constants group under :data:`GLOBAL_VIEW_OWNER`; the
-window that hosts it -- the Qt ``NdxWindow`` or the emtk app -- withdraws it when
-it closes, unless a later window has taken the slot.
+app withdraws it when it closes (``gui.app.make_app``: its host's window closing
+closes it), unless a later window has taken the slot.
 """
 
 from __future__ import annotations

@@ -4,7 +4,7 @@ In the GUI, ndX runs in-process with ChiSurf, so it does not need a socket: it c
 be handed an :class:`~chisurf.core.plugin.client.InProcessClient` wired to a
 ``ServiceDispatcher`` that has ChiSurf's services registered. That client satisfies
 ndX's chisurf-free ``RpcClient`` contract (``call(method, params)``), so the app
-(``app.chisurf_rpc``, set by :func:`chisurf.plugins.ndxplorer.window.build_ndxplorer_window`)
+(``app.chisurf_rpc``, set by :func:`chisurf.plugins.ndxplorer.gui.app.make_app`)
 gains ChiSurf's RPC methods with no server process and no configuration.
 
 The dispatcher is built with the **core manifest** (``fit.*``, ``dataset.*``,
