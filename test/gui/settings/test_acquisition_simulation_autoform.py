@@ -17,7 +17,7 @@ def test_simulation_settings_model_serializes_enabled_channels():
     set were write-only -- ``to_parameters`` had stopped reading them, so the
     values here were silently replaced by the defaults -- and are now gone.
     """
-    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.settings_model import (
         SimulationSettingsModel,
     )
 
@@ -41,17 +41,28 @@ def test_simulation_settings_model_serializes_enabled_channels():
     assert params["N_ph_per_file"] == 10
 
 
-def test_simulation_setup_dialog_renders_autoform(qapp):
-    """The setup dialog should render through AutoForm and expose parameters."""
-    from chisurf.gui.autoform import AutoForm
-    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
-        EnhancedSimulationSetupDialog,
-    )
+def test_simulation_setup_dialog_renders_autoform():
+    """The setup dialog renders its AutoForm view.json and hands its parameters to OK."""
+    from emtk.testing import RecordingPainter
 
-    dialog = EnhancedSimulationSetupDialog()
-    assert dialog.findChildren(AutoForm)
+    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+    from chisurf.plugins.core.acq.gui.sim_setup import SimulationSetupDialog
 
-    params = dialog.get_parameters()
+    app = AcquisitionApp(AcquisitionNativeModel())
+    applied = []
+    try:
+        dialog = SimulationSetupDialog(None, on_apply=applied.append)
+        app.sim_setup = dialog
+        dialog.show()
+        for _ in range(3):
+            painter = RecordingPainter()
+            app.draw(painter, 0, 0, 900, 1000)
+        assert "Simulation Setup" in painter.strings and "Acquisition" in painter.strings
+        dialog.apply()
+    finally:
+        app.close()
+    assert len(applied) == 1
+    params = applied[0]
     assert params["N_species"] == 1
     assert params["N_channels"] == 2
     assert params["pulsed_exc"] == 0
@@ -111,6 +122,7 @@ def _decoded_channels(params, tmp_path):
     """Run the simulation for ``params`` and return decoded routing channels."""
     import numpy as np
     import tttrlib
+
     from chisurf.plugins.core.acq.tcspc_devices.simulation.core import algorithms as alg
 
     engine = alg.build_engine(params)
@@ -124,7 +136,6 @@ def _decoded_channels(params, tmp_path):
     return set(int(c) for c in np.unique(tttr.routing_channels))
 
 
-import pytest
 
 
 @pytest.mark.parametrize(
@@ -138,7 +149,7 @@ def test_simulation_detectors_decode_to_declared_channels(tmp_path, red, yellow,
     simulated channel ``i``). A flat ``det, src`` pair list silently sends the
     second detector to channel 0.
     """
-    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.settings_model import (
         SimulationSettingsModel,
     )
 

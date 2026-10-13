@@ -50,8 +50,11 @@ an output capability; it is not a blanket promise that every device writes raw d
 save/load uses a chosen JSON file and does not initialize hardware. Simulation provides both
 basic controls and a full advanced parameter JSON editor validated by the real simulator engine.
 All native result tabs derive count, decay/intensity, correlation, burst/phasor, macrotime, and
-MCS state from the pipeline rather than fabricated display data. Vendor-specific card setup
-dialogs remain a legacy Qt boundary because their wrappers do not expose a Qt-free setup API.
+MCS state from the pipeline rather than fabricated display data. **Device Setup…** opens the
+selected device's setup card in the app: B&H SPC (card detection, active modules, CFD, Sync, TAC,
+Timing and Mode parameters, Read values, Save/Load JSON, Apply), PicoQuant (firmware-owned mode
+and reference, maximum photons, device status), BrickMic (counter window, acquisition rate, buffer
+size, photons per SPC file) and the simulator (species, kinetics, decay editor).
 
 ### GUI Mode
 

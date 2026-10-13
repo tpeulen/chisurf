@@ -3,7 +3,7 @@
 This script combines two logical steps:
 
 1. ``config`` – generate a JSON configuration for the simulation
-   device (compatible with EnhancedSimulationSetupDialog.get_parameters()).
+   device (the dictionary ``SimulationSettingsModel.to_parameters()`` returns).
 2. ``run`` – read such a JSON file and generate SPC-132 files with the
    photon simulator in the TTTR library.
 
@@ -290,8 +290,8 @@ def main() -> None:
     "config",
     help=(
         "Generate a JSON configuration for the TCSPC simulation device. "
-        "Did you know that the EnhancedSimulationSetupDialog in the GUI "
-        "uses the same parameter structure? This step lets you build such a "
+        "The Simulation Setup dialog of the acquisition tool uses the same "
+        "parameter structure; this step lets you build such a "
         "configuration without opening the GUI."
     ),
 )

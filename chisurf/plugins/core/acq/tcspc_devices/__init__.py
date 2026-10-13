@@ -1,8 +1,9 @@
-"""Legacy Qt device wrappers, loaded only when the Qt acquisition tool asks.
+"""TCSPC device wrappers (B&H SPC, PicoQuant, BrickMic, simulator) for the acquisition tool.
 
-The simulator's Qt-free engine lives under this package too.  Eagerly importing
-the legacy device exports therefore made a simulator-only consumer import Qt
-before it had chosen a UI.  Keep those compatibility exports lazy instead.
+The device setup dialogs are the acquisition app's emtk cards
+(``chisurf.plugins.core.acq.gui.setup_models`` and ``gui.sim_setup``); this package holds
+only the device side. The exports stay lazy so a simulator-only consumer does not load
+every vendor wrapper.
 """
 
 from __future__ import annotations
@@ -12,14 +13,11 @@ from typing import Any
 __all__ = [
     "TCSPCDeviceABC",
     "TCSPCDevice",
-    "BHSPCCardSetupDialog",
-    "SimulationSetupDialog",
-    "PicoQuantSetupDialog",
 ]
 
 
 def __getattr__(name: str) -> Any:
-    """Lazily resolve legacy Qt device exports without burdening the simulator."""
+    """Lazily resolve the device exports without burdening the simulator."""
     if name == "TCSPCDeviceABC":
         from .abc import TCSPCDeviceABC
 
@@ -28,16 +26,4 @@ def __getattr__(name: str) -> Any:
         from .device_factory import TCSPCDevice
 
         return TCSPCDevice
-    if name == "BHSPCCardSetupDialog":
-        from .bh_spc import BHSPCCardSetupDialog
-
-        return BHSPCCardSetupDialog
-    if name == "SimulationSetupDialog":
-        from .simulation import SimulationSetupDialog
-
-        return SimulationSetupDialog
-    if name == "PicoQuantSetupDialog":
-        from .picoquant import PicoQuantSetupDialog
-
-        return PicoQuantSetupDialog
     raise AttributeError(name)

@@ -2,7 +2,7 @@
 
 The dialog edits :class:`SimulationSetupModel`, the Qt-free
 :class:`~chisurf.plugins.core.acq.tcspc_devices.simulation.settings_model.SimulationSettingsModel`
-that the Qt dialog edits too, so both say the same thing about what a value means. What this
+that the CLI serializes too, so both say the same thing about what a value means. What this
 module adds is the emtk side of that model: the species grid (molecules, diffusion, per-colour
 brightness, background), the two N x N kinetics rate grids and the per-species decay editor, all
 declared as ``data_table`` sections in ``sim_setup_emtk.view.json`` / ``sim_decay_emtk.view.json``.
@@ -399,7 +399,7 @@ class SimulationSetupModel(SimulationSettingsModel):
 class DecayEditModel:
     """Per-species decay editing state for the decay dialog (written back on OK).
 
-    The edits are local copies, as in the Qt editor: *Cancel* discards them, *OK* writes the
+    The edits are local copies: *Cancel* discards them, *OK* writes the
     lifetime spectra, pattern files and the shared Gaussian IRF width to the setup model.
     """
 

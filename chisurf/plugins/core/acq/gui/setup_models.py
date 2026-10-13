@@ -1,7 +1,7 @@
 """Qt-free setup contracts for native acquisition device configuration.
 
 These models deliberately speak the existing wrapper APIs.  They are usable
-with deterministic fakes, and keep Qt dialog imports out of the native factory.
+with deterministic fakes; the acquisition app draws them as its Device Setup cards.
 """
 
 from __future__ import annotations
@@ -221,11 +221,16 @@ class PicoQuantSetupModel:
         except Exception as exc:
             self.status = f"PicoQuant status query failed: {exc}"
             return
-        self.status = (
-            "No PicoQuant devices detected."
-            if not devices
-            else f"PicoQuant API reports {len(devices)} device(s): {devices}"
-        )
+        if not devices:
+            self.status = "No PicoQuant devices detected."
+            return
+        lines = [f"PicoQuant API reports {len(devices)} device(s):"]
+        for dev in devices:
+            info = dev if isinstance(dev, dict) else {}
+            lines.append(
+                f"Device: {info.get('device_id', 'Unknown')}  Status: {info.get('status', 'Unknown')}"
+            )
+        self.status = "\n".join(lines)
 
     def apply(self, acquisition: Any) -> bool:
         """Map the retained maximum-photons setting to the native global stop limit."""
@@ -238,12 +243,11 @@ class PicoQuantSetupModel:
 
 
 class BrickMicSetupModel:
-    """Qt-free BrickMic configuration contract mirroring the retained Qt dialog.
+    """BrickMic configuration contract of the Device Setup card.
 
-    Reads/writes the same six backend attributes the Qt ``BrickMicSetupDialog``
-    touches: ``channels``, ``start_ctr``, ``end_ctr``, ``acquisition_rate``,
-    ``buffer_size`` and ``N_ph_per_file``.  Channel count is kept consistent
-    with the counter window exactly as the Qt ``accept`` does.
+    Reads/writes six backend attributes: ``channels``, ``start_ctr``, ``end_ctr``,
+    ``acquisition_rate``, ``buffer_size`` and ``N_ph_per_file``.  Channel count is kept consistent
+    with the counter window (``end - start + 1``).
     """
 
     FIELDS = (
@@ -274,7 +278,7 @@ class BrickMicSetupModel:
         self.status = "Edit values, then Apply to write them to the BrickMic backend."
 
     def apply(self) -> bool:
-        """Write every retained value, keeping channels consistent (as Qt did)."""
+        """Write every value, keeping channels consistent with the counter window."""
         brick = self.device
         if brick is None:
             self.status = "No BrickMic backend was supplied; nothing was written."

@@ -30,15 +30,6 @@ __all__ = [
     "minimal_spcm_ini",
     "ini_file",
     "BHSPCDevice",
-    "BHSPCCardSetupDialog",
     "BeckerHicklSPCSetupReader",
 ]
 
-
-def __getattr__(name):
-    """Load the retained Qt card dialog only for legacy callers that request it."""
-    if name == "BHSPCCardSetupDialog":
-        from .card_setup_dialog import BHSPCCardSetupDialog
-
-        return BHSPCCardSetupDialog
-    raise AttributeError(name)

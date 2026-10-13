@@ -36,9 +36,12 @@ for the UI. Each tab has its own controls: channel pairs, binning, **Set to mean
 bin width and update rate. Routing channels, correlation pairs and MCS bin width
 apply when the next acquisition starts.
 
-Vendor-specific setup dialogs remain a legacy Qt configuration boundary: their
-wrappers expose Qt dialogs rather than a Qt-free configuration API, so this
-native app never fakes a successful card-setup dialog.
+**Device Setup…** opens the setup card of the selected device: B&H SPC (Detect
+Cards, active modules, the CFD, Sync, TAC, Timing and Mode parameters, Read
+values, Save/Load JSON, Apply), PicoQuant (firmware-owned mode and reference,
+maximum photons, device status), BrickMic (counter window, acquisition rate,
+buffer size, photons per SPC file). Apply writes to the device; OK / close and
+Cancel never write edits that were not applied.
 
 ## Further reading
 

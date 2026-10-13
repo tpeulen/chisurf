@@ -1,10 +1,14 @@
-"""Simulator compatibility exports, loaded lazily around the Qt-free core."""
+"""Simulator exports, loaded lazily around the Qt-free core.
+
+The setup dialog is the acquisition app's emtk ``SimulationSetupDialog``
+(``chisurf.plugins.core.acq.gui.sim_setup``).
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["SimulationDevice", "TttrlibSimulator", "BurbulatorSimulator", "SimulationSetupDialog"]
+__all__ = ["SimulationDevice", "TttrlibSimulator", "BurbulatorSimulator"]
 
 
 def __getattr__(name: str) -> Any:
@@ -13,10 +17,6 @@ def __getattr__(name: str) -> Any:
         from .core.streaming import TttrlibSimulator
 
         return TttrlibSimulator
-    if name == "SimulationSetupDialog":
-        from .setup_dialog import EnhancedSimulationSetupDialog
-
-        return EnhancedSimulationSetupDialog
     if name in {"BurbulatorSimulator", "SimulationDevice"}:
         from .wrapper import BurbulatorSimulator, SimulationDevice
 

@@ -4,8 +4,8 @@ This directory contains a command-line tool that interacts with the
 Burbulator-based TCSPC simulation used by the `acq` plugin.
 
 It is intentionally **GUI-free** and can be used on headless machines.
-The JSON format it uses is compatible with the enhanced GUI
-`EnhancedSimulationSetupDialog` in `setup_dialog.py`.
+The JSON format it uses is the one the acquisition app's *Simulation Setup*
+dialog edits (`SimulationSettingsModel.to_parameters()` in `settings_model.py`).
 
 ---
 
@@ -24,7 +24,7 @@ The unified CLI provides two separate steps as Click subcommands:
 **Purpose:**
 
 - Generate a JSON configuration with the same parameter structure as
-  `EnhancedSimulationSetupDialog.get_parameters()`.
+  `SimulationSettingsModel.to_parameters()` (the *Simulation Setup* dialog).
 - Cover the **full kinetic scheme** and all relevant simulation fields:
   species arrays (`M`, `D`, `q`, `q_bg`), kinetic matrices (`k_rad`,
   `k_nrad`), dark-state rates (`k_bd`, `k_bb`, `k_db`), TAC/IRF,
@@ -122,9 +122,9 @@ Key options:
 
 ---
 
-## Relationship to the GUI `setup_dialog`
+## Relationship to the GUI *Simulation Setup* dialog
 
-- The JSON keys are compatible with `EnhancedSimulationSetupDialog`:
+- The JSON keys are the ones the *Simulation Setup* dialog writes:
   `N_species`, `M`, `D`, `q`, `q_bg`, `k_rad`, `k_nrad`, `k_bd`, `k_bb`,
   `k_db`, `box_xy`, `box_z`, `focus_type`, `focus_param`, `dt`,
   `N_ph_max`, `N_channels`, `N_tac_channels`, `tac_dt`, `laser_period`,

@@ -214,13 +214,11 @@ def test_the_browse_button_opens_the_folder_chooser_and_choose_stores_the_folder
     assert child.dialog is None and model.config["output_path"] == str(target)
 
 
-def test_the_acquisition_defaults_equal_what_the_qt_simulator_dialog_writes():
-    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
-        SimulationSettingsModel,
-    )
+def test_the_acquisition_defaults_equal_what_the_simulator_setup_dialog_writes():
+    from chisurf.plugins.core.acq.gui.sim_setup import SimulationSetupModel
     from chisurf.plugins.core.setup.gui.acq_app import simulation_defaults
 
-    assert simulation_defaults() == SimulationSettingsModel().to_parameters()
+    assert simulation_defaults() == SimulationSetupModel().to_parameters()
 
 
 def test_the_acquisition_settings_survive_a_round_trip_through_the_settings_file(hub):

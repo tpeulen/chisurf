@@ -1,10 +1,10 @@
-"""Qt-free simulation settings model shared by the Qt and emtk setup dialogs.
+"""Qt-free simulation settings model behind the simulation setup dialog.
 
 The model is the one place that knows how the editable simulator settings map onto the
 ``simulation_params`` dictionary the engine consumes (:meth:`SimulationSettingsModel.to_parameters`)
-and back (:meth:`SimulationSettingsModel.from_parameters`). The Qt AutoForm dialog
-(:mod:`.setup_dialog`) and the emtk dialog (``chisurf.plugins.core.acq.gui.sim_setup``) both edit
-this model, so they cannot disagree about what a value means.
+and back (:meth:`SimulationSettingsModel.from_parameters`). The emtk dialog
+(``chisurf.plugins.core.acq.gui.sim_setup``) edits this model and the CLI writes its
+dictionary, so the two cannot disagree about what a value means.
 """
 
 from __future__ import annotations
