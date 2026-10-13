@@ -21,7 +21,7 @@ from chisurf.core.math.statistics import chi2_max, f_test_chi2r, f_test_confiden
 @pytest.mark.parametrize("conf", [0.5, 0.68, 0.95, 0.99])
 def test_confidence_and_chi2_threshold_are_inverses(conf):
     """Solving for χ²(2) at a confidence must score back as that confidence."""
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     m = _FTestModel()
     m.chi2_1, m.n1, m.n2 = 1.0, 100, 98
@@ -37,7 +37,7 @@ def test_equal_reduced_chi2_gives_no_preference():
     Exactly 0.5 when the degrees of freedom also match (the F distribution is
     then symmetric under inversion of its ratio); merely close to it otherwise.
     """
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     m = _FTestModel()
     m.chi2_1, m.chi2_2, m.n1, m.n2 = 1.0, 1.0, 100, 100
@@ -56,7 +56,7 @@ def test_confidence_rises_as_the_complex_model_improves():
     simple, so it reported *falling* confidence exactly when the extra
     parameters were most justified.
     """
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     m = _FTestModel()
     m.n1, m.n2, m.chi2_2 = 897, 895, 1.0
@@ -74,7 +74,7 @@ def test_confidence_rises_as_the_complex_model_improves():
 
 def test_model_delegates_to_the_shared_statistics_helpers():
     """The GUI model must not carry its own copy of the statistics."""
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     m = _FTestModel()
     m.chi2_1, m.chi2_2, m.n1, m.n2 = 1.2, 1.0, 300, 296
@@ -94,7 +94,7 @@ def test_chi2_max_panel_matches_the_support_plane_threshold():
     ``F(p, ν)`` dof order, which is correct here and is *not* the ``F(ν₁, ν₂)``
     of the two-model panel above.
     """
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     m = _FTestModel()
     m.chi2_min, m.npars, m.dof, m.conf_level_2 = 1.0, 3, 20, 0.95
@@ -112,7 +112,7 @@ def test_chi2_max_panel_matches_the_support_plane_threshold():
 
 def test_default_state_is_self_consistent():
     """The tool opens showing a confidence that matches its own χ² values."""
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     m = _FTestModel()
     shown = m.conf_level
@@ -122,7 +122,7 @@ def test_default_state_is_self_consistent():
 
 def test_view_spec_declares_all_fields():
     """ftest.view.json binds exactly the model's editable + output fields."""
-    from chisurf.plugins.core.f_test.gui.tool import _FTestModel
+    from chisurf.plugins.core.f_test.gui.model import FTestModel as _FTestModel
 
     spec = _FTestModel().view_spec()
 
@@ -147,54 +147,49 @@ def test_view_spec_declares_all_fields():
     }
 
 
-def test_tool_builds_and_edit_recomputes(qtbot):
-    """The tool constructs headlessly and an edit triggers a coupled recompute."""
-    from chisurf.plugins.core.f_test.gui.tool import FTestTool
+def test_tool_builds_and_edit_recomputes():
+    """The window builds headlessly and an edit triggers a coupled recompute.
 
-    w = FTestTool()
-    qtbot.addWidget(w)
+    Ported from the retired Qt ``FTestTool`` to the emtk app that replaced it.
+    """
+    from chisurf.plugins.core.f_test.gui.app import make_app
 
-    w._model.conf_level = 0.99
-    w._on_field_edited("conf_level")
-    m = w._model
+    app = make_app()
+    m = app.model
+    m.conf_level = 0.99
+    m.field_edited("conf_level")
     assert m.chi2_2 == pytest.approx(f_test_chi2r(m.chi2_1, 0.99, m.n1, m.n2))
 
-    # …and the round trip holds through the widget layer too.
-    w._on_field_edited("chi2_2")
+    # …and the round trip holds through the window's edit path too.
+    m.field_edited("chi2_2")
     assert m.conf_level == pytest.approx(0.99, abs=1e-9)
 
 
-def test_tool_reuses_the_shared_dock_base(qtbot):
-    """The window is a ``ChisurfDockTool`` and opens no MMFDB connection."""
-    from chisurf.gui.widgets.tools import ChisurfDockTool
-    from chisurf.plugins.core.f_test.gui.tool import FTestTool
+def test_tool_opens_no_database_connection():
+    """Read-only construction: the calculator builds with no MMFDB module loaded on its behalf."""
+    import sys
 
-    w = FTestTool()
-    qtbot.addWidget(w)
+    loaded = {name for name in sys.modules if name.startswith("mmfdb")}
+    from chisurf.plugins.core.f_test.gui.app import make_app
 
-    assert isinstance(w, ChisurfDockTool)
-    assert w.tool_settings_name == "FTestTool"
-    # the base wires window-level path drag-drop for every dock tool
-    assert w.acceptDrops()
-    # read-only construction: no MMFDB connection on init
-    assert w.acquire_mmfdb_connection() is None
+    app = make_app()
+    assert app.model is not None
+    assert {name for name in sys.modules if name.startswith("mmfdb")} == loaded
 
 
-def test_dropped_path_is_reported_not_swallowed(qtbot, tmp_path):
+def test_dropped_path_is_reported_not_swallowed(tmp_path):
     """A dropped path raises a standing message instead of doing nothing."""
-    from chisurf.plugins.core.f_test.gui.tool import FTestTool
+    from chisurf.plugins.core.f_test.gui.app import make_app
 
     dropped = tmp_path / "run.ptu"
     dropped.write_bytes(b"")
 
-    w = FTestTool()
-    qtbot.addWidget(w)
-
-    assert not w.Information.no_file_input.is_shown
-    w.on_paths_dropped([dropped])
-    assert w.Information.no_file_input.is_shown
+    app = make_app()
+    app.status = ""
+    assert app.files_dropped([dropped]) is True
+    assert app.status == "The F-test calculator takes no dropped files."
 
     # a drop carrying no usable path says nothing
-    w.Information.no_file_input.clear()
-    w.on_paths_dropped([])
-    assert not w.Information.no_file_input.is_shown
+    app.status = ""
+    assert app.files_dropped([]) is False
+    assert app.status == ""

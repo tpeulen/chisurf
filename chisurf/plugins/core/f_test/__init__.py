@@ -2,7 +2,8 @@
 
 Compare two nested model fits (confidence ↔ χ² threshold) and compute the
 χ²-max upper limit of a single fit at a confidence level. The GUI is a
-declarative AutoForm (:mod:`chisurf.plugins.core.f_test.gui.tool`).
+emtk app over its AutoForm spec (:mod:`chisurf.plugins.core.f_test.gui.app`,
+``gui/ftest.view.json``).
 """
 
 from __future__ import annotations
@@ -10,26 +11,20 @@ from __future__ import annotations
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 name = _manifest.display_name if _manifest is not None else "Main:Tools:F-Test"
 
-__all__ = ["FTestTool", "FTestWidget"]
 
+if __name__ == "__main__":
+    from chisurf.emtk.__main__ import main as _launch
 
-def __getattr__(name: str):
-    if name in {"FTestTool", "FTestWidget"}:
-        from .gui import tool
+    _launch(["--plugin", "f_test"])
 
-        return getattr(tool, name)
-    raise AttributeError(name)
+if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+    from emtk.qt_host import ControlHost
 
+    from chisurf.plugins.core.f_test.gui.app import make_app
 
-if __name__ == "plugin":
-    from .gui.tool import FTestTool
-
-    window = FTestTool()
-    if _manifest is not None:
-        apply_manifest_statefulness(window, _manifest)
+    window = ControlHost(make_app())
     window.show()

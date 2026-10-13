@@ -133,7 +133,6 @@ chisurf/plugins/core/code_editor/test/test_notebook_editor.py
 chisurf/plugins/core/code_editor/test/test_widgets.py
 chisurf/plugins/core/code_editor/text_editor.py
 chisurf/plugins/core/code_editor/window.py
-chisurf/plugins/core/f_test/gui/tool.py
 chisurf/plugins/core/globalview/gui/tool.py
 chisurf/plugins/core/globalview/wizard.py
 chisurf/plugins/core/help/api/theme.py

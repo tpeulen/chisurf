@@ -21,7 +21,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.f_test.gui.tool:FTestTool",
     "emtk": "chisurf.plugins.core.f_test.gui.app:make_app"
   },
   "rpc_methods": [],

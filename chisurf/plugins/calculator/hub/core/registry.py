@@ -100,7 +100,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Compare two nested model fits (confidence ↔ χ² threshold) and compute "
                 "the χ²-max upper limit of a single fit at a confidence level."
             ),
-            widget="chisurf.plugins.core.f_test.gui.tool:FTestTool",
+            widget="chisurf.plugins.core.f_test.gui.app:make_app",
             icon="📉",
         ),
         CalculatorEntry(

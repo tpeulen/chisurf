@@ -29,15 +29,16 @@ to 512, fit window channels 55–480) and its donor–acceptor partner
 ### Open the tool
 
 **Tools → Calculators**, entry **📉 F-test / χ²-max**. The manifest name
-`Main:Tools:F-Test` is hidden from the menu. The window title is
-*F-Calculator*. **?** (top right of the form) opens the formulas.
+`Main:Tools:F-Test` is hidden from the menu. The toolbar holds **From fit**,
+**Load example** (a simulated two-lifetime decay fitted both ways), **Guide**
+and **?**, which opens the formulas.
 
 ```{figure} figures/f_test_tool.png
 :name: fig-f-test-tool
 :width: 90%
 
 The F-test loaded from two real fits of the donor-only decay with
-**📊 From fit**: one exponential ($\chi^2_r = 11.12$, $\nu = 422$) against two
+**From fit**: one exponential ($\chi^2_r = 11.12$, $\nu = 422$) against two
 ($\chi^2_r = 6.16$, $\nu = 420$), confidence 1.00000. The $\chi^2$-max panel
 holds the two-exponential fit: at 95 % for 5 parameters, $\chi^2_\text{max} =
 6.324$.
@@ -45,7 +46,7 @@ holds the two-exponential fit: at 95 % for 5 parameters, $\chi^2_\text{max} =
 
 ### Load the numbers
 
-**📊 From fit ▾** lists every open fit, each with three targets:
+**From fit** lists every open fit, each with three targets:
 
 * **→ F-test model 1 (χ²₁, n₁)** — the simpler fit: its $\chi^2_r$ and
   $\nu = $ points − free parameters.
@@ -319,9 +320,9 @@ FCS curves; nothing stops you from ticking both (see *Known defects*).
   data it is conservative; on the example it gives 0.59 where the
   extra-sum-of-squares test gives $p = 0.003$. There is no readout of the
   extra-sum-of-squares $F$ or its $p$-value.
-* **Guide missing on both windows.** Neither `FTestTool` nor the batch wizard
-  calls the shared help/guide seam, so their shipped `guide.json` tours are not
-  reachable from the window yet.
+* **Guide missing on the batch wizard.** The F-test window (the emtk app) has
+  its **Guide** and **?** buttons; the batch wizard does not call the shared
+  help/guide seam yet, so its shipped `guide.json` tour is not reachable.
 * **Batch: parameter restore can fail silently.** The shipped fitting client
   writes parameters only over RPC and returns `{"ok": False}` when the server is
   not reachable; `restore_parameters` ignores the result, so each item would

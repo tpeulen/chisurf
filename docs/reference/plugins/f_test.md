@@ -21,7 +21,7 @@ F-test calculator: compare two nested model fits (confidence <-> chi2 threshold)
 | Menu path | Main → Tools → **F-Test** |
 | Categories | Main, Tools, Statistics |
 | Version | 2.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 | State namespace | `f_test` |
 
 ## Parameters
