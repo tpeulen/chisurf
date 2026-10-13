@@ -20,11 +20,18 @@ from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.widgets.chat import (
     ChatHistory,
+    ChatMessage,
     draw_chat_input_bar,
     draw_chat_transcript,
 )
 
 from chisurf.plugins.core.code_editor.acp_client import AcpClient
+from chisurf.plugins.core.code_editor.agent_modes import (
+    AgentMode,
+    greeting_for,
+    provider_status,
+    tool_highlight,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +51,13 @@ MODE_LABELS = {
     "chisurf_tools": "ChiSurf tools",
     "full_control": "Full control",
 }
+
+
+def _default_registry():
+    """The agent's full tool registry (imported when a tool mode first needs it)."""
+    from chisurf.core.agent import build_default_registry
+
+    return build_default_registry()
 
 
 class ChatModel:
@@ -76,6 +90,113 @@ class ChatModel:
         # ACP Client
         self.acp_client: AcpClient | None = None
         self._init_acp()
+
+    @property
+    def greeting(self) -> str:
+        """What the assistant is for in the current mode (shown while the transcript is empty)."""
+        return greeting_for(AgentMode(self.mode))
+
+    def set_mode(self, mode: str) -> None:
+        """Switch the mode: the tool set changes, so the conversation starts over and re-greets.
+
+        An empty transcript shows the new mode's greeting by itself; a conversation gets it as a
+        message, so the banner never describes the previous mode.
+        """
+        if mode not in MODES or mode == self.mode:
+            return
+        self.mode = mode
+        self._agent_session = None
+        self._agent_key = None
+        if self.acp_client and self.acp_client.is_running:
+            self.acp_client.set_mode(mode)
+        if self.history.messages:
+            self.history.add_message("system", self.greeting)
+
+    def provider_status(self) -> tuple[bool, str]:
+        """Whether the selected provider is usable, and why (the status dot's tooltip).
+
+        Read at most every two seconds per provider: it opens the provider settings.
+        """
+        import time
+
+        now = time.monotonic()
+        cached = getattr(self, "_status_cache", None)
+        if cached is None or cached[0] != self.provider or now - cached[1] > 2.0:
+            self._status_cache = (self.provider, now, provider_status(self.provider))
+        return self._status_cache[2]
+
+    def transcript_text(self) -> str:
+        """Everything the transcript shows, as text: messages, tool calls and their results."""
+        if not self.history.messages:
+            return self.greeting
+        parts = []
+        for message in self.history.messages:
+            parts.append(message.content)
+            for call in getattr(message, "tool_calls", None) or []:
+                if isinstance(call, dict):
+                    parts.extend(str(call.get(k, "")) for k in ("name", "output"))
+                else:
+                    parts.extend(str(getattr(call, k, "")) for k in ("name", "output"))
+        return "\n".join(part for part in parts if part)
+
+    def build_agent_context(self, mode: AgentMode):
+        """The execution context of a tool-enabled turn.
+
+        Code execution and its confirmation exist only in ``FULL_CONTROL``; runtime events reach
+        the transcript through :meth:`_on_runtime_event`.
+        """
+        from chisurf.core.agent import AgentContext
+
+        def confirm(tool: str, arguments: dict) -> bool:
+            decision = self._handle_permission_request(
+                {"title": f"{tool}: {json.dumps(arguments, default=str)}"},
+                [
+                    {"optionId": "allow_once", "name": "Allow once"},
+                    {"optionId": "deny_once", "name": "Deny"},
+                ],
+            )
+            return decision == "allow_once"
+
+        full = mode is AgentMode.FULL_CONTROL
+        return AgentContext(
+            working_directory=str(getattr(self.editor_ref, "project_root", None) or "."),
+            allow_code_execution=full,
+            confirm=confirm if full else None,
+            event_callback=self._on_runtime_event,
+        )
+
+    def agent_session_for(self, mode: AgentMode):
+        """The conversation for *mode*, kept between questions so follow-ups keep their context.
+
+        Returns ``None`` when the provider is not configured; the reason is written to the
+        transcript then.
+        """
+        from chisurf.core.agent import AgentConfig, AgentSession, LLMClient, LLMSettings, ToolRegistry
+
+        key = (self.provider, mode.value, self.model_name, self.temperature)
+        if self._agent_session is not None and key == self._agent_key:
+            return self._agent_session
+        overrides = {"temperature": self.temperature}
+        if self.model_name != "default":
+            overrides["model"] = self.model_name
+        try:
+            settings = LLMSettings.from_provider(self.provider, **overrides)
+            settings.validate()
+        except Exception as error:
+            self.history.add_message("system", f"⚠️ {error}")
+            return None
+        self._agent_session = AgentSession(
+            LLMClient(settings),
+            context=self.build_agent_context(mode),
+            registry=ToolRegistry() if mode is AgentMode.CHAT_ONLY else _default_registry(),
+            config=AgentConfig(max_safety=mode.safety),
+            extra_instructions=(
+                "You are running inside the ChiSurf desktop application; the "
+                "user can see the fits you create in its windows."
+            ),
+        )
+        self._agent_key = key
+        return self._agent_session
 
     def _init_acp(self) -> None:
         """Initialize and wire up ACP client signals."""
@@ -147,6 +268,57 @@ class ChatModel:
         self.history.finish_generation(
             "cancelled" if cancelled else "error" if stop_reason == "error" else "complete"
         )
+        last = self.history.messages[-1] if self.history.messages else None
+        if not cancelled and last is not None and last.role == "assistant":
+            self.apply_file_writes(last.content)
+
+    def apply_file_writes(self, response: str) -> list[tuple[str, str]]:
+        """Write the files *response* asks for into the editor, then check them off the UI thread.
+
+        As the Qt agent panel did: each ``WRITE_FILE`` block goes into its document (see
+        ``EditorModel.apply_file_writes``) and is checked with ``py_compile`` and Ruff; an answer
+        without one runs no check.
+
+        Returns
+        -------
+        list of tuple
+            ``(filename, content)`` of every write found.
+        """
+        from chisurf.plugins.core.code_editor.file_writes import parse_file_writes
+
+        editor = self.editor_ref
+        if editor is None or not hasattr(editor, "apply_file_writes"):
+            return []
+        writes = parse_file_writes(response)
+        if not writes:
+            return []  # nothing written, nothing checked (the answer stays the last message)
+        editor.apply_file_writes(writes)
+        self.history.add_message("system", "Applying generated code to the editor...")
+
+        def check() -> None:
+            from chisurf.plugins.core.code_editor.validation import validate_writes
+
+            try:
+                issues = validate_writes(writes, editor=editor)
+            except Exception as error:  # the check failing is reported, not raised on a worker
+                self.event_queue.put(
+                    lambda: self.history.add_message("error", f"Validation failed: {error}")
+                )
+                return
+            if issues:
+                total = sum(len(found) for _, found in issues)
+                lines = [f"Validation found {total} issue(s):"] + [
+                    f"- {name}:{d.get('line', '?')} {d.get('code', '')} {d.get('message', '')}"
+                    for name, found in issues
+                    for d in found
+                ]
+                text = "\n".join(lines)
+            else:
+                text = "All checks pass — code is clean."
+            self.event_queue.put(lambda: self.history.add_message("system", text))
+
+        threading.Thread(target=check, daemon=True).start()
+        return writes
 
     def _on_acp_error(self, error: str) -> None:
         if self._closed:
@@ -225,6 +397,12 @@ class ChatModel:
         return "".join(rows[start : None if limit is None else start + max(0, limit)])
 
     def _handle_write_file(self, path: str, content: str) -> None:
+        """ACP ``fs/write_text_file``: an open tab of the file takes the text, left modified.
+
+        The file on disk changes only when the user saves the agent's edit (the Qt editor also
+        wrote the disk at once; the emtk editor keeps the agent's change reviewable). A file that
+        is not open is written directly.
+        """
         if self.editor_ref and hasattr(self.editor_ref, "set_file_content"):
             callback = self.editor_ref.set_file_content
             invoke = getattr(self.editor_ref, "invoke", None)
@@ -360,66 +538,45 @@ class ChatModel:
                     name,
                     payload.get("arguments"),
                     status=status,
-                    output=json.dumps(payload.get("result", payload.get("error", "")), default=str),
+                    # The numbers a user watches for (3 dataset(s), chi2r ...), else the raw result.
+                    output=tool_highlight(payload)
+                    or (str(payload.get("error")) if payload.get("error") else "")
+                    or json.dumps(payload.get("result", ""), default=str),
                 )
             )
         elif event == "agent.failed":
             self.event_queue.put(
                 lambda: self.history.add_message("error", str(payload.get("error", "Agent failed")))
             )
+        elif event == "skill.loaded":
+            trigger = "matched" if payload.get("trigger") == "auto" else "requested"
+            self.event_queue.put(
+                lambda: self.history.add_message(
+                    "system", f"📘 Skill {payload.get('skill')} ({trigger})"
+                )
+            )
+        elif event == "agent.completed":
+            stop_reason = payload.get("stop_reason", "answer")
+            tools = payload.get("tools", [])
+            lines = [] if stop_reason == "answer" else [f"⏹ Stopped: {stop_reason}"]
+            if tools:
+                lines.append(
+                    f"— {payload.get('steps', 0)} step(s), {len(tools)} tool call(s): "
+                    f"{', '.join(dict.fromkeys(tools))}"
+                )
+            if lines:
+                self.event_queue.put(lambda: self.history.add_message("system", "\n".join(lines)))
 
     def _run_in_process_prompt(self, prompt: str) -> None:
-        """Use the same persistent, Qt-free agent contract as the CLI and Qt panel."""
+        """Use the same persistent, Qt-free agent contract as the CLI (:meth:`agent_session_for`)."""
         try:
-            from chisurf.core.agent import (
-                AgentConfig,
-                AgentContext,
-                AgentSession,
-                LLMClient,
-                LLMSettings,
-                ToolRegistry,
-            )
-
-            key = (self.provider, self.mode, self.model_name, self.temperature)
-            if self._agent_session is None or key != self._agent_key:
-                overrides = {"temperature": self.temperature}
-                if self.model_name != "default":
-                    overrides["model"] = self.model_name
-                settings = LLMSettings.from_provider(self.provider, **overrides)
-                settings.validate()
-
-                def confirm(tool: str, arguments: dict) -> bool:
-                    decision = self._handle_permission_request(
-                        {"title": f"{tool}: {json.dumps(arguments, default=str)}"},
-                        [
-                            {"optionId": "allow_once", "name": "Allow once"},
-                            {"optionId": "deny_once", "name": "Deny"},
-                        ],
-                    )
-                    return decision == "allow_once"
-
-                context = AgentContext(
-                    working_directory=str(getattr(self.editor_ref, "project_root", ".")),
-                    allow_code_execution=self.mode == "full_control",
-                    confirm=confirm,
-                    event_callback=self._on_runtime_event,
-                )
-                self._agent_session = AgentSession(
-                    LLMClient(settings),
-                    context=context,
-                    config=AgentConfig(
-                        max_safety="dangerous"
-                        if self.mode == "full_control"
-                        else "write"
-                        if self.mode == "chisurf_tools"
-                        else "read"
-                    ),
-                    registry=ToolRegistry() if self.mode == "chat_only" else None,
-                )
-                self._agent_key = key
+            session = self.agent_session_for(AgentMode(self.mode))
+            if session is None:
+                self.event_queue.put(self._handle_finished)
+                return
             if self._closed:
                 return
-            result = self._agent_session.ask(prompt)
+            result = session.ask(prompt)
             if result.error and not self._closed:
                 self.event_queue.put(
                     lambda error=result.error: self.history.add_message("error", str(error))
@@ -638,8 +795,12 @@ class ChatGui:
         rem_h = im.get_content_region_avail()[1]
         transcript_h = max(70.0, rem_h - input_total_h)
 
+        # An empty transcript shows the mode's greeting: what the assistant is for.
+        shown = self.model.history if self.model.history.messages else [
+            ChatMessage(role="system", content=self.model.greeting)
+        ]
         draw_chat_transcript(
-            self.model.history,
+            shown,
             size=(width, transcript_h),
             on_insert_code=self._on_insert_code,
             on_replace_code=self._on_replace_code,
@@ -666,7 +827,7 @@ class ChatGui:
 
     def _draw_toolbar(self, width: float) -> None:
         avail_w = im.get_content_region_avail()[0]
-        combo_w = max(70.0, (avail_w - 12.0) / 2.0)
+        combo_w = max(70.0, (avail_w - 34.0) / 2.0)  # room for the status dot
 
         # Provider and mode belong to the turn that is currently running.
         im.begin_disabled(self.model.is_generating)
@@ -680,6 +841,10 @@ class ChatGui:
         im.set_item_tooltip(tr("Choose the assistant provider"))
         if changed_p:
             self.model.provider = PROVIDERS[new_p_idx]
+        ready, why = self.model.provider_status()
+        im.same_line()
+        im.text_colored((152, 195, 121, 255) if ready else (224, 108, 117, 255), "●")
+        im.set_item_tooltip(why)
 
         im.same_line()
 
@@ -690,9 +855,7 @@ class ChatGui:
         changed_m, new_m_idx = im.combo("##m_select", current_m_idx, m_labels)
         im.set_item_tooltip(tr("Choose which tools the assistant may use"))
         if changed_m:
-            self.model.mode = MODES[new_m_idx]
-            if self.model.acp_client and self.model.acp_client.is_running:
-                self.model.acp_client.set_mode(self.model.mode)
+            self.model.set_mode(MODES[new_m_idx])
 
         if im.small_button("Provider settings…"):
             if self.provider_settings is None:

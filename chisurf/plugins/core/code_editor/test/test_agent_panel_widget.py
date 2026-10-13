@@ -1,50 +1,73 @@
-"""Widget tests for the AI assistant panel wired to the ChiSurf agent."""
+"""The editor's AI assistant (emtk ``ChatModel`` / ``ChatGui``) wired to the ChiSurf agent.
+
+Ported from the retired Qt ``AgentPanelWidget`` tests: the modes and their tool tiers, the
+greeting, the transcript of a tool run, the provider status, sessions, example prompts.
+"""
 
 from __future__ import annotations
 
 import json
 
 import pytest
+from emtk.testing import Driver
 
 from chisurf.core.agent import SAFETY_DANGEROUS, SAFETY_WRITE
-from chisurf.plugins.core.code_editor.agent_panel import AgentMode, AgentPanelWidget
+from chisurf.plugins.core.code_editor.agent_modes import AgentMode, greeting_for, tool_highlight
+from chisurf.plugins.core.code_editor.gui.chat_app import MODES, ChatApp, ChatModel
 
 
-class TestAgentPanelWidget:
-    """The panel exposes the agent's modes and renders its events."""
+@pytest.fixture
+def chat():
+    model = ChatModel()
+    yield model
+    model.close()
+
+
+def _settle(model):
+    model.process_events()
+    return model.transcript_text()
+
+
+class TestAssistant:
+    """The assistant exposes the agent's modes and renders its events."""
 
     def test_modes_map_to_safety_tiers(self):
         """Each mode grants exactly the tool tier its label promises."""
         assert AgentMode.CHISURF_TOOLS.safety == SAFETY_WRITE
         assert AgentMode.FULL_CONTROL.safety == SAFETY_DANGEROUS
 
-    def test_panel_offers_the_three_modes(self, qapp):
-        """The mode selector lists chat, tools and full control."""
-        panel = AgentPanelWidget()
-        values = [panel.mode_combo.itemData(i) for i in range(panel.mode_combo.count())]
-        assert values == [
+    def test_the_assistant_offers_the_three_modes(self):
+        """The mode selector lists chat, tools and full control, in that order."""
+        assert MODES == [
             AgentMode.CHAT_ONLY.value,
             AgentMode.CHISURF_TOOLS.value,
             AgentMode.FULL_CONTROL.value,
         ]
+        app = ChatApp()
+        try:
+            driver = Driver(app, (500, 700))
+            driver.frame(2)
+            driver.click("ChiSurf tools")
+            drawn = [t[5] for t in driver.frame(2).texts]
+            assert "Chat only" in drawn and "Full control" in drawn
+        finally:
+            app.close()
 
-    def test_context_grants_code_execution_only_in_full_control(self, qapp):
+    def test_context_grants_code_execution_only_in_full_control(self, chat):
         """Code execution and confirmation are tied to full-control mode."""
-        panel = AgentPanelWidget()
-
-        tools_context = panel._build_agent_context(AgentMode.CHISURF_TOOLS)
+        tools_context = chat.build_agent_context(AgentMode.CHISURF_TOOLS)
         assert tools_context.allow_code_execution is False
         assert tools_context.confirm is None
-
-        full_context = panel._build_agent_context(AgentMode.FULL_CONTROL)
+        full_context = chat.build_agent_context(AgentMode.FULL_CONTROL)
         assert full_context.allow_code_execution is True
         assert full_context.confirm is not None
 
-    def test_provider_status_is_reported(self, qapp):
+    def test_provider_status_is_reported(self, chat):
         """The status dot always carries an explanation in its tooltip."""
-        panel = AgentPanelWidget()
-        panel._check_provider_status()
-        assert panel.rpc_status_label.toolTip()
+        for provider in ("acp", "openai", "local"):
+            chat.provider = provider
+            ready, why = chat.provider_status()
+            assert isinstance(ready, bool) and why
 
     @pytest.mark.parametrize(
         ("result", "expected"),
@@ -61,123 +84,127 @@ class TestAgentPanelWidget:
     )
     def test_tool_results_are_summarised_for_the_transcript(self, result, expected):
         """Only the numbers a user watches for are echoed into the transcript."""
-        assert expected in AgentPanelWidget._tool_highlight({"result": result})
+        assert expected in tool_highlight({"result": result})
 
-    def test_a_loaded_skill_is_announced(self, qapp):
+    def test_a_loaded_skill_is_announced(self, chat):
         """The user should see which procedure the assistant is following."""
-        panel = AgentPanelWidget()
-        panel._on_runtime_event("skill.loaded", {"skill": "fit-decay", "trigger": "auto"})
-        transcript = panel.transcript.toPlainText()
-        assert "fit-decay" in transcript
-        assert "matched" in transcript
+        chat._on_runtime_event("skill.loaded", {"skill": "fit-decay", "trigger": "auto"})
+        transcript = _settle(chat)
+        assert "fit-decay" in transcript and "matched" in transcript
 
-    def test_runtime_events_reach_the_transcript(self, qapp):
+    def test_runtime_events_reach_the_transcript(self, chat):
         """Tool and completion events are rendered without raising."""
-        panel = AgentPanelWidget()
-        panel._on_runtime_event("agent.started", {"question": "fit my data"})
-        panel._on_runtime_event(
-            "tool.started", {"tool": "load_data", "arguments": {"directory": "d"}}
-        )
-        panel._on_runtime_event(
+        chat._on_runtime_event("agent.started", {"question": "fit my data"})
+        chat.history.add_message("assistant", "")  # the turn's message the tool calls attach to
+        chat._on_runtime_event("tool.started", {"tool": "load_data", "arguments": {"directory": "d"}})
+        chat._on_runtime_event(
             "tool.completed",
             {"tool": "load_data", "ok": True, "elapsed_ms": 5, "result": {"n_loaded": 3}},
         )
-        panel._on_runtime_event("tool.failed", {"tool": "run_fit", "error": "no fits"})
-        panel._on_runtime_event("message.completed", {"content": "Done."})
-        panel._on_runtime_event(
+        chat._on_runtime_event("tool.started", {"tool": "run_fit", "arguments": {}})
+        chat._on_runtime_event("tool.failed", {"tool": "run_fit", "error": "no fits"})
+        chat._on_runtime_event("message.completed", {"content": "Done."})
+        chat._on_runtime_event(
             "agent.completed", {"stop_reason": "answer", "steps": 2, "tools": ["load_data"]}
         )
-
-        transcript = panel.transcript.toPlainText()
+        transcript = _settle(chat)
         assert "load_data" in transcript
         assert "3 dataset(s)" in transcript
         assert "no fits" in transcript
         assert "Done." in transcript
 
-    def test_a_missing_provider_is_reported_instead_of_crashing(self, qapp, monkeypatch):
+    def test_a_missing_provider_is_reported_instead_of_crashing(self, chat, monkeypatch):
         """An unusable provider yields no session and an explanatory message."""
         from chisurf.core.agent import LLMSettings
 
-        monkeypatch.setattr(
-            LLMSettings, "from_provider", classmethod(lambda cls, *a, **k: LLMSettings())
-        )
-        panel = AgentPanelWidget()
-        assert panel._agent_session_for(AgentMode.CHISURF_TOOLS) is None
-        assert "not configured" in panel.transcript.toPlainText()
+        def refuse(cls, *a, **k):
+            raise ValueError("AI provider is not configured")
 
-    def test_session_is_reused_across_questions(self, qapp, monkeypatch):
+        monkeypatch.setattr(LLMSettings, "from_provider", classmethod(refuse))
+        chat.provider = "openai"
+        assert chat.agent_session_for(AgentMode.CHISURF_TOOLS) is None
+        assert "not configured" in chat.transcript_text()
+
+    def test_session_is_reused_across_questions(self, chat):
         """The conversation persists so follow-up questions keep context."""
-        panel = AgentPanelWidget()
-        first = panel._agent_session_for(AgentMode.CHISURF_TOOLS)
+        chat.provider = "local"
+        first = chat.agent_session_for(AgentMode.CHISURF_TOOLS)
         if first is None:
             pytest.skip("no AI provider configured in this environment")
-        assert panel._agent_session_for(AgentMode.CHISURF_TOOLS) is first
+        assert chat.agent_session_for(AgentMode.CHISURF_TOOLS) is first
 
-    def test_changing_mode_starts_a_new_session(self, qapp):
+    def test_changing_mode_starts_a_new_session(self, chat):
         """Switching modes drops the conversation, since the tool set changes."""
-        panel = AgentPanelWidget()
-        panel._agent_session = object()
-        panel.mode_combo.setCurrentIndex(1)
-        assert panel._agent_session is None
+        chat._agent_session = object()
+        chat.set_mode("full_control")
+        assert chat._agent_session is None
 
     def test_the_agent_tool_schemas_are_json_serialisable(self):
-        """Whatever the panel sends to a provider must be valid JSON."""
+        """Whatever the assistant sends to a provider must be valid JSON."""
         from chisurf.core.agent import build_default_registry
 
         json.dumps(build_default_registry().to_openai_tools())
 
-    def test_the_panel_offers_the_shipped_example_prompts(self, qapp):
-        """A new user's hardest question is what to ask it."""
+    def test_the_assistant_offers_the_shipped_example_prompts(self):
+        """A new user's hardest question is what to ask it: Things to ask lists the starters."""
         from chisurf.core.agent.example_prompts import starter_prompts
 
-        panel = AgentPanelWidget()
-        actions = [action.text() for action in panel.examples_btn.menu().actions()]
-        assert actions
-        assert actions[0] == starter_prompts(limit=1)[0].title
+        app = ChatApp()
+        try:
+            driver = Driver(app, (600, 700))
+            driver.frame(2)
+            driver.click("💡 Things to ask")
+            drawn = [t[5].strip() for t in driver.frame(2).texts]
+            assert starter_prompts(limit=1)[0].title in drawn
+        finally:
+            app.close()
 
-    def test_choosing_an_example_fills_the_input(self, qapp):
+    def test_choosing_an_example_fills_the_input(self):
         """It is put in the box to edit, not sent behind the user's back."""
-        panel = AgentPanelWidget()
-        panel._use_example("Fit the decay in this folder.")
-        assert panel.input.toPlainText() == "Fit the decay in this folder."
+        from chisurf.core.agent.example_prompts import starter_prompts
+
+        app = ChatApp()
+        try:
+            driver = Driver(app, (600, 700))
+            driver.frame(2)
+            driver.click("💡 Things to ask")
+            example = starter_prompts(limit=1)[0]
+            row = next(t[5] for t in driver.frame(2).texts if t[5].strip() == example.title)
+            driver.click(row)
+            driver.frame(2)
+            assert app.chat_gui.model.input_text == example.prompt.strip()
+            assert not app.chat_gui.model.is_generating
+        finally:
+            app.close()
 
 
 class TestTheGreetingFollowsTheMode:
-    """The banner is the only text that says what the assistant is for.
+    """The banner is the only text that says what the assistant is for."""
 
-    In a tool mode the assistant loads data and runs fits by itself, so a
-    banner telling the user to select code in the editor is wrong advice --
-    and it is the kind of mismatch no assertion on the mode selector catches.
-    """
-
-    def test_chat_only_talks_about_the_editor(self, qapp):
-        """Chat mode has no tools, so the editor is the whole story."""
-        from chisurf.plugins.core.code_editor.agent_panel import AgentMode
-
-        panel = AgentPanelWidget()
-        text = panel._greeting_for(AgentMode.CHAT_ONLY)
-        assert "editor" in text.lower()
+    def test_chat_only_talks_about_the_editor(self):
+        assert "editor" in greeting_for(AgentMode.CHAT_ONLY).lower()
 
     @pytest.mark.parametrize("mode_name", ["CHISURF_TOOLS", "FULL_CONTROL"])
-    def test_a_tool_mode_talks_about_operating_chisurf(self, qapp, mode_name):
-        """A mode that runs fits must not tell the user to select code."""
-        from chisurf.plugins.core.code_editor.agent_panel import AgentMode
-
-        panel = AgentPanelWidget()
-        text = panel._greeting_for(getattr(AgentMode, mode_name))
+    def test_a_tool_mode_talks_about_operating_chisurf(self, mode_name):
+        text = greeting_for(getattr(AgentMode, mode_name))
         assert "select code in the editor" not in text.lower()
         assert "fit" in text.lower()
 
-    def test_full_control_says_it_will_ask_first(self, qapp):
-        """The dangerous tier is the one whose banner has to be explicit."""
-        from chisurf.plugins.core.code_editor.agent_panel import AgentMode
+    def test_full_control_says_it_will_ask_first(self):
+        assert "asks you first" in greeting_for(AgentMode.FULL_CONTROL).lower()
 
-        panel = AgentPanelWidget()
-        text = panel._greeting_for(AgentMode.FULL_CONTROL)
-        assert "asks you first" in text.lower()
-
-    def test_switching_mode_re_greets(self, qapp):
+    def test_switching_mode_re_greets(self, chat):
         """The banner is refreshed, not left describing the previous mode."""
-        panel = AgentPanelWidget()
-        panel.mode_combo.setCurrentIndex(1)
-        assert "operate chisurf" in panel.transcript.toPlainText().lower()
+        chat.set_mode("chat_only")
+        assert "select code in the editor" in chat.transcript_text().lower()  # the empty pane
+        chat.history.add_message("user", "hello")
+        chat.set_mode("chisurf_tools")
+        assert "operate chisurf" in chat.history.messages[-1].content.lower()  # in a conversation
+
+    def test_the_empty_pane_shows_the_greeting(self):
+        app = ChatApp()
+        try:
+            drawn = " ".join(t[5] for t in Driver(app, (600, 700)).frame(2).texts)
+            assert "operate ChiSurf" in drawn
+        finally:
+            app.close()

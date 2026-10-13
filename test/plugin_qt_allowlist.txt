@@ -127,10 +127,7 @@ chisurf/plugins/core/code_editor/gui/tool.py
 chisurf/plugins/core/code_editor/lsp_client.py
 chisurf/plugins/core/code_editor/notebook_editor.py
 chisurf/plugins/core/code_editor/settings.py
-chisurf/plugins/core/code_editor/test/test_acp_client.py
-chisurf/plugins/core/code_editor/test/test_code_editor_rpc.py
 chisurf/plugins/core/code_editor/test/test_notebook_editor.py
-chisurf/plugins/core/code_editor/test/test_widgets.py
 chisurf/plugins/core/code_editor/text_editor.py
 chisurf/plugins/core/code_editor/window.py
 chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py

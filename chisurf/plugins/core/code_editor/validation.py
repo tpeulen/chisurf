@@ -88,13 +88,12 @@ def _ruff_check_content(
     runner = getattr(editor, "ruff_runner", None) if editor is not None else None
     if runner is None:
         return []
-    settings = {}
-    try:
-        from chisurf.plugins.core.code_editor.text_editor import get_editor_settings
-
-        settings = get_editor_settings()
-    except ImportError:
-        pass
+    # The editor's own Ruff preferences (the emtk EditorModel carries them as attributes).
+    settings = {
+        name: getattr(editor, name)
+        for name in ("ruff_extra_args", "ruff_timeout_ms")
+        if hasattr(editor, name)
+    }
     hint_path = filename if Path(filename).suffix else "untitled.py"
     result = runner.check(
         path=hint_path,

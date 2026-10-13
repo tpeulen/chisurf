@@ -142,6 +142,13 @@ class EditorDocument:
         self._initial_text = self.text
 
 
+def _same_path(left: str, right: str) -> bool:
+    try:
+        return pathlib.Path(left).resolve() == pathlib.Path(right).resolve()
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
 class EditorModel:
     """State and operations for the multi-document editor."""
 
@@ -425,6 +432,60 @@ class EditorModel:
         if doc and hasattr(doc.editor, "paste"):
             doc.editor.clipboard = code
             doc.editor.paste()
+
+    @property
+    def ruff_runner(self) -> RuffRunner:
+        """A Ruff runner, for :func:`~chisurf.plugins.core.code_editor.validation.validate_writes`."""
+        return RuffRunner()
+
+    def apply_file_writes(self, writes: list[tuple[str, str]]) -> list[EditorDocument]:
+        """Put each ``(filename, content)`` an assistant answer wrote into the editor.
+
+        ``current`` (and its synonyms) is the document in front (a new one when none is open);
+        otherwise an open document with that path, then that file name, takes the content; a
+        path that is not open is written to disk and opened; a bare name becomes a new document.
+        Every target is left modified, in front, for the user to review and save.
+
+        Returns
+        -------
+        list of EditorDocument
+            The documents written, in order.
+        """
+        from chisurf.plugins.core.code_editor.file_writes import is_current_target
+
+        written: list[EditorDocument] = []
+        for filename, content in writes:
+            name = filename.strip()
+            target = None
+            if is_current_target(name):
+                target = self.active_doc or self.new_document()
+            else:
+                for doc in self.documents:
+                    if doc.path and (doc.path == name or _same_path(doc.path, name)):
+                        target = doc
+                        break
+                if target is None:
+                    target = next(
+                        (d for d in self.documents if pathlib.Path(d.name).name == pathlib.Path(name).name),
+                        None,
+                    )
+            if target is None:
+                if "/" in name or "\\" in name or pathlib.Path(name).is_file():
+                    try:
+                        path = pathlib.Path(name).resolve()
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        path.write_text(content, encoding="utf-8")
+                        target = self.open_file(path)
+                    except OSError as error:
+                        self.log_output(f"Could not write {name}: {error}")
+                if target is None:
+                    target = self.new_document(pathlib.Path(name).name or "Untitled.py", content)
+            if target.notebook is None:
+                target.editor.text = content
+            self.active_index = self.documents.index(target)
+            self._sync_document_store(activate=True)
+            written.append(target)
+        return written
 
     def start_rpc(
         self, host: str | None = None, cmd_port: int | None = None, pub_port: int | None = None
@@ -2885,6 +2946,17 @@ class CodeEditorGui:
         self.chat_gui.draw(box[2], box[3])
 
 
+def _global_editor_setting(name: str):
+    """``gui.editor.<name>`` of the ChiSurf settings, or ``None`` when it is not set."""
+    try:
+        import chisurf as cs
+
+        editor = (getattr(cs.core.settings, "gui", None) or {}).get("editor") or {}
+    except Exception:  # settings unreadable: no opinion
+        return None
+    return editor.get(name) if isinstance(editor, dict) else None
+
+
 class CodeEditorApp(ImApp):
     """EMTK Application for the complete Code Editor."""
 
@@ -2898,6 +2970,10 @@ class CodeEditorApp(ImApp):
         super().__init__(gui=self._render, continuous=False)
         self.model.request_frame = self.request_frame
         self.editor_gui.save_preferences = self.save_preferences
+        # Until the editor's own preferences say otherwise (restore_settings), the global
+        # gui.editor.enable_lsp decides, as it did for the Qt editor.
+        if _global_editor_setting("enable_lsp") is True:
+            self.model.start_lsp()
 
     @property
     def item_rects(self) -> dict[str, tuple[float, float, float, float]]:
