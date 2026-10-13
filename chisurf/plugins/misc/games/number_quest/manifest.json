@@ -13,7 +13,6 @@
     "Games"
   ],
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.number_quest.gui.tool:NumberQuestWidget",
     "emtk": "chisurf.plugins.misc.games.number_quest.gui.app:make_app"
   },
   "dependencies": {},

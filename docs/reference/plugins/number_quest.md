@@ -21,7 +21,7 @@ A small number-guessing game contained in the Games hub.
 | Menu path | Tools → Miscellaneous → Games → **Number Quest** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

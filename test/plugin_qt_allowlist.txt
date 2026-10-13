@@ -42,4 +42,3 @@ chisurf/plugins/core/mmfdb_admin/test/test_protocols_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
 chisurf/plugins/icon_utils.py
-chisurf/plugins/misc/games/number_quest/gui/tool.py

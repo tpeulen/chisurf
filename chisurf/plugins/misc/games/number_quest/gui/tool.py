@@ -18,21 +18,10 @@ from __future__ import annotations
 
 import math
 
-from qtpy import QtWidgets
-
 from chisurf.gui import chigame
 from chisurf.gui.chigame.input import Action
 
 from ..core.game import GuessStatus, NumberQuestGame
-
-try:
-    from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:  # pragma: no cover - stand-alone use
-
-    def persist_plugin_state(name):
-        """Return an identity decorator when the host is unavailable."""
-        return lambda cls: cls
-
 
 #: The core counts 1..100; the instrument reads 0.1..10.0 ns.
 NS_PER_UNIT = 0.1
@@ -276,28 +265,3 @@ class NumberQuestChiGame(chigame.Game):
             color=(0.44, 0.48, 0.55, 1.0),
         )
 
-
-@persist_plugin_state("number_quest")
-class NumberQuestWidget(QtWidgets.QWidget):
-    """Dockable container hosting the game.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Parent widget.
-    """
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Number Quest")
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.game = NumberQuestChiGame()
-        canvas, self.host = chigame.create_widget(self.game, parent=self)
-        bar = QtWidgets.QHBoxLayout()
-        bar.setContentsMargins(4, 2, 4, 0)
-        bar.addWidget(chigame.sound_button(self.host, self))
-        bar.addStretch(1)
-        layout.addLayout(bar)
-        layout.addWidget(canvas)
-        self.resize(560, 420)
