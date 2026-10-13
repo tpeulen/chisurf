@@ -1,11 +1,14 @@
-"""chiplot's Qt host layer: the ``QWidget`` wrappers :class:`Plot`, :class:`Grid`,
-:class:`ImageView` and :class:`VolumeView`.
+"""chiplot's Qt host layer: :func:`host`, and the ``QWidget`` wrappers :class:`Plot`,
+:class:`Grid` and :class:`ImageView`.
 
-Each embeds a canvas of the active backend (:mod:`chisurf.chiplot.backends`) in a
-Qt layout, where a ``pg.PlotWidget`` used to go. The drawing API itself is the
-toolkit-free :class:`~chisurf.chiplot.canvas.PlotAPI` (:mod:`chisurf.chiplot`);
-this module is imported only when a Qt host asks for a widget, so a surface that
-draws chiplot panels as emtk controls never loads Qt.
+Everything that draws is in the toolkit-free core (:mod:`chisurf.chiplot`): a
+panel, a grid and an image view are emtk controls there. This module only
+*hosts* them in Qt -- an ``emtk.qt_host.ControlHost`` per control, attached
+through the core's duck-typed host hook (``attach_host``) -- and adds what is
+Qt's: signals, the right-click menu with its file dialogs, a grid layout, the
+frame slider. It goes when the last Qt caller does
+(``okf/subsystems/chiplot.md``); new code draws a :class:`~chisurf.chiplot.Panel`
+on an emtk surface, or, inside a legacy Qt form, hosts one with :func:`host`.
 """
 
 from __future__ import annotations
@@ -18,7 +21,94 @@ from chisurf.chiplot import style as S
 from chisurf.chiplot.backends import get_backend
 from chisurf.chiplot.canvas import _UNSET, Panel, PlotAPI, _Hook
 
-__all__ = ["Grid", "ImageView", "Panel", "PanelPlot", "Plot", "PlotAPI", "VolumeView", "_Hook"]
+__all__ = ["Grid", "ImageView", "Panel", "PanelPlot", "Plot", "PlotAPI", "_Hook", "host"]
+
+
+class _QtHost:
+    """The core's host hook (``update``/``size``/``set_background``/...) over a ``ControlHost``."""
+
+    def __init__(self, control, *, background=(30, 32, 38), parent=None) -> None:
+        from emtk.qt_host import ControlHost
+
+        self.widget = ControlHost(control, background=background, parent=parent)
+
+    def update(self) -> None:
+        self.widget.update()
+
+    def size(self) -> tuple[int, int]:
+        return self.widget.width(), self.widget.height()
+
+    def set_background(self, rgb) -> None:
+        self.widget.background = tuple(rgb[:3])
+
+    def set_visible(self, visible: bool) -> None:
+        self.widget.setVisible(bool(visible))
+
+    def set_width_range(self, least: int, most: int) -> None:
+        if least == most:
+            self.widget.setFixedWidth(int(least))
+        else:
+            self.widget.setMinimumWidth(int(least))
+            self.widget.setMaximumWidth(int(most))
+
+    def detach(self) -> None:
+        self.widget.setParent(None)
+
+
+def _hosted(control, parent=None) -> QtWidgets.QWidget:
+    """A ``ControlHost`` showing *control* (a core canvas, ramp or grid), attached to it."""
+    background = getattr(control, "_background", None) or getattr(control, "background", None)
+    adapter = _QtHost(control, background=background or (30, 32, 38), parent=parent)
+    attach = getattr(control, "attach_host", None)
+    if callable(attach):
+        attach(adapter)
+    else:  # a grid: repaint requests come back through its refresh target
+        control.set_refresh_target(adapter.update)
+    adapter.widget._chiplot_host = adapter
+    return adapter.widget
+
+
+def host(panel, parent=None) -> QtWidgets.QWidget:
+    """Host a toolkit-free chiplot panel in a Qt layout.
+
+    For a legacy Qt form that shows a :class:`~chisurf.chiplot.Panel` (or an
+    image view's or grid's control): the panel stays an emtk control drawn by
+    emtk, and the widget returned only hosts it.
+
+    Parameters
+    ----------
+    panel : Panel or control
+        A :class:`~chisurf.chiplot.Panel` (its :meth:`~chisurf.chiplot.Panel.control`
+        is hosted), or any control with ``draw``.
+    parent : QWidget, optional
+        Qt parent.
+
+    Returns
+    -------
+    QWidget
+    """
+    control = panel.control() if callable(getattr(panel, "control", None)) else panel
+    return _hosted(control, parent)
+
+
+def _export_qt(canvas, widget, path, width) -> bool:
+    """Paint *canvas* into a ``QImage`` at *widget*'s size: what a Qt-hosted panel exports."""
+    from emtk.qt_painter import QtPainter
+    from qtpy import QtGui
+
+    w, h = widget.width(), widget.height()
+    scale = float(width) / max(w, 1) if width else 1.0
+    image = QtGui.QImage(
+        max(int(w * scale), 1), max(int(h * scale), 1), QtGui.QImage.Format_ARGB32
+    )
+    image.fill(QtGui.QColor(*canvas._background))
+    painter = QtGui.QPainter(image)
+    try:
+        painter.scale(scale, scale)
+        canvas.draw(QtPainter(painter), 0.0, 0.0, float(w), float(h))
+    finally:
+        painter.end()
+    return bool(image.save(str(path)))
 
 
 class Plot(PlotAPI, QtWidgets.QWidget):
@@ -57,7 +147,8 @@ class Plot(PlotAPI, QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self._canvas.widget())
+        self._host_widget = _hosted(self._canvas)
+        layout.addWidget(self._host_widget)
         if title is not None:
             self._canvas.set_title(title)
         if background is not _UNSET:
@@ -91,6 +182,15 @@ class Plot(PlotAPI, QtWidgets.QWidget):
         )
         if path:
             self.export_image(path)
+
+    def export_image(self, path: str, *, width: int | None = None) -> None:
+        """Save the panel as an image, painted by Qt as the widget shows it.
+
+        A Qt-hosted panel keeps the picture Qt draws on screen; a toolkit-free
+        :class:`~chisurf.chiplot.Panel` exports through emtk's CPU rasteriser.
+        """
+        if not _export_qt(self._canvas, self._host_widget, path, width):
+            raise OSError(f"chiplot: the plot could not be exported to {path}")
 
     def contextMenuEvent(self, event):  # noqa: N802 (Qt override)
         """Show chiplot's right-click menu (export data/image, auto-range).
@@ -132,7 +232,22 @@ class Grid(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(self._grid.widget())
+        # The core grid is a control that lays itself out; a Qt host places its
+        # cells in a grid layout instead, one host widget per panel or ramp.
+        self._cells = QtWidgets.QWidget()
+        self._layout = QtWidgets.QGridLayout(self._cells)
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.setSpacing(2)
+        self._placed: list = []
+        layout.addWidget(self._cells)
+
+    def _place_last(self):
+        """Host the cell the core grid just added, where it says it goes."""
+        item, row, col, rowspan, colspan = self._grid.cells()[-1]
+        widget = _hosted(item)
+        self._layout.addWidget(widget, row, col, rowspan, colspan)
+        self._placed.append(widget)
+        return item
 
     def add_plot(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> PanelPlot:
         """Add and return a panel at the given grid cell.
@@ -150,10 +265,8 @@ class Grid(QtWidgets.QWidget):
         -------
         PanelPlot
         """
-        canvas = self._grid.add_panel(
-            row=row, col=col, rowspan=rowspan, colspan=colspan, title=title
-        )
-        return PanelPlot(canvas)
+        self._grid.add_panel(row=row, col=col, rowspan=rowspan, colspan=colspan, title=title)
+        return PanelPlot(self._place_last())
 
     def set_column_stretch(self, column: int, factor: float) -> None:
         """Set the relative width of a grid column.
@@ -171,6 +284,7 @@ class Grid(QtWidgets.QWidget):
             other, not with any absolute size.
         """
         self._grid.set_column_stretch(column, factor)
+        self._layout.setColumnStretch(int(column), int(factor))
 
     def set_row_stretch(self, row: int, factor: float) -> None:
         """Set the relative height of a grid row.
@@ -183,6 +297,7 @@ class Grid(QtWidgets.QWidget):
             Relative height.
         """
         self._grid.set_row_stretch(row, factor)
+        self._layout.setRowStretch(int(row), int(factor))
 
     def add_colorbar(
         self, image: H.Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
@@ -208,7 +323,7 @@ class Grid(QtWidgets.QWidget):
         -------
         handles.ColorBar
         """
-        return self._grid.add_colorbar(
+        self._grid.add_colorbar(
             image,
             colormap=S.to_colormap(colormap),
             row=row,
@@ -216,6 +331,7 @@ class Grid(QtWidgets.QWidget):
             rowspan=rowspan,
             colspan=colspan,
         )
+        return self._place_last()
 
     def next_row(self) -> None:
         """Advance the implicit insertion cursor to the next row."""
@@ -228,65 +344,15 @@ class Grid(QtWidgets.QWidget):
         rebuild must ask for new ones.
         """
         self._grid.clear()
+        for widget in self._placed:
+            self._layout.removeWidget(widget)
+            widget.setParent(None)
+        self._placed.clear()
 
     @property
     def native(self):
         """The backend grid object (escape hatch; avoid in new code)."""
         return self._grid.native
-
-
-class VolumeView(QtWidgets.QWidget):
-    """3-D volume viewer: orbit a translucent ``(nz, ny, nx)`` scalar volume.
-
-    Where :class:`ImageView` shows one plane of a stack behind a frame slider,
-    this renders the whole volume at once. Drops into a Qt layout like any
-    widget.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Qt parent.
-    **backend_opts
-        Passed to the backend volume-view factory.
-    """
-
-    def __init__(self, parent=None, **backend_opts):
-        super().__init__(parent)
-        self._vv = get_backend().create_volume_view(**backend_opts)
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self._vv.widget())
-        # A GL viewport has no content to derive a size hint from, so a
-        # scroll area or a dock collapses it to zero height and renders
-        # nothing at all -- with no error, and the data still arriving.
-        self.setMinimumSize(240, 240)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-
-    def set_volume(self, data, *, colormap="magma", threshold=0.0, gamma=1.0):
-        """Show a ``(nz, ny, nx)`` scalar volume."""
-        self._vv.set_volume(data, colormap=colormap, threshold=threshold, gamma=gamma)
-
-    def set_scale(self, sx=1.0, sy=1.0, sz=1.0):
-        """Per-axis voxel scaling, for anisotropically sampled volumes."""
-        self._vv.set_scale(sx, sy, sz)
-
-    def set_vectors(self, segments, *, color=(1.0, 1.0, 1.0, 0.8), width=2.0):
-        """Overlay line segments, ``(n, 2, 3)``; ``None`` clears them."""
-        self._vv.set_vectors(segments, color=color, width=width)
-
-    def set_camera(self, distance=None, elevation=None, azimuth=None):
-        """Position the orbit camera."""
-        self._vv.set_camera(distance=distance, elevation=elevation, azimuth=azimuth)
-
-    def clear(self):
-        """Remove the volume."""
-        self._vv.clear()
-
-    @property
-    def native(self):
-        """The backend-specific view object (escape hatch)."""
-        return self._vv.native
 
 
 class ImageView(QtWidgets.QWidget):
@@ -339,7 +405,7 @@ class ImageView(QtWidgets.QWidget):
         row = QtWidgets.QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(0)
-        row.addWidget(self._iv.widget(), 1)
+        row.addWidget(_hosted(self._iv.control()), 1)
         layout.addLayout(row, 1)
         self._row = row
         self._ramp = None
@@ -384,10 +450,10 @@ class ImageView(QtWidgets.QWidget):
         self._frame_label.setText(f"1/{count}" if count > 1 else "")
         if count <= 1:
             self.stop()
-        ramp = self._iv.colorbar_widget()
-        if ramp is not None and ramp is not self._ramp:
-            self._row.addWidget(ramp)
-            self._ramp = ramp
+        bar = self._iv.colorbar()
+        if bar is not None and (bar.host is None or bar.host.widget is not self._ramp):
+            self._ramp = _hosted(bar)
+            self._row.addWidget(self._ramp)
 
     # -- frames and playback ----------------------------------------------
     @property
@@ -951,6 +1017,7 @@ class PanelPlot(Plot):
         # a panel is a QObject only for signal support and wraps an existing canvas.
         QtWidgets.QWidget.__init__(self)
         self._canvas = canvas
+        self._host_widget = canvas.host.widget
         self._series = []
         self._extra_menu_actions = []
         # A panel is not a standalone widget, so chiplot's contextMenuEvent never

@@ -5,10 +5,11 @@ looks (the successors of the ``mkPen`` / ``mkBrush`` / ``mkColor`` / ``colormap`
 helpers of the retired pyqtgraph backend). A backend translates them into its
 own pen/brush/lookup-table objects.
 
-Nothing here imports a plotting backend or Qt, so styles can be constructed in
-Qt-free code (view specs, model definitions) and rendered anywhere. Colour
-names are the SVG/CSS set (read from emtk's colour table, case and spaces
-ignored, as Qt read them); a ``QColor`` is still accepted, by its channels.
+Nothing here imports a plotting backend or a toolkit, so styles can be
+constructed anywhere (view specs, model definitions) and rendered anywhere.
+Colour names are the SVG/CSS set (read from emtk's colour table, case and spaces
+ignored, as the retired widget toolkit read them); a toolkit colour object is
+still accepted, by its channels (``red()``/``green()``/``blue()``/``alpha()``).
 """
 
 from __future__ import annotations
@@ -16,8 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from enum import Enum
 
-# Single-letter color codes (matplotlib / pyqtgraph idiom) that ``QColor``
-# does not understand on its own. Kept for drop-in compatibility with the many
+# Single-letter color codes (matplotlib / pyqtgraph idiom) that an SVG name
+# table does not know. Kept for drop-in compatibility with the many
 # ``mkPen("r")`` / ``"y"`` call sites being migrated.
 _SHORT_COLORS: dict[str, tuple[int, int, int, int]] = {
     "r": (255, 0, 0, 255),
@@ -50,7 +51,7 @@ class Color:
 
     Construct via :func:`to_color`, which parses names (``"red"``), hex
     strings (``"#ff0000"``, ``"#ff000080"``), ``(r, g, b[, a])`` tuples with
-    either 0–255 ints or 0–1 floats, a packed integer, or a ``QColor``.
+    either 0–255 ints or 0–1 floats, a packed integer, or a colour object.
 
     Parameters
     ----------
@@ -87,14 +88,14 @@ def to_color(value) -> Color:
 
     Parameters
     ----------
-    value : Color, str, int, tuple, QColor, or None
+    value : Color, str, int, tuple, colour object, or None
         - :class:`Color` — returned unchanged.
         - ``str`` — an SVG/CSS color name or ``#rgb`` / ``#rrggbb`` /
           ``#rrggbbaa`` hex string (case and spaces in a name are ignored).
         - ``(r, g, b)`` / ``(r, g, b, a)`` — ints in ``[0, 255]`` or floats in
           ``[0, 1]`` (auto-detected: all values ``<= 1`` are treated as floats).
         - ``int`` — a packed ``0xRRGGBB`` value.
-        - a ``QColor`` (anything with ``red()``/``green()``/``blue()``/``alpha()``).
+        - a colour object (anything with ``red()``/``green()``/``blue()``/``alpha()``).
         - ``None`` — returns opaque black.
 
     Returns
@@ -116,10 +117,10 @@ def to_color(value) -> Color:
         if value in _SHORT_COLORS:
             return Color(*_SHORT_COLORS[value])
         # Eight hex digits are #RRGGBBAA here, the CSS spelling this module
-        # documents. Qt reads the same string as #AARRGGBB, so handing it over
-        # swaps alpha into red and comes back opaque: "#ff000080" (red, half
-        # transparent) parsed as dark blue at full alpha, and a translucent
-        # region band rendered olive. Parse it before Qt sees it.
+        # documents. The old widget toolkit read the same string as #AARRGGBB,
+        # which swapped alpha into red and came back opaque: "#ff000080" (red,
+        # half transparent) parsed as dark blue at full alpha, and a
+        # translucent region band rendered olive. Parse it here.
         if len(value) == 9 and value.startswith("#"):
             try:
                 r, g, b, a = (int(value[i : i + 2], 16) for i in (1, 3, 5, 7))
@@ -153,7 +154,7 @@ def _named_or_hex(value: str) -> Color:
     """An SVG/CSS colour name or a ``#rgb`` / ``#rrggbb`` hex string as a :class:`Color`.
 
     Names ignore case and spaces (``"Light Blue"`` is ``lightblue``), and
-    ``"transparent"`` is transparent black, as Qt's ``QColor`` read them.
+    ``"transparent"`` is transparent black, as the old widget toolkit read them.
     """
     from emtk import colormaps
 
@@ -198,7 +199,7 @@ def to_pen(value, **overrides) -> Pen:
 
     Parameters
     ----------
-    value : Pen, Color, str, tuple, int, QColor, or None
+    value : Pen, Color, str, tuple, int, colour object, or None
         A :class:`Pen` (returned with ``overrides`` applied) or any
         :func:`to_color`-compatible value (becomes the pen color).
     **overrides
@@ -264,7 +265,7 @@ class Colormap:
 
     Replaces ``pyqtgraph.colormap.get``. The name is resolved by the active
     backend to a concrete lookup table; chiplot only carries the identity so
-    Qt-free code can request a colormap without importing a renderer.
+    toolkit-free code can request a colormap without importing a renderer.
 
     Parameters
     ----------
@@ -344,11 +345,11 @@ def int_color(index: int, count: int = 9) -> Color:
 
 
 def _hsv_bytes(hue: float) -> tuple[int, int, int]:
-    """Fully saturated, full-value ``hue`` (0..1) as 0..255 RGB, rounded as ``QColor.fromHsvF``.
+    """Fully saturated, full-value ``hue`` (0..1) as 0..255 RGB, rounded as the old toolkit's HSV colour.
 
-    Qt stores the hue in 1/100 degree and the channels in 16 bits, then reduces to
-    8 bits; doing the same keeps every palette colour identical to what the
-    Qt-backed version drew.
+    That toolkit stored the hue in 1/100 degree and the channels in 16 bits, then
+    reduced to 8 bits; doing the same keeps every palette colour identical to what
+    the toolkit-backed version drew (recorded in ``test/test_chiplot_core_qt_free.py``).
     """
     hue_c = int(round(hue * 36000.0))
     h = 0.0 if hue_c == 36000 else hue_c / 6000.0

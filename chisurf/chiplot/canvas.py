@@ -3,8 +3,8 @@
 ``PlotAPI`` is the verb-first drawing, axis and export API every chiplot panel
 shares; :class:`Panel` is that API over an emtk canvas with no widget behind it,
 for surfaces that draw panels as emtk controls (a fit window's pages). Nothing
-here imports Qt: the ``QWidget`` wrappers (``Plot``, ``Grid``, ``ImageView``,
-``VolumeView``) are the optional host layer in :mod:`chisurf.gui.chiplot`.
+here imports a toolkit: the widget wrappers are the optional host layer
+:mod:`chisurf.gui.chiplot`.
 
 Design goals versus pyqtgraph call sites:
 
@@ -21,15 +21,12 @@ Design goals versus pyqtgraph call sites:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import Any, TypeVar
 
 import numpy as np
 
 from chisurf.chiplot import handles as H
 from chisurf.chiplot import style as S
-
-if TYPE_CHECKING:
-    from chisurf.gui.chiplot.canvas import Plot
 
 #: Sentinel for "argument not given", so an explicit ``None`` keeps its own
 #: meaning (a *transparent* background, pyqtgraph's idiom) instead of being
@@ -43,9 +40,9 @@ class PlotAPI:
     """The drawing, axis and export API of a chiplot panel, toolkit-free.
 
     Everything here talks to the backend canvas (``self._canvas``) only. It is
-    shared by :class:`Plot` -- a ``QWidget`` that hosts the canvas in a Qt
-    layout -- and :class:`Panel`, which is the canvas alone, for a surface
-    that draws it as a control (the fit window's emtk surface).
+    shared by :class:`Panel`, which is the canvas alone, for a surface that
+    draws it as a control (the fit window's emtk surface), and by the host
+    layer's widget wrapper (:mod:`chisurf.gui.chiplot`).
     """
 
     # Set by the concrete class (``Plot``, ``Panel``, ``PanelPlot``).
@@ -656,17 +653,22 @@ class PlotAPI:
                 w.writerow(["" if i >= c.size else c[i] for _, c in cols])
 
     def export_image(self, path: str, *, width: int | None = None) -> None:
-        """Save the panel as an image (PNG/SVG via the backend, else a grab).
+        """Save the panel as an image, drawn on emtk's CPU rasteriser.
 
         Parameters
         ----------
         path : str
-            Destination image path.
+            Destination image path; the suffix picks the format (PNG, JPEG, ...).
         width : int, optional
-            Target pixel width (backend exporter only).
+            Target pixel width; the picture, text included, is scaled to it.
+
+        Raises
+        ------
+        OSError
+            When the backend could not write the file.
         """
         if not self._canvas.export_image(path, width=width):
-            self._canvas.widget().grab().save(path)
+            raise OSError(f"chiplot: the panel could not be exported to {path}")
 
     def _repr_png_(self) -> bytes | None:
         """The panel as PNG bytes: how the console (and a notebook) shows a plot.
@@ -931,7 +933,7 @@ class PlotAPI:
         self._canvas.set_compact(compact, font_size=font_size)
         return self
 
-    def link_x(self: _P, other: Plot) -> _P:
+    def link_x(self: _P, other: PlotAPI) -> _P:
         """Link this panel's x-axis to ``other``'s so they pan/zoom together.
 
         Used for stacked diagnostic panels (e.g. residuals above the data) that
@@ -940,7 +942,7 @@ class PlotAPI:
         self._canvas.link_x(other._canvas)
         return self
 
-    def link_y(self: _P, other: Plot) -> _P:
+    def link_y(self: _P, other: PlotAPI) -> _P:
         """Link this panel's y-axis to ``other``'s so they pan/zoom together. Returns ``self``."""
         self._canvas.link_y(other._canvas)
         return self
@@ -975,7 +977,7 @@ class PlotAPI:
 
 
 class _Hook:
-    """``connect``/``disconnect``/``emit`` for a :class:`Panel` (no QObject behind it)."""
+    """``connect``/``disconnect``/``emit`` for a :class:`Panel` (no toolkit object behind it)."""
 
     def __init__(self) -> None:
         self._slots: list = []
@@ -995,9 +997,9 @@ class Panel(PlotAPI):
     """A chiplot panel that is not a widget: the emtk canvas and the plot API.
 
     For a surface that draws panels as emtk controls (a fit window page): the
-    same ``line``/``set_labels``/``region``/... calls as :class:`Plot`, no
-    ``QWidget`` and no ``ControlHost`` behind it. ``clicked`` and
-    ``mouse_moved`` connect like Qt signals. :meth:`control` is what to draw.
+    same ``line``/``set_labels``/``region``/... calls as every chiplot panel,
+    and no widget behind it. ``clicked`` and ``mouse_moved`` connect like
+    signals. :meth:`control` is what to draw.
 
     Parameters
     ----------

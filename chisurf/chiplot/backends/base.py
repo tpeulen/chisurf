@@ -1,8 +1,10 @@
 """Abstract backend contract for chiplot.
 
 A backend turns chiplot's renderer-neutral API into concrete drawing. It
-supplies two widget-bearing objects — a single-panel :class:`Canvas` and a
-multi-panel :class:`GridCanvas` — plus global configuration.
+supplies a single-panel :class:`Canvas`, a multi-panel :class:`GridCanvas` and
+an :class:`ImageViewCanvas` -- each a control a surface draws, toolkit-free --
+plus global configuration. Hosting one in a widget is the host layer's job
+(:mod:`chisurf.gui.chiplot`), never the backend's.
 
 The public :class:`~chisurf.gui.chiplot.Plot` / :class:`~chisurf.gui.chiplot.Grid`
 wrappers delegate to these. Concrete backends live alongside this module
@@ -14,16 +16,11 @@ from __future__ import annotations
 
 import abc
 from collections.abc import Sequence
-from typing import TYPE_CHECKING
 
 import numpy as np
 
 from chisurf.chiplot import handles as H
 from chisurf.chiplot import style as S
-
-if TYPE_CHECKING:  # the Qt host layer only; nothing here imports Qt
-    from qtpy import QtWidgets
-
 
 class Canvas(abc.ABC):
     """A single plot panel: axes, a viewbox, and drawn handles.
@@ -31,10 +28,6 @@ class Canvas(abc.ABC):
     Subclasses implement drawing against a specific renderer and return objects
     conforming to the :mod:`chisurf.chiplot.handles` protocols.
     """
-
-    @abc.abstractmethod
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget for this panel."""
 
     # -- drawing ---------------------------------------------------------
     @abc.abstractmethod
@@ -429,8 +422,7 @@ class Canvas(abc.ABC):
     def export_image(self, path: str, *, width: int | None = None) -> bool:
         """Export the panel to an image file; return ``True`` on success.
 
-        Backends without a native exporter return ``False`` so the caller can
-        fall back to a widget grab.
+        Backends without an exporter return ``False``.
         """
         return False
 
@@ -450,11 +442,7 @@ class Canvas(abc.ABC):
 
 
 class GridCanvas(abc.ABC):
-    """A grid of :class:`Canvas` panels sharing one widget."""
-
-    @abc.abstractmethod
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget for the whole grid."""
+    """A grid of :class:`Canvas` panels, drawn as one control."""
 
     @abc.abstractmethod
     def add_panel(
@@ -511,12 +499,8 @@ class GridCanvas(abc.ABC):
 class ImageViewCanvas(abc.ABC):
     """An image viewer: image + intensity/LUT histogram + (3-D) frame slider.
 
-    Wraps the renderer's composite image-view widget. Overlays and ROIs live on its internal view.
+    Overlays and ROIs live on its canvas; a host adds the frame slider.
     """
-
-    @abc.abstractmethod
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget."""
 
     @abc.abstractmethod
     def set_image(
@@ -602,8 +586,12 @@ class ImageViewCanvas(abc.ABC):
         """Call ``callback(index)`` when the shown frame changes."""
         self._unsupported("frame stepping")
 
-    def colorbar_widget(self) -> QtWidgets.QWidget | None:
-        """The colour ramp widget with draggable levels, or ``None`` without one."""
+    def control(self):
+        """The control that draws the picture (what a host shows)."""
+        self._unsupported("a drawable control")
+
+    def colorbar(self):
+        """The colour ramp control with draggable levels, or ``None`` without one."""
         return None
 
     def set_extent(self, extent) -> None:
@@ -651,66 +639,6 @@ class ImageViewCanvas(abc.ABC):
         self._unsupported("painting")
 
 
-class VolumeViewCanvas(abc.ABC):
-    """A 3-D volume renderer.
-
-    Displays a ``(nz, ny, nx)`` scalar volume as a translucent stack the user
-    can orbit. Distinct from :class:`ImageViewCanvas`, which shows one plane of
-    a stack at a time behind a frame slider.
-    """
-
-    @abc.abstractmethod
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget."""
-
-    @abc.abstractmethod
-    def set_volume(
-        self,
-        data: np.ndarray,
-        *,
-        colormap: str = "magma",
-        threshold: float = 0.0,
-        gamma: float = 1.0,
-    ) -> None:
-        """Show a ``(nz, ny, nx)`` scalar volume.
-
-        ``threshold`` drops voxels below a fraction of the peak, and ``gamma``
-        shapes the opacity ramp; both exist because a diffraction-limited focus
-        is mostly empty space and renders as fog without them.
-        """
-
-    @abc.abstractmethod
-    def set_scale(self, sx: float = 1.0, sy: float = 1.0, sz: float = 1.0) -> None:
-        """Set per-axis voxel scaling, so anisotropic sampling looks right."""
-
-    @abc.abstractmethod
-    def clear(self) -> None:
-        """Remove the volume."""
-
-    def set_vectors(
-        self,
-        segments: np.ndarray | None,
-        *,
-        color: tuple = (1.0, 1.0, 1.0, 0.8),
-        width: float = 2.0,
-    ) -> None:
-        """Draw an overlay of line segments, ``(n, 2, 3)`` in voxel coordinates.
-
-        For annotating a volume with directions -- a polarization state, a
-        field, an axis. ``None`` removes the overlay. Backends without line
-        support may ignore this.
-        """
-
-    @abc.abstractmethod
-    def set_camera(self, distance=None, elevation=None, azimuth=None) -> None:
-        """Position the orbit camera."""
-
-    @property
-    @abc.abstractmethod
-    def native(self):
-        """The backend-specific view object (escape hatch)."""
-
-
 class Backend(abc.ABC):
     """Factory that produces canvases and applies global configuration."""
 
@@ -727,14 +655,6 @@ class Backend(abc.ABC):
     @abc.abstractmethod
     def create_image_view(self, **opts) -> ImageViewCanvas:
         """Create an :class:`ImageViewCanvas`."""
-
-    def create_volume_view(self, **opts) -> VolumeViewCanvas:
-        """Create a :class:`VolumeViewCanvas`.
-
-        Not abstract: a backend without a 3-D renderer should say so plainly
-        rather than fail to instantiate.
-        """
-        raise NotImplementedError(f"the {self.name!r} backend has no 3-D volume renderer")
 
     @abc.abstractmethod
     def configure(self, **global_opts) -> None:

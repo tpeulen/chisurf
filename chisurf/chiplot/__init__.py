@@ -1,4 +1,4 @@
-"""chiplot — ChiSurf's renderer-neutral plotting API, without Qt.
+"""chiplot — ChiSurf's renderer-neutral plotting API, toolkit-free.
 
 chiplot is the single seam through which ChiSurf draws 2-D plots. Call sites
 use this package; they never import a rendering library directly. The backend
@@ -6,10 +6,10 @@ use this package; they never import a rendering library directly. The backend
 can be registered without touching any call site.
 
 This package is the toolkit-free core: the panel API (:class:`PlotAPI`,
-:class:`Panel`), the handles, the styles and the backends. Nothing in it imports
-Qt. The ``QWidget`` wrappers (``Plot``, ``Grid``, ``ImageView``, ``VolumeView``)
-are the optional host layer :mod:`chisurf.gui.chiplot`, which re-exports
-everything here, so a Qt host keeps writing ``from chisurf.gui import chiplot``.
+the grid and image view controls (:mod:`chisurf.chiplot.backends`), the handles,
+the styles. Nothing in it imports a toolkit (``test/test_chiplot_core_qt_free.py``
+greps the source). Widget wrappers are the optional host layer
+:mod:`chisurf.gui.chiplot`, which re-exports everything here.
 
 Quick start
 -----------

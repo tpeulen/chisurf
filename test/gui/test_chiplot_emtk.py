@@ -506,10 +506,18 @@ def test_a_grid_lays_its_panels_out(qapp):
 
     assert len({id(first), id(second), id(third)}) == 3
     assert len(grid.native()) == 3
-    assert grid.widget().layout().count() == 3
+    assert [cell[1:] for cell in grid.cells()] == [(0, 0, 1, 1), (0, 1, 1, 1), (1, 0, 1, 1)]
+
+    # The grid is a control: drawn into a box, each panel gets its own cell.
+    from emtk.testing import RecordingPainter
+
+    grid.draw(RecordingPainter(), 0.0, 0.0, 402.0, 302.0)
+    assert first._last_box == (0.0, 0.0, 200.0, 150.0)
+    assert second._last_box == (202.0, 0.0, 200.0, 150.0)
+    assert third._last_box == (0.0, 152.0, 200.0, 150.0)
 
     grid.clear()
-    assert grid.native() == []
+    assert grid.native() == [] and grid.cells() == []
 
 
 def test_dragging_empty_space_pans_the_view(plot):

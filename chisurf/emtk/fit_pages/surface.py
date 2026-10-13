@@ -81,6 +81,8 @@ def _surface_class():
             self.code_face = None
             self.show_code = False
             self._menu_panel = None
+            #: ``(kind, plot, FileDialog, DialogWindow)`` while an export asks where to write.
+            self._export: tuple | None = None
             self._suppress_layout_signal = False
             super().__init__(gui=self._render, continuous=False)
 
@@ -200,9 +202,9 @@ def _surface_class():
             plot = getattr(panel, "plot", None)
             if plot is not None:
                 if im.menu_item("Export data as CSV…"):
-                    plot._on_export_csv()
+                    self.ask_export("csv", plot)
                 if im.menu_item("Export image…"):
-                    plot._on_export_image()
+                    self.ask_export("image", plot)
                 im.separator()
                 if im.menu_item("Auto-range"):
                     plot.autoscale()
@@ -214,6 +216,42 @@ def _surface_class():
                             callback()
             im.end_popup()
 
+        def ask_export(self, kind: str, plot) -> None:
+            """Ask where to write *plot* as ``"csv"`` data or an ``"image"`` (emtk's save dialog)."""
+            from emtk.dialog_window import DialogWindow
+            from emtk.file_dialog import FileDialog
+
+            if kind == "csv":
+                title, name, filters = "Export data as CSV", "plot.csv", "CSV files (*.csv)"
+            else:
+                title, name, filters = "Export image", "plot.png", "Images (*.png *.jpg *.tif)"
+            self._export = (
+                kind,
+                plot,
+                FileDialog(title, mode="save", filename=name, filters=filters),
+                DialogWindow(title, size=(760, 540)),
+            )
+            self.request_frame()
+
+        def _draw_export(self, box) -> None:
+            kind, plot, dialog, window = self._export
+            closed = window.begin(box)
+            paths = dialog.draw()
+            window.end()
+            if closed or paths is False:
+                self._export = None
+            elif paths:
+                self._export = None
+                try:
+                    if kind == "csv":
+                        plot.export_csv(paths[0])
+                    else:
+                        plot.export_image(paths[0])
+                except OSError as exc:
+                    import logging
+
+                    logging.getLogger(__name__).warning("export to %s failed: %s", paths[0], exc)
+
         def _render(self) -> None:
             vp = im.get_main_viewport()
             box = (0.0, 0.0, float(vp.size[0]), float(vp.size[1]))
@@ -221,6 +259,8 @@ def _surface_class():
                 self.code_face.draw(box)
             else:
                 self.docks.draw(box)
+            if self._export is not None:
+                self._draw_export(box)
 
         # -- host hooks ---------------------------------------------------- #
         def key(self, key, text="", modifiers=0):

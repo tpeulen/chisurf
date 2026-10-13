@@ -5,10 +5,16 @@ itself, frame by frame, and nothing persists between frames. chiplot is the
 opposite -- ``plot.line(...)`` hands back a handle the caller keeps and mutates
 later. This module is the bridge: the canvas owns a **display list** of series,
 the handles edit entries in that list, and the control redraws the whole list
-whenever Qt asks for a repaint.
+whenever its host asks for a repaint.
+
+The module imports no toolkit. Whatever shows a panel -- an emtk surface that
+draws the canvas as a control, or a host widget built by
+:mod:`chisurf.gui.chiplot` -- attaches itself with :meth:`EmtkCanvas.attach_host`;
+a host is any object with ``update()`` (and optionally ``size()`` and
+``set_background(rgb)``), so nothing here knows which toolkit made it.
 
 That shape is also why this backend cannot crash the way the pyqtgraph one
-does. There are no per-item QGraphicsItems to outlive their scene and no
+does. There are no per-item scene items to outlive their scene and no
 Python slots connected to C++ destructors: a discarded plot is a Python list
 that the garbage collector frees like any other.
 
@@ -30,17 +36,13 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 
 from chisurf.chiplot import handles as H
 from chisurf.chiplot import style as S
 from chisurf.chiplot.backends import base
-
-if TYPE_CHECKING:  # a Qt host is built on request only (``widget()``)
-    from qtpy import QtWidgets
-
 
 def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[int, int, int]:
     """Return ``color`` as an ``(r, g, b)`` triple emtk understands."""
@@ -693,9 +695,9 @@ class EmtkCanvas(base.Canvas):
         #: ``handler(phase, x, y)`` taking over the left drag (painting), else ``None``.
         self._paint: Callable | None = None
         self._painting = False
-        #: The Qt host, built when :meth:`widget` is first asked for. A panel
-        #: drawn as a control by an emtk surface never needs one.
-        self._widget = None
+        #: What shows this panel, if anything attached itself (:meth:`attach_host`).
+        #: A panel drawn as a control by an emtk surface has none.
+        self._host: Any = None
         #: The "A" button (:mod:`emtk.widgets.auto_range`): shown while an axis
         #: is not auto-ranged unless a caller opted out; where the last frame
         #: drew it (``None`` when hidden) and whether the pointer is on it.
@@ -703,22 +705,24 @@ class EmtkCanvas(base.Canvas):
         self._auto_button_rect: tuple[float, float, float, float] | None = None
         self._auto_button_hovered = False
 
-    # -- the Qt side ---------------------------------------------------
-    def _build_widget(self) -> QtWidgets.QWidget:
-        """Host this canvas in a widget that repaints it on demand."""
-        from emtk.qt_host import ControlHost
+    # -- the host ------------------------------------------------------
+    def attach_host(self, host: Any) -> None:
+        """Let *host* show this panel; ``None`` detaches the current one.
 
-        return ControlHost(self, background=self._background)
+        A host is duck-typed: ``update()`` repaints it, and the optional
+        ``size()`` (``(width, height)`` in pixels) and ``set_background(rgb)``
+        let an export match what it shows and a background change reach it.
+        """
+        self._host = host
+        if host is not None:
+            setter = getattr(host, "set_background", None)
+            if callable(setter):
+                setter(self._background)
 
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget for this panel, building it on first use."""
-        if self._widget is None:
-            self._widget = self._build_widget()
-        return self._widget
-
-    def existing_widget(self) -> QtWidgets.QWidget | None:
-        """The Qt host if one was built, else ``None`` (without building it)."""
-        return self._widget
+    @property
+    def host(self) -> Any:
+        """The attached host, or ``None``."""
+        return self._host
 
     def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
         """Send repaint requests to *callback* instead of this panel's own widget.
@@ -737,7 +741,7 @@ class EmtkCanvas(base.Canvas):
         if target is not None:
             target()
             return
-        update = getattr(self._widget, "update", None)
+        update = getattr(self._host, "update", None)
         if callable(update):
             update()
 
@@ -2105,8 +2109,9 @@ class EmtkCanvas(base.Canvas):
     def set_background(self, color) -> None:
         """Set the panel background colour."""
         self._background = _rgb(color, self._background)
-        if hasattr(self._widget, "background"):
-            self._widget.background = self._background
+        setter = getattr(self._host, "set_background", None)
+        if callable(setter):
+            setter(self._background)
         self.refresh()
 
     def set_tick_spacing(self, side, *, major=None, minor=None) -> None:
@@ -2154,34 +2159,43 @@ class EmtkCanvas(base.Canvas):
         if mouse is not None:
             self._interactive = bool(mouse)
 
+    def export_size(self) -> tuple[int, int]:
+        """The size an export is drawn at: the host's, else the last drawn box, else 800 x 500."""
+        size = getattr(self._host, "size", None)
+        if callable(size):
+            w, h = size()
+            if w > 0 and h > 0:
+                return int(w), int(h)
+        box = getattr(self, "_last_box", None)
+        if box is not None and box[2] > 0 and box[3] > 0:
+            return int(box[2]), int(box[3])
+        return 800, 500
+
     def export_image(self, path, *, width=None) -> bool:
         """Render the panel to an image file; ``True`` when it was written.
 
-        Drawn straight into an image at the size it was last shown (or its
-        host's), so a panel without a Qt host exports the same picture.
+        Drawn on emtk's CPU rasteriser (:class:`emtk.pil_painter.PilPainter`, the
+        one :mod:`chisurf.emtk.fit_report` draws the report with) at the size the
+        panel is shown at (:meth:`export_size`), so it needs no window, no GPU
+        and no toolkit. *width* scales the picture, text included
+        (:class:`emtk.scaled_painter.ScaledPainter`). The format follows the
+        suffix (anything Pillow writes; ``.svg`` is not one).
         """
-        from emtk.qt_painter import QtPainter
-        from qtpy import QtGui
+        from emtk.pil_painter import PilPainter
+        from emtk.scaled_painter import ScaledPainter
 
-        box = getattr(self, "_last_box", None)
-        if self._widget is not None:
-            w, h = self._widget.width(), self._widget.height()
-        elif box is not None:
-            w, h = int(box[2]), int(box[3])
-        else:
-            w, h = 800, 500
+        w, h = self.export_size()
         scale = float(width) / max(w, 1) if width else 1.0
-        image = QtGui.QImage(
-            max(int(w * scale), 1), max(int(h * scale), 1), QtGui.QImage.Format_ARGB32
+        painter = PilPainter(
+            max(int(w * scale), 1), max(int(h * scale), 1), background=(*self._background, 255)
         )
-        image.fill(QtGui.QColor(*self._background))
-        painter = QtGui.QPainter(image)
-        try:
-            painter.scale(scale, scale)
-            self.draw(QtPainter(painter), 0.0, 0.0, float(w), float(h))
-        finally:
-            painter.end()
-        return bool(image.save(str(path)))
+        target = painter if scale == 1.0 else ScaledPainter(painter, scale)
+        self.draw(target, 0.0, 0.0, float(w), float(h))
+        frame = painter.frame
+        if str(path).lower().endswith((".jpg", ".jpeg", ".bmp")):
+            frame = frame.convert("RGB")
+        frame.save(str(path))
+        return True
 
     def native(self) -> Any:
         """The display list; emtk keeps no plot object between frames."""
@@ -2372,8 +2386,8 @@ class EmtkImageView(base.ImageViewCanvas):
     """An image view: one canvas showing a picture, with a frame stepper.
 
     The canvas already draws images with axes, pan and zoom; the view adds
-    what makes it an *image* viewer -- a stack it can step through (the Qt
-    slider belongs to :class:`chisurf.gui.chiplot.ImageView`), the picture
+    what makes it an *image* viewer -- a stack it can step through (the
+    slider belongs to whatever hosts the view), the picture
     placed on real axes, square pixels, image row order, and clicks reported
     in image coordinates.
     """
@@ -2394,10 +2408,11 @@ class EmtkImageView(base.ImageViewCanvas):
         self._frame_callbacks: list[Callable] = []
         self._bar: _ColorBar | None = None
         self._ramp_width: int | None = None
+        self._refresh_target: Callable[[], None] | None = None
 
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget."""
-        return self._canvas.widget()
+    def control(self) -> EmtkCanvas:
+        """The canvas that draws the picture: what a host shows."""
+        return self._canvas
 
     def _rect_for(self, rows: int, columns: int) -> tuple[float, float, float, float]:
         """Where a ``rows x columns`` picture sits: the extent, or its pixels."""
@@ -2447,14 +2462,22 @@ class EmtkImageView(base.ImageViewCanvas):
             self._canvas.auto_range()
         if self._bar is None:
             self._bar = _ColorBar(self._image)
+            self._bar.set_refresh_target(self._refresh_target)
             self.set_histogram_width(self._ramp_width)
-        self._bar.widget().update()
+        self._bar.refresh()
         for callback in self._frame_callbacks:
             callback(0)
 
-    def colorbar_widget(self) -> QtWidgets.QWidget | None:
-        """The colour ramp with draggable levels, once an image is shown (else ``None``)."""
-        return None if self._bar is None else self._bar.widget()
+    def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
+        """Send the picture's and the ramp's repaint requests to *callback* (a surface drawing them)."""
+        self._refresh_target = callback
+        self._canvas.set_refresh_target(callback)
+        if self._bar is not None:
+            self._bar.set_refresh_target(callback)
+
+    def colorbar(self) -> _ColorBar | None:
+        """The colour ramp with draggable levels (a control), once an image is shown (else ``None``)."""
+        return self._bar
 
     @property
     def frame_count(self) -> int:
@@ -2527,14 +2550,14 @@ class EmtkImageView(base.ImageViewCanvas):
         if self._image is not None:
             self._image.set_colormap(name)
         if self._bar is not None:
-            self._bar.widget().update()
+            self._bar.refresh()
 
     def clear(self) -> None:
         """Clear the image and its overlays."""
         self._canvas.clear()
         self._image = None
         if self._bar is not None:
-            self._bar.widget().setParent(None)
+            self._bar.remove()
             self._bar = None
         self._overlays.clear()
         self._stack = None
@@ -2544,12 +2567,7 @@ class EmtkImageView(base.ImageViewCanvas):
         """Fix the colour ramp's width in pixels, or free it with ``None``."""
         self._ramp_width = width
         if self._bar is not None:
-            widget = self._bar.widget()
-            if width is None:
-                widget.setMinimumWidth(56)
-                widget.setMaximumWidth(80)
-            else:
-                widget.setFixedWidth(int(width))
+            self._bar.set_width(width)
 
     def set_interactive(self, *, mouse=None, menu=None) -> None:
         """Toggle pan and zoom."""
@@ -2639,9 +2657,10 @@ class _ColorBar:
     #: Pixels kept free above and below the ramp for its two labels.
     LABEL_H = 14.0
 
-    def __init__(self, image: _Entry, colormap=None) -> None:
-        from emtk.qt_host import ControlHost
+    #: The width a host gives the ramp, ``(least, most)`` pixels, unless fixed.
+    WIDTH_RANGE = (56, 80)
 
+    def __init__(self, image: _Entry, colormap=None) -> None:
         self._image = image
         self._callbacks: list[Callable] = []
         self._drag: tuple[str, float, tuple[float, float]] | None = None
@@ -2649,11 +2668,54 @@ class _ColorBar:
         self._alive = True
         self._visible = True
         self._z = 0.0
+        #: What shows the ramp (duck-typed, see :meth:`attach_host`), if anything.
+        self._host: Any = None
+        self._refresh_target: Callable[[], None] | None = None
+        #: ``(least, most)`` width in pixels a host or a grid gives the ramp.
+        self.width_range: tuple[int, int] = self.WIDTH_RANGE
+        #: The background a host fills behind the ramp.
+        self.background = (30, 32, 38)
         if colormap is not None:
             image.set_colormap(colormap)
-        self._widget = ControlHost(self, background=(30, 32, 38))
-        self._widget.setMinimumWidth(56)
-        self._widget.setMaximumWidth(80)
+
+    # -- the host ------------------------------------------------------
+    def attach_host(self, host: Any) -> None:
+        """Let *host* show the ramp; ``None`` detaches it.
+
+        Duck-typed: ``update()`` repaints; the optional ``set_visible(bool)``,
+        ``set_width_range(least, most)`` and ``detach()`` follow :meth:`hide`,
+        :meth:`set_width` and :meth:`remove`.
+        """
+        self._host = host
+        if host is not None:
+            self._call_host("set_width_range", *self.width_range)
+            self._call_host("set_visible", self._visible)
+
+    @property
+    def host(self) -> Any:
+        """The attached host, or ``None``."""
+        return self._host
+
+    def _call_host(self, name: str, *args: Any) -> None:
+        method = getattr(self._host, name, None)
+        if callable(method):
+            method(*args)
+
+    def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
+        """Send repaint requests to *callback* (a surface drawing the ramp) instead of the host."""
+        self._refresh_target = callback
+
+    def refresh(self) -> None:
+        """Ask whatever shows the ramp to repaint."""
+        if self._refresh_target is not None:
+            self._refresh_target()
+        else:
+            self._call_host("update")
+
+    def set_width(self, width: int | None) -> None:
+        """Fix the ramp's width in pixels, or give it back its default range with ``None``."""
+        self.width_range = self.WIDTH_RANGE if width is None else (int(width), int(width))
+        self._call_host("set_width_range", *self.width_range)
 
     # -- the control emtk draws ----------------------------------------
     def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
@@ -2705,19 +2767,15 @@ class _ColorBar:
         """The ramp does not zoom."""
 
     # -- ColorBar ------------------------------------------------------
-    def widget(self) -> QtWidgets.QWidget:
-        """The Qt widget the grid places."""
-        return self._widget
-
     def set_colormap(self, colormap) -> None:
         """Map the image, and the ramp, through ``colormap``."""
         self._image.set_colormap(colormap)
-        self._widget.update()
+        self.refresh()
 
     def set_levels(self, low: float, high: float, *, notify: bool = False) -> None:
         """Set the image's mapped range; a drag also tells the listeners."""
         self._image.set_levels(low, high)
-        self._widget.update()
+        self.refresh()
         if notify:
             for callback in self._callbacks:
                 callback(float(low), float(high))
@@ -2742,7 +2800,8 @@ class _ColorBar:
     @visible.setter
     def visible(self, value: bool) -> None:
         self._visible = bool(value)
-        self._widget.setVisible(self._visible)
+        self._call_host("set_visible", self._visible)
+        self.refresh()
 
     @property
     def z(self) -> float:
@@ -2762,9 +2821,10 @@ class _ColorBar:
         self.visible = True
 
     def remove(self) -> None:
-        """Take the ramp out of its grid."""
+        """Take the ramp out of its grid (or view): its host lets go of it."""
         self._alive = False
-        self._widget.setParent(None)
+        self._call_host("detach")
+        self._host = None
 
     def is_alive(self) -> bool:
         """Whether the ramp still belongs to a grid."""
@@ -2772,57 +2832,116 @@ class _ColorBar:
 
     @property
     def native(self) -> Any:
-        """The Qt widget hosting the ramp."""
-        return self._widget
+        """The ramp itself: the control its host draws."""
+        return self
+
+
+class _Cell:
+    """One item of a grid (a panel or a colour ramp) and the cells it spans."""
+
+    __slots__ = ("item", "row", "col", "rowspan", "colspan", "rect")
+
+    def __init__(self, item: Any, row: int, col: int, rowspan: int, colspan: int) -> None:
+        self.item = item
+        self.row, self.col = int(row), int(col)
+        self.rowspan, self.colspan = max(int(rowspan), 1), max(int(colspan), 1)
+        #: Where the last frame drew it, ``(x, y, w, h)``.
+        self.rect: tuple[float, float, float, float] | None = None
+
+
+def _tracks(
+    count: int,
+    total: float,
+    spacing: float,
+    stretch: dict[int, float],
+    fixed: dict[int, tuple[float, float]],
+) -> list[tuple[float, float]]:
+    """``(offset, size)`` of *count* tracks sharing *total* pixels.
+
+    A track in *fixed* (a colour ramp's column) gets the most of its
+    ``(least, most)`` range that leaves the others room; the rest share what is
+    left by their stretch factor (equal shares when none is set), as a grid
+    layout does.
+    """
+    if count <= 0:
+        return []
+    room = max(total - spacing * (count - 1), 0.0)
+    sizes = [0.0] * count
+    free = [i for i in range(count) if i not in fixed]
+    for i, (least, most) in fixed.items():
+        if i < count:
+            sizes[i] = float(most) if free else max(room / count, float(least))
+    left = max(room - sum(sizes), 0.0)
+    if free:
+        weights = [float(stretch.get(i, 0.0)) for i in free]
+        if not any(w > 0 for w in weights):
+            weights = [1.0] * len(free)
+        whole = sum(weights)
+        for i, w in zip(free, weights):
+            sizes[i] = left * w / whole
+    out, at = [], 0.0
+    for size in sizes:
+        out.append((at, size))
+        at += size + spacing
+    return out
 
 
 class EmtkGrid(base.GridCanvas):
-    """Several panels in a grid, each an :class:`EmtkCanvas` of its own.
+    """Several panels in a grid, each an :class:`EmtkCanvas` of its own; itself a control.
 
-    A grid is laid out by a Qt grid layout, so it exists only for a Qt host
-    (:class:`chisurf.gui.chiplot.Grid`); Qt is imported when one is made.
+    The grid lays its cells out by row and column (spans, stretch factors, a
+    colour ramp's column kept narrow) and draws each item in its cell, so an
+    emtk surface draws a whole grid as one control. Input goes to the item
+    under the pointer, which keeps it from the press to the release. A host
+    with a layout manager of its own (:class:`chisurf.gui.chiplot.Grid`)
+    places the items itself from :meth:`cells`.
     """
 
-    def __init__(self, **opts: Any) -> None:
-        from qtpy import QtWidgets
+    #: Pixels between two cells.
+    SPACING = 2.0
 
+    def __init__(self, **opts: Any) -> None:
         self._opts = opts
         self._panels: list[EmtkCanvas] = []
+        self._cells: list[_Cell] = []
         self._row = 0
         self._column = 0
-        self._widget = QtWidgets.QWidget()
-        self._layout = QtWidgets.QGridLayout(self._widget)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(2)
+        self._column_stretch: dict[int, float] = {}
+        self._row_stretch: dict[int, float] = {}
+        self._captured: _Cell | None = None
+        self._hovered: _Cell | None = None
+        self._refresh_target: Callable[[], None] | None = None
 
-    def widget(self) -> QtWidgets.QWidget:
-        """Return the embeddable Qt widget for the whole grid."""
-        return self._widget
-
-    def add_panel(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> base.Canvas:
-        """Add and return a panel at the given cell, or at the cursor."""
+    def _place(self, item: Any, row, col, rowspan, colspan) -> _Cell:
         if row is None:
             row = self._row
         if col is None:
             col = self._column
+        cell = _Cell(item, row, col, rowspan, colspan)
+        self._cells.append(cell)
+        self._column = cell.col + cell.colspan
+        if self._refresh_target is not None:
+            item.set_refresh_target(self._refresh_target)
+        return cell
+
+    def add_panel(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> base.Canvas:
+        """Add and return a panel at the given cell, or at the cursor."""
         panel = EmtkCanvas(title=title, **self._opts)
-        self._layout.addWidget(panel.widget(), int(row), int(col), int(rowspan), int(colspan))
+        self._place(panel, row, col, rowspan, colspan)
         self._panels.append(panel)
-        self._column = int(col) + int(colspan)
         return panel
 
     def add_colorbar(
         self, image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
     ) -> H.ColorBar:
         """Add a colour ramp bound to ``image`` at the given cell, or at the cursor."""
-        if row is None:
-            row = self._row
-        if col is None:
-            col = self._column
         bar = _ColorBar(image, colormap)
-        self._layout.addWidget(bar.widget(), int(row), int(col), int(rowspan), int(colspan))
-        self._column = int(col) + int(colspan)
+        self._place(bar, row, col, rowspan, colspan)
         return bar
+
+    def cells(self) -> list[tuple[Any, int, int, int, int]]:
+        """``(item, row, col, rowspan, colspan)`` of every panel and ramp, in the order added."""
+        return [(c.item, c.row, c.col, c.rowspan, c.colspan) for c in self._cells]
 
     def next_row(self) -> None:
         """Move the insertion cursor to the start of the next row."""
@@ -2830,25 +2949,119 @@ class EmtkGrid(base.GridCanvas):
         self._column = 0
 
     def clear(self) -> None:
-        """Remove every panel and start again at the first cell."""
-        for panel in self._panels:
-            widget = panel.widget()
-            self._layout.removeWidget(widget)
-            widget.setParent(None)
+        """Remove every panel and ramp and start again at the first cell."""
+        for cell in self._cells:
+            if isinstance(cell.item, _ColorBar):
+                cell.item.remove()
+            else:
+                cell.item.attach_host(None)
+        self._cells.clear()
         self._panels.clear()
+        self._captured = self._hovered = None
         self._row = self._column = 0
+        self.refresh()
 
     def set_column_stretch(self, column: int, factor: int) -> None:
         """Set the relative width of a column."""
-        self._layout.setColumnStretch(int(column), int(factor))
+        self._column_stretch[int(column)] = float(factor)
+        self.refresh()
 
     def set_row_stretch(self, row: int, factor: int) -> None:
         """Set the relative height of a row."""
-        self._layout.setRowStretch(int(row), int(factor))
+        self._row_stretch[int(row)] = float(factor)
+        self.refresh()
 
     def native(self) -> Any:
         """The panels themselves."""
         return self._panels
+
+    # -- repainting ------------------------------------------------------
+    def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
+        """Send every item's repaint requests to *callback* (the surface drawing the grid)."""
+        self._refresh_target = callback
+        for cell in self._cells:
+            cell.item.set_refresh_target(callback)
+
+    def refresh(self) -> None:
+        """Ask the surface drawing the grid to repaint."""
+        if self._refresh_target is not None:
+            self._refresh_target()
+
+    # -- the control -----------------------------------------------------
+    def layout(self, x: float, y: float, w: float, h: float) -> None:
+        """Give every cell its rectangle inside ``(x, y, w, h)``."""
+        if not self._cells:
+            return
+        columns = max(c.col + c.colspan for c in self._cells)
+        rows = max(c.row + c.rowspan for c in self._cells)
+        fixed: dict[int, tuple[float, float]] = {}
+        for column in range(columns):
+            here = [c for c in self._cells if c.col <= column < c.col + c.colspan]
+            if here and all(isinstance(c.item, _ColorBar) and c.colspan == 1 for c in here):
+                fixed[column] = (
+                    max(c.item.width_range[0] for c in here),
+                    min(c.item.width_range[1] for c in here),
+                )
+        xs = _tracks(columns, w, self.SPACING, self._column_stretch, fixed)
+        ys = _tracks(rows, h, self.SPACING, self._row_stretch, {})
+        for c in self._cells:
+            x0 = xs[c.col][0]
+            last_x = xs[c.col + c.colspan - 1]
+            y0 = ys[c.row][0]
+            last_y = ys[c.row + c.rowspan - 1]
+            c.rect = (x + x0, y + y0, last_x[0] + last_x[1] - x0, last_y[0] + last_y[1] - y0)
+
+    def draw(self, painter, x: float, y: float, w: float, h: float) -> None:
+        """Draw every item in its cell, each on its own background."""
+        self.layout(x, y, w, h)
+        for c in self._cells:
+            cx, cy, cw, ch = c.rect
+            if cw < 1.0 or ch < 1.0:
+                continue
+            background = getattr(c.item, "_background", None) or getattr(c.item, "background", None)
+            if background is not None:
+                painter.fill_rect(cx, cy, cw, ch, tuple(background[:3]))
+            painter.push_clip(cx, cy, cw, ch)
+            try:
+                c.item.draw(painter, cx, cy, cw, ch)
+            finally:
+                painter.pop_clip()
+
+    def _cell_at(self, px: float, py: float) -> _Cell | None:
+        for c in reversed(self._cells):
+            if c.rect is not None:
+                cx, cy, cw, ch = c.rect
+                if cx <= px < cx + cw and cy <= py < cy + ch:
+                    return c
+        return None
+
+    def press(self, px: float, py: float, *args: Any) -> None:
+        """Hand the press to the item under it, which keeps the pointer until the release."""
+        self._captured = self._cell_at(px, py)
+        if self._captured is not None:
+            self._captured.item.press(px, py, *self._captured.rect, *args[4:])
+
+    def drag(self, px: float, py: float, *_args: Any) -> None:
+        """Move what the press picked up."""
+        if self._captured is not None:
+            self._captured.item.drag(px, py, *self._captured.rect)
+
+    def release(self, *args: Any) -> None:
+        """End the gesture on the item that took the press."""
+        if self._captured is not None:
+            self._captured.item.release(*args)
+        self._captured = None
+
+    def hover(self, px: float, py: float, *_args: Any) -> None:
+        """Report the pointer to the item under it."""
+        self._hovered = self._cell_at(px, py)
+        if self._hovered is not None:
+            self._hovered.item.hover(px, py, *self._hovered.rect)
+
+    def scroll(self, rows: float, *args: Any) -> None:
+        """Zoom the item the pointer is over."""
+        if self._hovered is not None:
+            self._hovered.item.scroll(rows, *args)
 
 
 class EmtkBackend(base.Backend):
