@@ -4,6 +4,23 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Leftovers of the acq / lightpath Qt retirement (found 2026-10-13)
+
+status: open
+
+- **acq BH / BrickMic / PicoQuant setup cards are hand-drawn emtk**, not a `view.json`
+  (`acq/gui/app.py` `_draw_bh_setup` and siblings). They hold no Qt and are at control parity with the retired Qt
+  dialogs (`okf/plugins/emtk-ports/acq/retire_compare.json`); moving them to AutoForm is a separate port.
+- **Three `lightpath_simulator/tests/test_emtk_lightpath_clicks.py` tests fail** (`load_from_mmfdb_lists…`,
+  `…_with_nothing_saved_says_so`, `…_cancel_loads_nothing`), also on 241ecc1b3 before the lightpath retirement:
+  an MMFDB isolation problem of the test environment, not the change. The file takes about 9 minutes; its other
+  42 tests pass.
+- **Easy Mode labels both detectors of the default path "Detector"**: the default graph titles both detector
+  nodes "Detector"; the retired Qt Easy Mode reported "Green Channel" / "Red Channel".
+- **The Detector Wizard's light-path step does not write `lightpath_easy_last.json`**: the retired Qt
+  `LightPathEasyDialog` did; its emtk replacement in the channel-definition setup does not (the Light Path window
+  does, and the PDA models read that file).
+
 ## Leftovers of the ndX / chimol Qt retirement (found 2026-10-13)
 
 status: open

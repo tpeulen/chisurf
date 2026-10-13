@@ -31,13 +31,13 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list has 33 entries at chisurf 96d3b6f1d (52 when the ndX/chimol-leftovers slice started,
+1. Measure: the allow-list has 30 entries at chisurf 7e0514d95, all mmfdb_admin (33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
    64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
    (186 before that), 210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
    slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
    `grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .`; per area `grep -v '^#' test/plugin_qt_allowlist.txt |
-   cut -d/ -f3 | sort | uniq -c`: core 33 (mmfdb_admin and lightpath_simulator, both lanes in flight; their
-   working trees already strike most). chimol 0 and ndxplorer 0.
+   cut -d/ -f3 | sort | uniq -c`: core 30 (mmfdb_admin, a lane in flight). chimol, ndxplorer, misc and the
+   plugins root 0.
    **ndX + chimol leftovers slice (2026-10-13, 8 lines → 0).** *ndX*: ChiSurf's Qt `NdxWindow`
    (`plugins/ndxplorer/window.py`, the app in a `ChisurfDockTool`) is deleted; the manifest names only
    `entrypoints.emtk` (`gui/app.py:make_app`) and declares window statefulness, so the `--qt` shell hosts the app
@@ -132,17 +132,19 @@ own startup stages (item 5): S5 is done.
    Left, and why (each reason re-checked against the challenge):
    Open: **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
      the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
-   Open: **lightpath_simulator** (`gui/tool.py`, `gui/easy_mode.py`, `tests/test_native_ui.py`): `easy_mode.py` is a
-     1600-line Qt widget that `chisurf/core/models/pda2c/common.py` imports for the PDA easy mode; it needs an emtk
-     twin first.
    Open: **mmfdb_admin** (about 30 lines, in another lane's files): the emtk twin exists; it needs the before/after pair
      and its widget tests ported to the twin, as code_editor and help did below.
-   Open: **acq** (`tcspc_devices/*/setup_dialog.py`, `card_setup_dialog.py`, `simulation/core/test/test_setup_widgets.py`):
-     the native twin is `acq/gui/sim_setup.py`; the port needs that dialog's parity matrix first.
-   Open: **number_quest** `gui/tool.py` (the Qt widget; its parity test drives the chigame class): left because another
-     lane has uncommitted `number_quest/app.py` and `drawing.py`; it retires like the other four games.
-   Open: `plugins/__init__.py` (env-gated QtSvg rasteriser), `icon_utils.py`, `conftest.py` (the shared `qapp` fixture,
-     goes when no plugin test asks for `qapp`), the cookiecutter template's Qt tool.
+   Done 2026-10-13 (acq/lightpath/batch/number_quest/plugins-root slice, −14): **acq** device dialogs (fa6f18819;
+     BH 40→90, BrickMic 10→61, PicoQuant 12→58, simulation 61→118 controls, lost [], `emtk-ports/acq/retire_*`;
+     `test_setup_widgets.py` drives the emtk dialog); **lightpath_simulator** Qt host + Qt Easy Mode (7e0514d95;
+     helpers in `core/easy_config.py`; Easy Mode 49→125 controls, lost []; the comparison found `_graph_to_config`
+     reading pre-schema port numbers, so Easy Mode had shown no dichroic, splitter spectrum or bandpass; parity
+     frozen in `tests/qt_reference.json`); **batch_analysis** Qt run (3b978b173; Qt run frozen in
+     `test/qt_reference.json`; the per-run fit picture in the DOCX, lost in the first port, is back: the template
+     fit's `FitWindow` on the CPU rasteriser, drawn on the polling thread); **number_quest** Qt container
+     (5d6b6bf8b); plugins root (89a74df47): `icon_utils.py` → `chisurf/gui/plugin_icons.py` (Qt shell code), the
+     QtSvg rasteriser and the `qapp` fixture (pytest-qt supplies it) deleted, the cookiecutter template generates an
+     emtk + AutoForm plugin (rendered and its tests run). Left: known issues (acq cards hand-drawn, lightpath).
    Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
    `emtk.events`, not `emtk.app`).
 2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
