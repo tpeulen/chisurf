@@ -161,7 +161,7 @@ own startup stages (item 5): S5 is done.
      fit's `FitWindow` on the CPU rasteriser, drawn on the polling thread); **number_quest** Qt container
      (5d6b6bf8b); plugins root (89a74df47): `icon_utils.py` → `chisurf/gui/plugin_icons.py` (Qt shell code), the
      QtSvg rasteriser and the `qapp` fixture (pytest-qt supplies it) deleted, the cookiecutter template generates an
-     emtk + AutoForm plugin (rendered and its tests run). Left: known issues (acq cards hand-drawn, lightpath).
+     emtk + AutoForm plugin (rendered and its tests run). Follow-up the same day closed the leftovers: acq BH/PicoQuant/BrickMic cards are view.json specs (655a57efd), lightpath detector names, the Detector Wizard's last-config write and a missed-completion race behind three click-test failures (26367e91e).
    Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
    `emtk.events`, not `emtk.app`).
 2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
