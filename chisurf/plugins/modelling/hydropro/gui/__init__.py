@@ -1,16 +1,6 @@
-"""GUI of the HydroPro plugin: the Qt tool (AutoForm) and the Qt-free model the native window uses.
+"""GUI of the HydroPro plugin: the Qt-free model (``gui.model``) and the view specs the native window draws.
 
-The Qt names load on first access so that ``gui.model`` (and the native app) import without Qt.
+The Qt ``HydroProTool`` was retired 2026-10-13; the native app is ``chisurf.plugins.modelling.hydropro.app``.
 """
 
 from __future__ import annotations
-
-__all__ = ["HydroProTool", "HydroGui"]
-
-
-def __getattr__(name):
-    if name in __all__:
-        from . import tool
-
-        return getattr(tool, name)
-    raise AttributeError(name)

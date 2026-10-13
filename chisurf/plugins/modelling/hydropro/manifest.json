@@ -20,7 +20,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.modelling.hydropro.gui.tool:HydroProTool",
     "cli": "hydropro=chisurf.plugins.modelling.hydropro.cli.main:cli",
     "services": "chisurf.plugins.modelling.hydropro.rpc.services:register_services",
     "emtk": "chisurf.plugins.modelling.hydropro.app:make_app"

@@ -17,16 +17,15 @@ else:
 __all__ = ["name", "cli_entrypoint"]
 
 
-if __name__ == "plugin":
-    from chisurf.core.plugin.registry import apply_manifest_statefulness
-    from chisurf.plugins.modelling.hydropro.gui.tool import HydroProTool
+if __name__ == "__main__":
+    from chisurf.emtk.__main__ import main as _launch
 
-    window = HydroProTool()
-    if _manifest is not None:
-        apply_manifest_statefulness(window, _manifest)
+    _launch(["--plugin", "hydropro"])
+
+if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+    from emtk.qt_host import ControlHost
+
+    from chisurf.plugins.modelling.hydropro.app import make_app
+
+    window = ControlHost(make_app())
     window.show()
-    try:
-        window.raise_()
-        window.activateWindow()
-    except Exception:
-        pass

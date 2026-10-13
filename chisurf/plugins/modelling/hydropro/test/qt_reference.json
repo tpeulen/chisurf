@@ -1,0 +1,520 @@
+{
+ "_recorded": {
+  "date": "2026-10-13",
+  "from": "chisurf.plugins.modelling.hydropro.gui.tool.HydroProTool (the live Qt tool, offscreen), driven per case with the hermetic conftest (HOME, settings and QSettings in a temp folder) and the fake HYDRO program data/fake_hydro.sh; paths under the test HOME are written <home>",
+  "source_commit": "91ec1624c4cc40c71ebd7381a5f8eae67fefcc11"
+ },
+ "clear": {
+  "results": [],
+  "row_count": 0,
+  "save_enabled": false,
+  "status": "",
+  "struct_files": ""
+ },
+ "defaults": {
+  "aer": 2.9,
+  "eta": 0.01,
+  "exe_path": "",
+  "idif": true,
+  "indmode": "1",
+  "nq": -1,
+  "ns": -1,
+  "nsig": 6,
+  "ntrials": 0,
+  "qmax": 0.0,
+  "rho": 1.0,
+  "rm": 100000.0,
+  "rmax": 0.0,
+  "sigmax": 2.0,
+  "sigmin": 1.0,
+  "status": "",
+  "struct_files": "",
+  "t": 20.0,
+  "vbar": 0.74
+ },
+ "failing": {
+  "log": "Executable: <home>/bin/hydropro_noexec.exe\n\n=== Job 1/1: <home>/148l.pdb ===\nWorking directory: <home>/.hydropp_gui/job_001\n\nERROR: [Errno 13] Permission denied: '<home>/bin/hydropro_noexec.exe'",
+  "output_status": "Failed.",
+  "results": [],
+  "save_enabled": false,
+  "status": "Error: [Errno 13] Permission denied: '<home>/bin/hydropro_noexec.exe'"
+ },
+ "hydropp": {
+  "cells": [
+   [
+    "<home>/148l.pdb",
+    "1.047e-06"
+   ],
+   [
+    "<home>/small.pdb",
+    "2.500e-07"
+   ]
+  ],
+  "dat": "148l                \ncase001                       \n<home>/148l.pdb\n12\n20.0\n0.010\n100000.0\n0.74\n1.0\n0\n0.0\n0\n0.0\n0\n1\n*"
+ },
+ "missing_exe": {
+  "closed_box": [
+   "Executable required",
+   "Configure the HYDRO executable before running."
+  ],
+  "closed_running": false,
+  "picked_cell": "1.047e-06",
+  "picked_exe_path": "<home>/bin/hydropro10.exe"
+ },
+ "output_pane": {
+  "first_log_line": "Executable: <home>/bin/hydropro10.exe",
+  "output_status": "Finished.",
+  "progress": 2,
+  "progress_maximum": 2,
+  "progress_text": "100%"
+ },
+ "parameter_sets": [
+  {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "dat": "148l                        !TITLE (CHAR*20)\n148l                        !FILENAME (base for outputs)\n148l.pdb        !INPUT PDB filename (relative)\n1               !INDMODE: 1 atomic/shell, 2 residue/shell, 4 residue/bead\n2.9,            !AER (Å) hydrodynamic radius of primary elements\n6,              !NSIG (>=3 typical 5-8)\n1.0,            !SIGMIN (Å) minibead radius\n2.0,            !SIGMAX (Å) minibead radius\n20.0,            !T (°C)\n0.01,           !ETA (poise)\n100000.0,        !RM (Da)\n0.74,           !VBAR (cm3/g)\n1.0,            !RHO (g/cm3)\n-1              !NQ: 0 omit, -1 automatic, >0 specify QMAX\n-1              !NS: 0 omit, -1 automatic, >0 specify RMAX\n0,              !NTRIALS for covolume (MC)\n1               !IDIF=1 for full diffusion tensors\n*                                    !End of file",
+   "fields": {},
+   "settings": {
+    "aer": 2.9,
+    "eta": 0.01,
+    "idif": 1,
+    "indmode": 1,
+    "nq": -1,
+    "ns": -1,
+    "nsig": 6,
+    "ntrials": 0,
+    "qmax": 0.0,
+    "rho": 1.0,
+    "rm": 100000.0,
+    "rmax": 0.0,
+    "sigmax": 2.0,
+    "sigmin": 1.0,
+    "t": 20.0,
+    "vbar": 0.74
+   }
+  },
+  {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "dat": "148l                        !TITLE (CHAR*20)\n148l                        !FILENAME (base for outputs)\n148l.pdb        !INPUT PDB filename (relative)\n2               !INDMODE: 1 atomic/shell, 2 residue/shell, 4 residue/bead\n4.8,            !AER (Å) hydrodynamic radius of primary elements\n-1,              !NSIG=-1 for automatic sigma range\n20.0,            !T (°C)\n0.01,           !ETA (poise)\n100000.0,        !RM (Da)\n0.74,           !VBAR (cm3/g)\n1.0,            !RHO (g/cm3)\n-1              !NQ: 0 omit, -1 automatic, >0 specify QMAX\n-1              !NS: 0 omit, -1 automatic, >0 specify RMAX\n0,              !NTRIALS for covolume (MC)\n1               !IDIF=1 for full diffusion tensors\n*                                    !End of file",
+   "fields": {
+    "aer": 4.8,
+    "indmode": "2",
+    "nsig": -1
+   },
+   "settings": {
+    "aer": 4.8,
+    "eta": 0.01,
+    "idif": 1,
+    "indmode": 2,
+    "nq": -1,
+    "ns": -1,
+    "nsig": -1,
+    "ntrials": 0,
+    "qmax": 0.0,
+    "rho": 1.0,
+    "rm": 100000.0,
+    "rmax": 0.0,
+    "sigmax": 2.0,
+    "sigmin": 1.0,
+    "t": 20.0,
+    "vbar": 0.74
+   }
+  },
+  {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "dat": "148l                        !TITLE (CHAR*20)\n148l                        !FILENAME (base for outputs)\n148l.pdb        !INPUT PDB filename (relative)\n4               !INDMODE: 1 atomic/shell, 2 residue/shell, 4 residue/bead\n6.1,            !AER (Å) hydrodynamic radius of primary elements\n25.0,            !T (°C)\n0.0089,           !ETA (poise)\n14300.0,        !RM (Da)\n0.72,           !VBAR (cm3/g)\n1.002,            !RHO (g/cm3)\n-1              !NQ: 0 omit, -1 automatic, >0 specify QMAX\n-1              !NS: 0 omit, -1 automatic, >0 specify RMAX\n0,              !NTRIALS for covolume (MC)\n1               !IDIF=1 for full diffusion tensors\n*                                    !End of file",
+   "fields": {
+    "aer": 6.1,
+    "eta": 0.0089,
+    "indmode": "4",
+    "rho": 1.002,
+    "rm": 14300.0,
+    "t": 25.0,
+    "vbar": 0.72
+   },
+   "settings": {
+    "aer": 6.1,
+    "eta": 0.0089,
+    "idif": 1,
+    "indmode": 4,
+    "nq": -1,
+    "ns": -1,
+    "nsig": 6,
+    "ntrials": 0,
+    "qmax": 0.0,
+    "rho": 1.002,
+    "rm": 14300.0,
+    "rmax": 0.0,
+    "sigmax": 2.0,
+    "sigmin": 1.0,
+    "t": 25.0,
+    "vbar": 0.72
+   }
+  },
+  {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "dat": "148l                        !TITLE (CHAR*20)\n148l                        !FILENAME (base for outputs)\n148l.pdb        !INPUT PDB filename (relative)\n1               !INDMODE: 1 atomic/shell, 2 residue/shell, 4 residue/bead\n2.9,            !AER (Å) hydrodynamic radius of primary elements\n6,              !NSIG (>=3 typical 5-8)\n1.0,            !SIGMIN (Å) minibead radius\n2.0,            !SIGMAX (Å) minibead radius\n20.0,            !T (°C)\n0.01,           !ETA (poise)\n100000.0,        !RM (Da)\n0.74,           !VBAR (cm3/g)\n1.0,            !RHO (g/cm3)\n20              !NQ: 0 omit, -1 automatic, >0 specify QMAX\n35000000.0              !QMAX (cm^-1)\n30              !NS: 0 omit, -1 automatic, >0 specify RMAX\n1.2e-06              !RMAX (cm)\n1000,              !NTRIALS for covolume (MC)\n0               !IDIF=1 for full diffusion tensors\n*                                    !End of file",
+   "fields": {
+    "idif": false,
+    "nq": 20,
+    "ns": 30,
+    "ntrials": 1000,
+    "qmax": 35000000.0,
+    "rmax": 1.2e-06
+   },
+   "settings": {
+    "aer": 2.9,
+    "eta": 0.01,
+    "idif": 0,
+    "indmode": 1,
+    "nq": 20,
+    "ns": 30,
+    "nsig": 6,
+    "ntrials": 1000,
+    "qmax": 35000000.0,
+    "rho": 1.0,
+    "rm": 100000.0,
+    "rmax": 1.2e-06,
+    "sigmax": 2.0,
+    "sigmin": 1.0,
+    "t": 20.0,
+    "vbar": 0.74
+   }
+  },
+  {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "dat": "148l                        !TITLE (CHAR*20)\n148l                        !FILENAME (base for outputs)\n148l.pdb        !INPUT PDB filename (relative)\n1               !INDMODE: 1 atomic/shell, 2 residue/shell, 4 residue/bead\n2.9,            !AER (Å) hydrodynamic radius of primary elements\n8,              !NSIG (>=3 typical 5-8)\n0.5,            !SIGMIN (Å) minibead radius\n3.0,            !SIGMAX (Å) minibead radius\n20.0,            !T (°C)\n0.01,           !ETA (poise)\n100000.0,        !RM (Da)\n0.74,           !VBAR (cm3/g)\n1.0,            !RHO (g/cm3)\n-1              !NQ: 0 omit, -1 automatic, >0 specify QMAX\n-1              !NS: 0 omit, -1 automatic, >0 specify RMAX\n0,              !NTRIALS for covolume (MC)\n1               !IDIF=1 for full diffusion tensors\n*                                    !End of file",
+   "fields": {
+    "nsig": 8,
+    "sigmax": 3.0,
+    "sigmin": 0.5
+   },
+   "settings": {
+    "aer": 2.9,
+    "eta": 0.01,
+    "idif": 1,
+    "indmode": 1,
+    "nq": -1,
+    "ns": -1,
+    "nsig": 8,
+    "ntrials": 0,
+    "qmax": 0.0,
+    "rho": 1.0,
+    "rm": 100000.0,
+    "rmax": 0.0,
+    "sigmax": 3.0,
+    "sigmin": 0.5,
+    "t": 20.0,
+    "vbar": 0.74
+   }
+  }
+ ],
+ "persisted": {
+  "native_export": {
+   "aer": 4.8,
+   "eta": 0.01,
+   "exe_path": "<home>/bin/hydropro10.exe",
+   "idif": 0,
+   "indmode": "2",
+   "nq": 10,
+   "ns": -1,
+   "nsig": -1,
+   "ntrials": 0,
+   "qmax": 2.0,
+   "rho": 1.0,
+   "rm": 100000.0,
+   "rmax": 0.0,
+   "sigmax": 2.0,
+   "sigmin": 1.0,
+   "t": 25.0,
+   "vbar": 0.74
+  },
+  "qt_loaded": {
+   "exe_path": "<home>/bin/hydropro10.exe",
+   "indmode": "2",
+   "settings": {
+    "aer": 4.8,
+    "eta": 0.01,
+    "idif": 0,
+    "indmode": 2,
+    "nq": 10,
+    "ns": -1,
+    "nsig": -1,
+    "ntrials": 0,
+    "qmax": 2.0,
+    "rho": 1.0,
+    "rm": 100000.0,
+    "rmax": 0.0,
+    "sigmax": 2.0,
+    "sigmin": 1.0,
+    "t": 25.0,
+    "vbar": 0.74
+   }
+  },
+  "qt_saved": {
+   "hp.aer": 4.8,
+   "hp.eta": 0.01,
+   "hp.idif": 0,
+   "hp.indmode": 2,
+   "hp.nq": 10,
+   "hp.ns": -1,
+   "hp.nsig": -1,
+   "hp.ntrials": 0,
+   "hp.qmax": 2.0,
+   "hp.rho": 1.0,
+   "hp.rm": 100000.0,
+   "hp.rmax": 0.0,
+   "hp.sigmax": 2.0,
+   "hp.sigmin": 1.0,
+   "hp.t": 25.0,
+   "hp.vbar": 0.74,
+   "hydro_exe": "<home>/bin/hydropro10.exe"
+  },
+  "written": {
+   "hp.aer": 4.8,
+   "hp.eta": 0.01,
+   "hp.idif": 0,
+   "hp.indmode": "2",
+   "hp.nq": 10,
+   "hp.ns": -1,
+   "hp.nsig": -1,
+   "hp.ntrials": 0,
+   "hp.qmax": 2.0,
+   "hp.rho": 1.0,
+   "hp.rm": 100000.0,
+   "hp.rmax": 0.0,
+   "hp.sigmax": 2.0,
+   "hp.sigmin": 1.0,
+   "hp.t": 25.0,
+   "hp.vbar": 0.74,
+   "hydro_exe": "<home>/bin/hydropro10.exe"
+  }
+ },
+ "spin_boxes": [
+  [
+   "QDoubleSpinBox",
+   0.0,
+   50.0,
+   2,
+   0.1,
+   " Å"
+  ],
+  [
+   "QSpinBox",
+   -1,
+   50,
+   0,
+   1,
+   ""
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   50.0,
+   2,
+   0.1,
+   " Å"
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   50.0,
+   2,
+   0.1,
+   " Å"
+  ],
+  [
+   "QDoubleSpinBox",
+   -20.0,
+   200.0,
+   1,
+   1.0,
+   " °C"
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   10.0,
+   4,
+   0.001,
+   " P"
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   1000000000.0,
+   1,
+   1000.0,
+   " Da"
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   5.0,
+   3,
+   0.01,
+   " cm³/g"
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   5.0,
+   3,
+   0.01,
+   " g/cm³"
+  ],
+  [
+   "QSpinBox",
+   -1,
+   1000,
+   0,
+   1,
+   ""
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   1000000000.0,
+   1,
+   1.0,
+   " cm⁻¹"
+  ],
+  [
+   "QSpinBox",
+   -1,
+   1000,
+   0,
+   1,
+   ""
+  ],
+  [
+   "QDoubleSpinBox",
+   0.0,
+   1000000000.0,
+   3,
+   1.0,
+   " cm"
+  ],
+  [
+   "QSpinBox",
+   0,
+   100000000,
+   0,
+   1,
+   ""
+  ]
+ ],
+ "table": {
+  "148l": {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "csv": "File,DiffusionCoefficient(cm^2/s)\n<home>/148l.pdb,1.047e-06\n",
+   "log": "Executable: <home>/bin/hydropro10.exe\n\n=== Job 1/1: <home>/148l.pdb ===\nWorking directory: <home>/.hydropp_gui/job_001\nHYDRO fake: read hydropro.dat (148l) for 148l\nResult: diffusion coefficient = 1.047e-06 cm^2/s",
+   "saved_box": [
+    "information",
+    "Saved",
+    "Results saved to <csv>"
+   ],
+   "status": "Finished: 1 file(s)."
+  },
+  "148l,small,plain,garbled,silent": {
+   "cells": [
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ],
+    [
+     "<home>/small.pdb",
+     "2.500e-07"
+    ],
+    [
+     "<home>/plain.pdb",
+     "4.000e+00"
+    ],
+    [
+     "<home>/garbled.pdb",
+     "N/A"
+    ],
+    [
+     "<home>/silent.pdb",
+     "N/A"
+    ]
+   ],
+   "csv": "File,DiffusionCoefficient(cm^2/s)\n<home>/148l.pdb,1.047e-06\n<home>/small.pdb,2.500e-07\n<home>/plain.pdb,4.000e+00\n<home>/garbled.pdb,\n<home>/silent.pdb,\n",
+   "log": "Executable: <home>/bin/hydropro10.exe\n\n=== Job 1/5: <home>/148l.pdb ===\nWorking directory: <home>/.hydropp_gui/job_001\nHYDRO fake: read hydropro.dat (148l) for 148l\nResult: diffusion coefficient = 1.047e-06 cm^2/s\n\n=== Job 2/5: <home>/small.pdb ===\nWorking directory: <home>/.hydropp_gui/job_002\nHYDRO fake: read hydropro.dat (small) for small\nResult: diffusion coefficient = 2.500e-07 cm^2/s\n\n=== Job 3/5: <home>/plain.pdb ===\nWorking directory: <home>/.hydropp_gui/job_003\nHYDRO fake: read hydropro.dat (plain) for plain\nResult: diffusion coefficient = 4.000e+00 cm^2/s\n\n=== Job 4/5: <home>/garbled.pdb ===\nWorking directory: <home>/.hydropp_gui/job_004\nHYDRO fake: read hydropro.dat (garbled) for garbled\nResult: diffusion coefficient not found (see output above)\n\n=== Job 5/5: <home>/silent.pdb ===\nWorking directory: <home>/.hydropp_gui/job_005\nHYDRO fake: read hydropro.dat (silent) for silent\nResult: diffusion coefficient not found (see output above)",
+   "saved_box": [
+    "information",
+    "Saved",
+    "Results saved to <csv>"
+   ],
+   "status": "Finished: 5 file(s)."
+  },
+  "small,148l": {
+   "cells": [
+    [
+     "<home>/small.pdb",
+     "2.500e-07"
+    ],
+    [
+     "<home>/148l.pdb",
+     "1.047e-06"
+    ]
+   ],
+   "csv": "File,DiffusionCoefficient(cm^2/s)\n<home>/small.pdb,2.500e-07\n<home>/148l.pdb,1.047e-06\n",
+   "log": "Executable: <home>/bin/hydropro10.exe\n\n=== Job 1/2: <home>/small.pdb ===\nWorking directory: <home>/.hydropp_gui/job_001\nHYDRO fake: read hydropro.dat (small) for small\nResult: diffusion coefficient = 2.500e-07 cm^2/s\n\n=== Job 2/2: <home>/148l.pdb ===\nWorking directory: <home>/.hydropp_gui/job_002\nHYDRO fake: read hydropro.dat (148l) for 148l\nResult: diffusion coefficient = 1.047e-06 cm^2/s",
+   "saved_box": [
+    "information",
+    "Saved",
+    "Results saved to <csv>"
+   ],
+   "status": "Finished: 2 file(s)."
+  }
+ },
+ "warnings": {
+  "no_files": [
+   "No files",
+   "Please select one or more files first."
+  ],
+  "nsig_2": [
+   "Invalid settings",
+   "NSIG must be > 2 or -1 (automatic) in shell modes"
+  ],
+  "nsig_2_running": false,
+  "qmax_rule": [
+   "Invalid settings",
+   "QMAX must be > 0 when NQ > 0"
+  ],
+  "rmax_rule": [
+   "Invalid settings",
+   "RMAX must be > 0 when NS > 0"
+  ]
+ }
+}

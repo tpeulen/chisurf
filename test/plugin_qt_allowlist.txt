@@ -175,12 +175,6 @@ chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
 chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py
 chisurf/plugins/icon_utils.py
 chisurf/plugins/misc/games/number_quest/gui/tool.py
-chisurf/plugins/modelling/hydropro/gui/dialogs.py
-chisurf/plugins/modelling/hydropro/gui/tool.py
-chisurf/plugins/modelling/hydropro/hydrogui.py
-chisurf/plugins/modelling/hydropro/test/conftest.py
-chisurf/plugins/modelling/hydropro/test/hermetic.py
-chisurf/plugins/modelling/hydropro/test/test_emtk_hydropro_parity.py
 chisurf/plugins/ndxplorer/__init__.py
 chisurf/plugins/ndxplorer/calibration_bridge.py
 chisurf/plugins/ndxplorer/tests/test_window_routes.py
