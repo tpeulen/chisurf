@@ -261,7 +261,7 @@ emtk renderers do the same through emtk's generic **`collapse_order`** column ke
 paired `_SLOT_COLLAPSE` in `chisurf/emtk/model_editor.py` declare bounds and
 prior 1, error 2, fixed 3; `GLOBAL_COLUMNS` (`model_sections.py`) bounds 1, error 2,
 row/link_row 3, fixed 4; the Data-table page's model-parameter editor
-(`chisurf/gui/plots/table_plot_emtk.py`) bounds 1, linked/link_target 2, fixed 3.
+(`chisurf/emtk/fit_pages/pages/table_plot_emtk.py`) bounds 1, linked/link_target 2, fixed 3.
 emtk decides from **natural** (measured) widths each frame — an optional column
 goes before a name is squeezed — with 8 px slack to drop and 16 px of room to
 restore (no flicker), and lists a dropped row's cells in its tooltip. Thresholds
@@ -934,7 +934,7 @@ the visual burst-programming canvas builds on (PRD-29).
 
 # Glyph registry
 
-`chisurf/gui/glyphs.py` is the single source of truth for the small pictographic
+`chisurf/core/glyphs.py` is the single source of truth for the small pictographic
 "emoticon" icons used in widget labels, actions, menus and `icon` metadata. It
 exposes named canonical constants grouped by concept (`Glyphs.SAVE`,
 `Glyphs.DELETE`, `Glyphs.REFRESH`, `Glyphs.SEARCH`, …) plus a `normalize(text)`

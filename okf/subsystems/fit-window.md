@@ -16,7 +16,7 @@ frame.** A page (`plotbase.Plot`) is a plain object -- not a `QWidget` -- that
 declares what the surface draws (`emtk_draw` / `add_panel` / `emtk_body`); its
 *Plot settings* are an AutoForm spec (`settings_view`) over a plain model, drawn
 by `emtk.view_form.draw_form` in the one emtk surface of the main window's
-**Plot settings** dock (`chisurf/gui/plots/emtk_settings.py`,
+**Plot settings** dock (`chisurf/gui/widgets/fitting/plot_settings_host.py`,
 `PlotSettingsHost`, one per options layout via `host_in`). Qt controllers per
 page, the hidden widget holder, the island overlay and the Qt-layout
 translator in `emtk_page.py` are gone. Dead `MolView`, `GlobalEt`,
@@ -127,7 +127,7 @@ noisy decays at 2x, round joins 605 ms) -- keep plot pens out of it.
 
 ## Page bodies
 
-`chisurf.gui.plots.emtk_page.page_body(page)` reads what a page declares:
+`chisurf.emtk.fit_pages.pages.emtk_page.page_body(page)` reads what a page declares:
 
 | The page declares | On the surface |
 |---|---|
@@ -168,7 +168,7 @@ new curve shows without waiting for input.
 * **MFD map**: a chiplot image on the real axes with emtk selectors, instead of
   the Qt `ImageMapWidget`.
 * **State scheme** (`StateSchemePlot`, FCS kinetics, ICS, MFD 2D):
-  `chisurf/gui/plots/state_scheme_emtk.py` -- a Qt-free `SchemeBinding`
+  `chisurf/emtk/fit_pages/pages/state_scheme_emtk.py` -- a Qt-free `SchemeBinding`
   (scheme from the model in either shape, rates, presets, load/save) and an
   emtk `SchemeCanvas` drawing the `graph_canvas` marks (grid, gradient discs,
   curved arrows, rate badges, `k_exc`) with drag node / bend arc / pan / wheel

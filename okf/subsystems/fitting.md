@@ -582,7 +582,7 @@ optional `model=`, so an engine over a group's global model works throughout.
 ±*span*·σ and reports what every other parameter becomes. This is what a profile
 scan answers by re-fitting at each point; in canonical form each answer is a
 matrix update, so the whole sweep costs **one** curvature evaluation however many
-points it has — which is what makes it a slider (`chisurf/gui/plots/conditional_scan.py`,
+points it has — which is what makes it a slider (`chisurf/emtk/fit_pages/pages/conditional_scan.py`,
 the *What-if* plot) rather than a batch job. There is a test asserting a
 101-point sweep over every parameter evaluates the model exactly zero times.
 
@@ -644,7 +644,7 @@ well established, is smaller than the width of a plotted error bar.
 # Showing whether a chain can be believed
 
 The convergence *numbers* were harvested from Stan earlier; the matching
-*pictures* are `chisurf/gui/plots/sampling_diagnostics.py`, over headless
+*pictures* are `chisurf/emtk/fit_pages/pages/sampling_diagnostics.py`, over headless
 builders in `diagnostics.py`.
 
 **Rank plot** (`rank_histogram`) — draws ranked across all chains together and
@@ -691,7 +691,7 @@ answers are the ones text answers worst: *which* dataset constrains *which*
 parameter, whether the fit separates, and which parameters are really one
 measurement. `chisurf/core/fitting/graphview.py` turns the same graph into
 drawable data (`GraphNode`/`GraphEdge` with coordinates — Qt-free, so the layout
-is testable headlessly), and `chisurf/gui/plots/posterior_graph.py` paints it.
+is testable headlessly), and `chisurf/emtk/fit_pages/pages/posterior_graph.py` paints it.
 The vocabulary is borrowed from probabilistic-graphical-model toolkits:
 
 | their idea | here |

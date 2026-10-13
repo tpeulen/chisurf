@@ -137,22 +137,23 @@ own startup stages (item 5): S5 is done.
    until the queued translation job, so the German shell still shows *Spectroscopy*. Trap: re-extracting while
    another lane has uncommitted `tr()` edits marks their removed strings obsolete; put such entries back (S5 restored
    *Close Help*) or `test_committed_authored_ui_text_has_german_and_french_catalogue_sources` fails.
-6. Blocked: opening a fit window still imports Qt, now only through a page class. Landed 2026-10-13: the surface
-   (`chisurf/emtk/fit_pages/surface.py`, out of `fit_plots_area.py`), the page registry with `model_plot_specs`
-   (`chisurf/emtk/fit_pages/plots.py`: `PLOT_CLASSES` declares every shipped page as `"module:Class"`; the
-   autoform registry re-exports `register_plot` / `get_plot_class`, `builtin.py`'s 23 registrations are gone) and
-   the Code face (`chisurf/emtk/fit_pages/code_face.py`) are Qt-free; `model_editor.model_plot_specs` stays as a
-   re-export for about 20 editor tests. Measure: `test/native_emtk/test_fit_window_is_qt_free.py` (subprocess): the
-   first Qt import is reached through a page class, never through the surface, `model_editor`, autoform or the
-   Code face; the full guard `test_opening_a_fit_window_imports_no_qt` is a strict xfail that flips when done.
-   The blocker is chiplot, not the page modules' location: `chisurf/gui/chiplot/backends/base.py` imports
-   `QtWidgets` at package import and `chiplot.canvas.Plot` / `Grid` / `VolumeView` are `QWidget`s, so moving
-   `chisurf/gui/plots/**` out of `chisurf.gui` alone gains nothing measurable (probe: stub `chisurf.gui`'s
-   `__init__` and resolve every `PLOT_CLASSES` key; all 22 stop at chiplot or, for `state_scheme`, autoform).
-   Next: a Qt-free chiplot core (canvas API, handles, style, emtk backend) importable without `qtpy`, owned by the
-   chiplot lane; then the page modules move beside `fit_pages`. Rejected for now: making `chisurf.gui.__init__`
-   lazy, because tests monkeypatch attributes on that module and a facade would not reach the implementation.
-   Blocks: S6 striking `qtpy`.
+6. Done 2026-10-13: opening a fit window imports no Qt. Measure: `test/native_emtk/test_fit_window_is_qt_free.py`
+   (subprocess; the full guard `test_opening_a_fit_window_imports_no_qt` passes, xfail removed, and
+   `test_every_shipped_page_class_resolves_without_qt` resolves all 24 `PLOT_CLASSES` keys with `qtpy` unloaded).
+   What moved: chiplot's core is `chisurf/chiplot/` (panel API `PlotAPI`/`Panel`, handles, styles, backends; no Qt
+   at import, guard `test/test_chiplot_core_qt_free.py`), and `chisurf.gui.chiplot` is the Qt host layer (`Plot`,
+   `Grid`, `ImageView`, `VolumeView` widgets + a re-export of the core). The page modules moved from
+   `chisurf/gui/plots/` to `chisurf/emtk/fit_pages/pages/` (`StateSchemePlot` out of the autoform section into
+   `pages/state_scheme_emtk.py`); `emtk_settings.py` (the Qt *Plot settings* dock host) is
+   `chisurf/gui/widgets/fitting/plot_settings_host.py`; the Qt-free `glyphs` and `fitting_client` the pages needed
+   are `chisurf/core/glyphs.py` and `chisurf/core/api/fitting_client.py`. No shims: every importer was rewritten.
+   Parity: the 18 pages of two real fitted IBH fits (`Decay_577D` lifetime, `+577A+GTPgS` Gaussian FRET; every page,
+   `chisurf.emtk.fit_report.render_fit_images(pages=None)`) are byte-identical PNGs before and after. Traps: `style`
+   parsed colours with `QColor`; the Qt-free `int_color` reproduces `QColor.fromHsvF` only with Qt's own float form
+   (`1-(1-f)`) and a rounded `/257` channel reduction (`>>8` and the `qt_div_257` spelling both differ by one on
+   about a third of hues). Still Qt inside the core, but only on a Qt host's request: `EmtkCanvas.widget()`,
+   `EmtkGrid`, the image view's colour bar widget and `EmtkCanvas.export_image` (`okf/subsystems/chiplot.md`, resume
+   item 0). Rejected, still: making `chisurf.gui.__init__` lazy (tests monkeypatch attributes on that module).
 7. Measure: whole-window parity, `test/native_emtk/test_emtk_shell_whole_parity.py` against
    `shell_whole_qt_inventory.json`: `KNOWN_GAPS` empty since 2026-10-11 (was 23). The fixture clicks every ribbon
    tab and the Log dock's tabs, as a user does; renamed captions (`?` → ❓ Help, `Language: English` → 🌍 EN, `P` →
@@ -179,9 +180,10 @@ own startup stages (item 5): S5 is done.
    shell stays behind `python -m chisurf --qt` as the reference the emtk shell is measured against until
    parity; `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
    (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`).
-   Every slice S1-S5 is at control parity (each `KNOWN_GAPS` empty). What blocks deleting `gui/main.py`
-   and `gui.ui`: item 6 (fit pages import Qt through chiplot, owned by the chiplot lane) and item 1 (the
-   Qt hosts and tests still on the allow-list); striking `qtpy` needs both.
+   Every slice S1-S5 is at control parity (each `KNOWN_GAPS` empty). Item 6 is done (2026-10-13). What
+   blocks deleting `gui/main.py` and `gui.ui` now: item 1 (the Qt hosts and tests still on the allow-list),
+   the `chisurf.gui.chiplot` widget callers (Qt plugin hosts drawing `cp.Plot`/`Grid`/`ImageView`), and the
+   core's on-request Qt (`EmtkCanvas.export_image` paints a `QImage`); striking `qtpy` needs all three.
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit

@@ -2,20 +2,37 @@
 type: Subsystem
 title: Plotting (chiplot)
 description: The single renderer-neutral 2-D plotting API every call site draws through, its backend contract, and the guard that keeps the rendering library behind it.
-resource: chisurf/gui/chiplot/
+resource: chisurf/chiplot/
 tags: [gui, plotting, chiplot, seam]
-timestamp: '2026-10-12T00:00:00Z'
+timestamp: '2026-10-13T00:00:00Z'
 ---
 
 # What it is
 
-`chisurf.gui.chiplot` is *the* 2-D plotting API of the application. Call sites
+`chisurf.chiplot` is *the* 2-D plotting API of the application. Call sites
 use it; they never import a rendering library directly. The renderer is chosen
 at runtime and can be swapped without touching a single call site.
 
-| Module | Holds |
+**The core imports no Qt (2026-10-13).** `chisurf.chiplot` holds the panel API,
+the handles, the styles and the backends; `chisurf.gui.chiplot` is the **Qt host
+layer**: the `QWidget` wrappers `Plot`, `Grid`, `ImageView`, `VolumeView`,
+`PanelPlot` (`chisurf/gui/chiplot/canvas.py`) plus a re-export of the whole
+core, so a Qt call site still writes `from chisurf.gui import chiplot as cp`.
+Code that draws on an emtk surface (the fit window's pages) imports
+`from chisurf import chiplot as cp` and uses `cp.Panel`; it never loads Qt.
+What still touches Qt inside the core does so only when a Qt host asks:
+`EmtkCanvas.widget()` (an `emtk.qt_host.ControlHost`), `EmtkGrid` (a Qt grid
+layout, built by `Grid`), the image view's colour bar widget, and
+`EmtkCanvas.export_image` (a `QImage`). Colours no longer go through `QColor`:
+names are emtk's CSS/SVG table (case and spaces ignored, `transparent`), and
+`int_color` reproduces `QColor.fromHsvF` byte for byte (16-bit channels reduced
+by rounded `/257`, not `>>8`; the `1-(1-f)` float form matters). Guard:
+`test/test_chiplot_core_qt_free.py`.
+
+| Module (under `chisurf/chiplot/` unless named) | Holds |
 |--------|-------|
-| `canvas.py` | `PlotAPI` (the toolkit-free API), the widgets `Plot`, `Grid` (of `PanelPlot`s, with colour bars), `ImageView`, and `Panel` -- the same API with no `QWidget`, for surfaces that draw emtk directly (fit-window pages declare them with `plotbase.Plot.add_panel`) |
+| `canvas.py` | `PlotAPI` (the toolkit-free API) and `Panel` -- the same API with no `QWidget`, for surfaces that draw emtk directly (fit-window pages declare them with `plotbase.Plot.add_panel`) |
+| `chisurf/gui/chiplot/canvas.py` | the Qt host layer: the widgets `Plot`, `Grid` (of `PanelPlot`s, with colour bars), `ImageView`, `VolumeView` |
 | `handles.py` | the drawn-object protocols — `Curve`, `Scatter`, `Bars`, `ErrorBars`, `Image`, `ColorBar`, `Region`, `Marker`, `Roi`, `Arrow`, `Text` — plus the `Symbol` and `Orientation` enums |
 | `style.py` | `Color`, `Pen`, `Brush`, `Colormap`, `LineStyle` and the coercers `to_color` / `to_pen` / `to_brush` / `colormap` / `to_colormap` / `int_color` |
 | `backends/base.py` | the abstract `Canvas`/`Backend` contract a renderer must satisfy |
@@ -244,6 +261,10 @@ foreground became visible those panels filled with solid stripes. It had been
 invisible for exactly as long as the axes were.
 
 ## Chrome typography is one policy, not two defaults
+
+*Historical (2026-10-13): `style.chrome_font` / `chrome_base_size` had no caller left and
+were deleted with the Qt-free core; the emtk backend sizes its chrome from
+`chisurf.core.plotting.appearance.font_size`.*
 
 The two backends sized their axis text independently: pyqtgraph inherited the
 **application** font (13 pt — a UI size, on a residual strip eighty pixels
@@ -594,6 +615,13 @@ Both manifests dropped `"gui"`.
 
 **Where to pick this up**
 
+0. **Qt-free core — done 2026-10-13** (see "What it is"). Open, for S6 (striking `qtpy`;
+   [qt-retirement](/subsystems/qt-retirement.md) item 6): the Qt touches left in the core are
+   all behind a Qt host's request -- `EmtkCanvas.export_image` paints a `QImage` (port it to
+   `emtk.export`'s CPU rasteriser, which already draws the fit report), `EmtkGrid` is a
+   `QGridLayout` and `EmtkImageView`'s colour bar a `ControlHost`; they go when `Grid` /
+   `ImageView`'s last Qt caller does. Measure: `grep -n "qtpy\|QtWidgets\|QtGui" -r
+   chisurf/chiplot` lists them; `test/test_chiplot_core_qt_free.py` proves the import path.
 1. ~~"Advanced: pyqtgraph Configuration" in Settings ▸ Plots~~ — **done 2026-10-12**: all four
    options dropped (emtk antialiases and pans with the left button always; plots follow the
    theme), the key removed with a load-time migration (`settings_utils.RETIRED_KEYS`), strings

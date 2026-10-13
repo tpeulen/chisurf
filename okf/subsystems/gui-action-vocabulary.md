@@ -96,7 +96,7 @@ outline at all — a failure a test asserting on the property would have passed.
 # Adding an action
 
 Add a `ToolAction` to `TOOL_ACTIONS` with a key, a glyph from
-[`chisurf/gui/glyphs.py`](../../chisurf/gui/glyphs.py), a label, a canonical
+[`chisurf/core/glyphs.py`](../../chisurf/core/glyphs.py), a label, a canonical
 tooltip, an accent `kind` from `BTN_STYLES`, and an `order` that places it
 sensibly relative to its neighbours. A control that drives work needs its **own**
 `kind`, not a borrowed one — sharing an accent is what made restart look like
