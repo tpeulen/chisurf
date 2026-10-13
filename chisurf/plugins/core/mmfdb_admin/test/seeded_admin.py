@@ -1,7 +1,7 @@
 """A temporary, populated MMFDB reached through the real in-process RPC services.
 
-MMFDB Admin is a client of the MMFDB services. Its tests, the Qt baseline capture
-and the native app's screenshots all need the same realistic state: one record
+MMFDB Admin is a client of the MMFDB services. Its tests and the native app's
+screenshots all need the same realistic state: one record
 of every entity the admin browses, a provenance chain, curated fluorophores with
 spectra, calibrations, studies, protocols and reagent lots. This module writes
 that state into a **temporary** SQLite file and gives back a client logged in as
@@ -55,9 +55,9 @@ def _spectrum(center: float, width: float, start: float = 400.0, stop: float = 7
 def seed(folder: Path, client=None) -> dict:
     """Write the admin's demo state into the database of *folder*; return the ids used.
 
-    The records match the Qt GUI interaction tests (``sample_gui``, ``exp_gui``,
-    ``raw_gui`` -> ``proc_gui`` -> ``prod_gui``, ``analysis_gui`` ...) so a test of
-    the native app and a test of the legacy widget talk about the same rows.
+    The records are the ones the retired Qt window's interaction tests seeded
+    (``sample_gui``, ``exp_gui``, ``raw_gui`` -> ``proc_gui`` -> ``prod_gui``,
+    ``analysis_gui`` ...), so those tests ported to the native app kept their rows.
     """
     from mmfdb.repository import MFDatabase
     from mmfdb.store.database_resolver import resolve_database_path

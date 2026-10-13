@@ -38,22 +38,13 @@ _TIMEOUT = 90
 #: Tools known to perform blocking work while constructing, with what they do.
 #: A **shrinking** list: the entry is the defect, not permission for it. Each is
 #: written up in ``okf/references/known-issues.md``.
-BLOCKING = {
-    # Fires four blocking RPCs while building -- mmfdb.status twice (its
-    # Overview panel), mmfdb.users.list (the admin gate) and
-    # mmfdb.security.auth.login -- so with no server up, opening the tool
-    # freezes for 4 x the 5 s client timeout.
-    "mmfdb_admin",
-}
+BLOCKING: set[str] = set()
 
 #: Tools that crash the interpreter while constructing. Also **shrinking**, and
 #: also written up in ``okf/references/known-issues.md``. Both of these start
 #: work on a background thread from ``__init__``, which is the side effect the
 #: read-only-construction rule exists to forbid.
-CRASHING = {
-    # Aborts, then segfaults, while building.
-    "lightpath_simulator",
-}
+CRASHING: set[str] = set()  # lightpath_simulator's Qt host was retired (7e0514d95)
 
 #: Every tool whose construction is known to be broken, for whatever reason.
 KNOWN_BROKEN = BLOCKING | CRASHING
@@ -98,7 +89,8 @@ def test_tools_were_discovered():
     """The discovery itself must not silently find nothing."""
     # The Qt tools are being retired in favour of emtk apps (W9), so the count only falls; the check
     # is that discovery still finds the Qt shell features that remain, not a fixed number.
-    assert len(TOOLS) > 5, f"only {len(TOOLS)} GUI tools discovered"
+    # Three Qt hosts remain (code_editor, quenching_estimator, spectra_downloader) on 2026-10-13.
+    assert len(TOOLS) > 0, "no GUI tools discovered"
 
 
 def test_the_known_broken_lists_do_not_rot():

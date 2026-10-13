@@ -1,6 +1,6 @@
 """Derive FieldSpec definitions from the mmCIF dictionary.
 
-This replaces the hardcoded SCHEMAS dict in generic_form.py.
+The hand-written field lists of :mod:`.legacy_schemas` are only a fallback.
 Every FieldSpec is derived purely from the dictionary - no hardcoded
 field/column lists allowed.
 """

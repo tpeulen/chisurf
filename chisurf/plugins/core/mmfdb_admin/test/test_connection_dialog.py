@@ -1,44 +1,59 @@
-"""The AutoForm MMFDB login dialog: single-line password + collapsible advanced."""
+"""The MMFDB login dialog of the native admin (ported from the Qt ``ConnectionAuthDialog`` test).
+
+One masked single-line password, the user and the server in a collapsed Advanced block,
+and the values round-trip -- drawn from ``connection_auth.view.json`` by emtk.
+"""
 
 from __future__ import annotations
 
-import os
+import json
+from pathlib import Path
 
-import pytest
+from chisurf.plugins.core.mmfdb_admin.gui.native import dialogs as dlg
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytest.importorskip("qtpy")
+from .native_support import (  # noqa: F401
+    admin_folder,
+    app,
+    client,
+    driver,
+    seeded_template,
+)
+
+SPEC = Path(dlg.__file__).resolve().parents[1] / "connection_auth.view.json"
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
+def _walk(sections):
+    for s in sections:
+        yield s
+        yield from _walk(s.get("sections", ()))
 
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
+def test_login_dialog_password_masked_and_advanced_collapsible(driver, app):  # noqa: F811
+    spec = json.loads(SPEC.read_text(encoding="utf-8"))
+    fields = list(_walk(spec["sections"]))
+    assert [s["attr"] for s in fields if s.get("kind") == "password"] == ["password"]
+    advanced = [s for s in fields if s.get("collapsible")]
+    assert len(advanced) == 1 and advanced[0]["collapsed"] is True
+    assert {s.get("attr") for s in advanced[0]["sections"]} == {
+        "user",
+        "host",
+        "cmd_port",
+        "pub_port",
+    }
 
-def test_login_dialog_password_masked_and_advanced_collapsible(qapp):
-    from qtpy import QtWidgets
+    driver.click_name("logout")
+    app.model.client.token = None
+    app.model.ask_login("admin")
+    dialog = app.model.dialog
+    assert isinstance(dialog, dlg.ConnectionDialog)
+    driver.type_into_name("dialog.password", "pw-not-drawn", commit=False)
+    assert not driver.drawn("pw-not-drawn")  # masked
+    assert driver.drawn("Advanced — user & connection")
 
-    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
-    from chisurf.plugins.core.mmfdb_admin.gui.connection_dialog import ConnectionAuthDialog
-
-    d = ConnectionAuthDialog(user="admin", host="127.0.0.1", cmd_port=8765, pub_port=8766)
-    # password is a masked single-line field
-    masked = [
-        e
-        for e in d.findChildren(QtWidgets.QLineEdit)
-        if e.echoMode() == QtWidgets.QLineEdit.Password
-    ]
-    assert len(masked) == 1
-    # the advanced (user + connection) block is a collapsible panel
-    assert len(d.findChildren(CollapsibleBox)) == 1
-
-    # values round-trip through the AutoForm model
-    d._model.password = "pw"
-    d._model.host = "10.0.0.5"
-    vals = d.values()
-    assert vals == {
+    probe = dlg.ConnectionDialog("admin", "127.0.0.1", 8765, 8766, on_ok=lambda v: None)
+    probe.password = "pw"
+    probe.host = "10.0.0.5"
+    assert probe.values() == {
         "user": "admin",
         "password": "pw",
         "host": "10.0.0.5",

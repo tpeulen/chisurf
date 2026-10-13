@@ -1,6 +1,6 @@
 {
   "window": {"width": 1200, "height": 800},
-  "_comment": "MMFDB Admin, native emtk window: the shell and the dialogs, drawn by emtk.view_form over gui/native/model.py (AdminModel) and gui/native/dialogs.py. 'toolbar' is the strip under the menu bar; 'entity' is the panel of every one of the 21 registry entities (its form sections are generated from the entity's dictionary fields, its extra actions are 'entity_actions'); the other panels are dialogs. The login dialog's fields are connection_auth.view.json, the spec the Qt login dialog renders. Everything a spec cannot draw (menu bar, rail, status bar, the plots and the provenance graph) is in gui/app.py.",
+  "_comment": "MMFDB Admin, native emtk window: the shell and the dialogs, drawn by emtk.view_form over gui/native/model.py (AdminModel) and gui/native/dialogs.py. 'toolbar' is the strip under the menu bar; 'entity' is the panel of every one of the 21 registry entities (its form sections are generated from the entity's dictionary fields, its extra actions are 'entity_actions'); the other panels are dialogs. The login dialog's fields are connection_auth.view.json. Everything a spec cannot draw (menu bar, rail, status bar, the plots and the provenance graph) is in gui/app.py.",
   "title": "MMFDB Admin",
   "entity_actions": {
     "user": [
@@ -28,6 +28,7 @@
     "processed_product": [
       {"action": "copy_id", "label": "Copy ID", "description": "Copy the selected processed-data artifact's ID."},
       {"action": "reveal", "label": "Reveal", "description": "Open the selected processed-data file or URL."},
+      {"action": "open_in_ndx", "label": "Open in ndX", "description": "Open the selected product's file or folder in ndX; Save > Burst IDs there records the selection against this product."},
       {"action": "use_as_seed", "label": "Use as provenance seed", "description": "Open the Provenance Graph on the selected processed-data artifact and load its graph."},
       {"action": "validate", "label": "Validate", "description": "Set the validation status of the selected processed-data artifact."},
       {"action": "delete_artifact", "label": "Delete", "description": "Soft-delete the selected processed-data artifact and its direct provenance links (asks first)."}
@@ -47,14 +48,14 @@
       "wrap_indent": false,
       "description": "Where the MMFDB server is, who you are, and the database actions.",
       "sections": [
-        {"type": "value", "kind": "str", "attr": "host", "label": "Host", "min_chars": 12, "width": 150,
+        {"type": "value", "kind": "str", "attr": "host", "label": "Host", "enter_call": "login_from_field", "min_chars": 12, "width": 150,
          "description": "The MMFDB server: the host of the embedded server, or the base URL of a standalone one. Login connects here."},
-        {"type": "value", "kind": "int", "attr": "port", "label": "Port", "minimum": 1, "maximum": 65535, "width": 70,
+        {"type": "value", "kind": "int", "attr": "port", "label": "Port", "enter_call": "login_from_field", "minimum": 1, "maximum": 65535, "width": 70,
          "hidden_when": {"attr": "remote", "equals": true},
          "description": "The server's command port (its publish port is the next one)."},
-        {"type": "value", "kind": "str", "attr": "user", "label": "User", "width": 110,
+        {"type": "value", "kind": "str", "attr": "user", "label": "User", "enter_call": "login_from_field", "width": 110,
          "description": "The MMFDB user to sign in as."},
-        {"type": "value", "kind": "password", "attr": "password", "label": "Password", "width": 110,
+        {"type": "value", "kind": "password", "attr": "password", "label": "Password", "enter_call": "login_from_field", "width": 110,
          "placeholder": "(session)",
          "description": "The password. Not needed when this ChiSurf session is already signed in, or the account may sign in without one. Never stored."},
         {"type": "button_row", "weight": 0, "description": "Sign in or out.",
@@ -100,7 +101,7 @@
          "options": {
            "source": "table_rows", "columns_source": "table_columns", "row_key": "_id",
            "selected_call": "select_row", "activated_cell_call": "activate_cell", "edited_call": "edited",
-           "filter": true, "status": true, "column_picker": true, "fit_columns": true,
+           "tooltip_key": "_tip", "filter": true, "status": true, "column_picker": true, "fit_columns": true,
            "min_column_width": 96, "expand": true,
            "context_menu": [
              {"label": "Copy row", "call": "x_copy_row", "enabled_when": "x_menu_has_rows",
@@ -145,6 +146,19 @@
         {"type": "info", "source": "message_text", "description": "The message."},
         {"type": "button_row", "description": "Close the message.",
          "buttons": [{"action": "ok", "label": "OK", "description": "Close this message."}]}
+      ]
+    },
+    {
+      "type": "panel",
+      "name": "progress",
+      "title": "Working",
+      "description": "A long task running: how far it got, and Cancel.",
+      "sections": [
+        {"type": "info", "source": "progress_text", "description": "What is being done."},
+        {"type": "progress", "attr": "fraction", "text_source": "percent_text",
+         "description": "How far the task got."},
+        {"type": "button_row", "description": "Stop the task.",
+         "buttons": [{"action": "cancel", "label": "Cancel", "description": "Stop the task; nothing is shown or changed."}]}
       ]
     },
     {

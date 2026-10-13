@@ -1,74 +1,62 @@
-"""CalibrationsView Qt widget (smoke).
+"""The Calibrations panel of the native MMFDB Admin (ported from the Qt ``CalibrationsView`` tests).
 
-Drives the thin view over a real in-process MMFDBClient: list calibrations, register a
-literature value via the form, and show stale uses.
+The app runs over a seeded temporary MMFDB (``native_support``) with the real in-process
+services; values are typed and Register is pressed through the emtk Driver.
 """
 
 from __future__ import annotations
 
-import pytest
-
-pytest.importorskip("qtpy")
-
 from mmfdb.lifecycle.staleness import record_calibration_use
 
-from chisurf.plugins.core.mmfdb_admin.gui.calibrations_view import CalibrationsView
-from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-
-from .conftest import patch_db
-
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+from .native_support import (  # noqa: F401
+    admin_folder,
+    app,
+    client,
+    database,
+    driver,
+    open_panel,
+    seeded_template,
+)
 
 
-def _cal_types(view) -> set[str]:
-    return {view.cal_table.item(r, 0).text() for r in range(view.cal_table.rowCount())}
+def _types(panel) -> set[str]:
+    return {r["calibration_type"] for r in panel.calibrations}
 
 
-def test_view_lists_calibrations(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        client.create_calibration("g_factor", 1.02)
-        client.create_calibration("gamma", 0.9)
-        view = CalibrationsView(client)
-        assert _cal_types(view) == {"g_factor", "gamma"}
+def test_view_lists_calibrations(driver, app, client):  # noqa: F811
+    client.create_calibration("gamma", 0.9)
+    panel = open_panel(driver, "calibrations", "Calibrations")
+    assert _types(panel) == {"forster_radius", "g_factor", "gamma"}
+    assert driver.drawn("gamma")
 
 
-def test_view_create_adds_calibration(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        view = CalibrationsView(client)
-        view.new_type_combo.setCurrentText("forster_radius")
-        view.new_value_edit.setText("54.0")
-        view.new_notes_edit.setText("Hellenkamp 2018")
-        view.create_calibration()
-        assert "forster_radius" in _cal_types(view)
-        assert "Registered" in view.message_label.text()
+def test_view_create_adds_calibration(driver, app):  # noqa: F811
+    panel = open_panel(driver, "calibrations", "Calibrations")
+    panel.new_type = "forster_radius"
+    driver.type_into_name("new_value", "54.5")
+    driver.type_into_name("new_notes", "Hellenkamp 2018")
+    driver.click_name("register")
+    assert panel.message == "Registered forster_radius = 54.5."
+    assert 54.5 in {float(r["value"]) for r in panel.calibrations}
+    assert driver.drawn("Hellenkamp 2018")
 
 
-def test_view_rejects_non_numeric_value(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        view = CalibrationsView(client)
-        view.new_value_edit.setText("not-a-number")
-        view.create_calibration()
-    assert "numeric" in view.message_label.text()
-    assert _cal_types(view) == set()
+def test_view_rejects_non_numeric_value(driver, app):  # noqa: F811
+    panel = open_panel(driver, "calibrations", "Calibrations")
+    before = len(panel.calibrations)
+    driver.type_into_name("new_value", "not-a-number")
+    driver.click_name("register")
+    assert panel.message == "Enter a numeric value."
+    assert len(panel.calibrations) == before
 
 
-def test_view_shows_stale_uses(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        old = client.create_calibration("g_factor", 1.02)["artifact_id"]
-        record_calibration_use(
-            db, used_by_id="fit-1", calibration_artifact_id=old, used_by_type="artifact"
-        )
-        client.create_calibration("g_factor", 1.05)  # supersedes
-        view = CalibrationsView(client)
-        assert view.stale_table.rowCount() == 1
-        assert view.stale_table.item(0, 0).text() == "fit-1"
-        assert view.stale_table.item(0, 1).text() == "g_factor"
+def test_view_shows_stale_uses(driver, app, client, database):  # noqa: F811
+    old = client.create_calibration("gamma", 1.02)["artifact_id"]
+    record_calibration_use(
+        database, used_by_id="fit-1", calibration_artifact_id=old, used_by_type="artifact"
+    )
+    client.create_calibration("gamma", 1.05)  # supersedes
+    panel = open_panel(driver, "calibrations", "Calibrations")
+    stale = [r for r in panel.stale if r["used_by_id"] == "fit-1"]
+    assert len(stale) == 1 and stale[0]["calibration_type"] == "gamma"
+    assert driver.drawn("fit-1")

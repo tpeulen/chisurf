@@ -5,7 +5,7 @@ Last reviewed: 2026-07-06.
 ## Current State
 
 - `manifest.json` declares `mmfdb_admin` version `1.1.0`.
-- GUI entrypoint: `mmfdb.admin.gui.tool:MMFDBWidget`.
+- GUI entrypoint: `chisurf.plugins.core.mmfdb_admin.gui.app:make_app` (emtk).
 - Service entrypoint: `mmfdb.admin.backend.services:register_services`.
 - The plugin has broad test coverage under `test/` for handlers, views, auth/session,
   navigation, and optical-component workflows.
@@ -67,11 +67,8 @@ Last reviewed: 2026-07-06.
 - The old MMFDB Admin `backend/setup_services.py` compatibility module was removed;
   canonical setup handlers are registered as `mmfdb.setups.*` from
   `modules/mmfdb/src/mmfdb/admin/backend/services.py`.
-- Many MMFDB Admin panels are still hand-written Qt. Ordinary form/table/detail
-  surfaces should be migrated to AutoForm and JSON view specs.
-- Many MMFDB Admin GUI panels are construction-tested only. Manual testing has
-  shown failures in GUI elements, so anything marked construction-only or untested
-  in `docs/GUI_TEST_COVERAGE.md` must not be treated as done.
+- The GUI is the native emtk app (2026-10-13: the Qt window is retired); what its
+  tests cover is in `docs/GUI_TEST_COVERAGE.md`.
 - The vendored `mmfdb` package still contains ChiSurf-specific integration imports
   in `mmfdb.chinet_adapter` for fit-state serialization and ChiNet parameter
   metadata. It is source-separated, but not yet independently clean or

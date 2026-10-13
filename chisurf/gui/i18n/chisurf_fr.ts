@@ -67168,6 +67168,54 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Optical path loaded from Easy Mode.</source>
             <translation>Chemin optique chargé depuis le mode simple.</translation>
         </message>
+        <message>
+            <source>Open details</source>
+            <translation>Ouvrir les détails</translation>
+        </message>
+        <message>
+            <source>Copy selected row</source>
+            <translation>Copier la ligne sélectionnée</translation>
+        </message>
+        <message>
+            <source>Check selected rows</source>
+            <translation>Cocher les lignes sélectionnées</translation>
+        </message>
+        <message>
+            <source>Uncheck selected rows</source>
+            <translation>Décocher les lignes sélectionnées</translation>
+        </message>
+        <message>
+            <source>Check all visible</source>
+            <translation>Cocher toutes les lignes visibles</translation>
+        </message>
+        <message>
+            <source>Invert visible checks</source>
+            <translation>Inverser les coches visibles</translation>
+        </message>
+        <message>
+            <source>Working</source>
+            <translation>En cours</translation>
+        </message>
+        <message>
+            <source>Demo data…</source>
+            <translation>Données de démonstration…</translation>
+        </message>
+        <message>
+            <source>Export validation failed</source>
+            <translation>Échec de la validation de l'export</translation>
+        </message>
+        <message>
+            <source>Populate demo MMFDB data</source>
+            <translation>Remplir la MMFDB de données de démonstration</translation>
+        </message>
+        <message>
+            <source>Finding Duplicates</source>
+            <translation>Recherche de doublons</translation>
+        </message>
+        <message>
+            <source>Analyzing probes for duplicates...</source>
+            <translation>Analyse des sondes à la recherche de doublons...</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

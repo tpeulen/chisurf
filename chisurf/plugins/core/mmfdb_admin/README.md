@@ -49,10 +49,12 @@ source/user database resolution.
 
 ## UI Surface
 
-The GUI entrypoint is `mmfdb.admin.gui.tool:MMFDBWidget`; `chisurf.plugins.core.mmfdb_admin.gui.*` remains as compatibility wrappers.
-The widget uses `MMFDBClient`, which can talk to a ZMQ JSON-RPC endpoint or an
-in-process dispatcher for local desktop use. The UI contains dedicated views and
-docks for:
+The window is the native emtk app `chisurf.plugins.core.mmfdb_admin.gui.app:make_app`
+(`entrypoints.emtk`) over the Qt-free view models in `gui/native/` and the view
+specs `gui/admin.view.json`, `gui/admin_panels.view.json` and
+`gui/entity_extras.view.json`; the Qt `MMFDBWidget` is retired. The app uses
+`MMFDBClient`, which can talk to a ZMQ JSON-RPC endpoint or an in-process
+dispatcher for local desktop use. Its panels cover:
 
 - generic entity editing and metadata display
 - samples, experiments, studies, protocols, lifecycle state, calibrations, reagents,
@@ -61,21 +63,17 @@ docks for:
 - optical components and fluorophore metadata
 - provenance graph inspection
 
-GUI connection fields are represented by `modules/mmfdb/src/mmfdb/admin/gui/connection_auth.view.json`.
-Optical-component forms are represented by view JSON files in
-`modules/mmfdb/src/mmfdb/admin/gui/optical_components/`.
+The login dialog's fields are `gui/connection_auth.view.json`; the optical-component
+detail forms are the view JSON files in `gui/optical_components/`.
 
-New and refactored MMFDB Admin panels should use JSON view specs and AutoForm
-wherever the interaction is a form, toolbar, table, wizard, info block, or
-detail panel. If a required control shape is missing, implement it in the shared
-AutoForm/dataspec layer first, then consume it from MMFDB Admin. Do not add new
-one-off Qt form builders for ordinary schema-driven UI.
+New MMFDB Admin panels are view specs drawn by emtk. If a control shape is
+missing, add it to emtk (with tests) first, then consume it here.
 
 ## API, CLI, And RPC
 
 | Surface | Entry point / method | Purpose |
 | --- | --- | --- |
-| GUI | `mmfdb.admin.gui.tool:MMFDBWidget` | Desktop administration tool. |
+| GUI | `chisurf.plugins.core.mmfdb_admin.gui.app:make_app` | Desktop administration tool (emtk). |
 | Service registration | `mmfdb.admin.backend.services:register_services` | Registers MMFDB admin JSON-RPC handlers. |
 | Python client | `mmfdb.admin.gui.client:MMFDBClient` | GUI-facing wrapper around JSON-RPC calls. |
 | CLI | None declared in `manifest.json` | `cli/` exists as a package placeholder. |
@@ -92,12 +90,10 @@ one-off Qt form builders for ordinary schema-driven UI.
 - `backend/measurement_services.py`: measurement/raw/processed-data handlers.
 - `backend/ndxplorer_services.py`: ndX handoff/query handlers.
 - `backend/fluorophore_services.py`: fluorophore curation handlers.
-- `modules/mmfdb/src/mmfdb/admin/gui/`: Qt views, clients, docks, generic forms, lifecycle/protocol/study/reagent
-  views, optical-component editors, and provenance graph widgets.
-- `modules/mmfdb/src/mmfdb/admin/gui/autoform_entity_form.py`: AutoForm-backed entity detail form used by
-  schema-driven entity docks.
-- `gui/*.view.json` and `modules/mmfdb/src/mmfdb/admin/gui/optical_components/*.view.json`: declarative view
-  specs rendered through AutoForm.
+- `gui/app.py`: the emtk window (menu bar, rail, status bar, spectra plot, provenance graph).
+- `gui/native/`: the Qt-free view models (`model.py` AdminModel, `entity.py`, `panels.py`,
+  `spectra.py`, `provenance.py`, `dialogs.py`).
+- `gui/*.view.json` and `gui/optical_components/*.view.json`: the declarative view specs.
 - `test/`: focused handler, view, auth/session, navigation, and optical-component
   tests.
 
@@ -142,8 +138,6 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -
 
 - `docs/CONTRACT.md` documents method families, but individual request/response
   schemas still need to be filled in for high-risk mutations.
-- Several workflow panels still contain manual Qt table/form code. Migrate these
-  incrementally to JSON view specs and shared AutoForm primitives.
 - Registered fluorophore RPC methods and `mmfdb.auth.change_password` are not declared
   in the current manifest.
 - The retired `sample_database` plugin is not a supported RPC namespace; all new
@@ -160,8 +154,7 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." python3 -
 - `backend/ndxplorer_services.py`
 - `backend/fluorophore_services.py`
 - `modules/mmfdb/src/mmfdb/admin/gui/client.py`
-- `modules/mmfdb/src/mmfdb/admin/gui/tool.py`
-- `modules/mmfdb/src/mmfdb/admin/gui/autoform_entity_form.py`
+- `gui/app.py`, `gui/native/`
 - `test/`
 - `docs/CONTRACT.md`
 - `docs/STATUS.md`

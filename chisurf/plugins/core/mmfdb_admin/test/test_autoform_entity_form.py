@@ -1,26 +1,22 @@
-"""Tests for the AutoForm-backed entity detail form (EntityForm)."""
+"""The dictionary-driven entity form of the native admin (ported from the Qt ``EntityForm`` tests).
+
+The form's sections are generated from :class:`~..gui.entity_schema.FieldSpec` lists
+(:func:`~..gui.entity_values.view_section`), its values coerced in and out by
+:mod:`~..gui.entity_values`, and a foreign key is a choice of ``(id, label)`` pairs
+fetched with the rows -- the behaviour the Qt AutoForm wrapper had.
+"""
 
 from __future__ import annotations
 
-import os
-
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+from chisurf.plugins.core.mmfdb_admin.gui.entity_schema import FieldSpec
+from chisurf.plugins.core.mmfdb_admin.gui.native.entity import EntityPanel
 
-
-@pytest.fixture(scope="module")
-def qapp():
-    try:
-        from qtpy import QtWidgets
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"qtpy unavailable: {exc}")
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+from .native_support import admin, admin_folder, client, seeded_template  # noqa: F401
 
 
 def _specs():
-    from chisurf.plugins.core.mmfdb_admin.gui.entity_schema import FieldSpec
-
     return [
         FieldSpec(name="sample_id", label="Sample ID", widget="str", readonly=True),
         FieldSpec(name="description", label="Description", widget="str"),
@@ -34,33 +30,30 @@ def _specs():
         ),
         FieldSpec(name="details", label="Details", widget="text"),
         FieldSpec(name="is_public", label="Public", widget="bool"),
-        FieldSpec(name="condition_id", label="Condition", widget="str", fk_target="condition"),
+        FieldSpec(
+            name="sample_condition_id", label="Condition", widget="str", fk_target="condition"
+        ),
     ]
 
 
-def test_all_field_kinds_build(qapp):
-    from chisurf.gui.autoform.sections.builtin import (
-        ChoiceWidget,
-        ToggleWidget,
-        ValueWidget,
-    )
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
-
-    fk = {"condition_id": lambda: [("c1", "c1 — A"), ("c2", "c2 — B")]}
-    f = EntityForm(_specs(), dropdown_providers=fk)
-    # 5 ValueSection widgets (str, str, int, float, text), 2 ChoiceWidgets
-    # (choice + FK), 1 ToggleWidget — no section failed to build.
-    assert len(f.findChildren(ValueWidget)) == 5
-    assert len(f.findChildren(ChoiceWidget)) == 2
-    assert len(f.findChildren(ToggleWidget)) == 1
+@pytest.fixture
+def panel(admin):  # noqa: F811
+    p = EntityPanel(admin, admin.entity_spec("sample"), _specs())
+    p.refresh()
+    return p
 
 
-def test_set_get_roundtrip(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
+def test_all_field_kinds_build(panel):
+    sections = [s for s in panel.form_sections() if s.get("attr") in {f.name for f in _specs()}]
+    kinds = [(s["type"], s.get("kind")) for s in sections]
+    assert sum(1 for t, _ in kinds if t == "value") == 5  # str, str, int, float, text
+    assert sum(1 for t, _ in kinds if t == "choice") == 2  # choice + foreign key
+    assert sum(1 for t, _ in kinds if t == "toggle") == 1
+    assert ("value", "text") in kinds
 
-    fk = {"condition_id": lambda: [("c1", "c1 — A"), ("c2", "c2 — B")]}
-    f = EntityForm(_specs(), dropdown_providers=fk)
-    f.set_data(
+
+def test_set_get_roundtrip(panel):
+    panel.form.load(
         {
             "sample_id": "s1",
             "description": "my sample",
@@ -69,10 +62,10 @@ def test_set_get_roundtrip(qapp):
             "solvent_phase": "vitrified",
             "details": "line1\nline2",
             "is_public": 1,
-            "condition_id": "c2",
+            "sample_condition_id": "cond_gui",
         }
     )
-    out = f.get_data()
+    out = panel.form.data()
     assert out["sample_id"] == "s1"
     assert out["description"] == "my sample"
     assert out["num_of_probes"] == 2 and isinstance(out["num_of_probes"], int)
@@ -80,102 +73,79 @@ def test_set_get_roundtrip(qapp):
     assert out["solvent_phase"] == "vitrified"
     assert out["details"] == "line1\nline2"
     assert out["is_public"] == 1
-    assert out["condition_id"] == "c2"  # FK commits the id, not the label
+    assert out["sample_condition_id"] == "cond_gui"  # the id, not the label
 
 
-def test_commit_signal_not_fired_during_load(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
-
-    f = EntityForm(_specs())
+def test_commit_not_fired_during_load(panel, monkeypatch):
     fired = []
-    f.commitRequested.connect(lambda: fired.append(1))
-    f.set_data({"description": "x", "num_of_probes": 1})
+    monkeypatch.setattr(panel, "form_committed", fired.append)
+    panel.form.load({"description": "x", "num_of_probes": 1})
     assert fired == []
-    # a user edit (setattr on a field) fires the commit signal
-    f._model.description = "edited"
-    assert len(fired) == 1
+    panel.form.description = "edited"  # an edit committed in the form
+    assert fired == ["description"]
 
 
-def test_json_fields_roundtrip(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
-    from chisurf.plugins.core.mmfdb_admin.gui.entity_schema import FieldSpec
-
+def test_json_fields_roundtrip(admin):  # noqa: F811
     specs = [
         FieldSpec(name="laser_wavelengths", widget="text"),
         FieldSpec(name="detector_channels", widget="text"),
     ]
-    f = EntityForm(specs)
-    f.set_data({"laser_wavelengths": [488, 640], "detector_channels": {"0": "green"}})
-    out = f.get_data()
+    p = EntityPanel(admin, admin.entity_spec("setup"), specs)
+    p.form.load({"laser_wavelengths": [488, 640], "detector_channels": {"0": "green"}})
+    out = p.form.data()
     assert out["laser_wavelengths"] == [488, 640]
     assert out["detector_channels"] == {"0": "green"}
 
 
-def _fk_combo(form):
-    """Return the FK ChoiceWidget's combo box (source name fk_opts_condition_id)."""
-    from chisurf.gui.autoform.sections.builtin import ChoiceWidget
-
-    for w in form.findChildren(ChoiceWidget):
-        if getattr(w._section, "options_source", "") == "fk_opts_condition_id":
-            return w.combo
-    raise AssertionError("FK combo not found")
-
-
-def test_fk_dropdown_shows_labels_not_ids(qapp):
-    """The FK combo displays the human-readable label while committing the id."""
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
-
-    fk = {"condition_id": lambda: [("c1", "c1 — A"), ("c2", "c2 — B")]}
-    f = EntityForm(_specs(), dropdown_providers=fk)
-    combo = _fk_combo(f)
-    shown = [combo.itemText(i) for i in range(combo.count())]
-    assert shown == ["c1 — A", "c2 — B"]  # labels, not bare ids
+def test_fk_dropdown_shows_labels_not_ids(panel):
+    section = next(s for s in panel.form_sections() if s.get("attr") == "sample_condition_id")
+    assert section["type"] == "choice"
+    options = getattr(panel.form, section["options_source"])()
+    assert options[0] == ("", "(none)")
+    assert "cond_gui" in {v for v, _ in options}
+    # a target record with a name is listed as "id — name", committing the id
+    devices = EntityPanel(panel.admin, panel.admin.entity_spec("sample"), _device_fk())
+    devices.refresh()
+    assert ("dev_gui", "dev_gui — GUI Detector") in devices.fk_choices("measured_by_device_id")
 
 
-def test_fk_dropdown_is_live_after_refresh(qapp):
-    """A target added while the form is open appears after refresh_dropdowns()."""
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
-
-    pairs = [("c1", "c1 — A")]
-    fk = {"condition_id": lambda: list(pairs)}
-    f = EntityForm(_specs(), dropdown_providers=fk)
-    assert _fk_combo(f).count() == 1
-
-    pairs.append(("c2", "c2 — B"))  # a new condition was created elsewhere
-    f.refresh_dropdowns()
-    combo = _fk_combo(f)
-    assert combo.count() == 2
-    assert combo.itemText(1) == "c2 — B"
+def _device_fk():
+    return [
+        FieldSpec(name="sample_id", widget="str", readonly=True),
+        FieldSpec(name="measured_by_device_id", widget="str", fk_target="device"),
+    ]
 
 
-def test_fk_options_cached_between_loads(qapp):
-    """Repeated record loads reuse the cache; refresh_dropdowns() re-fetches."""
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
+def test_fk_dropdown_is_live_after_refresh(panel, client):  # noqa: F811
+    before = {v for v, _ in panel.fk_choices("sample_condition_id")}
+    client._call(
+        "mmfdb.sample_conditions.save", {"condition": {"condition_id": "cond_new", "ph": 6.0}}
+    )
+    panel.refresh()
+    after = {v for v, _ in panel.fk_choices("sample_condition_id")}
+    assert after - before == {"cond_new"}
 
+
+def test_fk_options_cached_between_loads(panel, monkeypatch):
     calls = {"n": 0}
+    real = panel._fetch_fk_options
 
-    def provider():
+    def counted():
         calls["n"] += 1
-        return [("c1", "c1 — A"), ("c2", "c2 — B")]
+        return real()
 
-    f = EntityForm(_specs(), dropdown_providers={"condition_id": provider})
-    built = calls["n"]  # fetched once while building the combo
-    assert built >= 1
-
-    f.set_data({"condition_id": "c1"})
-    f.set_data({"condition_id": "c2"})
-    assert calls["n"] == built  # no extra RPCs on record navigation
-
-    f.refresh_dropdowns()
-    assert calls["n"] == built + 1  # cache busted → exactly one re-fetch
+    monkeypatch.setattr(panel, "_fetch_fk_options", counted)
+    panel.jump_to("sample_gui")
+    panel.jump_to("sample_hp3")
+    panel.fk_choices("sample_condition_id")
+    assert calls["n"] == 0  # record navigation makes no extra calls
+    panel.refresh()
+    assert calls["n"] == 1  # a refresh fetches once
 
 
-def test_empty_optional_strings_become_none(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.autoform_entity_form import EntityForm
-
-    f = EntityForm(_specs())
-    f.set_data({})  # nothing set
-    out = f.get_data()
+def test_empty_optional_strings_become_none(panel):
+    panel.form.clear()
+    out = panel.form.data()
     assert out["description"] is None
     assert out["num_of_probes"] == 0
     assert out["is_public"] == 0

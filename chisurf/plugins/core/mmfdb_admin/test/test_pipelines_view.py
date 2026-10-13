@@ -1,14 +1,10 @@
-"""PipelinesView Qt widget (smoke).
+"""The Pipelines panel of the native MMFDB Admin (ported from the Qt ``PipelinesView`` tests).
 
-Drives the thin read-only view over a real in-process MMFDBClient: list pipelines, and on
-selection show the pipeline's nodes, typed wiring, and recorded runs.
+List the registered pipelines and, on a row click, show the pipeline's nodes, typed wiring
+and recorded runs -- through the emtk Driver over a seeded temporary MMFDB.
 """
 
 from __future__ import annotations
-
-import pytest
-
-pytest.importorskip("qtpy")
 
 from chisurf.core.pipeline import (
     Pipeline,
@@ -18,17 +14,17 @@ from chisurf.core.pipeline import (
     record_pipeline_run,
     save_pipeline,
 )
-from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-from chisurf.plugins.core.mmfdb_admin.gui.pipelines_view import PipelinesView
+from chisurf.plugins.emtk_test_input import Driver
 
-from .conftest import patch_db
-
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+from .native_support import (  # noqa: F401
+    admin_folder,
+    app,
+    client,
+    database,
+    driver,
+    open_panel,
+    seeded_template,
+)
 
 
 def _demo_pipeline() -> Pipeline:
@@ -42,38 +38,28 @@ def _demo_pipeline() -> Pipeline:
     )
 
 
-def _pipeline_names(view) -> set[str]:
-    return {view.pipeline_table.item(r, 0).text() for r in range(view.pipeline_table.rowCount())}
+def test_view_lists_pipelines(driver, app, database):  # noqa: F811
+    save_pipeline(database, _demo_pipeline())
+    panel = open_panel(driver, "pipelines", "Pipelines")
+    assert {p["name"] for p in panel.pipelines} == {"raw->shift->burst"}
+    assert driver.drawn("raw->shift->burst")
 
 
-def test_view_lists_pipelines(db, qapp):
-    with patch_db(db):
-        save_pipeline(db, _demo_pipeline())
-        client = MMFDBClient(inprocess=True)
-        view = PipelinesView(client)
-        assert _pipeline_names(view) == {"raw->shift->burst"}
-
-
-def test_view_shows_structure_and_runs_on_select(db, qapp):
-    with patch_db(db):
-        pid = save_pipeline(db, _demo_pipeline())
-        run = PipelineRun(
-            pipeline_name="raw->shift->burst",
-            node_outputs={"shift": ["a1"], "burst": ["a2"]},
-            operation_ids=["op-1", "op-2"],
-        )
-        record_pipeline_run(db, run, pipeline_id=pid, status="succeeded", name="run-1")
-        client = MMFDBClient(inprocess=True)
-        view = PipelinesView(client)
-        view.pipeline_table.selectRow(0)
-
-        nodes = {view.node_table.item(r, 0).text() for r in range(view.node_table.rowCount())}
-        assert nodes == {"shift", "burst"}
-        # one wiring edge: shift.shifted -> burst.raw
-        assert view.edge_table.rowCount() == 1
-        assert view.edge_table.item(0, 0).text() == "shift.shifted"
-        assert view.edge_table.item(0, 1).text() == "burst.raw"
-        # one recorded run with two operations
-        assert view.run_table.rowCount() == 1
-        assert view.run_table.item(0, 1).text() == "succeeded"
-        assert view.run_table.item(0, 2).text() == "2"
+def test_view_shows_structure_and_runs_on_select(driver, app, database):  # noqa: F811
+    pid = save_pipeline(database, _demo_pipeline())
+    run = PipelineRun(
+        pipeline_name="raw->shift->burst",
+        node_outputs={"shift": ["a1"], "burst": ["a2"]},
+        operation_ids=["op-1", "op-2"],
+    )
+    record_pipeline_run(database, run, pipeline_id=pid, status="succeeded", name="run-1")
+    panel = open_panel(driver, "pipelines", "Pipelines")
+    driver.click(Driver.text_rect(driver.draw(2), "raw->shift->burst", last=False))
+    assert {n["name"] for n in panel.nodes} == {"shift", "burst"}
+    # one wiring edge: shift.shifted -> burst.raw
+    assert [(e["from"], e["to"]) for e in panel.edges] == [("shift.shifted", "burst.raw")]
+    # one recorded run with two operations
+    assert len(panel.runs) == 1
+    assert panel.runs[0]["status"] == "succeeded"
+    assert str(panel.runs[0]["operation_count"]) == "2"
+    assert driver.drawn("burst.raw")

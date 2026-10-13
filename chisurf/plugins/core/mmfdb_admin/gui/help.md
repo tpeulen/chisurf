@@ -12,8 +12,9 @@ Theory and the full walk-through: [MMFDB Admin guide](docs/guides/102_mmfdb_admi
 
 The toolbar names the server (**Host** and **Port**, or a base URL for a
 standalone server), the **User** and a **Password**. **Login** connects and signs
-in: a session this ChiSurf process already holds is reused, an account that may
-sign in without a password needs none, and otherwise the login dialog asks.
+in (so does **Enter** in any of the four fields): a session this ChiSurf process
+already holds is reused, an account that may sign in without a password needs
+none, and otherwise the login dialog asks.
 **...** opens that dialog directly (its *Advanced* fold changes user, host and
 ports). **Logout** drops the session. The dot is green when connected, yellow
 while connecting and red when not.
@@ -44,7 +45,8 @@ The form's fields come from the mmCIF dictionary (the FLR / PDBx categories), so
 a field's tooltip is its dictionary definition. **An edit is saved when you
 commit the field** (Enter, or a click elsewhere): there is no Save button, as in
 the Qt tool. Read-only entities (raw data, products, analyses, objects, projects,
-the setup's channels) show their fields read-only.
+the setup's channels) show their fields read-only. Hover a row to see the record's
+UUID, when it has one.
 
 An **underlined** cell names another record (a sample's condition, an
 experiment's setup): **double-click** it to open that record in its own panel.
@@ -60,6 +62,7 @@ Some entities have their own actions:
 | Users | **Change password** (administrators need a medium-strength password and cannot be cleared), **Jump to branch** (start a branch at a recorded operation and make it the user's active branch) |
 | Branches | **Set head** |
 | Raw Data, Processed Products | **Copy ID**, **Reveal** (open the file or URL), **Use as provenance seed**, **Validate** (set the validation status), **Delete** (soft delete, asks) |
+| Processed Products | **Open in ndX** (the product's file or folder; *Save > Burst IDs* there records the selection against the product) |
 | Analyses | **Copy ID**, **Details** (parameters and input / output products), **Use as provenance seed** |
 | Objects | **Copy UUID**, **Reveal** (a downloaded copy; the server path is never shown), **Delete object** (drops one reference while others remain) |
 | Experiments | **Experiment data / links** sub-table under the form: **Add data**, **Save data**, **Delete data** (asks), **Open data**; click a cell to edit it |
@@ -80,15 +83,24 @@ Some entities have their own actions:
 * **Spectra** — curate fluorophores, filters, dichroics, detectors and light
   sources: **Approve**, **Reject**, the **Review queue**, **AI triage**
   (deterministic checks), **Import ref. set**, **Find Duplicates** (merge
-  near-duplicates into a primary). Tick rows to overlay their spectra.
+  near-duplicates into a primary; a progress bar with **Cancel** while it
+  searches). Tick rows to overlay their spectra. **Search** lists as you type
+  (with **Auto** on; turn it off for a large database and press Enter).
+  Right-click a row for **Open details**, **Copy selected row** / **cell**,
+  **Copy checked IDs**, **Check** / **Uncheck selected rows**, the tick helpers,
+  **Select all rows** and **Clear selection**.
 * **Provenance Graph** — pick a seed (type and ID) and load its **upstream**,
   **downstream** or **full** graph; export it as JSON or a ZIP archive. *Use as
-  provenance seed* on a record loads it here directly.
+  provenance seed* on a record loads it here directly. Click a node or an edge
+  (in the graph or the table) to read its record on the right.
 * **Import / Export** — import a PDBx / PDB-IHM / FLR CIF file, export the sample
-  selected in Samples as FLR CIF (validated first), preview it, export the sample
-  table.
+  selected in Samples as FLR CIF (validated first; a validation that cannot run
+  says so and asks), preview it, export the sample table. **Demo data…** fills
+  the database with the packaged synthetic smFRET burst tables (metadata
+  examples with lineage, after asking).
 * **eLabFTW** — connect to an eLabFTW notebook (the API key is kept in memory
-  only), import ticked experiments, export ours.
+  only), list its experiments (**Refresh**, or Enter in the search box), import
+  ticked experiments, export ours.
 * **Studies**, **Protocols**, **Lifecycle**, **Calibrations**, **Reagent Lots**,
   **Pipelines** — the workflow and QC records.
 

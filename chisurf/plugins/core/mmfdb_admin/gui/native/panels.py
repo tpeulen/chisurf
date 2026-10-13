@@ -9,11 +9,12 @@ client calls; every call runs off the drawing thread (:meth:`Panel.run`).
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
 from .base import Panel, cell, rows_of
-from .dialogs import MessageDialog
+from .dialogs import ConfirmDialog, MessageDialog
 
 # ── Overview ────────────────────────────────────────────────────────────
 
@@ -553,6 +554,8 @@ class ImportExportPanel(Panel):
         super().__init__(admin)
         self.path = ""
         self.preview = ""
+        #: The demo-data population is running (one at a time).
+        self.busy_demo = False
 
     def preview_text(self) -> str:
         return self.preview
@@ -560,6 +563,8 @@ class ImportExportPanel(Panel):
     def enabled(self, name: str) -> bool:
         if name == "browse":
             return True
+        if name == "populate_demo":
+            return self.admin.connected and not self.busy_demo
         return self.admin.connected
 
     def browse(self) -> None:
@@ -620,6 +625,45 @@ class ImportExportPanel(Panel):
             fetch,
             done,
             lambda error: self.admin.show(MessageDialog("Preview failed", error)),
+        )
+
+    def populate_demo(self) -> None:
+        """Fill the database with the packaged synthetic smFRET burst tables (asks first)."""
+        if self.busy_demo:
+            self.say("Demo data population is already running.")
+            return
+
+        def go() -> None:
+            self.busy_demo = True
+            self.preview = (
+                "Populating the packaged synthetic smFRET burst tables...\n"
+                "This may take a moment for a fresh database."
+            )
+            self.say("Populating demo data...")
+
+            def done(summary: Any) -> None:
+                self.busy_demo = False
+                summary = summary if isinstance(summary, dict) else {}
+                self.preview = json.dumps(summary, indent=2, default=str)
+                raw = len(summary.get("raw_data_ids", []) or [])
+                self.say(
+                    f"Demo data populated: {raw} raw files, sample {summary.get('sample_id', '?')}."
+                )
+                self.admin.refresh()
+
+            def failed(error: str) -> None:
+                self.busy_demo = False
+                self.preview = f"Demo data population failed:\n\n{error}"
+                self.say(f"Demo data population failed: {error}")
+
+            self.run("Demo data", self.client.populate_mock_data, done, failed)
+
+        self.admin.show(
+            ConfirmDialog(
+                "Populate demo MMFDB data",
+                "Populate the MMFDB with the packaged synthetic smFRET burst tables?",
+                go,
+            )
         )
 
     def export_table(self) -> None:

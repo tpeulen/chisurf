@@ -116,8 +116,8 @@ ENTITY_REGISTRY: list[EntitySpec] = [
     ),
     # NOTE: "metadata" is NOT a generic entity. Sample metadata uses
     # a per-sample key-value pattern (flr_sample_key_value table) that
-    # doesn't fit the generic EntityDock CRUD model. It gets a dedicated
-    # MetadataDock (see metadata_dock.py) wired separately in tool.py.
+    # doesn't fit the generic entity CRUD model. It has its own panel
+    # (native/panels.py MetadataPanel).
     # ---- Experiments & data ----
     EntitySpec(
         key="experiment",

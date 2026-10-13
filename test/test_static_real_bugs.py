@@ -26,15 +26,5 @@ def test_service_error_always_gets_error_code():
     assert not offenders, offenders
 
 
-def test_mmfdb_admin_fill_experiment_type_table_takes_no_arguments():
-    """The method refetches itself; passing the saved list raised TypeError."""
-    tree = ast.parse((ROOT / "chisurf/plugins/core/mmfdb_admin/gui/tool.py").read_text())
-    bad = [
-        n.lineno
-        for n in ast.walk(tree)
-        if isinstance(n, ast.Call)
-        and isinstance(n.func, ast.Attribute)
-        and n.func.attr == "fill_experiment_type_table"
-        and (n.args or n.keywords)
-    ]
-    assert not bad, bad
+# The MMFDB Admin's ``fill_experiment_type_table`` guard went with its Qt window: the
+# native app has no such method (Experiment Types is a generic entity panel).

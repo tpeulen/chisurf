@@ -67030,6 +67030,54 @@ fortgesetzt werden.
             <source>Optical path loaded from Easy Mode.</source>
             <translation>Optischer Pfad aus dem Easy Mode geladen.</translation>
         </message>
+        <message>
+            <source>Open details</source>
+            <translation>Details öffnen</translation>
+        </message>
+        <message>
+            <source>Copy selected row</source>
+            <translation>Gewählte Zeile kopieren</translation>
+        </message>
+        <message>
+            <source>Check selected rows</source>
+            <translation>Gewählte Zeilen ankreuzen</translation>
+        </message>
+        <message>
+            <source>Uncheck selected rows</source>
+            <translation>Kreuz der gewählten Zeilen entfernen</translation>
+        </message>
+        <message>
+            <source>Check all visible</source>
+            <translation>Alle sichtbaren ankreuzen</translation>
+        </message>
+        <message>
+            <source>Invert visible checks</source>
+            <translation>Kreuze der sichtbaren umkehren</translation>
+        </message>
+        <message>
+            <source>Working</source>
+            <translation>In Arbeit</translation>
+        </message>
+        <message>
+            <source>Demo data…</source>
+            <translation>Demodaten…</translation>
+        </message>
+        <message>
+            <source>Export validation failed</source>
+            <translation>Exportprüfung fehlgeschlagen</translation>
+        </message>
+        <message>
+            <source>Populate demo MMFDB data</source>
+            <translation>MMFDB mit Demodaten füllen</translation>
+        </message>
+        <message>
+            <source>Finding Duplicates</source>
+            <translation>Duplikate suchen</translation>
+        </message>
+        <message>
+            <source>Analyzing probes for duplicates...</source>
+            <translation>Sonden werden auf Duplikate geprüft...</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

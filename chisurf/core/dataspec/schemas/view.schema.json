@@ -3483,8 +3483,10 @@
                 "type": "string"
               },
               "dock": {},
+              "enter_call": {},
               "key": {},
               "lines": {},
+              "live": {},
               "name": {},
               "page": {},
               "panels": {},
@@ -4207,7 +4209,9 @@
               "scale": {
                 "type": "string"
               },
+              "enter_call": {},
               "lines": {},
+              "live": {},
               "special_text": {},
               "spin": {},
               "steps": {

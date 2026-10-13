@@ -38,7 +38,9 @@ def test_the_production_path_is_qt_free(tmp_path, monkeypatch):
 def test_the_manifest_opens_the_native_app():
     entry = json.loads(MANIFEST.read_text(encoding="utf-8"))["entrypoints"]
     assert entry.get("emtk") == "chisurf.plugins.core.mmfdb_admin.gui.app:make_app"
-    assert entry.get("gui"), "the Qt tool stays reachable as the legacy entry"
+    assert "gui" not in entry, "the Qt tool is retired; nothing opens it"
+    package = (MANIFEST.parent / "__init__.py").read_text(encoding="utf-8")
+    assert "gui.tool" not in package and "MMFDBWidget" not in package
 
 
 @pytest.mark.parametrize("size", [(1200, 800), SMALL])

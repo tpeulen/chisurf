@@ -34,7 +34,6 @@ def test_gmm_settings_coerce_to_default_type():
 @pytest.mark.parametrize(
     "path",
     [
-        "chisurf/plugins/core/mmfdb_admin/gui/tool.py",
         "chisurf/gui/widgets/fitting/parameter_widgets.py",
     ],
 )

@@ -12,14 +12,21 @@ queue, the deterministic triage and the duplicate finder.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any
 
 from ..optical_components.duplicates import find_duplicate_groups
 from .base import Panel, cell
-from .dialogs import ConfirmDialog, Dialog, MessageDialog
+from .dialogs import ConfirmDialog, Dialog, MessageDialog, ProgressDialog
 
 HERE = Path(__file__).resolve().parents[1] / "optical_components"
+
+#: Seconds after the last key before a search-as-you-type runs (the Qt dock's timer).
+SEARCH_DELAY = 0.3
+
+#: What a cancelled duplicate search returns (``None`` means "no probes").
+CANCELLED = object()
 
 #: Optical property names stored on a probe -> the detail form's attribute.
 PROPERTY_MAP = {
@@ -89,6 +96,14 @@ class SpectraPanel(Panel):
         self.components = load_components()
         self.component = self.components[0]["key"]
         self.search = ""
+        #: Search while typing (the Qt dock's "Auto"); off: Enter searches.
+        self.auto_search = True
+        self._search_due: float | None = None
+        #: The rows selected in the table (``selection_attr``), for the row menu.
+        self.selection: list[dict] = []
+        #: Ask the table to select every row / clear its selection on the next frame.
+        self.select_all_pending = False
+        self.clear_selection_pending = False
         self.status_filter = "all"
         self.review_queue = False
         self.rows: list[dict] = []
@@ -123,6 +138,21 @@ class SpectraPanel(Panel):
 
     def set_search(self, _value: str) -> None:
         self.refresh()
+
+    def search_typed(self, _value: str) -> None:
+        """A key in the search box: with Auto on, search 300 ms after the last one."""
+        self._search_due = (time.monotonic() + SEARCH_DELAY) if self.auto_search else None
+
+    def search_now(self) -> None:
+        """Enter in the search box: search at once."""
+        self._search_due = None
+        self.refresh()
+
+    def tick(self) -> None:
+        """Called every frame: run a search whose typing pause has passed."""
+        if self._search_due is not None and time.monotonic() >= self._search_due:
+            self._search_due = None
+            self.refresh()
 
     def toggle_review_queue(self) -> None:
         """Review queue: show only the unverified items (again: everything)."""
@@ -331,7 +361,10 @@ class SpectraPanel(Panel):
         )
 
     def find_duplicates(self) -> None:
+        """Group probably-duplicate components of this type (with progress and Cancel)."""
         categories = set(self.active.get("categories", []))
+        progress = ProgressDialog("Finding Duplicates", "Analyzing probes for duplicates...")
+        self.admin.show(progress)
 
         def call():
             probes = self.client._call("fluorophores.find_duplicates", {}).get("probes", []) or []
@@ -339,9 +372,16 @@ class SpectraPanel(Panel):
                 probes = [p for p in probes if p.get("category", "other") in categories]
             if not probes:
                 return None
-            return find_duplicate_groups(probes) or []
+            groups = find_duplicate_groups(
+                probes, progress=progress.set_percent, interrupted=lambda: progress.cancelled
+            )
+            return CANCELLED if groups is None else groups
 
-        def done(groups: list | None) -> None:
+        def done(groups: Any) -> None:
+            if progress.cancelled or groups is CANCELLED:
+                self.say("Find duplicates cancelled")
+                return
+            progress.close()
             if groups is None:
                 self.admin.show(
                     MessageDialog("Find Duplicates", "No probes found for the active category.")
@@ -355,8 +395,12 @@ class SpectraPanel(Panel):
             self.say(f"{len(groups)} potential duplicate groups")
             self.admin.show(DuplicatesDialog(groups, self))
 
+        def failed(error: str) -> None:
+            progress.close()
+            self.say(f"Find duplicates failed: {error}")
+
         self.say("Finding duplicates…")
-        self.run("Find duplicates", call, done, self.failed("Find duplicates"))
+        self.run("Find duplicates", call, done, failed)
 
     def copy_checked_ids(self) -> None:
         ids = self.checked_ids()
@@ -382,6 +426,72 @@ class SpectraPanel(Panel):
 
     def refresh_list(self) -> None:
         self.refresh()
+
+    # ── the table's right-click menu ───────────────────────────────────
+    def menu_has_rows(self, _record: Any = None) -> bool:
+        return bool(self.rows)
+
+    def menu_has_checked(self, _record: Any = None) -> bool:
+        return bool(self.checked_ids())
+
+    def _menu_rows(self, record: dict | None) -> list[dict]:
+        """The selected rows, else the right-clicked one."""
+        if self.selection:
+            return list(self.selection)
+        return [record] if record else []
+
+    def open_details(self, record: dict | None = None) -> None:
+        """Show the right-clicked component's spectra and fields."""
+        if record:
+            self.select_row(record)
+
+    def copy_row(self, record: dict | None = None) -> None:
+        """Copy the selected rows (else the right-clicked one) as tab-separated text."""
+        keys = [key for _title, key in self.active["columns"]]
+        rows = self._menu_rows(record)
+        if rows:
+            self.admin.copy("\n".join("\t".join(str(r.get(k, "")) for k in keys) for r in rows))
+            self.say(f"Copied {len(rows)} row(s)")
+
+    def copy_cell(self, record: dict | None = None, key: str | None = None) -> None:
+        """Copy the text of the cell the menu was opened on."""
+        if record and key:
+            self.admin.copy(str(record.get(key, "")))
+            self.say("Copied the cell.")
+
+    def _check_selected(self, record: dict | None, checked: bool) -> None:
+        wanted = {r.get("_row") for r in self._menu_rows(record)}
+        for row in self.rows:
+            if row["_row"] in wanted:
+                row["checked"] = checked
+        self.update_traces()
+
+    def check_selected(self, record: dict | None = None) -> None:
+        self._check_selected(record, True)
+
+    def uncheck_selected(self, record: dict | None = None) -> None:
+        self._check_selected(record, False)
+
+    def select_all_rows(self, _record: Any = None) -> None:
+        self.select_all_pending = True
+
+    def clear_selection(self, _record: Any = None) -> None:
+        """Select no row (the shown component's spectra and fields stay)."""
+        self.selected_id = ""
+        self.selection = []
+        self.clear_selection_pending = True
+
+    def menu_copy_checked(self, _record: Any = None) -> None:
+        self.copy_checked_ids()
+
+    def menu_check_all(self, _record: Any = None) -> None:
+        self.check_all()
+
+    def menu_uncheck_all(self, _record: Any = None) -> None:
+        self.uncheck_all()
+
+    def menu_invert(self, _record: Any = None) -> None:
+        self.invert_checks()
 
     def status_line(self) -> str:
         return self.message

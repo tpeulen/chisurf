@@ -1,7 +1,7 @@
 """How an MMFDB record's values are shown in an entity form and written back (Qt-free).
 
-One definition for both renderers of the dictionary-driven entity form: the Qt
-:class:`~.autoform_entity_form.EntityForm` and the native emtk admin. A field's
+The native admin's dictionary-driven entity form (:mod:`.native.entity`) reads and
+writes records through these. A field's
 ``widget`` (from :class:`~.entity_schema.FieldSpec`) decides the typed empty value,
 how a stored value is coerced for editing, and how an edited value goes back into
 the record (``1``/``0`` for a check box, ``None`` for an empty text, JSON for the

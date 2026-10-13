@@ -181,6 +181,9 @@ class EntityPanel(ExtrasMixin, Panel):
         row = {key: cell(record.get(key)) for key, _ in self.columns}
         row["_id"] = str(record.get(self.entity.id_field, "") or "")
         row["checked"] = False
+        # The record's UUID (any field naming one) as the row's hover text.
+        uuid = next((str(v) for k, v in record.items() if "uuid" in str(k).lower() and v), "")
+        row["_tip"] = f"UUID: {uuid}" if uuid else ""
         return row
 
     def _list(self) -> list[dict]:
@@ -452,6 +455,42 @@ class EntityPanel(ExtrasMixin, Panel):
             return str(path)
 
         self.run("Reveal object", download, self.admin.open_location, self.failed("Reveal"))
+
+    def open_in_ndx(self) -> None:
+        """Open the selected product's file or folder in ndX; its Save > Burst IDs records back."""
+        data = self.selected_record()
+        product_id = self._artifact_id()
+        location = str(data.get("location") or data.get("file_path") or "").strip()
+        if not product_id:
+            self.admin.show(MessageDialog("No Selection", "Please select a processed product."))
+            return
+        if not location:
+            self.admin.show(
+                MessageDialog("No Path", "Selected product has no associated file path.")
+            )
+            return
+        path = Path(location)
+        if not path.exists():
+            self.admin.show(
+                MessageDialog(
+                    "File Not Found", f"The file or directory does not exist:\n{location}"
+                )
+            )
+            return
+        try:
+            from chisurf.plugins.ndxplorer.selection_provenance import (
+                record_burst_ids_against_product,
+            )
+
+            ndx = self.admin.open_in_ndx(path)
+            # Save > Burst IDs there records the selection against this product (when the
+            # app itself came back; a shell hand-off returns its dock record instead).
+            if hasattr(ndx, "burst_ids_recorder"):
+                experiment_id = str(data.get("experiment_id") or "") or None
+                record_burst_ids_against_product(ndx, product_id, experiment_id, client=self.client)
+            self.say(f"Opened {path.name} in ndX")
+        except Exception as exc:  # noqa: BLE001 - shown, never raised
+            self.admin.show(MessageDialog("Error", f"Failed to open in ndX:\n{exc}"))
 
     def use_as_seed(self) -> None:
         """Load the selected artifact's provenance graph (and show it)."""

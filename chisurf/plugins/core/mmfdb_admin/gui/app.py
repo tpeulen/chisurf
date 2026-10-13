@@ -35,6 +35,7 @@ from chisurf.emtk.node_editor.document import GraphDocument
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
 
 from .native.model import AdminModel
+from .native.provenance import ProvenancePanel
 from .native.runner import Runner
 
 HERE = Path(__file__).parent
@@ -317,12 +318,14 @@ class MMFDBAdminApp(ImApp):
         rows = model.rail()
         for kind, value in rows:
             if kind == "group":
-                im.text_disabled(value)
+                icon = model.panel_icon(value)
+                im.text_disabled(f"{icon} {value}" if icon else value)
                 continue
             if im.selectable(
                 f"{model.panel_name(value)}##nav_{value}",
                 model.selected == value,
                 size=(w - 24.0, 24.0),
+                icon=model.panel_icon(value) or None,
             ):
                 model.select(value)
                 self.tour.notify_used("nav." + value)
@@ -337,10 +340,13 @@ class MMFDBAdminApp(ImApp):
     def _draw_status(self, box) -> None:
         model = self.model
         im.begin("##mmfdb_status", box)
-        im.text_unformatted(model.status if not model.busy else "Working...")
-        im.set_item_tooltip(tr("The last thing that happened."))
+        status = model.status if not model.busy else "Working..."
+        column = max(160.0, box[2] * 0.36)
+        # Cut to its column: a long status (an exported path) ran under Back and Next.
+        im.text_unformatted(self._fit(status, column - 16.0))
+        im.set_item_tooltip(status if status != "Ready" else tr("The last thing that happened."))
         self.remember_item("status")
-        im.same_line(max(160.0, box[2] * 0.36))
+        im.same_line(column)
         im.begin_disabled(not model.can_step(-1))
         if im.button(tr("Back")):
             model.step(-1)
@@ -501,8 +507,17 @@ class MMFDBAdminApp(ImApp):
         cx, cy = im.get_cursor_screen_pos()
         area = (x, cy, w, max(160.0, y + h - cy - 22.0))
         top, bottom = self._split("spectra", area)
+        panel.tick()
         draw_sections([table], panel, state, titles=False)
         self._sync_selection(state, "component_rows", panel.selected_id)
+        binding = state.tables.get("component_rows")
+        if binding is not None and (panel.select_all_pending or panel.clear_selection_pending):
+            if panel.select_all_pending:
+                binding.control.select_all()
+            else:
+                binding.control.clear_selection()
+            panel.select_all_pending = panel.clear_selection_pending = False
+            panel.selection = binding.selected_records()
         im.end_child()
         self._bar("spectra", top, area)
         plot_h = max(90.0, bottom[3] * self.splits["spectra_plot"])
@@ -566,9 +581,15 @@ class MMFDBAdminApp(ImApp):
         self.item_rects[name] = (x, y, w, h)
 
     # ── Provenance ─────────────────────────────────────────────────────
-    def _graph_selected(self, kind, node) -> None:
+    def _graph_selected(self, kind, payload) -> None:
+        """A node or an edge picked in the graph: its record goes to the details pane."""
+        panel = self.model.panel("provenance")
+        assert isinstance(panel, ProvenancePanel)
         if kind == "node":
-            self.model.panel("provenance").select_node(getattr(node, "id", node))
+            node_id = payload.get("id") if isinstance(payload, dict) else payload
+            panel.select_node(str(getattr(node_id, "id", node_id)))
+        elif kind == "edge" and isinstance(payload, dict):
+            panel.select_graph_edge(payload)
 
     def _draw_provenance(self, panel, box) -> None:
         state = self.form("provenance")
@@ -580,6 +601,8 @@ class MMFDBAdminApp(ImApp):
         rest_h = max(120.0, y + h - cy)
         im.begin_child("##prov_left", (x, cy, left_w, rest_h), scrollable=False)
         draw_sections([sections[2]], panel, state, titles=False)
+        # An edge picked in the graph is the edge row picked in the table.
+        self._sync_selection(state, "edge_rows", panel.selected_edge)
         gx, gy = im.get_cursor_screen_pos()
         gbox = (gx, gy, left_w - 4.0, max(60.0, cy + rest_h - gy - 4.0))
         if panel.revision != self._graph_revision:

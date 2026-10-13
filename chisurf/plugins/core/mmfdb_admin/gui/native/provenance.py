@@ -154,6 +154,21 @@ class ProvenancePanel(Panel):
         if edge is not None:
             self.details = json.dumps(edge, indent=2, default=str)
 
+    def select_graph_edge(self, payload: dict) -> None:
+        """An edge was picked in the graph: show its record, and select its table row."""
+        config = (payload or {}).get("config") or {}
+        wanted = config.get("edge_id")
+        for i, e in enumerate(self.graph.get("edges", []) or []):
+            keys = (
+                f"{e.get('source_node_type')}:{e.get('source_node_id')}",
+                f"{e.get('target_node_type')}:{e.get('target_node_id')}",
+            )
+            if (wanted is not None and e.get("edge_id") == wanted) or (
+                wanted is None and keys == (payload.get("source"), payload.get("target"))
+            ):
+                self.select_edge({"_row": str(e.get("edge_id") or i)})
+                return
+
     def select_node(self, node_id: str) -> None:
         """A node was picked in the graph: show its record."""
         node = next((n for n in self.document.get("nodes", []) if n["id"] == node_id), None)

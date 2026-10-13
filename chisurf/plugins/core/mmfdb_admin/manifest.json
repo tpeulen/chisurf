@@ -23,7 +23,6 @@
   },
   "entrypoints": {
     "cli": "fluorophore=mmfdb.admin.cli:cli",
-    "gui": "chisurf.plugins.core.mmfdb_admin.gui.tool:MMFDBWidget",
     "services": "chisurf.core.mmfdb_services:register_services",
     "emtk": "chisurf.plugins.core.mmfdb_admin.gui.app:make_app"
   },

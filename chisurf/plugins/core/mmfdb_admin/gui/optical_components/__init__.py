@@ -1,16 +1,6 @@
-"""Optical component manager view, generalized from the fluorophore_view.
+"""Optical-component curation data of the MMFDB Admin's Spectra panel (Qt-free).
 
-The Qt dock is loaded on first access (PEP 562), so the Qt-free pieces of this
-package (``duplicates``, the ``*.view.json`` detail forms) import without Qt --
-the native admin uses them.
+``components.json`` lists the component types (fluorophores, filters, dichroics,
+detectors, light sources), each with its read-only detail form (``*.view.json``);
+:mod:`.duplicates` groups probably-duplicate components for merging.
 """
-
-__all__ = ["OpticalComponentDock"]
-
-
-def __getattr__(name):
-    if name == "OpticalComponentDock":
-        from .component_dock import OpticalComponentDock
-
-        return OpticalComponentDock
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

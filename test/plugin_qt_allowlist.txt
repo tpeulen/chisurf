@@ -1,33 +1,3 @@
 # Plugin files that still import Qt (qtpy / PyQt / PySide). SHRINKING tracker for the
 # plugin half of the Qt retirement (test/test_plugin_qt_free.py). Strike a path when its
 # plugin moves to emtk; adding a path is a test failure. Goal: empty.
-chisurf/plugins/core/mmfdb_admin/__init__.py
-chisurf/plugins/core/mmfdb_admin/gui/autoform_entity_form.py
-chisurf/plugins/core/mmfdb_admin/gui/calibrations_view.py
-chisurf/plugins/core/mmfdb_admin/gui/connection_dialog.py
-chisurf/plugins/core/mmfdb_admin/gui/elabftw_view.py
-chisurf/plugins/core/mmfdb_admin/gui/entity_dock.py
-chisurf/plugins/core/mmfdb_admin/gui/generic_form.py
-chisurf/plugins/core/mmfdb_admin/gui/lifecycle_view.py
-chisurf/plugins/core/mmfdb_admin/gui/metadata_dock.py
-chisurf/plugins/core/mmfdb_admin/gui/mixins.py
-chisurf/plugins/core/mmfdb_admin/gui/optical_components/component_detail_form.py
-chisurf/plugins/core/mmfdb_admin/gui/optical_components/component_dock.py
-chisurf/plugins/core/mmfdb_admin/gui/optical_components/duplicates_dialog.py
-chisurf/plugins/core/mmfdb_admin/gui/pipelines_view.py
-chisurf/plugins/core/mmfdb_admin/gui/protocols_view.py
-chisurf/plugins/core/mmfdb_admin/gui/reagents_view.py
-chisurf/plugins/core/mmfdb_admin/gui/studies_view.py
-chisurf/plugins/core/mmfdb_admin/gui/tool.py
-chisurf/plugins/core/mmfdb_admin/test/test_admin_navigation.py
-chisurf/plugins/core/mmfdb_admin/test/test_autoform_entity_form.py
-chisurf/plugins/core/mmfdb_admin/test/test_calibrations_view.py
-chisurf/plugins/core/mmfdb_admin/test/test_connection_dialog.py
-chisurf/plugins/core/mmfdb_admin/test/test_elabftw_view.py
-chisurf/plugins/core/mmfdb_admin/test/test_entity_dock_gui_interactions.py
-chisurf/plugins/core/mmfdb_admin/test/test_lifecycle_view.py
-chisurf/plugins/core/mmfdb_admin/test/test_optical_components.py
-chisurf/plugins/core/mmfdb_admin/test/test_pipelines_view.py
-chisurf/plugins/core/mmfdb_admin/test/test_protocols_view.py
-chisurf/plugins/core/mmfdb_admin/test/test_reagents_view.py
-chisurf/plugins/core/mmfdb_admin/test/test_studies_view.py

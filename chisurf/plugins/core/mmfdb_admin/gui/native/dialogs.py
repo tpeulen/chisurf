@@ -87,6 +87,37 @@ class MessageDialog(Dialog):
         self.close()
 
 
+class ProgressDialog(Dialog):
+    """A long task in progress: a bar the task moves (from its thread) and Cancel.
+
+    The task polls :attr:`cancelled`; Cancel (or the window's x / Escape) sets it and
+    closes the dialog, so whatever the task returns afterwards is dropped.
+    """
+
+    spec = "progress"
+    size = (420.0, 140.0)
+
+    def __init__(self, title: str, text: str) -> None:
+        super().__init__(title)
+        self.text = text
+        self.fraction = 0.0
+        self.cancelled = False
+
+    def progress_text(self) -> str:
+        return self.text
+
+    def percent_text(self) -> str:
+        return f"{int(round(100 * float(self.fraction)))} %"
+
+    def set_percent(self, percent: float) -> None:
+        """The task's ``progress(percent)`` callback (0..100)."""
+        self.fraction = max(0.0, min(1.0, float(percent) / 100.0))
+
+    def cancel(self) -> None:
+        self.cancelled = True
+        self.close()
+
+
 class ChoiceDialog(Dialog):
     """Pick one of a few values (a validation status): OK runs *on_ok(value)*."""
 
@@ -147,7 +178,7 @@ class TextDialog(Dialog):
 class ConnectionDialog(Dialog):
     """The MMFDB login: password, and the user and server under Advanced.
 
-    Drawn from the same ``connection_auth.view.json`` the Qt login dialog renders.
+    Drawn from ``connection_auth.view.json``.
     OK hands the values to *on_ok*; the dialog stays open showing the reason when
     the login is refused (:attr:`error`), until it succeeds or is cancelled.
     """
@@ -364,7 +395,7 @@ class AnalysisDetailsDialog(Dialog):
 
         out = []
         for i, item in enumerate(items or []):
-            row = {"_row": i}
+            row: dict[str, Any] = {"_row": i}
             for key in keys:
                 value = (item or {}).get(key, "")
                 if isinstance(value, (dict, list)):

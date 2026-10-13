@@ -1,148 +1,70 @@
-"""Tests for the optical components dock and spectrum view."""
+"""The Spectra panel's plot traces (ported from the Qt ``SpectrumView`` tests).
+
+The Qt panel drew a probe's spectra through ``SpectrumView``; the native panel plots the
+traces of :mod:`chisurf.core.fluorescence.spectrum_traces` -- one probe in a colour per
+spectrum type, several ticked probes overlaid -- and the app draws them with implot.
+"""
 
 from __future__ import annotations
 
-import pytest
+from chisurf.core.fluorescence.spectrum_traces import overlay_traces, probe_traces
+from chisurf.plugins.emtk_test_input import Driver
 
-pytest.importorskip("qtpy")
-
-from qtpy import QtWidgets
-
-from chisurf.gui.autoform.sections.registry import get_section_factory
+from .native_support import (  # noqa: F401
+    admin_folder,
+    app,
+    client,
+    driver,
+    open_panel,
+    seeded_template,
+)
 
 
 def _probe_data(probe_id: int, name: str) -> dict:
     return {
         "probe": {"probe_id": probe_id, "chromophore_name": name},
         "spectra": [
-            {
-                "spectrum_type": "absorption",
-                "wavelengths": [400, 500, 600],
-                "intensity": [0.0, 1.0, 0.0],
-            },
-            {
-                "spectrum_type": "emission",
-                "wavelengths": [450, 550, 650],
-                "intensity": [0.0, 1.0, 0.0],
-            },
+            {"spectrum_type": "absorption", "wavelengths": [400, 500, 600], "intensity": [0, 1, 0]},
+            {"spectrum_type": "emission", "wavelengths": [450, 550, 650], "intensity": [0, 1, 0]},
         ],
         "optical_properties": [],
     }
 
 
-@pytest.fixture
-def qapp():
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication([])
-    return app
+def test_display_single_probe():
+    traces = probe_traces(_probe_data(1, "Cy3B"))
+    assert len(traces) == 2
+    assert max(traces[0]["y"]) == 1.0  # normalised to the maximum
 
 
-# ---------------------------------------------------------------------------
-# SpectrumView – imperative API
-# ---------------------------------------------------------------------------
+def test_display_no_spectra_shows_empty():
+    assert probe_traces({"probe": {"probe_id": 1, "chromophore_name": "X"}, "spectra": []}) == []
 
 
-def test_display_single_probe(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    sv = SpectrumView()
-    sv.display(_probe_data(1, "Cy3B"))
-    assert sv.plot.series()
-
-
-def test_display_no_spectra_shows_empty(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    sv = SpectrumView()
-    sv.display({"probe": {"probe_id": 1, "chromophore_name": "X"}, "spectra": []})
-    assert not sv.plot.series()
+def test_display_multiple_probes():
+    traces = overlay_traces([_probe_data(1, "Cy3B"), _probe_data(2, "ATTO647N")])
+    assert len(traces) == 4
+    assert len({t["color"] for t in traces}) == 2  # a colour per probe
+    assert len({t["style"] for t in traces}) == 2  # a line style per spectrum type
 
 
-def test_display_multiple_probes(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    sv = SpectrumView()
-    p1 = _probe_data(1, "Cy3B")
-    p2 = _probe_data(2, "ATTO647N")
-    sv.display_multiple([p1, p2])
-    data_items = sv.plot.series()
-    assert len(data_items) == 4
-
-
-def test_clear_removes_all_curves(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    sv = SpectrumView()
-    sv.display(_probe_data(1, "Cy3B"))
-    assert sv.plot.series()
-    sv.clear()
-    assert not sv.plot.series()
+def test_the_panel_plots_the_selected_then_the_ticked_probes(driver, app):  # noqa: F811
+    panel = open_panel(driver, "spectra", "Spectra")
+    driver.click(Driver.text_rect(driver.draw(2), "Acceptor GUI", last=False))
+    assert len(panel.traces) == 2
+    gx, gy, gw, gh = driver.rect("spectra_plot")
+    assert gw > 100 and gh > 60
+    for row in panel.rows:
+        if row.get("chromophore_name") in ("Acceptor GUI", "Donor GUI"):
+            panel.edited(row, "checked", True)
+    assert len(panel.traces) == 4  # overlaid
 
 
-# ---------------------------------------------------------------------------
-# SpectrumView – model-based / AutoForm protocol
-# ---------------------------------------------------------------------------
-
-
-def test_refresh_from_model_single(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    class FakeModel:
-        spectra_data = _probe_data(1, "Cy3B")
-
-    sv = SpectrumView(model=FakeModel(), target="spectra_data")
-    data_items = sv.plot.series()
-    assert len(data_items) == 2
-
-
-def test_refresh_from_model_list(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    class FakeModel:
-        spectra_data = [
-            _probe_data(1, "Cy3B"),
-            _probe_data(2, "ATTO647N"),
-        ]
-
-    sv = SpectrumView(model=FakeModel(), target="spectra_data")
-    data_items = sv.plot.series()
-    assert len(data_items) == 4
-
-
-def test_refresh_after_construction(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    sv = SpectrumView()
-    assert not sv.plot.series()
-
-    class FakeModel:
-        spectra_data = _probe_data(1, "Cy3B")
-
-    sv._model = FakeModel()
-    sv._target = "spectra_data"
-    sv.refresh()
-    assert sv.plot.series()
-
-
-# ---------------------------------------------------------------------------
-# AutoForm registration
-# ---------------------------------------------------------------------------
-
-
-def test_registered_as_custom_section(qapp):
-    factory = get_section_factory("spectrum_view")
-    assert factory is not None
-
-
-def test_custom_section_creates_widget(qapp):
-    from chisurf.gui.widgets.spectrum_view import SpectrumView
-
-    factory = get_section_factory("spectrum_view")
-
-    class FakeModel:
-        spectra_data = _probe_data(1, "Cy3B")
-
-    widget = factory(model=FakeModel(), target="spectra_data")
-    assert isinstance(widget, SpectrumView)
-    assert widget.plot.series()
+def test_clear_removes_all_curves(driver, app):  # noqa: F811
+    panel = open_panel(driver, "spectra", "Spectra")
+    driver.click(Driver.text_rect(driver.draw(2), "Acceptor GUI", last=False))
+    assert panel.traces
+    panel.component = panel.components[1]["key"]
+    panel.set_component(panel.component)  # another component type: nothing selected
+    assert panel.traces == []
+    assert driver.drawn("Pick a component to see its spectra.")

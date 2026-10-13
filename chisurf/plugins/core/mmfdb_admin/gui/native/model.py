@@ -26,6 +26,8 @@ import sys
 from collections.abc import Callable
 from typing import Any
 
+from chisurf.core.glyphs import Glyphs
+
 from ..entity_registry import ENTITY_REGISTRY, build_registry_dict
 from ..entity_schema import entity_field_specs
 from .base import Panel
@@ -91,6 +93,50 @@ RAIL: tuple = (
     "reagents",
     "pipelines",
 )
+
+#: The rail's pictogram per panel (and per group heading).
+PANEL_ICONS: dict[str, str] = {
+    "overview": Glyphs.CHART,
+    "all_items": "🗂",
+    "measurements": Glyphs.CHART_UP,
+    "sample": Glyphs.TEST,
+    "condition": "🌡️",
+    "entity": Glyphs.DNA,
+    "probe": "💡",
+    "position": "📍",
+    "fret_pair": Glyphs.LINK,
+    "metadata": Glyphs.LABEL,
+    "spectra": "🌈",
+    "experiment": Glyphs.SCIENCE,
+    "experiment_type": "🧾",
+    "setup": Glyphs.SETTINGS,
+    "detector_channel": Glyphs.ANTENNA,
+    "pie_window": "🪟",
+    "fcs_pair": Glyphs.SHUFFLE,
+    "device": "🖥️",
+    "raw_data": Glyphs.OPEN,
+    "processing_run": "🏭",
+    "processed_product": Glyphs.PACKAGE,
+    "analysis": Glyphs.CHART_UP,
+    "object": "🧱",
+    "project": Glyphs.FOLDER,
+    "branch": "🌿",
+    "provenance": "🕸️",
+    "user": Glyphs.USER,
+    "import_export": Glyphs.REFRESH,
+    "elabftw": "📓",
+    "studies": Glyphs.DOCS,
+    "protocols": Glyphs.COPY,
+    "lifecycle": Glyphs.RESET,
+    "calibrations": Glyphs.TARGET,
+    "reagents": "🧴",
+    "pipelines": Glyphs.TOOLS,
+    "Samples & chemistry": "🧫",
+    "Experiments & data": Glyphs.SCIENCE,
+    "Provenance": "🕸️",
+    "Administration": "🛡️",
+    "Workflows & QC": Glyphs.TOOLBOX,
+}
 
 SPECIAL_PANELS: dict[str, type[Panel]] = {
     "overview": OverviewPanel,
@@ -206,6 +252,8 @@ class AdminModel:
         #: ``restorer(project_id, version_id, payload)`` loads a fetched project version into
         #: ChiSurf (default: the ``project.restore`` action); tests inject their own.
         self.restorer: Callable[[str, str, Any], Any] | None = None
+        #: ``ndx_opener(path) -> app`` opens a path in ndX (default: ndX's ``open_in_ndx``).
+        self.ndx_opener: Callable[[Any], Any] | None = None
 
     # ── calls ──────────────────────────────────────────────────────────
     def run(
@@ -271,6 +319,10 @@ class AdminModel:
             return spec.title
         return _special(key).name
 
+    def panel_icon(self, key: str) -> str:
+        """The rail's pictogram of a panel or a group heading ('' if none)."""
+        return PANEL_ICONS.get(key, "")
+
     def panel_description(self, key: str) -> str:
         spec = self.entity_spec(key)
         if spec is not None:
@@ -329,6 +381,7 @@ class AdminModel:
     def provenance_seed(self, seed_type: str, seed_id: str) -> None:
         """Open the Provenance Graph on *seed_id* and load its full graph."""
         model = self.select("provenance")
+        assert isinstance(model, ProvenancePanel)
         model.set_seed(seed_type, seed_id)
 
     def selected_sample_id(self) -> str:
@@ -356,6 +409,14 @@ class AdminModel:
         from chisurf.core.actions import dispatch
 
         return dispatch("project.restore", {"project_id": version_id})
+
+    def open_in_ndx(self, path: Any) -> Any:
+        """Open *path* in ndX (the shell's dock, or a window of its own); :attr:`ndx_opener` in tests."""
+        if self.ndx_opener is not None:
+            return self.ndx_opener(path)
+        from chisurf.plugins.ndxplorer.gui.app import open_in_ndx
+
+        return open_in_ndx(path)
 
     def open_location(self, location: str) -> None:
         try:
@@ -433,6 +494,11 @@ class AdminModel:
             self.password,
         )
         self.password = ""
+
+    def login_from_field(self) -> None:
+        """Enter in a toolbar field (host, port, user, password): Login, when Login applies."""
+        if self.enabled("login"):
+            self.login()
 
     def start(self) -> None:
         """The first frame: connect as the configured user without asking, if that is possible."""
@@ -654,7 +720,9 @@ class AdminModel:
     # ── file menu / toolbar actions ────────────────────────────────────
     def import_file(self) -> None:
         """Import a PDBx / PDB-IHM / FLR CIF file (the Import / Export panel shows the result)."""
-        self.panel("import_export").import_file()
+        panel = self.panel("import_export")
+        assert isinstance(panel, ImportExportPanel)
+        panel.import_file()
 
     def export_selected_sample(self) -> None:
         """Export the sample selected in Samples as FLR CIF (validated first)."""
@@ -700,11 +768,21 @@ class AdminModel:
                 )
             )
 
+        def not_validated(error: str) -> None:
+            # Never a silent skip: say that the check could not run, and let the user decide.
+            self.show(
+                ConfirmDialog(
+                    "Export validation failed",
+                    f"The sample could not be validated for export:\n\n{error}\n\nExport anyway?",
+                    ask_path,
+                )
+            )
+
         self.run(
             "Validate export",
             lambda: self.client.validate_sample_export(sample_id),
             validated,
-            lambda _e: ask_path(),
+            not_validated,
         )
 
     def backup_database(self) -> None:

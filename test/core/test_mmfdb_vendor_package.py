@@ -101,7 +101,9 @@ def test_mmfdb_admin_uses_chisurf_binding_over_standalone_backend():
     manifest = json.loads(
         (ROOT / "chisurf" / "plugins" / "core" / "mmfdb_admin" / "manifest.json").read_text()
     )
-    assert manifest["entrypoints"]["gui"] == "chisurf.plugins.core.mmfdb_admin.gui.tool:MMFDBWidget"
+    # The window is the native emtk app; the Qt tool is retired.
+    assert manifest["entrypoints"]["emtk"] == "chisurf.plugins.core.mmfdb_admin.gui.app:make_app"
+    assert "gui" not in manifest["entrypoints"]
     assert manifest["entrypoints"]["services"] == "chisurf.core.mmfdb_services:register_services"
 
     host_source = (

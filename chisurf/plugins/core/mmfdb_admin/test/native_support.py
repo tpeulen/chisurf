@@ -80,6 +80,37 @@ def app(client):
     application.close()
 
 
+@pytest.fixture
+def database(admin_folder):
+    """The test's seeded database opened directly (to write rows the RPC API has no call for)."""
+    from mmfdb.repository import MFDatabase
+    from mmfdb.store.database_resolver import resolve_database_path
+
+    db = MFDatabase(str(resolve_database_path()))
+    yield db
+    db.close()
+
+
+@pytest.fixture
+def driver(app):
+    """A pointer/keyboard :class:`~chisurf.plugins.emtk_test_input.Driver` on the connected app."""
+    from chisurf.plugins.emtk_test_input import Driver
+
+    d = Driver(app)
+    d.draw(3)
+    assert app.model.connected, app.model.status
+    return d
+
+
+def open_panel(driver, key: str, name: str):
+    """Find a panel with the rail's search box, click it, and return its model."""
+    driver.type_into_name("search", name)
+    driver.click_name(f"nav.{key}")
+    assert driver.app.model.selected == key
+    driver.draw(2)
+    return driver.app.model.current
+
+
 def answer(model, label: str = "yes") -> None:
     """Press *label* (an action name) on the top dialog."""
     dialog = model.dialog
@@ -91,7 +122,18 @@ def rows_by_id(panel) -> dict[str, dict]:
     return {r["_id"]: r for r in panel.rows}
 
 
-__all__ = ["admin", "admin_folder", "answer", "app", "client", "rows_by_id", "seeded_template"]
+__all__ = [
+    "admin",
+    "admin_folder",
+    "answer",
+    "app",
+    "client",
+    "database",
+    "driver",
+    "open_panel",
+    "rows_by_id",
+    "seeded_template",
+]
 
 
 def offline_app():

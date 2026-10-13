@@ -1,76 +1,58 @@
-"""The LifecycleView Qt widget.
+"""The Lifecycle panel of the native MMFDB Admin (ported from the Qt ``LifecycleView`` tests).
 
-Smoke-tests the thin view against the real InProcessClient RPC layer: load definitions,
-display state + history, drive a transition, and surface an illegal jump — all without
-the full mmfdb-admin tool.
+Load the definitions, show an entity's state and history, drive a transition and surface an
+illegal jump -- typed and pressed through the emtk Driver over a seeded temporary MMFDB.
 """
 
 from __future__ import annotations
 
-import pytest
-
-pytest.importorskip("qtpy")
-
-from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
-from chisurf.plugins.core.mmfdb_admin.gui.lifecycle_view import LifecycleView
-
-from .conftest import patch_db
-
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    yield app
+from .native_support import (  # noqa: F401
+    admin_folder,
+    app,
+    client,
+    driver,
+    open_panel,
+    seeded_template,
+)
 
 
-def test_view_constructs_and_loads_definitions(db, qapp):
-    with patch_db(db):
-        view = LifecycleView(MMFDBClient(inprocess=True))
-        types = {view.entity_type_combo.itemText(i) for i in range(view.entity_type_combo.count())}
-    assert {"sample", "artifact", "operation"} <= types
+def _load(driver, entity_type: str, entity_id: str):  # noqa: F811
+    panel = open_panel(driver, "lifecycle", "Lifecycle")
+    panel.entity_type = entity_type
+    driver.type_into_name("entity_id", entity_id)
+    driver.click_name("load")
+    driver.draw(2)
+    return panel
 
 
-def test_view_refresh_shows_state_and_next_states(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        client.lifecycle_transition("sample", "s1", "registered")
-        view = LifecycleView(client)
-        view.set_entity("sample", "s1")
-        view.refresh()
-        next_states = {view.to_state_combo.itemText(i) for i in range(view.to_state_combo.count())}
-    assert "Current state: registered" == view.state_label.text()
-    # registered -> measured is the legal next step
-    assert "measured" in next_states
-    assert view.history_table.rowCount() == 1
+def test_view_constructs_and_loads_definitions(driver, app):  # noqa: F811
+    panel = open_panel(driver, "lifecycle", "Lifecycle")
+    assert {"sample", "artifact", "operation"} <= set(panel.type_options())
 
 
-def test_view_apply_transition_advances_state(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        client.lifecycle_transition("sample", "s2", "registered")
-        view = LifecycleView(client)
-        view.set_entity("sample", "s2")
-        view.refresh()
-        # the combo now offers "measured"; select and apply
-        idx = view.to_state_combo.findText("measured")
-        view.to_state_combo.setCurrentIndex(idx)
-        view.apply_transition()
-    assert view.state_label.text() == "Current state: measured"
-    assert view.history_table.rowCount() == 2
+def test_view_refresh_shows_state_and_next_states(driver, app, client):  # noqa: F811
+    client.lifecycle_transition("sample", "s1", "registered")
+    panel = _load(driver, "sample", "s1")
+    assert panel.state_text() == "Current state: registered"
+    assert driver.drawn("Current state: registered")
+    assert "measured" in panel.next_states()  # registered -> measured is the legal next step
+    assert len(panel.history) == 1
 
 
-def test_view_surfaces_illegal_transition(db, qapp):
-    with patch_db(db):
-        client = MMFDBClient(inprocess=True)
-        client.lifecycle_transition("sample", "s3", "registered")
-        view = LifecycleView(client)
-        view.set_entity("sample", "s3")
-        view.refresh()
-        # force an illegal target that the combo would not normally offer
-        view.to_state_combo.addItem("archived")
-        view.to_state_combo.setCurrentText("archived")
-        view.apply_transition()
-    assert "Rejected" in view.message_label.text()
-    assert view.state_label.text() == "Current state: registered"
+def test_view_apply_transition_advances_state(driver, app, client):  # noqa: F811
+    client.lifecycle_transition("sample", "s2", "registered")
+    panel = _load(driver, "sample", "s2")
+    panel.to_state = "measured"
+    driver.click_name("apply_transition")
+    assert panel.state_text() == "Current state: measured"
+    assert panel.message == "Transitioned to measured."
+    assert len(panel.history) == 2
+
+
+def test_view_surfaces_illegal_transition(driver, app, client):  # noqa: F811
+    client.lifecycle_transition("sample", "s3", "registered")
+    panel = _load(driver, "sample", "s3")
+    panel.to_state = "archived"  # a target the choice would not offer
+    driver.click_name("apply_transition")
+    assert panel.message.startswith("Rejected")
+    assert panel.state_text() == "Current state: registered"

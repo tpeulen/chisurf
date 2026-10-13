@@ -1,27 +1,30 @@
-"""Headless behavior contracts for the MMFDB Admin eLabFTW panel."""
+"""Behaviour contracts of the native MMFDB Admin's eLabFTW panel (ported from the Qt ``ELabFTWView`` tests).
+
+The app runs over a seeded temporary MMFDB; the eLabFTW calls of its client are replaced by
+a recording fake (no network), and the panel is typed into and pressed through the emtk
+Driver.
+"""
 
 from __future__ import annotations
 
-import os
+import json
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytest.importorskip("qtpy")
+from .native_support import (  # noqa: F401
+    admin_folder,
+    app,
+    client,
+    driver,
+    open_panel,
+    seeded_template,
+)
 
 
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
-
-class FakeClient:
-    """Record all MMFDB client calls made by the eLabFTW panel."""
+class FakeElab:
+    """Record every eLabFTW call the panel makes."""
 
     def __init__(self):
-        """Initialize call recordings."""
         self.connected = []
         self.disconnected = []
         self.imported = []
@@ -53,11 +56,7 @@ class FakeClient:
 
     def import_elabftw_experiments(self, connection_id, remote_ids, **kwargs):
         self.imported.append((connection_id, remote_ids, kwargs))
-        return {
-            "imported": [{"remote_id": item} for item in remote_ids],
-            "updated": [],
-            "skipped": [],
-        }
+        return {"imported": [{"remote_id": i} for i in remote_ids], "updated": [], "skipped": []}
 
     def list_experiments(self):
         return [{"experiment_id": "local-1", "status": "complete"}]
@@ -67,111 +66,99 @@ class FakeClient:
         return {"remote_id": kwargs.get("remote_id") or 91, "mode": kwargs["mode"]}
 
 
-def _immediate_submit(fn, success, failure):
-    try:
-        success(fn())
-    except Exception as exc:  # pragma: no cover - exercised by error test
-        failure(str(exc))
+@pytest.fixture
+def fake(app, monkeypatch):  # noqa: F811
+    fake = FakeElab()
+    for name in (
+        "connect_elabftw",
+        "disconnect_elabftw",
+        "list_elabftw_experiments",
+        "import_elabftw_experiments",
+        "list_experiments",
+        "export_elabftw_experiment",
+    ):
+        monkeypatch.setattr(app.model.client, name, getattr(fake, name))
+    return fake
 
 
-def test_key_is_masked_never_persisted_and_cleared_after_connect(qapp):
-    from qtpy import QtWidgets
-
-    from chisurf.plugins.core.mmfdb_admin.gui.elabftw_view import ELabFTWView
-
-    client = FakeClient()
-    view = ELabFTWView(client, submit=_immediate_submit)
-    assert view.api_key_edit.echoMode() == QtWidgets.QLineEdit.Password
-    view.endpoint_edit.setText("https://lab.example")
-    view.api_key_edit.setText("secret-key")
-
-    view.connect_remote()
-
-    assert view.api_key_edit.text() == ""
-    assert view.connection_id == "opaque-handle"
-    assert client.connected[0][1] == "secret-key"
-    assert "secret-key" not in view.status_label.text()
-    assert view.remote_table.rowCount() == 1
+def _connect(driver, key: str = "secret-key"):  # noqa: F811
+    panel = open_panel(driver, "elabftw", "eLabFTW")
+    driver.type_into_name("endpoint", "https://lab.example")
+    driver.type_into_name("api_key", key)
+    driver.click_name("connect_remote")
+    driver.draw(2)
+    return panel
 
 
-def test_busy_state_disables_remote_mutations(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.elabftw_view import ELabFTWView
+def test_key_is_masked_never_persisted_and_cleared_after_connect(driver, app, fake):  # noqa: F811
+    from chisurf.plugins.core.mmfdb_admin.gui.app import load_specs
 
-    view = ELabFTWView(FakeClient(), submit=_immediate_submit)
-    view.connection_id = "opaque-handle"
-    view._set_busy(True)
-    assert not view.connect_button.isEnabled()
-    assert not view.refresh_button.isEnabled()
-    assert not view.import_button.isEnabled()
-    assert not view.export_button.isEnabled()
-    view._set_busy(False)
-    assert view.refresh_button.isEnabled()
-    assert view.import_button.isEnabled()
+    _shell, panels, _actions = load_specs()
+    spec = json.dumps(panels["elabftw"])
+    assert '"attr": "api_key"' in spec and '"kind": "password"' in spec
+    panel = open_panel(driver, "elabftw", "eLabFTW")
+    driver.type_into_name("endpoint", "https://lab.example")
+    driver.type_into_name("api_key", "secret-key")
+    assert panel.api_key == "secret-key" and not driver.drawn("secret-key")  # masked
+    driver.click_name("connect_remote")
+    driver.draw(2)
+    assert panel.api_key == ""
+    assert panel.connection_id == "opaque-handle"
+    assert fake.connected[0][1] == "secret-key"
+    assert "secret-key" not in panel.message
+    assert [r["title"] for r in panel.remote] == ["Lifetime series"]
+    assert driver.drawn("Lifetime series")
+    assert "secret-key" not in json.dumps(app.export_settings(), default=str)
 
 
-def test_selected_import_and_explicit_export_modes(qapp):
-    from qtpy import QtCore
+def test_busy_state_disables_remote_mutations(driver, app, fake):  # noqa: F811
+    panel = _connect(driver)
+    panel.busy = True
+    for name in ("connect_remote", "refresh_remote", "import_checked", "export_selected"):
+        assert not panel.enabled(name), name
+    panel.busy = False
+    assert panel.enabled("refresh_remote") and panel.enabled("import_checked")
+    assert not panel.enabled("connect_remote")  # already connected
 
-    from chisurf.plugins.core.mmfdb_admin.gui.elabftw_view import ELabFTWView
 
-    client = FakeClient()
-    view = ELabFTWView(client, submit=_immediate_submit)
-    view.endpoint_edit.setText("https://lab.example")
-    view.api_key_edit.setText("secret-key")
-    view.connect_remote()
-    view.remote_table.item(0, 0).setCheckState(QtCore.Qt.Checked)
-    view.conflict_combo.setCurrentText("update")
-    view.sample_id_edit.setText("sample-1")
-
-    view.import_selected()
-
-    assert client.imported == [
-        (
-            "opaque-handle",
-            [7],
-            {"conflict": "update", "sample_id": "sample-1"},
-        )
+def test_selected_import_and_explicit_export_modes(driver, app, fake):  # noqa: F811
+    panel = _connect(driver)
+    panel.edited(panel.remote[0], "checked", True)
+    panel.conflict = "update"
+    driver.type_into_name("sample_id", "sample-1")
+    driver.click_name("import_checked")
+    assert fake.imported == [
+        ("opaque-handle", [7], {"conflict": "update", "sample_id": "sample-1"})
     ]
-    view.local_experiment_combo.setCurrentText("local-1")
-    view.export_mode_combo.setCurrentText("create")
-    view.export_selected()
-    view.export_mode_combo.setCurrentText("update")
-    view.remote_id_spin.setValue(91)
-    view.export_selected()
-    assert client.exported == [
+    assert panel.message.startswith("Import complete: 1 created")
+    panel.local_experiment = "local-1"
+    panel.export_mode = "create"
+    driver.click_name("export_selected")
+    panel.export_mode = "update"
+    panel.remote_id = 91
+    driver.click_name("export_selected")
+    assert fake.exported == [
         ("opaque-handle", "local-1", {"mode": "create", "remote_id": None}),
         ("opaque-handle", "local-1", {"mode": "update", "remote_id": 91}),
     ]
 
 
-def test_disconnect_discards_handle_and_remote_rows(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.elabftw_view import ELabFTWView
-
-    client = FakeClient()
-    view = ELabFTWView(client, submit=_immediate_submit)
-    view.endpoint_edit.setText("https://lab.example")
-    view.api_key_edit.setText("secret-key")
-    view.connect_remote()
-
-    view.disconnect_remote()
-
-    assert client.disconnected == ["opaque-handle"]
-    assert view.connection_id is None
-    assert view.remote_table.rowCount() == 0
+def test_disconnect_discards_handle_and_remote_rows(driver, app, fake):  # noqa: F811
+    panel = _connect(driver)
+    driver.click_name("disconnect_remote")
+    assert fake.disconnected == ["opaque-handle"]
+    assert panel.connection_id is None
+    assert panel.remote == []
 
 
-def test_error_path_is_non_modal_and_does_not_echo_key(qapp):
-    from chisurf.plugins.core.mmfdb_admin.gui.elabftw_view import ELabFTWView
+def test_error_path_is_non_modal_and_does_not_echo_key(driver, app, fake, monkeypatch):  # noqa: F811
+    def refuse(base_url, api_key, **kwargs):
+        raise RuntimeError("authentication rejected")
 
-    class FailingClient(FakeClient):
-        def connect_elabftw(self, base_url, api_key, **kwargs):
-            raise RuntimeError("authentication rejected")
-
-    view = ELabFTWView(FailingClient(), submit=_immediate_submit)
-    view.endpoint_edit.setText("https://lab.example")
-    view.api_key_edit.setText("super-secret")
-    view.connect_remote()
-    assert view.connection_id is None
-    assert "authentication rejected" in view.status_label.text()
-    assert "super-secret" not in view.status_label.text()
-    assert view.api_key_edit.text() == ""
+    monkeypatch.setattr(app.model.client, "connect_elabftw", refuse)
+    panel = _connect(driver, "super-secret")
+    assert panel.connection_id is None
+    assert "authentication rejected" in panel.message
+    assert "super-secret" not in panel.message
+    assert panel.api_key == ""
+    assert app.model.dialog is None  # non-modal: the reason is in the panel's status line

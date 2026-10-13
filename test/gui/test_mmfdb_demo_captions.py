@@ -1,4 +1,11 @@
-"""The existing admin handler describes and displays its real synthetic table seed."""
+"""MMFDB Admin's demo-data action describes and shows its real synthetic table seed.
+
+The retired Qt window populated the packaged synthetic smFRET burst tables after ten
+clicks on its header label; the native app has an explicit *Demo data...* button on the
+Import / Export panel. The confirmation names the packaged tables, declining starts
+nothing, the running caption is shown while the call is out, and the result is the
+real 120-row / 63-row seed (replayed: it is computed once against scratch services).
+"""
 
 from __future__ import annotations
 
@@ -8,17 +15,48 @@ import socket
 from pathlib import Path
 
 import pytest
-from qtpy import QtCore, QtGui, QtWidgets
+
+
+class _HeldRunner:
+    """Run the connection inline, hold every later call until :meth:`flush`."""
+
+    on_error = None
+
+    def __init__(self):
+        from chisurf.plugins.core.mmfdb_admin.gui.native.runner import InlineRunner
+
+        self.inline = InlineRunner()
+        self.held = []
+        self.hold = False
+
+    def submit(self, call):
+        (self.held.append if self.hold else self.inline.submit)(call)
+
+    def flush(self):
+        while self.held:
+            self.inline.submit(self.held.pop(0))
+
+    def poll(self):
+        return False
+
+    @property
+    def busy(self):
+        return bool(self.held)
+
+    def close(self):
+        pass
 
 
 @pytest.fixture
-def demo_widget(tmp_path, monkeypatch, qapp):
-    """Construct the real tool over scratch services, replaying only the seed result."""
+def demo_app(tmp_path, monkeypatch):
+    """The native app over scratch services, replaying only the seed result."""
     from mmfdb.config import configure_runtime, reset_runtime_config
 
+    from chisurf.plugins.core.mmfdb_admin.gui.app import MMFDBAdminApp
     from chisurf.plugins.core.mmfdb_admin.test import seeded_admin as sa
 
     sa.use_folder(tmp_path, monkeypatch)
+    monkeypatch.setenv("HOME", str(tmp_path))
     configure_runtime(
         settings_dir=tmp_path,
         database_path=tmp_path / "mmfdb.db",
@@ -31,10 +69,6 @@ def demo_widget(tmp_path, monkeypatch, qapp):
 
     monkeypatch.setattr(socket.socket, "connect", no_connect)
     monkeypatch.setattr(socket, "create_connection", no_connect)
-    from chisurf.core.settings import cs_settings
-    from chisurf.plugins.core.mmfdb_admin.gui.tool import MMFDBWidget
-
-    monkeypatch.setitem(cs_settings["mmfdb"].setdefault("client", {}), "username", "admin")
     local = sa.admin_client()
     summary = local.populate_mock_data()
     assert Path(summary["database_path"]).resolve() == (tmp_path / "mmfdb.db").resolve()
@@ -43,7 +77,7 @@ def demo_widget(tmp_path, monkeypatch, qapp):
     calls = []
 
     class ReplayClient:
-        """Delegate reads locally and return the already verified owned seed on demand."""
+        """Delegate reads locally and return the already verified seed on demand."""
 
         def __getattr__(self, name):
             return getattr(local, name)
@@ -52,74 +86,51 @@ def demo_widget(tmp_path, monkeypatch, qapp):
             calls.append("populate")
             return copy.deepcopy(summary)
 
-    widget = MMFDBWidget(client=ReplayClient())
-    widget.nav_list.setCurrentRow(widget._row_by_name["Import / Export"])
-    pending = []
-    monkeypatch.setattr(widget, "_run_background_task", lambda **task: pending.append(task))
+    runner = _HeldRunner()
+    app = MMFDBAdminApp(client=ReplayClient(), runner=runner)
+    app.model.user = "admin"
+    from chisurf.plugins.emtk_test_input import Driver
+
+    driver = Driver(app)
+    driver.draw(3)
+    assert app.model.connected, app.model.status
+    driver.type_into_name("search", "Import / Export")
+    driver.click_name("nav.import_export")
+    driver.draw(2)
     try:
-        yield widget, summary, pending, calls
+        yield app, driver, runner, summary, calls
     finally:
-        qapp.processEvents()
-        widget.close()
-        qapp.processEvents()
+        app.close()
         reset_runtime_config()
 
 
-def click_header(widget):
-    """Deliver the real handler's ten left-click events without inventing a control."""
-    event = QtGui.QMouseEvent(
-        QtCore.QEvent.MouseButtonPress,
-        QtCore.QPointF(1, 1),
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.LeftButton,
-        QtCore.Qt.NoModifier,
-    )
-    for _ in range(10):
-        widget._on_header_label_clicked(event)
+def test_confirmation_describes_packaged_tables_and_declining_starts_nothing(demo_app):
+    from chisurf.plugins.core.mmfdb_admin.gui.native import dialogs as dlg
+
+    app, driver, _runner, _summary, calls = demo_app
+    driver.click_name("populate_demo")
+    dialog = app.model.dialog
+    assert isinstance(dialog, dlg.ConfirmDialog)
+    assert "packaged synthetic smFRET burst tables" in dialog.text
+    assert "test fixtures" not in dialog.text
+    assert "synthetic smFRET burst" in " ".join(driver.draw(2).strings)  # the dialog shows it
+    driver.click_name("dialog.no")
+    assert app.model.dialog is None and not calls
+    assert not app.model.current.busy_demo
 
 
-def test_confirmation_describes_packaged_tables_and_declining_starts_nothing(
-    demo_widget, monkeypatch
-):
-    """The actual confirmation describes the dataset, and No still prevents population."""
-    from chisurf.gui import dialogs
-
-    widget, _, pending, calls = demo_widget
-    questions = []
-
-    def decline(parent, title, message, *args):
-        questions.append(message)
-        return QtWidgets.QMessageBox.No
-
-    monkeypatch.setattr(dialogs, "question", decline)
-    click_header(widget)
-    assert len(questions) == 1
-    assert "packaged synthetic smFRET burst tables" in questions[0]
-    assert "test fixtures" not in questions[0]
-    assert not pending and not calls and not widget._mock_data_task_running
-
-
-def test_translated_running_caption_and_real_result_survive_population(demo_widget, monkeypatch):
-    """Both captions use translation; the running and completed handler states remain truthful."""
-    from chisurf.gui import dialogs
-
-    widget, summary, pending, calls = demo_widget
-    translated = []
-
-    def translate(text):
-        translated.append(text)
-        return "Translated: " + text
-
-    monkeypatch.setattr(widget, "tr", translate)
-    with dialogs.auto_answer(question=QtWidgets.QMessageBox.Yes):
-        click_header(widget)
-    assert len(translated) == 2
-    assert all("packaged synthetic smFRET burst tables" in text for text in translated)
-    assert all("test fixtures" not in text for text in translated)
-    assert widget.preview_edit.toPlainText().startswith("Translated: Populating")
-    assert widget._mock_data_task_running and len(pending) == 1 and not calls
-    task = pending.pop()
-    task["on_success"](task["fn"]())
-    assert calls == ["populate"] and not widget._mock_data_task_running
-    assert json.loads(widget.preview_edit.toPlainText()) == summary
-    assert sum(summary["input_row_counts"]) == 120 and summary["output_row_count"] == 63
+def test_running_caption_and_real_result_survive_population(demo_app):
+    app, driver, runner, summary, calls = demo_app
+    panel = app.model.current
+    driver.click_name("populate_demo")
+    runner.hold = True
+    driver.click_name("dialog.yes")
+    assert panel.preview.startswith("Populating the packaged synthetic smFRET burst tables")
+    assert "test fixtures" not in panel.preview
+    assert panel.busy_demo and not panel.enabled("populate_demo") and not calls
+    runner.hold = False
+    runner.flush()
+    assert calls == ["populate"]
+    assert json.loads(panel.preview) == json.loads(json.dumps(summary, default=str))
+    assert panel.message.startswith("Demo data populated:")
+    assert not panel.busy_demo

@@ -15,8 +15,7 @@ artifact into which. What it stores and why it is kept as a graph is explained i
 covers the administration tool.
 
 Open **Tools → System → MMFDB Admin**, or run it on its own with `python -m chisurf.emtk --plugin mmfdb_admin`. The window is
-drawn natively (emtk). The older Qt widget is kept for now as the legacy
-`entrypoints.gui`.
+drawn natively (emtk); the older Qt window is retired.
 
 For headless fluorophore curation, the same plugin declares the owning MMFDB
 Click command under `csc fluorophore`. Its commands operate on the configured
@@ -41,7 +40,7 @@ the selected sample's dictionary-driven form below it.
 
 The toolbar names the server: **Host** and **Port** for the embedded server, or a
 base URL for a standalone one. It also takes the **User** and a **Password**.
-**Login** connects. A session this ChiSurf process already holds is reused, and an
+**Login** (or Enter in any of these fields) connects. A session this ChiSurf process already holds is reused, and an
 account allowed to sign in without a password does not need one. In every other
 case the login dialog asks for the password. **...** opens that dialog directly,
 and its *Advanced* fold switches user, host and ports. The dot next to the
@@ -77,7 +76,9 @@ double-click it to open that record in its own panel.
 
 Some panels have their own actions. Users have **Change password** and **Jump to
 branch**. Branches have **Set head**. Raw Data and Processed Products have
-**Copy ID**, **Reveal**, **Use as provenance seed**, **Validate** and **Delete**.
+**Copy ID**, **Reveal**, **Use as provenance seed**, **Validate** and **Delete**;
+Processed Products also **Open in ndX**, where *Save > Burst IDs* records the
+selection against the product. Hovering a row shows the record's UUID.
 Experiments show their linked data in a sub-table (**Add data**, **Save data**,
 **Delete data**, **Open data**); Setups have **Validate setup**; Projects list their
 archived versions with **Restore project to ChiSurf** and **Delete archived version**
@@ -92,8 +93,8 @@ On a Processed Products (or Raw Data, or Analyses) row, press **Use as
 provenance seed**. The **Provenance Graph** panel opens with that record's
 upstream graph loaded. You can also type a seed into **Seed Type** / **Seed ID**
 and press **Load upstream**, **Load downstream** or **Load full graph**. Each
-node is an artifact (blue) or an operation (orange). Click a node to read its
-record on the right. **Export JSON** / **Export ZIP** write the graph or a full
+node is an artifact (blue) or an operation (orange). Click a node or an edge
+(in the graph or in the edge table) to read its record on the right. **Export JSON** / **Export ZIP** write the graph or a full
 archive.
 
 ## 5. Curate spectra
@@ -102,8 +103,11 @@ archive.
 Pick a row to plot its spectra, or tick several to overlay them. **Approve** /
 **Reject** set the verification status, and **Review queue** keeps the
 unverified entries. **AI triage** runs deterministic plausibility checks.
-**Find Duplicates** groups near-duplicate probes, so you can compare their
-spectra and merge each group into a primary.
+**Find Duplicates** groups near-duplicate probes (a progress bar with
+**Cancel** while it searches), so you can compare their spectra and merge each
+group into a primary. **Search** lists matching names as you type; turn **Auto**
+off for a large database and press Enter instead. Right-click a row for the copy
+and tick helpers, **Open details**, **Select all rows** and **Clear selection**.
 
 ## 6. Import, export, back up
 
@@ -140,18 +144,18 @@ The plugin's tests drive it against a seeded temporary database
   inside a single `.pto` file.
 
 
-## Legacy administrative metadata example
+## Administrative metadata example
 
-The legacy Qt administrator retains a sample-population action after ten
-left clicks on its header label. Its confirmation and running state now name
-the packaged synthetic smFRET burst tables. Declining starts no population.
-The authenticated backend uses120 source rows from three packaged CSVs and
-stores the real63-row selection with hashes and lineage. These are metadata
-examples; the action does not acquire photons or require checkout test files.
+**Import / Export → Demo data…** populates the database with the packaged
+synthetic smFRET burst tables, after asking; declining starts nothing. (The
+retired Qt window hid this behind ten clicks on its header label.) The
+authenticated backend uses 120 source rows from three packaged CSVs and stores
+the real 63-row selection with hashes and lineage; the result summary is shown
+in the panel. These are metadata examples: the action acquires no photons and
+needs no checkout test files.
 
-![Legacy administrator showing the synthetic table result](figures/102_mmfdb_demo_result.png)
+![The retired Qt administrator showing the synthetic table result](figures/102_mmfdb_demo_result.png)
 
-The native administrator currently has no matching population control.
 For a headless administrative example, use the owning MMFDB `seed_example`
 API with an explicitly selected demo database; its sources and produced table
 are managed objects in that database's object store.

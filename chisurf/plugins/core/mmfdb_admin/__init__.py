@@ -1,11 +1,14 @@
-"""mmfdb-admin: Multiparametric Fluorescence Database management."""
+"""mmfdb-admin: Multiparametric Fluorescence Database management.
+
+The window is the native emtk app (``gui/app.py``, ``entrypoints.emtk`` in the
+manifest); the shell opens it. Importing the package imports no GUI toolkit.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
-from chisurf.core.plugin.registry import apply_manifest_statefulness
 
 _manifest = load_manifest(Path(__file__).with_name("manifest.json"))
 if _manifest is not None:
@@ -13,52 +16,19 @@ if _manifest is not None:
 else:
     name = "Tools:System:MMFDB Admin"
 
-__all__ = ["MMFDBWidget", "name"]
+__all__ = ["name"]
 
 
-def __getattr__(name: str):
-    """Keep client and session imports independent of the optional Qt window."""
-    if name == "MMFDBWidget":
-        from .gui.tool import MMFDBWidget
+if __name__ == "__main__":
+    from chisurf.emtk.__main__ import main as _launch
 
-        return MMFDBWidget
-    raise AttributeError(name)
+    _launch(["--plugin", "mmfdb_admin"])
 
+# The legacy macro launch; the manifest's emtk entry comes first.
+if __name__ == "plugin":  # pragma: no cover
+    from emtk.qt_host import ControlHost
 
-if __name__ == "plugin":
-    from chisurf.gui import dialogs
+    from chisurf.plugins.core.mmfdb_admin.gui.app import make_app
 
-    from .gui.tool import MMFDBWidget
-
-    try:
-        from qtpy import sip
-    except ImportError:
-        try:
-            import sip
-        except ImportError:
-            sip = None
-    existing = globals().get("window")
-    if existing is not None and sip is not None and sip.isdeleted(existing):
-        existing = None
-    if existing is None:
-        try:
-            window = MMFDBWidget()
-        except PermissionError as exc:
-            dialogs.error(
-                None,
-                "mmfdb-admin — Access denied",
-                str(exc) or "Administrator privileges are required to open mmfdb-admin.",
-            )
-            window = None
-        else:
-            if _manifest is not None:
-                apply_manifest_statefulness(window, _manifest)
-    else:
-        window = existing
-    if window is not None:
-        window.show()
-        try:
-            window.raise_()
-            window.activateWindow()
-        except Exception:
-            pass
+    window = ControlHost(make_app())
+    window.show()
