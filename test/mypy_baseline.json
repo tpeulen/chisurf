@@ -208,7 +208,6 @@
   "chisurf/emtk/fit_pages/pages/table_plot_emtk.py": 11,
   "chisurf/emtk/fit_pages/pages/wr_plot.py": 1,
   "chisurf/emtk/model_sections.py": 8,
-  "chisurf/emtk/shell_session.py": 25,
   "chisurf/gui/__init__.py": 3,
   "chisurf/gui/autoform/auto_form.py": 7,
   "chisurf/gui/autoform/sections/anisotropy_diagnostics_section.py": 1,

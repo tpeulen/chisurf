@@ -254,7 +254,7 @@ class RdaAxisForm:
 
         axis = apply_fret_rda_axis(self.rda_min, self.rda_max, self.rda_resolution, self.rda_scale)
         self.saved = axis is not None
-        if self.saved:
+        if axis is not None:
             self.rda_min, self.rda_max = float(axis[0]), float(axis[-1])
             if self.on_saved is not None:
                 self.on_saved()
@@ -413,14 +413,26 @@ class ShellProject:
     def _history_ready(self) -> None:
         self.history_ready = True
 
+    @property
+    def _live_channel(self) -> ProjectChannel:
+        """The connected project channel; the callers only run once it exists."""
+        if self.channel is None:
+            raise RuntimeError("the project channel is not connected")
+        return self.channel
+
+    def _refresh_unless_none(self, result: Any) -> None:
+        """Job callback: redraw the docks when the job produced something."""
+        if result is not None:
+            self._refresh_docks()
+
     def _capture_for_history(self) -> Any:
         """The project the history stores: the one a record job just captured, else a fresh capture."""
         project, self._prefetched = self._prefetched, None
-        return project if project is not None else self.channel.capture(self.document.name)
+        return project if project is not None else self._live_channel.capture(self.document.name)
 
     def _publish(self, project: Any) -> dict:
         """Replace the session's science with *project* (the history's undo and redo)."""
-        return self.channel.api.restore_project_payload(project)
+        return self._live_channel.api.restore_project_payload(project)
 
     def poll(self) -> None:
         """Once per frame, before the docks: attach, finish and start work, record, autosave."""
@@ -472,7 +484,7 @@ class ShellProject:
         """Worker: capture, and record one step when the science changed."""
         from chisurf.core.project.lifecycle import snapshot_fingerprint
 
-        project = self.channel.capture(self.document.name)
+        project = self._live_channel.capture(self.document.name)
         fingerprint = snapshot_fingerprint(project)
         if fingerprint == self._last_fingerprint:
             return False
@@ -507,13 +519,13 @@ class ShellProject:
             from chisurf.core.project.lifecycle import snapshot_fingerprint
 
             result = self.history.navigate(int(index))
-            self._last_fingerprint = snapshot_fingerprint(self.channel.capture(self.document.name))
+            self._last_fingerprint = snapshot_fingerprint(self._live_channel.capture(self.document.name))
             return result
 
         return self._run(
             tr("Going to the history step…"),
             call,
-            lambda result: result is not None and self._refresh_docks(),
+            self._refresh_unless_none,
         )
 
     def clear_history(self) -> bool:
@@ -537,20 +549,20 @@ class ShellProject:
             if target is None:
                 return None
             result = self.history.navigate(target)
-            self._last_fingerprint = snapshot_fingerprint(self.channel.capture(self.document.name))
+            self._last_fingerprint = snapshot_fingerprint(self._live_channel.capture(self.document.name))
             return result
 
         label = tr("Undo…") if direction < 0 else tr("Redo…")
-        return self._run(label, call, lambda result: result is not None and self._refresh_docks())
+        return self._run(label, call, self._refresh_unless_none)
 
     # ── project files ─────────────────────────────────────────────────────
 
     def _unsaved(self) -> tuple[bool, bool]:
         """Worker: ``(has content, modified since the last save)``."""
-        if not self.channel.content():
+        if not self._live_channel.content():
             return False, False
         try:
-            project = self.channel.capture(self.document.name)
+            project = self._live_channel.capture(self.document.name)
             return True, self.document.is_modified(project)
         except Exception:  # noqa: BLE001 - a failed dirty check must protect the user's work
             _log.exception("the unsaved-changes check failed")
@@ -629,7 +641,7 @@ class ShellProject:
         name = display_name(destination.name)
 
         def call() -> tuple[Any, Path]:
-            project = self.channel.capture(name)
+            project = self._live_channel.capture(name)
             return project, Path(storage.save_file(project, destination))
 
         def after(result: tuple[Any, Path]) -> None:
@@ -671,7 +683,7 @@ class ShellProject:
         from chisurf.core.project import storage
 
         def call() -> tuple[Any, dict]:
-            project = self.channel.capture(model.project_name.strip())
+            project = self._live_channel.capture(model.project_name.strip())
             project.name = model.project_name.strip()
             result = storage.save_database(
                 project,
@@ -740,10 +752,10 @@ class ShellProject:
             return False
 
         def call() -> Any:
-            result = self.channel.api.load_project(str(path))
+            result = self._live_channel.api.load_project(str(path))
             if not isinstance(result, dict) or result.get("ok") is not True:
                 raise RuntimeError((result or {}).get("error") or tr("The project was not opened."))
-            project = self.channel.capture(display_name(path.name))
+            project = self._live_channel.capture(display_name(path.name))
             self._reset_history()
             return project
 
@@ -850,7 +862,7 @@ class ShellProject:
 
         def clear() -> None:
             def call() -> Any:
-                result = self.channel.api.session_restore()
+                result = self._live_channel.api.session_restore()
                 if isinstance(result, dict) and result.get("ok") is False:
                     raise RuntimeError(result.get("error") or "?")
                 self._reset_history()
@@ -881,7 +893,7 @@ class ShellProject:
         """Worker: a new document starts a new history at its current science."""
         from chisurf.core.project.lifecycle import snapshot_fingerprint
 
-        project = self.channel.capture(self.document.name)
+        project = self._live_channel.capture(self.document.name)
         self._prefetched = project
         try:
             self.history.clear()
@@ -917,9 +929,9 @@ class ShellProject:
         """Worker: write the silent copy when due and changed (never a question, never a history row)."""
         from chisurf.core.project import storage
 
-        if not self.autosave.enabled or not self.channel.content():
+        if not self.autosave.enabled or not self._live_channel.content():
             return None
-        project = self.channel.capture(display_name(self.document.name))
+        project = self._live_channel.capture(display_name(self.document.name))
         return self.autosave.run(
             project, storage.save_file, self.document, _working_path(), time.monotonic()
         )
@@ -989,7 +1001,7 @@ class ShellProject:
 
     def _fit_call(self, method: str, params: dict) -> dict:
         """Worker: one ``fit.*`` call on the project connection; a refusal raises with its reason."""
-        result = self.channel.client.call(method, params)
+        result = self._live_channel.client.call(method, params)
         if isinstance(result, dict) and result.get("ok") is False:
             raise RuntimeError(str(result.get("error") or method))
         return result if isinstance(result, dict) else {}
@@ -1054,13 +1066,18 @@ class ShellProject:
             if not there:
                 write(folder, "skip")
                 return
+
+            def answered(key: str) -> None:
+                if key in ("overwrite", "skip"):
+                    write(folder, key)
+
             self.dialogs.choice(
                 tr("Folders exist"),
                 tr("{count} fit folder(s) already exist in {folder}.").format(
                     count=len(there), folder=folder
                 ),
                 [("overwrite", tr("Overwrite")), ("skip", tr("Skip")), ("cancel", tr("Cancel"))],
-                lambda key: key in ("overwrite", "skip") and write(folder, key),
+                answered,
                 detail="\n".join(there),
             )
 
@@ -1137,8 +1154,8 @@ class ShellProject:
         )
 
     def _update_fits(self) -> None:
-        for row in self.channel.api.list_fits() or []:
-            self.channel.client.call("fit.update", {"fit_uid": str(row.get("uid", ""))})
+        for row in self._live_channel.api.list_fits() or []:
+            self._live_channel.client.call("fit.update", {"fit_uid": str(row.get("uid", ""))})
 
     def data_loading(self) -> None:
         """*Settings ▸ Data loading…*: the slow-storage staging settings (written as they change)."""
@@ -1163,17 +1180,18 @@ class ShellProject:
         """*Reset local settings*: the settings folder goes back to the shipped one."""
         from chisurf.core.settings.cleanup import clear_settings_folder
 
-        self.dialogs.confirm(
-            tr("Reset local settings"),
-            tr("Reset your local settings to the shipped defaults?"),
-            lambda yes: (
-                yes
-                and self._done(
+        def answered(yes: bool) -> None:
+            if yes:
+                self._done(
                     clear_settings_folder,
                     tr("Settings Reset"),
                     tr("Local settings have been reset successfully."),
                 )
-            ),
+
+        self.dialogs.confirm(
+            tr("Reset local settings"),
+            tr("Reset your local settings to the shipped defaults?"),
+            answered,
         )
 
     def clear_logging_files(self) -> None:
