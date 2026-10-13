@@ -187,23 +187,27 @@ class RpcMethodView:
             description += " " + tr("(required)")
         elif name in self._required:
             description = tr("(required)")
-        common = dict(target="_params_group", attr=name, description=description)
+        target = "_params_group"
 
         if "enum" in prop:
             self._enums[name] = tuple(prop["enum"])
             options = tuple(str(v) for v in prop["enum"])
-            return ChoiceSection(label=label, options=options, **common)
+            return ChoiceSection(
+                label=label, options=options, target=target, attr=name, description=description
+            )
 
         kind = prop.get("type")
         if kind == "boolean":
-            return ToggleSection(label=label, **common)
+            return ToggleSection(label=label, target=target, attr=name, description=description)
         if kind == "integer":
             return ValueSection(
                 label=label,
                 kind="int",
                 minimum=prop.get("minimum"),
                 maximum=prop.get("maximum"),
-                **common,
+                target=target,
+                attr=name,
+                description=description,
             )
         if kind == "number":
             return ValueSection(
@@ -212,12 +216,23 @@ class RpcMethodView:
                 minimum=prop.get("minimum"),
                 maximum=prop.get("maximum"),
                 decimals=6,
-                **common,
+                target=target,
+                attr=name,
+                description=description,
             )
         if kind in _JSON_KINDS:
             self._json_props.add(name)
-            return ValueSection(label=label, kind="str", placeholder="JSON", **common)
+            return ValueSection(
+                label=label,
+                kind="str",
+                placeholder="JSON",
+                target=target,
+                attr=name,
+                description=description,
+            )
         # strings and untyped properties: a plain line edit; ``format`` may ask
         # for the file picker (line edit + browse button).
         value_kind = "file" if prop.get("format") in ("file", "path", "uri") else "str"
-        return ValueSection(label=label, kind=value_kind, **common)
+        return ValueSection(
+            label=label, kind=value_kind, target=target, attr=name, description=description
+        )

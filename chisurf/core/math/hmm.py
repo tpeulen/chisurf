@@ -110,6 +110,7 @@ import sys
 from collections import deque
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import CancelledError
+from typing import TypedDict
 
 import numpy as np
 
@@ -381,6 +382,21 @@ def _covars_from_free(
     return covars if covariance_type == "full" else covars[0]
 
 
+#: Sufficient statistics accumulated by the E-step and consumed by the M-step.
+_Stats = TypedDict(
+    "_Stats",
+    {
+        "nobs": int,
+        "start": np.ndarray,
+        "trans": np.ndarray,
+        "post": np.ndarray,
+        "obs": np.ndarray,
+        "obs**2": np.ndarray,
+        "obs*obs.T": np.ndarray,
+    },
+)
+
+
 class ConvergenceMonitor:
     """Track the EM log-likelihood and decide when Baum-Welch has converged.
 
@@ -633,6 +649,13 @@ class GaussianHMM:
         #: Set by the first call that sees data; guards later shape mismatches.
         self.n_features: int | None = None
 
+    @property
+    def _nf(self) -> int:
+        """Number of features, known once the model has seen data."""
+        if self.n_features is None:
+            raise RuntimeError(f"{type(self).__name__} has not seen any data yet")
+        return self.n_features
+
     def __repr__(self) -> str:
         """Return the constructor call reproducing this model's configuration."""
         return (
@@ -653,13 +676,13 @@ class GaussianHMM:
             return np.stack([np.diag(c) for c in covars])
         if self.covariance_type == "tied":
             return np.tile(covars, (self.n_components, 1, 1))
-        eye = np.eye(self.n_features)[None, :, :]
+        eye = np.eye(self._nf)[None, :, :]
         return eye * covars.reshape(-1, 1, 1)
 
     @property
     def n_parameters(self) -> int:
         """Number of free scalar parameters, as counted by :meth:`aic` and :meth:`bic`."""
-        nc, nf = self.n_components, self.n_features
+        nc, nf = self.n_components, self._nf
         n_covars = {
             "spherical": nc,
             "diag": nc * nf,
@@ -864,7 +887,7 @@ class GaussianHMM:
 
     def _set_parameters(self, theta: np.ndarray) -> None:
         """Unpack a vector produced by :meth:`_get_parameters` into the model."""
-        nc, nf = self.n_components, self.n_features
+        nc, nf = self.n_components, self._nf
         self.startprob_ = theta[:nc].copy()
         self.transmat_ = theta[nc : nc + nc * nc].reshape(nc, nc).copy()
         offset = nc + nc * nc
@@ -1108,27 +1131,26 @@ class GaussianHMM:
             )
         }
 
-        centers, labels = (None, None)
         if any(needs.values()):
             centers, labels, _, _ = _kmeans(X, self.n_components, rng)
 
-        if needs["m"]:
-            self.means_ = centers
-        if needs["s"]:
-            # Occupancy of each cluster, smoothed so that no state starts out
-            # unreachable.
-            counts = np.bincount(labels, minlength=self.n_components) + 1.0
-            self.startprob_ = counts / counts.sum()
-        if needs["t"]:
-            # Transitions between consecutive labels, counted within sequences.
-            counts = np.full((self.n_components, self.n_components), uniform)
-            for sequence in _split_sequences(labels[:, None], lengths):
-                path = sequence.ravel()
-                if len(path) > 1:
-                    np.add.at(counts, (path[:-1], path[1:]), 1.0)
-            self.transmat_ = counts / counts.sum(axis=1, keepdims=True)
-        if needs["c"]:
-            self.covars_ = self._initial_covariances(X, labels)
+            if needs["m"]:
+                self.means_ = centers
+            if needs["s"]:
+                # Occupancy of each cluster, smoothed so that no state starts out
+                # unreachable.
+                counts = np.bincount(labels, minlength=self.n_components) + 1.0
+                self.startprob_ = counts / counts.sum()
+            if needs["t"]:
+                # Transitions between consecutive labels, counted within sequences.
+                counts = np.full((self.n_components, self.n_components), uniform)
+                for sequence in _split_sequences(labels[:, None], lengths):
+                    path = sequence.ravel()
+                    if len(path) > 1:
+                        np.add.at(counts, (path[:-1], path[1:]), 1.0)
+                self.transmat_ = counts / counts.sum(axis=1, keepdims=True)
+            if needs["c"]:
+                self.covars_ = self._initial_covariances(X, labels)
 
         n_fit_scalars = self.n_parameters
         if X.size < n_fit_scalars:
@@ -1145,14 +1167,15 @@ class GaussianHMM:
         A cluster too small to define a covariance falls back to the covariance
         of the whole data set, which is the widest sensible guess.
         """
-        ridge = self.min_covar * np.eye(self.n_features)
+        nf = self._nf
+        ridge = self.min_covar * np.eye(nf)
         pooled = np.atleast_2d(np.cov(X.T)) + ridge
-        matrices = np.empty((self.n_components, self.n_features, self.n_features))
+        matrices = np.empty((self.n_components, nf, nf))
         for c in range(self.n_components):
             members = X[labels == c]
             matrices[c] = (
                 np.atleast_2d(np.cov(members.T)) + ridge
-                if len(members) > self.n_features
+                if len(members) > nf
                 else pooled
             )
         if self.covariance_type == "full":
@@ -1238,10 +1261,10 @@ class GaussianHMM:
         )
         return log_prob, posteriors
 
-    def _do_estep(self, X: np.ndarray, lengths: Sequence[int] | None) -> tuple[dict, float]:
+    def _do_estep(self, X: np.ndarray, lengths: Sequence[int] | None) -> tuple[_Stats, float]:
         """Accumulate the sufficient statistics of all sequences and their log-likelihood."""
-        nc, nf = self.n_components, self.n_features
-        stats = {
+        nc, nf = self.n_components, self._nf
+        stats: _Stats = {
             "nobs": 0,
             "start": np.zeros(nc),
             "trans": np.zeros((nc, nc)),
@@ -1269,7 +1292,7 @@ class GaussianHMM:
                     stats["obs*obs.T"][c] += (sequence * posteriors[:, c, None]).T @ sequence
         return stats, total_log_prob
 
-    def _do_mstep(self, stats: dict) -> None:
+    def _do_mstep(self, stats: _Stats) -> None:
         """Re-estimate the parameters selected by :attr:`params` from ``stats``.
 
         The updates are the MAP estimates of Huang et al. [2]_ under the
@@ -1353,7 +1376,7 @@ class GaussianHMM:
             else:
                 self.covars_ = np.where(alive[:, None], covars, self.covars_)
         else:
-            c_n = np.empty((self.n_components, self.n_features, self.n_features))
+            c_n = np.empty((self.n_components, self._nf, self._nf))
             for c in range(self.n_components):
                 obsmean = np.outer(stats["obs"][c], self.means_[c])
                 c_n[c] = (
@@ -1363,7 +1386,7 @@ class GaussianHMM:
                     - obsmean.T
                     + np.outer(self.means_[c], self.means_[c]) * stats["post"][c]
                 )
-            cvweight = max(self.covars_weight - self.n_features, 0)
+            cvweight = max(self.covars_weight - self._nf, 0)
             if self.covariance_type == "tied":
                 self.covars_ = (self.covars_prior + c_n.sum(axis=0)) / max(
                     cvweight + stats["post"].sum(), np.finfo(float).tiny
