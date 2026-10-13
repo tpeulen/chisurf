@@ -1,18 +1,12 @@
 """What the emtk shell does once its main window is up: the ``post_show`` startup stages.
 
 The Qt window runs ``chisurf/startup/services.d/30_gui_post_show.json`` after it is shown; most of
-those stages build Qt state the emtk shell makes for itself (history, autosave, plugin menus). One
-is not about the window: the startup update check. It is the ``surface="emtk"``, ``phase="post_show"``
-set in
+those stages build Qt state the emtk shell makes for itself (history, autosave, plugin menus). Two
+are not about the window: the startup update check and preloading the modules a first fit needs.
+They are the ``surface="emtk"``, ``phase="post_show"`` set in
 ``chisurf/startup/services.d/35_emtk_post_show.json``, run by the same
 :class:`~chisurf.startup.services.AppStartupServiceManager`, on a worker thread once the shell has
 adopted its session, never on the frame loop.
-
-The Qt window's other non-window stage, ``warmup_imports``, has no shell twin. By the time the
-shell's session has settled, its own startup stages have imported everything a first fit needs, so
-a warm-up would import nothing (it measured 3 ms) -- and a worker thread importing a package
-while the frame loop imports into the same package is how two threads deadlock on CPython's
-per-module import locks (see :mod:`chisurf.emtk.session`).
 
 A stage only *finds* things out; what it found travels in the manager's shared ``metadata``
 (``update_offer``) and the shell acts on it on its own thread (:meth:`PostShow.poll`): the
@@ -21,6 +15,7 @@ A stage only *finds* things out; what it found travels in the manager's shared `
 
 from __future__ import annotations
 
+import importlib
 import logging
 from collections.abc import Callable
 from typing import Any
@@ -28,6 +23,17 @@ from typing import Any
 from chisurf.emtk.background_build import BackgroundBuild
 
 _log = logging.getLogger(__name__)
+
+#: Qt-free modules a first fit or fit window imports; preloaded so the first click does not wait.
+#: Page classes are not in it: they still import Qt through chiplot (qt-retirement ledger item 6).
+WARM_MODULES = (
+    "chisurf.core.fitting",
+    "chisurf.core.models",
+    "chisurf.core.models.global_model.globalfit",
+    "chisurf.core.structure",
+    "chisurf.emtk.model_editor",
+    "chisurf.emtk.fit_pages.surface",
+)
 
 
 def update_check_wanted(settings: dict | None = None) -> bool:
@@ -74,6 +80,15 @@ def stage_check_updates(context: Any) -> None:
         "installed": installed,
         "changes": changes,
     }
+
+
+def stage_warmup_imports(context: Any) -> None:
+    """Import :data:`WARM_MODULES`; a module that fails is logged, never stops the shell."""
+    for name in WARM_MODULES:
+        try:
+            importlib.import_module(name)
+        except Exception:  # noqa: BLE001 - a warm-up, not a requirement
+            _log.debug("warm-up import of %s failed", name, exc_info=True)
 
 
 def run_post_show(on_stage: Callable[[dict], None] | None = None) -> dict:
@@ -196,7 +211,9 @@ class PostShow:
 
 __all__ = [
     "PostShow",
+    "WARM_MODULES",
     "run_post_show",
     "stage_check_updates",
+    "stage_warmup_imports",
     "update_check_wanted",
 ]

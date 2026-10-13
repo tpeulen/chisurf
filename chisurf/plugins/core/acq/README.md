@@ -29,7 +29,7 @@ Data is acquired into RAM and saved at the end of data acquisition.
 
 Inside ChiSurf the plugin simulates a demo stream (`demo.py`), registers it as an
 `AcquisitionDataset` (`dataset.py`) and opens a fit window with the `Acquisition`
-model (`chisurf/core/models/acquisition`) whose pages (`chisurf/gui/plots/acquisition.py`)
+model (`chisurf/core/models/acquisition`) whose pages (`chisurf/emtk/fit_pages/pages/acquisition.py`)
 are the live decay, correlation, MCS and macro-time plots. The Qt tool is gone.
 
 ## Usage

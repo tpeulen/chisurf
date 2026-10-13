@@ -150,7 +150,7 @@ RECIPES = {
 
 def _make_plot(backend_name: str):
     """Build a chiplot Plot using the given backend."""
-    import chisurf.gui.chiplot.backends as backends
+    import chisurf.chiplot.backends as backends
 
     backends._active = None
     os.environ["CHISURF_PLOT_BACKEND"] = backend_name

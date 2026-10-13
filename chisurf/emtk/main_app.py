@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Any, Callable
 
 from emtk import accents, im, overlays
@@ -185,11 +184,6 @@ def _ribbon_preference() -> bool:
     return bool((cs_settings.get("gui") or {}).get("use_ribbon_interface", True))
 
 
-def _is_focused(docks: DockManager, key: str) -> bool:
-    """Whether *key* is the focused dock window (a *Window* menu entry's check mark)."""
-    return bool(docks.focused == key)
-
-
 def _default_loader(plugin_id: str) -> Any:
     from chisurf.emtk.plugins import load_plugin
 
@@ -216,7 +210,7 @@ class EmtkShellApp(ImApp):
         The boot splash's state; the session's startup stages are reported to it
         (:mod:`chisurf.emtk.splash`).
     post_show : bool or callable, optional
-        Run the ``post_show`` startup stages (the update check;
+        Run the ``post_show`` startup stages (update check, warm-up imports;
         :mod:`chisurf.emtk.post_show`) once the session is adopted. ``True`` runs the declared
         stages, a callable ``runner(on_stage) -> metadata`` stands in for them (tests); off by
         default, so a test's shell never asks the update server.
@@ -359,9 +353,6 @@ class EmtkShellApp(ImApp):
         self.docks.focus(ANALYSIS_KEY)
         self.docks.focus("tools")
         self.docks.focus("console")
-        # Last: the session's worker imports while it starts, so nothing of the shell may still be
-        # importing on this thread when it begins (see :meth:`DataDocks.start`).
-        self.data.start()
 
     # ── plugins ───────────────────────────────────────────────────────────
 
@@ -805,7 +796,7 @@ class EmtkShellApp(ImApp):
             MenuAction(
                 f"recent.{index}",
                 f"{index + 1} {path}",
-                partial(project.open_recent, path),
+                lambda p=path: project.open_recent(p),
                 "",
                 tr("Recent Projects"),
                 enabled=has_session,
@@ -854,10 +845,10 @@ class EmtkShellApp(ImApp):
             MenuAction(
                 f"dock.{key}",
                 title,
-                partial(self.docks.toggle, key),
+                lambda k=key: self.docks.toggle(k),
                 "",
                 tr("Docks"),
-                checked=partial(self.docks.is_visible, key),
+                checked=lambda k=key: self.docks.is_visible(k),
             )
             for key, title in docks
         ]
@@ -1096,11 +1087,11 @@ class EmtkShellApp(ImApp):
                 MenuAction(
                     f"window.{key}",
                     label,
-                    partial(docks.focus, key),
+                    lambda k=key: docks.focus(k),
                     "",
                     group,
                     tr("Bring this window to the front."),
-                    checked=partial(_is_focused, docks, key),
+                    checked=lambda k=key: docks.focused == k,
                 )
             )
         return actions
@@ -1557,7 +1548,7 @@ def make_app(persist: bool = True, splash: Any = None) -> EmtkShellApp:
     """
     from chisurf.emtk.session import start_session
 
-    # The update check runs for the real window (persisted), not a figure's.
+    # The update check and the warm-up run for the real window (persisted), not a figure's.
     app = EmtkShellApp(session_factory=start_session, splash=splash, post_show=persist)
     if persist:
         from chisurf.emtk.state import attach_native_state

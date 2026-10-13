@@ -7,7 +7,7 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 
 Submit = Callable[[Callable[[], Any], Callable[[Any], None], Callable[[str], None]], None]
 

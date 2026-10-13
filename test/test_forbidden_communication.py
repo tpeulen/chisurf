@@ -28,7 +28,7 @@ SCAN_DIRECTORIES = [
     "chisurf/gui",
     "chisurf/gui/widgets/fitting",
     "chisurf/gui/widgets/models",
-    "chisurf/gui/plots",
+    "chisurf/emtk/fit_pages/pages",
     "chisurf/plugins",
 ]
 
@@ -223,7 +223,7 @@ def _scan_lines(lines: list[str]) -> list[tuple[str, int, str]]:
 
 
 def _collect_files() -> list[pathlib.Path]:
-    # SCAN_DIRECTORIES nest (``chisurf/gui`` contains ``chisurf/gui/plots`` ...);
+    # SCAN_DIRECTORIES nest (``chisurf/gui`` contains ``chisurf/emtk/fit_pages/pages`` ...);
     # a file reachable from two roots must be scanned once or its count doubles.
     files: dict[pathlib.Path, None] = {}
     for rel_dir in SCAN_DIRECTORIES:

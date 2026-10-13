@@ -2,7 +2,7 @@
 
 Pages are not widgets and bring no Qt controller: a page declares its settings
 as an AutoForm spec (``settings_view``) over a plain model, and
-:class:`~chisurf.gui.plots.emtk_settings.PlotSettingsHost` draws the current
+:class:`~chisurf.gui.widgets.fitting.plot_settings_host.PlotSettingsHost` draws the current
 page's. These drive the dock with real mouse input.
 """
 
@@ -17,8 +17,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from qtpy import QtCore, QtWidgets  # noqa: E402
 from qtpy.QtTest import QTest  # noqa: E402
 
-from chisurf.gui.plots.emtk_settings import PlotSettingsHost, host_in  # noqa: E402
-from chisurf.gui.plots.lineplot.lineplot import LinePlot  # noqa: E402
+from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot  # noqa: E402
+from chisurf.gui.widgets.fitting.plot_settings_host import PlotSettingsHost, host_in  # noqa: E402
 from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit  # noqa: E402
 
 
@@ -88,7 +88,7 @@ def test_a_curve_unticked_in_the_table_is_hidden(lineplot_dock):
 
 
 def test_a_page_without_settings_says_so(qapp, qtbot):
-    from chisurf.gui.plots.wr_plot import ResidualPlot
+    from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
 
     page = ResidualPlot(_simulated_fit())
     host = PlotSettingsHost()

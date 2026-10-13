@@ -13,7 +13,7 @@ from mmfdb.schema.dictionary_schema_map import DictionarySchemaMap
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.widgets.general import apply_compact_table_style
 
 from .entity_registry import EntitySpec

@@ -186,7 +186,7 @@ _initialize_logging()
 def __getattr__(name: str):
     """Lazily resolve selected subpackages or settings on first access."""
     if name == "plots":
-        mod = importlib.import_module("chisurf.gui.plots")
+        mod = importlib.import_module("chisurf.emtk.fit_pages.pages")
         globals()["plots"] = mod
         return mod
     if name == "settings":

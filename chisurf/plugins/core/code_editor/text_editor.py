@@ -5,7 +5,7 @@ import sys
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.syntax import (
     JSONHighlighter,
     PythonHighlighter,

@@ -40,7 +40,7 @@ FILE_ACTIONS = {
 
 #: The fitting client lives under ``chisurf.gui``; it is only *used* when the
 #: host already loaded it (inside ChiSurf), never imported from here.
-_FITTING_CLIENT_MODULE = "chisurf.gui.widgets.fitting.fitting_client"
+_FITTING_CLIENT_MODULE = "chisurf.core.api.fitting_client"
 
 
 def _layout_store() -> LayoutStore | None:

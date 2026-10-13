@@ -26,11 +26,11 @@ def _open_main(directory: Path):
     import chisurf as cs
     import chisurf.gui as gui
     from chisurf.core.api import ChiSurfAPI
+    from chisurf.core.api.fitting_client import install_fitting_client
     from chisurf.core.plugin.client import InProcessClient
     from chisurf.core.project.lifecycle import SaveDecision
     from chisurf.core.project.project import ResourceContext
     from chisurf.gui.main import Main
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.server.dispatcher import ServiceDispatcher
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

@@ -2,8 +2,8 @@
 
 import pytest
 
+from chisurf.chiplot import backends
 from chisurf.gui import chiplot as cp
-from chisurf.gui.chiplot import backends
 
 
 @pytest.mark.parametrize("backend", ["emtk"])

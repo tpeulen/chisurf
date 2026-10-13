@@ -22,8 +22,8 @@ qtpy = pytest.importorskip("qtpy")
 
 from qtpy import QtWidgets  # noqa: E402
 
+from chisurf.chiplot import backends as _backends  # noqa: E402
 from chisurf.gui import chiplot as cp  # noqa: E402
-from chisurf.gui.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -482,14 +482,14 @@ def test_migrated_modules_import(qapp):
         # burst_fcs_correlator it transitively imports IMP, which segfaults in this
         # shared test process. Verified standalone + screenshot-checked instead.
         # Batch 25
-        "chisurf.gui.plots.parameter_scan.parameter_scan",
+        "chisurf.emtk.fit_pages.pages.parameter_scan.parameter_scan",
         # Batch 26
-        "chisurf.gui.plots.proteinMC",
+        "chisurf.emtk.fit_pages.pages.proteinMC",
         # Batch 27
         # NB: surfaceplot was deleted with the orphan sweep (Batch 31) — the
         # module is gone, so it cannot be checked for import cleanliness here.
         # Batch 32
-        "chisurf.gui.plots.residual_image",
+        "chisurf.emtk.fit_pages.pages.residual_image",
         # Batch 33
     ):
         assert importlib.import_module(name) is not None
@@ -810,8 +810,8 @@ def test_backend_contract_matches_implementation():
     """
     import inspect
 
-    from chisurf.gui.chiplot.backends import base
-    from chisurf.gui.chiplot.backends import emtk_backend as eb
+    from chisurf.chiplot.backends import base
+    from chisurf.chiplot.backends import emtk_backend as eb
 
     pairs: list[tuple[type, type]] = [
         (base.Canvas, eb.EmtkCanvas),

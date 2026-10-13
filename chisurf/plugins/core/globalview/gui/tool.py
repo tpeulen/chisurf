@@ -189,7 +189,7 @@ class GraphWizard(ChisurfDockTool):
 
     def _connect_events(self) -> None:
         """Re-read the fits when one of them, or a parameter, changes."""
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.core.api.fitting_client import get_fitting_client
 
         fc = get_fitting_client()
         if fc is None:
@@ -220,7 +220,7 @@ class GraphWizard(ChisurfDockTool):
 
     def closeEvent(self, event):  # noqa: N802 (Qt)
         """Unsubscribe, and remember the geometry and the docks."""
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.core.api.fitting_client import get_fitting_client
 
         fc = get_fitting_client()
         if fc is not None:

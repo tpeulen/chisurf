@@ -38,7 +38,7 @@ def cli():
 @click.option("--list-fits", is_flag=True, help="List available fits and exit.")
 def run(files, fit_index, output, list_fits):
     """Run the template fit over FILES using the in-process fitting client."""
-    from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+    from chisurf.core.api.fitting_client import get_fitting_client
 
     fit_client = get_fitting_client()
     if fit_client is None:

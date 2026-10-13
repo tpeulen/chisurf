@@ -96,7 +96,7 @@ def _set(model, **values):
 def test_the_editor_renders_and_declares_the_image_plots(qapp):
     from qtpy import QtWidgets
 
-    from chisurf.gui.plots.residual_image import Residual2DPlot
+    from chisurf.emtk.fit_pages.pages.residual_image import Residual2DPlot
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
     from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
@@ -197,7 +197,7 @@ def test_ics_compute_is_finite_for_adversarial_params():
 
 def test_residual_2d_plot_draws_and_maps_the_roi(qapp):
     from chisurf.core.models.grid_images import get_grid_residual_image
-    from chisurf.gui.plots.residual_image import Residual2DPlot
+    from chisurf.emtk.fit_pages.pages.residual_image import Residual2DPlot
 
     fit = _make_ics_fit(n_lags=3)
     fit.model.update()

@@ -1,15 +1,15 @@
-"""Guard: every module under ``chisurf/gui/plots`` is reachable from the tree.
+"""Guard: every module under ``chisurf/emtk/fit_pages/pages`` is reachable from the tree.
 
 The plot package is a registry, not a scratchpad: a plot is used by being named
 in a model widget's ``plot_classes`` (or imported by
-``chisurf/gui/plots/__init__.py``). Nothing discovers plot modules dynamically,
+``chisurf/emtk/fit_pages/pages/__init__.py``). Nothing discovers plot modules dynamically,
 so a module nobody imports is dead — and dead plot modules are not harmless.
 They keep obsolete dependencies alive: ``av_plot.py`` was the last
 ``pyqtgraph.opengl`` entry on the PRD-64 migration tracker, and
 ``surfaceplot/`` carried a runtime ``.ui`` form plus the guiqwt compatibility
 shim, both of which the repo is removing.
 
-This test fails when a module under ``chisurf/gui/plots`` has no importer
+This test fails when a module under ``chisurf/emtk/fit_pages/pages`` has no importer
 anywhere in ``chisurf/`` outside its own subtree. Fix it by wiring the plot up
 or by deleting it — never by special-casing it here.
 """
@@ -22,8 +22,8 @@ import re
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 _PKG = _ROOT / "chisurf"
-_PLOTS = _PKG / "gui" / "plots"
-_PLOTS_MODULE = "chisurf.gui.plots"
+_PLOTS = _PKG / "emtk" / "fit_pages" / "pages"
+_PLOTS_MODULE = "chisurf.emtk.fit_pages.pages"
 _DECLARED_PATH = re.compile(r"^(chisurf(?:\.\w+)+):\w+$")
 
 
@@ -38,7 +38,7 @@ def _module_name(path: pathlib.Path) -> str:
     Returns
     -------
     str
-        Dotted module name, e.g. ``chisurf.gui.plots.lcurve``. A package
+        Dotted module name, e.g. ``chisurf.emtk.fit_pages.pages.lcurve``. A package
         ``__init__.py`` resolves to the package itself.
     """
     rel = path.relative_to(_ROOT).with_suffix("")
@@ -106,13 +106,13 @@ def _exported_names() -> dict[str, str]:
     """Map each public plot name to the submodule that ``plots/__init__.py`` serves it from.
 
     The package resolves its public names lazily from an ``_EXPORTS`` table, so
-    ``from chisurf.gui.plots import LinePlot`` is an import of ``plots.lineplot``
+    ``from chisurf.emtk.fit_pages.pages import LinePlot`` is an import of ``plots.lineplot``
     even though no import statement names that module.
 
     Returns
     -------
     dict
-        ``{"LinePlot": "chisurf.gui.plots.lineplot", ...}``.
+        ``{"LinePlot": "chisurf.emtk.fit_pages.pages.lineplot", ...}``.
     """
     tree = ast.parse((_PLOTS / "__init__.py").read_text(encoding="utf-8"))
     for node in tree.body:
@@ -139,7 +139,7 @@ def _attribute_names(path: pathlib.Path) -> set[str]:
 
 
 def test_no_orphan_plot_modules():
-    """Every ``chisurf.gui.plots`` submodule has an importer outside itself."""
+    """Every ``chisurf.emtk.fit_pages.pages`` submodule has an importer outside itself."""
     candidates = {}
     for entry in sorted(_PLOTS.iterdir()):
         if entry.name.startswith(("_", ".")) or entry.name == "__pycache__":
@@ -154,16 +154,19 @@ def test_no_orphan_plot_modules():
     imports_by_file = {}
     exported = _exported_names()
     for source in _PKG.rglob("*.py"):
-        if "plots" not in source.read_text(encoding="utf-8", errors="ignore"):
+        # A page names its siblings relatively (``from .emtk_text_view import ...``).
+        if _PLOTS not in source.parents and "fit_pages" not in source.read_text(
+            encoding="utf-8", errors="ignore"
+        ):
             continue
         refs = {ref for ref in _imported_paths(source) if ref.startswith(_PLOTS_MODULE)}
-        # `from chisurf.gui.plots import LinePlot` reaches the module that serves that name.
+        # `from chisurf.emtk.fit_pages.pages import LinePlot` reaches the module that serves that name.
         refs |= {
             exported[ref.rpartition(".")[2]]
             for ref in refs
             if ref.rpartition(".")[0] == _PLOTS_MODULE and ref.rpartition(".")[2] in exported
         }
-        # So does `import chisurf.gui.plots as p` followed by `p.LinePlot`: the plot registry
+        # So does `import chisurf.emtk.fit_pages.pages as p` followed by `p.LinePlot`: the plot registry
         # resolves every plot that way, inside a zero-argument factory.
         if _PLOTS_MODULE in refs:
             refs |= {exported[name] for name in _attribute_names(source) if name in exported}

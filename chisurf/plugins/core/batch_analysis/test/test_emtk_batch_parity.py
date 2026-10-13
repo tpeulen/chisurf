@@ -216,8 +216,8 @@ def qt_run(monkeypatch, tmp_path, session, files, indices, save):
     """Drive the Qt view model's own ``run`` (dialogs recorded, no real progress dialog) on *session*'s fakes."""
     import chisurf as cs
     import chisurf.core.actions
+    from chisurf.core.api import fitting_client
     from chisurf.gui import dialogs
-    from chisurf.gui.widgets.fitting import fitting_client
 
     shown = []
     monkeypatch.setattr(

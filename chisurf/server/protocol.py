@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import threading
-from pathlib import Path
+from importlib import resources
 from typing import Any
 
 
@@ -140,11 +140,7 @@ def load_method_specs() -> list[dict[str, Any]]:
     list of dict
         One specification per registered method, in declaration order.
     """
-    # Beside this file, not ``resources.files("chisurf.server")``: that anchor imports the
-    # package, and this module runs *inside* the package's ``__init__`` -- on another thread
-    # than the one initialising the package, it waits for that thread's import lock while
-    # that thread waits for this module (``_DeadlockError``; see ``chisurf.emtk.session``).
-    with Path(__file__).with_name("server_methods.json").open(encoding="utf-8") as fp:
+    with resources.files("chisurf.server").joinpath("server_methods.json").open() as fp:
         return json.load(fp)["methods"]
 
 

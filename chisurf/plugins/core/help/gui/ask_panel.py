@@ -41,7 +41,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.plugins.core.help.api import markdown as md_api
 
 logger = logging.getLogger(__name__)

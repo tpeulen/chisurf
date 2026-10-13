@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+from chisurf.core.api.fitting_client import get_fitting_client
 
 __all__ = ["FittingClientParamMutator"]
 

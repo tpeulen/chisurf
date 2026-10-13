@@ -27,8 +27,8 @@ import logging
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
 
 from .registry import register_section
 

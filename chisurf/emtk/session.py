@@ -12,13 +12,6 @@ What the server cannot send is something to *draw*: a fit window's pages are
 plot objects built over the fit. Because the server runs in this process,
 :meth:`ShellSession.presentation_fit` hands the window the fit object for
 reading; edits still go through the API.
-
-The server, the API facade and the event subscriber are imported *here*, at module level, not
-by the session's worker. The shell runs :func:`start_session` on a worker thread while its main
-thread goes on (the Log dock's call monitor imports ``chisurf.server.dispatcher``); two threads
-importing the package ``chisurf.server`` for the first time take CPython's per-module import
-locks in opposite orders and one of them dies with ``_DeadlockError``. Whoever names
-``start_session`` has imported this module, so the package is complete before any worker starts.
 """
 
 from __future__ import annotations
@@ -29,15 +22,6 @@ import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
-
-# Imported before any thread starts (see the module docstring); never move these into a stage.
-import chisurf.core.api
-import chisurf.core.api._client
-import chisurf.core.server_events
-import chisurf.server.app
-import chisurf.server.session
-import chisurf.server.startup  # noqa: F401
-import chisurf.startup.services
 
 _log = logging.getLogger("chisurf.emtk.session")
 
@@ -224,6 +208,15 @@ def start_session(
 # ``context.metadata``. They run on the shell's session worker, never on its frame loop.
 
 
+def stage_imports(context: Any) -> None:
+    """Import the server, the API facade and the event subscriber."""
+    import chisurf.core.api  # noqa: F401
+    import chisurf.core.api._client  # noqa: F401
+    import chisurf.core.server_events  # noqa: F401
+    import chisurf.server.app  # noqa: F401
+    import chisurf.server.session  # noqa: F401
+
+
 def stage_experiments(context: Any) -> None:
     """Register the experiments (readers and model classes) without their Qt widgets."""
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
@@ -312,6 +305,7 @@ __all__ = [
     "free_port",
     "stage_connect",
     "stage_experiments",
+    "stage_imports",
     "stage_server",
     "stage_session",
     "start_session",

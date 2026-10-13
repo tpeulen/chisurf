@@ -1118,8 +1118,8 @@ def run(directory, stage, report):
     main.show()
     report["phase"] = "ordinary-api-load"
     api = ChiSurfAPI(mode="local")
+    from chisurf.core.api.fitting_client import install_fitting_client
     from chisurf.core.plugin.client import InProcessClient
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.server.dispatcher import ServiceDispatcher
 
     dispatcher = ServiceDispatcher(api._state)

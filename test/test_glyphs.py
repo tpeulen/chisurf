@@ -1,27 +1,14 @@
-"""Tests for the canonical glyph registry (:mod:`chisurf.gui.glyphs`).
+"""Tests for the canonical glyph registry (:mod:`chisurf.core.glyphs`).
 
 The registry is a Qt-free source of truth for the pictographic "emoticon"
 icons used across ChiSurf widgets, so it can be tested headlessly without a
 display or the Qt stack.
 """
 
-import importlib.util
-import pathlib
-
 import pytest
 
-_MODULE_PATH = pathlib.Path(__file__).resolve().parents[1] / "chisurf" / "gui" / "glyphs.py"
+from chisurf.core import glyphs
 
-
-def _load_glyphs():
-    """Import ``chisurf.gui.glyphs`` directly, bypassing the Qt-heavy package."""
-    spec = importlib.util.spec_from_file_location("_chisurf_glyphs", _MODULE_PATH)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-glyphs = _load_glyphs()
 Glyphs = glyphs.Glyphs
 normalize = glyphs.normalize
 

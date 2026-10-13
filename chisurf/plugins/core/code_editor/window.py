@@ -4,7 +4,7 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.widgets.tools.chisurf_dock import ChisurfDock
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.code_editor.editor import (

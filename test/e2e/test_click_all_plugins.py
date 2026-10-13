@@ -723,7 +723,7 @@ def recorded_plots():
     from emtk import im, implot
     from emtk.widgets import auto_range
 
-    from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+    from chisurf.chiplot.backends.emtk_backend import EmtkCanvas
 
     plots: list = []
     original_end, original_draw = implot.end_plot, EmtkCanvas.draw
@@ -1828,7 +1828,7 @@ def recorded_views():
     from emtk import im, implot
     from emtk.im_core import Context
 
-    from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+    from chisurf.chiplot.backends.emtk_backend import EmtkCanvas
 
     views: dict = {}
     original_end, original_draw = implot.end_plot, EmtkCanvas.draw

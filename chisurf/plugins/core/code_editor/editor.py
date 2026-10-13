@@ -18,8 +18,8 @@ import chisurf as cs
 import chisurf.core.fio as io
 import chisurf.gui.widgets
 from chisurf import logging
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor.acp_client import AcpClient
 from chisurf.plugins.core.code_editor.agent_panel import AgentPanelWidget

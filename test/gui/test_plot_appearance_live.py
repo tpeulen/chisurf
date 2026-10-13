@@ -25,7 +25,7 @@ def plot(monkeypatch):
 
 
 def _lineplot(qapp):
-    from chisurf.gui.plots.lineplot.lineplot import LinePlot
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
     page = LinePlot(_simulated_fit())
@@ -59,7 +59,7 @@ def test_the_grid_strength_reaches_the_drawn_gridlines(qapp, plot, monkeypatch):
     from emtk.testing import RecordingPainter
     from emtk.widgets import plot as emtk_plot
 
-    from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+    from chisurf.chiplot.backends.emtk_backend import EmtkCanvas
 
     seen = []
     original = emtk_plot.Plot._draw_gridlines
@@ -81,7 +81,7 @@ def test_the_axis_text_size_scales_the_axis_text(qapp, plot):
     from emtk import fonts
     from emtk.testing import RecordingPainter
 
-    from chisurf.gui.chiplot.backends.emtk_backend import EmtkCanvas
+    from chisurf.chiplot.backends.emtk_backend import EmtkCanvas
 
     class Scaling(RecordingPainter):
         def __init__(self):

@@ -18,7 +18,7 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 
 
 def _default_loader(db_path: str | None = None) -> dict:

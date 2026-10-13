@@ -18,7 +18,7 @@ from collections.abc import Sequence
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.colorize import ValueColorScheme
 from chisurf.gui.widgets.chitable.source import DataStoreSource, TableSource
 from chisurf.gui.widgets.chitable.widget import (

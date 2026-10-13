@@ -28,13 +28,12 @@ os.chdir(REPO)
 import numpy as np  # noqa: E402
 from emtk.testing import RecordingPainter  # noqa: E402
 
-from test.gui.emtk_port_parity import emtk_screenshot  # noqa: E402
-
 import chisurf as cs  # noqa: E402
 import chisurf.core.actions  # noqa: E402,F401  (run_batch dispatches fit.set_dataset / fit.run)
-import chisurf.gui.widgets.fitting.fitting_client as fitting_client  # noqa: E402
+import chisurf.core.api.fitting_client as fitting_client  # noqa: E402
 from chisurf.core.fluorescence.decay_fit_model import build_lifetime_fit  # noqa: E402
 from chisurf.plugins.core.batch_analysis.gui.app import make_app  # noqa: E402
+from test.gui.emtk_port_parity import emtk_screenshot  # noqa: E402
 
 IBH = REPO / "test/data/tcspc/ibh_sample"
 DT = 0.0141 * 8  # ns per channel after 8x rebinning (4096 -> 512)

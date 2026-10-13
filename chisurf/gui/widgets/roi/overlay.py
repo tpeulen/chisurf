@@ -40,7 +40,7 @@ def roi_from_handle(handle: Any, template: Any) -> Any:
 
     Parameters
     ----------
-    handle : chisurf.gui.chiplot.handles.Roi
+    handle : chisurf.chiplot.handles.Roi
         The dragged shape.
     template : ROI
         The region this handle stands for; its type and name are kept.

@@ -5,12 +5,11 @@ have imported Qt. A local TCSPC lifetime fit is opened as the shell opens one
 (:class:`chisurf.emtk.fit_window.FitWindow`), every page is built and drawn, and the
 Code face is turned over.
 
-Today the surface, the page registry and the Code face are Qt-free
-(:mod:`chisurf.emtk.fit_pages`), so the only way to Qt left is a page class: they draw
-through ``chisurf.gui.chiplot``, which imports Qt at package import (its ``Plot`` is a
-``QWidget``), and they live under ``chisurf.gui``, whose ``__init__`` imports Qt. The
-full guard is a strict xfail until that move lands (``okf/subsystems/qt-retirement.md``);
-the narrower guard holds what has landed.
+The surface, the page registry, the Code face and the page classes are Qt-free
+(:mod:`chisurf.emtk.fit_pages`, pages in :mod:`chisurf.emtk.fit_pages.pages`), and the
+pages draw through the toolkit-free chiplot core (:mod:`chisurf.chiplot`); the Qt
+widgets of chiplot are the host layer :mod:`chisurf.gui.chiplot`, which only a Qt host
+imports (``okf/subsystems/qt-retirement.md``, item 6).
 """
 
 from __future__ import annotations
@@ -19,8 +18,6 @@ import subprocess
 import sys
 import textwrap
 from pathlib import Path
-
-import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -83,22 +80,22 @@ def test_the_fit_window_surface_registry_and_code_face_import_no_qt():
     assert out.strip().splitlines()[-1] == "[]", out
 
 
-def test_opening_a_fit_window_reaches_qt_only_through_a_page_class():
-    """What landed: the surface, ``model_plot_specs`` and the Code face no longer pull Qt in."""
-    out = _run(OPEN_WINDOW)
-    first = next(line for line in out.splitlines() if line.startswith("FIRST"))
-    chain = [frame for frame in eval(first[len("FIRST ") :]) if "/chisurf/chisurf/" in frame]
-    via = [frame for frame in chain if "/chisurf/gui/" in frame]
-    assert via, out
-    for module in ("fit_plots_area.py", "model_editor.py", "autoform/", "fit_code_face.py"):
-        assert not any(module in frame for frame in chain), (module, chain)
+def test_every_shipped_page_class_resolves_without_qt():
+    """Every key of ``PLOT_CLASSES`` (not only a lifetime fit's pages) imports no Qt."""
+    out = _run(
+        """
+        import sys
+        from chisurf.emtk.fit_pages.plots import PLOT_CLASSES, get_plot_class
+        for key in PLOT_CLASSES:
+            get_plot_class(key)
+        import chisurf.chiplot
+        print(len(PLOT_CLASSES), sorted(m for m in ("qtpy", "PyQt5") if m in sys.modules))
+        """
+    )
+    count, loaded = out.strip().splitlines()[-1].split(" ", 1)
+    assert int(count) >= 22 and loaded == "[]", out
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="page classes draw through chisurf.gui.chiplot, which imports Qt "
-    "(qt-retirement ledger: move the fit page classes and a Qt-free chiplot core)",
-)
 def test_opening_a_fit_window_imports_no_qt():
     out = _run(OPEN_WINDOW)
     assert "LOADED []" in out, out

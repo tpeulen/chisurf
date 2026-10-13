@@ -14,7 +14,7 @@ _EXPORTS = {
     "make_fitting_parameter_group_widget": "parameter_widgets",
     "make_fitting_parameter_widget": "parameter_widgets",
 }
-_MODULES = frozenset(_EXPORTS.values()) | {"fitting_client", "widgets"}
+_MODULES = frozenset(_EXPORTS.values()) | {"widgets"}
 __all__ = list(_EXPORTS) + ["parameter_settings", "presentation_fit_members"]
 
 

@@ -18,7 +18,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from chisurf.gui.plots.table_plot_emtk import _BASE_COLUMNS  # noqa: E402
+from chisurf.emtk.fit_pages.pages.table_plot_emtk import _BASE_COLUMNS  # noqa: E402
 
 
 class _Curve:
@@ -73,10 +73,12 @@ WIDTH, HEIGHT = 760.0, 420.0
 @pytest.fixture
 def emtk_plot(monkeypatch):
     """An emtk Data-table page over a fake fit, plus the recorded client."""
-    from chisurf.gui.plots.table_plot_emtk import FitTablePlotEmtk
+    from chisurf.emtk.fit_pages.pages.table_plot_emtk import FitTablePlotEmtk
 
     client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot_emtk.get_fitting_client", lambda: client)
+    monkeypatch.setattr(
+        "chisurf.emtk.fit_pages.pages.table_plot_emtk.get_fitting_client", lambda: client
+    )
     plot = FitTablePlotEmtk(_FakeFit())
     yield plot, client
     plot.table.cancel_edit()
@@ -103,7 +105,7 @@ def test_plot_is_emtk_drawn(emtk_plot):
     from emtk.widgets.buttons import SmallButton
     from emtk.widgets.data_table import DataTable
 
-    from chisurf.gui.plots.emtk_page import page_body
+    from chisurf.emtk.fit_pages.pages.emtk_page import page_body
 
     plot, _ = emtk_plot
     assert getattr(plot, "emtk", False) is True
@@ -176,8 +178,8 @@ def test_filter_narrows_visible_rows(emtk_plot):
 
 
 def test_the_registry_gives_the_emtk_page(qapp):
+    from chisurf.emtk.fit_pages.pages.table_plot_emtk import FitTablePlotEmtk
     from chisurf.gui.autoform.sections.registry import get_plot_class
-    from chisurf.gui.plots.table_plot_emtk import FitTablePlotEmtk
 
     assert get_plot_class("fit_table") is FitTablePlotEmtk
 

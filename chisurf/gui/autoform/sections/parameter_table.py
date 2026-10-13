@@ -42,8 +42,8 @@ import chisurf as cs
 from chisurf import typing
 from chisurf.core.api import edit_parameter, set_parameter_array
 from chisurf.core.fitting.parameter import FittingParameter
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.delegates import (
     BooleanToggleDelegate,
     FloatEditDelegate,

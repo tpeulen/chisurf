@@ -12,8 +12,8 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.general import apply_compact_table_style
 from chisurf.gui.widgets.spectrum_view import SpectrumView

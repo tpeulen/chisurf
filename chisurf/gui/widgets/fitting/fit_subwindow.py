@@ -14,10 +14,10 @@ import chisurf.core.support.decorators
 import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
+from chisurf.core.api.fitting_client import get_fitting_client
 from chisurf.gui import dialogs
 from chisurf.gui.widgets.fitting import presentation_fit_members
 from chisurf.gui.widgets.fitting.fit_plots_area import FitPlotsArea
-from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
 
 
@@ -493,7 +493,7 @@ class FitSubWindow(CustomMdiSubWindow):
         """The main window's *Plot settings* host, or ``None`` without a main window."""
         if self._control_layout is None:
             return None
-        from chisurf.gui.plots.emtk_settings import host_in
+        from chisurf.gui.widgets.fitting.plot_settings_host import host_in
 
         return host_in(self._control_layout)
 

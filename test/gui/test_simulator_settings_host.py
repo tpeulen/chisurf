@@ -91,7 +91,7 @@ def test_injected_api_is_cached_and_shared_across_reader_surfaces(qtbot):
 def test_default_embedded_context_reuses_state_and_installed_transport(qtbot, monkeypatch):
     """Composition consults existing objects without connecting, pinging or starting servers."""
     import chisurf as cs
-    from chisurf.gui.widgets.fitting import fitting_client
+    from chisurf.core.api import fitting_client
 
     state = SessionState()
     transport = SimpleNamespace(call=lambda *a, **kw: pytest.fail("composition performed RPC"))
@@ -109,7 +109,7 @@ def test_default_embedded_context_reuses_state_and_installed_transport(qtbot, mo
 def test_default_external_transport_is_reused_in_server_mode(qtbot, monkeypatch):
     """An installed external service transport is never recreated or reconnected."""
     import chisurf as cs
-    from chisurf.gui.widgets.fitting import fitting_client
+    from chisurf.core.api import fitting_client
 
     transport = SimpleNamespace(call=lambda *a, **kw: pytest.fail("composition performed RPC"))
     monkeypatch.setattr(cs, "__chisurf_rpc_server__", None, raising=False)
@@ -124,7 +124,7 @@ def test_default_external_transport_is_reused_in_server_mode(qtbot, monkeypatch)
 def test_default_without_transport_uses_the_actual_live_session_lists(qtbot, monkeypatch):
     """The local fallback aliases current session lists rather than inventing a new session."""
     import chisurf as cs
-    from chisurf.gui.widgets.fitting import fitting_client
+    from chisurf.core.api import fitting_client
 
     datasets, fits = [], []
     monkeypatch.setattr(cs, "imported_datasets", datasets)

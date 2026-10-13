@@ -586,7 +586,7 @@ def setup_gui(
         import chisurf.core.fluorescence
         import chisurf.core.models
         import chisurf.core.structure
-        import chisurf.gui.plots
+        import chisurf.emtk.fit_pages.pages
 
     def setup_ipython():
         import chisurf.gui.widgets
@@ -1323,7 +1323,7 @@ def get_win(app: QtWidgets.QApplication) -> cs.gui.main.Main:
         # Install FittingClient (ZMQ RPC adapter for widget/backend communication).
         # ZMQ connect is lazy, so probe with a short ping before exposing the
         # transport to widgets.
-        from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
+        from chisurf.core.api.fitting_client import install_fitting_client
 
         fitting_adapter = None
         try:

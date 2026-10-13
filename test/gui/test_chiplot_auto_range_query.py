@@ -14,7 +14,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from chisurf.gui.chiplot import backends as _backends  # noqa: E402
+from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(params=["emtk"])

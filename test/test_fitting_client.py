@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from chisurf.gui.widgets.fitting.fitting_client import (
+from chisurf.core.api.fitting_client import (
     FittingClient,
     get_fitting_client,
     has_fitting_client,
@@ -561,11 +561,11 @@ class TestGlobalAdapter:
         # the module does.
         import importlib
 
-        import chisurf.gui.widgets.fitting.fitting_client as fcm
+        import chisurf.core.api.fitting_client as fcm
 
         importlib.reload(fcm)
         # After reload, should be None
-        from chisurf.gui.widgets.fitting.fitting_client import (
+        from chisurf.core.api.fitting_client import (
             get_fitting_client,
             has_fitting_client,
         )

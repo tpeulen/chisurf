@@ -364,7 +364,7 @@ class AnisotropyViewModel:
         """
         import chisurf as cs
         import chisurf.core.actions
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.core.api.fitting_client import get_fitting_client
 
         if not (self.data_ready and self.components_ready):
             self._set_status(False, mark("Data or components missing."))

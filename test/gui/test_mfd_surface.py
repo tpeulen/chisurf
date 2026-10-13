@@ -227,7 +227,7 @@ def test_the_summary_lives_in_the_info_plot_not_the_analysis_dock(fit, qapp):
     Seven rows of burst bookkeeping and a three-line caveat took the top of a
     panel whose actual job is the parameter tables underneath them.
     """
-    from chisurf.gui.plots.fitinfo import FitInfo
+    from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
     spec = fit.model.view_spec()
     kinds = [type(s).__name__ for s in spec.sections]
@@ -247,7 +247,7 @@ def test_a_model_without_a_summary_leaves_the_panel_hidden(qapp):
     import chisurf.core.data
     import chisurf.core.models.parse
     from chisurf.core.fitting.fit import Fit
-    from chisurf.gui.plots.fitinfo import FitInfo
+    from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
     x = np.linspace(0.0, 5.0, 32)
     plain = Fit(
@@ -301,8 +301,8 @@ def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
     fittable kind -- is adapted onto that shape rather than the drawing code
     learning two.
     """
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
     from chisurf.gui.autoform.sections.registry import get_plot_class
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
 
     spec = fit.model.view_spec()
     keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]
@@ -337,7 +337,7 @@ def test_a_plain_rate_scheme_has_no_pumped_transition(fit, qapp):
     a two-state FRET exchange came out with a phantom ``k_exc`` arrow out of R1
     and its real backward rate missing. There is no laser in a rate matrix.
     """
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
     assert plot.binding.excitation() is None
@@ -357,7 +357,7 @@ def test_a_declared_pumped_transition_is_still_honoured(qapp):
 
 def test_the_preset_toolbar_is_hidden_when_it_would_do_nothing(fit, qapp):
     """A model with no presets got a combo reading "Custom" and two dead buttons."""
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
     assert len(plot.binding.preset_names()) <= 1
@@ -368,8 +368,7 @@ def test_the_scheme_zooms_about_the_pointer(fit, qapp):
     """And hit-testing follows it, or a zoomed node cannot be clicked."""
     from emtk.testing import RecordingPainter
 
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
-    from chisurf.gui.plots.state_scheme_emtk import ZOOM_RANGE
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import ZOOM_RANGE, StateSchemePlot
 
     plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
     canvas = plot.canvas
@@ -445,7 +444,7 @@ def test_the_plot_draws_through_chiplot_alone(fit, qapp):
     chiplot has no passthrough to a backing library any more, so a spelling it does not
     offer is an ``AttributeError`` here rather than a silent fall-through.
     """
-    from chisurf.gui.plots.mfd_2d import Mfd2DPlot
+    from chisurf.emtk.fit_pages.pages.mfd_2d import Mfd2DPlot
 
     plot = Mfd2DPlot(fit)
     plot.update_all()
@@ -459,7 +458,7 @@ def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp)
     the curves are drawn is silently replaced by whichever curve is drawn last —
     which once left the proximity axis stopping at 0.43.
     """
-    from chisurf.gui.plots.mfd_2d import MfdMarginalPlot
+    from chisurf.emtk.fit_pages.pages.mfd_2d import MfdMarginalPlot
 
     plot = MfdMarginalPlot(fit)
     plot.update_all()
@@ -482,8 +481,8 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
     of a view showing 0 to 1. Both broke every model supplying axis vectors, not
     just this one.
     """
+    from chisurf.emtk.fit_pages.pages.residual_image import _resolve_accessor
     from chisurf.gui.autoform.sections.registry import resolve_plot_specs
-    from chisurf.gui.plots.residual_image import _resolve_accessor
 
     assert callable(
         _resolve_accessor("chisurf.core.models.mfd.two_dimensional:get_mfd_residual_image")
@@ -510,8 +509,8 @@ def test_what_the_histogram_excluded_is_reported_once(fit, qapp):
     dataset and does not change as the fit runs, so a three-line paragraph under
     the axes only costs the curves the room they were given the tab for.
     """
-    from chisurf.gui.plots.fitinfo import FitInfo
-    from chisurf.gui.plots.mfd_2d import Mfd2DPlot
+    from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
+    from chisurf.emtk.fit_pages.pages.mfd_2d import Mfd2DPlot
 
     plot = Mfd2DPlot(fit)
     plot.update_all()
@@ -526,7 +525,7 @@ def test_what_the_histogram_excluded_is_reported_once(fit, qapp):
 def test_no_module_here_imports_pyqtgraph_directly():
     """The seam guard, applied to the modules this change added."""
     for relative in (
-        "chisurf/gui/plots/mfd_2d.py",
+        "chisurf/emtk/fit_pages/pages/mfd_2d.py",
         "chisurf/core/experiments/mfd/reader.py",
         "chisurf/core/models/mfd/two_dimensional.py",
     ):

@@ -26,6 +26,7 @@ from typing import Any
 from qtpy import QtWidgets
 
 from chisurf.core.dataspec import load_view_spec as load_view_spec
+from chisurf.core.glyphs import Glyphs
 from chisurf.core.math.statistics import (
     chi2_max as chi2_max,
 )
@@ -35,7 +36,6 @@ from chisurf.core.math.statistics import (
 from chisurf.core.math.statistics import (
     f_test_confidence as f_test_confidence,
 )
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
@@ -122,7 +122,7 @@ class FTestTool(ChisurfDockTool):
         menu = self._from_fit_btn.menu()
         menu.clear()
         try:
-            from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+            from chisurf.core.api.fitting_client import get_fitting_client
 
             fits = [fs for group in get_fitting_client().get_fit_objects() for fs in group]
         except Exception:

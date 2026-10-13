@@ -19,7 +19,7 @@ pytest.importorskip("emtk.widgets.auto_range")
 
 from emtk.testing import RecordingPainter  # noqa: E402
 
-from chisurf.gui.chiplot import backends as _backends  # noqa: E402
+from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

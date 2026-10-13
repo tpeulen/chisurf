@@ -11,7 +11,7 @@ from collections.abc import Sequence
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.filters import (
     ALL_OPS,
     NULL_OPS,

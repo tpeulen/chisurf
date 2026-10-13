@@ -16,7 +16,7 @@ from __future__ import annotations
 from qtpy import QtCore, QtWidgets
 
 from chisurf import typing
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 
 #: Prefix shown in the nav list for a completed step.
 _CHECK = f"{Glyphs.CHECK} "

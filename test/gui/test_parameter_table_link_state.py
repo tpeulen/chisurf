@@ -14,6 +14,7 @@ import pytest
 
 import chisurf
 import chisurf.core.data as data
+from chisurf.core.api.fitting_client import install_fitting_client
 from chisurf.core.fitting.fit import FitGroup
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.description import tcspc_lifetime as LifetimeModel
@@ -25,7 +26,6 @@ from chisurf.gui.autoform.sections.parameter_table import (
     ParameterGroupTableModel,
     ParameterGroupTableWidget,
 )
-from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
 from chisurf.server.services.fits import get_fit_info, list_fits
 from chisurf.server.services.parameters import parameter_link, parameter_unlink
 from chisurf.server.session import SessionState

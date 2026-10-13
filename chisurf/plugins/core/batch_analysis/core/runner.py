@@ -15,7 +15,7 @@ fakes:
 
 * ``fit_client`` — an object exposing ``get_fit_objects()``,
   ``set_parameter_value(...)`` and ``set_parameter_fixed(...)`` (in production,
-  :func:`chisurf.gui.widgets.fitting.fitting_client.get_fitting_client`).
+  :func:`chisurf.core.api.fitting_client.get_fitting_client`).
 * ``dispatch`` — the action dispatcher used to load data / assign datasets /
   run fits (in production, ``chisurf.core.actions.dispatch``).
 """
@@ -349,7 +349,7 @@ def run_batch(
         The processing queue (see :func:`build_queue`).
     fit_client : object, optional
         Fitting client; defaults to
-        :func:`chisurf.gui.widgets.fitting.fitting_client.get_fitting_client`.
+        :func:`chisurf.core.api.fitting_client.get_fitting_client`.
     dispatch : callable, optional
         Action dispatcher; defaults to ``chisurf.core.actions.dispatch``.
     imported_datasets : sequence, optional
@@ -370,7 +370,7 @@ def run_batch(
         The collected rows, processing order and screenshot map.
     """
     if fit_client is None:
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.core.api.fitting_client import get_fitting_client
 
         fit_client = get_fitting_client()
     if dispatch is None:

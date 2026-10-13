@@ -57,9 +57,9 @@ def test_actual_main_owner_publication(request, tmp_path, monkeypatch, scenario)
     from chisurf.core.api import ChiSurfAPI
     from chisurf.core.project.lifecycle import SaveDecision
     from chisurf.core.project.project import ResourceContext
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from chisurf.gui.main import Main
     from chisurf.gui.qt_lifetime import is_deleted
-    from chisurf.gui.plots.lineplot.lineplot import LinePlot
     from chisurf.gui.widgets.fitting import FitSubWindow
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 

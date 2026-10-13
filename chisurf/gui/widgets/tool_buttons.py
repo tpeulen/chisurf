@@ -240,7 +240,7 @@ def styled_tool_button(
 
 from dataclasses import dataclass  # noqa: E402
 
-from chisurf.gui.glyphs import Glyphs  # noqa: E402
+from chisurf.core.glyphs import Glyphs  # noqa: E402
 
 
 @dataclass(frozen=True)

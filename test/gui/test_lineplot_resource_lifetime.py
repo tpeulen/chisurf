@@ -15,7 +15,7 @@ from pathlib import Path
 
 from qtpy import QtCore
 
-from chisurf.gui.plots.lineplot.lineplot import LinePlot
+from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
 from chisurf.gui.qt_lifetime import is_deleted
 from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 

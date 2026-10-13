@@ -86,7 +86,7 @@ class BatchViewModel:
 
     # ── fit / dataset resolution ────────────────────────────────────────
     def _fit_client(self):
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.core.api.fitting_client import get_fitting_client
 
         return get_fitting_client()
 

@@ -134,7 +134,7 @@ if stage == "A":
     _mod = _iu.module_from_spec(_spec)
     _spec.loader.exec_module(_mod)
     _simulated_fit = _mod._simulated_fit
-    from chisurf.gui.plots.lineplot.lineplot import LinePlot
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from chisurf.macros.core_fit import save_project
 
     exp = cs.experiment["TCSPC"]

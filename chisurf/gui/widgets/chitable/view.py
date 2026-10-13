@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.datastore import write_csv_table
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.model import ChiTableModel
 
 #: Rows inspected when sizing columns to content.

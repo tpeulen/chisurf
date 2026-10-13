@@ -2216,7 +2216,7 @@ class Main(
         """
         try:
             import chisurf as cs
-            from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+            from chisurf.core.api.fitting_client import get_fitting_client
 
             fc = get_fitting_client()
             if fc is None:

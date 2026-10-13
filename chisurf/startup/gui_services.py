@@ -34,7 +34,7 @@ _DEFERRED_MODULES = (
     "chisurf.core.fitting",
     "chisurf.core.fluorescence",
     "chisurf.core.models",
-    "chisurf.gui.plots",
+    "chisurf.emtk.fit_pages.pages",
     "chisurf.core.structure",
 )
 

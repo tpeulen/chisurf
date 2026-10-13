@@ -8,12 +8,10 @@ of the shell. The pages are the model's declared plots
 the first time its tab is drawn and re-read from the fit when the server says
 the fit changed (:meth:`FitWindow.refresh`).
 
-The surface, the page registry and the Code face are Qt-free
-(:mod:`chisurf.emtk.fit_pages`). The page classes themselves still live under
-``chisurf.gui.plots`` and draw through ``chisurf.gui.chiplot``; importing either runs the
-``chisurf.gui`` package ``__init__``, which imports Qt (no ``QApplication`` is made and
-nothing is drawn by Qt). The shell therefore imports this module only when the first fit
-window opens; the remaining move is in ``okf/subsystems/qt-retirement.md``.
+Qt-free throughout: the surface, the page registry, the Code face and the page classes
+(:mod:`chisurf.emtk.fit_pages`, pages in :mod:`chisurf.emtk.fit_pages.pages`) draw through
+the toolkit-free chiplot core (:mod:`chisurf.chiplot`). The guard is
+``test/native_emtk/test_fit_window_is_qt_free.py``.
 """
 
 from __future__ import annotations
@@ -49,8 +47,8 @@ class FitWindow:
         title: str,
         request_frame: Callable[[], None] | None = None,
     ) -> None:
-        from chisurf.emtk.fit_pages.surface import make_surface
         from chisurf.emtk.fit_pages.plots import model_plot_specs
+        from chisurf.emtk.fit_pages.surface import make_surface
 
         self.uid = str(uid)
         self.fit = fit

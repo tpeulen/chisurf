@@ -302,7 +302,7 @@ def test_every_action_is_complete_and_translatable():
 
 def test_icons_are_the_canonical_glyphs():
     """The vocabulary's icons are the registry's glyphs (spelled out only to keep emtk apps Qt-free)."""
-    from chisurf.gui.glyphs import Glyphs
+    from chisurf.core.glyphs import Glyphs
 
     expected = {
         "help": Glyphs.HELP,

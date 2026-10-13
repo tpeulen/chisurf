@@ -2,7 +2,7 @@
 #
 # EMPTY, and it stays empty: ``.native`` couples a call site to the backend's own
 # object (for emtk, its display list) without importing anything, so the import
-# guard never sees it. Check `chisurf/gui/chiplot/canvas.py` before concluding
+# guard never sees it. Check `chisurf/chiplot/canvas.py` before concluding
 # chiplot lacks something -- most such reaches predate the API that covers them
 # (``set_si_prefix``, ``set_axis_visible``, ``set_tick_spacing``, ``legend``) --
 # and if it genuinely does, add the API to chiplot and use that.

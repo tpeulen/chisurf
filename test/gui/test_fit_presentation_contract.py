@@ -17,7 +17,7 @@ from test.project.test_all_model_catalogue_roundtrip import _data
 def presentation(qtbot, monkeypatch, request):
     """Build real equation fits and the production controller and plot window."""
     import chisurf as cs
-    from chisurf.gui.widgets.fitting import fitting_client
+    from chisurf.core.api import fitting_client
 
     monkeypatch.setattr(fitting_client, "_FITTING_CLIENT", None)
     monkeypatch.setattr(cs, "cs", None)
@@ -154,6 +154,7 @@ def test_generated_editor_edits_authoritative_parameter_and_saves_exactly(
     from qtpy import QtCore
 
     import chisurf as cs
+    from chisurf.core.api import fitting_client
     from chisurf.core.models.pda2c.simple import Pda2cSimpleModel
     from chisurf.core.project.session import restore_session
     from chisurf.gui.autoform.sections.parameter_table import (
@@ -161,7 +162,6 @@ def test_generated_editor_edits_authoritative_parameter_and_saves_exactly(
         PairedParameterTableModel,
         ParameterGroupTableModel,
     )
-    from chisurf.gui.widgets.fitting import fitting_client
     from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     monkeypatch.setattr(fitting_client, "_FITTING_CLIENT", None)

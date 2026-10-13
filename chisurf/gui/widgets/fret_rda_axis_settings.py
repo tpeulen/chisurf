@@ -13,8 +13,8 @@ from qtpy import QtWidgets
 import chisurf as cs
 import chisurf.core.fluorescence
 import chisurf.core.settings
+from chisurf.core.api.fitting_client import get_fitting_client
 from chisurf.core.settings.settings_utils import apply_fret_rda_axis
-from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
 
 class FretRdaAxisSettingsWidget(QtWidgets.QGroupBox):

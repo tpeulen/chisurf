@@ -2,8 +2,8 @@
 
 import numpy as np
 
+from chisurf.chiplot import backends
 from chisurf.gui import chiplot as cp
-from chisurf.gui.chiplot import backends
 
 
 def test_bar_only_panel_fits_real_histogram_rectangles(qapp, monkeypatch):

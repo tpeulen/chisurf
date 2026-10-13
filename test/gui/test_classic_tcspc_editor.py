@@ -248,7 +248,7 @@ def test_the_classic_rows_are_not_fitted(lifetime):
 
 def test_acceptor_density_distribution_tab_binds_its_declared_donor_spectrum(qapp):
     """The real distribution tab must construct from the described donor spectrum."""
-    from chisurf.gui.plots.distribution import DistributionPlot
+    from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     fit, model = _fit("tcspc_fret_acceptor_density")

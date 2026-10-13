@@ -62,7 +62,7 @@ def quadratic_fit():
 
 
 def test_the_parameter_scan_settings_drive_the_scan(qapp, quadratic_fit):
-    import chisurf.gui.plots.parameter_scan.parameter_scan as module
+    import chisurf.emtk.fit_pages.pages.parameter_scan.parameter_scan as module
 
     _no_qt(module)
     page = module.ParameterScanPlot(quadratic_fit)
@@ -96,7 +96,7 @@ def test_the_parameter_scan_settings_drive_the_scan(qapp, quadratic_fit):
 
 
 def test_the_distribution_options_are_a_generated_form(qapp):
-    import chisurf.gui.plots.distribution as module
+    import chisurf.emtk.fit_pages.pages.distribution as module
 
     _no_qt(module)
     data = {
@@ -117,7 +117,7 @@ def test_the_distribution_options_are_a_generated_form(qapp):
 
 
 def test_the_distribution_page_reads_its_settings(qapp):
-    from chisurf.gui.plots.distribution import DistributionPlot
+    from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
     from test.gui.test_classic_tcspc_editor import _fit  # noqa: PLC0415
 
     fit, model = _fit("tcspc_fret_acceptor_density")
@@ -145,7 +145,7 @@ def test_the_distribution_page_reads_its_settings(qapp):
 
 
 def test_the_residual_2d_settings_follow_the_image(qapp):
-    import chisurf.gui.plots.residual_image as module
+    import chisurf.emtk.fit_pages.pages.residual_image as module
     from chisurf.core.models.grid_images import get_grid_residual_image
     from test.gui.test_ics_model_editor import _make_ics_fit
 

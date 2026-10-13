@@ -16,7 +16,7 @@ import pytest
 
 pytest.importorskip("emtk")
 
-from chisurf.gui.chiplot import backends as _backends  # noqa: E402
+from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -388,7 +388,7 @@ def test_an_rgb_float_overlay_is_read_as_unit_range(view):
 
 
 def test_an_image_that_is_neither_2d_nor_colour_is_refused_by_name(view):
-    from chisurf.gui.chiplot import backends
+    from chisurf.chiplot import backends
 
     canvas = backends.get_backend().create_canvas()
     with pytest.raises(ValueError, match="2-D"):

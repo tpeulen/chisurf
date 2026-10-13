@@ -10,7 +10,7 @@ The surface is :class:`FitWindowSurface`, an :class:`emtk.app.ImApp`. Its pages
 are windows of an :class:`emtk.docking.DockManager`: tabs in one region by
 default, and a tab dragged onto a region's edge splits the window. Each page is
 a plot object; what it shows is read once by
-:func:`chisurf.gui.plots.emtk_page.page_body` and drawn here with
+:func:`chisurf.emtk.fit_pages.pages.emtk_page.page_body` and drawn here with
 :func:`emtk.im.host_control`. A right click on a chiplot panel offers that
 panel's menu (export data or image, auto-range, the plot's own entries).
 
@@ -147,7 +147,7 @@ def _surface_class():
         # -- drawing ------------------------------------------------------ #
         def page_body(self, index: int):
             """The page's emtk body, rebuilt only when what it draws changed."""
-            from chisurf.gui.plots.emtk_page import install_refresh, page_body
+            from chisurf.emtk.fit_pages.pages.emtk_page import install_refresh, page_body
 
             page = self.pages[index]
             widget = page.provider()

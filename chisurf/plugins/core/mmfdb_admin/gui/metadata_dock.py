@@ -12,8 +12,8 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.metadata_editor import (
     ALL_METADATA_KEYS,
     MetadataEditor,

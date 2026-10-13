@@ -19,7 +19,7 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui.widgets.chitable.colorize import ValueColorScheme
 from chisurf.gui.widgets.chitable.dialogs import ColumnFilterDialog, ColumnPickerDialog
 from chisurf.gui.widgets.chitable.filters import FilterSpec

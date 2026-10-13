@@ -80,10 +80,10 @@ def test_legacy_refresh_without_an_owner_keeps_the_active_window_path():
 def equation_session(qapp, monkeypatch):
     """Two real catalogue models exposed through the existing direct RPC client."""
     import chisurf
+    from chisurf.core.api import fitting_client
     from chisurf.core.data import DataCurve
     from chisurf.core.fitting.fit import Fit
     from chisurf.core.models.fcs.parse import ParseFCSModel
-    from chisurf.gui.widgets.fitting import fitting_client
     from chisurf.server.session import SessionState
     from test.gui.test_parameter_link_menu import _DirectClient
 

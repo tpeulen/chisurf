@@ -114,12 +114,12 @@ def test_line_plot_import_is_isolated(tmp_path):
     run_fresh(
         """
 import sys
-import chisurf.gui.plots as plots
+import chisurf.emtk.fit_pages.pages as plots
 line = plots.LinePlot
 assert plots.LinePlot is line
 for name in ('fitinfo', 'mfd_2d', 'mfd_map', 'residual_image',
              'sampling_diagnostics', 'posterior_graph'):
-    assert 'chisurf.gui.plots.' + name not in sys.modules, name
+    assert 'chisurf.emtk.fit_pages.pages.' + name not in sys.modules, name
 assert 'chisurf.gui.widgets.metadata_editor' not in sys.modules
 """,
         tmp_path,
@@ -131,7 +131,7 @@ def test_plot_public_exports_and_submodules(tmp_path):
     run_fresh(
         """
 import importlib
-import chisurf.gui.plots as plots
+import chisurf.emtk.fit_pages.pages as plots
 exports = {
     'ConditionalScanPlot': 'conditional_scan', 'DeerPrCIPlot': 'deer_pr',
     'DistributionPlot': 'distribution', 'FitInfo': 'fitinfo',
@@ -143,13 +143,13 @@ exports = {
     'ResidualPlot': 'wr_plot',
 }
 for name, module in exports.items():
-    expected = getattr(importlib.import_module('chisurf.gui.plots.' + module), name)
+    expected = getattr(importlib.import_module('chisurf.emtk.fit_pages.pages.' + module), name)
     assert getattr(plots, name) is expected, name
     assert getattr(plots, name) is plots.__dict__[name]
     assert name in dir(plots)
 for name in ('proteinMC', 'plotbase', 'lineplot'):
-    assert getattr(plots, name) is importlib.import_module('chisurf.gui.plots.' + name)
-from chisurf.gui.plots import LinePlot, FitInfo, proteinMC
+    assert getattr(plots, name) is importlib.import_module('chisurf.emtk.fit_pages.pages.' + name)
+from chisurf.emtk.fit_pages.pages import LinePlot, FitInfo, proteinMC
 assert LinePlot is plots.LinePlot
 try:
     plots.nonexistent_plot
@@ -300,7 +300,7 @@ def test_parameter_widget_import_avoids_controller_chain(tmp_path):
     run_fresh(
         """
 import sys
-from chisurf.gui.widgets.fitting import parameter_widgets, fitting_client
+from chisurf.gui.widgets.fitting import parameter_widgets
 from chisurf.gui.widgets.fitting.parameter_widgets import FittingParameterWidget
 assert FittingParameterWidget is parameter_widgets.FittingParameterWidget
 for name in ('fit_controller', 'fit_list', 'fit_subwindow', 'widgets'):
@@ -318,7 +318,7 @@ from chisurf.gui.widgets.fitting import (
     FittingControllerWidget, ModelDataRepresentationSelector, FitSubWindow,
     FittingParameterDetailPopup, FittingParameterGroupWidget, FittingParameterProxyController,
     FittingParameterWidget, ParameterActionsMixin, make_fitting_parameter_group_widget,
-    make_fitting_parameter_widget, parameter_settings, parameter_widgets, fitting_client,
+    make_fitting_parameter_widget, parameter_settings, parameter_widgets,
 )
 from chisurf.gui.widgets.fitting import widgets
 import chisurf.gui.widgets.fitting as fitting
@@ -326,7 +326,6 @@ for name in widgets.__all__:
     assert getattr(fitting, name) is getattr(widgets, name), name
     assert name in dir(fitting)
 assert fitting.FittingParameterWidget is parameter_widgets.FittingParameterWidget
-assert fitting.fitting_client is fitting_client
 """,
         tmp_path,
     )
@@ -414,10 +413,10 @@ from chisurf.gui import chiplot as cp
 # importing the plots must neither need it nor hand it to chiplot.
 assert 'pyqtgraph_config' not in chisurf.core.settings.cs_settings['gui']['plot']
 with patch.object(cp, 'configure', wraps=cp.configure) as configure:
-    import chisurf.gui.plots as plots
+    import chisurf.emtk.fit_pages.pages as plots
     configure.assert_not_called()
 namespace = {}
-exec('from chisurf.gui.plots import *', namespace)
+exec('from chisurf.emtk.fit_pages.pages import *', namespace)
 for name in plots.__all__:
     assert namespace[name] is getattr(plots, name), name
 """,

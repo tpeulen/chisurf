@@ -39,7 +39,7 @@ def single_fit():
 
 def test_residual_plot_accepts_a_plain_fit(app, single_fit):
     """Regression: this raised TypeError: 'Fit' object is not iterable."""
-    from chisurf.gui.plots.wr_plot import ResidualPlot
+    from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
 
     p = ResidualPlot(single_fit)
     assert len(p.curves) == 1, "a lone Fit is a group of one"
@@ -47,7 +47,7 @@ def test_residual_plot_accepts_a_plain_fit(app, single_fit):
 
 
 def test_residual_plot_member_fits_helper():
-    from chisurf.gui.plots.wr_plot import _member_fits
+    from chisurf.emtk.fit_pages.pages.wr_plot import _member_fits
 
     class _Group(list):
         pass

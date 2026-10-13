@@ -9,6 +9,8 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.glyphs import Glyphs
+
 # Canonical conversions, shared with native detector setup editing.
 from chisurf.core.optical_configuration import (
     _graph_to_config,
@@ -18,7 +20,6 @@ from chisurf.core.optical_configuration import (
 from chisurf.core.settings import cs_settings
 from chisurf.core.settings.path_utils import get_path
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.filtered_table import FilteredTableWidget
 from chisurf.plugins.core.lightpath_simulator.core.workflow import (
     MFDatabaseAdapter,

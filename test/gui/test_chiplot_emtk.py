@@ -17,7 +17,7 @@ from qtpy import QtGui
 
 pytest.importorskip("emtk")
 
-from chisurf.gui.chiplot import backends as _backends  # noqa: E402
+from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -462,7 +462,7 @@ def test_a_filled_curve_is_shaded_down_to_zero(plot):
 
 def test_an_image_view_shows_a_stack_frame_by_frame(qapp):
     """A (t, y, x) stack steps; a plain image is shown as it is."""
-    from chisurf.gui.chiplot import backends as backends_module
+    from chisurf.chiplot import backends as backends_module
 
     view = backends_module.get_backend().create_image_view()
     stack = np.stack([np.full((8, 8), float(i)) for i in range(5)])
@@ -484,7 +484,7 @@ def test_an_image_view_shows_a_stack_frame_by_frame(qapp):
 
 def test_an_image_view_reports_clicks_in_image_coordinates(qapp):
     """What a pixel picker needs from it."""
-    from chisurf.gui.chiplot import backends as backends_module
+    from chisurf.chiplot import backends as backends_module
 
     view = backends_module.get_backend().create_image_view()
     view.set_image(np.zeros((4, 4)))
@@ -496,7 +496,7 @@ def test_an_image_view_reports_clicks_in_image_coordinates(qapp):
 
 def test_a_grid_lays_its_panels_out(qapp):
     """Each cell is a panel of its own, and the cursor walks the row."""
-    from chisurf.gui.chiplot import backends as backends_module
+    from chisurf.chiplot import backends as backends_module
 
     grid = backends_module.get_backend().create_grid()
     first = grid.add_panel(title="left")
@@ -580,7 +580,7 @@ def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
 
 def test_tick_numbers_read_as_values():
     """A log axis holds exponents, and a linear step never prints float noise."""
-    from chisurf.gui.chiplot.backends.emtk_backend import _tick_labels
+    from chisurf.chiplot.backends.emtk_backend import _tick_labels
 
     assert _tick_labels([0.0, 1.0, 2.0, 3.0], log=True) == ["1", "10", "100", "1000"]
     assert _tick_labels([6.0], log=True) == ["10⁶"]
@@ -646,7 +646,7 @@ def test_a_log_axis_takes_its_limits_in_data_units_and_ticks_on_decades(plot):
     The limits were used as exponents -- an axis up to 10**3000 that read
     "10^10.669" and pressed the decay flat onto its floor.
     """
-    from chisurf.gui.chiplot.backends.emtk_backend import _tick_labels
+    from chisurf.chiplot.backends.emtk_backend import _tick_labels
 
     t = np.linspace(0.0, 12.0, 400)
     counts = np.where(t < 1.0, 0.0, 5.0e4 * np.exp(-(t - 1.0) / 2.5))

@@ -1,70 +1,56 @@
-"""chiplot — ChiSurf's renderer-neutral plotting API.
+"""chiplot for Qt hosts: the toolkit-free API of :mod:`chisurf.chiplot` plus its ``QWidget`` wrappers.
 
-chiplot is the single seam through which ChiSurf draws 2-D plots. Call sites
-use this package; they never import a rendering library directly. The backend
-(emtk, drawn through its own painter) is selected at runtime; another renderer
-can be registered without touching any call site.
+:mod:`chisurf.chiplot` is the plotting API (panels, handles, styles, backends)
+and imports no Qt. This package adds the widgets a Qt layout embeds --
+:class:`Plot`, :class:`Grid`, :class:`ImageView`, :class:`VolumeView` (from
+:mod:`chisurf.gui.chiplot.canvas`) -- and re-exports everything else, so a Qt
+call site writes ``from chisurf.gui import chiplot as cp`` and finds the whole
+API in one place. Code that draws on an emtk surface imports
+:mod:`chisurf.chiplot` instead and never loads Qt.
 
 Quick start
 -----------
 >>> from chisurf.gui import chiplot as cp          # doctest: +SKIP
 >>> plot = cp.Plot(title="decay")                  # doctest: +SKIP
 >>> curve = plot.line(x, y, pen="red", width=2)    # doctest: +SKIP
->>> plot.set_labels(left="counts", bottom="t / ns")  # doctest: +SKIP
->>> plot.set_log(y=True)                           # doctest: +SKIP
->>> region = plot.region((1.0, 4.0), movable=True) # doctest: +SKIP
->>> region.on_change(lambda lo, hi: print(lo, hi)) # doctest: +SKIP
-
-Public surface
---------------
-- Widgets: :class:`Plot`, :class:`Grid`.
-- Styles: :class:`Color`, :class:`Pen`, :class:`Brush`, :class:`Colormap`,
-  :class:`LineStyle`, and the coercers :func:`to_color` / :func:`to_pen` /
-  :func:`to_brush` / :func:`colormap` / :func:`to_colormap` / :func:`int_color`.
-- Handle enums: :class:`Symbol`, :class:`Orientation`.
-- Backend control: :func:`configure`, :func:`set_backend`, :func:`get_backend`.
 """
 
 from __future__ import annotations
 
-from chisurf.gui.chiplot.backends import available_backends, get_backend, set_backend
-from chisurf.gui.chiplot.canvas import Grid, ImageView, Panel, PanelPlot, Plot, PlotAPI, VolumeView
-from chisurf.gui.chiplot.handles import Orientation, Symbol
-from chisurf.gui.chiplot.style import (
+from chisurf.chiplot import (  # the toolkit-free API, re-exported for Qt hosts
     Brush,
     Color,
     Colormap,
     LineStyle,
+    Orientation,
+    Panel,
     Pen,
+    PlotAPI,
+    Symbol,
+    available_backends,
+    backends,
     colormap,
+    configure,
+    get_backend,
+    handles,
     int_color,
+    set_backend,
+    style,
     to_brush,
     to_color,
     to_colormap,
     to_pen,
 )
-
-
-def configure(**global_opts) -> None:
-    """Apply process-wide rendering options to the active backend.
-
-    Parameters
-    ----------
-    **global_opts
-        Backend-recognised global options (e.g. ``antialias=True``,
-        ``background="w"``, ``foreground="k"``). Unknown keys are the backend's
-        responsibility.
-    """
-    get_backend().configure(**global_opts)
-
+from chisurf.gui.chiplot import canvas  # the Qt widgets' module (not the core's ``canvas``)
+from chisurf.gui.chiplot.canvas import Grid, ImageView, PanelPlot, Plot, VolumeView
 
 __all__ = [
     "Plot",
     "Grid",
     "ImageView",
     "VolumeView",
-    "Panel",
     "PanelPlot",
+    "Panel",
     "PlotAPI",
     "Color",
     "Pen",
@@ -83,4 +69,8 @@ __all__ = [
     "set_backend",
     "get_backend",
     "available_backends",
+    "backends",
+    "canvas",
+    "handles",
+    "style",
 ]

@@ -320,7 +320,10 @@ def test_fitting_controller_finds_the_proteinmc_model(qapp):
 
 def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
     """The network plot reads the labelling file off the *model*, not a line edit."""
-    from chisurf.gui.plots.proteinMC import ProteinMCDistanceNetworkPlot, _agreement_color
+    from chisurf.emtk.fit_pages.pages.proteinMC import (
+        ProteinMCDistanceNetworkPlot,
+        _agreement_color,
+    )
 
     structure = _two_ca_structure()
     xyz = structure.atoms["xyz"]
@@ -354,7 +357,7 @@ def test_distance_network_plot_constructs(qapp, qtbot, tmp_path):
 
 def test_network_playback_steps_on_drawn_frames_and_round_trips(qapp, tmp_path):
     """No timer: a playing page steps when a frame draws it, and the project keeps it."""
-    from chisurf.gui.plots.proteinMC import PLAY_INTERVAL, ProteinMCDistanceNetworkPlot
+    from chisurf.emtk.fit_pages.pages.proteinMC import PLAY_INTERVAL, ProteinMCDistanceNetworkPlot
 
     structure = _two_ca_structure()
     xyz = structure.atoms["xyz"]
@@ -392,7 +395,7 @@ def test_network_playback_steps_on_drawn_frames_and_round_trips(qapp, tmp_path):
 
 def test_trajectory_settings_hide_panels_and_keep_the_old_keys(qapp):
     """The four curve toggles choose the panels drawn; their state uses the old keys."""
-    from chisurf.gui.plots.proteinMC import ProteinMCPlot
+    from chisurf.emtk.fit_pages.pages.proteinMC import ProteinMCPlot
 
     model = SimpleNamespace(
         rmsd=[1.0, 2.0],

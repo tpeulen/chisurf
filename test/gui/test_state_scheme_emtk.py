@@ -9,7 +9,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from chisurf.gui.plots.state_scheme_emtk import (  # noqa: E402
+from chisurf.emtk.fit_pages.pages.state_scheme_emtk import (  # noqa: E402
     SchemeBinding,
     SchemeCanvas,
     edge_route,
@@ -153,8 +153,8 @@ def test_the_page_draws_on_the_fit_window_surface(qapp, qtbot):
     from qtpy import QtCore
     from qtpy.QtTest import QTest
 
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
-    from chisurf.gui.plots.emtk_page import page_body
+    from chisurf.emtk.fit_pages.pages.emtk_page import page_body
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
     from chisurf.gui.widgets.fitting.fit_plots_area import make_surface
 
     fit = type("Fit", (), {"model": _Model()})()

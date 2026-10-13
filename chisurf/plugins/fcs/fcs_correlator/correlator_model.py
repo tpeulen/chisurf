@@ -126,7 +126,7 @@ class CorrelatorSettingsModel:
         }
 
     def correlation_series(self):
-        from chisurf.gui import chiplot as cp
+        from chisurf import chiplot as cp
 
         n = len(self._correlations)
         return [

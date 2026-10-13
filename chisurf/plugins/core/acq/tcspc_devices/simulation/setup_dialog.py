@@ -11,9 +11,9 @@ from typing import Any
 from qtpy import QtWidgets
 
 from chisurf.core import dataspec as ds
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
 from chisurf.gui.autoform import AutoForm, register_section
-from chisurf.gui.glyphs import Glyphs
 
 from .settings_model import (  # noqa: F401
     SimulationSettingsModel as _SettingsBase,

@@ -10,7 +10,7 @@ Global View's *Parameters* tab. Unlike
   every out-of-fit group registered via
   :mod:`chisurf.core.registry.parameter_groups` (e.g. a plugin working model);
 * routes all edits/links through an injected **mutator** (default: the
-  :class:`~chisurf.gui.widgets.fitting.fitting_client.FittingClient`) so mutations
+  :class:`~chisurf.core.api.fitting_client.FittingClient`) so mutations
   are RPC-mediated, and out-of-fit parameters are addressed by their global
   ``unique_identifier`` (see the ``parameter_uid`` path in
   :mod:`chisurf.server.services.parameters`);
@@ -29,7 +29,9 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf import logging
+from chisurf.core.api.fitting_client import get_fitting_client
 from chisurf.core.fitting.parameter_network import ParameterRow, parameter_rows, session_owners
+from chisurf.core.glyphs import Glyphs
 from chisurf.core.parameter import Parameter
 from chisurf.core.registry.parameter_groups import iter_registered_parameter_groups
 from chisurf.gui import dialogs
@@ -39,9 +41,7 @@ from chisurf.gui.autoform.sections.parameter_table import (
     _RichTextDelegate,
 )
 from chisurf.gui.autoform.sections.registry import register_section
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.chitable import ChiTableWidget, TableFeature
-from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.fitting.parameter_mutator import (
     FittingClientParamMutator,
 )

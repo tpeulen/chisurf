@@ -13,8 +13,8 @@ def test_structure_plot_uses_angstrom_scale_factor(qapp, qtbot, monkeypatch):
     factor of 10 assumes nanometer input, which would make the structure
     appear 10x too large. The plot should pass scale_factor=1.0.
     """
-    import chisurf.gui.plots.proteinMC as proteinMC_module
-    from chisurf.gui.plots.proteinMC import ProteinMCStructurePlot
+    import chisurf.emtk.fit_pages.pages.proteinMC as proteinMC_module
+    from chisurf.emtk.fit_pages.pages.proteinMC import ProteinMCStructurePlot
 
     calls = []
 

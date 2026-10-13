@@ -54,9 +54,8 @@ class Session:
     def __init__(self, case_dir: str) -> None:
         # Before anything else: chisurf's imports pull in the standard library's ``test`` package, which
         # would then shadow the repository's.
-        from test.gui.fit_window_page_probe import _open_main
-
         import chisurf as cs
+        from test.gui.fit_window_page_probe import _open_main
 
         self.cs = cs
         self.app, self.main, _result = _open_main(pathlib.Path(case_dir))
@@ -326,7 +325,7 @@ def _global_fits():
 def global_view(app) -> None:
     """The Global View on four fits sharing a lifetime: the network, then include fixed."""
     import chisurf
-    from chisurf.gui.widgets.fitting.fitting_client import (
+    from chisurf.core.api.fitting_client import (
         get_fitting_client,
         install_fitting_client,
     )

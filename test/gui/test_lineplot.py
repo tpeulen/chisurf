@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import chisurf.core.plotting.transforms as plot_transforms
-from chisurf.gui.plots.lineplot.lineplot import (
+from chisurf.emtk.fit_pages.pages.lineplot.lineplot import (
     LinePlot,
     LinePlotSettings,
     _load_reference_presets,
@@ -16,8 +16,9 @@ def _lineplot_source() -> str:
     path = (
         Path(__file__).resolve().parents[2]
         / "chisurf"
-        / "gui"
-        / "plots"
+        / "emtk"
+        / "fit_pages"
+        / "pages"
         / "lineplot"
         / "lineplot.py"
     )
@@ -237,8 +238,9 @@ def test_presets_static_source_has_all_expected_keys():
     path = (
         Path(__file__).resolve().parents[2]
         / "chisurf"
-        / "gui"
-        / "plots"
+        / "emtk"
+        / "fit_pages"
+        / "pages"
         / "lineplot"
         / "reference_presets.json"
     )
@@ -385,7 +387,7 @@ def test_the_legend_is_shown_when_the_setting_asks_for_it():
 
 def test_a_huge_chi2_is_printed_short():
     """An unfitted χ² of 1e180 must not become a line of digits across the plot."""
-    from chisurf.gui.plots.lineplot.lineplot import _fmt_metric
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import _fmt_metric
 
     assert _fmt_metric(2.9131708e180) == "2.913e+180"
     assert _fmt_metric(1.2345) == "1.234" or _fmt_metric(1.2345) == "1.235"

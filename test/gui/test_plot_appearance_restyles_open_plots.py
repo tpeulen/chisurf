@@ -41,7 +41,7 @@ def model(monkeypatch, tmp_path):
 @pytest.fixture
 def page(qapp, model):
     """An open fit plot, drawn once, as a fit window holds it."""
-    from chisurf.gui.plots.lineplot.lineplot import LinePlot
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
     plot = LinePlot(_simulated_fit())
@@ -146,7 +146,7 @@ def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model, qapp):
     import gc
 
     from chisurf.core.plotting import appearance
-    from chisurf.gui.plots.lineplot.lineplot import LinePlot
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
     count = len(appearance._subscribers)
@@ -159,7 +159,7 @@ def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model, qapp):
 
 
 def test_the_residual_page_restyles_too(qapp, model):
-    from chisurf.gui.plots.wr_plot import ResidualPlot
+    from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
     plot = ResidualPlot(_simulated_fit())
@@ -171,7 +171,7 @@ def test_the_residual_page_restyles_too(qapp, model):
 
 
 def test_the_distribution_page_restyles_too(qapp, model):
-    from chisurf.gui.plots.distribution import DistributionPlot
+    from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
     from test.gui.test_classic_tcspc_editor import _fit
 

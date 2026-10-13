@@ -57,7 +57,7 @@ def _fix(fit, *names) -> None:
 
 def test_what_if_plot_answers_the_current_fit(app, quadratic_fit):
     """Three free parameters: every one of them is offered and swept."""
-    from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
+    from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
 
     widget = ConditionalScanPlot(quadratic_fit)
     widget.update()
@@ -73,7 +73,7 @@ def test_what_if_plot_drops_the_stale_scan_when_it_degrades(app, quadratic_fit):
     Regression: ``_scan`` stayed populated and the readout held the previous
     table, because clearing the combo re-ran the sweep on the dead engine.
     """
-    from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
+    from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
 
     widget = ConditionalScanPlot(quadratic_fit)
     widget.update()
@@ -82,7 +82,7 @@ def test_what_if_plot_drops_the_stale_scan_when_it_degrades(app, quadratic_fit):
     _fix(quadratic_fit, "a", "b")
     widget.update()
 
-    from chisurf.gui.plots import emtk_notes as N
+    from chisurf.emtk.fit_pages.pages import emtk_notes as N
 
     assert widget.parameters == []
     assert widget._scan is None
@@ -97,7 +97,7 @@ def test_what_if_plot_drops_the_stale_scan_when_it_degrades(app, quadratic_fit):
 
 def test_what_if_plot_ignores_the_combo_once_it_has_degraded(app, quadratic_fit):
     """A selection change after degrading must not redraw from the old engine."""
-    from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
+    from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
 
     widget = ConditionalScanPlot(quadratic_fit)
     widget.update()
@@ -111,8 +111,8 @@ def test_what_if_plot_ignores_the_combo_once_it_has_degraded(app, quadratic_fit)
 
 def test_what_if_readout_reads_the_held_value(app, quadratic_fit):
     """Moving the held value moves the 'would be' column, not the 'free' one."""
-    from chisurf.gui.plots import emtk_notes as N
-    from chisurf.gui.plots.conditional_scan import ConditionalScanPlot
+    from chisurf.emtk.fit_pages.pages import emtk_notes as N
+    from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
 
     widget = ConditionalScanPlot(quadratic_fit)
     widget.update()

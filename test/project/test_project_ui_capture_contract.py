@@ -27,7 +27,7 @@ def real_view_owner(request, qtbot, monkeypatch):
     """Use production controller/plot widgets; proxy science is a real service."""
     from qtpy import QtWidgets
 
-    from chisurf.gui.widgets.fitting import fitting_client
+    from chisurf.core.api import fitting_client
     from chisurf.gui.widgets.fitting.fit_controller import FittingControllerWidget
     from chisurf.gui.widgets.fitting.fit_subwindow import FitSubWindow
 

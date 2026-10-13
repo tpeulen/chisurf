@@ -45,7 +45,7 @@ class _Server:
 
 @pytest.fixture
 def client():
-    from chisurf.gui.widgets.fitting.fitting_client import FittingClient
+    from chisurf.core.api.fitting_client import FittingClient
 
     return FittingClient()
 

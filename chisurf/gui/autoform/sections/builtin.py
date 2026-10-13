@@ -16,7 +16,7 @@ import chisurf as cs
 import chisurf.core.math.datatools
 from chisurf import logging
 from chisurf.core.api import edit_parameter
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 
 from .registry import register_section
 
@@ -1450,7 +1450,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
         what it holds rather than by a class that no longer exists.
         """
         try:
-            from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+            from chisurf.core.api.fitting_client import get_fitting_client
 
             fit_groups = get_fitting_client().get_fit_objects()
         except Exception:
@@ -2532,7 +2532,7 @@ class ImageMapWidget(QtWidgets.QWidget):
 
         Returns
         -------
-        chisurf.gui.chiplot.handles.Roi
+        chisurf.chiplot.handles.Roi
 
         Raises
         ------

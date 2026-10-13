@@ -16,13 +16,15 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from chisurf.core.datastore import column_names, numeric_column, store_from_rows  # noqa: E402
-from chisurf.gui.plots.table_plot_emtk import (  # noqa: E402
+from chisurf.emtk.fit_pages.pages.table_plot_emtk import (  # noqa: E402
     _BASE_COLUMNS,
     _EDITABLE_COLUMNS,
     _parse_bool,
     column_specs,
 )
-from chisurf.gui.plots.table_plot_emtk import FitTablePlotEmtk as FitTablePlot  # noqa: E402
+from chisurf.emtk.fit_pages.pages.table_plot_emtk import (
+    FitTablePlotEmtk as FitTablePlot,  # noqa: E402
+)
 
 
 def test_column_specs_mark_only_the_editable_columns():
@@ -116,7 +118,9 @@ class _FakeClient:
 
 def test_apply_parameter_frame_pushes_edits(monkeypatch):
     client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot_emtk.get_fitting_client", lambda: client)
+    monkeypatch.setattr(
+        "chisurf.emtk.fit_pages.pages.table_plot_emtk.get_fitting_client", lambda: client
+    )
 
     plot = FitTablePlot.__new__(FitTablePlot)
     plot.fit = type("_Fit", (), {"unique_identifier": "uid", "fit_idx": 0})()
@@ -162,7 +166,9 @@ def test_apply_parameter_frame_pushes_edits(monkeypatch):
 
 def test_apply_parameter_frame_skips_unknown_parameters(monkeypatch):
     client = _FakeClient()
-    monkeypatch.setattr("chisurf.gui.plots.table_plot_emtk.get_fitting_client", lambda: client)
+    monkeypatch.setattr(
+        "chisurf.emtk.fit_pages.pages.table_plot_emtk.get_fitting_client", lambda: client
+    )
     plot = FitTablePlot.__new__(FitTablePlot)
     plot.fit = type("_Fit", (), {"unique_identifier": "uid", "fit_idx": 0})()
     plot._refresh_arrays_into_model = lambda: None
@@ -173,7 +179,7 @@ def test_apply_parameter_frame_skips_unknown_parameters(monkeypatch):
 
 
 def test_plot_module_is_qt_free():
-    import chisurf.gui.plots.table_plot_emtk as mod
+    import chisurf.emtk.fit_pages.pages.table_plot_emtk as mod
 
     source = open(mod.__file__, encoding="utf-8").read()
     assert "qtpy" not in source and "QtWidgets" not in source

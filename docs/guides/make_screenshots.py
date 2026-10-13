@@ -91,10 +91,10 @@ def _grab_parameter_link_menu():
     from qtpy import QtGui
 
     import chisurf
+    from chisurf.core.api.fitting_client import install_fitting_client
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
     from chisurf.core.models.description import tcspc_lifetime
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.gui.widgets.fitting.parameter_widgets import (
         FittingParameterProxyController,
     )
@@ -898,10 +898,10 @@ def _grab_global_view():
     that a list of fits would not have shown.
     """
     import chisurf
+    from chisurf.core.api.fitting_client import install_fitting_client
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
     from chisurf.core.models.description import tcspc_lifetime
-    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
     from chisurf.plugins.core.globalview.gui.tool import GraphWizard
 
     def make(name, tau, n_curves=1):

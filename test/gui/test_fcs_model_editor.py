@@ -175,7 +175,7 @@ def test_fcs_kinetics_model_editor_renders_and_computes(qapp):
     # Equation reflects the analytical gauss default
     assert "w<sub>r</sub>" in model.equation_html()
 
-    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     specs = model_plot_specs(model)

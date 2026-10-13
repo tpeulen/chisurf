@@ -29,7 +29,7 @@ RECORD_SITES = (
     "chisurf/gui/main.py",
     "chisurf/gui/widgets/fitting/parameter_widgets.py",
     "chisurf/gui/widgets/fitting/fit_controller.py",
-    "chisurf/gui/plots/table_plot_emtk.py",
+    "chisurf/emtk/fit_pages/pages/table_plot_emtk.py",
     "chisurf/emtk/datasets.py",
 )
 

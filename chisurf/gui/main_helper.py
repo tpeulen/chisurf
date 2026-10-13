@@ -688,7 +688,7 @@ class SetupMixin:
         if cached is not None:
             return cached
 
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+        from chisurf.core.api.fitting_client import get_fitting_client
         from chisurf.server.startup import session_state_from_live_chisurf
 
         fitting = get_fitting_client()

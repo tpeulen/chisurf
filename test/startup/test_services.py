@@ -59,6 +59,7 @@ def test_load_app_startup_services_uses_prefixed_config_order():
         "init_executors",
         "arrange_widgets",
         "setup_style",
+        "emtk_imports",
         "emtk_experiments",
         "emtk_server",
         "emtk_connect",
@@ -70,7 +71,6 @@ def test_load_app_startup_services_uses_prefixed_config_order():
         "populate_plugins",
         "check_updates",
         "warmup_imports",
-        "emtk_check_updates",
     ]
     mmfdb_spec = next(s for s in specs if s.id == "mmfdb")
     assert mmfdb_spec.surface == "server"

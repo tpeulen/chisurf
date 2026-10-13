@@ -53,7 +53,7 @@ import logging
 
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.glyphs import Glyphs
+from chisurf.core.glyphs import Glyphs
 
 from .builtin import ImageMapWidget
 from .registry import register_section

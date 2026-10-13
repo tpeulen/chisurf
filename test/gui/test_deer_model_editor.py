@@ -157,7 +157,7 @@ def test_deer_distance_accessor_returns_distribution(qapp):
 )
 def test_deer_lcurve_plot_and_compute(qapp, model_path):
     """The model-free models expose an L-curve plot that renders finite points."""
-    from chisurf.gui.plots.lcurve import LCurvePlot
+    from chisurf.emtk.fit_pages.pages.lcurve import LCurvePlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     fit = _make_deer_fit(_resolve(model_path))
@@ -182,7 +182,7 @@ def test_deer_lcurve_plot_and_compute(qapp, model_path):
 @pytest.mark.parametrize("model_path", DEER_MODELS)
 def test_deer_pr_confidence_band(qapp, model_path):
     """Every model exposes a bootstrap P(r) confidence band that brackets P."""
-    from chisurf.gui.plots.deer_pr import DeerPrCIPlot
+    from chisurf.emtk.fit_pages.pages.deer_pr import DeerPrCIPlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     fit = _make_deer_fit(_resolve(model_path))

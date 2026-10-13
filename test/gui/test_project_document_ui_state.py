@@ -49,8 +49,8 @@ def test_actual_main_ordinary_save_preserves_plot_context(request, tmp_path, mon
     from chisurf.core.project.project import ResourceContext
     from chisurf.core.project.storage import load_file
     from chisurf.core.project.ui_state import get_ui_state
+    from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from chisurf.gui.main import Main
-    from chisurf.gui.plots.lineplot.lineplot import LinePlot
     from chisurf.macros.core_fit import get_project_payload, load_project, save_project
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 

@@ -7,13 +7,12 @@ standalone.
 
 from __future__ import annotations
 
-from common import FIG, _SPC_FILE, _grab, _pump  # noqa: F401,E402
-
 import os
 import pathlib
 import tempfile
 
 import numpy as np
+from common import _SPC_FILE, FIG, _grab, _pump  # noqa: F401,E402
 
 
 def _quadratic_fit_39(sample=True):
@@ -71,8 +70,8 @@ def _grab_39_posterior_plots():
     """Dependence tab of the posterior graph and the rank tab of chain diagnostics, after sampling."""
     from qtpy import QtWidgets
 
-    from chisurf.gui.plots.posterior_graph import PosteriorGraphPlot
-    from chisurf.gui.plots.sampling_diagnostics import SamplingDiagnosticsPlot
+    from chisurf.emtk.fit_pages.pages.posterior_graph import PosteriorGraphPlot
+    from chisurf.emtk.fit_pages.pages.sampling_diagnostics import SamplingDiagnosticsPlot
 
     fit = _quadratic_fit_39(sample=True)
     graph = PosteriorGraphPlot(fit)

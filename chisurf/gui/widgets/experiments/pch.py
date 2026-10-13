@@ -9,8 +9,8 @@ import chisurf as cs
 import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
 from chisurf.core.fio.staging import TTTR_FILE_FILTER, supported_container_types
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import chiplot as cp
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 

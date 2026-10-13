@@ -410,7 +410,7 @@ def test_pda_gaussian_plots_pr_and_residual2d(qapp):
         get_pda_distance_distribution,
         get_pda_residual_image,
     )
-    from chisurf.gui.plots.residual_image import Residual2DPlot
+    from chisurf.emtk.fit_pages.pages.residual_image import Residual2DPlot
     from chisurf.gui.widgets.models.model_editor import model_plot_specs
 
     model_class = _resolve("chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel")

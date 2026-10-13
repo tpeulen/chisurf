@@ -5,8 +5,8 @@ from typing import Any
 from qtpy import QtCore, QtWidgets
 
 from chisurf import logging
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .client import ProjectBrowserClient

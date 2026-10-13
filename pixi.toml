@@ -97,7 +97,7 @@ glfw = "*"
 python-docx = "*"
 # ihm (python-ihm; import ihm) reads and writes the IHM/mmCIF dictionaries: the MMFDB importer and
 # provenance graph (mmfdb.samples.importer, mmfdb.provenance.pto_graph), the fit-info CIF view
-# (chisurf.gui.plots.fitinfo) and chimol's mmCIF reader. mmfdb is installed --no-deps, so nothing
+# (chisurf.emtk.fit_pages.pages.fitinfo) and chimol's mmCIF reader. mmfdb is installed --no-deps, so nothing
 # else brought it in.
 ihm = "*"
 # scikit-learn and hdbscan were dropped: every estimator the tree reached for —

@@ -118,7 +118,7 @@ def test_load_example_button_opens_the_dataset_and_fit(monkeypatch, tmp_path):
 def test_count_rate_page_draws_the_rate_and_a_mean_line_on_request(monkeypatch, tmp_path):
     """The fit window's Count rate page shows what the native window's did: the curve and the mean lines."""
     from chisurf.core.api import ChiSurfAPI
-    from chisurf.gui.plots.acquisition import CountRatePage
+    from chisurf.emtk.fit_pages.pages.acquisition import CountRatePage
     from chisurf.plugins.core.acq import dataset as dataset_module
 
     monkeypatch.setattr(demo, "demo_folder", lambda: tmp_path)

@@ -27,7 +27,7 @@ def info(qapp):
     import chisurf.core.data
     import chisurf.core.models.parse
     from chisurf.core.fitting.fit import Fit
-    from chisurf.gui.plots.fitinfo import FitInfo
+    from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
     x = np.linspace(0.0, 5.0, 32)
     fit = Fit(
@@ -38,7 +38,7 @@ def info(qapp):
 
 
 def test_analysis_tab_is_an_emtk_form(info):
-    from chisurf.gui.plots.emtk_analysis_form import EmtkAnalysisForm
+    from chisurf.emtk.fit_pages.pages.emtk_analysis_form import EmtkAnalysisForm
 
     assert isinstance(info.analysis_form, EmtkAnalysisForm)
     assert "analysis_form" in info.settings_form.custom

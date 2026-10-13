@@ -14,8 +14,8 @@ from typing import Any
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QUrl
 
+from chisurf.core.glyphs import Glyphs
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 
 try:
     from qtpy import sip

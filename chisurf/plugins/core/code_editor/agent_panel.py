@@ -20,10 +20,10 @@ from chisurf.core.agent import (
     LLMSettings,
     build_default_registry,
 )
+from chisurf.core.glyphs import Glyphs
 from chisurf.core.settings import ai_settings
 from chisurf.core.settings.path_utils import get_path
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.general import EnterAwarePlainTextEdit
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.validation import validate_writes

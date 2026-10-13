@@ -62,9 +62,9 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from chisurf.core.glyphs import Glyphs
 from chisurf.core.info import help_url
 from chisurf.gui import dialogs
-from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 from chisurf.plugins.core.help.api import markdown as md_api
 from chisurf.plugins.core.help.api import review

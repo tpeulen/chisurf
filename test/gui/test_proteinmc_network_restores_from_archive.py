@@ -25,7 +25,7 @@ def _restored_without_sources(tmp_path):
 
 
 def test_network_draws_restored_unsampled_model_without_source_files(qapp, qtbot, tmp_path):
-    from chisurf.gui.plots.proteinMC import ProteinMCDistanceNetworkPlot
+    from chisurf.emtk.fit_pages.pages.proteinMC import ProteinMCDistanceNetworkPlot
 
     restored = _restored_without_sources(tmp_path)
     plot = ProteinMCDistanceNetworkPlot(fit=SimpleNamespace(model=restored, name="fit"))
@@ -37,7 +37,7 @@ def test_structure_view_shows_starting_structure_and_follows_reloads(
 ):
     from qtpy import QtWidgets
 
-    import chisurf.gui.plots.proteinMC as proteinMC_module
+    import chisurf.emtk.fit_pages.pages.proteinMC as proteinMC_module
     from test.gui.test_proteinmc_structure_control_contract import _shifted_pdb
 
     events = []

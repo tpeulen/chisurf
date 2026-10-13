@@ -27,7 +27,7 @@ def _chain(n_draws):
 
 @pytest.fixture
 def page_for(qapp):
-    from chisurf.gui.plots.sampling_diagnostics import SamplingDiagnosticsPlot
+    from chisurf.emtk.fit_pages.pages.sampling_diagnostics import SamplingDiagnosticsPlot
 
     def make(fit):
         page = SamplingDiagnosticsPlot(fit)
@@ -68,7 +68,7 @@ def test_a_group_shows_its_selected_members_run(page_for):
 
 
 def test_open_in_ndx_is_on_both_panels_menus(page_for, monkeypatch):
-    import chisurf.gui.plots.sampling_diagnostics as module
+    import chisurf.emtk.fit_pages.pages.sampling_diagnostics as module
     import chisurf.plugins.ndxplorer.gui.app as ndx_app
 
     opened = []

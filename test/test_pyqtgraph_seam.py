@@ -73,7 +73,7 @@ def test_the_dependency_is_not_declared(manifest):
 
 def test_asking_for_the_pyqtgraph_backend_says_it_was_removed(monkeypatch):
     """A stale ``CHISURF_PLOT_BACKEND=pyqtgraph`` fails with the reason."""
-    from chisurf.gui.chiplot import backends
+    from chisurf.chiplot import backends
 
     monkeypatch.setenv("CHISURF_PLOT_BACKEND", "pyqtgraph")
     monkeypatch.setattr(backends, "_active", None)
@@ -149,7 +149,7 @@ def _current_native_users() -> set[str]:
     found = set()
     for path in _PKG.rglob("*.py"):
         rel = path.relative_to(_ROOT).as_posix()
-        if rel.startswith("chisurf/gui/chiplot/"):
+        if rel.startswith(("chisurf/chiplot/", "chisurf/gui/chiplot/")):
             continue  # chiplot *is* the seam; ``.native`` is its own property
         try:
             tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))

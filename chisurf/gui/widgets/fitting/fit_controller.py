@@ -18,9 +18,9 @@ import chisurf.gui.widgets.experiments.widgets
 import chisurf.logging
 from chisurf.core.actions import record_action
 from chisurf.core.api import set_fit_range, update_fit
+from chisurf.core.api.fitting_client import get_fitting_client
 from chisurf.core.math.optimization import OptimizationCancelled
 from chisurf.gui.widgets.fitting import presentation_fit_members
-from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.general import Controller
 
 #: ProteinMC drives the Sampling button itself and has no generic Fit, so this

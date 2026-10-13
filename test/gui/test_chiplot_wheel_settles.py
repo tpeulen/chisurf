@@ -26,7 +26,7 @@ from emtk import im, implot  # noqa: E402
 from emtk.app import ImApp  # noqa: E402
 from emtk.testing_realistic import RealisticDriver, assert_settles  # noqa: E402
 
-from chisurf.gui.chiplot import backends as _backends  # noqa: E402
+from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

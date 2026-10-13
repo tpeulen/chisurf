@@ -820,7 +820,7 @@ class GlobalViewModel:
 
 
 def _session_fits() -> list:
-    from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
+    from chisurf.core.api.fitting_client import get_fitting_client
 
     fc = get_fitting_client()
     return fc.get_fit_objects() if fc is not None else []
