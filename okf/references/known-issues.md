@@ -2752,7 +2752,15 @@ harvest).
 
 ## The image section still draws with raw pyqtgraph, and can crash on teardown
 
-status: open
+status: resolved 2026-10-13
+
+**Resolved.** pyqtgraph left the tree in W8 (2026-10-10) and the section moved onto
+chiplot's image view then; on 2026-10-13 that view became the toolkit-free
+`chisurf.chiplot.ImagePanel`, one emtk control with the frame slider and brush
+painting this entry asked for, hosted in the Qt form by `chiplot.host` (no
+`QGraphicsScene` left to collect). Re-check: `test/gui/test_image_section_features.py`
+and `test/gui/test_chiplot_image_dock.py` (the latter runs without a `QApplication`).
+History below.
 
 **2026-09-17.** chiplot's default backend is emtk now, but
 `chisurf/gui/autoform/sections/builtin.py::ImageMapWidget` (the `image` custom

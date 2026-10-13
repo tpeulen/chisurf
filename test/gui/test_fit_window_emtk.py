@@ -427,17 +427,19 @@ def test_no_page_leaves_a_panel_as_a_top_level_widget(window, qapp):
     that the interpreter destroyed in arbitrary order at exit: a segfault after
     the last test of a run.
     """
-    from chisurf.gui.chiplot.canvas import Plot
+    from chisurf.gui.chiplot.canvas import PanelHost
 
     area = window.plot_tab_widget
     for index in range(area.count()):
         window.ensure_plot_created(index)
     _frames(qapp, window)
+    # Pages declare toolkit-free panels; nothing may have hosted one in a
+    # top-level widget of its own.
     stray = [
         w
         for w in QtWidgets.QApplication.topLevelWidgets()
-        if isinstance(w, Plot)
-        and any(w in getattr(p, "_panels", ()) for p in window._plots_all if p is not None)
+        if isinstance(w, PanelHost)
+        and any(w.panel in getattr(p, "_panels", ()) for p in window._plots_all if p is not None)
     ]
     assert stray == []
 

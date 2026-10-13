@@ -872,7 +872,7 @@ class LinePlot(plotbase.Plot):
 
         Parameters
         ----------
-        target_plot : cp.Plot
+        target_plot : cp.Panel
             Panel to draw on.
         pen_color : str
             Line color (hex, possibly with a leading ``#RRGGBBAA`` alpha).

@@ -77,7 +77,7 @@ def test_eight_digit_hex_is_rrggbbaa():
 def test_plot_draw_all_families(qapp):
     x = np.linspace(0, 10, 50)
     y = np.sin(x)
-    plot = cp.Plot(title="t")
+    plot = cp.Panel(title="t")
     curve = plot.line(x, y, pen="red", width=2, name="sine")
     marked = plot.line(x, y, pen="#2f80ed", symbol="o", symbol_size=5, symbol_brush="#2f80ed")
     assert isinstance(marked, cp.handles.Curve)
@@ -115,7 +115,7 @@ def test_there_is_no_passthrough_to_a_backing_library(qapp):
     by forwarding to the library behind it; with that backend gone a call site
     spelled that way fails where it is written.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     with pytest.raises(AttributeError):
         plot.getPlotItem
     with pytest.raises(AttributeError):
@@ -133,7 +133,7 @@ def test_handle_is_alive_tracks_the_native_item(qapp):
     backend, so the thing it guarded — the fit-quality overlay — was created
     and then never written there.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     curve = plot.line([0, 1, 2], [0, 1, 0], pen="red")
     assert curve.is_alive() is True
     text = plot.text("hi", (1.0, 0.5))
@@ -149,7 +149,7 @@ def test_set_range_takes_data_units_on_a_log_axis(qapp):
     The conversion belongs in the backend; the API cannot be renderer-dependent
     or every caller has to know which one it is talking to.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     plot.line([1.0, 2.0, 3.0], [1.0, 100.0, 10000.0], pen="red")
     plot.set_log(y=True)
     plot.set_ylim(1.0, 10000.0)
@@ -160,7 +160,7 @@ def test_set_range_takes_data_units_on_a_log_axis(qapp):
 
 def test_menu_enabled_reads_back(qapp):
     """``set_menu_enabled`` has a read side that needs no renderer spelling."""
-    plot = cp.Plot()
+    plot = cp.Panel()
     plot.set_menu_enabled(True)
     assert plot.menu_enabled() is True
     plot.set_menu_enabled(False)
@@ -177,7 +177,7 @@ def test_arrow_angle_convention(qapp):
     every directed edge (a rate arrow between two states pointing the wrong way
     reads as the reverse transition).
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     arrow = plot.arrow(2.0, 3.0, angle=45.0, size=18, brush="r")
 
     assert isinstance(arrow, cp.handles.Arrow)
@@ -200,7 +200,7 @@ def test_arrow_from_edge_direction(qapp):
     This is the documented call-site idiom; the tip must sit on the edge's end
     point and face along the segment for any quadrant.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     for x0, y0, x1, y1 in ((0, 0, 1, 1), (0, 0, -1, 1), (0, 0, -1, -1), (0, 0, 1, -1)):
         ang = float(np.degrees(np.arctan2(y1 - y0, x1 - x0)))
         arrow = plot.arrow(x1, y1, angle=ang)
@@ -216,7 +216,7 @@ def test_text_does_not_drive_autorange(qapp):
     """
     x = np.logspace(-2, 3, 60)
     y = 1.0 + 0.8 * np.exp(-x / 2.0)
-    plot = cp.Plot()
+    plot = cp.Panel()
     plot.set_log(x=True, y=False)
     plot.line(x, y, pen="w")
     plot.text("inset", (float(x.max()) * 1e6, float(y.max())), color="y")
@@ -233,7 +233,7 @@ def test_scatter_is_log_aware(qapp):
     """
     x = np.logspace(-3, 1, 60)
     y = np.exp(-x / 0.5) * 1000 + 5  # ~5 .. ~1000
-    plot = cp.Plot()
+    plot = cp.Panel()
     plot.set_log(x=True, y=True)
     plot.scatter(x, y, size=3, brush=(60, 120, 200, 90), symbol="o")
     plot.autoscale()
@@ -242,7 +242,7 @@ def test_scatter_is_log_aware(qapp):
 
 
 def test_region_and_marker_values(qapp):
-    plot = cp.Plot()
+    plot = cp.Panel()
     reg = plot.region((1.0, 3.0))
     assert reg.bounds == (1.0, 3.0)
     reg.set_bounds(2.0, 5.0)
@@ -266,7 +266,7 @@ def test_legend_idempotent_refresh_loop(qapp):
     Regression guard for PRD-64 Batch 9: the curve-viewer tools
     (microtime_histogram / fcs merger) call ``legend()`` on every refresh.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     for i in range(4):
         plot.clear()
         plot.legend()
@@ -277,7 +277,7 @@ def test_legend_idempotent_refresh_loop(qapp):
 
 def test_set_menu_enabled_returns_self(qapp):
     """``set_menu_enabled`` toggles the native menu and chains (returns self)."""
-    plot = cp.Plot()
+    plot = cp.Panel()
     assert plot.set_menu_enabled(False) is plot
     assert plot.set_menu_enabled(True) is plot
 
@@ -287,8 +287,8 @@ def test_link_x_shares_range(qapp):
 
     Stacked TCSPC diagnostics (residuals above data) must pan/zoom together.
     """
-    a = cp.Plot()
-    b = cp.Plot()
+    a = cp.Panel()
+    b = cp.Panel()
     a.line([0, 1, 2], [0, 1, 0])
     b.line([0, 1, 2], [1, 0, 1])
     assert a.link_x(b) is a
@@ -302,7 +302,7 @@ def test_text_fill_border(qapp):
 
     The lineplot fit-quality overlay is a boxed, draggable label.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     t = plot.text(
         "chi2 = 1.0",
         (1.0, 1.0),
@@ -323,7 +323,7 @@ def test_set_axis_visible_returns_self(qapp):
     Regression guard for PRD-64 Batch 26 (proteinMC network diagram), which
     hides both axes for a bare canvas.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     assert plot.set_axis_visible(left=False, bottom=False) is plot
     assert plot.set_axis_visible(left=True, bottom=True, right=False, top=False) is plot
 
@@ -334,7 +334,7 @@ def test_set_interactive_returns_self(qapp):
     Regression guard for PRD-64 Batch 16 (lightpath node thumbnails), which
     build static preview plots with neither pan/zoom nor a context menu.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     assert plot.set_interactive(mouse=False, menu=False) is plot
     assert plot.set_interactive(mouse=True, menu=True) is plot
 
@@ -346,7 +346,7 @@ def test_programmatic_set_bounds_is_signal_safe(qapp):
     region from the model on every refresh; that must not feed back into the
     handler that writes the model.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     reg = plot.region((1.0, 3.0), orientation="horizontal", movable=True)
     seen = []
     reg.on_change(lambda lo, hi: seen.append((lo, hi)), final=True)
@@ -361,7 +361,7 @@ def test_programmatic_set_bounds_is_signal_safe(qapp):
 
 def test_programmatic_set_value_is_signal_safe(qapp):
     """A programmatic ``set_value`` must not re-enter the marker on_change."""
-    plot = cp.Plot()
+    plot = cp.Panel()
     m = plot.vline(4.0, movable=True)
     seen = []
     m.on_change(lambda pos: seen.append(pos), final=True)
@@ -382,7 +382,7 @@ def test_migrated_panel_draw_patterns(qapp):
     of calls made by fcs_correlator's filter/merger panels and the tttr
     histogram/correlate tools.
     """
-    plot = cp.Plot(title="panel")
+    plot = cp.Panel(title="panel")
     plot.set_labels(bottom="t", left="G").set_log(x=True)
     plot.set_menu_enabled(False)
     plot.legend()
@@ -396,14 +396,14 @@ def test_migrated_panel_draw_patterns(qapp):
 
 
 def test_grid_panel_region_and_markers(qapp):
-    """A Grid panel supports region/vline/hline + signal-safe redraw syncs.
+    """A PanelGrid panel supports region/vline/hline + signal-safe redraw syncs.
 
     Regression guard for PRD-64 Batch 12 (tttr_lut_tools compute section): the
-    draggable items live on a ``PanelPlot`` inside a ``Grid``, and a redraw
+    draggable items live on a ``Panel`` inside a ``PanelGrid``, and a redraw
     repositions them via ``set_bounds``/``set_value`` without re-entering the
     drag handlers.
     """
-    grid = cp.Grid()
+    grid = cp.PanelGrid()
     panel = grid.add_plot(row=0, col=0, title="raw")
     reg = panel.region((10.0, 40.0), brush=(255, 165, 0, 60), movable=True)
     vline = panel.vline(5.0, movable=True, pen=cp.to_pen((200, 0, 0), width=2))
@@ -496,7 +496,7 @@ def test_migrated_modules_import(qapp):
 
 
 def test_handle_visibility_and_removal(qapp):
-    plot = cp.Plot()
+    plot = cp.Panel()
     c = plot.line([0, 1], [0, 1])
     c.visible = False
     assert c.visible is False
@@ -515,7 +515,7 @@ def test_handle_visibility_and_removal(qapp):
 def test_fill_between_band(qapp):
     import numpy as np
 
-    plot = cp.Plot()
+    plot = cp.Panel()
     x = np.linspace(0, 1, 10)
     lo = plot.line(x, x - 0.1)
     hi = plot.line(x, x + 0.1)
@@ -531,7 +531,7 @@ def test_curve_set_pen_restyles(qapp):
     Regression guard for PRD-64 Batch 13 (tttr_lut_tools settings panel), which
     re-colours and emphasises per-channel curves via set_pen.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     c = plot.line([0, 1, 2], [0, 1, 0], pen="w")
     c.set_pen(cp.to_pen((255, 0, 0), width=4))  # Pen object
     c.set_pen("g")  # pen-like string
@@ -544,7 +544,7 @@ def test_curve_set_pen_restyles(qapp):
 def test_curve_get_data_roundtrip(qapp):
     import numpy as np
 
-    plot = cp.Plot()
+    plot = cp.Panel()
     x = np.arange(5, dtype=float)
     c = plot.line(x, x**2)
     gx, gy = c.get_data()
@@ -553,12 +553,12 @@ def test_curve_get_data_roundtrip(qapp):
 
 
 def test_grid_panels(qapp):
-    grid = cp.Grid()
+    grid = cp.PanelGrid()
     p0 = grid.add_plot(row=0, col=0, title="top")
     p1 = grid.add_plot(row=1, col=0, title="bottom")
     p0.line([0, 1, 2], [0, 1, 0], pen="c")
     p1.scatter([0, 1, 2], [1, 0, 1], brush="m")
-    assert isinstance(p0, cp.Plot) and isinstance(p1, cp.Plot)
+    assert isinstance(p0, cp.Panel) and isinstance(p1, cp.Panel)
 
 
 def test_image_view_and_roi(qapp):
@@ -592,7 +592,7 @@ def test_image_view_and_roi(qapp):
 def test_export_csv_from_series(qapp, tmp_path):
     import numpy as np
 
-    plot = cp.Plot()
+    plot = cp.Panel()
     x = np.arange(4, dtype=float)
     plot.line(x, x * 2, name="a")
     plot.scatter(x, x + 1, name="b")
@@ -605,7 +605,7 @@ def test_export_csv_from_series(qapp, tmp_path):
 
 
 def test_context_menu_and_custom_action(qapp):
-    plot = cp.Plot()
+    plot = cp.Panel()
     fired = []
     plot.add_menu_action("Do thing", lambda: fired.append(True))
     plot.set_context_menu_enabled(True)
@@ -618,7 +618,7 @@ def test_context_menu_and_custom_action(qapp):
 
 
 def test_clicked_signal_wired(qapp):
-    plot = cp.Plot()
+    plot = cp.Panel()
     got = []
     plot.clicked.connect(lambda x, y: got.append((x, y)))
     # Just ensure the signal exists and is connectable; emit synthetically.
@@ -635,7 +635,7 @@ def test_colormap_is_a_plain_reference(qapp):
 
 
 def test_handle_truthiness_and_container_parity(qapp):
-    plot = cp.Plot()
+    plot = cp.Panel()
     c = plot.line([0, 1], [0, 1])
     assert bool(c) is True  # a live handle is always truthy
     if not c:  # exercises the truthiness path
@@ -653,7 +653,7 @@ def test_unknown_symbol_raises(qapp):
 
 def test_curve_set_opacity(qapp):
     """Curve.set_opacity sets whole-curve opacity (the grouped LinePlot's transparency)."""
-    plot = cp.Plot()
+    plot = cp.Panel()
     c = plot.line([0, 1, 2], [0, 1, 0])
     c.set_opacity(0.4)
     assert abs(float(c.native["opacity"]) - 0.4) < 1e-6
@@ -667,7 +667,7 @@ def test_curve_symbol_setters(qapp):
     Backs LinePlot's ``curve_styles`` path (e.g. the PCH model draws data as
     open circles with no connecting line).
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     c = plot.line([0, 1, 2], [0, 1, 0])
     c.set_symbol("o")
     c.set_symbol_size(6)
@@ -681,7 +681,7 @@ def test_curve_symbol_setters(qapp):
 
 def test_region_set_limits_constrains_drag(qapp):
     """Region.set_limits bounds the draggable range, distinct from set_bounds (the position)."""
-    plot = cp.Plot()
+    plot = cp.Panel()
     reg = plot.region((2.0, 4.0), movable=True)
     seen = []
     reg.on_change(lambda lo, hi: seen.append((lo, hi)), final=True)
@@ -698,7 +698,7 @@ def test_anchored_text_is_screen_pinned(qapp):
 
     The LinePlot fit-quality overlay is one: it must stay put when the view moves.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     data_txt = plot.text("data", (1.0, 2.0))
     anchored_txt = plot.text("pinned", (10, 0), anchored=True, draggable=True)
     assert anchored_txt.native["anchored"] is True
@@ -714,7 +714,7 @@ def test_line_step_string_modes(qapp):
     ``"left"``/``"right"``/``"center"`` keep x and y the same length -- the mode
     the DistributionPlot histograms (data/model) use, together with a fill.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     x = [0.0, 1.0, 2.0, 3.0]
     y = [1.0, 3.0, 2.0, 0.0]
     # Equal-length "right" step must not raise (a bare True would demand N+1).
@@ -730,7 +730,7 @@ def test_errorbars_set_data_replaces_extents(qapp):
     A handle created with ``height`` and later updated with ``top``/``bottom``
     must not keep the old ``height`` (a different point count crashed painting).
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     eb = plot.errorbars(np.array([]), np.array([]), height=np.array([]), beam=0.01)
 
     x = np.linspace(0.0, 1.0, 31)
@@ -746,8 +746,8 @@ def test_errorbars_set_data_replaces_extents(qapp):
 
 
 def test_grid_colorbar_binds_image(qapp):
-    """Grid.add_colorbar binds a colour ramp to an image's levels."""
-    grid = cp.Grid()
+    """PanelGrid.add_colorbar binds a colour ramp to an image's levels."""
+    grid = cp.PanelGrid()
     plot = grid.add_plot(row=0, col=0)
     img = plot.image(np.random.rand(8, 8), axis_order="col-major")
 
@@ -777,12 +777,12 @@ def test_to_colormap_coercion():
 
 def test_background_is_set_per_panel(qapp):
     """background= colours the panel (RF-133), and a grid panel keeps its own."""
-    plot = cp.Plot(background="w")
+    plot = cp.Panel(background="w")
     assert plot.canvas._background == (255, 255, 255)
     plot.set_background("k")
     assert plot.canvas._background == (0, 0, 0)
 
-    grid = cp.Grid()
+    grid = cp.PanelGrid()
     p0 = grid.add_plot(row=0, col=0)
     p1 = grid.add_plot(row=1, col=0)
     p0.set_background("w")
@@ -833,7 +833,7 @@ def test_backend_contract_matches_implementation():
 
 def test_remove_drops_series_from_export(qapp, tmp_path):
     """A removed curve is not exported any more (RF-136)."""
-    plot = cp.Plot()
+    plot = cp.Panel()
     gone = plot.line([0, 1], [0, 1], name="gone")
     plot.line([0, 1], [1, 0], name="kept")
     plot.remove(gone)
@@ -865,7 +865,7 @@ def test_image_restyles_without_reuploading_data(qapp):
     combo box while the data stands still, so both must be settable on the
     handle rather than only through ``set_image``. ``RdBu`` is a matplotlib name.
     """
-    plot = cp.Plot()
+    plot = cp.Panel()
     data = np.linspace(-1.0, 1.0, 64).reshape(8, 8)
     img = plot.image(data, axis_order="col-major")
 

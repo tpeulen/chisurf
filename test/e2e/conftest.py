@@ -10,12 +10,13 @@ def close_created_plots():
     """Close the plots a test created, so Qt owns nothing the test forgot."""
     from qtpy.QtWidgets import QApplication
 
-    from chisurf.gui.chiplot.canvas import Plot
+    from chisurf.gui.chiplot.canvas import ImagePanelHost, PanelHost
 
     def plots():
-        """Return the live top-level plots, if Qt has been initialized."""
+        """Return the live top-level plot hosts, if Qt has been initialized."""
         app = QApplication.instance()
-        return [w for w in app.topLevelWidgets() if isinstance(w, Plot)] if app else []
+        hosts = (PanelHost, ImagePanelHost)
+        return [w for w in app.topLevelWidgets() if isinstance(w, hosts)] if app else []
 
     existing = {id(plot) for plot in plots()}
     try:

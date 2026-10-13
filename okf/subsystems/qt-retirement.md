@@ -31,10 +31,10 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list has 211 entries (221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port
-   slice). Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
+1. Measure: the allow-list has 210 entries (211 before the S6-blocker slice, 221 before the 2026-10-13 slice, 244
+   before the 2026-10-12 test-port slice). Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
    `grep -v '^#' test/plugin_qt_allowlist.txt | cut -d/ -f3 | sort | uniq -c`: chimol 111, core 66, misc 17,
-   modelling 6, ndxplorer 4, tttr 2, fret_line 1, and one each for the plugins `__init__.py`, `conftest.py`,
+   modelling 6, ndxplorer 4, tttr 2, and one each for the plugins `__init__.py`, `conftest.py`,
    `icon_utils.py` and the cookiecutter template. Of these 36 outside chimol are still **tests** (chimol's are in
    `~/dev/chimol`). A test line goes by
    porting the test to `emtk.testing.Driver` (a drop: `Driver(app).surface.on_files_dropped`, or
@@ -45,7 +45,11 @@ own startup stages (item 5): S5 is done.
    the test (ndX, F-test, Global View, Spectra tool). The 2026-10-13 slice: the TCSPC device wrappers got a Qt-free
    `Signal`, `fret_line/__main__.py` runs the emtk app, and the Spectra tool's four legacy Qt widgets were deleted
    with their tests ported (native model tests in `spectra_downloader/tests/test_native.py`; the Qt facts frozen in
-   `qt_reference.json`, recorded from the live widgets). Trap: a full run of the img_coloc parity file is 2.5 min and
+   `qt_reference.json`, recorded from the live widgets). The S6-blocker slice (2026-10-13) retired the FRET line
+   generator's Qt tool the same way (`fret_line/test/qt_reference.json`, recorded at 26eeba5f8; the manifest has no
+   `gui` entry). Open there: whether the Qt editor's `static κ²` / `dynamic κ²` mode buttons, listed as "no effect
+   on a FRET line" in `okf/plugins/emtk-ports/fret_line/compare.json`, really have none (the emtk editor's Model
+   settings have no κ²-mode control). Trap: a full run of the img_coloc parity file is 2.5 min and
    its last test (`zz_the_real_user_settings_were_never_touched`) fails whenever another agent has the emtk shell open,
    because the shell rewrites `~/.chisurf/emtk/emtk_shell.docks.layout.json`. Left in non-test files, each Qt by
    design: the Qt hosts and legacy tools (`code_editor`, `help`, `mmfdb_admin`, `project_browser`, `lightpath_simulator`,
@@ -151,9 +155,9 @@ own startup stages (item 5): S5 is done.
    `chisurf.emtk.fit_report.render_fit_images(pages=None)`) are byte-identical PNGs before and after. Traps: `style`
    parsed colours with `QColor`; the Qt-free `int_color` reproduces `QColor.fromHsvF` only with Qt's own float form
    (`1-(1-f)`) and a rounded `/257` channel reduction (`>>8` and the `qt_div_257` spelling both differ by one on
-   about a third of hues). Still Qt inside the core, but only on a Qt host's request: `EmtkCanvas.widget()`,
-   `EmtkGrid`, the image view's colour bar widget and `EmtkCanvas.export_image` (`okf/subsystems/chiplot.md`, resume
-   item 0). Rejected, still: making `chisurf.gui.__init__` lazy (tests monkeypatch attributes on that module).
+   about a third of hues). Since the S6-blocker slice (same day) the core names no Qt at all (item 9; source-grep
+   guard in `test/test_chiplot_core_qt_free.py`). Rejected, still: making `chisurf.gui.__init__` lazy (tests
+   monkeypatch attributes on that module).
 7. Measure: whole-window parity, `test/native_emtk/test_emtk_shell_whole_parity.py` against
    `shell_whole_qt_inventory.json`: `KNOWN_GAPS` empty since 2026-10-11 (was 23). The fixture clicks every ribbon
    tab and the Log dock's tabs, as a user does; renamed captions (`?` → ❓ Help, `Language: English` → 🌍 EN, `P` →
@@ -180,10 +184,20 @@ own startup stages (item 5): S5 is done.
    shell stays behind `python -m chisurf --qt` as the reference the emtk shell is measured against until
    parity; `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
    (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`).
-   Every slice S1-S5 is at control parity (each `KNOWN_GAPS` empty). Item 6 is done (2026-10-13). What
-   blocks deleting `gui/main.py` and `gui.ui` now: item 1 (the Qt hosts and tests still on the allow-list),
-   the `chisurf.gui.chiplot` widget callers (Qt plugin hosts drawing `cp.Plot`/`Grid`/`ImageView`), and the
-   core's on-request Qt (`EmtkCanvas.export_image` paints a `QImage`); striking `qtpy` needs all three.
+   Every slice S1-S5 is at control parity (each `KNOWN_GAPS` empty). Item 6 is done (2026-10-13). Done the same
+   day (S6-blocker slice, chisurf 6300bcb8f, baf8e7f75, 23004c834, 94c945927 and the test port): chiplot's core
+   names no Qt -- panels, `PanelGrid` and the image viewer `ImagePanel` are emtk controls, hosts attach through a
+   duck-typed hook, `export_image` draws on emtk's CPU rasteriser -- and the `chisurf.gui.chiplot` widgets
+   (`Plot`, `PanelPlot`, `Grid`, `ImageView`, `VolumeView`) are deleted: every Qt form that showed one draws a
+   core panel and only hosts it with `cp.host()` (AutoForm sections decay_conv, phasor, quiver, waterfall, image,
+   plot, L-curve, the r(t) window; decay_panel, the PCH/TCSPC/ICS reader previews, the κ² dialogs,
+   spectrum_view, waterfall_plot, the photon-filter wizard); before/after from the HEAD snapshot, 14 of 17 widget
+   pairs pixel-equal, the three image viewers at control parity with the frame `QSlider`/`QLabel` drawn by emtk
+   inside the viewer (`chisurf/chiplot/image_panel.py`). What blocks deleting `gui/main.py` and `gui.ui` now: item 1
+   (the Qt hosts and tests on the allow-list, 210), and the Qt forms of the `--qt` reference shell that host
+   panels (the Qt AutoForm renderer and its sections, the Qt reader widgets, the κ² dialogs), whose emtk twins
+   exist; `chisurf.gui.chiplot` (`host`, `PanelHost`, `ImagePanelHost`) goes with them. Striking `qtpy` needs both,
+   and the owner's call.
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit

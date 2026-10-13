@@ -44,6 +44,7 @@ from chisurf.chiplot import handles as H
 from chisurf.chiplot import style as S
 from chisurf.chiplot.backends import base
 
+
 def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[int, int, int]:
     """Return ``color`` as an ``(r, g, b)`` triple emtk understands."""
     if color is None:
@@ -2893,8 +2894,7 @@ class EmtkGrid(base.GridCanvas):
     colour ramp's column kept narrow) and draws each item in its cell, so an
     emtk surface draws a whole grid as one control. Input goes to the item
     under the pointer, which keeps it from the press to the release. A host
-    with a layout manager of its own (:class:`chisurf.gui.chiplot.Grid`)
-    places the items itself from :meth:`cells`.
+    with a layout manager of its own can place the items itself from :meth:`cells`.
     """
 
     #: Pixels between two cells.

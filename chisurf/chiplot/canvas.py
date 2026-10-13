@@ -1028,6 +1028,85 @@ class Panel(PlotAPI):
         self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
         self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
 
+    @classmethod
+    def of(cls, canvas) -> Panel:
+        """The panel API over an existing canvas (a :class:`PanelGrid` cell)."""
+        panel = cls.__new__(cls)
+        panel._canvas = canvas
+        panel._series = []
+        panel._extra_menu_actions = []
+        panel._context_menu_enabled = True
+        panel._native_menu = False
+        panel.clicked = _Hook()
+        panel.mouse_moved = _Hook()
+        canvas.on_click(lambda x, y, btn: panel.clicked.emit(x, y) if btn == "left" else None)
+        canvas.on_mouse_move(lambda x, y: panel.mouse_moved.emit(x, y))
+        return panel
+
     def control(self):
         """The emtk control that draws this panel (its canvas)."""
         return self._canvas
+
+
+class PanelGrid:
+    """Several :class:`Panel` s (and colour ramps) in a grid, drawn as one emtk control.
+
+    Rows, columns, spans and stretch factors as a grid layout has them; a colour
+    ramp's column stays narrow. :meth:`control` is what a surface draws (or
+    :func:`chisurf.gui.chiplot.host` hosts).
+
+    Parameters
+    ----------
+    **backend_opts
+        Passed to every panel's canvas.
+    """
+
+    def __init__(self, **backend_opts):
+        from chisurf.chiplot.backends import get_backend
+
+        self._grid = get_backend().create_grid(**backend_opts)
+
+    def add_plot(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> Panel:
+        """Add a panel at the given cell (or the next one) and return it."""
+        canvas = self._grid.add_panel(
+            row=row, col=col, rowspan=rowspan, colspan=colspan, title=title
+        )
+        return Panel.of(canvas)
+
+    def add_colorbar(
+        self, image: H.Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
+    ) -> H.ColorBar:
+        """Add a colour ramp with draggable levels bound to ``image``."""
+        return self._grid.add_colorbar(
+            image,
+            colormap=S.to_colormap(colormap),
+            row=row,
+            col=col,
+            rowspan=rowspan,
+            colspan=colspan,
+        )
+
+    def next_row(self) -> None:
+        """Move the insertion cursor to the start of the next row."""
+        self._grid.next_row()
+
+    def clear(self) -> None:
+        """Remove every panel and ramp; panels handed out before are gone."""
+        self._grid.clear()
+
+    def set_column_stretch(self, column: int, factor: float) -> None:
+        """Set the relative width of a column (a colour ramp's column is kept narrow anyway)."""
+        self._grid.set_column_stretch(column, factor)
+
+    def set_row_stretch(self, row: int, factor: float) -> None:
+        """Set the relative height of a row."""
+        self._grid.set_row_stretch(row, factor)
+
+    def control(self):
+        """The emtk control that lays out and draws the grid."""
+        return self._grid
+
+    @property
+    def native(self):
+        """The backend grid object (escape hatch; avoid in new code)."""
+        return self._grid.native

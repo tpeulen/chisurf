@@ -18,19 +18,18 @@ from chisurf.chiplot import backends as _backends  # noqa: E402
 
 
 @pytest.fixture(params=["emtk"])
-def plot(request, qapp):
+def plot(request):
     previous, previous_env = _backends._active, os.environ.get("CHISURF_PLOT_BACKEND")
     os.environ["CHISURF_PLOT_BACKEND"] = request.param
     _backends._active = None
-    from chisurf.gui import chiplot as cp
+    from chisurf import chiplot as cp
 
-    panel = cp.Plot()
+    panel = cp.Panel()
     x = np.linspace(0.0, 25.0, 128)
     panel.line(x, 1000.0 * np.exp(-x / 4.0) + 5.0, name="decay")
     try:
         yield panel
     finally:
-        panel.close()
         _backends._active = previous
         if previous_env is None:
             os.environ.pop("CHISURF_PLOT_BACKEND", None)

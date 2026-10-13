@@ -4,7 +4,7 @@ title: Plotting (chiplot)
 description: The single renderer-neutral 2-D plotting API every call site draws through, its backend contract, and the guard that keeps the rendering library behind it.
 resource: chisurf/chiplot/
 tags: [gui, plotting, chiplot, seam]
-timestamp: '2026-10-13T00:00:00Z'
+timestamp: '2026-10-13T12:00:00Z'
 ---
 
 # What it is
@@ -13,26 +13,42 @@ timestamp: '2026-10-13T00:00:00Z'
 use it; they never import a rendering library directly. The renderer is chosen
 at runtime and can be swapped without touching a single call site.
 
-**The core imports no Qt (2026-10-13).** `chisurf.chiplot` holds the panel API,
-the handles, the styles and the backends; `chisurf.gui.chiplot` is the **Qt host
-layer**: the `QWidget` wrappers `Plot`, `Grid`, `ImageView`, `VolumeView`,
-`PanelPlot` (`chisurf/gui/chiplot/canvas.py`) plus a re-export of the whole
-core, so a Qt call site still writes `from chisurf.gui import chiplot as cp`.
-Code that draws on an emtk surface (the fit window's pages) imports
-`from chisurf import chiplot as cp` and uses `cp.Panel`; it never loads Qt.
-What still touches Qt inside the core does so only when a Qt host asks:
-`EmtkCanvas.widget()` (an `emtk.qt_host.ControlHost`), `EmtkGrid` (a Qt grid
-layout, built by `Grid`), the image view's colour bar widget, and
-`EmtkCanvas.export_image` (a `QImage`). Colours no longer go through `QColor`:
-names are emtk's CSS/SVG table (case and spaces ignored, `transparent`), and
-`int_color` reproduces `QColor.fromHsvF` byte for byte (16-bit channels reduced
-by rounded `/257`, not `>>8`; the `1-(1-f)` float form matters). Guard:
-`test/test_chiplot_core_qt_free.py`.
+**The core names no Qt (2026-10-13, S6 slice).** `chisurf.chiplot` holds every
+drawing thing as an emtk control: `Panel` (the plot API over one canvas),
+`PanelGrid` (panels and colour ramps in a grid -- rows, columns, spans, stretch,
+a ramp's column kept narrow -- laid out and drawn as one control, input routed to
+the cell under the pointer), `ImagePanel` (the image viewer: picture, colour ramp
+with draggable levels, an emtk-drawn frame slider for a stack, playback, extent,
+marks, brush layer, ROIs, click-to-pick; hooks `clicked`/`picked`/
+`frame_changed`/`playing_changed`), the handles, the styles and the backend.
+Whatever shows a control attaches itself through a duck-typed host hook
+(`attach_host(host)`: `update()`, optional `size()`, `set_background(rgb)`,
+`set_visible`, `set_width_range`, `detach`, `playing_changed`) or a refresh
+target, so the core never knows the toolkit. `export_image` draws on emtk's CPU
+rasteriser (`PilPainter`, `ScaledPainter` for `width=`), the painter
+`chisurf/emtk/fit_report.py` draws the report with. Guard:
+`test/test_chiplot_core_qt_free.py` greps the core's source for any Qt name
+(module, binding, emtk's Qt host/painter, a `Q...` class) and exports a panel in
+a fresh interpreter with Qt unloaded.
+
+`chisurf.gui.chiplot` is the **Qt host layer** and nothing else: `host(x)` gives a
+`Panel` a `PanelHost` (a `ControlHost` plus chiplot's right-click menu: export
+CSV, export image painted by Qt as the widget shows it, auto-range, the panel's
+own entries), an `ImagePanel` an `ImagePanelHost` (the playback timer, the
+slider tooltip), a `PanelGrid` a bare `ControlHost`; plus a re-export of the
+core. The Qt widgets `Plot`, `PanelPlot`, `Grid`, `ImageView` and the
+never-implemented `VolumeView` are deleted: every Qt form draws a core panel and
+only hosts it (`self.plot = cp.Panel(); layout.addWidget(cp.host(self.plot))`).
+Colours do not go through `QColor`: names are emtk's CSS/SVG table (case and
+spaces ignored, `transparent`), and `int_color` reproduces the old toolkit HSV
+colour byte for byte (16-bit channels reduced by rounded `/257`, not `>>8`; the
+`1-(1-f)` float form matters).
 
 | Module (under `chisurf/chiplot/` unless named) | Holds |
 |--------|-------|
-| `canvas.py` | `PlotAPI` (the toolkit-free API) and `Panel` -- the same API with no `QWidget`, for surfaces that draw emtk directly (fit-window pages declare them with `plotbase.Plot.add_panel`) |
-| `chisurf/gui/chiplot/canvas.py` | the Qt host layer: the widgets `Plot`, `Grid` (of `PanelPlot`s, with colour bars), `ImageView`, `VolumeView` |
+| `canvas.py` | `PlotAPI` (the toolkit-free API), `Panel` (an emtk control; fit-window pages declare them with `plotbase.Plot.add_panel`) and `PanelGrid` |
+| `image_panel.py` | `ImagePanel`, the image viewer as one emtk control |
+| `chisurf/gui/chiplot/canvas.py` | the Qt host layer: `host`, `PanelHost`, `ImagePanelHost` |
 | `handles.py` | the drawn-object protocols — `Curve`, `Scatter`, `Bars`, `ErrorBars`, `Image`, `ColorBar`, `Region`, `Marker`, `Roi`, `Arrow`, `Text` — plus the `Symbol` and `Orientation` enums |
 | `style.py` | `Color`, `Pen`, `Brush`, `Colormap`, `LineStyle` and the coercers `to_color` / `to_pen` / `to_brush` / `colormap` / `to_colormap` / `int_color` |
 | `backends/base.py` | the abstract `Canvas`/`Backend` contract a renderer must satisfy |
@@ -42,7 +58,7 @@ by rounded `/257`, not `>>8`; the `1-(1-f)` float form matters). Guard:
 | `backends/opengl/` | superseded experiment backend (predates wgpu); retired with wgpu |
 | `_passthrough.py` | the migration safety net and its gap recorder |
 
-`ImageView` is the image half of the same idea, and it carries two capabilities
+`ImagePanel` (the `ImageView` widget until 2026-10-13) is the image half of the same idea, and it carries two capabilities
 that used to be re-implemented per tool. `add_region(roi)` draws a
 [region](/subsystems/roi.md) of any shape — every caller that had one was
 converting it to `kind`/`pos`/`size` by hand, differently, and an ellipse's
@@ -50,18 +66,16 @@ radius-versus-diameter convention was wrong in more than one of them. It honours
 the region's **rotation**, which matters because a Gaussian gate on a correlated
 population is a tilted ellipse and an axis-aligned one is a *different gate* that
 looks perfectly reasonable on screen. `enable_picking()` turns clicks into a
-`picked` signal carrying a fitted spot: the gesture belongs to the thing being
+`picked` hook carrying a fitted spot: the gesture belongs to the thing being
 clicked, while deciding where the spot actually is belongs to
 `chisurf.core.roi.picking`. Before both, a tool that wanted either reached past
 this seam for the click and did the geometry itself.
 
-Two things about `ImageView` are worth knowing before writing a test against it.
-pyqtgraph keeps a **process-wide** ViewBox registry and, when one view is
-destroyed, walks the *other* views' context menus to update it — so letting
-views go at interpreter shutdown aborts the process *after* every test has
-passed; dispose them while the event loop is alive. And the backend rotates an
-ellipse about `pos` rather than about its centre, so a rotation has to put the
-centre back by hand.
+One thing about the image viewer is worth knowing before writing a test against
+it: the backend rotates an ellipse about `pos` rather than about its centre, so a
+rotation has to put the centre back by hand. (The pyqtgraph-era rule "keep views
+alive until the event loop ends" is gone with pyqtgraph and Qt: an `ImagePanel` is
+a Python object, and its tests run without a `QApplication`.)
 
 `Plot` is verb-first: `plot.line(x, y, pen="red")`, `plot.scatter`, `plot.bars`,
 `plot.image`, `plot.region(...).on_change(cb)`, `plot.vline` / `plot.hline`,
@@ -615,13 +629,18 @@ Both manifests dropped `"gui"`.
 
 **Where to pick this up**
 
-0. **Qt-free core — done 2026-10-13** (see "What it is"). Open, for S6 (striking `qtpy`;
-   [qt-retirement](/subsystems/qt-retirement.md) item 6): the Qt touches left in the core are
-   all behind a Qt host's request -- `EmtkCanvas.export_image` paints a `QImage` (port it to
-   `emtk.export`'s CPU rasteriser, which already draws the fit report), `EmtkGrid` is a
-   `QGridLayout` and `EmtkImageView`'s colour bar a `ControlHost`; they go when `Grid` /
-   `ImageView`'s last Qt caller does. Measure: `grep -n "qtpy\|QtWidgets\|QtGui" -r
-   chisurf/chiplot` lists them; `test/test_chiplot_core_qt_free.py` proves the import path.
+0. **Qt out of chiplot — done 2026-10-13** (see "What it is"; [qt-retirement](/subsystems/qt-retirement.md)
+   items 6 and 9). Measure: `grep -rnE "\bQt|qtpy|PyQt|PySide|qt_host|qt_painter|ControlHost|\bQ[A-Z][a-zA-Z]+"
+   chisurf/chiplot` is empty (the guard's own regex); `grep -rnE "cp\.(Plot|Grid|ImageView)\b" chisurf test` is empty.
+   Export pair (scratch `export_pairs.py`, real IBH decays, an image, bars; HEAD snapshot vs tree): a Qt-hosted
+   panel's export is **byte-identical** (9 of 9, still painted by Qt in `PanelHost`); a core `Panel`'s export is
+   **not pixel-equal** and cannot be -- another rasteriser: same content, curves 1 px where Qt's antialiased
+   pen drew ~2 px, bars/image within antialiasing (1.8-6.4 % of pixels). Trap found: at the previous HEAD a core
+   `Panel.export_image` painted a `QImage` and **segfaulted without a `QApplication`**; and the fit window's
+   right-click *Export image…* / *Export data as CSV…* called `_on_export_*`, which a core `Panel` lacks
+   (`AttributeError` since the pages moved to the core) -- both now go through emtk's save dialog
+   (`test/native_emtk/test_fit_window_panel_export.py`). Open: the Qt forms that host panels (`PanelHost`,
+   `ImagePanelHost`) are the last reason the host layer exists; it goes with them in S6.
 1. ~~"Advanced: pyqtgraph Configuration" in Settings ▸ Plots~~ — **done 2026-10-12**: all four
    options dropped (emtk antialiases and pans with the left button always; plots follow the
    theme), the key removed with a load-time migration (`settings_utils.RETIRED_KEYS`), strings

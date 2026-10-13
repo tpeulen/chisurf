@@ -38,14 +38,13 @@ def _emtk_backend():
 
 
 @pytest.fixture
-def plot(qapp):
-    from chisurf.gui import chiplot as cp
+def plot():
+    from chisurf import chiplot as cp
 
-    panel = cp.Plot()
+    panel = cp.Panel()
     x = np.linspace(0.0, 25.0, 128)
     panel.curve = panel.line(x, 1000.0 * np.exp(-x / 4.0) + 5.0, name="decay")
-    yield panel
-    panel.close()
+    return panel
 
 
 BOX = (0.0, 0.0, 800.0, 600.0)
@@ -188,7 +187,7 @@ def test_a_caller_set_range_shows_it_as_pyqtgraph_does(plot):
     assert len(_a_texts(_draw(plot))) == 1
 
 
-def test_the_image_view_has_it_too(qapp):
+def test_the_image_view_has_it_too():
     from chisurf import chiplot as cp
 
     view = cp.ImagePanel()

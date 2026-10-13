@@ -1,35 +1,28 @@
-"""chiplot's Qt host layer: :func:`host` with :class:`PanelHost` and :class:`ImagePanelHost`,
-and the ``QWidget`` wrappers :class:`Plot` and :class:`Grid`.
+"""chiplot's Qt host layer: :func:`host`, :class:`PanelHost` and :class:`ImagePanelHost`.
 
 Everything that draws is in the toolkit-free core (:mod:`chisurf.chiplot`): a
-panel, a grid and an image view are emtk controls there. This module only
-*hosts* them in Qt -- an ``emtk.qt_host.ControlHost`` per control, attached
-through the core's duck-typed host hook (``attach_host``) -- and adds what is
-Qt's: signals, the right-click menu with its file dialogs, a grid layout, the
-frame slider. It goes when the last Qt caller does
-(``okf/subsystems/chiplot.md``); new code draws a :class:`~chisurf.chiplot.Panel`
-on an emtk surface, or, inside a legacy Qt form, hosts one with :func:`host`.
+:class:`~chisurf.chiplot.Panel`, a :class:`~chisurf.chiplot.PanelGrid` and an
+:class:`~chisurf.chiplot.ImagePanel` are emtk controls there. This module only
+*hosts* one in a legacy Qt form -- an ``emtk.qt_host.ControlHost`` attached
+through the core's duck-typed host hook -- and adds what is Qt's: the
+right-click menu with its file dialogs (exports painted by Qt, as the widget
+shows them), the playback timer and the slider tooltip. It goes with the last Qt
+form (``okf/subsystems/chiplot.md``); new code draws the panel on an emtk surface.
 """
 
 from __future__ import annotations
 
-import numpy as np
 from qtpy import QtCore, QtWidgets
 
-from chisurf.chiplot import handles as H
-from chisurf.chiplot import style as S
-from chisurf.chiplot.backends import get_backend
-from chisurf.chiplot.canvas import _UNSET, Panel, PlotAPI, _Hook
+from chisurf.chiplot.canvas import Panel, PanelGrid, PlotAPI, _Hook
 from chisurf.chiplot.image_panel import ImagePanel
 
 __all__ = [
-    "Grid",
     "ImagePanel",
     "ImagePanelHost",
     "Panel",
+    "PanelGrid",
     "PanelHost",
-    "PanelPlot",
-    "Plot",
     "PlotAPI",
     "_Hook",
     "host",
@@ -195,8 +188,9 @@ def host(panel, parent=None) -> QtWidgets.QWidget:
 
     For a legacy Qt form: the panel stays an emtk control drawn by emtk, and the
     widget returned only hosts it. A :class:`~chisurf.chiplot.Panel` gets a
-    :class:`PanelHost` (with the panel's right-click menu); any other control
-    (an image view's canvas, a colour ramp, a grid) a plain ``ControlHost``.
+    :class:`PanelHost` (with the panel's right-click menu), an
+    :class:`~chisurf.chiplot.ImagePanel` an :class:`ImagePanelHost`; a
+    :class:`~chisurf.chiplot.PanelGrid` or any other control a plain ``ControlHost``.
 
     Parameters
     ----------
@@ -213,6 +207,8 @@ def host(panel, parent=None) -> QtWidgets.QWidget:
         return PanelHost(panel, parent)
     if isinstance(panel, ImagePanel):
         return ImagePanelHost(panel, parent)
+    if isinstance(panel, PanelGrid):
+        return _hosted(panel.control(), parent)
     return _hosted(panel, parent)
 
 
@@ -223,9 +219,7 @@ def _export_qt(canvas, widget, path, width) -> bool:
 
     w, h = widget.width(), widget.height()
     scale = float(width) / max(w, 1) if width else 1.0
-    image = QtGui.QImage(
-        max(int(w * scale), 1), max(int(h * scale), 1), QtGui.QImage.Format_ARGB32
-    )
+    image = QtGui.QImage(max(int(w * scale), 1), max(int(h * scale), 1), QtGui.QImage.Format_ARGB32)
     image.fill(QtGui.QColor(*canvas._background))
     painter = QtGui.QPainter(image)
     try:
@@ -234,252 +228,3 @@ def _export_qt(canvas, widget, path, width) -> bool:
     finally:
         painter.end()
     return bool(image.save(str(path)))
-
-
-class Plot(PlotAPI, QtWidgets.QWidget):
-    """A single plot panel with a verb-first drawing API.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Qt parent.
-    title : str, optional
-        Panel title.
-    background : color-like, optional
-        Background color of the whole panel widget (data rectangle *and* axis
-        margins). An explicit ``None`` means transparent.
-    **backend_opts
-        Passed through to the backend canvas factory.
-
-    Signals
-    -------
-    clicked(float, float)
-        Emitted with the ``(x, y)`` data coordinates of a left click.
-    mouse_moved(float, float)
-        Emitted with the ``(x, y)`` data coordinates under the pointer.
-    """
-
-    clicked = QtCore.Signal(float, float)
-    mouse_moved = QtCore.Signal(float, float)
-
-    def __init__(self, parent=None, *, title: str | None = None, background=_UNSET, **backend_opts):
-        super().__init__(parent)
-        self._canvas = get_backend().create_canvas(**backend_opts)
-        # (name, handle) of exportable x/y series, for the CSV context action.
-        self._series: list = []
-        self._extra_menu_actions: list = []
-        self._context_menu_enabled = True
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        self._host_widget = _hosted(self._canvas)
-        layout.addWidget(self._host_widget)
-        if title is not None:
-            self._canvas.set_title(title)
-        if background is not _UNSET:
-            self._canvas.set_background(None if background is None else S.to_color(background))
-        self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
-        self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
-        # If the backend already ships a rich menu (pyqtgraph: Export/CSV/image),
-        # keep it for parity and inject custom actions into it; otherwise chiplot
-        # builds its own menu via contextMenuEvent.
-        self._native_menu = self._canvas.provides_native_menu()
-        if self._native_menu:
-            self._install_native_export_actions()
-
-    def _install_native_export_actions(self) -> None:
-        """Add chiplot's CSV/image export entries to the backend's native menu."""
-        self._canvas.add_menu_action("Export data as CSV…", self._on_export_csv)
-        self._canvas.add_menu_action("Export image…", self._on_export_image)
-
-    def _on_export_csv(self):
-        """File-dialog + write for the CSV export menu action."""
-        _ask_and_export_csv(self)
-
-    def _on_export_image(self):
-        """File-dialog + write for the image export menu action."""
-        _ask_and_export_image(self, self._host_widget)
-
-    def export_image(self, path: str, *, width: int | None = None) -> None:
-        """Save the panel as an image, painted by Qt as the widget shows it.
-
-        A Qt-hosted panel keeps the picture Qt draws on screen; a toolkit-free
-        :class:`~chisurf.chiplot.Panel` exports through emtk's CPU rasteriser.
-        """
-        if not _export_qt(self._canvas, self._host_widget, path, width):
-            raise OSError(f"chiplot: the plot could not be exported to {path}")
-
-    def contextMenuEvent(self, event):  # noqa: N802 (Qt override)
-        """Show chiplot's right-click menu (export data/image, auto-range).
-
-        Skipped when the backend already shows its own rich menu (pyqtgraph),
-        so the two never double up.
-        """
-        _show_panel_menu(self, self._host_widget, self, event)
-
-
-class Grid(QtWidgets.QWidget):
-    """A grid of :class:`Plot`-style panels sharing one widget.
-
-    Replaces ``pg.GraphicsLayoutWidget``. Use :meth:`add_plot` to add panels.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Qt parent.
-    **backend_opts
-        Passed to the backend grid factory.
-    """
-
-    def __init__(self, parent=None, **backend_opts):
-        super().__init__(parent)
-        self._grid = get_backend().create_grid(**backend_opts)
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        # The core grid is a control that lays itself out; a Qt host places its
-        # cells in a grid layout instead, one host widget per panel or ramp.
-        self._cells = QtWidgets.QWidget()
-        self._layout = QtWidgets.QGridLayout(self._cells)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(2)
-        self._placed: list = []
-        layout.addWidget(self._cells)
-
-    def _place_last(self):
-        """Host the cell the core grid just added, where it says it goes."""
-        item, row, col, rowspan, colspan = self._grid.cells()[-1]
-        widget = _hosted(item)
-        self._layout.addWidget(widget, row, col, rowspan, colspan)
-        self._placed.append(widget)
-        return item
-
-    def add_plot(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> PanelPlot:
-        """Add and return a panel at the given grid cell.
-
-        Parameters
-        ----------
-        row, col : int, optional
-            Target cell (implicit next cell if omitted).
-        rowspan, colspan : int
-            Cell span.
-        title : str, optional
-            Panel title.
-
-        Returns
-        -------
-        PanelPlot
-        """
-        self._grid.add_panel(row=row, col=col, rowspan=rowspan, colspan=colspan, title=title)
-        return PanelPlot(self._place_last())
-
-    def set_column_stretch(self, column: int, factor: float) -> None:
-        """Set the relative width of a grid column.
-
-        Panels in a grid share the width equally by default, which is wrong the
-        moment one of them is a colour bar: it takes as much room as a plot and
-        renders as an unreadable sliver of gradient.
-
-        Parameters
-        ----------
-        column : int
-            Column index.
-        factor : float
-            Relative width. Larger is wider; the factors are compared with each
-            other, not with any absolute size.
-        """
-        self._grid.set_column_stretch(column, factor)
-        self._layout.setColumnStretch(int(column), int(factor))
-
-    def set_row_stretch(self, row: int, factor: float) -> None:
-        """Set the relative height of a grid row.
-
-        Parameters
-        ----------
-        row : int
-            Row index.
-        factor : float
-            Relative height.
-        """
-        self._grid.set_row_stretch(row, factor)
-        self._layout.setRowStretch(int(row), int(factor))
-
-    def add_colorbar(
-        self, image: H.Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
-    ) -> H.ColorBar:
-        """Add a colour bar with interactive level handles, bound to ``image``.
-
-        Replaces pyqtgraph's ``HistogramLUTItem``: the bar shows the image's
-        intensity histogram, its handles set the mapped level range, and its
-        gradient sets the colormap of both bar and image.
-
-        Parameters
-        ----------
-        image : handles.Image
-            The image handle the bar drives (from :meth:`Plot.image`).
-        colormap : colormap-like, optional
-            Initial colormap (name or :class:`~chisurf.chiplot.style.Colormap`).
-        row, col : int, optional
-            Target cell (implicit next cell if omitted).
-        rowspan, colspan : int
-            Cell span.
-
-        Returns
-        -------
-        handles.ColorBar
-        """
-        self._grid.add_colorbar(
-            image,
-            colormap=S.to_colormap(colormap),
-            row=row,
-            col=col,
-            rowspan=rowspan,
-            colspan=colspan,
-        )
-        return self._place_last()
-
-    def next_row(self) -> None:
-        """Advance the implicit insertion cursor to the next row."""
-        self._grid.next_row()
-
-    def clear(self) -> None:
-        """Remove every panel, and reset the insertion cursor to the first cell.
-
-        Panels obtained from :meth:`add_plot` before this call are gone; a
-        rebuild must ask for new ones.
-        """
-        self._grid.clear()
-        for widget in self._placed:
-            self._layout.removeWidget(widget)
-            widget.setParent(None)
-        self._placed.clear()
-
-    @property
-    def native(self):
-        """The backend grid object (escape hatch; avoid in new code)."""
-        return self._grid.native
-
-
-class PanelPlot(Plot):
-    """A :class:`Plot` bound to an existing grid-panel canvas.
-
-    Constructed by :meth:`Grid.add_plot`; not instantiated directly. It shares
-    :class:`Plot`'s full drawing/axis API but is not a standalone top-level
-    widget (its canvas already lives inside a :class:`Grid`).
-    """
-
-    def __init__(self, canvas):
-        # Bypass Plot.__init__ (which would create a fresh top-level canvas);
-        # a panel is a QObject only for signal support and wraps an existing canvas.
-        QtWidgets.QWidget.__init__(self)
-        self._canvas = canvas
-        self._host_widget = canvas.host.widget
-        self._series = []
-        self._extra_menu_actions = []
-        # A panel is not a standalone widget, so chiplot's contextMenuEvent never
-        # fires here — keep the backend's own menu for grid panels.
-        self._context_menu_enabled = False
-        self._native_menu = self._canvas.provides_native_menu()
-        if self._native_menu:
-            self._install_native_export_actions()
-        self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)

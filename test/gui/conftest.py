@@ -36,7 +36,7 @@ def pytest_collection_modifyitems(config, items):
 def _close_plots_this_test_created():
     """Close the chiplot plots a test builds and forgets.
 
-    A ``Plot`` is a top-level widget owned by Python, while its scene and the
+    A plot host (``PanelHost``) is a top-level widget owned by Python, while its scene and the
     graphics items in it are owned by Qt. A forgotten one dies whenever the
     garbage collector reaches it -- in the middle of some later test, taking
     its scene and items along while Qt is still delivering layout events to
@@ -49,11 +49,12 @@ def _close_plots_this_test_created():
     Only plots this test created are closed: destroying what an earlier test
     or a module-scoped fixture still owns just moves the crash.
     """
-    from chisurf.gui.chiplot.canvas import Plot
+    from chisurf.gui.chiplot.canvas import ImagePanelHost, PanelHost
 
     def _plots():
         app = QApplication.instance()
-        return [w for w in app.topLevelWidgets() if isinstance(w, Plot)] if app else []
+        hosts = (PanelHost, ImagePanelHost)
+        return [w for w in app.topLevelWidgets() if isinstance(w, hosts)] if app else []
 
     existing = {id(plot) for plot in _plots()}
     yield

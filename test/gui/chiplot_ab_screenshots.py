@@ -149,14 +149,16 @@ RECIPES = {
 
 
 def _make_plot(backend_name: str):
-    """Build a chiplot Plot using the given backend."""
+    """Build a chiplot panel using the given backend; return ``(panel, host widget)``."""
     import chisurf.chiplot.backends as backends
 
     backends._active = None
     os.environ["CHISURF_PLOT_BACKEND"] = backend_name
-    from chisurf.gui.chiplot.canvas import Plot
+    from chisurf.chiplot import Panel
+    from chisurf.gui.chiplot import host
 
-    return Plot()
+    panel = Panel()
+    return panel, host(panel)
 
 
 def main():
@@ -171,8 +173,8 @@ def main():
             print(f"  {name} / {backend} ...", end=" ", flush=True)
             plot = None
             try:
-                plot = _make_plot(backend)
-                recipe(plot)
+                panel, plot = _make_plot(backend)
+                recipe(panel)
                 img = _grab_widget(plot, backend)
                 path = RENDER_DIR / f"ab_{name}_{suffix}.png"
                 img.save(str(path))

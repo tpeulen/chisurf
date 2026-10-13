@@ -168,6 +168,11 @@ for three rotational correlation times.
 Fluorescence lifetime and anisotropy decays.
 ```
 
+To keep one panel of a fit window, right-click it: **Export data as CSV…** writes
+every curve as `<name> x`, `<name> y` columns, and **Export image…** writes the panel
+as a PNG (or JPEG/TIFF by the suffix) at the size it is shown, drawn the way the fit
+report draws its pictures. Both ask where to save in ChiSurf's own file dialog.
+
 ## See also
 
 - Concept: {ref}`concept-tcspc-lifetime`.

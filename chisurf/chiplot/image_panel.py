@@ -687,18 +687,30 @@ class ImagePanel:
         painter.fill_rect(tx, mid - 2.0, tw, 4.0, (70, 74, 84))
         count = self.frame_count
         at = tx + (tw * self.frame / (count - 1) if count > 1 else 0.0)
-        thumb = (120, 160, 230) if self._captured == "slider" or self._hovered == "slider" else (
-            100, 140, 210)
+        thumb = (
+            (120, 160, 230)
+            if self._captured == "slider" or self._hovered == "slider"
+            else (100, 140, 210)
+        )
         painter.fill_rect(at - 5.0, mid - 7.0, 10.0, 14.0, thumb)
         painter.text(
-            x + w - self.LABEL_W, y, self.LABEL_W - 4.0, h, _ALIGN_RIGHT_VCENTER,
-            self.frame_label, (220, 220, 220),
+            x + w - self.LABEL_W,
+            y,
+            self.LABEL_W - 4.0,
+            h,
+            _ALIGN_RIGHT_VCENTER,
+            self.frame_label,
+            (220, 220, 220),
         )
 
     def _part_at(self, px: float, py: float) -> str | None:
         for part in ("slider", "ramp", "picture"):
             box = self._boxes.get(part)
-            if box is not None and box[0] <= px < box[0] + box[2] and box[1] <= py < box[1] + box[3]:
+            if (
+                box is not None
+                and box[0] <= px < box[0] + box[2]
+                and box[1] <= py < box[1] + box[3]
+            ):
                 return part
         return None
 

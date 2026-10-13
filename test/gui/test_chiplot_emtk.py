@@ -36,14 +36,29 @@ def _emtk_backend():
             os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
+#: Qt hosts the tests built to paint panels through Qt, closed after each test.
+_HOSTS: dict = {}
+
+
 @pytest.fixture
 def plot(qapp):
-    """A panel drawn by emtk, closed when the test ends."""
+    """A toolkit-free panel drawn by emtk; any Qt host painted for it is closed afterwards."""
+    from chisurf import chiplot as cp
+
+    panel = cp.Panel()
+    yield panel
+    for widget in _HOSTS.values():
+        widget.close()
+    _HOSTS.clear()
+
+
+def _host(plot):
+    """The Qt widget hosting *plot* (built on first use): what a legacy Qt form shows."""
     from chisurf.gui import chiplot as cp
 
-    panel = cp.Plot()
-    yield panel
-    panel.close()
+    if id(plot) not in _HOSTS:
+        _HOSTS[id(plot)] = cp.host(plot)
+    return _HOSTS[id(plot)]
 
 
 def _decay(n: int = 128):
@@ -155,10 +170,7 @@ def test_the_panel_paints(plot, qapp):
     plot.legend()
     plot.set_labels(bottom="t / ns", left="counts")
 
-    plot.resize(400, 300)
-    pixmap = QtGui.QPixmap(400, 300)
-    pixmap.fill()
-    plot.render(pixmap)
+    pixmap = _paint(plot, 400, 300)
 
     image = pixmap.toImage()
     colours = {image.pixel(i, j) for i in range(0, 400, 7) for j in range(0, 300, 7)}
@@ -170,10 +182,7 @@ def test_an_image_is_mapped_through_its_colormap(plot):
     data = np.add.outer(np.arange(24.0), np.arange(32.0))
     image = plot.image(data, colormap="viridis")
 
-    plot.resize(300, 220)
-    pixmap = QtGui.QPixmap(300, 220)
-    pixmap.fill()
-    plot.render(pixmap)
+    pixmap = _paint(plot, 300, 220)
     rendered = pixmap.toImage()
     colours = {rendered.pixel(i, j) for i in range(0, 300, 5) for j in range(0, 220, 5)}
     assert len(colours) > 8, "a mapped heatmap is not one flat colour"
@@ -187,10 +196,7 @@ def test_an_image_places_itself_in_data_coordinates(plot):
     """Its rect drives the axes, so a panel holding only an image fits it."""
     plot.image(np.zeros((10, 20)), rect=(5.0, 50.0, 10.0, 100.0))
 
-    plot.resize(200, 200)
-    pixmap = QtGui.QPixmap(200, 200)
-    pixmap.fill()
-    plot.render(pixmap)
+    _paint(plot, 200, 200)
 
     (x0, x1), (y0, y1) = plot.get_range()
     assert (x0, x1) == (5.0, 15.0)
@@ -204,11 +210,12 @@ def test_an_image_has_to_be_two_dimensional(plot):
 
 
 def _paint(plot, width=300, height=200):
-    """Paint the panel once, so the data-to-pixel mapping exists."""
-    plot.resize(width, height)
+    """Paint the panel once through its Qt host, so the data-to-pixel mapping exists."""
+    widget = _host(plot)
+    widget.resize(width, height)
     pixmap = QtGui.QPixmap(width, height)
     pixmap.fill()
-    plot.render(pixmap)
+    widget.render(pixmap)
     return pixmap
 
 
@@ -416,10 +423,7 @@ def test_an_arrow_is_drawn_where_it_points(plot):
     head.set_angle(90.0)
     assert head.angle == 90.0
 
-    plot.resize(300, 300)
-    pixmap = QtGui.QPixmap(300, 300)
-    pixmap.fill()
-    plot.render(pixmap)
+    pixmap = _paint(plot, 300, 300)
     image = pixmap.toImage()
     red = [
         (i, j)
@@ -560,12 +564,14 @@ def test_a_panel_exports_itself_to_a_file(plot, tmp_path):
     """The export the plot menu offers."""
     x, y = _decay()
     plot.line(x, y, name="decay")
-    plot.resize(240, 180)
+    _host(plot).resize(240, 180)
 
     target = tmp_path / "panel.png"
-    plot.export_image(str(target))  # the facade returns nothing: it falls
-    assert target.is_file()  # back to a widget grab if the backend
-    assert target.stat().st_size > 0  # declines, so the file is the result
+    _host(plot).export_image(str(target))  # what the Qt host's menu writes
+    assert target.is_file() and target.stat().st_size > 0
+    plain = tmp_path / "plain.png"
+    plot.export_image(str(plain))  # the panel alone: emtk's CPU rasteriser
+    assert plain.is_file() and plain.stat().st_size > 0
 
 
 def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
@@ -575,9 +581,9 @@ def test_discarding_a_panel_leaves_no_qt_object_behind(qapp):
     events after their C++ half is gone. An emtk panel is a Python list: drop
     it and there is nothing left to deliver an event to.
     """
-    from chisurf.gui import chiplot as cp
+    from chisurf import chiplot as cp
 
-    panel = cp.Plot()
+    panel = cp.Panel()
     x, y = _decay()
     panel.line(x, y, name="decay")
     entries = panel.native()
@@ -598,9 +604,9 @@ def test_tick_numbers_read_as_values():
 
 def test_linked_panels_share_the_x_range_of_all_their_data(plot, qapp):
     """Residual strips over a decay: one time axis, fitted to the union."""
-    from chisurf.gui import chiplot as cp
+    from chisurf import chiplot as cp
 
-    strip = cp.Plot()
+    strip = cp.Panel()
     strip.link_x(plot)
     plot.line(np.linspace(0.0, 12.0, 50), np.ones(50))
     strip.line(np.linspace(1.0, 11.0, 50), np.zeros(50))

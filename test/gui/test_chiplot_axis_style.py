@@ -14,16 +14,15 @@ from chisurf.gui import chiplot as cp
 
 
 @pytest.fixture(params=["emtk"])
-def plot(request: Any, qapp: Any) -> Iterator[cp.Plot]:
+def plot(request: Any) -> Iterator[cp.Panel]:
     """Exercise the real renderer while restoring the process backend."""
     previous = backends._active
     previous_env = os.environ.get("CHISURF_PLOT_BACKEND")
     backends.set_backend(request.param)
-    panel = cp.Plot()
+    panel = cp.Panel()
     try:
         yield panel
     finally:
-        panel.close()
         backends._active = previous
         if previous_env is None:
             os.environ.pop("CHISURF_PLOT_BACKEND", None)
@@ -31,14 +30,14 @@ def plot(request: Any, qapp: Any) -> Iterator[cp.Plot]:
             os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
-def test_axis_style_recolours_the_axes(plot: cp.Plot) -> None:
+def test_axis_style_recolours_the_axes(plot: cp.Panel) -> None:
     assert plot.set_axis_style(line="#b0b0b0", text="#d0d0d0") is plot
     canvas: Any = plot._canvas
     assert canvas._tick_text == canvas._label_text == (0xD0, 0xD0, 0xD0)
     assert canvas._axis_line == (0xB0, 0xB0, 0xB0)
 
 
-def test_tick_labels_replace_numbers_and_can_be_restored(plot: cp.Plot) -> None:
+def test_tick_labels_replace_numbers_and_can_be_restored(plot: cp.Panel) -> None:
     plot.bars([0, 1], [3.0, 5.0], width=0.6)
     plot.set_tick_labels("bottom", [(0, "D1"), (1, "D2")])
     canvas: Any = plot._canvas
@@ -47,7 +46,7 @@ def test_tick_labels_replace_numbers_and_can_be_restored(plot: cp.Plot) -> None:
     assert "bottom" not in canvas._custom_ticks
 
 
-def test_legend_style_is_accepted(plot: cp.Plot) -> None:
+def test_legend_style_is_accepted(plot: cp.Panel) -> None:
     plot.line(np.arange(3), np.arange(3), name="a")
     plot.legend()
     assert plot.set_legend_style(text="#d0d0d0") is plot

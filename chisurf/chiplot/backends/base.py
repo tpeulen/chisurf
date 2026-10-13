@@ -6,7 +6,7 @@ an :class:`ImageViewCanvas` -- each a control a surface draws, toolkit-free --
 plus global configuration. Hosting one in a widget is the host layer's job
 (:mod:`chisurf.gui.chiplot`), never the backend's.
 
-The public :class:`~chisurf.gui.chiplot.Plot` / :class:`~chisurf.gui.chiplot.Grid`
+The public :class:`~chisurf.chiplot.Panel` / :class:`~chisurf.chiplot.PanelGrid`
 wrappers delegate to these. Concrete backends live alongside this module
 (``emtk_backend`` today); only they may import a rendering library, so swapping
 backends never touches call sites.
@@ -21,6 +21,7 @@ import numpy as np
 
 from chisurf.chiplot import handles as H
 from chisurf.chiplot import style as S
+
 
 class Canvas(abc.ABC):
     """A single plot panel: axes, a viewbox, and drawn handles.

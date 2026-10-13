@@ -46,9 +46,9 @@ def _emtk_backend():
 
 
 def _chiplot_app(qapp):
-    from chisurf.gui import chiplot as cp
+    from chisurf import chiplot as cp
 
-    panel = cp.Plot()
+    panel = cp.Panel()
     x = np.linspace(0.0, 25.0, 128)
     panel.line(x, 1000.0 * np.exp(-x / 4.0) + 5.0, name="decay")
     out: dict = {}
@@ -59,7 +59,7 @@ def _chiplot_app(qapp):
         out["rect"] = im.get_item_rect()
         im.end()
 
-    return ImApp(gui), out, (lambda: repr(panel._canvas.get_range())), panel
+    return ImApp(gui), out, (lambda: repr(panel._canvas.get_range()))
 
 
 def _implot_app():
@@ -77,7 +77,7 @@ def _implot_app():
         out["view"] = (lim.x_min, lim.x_max, lim.y_min, lim.y_max)
         im.end()
 
-    return ImApp(gui), out, (lambda: out["view"]), None
+    return ImApp(gui), out, (lambda: out["view"])
 
 
 def _centre(out):
@@ -88,19 +88,15 @@ def _centre(out):
 @pytest.mark.parametrize("kind", ["chiplot", "implot"])
 @pytest.mark.parametrize("gesture", ["notch", "notch_out", "swipe"])
 def test_a_plot_zooms_once_and_then_holds_still_under_a_resting_pointer(qapp, kind, gesture):
-    app, out, view, panel = _chiplot_app(qapp) if kind == "chiplot" else _implot_app()
-    try:
-        driver = RealisticDriver(app, (700, 500), real_painter=False)
-        driver.frame(3)
-        centre = _centre(out)
-        before = view()
-        actions = {
-            "notch": lambda d: d.wheel(1, at=centre),
-            "notch_out": lambda d: d.wheel(-1, at=centre),
-            "swipe": lambda d: d.swipe(2, at=centre, events=20, momentum=10),
-        }
-        assert_settles(driver, actions[gesture], view, frames=30, label=f"{kind}/{gesture}")
-        assert view() != before, f"{kind}: the {gesture} did not zoom at all"
-    finally:
-        if panel is not None:
-            panel.close()
+    app, out, view = _chiplot_app(qapp) if kind == "chiplot" else _implot_app()
+    driver = RealisticDriver(app, (700, 500), real_painter=False)
+    driver.frame(3)
+    centre = _centre(out)
+    before = view()
+    actions = {
+        "notch": lambda d: d.wheel(1, at=centre),
+        "notch_out": lambda d: d.wheel(-1, at=centre),
+        "swipe": lambda d: d.swipe(2, at=centre, events=20, momentum=10),
+    }
+    assert_settles(driver, actions[gesture], view, frames=30, label=f"{kind}/{gesture}")
+    assert view() != before, f"{kind}: the {gesture} did not zoom at all"
