@@ -31,13 +31,32 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list has 30 entries at chisurf 7e0514d95, all mmfdb_admin (33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
+1. Measure: the allow-list is **empty** since the mmfdb_admin slice (2026-10-13; 30 entries at chisurf 7e0514d95, all mmfdb_admin, 33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
    64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
    (186 before that), 210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
    slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
    `grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .`; per area `grep -v '^#' test/plugin_qt_allowlist.txt |
-   cut -d/ -f3 | sort | uniq -c`: core 30 (mmfdb_admin, a lane in flight). chimol, ndxplorer, misc and the
-   plugins root 0.
+   cut -d/ -f3 | sort | uniq -c`: 0 everywhere. `test/test_plugin_qt_free.py` now rejects any Qt import under
+   `chisurf/plugins/`.
+   **mmfdb_admin slice (2026-10-13, 30 lines → 0).** The Qt `MMFDBWidget` (`gui/tool.py`, 7078 lines), its mixins,
+   entity/metadata docks, generic form, AutoForm entity form, login dialog, the six workflow views, eLabFTW view and
+   the optical-component dock/detail form/duplicates dialog/SpectrumView shim are deleted; the manifest names only
+   `entrypoints.emtk`. Evidence: the Qt half re-captured live before any change (459 controls,
+   `okf/plugins/emtk-ports/mmfdb_admin/retire_qt_before.json`), an audit of every *reachable* Qt action against the
+   twin (no backend call lost), and the after inventory (`retire_compare.json`). What the twin lacked was added, not
+   explained away: Enter in a connection field logs in, Enter in the eLabFTW search lists, Spectra search as you type
+   with **Auto**, the Spectra row menu (Open details, copy row/cell, check/uncheck selected, select all, clear
+   selection), Find Duplicates progress + Cancel, a click on a provenance **edge** shows its record (a node click
+   showed nothing either: the payload is a dict), the entity row's UUID on hover, the rail pictograms, **Open in ndX**
+   on Processed Products (`open_in_ndx` + `record_burst_ids_against_product`, hidden in Qt), and **Demo data…** (the
+   Qt ten-clicks-on-the-header population, never wired). Every Qt widget test (12 files, ~70 tests) is ported to the
+   app and the emtk Driver; `test/gui/test_mmfdb_demo_captions.py` too. Found and fixed at the root: emtk forms shared
+   widget ids across forms (toolbar `import_file` swallowed the panel's *Import file* press; emtk 0.1.12 scopes ids
+   per `FormState`), emtk value fields had no Enter action nor search-as-you-type (`enter_call`, `live`, emtk 0.1.11),
+   mmfdb read stored spectra bytes with `json.loads` so export validation failed for any sample with a measured
+   spectrum (mmfdb 2180b1a), and the twin then skipped validation silently (now it says so and asks).
+   Deliberate differences: the entity table's live filter has no *Auto* toggle (the emtk filter is client-side), and
+   window geometry is the host's (the app keeps the panel and its splits).
    **ndX + chimol leftovers slice (2026-10-13, 8 lines → 0).** *ndX*: ChiSurf's Qt `NdxWindow`
    (`plugins/ndxplorer/window.py`, the app in a `ChisurfDockTool`) is deleted; the manifest names only
    `entrypoints.emtk` (`gui/app.py:make_app`) and declares window statefulness, so the `--qt` shell hosts the app
@@ -108,8 +127,7 @@ own startup stages (item 5): S5 is done.
    window title). The T5 test is ported to the real shell driven by `emtk.testing.Driver` (real clicks, real
    `BH_SPC132.spc`, three hand-offs asserted and rendered); mechanism tests in `test/core/test_plugin_handoff.py`.
    Trap: a hosted child's `form.rects` are local to its dock box (`host_child` draws with `local_coordinates`), so a
-   click is `hosted.box` origin + rect. Not routed yet (other lanes' files): `mmfdb_admin/gui/tool.py`
-   `open_in_ndxplorer` (Qt tool), help/code_editor's `host_in_shell` page/file opening (could become `accepts` kinds
+   click is `hosted.box` origin + rect. Not routed yet (other lanes' files): help/code_editor's `host_in_shell` page/file opening (could become `accepts` kinds
    `open_page` / `open_file`). Under `--qt` the three buttons are now greyed (no Qt adapter); the Qt window is legacy.
    **HydroPro, Code Editor and Help retired (2026-10-13, 25 lines struck; HEAD then has 159 with the Trace
    Browser's 2).** HydroPro: the 12 parity cases frozen from the live tool with the fake HYDRO program
@@ -132,8 +150,7 @@ own startup stages (item 5): S5 is done.
    Left, and why (each reason re-checked against the challenge):
    Open: **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
      the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
-   Open: **mmfdb_admin** (about 30 lines, in another lane's files): the emtk twin exists; it needs the before/after pair
-     and its widget tests ported to the twin, as code_editor and help did below.
+   Done 2026-10-13: **mmfdb_admin** (30 lines; see the slice paragraph at the top of this item).
    Done 2026-10-13 (acq/lightpath/batch/number_quest/plugins-root slice, −14): **acq** device dialogs (fa6f18819;
      BH 40→90, BrickMic 10→61, PicoQuant 12→58, simulation 61→118 controls, lost [], `emtk-ports/acq/retire_*`;
      `test_setup_widgets.py` drives the emtk dialog); **lightpath_simulator** Qt host + Qt Easy Mode (7e0514d95;
@@ -521,7 +538,7 @@ defines a Q* class; test = lives under a `test(s)/` directory.
 | Area | Lines | Host | Widget / dialog | Test | Other | Removed by |
 |---|---|---|---|---|---|---|
 | chimol | 4 (111 before 2026-10-13) | 0 | 0 | 3 + 1 capture script | 0 | S7: tests on the native host (done); the 4 Qt captures/prompt go when chimol drops `hosts/qt` (item 1) |
-| core / mmfdb_admin | 30 | 0 | 17 | 12 | 1 | S5: legacy admin widgets go once the emtk app covers them |
+| core / mmfdb_admin | 0 (30 before 2026-10-13) | 0 | 0 | 0 | 0 | done: the Qt window retired, its tests on the emtk app |
 | core / code_editor | 12 | 1 | 6 | 4 | 1 | S4: the console and editor share `TextEditor` |
 | core / acq | 9 | 0 | 4 | 1 | 4 (device wrappers that use Qt signals) | S5: device wrappers move to plain callbacks or `emtk.tasks` |
 | core / help | 8 | 1 | 3 | 4 | 0 | S5: the Qt help `gui/tool.py` is deleted, since the native help browser exists |

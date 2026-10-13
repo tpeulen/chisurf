@@ -30,15 +30,8 @@ status: resolved 2026-10-13
 
 status: open
 
-- **MMFDB admin's *Open in ndX* has no emtk twin.** The Qt admin tool's processed-products tab opened a
-  product's folder in ndX and made Save > Burst IDs record the selection against that product. With ChiSurf's
-  Qt ndX window retired (chisurf e84199fe5) the Qt tool now calls `ndxplorer.gui.app.open_in_ndx(path)` and
-  `ndxplorer.selection_provenance.record_burst_ids_against_product(app, product_id, experiment_id, client=...)`
-  (both Qt-free, covered by `chisurf/plugins/ndxplorer/tests/test_window_routes.py`). The emtk admin app
-  (`mmfdb_admin/gui/app.py`, `gui/native/*`) has no such action (`grep -rn ndx` finds none), so when the
-  mmfdb_admin lane retires `gui/tool.py` the action is lost unless its twin calls those two functions. In the
-  emtk shell `open_in_ndx` returns the shell's dock record, not the app, until the dock is built: the recorder
-  has to be attached once the hand-off has delivered (or `receive_path` gains a product id).
+- **MMFDB admin's *Open in ndX*: resolved 2026-10-13** (the emtk admin has it on Processed Products; what is
+  left in the emtk shell is in "MMFDB Admin after the Qt retirement" below).
 - **chimol `hosts/qt/` is not deleted yet.** The exact importers and the order are in
   [qt-retirement](../subsystems/qt-retirement.md) item 9; the blocker is `Viewer()` defaulting to
   `hosts.qt.wgpu_view.default_renderer` on a Qt-bound `WidgetBase`.
@@ -2393,9 +2386,30 @@ withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "Fro
 host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
 now checks the app's wiring on either host. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
 
-## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
+## MMFDB Admin after the Qt retirement (2026-10-13)
 
 status: open
+
+The Qt window is gone (`okf/subsystems/qt-retirement.md` item 1, mmfdb_admin slice). Left:
+
+- **Open in ndX inside the emtk shell records nothing back.** The admin's **Open in ndX**
+  (`mmfdb_admin/gui/native/entity.py::open_in_ndx`) attaches `record_burst_ids_against_product` only when
+  `open_in_ndx` returns the ndX app (standalone); in the shell it returns the dock record of the `open_path`
+  hand-off. **Blocks:** provenance of gate selections made from an MMFDB product in the shell. Fix (ndX's
+  files): let the `open_path` hand-off carry `processed_data_id` / `experiment_id` and attach the recorder in
+  `receive_path`. This is the remaining half of the entry below.
+- **emtk pin.** The admin needs emtk 0.1.12 (form-scoped widget ids: on 0.1.11 and older the Import / Export
+  panel's *Import file* press does nothing, because the toolbar's *Import* has the same action name) and 0.1.11
+  (`enter_call`, `live`). emtk 2eeec85 / 5bd6a82 are committed, not pushed, and `EMTK_MIN_VERSION` is unchanged
+  (no piecemeal pin moves); the arm64 env has 0.1.12 installed. Move the pin with the next emtk push.
+- **`chisurf/gui/widgets/spectrum_view.py` has no user left.** Its only consumer was the retired Qt Spectra dock;
+  `test/gui/test_chiplot_api.py` still tests it and `test/chiplot_native_allowlist.txt` lists it. Delete it with
+  its test when the chiplot lane next touches the allow-list.
+
+## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
+
+status: open (standalone: fixed 2026-10-13, the emtk admin's Open in ndX attaches the recorder; shell: see the
+entry above)
 
 **Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
 when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
