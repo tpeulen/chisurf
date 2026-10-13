@@ -10,7 +10,8 @@ def test_manifest_loads():
 
     assert manifest is not None
     assert manifest.id == "games"
-    assert manifest.entrypoints.gui == "chisurf.plugins.misc.games.gui.tool:GamesWidget"
+    assert manifest.entrypoints.emtk == "chisurf.plugins.misc.games.gui.app:make_app"
+    assert not manifest.entrypoints.gui  # the Qt hub is retired; the Qt window hosts the emtk app
     assert manifest.menu_hidden is False
 
 
@@ -24,7 +25,7 @@ def test_the_gamespace_survives_the_demo_flag():
     manifest edit that gates the hub as demo reads as "the games are gone"
     to anyone who does not know the flag exists.
     """
-    from chisurf.plugins.misc.games.gui.tool import GAME_PANELS
+    from chisurf.plugins.misc.games.gui.registry import GAME_PANELS
 
     hub = load_manifest(Path(__file__).parents[1] / "manifest.json")
     assert hub.demo is False, "the hub must not be demo-gated"

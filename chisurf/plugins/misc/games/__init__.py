@@ -5,7 +5,6 @@ from __future__ import annotations
 # Plugin brand icon (unified emoji set)
 icon = "🎮"
 
-import sys
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
@@ -15,21 +14,21 @@ name = _manifest.display_name if _manifest is not None else "Tools:System:Games"
 
 
 def load():
-    """Return the Games hub widget."""
-    from .gui.tool import GamesWidget
+    """Return the native Games hub app (:func:`.gui.app.make_app`)."""
+    from .gui.app import make_app
 
-    return GamesWidget()
+    return make_app()
 
 
 if __name__ == "__main__":
-    from qtpy.QtWidgets import QApplication
+    from chisurf.emtk.__main__ import main as _launch
 
-    app = QApplication(sys.argv)
-    window = load()
-    window.show()
-    sys.exit(app.exec())
+    _launch(["--plugin", "games"])
 
+if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+    from emtk.qt_host import ControlHost
 
-if __name__ == "plugin":
-    window = load()
+    from chisurf.plugins.misc.games.gui.app import make_app
+
+    window = ControlHost(make_app())
     window.show()

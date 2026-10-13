@@ -5,7 +5,6 @@ from __future__ import annotations
 # Plugin brand icon (unified emoji set)
 icon = "🔢"
 
-import sys
 from pathlib import Path
 
 from chisurf.core.plugin import load_manifest
@@ -15,18 +14,14 @@ name = _manifest.display_name if _manifest is not None else "Tools:Miscellaneous
 
 
 if __name__ == "__main__":
-    from qtpy.QtWidgets import QApplication
+    from chisurf.emtk.__main__ import main as _launch
 
-    from .gui.tool import NumberQuestWidget
+    _launch(["--plugin", "number_quest"])
 
-    app = QApplication(sys.argv)
-    window = NumberQuestWidget()
-    window.show()
-    sys.exit(app.exec())
+if __name__ == "plugin":  # pragma: no cover - the legacy macro launch; the manifest's emtk entry comes first
+    from emtk.qt_host import ControlHost
 
+    from chisurf.plugins.misc.games.number_quest.gui.app import make_app
 
-if __name__ == "plugin":
-    from .gui.tool import NumberQuestWidget
-
-    window = NumberQuestWidget()
+    window = ControlHost(make_app())
     window.show()

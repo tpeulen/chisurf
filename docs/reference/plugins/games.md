@@ -21,7 +21,7 @@ A collection of built-in games: Number Quest, Minesweeper, Tetris, Pong, and Bre
 | Menu path | Tools → System → **Games** |
 | Categories | Tools, System |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

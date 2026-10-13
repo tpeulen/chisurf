@@ -26,7 +26,6 @@
     "properties": {}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.pong.pong:Pong",
     "cli": null,
     "services": null,
     "emtk": "chisurf.plugins.misc.games.pong.app:make_app"

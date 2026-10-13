@@ -15,20 +15,9 @@ from __future__ import annotations
 import math
 import random
 
-from qtpy import QtWidgets
-
 from chisurf.gui import chigame
 from chisurf.gui.chigame.assets import wavelength_to_srgb
 from chisurf.gui.chigame.input import Action
-
-try:
-    from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:  # pragma: no cover - stand-alone use
-
-    def persist_plugin_state(name):
-        """Return an identity decorator when the host is unavailable."""
-        return lambda cls: cls
-
 
 from .model import (
     ACCEPTOR_NM,
@@ -212,29 +201,3 @@ class PongGame(PongModel, chigame.Game):
             align="center",
             color=(0.44, 0.48, 0.55, 1.0),
         )
-
-
-@persist_plugin_state("pong")
-class Pong(QtWidgets.QWidget):
-    """Dockable container hosting the game.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Parent widget.
-    """
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Pong")
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.game = PongGame()
-        canvas, self.host = chigame.create_widget(self.game, parent=self)
-        bar = QtWidgets.QHBoxLayout()
-        bar.setContentsMargins(4, 2, 4, 0)
-        bar.addWidget(chigame.sound_button(self.host, self))
-        bar.addStretch(1)
-        layout.addLayout(bar)
-        layout.addWidget(canvas)
-        self.resize(820, 640)

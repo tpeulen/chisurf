@@ -26,7 +26,6 @@
     "properties": {}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.tetris.tetris:Tetris",
     "cli": null,
     "services": null,
     "emtk": "chisurf.plugins.misc.games.tetris.app:make_app"

@@ -1,6 +1,5 @@
-"""Capture populated native boards; --qt also captures the legacy game renderer."""
+"""Capture populated native boards (the legacy Qt renders are recorded as ``renders/qt-game-*.png``)."""
 
-import sys
 from pathlib import Path
 
 from emtk.pil_painter import PilPainter
@@ -21,24 +20,6 @@ def populate(game):
 def main():
     OUTPUT.mkdir(exist_ok=True)
     for width, height in ((560, 620), (360, 620)):
-        if "--qt" in sys.argv:
-            from qtpy.QtWidgets import QApplication
-
-            from chisurf.gui import chigame
-
-            from ..gui.tool import MinesweeperChiGame
-
-            application = QApplication.instance() or QApplication([])
-            application.processEvents()
-
-            def script(frame, host):
-                if frame == 0:
-                    populate(host.game.game)
-
-            frame = chigame.capture(
-                MinesweeperChiGame(), size=(width, height), frames=2, script=script
-            )
-            chigame.save_png(frame, OUTPUT / f"qt-game-{width}x{height}.png")
         app = make_app()
         populate(app.game)
         for _ in range(2):

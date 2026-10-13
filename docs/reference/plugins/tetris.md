@@ -21,7 +21,7 @@ Spectral Tetris with line clearing, score tracking, pause and restart; contained
 | Menu path | Tools → Miscellaneous → Games → **Tetris** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `tetris_game` |
 
 ## Parameters

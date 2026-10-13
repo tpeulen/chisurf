@@ -26,7 +26,6 @@
     "properties": {}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.breakout.breakout:Breakout",
     "cli": null,
     "services": null,
     "emtk": "chisurf.plugins.misc.games.breakout.app:make_app"

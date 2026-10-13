@@ -21,7 +21,7 @@ A Minesweeper game with selectable playfield size and mine count, contained in t
 | Menu path | Tools → Miscellaneous → Games → **Minesweeper** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 1.0.0 |
-| Surfaces | emtk, gui |
+| Surfaces | emtk |
 
 ## Parameters
 

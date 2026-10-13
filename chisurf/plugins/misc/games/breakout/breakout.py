@@ -1,10 +1,7 @@
-"""Retained Qt reference view of the shared Breakout simulation."""
-
-from qtpy import QtWidgets
+"""The chigame view of the shared Breakout simulation (rules in ``model.py``; the window is ``app.py``)."""
 
 from chisurf.gui import chigame
 from chisurf.gui.chigame.input import Action
-from chisurf.gui.misc_helpers import persist_plugin_state
 
 from .model import *
 
@@ -162,29 +159,3 @@ class BreakoutGame(BreakoutModel, chigame.Game):
             align="center",
             color=(0.44, 0.48, 0.55, 1.0),
         )
-
-
-@persist_plugin_state("breakout")
-class Breakout(QtWidgets.QWidget):
-    """Dockable container hosting the game.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Parent widget.
-    """
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Breakout")
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.game = BreakoutGame()
-        canvas, self.host = chigame.create_widget(self.game, parent=self)
-        bar = QtWidgets.QHBoxLayout()
-        bar.setContentsMargins(4, 2, 4, 0)
-        bar.addWidget(chigame.sound_button(self.host, self))
-        bar.addStretch(1)
-        layout.addLayout(bar)
-        layout.addWidget(canvas)
-        self.resize(820, 690)

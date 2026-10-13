@@ -10,5 +10,6 @@ def test_manifest_is_hidden_and_loads():
 
     assert manifest is not None
     assert manifest.id == "breakout"
-    assert manifest.entrypoints.gui == "chisurf.plugins.misc.games.breakout.breakout:Breakout"
+    assert manifest.entrypoints.emtk == "chisurf.plugins.misc.games.breakout.app:make_app"
+    assert not manifest.entrypoints.gui
     assert manifest.menu_hidden is True

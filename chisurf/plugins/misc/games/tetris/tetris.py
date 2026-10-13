@@ -14,19 +14,8 @@ in a detection channel.
 
 from __future__ import annotations
 
-from qtpy import QtWidgets
-
 from chisurf.gui import chigame
 from chisurf.gui.chigame.input import Action
-
-try:
-    from chisurf.gui.misc_helpers import persist_plugin_state
-except ImportError:  # pragma: no cover - stand-alone use
-
-    def persist_plugin_state(name):
-        """Return an identity decorator when the host is unavailable."""
-        return lambda cls: cls
-
 
 from .model import (
     BOARD_H,
@@ -233,29 +222,3 @@ class TetrisGame(TetrisModel, chigame.Game):
         scene.draw(
             "band", f"{nm:.0f}", at=at, size=(self.CELL - 3.0, self.CELL - 3.0), emission_nm=nm
         )
-
-
-@persist_plugin_state("tetris")
-class Tetris(QtWidgets.QWidget):
-    """Dockable container hosting the game.
-
-    Parameters
-    ----------
-    parent : QWidget, optional
-        Parent widget.
-    """
-
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Tetris")
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.game = TetrisGame()
-        canvas, self.host = chigame.create_widget(self.game, parent=self)
-        bar = QtWidgets.QHBoxLayout()
-        bar.setContentsMargins(4, 2, 4, 0)
-        bar.addWidget(chigame.sound_button(self.host, self))
-        bar.addStretch(1)
-        layout.addLayout(bar)
-        layout.addWidget(canvas)
-        self.resize(520, 620)

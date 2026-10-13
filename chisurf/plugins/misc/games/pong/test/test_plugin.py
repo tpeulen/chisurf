@@ -16,5 +16,6 @@ def test_manifest_is_hidden_and_loads():
 
     assert manifest is not None
     assert manifest.id == "pong"
-    assert manifest.entrypoints.gui == "chisurf.plugins.misc.games.pong.pong:Pong"
+    assert manifest.entrypoints.emtk == "chisurf.plugins.misc.games.pong.app:make_app"
+    assert not manifest.entrypoints.gui
     assert manifest.menu_hidden is True

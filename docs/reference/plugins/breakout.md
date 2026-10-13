@@ -21,7 +21,7 @@ Classic Breakout game with progressive difficulty, multiple brick types, mouse/k
 | Menu path | Tools → Miscellaneous → Games → **Breakout** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `breakout_game` |
 
 ## Parameters

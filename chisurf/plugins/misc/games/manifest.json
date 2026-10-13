@@ -9,7 +9,6 @@
   ],
   "categories": ["Tools", "System"],
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.gui.tool:GamesWidget",
     "emtk": "chisurf.plugins.misc.games.gui.app:make_app"
   },
   "dependencies": {},

@@ -21,7 +21,7 @@ Classic Pong game with CPU opponent, score tracking, and particle effects; conta
 | Menu path | Tools → Miscellaneous → Games → **Pong** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `pong_game` |
 
 ## Parameters

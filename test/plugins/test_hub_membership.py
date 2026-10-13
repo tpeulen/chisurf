@@ -121,7 +121,7 @@ def _declared_children() -> dict[str, list[str]]:
         "imaging_tools": [row[1] for row in IMAGING],
         "calculators": [e.widget for e in default_calculators()],
         "wizards": [e.emtk for e in default_wizards()],
-        "games": [p["class_path"] for p in GAME_PANELS],
+        "games": [p["emtk"] for p in GAME_PANELS],
         "setup": [ref for p in SETUP for ref in (p.plugin, p.entry) if ref],
         "traj_tools": [p["emtk"] for p in TOOL_PANELS],
         "burst_analysis": [p["plugin"] for p in BURST if p.get("plugin")],

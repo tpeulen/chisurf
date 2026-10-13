@@ -13,7 +13,6 @@
     "Games"
   ],
   "entrypoints": {
-    "gui": "chisurf.plugins.misc.games.minesweeper.gui.tool:MinesweeperWidget",
     "emtk": "chisurf.plugins.misc.games.minesweeper.gui.app:make_app"
   },
   "dependencies": {},

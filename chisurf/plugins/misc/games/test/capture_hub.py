@@ -1,8 +1,10 @@
-"""Capture the actual Qt hub and populated native hub at two widths."""
+"""Capture the populated native hub at two widths.
+
+The Qt hub's "before" is recorded as ``renders/hub-qt-reference.png`` (the Qt hub is retired).
+"""
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from emtk.pil_painter import PilPainter
@@ -32,31 +34,5 @@ def native():
         app.close()
 
 
-def qt():
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from qtpy import QtWidgets
-
-    from ..gui.tool import GamesWidget
-
-    application = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    window = GamesWidget()
-    window.show()
-    window.nav_list.setCurrentRow(1)
-    application.processEvents()
-    game_widgets = window.panels[1]["instance"].findChildren(QtWidgets.QWidget)
-    game_widget = next(
-        (w for w in game_widgets if hasattr(w, "game") and hasattr(w.game, "game")), None
-    )
-    if game_widget is not None:
-        populate(game_widget.game.game)
-    else:
-        print("Qt hub opened, but its game panel could not load without a GPU adapter")
-    for _ in range(3):
-        application.processEvents()
-    window.grab().save(str(OUTPUT / "hub-qt-reference.png"))
-    window.close()
-
-
 if __name__ == "__main__":
     native()
-    qt()

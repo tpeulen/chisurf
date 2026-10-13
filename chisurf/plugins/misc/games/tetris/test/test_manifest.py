@@ -10,5 +10,6 @@ def test_manifest_is_hidden_and_loads():
 
     assert manifest is not None
     assert manifest.id == "tetris"
-    assert manifest.entrypoints.gui == "chisurf.plugins.misc.games.tetris.tetris:Tetris"
+    assert manifest.entrypoints.emtk == "chisurf.plugins.misc.games.tetris.app:make_app"
+    assert not manifest.entrypoints.gui
     assert manifest.menu_hidden is True
