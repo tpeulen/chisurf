@@ -159,9 +159,9 @@ def test_a_click_on_a_check_box_ticks_and_unticks_the_dataset_and_the_summary_fo
     drv.click(checkboxes(drv)[0])
     assert drv.app.model.selected_dataset_indices == [2]
     to_step(drv, "run")
-    assert drv.drawn("Loaded datasets: 1") or any(
-        "Loaded datasets: 1" in s for s in drv.draw(2).strings
-    )
+    # The summary is Markdown: the bold count is a run of its own ("• Loaded datasets: ", "1"),
+    # so the line is read as its runs join.
+    assert "Loaded datasets: 1" in "".join(drv.draw(2).strings)
 
 
 def test_refresh_button_lists_the_datasets_loaded_since(drv):

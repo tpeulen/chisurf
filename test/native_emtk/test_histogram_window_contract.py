@@ -83,23 +83,30 @@ def test_default_geometry_retains_both_pages_and_plot_controls(tmp_path, monkeyp
 
 
 def test_default_setup_table_reveals_detector_row_actions(tmp_path, monkeypatch):
-    """The existing horizontal scrollbar exposes G/Delete without altering the definition."""
+    """G/Delete of a detector row are reachable without altering the definition.
+
+    At 1100x720 the (widened) setup dock shows them outright; at 800x600 the table overflows and
+    its horizontal scrollbar brings them into view.
+    """
     isolate(tmp_path, monkeypatch)
     from chisurf.plugins.tttr.microtime_histogram.demo import SETUP
     from chisurf.plugins.tttr.microtime_histogram.gui.app import create_app
 
-    app = create_app()
-    try:
-        app.editor.load_definition(copy.deepcopy(SETUP))
-        before = copy.deepcopy(app.editor.model.get_settings())
-        app.docks.focus("setup")
-        drv = Driver(app, size=(1100, 720))
-        drv.draw()
-        table = app.editor._detector_table.control
-        x, y, width, height = table._hbar_box
-        drv.click((x + width * 0.9, y + height * 0.5))
-        assert table.first_column > 0
-        assert any(cell[2] == "delete" for cell in app.editor._detector_buttons.cells())
-        assert app.editor.model.get_settings() == before
-    finally:
-        app.close()
+    for size, scrolls in (((1100, 720), False), ((800, 600), True)):
+        app = create_app()
+        try:
+            app.editor.load_definition(copy.deepcopy(SETUP))
+            before = copy.deepcopy(app.editor.model.get_settings())
+            app.docks.focus("setup")
+            drv = Driver(app, size=size)
+            drv.draw()
+            table = app.editor._detector_table.control
+            assert (table._hbar_box is not None) == scrolls, size
+            if scrolls:
+                x, y, width, height = table._hbar_box
+                drv.click((x + width * 0.9, y + height * 0.5))
+                assert table.first_column > 0
+            assert any(cell[2] == "delete" for cell in app.editor._detector_buttons.cells())
+            assert app.editor.model.get_settings() == before
+        finally:
+            app.close()

@@ -365,15 +365,10 @@ def test_gate_handles_are_dragged_with_the_pointer(app, drv, with_demo):
     drv.click_text("Add rectangle")
     app.docks.focus("Parameter plane")
     drv.draw(3)
-    px, py, pw, ph = app.item_rects["Parameter plane"]
-    x0, x1, y0, y1 = m.plane_extent()
     roi = m.gates.get("Rectangle").roi
     before = (roi.x1, roi.y1)
-
-    def to_px(g, v):
-        return px + (g - x0) / (x1 - x0) * pw, py + ph - (v - y0) / (y1 - y0) * ph
-
-    start = to_px(roi.x1, roi.y1)
+    # the corner handle where the plot drew it: the fitted axes keep a margin around the extent
+    start = app.planes["gates"].to_pixels(roi.x1, roi.y1)
     drv.drag(start, (start[0] - 40, start[1] + 40), steps=8)
     assert (roi.x1, roi.y1) != before
 

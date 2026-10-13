@@ -166,7 +166,11 @@ def dirichlet_h_step(
         step = np.where(dalpha > 0, ratio, 1.0)
         delta = np.nanmin(step, axis=1, keepdims=True)
         delta[dalpha.sum(axis=1) == 0, :] = 0.0
-        if np.max(np.abs(dalpha).ravel() / (alpha.ravel() + EPS)) < threshold:
+        # A row without traces (its mean over an empty set is NaN) can never converge: it stays
+        # NaN, as in the reference, but it no longer holds the other rows -- and the caller -- in
+        # the loop for all max_iter iterations (the release gate timed out there).
+        settled = ~np.isfinite(dalpha) | (np.abs(dalpha) / (alpha + EPS) < threshold)
+        if np.all(settled):
             break
         if it >= max_iter:
             break
@@ -348,7 +352,11 @@ def normgamma_h_step(
         hess = _trigamma(a) - 1.0 / a
         da = g / hess
         a = np.maximum(a - da, 1 + 1e-3 * (a - 1))
-        if np.all(np.abs(a - a_old) / a < threshold):
+        # A state without traces has a NaN target and never converges; it stays NaN without
+        # keeping the others iterating to max_iter.
+        with np.errstate(invalid="ignore"):
+            settled = ~np.isfinite(a) | (np.abs(a - a_old) / a < threshold)
+        if np.all(settled):
             break
         it += 1
         a_old = a

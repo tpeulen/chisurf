@@ -106,6 +106,9 @@ class PlanePanel:
         self.paint, self.painting = paint, painting
         self.canvas = ImageCanvas(key)
         self.rect: tuple = (0.0, 0.0, 0.0, 0.0)
+        #: the axis limits the plot was last drawn with ``(x_min, x_max, y_min, y_max)``: a fit keeps a
+        #: margin around the extent, so a point of the plane is placed through these, not the extent
+        self.limits: tuple = (0.0, 1.0, 0.0, 1.0)
         self.hover = ""
         self._fit = ""
 
@@ -168,9 +171,22 @@ class PlanePanel:
                 if 0 <= ia < na and 0 <= ib < nb:
                     self.paint(ia, ib)
             self.rect = (*implot.get_plot_pos(), *implot.get_plot_size())
+            shown_limits = implot.get_plot_limits()
+            self.limits = (
+                shown_limits.x_min,
+                shown_limits.x_max,
+                shown_limits.y_min,
+                shown_limits.y_max,
+            )
             implot.end_plot()
         if self.tooltip:
             im.set_item_tooltip(self.tooltip)
+
+    def to_pixels(self, x: float, y: float) -> tuple[float, float]:
+        """The screen point of the plane point ``(x, y)`` as last drawn (y grows upwards)."""
+        px, py, pw, ph = self.rect
+        x0, x1, y0, y1 = self.limits
+        return px + (x - x0) / (x1 - x0) * pw, py + ph - (y - y0) / (y1 - y0) * ph
 
     def _regions(self) -> bool:
         """Draw the regions with their handles; True while a handle is held (a brush must not paint then)."""

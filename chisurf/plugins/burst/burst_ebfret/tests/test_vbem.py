@@ -124,3 +124,36 @@ def test_analyse_selects_and_decodes():
     # the two occupied levels are the simulated ones
     occupied = [s.mean for s in result.states if s.occupancy > 0.1]
     np.testing.assert_allclose(occupied, [0.25, 0.75], atol=0.03)
+
+
+def test_an_h_step_without_traces_stays_nan_and_does_not_spin(monkeypatch):
+    """A state no trace maps to has a NaN mean; the Newton solvers leave it NaN and stop.
+
+    It used to hold the solver (and the other rows) for all ``max_iter`` iterations: one summary
+    export ran 2 million trigamma evaluations and the release gate timed out after 120 s.
+    """
+    from chisurf.plugins.burst.burst_ebfret.core import dist
+
+    calls = []
+    real = dist._trigamma
+    monkeypatch.setattr(dist, "_trigamma", lambda x: (calls.append(1), real(x))[1])
+
+    rng = np.random.default_rng(1)
+    filled = rng.uniform(1.0, 5.0, size=(2, 3, 20))  # (L, K, N): two rows, twenty traces
+    alone = dist.dirichlet_h_step(filled)
+    calls.clear()
+    with np.errstate(invalid="ignore"):
+        mixed = dist.dirichlet_h_step(
+            np.concatenate([filled, np.full((1, 3, 20), np.nan)], axis=0)
+        )
+    assert len(calls) < 200  # two per iteration; 2000 when the NaN row spun to max_iter
+    np.testing.assert_allclose(mixed[:2], alone, rtol=1e-6)
+    assert np.isnan(mixed[2]).all()
+
+    k, n = 3, 20
+    w_m, w_beta = rng.normal(size=(k, n)), rng.uniform(1, 2, size=(k, n))
+    w_a, w_b = rng.uniform(2, 4, size=(k, n)), rng.uniform(1, 2, size=(k, n))
+    w_a[2] = np.nan  # the third state: no traces
+    calls.clear()
+    _m, _beta, a, _b = dist.normgamma_h_step(w_m, w_beta, w_a, w_b, a0=1.0)
+    assert len(calls) < 100 and np.isfinite(a[:2]).all() and np.isnan(a[2])

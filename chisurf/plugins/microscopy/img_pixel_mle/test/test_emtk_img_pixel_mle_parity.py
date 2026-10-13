@@ -746,7 +746,9 @@ def test_layout_empty_and_populated_has_no_clipped_or_overlapping_text(app, file
     # Pressing the folds scrolled the Settings form to reach them; the controls that sit above are checked from the top.
     for _ in range(6):
         drv.wheel(60.0, 90.0, 6)
-    draw(app, size)
+    # Measured with the font's real metrics (the driver's painter), as the window draws it: the
+    # recording painter's synthetic 20 px rows put Fit model 70 px lower than any real frame does.
+    drv.draw(3)
     rects = {
         k: app.form.rects[k]
         for k in (

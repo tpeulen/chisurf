@@ -150,6 +150,14 @@ def draw_series_plot(section: dict, model: Any, owner: Any) -> None:
     im.set_item_tooltip(str(section.get("description", "")))
 
 
+def _same_pixels(a: Any, b: Any) -> bool:
+    """Whether two images hold the same pixels (shape, dtype kind and values; NaN equals NaN)."""
+    a, b = np.asarray(a), np.asarray(b)
+    if a.shape != b.shape or a.dtype.kind != b.dtype.kind:
+        return False
+    return bool(np.array_equal(a, b, equal_nan=a.dtype.kind in "fc"))
+
+
 class ImagePanel:
     """An image (or a frame stack with play controls) with colormap, levels and point markers.
 
@@ -180,6 +188,7 @@ class ImagePanel:
         self.playing = False
         self.clock = clock
         self._last = 0.0
+        self._held: Any = None
         self.canvas = ImageCanvas(key)
         self.rects: dict[str, tuple] = {}
         self.form = FormState()
@@ -187,6 +196,24 @@ class ImagePanel:
     @property
     def frame(self) -> int:
         return int(self.canvas.z)
+
+    def hold(self, array: Any) -> Any:
+        """The image to draw this frame: the one already held while *array* shows the same pixels.
+
+        A source may compute its image anew on every frame (a categorical object map, a masked
+        copy). Telling a new image from the held one by ``id`` reset the view on every frame --
+        the wheel's zoom and a drag's pan were undone before they were seen -- and an ``id``
+        Python reuses could hide a genuinely new image. Equal pixels keep the held array (so
+        the view and the canvas' texture stay), different pixels replace it and reset the view.
+        """
+        if array is None:
+            return None
+        held = self._held
+        if held is not None and (array is held or _same_pixels(array, held)):
+            return held
+        self._held = array
+        self.reset()
+        return array
 
     def reset(self) -> None:
         """Forget the view (a new image replaces the old one)."""

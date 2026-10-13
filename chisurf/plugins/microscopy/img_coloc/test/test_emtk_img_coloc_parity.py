@@ -540,10 +540,9 @@ def test_the_box_handle_dragged_with_the_pointer_moves_the_gate_and_the_typed_bo
     app.docks.focus("Intensity scatter")
     drv.draw(3)
     roi = m.gates.get("Rectangle").roi
-    px, py, pw, ph = app.item_rects["Intensity scatter"]
-    a0, a1, b0, b1 = m.gate_extent()
     before = (roi.x1, roi.y1)
-    start = (px + (roi.x1 - a0) / (a1 - a0) * pw, py + ph - (roi.y1 - b0) / (b1 - b0) * ph)
+    # the corner handle where the plot drew it: the fitted axes keep a margin around the extent
+    start = app.planes["gates"].to_pixels(roi.x1, roi.y1)
     drv.drag(start, (start[0] - 40, start[1] + 40), steps=8)
     drv.settle(timeout=120)
     assert (m.gates.get("Rectangle").roi.x1, m.gates.get("Rectangle").roi.y1) != before
@@ -682,7 +681,9 @@ def test_the_view_list_brings_a_tab_forward_and_follows_a_clicked_tab(app, drv, 
     assert {"Objects", "Detectors"} <= set(drv.draw(1).strings)
     drv.click_text("Objects", last=True)
     assert app.docks.selected["views"] == "Objects"
-    drv.click_text("Colocalized pixels")
+    # Nine tabs share the strip, so the longest titles are shortened ("Colocali…"): the tab is
+    # clicked where it is drawn, not found by its full caption.
+    drv.click(app.docks.tab_rect("Colocalized pixels"))
     drv.draw(2)
     assert app.model.view_tab == "Colocalized pixels"
 

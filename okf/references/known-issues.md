@@ -4,9 +4,20 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
-## BURST IRF/background tool stacks a short field at 800x600; the test env's IMP.bff lacks HmmSurrogate (found 2026-10-13)
+## chimol's in-browser labelling circle draws no positions (found 2026-10-13)
 
 status: open
+
+**Measured 2026-10-13** while fixing the T4L network demo:
+`chisurf/plugins/chimol/test/test_browser_fps_circle.py::test_the_scenes_dyes_become_a_circle` asserts `'0,0' == '1,2'`.
+In the Pyodide page, two `add_dye` calls and `fps_circle` open the panel, but the circle has no sector and no position.
+It fails the same with chimol at b2a3f2b and with the editor change reverted, so the `FpsEditor.load` fix is not the
+cause. The native host passes the same sequence (`test_fps_circle.py`, the T4L demo). *Next:* check whether `add_dye`
+creates an AV in the page at all (the AV backend under Pyodide), before looking at the panel.
+
+## BURST IRF/background tool stacks a short field at 800x600; the test env's IMP.bff lacks HmmSurrogate (found 2026-10-13)
+
+status: open — the IRF/background half resolved 2026-10-13: the control dock is 0.42 of the window (was 0.40), so at 800x600 the five short fields sit beside their labels (render read before and after; same controls). The HmmSurrogate packaging half stays open.
 
 **Measured 2026-10-13** by the gate's test-failure lane, one file at a time.
 `chisurf/plugins/burst/burst_irf_bg/test/test_emtk_irf_bg_layout.py::test_short_fields_icons_and_texts[800x600]`
@@ -17,21 +28,9 @@ surrogate features fall back to EM there, and four tests in `burst_h2mm/tests/te
 The owner's `arm64` build has it. *Next:* widen the IRF/background dock and re-read its 800x600 render; build the
 test env's IMP.bff with tttrlib (packaging).
 
-## Shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (found 2026-10-12)
-
-status: open
-
-**Found 2026-10-12** while shooting the manual figures through the emtk shell (`docs/guides/screenshots/manual_shell.py`,
-`guides_shell_models.py`): the session log shows "Recording the change… failed: cannot restore model state" and
-"prediction changed after reconstruction" when a fit of the MFD 2D model, a global fit, or a parameter scan is
-recorded for undo/autosave. The figures are unaffected (the live fit is fine); what fails is the project capture, so
-undo and the autosaved `.cs.pto` miss those steps. *Measure:* run the generators with the shell log visible and grep
-for "Recording the change". *Next:* find which model state the capture cannot round-trip (owner: project session,
-`chisurf/emtk/shell_session.py` / `chisurf/core/project/`).
-
 ## Microscopy parity: two native tests red on 2026-10-12, independent of the Qt-host port
 
-status: open
+status: open — item 1 resolved 2026-10-13: the test was wrong. It read the rects from a `RecordingPainter` frame, whose synthetic 20 px rows put Fit model at y=632. The window's real metrics (17 px rows, the driver's `MetricPainter`) put it at y=548..565, inside 600, and the 800x600 render shows it. The test now measures with the driver. Item 2 (img_flow) stays open.
 
 **Found 2026-10-12** while porting the microscopy tests' Qt-host drop to the native host (the drop tests
 pass; these fail alone, with the port's hunks not involved).
@@ -47,6 +46,18 @@ pass; these fail alone, with the port's hunks not involved).
    blocked open), not a faster product; the app's greying itself is not shown to be broken.
 
 ---
+
+## Shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (found 2026-10-12)
+
+status: open
+
+**Found 2026-10-12** while shooting the manual figures through the emtk shell (`docs/guides/screenshots/manual_shell.py`,
+`guides_shell_models.py`): the session log shows "Recording the change… failed: cannot restore model state" and
+"prediction changed after reconstruction" when a fit of the MFD 2D model, a global fit, or a parameter scan is
+recorded for undo/autosave. The figures are unaffected (the live fit is fine); what fails is the project capture, so
+undo and the autosaved `.cs.pto` miss those steps. *Measure:* run the generators with the shell log visible and grep
+for "Recording the change". *Next:* find which model state the capture cannot round-trip (owner: project session,
+`chisurf/emtk/shell_session.py` / `chisurf/core/project/`).
 
 ## An emoji with a skin-tone modifier drew as two glyphs (found 2026-10-12)
 

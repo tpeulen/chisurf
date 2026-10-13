@@ -255,9 +255,7 @@ class ImagingToolApp(ImApp):
         fn = getattr(self.model, str(options.get("source", "")), None)
         array = fn() if callable(fn) else None
         marks = getattr(self.model, str(options.get("markers", "")), None)
-        if array is not None and getattr(panel, "_array_id", None) != id(array):
-            panel._array_id = id(array)
-            panel.reset()
+        array = panel.hold(array)
         panel.draw(
             array,
             self.model,
