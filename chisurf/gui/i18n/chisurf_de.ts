@@ -66838,6 +66838,54 @@ fortgesetzt werden.
             <source>Preloading modules</source>
             <translation>Module werden vorgeladen</translation>
         </message>
+        <message>
+            <source>Click to open the figure at full size</source>
+            <translation>Klicken, um die Abbildung in voller Größe zu öffnen</translation>
+        </message>
+        <message>
+            <source>Actual size</source>
+            <translation>Originalgröße</translation>
+        </message>
+        <message>
+            <source>Zoom out</source>
+            <translation>Verkleinern</translation>
+        </message>
+        <message>
+            <source>Zoom in</source>
+            <translation>Vergrößern</translation>
+        </message>
+        <message>
+            <source>Show the whole figure in the window</source>
+            <translation>Die ganze Abbildung im Fenster zeigen</translation>
+        </message>
+        <message>
+            <source>Show the figure at its own pixels (100 %)</source>
+            <translation>Die Abbildung in ihren eigenen Pixeln zeigen (100 %)</translation>
+        </message>
+        <message>
+            <source>Show the figure smaller</source>
+            <translation>Die Abbildung kleiner zeigen</translation>
+        </message>
+        <message>
+            <source>Show the figure larger</source>
+            <translation>Die Abbildung größer zeigen</translation>
+        </message>
+        <message>
+            <source>Ask about anything ChiSurf's documentation covers: what a method means, how to carry out an analysis, what a setting does. The answer names the pages it came from, and clicking one opens it.</source>
+            <translation>Fragen Sie nach allem, was die ChiSurf-Dokumentation behandelt: was eine Methode bedeutet, wie man eine Analyse durchführt, was eine Einstellung bewirkt. Die Antwort nennt die Seiten, aus denen sie stammt, und ein Klick öffnet sie.</translation>
+        </message>
+        <message>
+            <source>The assistant only reads documentation. It cannot load data or run a fit.</source>
+            <translation>Der Assistent liest nur Dokumentation. Er kann keine Daten laden und keinen Fit ausführen.</translation>
+        </message>
+        <message>
+            <source>For example, what does the gamma correction factor do?</source>
+            <translation>Zum Beispiel: Was bewirkt der Gamma-Korrekturfaktor?</translation>
+        </message>
+        <message>
+            <source>Fit to window</source>
+            <translation>Einpassen</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

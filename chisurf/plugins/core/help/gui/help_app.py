@@ -19,6 +19,7 @@ from typing import Callable
 
 from emtk import im
 from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.im_core import Col
@@ -31,9 +32,18 @@ from chisurf.core.support.weak_registry import WeakOrderedRegistry
 from chisurf.emtk.help_guide import EmTkGuidedTour
 from chisurf.plugins.core.help.api import io as help_io
 from chisurf.plugins.core.help.api import review as help_review
+from chisurf.plugins.core.help.api import search as help_search
 from chisurf.plugins.core.help.api import toc as help_toc
 from chisurf.plugins.core.help.api.mathtext import _unicode_fallback, html_math, normalise_latex
 from chisurf.plugins.core.help.api.xref import document_reference, resolve_document, resolve_ref
+from chisurf.plugins.core.help.gui.ask_text import EMPTY_STATE, compose_answer
+from chisurf.plugins.core.help.gui.reader import (
+    MAX_TEXT_WIDTH,
+    FigureViewer,
+    figure_size,
+    load_figure,
+    measure_margin,
+)
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 _LOGGER = logging.getLogger(__name__)
@@ -689,6 +699,20 @@ def unregister_help_model(model: HelpModel) -> None:
         _ACTIVE_HELP_INSTANCES.remove(model)
 
 
+def receive_open_page(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``open_page``): show ``payload["path"]``.
+
+    ``payload["anchor"]`` (optional) is the heading to land on. A page that cannot be found
+    raises, so the host says so in its status line instead of showing the wrong page.
+    """
+    anchor = payload.get("anchor") or None
+    if not app.model.open_page(str(payload["path"]), anchor=anchor):
+        raise FileNotFoundError(f"no documentation page {payload['path']}")
+    request = getattr(app, "request_frame", None)
+    if callable(request):
+        request()
+
+
 def open_help_page(path: str | pathlib.Path, anchor: str | None = None) -> bool:
     """Target and open a documentation page and optional anchor in an active EMTK help viewer."""
     for model in reversed(_ACTIVE_HELP_INSTANCES):
@@ -727,6 +751,7 @@ class HelpModel:
 
         self.search_query: str = ""
         self.search_results: list[dict] = []
+        self._search_index = help_search.Index()
 
         self.history: list[pathlib.Path | None] = []
         self._history_anchors: list[str | None] = []
@@ -1192,7 +1217,9 @@ class HelpModel:
             self.search_results.clear()
             return
         try:
-            self.search_results = help_io.search_docs(q)[:25]
+            # The Qt browser's ranking (help.api.search): words scored by title, headings,
+            # file name and body over the table of contents, each hit with a prose excerpt.
+            self.search_results = help_search.rank(self.order, q, self._search_index)[:25]
         except Exception as e:
             _LOGGER.warning(f"Error during search: {e}")
             self.search_results.clear()
@@ -1244,25 +1271,13 @@ class HelpModel:
         try:
             from chisurf.plugins.core.help.api.ask import ask as ask_api
 
-            answer = ask_api(question)
-            if answer.ok:
-                resp_text = answer.text
-                if answer.pages:
-                    resp_text += "\n\n**Cited Documentation Pages:**"
-                    for p in answer.pages:
-                        title = p.get("title") or p.get("document", "Doc")
-                        doc_path = p.get("document", "")
-                        resp_text += f"\n- [{title}]({doc_path})"
-
-                self._queue_ask_event(
-                    generation, lambda: self.chat_history.add_message("assistant", resp_text)
-                )
-            else:
-                err_msg = answer.error or "Failed to retrieve an answer."
-                self._queue_ask_event(
-                    generation,
-                    lambda: self.chat_history.add_message("error", f"Assistant error: {err_msg}"),
-                )
+            # The text of the answer is the retired Qt panel's (ask_text.compose_answer): the
+            # pages it was read from as links, bare page paths linked, a flag when no page was
+            # opened, the pages it named that do not exist, and a failure with its reason.
+            role, resp_text = compose_answer(ask_api(question))
+            self._queue_ask_event(
+                generation, lambda: self.chat_history.add_message(role, resp_text)
+            )
         except Exception as err:
             error_text = f"Could not answer from docs: {err}"
             self._queue_ask_event(
@@ -1330,6 +1345,74 @@ class HelpGui:
         )
         self._reveal_keys: set[int] = set()
         self._revealed_for: pathlib.Path | None = None
+        #: ``(x, y, w, h, name)`` of every figure the reader drew last frame (click to enlarge).
+        self.figure_rects: list[tuple[float, float, float, float, str]] = []
+        #: The figure under the pointer last frame (its tooltip offers to open it), or ``""``.
+        self.hovered_figure = ""
+        #: The figure opened out of the page, and the window it is shown in.
+        self.figure_viewer: FigureViewer | None = None
+        self.figure_window = DialogWindow("Figure", size=(900.0, 650.0), key="help_figure")
+        self.figure_window.open = False
+
+    # -- figures --------------------------------------------------------------
+
+    def _figure_click(
+        self, tex: Texture, name: str, scale: float, shown: tuple[float, float]
+    ) -> None:
+        """Record the figure just drawn and open it when it is clicked (it has no item id)."""
+        box = im.get_item_rect()
+        if not box:
+            return
+        bx, by, bw, _bh = box
+        x0 = bx + max(0.0, (bw - shown[0]) * 0.5)
+        rect = (x0, by, shown[0], shown[1])
+        self.figure_rects.append((*rect, name))
+        io = im.get_io()
+        mx, my = io.mouse_pos
+        if rect[0] <= mx < rect[0] + rect[2] and rect[1] <= my < rect[1] + rect[3]:
+            if im.is_window_hovered():
+                self.hovered_figure = name
+                im.set_tooltip(tr("Click to open the figure at full size"))
+                if io.mouse_clicked[0]:
+                    self.show_figure_texture(tex, name, scale)
+
+    def show_figure_texture(self, tex: Texture, name: str, scale: float = 1.0) -> None:
+        """Open *tex* in the figure window, fitted."""
+        self.figure_viewer = FigureViewer(tex, title=pathlib.Path(str(name)).name, scale=scale)
+        self.figure_window.title = self.figure_viewer.title or "Figure"
+        self.figure_window.show()
+
+    def open_figure(self, name: str) -> bool:
+        """Open the figure *name* names (a path, relative to the page, or a data URI).
+
+        Returns
+        -------
+        bool
+            ``False`` for an empty or unreadable reference (nothing opens).
+        """
+        page = self.model.current_path
+        tex = None
+        if name and not str(name).startswith("data:"):
+            resolved = self.texture_mgr.resolve_figure(str(name), page)
+            if resolved is not None:
+                tex = load_figure(str(resolved))
+        if tex is None:
+            tex = load_figure(name, page.parent if page else None)
+        if tex is None:
+            return False
+        svg = str(name).lower().endswith((".svg", ".svgz"))
+        self.show_figure_texture(tex, name, 0.5 if svg else 1.0)
+        return True
+
+    def _draw_figure_window(self, width: float, height: float) -> None:
+        if self.figure_viewer is None or not self.figure_window.open:
+            return
+        closed = self.figure_window.begin((0.0, 0.0, width, height)) == "close"
+        self.figure_viewer.draw(self.figure_window.content_box)
+        self.figure_window.end()
+        if closed:
+            self.figure_window.hide()
+            self.figure_viewer = None
 
     # -- keyboard shortcuts ---------------------------------------------------
 
@@ -1386,15 +1469,21 @@ class HelpGui:
         if self.provider_settings is not None:
             self.provider_settings.process_events()
         io = im.get_io()
-        if (io.key_ctrl or io.key_super) and io.mouse_wheel:
-            self.model.zoom(1 if io.mouse_wheel > 0 else -1)
+        # Ctrl/Cmd + wheel zooms, and so does Shift + wheel: on a trackpad Ctrl + scroll is the
+        # operating system's screen magnifier and never reaches the application. Shift + wheel
+        # is horizontal scrolling on most mice, so its delta may arrive on the x axis.
+        notch = io.mouse_wheel or io.mouse_wheel_h
+        if (io.key_ctrl or io.key_super or io.key_shift) and notch:
+            self.model.zoom(1 if notch > 0 else -1)
             io.mouse_wheel = 0.0
+            io.mouse_wheel_h = 0.0
 
         vp = im.get_main_viewport()
         width = float(w or vp.size[0] or 1200.0)
         height = float(h or vp.size[1] or 760.0)
 
         self.docks.draw((0.0, 0.0, width, height))
+        self._draw_figure_window(width, height)
         self._draw_provider_settings()
         self.tour.draw(width, height)
 
@@ -1980,8 +2069,17 @@ class HelpGui:
         """Render formatted markdown elements in an immediate-mode child container."""
         child_id = f"doc_{self.model.current_path or 'home'}"
         child_start_y = im.get_cursor_screen_pos()[1]
-        self.item_rects["doc_reader"] = (*im.get_cursor_screen_pos(), width, height)
-        im.begin_child((*im.get_cursor_screen_pos(), width, height), child_id=child_id)
+        self.figure_rects = []
+        self.hovered_figure = ""
+        # The reading column is centred and at most MAX_TEXT_WIDTH wide (scaled with the zoom),
+        # measured every frame so it follows the window when it narrows.
+        x0, y0 = im.get_cursor_screen_pos()
+        margin = measure_margin(width, MAX_TEXT_WIDTH * self.model.zoom_factor())
+        gutter = max(0.0, margin - 10.0)
+        self.item_rects["doc_reader"] = (x0, y0, width, height)
+        self.reader_column = width - 2.0 * gutter
+        im.begin_child((x0 + gutter, y0, width - 2.0 * gutter, height), child_id=child_id)
+        width = width - 2.0 * gutter
 
         if not self.model.current_blocks:
             im.dummy(0.0, 20.0)
@@ -2082,12 +2180,17 @@ class HelpGui:
                         except ValueError:
                             pct = 1.0
                     target_max_w = max_w * pct
-                    im.image(
-                        tex,
-                        max_size=(target_max_w, 560.0),
-                        scale=self.texture_mgr.figure_scale(tex),
-                        align_center=True,
+                    scale = self.texture_mgr.figure_scale(tex)
+                    # Enlarged to the column (at most MAX_UPSCALE times its own pixels), never
+                    # taller than the reader, so a narrow plot does not sit there as a thumbnail.
+                    shown = figure_size(
+                        tex.width * scale,
+                        tex.height * scale,
+                        target_max_w,
+                        max_height=max(160.0, height - 40.0),
                     )
+                    im.image(tex, size=shown, align_center=True)
+                    self._figure_click(tex, block.arg, scale, shown)
                 else:
                     self._draw_missing_figure(block.arg, width)
                 if caption:
@@ -2275,6 +2378,12 @@ class HelpGui:
             tr("Configure the shared API provider, masked credential, models and sampling")
         )
         im.separator()
+
+        if not self.model.chat_history.messages:
+            # The empty pane says what it is for: a blank box teaches a first-time reader nothing.
+            for paragraph in EMPTY_STATE:
+                im.text_wrapped(tr(paragraph))
+            im.separator()
 
         # Quick question prompt buttons
         for q_idx, q_text in enumerate(QUICK_QUESTIONS):

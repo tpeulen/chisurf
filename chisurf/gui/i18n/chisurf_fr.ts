@@ -66976,6 +66976,54 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
             <source>Preloading modules</source>
             <translation>Préchargement des modules</translation>
         </message>
+        <message>
+            <source>Click to open the figure at full size</source>
+            <translation>Cliquer pour ouvrir la figure en taille réelle</translation>
+        </message>
+        <message>
+            <source>Actual size</source>
+            <translation>Taille réelle</translation>
+        </message>
+        <message>
+            <source>Zoom out</source>
+            <translation>Zoom arrière</translation>
+        </message>
+        <message>
+            <source>Zoom in</source>
+            <translation>Zoom avant</translation>
+        </message>
+        <message>
+            <source>Show the whole figure in the window</source>
+            <translation>Afficher la figure entière dans la fenêtre</translation>
+        </message>
+        <message>
+            <source>Show the figure at its own pixels (100 %)</source>
+            <translation>Afficher la figure à ses propres pixels (100 %)</translation>
+        </message>
+        <message>
+            <source>Show the figure smaller</source>
+            <translation>Afficher la figure plus petite</translation>
+        </message>
+        <message>
+            <source>Show the figure larger</source>
+            <translation>Afficher la figure plus grande</translation>
+        </message>
+        <message>
+            <source>Ask about anything ChiSurf's documentation covers: what a method means, how to carry out an analysis, what a setting does. The answer names the pages it came from, and clicking one opens it.</source>
+            <translation>Posez une question sur tout ce que couvre la documentation de ChiSurf : ce que signifie une méthode, comment mener une analyse, ce que fait un réglage. La réponse cite les pages dont elle provient, et un clic les ouvre.</translation>
+        </message>
+        <message>
+            <source>The assistant only reads documentation. It cannot load data or run a fit.</source>
+            <translation>L'assistant lit seulement la documentation. Il ne peut ni charger des données ni lancer un ajustement.</translation>
+        </message>
+        <message>
+            <source>For example, what does the gamma correction factor do?</source>
+            <translation>Par exemple : que fait le facteur de correction gamma ?</translation>
+        </message>
+        <message>
+            <source>Fit to window</source>
+            <translation>Ajuster à la fenêtre</translation>
+        </message>
     </context>
     <context>
         <name>SimulationSetup</name>

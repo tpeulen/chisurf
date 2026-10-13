@@ -149,10 +149,10 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
             try:
                 from qtpy import QtWidgets
 
-                from chisurf.plugins.core.help.gui.tool import HelpEmtkTool, HelpWidget
+                from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
 
                 for candidate in QtWidgets.QApplication.topLevelWidgets():
-                    if isinstance(candidate, (HelpEmtkTool, HelpWidget)):
+                    if isinstance(candidate, HelpEmtkTool):
                         candidate.show()
                         candidate.raise_()
                         candidate.activateWindow()
@@ -165,10 +165,14 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
     if not _is_qt_active():
         # The emtk shell is open: the help browser is one of its docks, not a second
         # process whose OS window falls behind the main one.
-        from chisurf.emtk.code_links import host_in_open_shell
+        from chisurf.core.plugin import handoff
 
-        if host_in_open_shell("help", lambda: open_help_page(path, anchor=anchor or None)):
-            return True
+        if handoff.available("help", "open_page"):
+            try:
+                handoff.hand_off("help", "open_page", {"path": str(path), "anchor": anchor or ""})
+                return True
+            except handoff.HandoffError:
+                logger.debug("the shell refused the help hand-off", exc_info=True)
         try:
             import subprocess
 
@@ -198,10 +202,8 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
             try:
                 from qtpy import QtWidgets
 
-                from chisurf.plugins.core.help.gui.tool import HelpWidget
-
                 for candidate in QtWidgets.QApplication.topLevelWidgets():
-                    if isinstance(candidate, (HelpEmtkTool, HelpWidget)):
+                    if isinstance(candidate, HelpEmtkTool):
                         widget = candidate
                         break
             except Exception:

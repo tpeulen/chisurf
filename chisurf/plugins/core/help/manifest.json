@@ -37,11 +37,20 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.help.gui.tool:HelpWidget",
     "cli": "help=chisurf.plugins.core.help.cli.main:cli",
     "services": "chisurf.plugins.core.help.backend.services:register_services",
     "emtk": "chisurf.plugins.core.help.gui.help_app:make_help_app"
   },
+  "accepts": [
+    {
+      "name": "open_page",
+      "summary": "Show a documentation page (a docs/ path, optionally at a heading), as a link in a ? modal does.",
+      "receive": "chisurf.plugins.core.help.gui.help_app:receive_open_page",
+      "required": [
+        "path"
+      ]
+    }
+  ],
   "rpc_methods": [
     {
       "name": "help.docs.list",

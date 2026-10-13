@@ -117,20 +117,35 @@ def _grab_help() -> None:
         model.open_page(pathlib.Path(page))
     app.help_gui.show_ask()
     model.chat_history.add_message("user", "What does the gamma correction factor do?")
-    model.chat_history.add_message(
-        "assistant",
-        "The γ factor corrects the raw green/red photon ratio for the two things that make the two "
-        "channels not comparable: the detection efficiencies of the donor and acceptor detection "
-        "paths, and the fluorescence quantum yields of the two dyes.\n\n"
-        "Without it the proximity ratio is not a FRET efficiency, and the populations in an E–S "
-        "histogram sit in the wrong place. All four factors and where each comes from are in "
-        "[The four factors](docs/concepts/accurate_fret.md#The four factors); the workflow that "
-        "determines them is [Accurate FRET corrections](docs/guides/41_accurate_fret.md).\n\n"
-        "**Cited Documentation Pages:**\n"
-        "- [Accurate FRET: correction factors, FRET lines, and where they come from]"
-        "(docs/concepts/accurate_fret.md)\n"
-        "- [Accurate FRET: automatic correction factors](docs/guides/41_accurate_fret.md)",
+    # Placed, not generated, but written by the app's own composer (pages read, links).
+    from chisurf.plugins.core.help.api.ask import Answer
+    from chisurf.plugins.core.help.gui.ask_text import compose_answer
+
+    role, text = compose_answer(
+        Answer(
+            ok=True,
+            text=(
+                "The γ factor corrects the raw green/red photon ratio for the two things that make "
+                "the two channels not comparable: the detection efficiencies of the donor and "
+                "acceptor detection paths, and the fluorescence quantum yields of the two dyes.\n\n"
+                "Without it the proximity ratio is not a FRET efficiency, and the populations in an "
+                "E–S histogram sit in the wrong place. All four factors and where each comes from "
+                "are in [The four factors](docs/concepts/accurate_fret.md#The four factors); the "
+                "workflow that determines them is docs/guides/41_accurate_fret.md."
+            ),
+            pages=[
+                {
+                    "document": "docs/concepts/accurate_fret.md",
+                    "title": "Accurate FRET: correction factors, FRET lines, and where they come from",
+                },
+                {
+                    "document": "docs/guides/41_accurate_fret.md",
+                    "title": "Accurate FRET: automatic correction factors",
+                },
+            ],
+        )
     )
+    model.chat_history.add_message(role, text)
     model.chat_history.finish_generation("complete")
     driver = _driver(app, (1500, 900))
     _save(driver, "ask_the_documentation.png", frames=6)

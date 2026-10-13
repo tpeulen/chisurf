@@ -575,3 +575,18 @@ def test_the_help_modal_renders_like_the_browser(qapp=None):
     for marker in ("{cite}", ":::{", "```{"):
         assert marker not in html, marker
     assert "doi.org" in html, "citations must resolve to links"
+
+
+def test_the_theme_follows_the_emtk_palette_tokens():
+    """``from_tokens`` reads emtk's palette at call time: no toolkit, re-theming is followed."""
+    from emtk import style
+
+    assert theme_api.from_tokens().dark  # emtk's default palette is dark
+    previous = style.use_palette({"WINDOW_BG": (250, 250, 250, 255), "TEXT": (20, 20, 20)})
+    try:
+        light = theme_api.from_tokens()
+        assert not light.dark and light.background == "#fafafa" and light.text == "#141414"
+    finally:
+        style.use_palette(previous)
+    assert theme_api.from_colours(None) is theme_api.LIGHT
+    assert theme_api.from_colours("#202020", "#eeeeee").text == "#eeeeee"

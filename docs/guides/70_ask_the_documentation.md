@@ -31,9 +31,10 @@ Search cannot help with any of those, because it matches the words you typed.
 
 ## Asking
 
-In the help browser (**Help → Documentation**, or `F1`), press **💬 Ask** on
-the toolbar — or `Ctrl+Shift+A`. A third column opens beside the page you are
-reading. Type the question and press Enter.
+In the help browser (**Help → Documentation**, or `F1`), open the **Ask Docs**
+tab beside **Documentation** — or press `Ctrl+Shift+A`. The empty pane says what
+the assistant is for and offers example questions; click one, or type the
+question and press **Send**.
 
 ```{figure} figures/ask_the_documentation.png
 :name: fig-ask-the-documentation
@@ -64,7 +65,7 @@ Two warnings can appear under an answer, and both are worth reading:
   answer.
 
 The panel keeps the conversation, so a follow-up (*"and where do I set it?"*)
-is understood in the context of the previous answer. **🗑** clears it.
+is understood in the context of the previous answer. **Clear** clears it.
 
 ## What it can and cannot do
 
