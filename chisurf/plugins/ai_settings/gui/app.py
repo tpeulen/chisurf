@@ -89,13 +89,32 @@ class AISettingsApp(ImApp):
         self.call.prepare(work, done)
         return self.job.start("run")
 
-    # -- one frame --------------------------------------------------------- #
-    def render(self) -> None:
+    # -- embedded in another window (the chat's "Provider settings…") ------ #
+    @property
+    def busy(self) -> bool:
+        """A connection test or model listing is running."""
+        return bool(self.job.busy)
+
+    def select_provider(self, provider: str) -> None:
+        """Show the saved settings of *provider*."""
+        self.model.set_provider(provider)
+
+    def process_events(self) -> None:
+        """Collect a finished request and report its failure (once per frame)."""
         self.job.poll()
         self.model.busy = self.job.busy
         if self.job.error and self.job.error != self._reported_error:
             self._reported_error = self.job.error
             self.model._set_status(f"Failed: {describe_error(RuntimeError(self.job.error))}", "red")
+
+    def draw_inline(self) -> None:
+        """The settings form and its action bar, inline in the host's window."""
+        draw_sections(self.panels[_SETTINGS]["sections"], self.model, self.form, titles=False)
+        draw_sections(self.panels[_ACTIONS]["sections"], self.model, self.form, titles=False)
+
+    # -- one frame --------------------------------------------------------- #
+    def render(self) -> None:
+        self.process_events()
         vp = im.get_main_viewport()
         box = (*vp.pos, *vp.size)
         self.form.rects.clear()

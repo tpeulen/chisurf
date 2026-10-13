@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from chisurf.plugins.core.code_editor.document_store import DocumentStore
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+from chisurf.plugins.core.code_editor.document_store import DocumentSnapshot, DocumentStore
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.server.services import (
     INVALID_INPUT,
@@ -10,14 +13,22 @@ from chisurf.server.services import (
     service_error,
 )
 
+if TYPE_CHECKING:
+    from chisurf.server.dispatcher import ServiceDispatcher
+
 STORE = DocumentStore()
 RUNNER = RuffRunner()
 
 
-def register_services(dispatcher: object) -> None:
+def _keyword_call(handler: Callable[..., ServiceResult]) -> Callable[[dict[str, Any]], Any]:
+    """Adapt *handler* to the dispatcher's one-dict calling convention."""
+    return lambda params: handler(**params)
+
+
+def register_services(dispatcher: ServiceDispatcher) -> None:
     """Register editor document RPC methods with a dispatcher."""
     for name, handler in SERVICE_METHODS.items():
-        dispatcher.register(name, lambda params, _handler=handler: _handler(**params))
+        dispatcher.register(name, _keyword_call(handler))
 
 
 def dispatch(
@@ -195,7 +206,7 @@ def _resolve_document(
     }
 
 
-def _result_with_event(snapshot: object, action: str, source: str) -> ServiceResult:
+def _result_with_event(snapshot: DocumentSnapshot, action: str, source: str) -> ServiceResult:
     return {
         "ok": True,
         "document_id": snapshot.document_id,
@@ -204,7 +215,7 @@ def _result_with_event(snapshot: object, action: str, source: str) -> ServiceRes
     }
 
 
-def _event(snapshot: object, action: str, source: str) -> dict:
+def _event(snapshot: DocumentSnapshot, action: str, source: str) -> dict:
     return {
         "topic": "editor.document.changed",
         "action": action,
@@ -216,7 +227,7 @@ def _event(snapshot: object, action: str, source: str) -> dict:
     }
 
 
-SERVICE_METHODS = {
+SERVICE_METHODS: dict[str, Callable[..., ServiceResult]] = {
     "editor.document.list": list_documents,
     "editor.document.get": get_document,
     "editor.document.set": set_document,

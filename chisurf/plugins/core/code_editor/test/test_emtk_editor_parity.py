@@ -82,7 +82,7 @@ def _menu(driver, title: str) -> list[str]:
 
 
 def _labels(items) -> list[str]:
-    out = []
+    out: list[str] = []
     for item in items:
         if isinstance(item, dict):
             out.extend(item)

@@ -35,6 +35,18 @@ def test_register_services_registers_all_methods():
     }
 
 
+def test_autodetect_region_service_answers():
+    """``lut.autodetect_region`` returns a linear range (it raised AttributeError on ``compute.lut``)."""
+    import numpy as np
+
+    d = _Dispatcher()
+    register_services(d)
+    counts = np.r_[np.zeros(20), np.full(200, 100.0), np.zeros(36)].tolist()
+    res = d.call("lut.autodetect_region", {"counts": counts})
+    assert res["ok"], res
+    assert 0 <= res["result"]["linear_start"] < res["result"]["linear_stop"] <= len(counts)
+
+
 def test_service_error_envelope_on_bad_input():
     d = _Dispatcher()
     register_services(d)

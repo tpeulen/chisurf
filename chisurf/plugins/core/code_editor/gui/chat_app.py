@@ -7,12 +7,13 @@ permission request banners, and editor integration.
 
 from __future__ import annotations
 
+import functools
 import json
 import logging
 import queue
 import shlex
 import threading
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import emtk.im as im
 from emtk.app import ImApp
@@ -32,6 +33,11 @@ from chisurf.plugins.core.code_editor.agent_modes import (
     provider_status,
     tool_highlight,
 )
+
+if TYPE_CHECKING:
+    from chisurf.core.agent import AgentSession
+    from chisurf.plugins.ai_settings.gui.app import AISettingsApp
+    from chisurf.plugins.core.code_editor.wiki import WikiIndex
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -74,8 +80,9 @@ class ChatModel:
         self._closed = False
         self._in_process_thread: threading.Thread | None = None
         self._ignore_response = False
-        self._agent_session = None
-        self._agent_key = None
+        self._agent_session: AgentSession | None = None
+        #: (provider, mode, model, temperature) the session was built for
+        self._agent_key: tuple[str, str, str, float] | None = None
         self._tool_count = 0
         self._active_runtime_tools: dict[str, str] = {}
         self.editor_ref = editor_ref
@@ -171,12 +178,18 @@ class ChatModel:
         Returns ``None`` when the provider is not configured; the reason is written to the
         transcript then.
         """
-        from chisurf.core.agent import AgentConfig, AgentSession, LLMClient, LLMSettings, ToolRegistry
+        from chisurf.core.agent import (
+            AgentConfig,
+            AgentSession,
+            LLMClient,
+            LLMSettings,
+            ToolRegistry,
+        )
 
         key = (self.provider, mode.value, self.model_name, self.temperature)
         if self._agent_session is not None and key == self._agent_key:
             return self._agent_session
-        overrides = {"temperature": self.temperature}
+        overrides: dict[str, Any] = {"temperature": self.temperature}
         if self.model_name != "default":
             overrides["model"] = self.model_name
         try:
@@ -301,8 +314,12 @@ class ChatModel:
             try:
                 issues = validate_writes(writes, editor=editor)
             except Exception as error:  # the check failing is reported, not raised on a worker
+                # bound now: ``error`` is unbound once the except block ends, so the
+                # deferred lambda this replaced raised NameError instead of reporting
                 self.event_queue.put(
-                    lambda: self.history.add_message("error", f"Validation failed: {error}")
+                    functools.partial(
+                        self.history.add_message, "error", f"Validation failed: {error}"
+                    )
                 )
                 return
             if issues:
@@ -579,15 +596,13 @@ class ChatModel:
             result = session.ask(prompt)
             if result.error and not self._closed:
                 self.event_queue.put(
-                    lambda error=result.error: self.history.add_message("error", str(error))
+                    functools.partial(self.history.add_message, "error", str(result.error))
                 )
             self._on_acp_prompt_finished("", result.stop_reason)
         except Exception as err:
             if not self._closed:
                 self.event_queue.put(
-                    lambda error=str(err): self.history.add_message(
-                        "error", f"Agent error: {error}"
-                    )
+                    functools.partial(self.history.add_message, "error", f"Agent error: {err}")
                 )
                 self.event_queue.put(self._handle_finished)
 
@@ -599,9 +614,10 @@ class ChatModel:
         if self._permission_response_cb:
             self.respond_permission("cancelled")
         active_worker = self._in_process_thread is not None and self._in_process_thread.is_alive()
-        active_acp = self.acp_client is not None and self.acp_client.is_running and was_generating
-        if active_acp:
-            self.acp_client.cancel()
+        acp_client = self.acp_client
+        active_acp = acp_client is not None and acp_client.is_running and was_generating
+        if acp_client is not None and active_acp:
+            acp_client.cancel()
         # Do not allow a second turn to reset the cancelled session while its
         # first network request or tool is still returning.
         self.is_generating = bool(active_worker or active_acp)
@@ -646,7 +662,7 @@ class WikiWindow:
 
         self.window = DialogWindow("LLM Wiki", size=(700.0, 500.0), key="code_editor_wiki")
         self.window.open = False
-        self.index = None
+        self.index: WikiIndex | None = None
         self.search = ""
         self.selected = ""
         self.page_text = ""
@@ -741,7 +757,7 @@ class ChatGui:
 
     def __init__(self, model: ChatModel | None = None, editor_ref: Any = None) -> None:
         self.model = model or ChatModel(editor_ref=editor_ref)
-        self.provider_settings = None
+        self.provider_settings: AISettingsApp | None = None
         self.provider_settings_open = False
         self.wiki = WikiWindow()
 
@@ -768,7 +784,7 @@ class ChatGui:
                 (*im.get_cursor_screen_pos(), *im.get_content_region_avail()),
                 child_id="chat_provider_fields",
             )
-            self.provider_settings.draw()
+            self.provider_settings.draw_inline()
             im.end_child()
         im.end()
 
@@ -859,9 +875,10 @@ class ChatGui:
 
         if im.small_button("Provider settings…"):
             if self.provider_settings is None:
-                from chisurf.plugins.ai_settings.gui.app import AISettingsGui
+                # (was AISettingsGui, which no longer exists: this button raised ImportError)
+                from chisurf.plugins.ai_settings.gui.app import AISettingsApp
 
-                self.provider_settings = AISettingsGui()
+                self.provider_settings = AISettingsApp()
             self.provider_settings.select_provider(self.model.provider)
             self.provider_settings_open = True
         im.set_item_tooltip(

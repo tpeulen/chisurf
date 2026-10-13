@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from ..api import compute, io, settings
+from ..api import compute, io, lut, settings
 from ..api.contract import (
     METHOD_APPLY_PREVIEW,
     METHOD_AUTODETECT,
@@ -23,7 +23,8 @@ from ..api.contract import (
 
 
 def _autodetect_handler(counts: list[float], noffset: int = 0, **_: Any) -> dict:
-    start, stop = compute.lut.autodetect_linear_region(
+    # (``compute.lut`` does not exist: the service raised AttributeError)
+    start, stop = lut.autodetect_linear_region(
         np.asarray(counts, dtype=float), noffset_guess=int(noffset)
     )
     return service_success({"linear_start": int(start), "linear_stop": int(stop)})

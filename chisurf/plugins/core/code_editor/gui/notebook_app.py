@@ -14,6 +14,7 @@ import sys
 import threading
 import traceback
 import uuid
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import unquote, unquote_to_bytes, urlparse
 
@@ -129,7 +130,7 @@ class NativeNotebook:
         self.show_terminal = False
         #: Set by a host that shows the terminal in a dock of its own (the editor's Kernel dock):
         #: the notebook's Terminal button then shows or hides that dock instead.
-        self.terminal_toggle = None
+        self.terminal_toggle: Callable[[], None] | None = None
         self._terminal_open_line = False
         self._terminal_drawn = 0
         self.error = ""
@@ -140,7 +141,8 @@ class NativeNotebook:
         self.pending_input: dict | None = None
         self.input_response = ""
         self._change_revision = 0
-        self._serialized_revision = None
+        #: the revision key the cached JSON was serialized at (``None``: never)
+        self._serialized_revision: tuple | None = None
         self._serialized_value = ""
         self._pending_advance: int | None = None
         if not self.cells:
@@ -299,7 +301,7 @@ class NativeNotebook:
         if self._closed or self._cancelled.is_set():
             raise KeyboardInterrupt("Notebook execution cancelled")
         ready = threading.Event()
-        request = {
+        request: dict[str, Any] = {
             "prompt": prompt or "Input:",
             "password": password,
             "ready": ready,
@@ -312,7 +314,7 @@ class NativeNotebook:
         ready.wait()
         if self._closed or self._cancelled.is_set():
             raise KeyboardInterrupt("Notebook execution cancelled")
-        return request["response"]
+        return str(request["response"])
 
     def respond_input(self, value: str) -> None:
         request = self.pending_input
@@ -445,7 +447,7 @@ class NativeNotebook:
         if self._active_cell is None:
             self.terminal_output.append(_source(data.get("text/plain", "")))
             return
-        output = {
+        output: dict[str, Any] = {
             "output_type": kind,
             "data": _json_mime_data(copy.deepcopy(data)),
             "metadata": copy.deepcopy(metadata),

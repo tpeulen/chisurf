@@ -20,7 +20,7 @@ import subprocess
 import sys
 import threading
 import uuid
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import unquote, urlparse
 
 import emtk.im as im
@@ -40,7 +40,7 @@ from chisurf.plugins.core.code_editor.gui.native_lsp import NativeLspClient
 from chisurf.plugins.core.code_editor.gui.notebook_app import SHELL_EXECUTION_LOCK, NativeNotebook
 from chisurf.plugins.core.code_editor.gui.process_tools import CancellableRuffRunner
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
-from chisurf.plugins.core.code_editor.symbols import extract_python_symbols
+from chisurf.plugins.core.code_editor.symbols import CodeSymbol, extract_python_symbols
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 
 from .editor_preferences import (
@@ -51,6 +51,9 @@ from .editor_preferences import (
     palette_for,
     rgba,
 )
+
+if TYPE_CHECKING:
+    from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
 
 WINDOW_BG = (24, 26, 32, 255)
 
@@ -105,7 +108,7 @@ class EditorDocument:
         self.diagnostics: list[dict[str, Any]] = []
         self.lsp_diagnostics: list[dict[str, Any]] = []
         self._symbols_text: str | None = None
-        self._symbols = []
+        self._symbols: list[CodeSymbol] = []
         self._initial_text = self.text
 
     @property
@@ -213,8 +216,8 @@ class EditorModel:
         self.rpc_cmd_port = 8775
         self.rpc_pub_port = 8776
         self.rpc_status = "Editor RPC disabled"
-        self._rpc_server = None
-        self._rpc_runner = None
+        self._rpc_server: EditorRpcServer | None = None
+        self._rpc_runner: CancellableRuffRunner | None = None
 
         try:
             from chisurf.emtk.code_links import register_emtk_editor
@@ -765,7 +768,7 @@ class EditorModel:
         if threading.get_ident() == self._owner_thread:
             return callback(*args, **kwargs)
         ready = threading.Event()
-        result = {}
+        result: dict[str, Any] = {}
         with self._call_lock:
             if self._closed:
                 raise RuntimeError("The editor is closed")
@@ -1275,7 +1278,7 @@ class EditorModel:
                 "shell" in locals()
                 and getattr(getattr(builtins, "get_ipython", None), "__self__", None) is shell
             ):
-                del builtins.get_ipython
+                delattr(builtins, "get_ipython")  # installed by the shell, not a typed builtin
             SHELL_EXECUTION_LOCK.release()
             self.is_running_script = False
             self.log_output("--- Console execution finished ---")
@@ -1774,7 +1777,9 @@ class CodeEditorGui:
             filename=doc.name,
         )
 
-    def _request_export_notebook(self, doc: EditorDocument) -> None:
+    def _request_export_notebook(self, doc: EditorDocument | None) -> None:
+        if doc is None:  # no active document: nothing to export
+            return
         self._dialog_document = doc
         self._dialog_operation = "export"
         self._dialog_close_after = False
@@ -1788,7 +1793,9 @@ class CodeEditorGui:
             filters="Python (*.py)",
         )
 
-    def _request_reload(self, doc: EditorDocument) -> None:
+    def _request_reload(self, doc: EditorDocument | None) -> None:
+        if doc is None:  # no active document: nothing to reload
+            return
         if doc.path is None:
             self.model.log_output("Save the notebook before reloading it from disk.")
         elif doc.is_modified:
@@ -1885,8 +1892,8 @@ class CodeEditorGui:
                 im.text_wrapped(self._dialog_error)
         im.end()
 
-    def _request_close(self, doc: EditorDocument) -> None:
-        if doc not in self.model.documents:
+    def _request_close(self, doc: EditorDocument | None) -> None:
+        if doc is None or doc not in self.model.documents:
             return
         if doc.is_modified:
             self._pending_close = doc
@@ -2118,7 +2125,7 @@ class CodeEditorGui:
             tr("Restart the notebook's shell: variables and the execution count are reset")
         )
         im.end_disabled()
-        if notebook is None:
+        if notebook is None or doc is None:
             im.text_disabled(tr("Open a notebook to get a kernel terminal."))
             return
         im.same_line()

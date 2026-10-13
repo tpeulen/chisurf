@@ -14,12 +14,12 @@ from emtk.events import CONTROL_MODIFIER
 from emtk.testing import Driver
 
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.core.code_editor.file_writes import parse_file_writes
 from chisurf.plugins.core.code_editor.gui.editor_app import make_editor_app
 from chisurf.plugins.core.code_editor.ruff_runner import RuffRunner
 from chisurf.plugins.core.code_editor.validation import validate_writes
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
+from chisurf.plugins.emtk_layout import action_caption
 
 F401 = {
     "ok": True,
@@ -71,10 +71,10 @@ def test_run_ruff_checks_the_current_buffer_and_lists_the_diagnostics(app, monke
     result = app.model.run_ruff()
     assert seen == ["import os\n"]
     assert [d["code"] for d in result["diagnostics"]] == ["F401"]
-    drawn = [t[5] for t in Driver(app, (1400, 860)).frame(3).texts]
+    Driver(app, (1400, 860)).frame(3)
     app.editor_gui.docks.focus("diagnostics")
-    drawn = " ".join(t[5] for t in Driver(app, (1400, 860)).frame(3).texts)
-    assert "F401" in drawn
+    drawn_text = " ".join(t[5] for t in Driver(app, (1400, 860)).frame(3).texts)
+    assert "F401" in drawn_text
 
 
 def test_an_answer_writing_current_fills_the_document_in_front(app) -> None:

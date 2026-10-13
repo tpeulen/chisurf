@@ -208,3 +208,17 @@ class TestTheGreetingFollowsTheMode:
             assert "operate ChiSurf" in drawn
         finally:
             app.close()
+
+    def test_provider_settings_open_the_ai_settings_form(self):
+        """The Provider settings… button hosts the AI settings form (it raised ImportError)."""
+        app = ChatApp()
+        try:
+            driver = Driver(app, (700, 800))
+            driver.frame(2)
+            driver.click("Provider settings…")
+            drawn = [t[5] for t in driver.frame(2).texts]
+            assert app.chat_gui.provider_settings_open
+            assert app.chat_gui.provider_settings is not None
+            assert "Use settings and close" in drawn
+        finally:
+            app.close()

@@ -53,5 +53,5 @@ def add_nb_to_hdf5(maps: dict[str, np.ndarray], path: str) -> list[str]:
     imaging HDF5 (e.g. a pixel-wise-MLE lifetime map), or creates the file if it
     does not yet exist. Returns the added column names.
     """
-    keep = {k: maps[k] for k in ("N", "B", "epsilon", "n") if k in maps}
+    keep: dict[str, np.ndarray] = {k: maps[k] for k in ("N", "B", "epsilon", "n") if k in maps}
     return add_maps_to_hdf5(path, keep)
