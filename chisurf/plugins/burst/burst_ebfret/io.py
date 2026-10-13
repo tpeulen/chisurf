@@ -118,7 +118,8 @@ def _fmt_e(value: float, spec: str) -> str:
     if special is None:
         return spec % float(value)
     # MATLAB right-aligns NaN/Inf in a field of the conversion's width.
-    width = re.match(r"%(\d*)", spec).group(1)
+    match = re.match(r"%(\d*)", spec)
+    width = match.group(1) if match else ""
     return special.rjust(int(width)) if width else special
 
 
@@ -391,7 +392,7 @@ def series_from_raw(
     path: str,
     donors: Sequence[np.ndarray],
     acceptors: Sequence[np.ndarray],
-    labels: Sequence[Any],
+    labels: Sequence[Any] | np.ndarray,
     group: str,
 ) -> list[Series]:
     """Build the time series of one raw or SF-Tracer file, as ``load_data.m``.
@@ -605,8 +606,11 @@ def series_from_smd(
             donor = np.zeros(index.shape)
             acceptor = np.zeros(index.shape)
         else:
-            donor = values[:, int(channels["donor"]) - 1].copy()
-            acceptor = values[:, int(channels["acceptor"]) - 1].copy()
+            donor_col, acceptor_col = channels.get("donor"), channels.get("acceptor")
+            if donor_col is None or acceptor_col is None:
+                raise ValueError("an SMD import needs a FRET channel or a donor and an acceptor")
+            donor = values[:, int(donor_col) - 1].copy()
+            acceptor = values[:, int(acceptor_col) - 1].copy()
             signal = (acceptor + EPS) / (acceptor + donor + EPS)
         out.append(
             Series(
@@ -1405,7 +1409,7 @@ def _report_node_rows(
         lines.append([indent * level + field_name])
         first = nodes[0].get(field_name)
         if isinstance(first, Mapping):
-            children = [n.get(field_name) for n in nodes if isinstance(n.get(field_name), Mapping)]
+            children = [child for n in nodes if isinstance(child := n.get(field_name), Mapping)]
             lines.extend(_report_node_rows(children, level + 1, separator, indent))
         elif isinstance(first, str):
             parts = [n.get(field_name) for n in nodes]

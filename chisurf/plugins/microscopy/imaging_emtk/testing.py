@@ -50,11 +50,12 @@ class Driver:
         from chisurf.emtk.background_build import join_all
 
         w, h = size or self.size
+        painter = self.painter or MetricPainter()
         for _ in range(frames):
             join_all()  # first-frame reads run in the background; a host draws again when they land
-            self.painter = MetricPainter()
-            self.app.draw(self.painter, 0, 0, w, h)
-        return self.painter
+            painter = self.painter = MetricPainter()
+            self.app.draw(painter, 0, 0, w, h)
+        return painter
 
     def settle(self, timeout: float = 120.0, extra: int = 2) -> MetricPainter:
         """Draw until the worker has finished and its result is shown."""
@@ -81,8 +82,9 @@ class Driver:
 
     def text_rect(self, label: str, last: bool = False) -> tuple:
         """The rectangle of the drawn text *label* (a button caption, a list entry, a header)."""
-        hits = [t[:4] for t in self.draw(1).texts if t[5] == label]
-        assert hits, f"{label!r} is not drawn: {[t[5] for t in self.painter.texts][:60]}"
+        texts = self.draw(1).texts
+        hits = [t[:4] for t in texts if t[5] == label]
+        assert hits, f"{label!r} is not drawn: {[t[5] for t in texts][:60]}"
         return hits[-1] if last else hits[0]
 
     # -- pointer ---------------------------------------------------------------- #

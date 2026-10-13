@@ -407,8 +407,8 @@ class Session:
                         loaded += ebio.series_from_raw(path, donors, acceptors, labels, group)
                     elif ftype == SF_TRACER:
                         donors, acceptors = ebio.load_sf_tracer(path)
-                        labels = list(range(1, len(donors) + 1))
-                        loaded += ebio.series_from_raw(path, donors, acceptors, labels, group)
+                        numbers = list(range(1, len(donors) + 1))
+                        loaded += ebio.series_from_raw(path, donors, acceptors, numbers, group)
                     else:
                         smd = ebio.load_smd(path)
                         channels = (
@@ -474,8 +474,10 @@ class Session:
                 kernel = kernel / kernel.sum()
                 for s in self.series:
                     start = s.crop_min - 1
-                    crop_max = s.length - s.crop_min
-                    donor = acceptor = None
+                    # float: a threshold that finds nothing answers ``inf``
+                    crop_max: float = s.length - s.crop_min
+                    donor: np.ndarray | None = None
+                    acceptor: np.ndarray | None = None
                     if not math.isnan(th["fret"]):
                         smooth = np.convolve(s.signal[start:], kernel, mode="valid")
                         crop_max = min(crop_max, _first_below(smooth, th["fret"], half))
@@ -485,7 +487,8 @@ class Session:
                     if not math.isnan(th["don"]) or not math.isnan(th["sum"]):
                         donor = np.convolve(s.donor[start:], kernel, mode="valid")
                         crop_max = min(crop_max, _first_below(donor, th["don"], half))
-                    if not math.isnan(th["sum"]):
+                    # a finite sum threshold computed both smoothed channels above
+                    if not math.isnan(th["sum"]) and donor is not None and acceptor is not None:
                         crop_max = min(crop_max, _first_below(donor + acceptor, th["sum"], half))
                     if not math.isnan(th["pad"]):
                         crop_max = crop_max - th["pad"]

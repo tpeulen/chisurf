@@ -254,6 +254,20 @@ def test_h_step_remap_and_report(eb, traces):
         _compare_report(actual, expected)
 
 
+def test_h_step_remap_with_an_unused_target_state(eb):
+    """A mapping that skips a target (here state 2) leaves that state out of every factor.
+
+    The transition and initial-state priors were left unmasked, so the (3, 3)
+    ``A`` met (2, 2) statistics and the h-step failed to broadcast.
+    """
+    prior = _params(eb["prior"])
+    expect = [_expect(e) for e in eb["expect"]]
+    u, w, e = hmm.h_step_remap(prior, expect, [1, 1, 3])
+    assert np.asarray(u.A).shape == (2, 2) and np.ravel(u.pi).size == 2
+    assert np.ravel(u.mu).size == 2
+    assert all(np.asarray(n.A).shape == (2, 2) for n in w if n is not None)
+
+
 def test_photobleach_index():
     pb = _load("photobleach")
     for name in ("donor", "acceptor", "step"):

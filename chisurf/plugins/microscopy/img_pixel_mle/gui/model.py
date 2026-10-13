@@ -39,6 +39,8 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
     """Pixel-wise MLE plus the state of the emtk window."""
 
     colormap = "inferno"
+    #: the emtk window can always cancel a fit
+    cancel_event: threading.Event
 
     def __init__(self) -> None:
         PixelMleViewModel.__init__(self)
@@ -48,7 +50,7 @@ class PixelMleModel(EmtkModelMixin, PixelMleViewModel):
 
     # the Qt status bar is the view model's ``status_text``
     @property
-    def status_line(self) -> str:  # type: ignore[override]
+    def status_line(self) -> str:
         return self.status_text
 
     @status_line.setter

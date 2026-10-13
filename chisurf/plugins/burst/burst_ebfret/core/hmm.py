@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import Protocol
 
 import numpy as np
 
@@ -160,12 +161,29 @@ def m_step(u: HmmParams, x, g, xi):
     return w, ev
 
 
-def kl_div(w: HmmParams, u: HmmParams) -> float:
+class _Hyperparameters(Protocol):
+    """What ``kl_div`` reads: :class:`HmmParams`, or the h-step's working prior."""
+
+    @property
+    def mu(self) -> np.ndarray: ...
+    @property
+    def beta(self) -> np.ndarray: ...
+    @property
+    def W(self) -> np.ndarray: ...
+    @property
+    def nu(self) -> np.ndarray: ...
+    @property
+    def A(self) -> np.ndarray: ...
+    @property
+    def pi(self) -> np.ndarray: ...
+
+
+def kl_div(w: _Hyperparameters, u: _Hyperparameters) -> float:
     """``KL(q(theta | w) || p(theta | u))`` summed over all factors (``kl_div.m``).
 
     Parameters
     ----------
-    w, u : HmmParams
+    w, u : HmmParams or _Prior
         Posterior and prior.
 
     Returns
@@ -661,11 +679,26 @@ class _Prior:
         m, beta, a, b = dist.normgamma_h_step(
             stacked["mu"], stacked["beta"], stacked["a"], stacked["b"], 1
         )
-        self.mu, self.beta, self.a, self.b = m, beta, a, b
-        self.nu = 2 * a
-        self.W = 0.5 / b
-        self.A = dist.dirichlet_h_step(stacked["A"])
-        self.pi = dist.dirichlet_h_step(stacked["pi"])
+        self._set(
+            m, beta, a, b, dist.dirichlet_h_step(stacked["A"]), dist.dirichlet_h_step(stacked["pi"])
+        )
+
+    def _set(self, mu, beta, a, b, A, pi) -> None:
+        self.mu: np.ndarray = mu
+        self.beta: np.ndarray = beta
+        self.a: np.ndarray = a
+        self.b: np.ndarray = b
+        self.nu: np.ndarray = 2 * a
+        self.W: np.ndarray = 0.5 / b
+        self.A: np.ndarray = A
+        self.pi: np.ndarray = pi
+
+    @classmethod
+    def from_arrays(cls, mu, beta, a, b, A, pi) -> _Prior:
+        """A prior given directly by its Normal-Gamma and Dirichlet hyperparameters."""
+        prior = cls.__new__(cls)
+        prior._set(mu, beta, a, b, A, pi)
+        return prior
 
     def params(self) -> HmmParams:
         """Return the prior as :class:`HmmParams` (dropping ``a, b``).
@@ -796,14 +829,16 @@ def h_step(
             }
             E["V_x"] = np.stack([_vec(e.xx) for e in items], axis=1) - E["x"] ** 2
 
-    u_old = u
+    # ``u`` is overwritten before first use (as in the reference): from the
+    # second pass on, ``u_old`` is the previous pass's prior.
+    u_old: _Prior | None = None
     kl: list[float] = []
     it = 0
     while True:
         prior = _Prior(stacked)
         if it >= max_iter:
             break
-        if it >= 1:
+        if it >= 1 and u_old is not None:
             kl.append(kl_div(prior, u_old))
         if it >= 2 and (kl[it - 2] - kl[it - 1]) / (1 - kl[it - 1]) < threshold:
             break
@@ -881,7 +916,8 @@ def h_step_remap(
                 if l_idx.size:
                     u_A[km, lm] = np.sum(A0[np.ix_(k, l_idx)])
 
-    ns = [i for i, e in enumerate(expect) if e is not None and _vec(e.z).size]
+    present = [(i, e) for i, e in enumerate(expect) if e is not None and _vec(e.z).size]
+    ns = [i for i, _ in present]
     N = len(ns)
     E_z = np.zeros((M, N))
     E_z1 = np.zeros((M, N))
@@ -891,8 +927,7 @@ def h_step_remap(
     for km, k in enumerate(groups):
         if not k.size:
             continue
-        for j, n in enumerate(ns):
-            e = expect[n]
+        for j, (_, e) in enumerate(present):
             z = _vec(e.z)
             E_z[km, j] = np.sum(z[k])
             E_z1[km, j] = np.sum(_vec(e.z1)[k])
@@ -907,13 +942,12 @@ def h_step_remap(
     E_xx = E_xx[msk]
     E["V_x"] = E_xx - E["x"] ** 2
 
-    class _U:
-        pass
-
-    prior = _U()
-    prior.mu, prior.beta, prior.a, prior.b = u_mu[msk], u_beta[msk], u_a[msk], u_b[msk]
-    prior.nu, prior.W = 2 * prior.a, 0.5 / prior.b
-    prior.A, prior.pi = u_A, u_pi
+    # A and pi are masked like the emission parameters: a mapping that leaves a
+    # merged state empty used to pair an (M, M) transition prior with (Kr, Kr)
+    # statistics and fail to broadcast.
+    prior = _Prior.from_arrays(
+        u_mu[msk], u_beta[msk], u_a[msk], u_b[msk], u_A[np.ix_(msk, msk)], u_pi[msk]
+    )
 
     u_old = prior
     kl: list[float] = []

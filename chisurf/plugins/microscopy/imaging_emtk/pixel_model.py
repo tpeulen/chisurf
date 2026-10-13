@@ -11,16 +11,23 @@ from __future__ import annotations
 import copy
 import pathlib
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .model_base import EmtkModelMixin
+
+if TYPE_CHECKING:
+    # The mixin always goes in front of an ImagingMapViewModel subclass and
+    # reads its state (files, columns, notify, the HDF5 writers).
+    from ..imaging_common.base import ImagingMapViewModel as _Host
+else:
+    _Host = object
 
 #: Files the Open dialog lists (the Qt file field's photon-stream types).
 PHOTON_FILE_FILTER = "Photon streams (*.ptu *.pto *.ht3 *.pt3 *.spc);;All files (*)"
 HDF5_FILE_FILTER = "Imaging HDF5 (*.h5 *.hdf5);;All files (*)"
 
 
-class PixelModelMixin(EmtkModelMixin):
+class PixelModelMixin(EmtkModelMixin, _Host):
     """Actions, worker bodies and hub adapters of a per-pixel map tool.
 
     Class attributes a tool sets

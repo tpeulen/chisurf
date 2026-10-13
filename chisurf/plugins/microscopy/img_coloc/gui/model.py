@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 
-from chisurf.core.roi import RegionCollection
+from chisurf.core.roi import RectangleROI, RegionCollection
 
 from ...imaging_emtk.model_base import EmtkModelMixin
 from .view_model import ColocViewModel
@@ -87,7 +87,7 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
         return self.detectors
 
     # -- the computation, on a worker ------------------------------------------------------ #
-    def compute(self, progress=None) -> bool:  # type: ignore[override]
+    def compute(self, progress=None) -> bool:
         """The Qt ``compute`` called from the window runs on a worker; the worker's own call (``compute_job``) runs it."""
         if progress is None and not self._direct and self.runner is not None:
             if not self.filename:
@@ -188,7 +188,7 @@ class ColocModel(EmtkModelMixin, ColocViewModel):
     def gates_edited(self) -> None:
         """A gate region was added, moved or removed: the typed box follows its ``box`` region, the gate is on while there is one, and the result is recomputed."""
         box = self.gates.get("box")
-        if box is not None and hasattr(box.roi, "x0"):
+        if box is not None and isinstance(box.roi, RectangleROI):
             self.gate_a_min, self.gate_b_min = float(box.roi.x0), float(box.roi.y0)
             self.gate_a_max, self.gate_b_max = float(box.roi.x1), float(box.roi.y1)
         elif box is None and len(self.gates):

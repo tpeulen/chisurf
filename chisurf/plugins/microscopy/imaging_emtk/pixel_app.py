@@ -63,7 +63,8 @@ class PixelToolApp(DetectorEditorMixin, PlaneMixin, ImagingToolApp):
             )
         self.coordinator = coordinator
         self.ndx_callback = ndx_callback
-        self.ndx = None
+        #: the embedded ndX app (built on first use by ndxplorer's untyped ``make_app``)
+        self.ndx: Any | None = None
         self.view_ndx = False
         self._painter = None
         self._ndx_box = (0.0, NDX_BAR, 1000.0, 700.0)

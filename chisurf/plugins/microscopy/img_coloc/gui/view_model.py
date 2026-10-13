@@ -12,6 +12,7 @@ from collections.abc import Callable
 
 import numpy as np
 
+from chisurf.core.fluorescence.imaging import ColocalizationResult
 from chisurf.core.roi import RegionCollection
 
 from .. import core as _core
@@ -49,7 +50,7 @@ class ColocViewModel:
         #: population, anything drawn — combined by the collection's rule.
         self.gates = RegionCollection(combine="or", name="gate")
         #: Paint buffer over the histogram bins; the gate brush writes into it.
-        self.gate_paint = None
+        self.gate_paint: np.ndarray | None = None
         self.gate_a_min: float = 0.0
         self.gate_a_max: float = 0.0
         self.gate_b_min: float = 0.0
@@ -73,10 +74,10 @@ class ColocViewModel:
         #: ``{window: {"chs": [...], "micro_time_ranges": [...]}}`` (empty = raw channels).
         self.detectors: dict[str, dict] = {}
         #: Painted region the analysis is restricted to (``None`` = whole image).
-        self.roi_mask = None
+        self.roi_mask: np.ndarray | None = None
         # ── runtime state ──
         self._stack = None
-        self._result = None
+        self._result: ColocalizationResult | None = None
         self._metrics: dict = {}
         self.results_text: str = (
             "Load a TIFF stack or photon-stream image (or drop one) and press Run."
@@ -407,14 +408,15 @@ class ColocViewModel:
         if progress:
             progress(0.9, "Computing coefficients…")
         self._stack = out["stack"]
-        self._result = out["result"]
+        result: ColocalizationResult = out["result"]
+        self._result = result
         self._metrics = out["metrics"]
         # The brush overlay needs a mask of the image's shape to paint into.
         shape = np.asarray(out["image_a"]).shape
         if self.roi_mask is None or np.asarray(self.roi_mask).shape != shape:
             self.roi_mask = np.zeros(shape, dtype=float)
         # ... and the scatter gate needs one shaped like the joint histogram.
-        hist = self._result.histogram.get("histogram")
+        hist = result.histogram.get("histogram")
         if hist is not None:
             if self.gate_paint is None or np.asarray(self.gate_paint).shape != hist.shape:
                 self.gate_paint = np.zeros(hist.shape, dtype=float)

@@ -16,7 +16,7 @@ import copy
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from emtk import im, implot, implot3d
@@ -25,6 +25,9 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.card_shell import CardShell, Rows
+
+if TYPE_CHECKING:
+    from chisurf.plugins.quenching_estimator.gui.form_model import ProjectFormModel
 from chisurf.plugins.emtk_layout import action_caption, action_tooltip, layout_spec
 
 HERE = Path(__file__).resolve().parent
@@ -148,7 +151,7 @@ def quest_spec(locale: str | None = None) -> dict:
 class QuestSession:
     """The QuEst project model and the run, or the reason there is none."""
 
-    def __init__(self, model: Any | None = None) -> None:
+    def __init__(self, model: ProjectFormModel | None = None) -> None:
         self.model = model
         self.error = ""
         self.status_error = False
@@ -177,6 +180,13 @@ class QuestSession:
     def ready(self) -> bool:
         return self.model is not None
 
+    @property
+    def form(self) -> ProjectFormModel:
+        """The project model; only reached once ``ready`` was checked."""
+        if self.model is None:
+            raise RuntimeError(self.error or "the QuEst project model is not available")
+        return self.model
+
     # ── files ─────────────────────────────────────────────────────────────
 
     def load_structure(self, path: str) -> bool:
@@ -185,8 +195,8 @@ class QuestSession:
         if not Path(path).is_file():
             self.say(f"No such file: {path}", True)
             return False
-        self.model.pdb = path
-        self.model.auto_attach_to_structure()
+        self.form.pdb = path
+        self.form.auto_attach_to_structure()
         self.structure = None
         self.say(f"Loaded {Path(path).name}")
         return True
@@ -224,7 +234,7 @@ class QuestSession:
         if not self.ready:
             return False
         try:
-            self.model.load_project(path)
+            self.form.load_project(path)
         except Exception as exc:  # noqa: BLE001
             self.say(f"Failed to load the project: {exc}", True)
             return False
@@ -236,7 +246,7 @@ class QuestSession:
         if not self.ready:
             return False
         try:
-            self.model.save_project(path)
+            self.form.save_project(path)
         except Exception as exc:  # noqa: BLE001
             self.say(f"Failed to save the project: {exc}", True)
             return False
@@ -246,33 +256,33 @@ class QuestSession:
     def say(self, text: str, error: bool = False) -> None:
         self.message, self.status_error = text, error
         if self.ready:
-            self.model.status = text
+            self.form.status = text
 
     # ── run ───────────────────────────────────────────────────────────────
 
     def simulate(self) -> bool:
         if not self.ready or self.running:
             return False
-        problems = self.model.validate()
+        problems = self.form.validate()
         if problems:
             self.say(f"Cannot simulate: {problems[0]}", True)
             return False
-        self.model.start_simulation()
+        self.form.start_simulation()
         self.running = True
         return True
 
     def cancel(self) -> bool:
-        return bool(self.ready and self.model.cancel_simulation())
+        return bool(self.ready and self.form.cancel_simulation())
 
     def poll(self) -> bool:
         """Apply a finished run on the UI thread; True when something changed."""
         if not self.ready or not self.running:
             return False
-        if self.model.simulation_running:
+        if self.form.simulation_running:
             return True
         self.running = False
-        self.model.poll_simulation()
-        self.message = self.model.status
+        self.form.poll_simulation()
+        self.message = self.form.status
         self.status_error = self.message.lower().startswith(
             ("failed", "error", "simulation failed")
         )
@@ -290,11 +300,11 @@ class QuestSession:
     # ── what the tabs read ────────────────────────────────────────────────
 
     def quencher_rows(self) -> Rows:
-        rows = Rows(self.model.quencher_rows()) if self.ready else Rows()
+        rows = Rows(self.form.quencher_rows()) if self.ready else Rows()
         rows.revision = (
             hash(
                 json.dumps(
-                    self.model.project.get("amino_acid_interactions", {}),
+                    self.form.project.get("amino_acid_interactions", {}),
                     sort_keys=True,
                     default=str,
                 )
@@ -307,39 +317,39 @@ class QuestSession:
     def edit_quencher(self, record, key: str, value) -> None:
         if not self.ready or not isinstance(record, dict):
             return
-        rows = self.model.quencher_rows()
+        rows = self.form.quencher_rows()
         index = next((i for i, r in enumerate(rows) if r["residue"] == record["residue"]), -1)
         if index >= 0:
             try:
-                self.model.update_quencher_cell(index, key, value)
+                self.form.update_quencher_cell(index, key, value)
             except ValueError:
                 self.say(f"Not a number: {value}", True)
 
     def reset_quencher_defaults(self) -> None:
         from chisurf.plugins.quenching_estimator.core.project import template_project
 
-        self.model.project["amino_acid_interactions"] = template_project().get(
+        self.form.project["amino_acid_interactions"] = template_project().get(
             "amino_acid_interactions", {}
         )
-        self.model._notify()
+        self.form._notify()
         self.say("Quenching chemistry reset to the defaults.")
 
     @property
     def json_text(self) -> str:
-        return json.dumps(self.model.to_project_dict(), indent=2) if self.ready else ""
+        return json.dumps(self.form.to_project_dict(), indent=2) if self.ready else ""
 
     def series(self) -> dict[str, list[dict]]:
         if not self.ready:
             return {"decay": [], "trajectory": [], "acf": []}
         return {
-            "decay": self.model.decay_series(),
-            "trajectory": self.model.trajectory_series(),
-            "acf": self.model.autocorrelation_series(),
+            "decay": self.form.decay_series(),
+            "trajectory": self.form.trajectory_series(),
+            "acf": self.form.autocorrelation_series(),
         }
 
     def backbone(self):
         """The CA trace of the loaded structure and the attachment sites ``(donor, acceptor)``, or None."""
-        pdb = str(self.model.project.get("pdb") or "") if self.ready else ""
+        pdb = str(self.form.project.get("pdb") or "") if self.ready else ""
         if not pdb or not Path(pdb).is_file():
             return None
         if self.structure is None or self.structure_path != pdb:
@@ -366,7 +376,7 @@ class QuestSession:
             except (TypeError, ValueError):
                 return None
 
-        project = self.model.project
+        project = self.form.project
         donor = site(
             project.get("attachment", {}).get("chain"),
             project.get("attachment", {}).get("residue"),
@@ -382,12 +392,12 @@ class QuestSession:
     # ── persistence ───────────────────────────────────────────────────────
 
     def export_settings(self) -> dict:
-        return {"project": self.model.to_project_dict()} if self.ready else {}
+        return {"project": self.form.to_project_dict()} if self.ready else {}
 
     def restore_settings(self, settings: dict) -> None:
         if self.ready and isinstance(settings, dict) and isinstance(settings.get("project"), dict):
             try:
-                self.model.load_project_dict(settings["project"])
+                self.form.load_project_dict(settings["project"])
             except Exception as exc:  # noqa: BLE001
                 self.say(f"The saved project could not be restored: {exc}", True)
 
@@ -412,9 +422,14 @@ class QuestCard(CardShell):
 
     # ── actions ───────────────────────────────────────────────────────────
 
+    def cancel_simulation(self) -> None:
+        """Stop the running simulation and show the state it left."""
+        self.session.cancel()
+        self.sync()
+
     def sync(self) -> None:
         self.status = self.session.message or (
-            self.session.model.status if self.session.ready else ""
+            self.session.form.status if self.session.ready else ""
         )
         self.status_error = self.session.status_error
         self.request_frame()
@@ -424,7 +439,7 @@ class QuestCard(CardShell):
             "Open a structure",
             STRUCTURE_FILTER,
             self._load_structure,
-            current=str(self.session.model.project.get("pdb") or "") if self.session.ready else "",
+            current=str(self.session.form.project.get("pdb") or "") if self.session.ready else "",
         )
 
     def _load_structure(self, path: str) -> None:
@@ -564,7 +579,7 @@ class QuestCard(CardShell):
         {
             None: lambda: None,
             "simulate": self.simulate,
-            "cancel": lambda: (s.cancel(), self.sync()),
+            "cancel": self.cancel_simulation,
             "load_example": self.load_example,
             "load_pdb": self.load_structure,
             "load_project": self.load_project,
@@ -572,7 +587,7 @@ class QuestCard(CardShell):
             "guide": self.start_guide,
             "help": self.show_help,
         }[pressed]()
-        im.text_wrapped(tr("State: {status}").format(status=s.model.status))
+        im.text_wrapped(tr("State: {status}").format(status=s.form.status))
         self.remember("state")
         im.separator()
         self.form.rects.clear()

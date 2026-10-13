@@ -20,12 +20,15 @@ import dataclasses
 import logging
 import os
 import pathlib
+import threading
 from collections.abc import Callable
+from typing import NamedTuple
 
 import numpy as np
 
 from chisurf.core.datastore import numeric_column, row_count, write_csv_table
 from chisurf.core.fluorescence.mle.fit2x import Fit2xModel, parameter_names_of
+from chisurf.core.roi import ROI
 from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
 
 from ..api.models import PixelMleSettings as ApiSettings
@@ -42,22 +45,38 @@ _FIT_MODEL_LABELS = (
     "Lifetime selection (fit25)",
 )
 
+
+class _ParamMeta(NamedTuple):
+    """Label, start value and bounds of one fit2x parameter."""
+
+    label: str
+    default: float
+    min: float
+    max: float
+
+
 #: Per-parameter display metadata (initial value, bounds, label) keyed by the
 #: registry free-parameter name. ``fixed`` is *not* here — it is model-specific
 #: (fit25 fixes its four candidate lifetimes, fit24 frees tau1/tau2), so it lives
 #: in :data:`_MODEL_FIXED_DEFAULT`.
-_PARAM_META = {
-    "tau": {"label": "τ (ns)", "default": 2.0, "min": 0.0, "max": 100.0},
-    "tau1": {"label": "τ1 (ns)", "default": 2.0, "min": 0.0, "max": 100.0},
-    "tau2": {"label": "τ2 (ns)", "default": 0.5, "min": 0.0, "max": 100.0},
-    "tau3": {"label": "τ3 (ns)", "default": 4.0, "min": 0.0, "max": 100.0},
-    "tau4": {"label": "τ4 (ns)", "default": 8.0, "min": 0.0, "max": 100.0},
-    "gamma": {"label": "γ", "default": 0.0, "min": 0.0, "max": 1.0},
-    "A2": {"label": "A2", "default": 0.5, "min": 0.0, "max": 1.0},
-    "offset": {"label": "offset", "default": 0.0, "min": 0.0, "max": 1e6},
-    "r0": {"label": "r0", "default": 0.38, "min": 0.0, "max": 0.4},
-    "rho": {"label": "ρ (ns)", "default": 1.0, "min": 0.0, "max": 1000.0},
+_PARAM_META: dict[str, _ParamMeta] = {
+    "tau": _ParamMeta("τ (ns)", 2.0, 0.0, 100.0),
+    "tau1": _ParamMeta("τ1 (ns)", 2.0, 0.0, 100.0),
+    "tau2": _ParamMeta("τ2 (ns)", 0.5, 0.0, 100.0),
+    "tau3": _ParamMeta("τ3 (ns)", 4.0, 0.0, 100.0),
+    "tau4": _ParamMeta("τ4 (ns)", 8.0, 0.0, 100.0),
+    "gamma": _ParamMeta("γ", 0.0, 0.0, 1.0),
+    "A2": _ParamMeta("A2", 0.5, 0.0, 1.0),
+    "offset": _ParamMeta("offset", 0.0, 0.0, 1e6),
+    "r0": _ParamMeta("r0", 0.38, 0.0, 0.4),
+    "rho": _ParamMeta("ρ (ns)", 1.0, 0.0, 1000.0),
 }
+
+
+def _param_meta(name: str) -> _ParamMeta:
+    """The metadata of parameter *name*; an unknown one starts at 1 in [0, 1e6]."""
+    return _PARAM_META.get(name) or _ParamMeta(name, 1.0, 0.0, 1e6)
+
 
 #: Default fixed mask per model (1 = fixed). fit23 frees τ only; fit24 frees the
 #: two lifetimes + their fraction; fit25 fixes all four candidate lifetimes (it
@@ -94,9 +113,10 @@ class PixelMleViewModel(MleObserverMixin):
         #: Path of a stored region confining the fit ("" = the whole frame).
         self._roi_path: str = ""
         #: The loaded region itself (:class:`chisurf.core.roi.ROI` or ``None``).
-        self.roi = None
+        self.roi: ROI | None = None
         self._observers: list[Callable[[str], None]] = []
-        self.cancel_event = None
+        #: Set by a host that can cancel a running fit (``None``: not cancellable).
+        self.cancel_event: threading.Event | None = None
 
     def __copy__(self):
         """Detach additional mutable model state when a native job snapshots it."""
@@ -169,16 +189,16 @@ class PixelMleViewModel(MleObserverMixin):
         names = parameter_names_of(Fit2xModel(self._fit_model))
         sections = []
         for i, nm in enumerate(names):
-            meta = _PARAM_META.get(nm, {})
+            meta = _param_meta(nm)
             sections.append(
                 {
                     "type": "value",
                     "attr": f"p{i}_value",
                     "kind": "float",
-                    "label": meta.get("label", nm),
+                    "label": meta.label,
                     "decimals": 3,
-                    "minimum": float(meta.get("min", 0.0)),
-                    "maximum": float(meta.get("max", 1e6)),
+                    "minimum": meta.min,
+                    "maximum": meta.max,
                     "description": f"Initial value of {nm}.",
                 }
             )
@@ -218,7 +238,7 @@ class PixelMleViewModel(MleObserverMixin):
         """Return the (start-vector, fixed-mask) lists for *model*, seeded on first use."""
         if model not in self._model_params:
             names = parameter_names_of(Fit2xModel(model))
-            x0 = [float(_PARAM_META.get(n, {}).get("default", 1.0)) for n in names]
+            x0 = [_param_meta(n).default for n in names]
             fx = list(_MODEL_FIXED_DEFAULT.get(model, [0] * len(names)))
             if len(fx) != len(names):
                 fx = [0] * len(names)

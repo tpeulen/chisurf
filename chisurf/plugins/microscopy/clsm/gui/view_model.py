@@ -16,6 +16,7 @@ and so the architecture's GUI/logic boundary is respected.
 
 from __future__ import annotations
 
+import dataclasses
 import pathlib
 from collections.abc import Callable
 from typing import Any
@@ -30,11 +31,43 @@ from ..core import imaging, setups
 _VIEW_JSON = pathlib.Path(__file__).parent / "clsm.view.json"
 
 
-class _Group:
-    """A plain attribute bag used as an AutoForm binding target."""
+@dataclasses.dataclass
+class _SetupGroup:
+    """Reader settings: the AutoForm binding target of the ``setup`` section."""
 
-    def __init__(self, **kwargs: Any) -> None:
-        self.__dict__.update(kwargs)
+    setup_name: str
+    tttr_type: str = "PTU"
+    routine: str = "default"
+    frame_marker_text: str = ""
+    line_start_marker: int = 1
+    line_stop_marker: int = 2
+    event_type_marker: int = 1
+    pixel_per_line: int = 0
+    channels_text: str = "0"
+    use_pixel_markers: bool = False
+    marker_pixel: int = 8
+    n_lines: int = 0
+
+
+@dataclasses.dataclass
+class _BrushGroup:
+    """Selection brush: the AutoForm binding target of the ``brush`` section."""
+
+    size: int = 7
+    width: float = 3.0
+    mode: str = "select"
+    live_update: bool = True
+
+
+@dataclasses.dataclass
+class _DecayGroup:
+    """Image/decay settings: the AutoForm binding target of the ``decay`` section."""
+
+    image_type: str = "Intensity"
+    n_ph_min: int = 1
+    tac_coarsening: int = 1
+    frame_mode: str = "sum"
+    frame_idx: int = 0
 
 
 def _parse_int_list(text: str) -> list[int]:
@@ -56,7 +89,7 @@ class ClsmViewModel:
 
         # ── AutoForm-bound setting groups ──────────────────────────────
         preset = self._presets[first]
-        self.setup = _Group(
+        self.setup = _SetupGroup(
             setup_name=first,
             tttr_type=preset.get("tttr_type", "PTU"),
             routine=preset.get("routine", "default"),
@@ -70,15 +103,9 @@ class ClsmViewModel:
             marker_pixel=8,
             n_lines=0,
         )
-        self.brush = _Group(size=7, width=3.0, mode="select", live_update=True)
+        self.brush = _BrushGroup()
         self.colormap = "magma"
-        self.decay = _Group(
-            image_type="Intensity",
-            n_ph_min=1,
-            tac_coarsening=1,
-            frame_mode="sum",
-            frame_idx=0,
-        )
+        self.decay = _DecayGroup()
 
         # ── runtime state ──────────────────────────────────────────────
         self.filename: str = ""

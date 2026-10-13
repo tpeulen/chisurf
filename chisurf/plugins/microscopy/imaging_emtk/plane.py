@@ -17,7 +17,7 @@ import numpy as np
 from emtk import im, implot
 from emtk.i18n import tr
 
-from chisurf.core.roi import EllipseROI, PolygonROI, RectangleROI
+from chisurf.core.roi import ROI, EllipseROI, PolygonROI, RectangleROI
 from chisurf.emtk.image_canvas import ImageCanvas
 from chisurf.emtk.regions import RegionControls
 
@@ -50,6 +50,7 @@ class PlaneRegions(RegionControls):
     def add_shape(self, kind: str) -> str:
         x0, x1, y0, y1 = self._extent()
         cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 4, (y1 - y0) / 4
+        roi: ROI
         if kind == "ellipse":
             roi = EllipseROI(cx, cy, rx, ry, name="Ellipse")
         elif kind == "polygon":
@@ -82,8 +83,8 @@ class PlanePanel:
         collection: Callable[[], Any],
         image: Callable[[], Any],
         extent: Callable[[], tuple],
-        x_label: str,
-        y_label: str,
+        x_label: str | Callable[[], str],
+        y_label: str | Callable[[], str],
         on_change: Callable[[], None],
         overlay: Callable[[], list] | None = None,
         empty: str = "Nothing to show yet.",
@@ -110,7 +111,8 @@ class PlanePanel:
         #: margin around the extent, so a point of the plane is placed through these, not the extent
         self.limits: tuple = (0.0, 1.0, 0.0, 1.0)
         self.hover = ""
-        self._fit = ""
+        #: the rounded extent the axes were last fitted to (``None``: never fitted)
+        self._fit: tuple[float, float, float, float] | None = None
 
     def draw(self, colormap: str | None = None) -> None:
         array = self.image()

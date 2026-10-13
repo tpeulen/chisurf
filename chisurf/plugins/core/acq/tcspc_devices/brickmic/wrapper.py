@@ -56,11 +56,11 @@ try:  # pragma: no cover - hardware specific
 
     MCC_AVAILABLE = True
 except Exception:  # pragma: no cover - allow running without hardware
-    ul = None  # type: ignore
-    ULError = Exception  # type: ignore
-    ScanOptions = CounterMode = FunctionType = InterfaceType = None  # type: ignore
-    CounterTickSize = CounterEdgeDetection = CounterDebounceTime = None  # type: ignore
-    Status = None  # type: ignore
+    ul = None
+    ULError = Exception
+    ScanOptions = CounterMode = FunctionType = InterfaceType = None
+    CounterTickSize = CounterEdgeDetection = CounterDebounceTime = None
+    Status = None
     MCC_AVAILABLE = False
 
 
@@ -112,7 +112,8 @@ class BrickMicDevice(TCSPCDeviceABC):
         self._global_sample_index: int = 0
 
         # Streaming queue for BH 32-bit words (SPC-130 records)
-        self.data_queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=50)
+        #: record blocks; ``None`` marks the end of the stream
+        self.data_queue: queue.Queue[np.ndarray | None] = queue.Queue(maxsize=50)
         self.current_buffer: np.ndarray = np.array([], dtype=np.uint32)
         self.buffer_index: int = 0
         self.stop_event = threading.Event()
@@ -148,7 +149,7 @@ class BrickMicDevice(TCSPCDeviceABC):
         logger.info("BrickMic: %s", message)
         self.message_logged.emit(message)
 
-    def detect_cards(self, simulation: bool = False):  # type: ignore[override]
+    def detect_cards(self, simulation: bool = False):
         """Detect BrickMic-compatible MCC devices.
 
         For now we assume a single USB board; this returns ``[0]`` when
@@ -169,15 +170,15 @@ class BrickMicDevice(TCSPCDeviceABC):
             self.log_message(f"Error detecting BrickMic device: {e}")
             return []
 
-    def set_active_cards(self, card_numbers):  # type: ignore[override]
+    def set_active_cards(self, card_numbers):
         """BrickMic uses a single logical counter device; ignore selection."""
         # Present only for API compatibility; nothing to do.
         return True
 
-    def get_active_cards(self):  # type: ignore[override]
+    def get_active_cards(self):
         return [0] if self.initialized else []
 
-    def initialize(self, simulation: bool = True) -> bool:  # type: ignore[override]
+    def initialize(self, simulation: bool = True) -> bool:
         """Initialize the BrickMic device and allocate the ring buffer."""
         if not MCC_AVAILABLE:
             self.log_message("mcculw not available - cannot initialize BrickMic")
@@ -238,7 +239,7 @@ class BrickMicDevice(TCSPCDeviceABC):
             self.initialized = False
             return False
 
-    def start_measurement(self) -> bool:  # type: ignore[override]
+    def start_measurement(self) -> bool:
         """Start continuous counter scan and background reader thread."""
         if not self.initialized or not MCC_AVAILABLE:
             self.log_message("BrickMic device not initialized or MCC unavailable")
@@ -285,7 +286,7 @@ class BrickMicDevice(TCSPCDeviceABC):
             self.measurement_running = False
             return False
 
-    def stop_measurement(self) -> bool:  # type: ignore[override]
+    def stop_measurement(self) -> bool:
         """Stop the continuous scan and the background reader."""
         if not self.initialized or not self.measurement_running:
             return False
@@ -308,7 +309,7 @@ class BrickMicDevice(TCSPCDeviceABC):
             self.measurement_running = False
             return False
 
-    def read_fifo(self, max_words: int = 32768) -> np.ndarray:  # type: ignore[override]
+    def read_fifo(self, max_words: int = 32768) -> np.ndarray:
         """Return up to ``max_words`` 16-bit words as 32-bit BH records.
 
         The acquisition thread expects 32-bit words where each word
@@ -353,7 +354,7 @@ class BrickMicDevice(TCSPCDeviceABC):
         self.buffer_index = to_return
         return chunk
 
-    def get_fifo_usage(self):  # type: ignore[override]
+    def get_fifo_usage(self):
         """Approximate FIFO usage from queue occupancy (0–100%)."""
         if not self.initialized:
             return {0: -1.0}
@@ -368,7 +369,7 @@ class BrickMicDevice(TCSPCDeviceABC):
         except Exception:
             return {0: 0.0}
 
-    def close(self) -> None:  # type: ignore[override]
+    def close(self) -> None:
         """Close the device and free MCC resources."""
         try:
             if self.measurement_running:

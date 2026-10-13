@@ -78,7 +78,8 @@ def test_irf_shift_is_in_nanoseconds(dt: float) -> None:
 
     for shift_ch in (-64, -1, 0, 1, 64):
         decay.irf_shift = shift_ch * dt
-        assert int(np.argmax(decay.irf)) == 300 + shift_ch
+        shifted = decay.irf
+        assert shifted is not None and int(np.argmax(shifted)) == 300 + shift_ch
 
 
 def test_channel_width_falls_back_to_one_without_time_axis() -> None:
@@ -90,7 +91,8 @@ def test_channel_width_falls_back_to_one_without_time_axis() -> None:
     assert decay.channel_width == 1.0
 
     decay.irf_shift = 3.0
-    assert int(np.argmax(decay.irf)) == 13
+    shifted = decay.irf
+    assert shifted is not None and int(np.argmax(shifted)) == 13
 
 
 @pytest.mark.parametrize("shift_ch", [-3.5, -2.5, -1.5, -1.0, 0.0, 1.0, 1.5, 2.5, 3.5])

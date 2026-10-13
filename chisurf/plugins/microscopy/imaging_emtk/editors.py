@@ -3,14 +3,21 @@
 from __future__ import annotations
 
 import copy
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chisurf.plugins.emtk_layout import (
     layout_spec,  # noqa: F401 - re-exported for apps that lay out their spec
 )
 
+if TYPE_CHECKING:
+    # Both mixins go in front of an ImagingToolApp and use its model, tour,
+    # docks, windows and item rectangles.
+    from .app_base import ImagingToolApp as _Host
+else:
+    _Host = object
 
-class DetectorEditorMixin:
+
+class DetectorEditorMixin(_Host):
     """The detector / channel editor of the Setup tool as a "Detectors" window (needs ``self.model._windows()`` and ``apply_setup_settings``)."""
 
     editor: Any = None
@@ -93,8 +100,12 @@ class DetectorEditorMixin:
             self._editor_busy = False
 
 
-class PlaneMixin:
+class PlaneMixin(_Host):
     """Plane views and the region lists that edit what they show (spec sections ``plane`` and ``region_list``)."""
+
+    #: plane views by spec name, and the region list editing each (the host fills both)
+    planes: dict[str, Any]
+    region_lists: dict[str, Any]
 
     def add_plane(self, name: str, panel: Any, regions: Any = None) -> None:
         """Register a plane view (and the region list that edits what it shows) under the name a spec section refers to."""

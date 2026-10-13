@@ -468,11 +468,13 @@ class ImageBrowserModel(EmtkModelMixin, ImageBrowserViewModel):
         out.mkdir(parents=True, exist_ok=True)
         done = 0
         base = pathlib.Path(self.current_folder).resolve() if self.current_folder else None
-        for source in self.paths():
-            source = pathlib.Path(source)
+        for name in self.paths():
+            source = pathlib.Path(name)
             try:
+                if base is None:
+                    raise ValueError("no opened folder")
                 relative = source.resolve().relative_to(base)
-            except (TypeError, ValueError):
+            except ValueError:
                 relative = pathlib.Path(source.name)
             target = out / relative
             target.parent.mkdir(parents=True, exist_ok=True)

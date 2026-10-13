@@ -606,7 +606,7 @@ def tour_is_walked_to_the_end_with_the_user_operating_each_highlighted_control(
         step = app.tour.steps[app.tour.step_idx]
         target = step.get("target") or {}
         if app.tour.awaiting:
-            action = do.get(target.get("name"))
+            action = do.get(str(target.get("name", "")))
             assert action is not None, f"{step['title']}: no operation for {target}"
             action()
             drv.settle()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 
 class EmtkModelMixin:
@@ -31,6 +31,10 @@ class EmtkModelMixin:
     busy: bool = False
     status_line: str = ""
     folder: str = ""
+
+    if TYPE_CHECKING:
+        # Every host view-model announces changes to its observers.
+        def notify(self, event: str = "changed") -> None: ...
 
     # -- jobs ----------------------------------------------------------- #
     def run_job(self, method: str) -> bool:

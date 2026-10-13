@@ -170,9 +170,9 @@ class Decay:
 
     def __init__(
         self,
-        decay: np.ndarray = None,
-        irf: np.ndarray = None,
-        time_axis: np.ndarray = None,
+        decay: np.ndarray | None = None,
+        irf: np.ndarray | None = None,
+        time_axis: np.ndarray | None = None,
     ):
         self.decay = decay
         self._original_irf = irf
@@ -190,7 +190,7 @@ class Decay:
         self.stop = len(decay) - 1 if decay is not None else 0
 
         # Model decay
-        self.model_decay = None
+        self.model_decay: np.ndarray | None = None
 
         # Figures of the last scan, by name (emtk.figure: ``.save(path)``,
         # inline in a notebook). Filled when the scan is asked to plot.
@@ -222,8 +222,32 @@ class Decay:
         dt = float(self.time_axis[1] - self.time_axis[0])
         return dt if dt > 0.0 else 1.0
 
+    def _data(self) -> np.ndarray:
+        """Return the decay data, raising when none was given."""
+        if self.decay is None:
+            raise RuntimeError("no decay data")
+        return self.decay
+
     @property
-    def irf(self) -> np.ndarray:
+    def times(self) -> np.ndarray:
+        """Time axis; channel indices when none was given (as ``channel_width``)."""
+        if self.time_axis is not None:
+            return self.time_axis
+        return np.arange(len(self._data()), dtype=float)
+
+    def _computed_model(self) -> np.ndarray:
+        """Return the model decay, raising when it could not be computed.
+
+        ``calculate_model_decay`` leaves ``model_decay`` unset when the decay
+        or IRF is missing; indexing it then would fail with an opaque
+        ``TypeError`` instead of naming the missing input.
+        """
+        if self.model_decay is None:
+            raise RuntimeError("model decay not computed: a decay and an IRF are required")
+        return self.model_decay
+
+    @property
+    def irf(self) -> np.ndarray | None:
         """
         Returns the IRF shifted by self.irf_shift (nanoseconds) along
         self.time_axis, using linear interpolation for non‐integer shifts.
@@ -292,7 +316,7 @@ class Decay:
             return (0, 0)
 
         # Find the peak of the decay
-        peak_idx = np.argmax(self.decay)
+        peak_idx = int(np.argmax(self.decay))
         peak_value = self.decay[peak_idx]
 
         # Determine start index
@@ -343,9 +367,7 @@ class Decay:
 
         if verbose:
             print(f"Analysis range: {self.start} to {self.stop}")
-            print(
-                f"Time range: {self.time_axis[self.start]:.2f} to {self.time_axis[self.stop - 1]:.2f}"
-            )
+            print(f"Time range: {self.times[self.start]:.2f} to {self.times[self.stop - 1]:.2f}")
 
         return (self.start, self.stop)
 
@@ -438,7 +460,7 @@ class Decay:
 
             # Calculate chi-square
             residuals = (
-                self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+                self.decay[self.start : self.stop] - self._computed_model()[self.start : self.stop]
             )
             weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             chi_square = np.sum((residuals * weights) ** 2)
@@ -564,12 +586,7 @@ class Decay:
         # Calculate model decay
         self.calculate_model_decay()
 
-        # Calculate weighted residuals
-        residuals = self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
-        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-        weighted_residuals = residuals * weights
-
-        return weighted_residuals
+        return self._weighted_residuals()
 
     def find_optimal_lifetime_spectrum(
         self,
@@ -768,8 +785,8 @@ class Decay:
                     "reduced_chi_square": float(current_result["reduced_chi_square"]),
                     "dof": int(current_result["dof"]),
                     "time_range": {
-                        "start": float(self.time_axis[self.start]),
-                        "stop": float(self.time_axis[self.stop - 1]),
+                        "start": float(self.times[self.start]),
+                        "stop": float(self.times[self.stop - 1]),
                         "start_idx": int(self.start),
                         "stop_idx": int(self.stop),
                     },
@@ -872,15 +889,10 @@ class Decay:
                 # Calculate model decay
                 self.calculate_model_decay()
 
-                # Calculate weighted residuals
-                residuals = (
-                    self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
-                )
-                weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-                weighted_residuals = residuals * weights
+                weighted_residuals = self._weighted_residuals()
 
                 ax = figure.ax(i, 0)
-                ax.line(self.time_axis[self.start : self.stop], weighted_residuals, color="C0")
+                ax.line(self.times[self.start : self.stop], weighted_residuals, color="C0")
                 ax.set_labels(y=f"n={n}")
                 if i == len(n_lifetimes_tried) - 1:
                     ax.set_labels(x="Time (ns)")
@@ -1010,7 +1022,7 @@ class Decay:
 
             # Calculate chi-square and other metrics for the final result
             residuals = (
-                self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+                self.decay[self.start : self.stop] - self._computed_model()[self.start : self.stop]
             )
             weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
             chi_square = np.sum((residuals * weights) ** 2)
@@ -1116,23 +1128,23 @@ class Decay:
                 self.lifetime_spectrum[2 * i + 1] = 1.0 + i * 2.0  # Increasing lifetimes
 
         # Initialize parameters
-        params = []
+        initial: list[float] = []
         for i in range(n_lifetimes):
-            params.append(self.lifetime_spectrum[2 * i])  # Amplitude
-            params.append(self.lifetime_spectrum[2 * i + 1])  # Lifetime
+            initial.append(self.lifetime_spectrum[2 * i])  # Amplitude
+            initial.append(self.lifetime_spectrum[2 * i + 1])  # Lifetime
 
-        params.append(self.irf_shift)
-        params.append(self.irf_background)
-        params.append(self.decay_background)
+        initial.append(self.irf_shift)
+        initial.append(self.irf_background)
+        initial.append(self.decay_background)
 
-        params = np.array(params)
+        params = np.array(initial)
 
         # Initialize fixed parameters
         if fixed is None:
             fixed = [False] * len(params)
 
-        # Create bounds for the parameters
-        bounds = []
+        # Create bounds for the parameters (None = unbounded on that side)
+        bounds: list[tuple[float | None, float | None]] = []
         param_idx = 0
 
         # Bounds for lifetime spectrum
@@ -1214,7 +1226,9 @@ class Decay:
         self.calculate_model_decay()
 
         # Calculate chi-square
-        residuals = self.decay[self.start : self.stop] - self.model_decay[self.start : self.stop]
+        residuals = (
+            self.decay[self.start : self.stop] - self._computed_model()[self.start : self.stop]
+        )
         weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
         chi_square = np.sum((residuals * weights) ** 2)
         dof = len(residuals) - len(params) + sum(fixed)
@@ -1252,33 +1266,36 @@ class Decay:
     def _decay_panel(self, ax) -> None:
         """Data, fit and scaled IRF on a log axis, with the analysis range marked."""
         sl = slice(self.start, self.stop)
-        ax.line(self.time_axis, np.clip(self.decay, 1e-9, None), color="b", label="Data")
+        data, times = self._data(), self.times
+        ax.line(times, np.clip(data, 1e-9, None), color="b", label="Data")
         if self.model_decay is not None:
             ax.line(
-                self.time_axis[sl],
+                times[sl],
                 np.clip(self.model_decay[sl], 1e-9, None),
                 color="r",
                 label="Fit",
             )
-        if self.irf is not None:
+        irf = self.irf
+        if irf is not None:
             # Scaled to the maximum of the decay data in the fit range
-            scaled = self.irf * np.max(self.decay[sl]) / np.max(self.irf)
-            ax.line(self.time_axis, np.clip(scaled, 1e-9, None), color="g", label="IRF")
+            scaled = irf * np.max(data[sl]) / np.max(irf)
+            ax.line(times, np.clip(scaled, 1e-9, None), color="g", label="IRF")
         for edge in (self.start, self.stop - 1):
-            ax.vline(float(self.time_axis[edge]), color=(0, 0, 0, 0.5), dash="--")
+            ax.vline(float(times[edge]), color=(0, 0, 0, 0.5), dash="--")
         ax.set_log(y=True)
         # The range follows the data: an IRF's far tails (1e-300 for a Gaussian)
         # would otherwise squeeze the decay into a flat line at the top.
-        positive = self.decay[self.decay > 0]
+        positive = data[data > 0]
         if positive.size:
-            ax.set_ylim(float(positive.min()) * 0.5, float(self.decay.max()) * 2.0)
+            ax.set_ylim(float(positive.min()) * 0.5, float(data.max()) * 2.0)
         ax.set_labels(x="Time (ns)", y="Counts")
         ax.legend()
 
     def _weighted_residuals(self) -> np.ndarray:
         sl = slice(self.start, self.stop)
-        residuals = self.decay[sl] - self.model_decay[sl]
-        return residuals / np.sqrt(np.maximum(self.decay[sl], 1.0))
+        data = self._data()
+        residuals = data[sl] - self._computed_model()[sl]
+        return residuals / np.sqrt(np.maximum(data[sl], 1.0))
 
     def plot(self, filename: str | None = None):
         """
@@ -1303,10 +1320,10 @@ class Decay:
         self._decay_panel(figure.ax(0, 0))
         if self.model_decay is not None:
             ax = figure.ax(1, 0)
-            ax.line(self.time_axis[self.start : self.stop], self._weighted_residuals(), color="b")
+            ax.line(self.times[self.start : self.stop], self._weighted_residuals(), color="b")
             ax.hline(0.0, color=(0, 0, 0, 0.5))
             for edge in (self.start, self.stop - 1):
-                ax.vline(float(self.time_axis[edge]), color=(0, 0, 0, 0.5), dash="--")
+                ax.vline(float(self.times[edge]), color=(0, 0, 0, 0.5), dash="--")
             ax.set_labels(x="Time (ns)", y="Weighted Residuals")
         figure.save(filename)
         return figure
@@ -1329,13 +1346,19 @@ class Decay:
             return None
         from emtk.figure import Figure
 
-        if n_lifetimes is None and self.fit_result is not None:
-            n_lifetimes = self.fit_result.get("n_lifetimes", 1)
+        if n_lifetimes is None:
+            # Without a fit result the count comes from the spectrum itself
+            # (amplitude, lifetime pairs); ``None`` crashed the dof below.
+            n_lifetimes = (
+                int(self.fit_result.get("n_lifetimes", 1))
+                if self.fit_result is not None
+                else len(self.lifetime_spectrum) // 2
+            )
 
         figure = Figure(2, 1, size=(960, 640))
         weighted_residuals = self._weighted_residuals()
         top = figure.ax(0, 0)
-        top.line(self.time_axis[self.start : self.stop], weighted_residuals, color="b")
+        top.line(self.times[self.start : self.stop], weighted_residuals, color="b")
         top.hline(0.0, color=(0, 0, 0, 0.5))
         top.set_labels(y="Weighted Residuals")
 
@@ -1352,11 +1375,10 @@ class Decay:
 
         self._decay_panel(figure.ax(1, 0))
         # The residuals are read against the decay: one time axis for both.
-        span = float(self.time_axis[-1] - self.time_axis[0]) or 1.0
+        times = self.times
+        span = float(times[-1] - times[0]) or 1.0
         for panel in figure.axes:
-            panel.set_xlim(
-                float(self.time_axis[0]) - 0.02 * span, float(self.time_axis[-1]) + 0.02 * span
-            )
+            panel.set_xlim(float(times[0]) - 0.02 * span, float(times[-1]) + 0.02 * span)
         self.figures["decay_curve"] = figure
         return figure
 
@@ -1382,8 +1404,8 @@ class Decay:
 
         # Add additional information
         result["time_range"] = {
-            "start": float(self.time_axis[self.start]),
-            "stop": float(self.time_axis[self.stop - 1]),
+            "start": float(self.times[self.start]),
+            "stop": float(self.times[self.stop - 1]),
             "start_idx": int(self.start),
             "stop_idx": int(self.stop),
         }
@@ -1404,7 +1426,7 @@ class Decay:
         if hasattr(self, "model_decay") and self.model_decay is not None:
             # Include time axis and model decay between start and stop
             result["model"] = {
-                "time": [float(t) for t in self.time_axis[self.start : self.stop]],
+                "time": [float(t) for t in self.times[self.start : self.stop]],
                 "decay": [float(d) for d in self.model_decay[self.start : self.stop]],
             }
 
@@ -1530,7 +1552,7 @@ def fit_lifetime(
             }
         else:
             # Merge provided configuration with default settings
-            default_config = {
+            default_config: dict[str, typing.Any] = {
                 "verbose": verbose,
                 "estimate_background_parameter": {
                     "enabled": True,
