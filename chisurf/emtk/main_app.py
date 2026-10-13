@@ -207,6 +207,11 @@ class EmtkShellApp(ImApp):
     splash : SplashState, optional
         The boot splash's state; the session's startup stages are reported to it
         (:mod:`chisurf.emtk.splash`).
+    post_show : bool or callable, optional
+        Run the ``post_show`` startup stages (update check, warm-up imports;
+        :mod:`chisurf.emtk.post_show`) once the session is adopted. ``True`` runs the declared
+        stages, a callable ``runner(on_stage) -> metadata`` stands in for them (tests); off by
+        default, so a test's shell never asks the update server.
     """
 
     def __init__(
@@ -217,6 +222,7 @@ class EmtkShellApp(ImApp):
         console_history: Any = None,
         console_session_file: Any = None,
         splash: Any = None,
+        post_show: Any = False,
     ) -> None:
         if catalog is None:
             from chisurf.emtk.plugins import manifests
@@ -305,6 +311,14 @@ class EmtkShellApp(ImApp):
 
         self.data = DataDocks(self, session_factory)
         self.project = ShellProject(self)
+        from chisurf.emtk.post_show import PostShow
+
+        #: The ``post_show`` startup stages (``None``: not run by this shell).
+        self.post_show = (
+            PostShow(self, runner=post_show if callable(post_show) else None)
+            if post_show
+            else None
+        )
         from chisurf.emtk.shell_log import ShellLog
 
         #: The Log dock: the log, the server's calls and the undo history (:mod:`chisurf.emtk.shell_log`).
@@ -481,6 +495,10 @@ class EmtkShellApp(ImApp):
         self._painter = painter
         self._collect_builds()
         self.data.poll()
+        if self.post_show is not None:
+            if self.data.session is not None:
+                self.post_show.start()
+            self.post_show.poll()
         self.project.poll()
         self.console.poll()
         self._push_console_namespace()
@@ -1388,12 +1406,15 @@ class EmtkShellApp(ImApp):
         stage = self._stage if data.starting else {}
         job = data.job
         sampling = data.sampling_job
+        post_show = self.post_show
+        late = post_show.stage if post_show is not None and post_show.running else {}
         wanted = {
             "startup": (id(data), stage.get("label") or tr("Starting the session…"), 100)
             if data.starting
             else None,
             "call": (id(job), job.label, 0) if job is not None else None,
             "sampling": (sampling, tr("Sampling…"), 100) if sampling else None,
+            "post_show": (id(post_show), tr(late["label"]), 100) if late.get("label") else None,
         }
         for kind, want in wanted.items():
             held = self._strip_tasks.get(kind)
@@ -1415,6 +1436,8 @@ class EmtkShellApp(ImApp):
                 task.setValue(int(stage.get("progress") or 0))
             elif kind == "sampling":
                 task.setValue(int(data.sampling_progress))
+            elif kind == "post_show":
+                task.setValue(int(late.get("progress") or 0))
 
     def _cancel_sampling(self) -> None:
         """✕ on a sampling job: ask the server to stop it."""
@@ -1501,7 +1524,8 @@ def make_app(persist: bool = True, splash: Any = None) -> EmtkShellApp:
     """
     from chisurf.emtk.session import start_session
 
-    app = EmtkShellApp(session_factory=start_session, splash=splash)
+    # The update check and the warm-up run for the real window (persisted), not a figure's.
+    app = EmtkShellApp(session_factory=start_session, splash=splash, post_show=persist)
     if persist:
         from chisurf.emtk.state import attach_native_state
 
