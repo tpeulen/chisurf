@@ -15,7 +15,8 @@ backends never touches call sites.
 from __future__ import annotations
 
 import abc
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from typing import NoReturn
 
 import numpy as np
 
@@ -566,12 +567,23 @@ class ImageViewCanvas(abc.ABC):
         pen: Pen,
         movable: bool = True,
         rotatable: bool = False,
+        points: Sequence[tuple[float, float]] | None = None,
+        angle: float = 0.0,
+        resizable: bool = False,
     ) -> Roi:
-        """Add a region-of-interest to the view; return its handle."""
+        """Add a region-of-interest to the view; return its handle.
+
+        ``points`` are a polygon's vertices, ``angle`` an ellipse's rotation in
+        radians, ``resizable`` gives an upright rectangle or ellipse corner grips.
+        """
 
     @abc.abstractmethod
     def on_click(self, callback) -> None:
         """Register ``callback(x, y)`` for clicks in image coordinates."""
+
+    def set_refresh_target(self, callback: Callable[[], None] | None) -> None:
+        """Send repaint requests to *callback* (a surface drawing the view)."""
+        self._unsupported("repaint target")
 
     @property
     @abc.abstractmethod
@@ -581,7 +593,7 @@ class ImageViewCanvas(abc.ABC):
     # -- what an interactive image dock needs beyond showing a picture ------
     # Not abstract: a backend that cannot do one of these raises, by name,
     # instead of drawing a dock that silently ignores the request.
-    def _unsupported(self, what: str):
+    def _unsupported(self, what: str) -> NoReturn:
         raise NotImplementedError(f"the {type(self).__name__} backend has no {what}")
 
     @property

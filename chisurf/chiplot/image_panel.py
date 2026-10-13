@@ -266,7 +266,11 @@ class ImagePanel:
     # -- placing the picture ---------------------------------------------------
     def set_extent(self, extent) -> None:
         """Put the picture on real axes ``(x0, x1, y0, y1)``; ``None`` = pixel indices."""
-        self._extent = None if extent is None else tuple(float(v) for v in extent)
+        if extent is None:
+            self._extent = None
+        else:
+            x0, x1, y0, y1 = (float(v) for v in extent)
+            self._extent = (x0, x1, y0, y1)
         self._iv.set_extent(self._extent)
 
     def set_labels(self, *, bottom: str | None = None, left: str | None = None) -> None:
@@ -428,6 +432,8 @@ class ImagePanel:
     def _stamp(self, row: int, col: int) -> None:
         """Add the kernel to the mask, centred on ``(row, col)``, clipped to it."""
         brush = self._brush
+        if brush is None:
+            return
         kernel = brush["active"]
         mask = brush["mask"]
         kh, kw = kernel.shape
@@ -442,7 +448,7 @@ class ImagePanel:
     def _paint(self, phase: str, x: float, y: float) -> None:
         """The backend's drag, in axis coordinates: stamp along the stroke."""
         brush = self._brush
-        if brush is None:
+        if brush is None or self._last_image is None:
             return
         if brush["mask"] is None or brush["mask"].shape != self._last_image.shape[-2:]:
             self.set_brush_mask(None)
@@ -660,7 +666,7 @@ class ImagePanel:
         """Draw the picture, the colour ramp and (for a stack) the frame slider."""
         self.layout(x, y, w, h)
         canvas = self._iv.control()
-        px, py, pw, ph = self._boxes["picture"]
+        px, py, pw, ph = self._box("picture")
         painter.fill_rect(px, py, pw, ph, tuple(canvas._background[:3]))
         painter.push_clip(px, py, pw, ph)
         try:
@@ -681,9 +687,19 @@ class ImagePanel:
         x, y, w, h = box
         return (x + 8.0, y, max(w - 16.0 - self.LABEL_W, 1.0), h)
 
+    def _box(self, part: str) -> tuple[float, float, float, float]:
+        """The laid-out box of *part*; only parts that are shown are routed here."""
+        box = self._boxes.get(part)
+        if box is None:
+            raise RuntimeError(f"the image panel's {part} is not laid out")
+        return box
+
     def _draw_slider(self, painter, x: float, y: float, w: float, h: float) -> None:
         painter.fill_rect(x, y, w, h, (30, 32, 38))
-        tx, ty, tw, th = self._track()
+        track = self._track()
+        if track is None:
+            return
+        tx, ty, tw, th = track
         mid = ty + th / 2.0
         painter.fill_rect(tx, mid - 2.0, tw, 4.0, (70, 74, 84))
         count = self.frame_count
@@ -716,7 +732,10 @@ class ImagePanel:
         return None
 
     def _slide_to(self, px: float) -> None:
-        tx, _ty, tw, _th = self._track()
+        track = self._track()
+        if track is None:
+            return
+        tx, _ty, tw, _th = track
         count = self.frame_count
         if count <= 1:
             return
@@ -730,18 +749,18 @@ class ImagePanel:
         if self._captured == "slider":
             self._slide_to(px)
         elif self._captured == "ramp":
-            self.ramp.press(px, py, *self._boxes["ramp"], *args[4:])
+            self.ramp.press(px, py, *self._box("ramp"), *args[4:])
         elif self._captured == "picture":
-            self._iv.control().press(px, py, *self._boxes["picture"], *args[4:])
+            self._iv.control().press(px, py, *self._box("picture"), *args[4:])
 
     def drag(self, px: float, py: float, *_args: Any) -> None:
         """Continue the gesture the press started."""
         if self._captured == "slider":
             self._slide_to(px)
         elif self._captured == "ramp":
-            self.ramp.drag(px, py, *self._boxes["ramp"])
+            self.ramp.drag(px, py, *self._box("ramp"))
         elif self._captured == "picture":
-            self._iv.control().drag(px, py, *self._boxes["picture"])
+            self._iv.control().drag(px, py, *self._box("picture"))
 
     def release(self, *args: Any) -> None:
         """End the gesture."""
@@ -755,7 +774,7 @@ class ImagePanel:
         """Report the pointer to the part under it."""
         self._hovered = self._part_at(px, py)
         if self._hovered == "picture":
-            self._iv.control().hover(px, py, *self._boxes["picture"])
+            self._iv.control().hover(px, py, *self._box("picture"))
 
     def scroll(self, rows: float, *args: Any) -> None:
         """Zoom the picture when the pointer is over it."""

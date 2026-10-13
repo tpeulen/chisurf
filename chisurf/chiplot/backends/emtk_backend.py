@@ -56,7 +56,8 @@ def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[i
     if all(hasattr(color, channel) for channel in ("r", "g", "b")):
         return (int(color.r), int(color.g), int(color.b))
     if isinstance(color, (tuple, list)) and len(color) >= 3:
-        return tuple(int(component) for component in color[:3])
+        r, g, b = (int(component) for component in color[:3])
+        return (r, g, b)
     try:
         parsed = S.to_color(color)
     except Exception:
@@ -75,7 +76,8 @@ def _rgba(color: Any, default: tuple[int, int, int, int]) -> tuple[int, int, int
         return (int(color.r), int(color.g), int(color.b), int(getattr(color, "a", 255)))
     if isinstance(color, (tuple, list)) and len(color) >= 3:
         alpha = int(color[3]) if len(color) > 3 else 255
-        return (*(int(component) for component in color[:3]), alpha)
+        r, g, b = (int(component) for component in color[:3])
+        return (r, g, b, alpha)
     try:
         parsed = S.to_color(color)
     except Exception:
@@ -656,6 +658,26 @@ class _Entry:
         self.state.setdefault("callbacks", []).append((callback, bool(final)))
 
 
+class _BarsEntry(_Entry):
+    """A bar graph's entry: its samples are bar positions and *heights*.
+
+    The generic :meth:`_Entry.set_data` writes ``x``/``y``, which a bar graph
+    never draws (it reads ``height``), so replacing a histogram's bars through
+    the :class:`~chisurf.chiplot.handles.Bars` handle left the old bars on
+    screen.
+    """
+
+    def set_data(self, x, y=None, height=None, **kwargs: Any) -> None:
+        """Replace the bar positions and heights (positionally, or ``height=``)."""
+        heights = y if height is None else height
+        self.state["x"], self.state["height"] = _finite_pairs(x, heights)
+        self._canvas.refresh()
+
+    def get_data(self) -> tuple[np.ndarray, np.ndarray]:
+        """Return the bars as ``(x, height)``."""
+        return self.state["x"], self.state["height"]
+
+
 class EmtkCanvas(base.Canvas):
     """A chiplot panel drawn by emtk from a display list."""
 
@@ -1048,18 +1070,21 @@ class EmtkCanvas(base.Canvas):
 
     def _fitted(self, axis: int, fraction: float, members=None) -> tuple[float, float] | None:
         """The auto-fitted range of *axis* over *members* (default: this panel)."""
-        series, exact = [], []
+        series: list[tuple[float, float]] = []
+        exact: list[tuple[float, float]] = []
         for member in members or (self,):
             data, placed = member._extent(axis)
             if data is not None:
                 series.append(data)
             if placed is not None:
                 exact.append(placed)
-        spans = []
+        spans: list[tuple[float, float]] = []
         if series:
-            spans.append(
-                self._padded((min(a for a, _ in series), max(b for _, b in series)), fraction)
+            padded = self._padded(
+                (min(a for a, _ in series), max(b for _, b in series)), fraction
             )
+            if padded is not None:
+                spans.append(padded)
         spans.extend(exact)
         if not spans:
             return None
@@ -1900,7 +1925,7 @@ class EmtkCanvas(base.Canvas):
                 self._units[side] = str(units)
         self.refresh()
 
-    def set_title(self, title: str) -> None:
+    def set_title(self, title: str | None) -> None:
         """Set the panel title."""
         self._title = str(title or "")
         self.refresh()
@@ -2211,13 +2236,17 @@ class EmtkCanvas(base.Canvas):
     def add_bars(self, x, height, *, width=None, pen=None, brush=None) -> H.Bars:
         """Draw a bar graph and return its handle."""
         xs, heights = _finite_pairs(x, height)
-        return self._add(
+        entry = _BarsEntry(
+            self,
             "bars",
             x=xs,
             height=heights,
             width=None if width is None else float(width),
             brush=_rgb(brush, (120, 150, 200)),
         )
+        self._entries.append(entry)
+        self.refresh()
+        return entry
 
     def add_fill_between(self, lower, upper, *, brush=None) -> H.Handle:
         """Fill the area between two curve handles and return its handle."""
@@ -2247,7 +2276,7 @@ class EmtkCanvas(base.Canvas):
             beam=float(beam or 3.0),
         )
 
-    def add_image(self, data, *, colormap=None, levels=None, rect=None, axis_order=None) -> H.Image:
+    def add_image(self, data, *, colormap=None, levels=None, rect=None, axis_order=None) -> _Entry:
         """Draw an image or heatmap and return its handle."""
         rgb = np.ndim(data) == 3 and np.shape(data)[-1] in (3, 4)
         values = np.asarray(data) if rgb else np.asarray(data, dtype=float)
@@ -2507,7 +2536,11 @@ class EmtkImageView(base.ImageViewCanvas):
     def set_extent(self, extent) -> None:
         """Place the picture on real axes ``(x0, x1, y0, y1)``; ``None`` = pixel indices."""
         changed = extent is not None and tuple(extent) != self._extent
-        self._extent = None if extent is None else tuple(float(v) for v in extent)
+        if extent is None:
+            self._extent = None
+        else:
+            x0, x1, y0, y1 = (float(v) for v in extent)
+            self._extent = (x0, x1, y0, y1)
         self._replace_rects()
         if changed or extent is None:
             self._canvas.auto_range()
@@ -2961,12 +2994,12 @@ class EmtkGrid(base.GridCanvas):
         self._row = self._column = 0
         self.refresh()
 
-    def set_column_stretch(self, column: int, factor: int) -> None:
+    def set_column_stretch(self, column: int, factor: float) -> None:
         """Set the relative width of a column."""
         self._column_stretch[int(column)] = float(factor)
         self.refresh()
 
-    def set_row_stretch(self, row: int, factor: int) -> None:
+    def set_row_stretch(self, row: int, factor: float) -> None:
         """Set the relative height of a row."""
         self._row_stretch[int(row)] = float(factor)
         self.refresh()
@@ -3015,6 +3048,8 @@ class EmtkGrid(base.GridCanvas):
         """Draw every item in its cell, each on its own background."""
         self.layout(x, y, w, h)
         for c in self._cells:
+            if c.rect is None:
+                continue
             cx, cy, cw, ch = c.rect
             if cw < 1.0 or ch < 1.0:
                 continue
@@ -3038,12 +3073,13 @@ class EmtkGrid(base.GridCanvas):
     def press(self, px: float, py: float, *args: Any) -> None:
         """Hand the press to the item under it, which keeps the pointer until the release."""
         self._captured = self._cell_at(px, py)
-        if self._captured is not None:
+        # A cell is only found where it was drawn, so it has a rect.
+        if self._captured is not None and self._captured.rect is not None:
             self._captured.item.press(px, py, *self._captured.rect, *args[4:])
 
     def drag(self, px: float, py: float, *_args: Any) -> None:
         """Move what the press picked up."""
-        if self._captured is not None:
+        if self._captured is not None and self._captured.rect is not None:
             self._captured.item.drag(px, py, *self._captured.rect)
 
     def release(self, *args: Any) -> None:
@@ -3055,7 +3091,7 @@ class EmtkGrid(base.GridCanvas):
     def hover(self, px: float, py: float, *_args: Any) -> None:
         """Report the pointer to the item under it."""
         self._hovered = self._cell_at(px, py)
-        if self._hovered is not None:
+        if self._hovered is not None and self._hovered.rect is not None:
             self._hovered.item.hover(px, py, *self._hovered.rect)
 
     def scroll(self, rows: float, *args: Any) -> None:
