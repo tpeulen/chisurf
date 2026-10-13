@@ -323,6 +323,20 @@ class StructureRmfWriter:
         self._writer.close()
 
 
+def rmf_unavailable_reason() -> str | None:
+    """Why this installation cannot write RMF, or ``None`` when it can.
+
+    Lets a caller whose trajectory lives elsewhere (ProteinMC keeps its frames
+    in the model and the project) skip the file up front and say why, instead
+    of failing the whole run on the first ``append``.
+    """
+    try:
+        _bff()
+    except RmfWriterError as exc:
+        return str(exc)
+    return None
+
+
 #: Backwards-compatible alias for existing ProteinMC imports.
 ProteinMCRmfWriter = StructureRmfWriter
 
@@ -330,5 +344,6 @@ ProteinMCRmfWriter = StructureRmfWriter
 __all__ = [
     "RmfWriterError",
     "StructureRmfWriter",
+    "rmf_unavailable_reason",
     "ProteinMCRmfWriter",
 ]

@@ -49,7 +49,18 @@ pass; these fail alone, with the port's hunks not involved).
 
 ## Shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (found 2026-10-12)
 
-status: open
+status: resolved 2026-10-13 — a race, not a codec gap. The fit window's What-if / Posterior pages
+differentiate the live model on the GUI thread (`approx_grad` moves each parameter and back) while the
+capture re-evaluates the same live models on the server thread, so it compared a perturbed prediction.
+MFD 2D and global fits are where one differentiation takes seconds. `PERTURBATION_LOCK`
+(`chisurf/core/models/model.py`) is held by `approx_grad`/`covariance_matrix`, the chi2 scans
+(`support_plane.scan_parameter`, `adaptive_scan_parameter`) and `capture_session`; the curvature is also
+memoised per (free parameters, values, residuals), which cut a restored MFD 2D fit's twelve 2.5 s
+differentiations to one. A/B on the `guides_shell_tools.py` 57 scenario (MFD 2D, every page visited):
+"prediction changed after reconstruction" without the lock, clean with it (2/2). Guards:
+`test/fitting/test_covariance_errors.py::test_a_perturbed_model_is_never_visible_to_another_thread`,
+`::test_a_capture_waits_for_a_perturbation_to_finish`. Not covered: a *fit or sampler* moving parameters
+during a capture (the autosave-during-sampling entry below) does not take the lock.
 
 **Found 2026-10-12** while shooting the manual figures through the emtk shell (`docs/guides/screenshots/manual_shell.py`,
 `guides_shell_models.py`): the session log shows "Recording the change… failed: cannot restore model state" and

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import abc
+import functools
+import threading
 from collections import OrderedDict
 
 import numpy as np
@@ -9,6 +11,26 @@ import chisurf.core.curve
 import chisurf.core.parameter
 from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameterGroup
+
+#: Held while a caller moves live models' parameters away from the values they
+#: show and back (finite-difference curvature, chi2 scans), and while a project
+#: capture reads and re-evaluates the live models. In the emtk shell a fit
+#: window's What-if and Posterior pages differentiate the model on the GUI
+#: thread while the undo/autosave capture runs on the server's: the capture saw
+#: a perturbed prediction ("prediction changed after reconstruction"), on the
+#: slow models (MFD 2D, global fits) where each differentiation takes seconds.
+PERTURBATION_LOCK = threading.RLock()
+
+
+def holds_perturbation_lock(function):
+    """Decorate *function* to run under :data:`PERTURBATION_LOCK`."""
+
+    @functools.wraps(function)
+    def locked(*args, **kwargs):
+        with PERTURBATION_LOCK:
+            return function(*args, **kwargs)
+
+    return locked
 
 
 class Model(FittingParameterGroup, metaclass=abc.ABCMeta):

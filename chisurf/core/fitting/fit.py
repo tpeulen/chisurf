@@ -7,6 +7,7 @@ import math
 import os
 import re
 import time
+import weakref
 from collections import deque
 
 import numpy as np
@@ -2945,7 +2946,6 @@ def approx_grad(
         epsilon = FINITE_DIFFERENCE_STEP
     if model is None:
         model = fit.model
-    p0 = model.parameter_values
 
     def f(values):
         """Weighted residuals of ``model`` at a parameter vector."""
@@ -2953,6 +2953,15 @@ def approx_grad(
 
     xk = np.asarray(xk, dtype=float)
     n_xk = len(xk)
+    from chisurf.core.models.model import PERTURBATION_LOCK
+
+    with PERTURBATION_LOCK:
+        return _perturbed_gradient(model, f, xk, n_xk, epsilon, f0)
+
+
+def _perturbed_gradient(model, f, xk, n_xk, epsilon, f0):
+    """The finite differences of :func:`approx_grad`; the caller holds the perturbation lock."""
+    p0 = model.parameter_values
     if f0 is None:
         f0 = f(xk)
     i = len(f0)
@@ -3080,7 +3089,52 @@ def covariance_matrix(
     over_the_graph = cs.core.fitting.minimizer.curvature_over_the_graph(fit, model, epsilon)
     if over_the_graph is not None:
         return over_the_graph
+    from chisurf.core.models.model import PERTURBATION_LOCK
+
+    # Read the values, evaluate and differentiate as one step: a scan on another
+    # thread holds the lock while the model shows a scan point.
+    with PERTURBATION_LOCK:
+        return _memoized_covariance(fit, model, epsilon, f0)
+
+
+def _memoized_covariance(fit, model, epsilon, f0):
+    """:func:`covariance_matrix`'s numpy path, answered from the memo when nothing changed."""
     xk = np.array(model.parameter_values)
+    if f0 is None:
+        f0 = get_wres(xk, model)
+    # The curvature is a function of the residuals around `xk`, and every plot
+    # that shows it (conditional scan, posterior graph, error column) asks again
+    # on each refresh: twelve times for one restored MFD 2D global fit, at 2.5 s
+    # each. Same free parameters, same values, same residuals is the same matrix.
+    key = (
+        tuple(str(n) for n in getattr(model, "parameter_names", ()) or ()),
+        xk.tobytes(),
+        np.asarray(f0, dtype=float).tobytes(),
+        epsilon,
+    )
+    cached = _COVARIANCE_MEMO.get(id(model))
+    if cached is not None and cached[0]() is model and cached[1] == key:
+        cov_m, important = cached[2]
+        return cov_m.copy(), list(important)
+    cov_m, important = _covariance_from_gradient(fit, model, xk, epsilon, f0)
+    try:
+        ref = weakref.ref(model)
+    except TypeError:
+        return cov_m, important
+    _COVARIANCE_MEMO.pop(id(model), None)
+    _COVARIANCE_MEMO[id(model)] = (ref, key, (cov_m.copy(), list(important)))
+    while len(_COVARIANCE_MEMO) > _COVARIANCE_MEMO_SIZE:
+        _COVARIANCE_MEMO.pop(next(iter(_COVARIANCE_MEMO)))
+    return cov_m, important
+
+
+#: ``id(model) -> (weakref(model), key, (cov, important))`` for :func:`covariance_matrix`.
+_COVARIANCE_MEMO: dict = {}
+_COVARIANCE_MEMO_SIZE = 32
+
+
+def _covariance_from_gradient(fit, model, xk, epsilon, f0):
+    """The numpy curvature path of :func:`covariance_matrix` (no memo)."""
     # `f0` is the residuals at `xk`. Supplied by a caller that has just
     # evaluated the model there, it saves the first of the p+2 evaluations
     # this function costs -- and it is the *same* number, not an

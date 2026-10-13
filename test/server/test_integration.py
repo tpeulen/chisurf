@@ -260,19 +260,30 @@ def test_session_restore_with_project_nonexistent(server_client):
         client.session__restore(project_path="/nonexistent/path")
 
 
-def test_remote_dataset_add(server_client):
-    """Verify add_dataset via reader_name + filename works remotely."""
+def test_remote_dataset_add(server_client, tmp_path):
+    """Verify add_dataset via reader_name + filename reads the file remotely.
+
+    The server reads the file with the reader the client names (by class
+    name, as a client in server mode sends it); it no longer fabricates an
+    empty curve for a reader or file that does not exist.
+    """
+    import numpy as np
+
     client, server = server_client
+    path = tmp_path / "decay.dat"
+    channels = np.arange(64.0)
+    np.savetxt(path, np.c_[channels, 100.0 * np.exp(-channels / 10.0) + 1.0])
     result = client.call(
         "dataset.load",
         {
-            "reader_name": "DataCurve",
-            "filename": "/tmp/test_data.dat",
+            "reader_name": "TCSPCReader",
+            "filename": str(path),
             "name": "RemoteTest",
         },
     )
     assert result.get("ok") is True
     assert "uid" in result
+    assert result.get("name") == "RemoteTest"
 
     # Dataset should appear in server state
     datasets = client.dataset__list()

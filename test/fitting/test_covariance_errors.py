@@ -170,3 +170,83 @@ def test_covariance_errors_agree_with_the_sampled_posterior():
 
     for i, parameter in enumerate(fit.model.parameters):
         assert samples[:, i].std() == pytest.approx(parameter.error_estimate, rel=0.25)
+
+
+def test_the_curvature_is_computed_once_per_state_and_again_when_it_changes(monkeypatch):
+    """Every plot refresh asks for the covariance; only a changed fit pays for it.
+
+    A restored MFD 2D global fit asked twelve times (conditional scan, posterior
+    graph) at 2.5 s each. The memo is keyed on the free parameters, their values
+    and the residuals, so moving a value -- or a fixed parameter, which moves
+    the residuals -- recomputes.
+    """
+    import chisurf.core.fitting.minimizer as minimizer
+
+    fit, _ = _quadratic_fit()
+    monkeypatch.setattr(minimizer, "curvature_over_the_graph", lambda *a, **k: None)
+    calls = []
+    real = fit_module.approx_grad
+    monkeypatch.setattr(fit_module, "approx_grad", lambda *a, **k: calls.append(1) or real(*a, **k))
+
+    first, used = fit_module.covariance_matrix(fit)
+    again, used_again = fit_module.covariance_matrix(fit)
+    assert len(calls) == 1
+    np.testing.assert_array_equal(first, again)
+    assert used == used_again
+    again[0, 0] = -1.0  # a caller's edit must not reach the memo
+    assert fit_module.covariance_matrix(fit)[0][0, 0] == first[0, 0]
+
+    a = fit.model.parameters_all_dict["a"]
+    a.value = a.value * 1.01
+    fit.model.update()
+    fit_module.covariance_matrix(fit)
+    assert len(calls) == 2
+
+
+def test_a_perturbed_model_is_never_visible_to_another_thread(monkeypatch):
+    """The finite differences move the live model; a capture on another thread must wait.
+
+    The emtk shell's What-if and Posterior pages differentiate on the GUI thread
+    while the undo/autosave capture re-evaluates the same live models on the
+    server's: the capture saw a perturbed prediction and refused the step.
+    """
+    import threading
+
+    import chisurf.core.fitting.minimizer as minimizer
+    from chisurf.core.models.model import PERTURBATION_LOCK
+
+    fit, _ = _quadratic_fit()
+    monkeypatch.setattr(minimizer, "curvature_over_the_graph", lambda *a, **k: None)
+    seen = []
+    real = fit_module.get_wres
+
+    def watched(values, model, *args, **kwargs):
+        outcome = []
+        probe = threading.Thread(target=lambda: outcome.append(PERTURBATION_LOCK.acquire(False)))
+        probe.start()
+        probe.join()
+        if outcome[0]:
+            PERTURBATION_LOCK.release()
+        seen.append(outcome[0])
+        return real(values, model, *args, **kwargs)
+
+    monkeypatch.setattr(fit_module, "get_wres", watched)
+    fit_module.covariance_matrix(fit)
+    assert seen and not any(seen), "another thread could take the lock mid-perturbation"
+
+
+def test_a_capture_waits_for_a_perturbation_to_finish():
+    """``capture_session`` takes the same lock, so it reads only shown values."""
+    import threading
+
+    from chisurf.core.models.model import PERTURBATION_LOCK
+    from chisurf.core.project.session import capture_session
+
+    done = threading.Event()
+    with PERTURBATION_LOCK:
+        worker = threading.Thread(target=lambda: (capture_session([], []), done.set()))
+        worker.start()
+        worker.join(0.3)
+        assert not done.is_set(), "the capture ran while the model was perturbed"
+    worker.join(30.0)
+    assert done.is_set()

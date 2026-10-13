@@ -56,7 +56,13 @@ def _accepts(node: ast.FunctionDef, positional: int) -> bool:
 def test_host_event_overrides_accept_host_arity():
     bad: list[str] = []
     checked = 0
-    for path in _plugin_app_modules():
+    modules = _plugin_app_modules()
+    # The tripwire is on the module count, not the handler count: plugins are
+    # deleted and merged on purpose (the File tools hub took five handlers
+    # with it), while a broken glob shows up as almost no modules at all.
+    assert len(modules) > 80, f"sweep found only {len(modules)} app modules; the glob broke"
+    root = pathlib.Path(__file__).resolve().parents[2]
+    for path in modules:
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except SyntaxError:  # pragma: no cover - broken files fail their own tests
@@ -70,10 +76,10 @@ def test_host_event_overrides_accept_host_arity():
             checked += 1
             if not _accepts(node, bound):
                 bad.append(
-                    f"{path.relative_to(pathlib.Path.cwd())}:{node.lineno} "
+                    f"{path.relative_to(root)}:{node.lineno} "
                     f"def {node.name}(...) must accept {bound} positional args"
                 )
-    assert checked > 50, f"sweep found only {checked} handlers; the glob broke"
+    assert checked, "no app module overrides a host event handler; the sweep is blind"
     assert not bad, "event handlers that reject the Qt host's call shape:\n" + "\n".join(bad)
 
 

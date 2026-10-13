@@ -157,8 +157,12 @@ def _from_draws(
         model.parameter_values = snapshot
 
     # The effective sample size is a property of the chain, and thinning does not
-    # create information: whichever is smaller is the honest count.
-    effective = _effective_draws(chain)
+    # create information. Nor is the smaller of the two counts honest: thinning a
+    # chain whose ESS is about the number kept leaves neighbouring kept draws still
+    # correlated (half the count, for an AR(1) chain). Measure the chain at the
+    # stride the thinning used instead.
+    stride = max(1, draws.shape[0] // max(1, keep.size))
+    effective = _effective_draws(chain, stride=stride)
     if effective is not None:
         effective = min(effective, float(keep.size))
 
@@ -251,11 +255,12 @@ def chain_verdict(fit) -> typing.Optional[bool]:
     return True
 
 
-def _effective_draws(chain: dict) -> typing.Optional[float]:
+def _effective_draws(chain: dict, stride: int = 1) -> typing.Optional[float]:
     """Return the chain's smallest per-parameter effective sample size.
 
     A derived quantity mixes every parameter, so it inherits the worst-mixed
-    one's autocorrelation rather than the average.
+    one's autocorrelation rather than the average. ``stride`` measures every
+    ``stride``-th step of each chain, which is what a thinned evaluation keeps.
     """
     chains = chain.get("chains")
     if chains is None:
@@ -263,9 +268,8 @@ def _effective_draws(chain: dict) -> typing.Optional[float]:
     from chisurf.core.fitting import diagnostics as _dg
 
     try:
-        ess = np.asarray(
-            _dg.effective_sample_size(np.asarray(chains, dtype=np.float64)), dtype=np.float64
-        )
+        chains = _dg.as_chains(np.asarray(chains, dtype=np.float64))[:, :: max(1, int(stride))]
+        ess = np.asarray(_dg.effective_sample_size(chains), dtype=np.float64)
     except Exception:
         return None
     ess = ess[np.isfinite(ess)]

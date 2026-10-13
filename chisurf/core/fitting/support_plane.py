@@ -11,6 +11,21 @@ import chisurf as cs
 import chisurf.core.math.statistics
 from chisurf import typing
 
+
+def holds_perturbation_lock(function):
+    """Run *function* under the models' perturbation lock: a scan moves a live parameter and back."""
+    import functools
+
+    @functools.wraps(function)
+    def locked(*args, **kwargs):
+        from chisurf.core.models.model import PERTURBATION_LOCK
+
+        with PERTURBATION_LOCK:
+            return function(*args, **kwargs)
+
+    return locked
+
+
 if TYPE_CHECKING:
     from chisurf.core.fitting.fit import Fit
 
@@ -43,6 +58,7 @@ def _default_scan_window(parameter_value: float, rel_range: float) -> typing.Tup
     return parameter_value - span, parameter_value + span
 
 
+@holds_perturbation_lock
 def scan_parameter(
     fit: Fit,
     parameter_name: str,
@@ -389,6 +405,7 @@ def _scan_one_side(
     return xs, ys, v_cross
 
 
+@holds_perturbation_lock
 def adaptive_scan_parameter(
     fit: Fit,
     parameter_name: str,

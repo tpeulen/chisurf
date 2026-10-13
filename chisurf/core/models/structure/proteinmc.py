@@ -408,6 +408,9 @@ class ProteinMCRunner:
         settings : dict, optional
         settings_file : str | Path, optional
         output_file : str | Path, optional
+            RMF trajectory to write. ``None`` writes no file: the frames still
+            reach ``progress_callback`` and the result, which is all an
+            in-memory caller (the ProteinMC model) keeps.
         initial_frames : list of ndarray, optional
         progress_callback : ProgressCallback, optional
         verbose : bool
@@ -418,7 +421,7 @@ class ProteinMCRunner:
         self.settings = normalize_settings(settings)
         self.structure = load_structure(structure_source)
         self.flexfit_set = flexfit_set
-        self.output_file = str(output_file or _temporary_rmf_filename())
+        self.output_file = str(output_file) if output_file else ""
         self.initial_frames = [np.asarray(frame, dtype=float) for frame in (initial_frames or [])]
         self.progress_callback = progress_callback
         self.verbose = verbose
@@ -496,7 +499,11 @@ class ProteinMCRunner:
         """Run ProteinMC and write accepted frames to RMF."""
         if self.settings.get("mc_mode", "simple") != "simple":
             raise ValueError("Only ProteinMC mc_mode='simple' is currently supported.")
-        writer = ProteinMCRmfWriter(self.output_file, self.structure)
+        writer = (
+            ProteinMCRmfWriter(self.output_file, self.structure)
+            if self.output_file
+            else _NoTrajectoryFile()
+        )
         for frame_index, frame in enumerate(self.initial_frames):
             writer.append(frame, name=str(frame_index))
         self.structure.auto_update = False
@@ -713,11 +720,18 @@ def run_protein_mc(
         flexfit_set=flexfit_set,
         settings=overrides,
         settings_file=settings_file,
-        output_file=output_file,
+        output_file=output_file or _temporary_rmf_filename(),
         progress_callback=progress_callback,
         verbose=verbose,
     )
     return runner.run().output_file
+
+
+class _NoTrajectoryFile:
+    """The writer of a run that keeps its frames in memory only (no ``output_file``)."""
+
+    def append(self, xyz: np.ndarray, name: str | None = None, metadata: Any = None) -> None:
+        """Discard the frame; the runner reports it through its progress callback."""
 
 
 def _temporary_rmf_filename() -> str:

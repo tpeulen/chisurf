@@ -36,6 +36,7 @@ RENAMED = {
     "importproject...": "Import Project…",
     "fretrdaaxis...": "FRET RDA axis…",
     "dataloading...": "Data loading…",
+    "cascadefitwindows": "View ▸ Workspace ▸ Cascade Windows: cascades every workspace window, fits included",
     "dataset": "the Docks toggle is called Read data, the dock's own title",
     "fit": "the Docks toggle is called Analysis, the dock's own title",
     "plot-options": "the Docks toggle is called Plot settings, the dock's own title",

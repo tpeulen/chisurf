@@ -874,6 +874,20 @@ def _model_state(model: Any, *, parameters: list[Any] | None = None) -> dict[str
     }
 
 
+def _holding_live_models(function):
+    """Run a capture under the models' perturbation lock (see ``PERTURBATION_LOCK``)."""
+
+    @wraps(function)
+    def locked(*args, **kwargs):
+        from chisurf.core.models.model import PERTURBATION_LOCK
+
+        with PERTURBATION_LOCK:
+            return function(*args, **kwargs)
+
+    return locked
+
+
+@_holding_live_models
 @_isolated
 def capture_session(
     datasets: Iterable[Any],

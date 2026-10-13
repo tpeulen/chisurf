@@ -895,7 +895,7 @@ class ProteinMCModel(Model):
                 "structure_source": source,
                 "flexfit_set": self.flexfit_set if self.use_flexfit else "",
                 "settings": settings,
-                "output_file": directory / "proteinmc.rmf3",
+                "output_file": self._trajectory_file(directory),
                 "initial_frames": initial_frames,
                 "labeling_payload": self._labeling_payload() or None,
             },
@@ -903,6 +903,22 @@ class ProteinMCModel(Model):
             name="proteinmc-sampling",
         )
         self._thread.start()
+
+    def _trajectory_file(self, directory: Path) -> Path | None:
+        """The RMF file the run writes into *directory*, or ``None`` when RMF is not available.
+
+        The trajectory is the model's own (``trajectory_frames``, saved in the
+        project); the RMF file is its export for PMI/ChimeraX. An ``IMP.bff``
+        built without RMF -- the pip wheel -- therefore samples all the same
+        and says, once per run, that no file is written and why.
+        """
+        from chisurf.core.models.structure.rmf import rmf_unavailable_reason
+
+        reason = rmf_unavailable_reason()
+        if reason is None:
+            return directory / "proteinmc.rmf3"
+        logging.warning(f"ProteinMC: no RMF trajectory file is written: {reason}")
+        return None
 
     def run_sampling(
         self,
@@ -959,7 +975,8 @@ class ProteinMCModel(Model):
         finally:
             self._runner = None
         self.proteinmc_structure = getattr(result, "structure", self.proteinmc_structure)
-        self._sampling_status = f"finished: {getattr(result, 'output_file', '')}"
+        written = getattr(result, "output_file", "")
+        self._sampling_status = f"finished: {written}" if written else "finished (no RMF file)"
         logging.info(self._sampling_status)
 
     def _on_progress(self, progress: ProteinMCProgress) -> None:

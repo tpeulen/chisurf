@@ -10,6 +10,7 @@ it — which is why most of them no longer need a display at all.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -489,3 +490,41 @@ def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
     dialog.finish(close_delay_ms=0)
     qapp.processEvents()
     assert len(main_win.statusBar().findChildren(MinimisedProgressWidget)) == 0
+
+
+def test_sampling_without_rmf_keeps_its_frames_and_writes_no_file(monkeypatch, tmp_path):
+    """An IMP.bff built without RMF (the pip wheel) still samples.
+
+    The trajectory is the model's ``trajectory_frames``, saved in the project;
+    the RMF file is only its export, so its absence costs the file, not the run.
+    """
+    import chisurf.core.models.structure.rmf as rmf
+
+    monkeypatch.setattr(rmf, "rmf_unavailable_reason", lambda: "built without RMF")
+    model = _model()
+    model.structure_file = "148l"
+    model.output_directory = str(tmp_path)
+    assert model._trajectory_file(tmp_path) is None
+    monkeypatch.setattr(rmf, "rmf_unavailable_reason", lambda: None)
+    assert model._trajectory_file(tmp_path) == tmp_path / "proteinmc.rmf3"
+
+
+def test_the_runner_without_an_output_file_writes_nothing(tmp_path, monkeypatch):
+    """``output_file=None`` is an in-memory run: frames arrive, no writer is built."""
+    import chisurf.core.models.structure.proteinmc as proteinmc
+
+    def no_writer(*_args, **_kwargs):
+        raise AssertionError("an in-memory run built an RMF writer")
+
+    monkeypatch.setattr(proteinmc, "ProteinMCRmfWriter", no_writer)
+    pdb = Path(__file__).resolve().parents[1] / "data/atomic_coordinates/pdb_files/148l.pdb"
+    frames = []
+    runner = proteinmc.ProteinMCRunner(
+        str(pdb),
+        settings={"n_iter": 50, "n_out": 1, "pdbOut": 2},
+        progress_callback=lambda p: frames.append(p.xyz),
+    )
+    result = runner.run()
+    assert result.output_file == ""
+    assert frames and result.n_frames == len(frames)
+    assert not list(tmp_path.iterdir())

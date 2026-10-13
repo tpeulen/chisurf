@@ -360,7 +360,7 @@ def _models_of(target, _seen: typing.Optional[set] = None) -> typing.List:
     """Return the models a freeze target covers (global model plus members, at every depth).
 
     A global fit takes in fits whose model is itself a global model (a ``FitGroup`` over a
-    ``Global fit`` over the local ``FitGroup``\ s). Freezing only the first level left the
+    ``Global fit`` over the local ``FitGroup`` objects). Freezing only the first level left the
     innermost models unfrozen, so each objective evaluation re-ran their ``find_parameters`` and
     bumped the structure counter -- the ``frozen_structure`` warning at the end of every global fit.
     """

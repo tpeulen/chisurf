@@ -1280,12 +1280,15 @@ class GaussianEngine(PosteriorEngine):
 ASYMMETRY_FLOOR = 1.10
 
 #: Sampling noise in the asymmetry ratio, as a multiple of ``1/sqrt(n_eff)``.
-#: Calibrated against true Gaussians at 2k-30k draws and autocorrelation times of
-#: 1 and 10: the 99th percentile of the observed ratio tracks
-#: ``1 + 2.4/sqrt(n_eff)`` across all of them. A fixed cut cannot do this job --
-#: at 2000 draws a genuine Gaussian reaches 1.17 by chance, while at 30000 the
-#: floor is 1.04 and a real 1.21 skew would go unreported.
-ASYMMETRY_NOISE = 2.4
+#: Measured on independent Gaussian draws (68 % interval, the default): the 99th
+#: percentile of the symmetrised ratio is 1.52 at 200 draws, 1.28 at 500, 1.135
+#: at 2000, 1.064 at 8000 and 1.034 at 30000 -- ``(ratio - 1) * sqrt(n)`` settles
+#: at about 6 (6.4 at 500, 7.3 at 200), so 6.5 holds the false-alarm rate near 1 %
+#: for every chain long enough to quote. The constant was 2.4 until 2026-10-13,
+#: which flagged about a third of honest Gaussians at 200-500 draws as skewed.
+#: A fixed cut cannot do this job either: it fires on short chains and is
+#: needlessly blind on long ones.
+ASYMMETRY_NOISE = 6.5
 
 
 def asymmetry_threshold(effective_draws: float) -> float:

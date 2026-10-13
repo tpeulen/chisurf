@@ -650,19 +650,32 @@ def _with_chain(fit, steps=6000, burn=2000, seed=1):
 def test_the_asymmetry_threshold_is_calibrated_to_the_effective_draws():
     """A fixed cut is wrong at both ends, and measurably so.
 
-    Measured against true Gaussians (including autocorrelated ones), the 99th
-    percentile of the observed asymmetry ratio tracks ``1 + 2.4/sqrt(n_eff)``:
-    1.17 at 200 effective draws, 1.04 at 3000. A single number therefore either
-    fires on honest Gaussians when the chain is short, or misses real skew when
-    it is long.
+    The cut scales with ``1/sqrt(n_eff)``, so a single number neither fires on
+    honest Gaussians when the chain is short nor misses real skew when it is long.
     """
     assert E.asymmetry_threshold(200) > E.asymmetry_threshold(3000)
-    assert E.asymmetry_threshold(200) == pytest.approx(1.17, abs=0.02)
     # ...but never drops below what is worth telling anyone about.
     assert E.asymmetry_threshold(10**9) == pytest.approx(E.ASYMMETRY_FLOOR)
     # A chain too short to say anything cannot flag anything.
     assert E.asymmetry_threshold(1.0) == float("inf")
     assert E.asymmetry_threshold(float("nan")) == float("inf")
+
+
+@pytest.mark.parametrize("n_draws", [500, 2000])
+def test_the_threshold_rarely_fires_on_independent_gaussian_draws(n_draws):
+    """The calibration itself, measured rather than pinned.
+
+    The cut is meant to sit at the 99th percentile of the asymmetry an honest
+    Gaussian shows by chance. At ``1 + 2.4/sqrt(n)`` it flagged about a third of
+    true Gaussians at 200-500 draws.
+    """
+    rng = np.random.default_rng(20261013)
+    fired = 0
+    trials = 400
+    for _ in range(trials):
+        summary = E.sample_asymmetry(rng.normal(size=n_draws), float(n_draws))
+        fired += not summary["gaussian_ok"]
+    assert fired / trials <= 0.03, f"{fired}/{trials} Gaussians flagged at n={n_draws}"
 
 
 def test_a_true_gaussian_is_not_flagged():

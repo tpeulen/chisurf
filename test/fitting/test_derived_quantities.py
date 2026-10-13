@@ -179,8 +179,13 @@ def test_a_well_determined_ratio_is_where_the_delta_method_is_right():
     determined the ratio is near-linear over its own posterior, the two routes
     agree to a small fraction of the interval, and nothing is reported. A
     diagnostic that fired here would be worthless.
+
+    The noise is 0.005, not 0.02: at 0.02 this ratio's posterior really is
+    skewed by 1.085 (a 30 000-step chain), a hair under the 1.10 floor, so
+    whether a 3 000-step chain flagged it was a coin toss that a 1e-12 change in
+    the optimum (resuming an ``xtol`` stop) flipped.
     """
-    fit = _sampled(_fit(noise=0.02))
+    fit = _sampled(_fit(noise=0.005))
     row = fit.derived_summary(max_draws=4000)[0]
     assert row["method"] == "draws"
     assert row["warning"] == ""
