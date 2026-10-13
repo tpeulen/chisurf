@@ -33,7 +33,6 @@ _PDB = (
 )
 
 
-
 @pytest.fixture
 def session():
     """A window with three derived objects to group in various ways."""
@@ -411,7 +410,7 @@ def test_an_ordinary_object_is_its_own_target(session):
 # the display-order helper on its own
 # --------------------------------------------------------------------------- #
 def test_grouped_display_order_keeps_blocks_together():
-    from chimol.hosts.qt.window import MolViewPluginWindow as W
+    from chimol.hosts.base import grouped_display_order
 
     objects = [
         {"id": "a", "name": "a", "group": None},
@@ -419,7 +418,7 @@ def test_grouped_display_order_keeps_blocks_together():
         {"id": "c", "name": "c", "group": None},
         {"id": "d", "name": "d", "group": "g"},
     ]
-    assert [o["id"] for o in W._grouped_display_order(objects)] == [
+    assert [o["id"] for o in grouped_display_order(objects)] == [
         "a",
         "b",
         "d",
@@ -428,7 +427,7 @@ def test_grouped_display_order_keeps_blocks_together():
 
 
 def test_grouped_display_order_is_identity_without_groups():
-    from chimol.hosts.qt.window import MolViewPluginWindow as W
+    from chimol.hosts.base import grouped_display_order
 
     objects = [{"id": c, "name": c, "group": None} for c in "abc"]
-    assert [o["id"] for o in W._grouped_display_order(objects)] == ["a", "b", "c"]
+    assert [o["id"] for o in grouped_display_order(objects)] == ["a", "b", "c"]

@@ -195,7 +195,7 @@ def test_sections_package_is_lazy(tmp_path):
         """
 import sys
 from chisurf.gui.autoform.sections import get_section_factory, get_plot_class
-for name in ('code_editor_section', 'image_browser_section', 'chimol_section',
+for name in ('code_editor_section', 'image_browser_section',
              'node_graph_section', 'state_scheme_section', 'builtin'):
     assert 'chisurf.gui.autoform.sections.' + name not in sys.modules, name
 assert get_section_factory('not_a_section') is None
@@ -213,7 +213,7 @@ def test_native_editor_avoids_unrelated_sections(tmp_path):
 import sys
 from chisurf.gui.widgets.models.model_editor import build_model_editor
 editor = build_model_editor(fit.model)
-for name in ('code_editor_section', 'image_browser_section', 'chimol_section',
+for name in ('code_editor_section', 'image_browser_section',
              'node_graph_section', 'state_scheme_section', 'memory_editor_section',
              'phasor_section', 'waterfall_section'):
     assert 'chisurf.gui.autoform.sections.' + name not in sys.modules, name

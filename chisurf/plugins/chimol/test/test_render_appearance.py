@@ -37,7 +37,6 @@ _PDB = _DATA / "atomic_coordinates" / "pdb_files" / "148l.pdb"
 _SOLVATED = _DATA / "atomic_coordinates" / "pdb_files" / "solvated_fragment.pdb"
 
 
-
 def _window(path):
     from native_window import NativeWindow
     win = NativeWindow()
@@ -379,25 +378,3 @@ def test_the_viewport_gets_most_of_the_window():
         assert share > 0.5, f"the 3D view got only {share:.0%} of the window"
     finally:
         win.close()
-
-
-def test_the_default_layout_sizes_are_pixels():
-    """A guard on the value itself, so a ratio cannot creep back in.
-
-    Every other ``sizes`` in the state is in pixels; one entry written as a
-    ratio is indistinguishable from a very small pixel count, which is exactly
-    how this went unnoticed.
-    """
-    from chimol.hosts.qt import window as mw
-
-    def walk(node):
-        if node.get("type") == "splitter":
-            for size in node.get("sizes", []):
-                assert size >= 20, (
-                    f"{size} is a ratio, not a pixel count: "
-                    "QSplitter will clamp it to a minimum width"
-                )
-            for child in node.get("children", []):
-                walk(child)
-
-    walk(mw._DEFAULT_DOCK_AREA_STATE["root"])

@@ -14,11 +14,8 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-pytest.importorskip("qtpy")
-
-from chimol.hosts.qt.window import MolViewPluginWindow  # noqa: E402
-from chimol.ui.gui import InternalGui  # noqa: E402
+from chimol.hosts.base import sequence_rows_for_object
+from chimol.ui.gui import InternalGui
 
 CHAINS, PER_CHAIN = 250, 300
 
@@ -30,7 +27,7 @@ def rows():
     total = CHAINS * PER_CHAIN
     codes = (list("ACDEFGHIKLMNPQRSTVWY") * (total // 20 + 1))[:total]
     numbers = list(range(1, total + 1))
-    return MolViewPluginWindow._sequence_rows_for_object("o1", "npc", codes, numbers, [], chains)
+    return sequence_rows_for_object("o1", "npc", codes, numbers, [], chains)
 
 
 def test_two_hundred_and_fifty_chains_make_one_row(rows):
@@ -59,7 +56,7 @@ def test_the_chain_ids_are_in_the_row(rows):
 
 def test_a_small_structure_reads_the_same_way():
     chains = np.array(["A"] * 3 + ["B"] * 2)
-    built = MolViewPluginWindow._sequence_rows_for_object(
+    built = sequence_rows_for_object(
         "o1", "148l", list("ACDEF"), [1, 2, 3, 10, 11], [], chains
     )
     assert len(built) == 1

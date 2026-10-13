@@ -36,38 +36,23 @@ def renderer():
 
 
 class TestFactorySelection:
-    """Which renderer the viewer builds, now that there is no OpenGL one."""
+    """Which renderer the viewer builds when its host hands it none."""
 
-    def test_wgpu_when_an_adapter_exists(self, monkeypatch):
-        from chimol.hosts.qt import wgpu_view
+    def test_without_a_factory_it_is_the_scene_sink(self):
+        """A scene-only backend, not a window nobody hosts and not a crash.
 
-        monkeypatch.setattr(wgpu_view, "is_available", lambda: True)
-        assert wgpu_view.default_renderer() is wgpu_view.WgpuRenderer
-
-    def test_without_an_adapter_it_is_the_scene_sink(self, monkeypatch):
-        """A scene-only backend, not a blank window and not a crash.
-
-        There is no OpenGL renderer to fall back to any more, so the honest
-        answer for a machine that cannot draw is a renderer that says so by
-        having no widget -- the viewer already handles that, because
-        ``SceneSink`` is what makes headless scene assembly work.
+        The default was the Qt widget renderer until the Qt host was retired.
+        Every host passes its own renderer (the desktop window and ChiSurf's
+        emtk surface pass this WebGPU canvas), so a bare ``Viewer()`` -- a
+        script, the ray tracer, a scene test -- builds its scene and draws
+        nothing, which ``SceneSink`` says by having no widget.
         """
-        from chimol.hosts.qt import wgpu_view
+        from chimol.core.viewer import Viewer
         from chimol.viewport.headless import SceneSink
 
-        monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
-        assert wgpu_view.default_renderer() is SceneSink
-
-    def test_the_refusal_is_logged(self, monkeypatch, caplog):
-        """ "chimol shows nothing today" is harder to answer than a log line."""
-        import logging
-
-        from chimol.hosts.qt import wgpu_view
-
-        monkeypatch.setattr(wgpu_view, "is_available", lambda: False)
-        with caplog.at_level(logging.WARNING):
-            wgpu_view.default_renderer()
-        assert any("no WebGPU adapter" in r.message for r in caplog.records)
+        viewer = Viewer()
+        assert isinstance(viewer.renderer, SceneSink)
+        assert viewer.view is None
 
 
 class TestRendererContract:

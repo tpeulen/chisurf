@@ -11,12 +11,10 @@
 #
 # Three groups, and they are not equally hard:
 #
-#   * `hosts/qt/*` is the ChiSurf integration layer -- the Qt panels, the console,
-#     the dock. Most of it is deleted rather than ported (`HANDOVER_CHIMOL.md`
-#     section 3.4, PRD-101: thirteen of these panels draw with Qt widgets what
-#     the in-viewport chrome already draws with quads). What remains of it is
-#     the natural home for anything that has to know about ChiSurf, and can
-#     stay behind when the engine moves.
+#   * `hosts/qt/*` was the ChiSurf integration layer -- the Qt panels, the
+#     console, the dock. It was deleted (2026-10-13) once the toolkit-free host
+#     reached control parity; anything that has to know about ChiSurf is now
+#     injected by the host (`chisurf/plugins/chimol/`), never imported.
 #   * `io/*` and `analysis/*` were real data dependencies -- an atom dtype, a
 #     DCD reader, element tables. These need chimol to own them or to take
 #     them through a seam. The atom dtype is done (2026-08-14): chimol owns
@@ -32,4 +30,3 @@
 # ChiSurf must not count as importing it.
 analysis/ss.py
 cli.py
-hosts/qt/window.py

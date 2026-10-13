@@ -26,7 +26,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
 from chimol.viewport.canvas import _IDLE_GAP, CanvasRenderer
 
 
@@ -124,64 +123,6 @@ def test_an_existing_configuration_is_lifted_off_the_old_ceiling():
 
     changed = DISPLAY_CONFIG_MIGRATIONS[20]["renderer"]["max_fps"]
     assert changed == (60, DEFAULT_MAX_FPS)
-
-
-def test_a_window_is_never_asked_to_present_to_the_screen_by_default(monkeypatch):
-    """Because a window that is *occluded* then does not draw at all.
-
-    Presenting the surface directly skips a framebuffer copy per frame, and
-    that is the whole of its appeal. What comes with it: when anything covers
-    the window, the surface reports ``Occluded``, wgpu raises
-    ``DrawCancelled``, and rendercanvas answers by making its scheduler wait a
-    tenth of a second before trying again. A chimol behind a terminal is then
-    a chimol at **10 fps whose chrome has stopped repainting** -- which reads
-    as "the sliders and the buttons do not work", because nothing on screen
-    changes when they are pressed.
-
-    A viewer is normally not the frontmost window; it sits beside the thing
-    you are writing. So the default is the toolkit's compositor, which has no
-    such state, and `screen` is an explicit choice for a session where the
-    readback is genuinely the bottleneck.
-
-    (The frame-rate *ceiling* was the real cap, and that is fixed separately:
-    the same Qt window measures 128 fps through the compositor once the
-    ceiling is above the refresh rate.)
-    """
-    pytest.importorskip("qtpy")
-    from chimol.hosts.qt import wgpu_view
-
-    monkeypatch.setenv("QT_QPA_PLATFORM", "cocoa")
-    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance", staticmethod(lambda: None))
-    for platform in ("darwin", "linux", "win32"):
-        monkeypatch.setattr(wgpu_view.sys, "platform", platform, raising=False)
-        assert wgpu_view.resolve_present_method() is None, (
-            f"{platform}: the library's own choice is the default"
-        )
-
-
-def test_a_platform_with_no_display_is_never_asked_to_present_to_one(monkeypatch):
-    """Because the answer is not an exception -- it is a segfault.
-
-    Asking for `screen` under Qt's `offscreen` platform sets
-    `WA_PaintOnScreen`, which wants a native surface that platform has none of,
-    and the process dies where no `except` can see it. A suite of 3,800 tests
-    ended at the first Qt view built that way, which is how this rule was
-    found. It holds however the setting is spelled: an explicit `screen` from
-    a configuration file is still refused here.
-    """
-    pytest.importorskip("qtpy")
-    from chimol.core.settings.config import _DISPLAY_CONFIG
-    from chimol.hosts.qt import wgpu_view
-
-    monkeypatch.setattr(wgpu_view.QtWidgets.QApplication, "instance", staticmethod(lambda: None))
-    section = dict(_DISPLAY_CONFIG.get("renderer") or {})
-    for platform in ("offscreen", "minimal", "vnc"):
-        monkeypatch.setenv("QT_QPA_PLATFORM", platform)
-        for asked in ("auto", "screen"):
-            monkeypatch.setitem(_DISPLAY_CONFIG, "renderer", {**section, "present_method": asked})
-            assert wgpu_view.resolve_present_method() != "screen", (
-                f"{platform} was asked to present to a screen it has none of"
-            )
 
 
 def test_the_present_method_can_be_pinned_by_hand(monkeypatch):

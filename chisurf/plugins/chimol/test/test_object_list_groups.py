@@ -115,24 +115,6 @@ def test_the_two_hosts_build_the_same_list():
         assert clause in source, clause
 
 
-def test_the_qt_window_uses_the_shared_builder():
-    """One object list, one implementation.
-
-    The Qt window carried ninety lines of its own row building, which is how
-    groups came to be rows in that window and nowhere else. It calls the shared
-    builder now and keeps only what is genuinely its own -- the menu bar macOS
-    will not draw natively, the toolbar, and the Qt callbacks.
-    """
-    import inspect
-
-    from chimol.hosts.qt import window as qt_window
-
-    source = inspect.getsource(qt_window.MolViewPluginWindow.sync_internal_gui)
-    assert "sync_panel(" in source
-    for gone in ("is_group=True", "seen_groups", "_measurement_rows()"):
-        assert gone not in source, f"the Qt window builds rows again: {gone}"
-
-
 def test_the_grouping_order_is_shared_too():
     """A group's members are contiguous -- a fact about lists, not toolkits."""
     from chimol.hosts.base import grouped_display_order

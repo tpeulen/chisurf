@@ -1,25 +1,20 @@
-"""Qt lives in the window, and nowhere else.
+"""chimol imports no Qt, anywhere.
 
 The rule
 --------
-chimol runs in three hosts: the Qt plugin, a toolkit-free desktop window on
-GLFW, and a browser canvas. Only the first has Qt. So a module that imports Qt
-is a module the other two cannot use -- and the failure is rarely a clean
-``ImportError``, because Qt is installed in this environment. It is a viewer
-that constructs a ``QWidget`` with no ``QApplication`` and takes a **SIGABRT**,
-or a reader that opens a file dialog on a machine with no display.
+chimol runs in hosts that have no Qt: a toolkit-free desktop window on GLFW,
+ChiSurf's emtk surface, a notebook and a browser canvas. The Qt plugin window
+(``hosts/qt/``) that once housed it was retired on 2026-10-13, and with it the
+last module allowed to import a toolkit. A module that imports Qt is a module
+no host can use -- and the failure is rarely a clean ``ImportError``, because
+Qt is installed in this environment. It is a viewer that constructs a
+``QWidget`` with no ``QApplication`` and takes a **SIGABRT**, or a reader that
+opens a file dialog on a machine with no display.
 
-Qt is allowed in exactly two places:
-
-* the **embedding window** -- ``hosts/qt/`` and the widget host that puts the
-  renderer in it;
-* the **painter seam** -- one ``QPainter`` implementation of the six drawing
-  operations, beside the quad one.
-
-Everything else is a leak, and :data:`ALLOWLIST` is the record of the leaks
-that have not been closed yet. It **shrinks**. Adding a line to it is the wrong
-move; the right one is to pass the toolkit object in from the host, or to hand
-the data over as a NumPy array and let the host convert.
+:data:`ALLOWLIST_PATH` was the record of the leaks not yet closed. It is empty
+and **shrinks** -- adding a line to it is the wrong move; the right one is to
+pass the toolkit object in from the host, or to hand the data over as a NumPy
+array and let the host convert.
 
 Why this is parsed rather than grepped
 --------------------------------------
@@ -41,13 +36,8 @@ import pytest
 #: system so the test follows the installation the host actually uses.
 PACKAGE = pathlib.Path(__import__("chimol").__file__).resolve().parent
 
-#: Modules still importing Qt. **Shrinking**: never add to this.
-#:
-#: The `hosts/qt/` entries and `hosts/qt/wgpu_view.py` are the embedding window and
-#: are expected to stay. `emtk/qt_painter.py` and
-#: `hosts/qt/overlay.py` are the QPainter half of the painter seam.
-#: `hosts/toolkit.py` is the seam that decides whether Qt is used at all.
-#: The rest are leaks with no reason to exist.
+#: Modules still importing Qt. **Shrinking**: never add to this. Empty since
+#: the Qt host was retired (2026-10-13).
 ALLOWLIST_PATH = pathlib.Path(__file__).resolve().parent / "qt_import_allowlist.txt"
 
 
@@ -117,7 +107,7 @@ def test_no_new_module_imports_qt():
     assert not new, (
         "these modules import Qt and are not on the allow-list:\n  "
         + "\n  ".join(new)
-        + "\n\nchimol runs in three hosts and only one has Qt. Pass the toolkit "
+        + "\n\nchimol has no Qt host. Pass the toolkit "
         "object in from the host, or hand the data over as an array and let the "
         "host convert. Do not add a line to the allow-list."
     )
@@ -165,74 +155,12 @@ def test_the_toolkit_free_core_stays_toolkit_free(module):
     assert not _imports_qt(path), f"{module} must not import Qt"
 
 
-#: Qt classes that *draw application content* -- a text editor, a table, a
-#: list, a file chooser, a message box that asks a question chimol has its own
-#: control for. The toolkit is allowed to house the application: a
-#: ``QMainWindow``, a dock, a menu bar, a status bar, the widget the renderer
-#: paints into. It is not allowed to draw the application, because everything
-#: it draws exists only in that one host -- the browser and the toolkit-free
-#: window get nothing, and the two implementations drift.
-#:
-#: Every one of these was here and has been removed: the script editor
-#: (``QDialog`` + ``QPlainTextEdit``), the settings table (a ChiSurf
-#: ``ChiTableWidget``), the RMF dock (combo boxes and a hand-painted plot), the
-#: sequence items (``QListWidgetItem``), and the file/text prompts
-#: (``QFileDialog``, ``QInputDialog``). What replaced them is chimol's own:
-#: the editor panel, the settings window, the `resolution` command, the
-#: sequence strip and the file dialog -- all drawn with quads, on every host.
-_CONTENT_WIDGETS = (
-    "QPlainTextEdit",
-    "QTextEdit",
-    "QTextBrowser",
-    "QTableWidget",
-    "QTableView",
-    "QTreeWidget",
-    "QTreeView",
-    "QListWidget",
-    "QListView",
-    "QListWidgetItem",
-    "QFileDialog",
-    "QInputDialog",
-    "QColorDialog",
-    "QFontDialog",
-    "QDialog",
-)
+def test_the_qt_host_stays_retired():
+    """``hosts/qt/`` was deleted at control parity with the toolkit-free host.
 
-
-def _drawn_names(path: pathlib.Path) -> set[str]:
-    """Qt content-widget names *used in code* -- not in a comment or docstring."""
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    docstrings = {
-        id(node.body[0].value)
-        for node in ast.walk(tree)
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
-        and node.body
-        and isinstance(node.body[0], ast.Expr)
-        and isinstance(node.body[0].value, ast.Constant)
-        and isinstance(node.body[0].value.value, str)
-    }
-    found = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Attribute) and node.attr in _CONTENT_WIDGETS:
-            found.add(node.attr)
-        elif isinstance(node, ast.Name) and node.id in _CONTENT_WIDGETS:
-            found.add(node.id)
-        elif (
-            isinstance(node, ast.Constant)
-            and isinstance(node.value, str)
-            and id(node) not in docstrings
-        ):
-            continue
-    return found
-
-
-@pytest.mark.parametrize(
-    "module", sorted(str(p.relative_to(PACKAGE)) for p in (PACKAGE / "hosts" / "qt").glob("*.py"))
-)
-def test_the_qt_host_houses_the_app_and_draws_none_of_it(module):
-    """The toolkit is the window; the controls are chimol's own."""
-    found = _drawn_names(PACKAGE / module)
-    assert not found, (
-        f"{module} draws application content with Qt ({sorted(found)}). "
-        "chimol has its own: emtk controls in a viewport window."
-    )
+    The before/after inventories are ChiSurf's
+    ``okf/plugins/emtk-ports/chimol/retire_*``. A Qt window coming back would be
+    a second implementation of the application, and the reason it was retired
+    is that two drift.
+    """
+    assert not (PACKAGE / "hosts" / "qt").exists(), "a Qt host is back in chimol"

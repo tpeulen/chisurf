@@ -63,8 +63,8 @@ class GuiPlugin:
         # The emtk surface is the one a user opens (Qt is the legacy host behind
         # ``--qt``), so it is the one whose ``?`` and Guide are checked. A
         # plugin's ``gui`` entry may name a legacy Qt host that lives somewhere
-        # else entirely -- chimol's is ``chimol.hosts.qt`` in the sibling
-        # checkout -- and anchoring on it demanded a tour for a Qt window nobody
+        # else entirely -- chimol's was ``chimol.hosts.qt`` in the sibling
+        # checkout, since retired -- and anchoring on it demanded a tour for a Qt window nobody
         # is to grow. Only a plugin with no emtk entry is anchored on ``gui`` --
         # or one whose emtk module is not on disk (a factory declared ahead of
         # its module), which keeps the Qt surface's resources where they are.

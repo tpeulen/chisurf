@@ -384,25 +384,23 @@ def test_dialog_changes_reach_the_picture_not_just_the_model():
 
 
 def test_every_host_wires_the_same_two_prompts():
-    """Open and Save reach one dialog, wired one way, on all three hosts.
+    """Open and Save reach one dialog, wired one way, on every host.
 
     The browser had to draw its own (nothing in a page may spawn a process),
-    the toolkit-free window drew the same one, and the Qt shell called
-    ``QFileDialog`` -- so the chooser depended on how the viewer had been
+    the toolkit-free window drew the same one, and the (since retired) Qt shell
+    called ``QFileDialog`` -- so the chooser depended on how the viewer had been
     started. The two hooks come from `ui/dialogs/prompts.py` now, and this is
-    what says all three still use them.
+    what says every host still uses them.
     """
     import inspect
 
     from chimol.hosts.native.app import ChimolApp
-    from chimol.hosts.qt import window as qt_window
     from chimol.hosts.web.page import Page  # noqa: F401 - import proves Qt-free
     from chimol.ui.dialogs.prompts import file_prompt, open_structure_dialog
 
     for source in (
         inspect.getsource(Page),
         inspect.getsource(ChimolApp),
-        inspect.getsource(qt_window.MolViewPluginWindow),
     ):
         assert "open_structure_dialog" in source, (
             "a host no longer wires the in-viewport file dialog"

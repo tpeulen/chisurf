@@ -32,9 +32,16 @@ status: open
 
 - **MMFDB admin's *Open in ndX*: resolved 2026-10-13** (the emtk admin has it on Processed Products; what is
   left in the emtk shell is in "MMFDB Admin after the Qt retirement" below).
-- **chimol `hosts/qt/` is not deleted yet.** The exact importers and the order are in
-  [qt-retirement](../subsystems/qt-retirement.md) item 9; the blocker is `Viewer()` defaulting to
-  `hosts.qt.wgpu_view.default_renderer` on a Qt-bound `WidgetBase`.
+- **chimol `hosts/qt/`: resolved 2026-10-13** — deleted in chimol a53e512 (`Viewer` is never a widget,
+  `Viewer()` defaults to `SceneSink`, no qtpy import anywhere in chimol); details in
+  [qt-retirement](../subsystems/qt-retirement.md) item 9. Left open, none blocking: (a) chimol's
+  `CanvasView._BASE_FEATURES` still omits `labels` / `ray_image`, which the toolkit-free canvas now draws (quads;
+  NumPy blit), so the desktop-vs-browser parity report under-claims the desktop host — adding them makes the
+  browser look behind and `test_browser_picking.py` pins `Page.supported_features == CanvasView._BASE_FEATURES |
+  {"file_drop"}`, so it is a parity-report decision, not a one-line fix; (b) `CHIMOL_TOOLKIT=none` setdefaults
+  (chimol `tests/conftest.py`, `tests/test_bare_view.py`, AGENTS.md, several ChiSurf chimol tests) are no-ops now;
+  (c) the toolkit stand-ins still live in chimol `hosts/toolkit.py`, so `core/viewer` imports from `hosts/` (move
+  them to `core/` to close that layering edge).
 
 ## Code Editor assistant: validation issues are reported, not fixed by the model (found 2026-10-13)
 

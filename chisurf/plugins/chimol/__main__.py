@@ -1,14 +1,13 @@
 """ChiMol plugin entry point.
 
-Three run modes, of which the **default needs no GUI toolkit**::
+chimol's own run modes, none of which needs a GUI toolkit::
 
-    python -m chisurf.plugins.chimol             # Qt-free desktop window
-    python -m chisurf.plugins.chimol --qt        # the Qt plugin window
+    python -m chisurf.plugins.chimol             # the desktop window
     python -m chisurf.plugins.chimol cli ...     # headless ptpython REPL
 
-The default opens chimol's own window on a ``rendercanvas`` surface and drives
-the same viewer and the same command layer the Qt window does; ``--qt`` is the
-option, not the assumption.
+The default opens chimol's own window on a ``rendercanvas`` surface, driving
+the same viewer and command layer ChiSurf's emtk surface does. The Qt window
+(``--qt``) was retired with chimol's ``hosts/qt/``.
 """
 
 from __future__ import annotations

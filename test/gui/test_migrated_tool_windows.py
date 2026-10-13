@@ -84,11 +84,3 @@ def test_project_browser_loads_when_shown_too():
         assert Client.calls == 1
     finally:
         app.close()
-
-
-def test_chimol_window_constructs(app):
-    """The molecular viewer window builds on the shared base."""
-    pytest.importorskip("OpenGL")
-    from chimol.hosts.qt.window import MolViewPluginWindow
-
-    _assert_is_tool(MolViewPluginWindow())

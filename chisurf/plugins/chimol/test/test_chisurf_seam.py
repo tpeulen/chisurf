@@ -122,8 +122,7 @@ def test_no_new_module_imports_chisurf():
         "`analysis/ss.py` for the shape: ask inside a `try`, fall back to "
         "chimol's own answer -- or better, have the host *inject* the answer as "
         "`chisurf/plugins/chimol/__init__.py` does for the settings directory), "
-        "or leave the code in the `hosts/qt/` integration "
-        "layer. Do not add a line to the allow-list."
+        "Do not add a line to the allow-list."
     )
 
 

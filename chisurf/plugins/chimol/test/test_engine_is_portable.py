@@ -56,7 +56,7 @@ ENGINE_MODULES = (
     "chimol.commands",
     "chimol.ui.input.mouse_modes",
     "chimol.ui.menus.objects",
-    "chimol.hosts.qt.menu_bar",
+    "chimol.ui.menus.bar",
     "chimol.render.picking",
     "chimol.hosts.base",
     "emtk.events",
@@ -92,39 +92,12 @@ ENGINE_MODULES = (
 
 #: The host layer: the modules that are *allowed* to import Qt at module scope.
 #:
-#: A **shrinking** list, and the worklist for what is left of the port. Nine
-#: modules, seven of them ``hosts/qt/`` panels that draw with Qt widgets what the
-#: in-viewport panel already draws with quads -- so most of this list is closed
-#: by moving those panels into the chrome, not by editing them. The two renderer
-#: entries are the Qt widget and what is left of the image-composited overlay;
-#: the scene builder (``core/viewer.py``) left the list when the viewer stopped
-#: needing a toolkit to exist, and the whole *draw path* left it when
-#: ``viewport/canvas.py`` was extracted -- ``wgpu_view`` is now Qt's event
-#: translation and nothing else.
-#:
-#: Five left in the change that made the Qt-free window the default:
-#: ``hosts/qt/hierarchy_panel.py`` (deleted), ``hosts/qt/timeline_panel.py`` (deleted --
-#: nothing in the tree referred to it), ``plugins/density/model.py`` (already
-#: toolkit-free), ``hosts/qt/menu_bar.py`` (the bar's *tables* are plain data; only
-#: installing a ``QMenuBar`` needs Qt) and ``hosts/qt/picking.py`` (a projection and
-#: an ``argmin``; it imported Qt for one ``isinstance`` against ``QRect``).
-#:
-#: "Imports Qt at module scope" means an *unconditional* import. A guarded
-#: ``try: from qtpy import ... except ImportError:`` with a stand-in behind it
-#: is the sanctioned shape -- that is what `chimol.hosts.toolkit` is -- and the
-#: subprocess test above is what proves such a module really does load without
-#: a toolkit.
-#:
-#: Never add to it. ``test_the_host_list_is_not_padded`` fails on an entry that
-#: no longer needs to be here, which is how it shrinks.
-HOSTS = frozenset(
-    {
-        "hosts/qt/controls_panel.py",
-        "hosts/qt/window.py",
-        "hosts/qt/overlay.py",
-        "hosts/qt/wgpu_view.py",
-    }
-)
+#: Empty since the Qt host (``hosts/qt/``) was retired on 2026-10-13: no chimol
+#: module imports a toolkit. It was a **shrinking** worklist (nine modules once,
+#: seven of them Qt panels that the in-viewport chrome replaced with quads), and
+#: ``test_the_host_list_is_not_padded`` keeps it from regrowing as a habit.
+#: Never add to it.
+HOSTS: frozenset[str] = frozenset()
 
 #: ``import wgpu`` or ``from wgpu[.x] import ...``.
 #:
@@ -360,19 +333,17 @@ def test_the_real_module_entry_point_runs_without_a_gui_toolkit():
     assert "ok" in result.stdout
 
 
-def test_qt_is_opt_in_at_the_entry_point():
-    """``--qt`` is the only thing that reaches the Qt window.
+def test_the_entry_point_has_no_qt_branch():
+    """``python -m chimol`` reaches the toolkit-free host and nothing else.
 
-    A source-level check, deliberately: the Qt branch cannot be *run* in the
-    subprocess that proves the other one is toolkit-free, and what has to hold
-    is a property of the dispatch rather than of a run -- that the default
-    branch names the Qt-free host and Qt is behind a flag.
+    A source-level check: the Qt window it once dispatched to with ``--qt`` was
+    retired, and the flag now only says so before opening the desktop window.
     """
     source = (_CHIMOL / "__main__.py").read_text(encoding="utf-8")
     assert "from .hosts.native.app import main" in source, (
-        "the default branch no longer reaches the Qt-free host"
+        "the entry point no longer reaches the toolkit-free host"
     )
-    assert '"--qt" in args' in source, "Qt is no longer opt-in"
+    assert "hosts.qt" not in source, "the entry point reaches a Qt host again"
 
 
 def test_chimol_never_imports_the_gpu_binding():

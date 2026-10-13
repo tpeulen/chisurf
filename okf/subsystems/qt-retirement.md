@@ -352,29 +352,29 @@ own startup stages (item 5): S5 is done.
    (the Qt hosts and tests on the allow-list, 64), and the Qt forms of the `--qt` reference shell that host
    panels (the Qt AutoForm renderer and its sections, the Qt reader widgets, the κ² dialogs), whose emtk twins
    exist; `chisurf.gui.chiplot` (`host`, `PanelHost`, `ImagePanelHost`) goes with them. Striking `qtpy` needs both,
-   and the owner's call. **chimol** (named blocker, 2026-10-13): ChiSurf no longer opens a Qt chimol window (no
-   `gui` entry; tests on the toolkit-free host, item 1). chimol itself still ships `hosts/qt/` (`window.py`,
-   `wgpu_view.py`, `overlay.py`, `menu_bar.py`, `controls_panel.py`; `demos.py` retired) for its own
-   `python -m chimol --qt`. Gone since (2026-10-13 leftovers slice): the display-defaults prompt is in-viewport
-   (chimol 19444d1), the project restore (`chisurf/macros/core_fit.py`, chisurf 96d3b6f1d) opens the emtk app,
-   both benchmarks and the capture helpers run on `ChimolApp`. **What still imports `chimol.hosts.qt`**, i.e. the
-   exact list a deletion has to move (re-derive: `grep -rn "hosts\.qt\|MolViewPluginWindow" --include=*.py` in
-   both repos):
-   - chimol `core/viewer/viewer.py:~450` -- `Viewer()` with no `renderer_factory` takes
-     `hosts.qt.wgpu_view.default_renderer`, and `Viewer` subclasses the Qt-bound `WidgetBase`
-     (`hosts/toolkit.py`, `core/viewer/_common.py`, which imports `qtpy`); the toolkit-free hosts use
-     `HeadlessViewer`. This is the real blocker: a `Viewer()` default that is not a widget changes every
-     `Viewer()` caller (5 chimol test files, `render/picking.py` typing).
-   - chimol `__init__.py` (lazy `MolViewPluginWindow` export -- that file has another lane's uncommitted
-     notebook-host hunks, so it was not touched), `__main__.py --qt`, `commands/base.py` + `command.py` (type
-     hints only), `tools/check_imports.py` / `tools/plan_moves.py` (name the package), and the chimol tests
-     `test_headless_viewer_after_qt.py`, `test_overlay_rebuild.py`, `test_world_to_screen.py`,
-     `test_labelling_picking.py`, `test_dye_models.py`.
-   - ChiSurf: `chisurf/plugins/chimol/__main__.py` (documents `--qt`), `test/gui/test_migrated_tool_windows.py`
-     and `test/console/test_command_dispatch_rule.py` (both assert things *about* the Qt window and go with it),
-     `test/test_plugin_help_guide_seam.py` (comment only).
-   Order when it is done: give `Viewer()` a toolkit-free default (the `HeadlessViewer` path the hosts already
-   use), then delete `hosts/qt/` with `--qt` and the lazy export, then the two ChiSurf tests.
+   and the owner's call. **chimol: `hosts/qt/` deleted (2026-10-13, chimol a53e512).** `Viewer` is never a
+   widget: it sits on `hosts/toolkit.py`'s stand-ins, which no longer import qtpy (`HeadlessViewer` is an alias),
+   and `Viewer()` with no `renderer_factory` builds into `SceneSink` (every host passes its own renderer). Gone
+   with it: the lazy `MolViewPluginWindow` export, `python -m chimol --qt` (it now says the Qt window was retired
+   and opens the desktop window), the Qt type hints in `commands/`, the mock viewer's `QObject` base, and
+   ChiSurf's unused Qt AutoForm `chimol` section (`chisurf/gui/autoform/sections/chimol_section.py`; no
+   `view.json` used it, and it embedded `Viewer` as a `QWidget`). Measure: `python tools/check_imports.py` in
+   chimol (299 modules import with Qt blocked, 0 allowed failures); `tests/test_viewer_is_toolkit_free.py`;
+   ChiSurf `chisurf/plugins/chimol/test/qt_import_allowlist.txt` is empty and `test_qt_seam.py` asserts
+   `hosts/qt` stays gone. Before/after: `okf/plugins/emtk-ports/chimol/retire_hostqt_*` -- ChiSurf's emtk ChiMOL
+   app on 148L and 1RTD at 1200x800 is pixel-identical with chimol 07a9b28 and a53e512, and its control inventory
+   matches the Qt before-grab `retire_qt_before_148l.png` (lost: none). Tests: the five chimol tests and the
+   ChiSurf chimol tests that imported the Qt host were ported (menu tables from `chimol.ui.menus.bar`,
+   `grouped_display_order` / `sequence_rows_for_object` from `chimol.hosts.base`, host checks on `ChimolApp` +
+   `Page`); `test/console/test_command_dispatch_rule.py` now drives `chimol.repl` + `ChimolDispatcher` with no
+   toolkit. **Retired** because they tested only the Qt window: `test_migrated_tool_windows.py::
+   test_chimol_window_constructs`, `test_object_list_groups.py::test_the_qt_window_uses_the_shared_builder`,
+   `test_render_appearance.py::test_the_default_layout_sizes_are_pixels` (Qt dock splitter sizes),
+   `test_keyboard_layout.py::test_the_qt_host_passes_the_character_qt_produced`, `test_dropped_files.py::
+   test_the_qt_widget_accepts_dropped_files` + `test_the_qt_host_describes_itself_at_all`,
+   `test_canvas_cadence.py`'s two Qt `resolve_present_method` tests, and `test_wgpu_view.py`'s Qt
+   `default_renderer` selection (replaced by a `Viewer()` -> `SceneSink` test). Leftovers (none blocking) in
+   [known issues](../references/known-issues.md) "Leftovers of the ndX / chimol Qt retirement".
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit
@@ -525,7 +525,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | DPI and export | Qt scaling, `widget.grab()` | `NativeHost` ratio, `emtk.scaled_painter`, `--screenshot` | — | done | `test_emtk_shell_flag_opens_the_emtk_surface` |
 | Multi-window | every plugin is its own top-level Qt window | one `NativeHost` per process; fit windows are the documents of the **Workspace** (centre region, emtk `workspace=True` on region and window): Tile / Cascade / Tabbed / Windows, minimize strip, Ctrl+Tab, clamped, persisted; every tool, the help browser and the code editor is a dock (tabbed right of the Workspace, dockable elsewhere, floating over the window), never a Workspace window and never a second process | **gap**: a second OS window sharing one app (detached docks on a second monitor) | Workspace done; second monitor open | `test/native_emtk/test_emtk_shell_workspace.py`, emtk `tests/test_docking_workspace.py` |
 | Text input, IME | Qt `inputMethodEvent` | `emtk.ime`: commits as typed text, preedit in `io.preedit` drawn at the caret of `input_text`, `TextEditor`, `TextField`; `qt_host.inputMethodEvent`; native holds back a composition's keys (`MarkedTextProbe`) | inline preedit in the glfw window, the browser's composition events (resume item 12) | S4 done | emtk `tests/test_ime.py`, `test_emtk_shell_console.py::test_composed_input_types_into_the_console` |
-| Molecular viewer | chimol `hosts/qt` | chimol native host (`ChimolApp`), hosted by `chisurf.plugins.chimol.app` | display-defaults prompt; `hosts/qt` still in chimol for `--qt` and `core_fit` | S7: ChiSurf side done 2026-10-13 | `chisurf/plugins/chimol/test/` (native), `test_emtk_chimol_parity.py` |
+| Molecular viewer | chimol `hosts/qt` | chimol native host (`ChimolApp`), hosted by `chisurf.plugins.chimol.app` | none (`hosts/qt` deleted in chimol a53e512) | S7: done 2026-10-13 | `chisurf/plugins/chimol/test/` (native), `test_emtk_chimol_parity.py` |
 | Watermark, sparkline | `widgets/system_info_watermark.py` | chiplot or `emtk.implot` | — | S5 (or drop) | — |
 
 # Allow-list by area and the slice that removes it

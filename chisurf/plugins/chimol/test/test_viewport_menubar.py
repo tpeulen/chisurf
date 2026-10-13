@@ -13,11 +13,8 @@ was missing was the bar itself.
 from __future__ import annotations
 
 import pytest
-
-pytest.importorskip("qtpy")
-
-from chimol.hosts.qt.menu_bar import MENU_BAR  # noqa: E402
-from chimol.ui.gui import InternalGui, SequenceRow  # noqa: E402
+from chimol.ui.gui import InternalGui, SequenceRow
+from chimol.ui.menus.bar import MENU_BAR
 
 SIZE = (860, 520)
 

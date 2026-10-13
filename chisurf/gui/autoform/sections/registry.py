@@ -29,7 +29,6 @@ _SECTION_REGISTRY: typing.Dict[str, typing.Callable[..., typing.Any]] = {}
 _SECTION_MODULES = {
     "anisotropy_diagnostics": "anisotropy_diagnostics_section",
     "background_run": "background_run_section",
-    "chimol": "chimol_section",
     "code_editor": "code_editor_section",
     "data_source": "data_source_section",
     "data_table": "data_table_section",

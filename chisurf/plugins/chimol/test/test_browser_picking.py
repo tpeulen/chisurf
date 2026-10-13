@@ -54,9 +54,7 @@ from chimol_pkg.render.wgpu_backend import WgpuMeshRenderer
 from chimol_pkg.commands import Cmd
 from chimol_pkg.hosts.base import ViewerHost
 from emtk.events import LEFT_BUTTON  # emtk is its own package, not chimol's
-from chimol_pkg.hosts.toolkit import HAS_QT
-
-assert not HAS_QT, "the toolkit was not stripped; this is not the page's configuration"
+assert not Viewer.uses_toolkit, "the viewer is a toolkit widget; this is not the page's configuration"
 
 # A page's numbers, not a test's: a canvas of 1280x860 CSS pixels on a 2x
 # display. The ratio is the point -- every unit confusion in this seam is a

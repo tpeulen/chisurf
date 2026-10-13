@@ -389,7 +389,7 @@ def test_the_tours_are_on_the_help_menu():
     tour points at real controls and waits for you to press them, which is what
     someone opens the command list for.
     """
-    from chimol.hosts.qt.menu_bar import DEMO_MENU, HELP_MENU
+    from chimol.ui.menus.bar import DEMO_MENU, HELP_MENU
 
     def commands_of(entries):
         found = set()

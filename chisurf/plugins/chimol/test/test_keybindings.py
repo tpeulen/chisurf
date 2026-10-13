@@ -188,7 +188,7 @@ def test_the_keys_command_is_registered():
 
 
 def test_the_help_menu_offers_the_overlay():
-    from chimol.hosts.qt.menu_bar import HELP_MENU
+    from chimol.ui.menus.bar import HELP_MENU
 
     labels = {getattr(e, "label", None): getattr(e, "command", None) for e in HELP_MENU}
     assert labels.get("Keyboard bindings") == "keys"

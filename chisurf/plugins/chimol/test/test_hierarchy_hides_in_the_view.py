@@ -152,9 +152,11 @@ def test_switching_them_back_on_brings_the_simulation_back(biofilm):
 def test_the_viewer_owns_the_operation():
     """`set_hidden_rows` is the viewer's, so every host has it -- and only it."""
     from chimol.core.viewer import Viewer
-    from chimol.hosts.qt import window as qt_window
+    from chimol.hosts.native.app import ChimolApp
+    from chimol.hosts.web.page import Page
 
     assert callable(Viewer.set_hidden_rows)
-    assert not hasattr(qt_window.MolViewPluginWindow, "_apply_hidden_rows"), (
-        "the panel's route back into a host-private method is back"
-    )
+    for host in (ChimolApp, Page):
+        assert not hasattr(host, "_apply_hidden_rows"), (
+            "the panel's route back into a host-private method is back"
+        )
