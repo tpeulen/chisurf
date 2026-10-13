@@ -21,7 +21,7 @@ Interactive network graph for visualizing and managing parameter relationships a
 | Menu path | Tools → Views → **Global View** |
 | Categories | Tools, Views |
 | Version | 2.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `globalview` |
 
 ## Parameters

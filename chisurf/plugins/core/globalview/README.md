@@ -35,8 +35,8 @@ The GUI communicates with backend services via ZMQ JSON-RPC for graph building a
 Integration surfaces:
 
 - Python API: `chisurf.plugins.core.globalview.api`
-- GUI: `chisurf.plugins.core.globalview.gui:GraphWizard` (four docks: Network,
-  Parameters, Selection, View)
+- GUI: the emtk app `chisurf.plugins.core.globalview.gui.app:make_app` (four docks:
+  Network, Parameters, Selection, View); the Qt `GraphWizard` host is retired
 - Canonical RPC methods:
   - `globalview.graph.build` - Build parameter relationship graph
   - `globalview.parameters.list` - List all parameters across fits

@@ -1,7 +1,7 @@
 """Native Global View: the emtk surface with the host services the Qt window gave it.
 
-``GraphWizard`` (the Qt tool) hosts the same :class:`.surface.GlobalViewSurface`
-and answers the model's requests -- a file to save or open, a warning, the help
+``GraphWizard`` (the retired Qt tool) hosted the same :class:`.surface.GlobalViewSurface`
+and answered the model's requests -- a file to save or open, a warning, the help
 modal, the guided tour, a refresh when a fit changes, and where the dock layout
 is kept. This app answers them in emtk, so the surface works without Qt.
 

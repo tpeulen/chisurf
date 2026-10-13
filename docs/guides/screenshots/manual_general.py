@@ -322,35 +322,37 @@ def _global_fits():
     return fits
 
 
-def global_view(app) -> None:
+def _global_view_app(fits):
+    """The emtk Global View app on *fits* (no layout kept: a screenshot must not move the user's docks)."""
+    from chisurf.plugins.core.globalview.gui.app import make_app
+    from chisurf.plugins.core.globalview.gui.model import GlobalViewModel
+
+    return make_app(GlobalViewModel(fits=lambda: list(fits)), remember_layout=False)
+
+
+def global_view() -> None:
     """The Global View on four fits sharing a lifetime: the network, then include fixed."""
     import chisurf
     from chisurf.core.api.fitting_client import (
         get_fitting_client,
         install_fitting_client,
     )
-    from chisurf.plugins.core.globalview.gui.tool import GraphWizard
 
     fits = _global_fits()
     saved = chisurf.fits, get_fitting_client()
     install_fitting_client(None)
     chisurf.fits = fits
-    tool = GraphWizard(fit_list=fits, remember_layout=False)
-    tool.resize(1150, 760)
-    tool.show()
-    tool.model.rebuild(force=True)
-    _pump(app, 10)
-    _save(tool, "globalview_tool.png")
-    tool.surface.docks.focus("View")
-    _pump(app, 10)
-    _save(tool, "globalview_view_tab.png")
+    tool = _global_view_app(fits)
+    size = (1150, 760)
+    _native(tool, "globalview_tool.png", size=size)
+    tool.docks.focus("View")
+    _native(tool, "globalview_view_tab.png", size=size)
 
     tool.model.include_fixed = True
     tool.model.node_size = 9
     tool.model.apply_node_size()
     tool.model.rebuild(force=True)
-    _pump(app, 10)
-    _save(tool, "globalview_include_fixed.png")
+    _native(tool, "globalview_include_fixed.png", size=size)
     tool.close()
     chisurf.fits = saved[0]
     install_fitting_client(saved[1])
@@ -362,29 +364,22 @@ def global_view_save_load(s: Session) -> None:
     Driven on the Main's own fits: a loaded link is applied through the fitting
     server, which knows the session's fits (a standalone fixture has none).
     """
-    from chisurf.plugins.core.globalview.gui.tool import GraphWizard
-
     fits = s.cs.fits
     master = fits[0].model.parameters_all_dict["t0"]
     fits[1].model.parameters_all_dict["t0"].link = master
-    tool = GraphWizard(fit_list=fits, remember_layout=False)
-    tool.resize(1150, 760)
-    tool.show()
-    tool.model.rebuild(force=True)
-    _pump(s.app, 10)
+    tool = _global_view_app(fits)
+    size = (1150, 760)
     path = pathlib.Path(tempfile.mkdtemp(prefix="manual-gml-")) / "network.gml"
     tool.model.ask_save_path = lambda *a, **k: str(path)
     tool.model.save_network()
     print("graphml:", *path.read_text(encoding="utf-8").splitlines()[:14], sep="\n", flush=True)
     fits[1].model.parameters_all_dict["t0"].link = None
     tool.model.rebuild(force=True)
-    _pump(s.app, 10)
-    _save(tool, "globalview_before_load.png")
+    _native(tool, "globalview_before_load.png", size=size)
     tool.model.load_network(str(path))
     tool.model.rebuild(force=True)
-    _pump(s.app, 10)
     print("after load:", tool.model.status, flush=True)
-    _save(tool, "globalview_after_load.png")
+    _native(tool, "globalview_after_load.png", size=size)
     tool.close()
 
 
@@ -463,9 +458,7 @@ def main(case_dir: str | None, only: set[str]) -> None:
         session.add_fits()
         global_view_save_load(session)
     if want("global_view"):
-        from qtpy import QtWidgets
-
-        global_view(QtWidgets.QApplication.instance() or QtWidgets.QApplication([]))
+        global_view()
     if want("fcs_hub"):
         fcs_hub()
     if want("tools_montage"):
