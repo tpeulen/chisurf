@@ -1,9 +1,11 @@
-"""The emtk shell's post-show startup stages (W9 S5): the update check and the warm-up imports.
+"""The emtk shell's post-show startup stages (W9 S5): the update check.
 
 The Qt window runs ``services.d/30_gui_post_show.json`` after it is shown. Its window-building
-stages have shell equivalents of their own (history, autosave, plugin menus); the two that are not
-about the window -- ``check_updates`` and ``warmup_imports`` -- are the shell's
-``surface="emtk"``, ``phase="post_show"`` set (``35_emtk_post_show.json``). Checked here: the set
+stages have shell equivalents of their own (history, autosave, plugin menus); the one that is not
+about the window -- ``check_updates`` -- is the shell's ``surface="emtk"``, ``phase="post_show"``
+set (``35_emtk_post_show.json``). ``warmup_imports`` has no twin: the session's own stages have
+imported what a first fit needs before the window opens, and an import on a worker thread racing
+the frame loop is how the shell deadlocked (``test/startup/test_startup_import_race.py``). Checked here: the set
 is declared and resolvable, the stages honour the shared updater preferences and never import Qt,
 and in the shell they run once the session is adopted, show on the status strip and, when a newer
 version exists, ask the Qt window's *Update Available* question, whose *Yes* opens *Settings* on
@@ -30,7 +32,7 @@ REPO = Path(__file__).resolve().parents[2]
 SERVICES = REPO / "chisurf" / "startup" / "services.d"
 SHOTS = Path(os.environ.get("CHISURF_NATIVE_SCREENSHOTS", "/private/tmp/chisurf-native-gpu"))
 #: The Qt post-show stages the emtk set mirrors (the rest build Qt window state).
-QT_STAGES_MIRRORED = {"check_updates": "emtk_check_updates", "warmup_imports": "emtk_warmup_imports"}
+QT_STAGES_MIRRORED = {"check_updates": "emtk_check_updates"}
 
 
 def _specs(name: str) -> dict[str, dict]:
@@ -47,7 +49,7 @@ def test_the_post_show_set_is_declared_for_the_emtk_surface():
         assert emtk[emtk_id]["label"] == qt[qt_id]["label"], "the same words on both windows"
         assert emtk[emtk_id]["surface"] == "emtk" and emtk[emtk_id]["phase"] == "post_show"
     ordered = AppStartupServiceManager().ordered_specs(surface="emtk", phase="post_show")
-    assert [spec.id for spec in ordered] == ["emtk_check_updates", "emtk_warmup_imports"]
+    assert [spec.id for spec in ordered] == ["emtk_check_updates"]
     for spec in ordered:
         module, _, name = spec.entrypoint.partition(":")
         assert callable(getattr(__import__(module, fromlist=[name]), name)), spec.entrypoint
@@ -59,11 +61,10 @@ def test_the_stages_import_no_qt(tmp_path):
         "import sys\n"
         "from chisurf.core.settings import cs_settings\n"
         "cs_settings.setdefault('plugins', {})['updater'] = {'check_on_startup': False}\n"
-        "from chisurf.emtk.post_show import run_post_show, WARM_MODULES\n"
+        "from chisurf.emtk.post_show import run_post_show\n"
         "seen = []\n"
         "run_post_show(lambda p: seen.append(p['id']))\n"
-        "assert seen == ['emtk_check_updates', 'emtk_warmup_imports'], seen\n"
-        "assert all(m in sys.modules for m in WARM_MODULES)\n"
+        "assert seen == ['emtk_check_updates'], seen\n"
         "qt = sorted(m for m in sys.modules if m.split('.')[0] in ('qtpy', 'PyQt5', 'PyQt6', 'PySide6'))\n"
         "print('QT', qt)\n"
     )

@@ -8,15 +8,6 @@
       "label": "Checking for updates",
       "progress": 50,
       "order": 30
-    },
-    {
-      "id": "emtk_warmup_imports",
-      "entrypoint": "chisurf.emtk.post_show:stage_warmup_imports",
-      "surface": "emtk",
-      "phase": "post_show",
-      "label": "Preloading modules",
-      "progress": 90,
-      "order": 60
     }
   ]
 }

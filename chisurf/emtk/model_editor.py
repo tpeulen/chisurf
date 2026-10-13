@@ -28,12 +28,13 @@ from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
 from chisurf.core.fitting import prior_families
+from chisurf.emtk.model_sections import _Rows
 
 #: Columns of a parameter table, as the Qt editor's ``ParameterGroupTableWidget`` shows them.
 #: ``collapse_order`` is the Qt table's width priority: short of room the bounds
 #: (and the prior, their smooth form) go first, then the error, then Fixed; the
 #: name and the value are never dropped, and a dropped cell is in the row tooltip.
-PARAMETER_COLUMNS = [
+PARAMETER_COLUMNS: list[dict[str, Any]] = [
     {
         "key": "label",
         "label": "Name",
@@ -218,7 +219,7 @@ def _paired(entries: list, width: int, section: dict) -> tuple[list, list]:
         else:
             title = str(j + 1)
         for field, _sid, label, editable, fmt in fields:
-            column = {
+            column: dict[str, Any] = {
                 "key": f"{field}{j}",
                 "label": title if field == "value" else label,
                 "editable": editable,
@@ -244,10 +245,11 @@ def _slot_field(key: str) -> str:
     return match.group(1) if match else ""
 
 
-class _Rows(list):
-    """Table rows with a ``revision``, so a re-read rebinds the table once."""
-
-    revision = 0
+def _as_parts(made: dict | list | None) -> list:
+    """A converted section as a list of spec sections (``None``, drawing nothing, as none)."""
+    if made is None:
+        return []
+    return list(made) if isinstance(made, list) else [made]
 
 
 def _number(value: Any) -> float | None:
@@ -471,7 +473,7 @@ class ModelEditor:
                 parts = [buttons]
                 for header in section.get("header") or []:
                     made = self.sections.convert(header, common, next(counter))
-                    parts.extend(made if isinstance(made, list) else [made])
+                    parts.extend(_as_parts(made))
                 if entries:
                     parts.append({**table, **common})
                 return parts
@@ -490,18 +492,18 @@ class ModelEditor:
                     )
                 return {"type": "toggle_row", "items": items, **common}
             if kind == "buttons":
-                buttons = []
+                row_buttons = []
                 for i, button in enumerate(section.get("buttons") or []):
                     name = f"press_{n}_{i}"
                     self._actions[name] = ("press", str(button.get("action", "")), section)
-                    buttons.append(
+                    row_buttons.append(
                         {
                             "label": button.get("label", ""),
                             "action": name,
                             "description": button.get("description", ""),
                         }
                     )
-                return {"type": "button_row", "buttons": buttons, **common}
+                return {"type": "button_row", "buttons": row_buttons, **common}
             if kind == "records":
                 source = f"records_{n}"
                 rows = _Rows(dict(r) for r in section.get("rows") or [])
@@ -526,7 +528,7 @@ class ModelEditor:
                     if fractions:
                         source = f"rows_{n}_fractions"
                         rows_for(source, fractions)
-                        parts = made if isinstance(made, list) else [made]
+                        parts = _as_parts(made)
                         return parts + [
                             {
                                 "type": "table",

@@ -515,8 +515,8 @@ class DataDocks:
     shell : EmtkShellApp
         The shell drawing the docks (its dock manager, frame request and child hosting).
     session_factory : callable, optional
-        ``session_factory(wake=...) -> ShellSession``, run on a worker thread when
-        the docks are made; without one the docks say there is no session.
+        ``session_factory(wake=...) -> ShellSession``, run on a worker thread by
+        :meth:`start`; without one the docks say there is no session.
     """
 
     def __init__(self, shell: Any, session_factory: Callable[..., Any] | None = None) -> None:
@@ -538,7 +538,7 @@ class DataDocks:
         self.file_dialog: Any = None
         self._file_window: Any = None
         #: What the open file dialog's choice is for: ``callback(path)``.
-        self._file_done: Callable[[str], None] | None = None
+        self._file_done: Callable[[str], object] | None = None
         #: The open sampling/fitting settings dialog (``chisurf.emtk.fit_controls.SettingsDialog``).
         self.settings_dialog: Any = None
         #: The open dataset picker of the controller's ``…`` (or of a curve picker's).
@@ -565,19 +565,7 @@ class DataDocks:
         self._reader_apps: dict[int, Any] = {}
         self._reader_errors: dict[int, str] = {}
         self._starting = BackgroundBuild(wake=self.request_frame)
-        if session_factory is not None:
-            wake = self.request_frame
-            # The shell's splash follows the startup stages the session runs through.
-            # (and so does the status strip: the shell's ``stage_started`` forwards to both).
-            on_stage = getattr(shell, "stage_started", None)
-            if not callable(on_stage):
-                splash = getattr(shell, "splash", None)
-                on_stage = splash.stage_started if splash is not None else None
-            self._starting.start(
-                {"session": lambda: session_factory(wake=wake, on_stage=on_stage)},
-                name="chisurf-shell-session",
-            )
-            self.status = tr("Starting the session…")
+        self._session_factory = session_factory
         docks = shell.docks
         docks.add_window(READ_KEY, mark("Read data"), self._draw_read, dock="left", closable=False)
         docks.add_window(
@@ -593,6 +581,32 @@ class DataDocks:
     # -- plumbing ------------------------------------------------------------ #
     def request_frame(self) -> None:
         self.shell.request_frame()
+
+    def start(self) -> bool:
+        """Start the session on its worker thread; ``False`` without a factory or when started already.
+
+        The shell calls this as the *last* step of its construction, not here in ``__init__``: the
+        worker imports half of ChiSurf (experiments, server services, plugin backends) and a main
+        thread still importing what it builds would race it for CPython's per-module import locks
+        (``_DeadlockError``; :mod:`chisurf.emtk.session`).
+        """
+        factory = self._session_factory
+        if factory is None or self._starting.busy or self.session is not None:
+            return False
+        wake = self.request_frame
+        shell = self.shell
+        # The shell's splash follows the startup stages the session runs through.
+        # (and so does the status strip: the shell's ``stage_started`` forwards to both).
+        on_stage = getattr(shell, "stage_started", None)
+        if not callable(on_stage):
+            splash = getattr(shell, "splash", None)
+            on_stage = splash.stage_started if splash is not None else None
+        self._starting.start(
+            {"session": lambda: factory(wake=wake, on_stage=on_stage)},
+            name="chisurf-shell-session",
+        )
+        self.status = tr("Starting the session…")
+        return True
 
     @property
     def starting(self) -> bool:
@@ -1448,7 +1462,9 @@ class DataDocks:
     def _retitle(self, uid: str, title: str) -> None:
         """Give fit *uid*'s window *title* (a second fit of the same name was added or removed)."""
         window = self.windows.get(uid)
-        dock = self.shell.docks.window(window.key) if window is not None else None
+        if window is None:
+            return
+        dock = self.shell.docks.window(window.key)
         if dock is not None and dock.title != title:
             dock.title = dock.tooltip = window.title = title
 
@@ -1568,7 +1584,7 @@ class DataDocks:
         title: str = "",
         mode: str = "open",
         directory: str | None = None,
-        done: Callable[[str], None] | None = None,
+        done: Callable[[str], object] | None = None,
         filename: str = "",
     ) -> None:
         """Open a file dialog over the shell; *done* gets the chosen path (default: the file to read)."""
