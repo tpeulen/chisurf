@@ -667,6 +667,23 @@ class NativeNotebook:
             else:
                 im.text_disabled(f"Saved output: {', '.join(data)} (preserved in notebook)")
 
+    def draw_terminal(self, width: float, key: str = "notebook_terminal") -> None:
+        """The command terminal sharing the notebook's shell: its output and a command line.
+
+        Drawn under the cells (the notebook's *Terminal* button) and in the editor's Kernel dock.
+        """
+        im.text(tr("Notebook terminal"))
+        for line in self.terminal_output[-200:]:
+            im.text_wrapped(line)
+        _, self.terminal_input = im.input_text(
+            f"##{key}", self.terminal_input, hint=tr("Python command…")
+        )
+        im.set_item_tooltip(tr("Enter a Python command using the same variables as notebook cells"))
+        if im.button(tr("Run command") + f"##{key}_run"):
+            self.start_terminal(self.terminal_input)
+            self.terminal_input = ""
+        im.set_item_tooltip(tr("Execute the terminal command in the notebook's persistent shell"))
+
     def draw(
         self,
         width: float,
@@ -840,21 +857,7 @@ class NativeNotebook:
             im.separator()
             im.pop_id()
         if self.show_terminal:
-            im.text(tr("Notebook terminal"))
-            for line in self.terminal_output[-200:]:
-                im.text_wrapped(line)
-            _, self.terminal_input = im.input_text(
-                "##notebook_terminal", self.terminal_input, hint=tr("Python command…")
-            )
-            im.set_item_tooltip(
-                tr("Enter a Python command using the same variables as notebook cells")
-            )
-            if im.button(tr("Run command")):
-                self.start_terminal(self.terminal_input)
-                self.terminal_input = ""
-            im.set_item_tooltip(
-                tr("Execute the terminal command in the notebook's persistent shell")
-            )
+            self.draw_terminal(width)
         im.end_child()
         if self.pending_input is not None:
             request = self.pending_input

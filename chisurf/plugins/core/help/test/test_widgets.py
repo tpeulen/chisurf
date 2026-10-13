@@ -313,3 +313,22 @@ def test_shift_and_ctrl_wheel_both_zoom(app, driver, modifier, dy, dx):
     app.wheel(x + w / 2, y + h / 2, -1.0, 0)
     driver.frame()
     assert app.model.font_size == start
+
+
+def test_the_open_page_hand_off_shows_the_page_at_its_heading(app):
+    """A ``?`` link in the shell hands the page over (manifest ``accepts`` open_page)."""
+    import json
+
+    from chisurf.core.plugin import handoff
+
+    manifest = json.loads(
+        (pathlib.Path(__file__).resolve().parents[1] / "manifest.json").read_text(encoding="utf-8")
+    )
+    spec = handoff.accepted("help", "open_page", manifest)
+    assert spec is not None and spec.required == ["path"]
+    page = _page("concepts", "fret.md")
+    handoff.deliver(app, spec, {"path": str(page), "anchor": "Transfer rate and efficiency"})
+    assert app.model.current_path == page.resolve()
+    assert app.model.target_anchor == "Transfer rate and efficiency"
+    with pytest.raises(FileNotFoundError):
+        handoff.deliver(app, spec, {"path": "docs/concepts/no_such_page.md"})

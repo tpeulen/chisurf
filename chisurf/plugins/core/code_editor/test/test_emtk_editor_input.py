@@ -660,14 +660,19 @@ def test_the_toolbar_wraps_and_every_control_and_the_status_line_stay_inside_the
         "📝 Save As",
         action_caption("close"),
         action_caption("run"),
-        "🧹 Check",
+        "🧹 Lint",
         "🛠 Fix",
+        "📁 Folder",
+        "🤖 Agent",
         "📓 Notebook",
         "⚙ Settings",
         "Next",
         "All",
         "Replace all",
         "Close find",
+        "Match case",
+        "Whole word",
+        "Regex",
     ):
         x, y, w, h = ed.text_rect(painter, label)
         assert x >= 0 and y >= 0 and y + h <= size[1], (label, size)

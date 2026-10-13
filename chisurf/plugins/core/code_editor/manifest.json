@@ -44,6 +44,16 @@
     "gui": "chisurf.plugins.core.code_editor.gui.tool:CodeEditorEmtkTool",
     "emtk": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app"
   },
+  "accepts": [
+    {
+      "name": "open_file",
+      "summary": "Open a source file in the code editor, optionally at a line, as a source link does.",
+      "receive": "chisurf.plugins.core.code_editor.gui.editor_app:receive_open_file",
+      "required": [
+        "path"
+      ]
+    }
+  ],
   "rpc_methods": [
     {
       "name": "editor.document.list",

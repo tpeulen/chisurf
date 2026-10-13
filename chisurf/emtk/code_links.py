@@ -120,16 +120,19 @@ def open_source(
                 except Exception:
                     logger.debug("could not open in active EMTK editor", exc_info=True)
 
-        # No editor yet: the open emtk shell makes one as a dock (not a second process
-        # whose OS window falls behind the main one); without a shell, a standalone editor.
-        def show_in_editor() -> None:
-            for editor in reversed(_ACTIVE_EMTK_EDITORS):
-                if editor is not None:
-                    editor.open_file(str(resolved.path), line=line_num)
-                    return
+        # No editor yet: the open emtk shell makes one as a dock and hands it the file
+        # (chisurf.core.plugin.handoff, the editor's manifest declares open_file), not a second
+        # process whose OS window falls behind the main one; without a shell, a standalone editor.
+        from chisurf.core.plugin import handoff
 
-        if host_in_open_shell("code_editor", show_in_editor):
-            return True
+        if handoff.available("code_editor", "open_file"):
+            try:
+                handoff.hand_off(
+                    "code_editor", "open_file", {"path": str(resolved.path), "line": line_num or 0}
+                )
+                return True
+            except handoff.HandoffError:
+                logger.debug("the shell refused the code editor hand-off", exc_info=True)
         try:
             import subprocess
             import sys

@@ -25,10 +25,12 @@ from urllib.parse import unquote, urlparse
 
 import emtk.im as im
 from emtk.app import ImApp
+from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
 from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.im_core import Col
+from emtk.view_form import FormState, draw_sections
 from emtk.widgets.text_editor import Language, TextEditor
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -1344,11 +1346,24 @@ class CodeEditorGui:
         self.replace_text = ""
         self.find_case = False
         self.find_whole = False
+        self.find_regex = False
         self.find_status = ""
         self._find_focus = False
         self.pending_actions: list[Callable[[], None]] = []
         self._nav_seen: tuple[EditorDocument, int, int] | None = None
         gui_dir = pathlib.Path(__file__).parent
+        #: The declared tables (project tree, symbols) and what they keep between frames.
+        self.view_spec = json.loads((gui_dir / "editor_app.view.json").read_text(encoding="utf-8"))
+        self.form = FormState()
+        #: Keys of the open folders of the project table (the table reads and writes this set).
+        self.project_expanded: set[str] = set()
+        self._project_cache: tuple = (None, [])
+        self._symbol_cache: tuple = (None, [])
+        #: File ▸ Open Notebook…: the shipped examples by group.
+        self.notebook_window = DialogWindow(
+            "Open Notebook", size=(420.0, 520.0), key="code_editor_notebooks"
+        )
+        self.notebook_window.open = False
         self.tour = EmTkGuidedTour(
             gui_dir / "guide.json",
             get_target_rect=self.item_rects.get,
@@ -1420,6 +1435,12 @@ class CodeEditorGui:
             "language", "Python", self._draw_lsp, dock="files", closable=True, scrollable=True
         )
         self.docks.add_window(
+            "symbols", "Symbols", self._draw_symbols, dock="files", closable=True, scrollable=False
+        )
+        self.docks.add_window(
+            "kernel", "Kernel", self._draw_kernel, dock="output", closable=True, scrollable=True
+        )
+        self.docks.add_window(
             "editor_settings",
             "⚙️ Editor settings",
             self._draw_settings_content,
@@ -1476,6 +1497,8 @@ class CodeEditorGui:
             if im.begin("Agent permission##editor_permission"):
                 self.chat_gui._draw_permission_banner()
             im.end()
+        self.chat_gui.draw_overlays(width, height)
+        self._draw_notebook_window(width, height)
         self.help_window.draw((0.0, 0.0, width, height))
         self.tour.draw(width, height)
 
@@ -1494,6 +1517,22 @@ class CodeEditorGui:
         self.find_open = False
         self.find_status = ""
 
+    def _set_find(self, editor) -> bool:
+        """Give *editor* the search of the find bar; False (and a status) when it cannot take it.
+
+        Regular-expression search needs emtk 0.1.10 (``set_find_text(..., regex=True)``); an older
+        emtk says so in the find bar instead of raising.
+        """
+        if not self.find_regex:
+            editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+            return True
+        try:
+            editor.set_find_text(self.find_text, self.find_case, self.find_whole, regex=True)
+        except TypeError:
+            self.find_status = "Regex search needs emtk 0.1.10 or newer"
+            return False
+        return True
+
     def _find_editor(self):
         doc = self.model.active_doc
         return doc.editor if doc is not None and doc.notebook is None else None
@@ -1502,7 +1541,8 @@ class CodeEditorGui:
         editor = self._find_editor()
         if editor is None or not self.find_text:
             return False
-        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        if not self._set_find(editor):
+            return False
         mark = self.model.nav_mark()
         found = editor.find_next()
         self.find_status = "" if found else "Not found"
@@ -1515,7 +1555,8 @@ class CodeEditorGui:
         editor = self._find_editor()
         if editor is None or not self.find_text:
             return False
-        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        if not self._set_find(editor):
+            return False
         mark = self.model.nav_mark()
         found = editor.find_previous()
         self.find_status = "" if found else "Not found"
@@ -1527,7 +1568,8 @@ class CodeEditorGui:
         editor = self._find_editor()
         if editor is None or not self.find_text:
             return 0
-        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        if not self._set_find(editor):
+            return 0
         count = editor.find_all()
         self.find_status = f"{count} matches" if count else "Not found"
         return count
@@ -1537,13 +1579,21 @@ class CodeEditorGui:
         editor = self._find_editor()
         if editor is None or not self.find_text:
             return False
-        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        if not self._set_find(editor):
+            return False
         selected = editor.selected_text() if editor.cursors.any_has_selection else ""
-        same = (
-            selected == self.find_text
-            if self.find_case
-            else selected.lower() == self.find_text.lower()
-        )
+        if self.find_regex:
+            try:
+                flags = 0 if self.find_case else re.IGNORECASE
+                same = bool(selected) and re.fullmatch(self.find_text, selected, flags) is not None
+            except re.error:
+                same = False
+        else:
+            same = (
+                selected == self.find_text
+                if self.find_case
+                else selected.lower() == self.find_text.lower()
+            )
         if not same and not self.find_next():
             return False
         editor.replace_current(self.replace_text)
@@ -1554,12 +1604,20 @@ class CodeEditorGui:
         editor = self._find_editor()
         if editor is None or not self.find_text:
             return 0
-        editor.set_find_text(self.find_text, self.find_case, self.find_whole)
+        if not self._set_find(editor):
+            return 0
         count = editor.replace_all(self.replace_text)
         self.find_status = f"{count} replaced" if count else "Not found"
         return count
 
-    def _draw_find_bar(self) -> None:
+    def _toggle_row(self, box, label: str) -> None:
+        """Keep a find-bar toggle on the row when it fits, else start the next row (narrow windows)."""
+        if box is None:
+            im.same_line()
+        else:
+            self._same_line_or_wrap(box, im.calc_text_size(label)[0] + im.get_frame_height() + 12.0)
+
+    def _draw_find_bar(self, box: tuple[float, float, float, float] | None = None) -> None:
         if not self.find_open or self._find_editor() is None:
             return
         flags = im.InputTextFlags.ENTER_RETURNS_TRUE
@@ -1596,12 +1654,15 @@ class CodeEditorGui:
         if im.button(tr("All")):
             self.find_all()
         im.set_item_tooltip(tr("Put a caret on every match; typing then edits all of them"))
-        im.same_line()
+        self._toggle_row(box, tr("Match case"))
         _, self.find_case = im.checkbox(tr("Match case") + "##find_case", self.find_case)
         im.set_item_tooltip(tr("Match upper and lower case exactly"))
-        im.same_line()
+        self._toggle_row(box, tr("Whole word"))
         _, self.find_whole = im.checkbox(tr("Whole word") + "##find_whole", self.find_whole)
         im.set_item_tooltip(tr("Match only whole words"))
+        self._toggle_row(box, tr("Regex"))
+        _, self.find_regex = im.checkbox(tr("Regex") + "##find_regex", self.find_regex)
+        im.set_item_tooltip(tr("Read the search text as a regular expression (Python syntax)"))
         im.text(tr("Replace"))
         im.same_line()
         im.set_next_item_width(170.0)
@@ -1732,7 +1793,10 @@ class CodeEditorGui:
                 if result is False:
                     self._file_dialog = None
                 elif result:
-                    if self._dialog_document is None:
+                    if self._dialog_operation == "folder":
+                        self.set_project_root(result[0])
+                        self._file_dialog = None
+                    elif self._dialog_document is None:
                         for path in result:
                             self.model.open_file(path)
                         self._file_dialog = None
@@ -1804,11 +1868,267 @@ class CodeEditorGui:
         im.set_item_tooltip(tr("Copy file path"))
         ctx.end()
 
+    # -- project table (editor_app.view.json "project": a data_table tree) ------------------------- #
+    @staticmethod
+    def _kind_of(path: pathlib.Path) -> str:
+        if path.is_dir():
+            return "Folder"
+        suffix = path.suffix.lstrip(".")
+        return f"{suffix} File" if suffix else "File"
+
+    @staticmethod
+    def _size_of(path: pathlib.Path) -> str:
+        if path.is_dir():
+            return ""
+        try:
+            size = float(path.stat().st_size)
+        except OSError:
+            return ""
+        for unit in ("bytes", "KB", "MB", "GB"):
+            if size < 1024.0 or unit == "GB":
+                return f"{int(size)} {unit}" if unit == "bytes" else f"{size:.1f} {unit}"
+            size /= 1024.0
+        return ""
+
+    @staticmethod
+    def _modified_of(path: pathlib.Path) -> str:
+        import datetime as _dt
+
+        try:
+            return _dt.datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+        except OSError:
+            return ""
+
+    def project_rows(self) -> list[dict]:
+        """The rows of the project table: the root's entries and those of every expanded folder.
+
+        A collapsed folder carries one placeholder child so its triangle is drawn; listing a
+        folder costs its own directory read only when it is opened. While the filter has text,
+        every folder holding a match is listed open. The list is rebuilt only when the root,
+        the open folders or the filter change, so the table keeps its sort and selection.
+        """
+        query = self.file_filter.strip().lower()
+        token = (str(self.model.project_root), frozenset(self.project_expanded), query)
+        if self._project_cache[0] == token:
+            return self._project_cache[1]
+        rows: list[dict] = []
+
+        def add(directory: pathlib.Path, parent: str, depth: int) -> None:
+            for entry in self._project_entries(directory):
+                key = str(entry)
+                is_dir = entry.is_dir() and not entry.is_symlink()
+                rows.append(
+                    {
+                        "key": key,
+                        "parent": parent,
+                        "name": entry.name,
+                        "size": self._size_of(entry),
+                        "kind": self._kind_of(entry),
+                        "modified": self._modified_of(entry),
+                        "path": key,
+                        "is_dir": is_dir,
+                    }
+                )
+                if not is_dir:
+                    continue
+                if (query and depth < 12) or key in self.project_expanded:
+                    if query:
+                        self.project_expanded.add(key)
+                    add(entry, key, depth + 1)
+                else:
+                    rows.append(
+                        {"key": key + os.sep + "\0", "parent": key, "name": "…", "size": "",
+                         "kind": "", "modified": "", "path": key, "is_dir": False,
+                         "placeholder": True}
+                    )
+
+        try:
+            add(self.model.project_root, "", 0)
+        except Exception as error:  # an unreadable folder must not take the window down
+            rows.append({"key": "error", "parent": "", "name": f"Error listing files: {error}",
+                         "size": "", "kind": "", "modified": "", "path": "", "is_dir": False})
+        token = (str(self.model.project_root), frozenset(self.project_expanded), query)
+        self._project_cache = (token, rows)
+        return rows
+
+    def refresh_project(self) -> None:
+        """Re-read the project folder on the next frame (after a save, a new root)."""
+        self._project_cache = (None, [])
+
+    @staticmethod
+    def _row_path(record) -> pathlib.Path | None:
+        if not record or record.get("placeholder") or not record.get("path"):
+            return None
+        return pathlib.Path(record["path"])
+
+    def project_selected(self, record) -> None:
+        """A click on a file row opens it (as the Qt tree did); a folder row only selects."""
+        path = self._row_path(record)
+        if path is not None and path.is_file():
+            self.model.open_file(path)
+
+    def project_is_file(self, record) -> bool:
+        path = self._row_path(record)
+        return bool(path is not None and path.is_file())
+
+    def project_is_dir(self, record) -> bool:
+        path = self._row_path(record)
+        return bool(path is not None and path.is_dir())
+
+    def project_open(self, record) -> None:
+        path = self._row_path(record)
+        if path is not None and path.is_file():
+            self.model.open_file(path)
+
+    def project_use_root(self, record) -> None:
+        path = self._row_path(record)
+        if path is not None and path.is_dir():
+            self.set_project_root(path)
+
+    def project_copy_path(self, record) -> None:
+        path = self._row_path(record)
+        if path is not None:
+            im.set_clipboard_text(str(path.resolve()))
+
+    def project_copy_relative(self, record) -> None:
+        path = self._row_path(record)
+        if path is not None:
+            im.set_clipboard_text(os.path.relpath(path, self.model.project_root))
+
+    def project_copy_name(self, record) -> None:
+        path = self._row_path(record)
+        if path is not None:
+            im.set_clipboard_text(path.name)
+
+    def set_project_root(self, path: str | pathlib.Path) -> None:
+        """Show *path*'s files as the project (File ▸ Folder…, *Use as project root*, ↑ Parent)."""
+        self.model.project_root = pathlib.Path(path)
+        self.file_filter = ""
+        self.project_expanded = set()
+        self.refresh_project()
+
+    def _request_folder(self) -> None:
+        """File ▸ Folder…: choose the project folder."""
+        self._dialog_document = None
+        self._dialog_operation = "folder"
+        self._dialog_error = ""
+        self._file_dialog = FileDialog(
+            "Open folder", mode="folder", directory=str(self.model.project_root)
+        )
+
+    # -- symbols table (editor_app.view.json "symbols") -------------------------------------------- #
+    def symbol_rows(self) -> list[dict]:
+        """One row per symbol of the active Python document; the same list until the text changes."""
+        symbols = self.model.document_symbols()
+        if self._symbol_cache[0] is symbols:
+            return self._symbol_cache[1]
+        rows = [
+            {
+                "key": f"{index}:{symbol.display_name}",
+                "symbol": symbol.display_name,
+                "kind": symbol.kind,
+                "line": int(symbol.line),
+                "column": int(symbol.column),
+            }
+            for index, symbol in enumerate(symbols)
+        ]
+        self._symbol_cache = (symbols, rows)
+        return rows
+
+    def symbol_selected(self, record) -> None:
+        """A click on a symbol jumps the editor to its line (Back returns)."""
+        if record and record.get("line"):
+            self.model.goto_line(int(record["line"]), int(record.get("column", 0)))
+
+    def _draw_symbols(self, box: tuple[float, float, float, float]) -> None:
+        if not self.symbol_rows():
+            im.text_disabled(tr("No symbols: open a Python document."))
+        draw_sections(self.view_spec["symbols"], self, self.form, titles=False)
+
+    # -- kernel dock -------------------------------------------------------------------------------- #
+    def _draw_kernel(self, box: tuple[float, float, float, float]) -> None:
+        """The active notebook's kernel terminal, sharing the notebook's shell."""
+        doc = self.model.active_doc
+        notebook = doc.notebook if doc is not None else None
+        im.begin_disabled(notebook is None)
+        if im.button(tr("🔄 Restart") + "##kernel_restart") and notebook is not None:
+            notebook.restart_shell()
+        im.set_item_tooltip(
+            tr("Restart the notebook's shell: variables and the execution count are reset")
+        )
+        im.end_disabled()
+        if notebook is None:
+            im.text_disabled(tr("Open a notebook to get a kernel terminal."))
+            return
+        im.same_line()
+        im.text_disabled(doc.name)
+        notebook.draw_terminal(box[2], key="kernel_terminal")
+
+    # -- view toggles ------------------------------------------------------------------------------- #
+    #: The docks View lists, as the Qt editor's View menu: ``(dock key, label)``.
+    VIEW_DOCKS = (
+        ("files", "Project"),
+        ("symbols", "Symbols"),
+        ("diagnostics", "Diagnostics"),
+        ("output", "Output"),
+        ("kernel", "Kernel"),
+        ("agent", "Agent"),
+    )
+
+    def toggle_dock(self, key: str) -> None:
+        """View ▸ <dock>: show a hidden dock on top, bring a covered tab forward, or hide it."""
+        self.docks.toggle(key)
+
+    def toggle_lsp(self) -> None:
+        """Settings ▸ Enable Python LSP."""
+        if self.model.enable_lsp:
+            self.model.stop_lsp()
+        else:
+            self.model.start_lsp()
+        if self.save_preferences is not None:
+            self.save_preferences()
+
+    def toggle_view_option(self, name: str) -> None:
+        """Settings ▸ Show Line Numbers / Show Whitespace (the ¶ toolbar toggle)."""
+        setattr(self.model, name, not getattr(self.model, name))
+        if self.save_preferences is not None:
+            self.save_preferences()
+
+    def open_shipped_notebook(self, path: str | pathlib.Path) -> None:
+        """File ▸ Open Notebook…: open a shipped example notebook (and close the picker)."""
+        self.model.open_file(path)
+        self.notebook_window.hide()
+
+    def _draw_notebook_window(self, width: float, height: float) -> None:
+        """The shipped example notebooks, grouped as the Qt *Open Notebook* submenu grouped them."""
+        if not self.notebook_window.open:
+            return
+        from chisurf.plugins.core.code_editor.shipped_notebooks import notebook_groups
+
+        closed = self.notebook_window.begin((0.0, 0.0, width, height)) == "close"
+        groups = notebook_groups()
+        if not groups:
+            im.text_disabled(tr("No shipped notebooks found"))
+        for group, paths in groups.items():
+            if im.collapsing_header(f"{group}##notebook_group_{group}", True):
+                for path in paths:
+                    if im.selectable(f"{path.stem}##notebook_{path.name}"):
+                        self.open_shipped_notebook(path)
+                    im.set_item_tooltip(tr("Open this example notebook"))
+        self.notebook_window.end()
+        if closed:
+            self.notebook_window.hide()
+
+
     def _draw_file_tree(self, box: tuple[float, float, float, float]) -> None:
-        """Render project directory files in an immediate-mode tree with filtering and scrolling."""
+        """The project folder as a table: Name, Size, Kind, Date Modified (``editor_app.view.json``)."""
         im.text_disabled(f"Root: {self.model.project_root.name}")
         self._project_context_menu(self.model.project_root)
+        if im.small_button(tr("📁 Folder") + "##project_folder"):
+            self._request_folder()
+        im.set_item_tooltip(tr("Folder… — choose the project folder shown here"))
         if self.model.recent_files:
+            im.same_line()
             if im.small_button("Recent files"):
                 im.open_popup("recent_files")
             im.set_item_tooltip(tr("Reopen a recently opened or saved document"))
@@ -1820,67 +2140,17 @@ class CodeEditorGui:
                     im.set_item_tooltip(path)
                 im.end_popup()
         if self.model.project_root.parent != self.model.project_root:
+            im.same_line()
             if im.small_button("↑ Parent"):
-                self.model.project_root = self.model.project_root.parent
-            im.set_item_tooltip(tr("↑ Parent"))
+                self.set_project_root(self.model.project_root.parent)
+            im.set_item_tooltip(tr("Show the parent folder as the project"))
 
-        avail_w = box[2]
-        im.set_next_item_width(avail_w)
+        im.set_next_item_width(box[2])
         _, self.file_filter = im.input_text(
             "##file_filter", self.file_filter, hint=tr("🔍 Filter files...")
         )
         im.set_item_tooltip(tr("Filter project files by name"))
-        im.separator()
-
-        def _file_icon(name: str) -> str:
-            low = name.lower()
-            if low.endswith(".py"):
-                return "🐍"
-            if low.endswith((".json", ".toml", ".yaml", ".yml")):
-                return "⚙️"
-            if low.endswith((".md", ".txt", ".rst")):
-                return "📝"
-            if low.endswith((".png", ".jpg", ".jpeg", ".svg")):
-                return "🖼️"
-            if low.endswith((".h5", ".dat", ".csv", ".tsv", ".npz", ".npy")):
-                return "📊"
-            return "📄"
-
-        curr_y = im.get_cursor_screen_pos()[1]
-        avail_h = max(20.0, box[1] + box[3] - curr_y)
-        im.begin_child((*im.get_cursor_screen_pos(), avail_w, avail_h))
-
-        def draw_directory(directory: pathlib.Path) -> None:
-            for entry in self._project_entries(directory):
-                im.push_id(str(entry))
-                if entry.is_dir() and not entry.is_symlink():
-                    expanded = im.tree_node(f"📁 {entry.name}")
-                    im.set_item_tooltip(str(entry))
-                    self._project_context_menu(entry)
-                    # Double-click promotes the folder to the project root,
-                    # matching the context-menu action.
-                    double_clicked = im.is_item_hovered() and im.is_mouse_double_clicked(0)
-                    if expanded:
-                        draw_directory(entry)
-                        im.tree_pop()
-                    if double_clicked:
-                        self.model.project_root = entry
-                        return
-                else:
-                    active = self.model.active_doc
-                    selected = bool(active and active.path == str(entry.resolve()))
-                    if im.selectable(f"{_file_icon(entry.name)} {entry.name}", selected):
-                        self.model.open_file(entry)
-                    im.set_item_tooltip(str(entry))
-                    self._project_context_menu(entry)
-                im.pop_id()
-
-        try:
-            draw_directory(self.model.project_root)
-        except Exception as e:
-            im.text_colored((240, 100, 100, 255), f"Error listing files: {e}")
-
-        im.end_child()
+        draw_sections(self.view_spec["project"], self, self.form, titles=False)
 
     def _project_entries(self, directory: pathlib.Path) -> list[pathlib.Path]:
         """Keep matching ancestor directories while avoiding symlink recursion."""
@@ -1907,8 +2177,7 @@ class CodeEditorGui:
                 im.close_current_popup()
             im.set_item_tooltip(tr("Open in editor"))
             if entry.is_dir() and im.menu_item("Use as project root"):
-                self.model.project_root = entry
-                self.file_filter = ""
+                self.set_project_root(entry)
                 im.close_current_popup()
             im.set_item_tooltip(tr("Use as project root"))
             if im.menu_item("Copy full path"):
@@ -1950,20 +2219,22 @@ class CodeEditorGui:
         )
         if im.begin_main_menu_bar():
             if im.begin_menu("File"):
-                if im.menu_item("New"):
+                if im.menu_item("New", "Ctrl+N"):
                     self.model.new_document()
-                if im.menu_item("Open…"):
+                if im.menu_item("Open…", "Ctrl+O"):
                     self._request_open()
-                if im.menu_item("Save"):
+                if im.menu_item("Folder…"):
+                    self._request_folder()
+                if im.menu_item("Save", "Ctrl+S"):
                     self._request_save(self.model.active_doc)
-                if im.menu_item("Save As…"):
+                if im.menu_item("Save As…", "Ctrl+Shift+S"):
                     self._request_save(self.model.active_doc, save_as=True)
-                if self.model.documents and im.menu_item("Close"):
+                if im.menu_item("Reload", enabled=bool(active_doc and active_doc.path)):
+                    self._request_reload(active_doc)
+                if im.menu_item("Open Notebook…"):
+                    self.notebook_window.show()
+                if self.model.documents and im.menu_item("Close", "Ctrl+W"):
                     self._request_close(self.model.active_doc)
-                im.separator()
-                if im.menu_item("Settings…"):
-                    self.settings_open = True
-                    self.docks.focus("editor_settings")
                 im.end_menu()
             if im.begin_menu("Edit"):
                 if im.menu_item("Find…", "Ctrl+F"):
@@ -1973,12 +2244,38 @@ class CodeEditorGui:
                 if im.menu_item("Find previous", "Shift+F3"):
                     self.find_previous()
                 im.separator()
-                if im.menu_item("Go back", nav_shortcuts()[0], enabled=self.model.can_nav_back):
+                if im.menu_item("Hint", "Ctrl+Space", enabled=self.model.enable_lsp):
+                    self.model.request_lsp("completion")
+                im.end_menu()
+            if im.begin_menu("Settings"):
+                if im.menu_item("Settings…"):
+                    self.settings_open = True
+                    self.docks.focus("editor_settings")
+                im.separator()
+                if im.menu_item("Show Line Numbers", selected=self.model.show_line_numbers):
+                    self.toggle_view_option("show_line_numbers")
+                if im.menu_item("Show Whitespace", selected=self.model.show_whitespace):
+                    self.toggle_view_option("show_whitespace")
+                if im.menu_item("Enable Python LSP", selected=self.model.enable_lsp):
+                    self.toggle_lsp()
+                im.end_menu()
+            if im.begin_menu("Navigate"):
+                if im.menu_item("Back", nav_shortcuts()[0], enabled=self.model.can_nav_back):
                     self.model.nav_back()
-                if im.menu_item(
-                    "Go forward", nav_shortcuts()[1], enabled=self.model.can_nav_forward
-                ):
+                if im.menu_item("Forward", nav_shortcuts()[1], enabled=self.model.can_nav_forward):
                     self.model.nav_forward()
+                if im.menu_item("Go to definition", "F12", enabled=self.model.enable_lsp):
+                    self.model.request_lsp("definition")
+                im.end_menu()
+            if im.begin_menu("View"):
+                for key, label in self.VIEW_DOCKS:
+                    if im.menu_item(label, selected=self.docks.is_visible(key)):
+                        self.toggle_dock(key)
+                im.separator()
+                if im.menu_item("Increase font size"):
+                    self.model.font_scale = min(3.0, self.model.font_scale + 0.1)
+                if im.menu_item("Decrease font size"):
+                    self.model.font_scale = max(0.6, self.model.font_scale - 0.1)
                 im.end_menu()
             if im.begin_menu("Run"):
                 if self.model.is_running_script or notebook_running:
@@ -1987,7 +2284,7 @@ class CodeEditorGui:
                 elif im.menu_item("Run Script"):
                     self.model.run_active_script()
                 im.separator()
-                if im.menu_item("Ruff Check"):
+                if im.menu_item("Lint (Ruff Check)"):
                     self.model.start_ruff()
                 if im.menu_item("Ruff Fix"):
                     self.model.start_ruff(fix=True)
@@ -2009,16 +2306,11 @@ class CodeEditorGui:
                     if im.menu_item("Export Python"):
                         self._request_export_notebook(active_doc)
                 im.end_menu()
-            if im.begin_menu("View"):
-                if im.menu_item("Increase font size"):
-                    self.model.font_scale = min(3.0, self.model.font_scale + 0.1)
-                if im.menu_item("Decrease font size"):
-                    self.model.font_scale = max(0.6, self.model.font_scale - 0.1)
-                im.end_menu()
             if im.begin_menu("Help"):
-                if im.menu_item("Editor settings…"):
-                    self.settings_open = True
-                    self.docks.focus("editor_settings")
+                if im.menu_item("Help"):
+                    self.help_window.show()
+                if im.menu_item("Guide"):
+                    self.tour.start()
                 im.end_menu()
             im.end_main_menu_bar()
 
@@ -2040,6 +2332,11 @@ class CodeEditorGui:
         if im.button(tr("📝 Save As")):
             self._request_save(self.model.active_doc, save_as=True)
         im.set_item_tooltip(tr("Save As… — save the active document under a chosen name"))
+        self._same_line_or_wrap(box, im.calc_text_size("📁 Folder")[0] + 14.0)
+        if im.button(tr("📁 Folder")):
+            self._request_folder()
+        im.set_item_tooltip(tr("Folder… — choose the project folder shown in the Project dock"))
+        self.item_rects["folder"] = im.get_item_rect()
         if self.model.documents:
             self._same_line_or_wrap(box, im.calc_text_size("✖ Close")[0] + 14.0)
             if action_button(
@@ -2078,8 +2375,40 @@ class CodeEditorGui:
         )
         if changed:
             self.model.run_endpoint = "console" if endpoint == 1 else "process"
-        self._same_line_or_wrap(box, im.calc_text_size("🧹 Check")[0] + 14.0)
-        if im.button(tr("🧹 Check")):
+        # Navigation and language help, as on the Qt toolbar: Back / Fwd walk the jump history,
+        # Def and Hint ask the Python language server (Settings ▸ Enable Python LSP).
+        im.begin_disabled(not self.model.can_nav_back)
+        self._same_line_or_wrap(box, im.calc_text_size("◀ Back")[0] + 14.0)
+        if im.button(tr("◀ Back") + "##toolbar_back"):
+            self.model.nav_back()
+        im.set_item_tooltip(
+            _with_shortcut(tr("Back — return to the caret position before the last jump"), nav_shortcuts()[0])
+        )
+        im.end_disabled()
+        im.begin_disabled(not self.model.can_nav_forward)
+        self._same_line_or_wrap(box, im.calc_text_size("▶ Fwd")[0] + 14.0)
+        if im.button(tr("▶ Fwd") + "##toolbar_forward"):
+            self.model.nav_forward()
+        im.set_item_tooltip(
+            _with_shortcut(tr("Fwd — go forward again after going back"), nav_shortcuts()[1])
+        )
+        im.end_disabled()
+        im.begin_disabled(not self.model.enable_lsp)
+        self._same_line_or_wrap(box, im.calc_text_size("🔍 Def")[0] + 14.0)
+        if im.button(tr("🔍 Def") + "##toolbar_definition"):
+            self.model.request_lsp("definition")
+        im.set_item_tooltip(
+            _with_shortcut(tr("Def — go to the definition of the name at the caret (Python LSP)"), "F12")
+        )
+        self._same_line_or_wrap(box, im.calc_text_size("✨ Hint")[0] + 14.0)
+        if im.button(tr("✨ Hint") + "##toolbar_hint"):
+            self.model.request_lsp("completion")
+        im.set_item_tooltip(
+            _with_shortcut(tr("Hint — completions for the caret position (Python LSP)"), "Ctrl/Cmd+Space")
+        )
+        im.end_disabled()
+        self._same_line_or_wrap(box, im.calc_text_size("🧹 Lint")[0] + 14.0)
+        if im.button(tr("🧹 Lint")):
             self.model.start_ruff()
         self.item_rects["check"] = im.get_item_rect()
         im.set_item_tooltip(
@@ -2101,6 +2430,11 @@ class CodeEditorGui:
                 "New notebook — create an empty notebook with editable cells and a persistent ChiSurf shell"
             )
         )
+        self._same_line_or_wrap(box, im.calc_text_size("¶")[0] + 14.0)
+        _, shown = im.checkbox("¶##toolbar_whitespace", self.model.show_whitespace)
+        if shown != self.model.show_whitespace:
+            self.toggle_view_option("show_whitespace")
+        im.set_item_tooltip(tr("¶ — show spaces and tabs as marks (Settings ▸ Show Whitespace)"))
         self._same_line_or_wrap(box, im.calc_text_size("⚙ Settings")[0] + 14.0)
         if im.button(tr("⚙ Settings")):
             self.settings_open = True
@@ -2108,6 +2442,10 @@ class CodeEditorGui:
         im.set_item_tooltip(
             tr("Settings… — open the native editor appearance and diagnostics settings")
         )
+        self._same_line_or_wrap(box, im.calc_text_size("🤖 Agent")[0] + 14.0)
+        if im.button(tr("🤖 Agent")):
+            self.toggle_dock("agent")
+        im.set_item_tooltip(tr("Agent — show or hide the AI assistant (View ▸ Agent)"))
         self._same_line_or_wrap(box, 70.0)
         if action_button("guide"):
             self.tour.start()
@@ -2154,7 +2492,7 @@ class CodeEditorGui:
             im.text_disabled(tr("No open documents. Click 'New' or pick a file on the left."))
             return
 
-        self._draw_find_bar()
+        self._draw_find_bar(box)
 
         # Tab bar
         if im.begin_tab_bar("editor_tabs"):
@@ -2236,7 +2574,9 @@ class CodeEditorGui:
                 pass
             path_label = active.path if active.path else "Untitled"
             state = "Modified" if active.is_modified else ("Saved" if active.path else "Unsaved")
-            tail = f"  ·  Ln {cur_line}, Col {cur_col}  |  UTF-8  |  {state}"
+            tail = (
+                f"  ·  Ln {cur_line}, Col {cur_col}  |  UTF-8  |  {state}  |  {self.model.lsp_status}"
+            )
             room = max(40.0, box[2] - 16.0 - im.calc_text_size(tail)[0])
             shown = str(path_label)
             while len(shown) > 4 and im.calc_text_size(shown)[0] > room:
@@ -2692,6 +3032,21 @@ class CodeEditorApp(ImApp):
         finally:
             im.pop_font_scale()
         self.model._sync_document_store()
+
+
+def receive_open_file(app, payload: dict) -> None:
+    """Hand-off receiver (manifest ``accepts`` ``open_file``): open ``payload["path"]``.
+
+    ``payload["line"]`` (optional, 1-based) places the caret there. A file that cannot be opened
+    raises, so the host says so in its status line.
+    """
+    path = pathlib.Path(str(payload["path"]))
+    if not path.is_file():
+        raise FileNotFoundError(f"{path} does not exist")
+    line = payload.get("line")
+    if app.model.open_file(path, line=int(line) if line else None) is None:
+        raise ValueError(f"the code editor could not open {path.name}")
+    app.request_frame()
 
 
 def make_editor_app(project_root: str | None = None) -> CodeEditorApp:

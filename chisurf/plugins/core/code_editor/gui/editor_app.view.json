@@ -1,3 +1,65 @@
 {
-  "window": {"width": 1200, "height": 800}
+  "window": {"width": 1200, "height": 800},
+  "_comment": "Code Editor, native emtk window. The project tree and the symbol list are declared tables (emtk view_form data_table over gui/editor_app.py CodeEditorGui); menus, toolbar, editor and docks are drawn in code.",
+  "project": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "",
+      "description": "The files of the project folder. Click a file to open it; expand a folder with its triangle or a double click. Right-click a row for its actions. Click a header to sort. In a narrow pane Date Modified, Kind and Size give way to Name (a row's tooltip lists them).",
+      "options": {
+        "source": "project_rows",
+        "row_key": "key",
+        "tree_key": "parent",
+        "expanded_attr": "project_expanded",
+        "selected_call": "project_selected",
+        "editable": false,
+        "expand": true,
+        "fit_columns": true,
+        "min_column_width": 50,
+        "context_menu": [
+          {"label": "Open in editor", "call": "project_open", "enabled_when": "project_is_file",
+           "description": "Open this file in a tab of the editor."},
+          {"label": "Use as project root", "call": "project_use_root", "enabled_when": "project_is_dir",
+           "description": "Show this folder's files as the project."},
+          {"separator": true},
+          {"label": "Copy path", "call": "project_copy_path",
+           "description": "Copy the full path of this file or folder to the clipboard."},
+          {"label": "Copy relative path", "call": "project_copy_relative",
+           "description": "Copy the path relative to the project folder to the clipboard."},
+          {"label": "Copy file name", "call": "project_copy_name",
+           "description": "Copy the name of this file or folder to the clipboard."}
+        ],
+        "columns": [
+          {"key": "name", "title": "Name", "width": 200, "min_width": 130, "tooltip": "File or folder name."},
+          {"key": "size", "title": "Size", "width": 70, "align": "right", "collapse_order": 3, "tooltip": "File size; empty for a folder."},
+          {"key": "kind", "title": "Kind", "width": 80, "collapse_order": 2, "tooltip": "Folder, or the file's type by its extension."},
+          {"key": "modified", "title": "Date Modified", "width": 130, "collapse_order": 1, "tooltip": "When the file was last changed."}
+        ]
+      }
+    }
+  ],
+  "symbols": [
+    {
+      "type": "custom",
+      "key": "data_table",
+      "title": "",
+      "description": "Classes, functions, methods and sections of the active Python document, read from the unsaved text. Click a row to jump to it.",
+      "options": {
+        "source": "symbol_rows",
+        "row_key": "key",
+        "selected_call": "symbol_selected",
+        "editable": false,
+        "expand": true,
+        "fit_columns": true,
+        "status": true,
+        "filter": true,
+        "columns": [
+          {"key": "symbol", "title": "Symbol", "width": 180, "tooltip": "Name of the class, function, method or section (methods as Class.method)."},
+          {"key": "kind", "title": "Kind", "width": 70, "tooltip": "class, function, method or section."},
+          {"key": "line", "title": "Line", "width": 50, "align": "right", "tooltip": "Line where it is defined."}
+        ]
+      }
+    }
+  ]
 }

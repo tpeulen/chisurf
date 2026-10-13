@@ -1,0 +1,303 @@
+{
+ "_recorded": {
+  "date": "2026-10-13",
+  "from": "chisurf.plugins.core.code_editor.window.CodeEditorWindow (the live Qt editor, offscreen, 1200x800, empty state): menu bar, toolbar, docks, combos, buttons, line-edit placeholders, tree headers, tab bars and status labels, plus the parity tool's control inventory (test.gui.emtk_port_parity qt_before)",
+  "source_commit": "2d3c92abce82aa1c53118702c8d9fa68bf4340ae"
+ },
+ "buttons": [
+  "+",
+  ".*",
+  "Aa",
+  "Agent",
+  "Back",
+  "Def",
+  "Folder",
+  "Fwd",
+  "Hint",
+  "Lint",
+  "New",
+  "Open",
+  "Run",
+  "Save",
+  "Settings",
+  "Stop",
+  "\\b",
+  "▲",
+  "▼",
+  "✕",
+  "✕ Cancel",
+  "➡ Send",
+  "💡 Things to ask",
+  "📚 Wiki",
+  "🔄 Restart"
+ ],
+ "combos": {
+  "0": [
+   "ACP Agent (stdio)  [acp-agent]",
+   "OpenAI (ChatGPT)  [gpt-4o]",
+   "Mistral ✓  [mistral-large-latest]",
+   "Local (Ollama, LMStudio...)  [llama3.2]",
+   "Custom"
+  ],
+  "1": [
+   "💬 Chat only",
+   "🔧 ChiSurf tools",
+   "🤖 Full control"
+  ],
+  "2": [
+   "In ChiSurf",
+   "Separate process"
+  ]
+ },
+ "docks": [
+  "Symbols",
+  "Project",
+  "Diagnostics",
+  "Kernel",
+  "Output",
+  "Agent"
+ ],
+ "inventory": {
+  "buttons": [
+   "+",
+   ".*",
+   "Aa",
+   "Agent",
+   "Back",
+   "Def",
+   "Folder",
+   "Fwd",
+   "Hint",
+   "Lint",
+   "New",
+   "Open",
+   "Run",
+   "Save",
+   "Settings",
+   "Stop",
+   "\\b",
+   "▲",
+   "▼",
+   "✕",
+   "✕ Cancel",
+   "➡ Send",
+   "💡 Things to ask",
+   "📚 Wiki",
+   "🔄 Restart"
+  ],
+  "controls": [
+   "--",
+   ".*",
+   "/",
+   "1",
+   "21.05.261057",
+   "\\b",
+   "aa",
+   "agent",
+   "aiassistant",
+   "back",
+   "cancel",
+   "datemodified",
+   "def",
+   "drive",
+   "folder",
+   "fwd",
+   "hint",
+   "kind",
+   "line",
+   "lint",
+   "ln1,col0",
+   "lspidle",
+   "name",
+   "new",
+   "open",
+   "openanotebooktogetakernelterminal.",
+   "restart",
+   "run",
+   "save",
+   "send",
+   "settings",
+   "size",
+   "stop",
+   "symbol",
+   "thingstoask",
+   "untitled",
+   "wiki"
+  ],
+  "labels": [
+   "LSP idle",
+   "Ln 1, Col 0",
+   "Open a notebook to get a kernel terminal.",
+   "Untitled",
+   "⬤",
+   "🤖 AI Assistant"
+  ]
+ },
+ "line_edits": [
+  "Find in this page…  (Enter for next)",
+  "Find…"
+ ],
+ "menus": {
+  "Edit": [
+   "Find",
+   "Hint [Ctrl+Space]"
+  ],
+  "File": [
+   "New [Ctrl+N]",
+   "Open [Ctrl+O]",
+   "Folder",
+   "Save [Ctrl+S]",
+   "Save As",
+   "Reload",
+   {
+    "Open Notebook": [
+     {
+      "FLIM": [
+       "FLIM_01_IntensityImages",
+       "FLIM_02_MeanArrivalTime",
+       "FLIM_03_ImageSegmentation",
+       "FLIM_04_Decays_from_ROIs",
+       "FLIM_05_PixelwiseInformation_2D"
+      ]
+     },
+     {
+      "HMM": [
+       "HMM_Binned_Traces"
+      ]
+     },
+     {
+      "Other": [
+       "Colocalization",
+       "TTTR-Correlation",
+       "TTTR-Split"
+      ]
+     },
+     {
+      "Particle": [
+       "Particle_Tracking_Simulation_And_Recovery"
+      ]
+     },
+     {
+      "RICS": [
+       "RICS_Simulation_And_Recovery"
+      ]
+     },
+     {
+      "Reaction": [
+       "Reaction_SSA_Demo",
+       "Reaction_SSA_Example"
+      ]
+     },
+     {
+      "burst": [
+       "burst_selection_auto_gmm_251118",
+       "burst_selection_manual_gauss"
+      ]
+     },
+     {
+      "fdb": [
+       "fdb_burst_selection_roundtrip"
+      ]
+     },
+     {
+      "mem": [
+       "mem_sampling_minimal"
+      ]
+     },
+     {
+      "smFRET": [
+       "smFRET_01_Burst-Search_MFD",
+       "smFRET_01_Burst_Search_ALEX",
+       "smFRET_02_Burst-MLE-Lifetime-Analysis",
+       "smFRET_03_BVA-FRET",
+       "smFRET_04_HistogramFromBurst"
+      ]
+     }
+    ]
+   },
+   "Close"
+  ],
+  "Navigate": [
+   "Back [Alt+Left]",
+   "Fwd [Alt+Right]",
+   "Def [F12]"
+  ],
+  "Run": [
+   "Run",
+   "Lint"
+  ],
+  "Settings": [
+   "Settings",
+   "Show Line Numbers (checkable)",
+   " (checkable)",
+   "Enable Python LSP (checkable)"
+  ],
+  "View": [
+   "Project (checkable)",
+   "Symbols (checkable)",
+   "Diagnostics (checkable)",
+   "Output (checkable)",
+   "Kernel (checkable)",
+   "Agent (checkable)"
+  ]
+ },
+ "status": [
+  "Untitled",
+  "Ln 1, Col 0",
+  "",
+  "LSP idle"
+ ],
+ "tabs": [
+  [
+   "Project",
+   "Symbols"
+  ],
+  [],
+  [
+   "Diagnostics",
+   "Output",
+   "Kernel"
+  ],
+  [
+   "Untitled"
+  ]
+ ],
+ "toolbars": {
+  "Editor": [
+   "New",
+   "Open",
+   "Folder",
+   "Save",
+   "Back",
+   "Fwd",
+   "Def",
+   "Hint",
+   "QToolButton",
+   "QToolButton",
+   "QComboBox",
+   "Lint",
+   "",
+   "Settings",
+   "QWidget",
+   "Agent"
+  ]
+ },
+ "tree_headers": [
+  [
+   "Symbol",
+   "Line"
+  ]
+ ],
+ "tree_views": [
+  [
+   "Symbol",
+   "Line"
+  ],
+  [
+   "Name",
+   "Size",
+   "Kind",
+   "Date Modified"
+  ]
+ ]
+}

@@ -13,8 +13,8 @@ drawing — with figures embedded under the cell that drew them, and a saved fil
 any Jupyter reader can open.
 
 **What you need:** the Code Editor tool (`Tools → System → Code Editor`)
-and a notebook. `File → Open Notebook` lists the ones ChiSurf ships under
-`examples/notebooks`.
+and a notebook. `File → Open Notebook…` lists the ones ChiSurf ships under
+`examples/notebooks`, grouped by their name's prefix; click one to open it.
 
 There is no Jupyter kernel and no browser here. A notebook tab executes its
 cells through the same interpreter as the [console](59_console.md), so the two

@@ -1,42 +1,68 @@
 {
-  "_comment": "Guided tour of the code editor. Steps point at real controls; the one awaited step waits for the user to press New themselves.",
-  "steps": [
+ "_comment": "Guided tour of the code editor. Steps point at real controls; the one awaited step waits for the user to press New themselves.",
+ "steps": [
+  {
+   "title": "A scripting workbench inside ChiSurf",
+   "text": "Edit Python files and notebooks, run them against the live ChiSurf session, lint them with Ruff and ask the assistant. This tour shows the row of controls on the editor tab; you press the buttons, the tour only points at them.",
+   "target": {}
+  },
+  {
+   "title": "Start with an empty document",
+   "text": "Every document opens in its own tab. <b>New</b> creates an empty Python buffer; <b>Open</b> reads a file from disk, and nothing is written until you save.",
+   "target": {
+    "name": "new"
+   },
+   "await": {
+    "hint": "Press <b>New</b> to open an empty document."
+   }
+  },
+  {
+   "title": "The text area",
+   "text": "Type here. Syntax highlighting, selection, clipboard, undo/redo and <b>Ctrl+F</b> find work as in any editor. Unsaved changes are marked with an asterisk on the tab.",
+   "target": {
+    "name": "editor_text"
+   }
+  },
+  {
+   "title": "Where a script runs",
+   "text": "<b>Separate process</b> is isolated and can be stopped. <b>In ChiSurf console</b> runs on the main thread with access to the datasets and fits of the running session, but a long macro blocks the window.",
+   "target": {
+    "name": "run_endpoint"
+   }
+  },
+  {
+   "title": "Run the script",
+   "text": "<b>Run</b> executes the active Python document with the endpoint chosen on the left and shows its output in the Output tab below.",
+   "target": {
+    "name": "run"
+   }
+  },
+  {
+   "title": "Lint before you run",
+   "text": "<b>Lint</b> reports Ruff diagnostics for the unsaved buffer in the Diagnostics tab; <b>Fix</b> applies Ruff's safe fixes to the buffer, which you then save explicitly. Both need the optional Ruff executable.",
+   "target": {
+    "name": "check"
+   }
+  },
+  {
+   "title": "Choose the project folder",
+   "text": "<b>Folder</b> picks the folder the <b>Project</b> dock lists; click a file there to open it. The <b>View</b> menu shows or hides each dock (Project, Symbols, Diagnostics, Output, Kernel, Agent).",
+   "target": {
+    "name": "folder"
+   }
+  },
+  {
+   "title": "Keyboard shortcuts and the rest",
+   "text": "The <b>?</b> button lists every shortcut (save, find, go to definition, back/forward through jumps).",
+   "target": {
+    "name": "help"
+   },
+   "links": [
     {
-      "title": "A scripting workbench inside ChiSurf",
-      "text": "Edit Python files and notebooks, run them against the live ChiSurf session, lint them with Ruff and ask the assistant. This tour shows the row of controls on the editor tab; you press the buttons, the tour only points at them.",
-      "target": {}
-    },
-    {
-      "title": "Start with an empty document",
-      "text": "Every document opens in its own tab. <b>New</b> creates an empty Python buffer; <b>Open</b> reads a file from disk, and nothing is written until you save.",
-      "target": {"name": "new"},
-      "await": {"hint": "Press <b>New</b> to open an empty document."}
-    },
-    {
-      "title": "The text area",
-      "text": "Type here. Syntax highlighting, selection, clipboard, undo/redo and <b>Ctrl+F</b> find work as in any editor. Unsaved changes are marked with an asterisk on the tab.",
-      "target": {"name": "editor_text"}
-    },
-    {
-      "title": "Where a script runs",
-      "text": "<b>Separate process</b> is isolated and can be stopped. <b>In ChiSurf console</b> runs on the main thread with access to the datasets and fits of the running session, but a long macro blocks the window.",
-      "target": {"name": "run_endpoint"}
-    },
-    {
-      "title": "Run the script",
-      "text": "<b>Run</b> executes the active Python document with the endpoint chosen on the left and shows its output in the Output tab below.",
-      "target": {"name": "run"}
-    },
-    {
-      "title": "Lint before you run",
-      "text": "<b>Check</b> reports Ruff diagnostics for the unsaved buffer in the Diagnostics tab; <b>Fix</b> applies Ruff's safe fixes to the buffer, which you then save explicitly. Both need the optional Ruff executable.",
-      "target": {"name": "check"}
-    },
-    {
-      "title": "Keyboard shortcuts and the rest",
-      "text": "The <b>?</b> button lists every shortcut (save, find, go to definition, back/forward through jumps).",
-      "target": {"name": "help"},
-      "links": [{"text": "Notebooks guide", "doc": "docs/guides/64_notebooks.md"}]
+     "text": "Notebooks guide",
+     "doc": "docs/guides/64_notebooks.md"
     }
-  ]
+   ]
+  }
+ ]
 }

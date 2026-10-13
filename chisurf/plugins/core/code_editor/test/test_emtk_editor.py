@@ -149,7 +149,7 @@ def test_project_file_right_click_exposes_actions(tmp_path):
         gui._draw_file_tree((0, 0, 320, 500))
     labels = "\n".join(text[5] for text in painter.texts)
     assert "Open in editor" in labels
-    assert "Copy full path" in labels
+    assert "Copy path" in labels and "Copy file name" in labels
     assert "Copy relative path" in labels
 
 

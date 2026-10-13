@@ -10265,7 +10265,7 @@ p, li { white-space: pre-wrap; }
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11256" />
             <source>◀ Back</source>
-            <translation type="obsolete">◀ Retour</translation>
+            <translation>◀ Retour</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11257" />
@@ -10330,7 +10330,7 @@ p, li { white-space: pre-wrap; }
         <message>
             <location filename="../../plugins/vv_vh_g_factor/wizard.ui" line="404" />
             <source>🔄 Restart</source>
-            <translation type="obsolete">🔄 Redémarrer</translation>
+            <translation>🔄 Redémarrer</translation>
         </message>
         <message>
             <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="11984" />
@@ -67023,6 +67023,134 @@ Tout ce formulaire constitue un unique *projet* QuEst. **Enregistrer le projet**
         <message>
             <source>Fit to window</source>
             <translation>Ajuster à la fenêtre</translation>
+        </message>
+        <message>
+            <source>Folder… — choose the project folder shown here</source>
+            <translation>Dossier… — choisir le dossier de projet affiché ici</translation>
+        </message>
+        <message>
+            <source>Folder… — choose the project folder shown in the Project dock</source>
+            <translation>Dossier… — choisir le dossier de projet du panneau Projet</translation>
+        </message>
+        <message>
+            <source>Show the parent folder as the project</source>
+            <translation>Afficher le dossier parent comme projet</translation>
+        </message>
+        <message>
+            <source>No symbols: open a Python document.</source>
+            <translation>Aucun symbole : ouvrez un document Python.</translation>
+        </message>
+        <message>
+            <source>Restart the notebook's shell: variables and the execution count are reset</source>
+            <translation>Redémarrer le shell du notebook : les variables et le compteur d'exécution sont réinitialisés</translation>
+        </message>
+        <message>
+            <source>Open a notebook to get a kernel terminal.</source>
+            <translation>Ouvrez un notebook pour obtenir un terminal de noyau.</translation>
+        </message>
+        <message>
+            <source>Regex</source>
+            <translation>Regex</translation>
+        </message>
+        <message>
+            <source>Read the search text as a regular expression (Python syntax)</source>
+            <translation>Lire le texte cherché comme une expression régulière (syntaxe Python)</translation>
+        </message>
+        <message>
+            <source>Back — return to the caret position before the last jump</source>
+            <translation>Retour — revenir à la position du curseur avant le dernier saut</translation>
+        </message>
+        <message>
+            <source>▶ Fwd</source>
+            <translation>▶ Suivant</translation>
+        </message>
+        <message>
+            <source>Fwd — go forward again after going back</source>
+            <translation>Suivant — avancer de nouveau après un retour</translation>
+        </message>
+        <message>
+            <source>🔍 Def</source>
+            <translation>🔍 Déf</translation>
+        </message>
+        <message>
+            <source>Def — go to the definition of the name at the caret (Python LSP)</source>
+            <translation>Déf — aller à la définition du nom sous le curseur (LSP Python)</translation>
+        </message>
+        <message>
+            <source>✨ Hint</source>
+            <translation>✨ Indice</translation>
+        </message>
+        <message>
+            <source>Hint — completions for the caret position (Python LSP)</source>
+            <translation>Indice — complétions à la position du curseur (LSP Python)</translation>
+        </message>
+        <message>
+            <source>🧹 Lint</source>
+            <translation>🧹 Lint</translation>
+        </message>
+        <message>
+            <source>¶ — show spaces and tabs as marks (Settings ▸ Show Whitespace)</source>
+            <translation>¶ — afficher espaces et tabulations par des marques (Réglages ▸ Afficher les blancs)</translation>
+        </message>
+        <message>
+            <source>🤖 Agent</source>
+            <translation>🤖 Agent</translation>
+        </message>
+        <message>
+            <source>Agent — show or hide the AI assistant (View ▸ Agent)</source>
+            <translation>Agent — afficher ou masquer l'assistant IA (Affichage ▸ Agent)</translation>
+        </message>
+        <message>
+            <source>No shipped notebooks found</source>
+            <translation>Aucun notebook fourni trouvé</translation>
+        </message>
+        <message>
+            <source>Open this example notebook</source>
+            <translation>Ouvrir ce notebook d'exemple</translation>
+        </message>
+        <message>
+            <source>💡 Things to ask</source>
+            <translation>💡 Idées de questions</translation>
+        </message>
+        <message>
+            <source>Example prompts shipped with ChiSurf and tested against a real model</source>
+            <translation>Exemples de requêtes fournis avec ChiSurf et testés sur un vrai modèle</translation>
+        </message>
+        <message>
+            <source>(no examples available)</source>
+            <translation>(aucun exemple disponible)</translation>
+        </message>
+        <message>
+            <source>📚 Wiki</source>
+            <translation>📚 Wiki</translation>
+        </message>
+        <message>
+            <source>Browse the LLM Wiki the assistant reads, or feed the codebase into it</source>
+            <translation>Parcourir le wiki LLM que lit l'assistant, ou y verser le code source</translation>
+        </message>
+        <message>
+            <source>Search wiki...</source>
+            <translation>Rechercher dans le wiki...</translation>
+        </message>
+        <message>
+            <source>Show only the pages whose section or title contains this text</source>
+            <translation>N'afficher que les pages dont la section ou le titre contient ce texte</translation>
+        </message>
+        <message>
+            <source>Re-read the wiki's index and pages</source>
+            <translation>Relire l'index et les pages du wiki</translation>
+        </message>
+        <message>
+            <source>📡 Populate Wiki</source>
+            <translation>📡 Remplir le wiki</translation>
+        </message>
+        <message>
+            <source>Feed the current codebase into the LLM Wiki</source>
+            <translation>Verser le code source actuel dans le wiki LLM</translation>
+        </message>
+        <message>
+            <source>Show this page</source>
+            <translation>Afficher cette page</translation>
         </message>
     </context>
     <context>
