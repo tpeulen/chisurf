@@ -605,8 +605,15 @@ def test_archive_failure_is_reported(ui, files, monkeypatch):
     assert "no database" in ui.app.model.message
 
 
+def open_tab(ui, key):
+    """Click the dock tab of window *key* where it was drawn (a narrow window shortens its title)."""
+    ui.draw(2)
+    x, y, w, h = ui.app.docks.tab_rect(key)
+    ui.click((x, y, w, h))
+
+
 def open_batch(ui):
-    ui.click_text("Batch anisotropy")
+    open_tab(ui, "batch")
 
 
 def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_path):
@@ -836,8 +843,10 @@ def test_the_window_draws_empty_and_populated_at_every_size(ui, files, size):
     ui.resize(size)
     open_batch(ui)
     ui.draw(3)
-    ui.click_text("G-factor and mixing")
+    assert ui.app.docks.active_tab("controls") == "batch"
+    open_tab(ui, "controls")
     ui.draw(3)
+    assert ui.app.docks.active_tab("controls") == "controls"
 
 
 def test_no_text_runs_past_the_window_edge_in_the_small_window(ui, files):

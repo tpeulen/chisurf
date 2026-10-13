@@ -191,7 +191,14 @@ _ALLOWED_PREFIXES = {
         # equal to the reference to 1e-12, which is the claim that makes
         # dropping the library safe rather than merely possible.
         "test/core/test_restoration.py",
+        # The drift estimator is compared with skimage's phase cross-correlation
+        # where that happens to be installed (importorskip), so a proposed swap
+        # has a harness to re-run.
+        "test/core/test_drift.py",
     ),
+    # Writes a pandas/PyTables ``.h5`` on purpose, to prove the legacy HDF5 frame
+    # format is *refused* by the table seam; skipped wherever tables is absent.
+    "tables": ("test/test_datastore_seam.py",),
 }
 
 #: Packaging manifests that describe the chisurf runtime. Deliberately only
@@ -297,7 +304,14 @@ def _declared_dependencies(text: str) -> set[str]:
 def test_no_module_imports_retired_package(module):
     """No shipped source imports the retired package."""
     packaging_name, hint = RETIRED[module]
-    pattern = re.compile(rf"^\s*(?:import\s+{module}\b|from\s+{module}[\s.])", re.MULTILINE)
+    # ``importorskip("x")`` and ``__import__("x")`` import it just the same: the first
+    # turns a retired package into a test that silently skips wherever it is absent,
+    # the second into one that fails with ModuleNotFoundError.
+    pattern = re.compile(
+        rf"^\s*(?:import\s+{module}\b|from\s+{module}[\s.])"
+        rf"|(?<![`\w])(?:importorskip|__import__)\(\s*[\"']{module}[\"'.]",
+        re.MULTILINE,
+    )
     exempt = _ALLOWED_PREFIXES.get(module, ())
     offenders = []
     for path in _python_sources():

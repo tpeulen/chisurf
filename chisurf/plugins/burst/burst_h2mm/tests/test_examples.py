@@ -16,7 +16,6 @@ from chisurf.plugins.burst.burst_h2mm.examples.generate_example_data import (
 )
 
 pytest.importorskip("tttrlib")
-pytest.importorskip("tables")  # pandas HDF5 backend for the ndX output
 
 
 def test_generate_and_analyze_example_dataset(tmp_path):

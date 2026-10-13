@@ -80,7 +80,7 @@ def test_all_help_can_scroll_to_real_document_links_without_moving_header_close(
     link = next(
         t[:4]
         for t in driver.painter.texts
-        if "TCSPC lifetime fitting" in t[5] and t[5].startswith("↗")
+        if t[5] == "TCSPC lifetime fitting"  # a link drawn in place in its sentence
     )
     x, y, w, h = link
     assert dy <= y
@@ -96,7 +96,7 @@ def test_moving_the_modal_preserves_the_current_reading_position():
     dx, dy, dw, dh = window.dlg.box
     driver.wheel(-100, at=(dx + dw / 2, dy + dh / 2))
     driver.frame(3)
-    first = next(t[:4] for t in driver.painter.texts if t[5].startswith("↗ TCSPC lifetime fitting"))
+    first = next(t[:4] for t in driver.painter.texts if t[5] == "TCSPC lifetime fitting")
     driver.hover((dx + 180, dy + 10))
     driver.surface.on_pointer_press(dx + 180, dy + 10, LEFT_BUTTON, 0)
     driver.frame()
@@ -104,9 +104,7 @@ def test_moving_the_modal_preserves_the_current_reading_position():
     driver.frame(2)
     driver.surface.on_pointer_release(dx + 220, dy + 30, LEFT_BUTTON, 0)
     driver.frame(3)
-    second = next(
-        t[:4] for t in driver.painter.texts if t[5].startswith("↗ TCSPC lifetime fitting")
-    )
+    second = next(t[:4] for t in driver.painter.texts if t[5] == "TCSPC lifetime fitting")
     assert second[0] == first[0] + 40 and second[1] == first[1] + 20
 
 

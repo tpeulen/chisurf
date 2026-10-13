@@ -166,7 +166,6 @@ def test_save_aligned_with_empty_selection_is_finite(tmp_path):
 
 def test_save_aligned_rejects_malformed_selection(tmp_path):
     """A non-numeric selection is reported in the log, not written out."""
-    pytest.importorskip("mdtraj")
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
     source = tmp_path / "traj.dcd"

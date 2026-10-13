@@ -8,7 +8,12 @@ import pytest
 from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm
 from chisurf.plugins.burst.burst_h2mm.core import surrogate as S
 
-pytestmark = pytest.mark.skipif(not S.surrogate_available(), reason="scikit-learn not installed")
+needs_backend = pytest.mark.skipif(
+    not S.surrogate_available(),
+    reason="no surrogate backend: IMP.bff built without tttrlib (no HmmSurrogate) "
+    "or chisurf.core.ml unavailable",
+)
+pytestmark = pytest.mark.skipif(not S._HAVE_SKLEARN, reason="chisurf.core.ml unavailable")
 
 
 def _two_state_data(seed=1, n_bursts=200):
@@ -26,6 +31,7 @@ def _two_state_data(seed=1, n_bursts=200):
     return h2mm.prepare_bursts(times, streams, 2), gt
 
 
+@needs_backend
 def test_features_deterministic_and_fixed_length():
     data, _ = _two_state_data(seed=2, n_bursts=50)
     f1 = S.extract_features(data)
@@ -47,6 +53,7 @@ def test_encode_decode_roundtrip():
     assert np.abs(m.trans - gt.trans).max() < 1e-6
 
 
+@needs_backend
 def test_train_predict_recovers_states():
     # Small/fast training run — enough to recover a clear 2-state model.
     sm = S.train_surrogate(
@@ -71,6 +78,7 @@ def test_train_predict_recovers_states():
     assert np.abs(E_est - E_gt).max() < 0.12
 
 
+@needs_backend
 def test_estimate_via_fit_one_and_refine():
     """The surrogate arm is reached through ``fit_one``, not ``fit_states``.
 
@@ -100,6 +108,7 @@ def test_estimate_via_fit_one_and_refine():
     assert refined.n_iter > 0
 
 
+@needs_backend
 def test_save_load_roundtrip(tmp_path):
     sm = S.train_surrogate(
         n_states=2,

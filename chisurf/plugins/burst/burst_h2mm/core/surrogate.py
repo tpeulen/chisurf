@@ -26,8 +26,10 @@ and cache it, or fall back to EM (:func:`~.engines.fit_states`).
 
 This module has **no Qt / ChiSurf-GUI dependency** and uses only ``numpy`` plus
 the in-tree estimators of :mod:`chisurf.core.ml` (``MLPRegressor``,
-``StandardScaler``); if those are unavailable
-:func:`surrogate_available` returns ``False`` and callers fall back to EM.
+``StandardScaler``) for the network, and the photon library's burst features
+through ``IMP.bff.HmmSurrogate`` (present only in an IMP.bff built with
+tttrlib); if either is unavailable :func:`surrogate_available` returns
+``False`` and callers fall back to EM.
 The in-tree port keeps scikit-learn's attribute names (``coefs_``,
 ``intercepts_``, ``out_activation_``) so the exported JSON contract does not
 change.
@@ -66,8 +68,16 @@ _LOG_FLOOR = 1e-6  # transition probabilities below this are treated as this
 
 
 def surrogate_available() -> bool:
-    """Return whether the optional scikit-learn backend is importable."""
-    return _HAVE_SKLEARN
+    """Return whether the surrogate can run here.
+
+    It needs the in-tree network estimators *and* ``IMP.bff.HmmSurrogate``,
+    which computes the burst features (:func:`extract_features`) and exists
+    only in an IMP.bff built with tttrlib. Answering from the estimators alone
+    reported a surrogate that then failed on its first feature vector.
+    """
+    from .surrogate_bff import HAVE_BFF
+
+    return _HAVE_SKLEARN and HAVE_BFF
 
 
 # ---------------------------------------------------------------------------

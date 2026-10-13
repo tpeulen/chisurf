@@ -208,7 +208,7 @@ class HistogramApp(TourTarget, ImApp):
         self.show_vv = self.show_vh = self.show_combined = True
         self.plot_signature = None
         self.input_signature = self.fingerprint()
-        self.docks = DockManager(Split("h", 0.40, Region("left"), Region("plot")))
+        self.docks = DockManager(Split("h", 0.44, Region("left"), Region("plot")))
         self.docks.add_window(
             "inputs", "Inputs and options", self.draw_inputs, dock="left", closable=False
         )

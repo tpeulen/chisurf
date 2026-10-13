@@ -373,8 +373,12 @@ class LabelColumn:
 
     @property
     def x(self) -> float:
-        """Where the fields start, relative to the left edge: the widest caption and the gap the grid leaves."""
-        return (self.text_w or 0.0) + im.get_style().item_inner_spacing[0]
+        """Where the fields start, relative to the left edge: the widest caption and the gap the grid leaves.
+
+        The gap is a full item spacing, as emtk's form grid leaves after its label column; with the inner
+        spacing the hand-drawn rows started 4 px left of the grid fields they are meant to align with.
+        """
+        return (self.text_w or 0.0) + im.get_style().item_spacing[0]
 
     def pad(self, sections: Sequence[dict]) -> None:
         """Pad the field captions of *sections* to the column (idempotent)."""

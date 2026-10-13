@@ -459,6 +459,9 @@ def _inventory(driver: Driver, shell) -> set[str]:
     return found - {""}
 
 
+# Ten editors built, filled and screenshotted at 1500x4000: about 120 s on a loaded machine,
+# so the suite's 120 s per-test budget would cut it off at random.
+@pytest.mark.timeout(360)
 def test_parity_with_the_qt_model_editors(shell):
     """Control inventory of the Qt model editors (TCSPC with IRF and background, mixture, MaxEnt,
     structure, FCS kinetics, PDA, global fit, ProteinMC) against the emtk Analysis dock's editor."""

@@ -146,9 +146,13 @@ def exercise(app, name, size):
         driver.press(KEY_RETURN)
         assert actual.history == [51]
         if name == "gui.app":
-            driver.click("Minesweeper")
+            # The rows by their remembered rectangles: the header repeats the selected
+            # game's name, so the drawn text "Number Quest" is not only the list row.
+            driver.draw(2)
+            driver.click(app.item_rects["game_Minesweeper"])
             assert app.selected == "Minesweeper" and not app.error
-            driver.click("Number Quest")
+            driver.draw(2)
+            driver.click(app.item_rects["game_Number Quest"])
             assert app.child is actual and actual.history == [51]
     painter = driver.draw(2)
     return actual.export_settings(), list(painter.texts)

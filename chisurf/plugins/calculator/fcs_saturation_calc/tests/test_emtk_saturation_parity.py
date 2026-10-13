@@ -296,7 +296,14 @@ def test_the_recorded_qt_tool_and_the_emtk_model_agree_on_every_preset(app):
                     source,
                 )
     assert app.model.scheme_names() == QT_PRESETS["scheme_names"] == QT_PRESETS["scheme_presets"]
-    assert app.model.dye_names() == QT_PRESETS["dye_names"]
+    # The dye list is what the database holds, not something the Qt tool decided: since mmfdb
+    # schema 51 dropped the 3-point placeholder spectra, 2-aminopurine (recorded with one) has no
+    # absorption spectrum and is rightly no longer offered. The recorded list minus such dyes.
+    from chisurf.core.fluorescence.fret.dyes import list_absorbing_dyes
+
+    offered = app.model.dye_names()
+    assert offered == [""] + list_absorbing_dyes()
+    assert [n for n in QT_PRESETS["dye_names"] if n in offered] == offered
 
 
 def test_the_physical_anchors_of_the_guide_hold(app):

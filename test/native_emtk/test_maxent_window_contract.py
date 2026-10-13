@@ -152,7 +152,7 @@ def test_actual_measured_worker_result_and_objective_survive_resize(app, mode):
         time.sleep(0.02)
         driver.draw(1)
     assert app.jobs.process is None
-    assert model.status == "run completed.", app.jobs.output
+    assert model.status.startswith("MEM done: chi2 = "), (model.status, app.jobs.output)
     result = model.result
     expected = solve_snapshot(model.result_snapshot)
     for name in ("p", "Fi", "H", "g0", "sigma", "y", "fit_additive"):

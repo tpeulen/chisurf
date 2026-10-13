@@ -437,6 +437,12 @@ def maxent(
     )
 
 
+def _log_sum(p) -> float:
+    """Return ``log(sum(p))``, ``-inf`` for an all-zero ``p``."""
+    total = float(np.sum(p))
+    return float(np.log(total)) if total > 0.0 else -np.inf
+
+
 def _maxent_simplex(
     flat, b, w, m, nu, n_rows, n_cols, max_iter, tol, n_outer: int = 40, sum_tol: float = 1.0e-9
 ):
@@ -454,8 +460,8 @@ def _maxent_simplex(
     side, and a constant there is exactly a uniform rescaling of ``log m``.
     So the constrained solution *is* an unconstrained solve with the prior
     multiplied by one scalar ``c``, and ``sum(x)`` is monotone in ``c``:
-    bisecting ``log c`` recovers the constrained optimum exactly rather than
-    approximately.
+    root-finding on ``log c`` recovers the constrained optimum exactly rather
+    than approximately.
 
     Returns
     -------
@@ -480,19 +486,47 @@ def _maxent_simplex(
             dtype=float,
         )
 
-    lo, hi = -8.0, 8.0
-    p = solve(0.0)
+    # Root of g(log c) = log(sum x(c)). g is monotone increasing; where the
+    # entropy term dominates it is close to linear with unit slope, so a
+    # secant step converges in a handful of engine solves (bisection needed
+    # ~30, each up to ``max_iter`` engine iterations). Where the data term
+    # dominates (small weight) the data pin ``sum x`` and g is nearly flat:
+    # the root then lies outside any sensible bracket, and the secant runs to
+    # the bracket end once, sees the sign unchanged and stops, instead of
+    # bisecting toward an unreachable root 40 times -- which is what made an
+    # L-curve sweep take minutes. The final rescale below covers that case.
+    bound_lo, bound_hi = -8.0, 8.0
+    lo, hi = bound_lo, bound_hi
+    x0, p = 0.0, solve(0.0)
+    g0 = _log_sum(p)
     if abs(p.sum() - 1.0) < sum_tol:
         return p
+    if g0 > 0.0:
+        hi = x0
+    else:
+        lo = x0
+    x1 = min(max(x0 - g0, lo), hi)  # unit-slope Newton guess
     for _ in range(int(n_outer)):
-        mid = 0.5 * (lo + hi)
-        p = solve(mid)
-        s = float(p.sum())
-        if abs(s - 1.0) < sum_tol:
+        p = solve(x1)
+        if abs(float(p.sum()) - 1.0) < sum_tol:
             break
-        if s > 1.0:
-            hi = mid
+        g1 = _log_sum(p)
+        if g1 > 0.0:
+            if x1 <= bound_lo:
+                break  # still too large at the smallest prior scale
+            hi = x1
         else:
-            lo = mid
+            if x1 >= bound_hi:
+                break  # still too small at the largest prior scale
+            lo = x1
+        if np.isfinite(g1) and np.isfinite(g0) and g1 != g0:
+            x2 = x1 - g1 * (x1 - x0) / (g1 - g0)
+        else:
+            x2 = 0.5 * (lo + hi)
+        if x2 <= lo:
+            x2 = bound_lo if lo == bound_lo else 0.5 * (lo + hi)
+        elif x2 >= hi:
+            x2 = bound_hi if hi == bound_hi else 0.5 * (lo + hi)
+        x0, g0, x1 = x1, g1, x2
     total = float(p.sum())
     return p / total if total > 0.0 else p

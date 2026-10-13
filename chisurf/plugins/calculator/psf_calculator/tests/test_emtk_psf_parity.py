@@ -148,7 +148,9 @@ def test_both_export_files_equal_the_recorded_qt_exports(app, tmp_path):
     app.model.compute()
     exports = REF["exports"]
     assert_sig(np.load(app.model.save(tmp_path / "ours.npy")), exports["npy"])
-    assert_sig(__import__("tifffile").imread(app.model.save(tmp_path / "ours.tif")), exports["tif"])
+    from chisurf.core.fio.image import imread
+
+    assert_sig(imread(app.model.save(tmp_path / "ours.tif")), exports["tif"])
 
 
 # -- spec, tooltips, Qt-free --------------------------------------------------------------------------------- #

@@ -90,10 +90,24 @@ def test_selected_step_stays_readable(qapp):
             rgb = image.pixelColor(x, y).getRgb()[:3]
             counts[rgb] = counts.get(rgb, 0) + 1
 
-    palette = w.nav_list.palette()
-    highlight = palette.highlight().color().getRgb()[:3]
-    text = palette.highlightedText().color().getRgb()[:3]
+    # Judged on the pixels, not on the palette: under the application's own
+    # stylesheets (the dark themes) the selection is painted in the sheet's
+    # colour, and a palette lookup would call a readable row unreadable.
+    other = w.nav_list.visualItemRect(w.nav_list.item(2))
+    plain: dict[tuple[int, int, int], int] = {}
+    for x in range(other.left() + 2, other.right() - 2):
+        for y in range(other.top() + 2, other.bottom() - 2):
+            rgb = image.pixelColor(x, y).getRgb()[:3]
+            plain[rgb] = plain.get(rgb, 0) + 1
+    background = max(counts, key=counts.get)
+    assert counts[background] > 100 and background != max(plain, key=plain.get), (
+        f"no selection background drawn: {counts}"
+    )
 
-    assert counts.get(highlight, 0) > 100, f"no selection background drawn: {counts}"
-    assert counts.get(text, 0) > 20, f"the selected label is invisible: {counts}"
+    def far(rgb):
+        return sum(abs(a - b) for a, b in zip(rgb, background)) > 300
+
+    assert sum(n for rgb, n in counts.items() if far(rgb)) > 20, (
+        f"the selected label is invisible: {counts}"
+    )
     w.close()

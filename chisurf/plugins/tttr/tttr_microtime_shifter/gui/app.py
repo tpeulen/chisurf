@@ -224,7 +224,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         self.dataset_picker = DatasetPicker(on_paths=self.add_paths)
         self.docks = DockManager(
             Split(
-                "h", 0.32, Split("v", 0.4, Region("files"), Region("controls")), Region("histogram")
+                "h", 0.34, Split("v", 0.4, Region("files"), Region("controls")), Region("histogram")
             )
         )
         for key, title, draw, dock in (

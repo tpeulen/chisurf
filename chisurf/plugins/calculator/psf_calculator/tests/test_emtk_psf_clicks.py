@@ -337,7 +337,8 @@ def test_export_npy_opens_the_dialog_with_the_descriptive_name_and_writes_the_ty
 
 
 def test_export_tif_writes_an_imagej_stack_with_the_voxel_size(drv, tmp_path):
-    tifffile = pytest.importorskip("tifffile")
+    from chisurf.core.fio.image import imread, metadata
+
     drv.click("export_tif")
     assert drv.app.file_window.title == "Export PSF as .tif"
     drv.click_text("psf_vectorial_NA1.4_n1.518_520nm_circular.tif")
@@ -346,13 +347,9 @@ def test_export_tif_writes_an_imagej_stack_with_the_voxel_size(drv, tmp_path):
     drv.click_text("Save", last=True)
     written = tmp_path / "stack.tif"
     assert written.is_file()
-    with tifffile.TiffFile(written) as tif:
-        assert (
-            tif.is_imagej
-            and tif.imagej_metadata["spacing"] == pytest.approx(0.1)
-            and tif.imagej_metadata["unit"] == "um"
-        )
-        assert np.allclose(tif.asarray(), model(drv).volume.astype(np.float32))
+    imagej = metadata(written)["imagej"]
+    assert float(imagej["spacing"]) == pytest.approx(0.1) and imagej["unit"] == "um"
+    assert np.allclose(imread(written), model(drv).volume.astype(np.float32))
 
 
 def test_a_name_without_a_suffix_gets_the_format_suffix(drv, tmp_path):

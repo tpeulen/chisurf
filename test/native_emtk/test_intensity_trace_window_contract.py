@@ -98,7 +98,8 @@ def test_result_selector_wraps_with_complete_labels_and_pointer_reachability(
                 assert metadata["measured_bounds"] == metadata["visible_bounds"], (label, metadata)
                 seen.add(label)
         assert seen == set(module.RESULTS)
-        assert {f"{name}##result_{i}" for i, name in enumerate(module.RESULTS)} <= set(submitted)
+        # button_row ids a caption with "###": the id survives a translated caption
+        assert {f"{name}###result_{i}" for i, name in enumerate(module.RESULTS)} <= set(submitted)
         original_config = app.model.window_ms, app.model.n_states
         bx, by, bw, bh = app.docks.windows["results"].content
         for name in module.RESULTS:

@@ -70,6 +70,33 @@ def _restore_ui_language():
 
 
 @pytest.fixture(autouse=True)
+def _restore_application_palette_and_font():
+    """Leave the ``QApplication`` palette and font as the test found them.
+
+    Building the main window applies the ribbon's dark palette to the *application*
+    (white text), which is right in the running program and a leak between tests: every
+    later delegate or widget painted with the default palette draws white on white, and a
+    test that measures painted ink sees nothing. Only acts when Qt is already imported and
+    an application exists; non-GUI tests never pay for it.
+    """
+    qtwidgets = sys.modules.get("qtpy.QtWidgets")
+    app = qtwidgets.QApplication.instance() if qtwidgets is not None else None
+    saved = (app.palette(), app.font()) if app is not None else None
+    yield
+    if saved is None:
+        return
+    qtwidgets = sys.modules.get("qtpy.QtWidgets")
+    app = qtwidgets.QApplication.instance() if qtwidgets is not None else None
+    if app is None:
+        return
+    palette, font = saved
+    if app.palette() != palette:
+        app.setPalette(palette)
+    if app.font() != font:
+        app.setFont(font)
+
+
+@pytest.fixture(autouse=True)
 def _restore_mmfdb_login_cache():
     """Forget a login a test cached, so the next test is asked to sign in like a fresh process.
 

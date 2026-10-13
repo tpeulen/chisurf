@@ -93,7 +93,7 @@ class PSFApp(TourTarget, ImApp):
         }
         self.docks = DockManager(
             Split(
-                "h", 0.38, Region("controls"), Split("v", 0.62, Region("volume"), Region("slice"))
+                "h", 0.40, Region("controls"), Split("v", 0.62, Region("volume"), Region("slice"))
             ),
             name="psf",
         )

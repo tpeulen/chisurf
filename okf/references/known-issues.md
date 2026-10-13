@@ -4,6 +4,19 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## BURST IRF/background tool stacks a short field at 800x600; the test env's IMP.bff lacks HmmSurrogate (found 2026-10-13)
+
+status: open
+
+**Measured 2026-10-13** by the gate's test-failure lane, one file at a time.
+`chisurf/plugins/burst/burst_irf_bg/test/test_emtk_irf_bg_layout.py::test_short_fields_icons_and_texts[800x600]`
+fails: `min_photons` is stacked at full width under its label. It fails without the lane's `LabelColumn.x` change too,
+and looks like the narrow control dock the PSF, histogram and shifter tools had (fixed there by widening the dock).
+Separately, the pixi `test` env's IMP.bff is built without tttrlib, so `IMP.bff.HmmSurrogate` is missing. The H2MM
+surrogate features fall back to EM there, and four tests in `burst_h2mm/tests/test_surrogate.py` skip with that reason.
+The owner's `arm64` build has it. *Next:* widen the IRF/background dock and re-read its 800x600 render; build the
+test env's IMP.bff with tttrlib (packaging).
+
 ## Shell undo/autosave capture fails on MFD 2D, global and parameter-scan fits (found 2026-10-12)
 
 status: open
