@@ -54,10 +54,10 @@ same transfer rate. This is the standard assumption, and it is what a long
 flexible linker is for.
 
 **Static isotropic distribution.** The dyes are randomly oriented but frozen on
-the lifetime timescale. The population average is
-$\langle\kappa^2\rangle = 0.476$, not $2/3$ — but more importantly each molecule
-now has its *own* $\kappa^2$ and therefore its own transfer rate, so the
-observable is a distribution, not a shifted mean. The probability density for
+the lifetime timescale. The mean of $\kappa^2$ is still $2/3$, but averaging
+efficiencies instead of rates gives an effective value of about 0.476 — and more
+importantly each molecule now has its *own* $\kappa^2$ and therefore its own
+transfer rate, so the observable is a distribution, not a shifted mean. The probability density for
 this case is closed-form and ChiSurf provides it
 ({src}`chisurf/core/fluorescence/anisotropy/kappa2.py#p_isotropic_orientation_factor`):
 it is sharply peaked near zero and has a long tail, which is exactly the shape
@@ -73,6 +73,30 @@ up to $\Delta E = 0.17$ below the dynamic one at the same mean distance; at $R =
 $\langle\tau\rangle_F = 1.2$ ns where dynamic averaging gives 0.1 ns. The FRET
 Line Generator's editor switches the regime per component
 ({doc}`/guides/82_fret_lines`).
+
+**Static, any distribution.** The isotropic density is only the default. A
+static ensemble with a restricted orientation distribution $p(\kappa^2)$ — what
+**compute κ²** derives from the dyes' anisotropies or accessible-volume
+orientations — is averaged the same way, molecule by molecule:
+
+$$
+k(\kappa^2, R) = \frac{1}{\tau_0}\,\frac{3}{2}\,\kappa^2\left(\frac{R_0}{R}\right)^6,
+\qquad
+f_D(t) = \int p(R)\int p(\kappa^2)\,e^{-t/\tau_D}\,e^{-k(\kappa^2,R)\,t}\,d\kappa^2\,dR ,
+$$
+
+with $R_0$ defined at $\kappa^2 = 2/3$. In the TCSPC FRET models the static mode
+averages the distribution **compute κ²** left on the model (a histogram or
+weighted samples, any normalisation) and the isotropic one when none was
+computed; **show κ²** draws the one in use. The native kernel
+({src}`chisurf/core/models/tcspc/kappa2_controls.py#used_kappa2_pairs` holds the
+rule on the ChiSurf side) passes three checks: with no distribution the static
+line is bit-for-bit the earlier isotropic one; a static delta at $2/3$ is the
+dynamic line at $2/3$ exactly ($\Delta E = 0$); and $\kappa^2$ uniform on
+$[0, a]$ reproduces the closed form
+$f_D(t) = e^{-t/\tau_D}\,(1 - e^{-c a t})/(c a t)$, $c = \tfrac{3}{2}(R_0/R)^6/\tau_0$,
+to $5\times10^{-7}$. A narrow distribution around $\kappa^2 = 0.1$ moves the
+standard Gaussian line by up to $\Delta E = 0.24$ from the isotropic static line.
 
 **Restricted.** The realistic case. Each dye reorients, but only within a cone
 set by its linker and its local environment. This is what the models below

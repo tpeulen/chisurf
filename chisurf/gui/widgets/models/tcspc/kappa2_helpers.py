@@ -148,36 +148,22 @@ def setup_kappa2_controls(
 
 
 def _extract_kappa2_pairs(orientation_parameter, fret_parameters):
-    """Return list of (amplitude, k2) pairs from model or scalar k2.
+    """Return the ``(amplitude, k2)`` pairs the model averages over, and its mode.
 
-    If orientation mode is static (slow_isotropic) and an orientation_spectrum
-    is available, use that. Otherwise fall back to a single peak at the scalar k2.
+    One rule for both editors: :func:`chisurf.core.models.tcspc.kappa2_controls.used_kappa2_pairs`
+    (static: the held distribution, isotropic when none is held; dynamic: the scalar k2).
     """
-    pairs = []
+    from chisurf.core.models.tcspc.kappa2_controls import DYNAMIC_KAPPA2, used_kappa2_pairs
 
     if orientation_parameter is not None:
         mode = getattr(orientation_parameter, "mode", "fast")
     else:
         mode = getattr(fret_parameters, "mode", "fast") if fret_parameters is not None else "fast"
-
-    if mode == "slow" and orientation_parameter is not None:
-        spec = getattr(orientation_parameter, "orientation_spectrum", None)
-        if spec is not None:
-            arr = np.asarray(spec, dtype=float).ravel()
-            if arr.size >= 2 and arr.size % 2 == 0:
-                amps = arr[0::2]
-                vals = arr[1::2]
-                pairs.extend(zip(amps, vals))
-
-    # Fallback: single scalar k2 from fret_parameters
-    if not pairs and fret_parameters is not None:
-        try:
-            k2_scalar = float(getattr(fret_parameters, "kappa2", 0.666))
-        except Exception:
-            k2_scalar = 0.666
-        pairs.append((1.0, k2_scalar))
-
-    return pairs, mode
+    try:
+        scalar = float(getattr(fret_parameters, "kappa2", DYNAMIC_KAPPA2))
+    except (TypeError, ValueError):
+        scalar = DYNAMIC_KAPPA2
+    return used_kappa2_pairs(orientation_parameter, scalar), mode
 
 
 def show_kappa2_distribution_plot(
@@ -200,18 +186,8 @@ def show_kappa2_distribution_plot(
 
     pairs, mode = _extract_kappa2_pairs(orientation_parameter, fret_parameters)
 
-    static_pairs = []
-    if orientation_parameter is not None:
-        spec = getattr(orientation_parameter, "_k2_slow_iso", None)
-        if spec is None:
-            spec = getattr(orientation_parameter, "orientation_spectrum", None)
-        if spec is not None:
-            arr = np.asarray(spec, dtype=float).ravel()
-            if arr.size >= 2 and arr.size % 2 == 0:
-                static_pairs = list(zip(arr[0::2], arr[1::2]))
-
-    if not static_pairs:
-        static_pairs = list(pairs)
+    # The distribution the model actually averages over -- never a second guess at it.
+    static_pairs = list(pairs)
 
     if not static_pairs:
         dialogs.information(
@@ -341,18 +317,8 @@ def show_rapp_rda_distribution_plot(
     )
     pairs, mode = _extract_kappa2_pairs(orientation_parameter, fret_parameters)
 
-    static_pairs = []
-    if orientation_parameter is not None:
-        spec = getattr(orientation_parameter, "_k2_slow_iso", None)
-        if spec is None:
-            spec = getattr(orientation_parameter, "orientation_spectrum", None)
-        if spec is not None:
-            arr = np.asarray(spec, dtype=float).ravel()
-            if arr.size >= 2 and arr.size % 2 == 0:
-                static_pairs = list(zip(arr[0::2], arr[1::2]))
-
-    if not static_pairs:
-        static_pairs = list(pairs)
+    # The distribution the model actually averages over -- never a second guess at it.
+    static_pairs = list(pairs)
 
     if not static_pairs:
         dialogs.information(

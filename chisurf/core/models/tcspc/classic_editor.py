@@ -739,9 +739,39 @@ class FRETParameters(_Group):
 class OrientationParameter:
     """The kappa2 averaging regime the classic kappa2 controls switch."""
 
+    #: The description port the static κ² average reads: interleaved ``(w, κ²)``,
+    #: empty for the isotropic distribution.
+    PORT = "kappa2_distribution"
+
     def __init__(self, view):
         self._view = view
-        self.orientation_spectrum = None
+        self._spectrum = None
+
+    def _has_port(self) -> bool:
+        return self.PORT in (self._view._document.get("ports") or {})
+
+    @property
+    def orientation_spectrum(self) -> typing.Optional[np.ndarray]:
+        """The κ² distribution the static average uses, interleaved ``(w, κ²)``; ``None`` is isotropic.
+
+        Held on the description's ``kappa2_distribution`` port, so the native kernel reads it
+        and a saved session restores it with the model's other value ports.
+        """
+        if not self._has_port():
+            return self._spectrum
+        port = self._view.__dict__.get("_value_ports", {}).get(self.PORT)
+        values = np.asarray(port.value if port is not None else [], dtype=float).ravel()
+        return values if values.size >= 2 else None
+
+    @orientation_spectrum.setter
+    def orientation_spectrum(self, value) -> None:
+        values = [] if value is None else np.asarray(value, dtype=float).ravel().tolist()
+        if len(values) % 2:
+            raise ValueError("a κ² distribution is interleaved (w, κ²) pairs")
+        if self._has_port():
+            self._view.set_port_values(self.PORT, values)
+        else:
+            self._spectrum = np.asarray(values, dtype=float) if values else None
 
     @property
     def mode(self) -> str:

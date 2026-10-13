@@ -6,6 +6,14 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## A computed κ² distribution does not reach the static κ² average (found 2026-10-13)
 
+status: resolved 2026-10-13 — imp.bff's FRET families' static orientation now reads a `kappa2_distribution`
+port (interleaved `(w, κ²)`; empty, the default, is isotropic), and few-pair distributions are not binned, so a
+delta is the dynamic model exactly. `OrientationParameter.orientation_spectrum` writes that port (saved with the
+model's value ports); `kappa2_controls.used_kappa2_pairs` is the one rule *show κ²* draws. Measured after the fix:
+the narrow `[0.09, 0.1, 0.11]` distribution moves the line by max |ΔE| = 0.24 from isotropic; isotropic static is
+bit-for-bit unchanged; a static delta at 2/3 equals dynamic at 2/3 (ΔE = Δτ_F = 0). Guards:
+`chisurf/plugins/fret_line/test/test_kappa2_regime.py`, imp.bff `test/decay/test_fret_orientation.py`.
+
 - **Measurement:** `kappa2_controls.apply_kappa2_distribution(model, [0.09, 0.1, 0.11], [1, 2, 1])` on a
   *FD (Gaussian)* view, then `set_orientation_mode(model, "slow")`: the FRET line (RDA0 20-100 Å) is identical to
   the one without the distribution (max |ΔE| = 0.0), and a static line does not change with the scalar κ² either

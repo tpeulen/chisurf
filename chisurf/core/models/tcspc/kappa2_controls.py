@@ -4,8 +4,9 @@ The editor section ``kappa2_controls`` (a FRET model's *dynamic κ²* / *static 
 switch, *show κ²*, *compute κ²* and *calc R0*) acts on three things of the model:
 the orientation regime (``orientation_parameter.mode``), the κ² distribution a
 static average uses (``orientation_parameter.orientation_spectrum``, interleaved
-amplitude/κ² pairs) together with the scalar ``fret_parameters.kappa2``, and the
-Förster radius. Both editors -- the legacy Qt one and the emtk shell's, which
+amplitude/κ² pairs, held on the native model's ``kappa2_distribution`` port; none
+is the isotropic distribution) together with the scalar ``fret_parameters.kappa2``
+the dynamic average uses, and the Förster radius. Both editors -- the legacy Qt one and the emtk shell's, which
 reaches the model through the server -- call these functions, so the two cannot
 disagree on what a button does.
 """
@@ -63,16 +64,36 @@ def _pairs(spectrum: Any) -> list[tuple[float, float]]:
     return list(zip(values[0::2], values[1::2]))
 
 
+#: The grid the native static average samples the isotropic density on when no
+#: distribution is given (``FRETSpectrumNode``: ``kappa2_points`` over [0.01, 4]).
+ISOTROPIC_GRID = (0.01, 4.0, 128)
+
+
+def isotropic_kappa2_pairs() -> list[tuple[float, float]]:
+    """``(w, κ²)`` of the isotropic static distribution, on the grid the native kernel averages over."""
+    from chisurf.core.fluorescence.anisotropy.kappa2 import p_isotropic_orientation_factor
+
+    lo, hi, n = ISOTROPIC_GRID
+    k2 = np.linspace(lo, hi, n)
+    weights = np.asarray(p_isotropic_orientation_factor(k2, normalize=False), dtype=float)
+    weights = weights / float(np.sum(weights))
+    return list(zip(weights.tolist(), k2.tolist()))
+
+
+def used_kappa2_pairs(parameter: Any, scalar: float) -> list[tuple[float, float]]:
+    """``(w, κ²)`` the model averages over: a spike at *scalar* when dynamic, else the static distribution.
+
+    Static uses the distribution held on *parameter* (*compute κ²*'s result) and the
+    isotropic one when none is held -- what the native kernel does with an empty port.
+    """
+    if parameter is None or str(getattr(parameter, "mode", "fast") or "fast") != "slow":
+        return [(1.0, float(scalar))]
+    return _pairs(getattr(parameter, "orientation_spectrum", None)) or isotropic_kappa2_pairs()
+
+
 def kappa2_pairs(model: Any) -> list[tuple[float, float]]:
-    """``(amplitude, κ²)`` pairs of the static distribution, else one peak at the scalar κ²."""
-    parameter = getattr(model, "orientation_parameter", None)
-    pairs = []
-    if parameter is not None:
-        spectrum = getattr(parameter, "_k2_slow_iso", None)
-        if spectrum is None:
-            spectrum = getattr(parameter, "orientation_spectrum", None)
-        pairs = _pairs(spectrum)
-    return pairs or [(1.0, scalar_kappa2(model))]
+    """``(amplitude, κ²)`` pairs the model's FRET rates are averaged over (see :func:`used_kappa2_pairs`)."""
+    return used_kappa2_pairs(getattr(model, "orientation_parameter", None), scalar_kappa2(model))
 
 
 def kappa2_distribution(model: Any, use_fast: bool = True, n_bins: int = 256) -> dict:
@@ -218,9 +239,11 @@ __all__ = [
     "DYNAMIC_KAPPA2",
     "apply_kappa2_distribution",
     "kappa2_distribution",
+    "isotropic_kappa2_pairs",
     "kappa2_pairs",
     "orientation_mode",
     "scalar_kappa2",
     "set_forster_radius",
     "set_orientation_mode",
+    "used_kappa2_pairs",
 ]

@@ -7,6 +7,20 @@ tags: [plugins, calculators]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
+## Where to pick this up
+
+1. **Static κ² from a computed distribution (landed 2026-10-13, imp.bff + chisurf, not pinned).** *compute κ²*'s
+   result reaches the TCSPC FRET models' static average through the families' `kappa2_distribution` port; the rule
+   for what *show κ²* draws is `chisurf/core/models/tcspc/kappa2_controls.py#used_kappa2_pairs`. Re-measure with
+   `chisurf/plugins/fret_line/test/test_kappa2_regime.py` (narrow `[0.09,0.1,0.11]` vs isotropic: max |ΔE| = 0.24;
+   static delta at 2/3 vs dynamic at 2/3: ΔE = 0). **Blocks the pixi `test` env:** its IMP.bff comes from the
+   pinned build, so the three new tests there fail (the model has no `kappa2_distribution` port, `get_state` lacks it)
+   until imp.bff's pin moves past the commit that added the port — no pixi.lock bump was made in this change.
+   Trap: an empty `GraphPort([])` is *integer*-typed, and a float distribution written into it later is truncated
+   to zeros ("carries no weight"); the node and the spec's port default are constructed float-typed explicitly.
+   Open: the legacy Qt *show κ²* dialog (`chisurf/gui/widgets/models/tcspc/kappa2_helpers.py`) shares the rule but
+   is otherwise untouched Qt.
+
 Calculators are lightweight, mostly-stateless tools that turn a handful of inputs into
 a derived fluorescence quantity — no dataset or fit required. They live under
 `chisurf/plugins/calculator/`, and a hub plugin groups them (together with the FCS and
