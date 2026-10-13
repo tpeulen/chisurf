@@ -62,6 +62,16 @@ def test_a_picked_template_replaces_the_optical_path_topology_included(app, cata
     assert len(app.easy.config["detectors"]) == 3
 
 
+def test_the_default_paths_detectors_are_named_as_the_qt_easy_mode_named_them(app, catalogue):
+    """The default path titles both detector nodes "Detector" and names them in ``detector_name``."""
+    load_catalogue(app)
+    drv = easy(app)
+    names = sorted(d["name"] for d in app.easy.config["detectors"])
+    assert names == ["Green Channel", "Red Channel"]
+    strings = drv.draw(2, size=(1200, 2400)).strings
+    assert "Green Channel" in strings and "Red Channel" in strings
+
+
 def test_the_pickers_show_the_configuration_like_the_qt_probe_tables(app, catalogue):
     """The Qt test of the two-detector template: one Dichroic splitter, an excitation dichroic, C1/C2 rows."""
     load_catalogue(app)
@@ -177,3 +187,31 @@ def test_a_simulation_without_a_dye_says_so_and_runs_nothing(app, catalogue):
     app.controller.start = lambda *a, **k: (started.append(a), real_start(*a, **k))
     assert app.easy.simulate() is None
     assert started == [] and app.easy.status == "Select at least one dye."
+
+
+def test_the_detector_wizards_simulation_keeps_the_configuration_for_the_pda_models(catalogue):
+    """The retired Qt ``LightPathEasyDialog`` (the Detector Wizard's light path) wrote the last configuration too."""
+    from chisurf.emtk.optical_configuration import OpticalConfigurationWidget
+    from chisurf.plugins.core.lightpath_simulator.core.easy_config import (
+        last_config_path,
+        load_last_config,
+    )
+
+    widget = OpticalConfigurationWidget(
+        {
+            "lasers": "488:1.0",
+            "dyes": {str(catalogue["Atto 488"]): {"qy": 0.8, "ec": 90000}},
+            "detectors": [
+                {"name": "green", "qe_probe_id": catalogue["APD (flat QE)"]},
+                {"name": "red", "qe_probe_id": catalogue["APD (flat QE)"]},
+            ],
+            "emission_splitters": [{"type": "Dichroic", "probe_id": catalogue["561LP dichroic"]}],
+        },
+        auto_recalculate=False,
+    )
+    assert not last_config_path().exists()
+    widget.simulate()
+    saved = load_last_config()
+    assert saved["lasers"] == "488:1.0" and str(catalogue["Atto 488"]) in saved["dyes"]
+    assert [d["name"] for d in saved["detectors"]] == ["green", "red"]
+    assert "_cached_results" not in saved  # session state stays out of the file

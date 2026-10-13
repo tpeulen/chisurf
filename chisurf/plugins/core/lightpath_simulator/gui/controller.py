@@ -62,6 +62,10 @@ class LightPathController:
         self.saved = []
         self.status = "Configure the optical path, then press Calculate Emission Intensity."
         self.running = False
+        #: How many backend calls have finished (succeeded, failed or cancelled). A window announces a finished call
+        #: by this count changing, never by seeing ``running`` go from True to False: a fast call (an empty
+        #: MMFDB list) can start and finish between two frames, and its result was then never announced.
+        self.finished = 0
         self.auto_update = True
         self.pending = False
         self.on_document = None
@@ -453,6 +457,7 @@ class LightPathController:
                 self.status = f"Error: {exc}"
             finally:
                 self.running = False
+                self.finished += 1
         if self.pending and not self.running:
             self.start()
 

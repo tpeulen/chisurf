@@ -15,11 +15,17 @@ def _normalize_pid(pid):
 
 
 def _node_display_name(node: dict, config_key: str, default: str) -> str:
-    """Return the visible node title before falling back to config metadata."""
+    """Return the node's name: a title the user gave it, else its configured name, else *default*.
+
+    A title equal to *default* is the node type's own title ("Detector"), not a name: the default
+    path titles both detectors that way and names them in ``detector_name`` ("Green Channel",
+    "Red Channel"), which is what the simulator's results and the retired Qt Easy Mode called them.
+    """
     title = str(node.get("title") or "").strip()
-    if title:
+    configured = str(node.get("config", {}).get(config_key) or "").strip()
+    if title and (title != default or not configured):
         return title
-    return str(node.get("config", {}).get(config_key) or default)
+    return configured or default
 
 
 def _clean_splitters_for_detector_count(

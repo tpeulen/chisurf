@@ -190,6 +190,9 @@ def test_load_from_mmfdb_lists_the_saved_simulations_and_loads_the_chosen_one(dr
     drv.app.controller.operation_name = "first run"
     drv.app.controller.start("save")
     drv.settle()
+    # announced even when the call beat the next frame
+    assert message(drv).startswith("Saved to MMFDB")
+    drv.click_text("OK")
     drv.app.controller.add_node("detector", (5.0, 5.0))
     drv.click("load_mmfdb")
     drv.settle()
@@ -210,9 +213,18 @@ def test_load_from_mmfdb_with_nothing_saved_says_so(drv):
     assert message(drv) == "MMFDB: No saved light path simulations found."
 
 
+def test_a_backend_call_that_finishes_before_the_next_frame_is_still_announced(drv):
+    """The window announced a finished call only if a frame had seen it running: a fast empty list was lost."""
+    drv.click("load_mmfdb")
+    drv.app.controller._future.result(timeout=20)  # done before any frame polls it
+    drv.draw(2)
+    assert message(drv) == "MMFDB: No saved light path simulations found."
+
+
 def test_load_from_mmfdb_cancel_loads_nothing(drv):
     drv.app.controller.start("save")
     drv.settle()
+    drv.click_text("OK")  # the "Saved to MMFDB" message
     drv.click("load_mmfdb")
     drv.settle()
     drv.draw(3)

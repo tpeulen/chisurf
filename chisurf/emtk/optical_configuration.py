@@ -117,6 +117,11 @@ class OpticalConfigurationWidget:
             self.changed()
         finally:
             self._quiet = False
+        # The PDA models read the last simulated configuration as their default light path; the retired Qt
+        # Easy Mode (and its dialog in the Detector Wizard) wrote it after every simulation.
+        from chisurf.plugins.core.lightpath_simulator.core.easy_config import save_last_config
+
+        save_last_config(self.config)
         self.status = "Optical simulation completed."
         return self.results
 

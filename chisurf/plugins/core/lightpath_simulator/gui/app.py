@@ -321,7 +321,8 @@ class LightPathApp(TourTarget, ImApp):
         self.results_tab = "Signals"
         self._catalogue_requested = False
         self._last_operation = ""
-        self._was_running = False
+        #: ``controller.finished`` when the last finished backend call was announced.
+        self._finished_seen = self.controller.finished
         self.help_window = EmTkHelpWindow(
             title="Light Path Simulator - Help & Reference",
             resource=HERE / "help.md",
@@ -603,8 +604,9 @@ class LightPathApp(TourTarget, ImApp):
             title, text = panel.message
             panel.message = None
             self.dialog = MessageDialog(title, text)
-        running = controller.running
-        if self._was_running and not running:
+        finished = controller.finished
+        if finished != self._finished_seen:
+            self._finished_seen = finished
             action = getattr(controller, "_action", "")
             failed = controller.status.startswith("Error")
             if (
@@ -630,7 +632,6 @@ class LightPathApp(TourTarget, ImApp):
                     self.dialog = MessageDialog("MMFDB", "No saved light path simulations found.")
             elif action == "get" and not failed:
                 self.graph_control.fit()
-        self._was_running = running
 
     def _render(self):
         if not self._catalogue_requested:
