@@ -40,6 +40,9 @@ class Shell:
         self.data = self.app.data
         self.driver = Driver(self.app, size)
         self.size = size
+        # The figures float a dock into a box anywhere in the window to crop it; the workspace
+        # would keep it inside the centre. A figure of the workspace itself turns this back on.
+        self.app.docks.confine = False
         self.driver.frame(2)
 
     # -- waiting --------------------------------------------------------------------------

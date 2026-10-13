@@ -195,7 +195,7 @@ def manual_anisotropy_rid():
             data.windows = {first: data.windows[first]} | {
                 k: v for k, v in data.windows.items() if k != first
             }
-        app.tile_fit_windows()
+        app.tile_windows()
         driver.frame(3)
 
     def show(uid, focus=ANALYSIS_KEY):
@@ -289,7 +289,7 @@ def manual_anisotropy_rid():
     driver.click("datasets.add_fit")
     wait(lambda: idle() and len({r["uid"] for r in data.datasets.fits} - known) == 1)
     new_uid = next(r["uid"] for r in data.datasets.fits if r["uid"] not in known)
-    app.tile_fit_windows()
+    app.tile_windows()
     driver.frame(3)
     shell("image_rId137.png")
 

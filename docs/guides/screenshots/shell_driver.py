@@ -53,7 +53,7 @@ def tile(app, first: str | None = None) -> None:
     if first in app.data.windows:
         windows = app.data.windows
         app.data.windows = {first: windows[first]} | {k: v for k, v in windows.items() if k != first}
-    app.tile_fit_windows()
+    app.tile_windows()
 
 
 def idle(app) -> bool:

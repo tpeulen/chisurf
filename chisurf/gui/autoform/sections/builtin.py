@@ -18,7 +18,7 @@ from chisurf import logging
 from chisurf.core.api import edit_parameter
 from chisurf.gui.glyphs import Glyphs
 
-from .registry import register_plot, register_section
+from .registry import register_section
 
 
 def _wrap_tooltip(text: str, width: int | None = None) -> str:
@@ -33,99 +33,8 @@ def _wrap_tooltip(text: str, width: int | None = None) -> str:
 
 
 # --- plots -----------------------------------------------------------------
-# Registered as zero-arg factories so chisurf.gui.plots is only imported when a
-# plot is actually resolved.
-def _plots():
-    import chisurf.gui.plots as _p
-
-    return _p
-
-
-register_plot("line", lambda: _plots().LinePlot)
-register_plot("residual", lambda: _plots().ResidualPlot)
-register_plot("fit_info", lambda: _plots().FitInfo)
-# The fit window is one emtk surface, so its Data table is the emtk page.
-register_plot("fit_table", lambda: _plots().FitTablePlotEmtk)
-register_plot("parameter_scan", lambda: _plots().ParameterScanPlot)
-register_plot("distribution", lambda: _plots().DistributionPlot)
-register_plot("residual2d", lambda: _plots().Residual2DPlot)
-register_plot("mfd_2d", lambda: _plots().MfdMarginalPlot)
-register_plot("mfd_marginals", lambda: _plots().MfdMarginalPlot)
-register_plot("mfd_map", lambda: _plots().MfdMapPlot)
-register_plot("lcurve", lambda: _plots().LCurvePlot)
-register_plot("pr_ci", lambda: _plots().DeerPrCIPlot)
-register_plot("posterior_graph", lambda: _plots().PosteriorGraphPlot)
-register_plot("sampling_diagnostics", lambda: _plots().SamplingDiagnosticsPlot)
-register_plot("conditional_scan", lambda: _plots().ConditionalScanPlot)
-
-
-def _acquisition_plots():
-    import chisurf.gui.plots.acquisition as _p
-
-    return _p
-
-
-# The Acquisition fit window's pages (see chisurf.gui.plots.acquisition): each
-# class docstring is the page's description.
-register_plot("acq_decay", lambda: _acquisition_plots().DecayPage)
-register_plot("acq_correlation", lambda: _acquisition_plots().CorrelationPage)
-register_plot("acq_count_rate", lambda: _acquisition_plots().CountRatePage)
-register_plot("acq_mcs", lambda: _acquisition_plots().McsPage)
-register_plot("acq_macrotime", lambda: _acquisition_plots().MacrotimePage)
-
-
-def _proteinmc_plots():
-    import chisurf.gui.plots.proteinMC as _p
-
-    return _p
-
-
-register_plot("proteinmc_structure", lambda: _proteinmc_plots().ProteinMCStructurePlot)
-register_plot("proteinmc_network", lambda: _proteinmc_plots().ProteinMCDistanceNetworkPlot)
-register_plot("proteinmc_traces", lambda: _proteinmc_plots().ProteinMCPlot)
-
-
-def resolve_distribution_options(options: dict) -> dict:
-    """Resolve string accessors in distribution-plot options to callables.
-
-    The view-spec keeps accessors as names (e.g. ``"interleaved_to_two_columns"``)
-    so the model stays GUI-free; here they are mapped back to the actual
-    functions from :mod:`chisurf.core.math.datatools`.
-    """
-    resolved = dict(options)
-    dist = resolved.get("distribution_options")
-    if isinstance(dist, dict):
-        new_dist = {}
-        for name, cfg in dist.items():
-            cfg = dict(cfg)
-            accessor = cfg.get("accessor")
-            if isinstance(accessor, str):
-                cfg["accessor"] = _resolve_accessor(accessor)
-            new_dist[name] = cfg
-        resolved["distribution_options"] = new_dist
-    return resolved
-
-
-def _resolve_accessor(accessor: str):
-    """Resolve a distribution-plot accessor name to a callable.
-
-    Bare names (e.g. ``"interleaved_to_two_columns"``) resolve against
-    :mod:`chisurf.core.math.datatools`. A dotted or ``module:function`` path
-    (e.g. ``"chisurf.core.models.pda2c.common:get_pda_distribution"``) is imported
-    directly, so model-specific Qt-free accessors stay authorable in JSON.
-    """
-    if ":" in accessor or "." in accessor:
-        import importlib
-
-        if ":" in accessor:
-            mod_name, _, func_name = accessor.partition(":")
-        else:
-            mod_name, _, func_name = accessor.rpartition(".")
-        try:
-            return getattr(importlib.import_module(mod_name), func_name, None)
-        except Exception:
-            return None
-    return getattr(chisurf.core.math.datatools, accessor, None)
+# The fit-window pages are declared in chisurf.emtk.fit_pages.plots (Qt-free, so the
+# emtk shell resolves them without loading this module).
 
 
 # --- curve inputs ----------------------------------------------------------

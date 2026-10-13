@@ -1,0 +1,69 @@
+{
+ "states": {
+  "idle": [
+   {
+    "kind": "label",
+    "text": "Ready",
+    "tooltip": ""
+   }
+  ],
+  "message": [
+   {
+    "kind": "message",
+    "text": "The IRF file has no header; the bin width is guessed.",
+    "tooltip": ""
+   }
+  ],
+  "startup": [
+   {
+    "kind": "message",
+    "text": "Loading plugins",
+    "tooltip": ""
+   }
+  ],
+  "task": [
+   {
+    "kind": "label",
+    "text": "Ready",
+    "tooltip": ""
+   },
+   {
+    "kind": "label",
+    "text": "Fitting fit 1\u2026",
+    "tooltip": "Fitting fit 1\u2026"
+   },
+   {
+    "kind": "progress",
+    "text": "",
+    "tooltip": "",
+    "value": 40,
+    "maximum": 100
+   },
+   {
+    "kind": "button",
+    "text": "\u2715",
+    "tooltip": "Cancel"
+   }
+  ],
+  "busy": [
+   {
+    "kind": "label",
+    "text": "Ready",
+    "tooltip": ""
+   },
+   {
+    "kind": "label",
+    "text": "Reading the fits\u2026",
+    "tooltip": "Reading the fits\u2026"
+   },
+   {
+    "kind": "progress",
+    "text": "",
+    "tooltip": "",
+    "value": 0,
+    "maximum": 0
+   }
+  ]
+ },
+ "height": 26
+}

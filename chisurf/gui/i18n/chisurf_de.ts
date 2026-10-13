@@ -1983,6 +1983,110 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>Show or hide the coding assistant beside the editor.</source>
+            <translation>Den Programmierassistenten neben dem Editor ein- oder ausblenden.</translation>
+        </message>
+        <message>
+            <source>Back to where the caret was before the last jump.</source>
+            <translation>Zurück zur Cursorposition vor dem letzten Sprung.</translation>
+        </message>
+        <message>
+            <source>Forward again, after going back.</source>
+            <translation>Wieder vor, nach einem Schritt zurück.</translation>
+        </message>
+        <message>
+            <source>File:</source>
+            <translation>Datei:</translation>
+        </message>
+        <message>
+            <source>(no files)</source>
+            <translation>(keine Dateien)</translation>
+        </message>
+        <message>
+            <source>The model's source files and view.json specs; pick one to open it.</source>
+            <translation>Die Quelldateien und view.json-Spezifikationen des Modells; zum Öffnen eine auswählen.</translation>
+        </message>
+        <message>
+            <source>Jump to:</source>
+            <translation>Springe zu:</translation>
+        </message>
+        <message>
+            <source>Select...</source>
+            <translation>Auswählen…</translation>
+        </message>
+        <message>
+            <source>The classes and functions in the open file; pick one to go to it.</source>
+            <translation>Die Klassen und Funktionen der geöffneten Datei; zum Hinspringen eine auswählen.</translation>
+        </message>
+        <message>
+            <source>Save/Apply</source>
+            <translation>Speichern/Anwenden</translation>
+        </message>
+        <message>
+            <source>Write the file and apply it: the model module is re-executed so the open fit uses the edited code. A read-only installation saves a copy in the settings folder.</source>
+            <translation>Datei schreiben und anwenden: Das Modellmodul wird neu ausgeführt, sodass der offene Fit den bearbeiteten Code verwendet. Eine schreibgeschützte Installation speichert eine Kopie im Einstellungsordner.</translation>
+        </message>
+        <message>
+            <source>Find:</source>
+            <translation>Suchen:</translation>
+        </message>
+        <message>
+            <source>Text to find in the open file; Enter or Next goes to the next match.</source>
+            <translation>Text, der in der geöffneten Datei gesucht wird; Eingabe oder Weiter springt zum nächsten Treffer.</translation>
+        </message>
+        <message>
+            <source>Go to the next match in the open file.</source>
+            <translation>Zum nächsten Treffer in der geöffneten Datei.</translation>
+        </message>
+        <message>
+            <source>Close the find bar (Escape).</source>
+            <translation>Suchleiste schließen (Escape).</translation>
+        </message>
+        <message>
+            <source>Open a file from the list above.</source>
+            <translation>Eine Datei aus der Liste oben öffnen.</translation>
+        </message>
+        <message>
+            <source>No file open.</source>
+            <translation>Keine Datei geöffnet.</translation>
+        </message>
+        <message>
+            <source>Workspace</source>
+            <translation>Arbeitsbereich</translation>
+        </message>
+        <message>
+            <source>Show every window of the workspace side by side.</source>
+            <translation>Alle Fenster des Arbeitsbereichs nebeneinander zeigen.</translation>
+        </message>
+        <message>
+            <source>Show the workspace's windows as tabs.</source>
+            <translation>Die Fenster des Arbeitsbereichs als Tabs zeigen.</translation>
+        </message>
+        <message>
+            <source>Cascade Windows</source>
+            <translation>Fenster kaskadieren</translation>
+        </message>
+        <message>
+            <source>Float the workspace's windows, each a little below the last.</source>
+            <translation>Die Fenster des Arbeitsbereichs schweben lassen, jedes etwas unter dem vorigen.</translation>
+        </message>
+        <message>
+            <source>Next Window</source>
+            <translation>Nächstes Fenster</translation>
+        </message>
+        <message>
+            <source>Bring the next window of the workspace to the front (Ctrl+Tab).</source>
+            <translation>Das nächste Fenster des Arbeitsbereichs nach vorn holen (Strg+Tab).</translation>
+        </message>
+        <message>
+            <source>{title} (minimized)</source>
+            <translation>{title} (minimiert)</translation>
+        </message>
+        <message>
+            <source>Bring this window to the front.</source>
+            <translation>Dieses Fenster nach vorn holen.</translation>
+        </message>
+        <message>
             <source>Define the simulated sample</source>
             <translation>Simulierte Probe definieren</translation>
         </message>

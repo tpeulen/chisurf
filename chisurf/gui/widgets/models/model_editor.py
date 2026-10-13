@@ -5,8 +5,8 @@ Every model is a pure, Qt-free compute model whose editor is generated:
 * :func:`build_model_editor` returns the editor widget for the model panel — an
   :class:`~chisurf.gui.widgets.models.auto_model_widget.AutoModelWidget` built
   from the model's ``view_spec()``.
-* :func:`model_plot_specs` returns the ``(plot_class, options)`` list for the fit
-  subwindow, resolved from ``view_spec().plots``.
+* :func:`model_plot_specs` (from :mod:`chisurf.emtk.fit_pages.plots`) returns the
+  ``(plot_class, options)`` list for the fit window, resolved from ``view_spec().plots``.
 
 The ``plot_classes`` attribute this used to fall back on is gone (see the
 `GUI & AutoForm <okf/subsystems/gui-autoform.md>`_ concept):
@@ -19,6 +19,10 @@ from __future__ import annotations
 from qtpy import QtWidgets
 
 from chisurf import logging
+
+# Re-exported: the fit window's pages resolve Qt-free in chisurf.emtk.fit_pages.plots (the
+# emtk shell reads them there); the editor tests still spell them from here.
+from chisurf.emtk.fit_pages.plots import FIT_PLOT_KEYS, model_plot_specs  # noqa: F401
 
 #: Attribute under which a pure model caches its on-screen editor widget. Stored
 #: in the model's ``__dict__`` (skipped by ``view_spec()`` auto-derive because it
@@ -100,79 +104,3 @@ def hide_model_editor(model) -> None:
     widget = model_editor_widget(model)
     if widget is not None:
         widget.hide()
-
-
-#: Pages every fit window carries after the model's own: they read the fit's
-#: posterior (sampling result, factor graph), not the model, so no model declares
-#: them. Appended, so the indices a saved layout holds for the model's pages stay.
-FIT_PLOT_KEYS = ("posterior_graph", "sampling_diagnostics", "conditional_scan")
-
-
-def model_plot_specs(model):
-    """Return ``[(plot_class, options), ...]`` for the fit subwindow.
-
-    Resolved from the model's ``view_spec().plots``: each entry names a plot by
-    registry key, and the accessors its options carry are resolved here because
-    JSON cannot hold a callable. The fit-level pages (:data:`FIT_PLOT_KEYS`)
-    follow the model's.
-
-    Returns an empty list when the model declares no plots — a fit window with no
-    plot tabs is a visible, fixable state; silently substituting some other
-    model's plots is not.
-    """
-    try:
-        view = model.view_spec()
-    except Exception as exc:  # pragma: no cover - defensive
-        logging.debug(f"model_plot_specs: view_spec() failed: {exc}")
-        view = None
-
-    if view is not None:
-        try:
-            from chisurf.gui.autoform.sections.builtin import (
-                _resolve_accessor,
-                resolve_distribution_options,
-            )
-            from chisurf.gui.autoform.sections.registry import resolve_plot_specs
-
-            specs = resolve_plot_specs(view)
-            if specs:
-                resolved = []
-                for cls, opts in specs:
-                    opts = dict(opts)
-                    # distribution plots keep accessors under distribution_options
-                    if "distribution_options" in opts:
-                        opts = resolve_distribution_options(opts)
-                    # other plots (e.g. residual2d) may name a top-level accessor
-                    if isinstance(opts.get("accessor"), str):
-                        opts["accessor"] = _resolve_accessor(opts["accessor"])
-                    # multi-source image plots name one accessor per source, and
-                    # optionally an accessor reporting how many frames/lags exist
-                    if isinstance(opts.get("sources"), dict):
-                        opts["sources"] = {
-                            key: (
-                                {**spec, "accessor": _resolve_accessor(spec["accessor"])}
-                                if isinstance(spec, dict) and isinstance(spec.get("accessor"), str)
-                                else spec
-                            )
-                            for key, spec in opts["sources"].items()
-                        }
-                    if isinstance(opts.get("max_frames_accessor"), str):
-                        opts["max_frames_accessor"] = _resolve_accessor(opts["max_frames_accessor"])
-                    resolved.append((cls, opts))
-                return resolved + _fit_plot_specs({cls for cls, _ in resolved})
-        except Exception as exc:  # pragma: no cover - defensive
-            logging.error(f"model_plot_specs: could not resolve plots: {exc}")
-
-    return []
-
-
-def _fit_plot_specs(present: set) -> list:
-    """The fit-level pages (:data:`FIT_PLOT_KEYS`) a model did not declare itself."""
-    from chisurf.gui.autoform.sections.registry import get_plot_class
-
-    specs = []
-    for key in FIT_PLOT_KEYS:
-        cls = get_plot_class(key)
-        if cls is not None and cls not in present:
-            specs.append((cls, {}))
-    return specs

@@ -1,10 +1,10 @@
-"""GUI-side registry that resolves view-spec keys to concrete widgets/plots.
+"""GUI-side registry that resolves view-spec keys to custom-section widgets.
 
 A model describes its editor with string keys (see
 :mod:`chisurf.core.models.view_spec`) and never references a Qt class. This
-module is the GUI-side counterpart: it maps those keys to real plot classes and
-custom-section factories. Keeping the mapping here — and only here — is what
-lets the model layer stay GUI-free while still driving a rich UI.
+module is the GUI-side counterpart: it maps those keys to custom-section
+factories. Plot keys resolve in :mod:`chisurf.emtk.fit_pages.plots`, re-exported
+here for the sections that register or look up a page.
 """
 
 from __future__ import annotations
@@ -13,8 +13,14 @@ import importlib
 
 from chisurf import typing
 
-#: key -> plot class (resolved lazily so importing this module is cheap).
-_PLOT_REGISTRY: typing.Dict[str, typing.Callable[[], type]] = {}
+# The fit-window pages live with the fit window (Qt-free); a section module still
+# registers or looks a page up through these names.
+from chisurf.emtk.fit_pages.plots import (  # noqa: F401 - re-exported
+    get_plot_class,
+    register_plot,
+    resolve_plot_specs,
+)
+
 #: key -> custom-section factory ``(model, target, **options) -> QWidget``.
 _SECTION_REGISTRY: typing.Dict[str, typing.Callable[..., typing.Any]] = {}
 
@@ -56,58 +62,6 @@ _SECTION_MODULES = {
     "store_table": "store_table_section",
     "waterfall": "waterfall_section",
 }
-_PLOT_MODULES = {
-    "acq_correlation": "builtin",
-    "acq_count_rate": "builtin",
-    "acq_decay": "builtin",
-    "acq_macrotime": "builtin",
-    "acq_mcs": "builtin",
-    "conditional_scan": "builtin",
-    "distribution": "builtin",
-    "fit_info": "builtin",
-    "fit_table": "builtin",
-    "lcurve": "builtin",
-    "line": "builtin",
-    "mfd_2d": "builtin",
-    "mfd_map": "builtin",
-    "mfd_marginals": "builtin",
-    "parameter_scan": "builtin",
-    "posterior_graph": "builtin",
-    "pr_ci": "builtin",
-    "proteinmc_network": "builtin",
-    "proteinmc_structure": "builtin",
-    "proteinmc_traces": "builtin",
-    "residual": "builtin",
-    "residual2d": "builtin",
-    "sampling_diagnostics": "builtin",
-    "state_scheme": "state_scheme_section",
-}
-
-
-def register_plot(key: str, factory: typing.Callable[[], type]) -> None:
-    """Register a plot class factory under ``key``.
-
-    Parameters
-    ----------
-    key : str
-        The key emitted by a model's :class:`~chisurf.core.models.view_spec.PlotSpec`.
-    factory : callable
-        Zero-argument callable returning the plot *class*. A factory (rather
-        than the class directly) avoids importing the GUI plots eagerly.
-    """
-    if getattr(factory, "__module__", None) == f"{__package__}.{_PLOT_MODULES.get(key)}":
-        # A direct builtin import must not replace an earlier custom override.
-        _PLOT_REGISTRY.setdefault(key, factory)
-    else:
-        _PLOT_REGISTRY[key] = factory
-
-
-def get_plot_class(key: str) -> typing.Optional[type]:
-    """Return the plot class registered under ``key`` (or ``None``)."""
-    if key not in _PLOT_REGISTRY and key in _PLOT_MODULES:
-        importlib.import_module(f"{__package__}.{_PLOT_MODULES[key]}")
-    factory = _PLOT_REGISTRY.get(key)
-    return factory() if factory is not None else None
 
 
 def register_section(key: str):
@@ -132,22 +86,6 @@ def get_section_factory(key: str) -> typing.Optional[typing.Callable[..., typing
     if key not in _SECTION_REGISTRY and key in _SECTION_MODULES:
         importlib.import_module(f"{__package__}.{_SECTION_MODULES[key]}")
     return _SECTION_REGISTRY.get(key)
-
-
-def resolve_plot_specs(view) -> typing.List[typing.Tuple[type, dict]]:
-    """Translate a :class:`ModelView` into ``(plot_class, options)`` pairs.
-
-    This is where a view spec's plot *keys* become the classes the fit-subwindow
-    plot loader instantiates; a key with no registered class is dropped. Keeping
-    the mapping here is what lets a model name its plots without importing one —
-    the last hard dependency the compute side had on the GUI.
-    """
-    specs: typing.List[typing.Tuple[type, dict]] = []
-    for plot in getattr(view, "plots", ()):  # PlotSpec items
-        plot_class = get_plot_class(plot.key)
-        if plot_class is not None:
-            specs.append((plot_class, dict(plot.options)))
-    return specs
 
 
 @register_section("fitting_parameter")

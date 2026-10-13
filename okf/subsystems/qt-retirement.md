@@ -2,7 +2,7 @@
 type: Subsystem
 title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
-resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
+resource: chisurf/emtk/main_app.py, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/status_strip.py, chisurf/emtk/fit_pages/plots.py, chisurf/emtk/fit_pages/surface.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
 timestamp: '2026-10-11T00:00:00Z'
 ---
@@ -26,7 +26,8 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
 (`emtk.ime`). Slice S5's ribbon reached parity with the Qt ribbon the same day
 (`chisurf/emtk/shell_ribbon.py` on emtk's new `emtk.ribbon`): its tabs, groups and buttons come from the manifests
 through the Qt ribbon's own placement rules, and the menu bar and Tools dock list the same tree with the manifest
-icons. The status strip of S5 is still open; the splash window and its startup stages landed 2026-10-12 (item 13). The Qt shell is still the default.
+icons. The splash window and its startup stages landed 2026-10-12 (item 12), and S5's status strip reached control
+parity with the Qt status bar on 2026-10-13 (item 5).
 
 1. Measure: the allow-list has 221 entries (244 before the 2026-10-12 test-port slice). Re-derive with
    `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
@@ -78,17 +79,40 @@ icons. The status strip of S5 is still open; the splash window and its startup s
    (`EmtkShellApp.export_settings()["ribbon"]`).
    One layout feeds the ribbon, the menus and the Tools tree: `shell_ribbon.plugin_tree` over
    `chisurf/core/plugin/ribbon_layout.py` (moved out of the Qt package so the shell can import it, with the maturity
-   markers now in `chisurf/core/plugin/maturity.py`). Open: the S5 status strip (progress) and a `surface="emtk"`
-   startup stage set. Trap: tab and group captions are manifest `display_name` segments, collected for translation
+   markers now in `chisurf/core/plugin/maturity.py`). The status strip (`chisurf/emtk/status_strip.py`, the
+   window's bottom line) is at control parity: `test/native_emtk/test_emtk_shell_status_strip.py` against
+   `shell_s5_status_qt_inventory.json` (`capture_shell_s5_status_qt_before.py`, about a minute, PNGs
+   `renders/w9_s5/qt_status_*.png`) in five states (idle *Ready*, a logged warning, a startup stage, an operation
+   with bar and ✕, a busy operation); `KNOWN_GAPS` is empty, one `DELIBERATE` (the startup stage is the operation's
+   text beside its bar; Qt's `showMessage` hides its own startup bar). Fed by the root log handler, the shell's,
+   data docks' and project's status lines, `DataDocks.job`, a sampling job (✕ calls `cancel_sampling`) and the
+   session's stages (`EmtkShellApp.stage_started` forwards to splash and strip); `EmtkShellApp.begin_task` is the
+   Qt status bar's progress-host contract. Trap: the shipped `log_level` is 30, so INFO records reach neither bar.
+   Trap: the busy bar slides only with emtk `dc763f5` (negative `progress_bar` fraction), committed in `~/dev/emtk`
+   and not pushed; the arm64 env imports an installed emtk, so it draws an empty bar until the pin moves (verify with
+   `PYTHONPATH=~/dev/emtk`). Open: the Qt post-show stages (`check_updates`, `warmup_imports`) have no
+   `surface="emtk"` phase; the splash set (`25_emtk_splash.json`) is the only emtk one. Open: the strip's new
+   strings (*Sampling…*, *Cancel failed: {error}*) wait for the queued catalogue job. Trap: tab and group captions are manifest `display_name` segments, collected for translation
    since this slice (`build_tools/i18n/extract_strings.py::_collect_menu_path`); their de/fr entries are unfinished
    until the queued translation job, so the German shell still shows *Spectroscopy*. Trap: re-extracting while
    another lane has uncommitted `tr()` edits marks their removed strings obsolete; put such entries back (S5 restored
    *Close Help*) or `test_committed_authored_ui_text_has_german_and_french_catalogue_sources` fails.
-6. Measure: the shell's fit pages live under `chisurf.gui`, whose package `__init__` imports `qtpy`; opening the
-   first fit window (and registering the experiments) loads the Qt modules, though no `QApplication` is made and Qt
-   draws nothing. The Code face (`chisurf/gui/widgets/fitting/fit_code_face.py`) is there too.
-   `test_the_shell_module_does_not_import_qt` covers construction only. Blocks: S6 striking `qtpy`. Next: move the
-   page classes (`chisurf/gui/plots/**`, `model_plot_specs`, `fit_code_face`) out of the Qt-importing package.
+6. Blocked: opening a fit window still imports Qt, now only through a page class. Landed 2026-10-13: the surface
+   (`chisurf/emtk/fit_pages/surface.py`, out of `fit_plots_area.py`), the page registry with `model_plot_specs`
+   (`chisurf/emtk/fit_pages/plots.py`: `PLOT_CLASSES` declares every shipped page as `"module:Class"`; the
+   autoform registry re-exports `register_plot` / `get_plot_class`, `builtin.py`'s 23 registrations are gone) and
+   the Code face (`chisurf/emtk/fit_pages/code_face.py`) are Qt-free; `model_editor.model_plot_specs` stays as a
+   re-export for about 20 editor tests. Measure: `test/native_emtk/test_fit_window_is_qt_free.py` (subprocess): the
+   first Qt import is reached through a page class, never through the surface, `model_editor`, autoform or the
+   Code face; the full guard `test_opening_a_fit_window_imports_no_qt` is a strict xfail that flips when done.
+   The blocker is chiplot, not the page modules' location: `chisurf/gui/chiplot/backends/base.py` imports
+   `QtWidgets` at package import and `chiplot.canvas.Plot` / `Grid` / `VolumeView` are `QWidget`s, so moving
+   `chisurf/gui/plots/**` out of `chisurf.gui` alone gains nothing measurable (probe: stub `chisurf.gui`'s
+   `__init__` and resolve every `PLOT_CLASSES` key; all 22 stop at chiplot or, for `state_scheme`, autoform).
+   Next: a Qt-free chiplot core (canvas API, handles, style, emtk backend) importable without `qtpy`, owned by the
+   chiplot lane; then the page modules move beside `fit_pages`. Rejected for now: making `chisurf.gui.__init__`
+   lazy, because tests monkeypatch attributes on that module and a facade would not reach the implementation.
+   Blocks: S6 striking `qtpy`.
 7. Measure: whole-window parity, `test/native_emtk/test_emtk_shell_whole_parity.py` against
    `shell_whole_qt_inventory.json`: `KNOWN_GAPS` empty since 2026-10-11 (was 23). The fixture clicks every ribbon
    tab and the Log dock's tabs, as a user does; renamed captions (`?` → ❓ Help, `Language: English` → 🌍 EN, `P` →
@@ -116,9 +140,27 @@ icons. The status strip of S5 is still open; the splash window and its startup s
    for achieving parity"). `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
    (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`). When
    S6 is reopened, item 6 (page classes under the Qt-importing `chisurf.gui`) is the first step.
-10. Open: **multi-window** (the emtk gap below) decides whether detached plugin windows survive the move; it goes into
-    `~/dev/emtk` with tests. emtk is pushed up to `9931996` (pin, drop position, Driver caption on top) and
-    `pixi.lock` pins it. Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.
+10. Measure: **multi-window** is the Workspace (2026-10-13, owner's request: unbound windows disappeared in the
+    background). The shell's centre is `Region("center", workspace=True)` (emtk `DockManager`): every floating
+    window -- floated docks, tools, fit windows -- lives inside it and is clamped back in on resize; it is a
+    region, not a window, so it cannot be closed or hidden. Tile (emtk `tile_grid`, `MIN_TILE`; overflow is
+    minimized to the strip), Cascade, Tabbed and the Windows list are on its tool bar, its right-click menu
+    and View > Workspace; Ctrl+Tab cycles (`DockManager.handle_key`, taken in `EmtkShellApp.key` before the
+    focused child); minimized state persists in `docks.state()`, the open set in `export_settings`. Re-derive:
+    `test/native_emtk/test_emtk_shell_workspace.py` (shell) and emtk `tests/test_docking_workspace.py`.
+    Decision on native OS windows: inside the shell the only ones were the help browser and the code editor,
+    spawned as `python -m chisurf.emtk --plugin help|code_editor` processes whose glfw window fell behind the
+    main one on the next click; with a shell open they now open as Workspace windows
+    (`main_app.host_in_shell`, via `code_links.host_in_open_shell`). glfw has no owned/transient windows,
+    and an always-on-top window from another process would float above every application, so that was not
+    used; the splash is the one remaining separate window (`floating=True`). Open: detached docks on a
+    second monitor (a second `NativeHost` sharing one app) stay unbuilt. Tried and reverted: tiling by splitting
+    the centre into regions (the old *Tile Windows*): it multiplied regions and stacked the overflow as tabs
+    inside tiles; the Workspace tiles free windows instead. Trap: the docs figure harness
+    (`docs/guides/screenshots/shell_emtk.py`) sets `docks.confine = False` so a dock can be floated anywhere
+    to be cropped; a figure of the Workspace itself sets it back.
+    emtk was pushed up to `9931996` and `pixi.lock` pins it; the Workspace commit is local until the pin moves.
+    Measure: `git -C ~/dev/emtk log --oneline origin/main..HEAD`.
 11. Open: S4 remainders. (a) CJK draws one cell per character, narrowed to it (`emtk/dynamic_font.py`): legible at
     2x, hard at 1x. Two-cell East Asian width changes every painter's `text_width` and the editors' column
     arithmetic, so it needs a decision first. Not a release blocker: ChiSurf ships no Chinese, Japanese or Korean
@@ -230,7 +272,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Keyboard shortcuts | `gui.ui` actions and `configure_project_shortcuts` (`main.py:53-62`), ApplicationShortcut | `EmtkShellApp.shortcuts()` from the session menus, run before keys reach the focused child | `Ctrl+Alt+S` (fit export, resume item 7) | S3 done | `test_the_session_menus_bind_the_qt_shortcuts` |
 | Console | `cs.console = QIPythonWidget(chinsole.Chinsole)` (`gui/__init__.py:589`), `gui/chinsole/**` (8 files, 3,462 lines, `QTextEdit`); the engine `chisurf.core.console` is Qt-free | `chisurf/emtk/console.py` (`ShellConsole` on `TextEditor`, hosted by `im.host_control`); *Macro ▸ Record / Run Macro…*; `chisurf.run` / `chisurf.log` / `chisurf.console` while the shell is open | rich display as text, `input()` (resume item 12) | S4 done | `test/native_emtk/test_emtk_shell_console.py` (25 behaviours vs `shell_s4_qt_inventory.json`) |
 | Logging dock | `plainTextEditLog` and filter, `_LogRelay` timers (`gui/__init__.py:192-374`) | S1 Log dock (`_LogBuffer` handler) | level filter, history browser | S1 partial, S4 | — |
-| Status bar | `TruncatingStatusBar` (`main.py:1216-1248`) and progress bar | S1 Start dock status line | a status strip with progress | S5 | — |
+| Status bar | `TruncatingStatusBar` (`main.py:1216-1248`), progress bar, `StatusBarProgressHost` | `chisurf/emtk/status_strip.py`: message or *Ready*, the operation's text, bar (sliding when unknown) and ✕ | — | S5 done | `test/native_emtk/test_emtk_shell_status_strip.py` |
 | Splash | `SplashScreen(QSplashScreen)` (`gui/__init__.py:443`) over `icons/splashscreen.png` | `chisurf/emtk/splash.py`: its **own** frameless window (`NativeHost(decorated=False, floating=True, transparent=True, centred=True)`, emtk 93bc456), the art at 2x (`chisurf/emtk/splash.png` from the SVG, its own 2048-texel image atlas), transparent where the art is; progress bar, stage, last log line, copyright, version, licence, contributors drawn on the art where the Qt splash puts them; the main window opens when the session has settled and the splash closes on its first frame. A separate window, not a cover inside the main one: the art is a shaped splash *screen* (owner, 2026-10-12) | — | S5 done | `test/native_emtk/test_emtk_shell_splash.py`, emtk `tests/test_native_splash_window.py` |
 | Startup services | `AppStartupServiceManager` stages in `startup/services.d/20_gui_splash.json`, `30_gui_post_show.json` | the `surface="emtk"`, `phase="splash"` set `services.d/25_emtk_splash.json` (imports, experiments, server and its plugins, connect, global dataset) run by the same manager inside `chisurf.emtk.session.start_session` on the session worker; `on_stage_start` feeds the splash | the Qt post-show stages (`populate_plugins`, `check_updates`, `warmup_imports`) have no emtk counterpart yet: the shell reads manifests in its constructor and checks no updates | S5 done (splash phase) | `test_the_session_reports_the_declared_stages_in_order`, `test/startup/test_services.py` |
 | Auth | `LoginDialog`, deferred `_run_startup_auth` | `switch_user` emtk plugin | modal login before the session | S3 open (resume item 7) | — |
@@ -238,7 +280,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Tooltips | Qt tooltips and `install_tooltip_wrapping` | `emtk.tooltip` | — | S1 done | emtk `test_tooltip.py` |
 | Clipboard | Qt | `emtk.clipboard` (glfw/platform) | — | done | emtk `test_clipboard.py` |
 | DPI and export | Qt scaling, `widget.grab()` | `NativeHost` ratio, `emtk.scaled_painter`, `--screenshot` | — | done | `test_emtk_shell_flag_opens_the_emtk_surface` |
-| Multi-window | every plugin is its own top-level Qt window | one `NativeHost` per process; floating docks inside one surface | **gap**: a second OS window sharing one app (detached docks on a second monitor) | S6 decision | — |
+| Multi-window | every plugin is its own top-level Qt window | one `NativeHost` per process; every unbound window a child of the **Workspace** (centre region, emtk `workspace=True`): Tile / Cascade / Tabbed / Windows, minimize strip, Ctrl+Tab, clamped, persisted; help browser and code editor open there instead of a second process | **gap**: a second OS window sharing one app (detached docks on a second monitor) | Workspace done; second monitor open | `test/native_emtk/test_emtk_shell_workspace.py`, emtk `tests/test_docking_workspace.py` |
 | Text input, IME | Qt `inputMethodEvent` | `emtk.ime`: commits as typed text, preedit in `io.preedit` drawn at the caret of `input_text`, `TextEditor`, `TextField`; `qt_host.inputMethodEvent`; native holds back a composition's keys (`MarkedTextProbe`) | inline preedit in the glfw window, the browser's composition events (resume item 12) | S4 done | emtk `tests/test_ime.py`, `test_emtk_shell_console.py::test_composed_input_types_into_the_console` |
 | Molecular viewer | chimol `hosts/qt` | chimol native host | chimol's 110 Qt-driven tests | S7 | — |
 | Watermark, sparkline | `widgets/system_info_watermark.py` | chiplot or `emtk.implot` | — | S5 (or drop) | — |

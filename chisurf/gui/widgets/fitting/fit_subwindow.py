@@ -118,7 +118,7 @@ class FitSubWindow(CustomMdiSubWindow):
         self._control_layout = control_layout
 
         # Lazy plot instantiation: create lightweight tab containers now, build plots on demand
-        from chisurf.gui.widgets.models.model_editor import model_plot_specs
+        from chisurf.emtk.fit_pages.plots import model_plot_specs
 
         self._plot_specs = model_plot_specs(fit.model)
         self._plots_all = [None] * len(self._plot_specs)  # positional storage
@@ -548,7 +548,7 @@ class FitSubWindow(CustomMdiSubWindow):
         """Build the Code face once, when it is first shown."""
         if self.code_face is not None:
             return self.code_face
-        from chisurf.gui.widgets.fitting.fit_code_face import FitCodeFace
+        from chisurf.emtk.fit_pages.code_face import FitCodeFace
 
         self.code_face = FitCodeFace(on_apply=self.save_model_code)
         self.plot_tab_widget.set_code_face(self.code_face)

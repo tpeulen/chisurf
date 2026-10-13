@@ -163,6 +163,12 @@ def _open_document(path: pathlib.Path, anchor: str = "") -> bool:
 
     # A Qt widget must never be constructed without a live QApplication.
     if not _is_qt_active():
+        # The emtk shell is open: the help browser is a window of its workspace, not a second
+        # process whose OS window falls behind the main one.
+        from chisurf.emtk.code_links import host_in_open_shell
+
+        if host_in_open_shell("help", lambda: open_help_page(path, anchor=anchor or None)):
+            return True
         try:
             import subprocess
 

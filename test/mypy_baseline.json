@@ -287,7 +287,7 @@
   "chisurf/gui/widgets/experiments/tcspc/tcspc_tttr_reader_control_widget.py": 1,
   "chisurf/gui/widgets/experiments/ui_sync.py": 4,
   "chisurf/gui/widgets/experiments/widgets.py": 9,
-  "chisurf/gui/widgets/fitting/fit_code_face.py": 5,
+  "chisurf/emtk/fit_pages/code_face.py": 5,
   "chisurf/gui/widgets/fitting/fit_controller.py": 8,
   "chisurf/gui/widgets/fitting/fit_list.py": 5,
   "chisurf/gui/widgets/fitting/fit_plots_area.py": 1,

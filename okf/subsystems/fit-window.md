@@ -93,7 +93,8 @@ Moved here unchanged: notes that are history, done work or standing rules rather
 `FitSubWindow` (`fit_subwindow.py`) is a Qt MDI sub-window: its title bar
 (name, **Code**/**Plots** toggle, minimise/maximise/close) is Qt chrome. Its
 content is `FitPlotsArea` (`fit_plots_area.py`): one
-`emtk.qt_host.ControlHost` over `FitWindowSurface`, an `emtk.app.ImApp` that
+`emtk.qt_host.ControlHost` over `FitWindowSurface` (Qt-free, in
+`chisurf/emtk/fit_pages/surface.py`; the emtk shell hosts the same surface), an `emtk.app.ImApp` that
 draws
 
 * the **pages** as windows of an `emtk.docking.DockManager`: tabs in one
@@ -106,7 +107,7 @@ draws
   refreshed, not only the current one;
 * a **right-click menu** on any chiplot panel: Export data as CSV…, Export
   image…, Auto-range, plus the plot's own `add_menu_action` entries;
-* the **Code face** (`fit_code_face.py`) in place of the plots when toggled.
+* the **Code face** (`chisurf/emtk/fit_pages/code_face.py`) in place of the plots when toggled.
 
 `FitPlotsArea` keeps the call surface the rest of ChiSurf used for
 `plot_tab_widget` (`addTab`, `count`, `widget`, `currentIndex`,

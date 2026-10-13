@@ -240,7 +240,7 @@ def test_tile_windows_makes_a_grid_of_usable_tiles(shell):  # noqa: F811
     driver = Driver(shell, size=(1700, 1100))
     _six_fits(driver, shell)
     shell.docks.hide("start")
-    shell.tile_fit_windows()
+    shell.tile_windows()
     driver.frame(4)
     boxes = [shell.docks.window(w.key).frame for w in shell.data.windows.values()]
     assert all(box is not None for box in boxes)
@@ -249,17 +249,18 @@ def test_tile_windows_makes_a_grid_of_usable_tiles(shell):  # noqa: F811
     driver.screenshot(SHOTS / "emtk_fix_tile_six.png")
 
 
-def test_tile_windows_stacks_what_does_not_fit_as_tabs(shell):  # noqa: F811
+def test_tile_windows_minimizes_what_does_not_fit(shell):  # noqa: F811
     from chisurf.emtk.main_app import MIN_TILE
 
     driver = Driver(shell, size=(900, 700))
     _six_fits(driver, shell)
     shell.docks.hide("start")
-    shell.tile_fit_windows()
+    shell.tile_windows()
     driver.frame(4)
-    shown = [shell.docks.window(w.key).frame for w in shell.data.windows.values()]
-    drawn = [b for b in shown if b is not None]
-    assert 1 <= len(drawn) < 6, "the rest are tabs under the tiles"
+    windows = [shell.docks.window(w.key) for w in shell.data.windows.values()]
+    drawn = [w.frame for w in windows if w.frame is not None]
+    assert 1 <= len(drawn) < 6
+    assert all(w.minimized for w in windows if w.frame is None), "the rest wait on the workspace's strip"
     assert min(b[2] for b in drawn) >= MIN_TILE[0] and min(b[3] for b in drawn) >= MIN_TILE[1]
     driver.screenshot(SHOTS / "emtk_fix_tile_tabs.png")
 
@@ -278,7 +279,7 @@ def test_pressing_in_another_tile_makes_it_the_analysis_docks_fit(shell):  # noq
     uids = _six_fits(driver, shell)
     data = shell.data
     shell.docks.hide("start")
-    shell.tile_fit_windows()
+    shell.tile_windows()
     driver.frame(4)
     for uid in (uids[4], uids[1], uids[5]):
         x, y, w, h = shell.docks.window(data.windows[uid].key).content

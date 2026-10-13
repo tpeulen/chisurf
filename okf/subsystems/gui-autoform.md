@@ -768,7 +768,8 @@ guard.
 Three things follow from this and are easy to undo by accident:
 
 - **A model never names a plot class.** `view_spec().plots` lists registry
-  *keys*; `sections/registry.py::resolve_plot_specs` maps them to classes. The old
+  *keys*; `chisurf/emtk/fit_pages/plots.py` (`PLOT_CLASSES`, `resolve_plot_specs`, Qt-free, re-exported by
+  `sections/registry.py`) maps them to classes. The old
   `plot_classes` attribute is gone — it was the last hard dependency from the
   compute side onto the GUI. A model that declares no plots gets **no** plot tabs,
   which is visible and fixable; the old fallback could hand it another model's.

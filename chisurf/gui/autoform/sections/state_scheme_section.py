@@ -828,8 +828,3 @@ class StateSchemePlot(_plot_base()):
             canvas.editing = None
         elif escaped:
             canvas.editing = None
-
-
-from .registry import register_plot
-
-register_plot("state_scheme", lambda: StateSchemePlot)

@@ -52,7 +52,7 @@ def test_open_demo_registers_dataset_and_a_fit_naming_the_five_pages(monkeypatch
     """Headless ``open_demo`` appends a dataset and an Acquisition fit; pages come from its spec."""
     from chisurf.core.api import ChiSurfAPI
     from chisurf.core.models.acquisition import AcquisitionModel, acquisition_dataset
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
     from chisurf.plugins.core.acq import dataset as dataset_module
 
     monkeypatch.setattr(demo, "demo_folder", lambda: tmp_path)

@@ -216,7 +216,7 @@ def grab_fcs_walkthrough() -> None:
     app.docks.hide("start")
     uids = [_add_fit(driver, wait, f"A488_ACF_{n}", "Parse-Model") for n in (1, 2, 3)]
     sd.show(driver, wait, uids[0])
-    app.tab_fit_windows()
+    app.tab_windows()
     sd.show(driver, wait, uids[2])
     sd.shot_shell(driver, "fcs_fit_windows.png")
     sd.show(driver, wait, uids[1])
@@ -224,7 +224,7 @@ def grab_fcs_walkthrough() -> None:
     sd.tile(app, first=uids[0])
     sd.show(driver, wait, uids[0])
     sd.shot_shell(driver, "fcs_fit_windows_tiled.png")
-    app.tab_fit_windows()
+    app.tab_windows()
 
     _formula(driver, wait, uids[0])
     sd.shot_shell(driver, "fcs_model_3d_gauss_bunching.png")

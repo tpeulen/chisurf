@@ -553,6 +553,8 @@ class DataDocks:
         self.dragged: tuple[dict, float, float] | None = None
         #: A sampling job under way on the server, polled while the docks draw.
         self.sampling_job = ""
+        #: The sampling job's percentage as of the last poll (the status strip's bar).
+        self.sampling_progress = 0
         self._sampling_polled = 0.0
         #: Data points per dataset uid (groups and their members), for the range's *auto*.
         self._lengths: dict[str, int] = {}
@@ -566,8 +568,11 @@ class DataDocks:
         if session_factory is not None:
             wake = self.request_frame
             # The shell's splash follows the startup stages the session runs through.
-            splash = getattr(shell, "splash", None)
-            on_stage = splash.stage_started if splash is not None else None
+            # (and so does the status strip: the shell's ``stage_started`` forwards to both).
+            on_stage = getattr(shell, "stage_started", None)
+            if not callable(on_stage):
+                splash = getattr(shell, "splash", None)
+                on_stage = splash.stage_started if splash is not None else None
             self._starting.start(
                 {"session": lambda: session_factory(wake=wake, on_stage=on_stage)},
                 name="chisurf-shell-session",
@@ -675,7 +680,8 @@ class DataDocks:
             return
         state = str(status.get("status", ""))
         if state in ("running", "queued", "cancelling"):
-            self.status = tr("Sampling… {progress}%").format(progress=status.get("progress", 0))
+            self.sampling_progress = int(status.get("progress") or 0)
+            self.status = tr("Sampling… {progress}%").format(progress=self.sampling_progress)
             self.request_frame()
             return
         self.sampling_job = ""

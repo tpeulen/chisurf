@@ -242,21 +242,31 @@ def run_shell_shots(names: list[str]) -> None:
             _console(s, "fits = api.list_fits(statistics=True)", "fits[0]['name']", "round(fits[0]['chi2r'], 3)")
             s.save("main_overview.png")
         elif name == "mdi_tiled_and_tabbed":
+            # The workspace as a user meets it: two fit windows and a tool, tiled, then cascaded
+            # with one minimized and the Windows list open, then tabbed.
             _read_four(s)
             _two_fits(s)
-            s.show_analysis()
-            keys = [w.key for w in s.data.windows.values()]
             docks = s.app.docks
-            half = (415.0, 150.0, 540.0, 560.0), (960.0, 150.0, 535.0, 560.0)
-            for key, box in zip(keys, half):
-                docks.undock(key, box)
+            docks.confine = True
+            s.app.open_plugin("microtime_histogram")
+            s.settle(lambda: all(h.build is None for h in s.app.hosted.values()), "the tool")
+            s.show_analysis()
+            s.app.tile_windows()
+            s.driver.hover((1495.0, 5.0))
             s.driver.frame(6)
-            s.save("main_mdi_tiled.png", crop=(0, 120, 1500, 740))
-            for key in keys:
-                docks.dock(key, "center")
-            docks.focus(keys[0])
+            s.save("main_mdi_tiled.png", crop=(0, 120, 1500, 950))
+            s.app.cascade_windows()
+            fits = [w.key for w in s.data.windows.values()]
+            docks.minimize(fits[0])
+            s.driver.frame(4)
+            s.driver.click(docks._workspace_buttons["windows"])
+            s.driver.frame(4)
+            s.save("main_mdi_cascade.png", crop=(0, 120, 1500, 950))
+            s.driver.escape()
+            s.app.tab_windows()
+            docks.focus(fits[1])
             s.driver.frame(6)
-            s.save("main_mdi_tabbed.png", crop=(0, 120, 1500, 740))
+            s.save("main_mdi_tabbed.png", crop=(0, 120, 1500, 950))
         elif name == "read_data_vvvh":
             s.app.docks.focus(READ_KEY)
             read = s.data.read

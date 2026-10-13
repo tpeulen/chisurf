@@ -33,6 +33,18 @@ def register_emtk_editor(editor: Any) -> None:
         _ACTIVE_EMTK_EDITORS.append(editor)
 
 
+def host_in_open_shell(plugin_id: str, then: Any = None) -> bool:
+    """Open *plugin_id* in the emtk shell of this process, if one is open; ``then()`` once built.
+
+    Looked up in :data:`sys.modules`, so a process without the shell never imports it.
+    """
+    import sys
+
+    shell_module = sys.modules.get("chisurf.emtk.main_app")
+    host = getattr(shell_module, "host_in_shell", None)
+    return bool(host(plugin_id, then)) if callable(host) else False
+
+
 def unregister_emtk_editor(editor: Any) -> None:
     """Unregister an EMTK code editor instance."""
     if editor in _ACTIVE_EMTK_EDITORS:
@@ -108,7 +120,16 @@ def open_source(
                 except Exception:
                     logger.debug("could not open in active EMTK editor", exc_info=True)
 
-        # If no active EMTK editor in current process, spawn standalone EMTK code editor
+        # No editor yet: the open emtk shell makes one in its workspace (not a second process
+        # whose OS window falls behind the main one); without a shell, a standalone editor.
+        def show_in_editor() -> None:
+            for editor in reversed(_ACTIVE_EMTK_EDITORS):
+                if editor is not None:
+                    editor.open_file(str(resolved.path), line=line_num)
+                    return
+
+        if host_in_open_shell("code_editor", show_in_editor):
+            return True
         try:
             import subprocess
             import sys

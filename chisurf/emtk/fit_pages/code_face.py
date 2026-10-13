@@ -2,7 +2,7 @@
 
 "Code" in a fit window's title bar turns the window over: instead of the plots
 it shows the source of the fit's model and its ``view.json``, editable, with
-"Save/Apply" writing the file and re-executing the model module so the change
+tr("Save/Apply") writing the file and re-executing the model module so the change
 takes effect in the open fit. This module is that face as part of the window's
 one emtk surface:
 
@@ -23,6 +23,8 @@ from __future__ import annotations
 import pathlib
 from dataclasses import dataclass, field
 from typing import Any, Callable
+
+from emtk.i18n import tr
 
 __all__ = ["FitCodeFace", "CodeDocument"]
 
@@ -72,7 +74,7 @@ class FitCodeFace:
     ) -> None:
         self.on_apply = on_apply
         self.request_frame = request_frame or (lambda: None)
-        #: The files offered in "File:", as paths.
+        #: The files offered in tr("File:"), as paths.
         self.files: list[str] = []
         self.documents: list[CodeDocument] = []
         self.active: int = -1
@@ -97,7 +99,7 @@ class FitCodeFace:
         return None
 
     def set_files(self, paths) -> None:
-        """Offer *paths* in the "File:" list."""
+        """Offer *paths* in the tr("File:") list."""
         self.files = [str(p) for p in paths]
 
     def find_document(self, path: str) -> int:
@@ -140,7 +142,7 @@ class FitCodeFace:
             self.refresh_symbols()
 
     def refresh_symbols(self) -> list[Any]:
-        """Re-read the definitions of the active Python file for "Jump to:"."""
+        """Re-read the definitions of the active Python file for tr("Jump to:")."""
         doc = self.active_doc
         self.symbols = []
         if doc is not None and doc.path.endswith(".py"):
@@ -327,14 +329,14 @@ class FitCodeFace:
     def _caret_text(self) -> str:
         doc = self.active_doc
         if doc is None:
-            return "No file open."
+            return tr("No file open.")
         try:
             line, column = doc.editor.cursors.main.end.line, doc.editor.cursors.main.end.column
         except Exception:
             return doc.path
         return f"{doc.path}   Ln {line + 1}, Col {column + 1}"
 
-    #: Toolbar columns: 🤖, ←, →, "File:", the file list (stretch 2), "Jump to:",
+    #: Toolbar columns: 🤖, ←, →, tr("File:"), the file list (stretch 2), tr("Jump to:"),
     #: the definitions (stretch 1), Save/Apply. 0 fits its content.
     TOOLBAR_COLUMNS = (0, 0, 0, 0, 2, 0, 1, 0)
 
@@ -345,55 +347,59 @@ class FitCodeFace:
             return
         if im.small_button(("● " if self.agent_open else "") + "🤖"):
             self.toggle_agent()
-        im.set_item_tooltip("Show or hide the coding assistant beside the editor.")
+        im.set_item_tooltip(tr("Show or hide the coding assistant beside the editor."))
         self._remember("agent")
         im.next_cell()
         im.begin_disabled(not self.can_go_back())
         if im.small_button("←"):
             self.back()
         im.end_disabled()
-        im.set_item_tooltip("Back to where the caret was before the last jump.")
+        im.set_item_tooltip(tr("Back to where the caret was before the last jump."))
         self._remember("back")
         im.next_cell()
         im.begin_disabled(not self.can_go_forward())
         if im.small_button("→"):
             self.forward()
         im.end_disabled()
-        im.set_item_tooltip("Forward again, after going back.")
+        im.set_item_tooltip(tr("Forward again, after going back."))
         self._remember("forward")
         im.next_cell()
         im.align_text_to_frame_padding()
-        im.text("File:")
+        im.text(tr("File:"))
         im.next_cell()
         names = [pathlib.Path(p).name for p in self.files]
         doc = self.active_doc
         current = self.files.index(doc.path) if doc is not None and doc.path in self.files else -1
-        changed, picked = im.combo("##code-file", current, names or ["(no files)"])
-        im.set_item_tooltip("The model's source files and view.json specs; pick one to open it.")
+        changed, picked = im.combo("##code-file", current, names or [tr("(no files)")])
+        im.set_item_tooltip(
+            tr("The model's source files and view.json specs; pick one to open it.")
+        )
         self._remember("file")
         if changed and 0 <= picked < len(self.files):
             self.open_file(self.files[picked])
         im.next_cell()
         im.align_text_to_frame_padding()
-        im.text("Jump to:")
+        im.text(tr("Jump to:"))
         im.next_cell()
-        labels = ["Select..."] + [
+        labels = [tr("Select...")] + [
             ("  " if getattr(s, "kind", "") == "method" else "")
             + str(getattr(s, "display_name", getattr(s, "name", "")))
             for s in self.symbols
         ]
         changed, picked = im.combo("##code-jump", 0, labels)
-        im.set_item_tooltip("The classes and functions in the open file; pick one to go to it.")
+        im.set_item_tooltip(tr("The classes and functions in the open file; pick one to go to it."))
         self._remember("jump")
         if changed and picked > 0:
             symbol = self.symbols[picked - 1]
             self.goto_line(max(0, int(getattr(symbol, "line", 1)) - 1))
         im.next_cell()
-        if im.small_button("Save/Apply"):
+        if im.small_button(tr("Save/Apply")):
             self.apply()
         im.set_item_tooltip(
-            "Write the file and apply it: the model module is re-executed so the open fit "
-            "uses the edited code. A read-only installation saves a copy in the settings folder."
+            tr(
+                "Write the file and apply it: the model module is re-executed so the open fit "
+                "uses the edited code. A read-only installation saves a copy in the settings folder."
+            )
         )
         self._remember("apply")
         im.end_grid()
@@ -404,30 +410,33 @@ class FitCodeFace:
         if not im.begin_grid("##code-find-bar", (0, 1, 0, 0)):
             return
         im.align_text_to_frame_padding()
-        im.text("Find:")
+        im.text(tr("Find:"))
         im.next_cell()
         changed, value = im.input_text("##code-find", self.find_text)
+        im.set_item_tooltip(
+            tr("Text to find in the open file; Enter or Next goes to the next match.")
+        )
         doc = self.active_doc
         if changed:
             self.find_text = value
             if doc is not None:
                 doc.editor.set_find_text(value)
         im.next_cell()
-        if im.small_button("Next") and doc is not None:
+        if im.small_button(tr("Next")) and doc is not None:
             doc.editor.set_find_text(self.find_text)
             doc.editor.find_next()
-        im.set_item_tooltip("Go to the next match in the open file.")
+        im.set_item_tooltip(tr("Go to the next match in the open file."))
         im.next_cell()
         if im.small_button("×##close-find"):
             self.find_open = False
-        im.set_item_tooltip("Close the find bar (Escape).")
+        im.set_item_tooltip(tr("Close the find bar (Escape)."))
         im.end_grid()
 
     def _draw_documents(self) -> None:
         from emtk import im
 
         if not self.documents:
-            im.text_disabled("Open a file from the list above.")
+            im.text_disabled(tr("Open a file from the list above."))
             return
         if im.begin_tab_bar("##code-tabs"):
             for index, doc in enumerate(list(self.documents)):

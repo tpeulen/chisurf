@@ -1802,23 +1802,35 @@ manual/figures/main_analysis_dock.png:
     session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
     dt 0.0141); Two fitted Lifetime fits; Analysis dock with the Convolution box open beside the fit window.
 manual/figures/main_mdi_tiled.png:
-  caption: 'Two fit windows tiled (toolbar: Tile Windows).'
+  caption: The Workspace tiled (Tile) -- two fit windows, a tool and the Start page side by side.
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed
   pages:
   - docs/manual/multiple_document_interface.md
-  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed. emtk shell (private in-process
-    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
-    dt 0.0141); The two fit windows floated side by side.
+  recipe: PYTHONPATH=~/dev/emtk pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed.
+    emtk shell (private in-process session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read
+    through the Read data dock (TXT/CSV, dt 0.0141); two fitted Lifetime fits and Histogram-Microtime in the Workspace;
+    EmtkShellApp.tile_windows().
+manual/figures/main_mdi_cascade.png:
+  caption: The same windows cascaded (Cascade), one fit minimized to the strip, the Windows list open.
+  kind: screenshot
+  origin: docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed
+  pages:
+  - docs/manual/multiple_document_interface.md
+  recipe: PYTHONPATH=~/dev/emtk pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed.
+    emtk shell (private in-process session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read
+    through the Read data dock (TXT/CSV, dt 0.0141); two fitted Lifetime fits and Histogram-Microtime in the Workspace;
+    cascade_windows(), the first fit minimized, the Workspace's Windows button clicked.
 manual/figures/main_mdi_tabbed.png:
-  caption: 'The same fit windows tabbed (toolbar: Tab Windows).'
+  caption: The same windows as tabs of the Workspace (Tabbed).
   kind: screenshot
   origin: docs/guides/screenshots/manual_general.py::mdi_tiled_and_tabbed
   pages:
   - docs/manual/multiple_document_interface.md
-  recipe: pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed. emtk shell (private in-process
-    session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read through the Read data dock (TXT/CSV,
-    dt 0.0141); The same fit windows docked as tabs.
+  recipe: PYTHONPATH=~/dev/emtk pixi run -e test python docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed.
+    emtk shell (private in-process session, scratch settings, 1500x950); IBH sample from test/data/tcspc/ibh_sample read
+    through the Read data dock (TXT/CSV, dt 0.0141); two fitted Lifetime fits and Histogram-Microtime in the Workspace;
+    tab_windows(), the second fit focused.
 manual/figures/globalview_tool.png:
   caption: The Global View window on four fits whose lifetime t0 follows the donor-only fit.
   kind: screenshot

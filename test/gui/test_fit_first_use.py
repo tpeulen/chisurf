@@ -59,7 +59,7 @@ def test_native_window_leaves_code_unbuilt(tmp_path):
         + """
 import sys
 assert window.code_face is None
-assert 'chisurf.gui.widgets.fitting.fit_code_face' not in sys.modules
+assert 'chisurf.emtk.fit_pages.code_face' not in sys.modules
 assert 'chisurf.plugins.core.code_editor' not in sys.modules
 assert not window.plot_tab_widget.code_shown()
 """,
@@ -235,16 +235,19 @@ from chisurf.gui.autoform.sections import get_section_factory, get_plot_class
         + """
 from chisurf.gui.autoform.sections import registry
 assert registry._SECTION_MODULES == {key: module for key, (module, name) in sections.items()}
-assert registry._PLOT_MODULES == plots
+assert plots == {}, "fit-window pages are declared in chisurf.emtk.fit_pages.plots, not registered here"
+from chisurf.emtk.fit_pages.plots import PLOT_CLASSES
+plots = PLOT_CLASSES
 for key, (module, name) in sections.items():
     factory = get_section_factory(key)
     assert factory is not None, key
     assert factory is getattr(importlib.import_module(
         'chisurf.gui.autoform.sections.' + module), name), key
-for key in plots:
+for key, path in plots.items():
     cls = get_plot_class(key)
     assert isinstance(cls, type), key
     assert get_plot_class(key) is cls, key
+    assert cls.__name__ == path.partition(":")[2], key
 """,
         tmp_path,
     )

@@ -69,6 +69,8 @@ RENAMED = {
     "logging": "the Qt dock's title; the emtk dock is called Log",
     "plugins": "the Qt Plugins menu's submenus are the emtk shell's top-level menus",
     "dev": "an empty Qt submenu (no plugin declares it)",
+    "cascadefitwindows": "View > Cascade Windows: it cascades every window of the Workspace, not only "
+    "the fits (test_emtk_shell_workspace.py runs it)",
 }
 
 

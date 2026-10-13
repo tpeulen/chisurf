@@ -272,7 +272,7 @@ def main_window() -> None:
 
     _wizard_in_shell(driver, wait, IRF2, DECAY2, bin_width=BIN2, rate=71.0)
     app.docks.hide("start")
-    app.tab_fit_windows()
+    app.tab_windows()
     sd.show(driver, wait, glob)  # the first sample's (fitted) global fit in front
     app.docks.focus(DATASETS_KEY)
     driver.frame(4)

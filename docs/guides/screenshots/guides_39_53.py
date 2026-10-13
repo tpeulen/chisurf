@@ -56,7 +56,7 @@ def _page_host(page, width=900, height=620):
     """*page* on a fit-window surface, as the fit window draws it (emtk)."""
     from emtk.qt_host import ControlHost
 
-    from chisurf.gui.widgets.fitting.fit_plots_area import make_surface
+    from chisurf.emtk.fit_pages.surface import make_surface
 
     surface = make_surface()
     surface.add_page("0:" + type(page).name, type(page).name, lambda: page)

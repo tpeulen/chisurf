@@ -45,7 +45,7 @@ from typing import Any, Callable
 
 from emtk import accents, im, overlays
 from emtk.app import ImApp
-from emtk.docking import DockManager, Region, Split
+from emtk.docking import MIN_TILE, DockManager, Region, Split, tile_grid
 from emtk.i18n import mark, tr
 
 from chisurf.emtk.background_build import BackgroundBuild, draw_opening
@@ -59,6 +59,8 @@ MENU_BAR = 30.0
 #: Prefix of a hosted plugin's dock window key.
 PLUGIN_KEY = "plugin."
 _log = logging.getLogger("chisurf.emtk.shell")
+#: The shell open in this process (a weak reference), for :func:`host_in_shell`.
+_ACTIVE_SHELL: Any = None
 
 
 def parse_shortcut(text: str) -> tuple[int, int] | None:
@@ -76,35 +78,6 @@ def parse_shortcut(text: str) -> tuple[int, int] | None:
     for mod in mods:
         modifiers |= bits[mod.lower()]
     return (ord(key.lower()) if len(key) == 1 else 0), modifiers
-
-
-#: The smallest tile *Tile Windows* makes, in logical pixels: below it a fit window is a sliver.
-MIN_TILE = (380.0, 280.0)
-
-
-def tile_grid(count: int, width: float, height: float) -> tuple[int, int]:
-    """``(rows, cols)`` of the grid *Tile Windows* lays *count* windows into a *width* x *height* area.
-
-    The grid is the most square-tiled one (tiles near 4:3, few empty cells) that keeps every tile at
-    least :data:`MIN_TILE`; when even the largest such grid holds fewer than *count*, that largest
-    grid is returned and the caller stacks the rest as tabs.
-    """
-    import math
-
-    max_cols = max(1, int(width // MIN_TILE[0]))
-    max_rows = max(1, int(height // MIN_TILE[1]))
-    best: tuple[tuple[float, float], int, int] | None = None
-    for cols in range(1, min(count, max_cols) + 1):
-        rows = math.ceil(count / cols)
-        if rows > max_rows:
-            continue
-        aspect = abs(math.log((width / cols) / (height / rows)) - math.log(4.0 / 3.0))
-        score = (rows * cols - count, aspect)
-        if best is None or score < best[0]:
-            best = (score, rows, cols)
-    if best is None:
-        return max_rows, max_cols
-    return best[1], best[2]
 
 
 @dataclass(frozen=True)
@@ -188,6 +161,8 @@ class HostedPlugin:
     app: Any = None
     error: str = ""
     build: BackgroundBuild | None = None
+    #: Called once the app is built (:func:`host_in_shell`: a page to show, a file to open).
+    on_ready: list = field(default_factory=list)
     #: The content box it was drawn into on the last frame (canvas coordinates), ``None`` when not shown.
     box: tuple[float, float, float, float] | None = None
     extra: dict = field(default_factory=dict)
@@ -288,7 +263,8 @@ class EmtkShellApp(ImApp):
                 "h",
                 0.27,
                 Split("v", 0.5, Region("left"), Region("left_lower")),
-                Split("v", 0.8, Region("center"), Region("bottom")),
+                # The workspace: every unbound window (a floated dock, a tool, a fit) lives in it.
+                Split("v", 0.8, Region("center", workspace=True), Region("bottom")),
             ),
             name="shell",
         )
@@ -311,6 +287,20 @@ class EmtkShellApp(ImApp):
         )
         _log.setLevel(logging.INFO)
         super().__init__(self.render)
+        import weakref
+
+        global _ACTIVE_SHELL
+        _ACTIVE_SHELL = weakref.ref(self)
+        from chisurf.emtk.status_strip import StatusStrip
+
+        #: The line along the bottom: message, *Ready*, the operation under way
+        #: (:mod:`chisurf.emtk.status_strip`, the Qt main window's status bar).
+        self.status_strip = StatusStrip(wake=self.request_frame)
+        self.status_strip.install()
+        #: The startup stage under way while the session starts (its ``label`` / ``progress``).
+        self._stage: dict = {}
+        #: The strip's handles of the shell's own operations: ``kind -> (identity, task)``.
+        self._strip_tasks: dict[str, tuple[Any, Any]] = {}
         from chisurf.emtk.fit_docks import ANALYSIS_KEY, PLOT_KEY, DataDocks
 
         self.data = DataDocks(self, session_factory)
@@ -341,10 +331,11 @@ class EmtkShellApp(ImApp):
 
     # ── plugins ───────────────────────────────────────────────────────────
 
-    def open_plugin(self, plugin_id: str) -> HostedPlugin | None:
+    def open_plugin(self, plugin_id: str, focus: bool = True) -> HostedPlugin | None:
         """Open *plugin_id* as a dock window (or bring its window to front); the app is made on a worker thread.
 
-        A command plugin (``entrypoints.action``) is run instead and opens nothing (``None``).
+        A command plugin (``entrypoints.action``) is run instead and opens nothing (``None``). Without
+        *focus* the window takes the place the saved layout gives it (minimized stays minimized).
         """
         entry = self.by_id.get(plugin_id)
         if entry is not None and entry.action:
@@ -376,7 +367,8 @@ class EmtkShellApp(ImApp):
             min_size=(240.0, 160.0),
             tooltip=mark(entry.description),
         )
-        self.docks.focus(hosted.key)
+        if focus:
+            self.docks.focus(hosted.key)
         self.status = tr("Opening {name}…").format(name=tr(entry.label))
         _log.info("open %s", plugin_id)
         return hosted
@@ -463,6 +455,16 @@ class EmtkShellApp(ImApp):
                 if hasattr(made, "set_frame_request_callback"):
                     made.set_frame_request_callback(self.request_frame)
                 self.status = tr("{name} opened.").format(name=tr(hosted.entry.label))
+                self._run_ready(hosted)
+
+    def _run_ready(self, hosted: HostedPlugin) -> None:
+        """Run what waited for *hosted*'s app (:func:`host_in_shell`), once."""
+        waiting, hosted.on_ready = hosted.on_ready, []
+        for then in waiting:
+            try:
+                then()
+            except Exception:  # noqa: BLE001 - a page that cannot be shown must not stop the frame
+                _log.exception("after opening %s", hosted.entry.plugin_id)
 
     def _closed_by_user(self) -> None:
         """A plugin window closed with its ``×`` closes the plugin; one whose app asked to close closes too."""
@@ -498,13 +500,19 @@ class EmtkShellApp(ImApp):
         self.project.guard_fit_windows()
         self.data.closed_by_user()
         self.data.focused_window()
+        self.feed_status_strip()
 
     def render(self) -> None:
         width, height = im.get_main_viewport().size
         self._draw_menu_bar(width)
         top = MENU_BAR + self._draw_ribbon(width)
         self._colour_docks()
-        self.docks.draw((0.0, top, width, max(1.0, height - top)))
+        from chisurf.emtk.status_strip import HEIGHT as STRIP
+        from chisurf.emtk.status_strip import draw_strip
+
+        self.docks.draw((0.0, top, width, max(1.0, height - top - STRIP)))
+        draw_strip(self.status_strip, width, height)
+        self.item_rects.update(self.status_strip.item_rects)
         self.data.draw_file_dialog((0.0, 0.0, width, height))
         self.console.draw_overlays((0.0, 0.0, width, height))
         self.project.draw((0.0, 0.0, width, height))
@@ -804,34 +812,7 @@ class EmtkShellApp(ImApp):
             )
             for key, title in docks
         ]
-        view_menu += [
-            MenuAction(
-                "tile_windows",
-                tr("Tile Windows"),
-                self.tile_fit_windows,
-                "",
-                "",
-                tr("Show every fit window side by side."),
-                has_fits,
-            ),
-            MenuAction(
-                "tab_windows",
-                tr("Tab Windows"),
-                self.tab_fit_windows,
-                "",
-                "",
-                tr("Show the fit windows as tabs."),
-                has_fits,
-            ),
-            MenuAction(
-                "cascade_windows",
-                tr("Cascade Fit Windows"),
-                self.cascade_fit_windows,
-                "",
-                "",
-                tr("Float the fit windows, each a little below the last."),
-                has_fits,
-            ),
+        view_menu += self.workspace_actions() + [
             MenuAction(
                 "reset_layout",
                 tr("Reset layout"),
@@ -1008,54 +989,87 @@ class EmtkShellApp(ImApp):
                     table[parsed] = action
         return table
 
-    def _fit_window_keys(self) -> list[str]:
-        return [window.key for window in self.data.windows.values()]
+    def workspace_actions(self) -> list[MenuAction]:
+        """The View menu's *Workspace* group: arrange its windows, cycle them, pick one.
 
-    def tab_fit_windows(self) -> None:
-        """*Tab Windows*: every fit window a tab of the centre."""
-        for key in self._fit_window_keys():
-            self.docks.dock(key, "center")
-            self.docks.show(key)
-
-    def tile_fit_windows(self) -> None:
-        """*Tile Windows*: the fit windows in a near-square grid, none smaller than a usable size.
-
-        When the centre cannot hold them all at :data:`MIN_TILE`, the grid is as large as fits and
-        the remaining windows are tabs inside its tiles (round-robin), as a tab strip rather than a sliver.
+        The workspace (the centre, :class:`emtk.docking.Region` ``workspace=True``) holds every
+        unbound window -- the tools, the fit windows, any dock floated out -- so none can fall
+        behind the main window; its own tool bar and right-click menu carry the same commands.
         """
-        keys = self._fit_window_keys()
-        self.tab_fit_windows()
-        if len(keys) < 2:
-            return
-        self.docks.prune_empty()
-        boxes, _bars = self.docks.compute_layout(self.docks.box)
-        _x, _y, width, height = boxes.get("center") or self.docks.box
-        rows, cols = tile_grid(len(keys), width, height)
-        columns = ["center"]
-        for column in range(1, cols):
-            columns.append(
-                self.docks.split_region(columns[-1], "right", ratio=(cols - column) / (cols - column + 1))
+        docks = self.docks
+        group = tr("Workspace")
+        has_windows = lambda: bool(docks.workspace_children())  # noqa: E731
+        actions = [
+            MenuAction(
+                "tile_windows",
+                tr("Tile Windows"),
+                self.tile_windows,
+                "",
+                group,
+                tr("Show every window of the workspace side by side."),
+                has_windows,
+            ),
+            MenuAction(
+                "tab_windows",
+                tr("Tab Windows"),
+                self.tab_windows,
+                "",
+                group,
+                tr("Show the workspace's windows as tabs."),
+                has_windows,
+            ),
+            MenuAction(
+                "cascade_windows",
+                tr("Cascade Windows"),
+                self.cascade_windows,
+                "",
+                group,
+                tr("Float the workspace's windows, each a little below the last."),
+                has_windows,
+            ),
+            MenuAction(
+                "next_window",
+                tr("Next Window"),
+                lambda: docks.cycle_workspace(1),
+                "",
+                group,
+                tr("Bring the next window of the workspace to the front (Ctrl+Tab)."),
+                has_windows,
+            ),
+        ]
+        for key in docks.workspace_children():
+            window = docks.window(key)
+            label = tr(window.title)
+            if window.minimized:
+                label = tr("{title} (minimized)").format(title=label)
+            actions.append(
+                MenuAction(
+                    f"window.{key}",
+                    label,
+                    lambda k=key: docks.focus(k),
+                    "",
+                    group,
+                    tr("Bring this window to the front."),
+                    checked=lambda k=key: docks.focused == k,
+                )
             )
-        cells: list[list[str]] = []
-        for region in columns:
-            cell = [region]
-            for row in range(1, rows):
-                cell.append(self.docks.split_region(cell[-1], "bottom", ratio=(rows - row) / (rows - row + 1)))
-            cells.append(cell)
-        capacity = rows * cols
-        for index, key in enumerate(keys):
-            slot = index % capacity
-            region = cells[slot % cols][slot // cols]
-            if region != "center" or index >= capacity:
-                self.docks.dock(key, region, select=index < capacity)
+        return actions
 
-    def cascade_fit_windows(self) -> None:
-        """*Cascade Fit Windows*: the fit windows float, each offset from the last."""
-        width, height = self.window_size
-        for index, key in enumerate(self._fit_window_keys()):
-            offset = 40.0 + 28.0 * index
-            self.docks.undock(key, (offset + 280.0, offset + MENU_BAR, width * 0.5, height * 0.5))
-            self.docks.raise_window(key)
+    def tile_windows(self) -> None:
+        """*Tile Windows*: the workspace's windows in a near-square grid of usable tiles.
+
+        :meth:`emtk.docking.DockManager.tile_workspace`: no tile is below :data:`MIN_TILE`; what
+        the workspace cannot hold is minimized to its strip, a click away.
+        """
+        self.docks.tile_workspace()
+
+    def tab_windows(self) -> None:
+        """*Tab Windows*: every window of the workspace a tab of it."""
+        self.docks.tab_workspace()
+
+    def cascade_windows(self) -> None:
+        """*Cascade Windows*: the workspace's windows float, each a little below the last."""
+        self.docks.cascade_workspace()
 
     def window_actions(self) -> list[MenuAction]:
         """The Main tab's own window actions that no menu carries (*Screenshot*)."""
@@ -1279,6 +1293,9 @@ class EmtkShellApp(ImApp):
     def key(self, key, text="", modifiers=0):
         if self.project.modal:
             return super().key(key, text, modifiers)
+        if self.docks.handle_key(key, modifiers):
+            self.request_frame()
+            return True  # Ctrl+Tab cycles the workspace's windows, whoever has the keys
         child, _origin = self._child(self._focus)
         if self._shortcut(key, modifiers, child):
             return True
@@ -1342,8 +1359,75 @@ class EmtkShellApp(ImApp):
                     return True
         return self.data.drop([str(path) for path in paths or ()])
 
+    # ── status strip ──────────────────────────────────────────────────────
+
+    def stage_started(self, payload: dict) -> None:
+        """A startup stage began (the session's worker thread): the splash and the strip show it."""
+        self._stage = dict(payload or {})
+        if self.splash is not None:
+            self.splash.stage_started(payload)
+        self.request_frame()
+
+    def begin_task(self, message: str, maximum: int = 0, cancel=None):
+        """Show an operation on the status strip (the progress-host contract of the Qt status bar)."""
+        return self.status_strip.begin_task(message, maximum, cancel=cancel)
+
+    def feed_status_strip(self) -> None:
+        """Once per frame: the status lines and the operations under way go onto the strip.
+
+        The message follows the shell's, the data docks' and the project's status lines (newest
+        change wins; log records arrive by themselves). The operations: the session's startup
+        stages, an API call on the data docks' worker (size unknown) and a sampling job on the
+        server (its percentage, ✕ asks the server to stop).
+        """
+        strip = self.status_strip
+        strip.follow("shell", self.status)
+        strip.follow("data", self.data.status)
+        strip.follow("project", self.project.status)
+        data = self.data
+        stage = self._stage if data.starting else {}
+        job = data.job
+        sampling = data.sampling_job
+        wanted = {
+            "startup": (id(data), stage.get("label") or tr("Starting the session…"), 100)
+            if data.starting
+            else None,
+            "call": (id(job), job.label, 0) if job is not None else None,
+            "sampling": (sampling, tr("Sampling…"), 100) if sampling else None,
+        }
+        for kind, want in wanted.items():
+            held = self._strip_tasks.get(kind)
+            if want is None:
+                if held is not None:
+                    held[1].close()
+                    del self._strip_tasks[kind]
+                continue
+            identity, text, maximum = want
+            if held is None or held[0] != identity:
+                if held is not None:
+                    held[1].close()
+                cancel = self._cancel_sampling if kind == "sampling" else None
+                held = (identity, strip.begin_task(text, maximum, cancel=cancel))
+                self._strip_tasks[kind] = held
+            task = held[1]
+            task.setLabelText(text)
+            if kind == "startup":
+                task.setValue(int(stage.get("progress") or 0))
+            elif kind == "sampling":
+                task.setValue(int(data.sampling_progress))
+
+    def _cancel_sampling(self) -> None:
+        """✕ on a sampling job: ask the server to stop it."""
+        data = self.data
+        if data.session is not None and data.sampling_job:
+            try:
+                data.session.api.cancel_sampling(data.sampling_job)
+            except Exception as exc:  # noqa: BLE001 - the strip says it
+                self.status_strip.show_message(tr("Cancel failed: {error}").format(error=exc))
+
     def animating(self) -> bool:
         busy = any(hosted.build is not None for hosted in self.hosted.values()) or self.data.busy
+        busy = busy or self.status_strip.animating()
         busy = busy or self.project.busy
         children = any(app.animating() for _key, app, _box in self._drawn.values())
         return super().animating() or busy or children
@@ -1364,7 +1448,7 @@ class EmtkShellApp(ImApp):
         self.ribbon.ribbon.restore((state or {}).get("ribbon"))
         for plugin_id in (state or {}).get("open", []):
             if plugin_id in self.by_id:
-                self.open_plugin(plugin_id)
+                self.open_plugin(plugin_id, focus=False)
 
     def close(self) -> None:
         """Close every hosted plugin, the fit windows and the session, and detach the log handler.
@@ -1375,6 +1459,9 @@ class EmtkShellApp(ImApp):
         if getattr(self, "_shell_closed", False):
             return
         self._shell_closed = True
+        global _ACTIVE_SHELL
+        if _ACTIVE_SHELL is not None and _ACTIVE_SHELL() is self:
+            _ACTIVE_SHELL = None
         for plugin_id in list(self.hosted):
             self.close_plugin(plugin_id)
         self.console.close()
@@ -1382,6 +1469,29 @@ class EmtkShellApp(ImApp):
         self.project.close()
         self.data.close()
         self.log.close()
+        self.status_strip.close()
+
+
+def host_in_shell(plugin_id: str, then: Callable[[], Any] | None = None) -> bool:
+    """Open *plugin_id* in the workspace of the shell open in this process; ``then()`` once it is built.
+
+    The help browser and the code editor used to open as a second process with its own OS window, which
+    went behind the main window on the next click into it. With the shell open they are its windows
+    instead. Returns ``False`` when no shell is open (or it does not offer the plugin), and the caller
+    goes on as before.
+    """
+    shell = _ACTIVE_SHELL() if _ACTIVE_SHELL is not None else None
+    if shell is None or getattr(shell, "_shell_closed", False) or plugin_id not in shell.by_id:
+        return False
+    hosted = shell.open_plugin(plugin_id)
+    if hosted is None:
+        return False
+    if then is not None:
+        hosted.on_ready.append(then)
+        if hosted.app is not None and hosted.build is None:
+            shell._run_ready(hosted)
+    shell.request_frame()
+    return True
 
 
 def make_app(persist: bool = True, splash: Any = None) -> EmtkShellApp:
@@ -1442,4 +1552,14 @@ def _interactive_display() -> bool:
     return canvas_module().__name__.rsplit(".", 1)[-1] != "offscreen"
 
 
-__all__ = ["EmtkShellApp", "HostedPlugin", "MenuEntry", "main", "make_app", "menu_entries"]
+__all__ = [
+    "EmtkShellApp",
+    "HostedPlugin",
+    "MIN_TILE",
+    "MenuEntry",
+    "host_in_shell",
+    "main",
+    "make_app",
+    "menu_entries",
+    "tile_grid",
+]

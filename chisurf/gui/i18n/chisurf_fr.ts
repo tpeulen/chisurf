@@ -1988,6 +1988,110 @@ p, li { white-space: pre-wrap; }
     <context>
         <name>chisurf</name>
         <message>
+            <source>Show or hide the coding assistant beside the editor.</source>
+            <translation>Afficher ou masquer l'assistant de programmation à côté de l'éditeur.</translation>
+        </message>
+        <message>
+            <source>Back to where the caret was before the last jump.</source>
+            <translation>Revenir à la position du curseur avant le dernier saut.</translation>
+        </message>
+        <message>
+            <source>Forward again, after going back.</source>
+            <translation>Avancer à nouveau, après un retour.</translation>
+        </message>
+        <message>
+            <source>File:</source>
+            <translation>Fichier :</translation>
+        </message>
+        <message>
+            <source>(no files)</source>
+            <translation>(aucun fichier)</translation>
+        </message>
+        <message>
+            <source>The model's source files and view.json specs; pick one to open it.</source>
+            <translation>Les fichiers source et les spécifications view.json du modèle ; en choisir un pour l'ouvrir.</translation>
+        </message>
+        <message>
+            <source>Jump to:</source>
+            <translation>Aller à :</translation>
+        </message>
+        <message>
+            <source>Select...</source>
+            <translation>Sélectionner…</translation>
+        </message>
+        <message>
+            <source>The classes and functions in the open file; pick one to go to it.</source>
+            <translation>Les classes et fonctions du fichier ouvert ; en choisir une pour y aller.</translation>
+        </message>
+        <message>
+            <source>Save/Apply</source>
+            <translation>Enregistrer/Appliquer</translation>
+        </message>
+        <message>
+            <source>Write the file and apply it: the model module is re-executed so the open fit uses the edited code. A read-only installation saves a copy in the settings folder.</source>
+            <translation>Écrire le fichier et l'appliquer : le module du modèle est réexécuté pour que l'ajustement ouvert utilise le code modifié. Une installation en lecture seule enregistre une copie dans le dossier des paramètres.</translation>
+        </message>
+        <message>
+            <source>Find:</source>
+            <translation>Rechercher :</translation>
+        </message>
+        <message>
+            <source>Text to find in the open file; Enter or Next goes to the next match.</source>
+            <translation>Texte à rechercher dans le fichier ouvert ; Entrée ou Suivant va à l'occurrence suivante.</translation>
+        </message>
+        <message>
+            <source>Go to the next match in the open file.</source>
+            <translation>Aller à l'occurrence suivante dans le fichier ouvert.</translation>
+        </message>
+        <message>
+            <source>Close the find bar (Escape).</source>
+            <translation>Fermer la barre de recherche (Échap).</translation>
+        </message>
+        <message>
+            <source>Open a file from the list above.</source>
+            <translation>Ouvrir un fichier de la liste ci-dessus.</translation>
+        </message>
+        <message>
+            <source>No file open.</source>
+            <translation>Aucun fichier ouvert.</translation>
+        </message>
+        <message>
+            <source>Workspace</source>
+            <translation>Espace de travail</translation>
+        </message>
+        <message>
+            <source>Show every window of the workspace side by side.</source>
+            <translation>Afficher toutes les fenêtres de l'espace de travail côte à côte.</translation>
+        </message>
+        <message>
+            <source>Show the workspace's windows as tabs.</source>
+            <translation>Afficher les fenêtres de l'espace de travail en onglets.</translation>
+        </message>
+        <message>
+            <source>Cascade Windows</source>
+            <translation>Fenêtres en cascade</translation>
+        </message>
+        <message>
+            <source>Float the workspace's windows, each a little below the last.</source>
+            <translation>Rendre flottantes les fenêtres de l'espace de travail, chacune un peu sous la précédente.</translation>
+        </message>
+        <message>
+            <source>Next Window</source>
+            <translation>Fenêtre suivante</translation>
+        </message>
+        <message>
+            <source>Bring the next window of the workspace to the front (Ctrl+Tab).</source>
+            <translation>Amener la fenêtre suivante de l'espace de travail au premier plan (Ctrl+Tab).</translation>
+        </message>
+        <message>
+            <source>{title} (minimized)</source>
+            <translation>{title} (réduite)</translation>
+        </message>
+        <message>
+            <source>Bring this window to the front.</source>
+            <translation>Amener cette fenêtre au premier plan.</translation>
+        </message>
+        <message>
             <source>Define the simulated sample</source>
             <translation>Définir l'échantillon simulé</translation>
         </message>

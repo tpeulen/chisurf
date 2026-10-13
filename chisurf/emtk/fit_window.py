@@ -1,16 +1,19 @@
 """One fit's window in the emtk shell: the fit window's emtk surface, its pages built on demand.
 
 The Qt shell puts a fit in a ``FitSubWindow`` whose content is already one emtk
-surface (:func:`chisurf.gui.widgets.fitting.fit_plots_area.make_surface`); this
+surface (:func:`chisurf.emtk.fit_pages.surface.make_surface`); this
 is the same surface without the Qt sub-window around it, hosted as a dock window
 of the shell. The pages are the model's declared plots
-(:func:`chisurf.gui.widgets.models.model_editor.model_plot_specs`), each built
+(:func:`chisurf.emtk.fit_pages.plots.model_plot_specs`), each built
 the first time its tab is drawn and re-read from the fit when the server says
 the fit changed (:meth:`FitWindow.refresh`).
 
-The page classes live under ``chisurf.gui``, whose package import still loads Qt
-modules (no ``QApplication`` is made and nothing is drawn by Qt); the shell
-therefore imports this module only when the first fit window opens.
+The surface, the page registry and the Code face are Qt-free
+(:mod:`chisurf.emtk.fit_pages`). The page classes themselves still live under
+``chisurf.gui.plots`` and draw through ``chisurf.gui.chiplot``; importing either runs the
+``chisurf.gui`` package ``__init__``, which imports Qt (no ``QApplication`` is made and
+nothing is drawn by Qt). The shell therefore imports this module only when the first fit
+window opens; the remaining move is in ``okf/subsystems/qt-retirement.md``.
 """
 
 from __future__ import annotations
@@ -46,8 +49,8 @@ class FitWindow:
         title: str,
         request_frame: Callable[[], None] | None = None,
     ) -> None:
-        from chisurf.gui.widgets.fitting.fit_plots_area import make_surface
-        from chisurf.gui.widgets.models.model_editor import model_plot_specs
+        from chisurf.emtk.fit_pages.surface import make_surface
+        from chisurf.emtk.fit_pages.plots import model_plot_specs
 
         self.uid = str(uid)
         self.fit = fit
@@ -151,7 +154,7 @@ class FitWindow:
         ``FitCodeFace`` is drawn on the same surface.
         """
         if shown and self.code_face is None:
-            from chisurf.gui.widgets.fitting.fit_code_face import FitCodeFace
+            from chisurf.emtk.fit_pages.code_face import FitCodeFace
 
             self.code_face = FitCodeFace(on_apply=on_apply)
             self.surface.code_face = self.code_face
