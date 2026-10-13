@@ -1577,17 +1577,22 @@ def _restore_chimol_project_files(
     if not paths:
         return
 
+    # The ChiMOL window is the plugin's emtk app (its manifest's only GUI entry);
+    # this Qt shell shows it in emtk's Qt host, as its menu does. The files are
+    # loaded by the viewer's own `load` once it has started.
     try:
-        from chimol.hosts.qt.window import MolViewPluginWindow
+        from emtk.qt_host import ControlHost
+
+        from chisurf.plugins.chimol.app import make_app
     except Exception as exc:
         log.warning(f"load_project: could not import Chimol window: {exc}")
         return
 
     try:
-        window = MolViewPluginWindow(parent=gui)
+        app = make_app(commands=tuple(f'load "{path}"' for path in paths))
+        window = ControlHost(app)
+        window.setWindowTitle("ChiMOL")
         window.resize(1000, 700)
-        for path in paths:
-            window.load_structure_from_path(path)
         window.show()
         refs = getattr(gui, "_project_chimol_windows", None)
         if refs is None:
