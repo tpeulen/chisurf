@@ -1,23 +1,13 @@
 {
   "services": [
     {
-      "id": "emtk_imports",
-      "entrypoint": "chisurf.emtk.session:stage_imports",
-      "surface": "emtk",
-      "phase": "splash",
-      "label": "Loading modules",
-      "progress": 10,
-      "order": 10
-    },
-    {
       "id": "emtk_experiments",
       "entrypoint": "chisurf.emtk.session:stage_experiments",
       "surface": "emtk",
       "phase": "splash",
       "label": "Registering experiments",
       "progress": 30,
-      "order": 20,
-      "depends_on": ["emtk_imports"]
+      "order": 20
     },
     {
       "id": "emtk_server",

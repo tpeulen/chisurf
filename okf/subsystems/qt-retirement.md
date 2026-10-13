@@ -28,7 +28,8 @@ and *Run Macro…*, `chisurf.run` routed to it, and composed (dead-key and IME) 
 through the Qt ribbon's own placement rules, and the menu bar and Tools dock list the same tree with the manifest
 icons. The splash window and its startup stages landed 2026-10-12 (item 12), and S5's status strip reached control
 parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stages that are not about the
-window (`check_updates`, `warmup_imports`) run in the shell the same day: S5 is done.
+window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
+own startup stages (item 5): S5 is done.
 
 1. Measure: the allow-list has 211 entries (221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port
    slice). Re-derive with `grep -vc '^#' test/plugin_qt_allowlist.txt`. The per-area split is
@@ -105,8 +106,27 @@ window (`check_updates`, `warmup_imports`) run in the shell the same day: S5 is 
    Trap: the busy bar slides only with emtk `dc763f5` (negative `progress_bar` fraction), committed in `~/dev/emtk`
    and not pushed; the arm64 env imports an installed emtk, so it draws an empty bar until the pin moves (verify with
    `PYTHONPATH=~/dev/emtk`). Measure: the post-show stages are `services.d/35_emtk_post_show.json` (`surface="emtk"`,
-   `phase="post_show"`; `chisurf/emtk/post_show.py`), run on a worker once the shell has adopted its session,
-   shown on the strip; a newer version asks the Qt window's *Update Available* question and *Yes* opens
+   `phase="post_show"`; `chisurf/emtk/post_show.py`): only `emtk_check_updates`, run on a worker once the shell
+   has adopted its session, shown on the strip. `warmup_imports` has no twin (removed 2026-10-13): measured, the
+   six modules it imported were all loaded by the time the session settled except `fit_pages.surface` (3 ms), and
+   a worker importing while the frame loop imports is the startup deadlock below. Startup import ordering
+   (fixed 2026-10-13): about one launch in four died with `_DeadlockError: deadlock detected by
+   _ModuleLock('chisurf.server')`. The session worker imported `chisurf.server` (via `chisurf.core.api`) while
+   the main thread, still building the shell, imported `chisurf.server.dispatcher` for the Log dock's RPC
+   monitor; `dispatcher` → `protocol` → module-level `resources.files("chisurf.server")` re-imported the
+   half-initialised package on the main thread while the worker waited for `dispatcher`. Fix, three parts:
+   `chisurf.emtk.session` imports the server, the API facade and the event subscriber at module level (the
+   `emtk_imports` splash stage is gone), `DataDocks.start()` starts the session worker as the last step of
+   `EmtkShellApp.__init__`, and `protocol` reads `server_methods.json` beside its file. Measure:
+   `test/startup/test_startup_import_race.py` (subprocess; a finder parks the worker if it ever asks for the
+   package itself; fails at the previous HEAD). Re-derive the deadlock at the previous HEAD by pre-importing
+   `chisurf.core.project{,.recent,.lifecycle}`, `chisurf.history` and `chisurf.core.actions` on the main thread
+   and parking the worker in `find_spec('chisurf.server.app')` for 1 s: about one run in six raises it. Trap: a
+   plain `--screenshot` loop never reproduced it (40 runs). The main thread and the worker contend on many shared
+   packages (`chisurf.core.project`, `chisurf.core.actions`, `chisurf.history`), so the main thread must not
+   import while the worker runs, not only avoid `chisurf.server`. Open: hosted plugins still build on worker threads (`open_plugin` →
+   `BackgroundBuild`) and the update check imports the updater on one, so a plugin module and a frame-loop import
+   can still meet in one package; no failure seen. Before trusting it, park the plugin worker with the same finder. a newer version asks the Qt window's *Update Available* question and *Yes* opens
    *Settings ▸ Updates*. Same updater preferences as Qt (`plugins.updater.check_on_startup`,
    `ignore_updates_on_startup`). Only the real window runs them (`make_app(persist=True)`); a test's shell
    and a headless frame never ask the update server. Test: `test/native_emtk/test_emtk_shell_post_show.py`
@@ -205,7 +225,7 @@ window (`check_updates`, `warmup_imports`) run in the shell the same day: S5 is 
     `test/native_emtk/test_emtk_shell_console.py` (empty).
 12. Measure: the splash on the real launch. `python -m chisurf` with a fresh `CHISURF_SETTINGS_DIR`: the splash
     window draws its first frame about 0.25 s after it opens (before the shell is built), the stages advance
-    Loading modules → Registering experiments → Starting the server and its plugins → Connecting → Preparing the
+    Registering experiments → Starting the server and its plugins → Connecting → Preparing the
     session, the main window opens when the session worker has ended and the splash closes on the main window's
     first frame. Re-derive with a launcher that patches `SplashApp.draw` / `EmtkShellApp.draw` to log a timestamp
     and captures each window with `screencapture -o -l<NSWindow number>` (glfw `get_cocoa_window` →
@@ -304,7 +324,7 @@ Each row is one capability the shell uses. Evidence is given as `file:line`. "em
 | Logging dock | `plainTextEditLog` and filter, `_LogRelay` timers (`gui/__init__.py:192-374`) | S1 Log dock (`_LogBuffer` handler) | level filter, history browser | S1 partial, S4 | — |
 | Status bar | `TruncatingStatusBar` (`main.py:1216-1248`), progress bar, `StatusBarProgressHost` | `chisurf/emtk/status_strip.py`: message or *Ready*, the operation's text, bar (sliding when unknown) and ✕ | — | S5 done | `test/native_emtk/test_emtk_shell_status_strip.py` |
 | Splash | `SplashScreen(QSplashScreen)` (`gui/__init__.py:443`) over `icons/splashscreen.png` | `chisurf/emtk/splash.py`: its **own** frameless window (`NativeHost(decorated=False, floating=True, transparent=True, centred=True)`, emtk 93bc456), the art at 2x (`chisurf/emtk/splash.png` from the SVG, its own 2048-texel image atlas), transparent where the art is; progress bar, stage, last log line, copyright, version, licence, contributors drawn on the art where the Qt splash puts them; the main window opens when the session has settled and the splash closes on its first frame. A separate window, not a cover inside the main one: the art is a shaped splash *screen* (owner, 2026-10-12) | — | S5 done | `test/native_emtk/test_emtk_shell_splash.py`, emtk `tests/test_native_splash_window.py` |
-| Startup services | `AppStartupServiceManager` stages in `startup/services.d/20_gui_splash.json`, `30_gui_post_show.json` | the `surface="emtk"`, `phase="splash"` set `services.d/25_emtk_splash.json` (imports, experiments, server and its plugins, connect, global dataset) run by the same manager inside `chisurf.emtk.session.start_session` on the session worker; `on_stage_start` feeds the splash | the Qt post-show stages (`populate_plugins`, `check_updates`, `warmup_imports`) have no emtk counterpart yet: the shell reads manifests in its constructor and checks no updates | S5 done (splash phase) | `test_the_session_reports_the_declared_stages_in_order`, `test/startup/test_services.py` |
+| Startup services | `AppStartupServiceManager` stages in `startup/services.d/20_gui_splash.json`, `30_gui_post_show.json` | the `surface="emtk"`, `phase="splash"` set `services.d/25_emtk_splash.json` (experiments, server and its plugins, connect, global dataset) run by the same manager inside `chisurf.emtk.session.start_session` on the session worker (the imports are not a stage: `chisurf.emtk.session` imports the server at module level, before the worker starts); `on_stage_start` feeds the splash; the post-show set `35_emtk_post_show.json` is the update check | `populate_plugins` has no counterpart (the shell reads manifests in its constructor); `warmup_imports` has none on purpose (item 5) | S5 done (splash phase) | `test_the_session_reports_the_declared_stages_in_order`, `test/startup/test_services.py` |
 | Auth | `LoginDialog`, deferred `_run_startup_auth` | `switch_user` emtk plugin | modal login before the session | S3 open (resume item 7) | — |
 | Translation | `QTranslator` (`gui/i18n.py:343`); `retranslate_from_ui(self, gui.ui)` re-reads the `.ui` (`gui/retranslate.py`) | `chisurf.emtk.i18n` reads the same `.ts`; `emtk.i18n.tr` applies on the next frame | none: an immediate-mode shell retranslates by drawing | S1 done | `test/native_emtk/*translations*` |
 | Tooltips | Qt tooltips and `install_tooltip_wrapping` | `emtk.tooltip` | — | S1 done | emtk `test_tooltip.py` |

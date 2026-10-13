@@ -1,5 +1,5 @@
 {
- "total": 2827,
+ "total": 2816,
  "files": {
   "chisurf/core/actions/_decorator.py": 1,
   "chisurf/core/actions/model_actions.py": 1,
@@ -195,9 +195,6 @@
   "chisurf/core/structure/trajectory_data.py": 2,
   "chisurf/core/support/decorators.py": 1,
   "chisurf/core/support/expressions.py": 1,
-  "chisurf/emtk/fit_docks.py": 2,
-  "chisurf/emtk/main_app.py": 3,
-  "chisurf/emtk/model_editor.py": 6,
   "chisurf/emtk/model_sections.py": 8,
   "chisurf/emtk/shell_session.py": 25,
   "chisurf/gui/__init__.py": 3,
