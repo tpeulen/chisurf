@@ -1726,7 +1726,9 @@ class DataDocks:
         if self.file_dialog is None:
             return
         window = self._file_window
-        closed = window.begin(box)
+        from chisurf.emtk.shell_session import escape_pressed
+
+        closed = window.begin(box) or escape_pressed()
         paths = self.file_dialog.draw()
         window.end()
         if closed or paths is False:

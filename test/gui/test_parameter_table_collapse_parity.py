@@ -139,7 +139,11 @@ def test_both_tables_drop_bounds_then_error_then_fixed_and_restore_in_reverse(pa
 
 
 def test_the_emtk_column_declarations_carry_the_qt_priorities():
-    """Bounds (and their smooth form, the prior) 1, error 2, fixed 3; name and value never."""
+    """The prior (emtk only) 1, bounds 2, error 3, fixed 4; name and value never.
+
+    The prior goes first, on its own: tied with the bounds, the emtk-only column made the
+    bounds drop at a width where the Qt table still shows them (474 px, the Qt left dock).
+    """
     from chisurf.emtk.model_editor import PARAMETER_COLUMNS, _paired
     from chisurf.emtk.model_sections import GLOBAL_COLUMNS
 
@@ -147,11 +151,11 @@ def test_the_emtk_column_declarations_carry_the_qt_priorities():
     assert order == {
         "label": 0,
         "value": 0,
-        "fixed": 3,
-        "lo": 1,
-        "hi": 1,
-        "bounds_on": 1,
-        "error": 2,
+        "fixed": 4,
+        "lo": 2,
+        "hi": 2,
+        "bounds_on": 2,
+        "error": 3,
         "prior": 1,
     }
     entries = [
@@ -160,9 +164,16 @@ def test_the_emtk_column_declarations_carry_the_qt_priorities():
     _rows, columns = _paired(entries, 2, {"key": "lifetimes"})
     paired = {c["key"]: c.get("collapse_order", 0) for c in columns}
     assert paired["index"] == paired["value0"] == paired["value1"] == 0
-    assert paired["lo1"] == paired["bounds_on0"] == 1
-    assert paired["error1"] == 2 and paired["fixed0"] == 3
+    assert paired["lo1"] == paired["bounds_on0"] == 2
+    assert paired["error1"] == 3 and paired["fixed0"] == 4
     glob = {c["key"]: c.get("collapse_order", 0) for c in GLOBAL_COLUMNS}
     assert glob["lo"] == glob["hi"] == glob["bounds_on"] == 1
     assert glob["error"] == 2 and glob["link_row"] == glob["row"] == 3 and glob["fixed"] == 4
     assert glob["owner"] == glob["label"] == glob["value"] == 0
+
+
+def test_at_the_qt_docks_width_both_tables_show_the_bounds(params):
+    """474 px is the Qt window's left dock at 1440 x 900 (and a third of the emtk shell):
+    both tables still show Lo / Hi / Bounds there (final shell parity pass, 2026-10-14)."""
+    for name, seen in (("qt", _qt_columns(params, [474])), ("emtk", _emtk_columns(params, [460]))):
+        assert "bounds_lo" in seen[0] and "bounds_on" in seen[0], (name, seen)

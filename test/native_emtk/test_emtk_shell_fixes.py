@@ -237,7 +237,8 @@ def _six_fits(driver, shell):
 def test_tile_windows_makes_a_grid_of_usable_tiles(shell):  # noqa: F811
     from chisurf.emtk.main_app import MIN_TILE
 
-    driver = Driver(shell, size=(1700, 1100))
+    # A 1920 screen: the left column is a third (as the Qt dock), so the workspace fits 3 tiles a row.
+    driver = Driver(shell, size=(1920, 1100))
     _six_fits(driver, shell)
     shell.docks.hide("start")
     shell.tile_windows()
@@ -275,7 +276,8 @@ def test_tile_grid_is_near_square():
 
 
 def test_pressing_in_another_tile_makes_it_the_analysis_docks_fit(shell):  # noqa: F811
-    driver = Driver(shell, size=(1700, 1100))
+    # A 1920 screen: the left column is a third (as the Qt dock), so the workspace fits 3 tiles a row.
+    driver = Driver(shell, size=(1920, 1100))
     uids = _six_fits(driver, shell)
     data = shell.data
     shell.docks.hide("start")

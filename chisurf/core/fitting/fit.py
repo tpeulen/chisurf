@@ -467,6 +467,12 @@ class Fit(cs.core.base.Base):
         """
         wres_x, _ = self.model_curve[self.xmin : self.xmax]
         wres_y = self.model.weighted_residuals
+        if np.size(wres_x) != np.size(wres_y):
+            # A model whose residuals are not one per data point (PDA: one per histogram
+            # bin) has no x of its own for them: index them, as an empty range did by
+            # accident -- with a real range the two lengths raised in ``Curve`` and took
+            # the Durbin-Watson statistic (and the Residuals 2D page's label) with them.
+            wres_x = np.arange(np.size(wres_y), dtype=np.float64)
         return cs.core.curve.Curve(x=wres_x, y=wres_y, copy_array=False)
 
     @property

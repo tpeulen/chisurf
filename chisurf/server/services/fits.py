@@ -638,13 +638,33 @@ def fit_create(
         # ``'tuple' object has no attribute 'x'``. A group is the type this
         # takes, one dataset or several.
         from chisurf.core.data import DataGroup
+        from chisurf.emtk.datasets import (
+            _apply_anisotropy_calibration_to_fit,
+            _attach_tttr_header,
+            _auto_link_non_nuisance_group_parameters,
+            _coerce_finite_float,
+            _resolve_dataset_anisotropy_calibration,
+        )
 
         data = data_groups[0] if isinstance(data_groups[0], DataGroup) else DataGroup(data_groups)
-        fit = FitGroup(
-            data=data,
-            model_class=model_class,
-            **kw,
-        )
+        # What the Qt window's add-fit macro (``core_fit.add_fit``) does around the
+        # construction, so a fit made here is the same fit: the dataset's anisotropy
+        # calibration (g, l1, l2), the reader's metadata on the fit (the Info page, the
+        # photon streams) and a group's non-nuisance parameters linked to its first member.
+        calibration = _resolve_dataset_anisotropy_calibration(data)
+        for key in ("g_factor", "l1", "l2"):
+            value = _coerce_finite_float(calibration.get(key))
+            if value is not None:
+                kw.setdefault(key, value)
+        # ``model_kw`` is the model's, not the group's: splatted into ``FitGroup`` any
+        # model keyword (``g_factor``) raised TypeError.
+        fit = FitGroup(data=data, model_class=model_class, model_kw=kw)
+        _apply_anisotropy_calibration_to_fit(fit, calibration)
+        try:
+            _attach_tttr_header(fit, data)
+        except Exception:  # noqa: BLE001 - metadata is informative, never blocks a fit
+            logger.debug("reader metadata not attached", exc_info=True)
+        _auto_link_non_nuisance_group_parameters(fit)
         if fit_name:
             fit.name = fit_name
         # A model that takes in other fits (a global fit) takes them from this session.

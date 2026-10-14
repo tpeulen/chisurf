@@ -73,8 +73,12 @@ def draw(notes: list, key: str = "notes") -> None:
         if isinstance(note, Table):
             columns = len(note.header)
             if im.begin_table(f"##{key}-{index}", columns):
-                for title in note.header:
-                    im.table_setup_column(title)
+                # Each column's share of the width is its widest cell's (plus a gap): equal
+                # shares let "18.2743 ± 0.622" run into the next column once the page narrows.
+                for column, title in enumerate(note.header):
+                    cells = [title] + [row[column] for row in note.rows if column < len(row)]
+                    widest = max(im.calc_text_size(str(cell))[0] for cell in cells)
+                    im.table_setup_column(title, im.TableColumnFlags.WIDTH_STRETCH, widest + 12.0)
                 im.table_headers_row()
                 for row in note.rows:
                     im.table_next_row()

@@ -706,3 +706,60 @@ def test_fit_create_resolves_a_shared_model_name_through_the_datasets_experiment
     fit = state.fits[-1]
     model_class = type(fit.model)
     assert model_class.__module__.startswith("chisurf.core.models.fcs"), model_class
+
+
+def test_fit_create_builds_the_fit_the_qt_add_fit_macro_builds():
+    """``fit.create`` (the emtk shell's add fit) put no reader metadata on the fit -- the Info page
+    said "(no metadata)" where the Qt window listed acquisition time, count rate and file -- and
+    splatted ``model_kw`` into ``FitGroup`` (TypeError). Final shell parity pass, 2026-10-14."""
+    import numpy as np
+
+    import chisurf as cs
+    from chisurf.core.data import DataCurve
+    from chisurf.core.experiments.bootstrap import ensure_experiments_registered
+
+    ensure_experiments_registered()
+    curve = DataCurve(
+        x=np.logspace(-6, 0, 50),
+        y=np.linspace(1.0, 0.0, 50),
+        ey=np.ones(50),
+        meta_data={"mean_count_rate": 18.2, "acquisition_time": 58.7, "filename": "k.cor"},
+    )
+    curve.experiment = cs.experiment["FCS"]
+    state = SessionState(datasets=[curve])
+    result = fit_create(
+        state, dataset_index=0, model_name="FCS (general: diffusion + bunching/anticorr)"
+    )
+    assert result["ok"], result
+    meta = state.fits[-1].flr_metadata
+    assert meta["mean_count_rate"] == "18.2" or float(meta["mean_count_rate"]) == 18.2
+    assert meta["filename"] == "k.cor"
+
+
+def test_a_pda_fit_has_weighted_residuals_and_a_durbin_watson_over_its_range():
+    """PDA residuals are one per histogram bin, not one per data point: with the range
+    ``fit.create`` sets (0..3720) ``Fit.weighted_residuals`` raised (3720 x against 81 y), so the
+    Durbin-Watson statistic and the Residuals 2D page's label were missing in the emtk shell
+    (the Qt window's empty 0..0 range hid it). Final shell parity pass, 2026-10-14."""
+    import math
+    import sys
+    from pathlib import Path
+
+    import chisurf as cs
+    from chisurf.core.experiments.bootstrap import ensure_experiments_registered
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "native_emtk"))
+    from capture_shell_s2_models_qt_before import make_pda_curve
+
+    ensure_experiments_registered()
+    reader = next(r for r in cs.experiment["PDA"].readers if str(r.name) == "PTU/HT3/SPC")
+    curve = make_pda_curve()
+    curve.experiment, curve.setup = reader.experiment, reader
+    state = SessionState(datasets=[curve])
+    assert fit_create(state, dataset_index=0, model_name="PDA2c-discrete")["ok"]
+    fit = state.fits[-1]
+    assert fit.fit_range[1] > 0
+    wres = fit.weighted_residuals
+    assert len(wres.x) == len(wres.y) > 0
+    assert math.isfinite(fit.durbin_watson)
+    assert math.isfinite(fit.chi2r)

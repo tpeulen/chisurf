@@ -367,3 +367,42 @@ def test_the_model_editor_drops_bounds_then_links_then_fixed_when_narrow(emtk_pl
         if not seen or seen[-1] != columns:
             seen.append(columns)
     assert seen == stages + stages[-2::-1]
+
+
+class _GlobalModel:
+    """A global fit's model: its curves are one array per local fit, of different lengths."""
+
+    def __init__(self, fits):
+        self.fits = fits
+        self.x = np.array([f.model.x for f in fits], dtype=object)
+        self.y = np.array([f.model.y for f in fits], dtype=object)
+
+
+class _GlobalFit(_FakeFit):
+    name = "global fit"
+
+    def __init__(self):
+        super().__init__(n=3)
+        self.locals = [_FakeFit(n=8), _FakeFit(n=5)]
+        self.model = _GlobalModel(self.locals)
+        self.weighted_residuals = _Curve([0.0], [0.0])
+
+
+def test_a_global_fits_table_lists_its_local_fits_rows(monkeypatch):
+    """The global fit's model is ragged (TCSPC + FCS): the page read it as one float array and
+    failed on every draw, leaving the Data table empty (final shell parity pass, 2026-10-14)."""
+    from chisurf.emtk.fit_pages.pages.table_plot_emtk import FitTablePlotEmtk
+
+    monkeypatch.setattr(
+        "chisurf.emtk.fit_pages.pages.table_plot_emtk.get_fitting_client", lambda: _FakeClient()
+    )
+    fit = _GlobalFit()
+    plot = FitTablePlotEmtk(fit)
+    x, y, ym, wres, mask, support = plot._get_arrays()
+    assert len(x) == len(y) == len(ym) == len(wres) == len(mask) == 13
+    assert np.allclose(ym[:8], fit.locals[0].model.y) and np.allclose(ym[8:], fit.locals[1].model.y)
+    _draw_once(plot)
+    before = fit.locals[0].data.y.copy()
+    plot._on_table_edit(0, "data", 99.0)
+    assert np.array_equal(fit.locals[0].data.y, before), "global rows are read-only"
+    plot.table.cancel_edit()

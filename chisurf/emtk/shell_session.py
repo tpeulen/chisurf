@@ -96,6 +96,19 @@ def display_name(path_or_name: str | Path | None) -> str:
     return value[: -len(PROJECT_SUFFIX)] if value.lower().endswith(PROJECT_SUFFIX) else value
 
 
+def escape_pressed() -> bool:
+    """Whether Escape was pressed this frame: it cancels the shell's modal file dialog.
+
+    ``DialogWindow`` closes on Escape only under the pointer (right for a tool's window
+    among others); a file dialog over the whole shell is modal and, like Qt's, is
+    cancelled by Escape wherever the pointer is.
+    """
+    from emtk import im_core
+    from emtk.keys import KEY_ESCAPE
+
+    return im_core.get_io().key == KEY_ESCAPE
+
+
 @dataclass
 class _Job:
     label: str
@@ -1280,7 +1293,7 @@ class ShellProject:
         """The open file dialog, form and question over the whole shell (drawn last)."""
         if self.file_dialog is not None:
             window = self._file_window
-            closed = window.begin(box)
+            closed = window.begin(box) or escape_pressed()
             paths = self.file_dialog.draw()
             window.end()
             if closed or paths is False:

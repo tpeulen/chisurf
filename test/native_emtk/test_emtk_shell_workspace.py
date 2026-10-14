@@ -195,7 +195,9 @@ def test_fits_stay_in_the_workspace_and_reachable_after_clicking_the_window():
         assert frame is not None and docks.is_shown(key), key
         assert _inside(frame, bounds), f"{key} left the workspace: {frame} / {bounds}"
     for key in FITS:
-        driver.click(_title(shell, key))
+        # The title's right end: the floats overlap, each one's right end is the part in view.
+        x, y, w, _h = docks.window(key).frame
+        driver.click((x + w - 40.0, y + docks._title_h / 2.0))
         driver.frame(2)
         assert docks.floating()[-1] == key
     driver.screenshot(SHOTS / "emtk_shell_workspace_floated.png")

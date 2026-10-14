@@ -53,7 +53,7 @@ PARAMETER_COLUMNS: list[dict[str, Any]] = [
         "label": "Fixed",
         "editable": True,
         "description": "A fixed parameter keeps its value when the fit runs.",
-        "collapse_order": 3,
+        "collapse_order": 4,
     },
     {
         "key": "lo",
@@ -61,7 +61,7 @@ PARAMETER_COLUMNS: list[dict[str, Any]] = [
         "editable": True,
         "format": "%.4g",
         "description": "Lower bound, used while Bounds is on.",
-        "collapse_order": 1,
+        "collapse_order": 2,
     },
     {
         "key": "hi",
@@ -69,21 +69,21 @@ PARAMETER_COLUMNS: list[dict[str, Any]] = [
         "editable": True,
         "format": "%.4g",
         "description": "Upper bound, used while Bounds is on.",
-        "collapse_order": 1,
+        "collapse_order": 2,
     },
     {
         "key": "bounds_on",
         "label": "Bounds",
         "editable": True,
         "description": "Keep the parameter between Lo and Hi while fitting.",
-        "collapse_order": 1,
+        "collapse_order": 2,
     },
     {
         "key": "error",
         "label": "Error",
         "format": "%.3g",
         "description": "Uncertainty estimate from the last fit.",
-        "collapse_order": 2,
+        "collapse_order": 3,
     },
     {
         "key": "prior",
@@ -94,6 +94,7 @@ PARAMETER_COLUMNS: list[dict[str, Any]] = [
             "attaches a smooth prior pulling the fit toward a value. Type a family and its "
             "shape parameters, e.g. Gaussian(4, 0.4); right-click the row for the list."
         ),
+        # Dropped first: the Qt table has no prior column, so its bounds must not go for it.
         "collapse_order": 1,
     },
 ]
@@ -669,10 +670,13 @@ class ModelEditor:
         text = str(options.get("text") or "")
         if not text:
             return
-        if "<sub>" in text or "<sup>" in text or "&" in text:
+        prose = plain_label(re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE))
+        # An equation is typeset; a sentence (a status with an entity or two, the PDA light-path
+        # note) is wrapped: typeset as one formula it was squeezed into the width, unreadable.
+        if ("<sub>" in text or "<sup>" in text) and len(prose.split()) <= 12:
             im.math(html_to_latex(text), font_size=15.0, max_width=max(40.0, width))
         else:
-            im.text_wrapped(plain_label(text))
+            im.text_wrapped(prose)
 
     def draw(self, item_rects: dict | None = None) -> None:
         """Draw the editor into the current window (the Analysis dock, below the controller)."""

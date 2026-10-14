@@ -391,6 +391,9 @@ class FitTablePlotEmtk(plotbase.Plot):
         """Route an emtk cell edit to the fit, like the Qt page's ``_on_cell_set``."""
         if self._applying_edit:
             return
+        if getattr(self.fit.model, "fits", None):
+            # A global fit's rows belong to its local fits: edit them in their own windows.
+            return
         self._applying_edit = True
         try:
             if key == "mask":
@@ -451,7 +454,23 @@ class FitTablePlotEmtk(plotbase.Plot):
             ``(x, y, model, weighted_residuals, mask, support_columns)`` where
             ``support_columns`` is a list of ``(name, array)`` pairs.
         """
-        fit = self.fit
+        local = list(getattr(self.fit.model, "fits", None) or [])
+        if local:
+            # A global fit: its curves are one array per local fit (of different lengths),
+            # so the table lists every local fit's rows, one after the other.
+            parts = [self._arrays_of(f) for f in local]
+            parts = [p for p in parts if len(p[0])]
+            if not parts:
+                return np.array([]), np.array([]), np.array([]), np.array([]), None, []
+            return (
+                *(np.concatenate([p[i] for p in parts]) for i in range(4)),
+                np.concatenate([p[4] for p in parts]),
+                [],
+            )
+        return self._arrays_of(self.fit)
+
+    def _arrays_of(self, fit):
+        """:meth:`_get_arrays` of one (local) fit."""
         data_curve = fit.data
         model_curve = fit.model
         wres_curve = fit.weighted_residuals
@@ -494,7 +513,7 @@ class FitTablePlotEmtk(plotbase.Plot):
         ym = align(ym_raw, nd)
 
         try:
-            xmin, xmax = self.fit.fit_range
+            xmin, xmax = fit.fit_range
         except Exception:
             xmin, xmax = 0, nd - 1
         xmin = int(np.clip(xmin, 0, nd - 1))
@@ -510,7 +529,7 @@ class FitTablePlotEmtk(plotbase.Plot):
             wres = align(wres_raw, nd)
 
         try:
-            mask_raw = getattr(self.fit, "mask", None)
+            mask_raw = getattr(fit, "mask", None)
         except Exception:
             mask_raw = None
         mask = np.ones(nd, dtype=float)
@@ -530,7 +549,7 @@ class FitTablePlotEmtk(plotbase.Plot):
 
         support_columns: list[tuple[str, np.ndarray]] = []
         try:
-            curves = self.fit.get_curves(copy_curves=False)
+            curves = fit.get_curves(copy_curves=False)
         except Exception:
             curves = {}
         for name, curve in getattr(curves, "items", lambda: [])():

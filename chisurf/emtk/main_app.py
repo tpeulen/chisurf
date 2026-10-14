@@ -284,7 +284,9 @@ class EmtkShellApp(ImApp):
         self.docks = DockManager(
             Split(
                 "h",
-                0.27,
+                # A third, as wide as the Qt window's left dock (474 of 1440 px): narrower, the
+                # model editor's parameter tables drop Lo / Hi / Bounds for width (collapse_order).
+                0.33,
                 Split("v", 0.5, Region("left"), Region("left_lower")),
                 # The workspace is where the fits live (their windows are its documents); the
                 # tools are docks, tabbed on its right by default, and dock anywhere else.
@@ -1321,6 +1323,28 @@ class EmtkShellApp(ImApp):
         if self.project.status:
             im.text_disabled(self.project.status)
             self.item_rects["project.status"] = im.get_item_rect()
+        self._draw_system_info()
+
+    def _draw_system_info(self) -> None:
+        """The machine, the versions and the process's CPU and memory, as the Qt workspace showed them."""
+        import time
+
+        from chisurf.core.system_info import process_usage, system_info_lines
+
+        if getattr(self, "_system_lines", None) is None:
+            self._system_lines = system_info_lines()
+            self._usage_at, self._usage = 0.0, None
+        now = time.monotonic()
+        if now - self._usage_at > 1.0:
+            self._usage_at, self._usage = now, process_usage()
+        im.spacing()
+        im.separator_text(tr("System"))
+        if self._usage is not None:
+            cpu, mem = self._usage
+            im.text_disabled(tr("CPU: {cpu:.0f}%   Mem: {mem:.0f} MB").format(cpu=cpu, mem=mem))
+        for line in self._system_lines:
+            im.text_disabled(line)
+        self.item_rects["system_info"] = im.get_item_rect()
 
     def _draw_console(self, box) -> None:
         self.console.draw(box)

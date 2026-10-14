@@ -699,11 +699,17 @@ class SectionViews:
             return {"type": "custom", "key": "section_error", "options": {"id": ident}, **common}
         data = section.get("data") or {}
         if key == "scalar_table":
+            # The Name column draws script markup: an HTML label (``x<sub>min</sub>``) is
+            # converted, as the parameter and global tables do, or its tags are drawn as text.
+            rows = [
+                dict(r, label=self.editor.label_markup(r.get("label") or r.get("name", "")))
+                for r in data.get("rows") or []
+            ]
             return self._table(
                 ident,
                 n,
                 "scalar",
-                data.get("rows") or [],
+                rows,
                 SCALAR_COLUMNS,
                 section,
                 common,
