@@ -2066,7 +2066,12 @@ class HelpGui:
 
         source, _ = self._expand_inline_markup(text, as_markdown=True)
         draw_inline(
-            source, self._handle_link_click, tag, colour=colour, bold=bold, prefix=prefix,
+            source,
+            self._handle_link_click,
+            tag,
+            colour=colour,
+            bold=bold,
+            prefix=prefix,
             zoom=self.model.zoom_factor(),
         )
 

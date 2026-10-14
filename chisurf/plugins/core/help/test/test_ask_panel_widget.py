@@ -134,7 +134,9 @@ def test_a_failure_reaches_the_reader(pane, stub):
 
 
 def test_a_named_page_that_does_not_exist_is_called_out():
-    role, text = compose_answer(_answer_obj(text="See it.", pages=[ACCURATE], fabricated=["docs/x.md"]))
+    role, text = compose_answer(
+        _answer_obj(text="See it.", pages=[ACCURATE], fabricated=["docs/x.md"])
+    )
     assert role == "assistant" and "does not exist: docs/x.md" in text
 
 
