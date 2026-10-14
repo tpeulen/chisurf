@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -678,8 +679,35 @@ class _BarsEntry(_Entry):
         return self.state["x"], self.state["height"]
 
 
+@dataclass
+class _Grab:
+    """What a press picked up, and where the gesture was last seen.
+
+    ``mode`` says which of the payload fields matter:
+
+    * ``"text"`` -- a label; ``point`` is the last pointer position in pixels.
+    * ``"roi"`` -- a whole region of interest; ``point`` in data coordinates.
+    * ``"grip"`` -- a ROI corner; ``point`` is the *opposite*, fixed corner.
+    * ``"edge"`` -- one edge (``edge`` is ``"low"``/``"high"``) of an interval
+      region; ``value`` is where it was last put.
+    * ``"move"`` -- a whole interval region or a marker; ``value`` is the last
+      pointer position along its axis.
+    """
+
+    entry: _Entry
+    mode: str
+    point: tuple[float, float] = (0.0, 0.0)
+    edge: str = ""
+    value: float = 0.0
+
+
 class EmtkCanvas(base.Canvas):
     """A chiplot panel drawn by emtk from a display list."""
+
+    #: The press's catch while a drag is under way.
+    _dragging: _Grab | None = None
+    #: Where a pan was grabbed, in data coordinates.
+    _panning: tuple[float, float] | None = None
 
     def __init__(self, *, title: str | None = None, background=None, **_: Any) -> None:
         self._entries: list[_Entry] = []
@@ -1559,7 +1587,7 @@ class EmtkCanvas(base.Canvas):
             if entry.kind == "text":
                 box = entry.state.get("_box")
                 if box and box[0] <= px <= box[2] and box[1] <= py <= box[3]:
-                    self._dragging = (entry, (px, py))
+                    self._dragging = _Grab(entry, "text", point=(px, py))
                     break
                 continue
             if entry.kind == "roi":
@@ -1568,11 +1596,13 @@ class EmtkCanvas(base.Canvas):
                     x0, y0 = entry.pos
                     w0, h0 = entry.size
                     fixed = (x0 + w0, y0 + h0) if grip == "lo" else (x0, y0)
-                    self._dragging = (entry, ("grip", fixed))
+                    self._dragging = _Grab(entry, "grip", point=fixed)
                     break
                 box = entry.state.get("_box")
                 if box and box[0] <= px <= box[2] and box[1] <= py <= box[3]:
-                    self._dragging = (entry, (self._from_pixels(px), self._from_pixels_y(py)))
+                    self._dragging = _Grab(
+                        entry, "roi", point=(self._from_pixels(px), self._from_pixels_y(py))
+                    )
                     break
                 continue
             span = entry.state.get("_pixels")
@@ -1590,12 +1620,12 @@ class EmtkCanvas(base.Canvas):
                     low_at, high_at = high_at, low_at
                 for edge, at in (("low", low_at), ("high", high_at)):
                     if abs(along - at) <= 5.0:
-                        self._dragging = (entry, (edge, convert(along)))
+                        self._dragging = _Grab(entry, "edge", edge=edge, value=convert(along))
                         break
                 if self._dragging is not None:
                     break
             if span[0] - 3.0 <= along <= span[1] + 3.0:
-                self._dragging = (entry, convert(along))
+                self._dragging = _Grab(entry, "move", value=convert(along))
                 break
         if self._dragging is None and (self._interactive or self._paint is not None):
             x, y = self._from_pixels(px), self._from_pixels_y(py)
@@ -1618,67 +1648,66 @@ class EmtkCanvas(base.Canvas):
             self._paint_last = (self._from_pixels(px), self._from_pixels_y(py))
             self._paint("move", *self._paint_last)
             return
-        if getattr(self, "_panning", None):
+        if self._panning is not None:
             grabbed_x, grabbed_y = self._panning
             (x0, x1), (y0, y1) = self._view()
             dx = grabbed_x - self._from_pixels(px)
             dy = grabbed_y - self._from_pixels_y(py)
             self._set_view(x=(x0 + dx, x1 + dx), y=(y0 + dy, y1 + dy))
             return
-        if not getattr(self, "_dragging", None):
+        grab = self._dragging
+        if grab is None:
             return
-        entry, grabbed_at = self._dragging
-        if entry.kind == "text":
-            grabbed_x, grabbed_y = grabbed_at
+        entry = grab.entry
+        if grab.mode == "text":
+            grabbed_x, grabbed_y = grab.point
+            x, y = entry.state["pos"]
             if entry.state.get("anchored"):
-                x, y = entry.state["pos"]
                 entry.set_position(x + px - grabbed_x, y + py - grabbed_y)
             else:
-                x, y = entry.state["pos"]
                 entry.set_position(
                     x + self._from_pixels(px) - self._from_pixels(grabbed_x),
                     y + self._from_pixels_y(py) - self._from_pixels_y(grabbed_y),
                 )
-            self._dragging = (entry, (px, py))
+            grab.point = (px, py)
             return
-        if entry.kind == "region" and isinstance(grabbed_at, tuple):
-            edge, _ = grabbed_at
+        if grab.mode == "edge":
             low, high = entry.bounds
             horizontal = entry.state.get("orientation") == "horizontal"
             at = self._from_pixels_y(py) if horizontal else self._from_pixels(px)
-            if edge == "low":
+            if grab.edge == "low":
                 entry.set_bounds(min(at, high), high)
             else:
                 entry.set_bounds(low, max(at, low))
-            self._dragging = (entry, (edge, at))
+            grab.value = at
             entry._notify(final=False)
             return
-        if entry.kind == "roi" and grabbed_at[0] == "grip":
+        if grab.mode == "grip":
             # A corner follows the pointer; the opposite one stays where it was
             # when the grip was taken, even if the pointer crosses it.
-            fixed_x, fixed_y = grabbed_at[1]
+            fixed_x, fixed_y = grab.point
             now_x, now_y = self._from_pixels(px), self._from_pixels_y(py)
             entry.set_pos((min(fixed_x, now_x), min(fixed_y, now_y)))
             entry.set_size((max(abs(now_x - fixed_x), 1e-9), max(abs(now_y - fixed_y), 1e-9)))
             entry._notify(final=False)
             return
-        if entry.kind == "roi":
-            grabbed_x, grabbed_y = grabbed_at
+        if grab.mode == "roi":
+            grabbed_x, grabbed_y = grab.point
             now_x, now_y = self._from_pixels(px), self._from_pixels_y(py)
             x, y = entry.pos
             entry.set_pos((x + now_x - grabbed_x, y + now_y - grabbed_y))
-            self._dragging = (entry, (now_x, now_y))
+            grab.point = (now_x, now_y)
             entry._notify(final=False)
             return
         horizontal = entry.kind == "region" and entry.state.get("orientation") == "horizontal"
         now = self._from_pixels_y(py) if horizontal else self._from_pixels(px)
-        moved = now - grabbed_at
+        moved = now - grab.value
         if entry.kind == "region":
             low, high = entry.bounds
             entry.set_bounds(low + moved, high + moved)
         else:
             entry.set_value(entry.value + moved)
-        self._dragging = (entry, now)
+        grab.value = now
         entry._notify(final=False)
 
     def release(self, *_args: Any) -> None:
@@ -1690,10 +1719,9 @@ class EmtkCanvas(base.Canvas):
             self._dragging = None
             self._panning = None
             return
-        if getattr(self, "_dragging", None):
-            entry, _ = self._dragging
-            if entry.kind != "text":
-                entry._notify(final=True)
+        if self._dragging is not None:
+            if self._dragging.mode != "text":
+                self._dragging.entry._notify(final=True)
         self._dragging = None
         self._panning = None
 
