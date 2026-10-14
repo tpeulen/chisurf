@@ -234,20 +234,16 @@ def read_pycorrfit(filename: str, verbose: bool = False) -> typing.List[FCSDatas
     if verbose:
         print("Reading PyCorrFit from file: ", filename)
     d = openCSV(filename)
-    correlations = list()
+    correlations: typing.List[FCSDataset] = list()
     for i, correlation in enumerate(d["Correlation"]):
-        r = dict()
+        # Everything that is not a dataset field lands in the curve's metadata
+        # (see ``make_curve_kwargs``), so it is put there directly.
+        meta_data: typing.Dict[str, typing.Any] = {"header": header}
         correlation_time = correlation[:, 0]
         correlation_amplitude = correlation[:, 1]
         if d["Trace"][i] is not None:
-            intenstiy_trace_time = (d["Trace"][i][0][:, 0] / 1000.0).tolist()
-            intensity_trace_ch1 = (d["Trace"][i][0][:, 1]).tolist()
-            r.update(
-                {
-                    "intensity_trace_time_ch1": intenstiy_trace_time,
-                    "intensity_trace_ch1": intensity_trace_ch1,
-                }
-            )
+            meta_data["intensity_trace_time_ch1"] = (d["Trace"][i][0][:, 0] / 1000.0).tolist()
+            meta_data["intensity_trace_ch1"] = (d["Trace"][i][0][:, 1]).tolist()
         aquisition_time = d["Duration"]
         mean_count_rate = np.mean(d["Count rates"][i])
         w = 1.0 / chisurf.core.fluorescence.fcs.noise(
@@ -256,19 +252,17 @@ def read_pycorrfit(filename: str, verbose: bool = False) -> typing.List[FCSDatas
             measurement_duration=aquisition_time,
             mean_count_rate=mean_count_rate,
         )
-        r.update(
-            {
-                "filename": filename,
-                "measurement_id": "{}_{}".format(
-                    os.path.splitext(os.path.basename(d["Filename"]))[0], i
-                ),
-                "acquisition_time": aquisition_time,
-                "mean_count_rate": mean_count_rate,
-                "correlation_times": correlation_time,
-                "correlation_amplitudes": correlation_amplitude,
-                "correlation_amplitude_weights": w.tolist(),
-                "meta_data": {"header": header},
-            }
-        )
+        r: FCSDataset = {
+            "filename": filename,
+            "measurement_id": "{}_{}".format(
+                os.path.splitext(os.path.basename(d["Filename"]))[0], i
+            ),
+            "acquisition_time": aquisition_time,
+            "mean_count_rate": float(mean_count_rate),
+            "correlation_times": correlation_time,
+            "correlation_amplitudes": correlation_amplitude,
+            "correlation_amplitude_weights": w.tolist(),
+            "meta_data": meta_data,
+        }
         correlations.append(r)
     return correlations

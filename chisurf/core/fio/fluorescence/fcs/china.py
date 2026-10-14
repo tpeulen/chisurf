@@ -1,29 +1,10 @@
 import numpy as np
-from tttrlib.matfile import loadmat, savemat
+from tttrlib.matfile import loadmat
 
 import chisurf as cs
 import chisurf.core.fluorescence.fcs
 from chisurf import typing
 from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
-
-
-def write_china_mat(filename: str, d: typing.List[typing.Dict], verbose: bool = False) -> None:
-    """Write FCS data to a China .mat file.
-
-    Parameters
-    ----------
-    filename : str
-        Output file path.
-    d : list of dict
-        List of FCS datasets.
-    verbose : bool
-        If True, print progress.
-    """
-    if verbose:
-        print(f"Writing to file: {filename}")
-    mdict = dict()
-
-    savemat(filename, mdict)
 
 
 def read_china_mat(
@@ -51,16 +32,15 @@ def read_china_mat(
     if verbose:
         print(f"Reading from file: {filename}")
 
-    correlation_keys = {
-        "Auto_AA": {"Intensity": "IntA", "Correlation": "AA"},
-        "Auto_BB": {"Intensity": "IntB", "Correlation": "BB"},
-        "Cross_Axb": {"Intensity": ["IntA", "IntB"], "Correlation": "AAxB"},
-    }
-    correlations = list()
+    # (intensity trace key(s), correlation key) per correlation kind.
+    correlation_keys: list[tuple[str | list[str], str]] = [
+        ("IntA", "AA"),
+        ("IntB", "BB"),
+        (["IntA", "IntB"], "AAxB"),
+    ]
+    correlations: typing.List[FCSDataset] = list()
 
-    for correlation_key in correlation_keys:
-        intensity_key = correlation_keys[correlation_key]["Intensity"]
-        correlation_key = correlation_keys[correlation_key]["Correlation"]
+    for intensity_key, correlation_key in correlation_keys:
         correlation_time = m[correlation_key][:, 0]
 
         for measurement_number in range(1, n_measurements):

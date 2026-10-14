@@ -155,8 +155,8 @@ def write_dict_to_kristine(
         write_kristine(
             filename=fn,
             verbose=verbose,
-            correlation_time=d["correlation_times"],
-            correlation_amplitude=d["correlation_amplitudes"],
+            correlation_time=np.asarray(d["correlation_times"], dtype=float),
+            correlation_amplitude=np.asarray(d["correlation_amplitudes"], dtype=float),
             correlation_amplitude_uncertainty=1.0 / np.array(d["correlation_amplitude_weights"]),
             acquisition_time=d["acquisition_time"],
             mean_countrate=d["mean_count_rate"],

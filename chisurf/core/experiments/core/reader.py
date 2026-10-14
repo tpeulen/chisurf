@@ -243,7 +243,9 @@ class ExperimentReader(chisurf.core.base.Base):
         return state
 
     @abc.abstractmethod
-    def read(self, filename: str | None = None, *args, **kwargs) -> chisurf.core.base.Data:
+    def read(
+        self, filename: str | None = None, *args, **kwargs
+    ) -> chisurf.core.base.Data | chisurf.core.data.DataGroup:
         """Read experimental data from a file.
 
         Parameters
@@ -253,13 +255,16 @@ class ExperimentReader(chisurf.core.base.Base):
 
         Returns
         -------
-        chisurf.core.base.Data
-            The loaded experimental data.
+        chisurf.core.base.Data or chisurf.core.data.DataGroup
+            The loaded dataset, or a group of them (most readers return a group).
         """
-        pass
+        raise NotImplementedError(f"{type(self).__name__} does not implement read()")
 
-    def get_data(self, **kwargs) -> chisurf.core.data.ExperimentDataGroup:
+    def get_data(self, **kwargs) -> chisurf.core.base.Data | chisurf.core.data.DataGroup:
         """Read data and wrap it in an :class:`ExperimentDataGroup`.
+
+        A reader that returns another group (a plain ``DataCurveGroup``) or a
+        bare :class:`~chisurf.core.base.Data` gets it back unchanged.
 
         Attaches the experiment, setup, and data_reader references
         to each dataset in the group. When ``record_provenance`` is
@@ -278,17 +283,22 @@ class ExperimentReader(chisurf.core.base.Base):
         """
         # Decode first. A corrupt input must not create a source artifact before
         # the reader knows that it can produce a usable ChiSurf dataset.
-        data = self.read(**kwargs)
-
-        if type(data) in (list, tuple):
+        # Some readers still hand back a plain list/tuple of datasets.
+        read: object = self.read(**kwargs)
+        data: chisurf.core.base.Data | chisurf.core.data.DataGroup
+        if isinstance(read, (list, tuple)) and not isinstance(read, chisurf.core.data.DataGroup):
             group_type = (
                 chisurf.core.data.ExperimentDataCurveGroup
-                if all(isinstance(d, chisurf.core.data.DataCurve) for d in data)
+                if all(isinstance(d, chisurf.core.data.DataCurve) for d in read)
                 else chisurf.core.data.ExperimentDataGroup
             )
-            data = group_type(data)
-        if isinstance(data, chisurf.core.data.ExperimentalData):
-            data = chisurf.core.data.ExperimentDataGroup([data])
+            data = group_type(read)
+        elif isinstance(read, chisurf.core.data.ExperimentalData):
+            data = chisurf.core.data.ExperimentDataGroup([read])
+        elif isinstance(read, (chisurf.core.base.Data, chisurf.core.data.DataGroup)):
+            data = read
+        else:
+            raise TypeError(f"{type(self).__name__}.read() returned {type(read).__name__}")
         if isinstance(data, chisurf.core.data.ExperimentDataGroup):
             for d in data:
                 d.experiment = self.experiment

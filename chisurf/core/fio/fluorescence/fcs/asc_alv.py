@@ -465,7 +465,8 @@ def openASC_ALV_7004(path: pathlib.Path) -> typing.Dict:
 
     typelist = []
     corrlist = []
-    tracelist = []
+    # One trace per autocorrelation, both channels' traces for a cross term.
+    tracelist: list[np.ndarray | list[np.ndarray]] = []
     filelist = []
     if not mode:
         raise LoadALVError(f"Undetermined ALV file mode: {path}")

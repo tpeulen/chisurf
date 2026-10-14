@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pathlib
+import typing
 
 import chisurf.core.data
 import chisurf.core.fio.ascii
@@ -85,8 +86,8 @@ class FCS(ExperimentReader):
         # Optional weighting configuration; if set, these are passed through
         # to :func:`chisurf.core.fio.fluorescence.fcs.read_fcs` so that FCS
         # correlation-amplitude weights can be recomputed on import.
-        self.weight_mode = None
-        self.weight_kwargs = dict()
+        self.weight_mode: str | None = None
+        self.weight_kwargs: dict[str, typing.Any] = dict()
         # Column assignments for the generic csv reader (experiment_reader='csv').
         self.col_x: int = 0
         self.col_y: int = 1
@@ -120,7 +121,9 @@ class FCS(ExperimentReader):
         """
         reader_name = kwargs.pop("reader_name", None) or self.experiment_reader
         reader_name = str(reader_name).lower()
-        csv_kwargs = {}
+        if filename is None:
+            raise ValueError("the FCS reader needs a filename")
+        csv_kwargs: dict[str, typing.Any] = {}
         if reader_name == "csv":
             csv_kwargs = dict(
                 col_x=self.col_x,

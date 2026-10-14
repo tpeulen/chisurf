@@ -10,7 +10,7 @@ from __future__ import annotations
 import io
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Union, overload
+from typing import Any, Literal, Union, overload
 
 import numpy as np
 
@@ -22,7 +22,7 @@ def _parse_footer_metadata(footer_text: str) -> dict[str, Any]:
     if not footer_text:
         return {}
 
-    metadata = {}
+    metadata: dict[str, Any] = {}
     for line in footer_text.strip().split("\n"):
         line = line.strip()
         if ":" in line:
@@ -32,14 +32,14 @@ def _parse_footer_metadata(footer_text: str) -> dict[str, Any]:
             # the comment markers or every lookup (g_factor, channels, ...)
             # misses and the calibration silently falls back.
             key = key.strip(" #\t")
-            value = value.strip()
+            text = value.strip()
+            parsed: str | int | float = text
             try:
-                value = float(value)
-                if value.is_integer():
-                    value = int(value)
+                number = float(text)
+                parsed = int(number) if number.is_integer() else number
             except ValueError:
                 pass
-            metadata[key] = value
+            metadata[key] = parsed
     return metadata
 
 
@@ -151,11 +151,12 @@ def write_vv_vh(
 
     # Process footer
     if footer is not None:
-        if isinstance(footer, (list, tuple)):
-            footer = newline.join(str(line) for line in footer)
+        # Any iterable of lines, not only a list/tuple: a generator was
+        # concatenated to the str below and raised TypeError.
+        extra = footer if isinstance(footer, str) else newline.join(str(line) for line in footer)
         footer = (
-            newline.join(f"#{line}" for line in footer_lines) + newline + footer
-            if footer
+            newline.join(f"#{line}" for line in footer_lines) + newline + extra
+            if extra
             else newline.join(f"#{line}" for line in footer_lines)
         )
     else:
@@ -179,23 +180,48 @@ def write_vv_vh(
 @overload
 def read_vv_vh(
     filename: str | Path,
-    channels: None = None,
-    split: bool = False,
-    return_metadata: bool = False,
+    channels: str | list[str] | None = None,
+    split: Literal[False] = False,
+    return_metadata: Literal[False] = False,
     **kwargs,
-) -> np.ndarray | tuple[np.ndarray, dict[str, Any]]:
-    """Overload: return concatenated array when split=False."""
+) -> np.ndarray:
+    """Overload: the channels concatenated."""
 
 
 @overload
 def read_vv_vh(
     filename: str | Path,
-    channels: str | list[str],
-    split: bool = True,
-    return_metadata: bool = False,
+    channels: str | list[str] | None = None,
+    split: Literal[False] = False,
+    *,
+    return_metadata: Literal[True],
     **kwargs,
-) -> dict[str, np.ndarray] | tuple[dict[str, np.ndarray], dict[str, Any]]:
-    """Overload: return channel dict when split=True."""
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Overload: the channels concatenated, with the footer metadata."""
+
+
+@overload
+def read_vv_vh(
+    filename: str | Path,
+    channels: str | list[str] | None = None,
+    *,
+    split: Literal[True],
+    return_metadata: Literal[False] = False,
+    **kwargs,
+) -> dict[str, np.ndarray] | tuple[np.ndarray, np.ndarray]:
+    """Overload: a channel dict, or ``(vv, vh)`` for a legacy (format 1.0) VV/VH file."""
+
+
+@overload
+def read_vv_vh(
+    filename: str | Path,
+    channels: str | list[str] | None = None,
+    *,
+    split: Literal[True],
+    return_metadata: Literal[True],
+    **kwargs,
+) -> tuple[dict[str, np.ndarray], dict[str, Any]]:
+    """Overload: a channel dict with the footer metadata."""
 
 
 def read_vv_vh(
@@ -273,6 +299,7 @@ def read_vv_vh(
         channel_data = {k: v for k, v in channel_data.items() if k in channels}
 
     # Handle return format
+    result: np.ndarray | dict[str, np.ndarray]
     if not split:
         # Return concatenated array
         result = np.concatenate(list(channel_data.values()))
@@ -354,7 +381,7 @@ def _read_vv_vh_legacy(
     # Build data and footer sections (separator line excluded from both)
     if sep_idx is None:
         data_lines = list(lines)
-        footer_lines = [] if isinstance(lines, list) else []
+        footer_lines: list[str] = []
         # No numeric separator (e.g. an all-positive decay): trailing comment
         # lines are the metadata footer. Without this, a written VV/VH file
         # whose channels never go negative loses its g_factor/l1/l2 footer on

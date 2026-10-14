@@ -109,7 +109,8 @@ class TCSPCTTTRReader(TCSPCReader):
                 continue
         if not chs:
             chs = [0]
-        self.channel_numbers = np.array(chs, dtype=np.int8)
+        # A list, as the constructor stores it (an int8 array wrapped channels >= 128).
+        self.channel_numbers = list(chs)
         self.channel = int(chs[0])
 
     def view_spec(self):
@@ -233,7 +234,7 @@ class TCSPCTTTRReader(TCSPCReader):
 
     def read(
         self, filename: str | None = None, *args, **kwargs
-    ) -> chisurf.core.data.DataCurveGroup:
+    ) -> chisurf.core.data.DataGroup:
         """Read a TTTR file and return a TCSPC decay curve.
 
         Parameters
@@ -243,8 +244,8 @@ class TCSPCTTTRReader(TCSPCReader):
 
         Returns
         -------
-        chisurf.core.data.DataCurveGroup
-            Group containing the TCSPC decay.
+        chisurf.core.data.DataGroup
+            Group containing the TCSPC decay (empty when nothing could be read).
         """
         if filename is None:
             return chisurf.core.data.DataGroup([])

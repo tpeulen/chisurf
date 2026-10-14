@@ -5,9 +5,10 @@ import os
 import numpy as np
 
 from chisurf import typing
+from chisurf.core.fio.fluorescence.fcs.definitions import FCSDataset
 
 
-def read_dat(filename: str, verbose: bool = False) -> typing.List[typing.Dict]:
+def read_dat(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
     """Read a PicoQuant .dat FCS file.
 
     Parameters
@@ -24,7 +25,7 @@ def read_dat(filename: str, verbose: bool = False) -> typing.List[typing.Dict]:
     """
     if verbose:
         print(f"Reading PicoQuant data file: {filename}")
-    correlations = list()
+    correlations: typing.List[FCSDataset] = list()
     d = np.loadtxt(filename, skiprows=2, encoding="latin1").T
     n_corr = d.shape[0] // 3
     for i in range(n_corr):
@@ -36,9 +37,10 @@ def read_dat(filename: str, verbose: bool = False) -> typing.List[typing.Dict]:
         # large value
         err[err == 0] = 1e12
         correlation_weight = 1.0 / err
-        corr = {
+        corr: FCSDataset = {
             "filename": filename,
-            "measurement_id": f"{os.path.splitext(os.path.basename(filename))[1]}_{i}",
+            # The file's stem; [1] (the extension) named every curve ".dat_<i>".
+            "measurement_id": f"{os.path.splitext(os.path.basename(filename))[0]}_{i}",
             "correlation_times": correlation_time.tolist(),
             "correlation_amplitudes": correlation_amplitude.tolist(),
             "correlation_amplitude_weights": correlation_weight.tolist(),

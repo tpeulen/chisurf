@@ -25,7 +25,7 @@ def _load_nested_mat(path: pathlib.Path) -> dict:
         warnings.simplefilter("ignore")
         data = loadmat(str(path), struct_as_record=False, squeeze_me=True)
 
-    def _convert(obj):  # type: ignore[override]
+    def _convert(obj):
         """Recursively convert MatStruct objects to plain dicts.
 
         Parameters
@@ -250,7 +250,7 @@ def read_ries_mat(filename: str, verbose: bool = False) -> typing.List[FCSDatase
 
         label = type_list[idx] if idx < len(type_list) else "AC"
 
-        ds: FCSDataset = {  # type: ignore[assignment]
+        ds: FCSDataset = {
             "filename": str(path),
             "measurement_id": f"{path.stem}_{idx}",
             "acquisition_time": float(acq_time_s),

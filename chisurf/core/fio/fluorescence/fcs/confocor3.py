@@ -442,7 +442,7 @@ def read_zeiss_fcs(filename: str, verbose: bool = False) -> typing.List[FCSDatas
         print("Reading ALV .asc from file: ", filename)
     d = openFCS(filename)
 
-    correlations = list()
+    correlations: typing.List[FCSDataset] = list()
     for i, correlation in enumerate(d["Correlation"]):
         correlation_time = correlation[:, 0]
         correlation_amplitude = correlation[:, 1] + 1.0

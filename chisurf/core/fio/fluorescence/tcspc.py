@@ -96,14 +96,14 @@ def read_tcspc_csv(
     skiprows: int | None = None,
     rebin: typing.Tuple[int, int] = (1, 1),
     dt: float = 1.0,
-    matrix_columns: typing.Tuple[int, int] = (0, 1),
+    matrix_columns: typing.Tuple[int, ...] = (0, 1),
     use_header: bool = False,
     is_vv_vh: bool = False,
     polarization: str = "vm",
     g_factor: float = 1.0,
     l1: float = 0.0,
     l2: float = 0.0,
-    experiment: chisurf.core.experiments.core.Experiment = None,
+    experiment: chisurf.core.experiments.core.Experiment | None = None,
     file_type: str = "csv",
     colspecs=None,
     delimiter: str | None = None,
@@ -147,6 +147,8 @@ def read_tcspc_csv(
     DataCurveGroup
         DataCurveGroup containing the TCSPC curves.
     """
+    if filename is None:
+        raise ValueError("read_tcspc_csv needs a filename")
     # Load data
     rebin_x, rebin_y = rebin
 
@@ -195,10 +197,10 @@ def read_tcspc_csv(
         from chisurf.core.fio.vv_vh import read_vv_vh
 
         # Read the data with metadata
-        data, meta = read_vv_vh(filename, split=True, return_metadata=True)
+        channels, meta = read_vv_vh(filename, split=True, return_metadata=True)
 
         # Get available channels
-        available_channels = list(data.keys())
+        available_channels = list(channels.keys())
 
         # Get anisotropy calibration from metadata if available
         meta_g = _safe_float(meta.get("g_factor", None), None)
@@ -221,7 +223,7 @@ def read_tcspc_csv(
         if polarization == "vv":
             if "VV" not in available_channels:
                 raise ValueError("VV channel not found in the vv_vh file")
-            y = data["VV"]
+            y = channels["VV"]
             if y.ndim == 1:
                 y = y.reshape(1, -1)
                 n_data_sets = 1
@@ -232,7 +234,7 @@ def read_tcspc_csv(
         elif polarization == "vh":
             if "VH" not in available_channels:
                 raise ValueError("VH channel not found in the vv_vh file")
-            y = data["VH"]
+            y = channels["VH"]
             if y.ndim == 1:
                 y = y.reshape(1, -1)
                 n_data_sets = 1
@@ -264,11 +266,11 @@ def read_tcspc_csv(
                     raise ValueError(
                         "VM channel not found and cannot be calculated (missing VV or VH)"
                     )
-                vv = data["VV"]
-                vh = data["VH"]
+                vv = channels["VV"]
+                vh = channels["VH"]
                 y = vv + 2.0 * g_factor * vh
             else:
-                y = data["VM"]
+                y = channels["VM"]
 
             if y.ndim == 1:
                 y = y.reshape(1, -1)
@@ -282,8 +284,8 @@ def read_tcspc_csv(
             if "VV" not in available_channels or "VH" not in available_channels:
                 raise ValueError("Both VV and VH channels are required for vv/vh polarization")
 
-            vv = data["VV"]
-            vh = data["VH"]
+            vv = channels["VV"]
+            vh = channels["VH"]
 
             # Handle single dataset case
             if vv.ndim == 1:
@@ -305,10 +307,10 @@ def read_tcspc_csv(
 
         else:  # Default to VM calculation
             if "VM" in available_channels:
-                y = data["VM"]
+                y = channels["VM"]
             elif "VV" in available_channels and "VH" in available_channels:
-                vv = data["VV"]
-                vh = data["VH"]
+                vv = channels["VV"]
+                vh = channels["VH"]
                 y = vv + 2.0 * g_factor * vh
             else:
                 raise ValueError(

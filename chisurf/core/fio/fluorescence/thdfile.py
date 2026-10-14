@@ -100,7 +100,7 @@ def read_tcspc_thd(
     filename: str | None = None,
     dt: float = 1.0,
     rebin: typing.Tuple[int, int] = (1, 1),
-    experiment: chisurf.core.experiments.core.Experiment = None,
+    experiment: chisurf.core.experiments.core.Experiment | None = None,
     *args,
     **kwargs,
 ) -> chisurf.core.data.DataCurveGroup:

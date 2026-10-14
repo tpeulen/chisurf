@@ -180,7 +180,7 @@ def _parse_old_mode(lines: typing.List[str]) -> tuple[list[ArrayLike], list[Trac
         list of ArrayLike
             List of correlation curve arrays.
         """
-        buffers = [[] for _ in cols]
+        buffers: list[list[tuple[float, float]]] = [[] for _ in cols]
         for row in csv.reader(corr_lines, delimiter="\t"):
             if not row:
                 continue
@@ -353,7 +353,7 @@ def read_sin(filename: str, verbose: bool = False) -> typing.List[FCSDataset]:
 
         label = type_list[idx] if idx < len(type_list) else f"curve{idx}"
 
-        ds: FCSDataset = {  # type: ignore[assignment]
+        ds: FCSDataset = {
             "filename": str(path),
             "measurement_id": f"{path.stem}_{idx}",
             "acquisition_time": float(acq_s),

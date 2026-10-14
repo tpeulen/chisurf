@@ -71,10 +71,10 @@ def make_curve_kwargs(r: FCSDataset):
 
 def read_fcs(
     filename: str,
-    data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None,
+    data_reader: chisurf.core.experiments.core.reader.ExperimentReader | None = None,
     reader_name: str = "csv",
     verbose: bool = False,
-    experiment: chisurf.core.experiments.core.experiment.Experiment = None,
+    experiment: chisurf.core.experiments.core.experiment.Experiment | None = None,
     **kwargs,
 ) -> chisurf.core.data.ExperimentDataCurveGroup:
     """
@@ -99,7 +99,7 @@ def read_fcs(
     # not forwarded to the low-level readers to keep their signatures stable.
     weight_mode = kwargs.pop("weight_mode", None)
     weight_kwargs = kwargs.pop("weight_kwargs", None) or {}
-    name_reader = {
+    name_reader: typing.Dict[str, typing.Callable[..., typing.List[FCSDataset]]] = {
         "confocor3": chisurf.core.fio.fluorescence.fcs.confocor3.read_zeiss_fcs,
         "china-mat": chisurf.core.fio.fluorescence.fcs.china.read_china_mat,
         "alv": chisurf.core.fio.fluorescence.fcs.asc_alv.read_asc,
@@ -145,7 +145,7 @@ def read_fcs(
         "pqres",
     ]:
         reader = name_reader[reader_name]
-        ds: typing.List[FCSDataset] = reader(filename=filename, verbose=verbose)
+        ds = reader(filename=filename, verbose=verbose)
 
     # Ensure that each dataset has correlation-amplitude weights. If the
     # reader did not provide any (older files or formats without error
@@ -257,14 +257,7 @@ def read_fcs(
                 # On failure, keep any existing weights as-is
                 continue
 
-            try:
-                r["correlation_amplitude_weights"] = new_w.tolist()
-            except Exception:
-                # Fallback for non-mutable FCSDataset implementations
-                try:
-                    r.correlation_amplitude_weights = new_w.tolist()
-                except Exception:
-                    pass
+            r["correlation_amplitude_weights"] = new_w.tolist()
     for r in ds:
         curve = chisurf.core.data.DataCurve(**make_curve_kwargs(r))
         # An FCS lag axis is milliseconds and G is dimensionless. Nothing about

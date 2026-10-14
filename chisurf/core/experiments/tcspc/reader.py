@@ -151,7 +151,7 @@ class TCSPCReader(ExperimentReader):
         l1: typing.Optional[float] = None,
         l2: typing.Optional[float] = None,
         rebin: typing.Tuple[int, int] = (1, 1),
-        matrix_columns: typing.Tuple[int, int] = (0, 1),
+        matrix_columns: typing.Tuple[int, ...] = (0, 1),
         skiprows: int = 8,
         polarization: str = "vm",
         use_header: bool = True,
@@ -484,6 +484,7 @@ class TCSPCReader(ExperimentReader):
         ):
             reading_routine = self._guess_reading_routine(filename)
 
+        data_group: chisurf.core.data.DataGroup
         if reading_routine in {"csv", "fwf"}:
             # Columns come from the generic CSV parameters (col_x/col_y) when
             # available, falling back to the historical ``matrix_columns``.

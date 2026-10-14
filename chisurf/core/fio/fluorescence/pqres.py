@@ -38,7 +38,7 @@ class PQResReader:
             Path to the .pqres file.
         """
         self.filepath = filepath
-        self.tags = {}
+        self.tags: dict[str, Any] = {}
         self.data_offset = None
         self._read_header()
 
@@ -282,8 +282,8 @@ def read_pqres_fcs(filename: str, verbose: bool = False, **kwargs) -> list:
 
 def read_pqres_tcspc(
     filename: str,
-    data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None,
-    experiment: chisurf.core.experiments.core.experiment.Experiment = None,
+    data_reader: chisurf.core.experiments.core.reader.ExperimentReader | None = None,
+    experiment: chisurf.core.experiments.core.experiment.Experiment | None = None,
     dt: float = 1.0,
     rebin: tuple[int, int] = (1, 1),
     **kwargs,
