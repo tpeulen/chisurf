@@ -19,10 +19,9 @@ pixi run test-gui       # tests marked gui or widget
 ```
 
 The sibling packages in `modules/` (`tttrlib`, built from C++ source, plus
-the pure-Python `chinet`, `ndxplorer` and `quest`) must be installed
-before the tests run; the `test*` tasks already depend on
-`build-extensions`. If imports of those modules fail, run
-`pixi run build-extensions`.
+`chimol`, `imp-tricks`, `mmfdb` and `ndxplorer`) are installed by
+`pixi run build-extensions`; `pixi run chisurf` and the `test*` tasks already
+depend on it. If imports of those modules fail, run it by hand.
 
 `python -m chisurf` first shows the ChiSurf splash window (the stage under way,
 the version, the licence) while the session and its plugins start, then the
@@ -46,28 +45,20 @@ never by pointing Python at `__main__.py` directly — running the file adds
 
 ## The main window
 
-The window opens with one tabbed column on the left — **Read data**,
-**Datasets**, **Analysis**, **Plot settings** and **Logging** share it, so the
-rest of the width belongs to the workspace, where the fit windows open, and to
-the tools, which open as docks right of it. The console keeps the bottom edge
-(turn it off with the `gui.show_console` setting). See
+The window opens with a tabbed column on the left — the **Tools** tree,
+**Read data** and **Datasets** above, **Analysis** and **Plot settings** below —
+so the rest of the width belongs to the workspace, where *Start* and the fit
+windows open, and to the tools, which open as docks beside them. **Log** and
+**Console** share the bottom edge. See
 [Multiple document interface](../manual/multiple_document_interface.md).
 
-Docks are yours to rearrange: drag one out of the stack to the right or bottom
-edge, resize it, or close it. The arrangement is saved when ChiSurf exits and
+Docks are yours to rearrange: drag one out of the stack to another edge,
+resize it, or close it. The arrangement is saved when ChiSurf exits and
 restored on the next start.
 
-To get back to the arrangement above, use **View → Reset Layout**
+To get back to the arrangement above, use **View → Reset layout**
 (also on the ribbon's *Main* tab, under *Window*). It forgets the saved
 layout as well as re-applying the default, so the reset survives the next start.
-
-```{note}
-A layout saved by an older version of ChiSurf is ignored once when the
-default arrangement itself changes — otherwise a stale saved layout would
-hide every later improvement to it. Anything you rearrange afterwards is kept
-as usual.
-
-```
 
 ### The ribbon in the native window
 
@@ -154,11 +145,12 @@ explains the underlying theory.
 
 ## Finding help inside ChiSurf
 
-All of this documentation ships with the application: **Help → Documentation** opens it in a browser window, with the same structure as this
-site — getting started, the concepts, the guides, the fitting manual, the
-reference, and one entry per plugin.
+All of this documentation ships with the application: **Help → Documentation**
+(or **❓ Help** in the ribbon's corner) opens it in its own window, with the
+same structure as this site — getting started, the concepts, the guides, the
+fitting manual, the reference, and one entry per plugin.
 
-Three things are worth knowing about that window:
+Worth knowing about that window:
 
 - **Search covers the full text of every page** (`Ctrl+F`). Results are
 ranked, each with the passage that matched, and the tree narrows to them.
@@ -172,7 +164,7 @@ next along the reading order.
 or `Ctrl` and the scroll wheel. Headings, tables and formulas scale with
 it, because the page is re-rendered rather than magnified.
 
-Maintainers can turn on the *Authoring* toolbar in that window to edit a page in
+Maintainers can tick *Authoring tools* in that window to edit a page in
 place, list the developer documentation, and record reviews. Two levels are
 tracked: **AI-reviewed** means an agent has read the page and corrected what it
 could verify against the source code, and **reviewed** means a human has

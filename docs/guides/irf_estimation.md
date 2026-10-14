@@ -1,11 +1,11 @@
 ---
 type: Guide
-title: IRF Estimation - ChiSurf Integration
-description: The IRF Estimation module provides blind instrument response function (IRF) inference from fluorescence decay data without requiring separate IRF measurements.
+title: IRF estimation
+description: Blind estimation of the instrument response function (IRF) from a measured fluorescence decay, without a separate IRF measurement.
 tags: [guides, tcspc, decay]
 ---
 
-# IRF Estimation - ChiSurf Integration
+# IRF estimation
 
 :::{admonition} Theory
 :class: seealso
@@ -14,12 +14,16 @@ See {ref}`concept-tcspc-lifetime` for the IRF and the reconvolution model it fee
 
 ## Overview
 
-The **IRF Estimation** module provides blind instrument response function (IRF) inference from fluorescence decay data without requiring separate IRF measurements. This implementation uses truncated exponential fitting and Richardson-Lucy deconvolution, reimplemented using numpy/scipy to avoid external dependencies like PyTorch.
+IRF estimation infers the instrument response function (IRF) blindly from a
+measured fluorescence decay, without a separate IRF measurement: a truncated
+exponential is fitted to the decay tail, and the IRF is recovered from the decay
+by Richardson–Lucy deconvolution with that exponential.
 
-There are two main ways to use IRF estimation in ChiSurf:
+Two entry points:
 
-- **Programmatic API** via the `IRFEstimator` class (this module)
-- **GUI plugin** via the *IRF Estimator* plugin (`Fluorescence decay:IRF Estimator`), see `chisurf/plugins/fluorescence_decay/irf_estimator/README.md`
+- the **IRF Estimation** tool (**Spectroscopy → Decay → IRF Estimation**,
+  `chisurf/plugins/fluorescence_decay/irf_estimator/`);
+- the `IRFEstimator` class (`chisurf.core.fluorescence.tcspc`) for scripts.
 
 ### Reference
 
@@ -28,28 +32,11 @@ This implementation is based on the algorithm described in:
 **Adrián Gómez-Sánchez et al., "Blind instrument response function identification from fluorescence decays", _Biophysical Reports_, 2024.**  
 DOI: [10.1016/j.bpr.2024.100155](https://doi.org/10.1016/j.bpr.2024.100155)
 
-## Location
-
-Core implementation:
-
-```
-chisurf/core/fluorescence/tcspc/irf_estimation.py
-```
-
-GUI plugin (front-end for this module):
-
-```
-chisurf/plugins/fluorescence_decay/irf_estimator/
-```
-
-## Key Features
-
-- **No Torch Dependency**: Pure numpy/scipy implementation
-- **Automatic IRF Extraction**: Estimates IRF directly from decay measurements
-- **Multi-Channel Support**: Handles multiple detector channels simultaneously
-- **Richardson-Lucy Deconvolution**: Robust deconvolution with regularization
-- **Truncated Exponential Fitting**: Accurate decay modeling
-- **Visualization Tools**: Built-in plotting functions for validation
+The core is `chisurf/core/fluorescence/tcspc/irf_estimation.py`. It handles
+several detector channels at once (they share one decay rate). `run()` computes
+the whole estimate in tttrlib's compiled engine (`tttrlib.blind_irf_estimate`);
+the step-by-step methods below run the same pipeline in Python and keep its
+intermediates.
 
 ## Algorithm Pipeline
 
@@ -114,7 +101,7 @@ that a measured decay fits the assumed exponential model.
    ChiSurf** registers the IRF as a TCSPC VV/VH dataset (g = 1, 10 MHz).
 
 The scaled IRF is drawn only where it is at least one count, so the log axis
-stays on the data. **📖 Guide** walks through the same steps.
+stays on the data. **Guide** walks through the same steps.
 
 ## Usage
 
@@ -131,12 +118,11 @@ decay_data = your_measured_decay  # shape: (n_time, n_channels)
 
 # Estimate IRF
 estimator = IRFEstimator(decay_data, dt=dt)
-irf = estimator.run()  # Uses default 500 RL iterations
-
-# Access results
-print(f"Estimated lifetime: {1.0/estimator.params['k']:.2f} ns")
-print(f"Background offset: {estimator.params['C'][0]:.2f}")
+irf = estimator.run()  # 500 RL iterations by default
 ```
+
+`run()` returns the IRF only; `estimator.params` (lifetime, amplitude, offset)
+is filled by the step-by-step pipeline below.
 
 ### Step-by-Step Usage
 
@@ -161,8 +147,10 @@ estimator.generate_kernel()
 # Step 5: Perform Richardson-Lucy deconvolution
 estimator.richardson_lucy_deconvolution(iterations=30, regularization=3)
 
-# Access IRF
+# Access IRF and the fitted exponential
 irf = estimator.irf
+print(f"Estimated lifetime: {1.0 / estimator.params['k']:.2f} ns")
+print(f"Background offset: {estimator.params['C'][0]:.2f}")
 ```
 
 ### Multi-Channel Data
@@ -254,14 +242,16 @@ Perform Richardson-Lucy deconvolution.
 ##### `run(window_length=11, polyorder=3, persistence=5, threshold=0.05, fit_method='L-BFGS-B', fit_max_iter=1000, rl_iterations=500, regularization=3)`
 
 Execute the full IRF estimation pipeline (boundaries → exponential fit → kernel →
-deconvolution).
+deconvolution) in tttrlib's engine (`tttrlib.blind_irf_estimate`).
 
-**Parameters:** the boundary-detection and fitting arguments are forwarded to
-`find_t0_t1` and `fit_exponential`; note the renames — the optimizer is
-`fit_method` (not `method`), its iteration cap is `fit_max_iter` (not `max_iter`),
-and the deconvolution count is `rl_iterations` (not `iterations`).
+**Parameters:** the engine takes `window_length`, `polyorder`, `rl_iterations`
+and `regularization`. `persistence`, `threshold`, `fit_method` and
+`fit_max_iter` are accepted but not passed on — the engine uses its own
+boundary and fit settings. Note the renames against the step methods:
+`rl_iterations` (not `iterations`).
 
-**Returns:** np.ndarray - Estimated IRF (shape: [n_time, n_channels])
+**Returns:** np.ndarray - Estimated IRF (shape: [n_time, n_channels]), also
+stored as `irf`. `params`, `data_fit` and `kernel` stay unset.
 
 ##### `plot_raw_and_fit(ax=None)`
 
@@ -334,26 +324,9 @@ Perform FFT-based convolution along specified axis.
 
 ## Examples
 
-See {src}`test/tcspc/test_irf_estimation.py` for a comprehensive, automated example suite including:
-- Basic IRF estimation
-- Step-by-step pipeline tests
-- Multi-channel data
-
-For GUI-based IRF estimation inside ChiSurf, see the *IRF Estimator Plugin* documentation:
-
-- `chisurf/plugins/fluorescence_decay/irf_estimator/README.md`
-
-## Implementation Notes
-
-### Design Choices
-
-| Aspect | Implementation |
-|--------|---------------|
-| Backend | NumPy/SciPy |
-| GPU Support | No (CPU only) |
-| Dependencies | numpy, scipy; plots: emtk |
-| Data Format | NumPy arrays |
-| Performance | CPU-optimized with FFT-based convolution |
+{src}`test/tcspc/test_irf_estimation.py` exercises the basic estimate, the
+step-by-step pipeline and multi-channel data. The tool's own controls are
+described under [In the window](#in-the-window) above.
 
 ## Technical Details
 
@@ -380,7 +353,7 @@ Median filtering is applied after each RL iteration to reduce noise amplificatio
 
 ### Optimization
 
-The exponential fitting uses scipy.optimize.minimize with:
+`fit_exponential` minimizes with `chisurf.core.math.numerics.minimize`:
 - Method: L-BFGS-B (bounded optimization)
 - Bounds: A > 0, C ≥ 0, k > 0
 - Loss: Mean squared error across all channels
@@ -388,10 +361,9 @@ The exponential fitting uses scipy.optimize.minimize with:
 ## Limitations
 
 1. **Assumes Exponential Decay**: Works best with single or multi-exponential decays
-2. **CPU Only**: No GPU acceleration (unlike original torch version)
-3. **Shared Decay Rate**: All channels share the same decay rate k
-4. **Requires Clear Decay**: Needs sufficient signal-to-noise ratio
-5. **Needs the decay to reach baseline.** Step 2 fits a *truncated* exponential,
+2. **Shared Decay Rate**: All channels share the same decay rate k
+3. **Requires Clear Decay**: Needs sufficient signal-to-noise ratio
+4. **Needs the decay to reach baseline.** Step 2 fits a *truncated* exponential,
    and over a short window the offset $C$ is degenerate against the exponential
    itself: both can absorb the same counts. Measured on simulated decays with a
    known answer ($\tau = 3.8$ ns), the recovered lifetime and offset are:
@@ -417,8 +389,6 @@ The exponential fitting uses scipy.optimize.minimize with:
 
 ## References
 
-
-
 ### Primary Reference
 
 {cite}`gomezsanchez2024` — the blind IRF identification algorithm the tool implements.
@@ -430,14 +400,6 @@ The exponential fitting uses scipy.optimize.minimize with:
 - **Savitzky, A.; Golay, M. J. E. (1964).** "Smoothing and Differentiation of Data by Simplified Least Squares Procedures." _Analytical Chemistry_, 36(8), 1627-1639.
 
 ## Testing
-
-Run tests with:
-
-```bash
-python test/tcspc/test_irf_estimation.py
-```
-
-Or with pytest:
 
 ```bash
 pytest test/tcspc/test_irf_estimation.py -v
@@ -453,8 +415,3 @@ pytest test/tcspc/test_irf_estimation.py -v
   [background rates](15_background_rates.md).
 - Micro-time axis quality, which limits any IRF estimate:
   [TAC linearization](37_tttr_microtime_lut.md).
-
-## Support
-
-For issues or questions:
-- ChiSurf GitHub: https://github.com/fluorescence-tools/chisurf

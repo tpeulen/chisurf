@@ -7,24 +7,31 @@ tags: [reference, file-formats, fcs, correlation]
 
 # FCS file formats
 
-This page describes the file formats supported by the **FCS** experiment in
-ChiSurf and how their columns are interpreted, based strictly on the
-implementation in `chisurf.core.experiments.fcs` and
-`chisurf.core.fio.fluorescence.fcs.*`.
+The file formats the **FCS** experiment reads, and how their columns are
+interpreted by `chisurf.core.fio.fluorescence.fcs.read_fcs` and the readers
+behind it.
 
-Configured FCS readers (see `experiment_configs.yaml`):
+The readers offered in the GUI are configured in
+`chisurf/core/settings/experiment_configs.yaml`:
 
-- **Seidel Kristine** (`experiment_reader: kristine`)
-- **FCS-CSV** (`experiment_reader: csv`)
-- **Zeiss Confocor3** (`experiment_reader: confocor3`)
-- **China FCS (MATLAB)** (`experiment_reader: china-mat`)
-- **PyCorrFit CSV** (`experiment_reader: pycorrfit`)
-- **ALV-Correlator .asc** (`experiment_reader: alv`)
+| Reader | `experiment_reader` | Files |
+| --- | --- | --- |
+| Seidel Kristine | `kristine` | `*.cor` |
+| FCS-CSV | `csv` | any |
+| Zeiss Confocor3 | `confocor3` | `*.fcs` |
+| China FCS | `china-mat` | `*.mat` |
+| Ries SFCS | `ries-mat` | `*.mat` |
+| PyCorrFit | `pycorrfit` | `*.csv` |
+| ALV-Correlator | `alv` | `*.asc` |
+| Correlator.com SIN | `sin` | `*.sin` |
 
-All of these are normalized internally into an `FCSDataset` structure with
-fields like `correlation_times`, `correlation_amplitudes`,
-`correlation_amplitude_weights`, `intensity_trace` and `meta_data`, but the
-on-disk column conventions differ per format.
+The PCF experiment reuses the `csv` reader as *PCF-CSV* (`*.csv *.txt *.dat`).
+
+Every reader returns `FCSDataset` dictionaries (`correlation_times`,
+`correlation_amplitudes`, `correlation_amplitude_weights`, `acquisition_time`,
+`mean_count_rate`, optionally `mask` and an intensity trace). A dataset without
+weights gets Suren photon-noise weights from `read_fcs`, so every curve reaches
+the fit with a noise model.
 
 ---
 
@@ -35,84 +42,46 @@ Implemented in `chisurf.core.fio.fluorescence.fcs.kristine` as
 
 ### Column layout (write side)
 
-`write_kristine` writes a text file with either **3** or **4** numeric columns
-per row:
+`write_kristine` writes one row per correlation point with **3**, **4** or
+**5** columns:
 
-1. **Correlation time** (`correlation_time`)
-2. **Correlation amplitude** (`correlation_amplitude`)
-3. **Acquisition / count-rate column** (`col_3`)
-   - Mostly zeros.
-   - Special rows:
-     - Row 0: `acquisition_time` (s)
-     - Row 1: `mean_countrate` (kHz)
-4. **Optional correlation-amplitude uncertainty**
-   - Present only if an uncertainty array is provided.
+| Column | Content |
+| --- | --- |
+| 0 | correlation time $\tau$ |
+| 1 | correlation amplitude $G(\tau)$ |
+| 2 | metadata: row 0 the acquisition time (s), row 1 the mean count rate (kHz), zeros below |
+| 3 | optional: uncertainty $\sigma_G(\tau)$ |
+| 4 | optional: mask; requires column 3 (writing a mask without uncertainties raises `ValueError`) |
 
 ### Column usage when reading
 
-`read_kristine` does:
+`read_kristine` loads the table with `np.loadtxt` and:
 
-```python
-data = np.loadtxt(filename).T
-x, y = data[0], data[1]
-# keep only x > 0
-idx = np.where(x > 0.0)
-x = x[idx]
-y = y[idx]
-dur, cr = data[2, 0], data[2, 1]
-try:
-    w = 1.0 / data[3][idx]   # experimental errors if 4th column exists
-except IndexError:
-    w = 1.0 / chisurf.core.fluorescence.fcs.noise(x, y, dur, cr, weight_type='suren')
-```
-
-So the reader interprets the columns as:
-
-- **Column 0** (`data[0]`):
-  - Correlation lag time `τ` (as stored by the correlator; used directly as
-    `correlation_times`).
-  - Only strictly positive entries are kept (`x > 0`).
-- **Column 1** (`data[1]`):
-  - Experimental correlation `G(τ)` (no offset is added or subtracted).
-- **Column 2** (`data[2]`):
-  - Row 0: `acquisition_time` in seconds.
-  - Row 1: `mean_count_rate` in kHz.
-  - Other rows: not used by the reader (typically zeros).
-- **Optional column 3** (`data[3]`):
-  - Per-point uncertainty `σ_G(τ)` for the correlation amplitude. The reader
-    uses `weight = 1 / σ` as `correlation_amplitude_weights`.
-
-If the 4th column is missing, theoretical noise-based weights are computed
-from `x`, `y`, `acquisition_time` and `mean_count_rate`.
+- keeps only rows with $\tau > 0$; $G(\tau)$ is used as stored, no offset added;
+- reads the acquisition time and mean count rate from rows 0 and 1 of column 2,
+  falling back to 1.0 for both when the column is missing;
+- weights each point by $1/\sigma$ from column 3. A point with $\sigma = 0$ (a
+  merged curve has one wherever its repeats agreed), or every point when the
+  column is missing, takes its $\sigma$ from the Suren noise model instead
+  (`chisurf.core.fluorescence.fcs.complete_noise`);
+- reads the mask from column 4, or unmasks every point.
 
 ---
 
 ## FCS-CSV (generic ASCII) {#fcs-csv}
 
-When `experiment_reader: csv`, `read_fcs` uses the generic `Csv` loader in
-`chisurf.core.fio.ascii` and then interprets the first three data rows as:
+When `experiment_reader: csv`, `read_fcs` loads the file with the generic
+`chisurf.core.fio.ascii.Csv` loader (which handles the header, the delimiter
+and decimal commas) and reads its columns as:
 
-```python
-csv = chisurf.core.fio.ascii.Csv()
-csv.load(filename=filename)
-x, y = csv.data[0], csv.data[1]
-ey = csv.data[2]
-```
+| Column | Content |
+| --- | --- |
+| 0 | correlation time $\tau$ |
+| 1 | correlation amplitude $G(\tau)$ |
+| 2 | uncertainty $\sigma_G(\tau)$; the weight is $1/\sigma$ |
+| 3 | optional: mask (all points used when absent) |
 
-### Expected columns
-
-The CSV file must contain at least **three numeric columns** after any header:
-
-1. **Correlation time**
-   - Interpreted as lag time `τ` for the FCS curve.
-2. **Correlation amplitude**
-   - Experimental correlation `G(τ)`.
-3. **Uncertainty / error**
-   - Per-point uncertainty `σ_G(τ)` for the correlation amplitude.
-
-Additional columns may be present but are ignored by this reader. Header
-handling, delimiter and decimal-comma support are provided by the
-`chisurf.core.fio.ascii.Csv` class.
+At least three columns are required; further columns are ignored.
 
 ---
 
@@ -222,15 +191,15 @@ The MATLAB file is expected to contain arrays with specific names, for example:
 - `AA`, `BB`, `AAxB`: correlation curves
 - `IntA`, `IntB`: intensity traces
 
-The reader uses a `correlation_keys` mapping:
+Each correlation matrix is paired with its intensity trace(s):
 
-```python
-correlation_keys = {
-    'Auto_AA':  {'Intensity': 'IntA',       'Correlation': 'AA'},
-    'Auto_BB':  {'Intensity': 'IntB',       'Correlation': 'BB'},
-    'Cross_Axb':{'Intensity': ['IntA','IntB'],'Correlation': 'AAxB'},
-}
-```
+| Correlation | Intensity | Curve |
+| --- | --- | --- |
+| `AA` | `IntA` | autocorrelation A |
+| `BB` | `IntB` | autocorrelation B |
+| `AAxB` | `IntA` + `IntB` | cross-correlation |
+
+Curves are named `<correlation>_<measurement>`, e.g. `AA_1`.
 
 ### Correlation arrays
 
@@ -312,9 +281,11 @@ From the `openCSV` docstring and parsing logic:
 
   - Column 0: lag time `τ` in seconds.
   - Column 1: experimental correlation `G(τ)`.
-  - Column 2: fitted correlation (ignored by ChiSurf’s reader).
+  - Column 2: fitted correlation (ignored).
   - Column 3: residuals (ignored).
-  - Column 4: weights from the model function; used as pointwise weights.
+  - Column 4: PyCorrFit's weights. They are parsed but **not** used: the
+    curve is weighted by the Suren noise model from the duration and count
+    rate below.
 
 Internally, the reader stores the correlation as an array of `(τ_ms, G(τ))`
 with time converted to milliseconds.
@@ -367,7 +338,7 @@ From the docstring and parsing logic:
   ```
 
   - Column 0: lag time `τ` in milliseconds.
-  - Column 1: correlation amplitude `G(τ)`.
+  - Column 1: `G(τ) - 1`, as ALV stores it.
 
 - **Count Rate** section (quoted header `"Count Rate"`):
 
@@ -382,8 +353,8 @@ The reader bins and splits traces as needed (for multiple curves or dual
 channels) and constructs:
 
 - `correlation_times`: from the first column of the correlation section.
-- `correlation_amplitudes`: from the second column, often converted to
-  `G(τ)` by adding 1.0.
+- `correlation_amplitudes`: the second column plus 1.0, i.e. `G(τ)` (for
+  both ALV formats).
 - `intensity_trace_times`: from the first column of the Count Rate section
   (converted to seconds or ms depending on mode).
 - `intensity_trace`: count-rate traces assembled from one or two channels.
@@ -423,18 +394,41 @@ In the newer format, the correlation and count-rate blocks look like:
 
 ---
 
+## Ries SFCS `.mat` {#fcs-ries-mat}
+
+Implemented in `chisurf.core.fio.fluorescence.fcs.ries_mat` as
+`read_ries_mat`. The file must hold the MATLAB `g` structure written by the
+Ries scanning-FCS tools; a file without it raises `ValueError`. Every
+column of the autocorrelations (`ac`/`act`), dual-colour (`dc`/`dct`),
+two-focus (`twof`/`twoft`) and dual-colour two-focus (`dc2f`/`dc2ft`) blocks
+becomes one curve, with the amplitudes used as stored. The file keeps only
+trace averages (`trace`), so the mean count rate is that average and the
+acquisition time is taken as 1 s (both 1.0 without a trace); the Suren noise
+weights therefore carry only relative, not absolute, information.
+
+---
+
+## Correlator.com `.sin` {#fcs-sin}
+
+Implemented in `chisurf.core.fio.fluorescence.fcs.sin_correlator` as
+`read_sin`, without a PyCorrFit dependency. The `Mode=` line decides the
+layout: integer channel indices select the layout with one
+`[CorrelationFunction]` block and an `[IntensityHistory]` block, mode names
+("Single Auto", "Quad", …) the older layout. Each correlation becomes one curve
+with lag times in ms and intensities in kHz; the acquisition time (s) and mean
+count rate are estimated from the intensity history and feed the noise model.
+
+---
+
 ## Notes on additional FCS backends
 
-The low-level `read_fcs` dispatcher also supports:
+`read_fcs` also accepts these `reader_name`s, which the GUI does not offer:
 
-- PicoQuant **`.dat`** (`reader_name: 'pq.dat'` → `pq_dat.read_dat`)
-  - Binary/ASCII format with triplets of columns for each correlation:
-    - Col 0: `τ`.
-    - Col 1: `G(τ)`.
-    - Col 2: error `σ_G(τ)` (0 values replaced by large errors internally).
-- YAML FCS (`reader_name: 'yaml'` → `fcs_yaml.read_yaml`, currently stubbed).
-- PicoQuant **`.pqres`** (`reader_name: 'pqres'` → `chisurf.core.fio.fluorescence.pqres.read_pqres_fcs`).
-
-These are not exposed as separate FCS readers in the default GUI, but follow
-similar conventions: correlation times and amplitudes in the first two columns
-or fields, optional errors/weights in a third.
+- PicoQuant **`.dat`** (`pq.dat` → `pq_dat.read_dat`): triplets of columns per
+  correlation — $\tau$, $G(\tau)$ and $\sigma_G(\tau)$; a zero error is
+  replaced by $10^{12}$, which gives the point no weight.
+- YAML (`yaml` → `fcs_yaml.read_yaml`): the inverse of `write_yaml`, a list of
+  `FCSDataset` mappings; each needs `measurement_id`, `correlation_times` and
+  `correlation_amplitudes`.
+- PicoQuant **`.pqres`** (`pqres` →
+  `chisurf.core.fio.fluorescence.pqres.read_pqres_fcs`).

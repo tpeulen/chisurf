@@ -237,6 +237,34 @@
     "sha256": "d8f3fe8325caf8bca278c7be243e2c7c0dfa6f0975f9a1406e154657fa9b3343",
     "status": "ai-reviewed"
   },
+  "fret_calibration.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "64f1b8639a7d0672090d9313d01229d18c36b39b22fc64c89849b665263fe353",
+    "status": "ai-reviewed"
+  },
+  "h2mm.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "497bc1b3d9970a7b40193358abda7ba5faa9155eb11952a5928443928015ca3a",
+    "status": "ai-reviewed"
+  },
+  "index.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b034c185b89312c7e2e02319acf235ea7d0570fd88d1479a82424dd0773dbe0b",
+    "status": "ai-reviewed"
+  },
+  "irf_estimation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "55b1708a6a1393d0fa78e998a973007618c11cdb211ce81ac8dfff72a17215c9",
+    "status": "ai-reviewed"
+  },
   "saving_projects.md": {
     "date": "2026-10-14",
     "reviewer": "agent",

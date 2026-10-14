@@ -3944,3 +3944,48 @@ images/settings_fonts_zoom125.png:
     images/settings_fonts_zoom125.png.
   pages:
   - docs/getting_started/settings.md
+
+reference/file_formats/figures/structure_reader_native.png:
+  caption: "The structure reader's settings after reading 148L: 1300 atoms, 164 residues."
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    Offscreen, construct the shipped Modelling reader (chisurf.core.experiments.modelling.reader.StructureReader)
+    with filename test/data/atomic_coordinates/pdb_files/148l.pdb, draw its structure.view.json settings
+    form with emtk at 760x380, press + Data so Atoms/Residues fill (1300/164), and grab the form.
+    Receipt: okf/validation/release-readiness-w1/structure-retirement/receipt.md.
+  pages:
+  - docs/reference/file_formats/structure_files.md
+reference/file_formats/figures/tcspc_csv_native.png:
+  caption: 'TXT/CSV reader settings for the shipped IBH decay: 10 skipped rows, 0.0141 ns per channel.'
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    Offscreen, configure the TCSPC TXT/CSV reader (TCSPCReader) with
+    test/data/tcspc/ibh_sample/Decay_577D.txt, skiprows=10, dt=0.0141, Format Auto, draw its
+    tcspc_csv.view.json form with emtk at 900x1050 (all three groups open) and grab it.
+    Evidence: okf/validation/release-readiness-w1/csv-retirement/csv-after-full-native.png.
+  pages:
+  - docs/reference/file_formats/tcspc_files.md
+reference/file_formats/figures/tcspc_sdt_native.png:
+  caption: Becker-SDT reader settings for the shipped 140507p.sdt, previewing curve 2.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    Offscreen, construct the shipped SDTReader with test/data/tcspc/BH_SDT/140507p.sdt, draw its
+    tcspc_sdt.view.json form with emtk at 760x580, select Preview curve 2 and grab it.
+    Receipt: okf/validation/release-readiness-w1/sdt-retirement/receipt.md.
+  pages:
+  - docs/reference/file_formats/tcspc_files.md
+reference/file_formats/figures/tcspc_simulator_native.png:
+  caption: Simulator Decay tab with the IBH prompt as IRF and seed 154.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    Offscreen, construct the shipped TCSPC Simulator reader with its form presets (Dummy-sample,
+    spectrum 0.4, 1.1, 0.6, 4.1), select test/data/tcspc/ibh_sample/Prompt.txt as IRF, seed 154,
+    draw the tcspc_simulator.view.json form with emtk at 878x738 on the Decay tab and grab it.
+    Receipt: okf/validation/release-readiness-w1/simulator-retirement/receipt.md (configured-vm-decay.png
+    is the same image).
+  pages:
+  - docs/reference/file_formats/tcspc_files.md

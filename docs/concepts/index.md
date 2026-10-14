@@ -94,7 +94,15 @@ ebfret
 ```{toctree}
 :maxdepth: 1
 
+imaging_flim_phasor
+region_properties
+colocalization
+number_and_brightness
+drift_correction
+particle_tracking
 super_resolution
+frc_resolution
+point_spread_function
 ```
 
 ## Exploration & selection
@@ -121,7 +129,7 @@ microtime_shift
 live_streaming_analysis
 ```
 
-## Structure & imaging
+## Structure
 
 ```{toctree}
 :maxdepth: 1
@@ -133,14 +141,6 @@ structure_trajectories
 protein_monte_carlo
 molecular_surfaces
 molecular_viewer
-imaging_flim_phasor
-region_properties
-colocalization
-number_and_brightness
-drift_correction
-particle_tracking
-frc_resolution
-point_spread_function
 ```
 
 ## Simulation

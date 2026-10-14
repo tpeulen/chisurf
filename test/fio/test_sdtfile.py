@@ -88,3 +88,16 @@ def test_measurement_info_supports_reordered_or_shared_descriptors():
     assert sdt.block_measure_info(0) is sdt.measure_info[1]
     assert sdt.block_measure_info(1) is sdt.measure_info[0]
     assert sdt.block_measure_info(2) is sdt.measure_info[1]
+
+
+def test_the_documented_import_is_the_maintained_reader():
+    """``chisurf.core.fio.fluorescence.SdtFile`` once was a stale copy.
+
+    The copy rejected every "Setup & Data" file and ignored the NumPy fixes, so
+    the import the reference page shows could not open the repository's own SDT.
+    """
+    import chisurf.core.fio.fluorescence as fluorescence
+
+    assert fluorescence.SdtFile is SdtFile
+    sdt = fluorescence.SdtFile(_SDT)  # a pathlib.Path, not only a str
+    assert len(sdt.data) == len(sdt.times) > 0

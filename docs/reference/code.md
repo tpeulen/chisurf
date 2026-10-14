@@ -17,937 +17,916 @@ additionally executed. A block that must not be run — one that deletes
 files, needs a measurement, or shows a fragment — simply omits the
 marker and is still compiled.
 
-*930 blocks, 239 Python, 0 executed.*
+*909 blocks, 231 Python, 0 executed.*
 
 | # | Language | Section | Lines | Verified | Page |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `text` | — | 3 | — | [docs/getting_started/index.md](/getting_started/index.md) |
-| 2 | `text` | — | 4 | — | [docs/getting_started/index.md](/getting_started/index.md) |
-| 3 | `text` | — | 5 | — | [docs/getting_started/index.md](/getting_started/index.md) |
-| 4 | `text` | — | 5 | — | [docs/getting_started/index.md](/getting_started/index.md) |
-| 5 | `text` | — | 4 | — | [docs/getting_started/settings.md](/getting_started/settings.md) |
-| 6 | `text` | — | 4 | — | [docs/getting_started/settings.md](/getting_started/settings.md) |
-| 7 | `yaml` | — | 6 | — | [docs/getting_started/settings.md](/getting_started/settings.md) |
-| 8 | `python` | — | 3 | compiled | [docs/getting_started/settings.md](/getting_started/settings.md) |
-| 9 | `text` | — | 7 | — | [docs/fundamentals/absorption_and_emission.md](/fundamentals/absorption_and_emission.md) |
-| 10 | `text` | — | 7 | — | [docs/fundamentals/energy_transfer.md](/fundamentals/energy_transfer.md) |
-| 11 | `text` | — | 6 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
-| 12 | `text` | — | 4 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
-| 13 | `text` | — | 4 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
-| 14 | `text` | — | 5 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
-| 15 | `text` | — | 3 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
-| 16 | `text` | — | 7 | — | [docs/fundamentals/lifetime_and_quantum_yield.md](/fundamentals/lifetime_and_quantum_yield.md) |
-| 17 | `text` | — | 7 | — | [docs/fundamentals/polarization_and_rotation.md](/fundamentals/polarization_and_rotation.md) |
-| 18 | `text` | — | 8 | — | [docs/fundamentals/quenching_and_photophysics.md](/fundamentals/quenching_and_photophysics.md) |
-| 19 | `text` | — | 11 | — | [docs/fundamentals/quenching_and_photophysics.md](/fundamentals/quenching_and_photophysics.md) |
-| 20 | `text` | — | 12 | — | [docs/fundamentals/quenching_and_photophysics.md](/fundamentals/quenching_and_photophysics.md) |
-| 21 | `text` | — | 10 | — | [docs/fundamentals/quenching_mechanisms.md](/fundamentals/quenching_mechanisms.md) |
-| 22 | `text` | — | 14 | — | [docs/fundamentals/quenching_mechanisms.md](/fundamentals/quenching_mechanisms.md) |
-| 23 | `text` | — | 9 | — | [docs/concepts/acceptor_density.md](/concepts/acceptor_density.md) |
-| 24 | `python` | — | 12 | compiled | [docs/concepts/acceptor_density.md](/concepts/acceptor_density.md) |
-| 25 | `text` | — | 4 | — | [docs/concepts/accessible_volume.md](/concepts/accessible_volume.md) |
-| 26 | `text` | — | 7 | — | [docs/concepts/accurate_fret.md](/concepts/accurate_fret.md) |
-| 27 | `text` | — | 4 | — | [docs/concepts/anisotropy.md](/concepts/anisotropy.md) |
-| 28 | `text` | — | 4 | — | [docs/concepts/bva.md](/concepts/bva.md) |
-| 29 | `text` | — | 6 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
-| 30 | `text` | — | 4 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
-| 31 | `python` | — | 4 | compiled | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
-| 32 | `text` | — | 13 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
-| 33 | `text` | — | 5 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
-| 34 | `text` | — | 4 | — | [docs/concepts/fcs_correlation.md](/concepts/fcs_correlation.md) |
-| 35 | `text` | — | 4 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
-| 36 | `text` | — | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
-| 37 | `text` | — | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
-| 38 | `text` | — | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
-| 39 | `python` | — | 10 | compiled | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
-| 40 | `yaml` | — | 4 | — | [docs/concepts/fitting_objectives.md](/concepts/fitting_objectives.md) |
-| 41 | `python` | — | 2 | compiled | [docs/concepts/fitting_objectives.md](/concepts/fitting_objectives.md) |
-| 42 | `text` | — | 4 | — | [docs/concepts/frc_resolution.md](/concepts/frc_resolution.md) |
-| 43 | `text` | — | 4 | — | [docs/concepts/fret.md](/concepts/fret.md) |
-| 44 | `text` | — | 6 | — | [docs/concepts/image_correlation.md](/concepts/image_correlation.md) |
-| 45 | `text` | — | 4 | — | [docs/concepts/imaging_flim_phasor.md](/concepts/imaging_flim_phasor.md) |
-| 46 | `text` | — | 11 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 47 | `text` | — | 7 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 48 | `text` | — | 9 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 49 | `text` | — | 12 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 50 | `text` | — | 7 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 51 | `text` | — | 3 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 52 | `text` | — | 5 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 53 | `text` | — | 9 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 54 | `text` | — | 17 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 55 | `text` | — | 4 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 56 | `text` | — | 3 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 57 | `text` | — | 6 | — | [docs/concepts/index.md](/concepts/index.md) |
-| 58 | `text` | — | 9 | — | [docs/concepts/kappa2_orientation.md](/concepts/kappa2_orientation.md) |
-| 59 | `text` | — | 10 | — | [docs/concepts/maximum_entropy.md](/concepts/maximum_entropy.md) |
-| 60 | `text` | — | 1 | — | [docs/concepts/mfd_fitting.md](/concepts/mfd_fitting.md) |
-| 61 | `text` | — | 7 | — | [docs/concepts/molecular_surfaces.md](/concepts/molecular_surfaces.md) |
-| 62 | `text` | — | 3 | — | [docs/concepts/molecular_surfaces.md](/concepts/molecular_surfaces.md) |
-| 63 | `python` | — | 9 | compiled | [docs/concepts/molecular_surfaces.md](/concepts/molecular_surfaces.md) |
-| 64 | `text` | — | 6 | — | [docs/concepts/pair_correlation.md](/concepts/pair_correlation.md) |
-| 65 | `text` | — | 5 | — | [docs/concepts/pair_correlation.md](/concepts/pair_correlation.md) |
-| 66 | `text` | — | 5 | — | [docs/concepts/pair_correlation.md](/concepts/pair_correlation.md) |
-| 67 | `python` | — | 3 | compiled | [docs/concepts/parameter_uncertainty.md](/concepts/parameter_uncertainty.md) |
-| 68 | `python` | — | 11 | compiled | [docs/concepts/parameter_uncertainty.md](/concepts/parameter_uncertainty.md) |
-| 69 | `text` | — | 4 | — | [docs/concepts/pch_fida.md](/concepts/pch_fida.md) |
-| 70 | `python` | — | 4 | compiled | [docs/concepts/photon_container.md](/concepts/photon_container.md) |
-| 71 | `python` | — | 4 | compiled | [docs/concepts/photon_container.md](/concepts/photon_container.md) |
-| 72 | `text` | — | 14 | — | [docs/concepts/photon_container.md](/concepts/photon_container.md) |
-| 73 | `text` | — | 4 | — | [docs/concepts/tcspc_lifetime.md](/concepts/tcspc_lifetime.md) |
-| 74 | `text` | — | 6 | — | [docs/concepts/tcspc_lifetime.md](/concepts/tcspc_lifetime.md) |
-| 75 | `text` | — | 6 | — | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
-| 76 | `python` | — | 10 | compiled | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
-| 77 | `text` | — | 11 | — | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
-| 78 | `python` | — | 4 | compiled | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
-| 79 | `text` | — | 4 | — | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
-| 80 | `text` | — | 8 | — | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
-| 81 | `python` | — | 10 | compiled | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
-| 82 | `python` | — | 3 | compiled | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
-| 83 | `text` | — | 4 | — | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
-| 84 | `python` | — | 13 | compiled | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
-| 85 | `text` | — | 4 | — | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
-| 86 | `text` | — | 4 | — | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
-| 87 | `text` | — | 4 | — | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
-| 88 | `text` | — | 6 | — | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
-| 89 | `text` | — | 7 | — | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
-| 90 | `python` | — | 10 | compiled | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
-| 91 | `text` | — | 4 | — | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
-| 92 | `text` | — | 9 | — | [docs/guides/05_enderlein_mdf_two_focus_fcs.md](/guides/05_enderlein_mdf_two_focus_fcs.md) |
-| 93 | `python` | — | 8 | compiled | [docs/guides/05_enderlein_mdf_two_focus_fcs.md](/guides/05_enderlein_mdf_two_focus_fcs.md) |
-| 94 | `text` | — | 4 | — | [docs/guides/05_enderlein_mdf_two_focus_fcs.md](/guides/05_enderlein_mdf_two_focus_fcs.md) |
-| 95 | `python` | — | 9 | compiled | [docs/guides/06_nsfcs_second_order.md](/guides/06_nsfcs_second_order.md) |
-| 96 | `text` | — | 4 | — | [docs/guides/06_nsfcs_second_order.md](/guides/06_nsfcs_second_order.md) |
-| 97 | `python` | — | 12 | compiled | [docs/guides/07_rcm_calibration.md](/guides/07_rcm_calibration.md) |
-| 98 | `text` | — | 4 | — | [docs/guides/07_rcm_calibration.md](/guides/07_rcm_calibration.md) |
-| 99 | `text` | — | 4 | — | [docs/guides/07_rcm_calibration.md](/guides/07_rcm_calibration.md) |
-| 100 | `text` | — | 11 | — | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
-| 101 | `text` | — | 6 | — | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
-| 102 | `python` | — | 17 | compiled | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
-| 103 | `text` | — | 4 | — | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
-| 104 | `text` | — | 10 | — | [docs/guides/09_diffusion_fcs.md](/guides/09_diffusion_fcs.md) |
-| 105 | `python` | — | 8 | compiled | [docs/guides/09_diffusion_fcs.md](/guides/09_diffusion_fcs.md) |
-| 106 | `text` | — | 5 | — | [docs/guides/09_diffusion_fcs.md](/guides/09_diffusion_fcs.md) |
-| 107 | `text` | — | 5 | — | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
-| 108 | `bash` | — | 2 | — | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
-| 109 | `python` | — | 3 | compiled | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
-| 110 | `text` | — | 5 | — | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
-| 111 | `python` | — | 11 | compiled | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
-| 112 | `text` | — | 5 | — | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
-| 113 | `text` | — | 6 | — | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
-| 114 | `text` | — | 6 | — | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
-| 115 | `python` | — | 12 | compiled | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
-| 116 | `bash` | — | 2 | — | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
-| 117 | `text` | — | 5 | — | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
-| 118 | `python` | — | 7 | compiled | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
-| 119 | `text` | — | 4 | — | [docs/guides/103_application_identity.md](/guides/103_application_identity.md) |
-| 120 | `python` | — | 5 | compiled | [docs/guides/103_application_identity.md](/guides/103_application_identity.md) |
-| 121 | `text` | — | 8 | — | [docs/guides/104_lightpath_simulator.md](/guides/104_lightpath_simulator.md) |
-| 122 | `bash` | — | 6 | — | [docs/guides/104_lightpath_simulator.md](/guides/104_lightpath_simulator.md) |
-| 123 | `python` | — | 9 | compiled | [docs/guides/104_lightpath_simulator.md](/guides/104_lightpath_simulator.md) |
-| 124 | `bash` | — | 1 | — | [docs/guides/106_protein_monte_carlo.md](/guides/106_protein_monte_carlo.md) |
-| 125 | `python` | — | 13 | compiled | [docs/guides/106_protein_monte_carlo.md](/guides/106_protein_monte_carlo.md) |
-| 126 | `text` | — | 6 | — | [docs/guides/106_protein_monte_carlo.md](/guides/106_protein_monte_carlo.md) |
-| 127 | `text` | — | 5 | — | [docs/guides/107_fret_calculator.md](/guides/107_fret_calculator.md) |
-| 128 | `python` | — | 8 | compiled | [docs/guides/107_fret_calculator.md](/guides/107_fret_calculator.md) |
-| 129 | `text` | — | 6 | — | [docs/guides/108_photon_table.md](/guides/108_photon_table.md) |
-| 130 | `python` | — | 8 | compiled | [docs/guides/108_photon_table.md](/guides/108_photon_table.md) |
-| 131 | `python` | — | 4 | compiled | [docs/guides/108_photon_table.md](/guides/108_photon_table.md) |
-| 132 | `text` | — | 8 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
-| 133 | `python` | — | 14 | compiled | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
-| 134 | `text` | — | 4 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
-| 135 | `text` | — | 5 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
-| 136 | `text` | — | 5 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
-| 137 | `python` | — | 10 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 138 | `text` | — | 8 | — | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 139 | `python` | — | 6 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 140 | `python` | — | 9 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 141 | `python` | — | 6 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 142 | `python` | — | 9 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 143 | `text` | — | 4 | — | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
-| 144 | `python` | — | 7 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
-| 145 | `text` | — | 7 | — | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
-| 146 | `python` | — | 4 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
-| 147 | `python` | — | 17 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
-| 148 | `python` | — | 7 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
-| 149 | `text` | — | 4 | — | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
-| 150 | `text` | — | 9 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
-| 151 | `text` | — | 10 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
-| 152 | `text` | — | 5 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
-| 153 | `python` | — | 5 | compiled | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
-| 154 | `python` | — | 6 | compiled | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
-| 155 | `text` | — | 4 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
-| 156 | `text` | — | 10 | — | [docs/guides/14_multiparameter_es.md](/guides/14_multiparameter_es.md) |
-| 157 | `python` | — | 8 | compiled | [docs/guides/14_multiparameter_es.md](/guides/14_multiparameter_es.md) |
-| 158 | `text` | — | 4 | — | [docs/guides/14_multiparameter_es.md](/guides/14_multiparameter_es.md) |
-| 159 | `text` | — | 5 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
-| 160 | `text` | — | 8 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
-| 161 | `text` | — | 6 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
-| 162 | `python` | — | 8 | compiled | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
-| 163 | `text` | — | 4 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
-| 164 | `python` | — | 23 | compiled | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
-| 165 | `text` | — | 6 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
-| 166 | `text` | — | 9 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
-| 167 | `text` | — | 6 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
-| 168 | `python` | — | 12 | compiled | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
-| 169 | `text` | — | 4 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
-| 170 | `python` | — | 6 | compiled | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 171 | `text` | — | 5 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 172 | `text` | — | 6 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 173 | `text` | — | 5 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 174 | `python` | — | 10 | compiled | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 175 | `bash` | — | 2 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 176 | `python` | — | 4 | compiled | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 177 | `text` | — | 4 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 178 | `text` | — | 4 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
-| 179 | `python` | — | 9 | compiled | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
-| 180 | `text` | — | 6 | — | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
-| 181 | `text` | — | 6 | — | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
-| 182 | `text` | — | 4 | — | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
-| 183 | `python` | — | 8 | compiled | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 184 | `bash` | — | 1 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 185 | `text` | — | 11 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 186 | `python` | — | 4 | compiled | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 187 | `bash` | — | 1 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 188 | `text` | — | 8 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 189 | `text` | — | 4 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 190 | `text` | — | 6 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
-| 191 | `text` | — | 8 | — | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
-| 192 | `python` | — | 10 | compiled | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
-| 193 | `python` | — | 4 | compiled | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
-| 194 | `text` | — | 6 | — | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
-| 195 | `text` | — | 5 | — | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
-| 196 | `text` | — | 6 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 197 | `python` | — | 16 | compiled | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 198 | `python` | — | 14 | compiled | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 199 | `text` | — | 5 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 200 | `python` | — | 11 | compiled | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 201 | `text` | — | 8 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 202 | `text` | — | 6 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 203 | `text` | — | 6 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 204 | `text` | — | 9 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 205 | `text` | — | 5 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
-| 206 | `python` | — | 12 | compiled | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
-| 207 | `text` | — | 10 | — | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
-| 208 | `text` | — | 6 | — | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
-| 209 | `python` | — | 3 | compiled | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
-| 210 | `text` | — | 4 | — | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
-| 211 | `python` | — | 11 | compiled | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
-| 212 | `text` | — | 8 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
-| 213 | `text` | — | 4 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
-| 214 | `text` | — | 5 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
-| 215 | `text` | — | 4 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
-| 216 | `python` | — | 8 | compiled | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 217 | `text` | — | 5 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 218 | `text` | — | 7 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 219 | `text` | — | 5 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 220 | `python` | — | 5 | compiled | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 221 | `text` | — | 6 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 222 | `text` | — | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 223 | `text` | — | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 224 | `text` | — | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 225 | `text` | — | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
-| 226 | `python` | — | 10 | compiled | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
-| 227 | `text` | — | 8 | — | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
-| 228 | `text` | — | 7 | — | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
-| 229 | `text` | — | 8 | — | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
-| 230 | `text` | — | 8 | — | [docs/guides/26_2d_peak_fitting.md](/guides/26_2d_peak_fitting.md) |
-| 231 | `python` | — | 9 | compiled | [docs/guides/26_2d_peak_fitting.md](/guides/26_2d_peak_fitting.md) |
-| 232 | `text` | — | 7 | — | [docs/guides/26_2d_peak_fitting.md](/guides/26_2d_peak_fitting.md) |
-| 233 | `text` | — | 7 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
-| 234 | `text` | — | 8 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
-| 235 | `python` | — | 9 | compiled | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
-| 236 | `text` | — | 12 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
-| 237 | `python` | — | 17 | compiled | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
-| 238 | `text` | — | 4 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
-| 239 | `text` | — | 10 | — | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
-| 240 | `text` | — | 5 | — | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
-| 241 | `python` | — | 14 | compiled | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
-| 242 | `text` | — | 4 | — | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
-| 243 | `text` | — | 8 | — | [docs/guides/29_fret_histogram_fitting.md](/guides/29_fret_histogram_fitting.md) |
-| 244 | `python` | — | 14 | compiled | [docs/guides/29_fret_histogram_fitting.md](/guides/29_fret_histogram_fitting.md) |
-| 245 | `text` | — | 4 | — | [docs/guides/29_fret_histogram_fitting.md](/guides/29_fret_histogram_fitting.md) |
-| 246 | `python` | — | 20 | compiled | [docs/guides/30_h2mm_workflow_results.md](/guides/30_h2mm_workflow_results.md) |
-| 247 | `text` | — | 10 | — | [docs/guides/30_h2mm_workflow_results.md](/guides/30_h2mm_workflow_results.md) |
-| 248 | `text` | — | 4 | — | [docs/guides/30_h2mm_workflow_results.md](/guides/30_h2mm_workflow_results.md) |
-| 249 | `python` | — | 8 | compiled | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
-| 250 | `python` | — | 17 | compiled | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
-| 251 | `text` | — | 9 | — | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
-| 252 | `text` | — | 4 | — | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
-| 253 | `python` | — | 23 | compiled | [docs/guides/32_nsalex_lifetime.md](/guides/32_nsalex_lifetime.md) |
-| 254 | `text` | — | 9 | — | [docs/guides/32_nsalex_lifetime.md](/guides/32_nsalex_lifetime.md) |
-| 255 | `text` | — | 4 | — | [docs/guides/32_nsalex_lifetime.md](/guides/32_nsalex_lifetime.md) |
-| 256 | `python` | — | 17 | compiled | [docs/guides/33_timestamps_and_bursts.md](/guides/33_timestamps_and_bursts.md) |
-| 257 | `text` | — | 11 | — | [docs/guides/33_timestamps_and_bursts.md](/guides/33_timestamps_and_bursts.md) |
-| 258 | `text` | — | 7 | — | [docs/guides/33_timestamps_and_bursts.md](/guides/33_timestamps_and_bursts.md) |
-| 259 | `python` | — | 18 | compiled | [docs/guides/34_exporting_burst_data.md](/guides/34_exporting_burst_data.md) |
-| 260 | `text` | — | 14 | — | [docs/guides/34_exporting_burst_data.md](/guides/34_exporting_burst_data.md) |
-| 261 | `text` | — | 9 | — | [docs/guides/35_combining_repeats.md](/guides/35_combining_repeats.md) |
-| 262 | `python` | — | 13 | compiled | [docs/guides/35_combining_repeats.md](/guides/35_combining_repeats.md) |
-| 263 | `text` | — | 4 | — | [docs/guides/35_combining_repeats.md](/guides/35_combining_repeats.md) |
-| 264 | `python` | — | 10 | compiled | [docs/guides/36_multispot.md](/guides/36_multispot.md) |
-| 265 | `text` | — | 4 | — | [docs/guides/36_multispot.md](/guides/36_multispot.md) |
-| 266 | `text` | — | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
-| 267 | `text` | — | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
-| 268 | `bash` | — | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
-| 269 | `python` | — | 6 | compiled | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
-| 270 | `text` | — | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
-| 271 | `text` | — | 5 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
-| 272 | `text` | — | 5 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
-| 273 | `text` | — | 4 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
-| 274 | `text` | — | 6 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
-| 275 | `bash` | — | 4 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
-| 276 | `python` | — | 12 | compiled | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
-| 277 | `python` | — | 20 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 278 | `python` | — | 6 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 279 | `python` | — | 8 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 280 | `python` | — | 6 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 281 | `text` | — | 3 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 282 | `python` | — | 2 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 283 | `python` | — | 8 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 284 | `python` | — | 10 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 285 | `python` | — | 4 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 286 | `python` | — | 1 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 287 | `text` | — | 5 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 288 | `text` | — | 6 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 289 | `text` | — | 4 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 290 | `python` | — | 2 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 291 | `python` | — | 10 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 292 | `text` | — | 4 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 293 | `python` | — | 4 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 294 | `python` | — | 9 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 295 | `text` | — | 5 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 296 | `python` | — | 5 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 297 | `text` | — | 6 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 298 | `python` | — | 5 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 299 | `python` | — | 9 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 300 | `python` | — | 14 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 301 | `text` | — | 7 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 302 | `python` | — | 2 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 303 | `python` | — | 1 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
-| 304 | `text` | — | 13 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
-| 305 | `bash` | — | 6 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
-| 306 | `yaml` | — | 6 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
-| 307 | `markdown` | — | 13 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
-| 308 | `text` | — | 8 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 309 | `text` | — | 5 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 310 | `text` | — | 5 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 311 | `python` | — | 5 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 312 | `text` | — | 15 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 313 | `text` | — | 7 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 314 | `text` | — | 8 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 315 | `python` | — | 5 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 316 | `bash` | — | 1 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 317 | `python` | — | 10 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 318 | `bash` | — | 9 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 319 | `python` | — | 21 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 320 | `python` | — | 7 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 321 | `python` | — | 6 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
-| 322 | `python` | — | 25 | compiled | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
-| 323 | `text` | — | 6 | — | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
-| 324 | `python` | — | 11 | compiled | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
-| 325 | `python` | — | 5 | compiled | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
-| 326 | `text` | — | 7 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
-| 327 | `text` | — | 5 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
-| 328 | `text` | — | 6 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
-| 329 | `bash` | — | 2 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
-| 330 | `text` | — | 7 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
-| 331 | `python` | — | 8 | compiled | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
-| 332 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 333 | `text` | — | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 334 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 335 | `text` | — | 8 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 336 | `text` | — | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 337 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 338 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 339 | `text` | — | 9 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 340 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 341 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 342 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 343 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 344 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 345 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 346 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 347 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 348 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 349 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 350 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 351 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 352 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 353 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 354 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 355 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 356 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 357 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 358 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 359 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 360 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 361 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 362 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 363 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 364 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 365 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 366 | `text` | — | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 367 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 368 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 369 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 370 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 371 | `text` | — | 9 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 372 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 373 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 374 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 375 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 376 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 377 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 378 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 379 | `text` | — | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 380 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 381 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 382 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 383 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 384 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 385 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 386 | `text` | — | 15 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 387 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 388 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 389 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 390 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 391 | `text` | — | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 392 | `text` | — | 9 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 393 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 394 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 395 | `text` | — | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 396 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 397 | `text` | — | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 398 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 399 | `text` | — | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 400 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 401 | `text` | — | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 402 | `text` | — | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 403 | `python` | — | 17 | compiled | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 404 | `python` | — | 24 | compiled | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
-| 405 | `text` | — | 8 | — | [docs/guides/45_scan_precision.md](/guides/45_scan_precision.md) |
-| 406 | `bash` | — | 4 | — | [docs/guides/45_scan_precision.md](/guides/45_scan_precision.md) |
-| 407 | `bash` | — | 5 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 408 | `python` | — | 7 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 409 | `python` | — | 5 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 410 | `text` | — | 6 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 411 | `text` | — | 4 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 412 | `text` | — | 4 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 413 | `text` | — | 2 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 414 | `text` | — | 4 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 415 | `python` | — | 7 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 416 | `python` | — | 14 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 417 | `python` | — | 10 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 418 | `python` | — | 5 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 419 | `python` | — | 4 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 420 | `text` | — | 10 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 421 | `text` | — | 7 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 422 | `text` | — | 6 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 423 | `text` | — | 6 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 424 | `text` | — | 7 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 425 | `python` | — | 9 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 426 | `text` | — | 3 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
-| 427 | `text` | — | 8 | — | [docs/guides/47_ndxplorer_bridges.md](/guides/47_ndxplorer_bridges.md) |
-| 428 | `python` | — | 31 | compiled | [docs/guides/47_ndxplorer_bridges.md](/guides/47_ndxplorer_bridges.md) |
-| 429 | `text` | — | 10 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 430 | `text` | — | 9 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 431 | `text` | — | 9 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 432 | `python` | — | 2 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 433 | `bash` | — | 1 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 434 | `text` | — | 4 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 435 | `python` | — | 28 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 436 | `python` | — | 13 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 437 | `python` | — | 12 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
-| 438 | `text` | — | 10 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 439 | `text` | — | 7 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 440 | `text` | — | 9 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 441 | `bash` | — | 4 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 442 | `bash` | — | 2 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
-| 443 | `text` | — | 8 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
-| 444 | `text` | — | 8 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
-| 445 | `bash` | — | 4 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
-| 446 | `bash` | — | 2 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
-| 447 | `text` | — | 7 | — | [docs/guides/51_frc_resolution.md](/guides/51_frc_resolution.md) |
-| 448 | `bash` | — | 3 | — | [docs/guides/51_frc_resolution.md](/guides/51_frc_resolution.md) |
-| 449 | `text` | — | 7 | — | [docs/guides/52_send_bursts_to_analysis.md](/guides/52_send_bursts_to_analysis.md) |
-| 450 | `json` | — | 13 | — | [docs/guides/52_send_bursts_to_analysis.md](/guides/52_send_bursts_to_analysis.md) |
-| 451 | `python` | — | 10 | compiled | [docs/guides/52_send_bursts_to_analysis.md](/guides/52_send_bursts_to_analysis.md) |
-| 452 | `text` | — | 1 | — | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
-| 453 | `text` | — | 9 | — | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
-| 454 | `json` | — | 14 | — | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
-| 455 | `python` | — | 3 | compiled | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
-| 456 | `text` | — | 10 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 457 | `text` | — | 4 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 458 | `text` | — | 5 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 459 | `text` | — | 7 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 460 | `bash` | — | 2 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 461 | `python` | — | 26 | compiled | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 462 | `python` | — | 2 | compiled | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
-| 463 | `text` | — | 7 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 464 | `bash` | — | 2 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 465 | `python` | — | 3 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 466 | `python` | — | 12 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 467 | `python` | — | 14 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 468 | `text` | — | 8 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 469 | `python` | — | 4 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 470 | `python` | — | 7 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 471 | `text` | — | 6 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 472 | `python` | — | 6 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 473 | `python` | — | 4 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 474 | `bash` | — | 1 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
-| 475 | `text` | — | 9 | — | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
-| 476 | `json` | — | 10 | — | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
-| 477 | `bash` | — | 8 | — | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
-| 478 | `python` | — | 12 | compiled | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
-| 479 | `text` | — | 4 | — | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
-| 480 | `text` | — | 9 | — | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
-| 481 | `text` | — | 7 | — | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
-| 482 | `python` | — | 13 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
-| 483 | `python` | — | 10 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
-| 484 | `python` | — | 10 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
-| 485 | `text` | — | 6 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 486 | `text` | — | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 487 | `text` | — | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 488 | `text` | — | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 489 | `text` | — | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 490 | `bash` | — | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 491 | `python` | — | 8 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 492 | `python` | — | 6 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
-| 493 | `python` | — | 1 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
-| 494 | `text` | — | 1 | — | [docs/guides/59_console.md](/guides/59_console.md) |
-| 495 | `python` | — | 2 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
-| 496 | `python` | — | 2 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
-| 497 | `text` | — | 1 | — | [docs/guides/59_console.md](/guides/59_console.md) |
-| 498 | `python` | — | 1 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
-| 499 | `python` | — | 1 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
-| 500 | `text` | — | 8 | — | [docs/guides/59_console.md](/guides/59_console.md) |
-| 501 | `text` | — | 1 | — | [docs/guides/59_console.md](/guides/59_console.md) |
-| 502 | `python` | — | 3 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
-| 503 | `text` | — | 6 | — | [docs/guides/59_console.md](/guides/59_console.md) |
-| 504 | `text` | — | 10 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 505 | `text` | — | 4 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 506 | `text` | — | 7 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 507 | `python` | — | 25 | compiled | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 508 | `text` | — | 2 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 509 | `python` | — | 2 | compiled | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 510 | `python` | — | 9 | compiled | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 511 | `text` | — | 1 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
-| 512 | `text` | — | 8 | — | [docs/guides/61_kappa2_distribution.md](/guides/61_kappa2_distribution.md) |
-| 513 | `python` | — | 8 | compiled | [docs/guides/61_kappa2_distribution.md](/guides/61_kappa2_distribution.md) |
-| 514 | `text` | — | 4 | — | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
-| 515 | `text` | — | 5 | — | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
-| 516 | `text` | — | 16 | — | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
-| 517 | `python` | — | 10 | compiled | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
-| 518 | `text` | — | 11 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 519 | `text` | — | 13 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 520 | `json` | — | 5 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 521 | `python` | — | 4 | compiled | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 522 | `bash` | — | 7 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 523 | `python` | — | 10 | compiled | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
-| 524 | `python` | — | 7 | compiled | [docs/guides/64_notebooks.md](/guides/64_notebooks.md) |
-| 525 | `text` | — | 4 | — | [docs/guides/64_notebooks.md](/guides/64_notebooks.md) |
-| 526 | `text` | — | 7 | — | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
-| 527 | `python` | — | 4 | compiled | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
-| 528 | `python` | — | 25 | compiled | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
-| 529 | `python` | — | 10 | compiled | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
-| 530 | `text` | — | 6 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
-| 531 | `text` | — | 9 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
-| 532 | `text` | — | 9 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
-| 533 | `bash` | — | 4 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
-| 534 | `text` | — | 4 | — | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
-| 535 | `text` | — | 4 | — | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
-| 536 | `bash` | — | 1 | — | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
-| 537 | `python` | — | 9 | compiled | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
-| 538 | `text` | — | 7 | — | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
-| 539 | `bash` | — | 1 | — | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
-| 540 | `text` | — | 7 | — | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
-| 541 | `python` | — | 6 | compiled | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
-| 542 | `text` | — | 7 | — | [docs/guides/72_psf_calculator.md](/guides/72_psf_calculator.md) |
-| 543 | `python` | — | 12 | compiled | [docs/guides/72_psf_calculator.md](/guides/72_psf_calculator.md) |
-| 544 | `text` | — | 7 | — | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
-| 545 | `text` | — | 7 | — | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
-| 546 | `python` | — | 28 | compiled | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
-| 547 | `python` | — | 12 | compiled | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
-| 548 | `text` | — | 9 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
-| 549 | `text` | — | 6 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
-| 550 | `text` | — | 4 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
-| 551 | `python` | — | 27 | compiled | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
-| 552 | `python` | — | 7 | compiled | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
-| 553 | `bash` | — | 1 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
-| 554 | `bash` | — | 1 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 555 | `text` | — | 5 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 556 | `text` | — | 4 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 557 | `text` | — | 8 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 558 | `text` | — | 8 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 559 | `text` | — | 6 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 560 | `text` | — | 5 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 561 | `bash` | — | 2 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 562 | `python` | — | 29 | compiled | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 563 | `python` | — | 6 | compiled | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 564 | `python` | — | 3 | compiled | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
-| 565 | `text` | — | 4 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 566 | `text` | — | 7 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 567 | `text` | — | 5 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 568 | `text` | — | 5 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 569 | `text` | — | 5 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 570 | `text` | — | 5 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 571 | `text` | — | 7 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 572 | `text` | — | 6 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 573 | `bash` | — | 9 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 574 | `python` | — | 22 | compiled | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
-| 575 | `text` | — | 8 | — | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
-| 576 | `text` | — | 7 | — | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
-| 577 | `python` | — | 13 | compiled | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
-| 578 | `python` | — | 19 | compiled | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
-| 579 | `text` | — | 8 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 580 | `text` | — | 5 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 581 | `text` | — | 5 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 582 | `python` | — | 23 | compiled | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 583 | `bash` | — | 3 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 584 | `python` | — | 27 | compiled | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 585 | `python` | — | 10 | compiled | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
-| 586 | `text` | — | 5 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 587 | `text` | — | 7 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 588 | `text` | — | 6 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 589 | `python` | — | 10 | compiled | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 590 | `text` | — | 18 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 591 | `python` | — | 3 | compiled | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 592 | `text` | — | 4 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
-| 593 | `text` | — | 6 | — | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
-| 594 | `bash` | — | 6 | — | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
-| 595 | `python` | — | 7 | compiled | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
-| 596 | `text` | — | 5 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 597 | `text` | — | 5 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 598 | `text` | — | 5 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 599 | `text` | — | 6 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 600 | `text` | — | 6 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 601 | `bash` | — | 2 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 602 | `python` | — | 33 | compiled | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
-| 603 | `text` | — | 8 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 604 | `text` | — | 4 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 605 | `text` | — | 4 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 606 | `bash` | — | 3 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 607 | `json` | — | 9 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 608 | `python` | — | 16 | compiled | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 609 | `text` | — | 5 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 610 | `python` | — | 11 | compiled | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
-| 611 | `text` | — | 5 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 612 | `text` | — | 4 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 613 | `text` | — | 4 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 614 | `bash` | — | 2 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 615 | `text` | — | 7 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 616 | `python` | — | 8 | compiled | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 617 | `python` | — | 28 | compiled | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 618 | `bash` | — | 5 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 619 | `text` | — | 5 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
-| 620 | `text` | — | 9 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
-| 621 | `text` | — | 5 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
-| 622 | `text` | — | 7 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
-| 623 | `bash` | — | 4 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
-| 624 | `python` | — | 10 | compiled | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
-| 625 | `python` | — | 5 | compiled | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
-| 626 | `text` | — | 6 | — | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
-| 627 | `bash` | — | 4 | — | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
-| 628 | `python` | — | 17 | compiled | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
-| 629 | `text` | — | 5 | — | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
-| 630 | `text` | — | 8 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
-| 631 | `text` | — | 4 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
-| 632 | `text` | — | 5 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
-| 633 | `bash` | — | 4 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
-| 634 | `python` | — | 9 | compiled | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
-| 635 | `text` | — | 9 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 636 | `text` | — | 4 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 637 | `text` | — | 9 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 638 | `python` | — | 6 | compiled | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 639 | `text` | — | 5 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 640 | `text` | — | 8 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 641 | `text` | — | 6 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
-| 642 | `text` | — | 3 | — | [docs/guides/88_fret_docking.md](/guides/88_fret_docking.md) |
-| 643 | `text` | — | 9 | — | [docs/guides/88_microtime_shifter.md](/guides/88_microtime_shifter.md) |
-| 644 | `bash` | — | 2 | — | [docs/guides/88_microtime_shifter.md](/guides/88_microtime_shifter.md) |
-| 645 | `python` | — | 5 | compiled | [docs/guides/88_microtime_shifter.md](/guides/88_microtime_shifter.md) |
-| 646 | `bash` | — | 1 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
-| 647 | `text` | — | 9 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
-| 648 | `text` | — | 7 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
-| 649 | `python` | — | 11 | compiled | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
-| 650 | `python` | — | 13 | compiled | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
-| 651 | `text` | — | 7 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
-| 652 | `text` | — | 5 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
-| 653 | `text` | — | 5 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
-| 654 | `text` | — | 4 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
-| 655 | `text` | — | 4 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
-| 656 | `python` | — | 2 | compiled | [docs/guides/90_updater.md](/guides/90_updater.md) |
-| 657 | `text` | — | 6 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
-| 658 | `bash` | — | 1 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
-| 659 | `text` | — | 8 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
-| 660 | `text` | — | 8 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
-| 661 | `python` | — | 9 | compiled | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
-| 662 | `bash` | — | 1 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
-| 663 | `text` | — | 7 | — | [docs/guides/92_hmm_binned_traces.md](/guides/92_hmm_binned_traces.md) |
-| 664 | `python` | — | 7 | compiled | [docs/guides/92_hmm_binned_traces.md](/guides/92_hmm_binned_traces.md) |
-| 665 | `text` | — | 5 | — | [docs/guides/93_psf_determination.md](/guides/93_psf_determination.md) |
-| 666 | `python` | — | 4 | compiled | [docs/guides/93_psf_determination.md](/guides/93_psf_determination.md) |
-| 667 | `text` | — | 4 | — | [docs/guides/94_tttr_audifier.md](/guides/94_tttr_audifier.md) |
-| 668 | `text` | — | 5 | — | [docs/guides/95_games.md](/guides/95_games.md) |
-| 669 | `text` | — | 7 | — | [docs/guides/95_games.md](/guides/95_games.md) |
-| 670 | `python` | — | 8 | compiled | [docs/guides/95_games.md](/guides/95_games.md) |
-| 671 | `text` | — | 6 | — | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
-| 672 | `text` | — | 5 | — | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
-| 673 | `bash` | — | 1 | — | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
-| 674 | `python` | — | 8 | compiled | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
-| 675 | `text` | — | 5 | — | [docs/guides/97_settings_hub.md](/guides/97_settings_hub.md) |
-| 676 | `text` | — | 4 | — | [docs/guides/97_settings_hub.md](/guides/97_settings_hub.md) |
-| 677 | `text` | — | 5 | — | [docs/guides/97_settings_hub.md](/guides/97_settings_hub.md) |
-| 678 | `text` | — | 4 | — | [docs/guides/98_clsm_generator.md](/guides/98_clsm_generator.md) |
-| 679 | `text` | — | 6 | — | [docs/guides/98_imaging_tools.md](/guides/98_imaging_tools.md) |
-| 680 | `text` | — | 6 | — | [docs/guides/98_imaging_tools.md](/guides/98_imaging_tools.md) |
-| 681 | `text` | — | 6 | — | [docs/guides/99_img_calibration.md](/guides/99_img_calibration.md) |
-| 682 | `python` | — | 6 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 683 | `text` | — | 10 | — | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 684 | `python` | — | 10 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 685 | `python` | — | 8 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 686 | `python` | — | 5 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 687 | `python` | — | 9 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 688 | `python` | — | 13 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 689 | `python` | — | 2 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 690 | `python` | — | 4 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 691 | `python` | — | 8 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 692 | `python` | — | 9 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 693 | `python` | — | 4 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 694 | `python` | — | 5 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 695 | `python` | — | 3 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
-| 696 | `text` | — | 11 | — | [docs/guides/h2mm.md](/guides/h2mm.md) |
-| 697 | `text` | — | 6 | — | [docs/guides/h2mm.md](/guides/h2mm.md) |
-| 698 | `bash` | — | 5 | — | [docs/guides/h2mm.md](/guides/h2mm.md) |
-| 699 | `python` | — | 7 | compiled | [docs/guides/h2mm.md](/guides/h2mm.md) |
-| 700 | `text` | — | 3 | — | [docs/guides/index.md](/guides/index.md) |
-| 701 | `text` | — | 22 | — | [docs/guides/index.md](/guides/index.md) |
-| 702 | `text` | — | 17 | — | [docs/guides/index.md](/guides/index.md) |
-| 703 | `text` | — | 17 | — | [docs/guides/index.md](/guides/index.md) |
-| 704 | `text` | — | 7 | — | [docs/guides/index.md](/guides/index.md) |
-| 705 | `text` | — | 10 | — | [docs/guides/index.md](/guides/index.md) |
-| 706 | `text` | — | 27 | — | [docs/guides/index.md](/guides/index.md) |
-| 707 | `text` | — | 9 | — | [docs/guides/index.md](/guides/index.md) |
-| 708 | `text` | — | 15 | — | [docs/guides/index.md](/guides/index.md) |
-| 709 | `bash` | — | 1 | — | [docs/guides/index.md](/guides/index.md) |
-| 710 | `bash` | — | 1 | — | [docs/guides/index.md](/guides/index.md) |
-| 711 | `bash` | — | 1 | — | [docs/guides/index.md](/guides/index.md) |
-| 712 | `text` | — | 4 | — | [docs/guides/index.md](/guides/index.md) |
-| 713 | `text` | — | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 714 | `text` | — | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 715 | `text` | — | 12 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 716 | `text` | — | 6 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 717 | `python` | — | 15 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 718 | `python` | — | 22 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 719 | `python` | — | 7 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 720 | `python` | — | 9 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 721 | `python` | — | 1 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 722 | `text` | — | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 723 | `bash` | — | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 724 | `bash` | — | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
-| 725 | `text` | — | 6 | — | [docs/guides/saving_projects.md](/guides/saving_projects.md) |
-| 726 | `text` | — | 10 | — | [docs/manual/adding_the_membranediffusion_models.md](/manual/adding_the_membranediffusion_models.md) |
-| 727 | `text` | — | 4 | — | [docs/manual/adding_the_membranediffusion_models.md](/manual/adding_the_membranediffusion_models.md) |
-| 728 | `text` | — | 1 | — | [docs/manual/analysis_dock.md](/manual/analysis_dock.md) |
-| 729 | `text` | — | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
-| 730 | `text` | — | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
-| 731 | `text` | — | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
-| 732 | `text` | — | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
-| 733 | `text` | — | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
-| 734 | `text` | — | 1 | — | [docs/manual/calculation_of_codiffusing_molecules.md](/manual/calculation_of_codiffusing_molecules.md) |
-| 735 | `text` | — | 1 | — | [docs/manual/calculations.md](/manual/calculations.md) |
-| 736 | `text` | — | 1 | — | [docs/manual/calculations.md](/manual/calculations.md) |
-| 737 | `text` | — | 1 | — | [docs/manual/calculations_2.md](/manual/calculations_2.md) |
-| 738 | `text` | — | 1 | — | [docs/manual/changing_visualizations.md](/manual/changing_visualizations.md) |
-| 739 | `text` | — | 1 | — | [docs/manual/changing_visualizations.md](/manual/changing_visualizations.md) |
-| 740 | `text` | — | 1 | — | [docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.md](/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.md) |
-| 741 | `text` | — | 1 | — | [docs/manual/correlation_merging.md](/manual/correlation_merging.md) |
-| 742 | `text` | — | 1 | — | [docs/manual/correlator.md](/manual/correlator.md) |
-| 743 | `text` | — | 1 | — | [docs/manual/creating_fits.md](/manual/creating_fits.md) |
-| 744 | `text` | — | 1 | — | [docs/manual/creating_fits.md](/manual/creating_fits.md) |
-| 745 | `text` | — | 1 | — | [docs/manual/crosstalkinduced_correlations.md](/manual/crosstalkinduced_correlations.md) |
-| 746 | `text` | — | 1 | — | [docs/manual/crosstalkinduced_correlations.md](/manual/crosstalkinduced_correlations.md) |
-| 747 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 748 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 749 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 750 | `text` | — | 2 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 751 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 752 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 753 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 754 | `text` | — | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 755 | `text` | — | 3 | — | [docs/manual/data_import.md](/manual/data_import.md) |
-| 756 | `text` | — | 12 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
-| 757 | `text` | — | 5 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
-| 758 | `shell` | — | 1 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
-| 759 | `text` | — | 1 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
-| 760 | `text` | — | 1 | — | [docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.md](/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.md) |
-| 761 | `text` | — | 1 | — | [docs/manual/determination_of_molecular_brightness.md](/manual/determination_of_molecular_brightness.md) |
-| 762 | `text` | — | 1 | — | [docs/manual/determination_of_molecular_brightness.md](/manual/determination_of_molecular_brightness.md) |
-| 763 | `text` | — | 2 | — | [docs/manual/discrete_fret_rate_constants.md](/manual/discrete_fret_rate_constants.md) |
-| 764 | `text` | — | 1 | — | [docs/manual/equation_parsing.md](/manual/equation_parsing.md) |
-| 765 | `text` | — | 1 | — | [docs/manual/estimation_of_the_fluorophore_concentration.md](/manual/estimation_of_the_fluorophore_concentration.md) |
-| 766 | `text` | — | 1 | — | [docs/manual/estimation_of_the_fluorophore_concentration.md](/manual/estimation_of_the_fluorophore_concentration.md) |
-| 767 | `text` | — | 1 | — | [docs/manual/fcalculator.md](/manual/fcalculator.md) |
-| 768 | `text` | — | 1 | — | [docs/manual/fit_interface.md](/manual/fit_interface.md) |
-| 769 | `text` | — | 3 | — | [docs/manual/fit_models.md](/manual/fit_models.md) |
-| 770 | `text` | — | 4 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 771 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 772 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 773 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 774 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 775 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 776 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 777 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 778 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 779 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 780 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 781 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 782 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 783 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 784 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 785 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 786 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 787 | `text` | — | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
-| 788 | `text` | — | 1 | — | [docs/manual/fit_of_auto_and_crosscorrelation_curves.md](/manual/fit_of_auto_and_crosscorrelation_curves.md) |
-| 789 | `text` | — | 1 | — | [docs/manual/fit_of_autocorrelation_curves.md](/manual/fit_of_autocorrelation_curves.md) |
-| 790 | `text` | — | 1 | — | [docs/manual/fit_of_autocorrelation_curves.md](/manual/fit_of_autocorrelation_curves.md) |
-| 791 | `text` | — | 1 | — | [docs/manual/fit_of_fcs_curve.md](/manual/fit_of_fcs_curve.md) |
-| 792 | `text` | — | 1 | — | [docs/manual/fit_plots.md](/manual/fit_plots.md) |
-| 793 | `text` | — | 1 | — | [docs/manual/fit_plots.md](/manual/fit_plots.md) |
-| 794 | `text` | — | 1 | — | [docs/manual/fit_plots.md](/manual/fit_plots.md) |
-| 795 | `text` | — | 5 | — | [docs/manual/fluorescence_lifetime.md](/manual/fluorescence_lifetime.md) |
-| 796 | `text` | — | 26 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 797 | `text` | — | 26 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 798 | `text` | — | 14 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 799 | `text` | — | 21 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 800 | `text` | — | 71 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 801 | `text` | — | 3 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 802 | `text` | — | 2 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
-| 803 | `text` | — | 1 | — | [docs/manual/global_fit_of_auto_and_crosscorrelation_curves.md](/manual/global_fit_of_auto_and_crosscorrelation_curves.md) |
-| 804 | `text` | — | 1 | — | [docs/manual/global_fit_of_fcs_curves.md](/manual/global_fit_of_fcs_curves.md) |
-| 805 | `text` | — | 20 | — | [docs/manual/index.md](/manual/index.md) |
-| 806 | `text` | — | 10 | — | [docs/manual/index.md](/manual/index.md) |
-| 807 | `text` | — | 4 | — | [docs/manual/index.md](/manual/index.md) |
-| 808 | `text` | — | 8 | — | [docs/manual/index.md](/manual/index.md) |
-| 809 | `text` | — | 7 | — | [docs/manual/index.md](/manual/index.md) |
-| 810 | `text` | — | 23 | — | [docs/manual/index.md](/manual/index.md) |
-| 811 | `text` | — | 9 | — | [docs/manual/index.md](/manual/index.md) |
-| 812 | `text` | — | 8 | — | [docs/manual/index.md](/manual/index.md) |
-| 813 | `text` | — | 15 | — | [docs/manual/index.md](/manual/index.md) |
-| 814 | `text` | — | 4 | — | [docs/manual/index.md](/manual/index.md) |
-| 815 | `text` | — | 1 | — | [docs/manual/influence_of_fret_efficiency.md](/manual/influence_of_fret_efficiency.md) |
-| 816 | `text` | — | 1 | — | [docs/manual/influence_of_triplet_blinking.md](/manual/influence_of_triplet_blinking.md) |
-| 817 | `text` | — | 6 | — | [docs/manual/introduction.md](/manual/introduction.md) |
-| 818 | `text` | — | 1 | — | [docs/manual/linking_parameters.md](/manual/linking_parameters.md) |
-| 819 | `text` | — | 1 | — | [docs/manual/linking_parameters.md](/manual/linking_parameters.md) |
-| 820 | `text` | — | 1 | — | [docs/manual/loading__plotting_data.md](/manual/loading__plotting_data.md) |
-| 821 | `text` | — | 1 | — | [docs/manual/loading_and_setting_up_the_egfp_data_set.md](/manual/loading_and_setting_up_the_egfp_data_set.md) |
-| 822 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 823 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 824 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 825 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 826 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 827 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 828 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 829 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 830 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 831 | `text` | — | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
-| 832 | `text` | — | 2 | — | [docs/manual/model_scores.md](/manual/model_scores.md) |
-| 833 | `text` | — | 3 | — | [docs/manual/model_scores.md](/manual/model_scores.md) |
-| 834 | `text` | — | 1 | — | [docs/manual/model_scores.md](/manual/model_scores.md) |
-| 835 | `text` | — | 1 | — | [docs/manual/model_scoring_range.md](/manual/model_scoring_range.md) |
-| 836 | `text` | — | 2 | — | [docs/manual/model_scoring_range.md](/manual/model_scoring_range.md) |
-| 837 | `text` | — | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
-| 838 | `text` | — | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
-| 839 | `text` | — | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
-| 840 | `text` | — | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
-| 841 | `text` | — | 1 | — | [docs/manual/nuisances.md](/manual/nuisances.md) |
-| 842 | `text` | — | 1 | — | [docs/manual/nuisances.md](/manual/nuisances.md) |
-| 843 | `text` | — | 1 | — | [docs/manual/nuisances.md](/manual/nuisances.md) |
-| 844 | `text` | — | 1 | — | [docs/manual/overview.md](/manual/overview.md) |
-| 845 | `text` | — | 1 | — | [docs/manual/overview.md](/manual/overview.md) |
-| 846 | `text` | — | 1 | — | [docs/manual/overview.md](/manual/overview.md) |
-| 847 | `text` | — | 1 | — | [docs/manual/overview_2.md](/manual/overview_2.md) |
-| 848 | `text` | — | 1 | — | [docs/manual/overview_3.md](/manual/overview_3.md) |
-| 849 | `text` | — | 1 | — | [docs/manual/overview_3.md](/manual/overview_3.md) |
-| 850 | `text` | — | 2 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
-| 851 | `text` | — | 2 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
-| 852 | `text` | — | 1 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
-| 853 | `text` | — | 25 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
-| 854 | `text` | — | 5 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
-| 855 | `text` | — | 1 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
-| 856 | `text` | — | 2 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
-| 857 | `text` | — | 5 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
-| 858 | `text` | — | 1 | — | [docs/manual/parameter_scan.md](/manual/parameter_scan.md) |
-| 859 | `text` | — | 1 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 860 | `text` | — | 8 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 861 | `text` | — | 2 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 862 | `text` | — | 2 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 863 | `text` | — | 1 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 864 | `text` | — | 3 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 865 | `text` | — | 2 | — | [docs/manual/parameters.md](/manual/parameters.md) |
-| 866 | `text` | — | 3 | — | [docs/manual/partial_donordonor_energy_migration.md](/manual/partial_donordonor_energy_migration.md) |
-| 867 | `text` | — | 5 | — | [docs/manual/partial_donordonor_energy_migration.md](/manual/partial_donordonor_energy_migration.md) |
-| 868 | `text` | — | 1 | — | [docs/manual/reference_curves.md](/manual/reference_curves.md) |
-| 869 | `text` | — | 1 | — | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md](/manual/reusing_the_parameter_to_analyse_the_actual_samples.md) |
-| 870 | `text` | — | 1 | — | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md](/manual/reusing_the_parameter_to_analyse_the_actual_samples.md) |
-| 871 | `text` | — | 8 | — | [docs/manual/saving__exporting_the_results.md](/manual/saving__exporting_the_results.md) |
-| 872 | `xml` | — | 14 | — | [docs/manual/saving_and_loading_networks.md](/manual/saving_and_loading_networks.md) |
-| 873 | `text` | — | 1 | — | [docs/manual/saving_and_loading_networks.md](/manual/saving_and_loading_networks.md) |
-| 874 | `text` | — | 1 | — | [docs/manual/saving_and_loading_networks.md](/manual/saving_and_loading_networks.md) |
-| 875 | `text` | — | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
-| 876 | `text` | — | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
-| 877 | `text` | — | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
-| 878 | `text` | — | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
-| 879 | `text` | — | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
-| 880 | `text` | — | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
-| 881 | `text` | — | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
-| 882 | `text` | — | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
-| 883 | `text` | — | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
-| 884 | `text` | — | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
-| 885 | `text` | — | 1 | — | [docs/manual/step_1_approximating_gfactor_with_small_fluorophore.md](/manual/step_1_approximating_gfactor_with_small_fluorophore.md) |
-| 886 | `text` | — | 1 | — | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md) |
-| 887 | `text` | — | 1 | — | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md) |
-| 888 | `text` | — | 1 | — | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md) |
-| 889 | `text` | — | 1 | — | [docs/manual/two_single_files.md](/manual/two_single_files.md) |
-| 890 | `text` | — | 1 | — | [docs/manual/vv_vh_format.md](/manual/vv_vh_format.md) |
-| 891 | `text` | — | 4 | — | [docs/manual/wormlike_chain.md](/manual/wormlike_chain.md) |
-| 892 | `python` | — | 12 | compiled | [docs/reference/file_formats/becker_hickl_files.md](/reference/file_formats/becker_hickl_files.md) |
-| 893 | `python` | — | 3 | compiled | [docs/reference/file_formats/becker_hickl_files.md](/reference/file_formats/becker_hickl_files.md) |
-| 894 | `python` | — | 2 | compiled | [docs/reference/file_formats/becker_hickl_files.md](/reference/file_formats/becker_hickl_files.md) |
-| 895 | `python` | — | 16 | compiled | [docs/reference/file_formats/becker_hickl_set.md](/reference/file_formats/becker_hickl_set.md) |
-| 896 | `python` | — | 2 | compiled | [docs/reference/file_formats/becker_hickl_set.md](/reference/file_formats/becker_hickl_set.md) |
-| 897 | `text` | — | 7 | — | [docs/reference/file_formats/becker_hickl_set.md](/reference/file_formats/becker_hickl_set.md) |
-| 898 | `python` | — | 11 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 899 | `python` | — | 4 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 900 | `python` | — | 5 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 901 | `python` | — | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 902 | `python` | — | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 903 | `python` | — | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 904 | `text` | — | 6 | — | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 905 | `python` | — | 5 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 906 | `python` | — | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 907 | `python` | — | 9 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 908 | `text` | — | 7 | — | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
-| 909 | `text` | — | 4 | — | [docs/reference/file_formats/index.md](/reference/file_formats/index.md) |
-| 910 | `python` | — | 6 | compiled | [docs/reference/file_formats/structure_files.md](/reference/file_formats/structure_files.md) |
-| 911 | `python` | — | 5 | compiled | [docs/reference/file_formats/tcspc_files.md](/reference/file_formats/tcspc_files.md) |
-| 912 | `python` | — | 5 | compiled | [docs/reference/file_formats/tcspc_files.md](/reference/file_formats/tcspc_files.md) |
-| 913 | `python` | — | 7 | compiled | [docs/reference/file_formats/tcspc_files.md](/reference/file_formats/tcspc_files.md) |
-| 914 | `text` | — | 12 | — | [docs/reference/index.md](/reference/index.md) |
-| 915 | `bash` | — | 10 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
-| 916 | `bash` | — | 12 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
-| 917 | `bash` | — | 4 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
-| 918 | `bash` | — | 3 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
-| 919 | `bash` | — | 6 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
-| 920 | `python` | — | 4 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
-| 921 | `python` | — | 9 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
-| 922 | `python` | — | 4 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
-| 923 | `python` | — | 7 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
-| 924 | `text` | — | 4 | — | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
-| 925 | `yaml` | — | 3 | — | [docs/reference/settings.md](/reference/settings.md) |
-| 926 | `json` | — | 32 | — | [docs/reference/settings.md](/reference/settings.md) |
-| 927 | `python` | — | 2 | compiled | [docs/reference/user_models.md](/reference/user_models.md) |
-| 928 | `python` | — | 21 | compiled | [docs/reference/user_models.md](/reference/user_models.md) |
-| 929 | `yaml` | — | 4 | — | [docs/reference/user_models.md](/reference/user_models.md) |
-| 930 | `python` | — | 7 | compiled | [docs/reference/user_models.md](/reference/user_models.md) |
+| 1 | `text` | Installation and environment | 3 | — | [docs/getting_started/index.md](/getting_started/index.md) |
+| 2 | `text` | Installation and environment | 4 | — | [docs/getting_started/index.md](/getting_started/index.md) |
+| 3 | `text` | Colours tell the kind of task | 5 | — | [docs/getting_started/index.md](/getting_started/index.md) |
+| 4 | `text` | Fonts | 4 | — | [docs/getting_started/settings.md](/getting_started/settings.md) |
+| 5 | `text` | Fonts | 4 | — | [docs/getting_started/settings.md](/getting_started/settings.md) |
+| 6 | `yaml` | Without the window | 6 | — | [docs/getting_started/settings.md](/getting_started/settings.md) |
+| 7 | `python` | Without the window | 3 | compiled | [docs/getting_started/settings.md](/getting_started/settings.md) |
+| 8 | `text` | What happens before emission | 7 | — | [docs/fundamentals/absorption_and_emission.md](/fundamentals/absorption_and_emission.md) |
+| 9 | `text` | Mechanism | 8 | — | [docs/fundamentals/energy_transfer.md](/fundamentals/energy_transfer.md) |
+| 10 | `text` | The excited state | 6 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
+| 11 | `text` | Orientation and transfer | 4 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
+| 12 | `text` | Probe and environment | 4 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
+| 13 | `text` | Measuring photons | 5 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
+| 14 | `text` | Reference | 3 | — | [docs/fundamentals/index.md](/fundamentals/index.md) |
+| 15 | `text` | Multi-exponential decays | 7 | — | [docs/fundamentals/lifetime_and_quantum_yield.md](/fundamentals/lifetime_and_quantum_yield.md) |
+| 16 | `text` | Rotational diffusion | 7 | — | [docs/fundamentals/polarization_and_rotation.md](/fundamentals/polarization_and_rotation.md) |
+| 17 | `text` | Collisional quenching and Stern–Volmer | 8 | — | [docs/fundamentals/quenching_and_photophysics.md](/fundamentals/quenching_and_photophysics.md) |
+| 18 | `text` | Upward curvature: the sphere of action | 11 | — | [docs/fundamentals/quenching_and_photophysics.md](/fundamentals/quenching_and_photophysics.md) |
+| 19 | `text` | Species mixtures | 12 | — | [docs/fundamentals/quenching_and_photophysics.md](/fundamentals/quenching_and_photophysics.md) |
+| 20 | `text` | The rate is not constant in time | 10 | — | [docs/fundamentals/quenching_mechanisms.md](/fundamentals/quenching_mechanisms.md) |
+| 21 | `text` | Nucleobase-specific quenching | 14 | — | [docs/fundamentals/quenching_mechanisms.md](/fundamentals/quenching_mechanisms.md) |
+| 22 | `text` | The three decay laws | 9 | — | [docs/concepts/acceptor_density.md](/concepts/acceptor_density.md) |
+| 23 | `python` | Using it headlessly | 12 | compiled | [docs/concepts/acceptor_density.md](/concepts/acceptor_density.md) |
+| 24 | `text` | Three AV-to-distance measures | 4 | — | [docs/concepts/accessible_volume.md](/concepts/accessible_volume.md) |
+| 25 | `text` | 3. The donor lifetime and the static FRET line | 7 | — | [docs/concepts/accurate_fret.md](/concepts/accurate_fret.md) |
+| 26 | `text` | The rotational-correlation-time decay | 4 | — | [docs/concepts/anisotropy.md](/concepts/anisotropy.md) |
+| 27 | `text` | The shot-noise floor: a static molecule's expected scatter | 4 | — | [docs/concepts/bva.md](/concepts/bva.md) |
+| 28 | `text` | Relevance: the objective costs what moved | 6 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
+| 29 | `text` | What treewidth means | 4 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
+| 30 | `python` | Reading the structure report | 4 | compiled | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
+| 31 | `text` | Reading the structure report | 13 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
+| 32 | `text` | Reading the structure report | 5 | — | [docs/concepts/factor_graphs.md](/concepts/factor_graphs.md) |
+| 33 | `text` | The anatomy of a correlation curve | 4 | — | [docs/concepts/fcs_correlation.md](/concepts/fcs_correlation.md) |
+| 34 | `text` | Excitation rate | 4 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
+| 35 | `text` | From the scheme to G(τ) | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
+| 36 | `text` | From the scheme to G(τ) | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
+| 37 | `text` | Reading the radial profile | 1 | — | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
+| 38 | `python` | Determining a scheme: fit the power series, not one curve | 10 | compiled | [docs/concepts/fcs_saturation.md](/concepts/fcs_saturation.md) |
+| 39 | `yaml` | What ChiSurf uses, and how to change it | 4 | — | [docs/concepts/fitting_objectives.md](/concepts/fitting_objectives.md) |
+| 40 | `python` | Per-fit override | 2 | compiled | [docs/concepts/fitting_objectives.md](/concepts/fitting_objectives.md) |
+| 41 | `text` | Which threshold? | 4 | — | [docs/concepts/frc_resolution.md](/concepts/frc_resolution.md) |
+| 42 | `text` | Transfer rate and efficiency | 4 | — | [docs/concepts/fret.md](/concepts/fret.md) |
+| 43 | `text` | Worked numbers | 6 | — | [docs/concepts/image_correlation.md](/concepts/image_correlation.md) |
+| 44 | `text` | The universal semicircle | 4 | — | [docs/concepts/imaging_flim_phasor.md](/concepts/imaging_flim_phasor.md) |
+| 45 | `text` | Core methods | 11 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 46 | `text` | Fitting and inference | 7 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 47 | `text` | Correlation methods | 9 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 48 | `text` | Single-molecule FRET (bursts) | 12 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 49 | `text` | Dynamics (hidden Markov) | 7 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 50 | `text` | Imaging and resolution | 11 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 51 | `text` | Exploration & selection | 5 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 52 | `text` | Data and provenance | 9 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 53 | `text` | Structure | 9 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 54 | `text` | Simulation | 4 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 55 | `text` | Recreational tools | 3 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 56 | `text` | Application information | 6 | — | [docs/concepts/index.md](/concepts/index.md) |
+| 57 | `text` | Which average applies | 9 | — | [docs/concepts/kappa2_orientation.md](/concepts/kappa2_orientation.md) |
+| 58 | `text` | Entropy as the criterion | 10 | — | [docs/concepts/maximum_entropy.md](/concepts/maximum_entropy.md) |
+| 59 | `text` | Photons do not sample a burst uniformly in time | 1 | — | [docs/concepts/mfd_fitting.md](/concepts/mfd_fitting.md) |
+| 60 | `text` | Doing it in ChiSurf | 7 | — | [docs/concepts/molecular_surfaces.md](/concepts/molecular_surfaces.md) |
+| 61 | `text` | Doing it in ChiSurf | 3 | — | [docs/concepts/molecular_surfaces.md](/concepts/molecular_surfaces.md) |
+| 62 | `python` | Doing it in ChiSurf | 9 | compiled | [docs/concepts/molecular_surfaces.md](/concepts/molecular_surfaces.md) |
+| 63 | `text` | Three properties nothing else has | 6 | — | [docs/concepts/pair_correlation.md](/concepts/pair_correlation.md) |
+| 64 | `text` | STICS: track where the peak sits | 5 | — | [docs/concepts/pair_correlation.md](/concepts/pair_correlation.md) |
+| 65 | `text` | What limits the arrows | 5 | — | [docs/concepts/pair_correlation.md](/concepts/pair_correlation.md) |
+| 66 | `python` | Finding the minimum before describing it | 3 | compiled | [docs/concepts/parameter_uncertainty.md](/concepts/parameter_uncertainty.md) |
+| 67 | `python` | One way to ask | 11 | compiled | [docs/concepts/parameter_uncertainty.md](/concepts/parameter_uncertainty.md) |
+| 68 | `text` | Why the histogram carries brightness | 4 | — | [docs/concepts/pch_fida.md](/concepts/pch_fida.md) |
+| 69 | `python` | What ChiSurf writes, and what it only reads | 4 | compiled | [docs/concepts/photon_container.md](/concepts/photon_container.md) |
+| 70 | `python` | Where did this number come from | 4 | compiled | [docs/concepts/photon_container.md](/concepts/photon_container.md) |
+| 71 | `text` | Where did this number come from | 14 | — | [docs/concepts/photon_container.md](/concepts/photon_container.md) |
+| 72 | `text` | Average lifetimes and fractions | 4 | — | [docs/concepts/tcspc_lifetime.md](/concepts/tcspc_lifetime.md) |
+| 73 | `text` | Average lifetimes and fractions | 6 | — | [docs/concepts/tcspc_lifetime.md](/concepts/tcspc_lifetime.md) |
+| 74 | `text` | In ChiSurf | 6 | — | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
+| 75 | `python` | In ChiSurf | 10 | compiled | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
+| 76 | `text` | In ChiSurf | 11 | — | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
+| 77 | `python` | In ChiSurf | 4 | compiled | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
+| 78 | `text` | Result | 4 | — | [docs/guides/01_fret_2cde.md](/guides/01_fret_2cde.md) |
+| 79 | `text` | In the GUI: the same-molecule probability | 8 | — | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
+| 80 | `python` | Headless | 10 | compiled | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
+| 81 | `python` | Headless | 3 | compiled | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
+| 82 | `text` | Result | 4 | — | [docs/guides/02_recurrence_rasp.md](/guides/02_recurrence_rasp.md) |
+| 83 | `python` | In ChiSurf | 13 | compiled | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
+| 84 | `text` | In ChiSurf | 4 | — | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
+| 85 | `text` | In ChiSurf | 4 | — | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
+| 86 | `text` | Result | 4 | — | [docs/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md) |
+| 87 | `text` | The PCH tool (classical PCH, not FIDA) | 6 | — | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
+| 88 | `text` | FIDA in the PCH experiment | 7 | — | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
+| 89 | `python` | Headless | 10 | compiled | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
+| 90 | `text` | Result | 4 | — | [docs/guides/04_fida_pch.md](/guides/04_fida_pch.md) |
+| 91 | `text` | In the GUI: the FCS model | 9 | — | [docs/guides/05_enderlein_mdf_two_focus_fcs.md](/guides/05_enderlein_mdf_two_focus_fcs.md) |
+| 92 | `python` | Headless | 8 | compiled | [docs/guides/05_enderlein_mdf_two_focus_fcs.md](/guides/05_enderlein_mdf_two_focus_fcs.md) |
+| 93 | `text` | Result | 4 | — | [docs/guides/05_enderlein_mdf_two_focus_fcs.md](/guides/05_enderlein_mdf_two_focus_fcs.md) |
+| 94 | `python` | In ChiSurf | 9 | compiled | [docs/guides/06_nsfcs_second_order.md](/guides/06_nsfcs_second_order.md) |
+| 95 | `text` | Result | 4 | — | [docs/guides/06_nsfcs_second_order.md](/guides/06_nsfcs_second_order.md) |
+| 96 | `python` | In ChiSurf | 12 | compiled | [docs/guides/07_rcm_calibration.md](/guides/07_rcm_calibration.md) |
+| 97 | `text` | In ChiSurf | 4 | — | [docs/guides/07_rcm_calibration.md](/guides/07_rcm_calibration.md) |
+| 98 | `text` | Result | 4 | — | [docs/guides/07_rcm_calibration.md](/guides/07_rcm_calibration.md) |
+| 99 | `text` | In ChiSurf | 11 | — | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
+| 100 | `text` | In ChiSurf | 6 | — | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
+| 101 | `python` | Headless | 17 | compiled | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
+| 102 | `text` | Result | 4 | — | [docs/guides/08_burst_variance_analysis.md](/guides/08_burst_variance_analysis.md) |
+| 103 | `text` | In ChiSurf | 10 | — | [docs/guides/09_diffusion_fcs.md](/guides/09_diffusion_fcs.md) |
+| 104 | `python` | Headless / scripting | 8 | compiled | [docs/guides/09_diffusion_fcs.md](/guides/09_diffusion_fcs.md) |
+| 105 | `text` | Result | 5 | — | [docs/guides/09_diffusion_fcs.md](/guides/09_diffusion_fcs.md) |
+| 106 | `text` | 1. Load a file | 7 | — | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
+| 107 | `python` | 5. Excitation regions and multiple lasers | 11 | compiled | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
+| 108 | `bash` | Command line and Python | 2 | — | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
+| 109 | `python` | Command line and Python | 3 | compiled | [docs/guides/100_alex_creator.md](/guides/100_alex_creator.md) |
+| 110 | `text` | One window for the TTTR file tools (TTTR Tools) | 6 | — | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
+| 111 | `text` | Using the window | 7 | — | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
+| 112 | `text` | Using the window | 7 | — | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
+| 113 | `python` | Using the window | 16 | compiled | [docs/guides/101_tttr_toolbox.md](/guides/101_tttr_toolbox.md) |
+| 114 | `bash` | Administering the measurement database: MMFDB Admin | 2 | — | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
+| 115 | `text` | Administering the measurement database: MMFDB Admin | 5 | — | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
+| 116 | `text` | 7. Demo data | 6 | — | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
+| 117 | `python` | Headless and Python | 7 | compiled | [docs/guides/102_mmfdb_admin.md](/guides/102_mmfdb_admin.md) |
+| 118 | `text` | Application details for a support request | 4 | — | [docs/guides/103_application_identity.md](/guides/103_application_identity.md) |
+| 119 | `python` | Application details for a support request | 5 | compiled | [docs/guides/103_application_identity.md](/guides/103_application_identity.md) |
+| 120 | `text` | Light path simulator: crosstalk and R0 of an optical setup | 8 | — | [docs/guides/104_lightpath_simulator.md](/guides/104_lightpath_simulator.md) |
+| 121 | `bash` | 5. Headless | 6 | — | [docs/guides/104_lightpath_simulator.md](/guides/104_lightpath_simulator.md) |
+| 122 | `python` | 5. Headless | 9 | compiled | [docs/guides/104_lightpath_simulator.md](/guides/104_lightpath_simulator.md) |
+| 123 | `bash` | 2. Run it | 1 | — | [docs/guides/106_protein_monte_carlo.md](/guides/106_protein_monte_carlo.md) |
+| 124 | `python` | 3. Python | 13 | compiled | [docs/guides/106_protein_monte_carlo.md](/guides/106_protein_monte_carlo.md) |
+| 125 | `text` | 4. Read the result | 6 | — | [docs/guides/106_protein_monte_carlo.md](/guides/106_protein_monte_carlo.md) |
+| 126 | `text` | 1. HeteroFRET | 5 | — | [docs/guides/107_fret_calculator.md](/guides/107_fret_calculator.md) |
+| 127 | `python` | 3. Python | 8 | compiled | [docs/guides/107_fret_calculator.md](/guides/107_fret_calculator.md) |
+| 128 | `text` | 1. Open a file | 6 | — | [docs/guides/108_photon_table.md](/guides/108_photon_table.md) |
+| 129 | `python` | 4. Python | 8 | compiled | [docs/guides/108_photon_table.md](/guides/108_photon_table.md) |
+| 130 | `python` | 4. Python | 4 | compiled | [docs/guides/108_photon_table.md](/guides/108_photon_table.md) |
+| 131 | `text` | In ChiSurf | 9 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
+| 132 | `python` | In ChiSurf | 14 | compiled | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
+| 133 | `text` | Result | 4 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
+| 134 | `text` | VV/VH Anisotropy Decay (deprecated) | 4 | — | [docs/guides/10_lifetime_anisotropy_fitting.md](/guides/10_lifetime_anisotropy_fitting.md) |
+| 135 | `python` | In ChiSurf | 10 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 136 | `text` | Fitting in the GUI | 8 | — | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 137 | `python` | Reading bursts | 6 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 138 | `python` | Fitting a kinetic scheme | 9 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 139 | `python` | Diagnostics | 6 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 140 | `python` | Measuring an exchange rate: several time bins, one rate | 9 | compiled | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 141 | `text` | Result | 4 | — | [docs/guides/11_pda2c.md](/guides/11_pda2c.md) |
+| 142 | `python` | One measurement, one file | 7 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
+| 143 | `text` | Converting on drop | 7 | — | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
+| 144 | `python` | Converting on drop | 4 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
+| 145 | `python` | In ChiSurf | 17 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
+| 146 | `python` | In ChiSurf | 7 | compiled | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
+| 147 | `text` | Result | 4 | — | [docs/guides/12_handling_tttr_files.md](/guides/12_handling_tttr_files.md) |
+| 148 | `text` | Open the tool | 7 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
+| 149 | `text` | Open the tool | 10 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
+| 150 | `text` | Open the tool | 5 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
+| 151 | `python` | Headless | 5 | compiled | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
+| 152 | `python` | Headless | 6 | compiled | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
+| 153 | `text` | Result | 4 | — | [docs/guides/13_burst_identification.md](/guides/13_burst_identification.md) |
+| 154 | `text` | In the GUI: Accurate FRET | 10 | — | [docs/guides/14_multiparameter_es.md](/guides/14_multiparameter_es.md) |
+| 155 | `python` | Headless | 8 | compiled | [docs/guides/14_multiparameter_es.md](/guides/14_multiparameter_es.md) |
+| 156 | `text` | Result | 4 | — | [docs/guides/14_multiparameter_es.md](/guides/14_multiparameter_es.md) |
+| 157 | `text` | In ChiSurf | 8 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
+| 158 | `text` | In ChiSurf | 6 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
+| 159 | `python` | In ChiSurf | 8 | compiled | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
+| 160 | `text` | Result | 4 | — | [docs/guides/15_background_rates.md](/guides/15_background_rates.md) |
+| 161 | `python` | In ChiSurf | 23 | compiled | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
+| 162 | `text` | Burst-wise FCS | 8 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
+| 163 | `text` | Burst-wise FCS | 6 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
+| 164 | `python` | Burst-wise FCS | 12 | compiled | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
+| 165 | `text` | Result | 4 | — | [docs/guides/16_fret_fcs.md](/guides/16_fret_fcs.md) |
+| 166 | `python` | In ChiSurf | 6 | compiled | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 167 | `text` | The Filter Calculator | 5 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 168 | `text` | The Filter Calculator | 6 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 169 | `text` | The Filter Calculator | 5 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 170 | `python` | 2D-FLCS on many molecules, with error bars | 10 | compiled | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 171 | `bash` | 2D-FLCS on many molecules, with error bars | 2 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 172 | `python` | 2D-FLCS on many molecules, with error bars | 4 | compiled | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 173 | `text` | Instrument parameters | 4 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 174 | `text` | Result | 4 | — | [docs/guides/17_filtered_fcs.md](/guides/17_filtered_fcs.md) |
+| 175 | `python` | In ChiSurf | 9 | compiled | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
+| 176 | `text` | The lifetime-FCS simulator | 6 | — | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
+| 177 | `text` | Setting up species and kinetics in the GUI | 6 | — | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
+| 178 | `text` | Result | 4 | — | [docs/guides/18_tttr_simulation.md](/guides/18_tttr_simulation.md) |
+| 179 | `python` | In ChiSurf | 8 | compiled | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 180 | `bash` | In ChiSurf | 1 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 181 | `text` | The H2MM tool | 11 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 182 | `python` | Choosing a decoder | 4 | compiled | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 183 | `bash` | Writing the states back into the photons | 1 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 184 | `text` | Per-state decays | 8 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 185 | `text` | Result | 4 | — | [docs/guides/19_h2mm_hidden_markov.md](/guides/19_h2mm_hidden_markov.md) |
+| 186 | `text` | The ebFRET window | 8 | — | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
+| 187 | `python` | Headless | 10 | compiled | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
+| 188 | `python` | Headless | 4 | compiled | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
+| 189 | `text` | Result | 6 | — | [docs/guides/20_ebfret_binned_hmm.md](/guides/20_ebfret_binned_hmm.md) |
+| 190 | `text` | Extracting patterns from non-burst photons | 6 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 191 | `python` | Extracting patterns from non-burst photons | 16 | compiled | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 192 | `python` | In ChiSurf | 14 | compiled | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 193 | `python` | Measured IRF and background, Opt, Save fit | 11 | compiled | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 194 | `text` | Measured IRF and background, Opt, Save fit | 8 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 195 | `text` | Measured IRF and background, Opt, Save fit | 6 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 196 | `text` | Measured IRF and background, Opt, Save fit | 7 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 197 | `text` | Result | 9 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 198 | `text` | The lifetime of a state, not of a burst | 5 | — | [docs/guides/21_lifetime_from_bursts.md](/guides/21_lifetime_from_bursts.md) |
+| 199 | `python` | In ChiSurf | 12 | compiled | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
+| 200 | `text` | Trace Browser | 9 | — | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
+| 201 | `text` | Trace Browser | 6 | — | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
+| 202 | `python` | Trace Browser | 3 | compiled | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
+| 203 | `text` | Result | 4 | — | [docs/guides/22_binned_photon_traces.md](/guides/22_binned_photon_traces.md) |
+| 204 | `python` | In ChiSurf | 13 | compiled | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
+| 205 | `text` | The FPS JSON editor (ChiMOL's labelling window) | 8 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
+| 206 | `text` | The FPS JSON editor (ChiMOL's labelling window) | 4 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
+| 207 | `text` | The FPS JSON editor (ChiMOL's labelling window) | 5 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
+| 208 | `text` | Result | 4 | — | [docs/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) |
+| 209 | `python` | In ChiSurf | 8 | compiled | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 210 | `text` | Selecting pixels | 6 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 211 | `text` | Selecting pixels | 6 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 212 | `text` | Selecting pixels | 6 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 213 | `python` | Selecting pixels | 5 | compiled | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 214 | `text` | Result | 6 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 215 | `text` | The Intensity tool | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 216 | `text` | Mean micro-time, phasor and pixel-wise MLE | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 217 | `text` | Mean micro-time, phasor and pixel-wise MLE | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 218 | `text` | Mean micro-time, phasor and pixel-wise MLE | 3 | — | [docs/guides/24_scan_images.md](/guides/24_scan_images.md) |
+| 219 | `python` | In ChiSurf | 10 | compiled | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
+| 220 | `text` | In the Accurate FRET tool | 8 | — | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
+| 221 | `text` | In the Accurate FRET tool | 6 | — | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
+| 222 | `text` | Result | 8 | — | [docs/guides/25_rcm_from_fret_samples.md](/guides/25_rcm_from_fret_samples.md) |
+| 223 | `text` | In ChiSurf | 8 | — | [docs/guides/26_2d_peak_fitting.md](/guides/26_2d_peak_fitting.md) |
+| 224 | `python` | In ChiSurf | 9 | compiled | [docs/guides/26_2d_peak_fitting.md](/guides/26_2d_peak_fitting.md) |
+| 225 | `text` | Result | 7 | — | [docs/guides/26_2d_peak_fitting.md](/guides/26_2d_peak_fitting.md) |
+| 226 | `text` | In ChiSurf | 7 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
+| 227 | `text` | In ChiSurf | 8 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
+| 228 | `python` | In ChiSurf | 9 | compiled | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
+| 229 | `text` | In ChiSurf | 12 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
+| 230 | `python` | In ChiSurf | 17 | compiled | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
+| 231 | `text` | Result | 4 | — | [docs/guides/27_alex_smfret_workflow.md](/guides/27_alex_smfret_workflow.md) |
+| 232 | `text` | In ChiSurf | 10 | — | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
+| 233 | `text` | In ChiSurf | 5 | — | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
+| 234 | `python` | In ChiSurf | 14 | compiled | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
+| 235 | `text` | Result | 4 | — | [docs/guides/28_selecting_fret_populations.md](/guides/28_selecting_fret_populations.md) |
+| 236 | `text` | In ChiSurf | 8 | — | [docs/guides/29_fret_histogram_fitting.md](/guides/29_fret_histogram_fitting.md) |
+| 237 | `python` | In ChiSurf | 14 | compiled | [docs/guides/29_fret_histogram_fitting.md](/guides/29_fret_histogram_fitting.md) |
+| 238 | `text` | Result | 4 | — | [docs/guides/29_fret_histogram_fitting.md](/guides/29_fret_histogram_fitting.md) |
+| 239 | `python` | The steps | 20 | compiled | [docs/guides/30_h2mm_workflow_results.md](/guides/30_h2mm_workflow_results.md) |
+| 240 | `text` | Exploring the dwells | 10 | — | [docs/guides/30_h2mm_workflow_results.md](/guides/30_h2mm_workflow_results.md) |
+| 241 | `text` | Exploring the dwells | 4 | — | [docs/guides/30_h2mm_workflow_results.md](/guides/30_h2mm_workflow_results.md) |
+| 242 | `python` | In ChiSurf | 8 | compiled | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
+| 243 | `python` | In ChiSurf | 17 | compiled | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
+| 244 | `text` | In ChiSurf | 9 | — | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
+| 245 | `text` | Result | 4 | — | [docs/guides/31_h2mm_simulation_validation.md](/guides/31_h2mm_simulation_validation.md) |
+| 246 | `python` | In ChiSurf | 23 | compiled | [docs/guides/32_nsalex_lifetime.md](/guides/32_nsalex_lifetime.md) |
+| 247 | `text` | In ChiSurf | 9 | — | [docs/guides/32_nsalex_lifetime.md](/guides/32_nsalex_lifetime.md) |
+| 248 | `text` | Result | 5 | — | [docs/guides/32_nsalex_lifetime.md](/guides/32_nsalex_lifetime.md) |
+| 249 | `python` | In ChiSurf | 17 | compiled | [docs/guides/33_timestamps_and_bursts.md](/guides/33_timestamps_and_bursts.md) |
+| 250 | `text` | In ChiSurf | 11 | — | [docs/guides/33_timestamps_and_bursts.md](/guides/33_timestamps_and_bursts.md) |
+| 251 | `text` | Result | 7 | — | [docs/guides/33_timestamps_and_bursts.md](/guides/33_timestamps_and_bursts.md) |
+| 252 | `python` | In ChiSurf | 20 | compiled | [docs/guides/34_exporting_burst_data.md](/guides/34_exporting_burst_data.md) |
+| 253 | `text` | Result | 14 | — | [docs/guides/34_exporting_burst_data.md](/guides/34_exporting_burst_data.md) |
+| 254 | `text` | In ChiSurf | 9 | — | [docs/guides/35_combining_repeats.md](/guides/35_combining_repeats.md) |
+| 255 | `python` | In ChiSurf | 13 | compiled | [docs/guides/35_combining_repeats.md](/guides/35_combining_repeats.md) |
+| 256 | `text` | Result | 4 | — | [docs/guides/35_combining_repeats.md](/guides/35_combining_repeats.md) |
+| 257 | `python` | In ChiSurf | 10 | compiled | [docs/guides/36_multispot.md](/guides/36_multispot.md) |
+| 258 | `text` | Result | 4 | — | [docs/guides/36_multispot.md](/guides/36_multispot.md) |
+| 259 | `text` | Compute a LUT per channel and add it to the setup | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
+| 260 | `text` | It lands in the detector setup | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
+| 261 | `bash` | Headless (CLI / API) | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
+| 262 | `python` | Headless (CLI / API) | 6 | compiled | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
+| 263 | `text` | 2. Concepts | 4 | — | [docs/guides/37_tttr_microtime_lut.md](/guides/37_tttr_microtime_lut.md) |
+| 264 | `text` | 5. Read the results | 6 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
+| 265 | `text` | 9. Punctate signal? Count objects instead | 5 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
+| 266 | `text` | 9. Punctate signal? Count objects instead | 4 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
+| 267 | `text` | 10. Gate a population in the scatter | 7 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
+| 268 | `bash` | Headless / CLI | 4 | — | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
+| 269 | `python` | Python API | 12 | compiled | [docs/guides/38_colocalization.md](/guides/38_colocalization.md) |
+| 270 | `python` | 1. Fit something | 20 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 271 | `python` | 2. Attach a prior | 6 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 272 | `python` | 3. Sample the posterior | 8 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 273 | `python` | 4. Read the diagnostics before the answer | 6 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 274 | `text` | 4. Read the diagnostics before the answer | 3 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 275 | `python` | 4. Read the diagnostics before the answer | 2 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 276 | `python` | 6. Global fits | 8 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 277 | `python` | 6. Global fits | 10 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 278 | `python` | 7. Linked global fits: use `collapsed` | 4 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 279 | `python` | 8. Inspecting the structure of a global fit | 1 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 280 | `text` | 8. Inspecting the structure of a global fit | 5 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 281 | `text` | The Dependence tab, and why it is not the correlation tab | 6 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 282 | `text` | The Dependence tab, and why it is not the correlation tab | 4 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 283 | `python` | The Dependence tab, and why it is not the correlation tab | 2 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 284 | `python` | 9. Reusing a chain under a different prior | 10 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 285 | `text` | 10. Opening the chains in nDXplorer | 4 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 286 | `python` | 10. Opening the chains in nDXplorer | 4 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 287 | `python` | 11. Looking at the posterior instead of reading about it | 9 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 288 | `text` | 11. Looking at the posterior instead of reading about it | 5 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 289 | `python` | 11. Looking at the posterior instead of reading about it | 5 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 290 | `text` | 12. In the GUI | 6 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 291 | `python` | 12. In the GUI | 5 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 292 | `python` | 13. Asking directly, without picking an estimator first | 9 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 293 | `python` | 14. From a script, a macro or the server | 14 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 294 | `text` | 15. Error bars on the quantities you publish | 7 | — | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 295 | `python` | 15. Error bars on the quantities you publish | 2 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 296 | `python` | 15. Error bars on the quantities you publish | 1 | compiled | [docs/guides/39_parameter_uncertainty.md](/guides/39_parameter_uncertainty.md) |
+| 297 | `text` | Using it in the GUI | 13 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
+| 298 | `bash` | Using it from a terminal | 6 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
+| 299 | `yaml` | Skills: how it knows *how* | 6 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
+| 300 | `markdown` | Writing your own | 13 | — | [docs/guides/40_ai_assistant.md](/guides/40_ai_assistant.md) |
+| 301 | `text` | What it does | 8 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 302 | `text` | What it does | 8 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 303 | `text` | 3. Pick the dyes (and the setup) | 5 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 304 | `python` | 3. Pick the dyes (and the setup) | 5 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 305 | `text` | 6. Calibrate | 15 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 306 | `text` | 7. Read the plots | 7 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 307 | `text` | 7. Read the plots | 8 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 308 | `python` | Keeping a calibration | 5 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 309 | `bash` | Trying it without data (and checking it works) | 1 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 310 | `python` | Trying it without data (and checking it works) | 10 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 311 | `bash` | Head-less | 9 | — | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 312 | `python` | From Python | 21 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 313 | `python` | In the Global View | 7 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 314 | `python` | In the Global View | 6 | compiled | [docs/guides/41_accurate_fret.md](/guides/41_accurate_fret.md) |
+| 315 | `python` | A worked run against known truth | 25 | compiled | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
+| 316 | `text` | Fitting a kinetic scheme | 6 | — | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
+| 317 | `python` | Fitting a kinetic scheme | 11 | compiled | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
+| 318 | `python` | Uncertainties | 5 | compiled | [docs/guides/42_pda3c.md](/guides/42_pda3c.md) |
+| 319 | `text` | Measure | 8 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
+| 320 | `text` | Read the result | 5 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
+| 321 | `text` | Read the result | 6 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
+| 322 | `bash` | Headless | 2 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
+| 323 | `text` | Headless | 7 | — | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
+| 324 | `python` | Python | 8 | compiled | [docs/guides/43_drift_correction.md](/guides/43_drift_correction.md) |
+| 325 | `text` | The window | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 326 | `text` | Loading and looking | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 327 | `text` | Loading and looking | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 328 | `text` | Integrative (bead) models | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 329 | `text` | Integrative (bead) models | 8 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 330 | `text` | Integrative (bead) models | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 331 | `text` | RMF models from IMP | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 332 | `text` | Whether the camera follows the frame | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 333 | `text` | Whether the camera follows the frame | 9 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 334 | `text` | Choosing a resolution | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 335 | `text` | Voxel maps | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 336 | `text` | Voxel maps | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 337 | `text` | Simulating a map, and fitting a model into one | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 338 | `text` | Simulating a map, and fitting a model into one | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 339 | `text` | The Map panel | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 340 | `text` | Playing a trajectory | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 341 | `text` | Trajectories and holding part of a structure still | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 342 | `text` | Trajectories and holding part of a structure still | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 343 | `text` | Crystal symmetry | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 344 | `text` | Making it look good | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 345 | `text` | Making it look good | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 346 | `text` | Making it look good | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 347 | `text` | Seeing through a surface | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 348 | `text` | How finely the surface is built | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 349 | `text` | A picture behind the scene, so transparency reads | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 350 | `text` | A picture behind the scene, so transparency reads | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 351 | `text` | Clipping, and how to get out of it | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 352 | `text` | Every setting, in the view it changes | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 353 | `text` | How big the chrome draws | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 354 | `text` | Tuning a metaball | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 355 | `text` | Tidying and shielding | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 356 | `text` | Adding hydrogens | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 357 | `text` | Saving a session | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 358 | `text` | Organising the panel | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 359 | `text` | Organising the panel | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 360 | `text` | Organising the panel | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 361 | `text` | Organising the panel | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 362 | `text` | Organising the panel | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 363 | `text` | Organising the panel | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 364 | `text` | Selecting | 9 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 365 | `text` | How far a click spreads | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 366 | `text` | Drawing | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 367 | `text` | Drawing | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 368 | `text` | Measuring | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 369 | `text` | Measuring | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 370 | `text` | Measuring by clicking | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 371 | `text` | Polar contacts | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 372 | `text` | Polar contacts | 6 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 373 | `text` | Hydrogen-bond networks | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 374 | `text` | Where two chains touch | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 375 | `text` | Salt bridges, halogen bonds and pi interactions | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 376 | `text` | Clashes | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 377 | `text` | Mutating a residue | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 378 | `text` | Mutating a residue | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 379 | `text` | The mutagenesis wizard | 15 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 380 | `text` | The mutagenesis wizard | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 381 | `text` | Bonds | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 382 | `text` | Superposing structures | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 383 | `text` | Superposing structures | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 384 | `text` | Superposing structures | 2 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 385 | `text` | Presets — one command to a figure | 9 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 386 | `text` | Side chains that grow out of the ribbon | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 387 | `text` | Colouring by a computed quantity | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 388 | `text` | Colouring by a computed quantity | 7 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 389 | `text` | Showing a quantity as thickness | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 390 | `text` | Showing a quantity as thickness | 5 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 391 | `text` | Getting data in and out | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 392 | `text` | Getting data in and out | 1 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 393 | `text` | Getting data in and out | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 394 | `text` | Exporting the scene as a 3-D model | 3 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 395 | `text` | Images | 4 | — | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 396 | `python` | Headless and scripted use | 17 | compiled | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 397 | `python` | Headless and scripted use | 11 | compiled | [docs/guides/44_molecular_viewer.md](/guides/44_molecular_viewer.md) |
+| 398 | `text` | Open the tool | 8 | — | [docs/guides/45_scan_precision.md](/guides/45_scan_precision.md) |
+| 399 | `bash` | Headless | 4 | — | [docs/guides/45_scan_precision.md](/guides/45_scan_precision.md) |
+| 400 | `bash` | Launching | 5 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 401 | `python` | ndX in ChiSurf | 7 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 402 | `python` | Lines pushed from another tool | 5 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 403 | `text` | Lines pushed from another tool | 6 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 404 | `text` | Phasor plots are overlays | 4 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 405 | `text` | Referencing the phasor to the instrument and removing background | 4 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 406 | `text` | Referencing the phasor to the instrument and removing background | 2 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 407 | `text` | Referencing the phasor to the instrument and removing background | 4 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 408 | `python` | Fitting a constant: moving the data onto the curve | 7 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 409 | `python` | Fitting a constant: moving the data onto the curve | 14 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 410 | `python` | Curves that trace a line rather than evaluate one | 10 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 411 | `python` | Worked example: two smFRET populations and the static FRET line | 5 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 412 | `python` | Worked example: two smFRET populations and the static FRET line | 4 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 413 | `text` | Worked example: two smFRET populations and the static FRET line | 10 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 414 | `text` | Fit 2-D Gaussians to the populations on the map | 7 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 415 | `text` | Population-wise parameters: one value per population | 6 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 416 | `text` | Population-wise parameters: one value per population | 6 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 417 | `text` | Find the informative projections | 7 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 418 | `python` | Find the informative projections | 9 | compiled | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 419 | `text` | Session state in the measurement | 3 | — | [docs/guides/46_ndxplorer.md](/guides/46_ndxplorer.md) |
+| 420 | `text` | The workflow | 8 | — | [docs/guides/47_ndxplorer_bridges.md](/guides/47_ndxplorer_bridges.md) |
+| 421 | `python` | The workflow | 31 | compiled | [docs/guides/47_ndxplorer_bridges.md](/guides/47_ndxplorer_bridges.md) |
+| 422 | `text` | The region editor | 7 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 423 | `text` | The region editor | 8 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 424 | `text` | The single-molecule imaging workflow | 9 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 425 | `python` | The single-molecule imaging workflow | 2 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 426 | `bash` | Headless | 2 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 427 | `text` | Headless | 4 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 428 | `python` | Python | 28 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 429 | `python` | Python | 13 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 430 | `python` | Python | 13 | compiled | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 431 | `text` | Region MLE: the demo's fit assumptions | 5 | — | [docs/guides/48_regions.md](/guides/48_regions.md) |
+| 432 | `text` | Open the tool | 10 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 433 | `text` | Open the tool | 9 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 434 | `text` | The transition-time scan | 9 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 435 | `bash` | Headless | 4 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 436 | `bash` | Headless | 2 | — | [docs/guides/49_photon_by_photon_kinetics.md](/guides/49_photon_by_photon_kinetics.md) |
+| 437 | `text` | Open the tool | 8 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
+| 438 | `text` | 2. Link | 8 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
+| 439 | `bash` | Headless | 4 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
+| 440 | `bash` | Headless | 2 | — | [docs/guides/50_particle_tracking.md](/guides/50_particle_tracking.md) |
+| 441 | `text` | Open the tool | 7 | — | [docs/guides/51_frc_resolution.md](/guides/51_frc_resolution.md) |
+| 442 | `bash` | Headless | 3 | — | [docs/guides/51_frc_resolution.md](/guides/51_frc_resolution.md) |
+| 443 | `text` | Doing it | 7 | — | [docs/guides/52_send_bursts_to_analysis.md](/guides/52_send_bursts_to_analysis.md) |
+| 444 | `json` | Advertising another analysis | 13 | — | [docs/guides/52_send_bursts_to_analysis.md](/guides/52_send_bursts_to_analysis.md) |
+| 445 | `python` | Headless | 10 | compiled | [docs/guides/52_send_bursts_to_analysis.md](/guides/52_send_bursts_to_analysis.md) |
+| 446 | `text` | What counts as a change | 1 | — | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
+| 447 | `text` | What counts as a change | 9 | — | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
+| 448 | `json` | The stamp files | 16 | — | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
+| 449 | `python` | Forcing a recomputation | 3 | compiled | [docs/guides/53_reusing_results.md](/guides/53_reusing_results.md) |
+| 450 | `text` | Open the tool | 10 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 451 | `text` | Load a trace | 4 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 452 | `text` | Choose the number of states | 5 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 453 | `text` | Read the result | 7 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 454 | `bash` | Headless | 2 | — | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 455 | `python` | Headless | 26 | compiled | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 456 | `python` | Headless | 2 | compiled | [docs/guides/54_hidden_markov_models.md](/guides/54_hidden_markov_models.md) |
+| 457 | `text` | The tool | 8 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 458 | `bash` | The tool | 2 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 459 | `python` | The tool | 3 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 460 | `python` | The cheap reading: a pCF curve from a carpet you already have | 12 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 461 | `python` | The real thing: position-resolved pCF | 14 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 462 | `text` | The real thing: position-resolved pCF | 8 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 463 | `python` | A line scan | 4 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 464 | `python` | The arrows: a velocity field | 7 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 465 | `text` | The arrows: a velocity field | 6 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 466 | `python` | The arrows: a velocity field | 6 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 467 | `python` | The second route, for a cross-check | 4 | compiled | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 468 | `bash` | Regenerating the figures | 1 | — | [docs/guides/55_pair_correlation.md](/guides/55_pair_correlation.md) |
+| 469 | `text` | 4. Read the four outputs | 9 | — | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
+| 470 | `json` | 5. Build your own scheme | 10 | — | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
+| 471 | `bash` | 6. Headless | 8 | — | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
+| 472 | `python` | 7. From the Python API | 12 | compiled | [docs/guides/56_fcs_saturation.md](/guides/56_fcs_saturation.md) |
+| 473 | `text` | 1. Load the folder | 4 | — | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
+| 474 | `text` | 2. Fit the static model first | 9 | — | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
+| 475 | `text` | 2. Fit the static model first | 7 | — | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
+| 476 | `python` | 5. Headless | 13 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
+| 477 | `python` | 5. Headless | 10 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
+| 478 | `python` | 6. Try it on data whose answer you know | 10 | compiled | [docs/guides/57_mfd_fitting.md](/guides/57_mfd_fitting.md) |
+| 479 | `text` | 1. Open the step | 6 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 480 | `text` | 2. Look at the curve before choosing a threshold | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 481 | `text` | 5. Write the fused folder | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 482 | `text` | 5. Write the fused folder | 4 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 483 | `text` | 5. Write the fused folder | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 484 | `bash` | Headless | 5 | — | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 485 | `python` | Headless | 8 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 486 | `python` | Headless | 6 | compiled | [docs/guides/58_burst_fusion.md](/guides/58_burst_fusion.md) |
+| 487 | `python` | The first thing to know | 1 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
+| 488 | `text` | The first thing to know | 1 | — | [docs/guides/59_console.md](/guides/59_console.md) |
+| 489 | `python` | Reading a fit | 2 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
+| 490 | `python` | Reading a fit | 3 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
+| 491 | `text` | Reading a fit | 6 | — | [docs/guides/59_console.md](/guides/59_console.md) |
+| 492 | `text` | Turning what you did into a script | 1 | — | [docs/guides/59_console.md](/guides/59_console.md) |
+| 493 | `python` | Plotting | 3 | compiled | [docs/guides/59_console.md](/guides/59_console.md) |
+| 494 | `text` | Plotting | 6 | — | [docs/guides/59_console.md](/guides/59_console.md) |
+| 495 | `text` | 2. Open the parameter network | 10 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 496 | `text` | 3. Link the shared parameter | 4 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 497 | `text` | 4. Check that the link took effect | 7 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 498 | `python` | Headless: linking two fits | 25 | compiled | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 499 | `text` | Headless: linking two fits | 2 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 500 | `python` | Headless: linking two fits | 2 | compiled | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 501 | `python` | Headless: the joint fit | 9 | compiled | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 502 | `text` | Headless: the joint fit | 1 | — | [docs/guides/60_global_analysis.md](/guides/60_global_analysis.md) |
+| 503 | `text` | Step 2 — use your own dyes | 9 | — | [docs/guides/61_kappa2_distribution.md](/guides/61_kappa2_distribution.md) |
+| 504 | `python` | Headless | 8 | compiled | [docs/guides/61_kappa2_distribution.md](/guides/61_kappa2_distribution.md) |
+| 505 | `text` | Maximum-entropy decay analysis | 4 | — | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
+| 506 | `text` | Maximum-entropy decay analysis | 5 | — | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
+| 507 | `text` | Step 2 — run once, and distrust the answer | 16 | — | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
+| 508 | `python` | Headless | 10 | compiled | [docs/guides/62_maxent_decay.md](/guides/62_maxent_decay.md) |
+| 509 | `text` | How it got there | 11 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 510 | `text` | The settings are the recipe | 13 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 511 | `json` | Opening the tool that made a result | 5 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 512 | `python` | Verifying | 4 | compiled | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 513 | `bash` | Headless | 7 | — | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 514 | `python` | Headless | 11 | compiled | [docs/guides/63_pto_inspector.md](/guides/63_pto_inspector.md) |
+| 515 | `python` | Plots | 7 | compiled | [docs/guides/64_notebooks.md](/guides/64_notebooks.md) |
+| 516 | `text` | The kernel terminal | 4 | — | [docs/guides/64_notebooks.md](/guides/64_notebooks.md) |
+| 517 | `text` | The Acquisition fit window | 7 | — | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
+| 518 | `python` | The Acquisition fit window | 4 | compiled | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
+| 519 | `python` | Without a GUI | 25 | compiled | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
+| 520 | `python` | Without a GUI | 10 | compiled | [docs/guides/65_live_acquisition.md](/guides/65_live_acquisition.md) |
+| 521 | `text` | The simple workflow | 6 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
+| 522 | `text` | 3 — Alternation, measured rather than typed | 9 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
+| 523 | `text` | Titration | 9 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
+| 524 | `bash` | Headless | 4 | — | [docs/guides/66_alex_suite.md](/guides/66_alex_suite.md) |
+| 525 | `text` | Try it on data whose answer is known | 4 | — | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
+| 526 | `text` | Try it on data whose answer is known | 4 | — | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
+| 527 | `bash` | Headless | 1 | — | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
+| 528 | `python` | Headless | 9 | compiled | [docs/guides/67_number_and_brightness.md](/guides/67_number_and_brightness.md) |
+| 529 | `text` | Asking | 7 | — | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
+| 530 | `bash` | From the command line | 1 | — | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
+| 531 | `text` | From the command line | 7 | — | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
+| 532 | `python` | From Python | 6 | compiled | [docs/guides/70_ask_the_documentation.md](/guides/70_ask_the_documentation.md) |
+| 533 | `text` | Open the tool | 8 | — | [docs/guides/72_psf_calculator.md](/guides/72_psf_calculator.md) |
+| 534 | `python` | Headless | 12 | compiled | [docs/guides/72_psf_calculator.md](/guides/72_psf_calculator.md) |
+| 535 | `text` | Generate a decay | 7 | — | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
+| 536 | `text` | Correlate | 7 | — | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
+| 537 | `python` | Headless | 28 | compiled | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
+| 538 | `python` | Headless | 12 | compiled | [docs/guides/73_tttr_decay_and_correlation.md](/guides/73_tttr_decay_and_correlation.md) |
+| 539 | `text` | Open the tool | 9 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
+| 540 | `text` | Open a tool | 6 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
+| 541 | `text` | The tools | 4 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
+| 542 | `python` | Headless | 27 | compiled | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
+| 543 | `python` | Headless | 7 | compiled | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
+| 544 | `bash` | Headless | 1 | — | [docs/guides/74_intensity_traces_and_file_tools.md](/guides/74_intensity_traces_and_file_tools.md) |
+| 545 | `bash` | Open the tool | 1 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 546 | `text` | 1. Channel Definitions | 6 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 547 | `text` | 2. Files & Steps | 5 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 548 | `text` | 3. Photon / Burst Filter | 8 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 549 | `text` | 4. Correlator | 8 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 550 | `text` | 5. FCS Merger | 6 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 551 | `text` | 5. FCS Merger | 5 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 552 | `bash` | Converting correlation files | 2 | — | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 553 | `python` | Headless | 29 | compiled | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 554 | `python` | Headless | 6 | compiled | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 555 | `python` | Headless | 3 | compiled | [docs/guides/75_fcs_toolbox.md](/guides/75_fcs_toolbox.md) |
+| 556 | `text` | Open the tools | 4 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 557 | `text` | Settings | 9 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 558 | `text` | Settings | 6 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 559 | `text` | Reading the output | 5 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 560 | `text` | Synthetic Decay Generator | 6 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 561 | `text` | Synthetic Decay Generator | 7 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 562 | `text` | Synthetic Decay Generator | 5 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 563 | `bash` | Headless | 9 | — | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 564 | `python` | Headless | 22 | compiled | [docs/guides/76_decay_analysis_tools.md](/guides/76_decay_analysis_tools.md) |
+| 565 | `text` | Open the tool | 8 | — | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
+| 566 | `text` | Set it up | 8 | — | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
+| 567 | `python` | Headless | 13 | compiled | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
+| 568 | `python` | Headless | 19 | compiled | [docs/guides/77_phasor_calculator.md](/guides/77_phasor_calculator.md) |
+| 569 | `text` | Open the tool | 8 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 570 | `text` | 2. Loaded data (optional) | 5 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 571 | `text` | 4. Run | 7 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 572 | `python` | Headless | 23 | compiled | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 573 | `bash` | Headless | 3 | — | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 574 | `python` | Headless | 27 | compiled | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 575 | `python` | Native sampler progress callbacks | 10 | compiled | [docs/guides/78_model_comparison_and_batch.md](/guides/78_model_comparison_and_batch.md) |
+| 576 | `text` | HydroPro: diffusion coefficients from a structure | 5 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
+| 577 | `text` | Open the tool | 7 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
+| 578 | `text` | Run and read the result | 6 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
+| 579 | `python` | Headless | 10 | compiled | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
+| 580 | `text` | Headless | 18 | — | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
+| 581 | `python` | Headless | 3 | compiled | [docs/guides/79_hydropro.md](/guides/79_hydropro.md) |
+| 582 | `text` | Open the tool | 6 | — | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
+| 583 | `bash` | Headless | 6 | — | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
+| 584 | `python` | Headless | 7 | compiled | [docs/guides/80_quenching_estimator.md](/guides/80_quenching_estimator.md) |
+| 585 | `text` | Align | 5 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 586 | `text` | Convert | 5 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 587 | `text` | Remove Clashed | 5 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 588 | `text` | Energy Calc | 6 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 589 | `text` | FRET | 6 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 590 | `bash` | FRET | 2 | — | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 591 | `python` | Headless | 33 | compiled | [docs/guides/81_trajectory_tools.md](/guides/81_trajectory_tools.md) |
+| 592 | `text` | Open the tool | 8 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 593 | `text` | Start with your dye pair | 5 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 594 | `python` | Start with your dye pair | 11 | compiled | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 595 | `text` | Read the result | 4 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 596 | `text` | Where the lines go next | 4 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 597 | `bash` | Headless | 3 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 598 | `json` | Headless | 9 | — | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 599 | `python` | Headless | 16 | compiled | [docs/guides/82_fret_lines.md](/guides/82_fret_lines.md) |
+| 600 | `text` | 1. Open the Spectra Downloader | 4 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 601 | `text` | 1. Open the Spectra Downloader | 4 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 602 | `bash` | 3. Push to the MMFDB | 2 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 603 | `text` | 4. Compute R₀ | 7 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 604 | `python` | 4. Compute R₀ | 8 | compiled | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 605 | `python` | 6. Headless | 28 | compiled | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 606 | `bash` | 6. Headless | 5 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 607 | `text` | Narrow windows | 5 | — | [docs/guides/83_spectra_and_r0.md](/guides/83_spectra_and_r0.md) |
+| 608 | `text` | 1. Open the tool | 9 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 609 | `text` | 3. A real image | 5 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 610 | `text` | 3. A real image | 6 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 611 | `bash` | 6. Headless | 4 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 612 | `python` | 6. Headless | 10 | compiled | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 613 | `python` | 6. Headless | 5 | compiled | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 614 | `text` | Window and bright pixels | 4 | — | [docs/guides/84_spot_finder.md](/guides/84_spot_finder.md) |
+| 615 | `text` | 1. Where it is | 6 | — | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
+| 616 | `bash` | 4. Headless | 4 | — | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
+| 617 | `python` | 4. Headless | 17 | compiled | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
+| 618 | `text` | See also | 7 | — | [docs/guides/85_mfd_prepare.md](/guides/85_mfd_prepare.md) |
+| 619 | `text` | 1. Open the tool | 8 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
+| 620 | `text` | 2. The detector setup | 4 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
+| 621 | `text` | 4. Look at the image | 5 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
+| 622 | `bash` | 7. From the command line and Python | 4 | — | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
+| 623 | `python` | 7. From the command line and Python | 9 | compiled | [docs/guides/86_image_browser.md](/guides/86_image_browser.md) |
+| 624 | `text` | 1. The page | 7 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
+| 625 | `text` | 2. Typing into a table | 4 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
+| 626 | `python` | 4. From Python | 6 | compiled | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
+| 627 | `text` | 5. Edit the complete working definition | 5 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
+| 628 | `text` | 6. Independent reference calibration | 8 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
+| 629 | `text` | 6. Independent reference calibration | 6 | — | [docs/guides/87_channel_definition.md](/guides/87_channel_definition.md) |
+| 630 | `text` | 1. Docking and screening | 4 | — | [docs/guides/88_fret_docking.md](/guides/88_fret_docking.md) |
+| 631 | `text` | 1. Open the tool | 9 | — | [docs/guides/88_microtime_shifter.md](/guides/88_microtime_shifter.md) |
+| 632 | `bash` | Headless | 2 | — | [docs/guides/88_microtime_shifter.md](/guides/88_microtime_shifter.md) |
+| 633 | `python` | Headless | 5 | compiled | [docs/guides/88_microtime_shifter.md](/guides/88_microtime_shifter.md) |
+| 634 | `bash` | 1. Open the tool | 1 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
+| 635 | `text` | 1. Open the tool | 9 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
+| 636 | `text` | 3. Detector, channels and gates | 7 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
+| 637 | `python` | Headless | 11 | compiled | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
+| 638 | `python` | Headless | 13 | compiled | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
+| 639 | `text` | Timing when comparing earlier results | 7 | — | [docs/guides/89_microtime_histogram.md](/guides/89_microtime_histogram.md) |
+| 640 | `text` | 1. Open the tool | 5 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
+| 641 | `text` | 5. Package Manager | 5 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
+| 642 | `text` | 5. Package Manager | 4 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
+| 643 | `text` | 5. Package Manager | 5 | — | [docs/guides/90_updater.md](/guides/90_updater.md) |
+| 644 | `python` | Headless / Python | 2 | compiled | [docs/guides/90_updater.md](/guides/90_updater.md) |
+| 645 | `bash` | 1. Open the tool and load the fast reference | 1 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
+| 646 | `text` | 1. Open the tool and load the fast reference | 7 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
+| 647 | `text` | 4. Batch, export, archive | 6 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
+| 648 | `python` | Headless and Python | 9 | compiled | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
+| 649 | `bash` | Headless and Python | 1 | — | [docs/guides/91_vv_vh_g_factor.md](/guides/91_vv_vh_g_factor.md) |
+| 650 | `text` | 1. Open the tool and load a trace | 8 | — | [docs/guides/92_hmm_binned_traces.md](/guides/92_hmm_binned_traces.md) |
+| 651 | `python` | 4. Save and reuse | 7 | compiled | [docs/guides/92_hmm_binned_traces.md](/guides/92_hmm_binned_traces.md) |
+| 652 | `text` | 1. Open the tool and load a stack | 5 | — | [docs/guides/93_psf_determination.md](/guides/93_psf_determination.md) |
+| 653 | `python` | Headless and Python | 4 | compiled | [docs/guides/93_psf_determination.md](/guides/93_psf_determination.md) |
+| 654 | `text` | Audifier: photon streams as sound and as a waterfall | 4 | — | [docs/guides/94_tttr_audifier.md](/guides/94_tttr_audifier.md) |
+| 655 | `text` | Layout and saved preferences | 4 | — | [docs/guides/94_tttr_audifier.md](/guides/94_tttr_audifier.md) |
+| 656 | `text` | 1. The window | 5 | — | [docs/guides/95_games.md](/guides/95_games.md) |
+| 657 | `text` | Help, Restart and Guide | 7 | — | [docs/guides/95_games.md](/guides/95_games.md) |
+| 658 | `python` | 4. Python | 8 | compiled | [docs/guides/95_games.md](/guides/95_games.md) |
+| 659 | `text` | 1. Open the tool | 6 | — | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
+| 660 | `text` | 4. Read a failure | 5 | — | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
+| 661 | `bash` | From the command line and from Python | 1 | — | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
+| 662 | `python` | From the command line and from Python | 8 | compiled | [docs/guides/96_plugin_check.md](/guides/96_plugin_check.md) |
+| 663 | `text` | 1. The window | 5 | — | [docs/guides/97_settings_hub.md](/guides/97_settings_hub.md) |
+| 664 | `text` | 2. The destinations | 4 | — | [docs/guides/97_settings_hub.md](/guides/97_settings_hub.md) |
+| 665 | `text` | 2. The destinations | 5 | — | [docs/guides/97_settings_hub.md](/guides/97_settings_hub.md) |
+| 666 | `text` | CLSM Generator: a scan whose answer is known | 4 | — | [docs/guides/98_clsm_generator.md](/guides/98_clsm_generator.md) |
+| 667 | `text` | The imaging workflow in one window (Imaging Tools) | 5 | — | [docs/guides/98_imaging_tools.md](/guides/98_imaging_tools.md) |
+| 668 | `text` | 1. Open the hub | 7 | — | [docs/guides/98_imaging_tools.md](/guides/98_imaging_tools.md) |
+| 669 | `text` | 1. Choose the photons and the detector | 6 | — | [docs/guides/99_img_calibration.md](/guides/99_img_calibration.md) |
+| 670 | `python` | The correction | 6 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 671 | `text` | Where the factors come from | 10 | — | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 672 | `python` | 1. Light-path prior → data-optimized posterior | 10 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 673 | `python` | 2. Reference samples (donor-only, acceptor-only) | 8 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 674 | `python` | 3. The donor lifetime and the static FRET line | 5 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 675 | `python` | All three at once | 9 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 676 | `python` | The general case: crosstalk matrices | 13 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 677 | `python` | Naive vs. stable un-mixing | 2 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 678 | `python` | Preserving photon-counting statistics (integer "photon shuffling") | 4 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 679 | `python` | ndxplorer: stable / shuffle un-mixing | 8 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 680 | `python` | Per-pixel / FLIM imaging | 9 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 681 | `python` | Scalar multi-chromophore path | 4 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 682 | `python` | Global analysis and ndxplorer | 5 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 683 | `python` | Global analysis and ndxplorer | 3 | compiled | [docs/guides/fret_calibration.md](/guides/fret_calibration.md) |
+| 684 | `text` | Inputs and outputs | 13 | — | [docs/guides/h2mm.md](/guides/h2mm.md) |
+| 685 | `text` | GUI | 6 | — | [docs/guides/h2mm.md](/guides/h2mm.md) |
+| 686 | `bash` | CLI | 5 | — | [docs/guides/h2mm.md](/guides/h2mm.md) |
+| 687 | `python` | Python API | 7 | compiled | [docs/guides/h2mm.md](/guides/h2mm.md) |
+| 688 | `text` | Projects and session lifecycle | 3 | — | [docs/guides/index.md](/guides/index.md) |
+| 689 | `text` | Photon data and the burst pipeline | 23 | — | [docs/guides/index.md](/guides/index.md) |
+| 690 | `text` | smFRET: efficiency, stoichiometry and corrections | 17 | — | [docs/guides/index.md](/guides/index.md) |
+| 691 | `text` | Dynamics: distributions, kinetics and hidden states | 18 | — | [docs/guides/index.md](/guides/index.md) |
+| 692 | `text` | Fluorescence decays and anisotropy | 8 | — | [docs/guides/index.md](/guides/index.md) |
+| 693 | `text` | Correlation spectroscopy | 10 | — | [docs/guides/index.md](/guides/index.md) |
+| 694 | `text` | Imaging and microscopy | 19 | — | [docs/guides/index.md](/guides/index.md) |
+| 695 | `text` | Structure and modelling | 10 | — | [docs/guides/index.md](/guides/index.md) |
+| 696 | `text` | Exploration, simulation and automation | 15 | — | [docs/guides/index.md](/guides/index.md) |
+| 697 | `bash` | Regenerating the figures | 1 | — | [docs/guides/index.md](/guides/index.md) |
+| 698 | `bash` | Regenerating the figures | 1 | — | [docs/guides/index.md](/guides/index.md) |
+| 699 | `bash` | Regenerating the figures | 1 | — | [docs/guides/index.md](/guides/index.md) |
+| 700 | `text` | Application and settings | 8 | — | [docs/guides/index.md](/guides/index.md) |
+| 701 | `text` | Algorithm Pipeline | 12 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 702 | `text` | In the window | 6 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 703 | `python` | Basic Usage | 11 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 704 | `python` | Step-by-Step Usage | 24 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 705 | `python` | Multi-Channel Data | 7 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 706 | `python` | Visualization | 9 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 707 | `python` | Constructor | 1 | compiled | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 708 | `text` | Richardson-Lucy Algorithm | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 709 | `bash` | Testing | 1 | — | [docs/guides/irf_estimation.md](/guides/irf_estimation.md) |
+| 710 | `text` | Saving and reopening projects | 5 | — | [docs/guides/saving_projects.md](/guides/saving_projects.md) |
+| 711 | `text` | Adding the membrane-diffusion models | 10 | — | [docs/manual/adding_the_membranediffusion_models.md](/manual/adding_the_membranediffusion_models.md) |
+| 712 | `text` | Adding the membrane-diffusion models | 4 | — | [docs/manual/adding_the_membranediffusion_models.md](/manual/adding_the_membranediffusion_models.md) |
+| 713 | `text` | Analysis dock | 1 | — | [docs/manual/analysis_dock.md](/manual/analysis_dock.md) |
+| 714 | `text` | Anisotropy Wizard | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
+| 715 | `text` | Anisotropy Wizard | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
+| 716 | `text` | Anisotropy Wizard | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
+| 717 | `text` | Anisotropy Wizard | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
+| 718 | `text` | Anisotropy Wizard | 1 | — | [docs/manual/anisotropy_wizard.md](/manual/anisotropy_wizard.md) |
+| 719 | `text` | Calculation of co-diffusing molecules | 1 | — | [docs/manual/calculation_of_codiffusing_molecules.md](/manual/calculation_of_codiffusing_molecules.md) |
+| 720 | `text` | Calculation of the red detection volume | 1 | — | [docs/manual/calculations.md](/manual/calculations.md) |
+| 721 | `text` | Calculation of the red detection volume | 1 | — | [docs/manual/calculations.md](/manual/calculations.md) |
+| 722 | `text` | Calculation of the overlap volume and co-diffusion amplitude | 1 | — | [docs/manual/calculations_2.md](/manual/calculations_2.md) |
+| 723 | `text` | Changing visualizations | 1 | — | [docs/manual/changing_visualizations.md](/manual/changing_visualizations.md) |
+| 724 | `text` | Changing visualizations | 1 | — | [docs/manual/changing_visualizations.md](/manual/changing_visualizations.md) |
+| 725 | `text` | Correction factors for spectral crosstalk & direct acceptor excitation | 1 | — | [docs/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.md](/manual/correction_factors_for_spectral_crosstalk__direct_acceptor_excitation.md) |
+| 726 | `text` | Correlation merging | 1 | — | [docs/manual/correlation_merging.md](/manual/correlation_merging.md) |
+| 727 | `text` | Correlator | 1 | — | [docs/manual/correlator.md](/manual/correlator.md) |
+| 728 | `text` | Creating fits | 1 | — | [docs/manual/creating_fits.md](/manual/creating_fits.md) |
+| 729 | `text` | Creating fits | 1 | — | [docs/manual/creating_fits.md](/manual/creating_fits.md) |
+| 730 | `text` | Crosstalk-induced correlations | 1 | — | [docs/manual/crosstalkinduced_correlations.md](/manual/crosstalkinduced_correlations.md) |
+| 731 | `text` | Crosstalk-induced correlations | 1 | — | [docs/manual/crosstalkinduced_correlations.md](/manual/crosstalkinduced_correlations.md) |
+| 732 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 733 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 734 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 735 | `text` | Data import | 2 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 736 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 737 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 738 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 739 | `text` | Data import | 1 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 740 | `text` | Data import | 3 | — | [docs/manual/data_import.md](/manual/data_import.md) |
+| 741 | `text` | Data input and file format | 12 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
+| 742 | `text` | Data input and file format | 5 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
+| 743 | `shell` | Data input and file format | 1 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
+| 744 | `text` | Data input and file format | 1 | — | [docs/manual/data_input_and_file_format.md](/manual/data_input_and_file_format.md) |
+| 745 | `text` | Determination of g-factor and depolarization factors using ChiSurf | 1 | — | [docs/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.md](/manual/determination_of_gfactor_and_depolarization_factors_using_chisurf.md) |
+| 746 | `text` | Determination of molecular brightness | 1 | — | [docs/manual/determination_of_molecular_brightness.md](/manual/determination_of_molecular_brightness.md) |
+| 747 | `text` | Determination of molecular brightness | 1 | — | [docs/manual/determination_of_molecular_brightness.md](/manual/determination_of_molecular_brightness.md) |
+| 748 | `text` | Discrete FRET rate constants | 2 | — | [docs/manual/discrete_fret_rate_constants.md](/manual/discrete_fret_rate_constants.md) |
+| 749 | `text` | Equation parsing | 1 | — | [docs/manual/equation_parsing.md](/manual/equation_parsing.md) |
+| 750 | `text` | Estimation of the fluorophore concentration | 1 | — | [docs/manual/estimation_of_the_fluorophore_concentration.md](/manual/estimation_of_the_fluorophore_concentration.md) |
+| 751 | `text` | Estimation of the fluorophore concentration | 1 | — | [docs/manual/estimation_of_the_fluorophore_concentration.md](/manual/estimation_of_the_fluorophore_concentration.md) |
+| 752 | `text` | F-Calculator | 1 | — | [docs/manual/fcalculator.md](/manual/fcalculator.md) |
+| 753 | `text` | Fit interface | 1 | — | [docs/manual/fit_interface.md](/manual/fit_interface.md) |
+| 754 | `text` | Fit models | 3 | — | [docs/manual/fit_models.md](/manual/fit_models.md) |
+| 755 | `text` | Fit of the green-excitation FCS curve | 4 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 756 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 757 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 758 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 759 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 760 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 761 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 762 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 763 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 764 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 765 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 766 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 767 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 768 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 769 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 770 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 771 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 772 | `text` | Fit of the green-excitation FCS curve | 1 | — | [docs/manual/fit_of_a_fcs_curve.md](/manual/fit_of_a_fcs_curve.md) |
+| 773 | `text` | Fit of auto- and cross-correlation curves | 1 | — | [docs/manual/fit_of_auto_and_crosscorrelation_curves.md](/manual/fit_of_auto_and_crosscorrelation_curves.md) |
+| 774 | `text` | Fit of autocorrelation curves | 1 | — | [docs/manual/fit_of_autocorrelation_curves.md](/manual/fit_of_autocorrelation_curves.md) |
+| 775 | `text` | Fit of autocorrelation curves | 1 | — | [docs/manual/fit_of_autocorrelation_curves.md](/manual/fit_of_autocorrelation_curves.md) |
+| 776 | `text` | Fit of the red-excitation FCS curve | 1 | — | [docs/manual/fit_of_fcs_curve.md](/manual/fit_of_fcs_curve.md) |
+| 777 | `text` | Fit Plots | 1 | — | [docs/manual/fit_plots.md](/manual/fit_plots.md) |
+| 778 | `text` | Fit Plots | 1 | — | [docs/manual/fit_plots.md](/manual/fit_plots.md) |
+| 779 | `text` | Fit Plots | 1 | — | [docs/manual/fit_plots.md](/manual/fit_plots.md) |
+| 780 | `text` | Fluorescence Lifetime | 5 | — | [docs/manual/fluorescence_lifetime.md](/manual/fluorescence_lifetime.md) |
+| 781 | `text` | Static FRET Line | 26 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 782 | `text` | Dynamic FRET Line | 26 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 783 | `text` | Visualizing FRET Lines | 14 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 784 | `text` | Visualizing FRET Lines | 21 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 785 | `text` | Example: Complete Analysis Workflow | 71 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 786 | `text` | Troubleshooting | 3 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 787 | `text` | Example Script | 2 | — | [docs/manual/fret_lines.md](/manual/fret_lines.md) |
+| 788 | `text` | Global fit of auto- and cross-correlation curves | 1 | — | [docs/manual/global_fit_of_auto_and_crosscorrelation_curves.md](/manual/global_fit_of_auto_and_crosscorrelation_curves.md) |
+| 789 | `text` | Global fit of FCS curves | 1 | — | [docs/manual/global_fit_of_fcs_curves.md](/manual/global_fit_of_fcs_curves.md) |
+| 790 | `text` | Fitting interface & worked examples | 20 | — | [docs/manual/index.md](/manual/index.md) |
+| 791 | `text` | Fitting interface & worked examples | 10 | — | [docs/manual/index.md](/manual/index.md) |
+| 792 | `text` | Fitting interface & worked examples | 4 | — | [docs/manual/index.md](/manual/index.md) |
+| 793 | `text` | Fitting interface & worked examples | 8 | — | [docs/manual/index.md](/manual/index.md) |
+| 794 | `text` | Fitting interface & worked examples | 7 | — | [docs/manual/index.md](/manual/index.md) |
+| 795 | `text` | Fitting interface & worked examples | 23 | — | [docs/manual/index.md](/manual/index.md) |
+| 796 | `text` | Fitting interface & worked examples | 9 | — | [docs/manual/index.md](/manual/index.md) |
+| 797 | `text` | Fitting interface & worked examples | 8 | — | [docs/manual/index.md](/manual/index.md) |
+| 798 | `text` | Fitting interface & worked examples | 15 | — | [docs/manual/index.md](/manual/index.md) |
+| 799 | `text` | Fitting interface & worked examples | 4 | — | [docs/manual/index.md](/manual/index.md) |
+| 800 | `text` | Influence of FRET efficiency | 1 | — | [docs/manual/influence_of_fret_efficiency.md](/manual/influence_of_fret_efficiency.md) |
+| 801 | `text` | Influence of triplet blinking | 1 | — | [docs/manual/influence_of_triplet_blinking.md](/manual/influence_of_triplet_blinking.md) |
+| 802 | `text` | Introduction | 6 | — | [docs/manual/introduction.md](/manual/introduction.md) |
+| 803 | `text` | Linking parameters | 1 | — | [docs/manual/linking_parameters.md](/manual/linking_parameters.md) |
+| 804 | `text` | Linking parameters | 1 | — | [docs/manual/linking_parameters.md](/manual/linking_parameters.md) |
+| 805 | `text` | Loading & plotting data | 1 | — | [docs/manual/loading__plotting_data.md](/manual/loading__plotting_data.md) |
+| 806 | `text` | Loading and setting up the eGFP data set | 1 | — | [docs/manual/loading_and_setting_up_the_egfp_data_set.md](/manual/loading_and_setting_up_the_egfp_data_set.md) |
+| 807 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 808 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 809 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 810 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 811 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 812 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 813 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 814 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 815 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 816 | `text` | Loading the Alexa488 data into the anisotropy plugin | 1 | — | [docs/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md](/manual/loading_the_alexa488_data_into_the_anisotropy_plugin.md) |
+| 817 | `text` | Model scores | 2 | — | [docs/manual/model_scores.md](/manual/model_scores.md) |
+| 818 | `text` | Model scores | 3 | — | [docs/manual/model_scores.md](/manual/model_scores.md) |
+| 819 | `text` | Model scores | 1 | — | [docs/manual/model_scores.md](/manual/model_scores.md) |
+| 820 | `text` | Model scoring range | 1 | — | [docs/manual/model_scoring_range.md](/manual/model_scoring_range.md) |
+| 821 | `text` | Model scoring range | 2 | — | [docs/manual/model_scoring_range.md](/manual/model_scoring_range.md) |
+| 822 | `text` | Multiple document interface | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
+| 823 | `text` | Multiple document interface | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
+| 824 | `text` | Multiple document interface | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
+| 825 | `text` | Arranging the windows | 1 | — | [docs/manual/multiple_document_interface.md](/manual/multiple_document_interface.md) |
+| 826 | `text` | Nuisances | 1 | — | [docs/manual/nuisances.md](/manual/nuisances.md) |
+| 827 | `text` | Nuisances | 1 | — | [docs/manual/nuisances.md](/manual/nuisances.md) |
+| 828 | `text` | Nuisances | 1 | — | [docs/manual/nuisances.md](/manual/nuisances.md) |
+| 829 | `text` | Overview | 1 | — | [docs/manual/overview.md](/manual/overview.md) |
+| 830 | `text` | Overview | 1 | — | [docs/manual/overview.md](/manual/overview.md) |
+| 831 | `text` | Overview | 1 | — | [docs/manual/overview.md](/manual/overview.md) |
+| 832 | `text` | Correlator: overview | 1 | — | [docs/manual/overview_2.md](/manual/overview_2.md) |
+| 833 | `text` | Global view: overview | 1 | — | [docs/manual/overview_3.md](/manual/overview_3.md) |
+| 834 | `text` | Global view: overview | 1 | — | [docs/manual/overview_3.md](/manual/overview_3.md) |
+| 835 | `text` | Parameter optimization | 2 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
+| 836 | `text` | Parameter optimization | 2 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
+| 837 | `text` | Parameter optimization | 1 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
+| 838 | `text` | Settings | 25 | — | [docs/manual/parameter_optimization.md](/manual/parameter_optimization.md) |
+| 839 | `text` | Parameter sampling | 5 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
+| 840 | `text` | Parameter sampling | 1 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
+| 841 | `text` | From the shell | 2 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
+| 842 | `text` | From the shell | 5 | — | [docs/manual/parameter_sampling.md](/manual/parameter_sampling.md) |
+| 843 | `text` | Parameter scan | 1 | — | [docs/manual/parameter_scan.md](/manual/parameter_scan.md) |
+| 844 | `text` | Parameters | 1 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 845 | `text` | Parameters | 8 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 846 | `text` | Parameters | 2 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 847 | `text` | Parameters | 2 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 848 | `text` | Parameters | 1 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 849 | `text` | Parameters | 3 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 850 | `text` | Parameters | 2 | — | [docs/manual/parameters.md](/manual/parameters.md) |
+| 851 | `text` | Partial donor-donor energy migration | 3 | — | [docs/manual/partial_donordonor_energy_migration.md](/manual/partial_donordonor_energy_migration.md) |
+| 852 | `text` | Parameters | 5 | — | [docs/manual/partial_donordonor_energy_migration.md](/manual/partial_donordonor_energy_migration.md) |
+| 853 | `text` | Reference curves | 1 | — | [docs/manual/reference_curves.md](/manual/reference_curves.md) |
+| 854 | `text` | Re-using the parameter to analyse the actual samples | 1 | — | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md](/manual/reusing_the_parameter_to_analyse_the_actual_samples.md) |
+| 855 | `text` | Re-using the parameter to analyse the actual samples | 1 | — | [docs/manual/reusing_the_parameter_to_analyse_the_actual_samples.md](/manual/reusing_the_parameter_to_analyse_the_actual_samples.md) |
+| 856 | `text` | Saving & exporting the results | 8 | — | [docs/manual/saving__exporting_the_results.md](/manual/saving__exporting_the_results.md) |
+| 857 | `xml` | Saving and loading networks | 14 | — | [docs/manual/saving_and_loading_networks.md](/manual/saving_and_loading_networks.md) |
+| 858 | `text` | Saving and loading networks | 1 | — | [docs/manual/saving_and_loading_networks.md](/manual/saving_and_loading_networks.md) |
+| 859 | `text` | Saving and loading networks | 1 | — | [docs/manual/saving_and_loading_networks.md](/manual/saving_and_loading_networks.md) |
+| 860 | `text` | Setting up the joint global fit of A488 & eGFP | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
+| 861 | `text` | Setting up the joint global fit of A488 & eGFP | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
+| 862 | `text` | Setting up the joint global fit of A488 & eGFP | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
+| 863 | `text` | Setting up the joint global fit of A488 & eGFP | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
+| 864 | `text` | Setting up the joint global fit of A488 & eGFP | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
+| 865 | `text` | Setting up the joint global fit of A488 & eGFP | 1 | — | [docs/manual/setting_up_the_joint_global_fit_of_a488__egfp.md](/manual/setting_up_the_joint_global_fit_of_a488__egfp.md) |
+| 866 | `text` | Species-filtered FCS to recover dynamics | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
+| 867 | `text` | Species-filtered FCS to recover dynamics | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
+| 868 | `text` | Species-filtered FCS to recover dynamics | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
+| 869 | `text` | Species-filtered FCS to recover dynamics | 1 | — | [docs/manual/speciesfiltered_fcs_to_recover_dynamics.md](/manual/speciesfiltered_fcs_to_recover_dynamics.md) |
+| 870 | `text` | Step 1: Approximating g-factor with small fluorophore | 1 | — | [docs/manual/step_1_approximating_gfactor_with_small_fluorophore.md](/manual/step_1_approximating_gfactor_with_small_fluorophore.md) |
+| 871 | `text` | Step 2: Joint analysis to determine g-factor, ls and lp | 1 | — | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md) |
+| 872 | `text` | Step 2: Joint analysis to determine g-factor, ls and lp | 1 | — | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md) |
+| 873 | `text` | Step 2: Joint analysis to determine g-factor, ls and lp | 1 | — | [docs/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md](/manual/step_2_joint_analysis_to_determine_gfactor_ls_and_lp.md) |
+| 874 | `text` | Two single files | 1 | — | [docs/manual/two_single_files.md](/manual/two_single_files.md) |
+| 875 | `text` | VV/VH format | 1 | — | [docs/manual/vv_vh_format.md](/manual/vv_vh_format.md) |
+| 876 | `text` | Worm-like chain | 4 | — | [docs/manual/wormlike_chain.md](/manual/wormlike_chain.md) |
+| 877 | `python` | Usage | 9 | compiled | [docs/reference/file_formats/becker_hickl_files.md](/reference/file_formats/becker_hickl_files.md) |
+| 878 | `python` | Usage | 9 | compiled | [docs/reference/file_formats/becker_hickl_set.md](/reference/file_formats/becker_hickl_set.md) |
+| 879 | `text` | Usage | 7 | — | [docs/reference/file_formats/becker_hickl_set.md](/reference/file_formats/becker_hickl_set.md) |
+| 880 | `python` | Correlation section | 5 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 881 | `python` | Correlation section | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 882 | `python` | Intensity trace section | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 883 | `python` | Intensity trace section | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 884 | `text` | Intensity trace section | 6 | — | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 885 | `python` | Correlation arrays | 2 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 886 | `python` | Intensity arrays | 9 | compiled | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 887 | `text` | ALV-7004/USB `.asc` (openASC_ALV_7004) | 7 | — | [docs/reference/file_formats/fcs_files.md](/reference/file_formats/fcs_files.md) |
+| 888 | `text` | File formats | 4 | — | [docs/reference/file_formats/index.md](/reference/file_formats/index.md) |
+| 889 | `python` | Single-file structure reader | 6 | compiled | [docs/reference/file_formats/structure_files.md](/reference/file_formats/structure_files.md) |
+| 890 | `python` | Workflow | 5 | compiled | [docs/reference/file_formats/tcspc_files.md](/reference/file_formats/tcspc_files.md) |
+| 891 | `python` | Becker-SDT | 5 | compiled | [docs/reference/file_formats/tcspc_files.md](/reference/file_formats/tcspc_files.md) |
+| 892 | `python` | Preview and Add | 7 | compiled | [docs/reference/file_formats/tcspc_files.md](/reference/file_formats/tcspc_files.md) |
+| 893 | `text` | Reference | 12 | — | [docs/reference/index.md](/reference/index.md) |
+| 894 | `bash` | Local (primitive) | 10 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
+| 895 | `bash` | MMFDB round trip | 12 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
+| 896 | `bash` | Local (primitive) | 4 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
+| 897 | `bash` | Local (primitive) | 3 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
+| 898 | `bash` | MMFDB round trip | 6 | — | [docs/reference/ndxplorer_headless_cli.md](/reference/ndxplorer_headless_cli.md) |
+| 899 | `python` | From a script | 4 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
+| 900 | `python` | From a script | 9 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
+| 901 | `python` | From a script | 4 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
+| 902 | `python` | Saving a single parameter | 7 | compiled | [docs/reference/parameter_linking.md](/reference/parameter_linking.md) |
+| 903 | `text` | Plugin catalogue | 4 | — | [docs/reference/plugins/index.md](/reference/plugins/index.md) |
+| 904 | `yaml` | 3. `settings_colors.yaml` (global color palette) | 3 | — | [docs/reference/settings.md](/reference/settings.md) |
+| 905 | `json` | 4.2 Schema | 32 | — | [docs/reference/settings.md](/reference/settings.md) |
+| 906 | `python` | User-Defined Models in ChiSurf | 2 | compiled | [docs/reference/user_models.md](/reference/user_models.md) |
+| 907 | `python` | 1.1 Write the model | 21 | compiled | [docs/reference/user_models.md](/reference/user_models.md) |
+| 908 | `yaml` | 1.3 List it in `experiment_configs.yaml` | 4 | — | [docs/reference/user_models.md](/reference/user_models.md) |
+| 909 | `python` | 3. Turning a plain function into a model | 7 | compiled | [docs/reference/user_models.md](/reference/user_models.md) |

@@ -98,6 +98,8 @@ b'SPC fcs Data File'
 
 """
 
+import os
+
 import numpy as np
 
 __version__ = "2014.09.05"
@@ -133,10 +135,10 @@ class SdtFile:
 
         Parameters
         ----------
-        arg : str or file-like, optional
+        arg : str, os.PathLike or file-like, optional
             Filename or open file handle.
         """
-        if isinstance(arg, basestring):
+        if isinstance(arg, (basestring, os.PathLike)):
             with open(arg, "rb") as fh:
                 self._fromfile(fh)
         elif hasattr(arg, "seek"):

@@ -1,51 +1,44 @@
 ---
 type: File Format
 title: PCH TTTR files
-description: This section describes how to load Photon Counting Histogram (PCH) data from TTTR files into ChiSurf using the PCH experiment.
+description: How the PCH experiment turns a TTTR photon stream into a photon counting histogram.
 tags: [reference, file-formats, tttr, photons]
 ---
 
 # PCH TTTR files {#pch-tttr}
 
-This section describes how to load Photon Counting Histogram (PCH) data from
-TTTR files into ChiSurf using the **PCH** experiment.
+How the **PCH** experiment turns a TTTR photon stream into a photon counting
+histogram (PCH). Theory: {doc}`/concepts/pch_fida`; workflow:
+{doc}`/guides/04_fida_pch`.
 
 ## Supported input formats
 
-The PCH reader uses `tttrlib.TTTR` and currently focuses on time-tagged
-TTTR formats such as PicoQuant PTU files. Other TTTR formats supported by
-`tttrlib` may also work, provided they contain the required photon arrival
-information.
+The reader opens the file with `tttrlib.TTTR` using its reading routine
+(`PTU` by default). Other formats `tttrlib` reads work too, provided they carry
+macro-times, routing channels and micro-times.
 
 ## Reader setup: PCH (TTTR)
 
-In the main GUI, select:
+In the **Read data** dock choose **Experiment** `PCH` and **File type**
+`PCH (TTTR)`, drop the file on **File** (or **Browse…**) and press **+ Data**.
 
-- **Experiment**: `PCH`
-- **Setup**: `PCH (TTTR)`
+The reader (`chisurf.core.experiments.pch.PCHReader`):
 
-Then select or drop a TTTR file (e.g. `*.ptu`) in the PCH reader widget.
-
-The reader will:
-
-1. Load the TTTR data using `tttrlib.TTTR` with the configured `reading_routine`.
-2. Select the specified routing channel and micro-time range.
-3. Build a photon counting histogram over time bins defined by `bin_time_us`.
-4. Construct a ChiSurf `DataCurve` where the x-axis indexes photon counts
-   and the y-axis contains the observed PCH, with uncertainties derived from
-   counting statistics.
+1. selects the photons of the chosen routing channels (*Detector*) inside the
+   micro-time window **µtime min**–**µtime max** (TAC channels, default
+   0–65535);
+2. counts photons in bins of **Bin time [µs]** (default 100 µs);
+3. histograms the counts per bin into $P(k)$ and builds a `DataCurve` with $k$
+   on the x-axis. The uncertainty of each point is
+   $\sqrt{n_k}/N_\mathrm{bins}$, with $n_k$ the number of bins holding $k$
+   photons ($1/N_\mathrm{bins}$ where $n_k = 0$).
 
 ## Typical workflow
 
-1. Configure basic PCH settings (detector channel, bin time, micro-time range)
-   in the PCH controller.
-2. Load a TTTR file recorded under stationary conditions.
-3. Inspect the PCH curve to verify that the dynamic range and shape are
-   reasonable (no obvious saturation or truncation).
-4. Choose an appropriate PCH model from the model list (e.g. multi-component
-   PCH model).
-5. Fit the model and inspect residuals and extracted parameters such as
-   molecular brightness and number of molecules.
-
-For more advanced PCH analysis and model details, refer to the main PCH
-documentation and associated ChiSurf manuals.
+1. Set the detector, bin time and micro-time window.
+2. Read a TTTR file recorded under stationary conditions.
+3. Check that the histogram's range and shape are plausible — no saturation,
+   no truncated tail.
+4. Add a *PCH multi-component* or *FIDA* model.
+5. Fit and inspect the residuals, the molecular brightness and the number of
+   molecules.

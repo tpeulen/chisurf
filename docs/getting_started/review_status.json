@@ -1,4 +1,11 @@
 {
+  "index.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dcb68d8f43e065a3f208908cfb7adda8d74d45897899aa0cb528c6c242b01bc3",
+    "status": "ai-reviewed"
+  },
   "settings.md": {
     "date": "2026-10-14",
     "reviewer": "agent",

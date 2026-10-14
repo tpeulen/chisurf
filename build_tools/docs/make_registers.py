@@ -56,7 +56,9 @@ _MYST_FIGURE = re.compile(
     r"(?P<caption>(?:(?!```).*\n)*?)```",
     re.M,
 )
-_MD_IMAGE = re.compile(r"^!\[(?P<alt>[^\]]*)\]\((?P<src>[^)\s]+)")
+#: ``re.M``: without it ``^`` anchors only at the start of the page, so every
+#: Markdown image below the first line was missing from the figure index.
+_MD_IMAGE = re.compile(r"^!\[(?P<alt>[^\]]*)\]\((?P<src>[^)\s]+)", re.M)
 _MYST_IMAGE = re.compile(
     r"^```\{image\}\s*(?P<src>\S+)\s*\n(?P<options>(?::\w[\w-]*:.*\n)*)```",
     re.M,
@@ -246,8 +248,14 @@ def collect_code() -> list[dict]:
             if language.startswith("{"):
                 continue
             before = text[: match.start()]
-            headings = _HEADING.findall(before)
-            heading = headings[-1][1] if headings else ""
+            # Line-wise, and outside earlier fences: a "# comment" inside a
+            # code block is not a section heading.
+            headings = [
+                found
+                for line in _FENCE.sub("", before).splitlines()
+                if (found := _HEADING.match(line))
+            ]
+            heading = headings[-1].group("title") if headings else ""
             info = (match.group("info") or "").strip()
             blocks.append(
                 {

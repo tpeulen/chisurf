@@ -4,6 +4,22 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## TCSPC TTTR-file reader shows polarization controls it never applies (found 2026-10-14)
+
+status: open
+
+`chisurf/core/experiments/tcspc/tcspc_tttr.view.json` offers an *Anisotropy (VV/VH)* panel
+(**pol.**, **g-factor**, **VH shift [bins]**), inherited as attributes from `TCSPCReader`, but
+`TCSPCTTTRReader.read` (`tttr_reader.py`) overrides `read` and builds one decay from the
+selected routing channels: polarization, g-factor and VH shift are never read. Choosing
+`VV,VH` therefore still yields a single summed decay. Measure: read a PTU with two channel
+groups at `pol.` = `vm` and `vv/vh` — `tttr_reader.py` never references `polarization`,
+`g_factor` or `vh_shift`, so the results cannot differ (read from the code, not run). Blocks a VV/VH anisotropy
+fit straight from a photon stream through this reader (the CSV reader and the anisotropy
+wizard work). Fix belongs in the reader (two channel groups → stacked VV/VH curve), or the
+panel goes. Found during the docs review of `docs/reference/file_formats/tcspc_files.md`,
+which now states the current behaviour.
+
 ## `calc_transfer_matrix` never zeroes its donor-only bins (found 2026-10-14)
 
 status: resolved 2026-10-14

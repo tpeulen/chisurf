@@ -16,9 +16,9 @@ The `burst_h2mm` plugin fits a **Hidden Markov Model directly to photon arrival
 times and colours** within single-molecule FRET bursts, resolving sub-burst
 FRET-state dynamics on the microsecond scale — down to time-scales far below the
 burst duration that a burst-averaged FRET histogram cannot see. It implements the
-H2MM algorithm of Pirchi *et al.* (J. Phys. Chem. B **120**, 13065, 2016) as a
-self-contained, Qt-free `numpy`/`numba` engine, cross-validated against the
-reference `H2MM_C` library.
+H2MM algorithm of Pirchi *et al.* (J. Phys. Chem. B **120**, 13065, 2016); the
+compute is tttrlib's compiled engine (`tttrlib.HMM`), driven Qt-free and
+cross-validated against the reference `H2MM_C` library.
 
 ## Theory
 
@@ -121,10 +121,12 @@ recovered state trajectory.
 :name: fig-h2mm-dashboard-plugin
 :width: 100%
 
-What the plugin produces from those outputs. The panels are the state-resolved
-answer a burst-averaged histogram cannot give: the recovered per-state FRET
-efficiencies, the populations and transition rates, the dwell-time
-distributions, and the model-order scan that chose the number of states. The
+The four standard views of those outputs, drawn for illustration from synthetic
+numbers (three states, not a fit). They are the state-resolved answer a
+burst-averaged histogram cannot give: the FRET efficiencies of the dwells with
+the per-state values (dashed), the transition density between states, the
+model-order scan that chose three states, and the per-state dwell-time
+distributions. The
 same run is walked step by step in
 {doc}`Photon-by-photon HMM (H2MM) <19_h2mm_hidden_markov>` and validated
 against simulated data with a known answer in
@@ -136,16 +138,21 @@ against simulated data with a known answer in
 ### GUI
 
 Open step 7 of **Burst Analysis** (**Spectroscopy → Single-Molecule → Burst
-Analysis → 7. Burst segmentation (H2MM)**), pick the burst folder with the folder button (or drop it on the
-path field), assign the donor, acceptor and optional acceptor-excitation
-(*Aex*) detectors under **Channel Definitions**, choose the state range,
-criterion, engine and decoder under **H2MM Settings**, then **▶ Run**. The GUI
-defaults to the `em-float32` engine with scan patience 1. Seven result docks
-appear: *Dwell FRET states* (an E–S scatter when an Aex stream is set),
-*Transition density*, *Model selection*, *Dwell times*, *Per-state decay*,
-*Transition rates* and *State path*. **±** bootstraps the selected model, **📈**
-profiles the likelihood of each state, and **🔬** opens the per-dwell table in
-ndX.
+Analysis → 7. Burst segmentation (H2MM)**). Under **H2MM settings**, pick the
+burst folder with **Browse folder** (or drop it on **Burst folder**), assign the
+**Donor detector**, **Acceptor detector** and optional **Aex detector**
+(acceptor excitation; the detectors themselves are defined under **Detector
+setup**), choose the state range, criterion, engine and decoder, then press
+**Run H2MM**. The window defaults to the `em-float32` engine (*Fast EM
+(float32)*) with scan patience 1.
+
+The results fill eight docks: *Rates and states* (the transition-rate and
+per-state tables), *Dwell FRET* (an E–S scatter when an Aex stream is set),
+*Selection* (the BIC/ICL scan), *Decays* (per-state micro-time decays),
+*LL scan*, *TDP* (transition density), *Dwell times* and *State path*.
+**Bootstrap** bootstraps the selected model, **LL scan** profiles the likelihood
+of each state, **Dwells in ndX** opens the per-dwell table in ndX and
+**Export dwells** writes it.
 
 ```{figure} figures/30_h2mm_results.png
 :name: fig-h2mm-gui
@@ -190,7 +197,7 @@ The plugin ships its own examples under
 
   ```bash
   python -m chisurf.plugins.burst.burst_h2mm.examples.generate_example_data --out ./h2mm_example
-  h2mm compute ./h2mm_example --file-type auto
+  csc h2mm compute ./h2mm_example --file-type auto
   ```
 
 ## See also

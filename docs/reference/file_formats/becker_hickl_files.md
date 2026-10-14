@@ -1,87 +1,60 @@
 ---
 type: File Format
 title: Becker & Hickl File Readers
-description: The bhfiles module provides unified access to various Becker & Hickl file formats used in time-resolved spectroscopy.
+description: Reading Becker & Hickl .sdt decay files and .set setup files from Python.
 tags: [reference, file-formats, becker, hickl, files]
 ---
 
 # Becker & Hickl File Readers
 
-## Overview
+`chisurf.core.fio.fluorescence` exports two readers for files written by
+Becker & Hickl SPCM software:
 
-The `bhfiles` module provides unified access to various Becker & Hickl file formats used in time-resolved spectroscopy. It combines readers for:
+- `SdtFile` — `.sdt` files: TCSPC histograms (decays, or decay images) plus the
+  setup and measurement description.
+- `BeckerHicklSetReader` — `.set` files: the SPC setup parameters, from which the
+  macro- and micro-time resolution of a `.spc` photon stream follow. Its own page
+  is {doc}`becker_hickl_set`.
 
-- `.set` files: Setup parameter files containing timing and hardware configuration
-- `.sdt` files: Data files containing time-correlated single photon counting measurements
-
-This module replaces the separate `becker_hickl_set` and `sdtfile` modules, providing a more cohesive API while maintaining backward compatibility.
+In the GUI, an `.sdt` file is opened through the TCSPC data reader
+({doc}`tcspc_files`); the classes below are the Python route.
 
 ## Usage
 
 ```python
-from chisurf.core.fio.fluorescence.bhfiles import BeckerHicklSetReader, SdtFile
+from chisurf.core.fio.fluorescence import BeckerHicklSetReader, SdtFile
 
-# Reading .set files
-set_reader = BeckerHicklSetReader("path/to/file.set")
-macro_time_res = set_reader.macro_time_resolution  # in seconds
-micro_time_res = set_reader.micro_time_resolution  # in nanoseconds
-set_reader.summary()  # Print a summary of key timing parameters
+sdt = SdtFile("test/data/tcspc/BH_SDT/140507p.sdt")
+decay = sdt.data[0]   # counts, shape (1, 1024) for this point measurement
+t = sdt.times[0]      # time axis in seconds, same length as the last axis
 
-# Reading .sdt files
-sdt_file = SdtFile("path/to/file.sdt")
-data = sdt_file.data  # List of data arrays
-times = sdt_file.times  # List of time axes
+setup = BeckerHicklSetReader("test/data/tttr/BH/830/bh.set")
+dt_macro = setup.macro_time_resolution  # s
+dt_micro = setup.micro_time_resolution  # ns
 ```
 
-## Key Classes
+## SdtFile
 
-### BeckerHicklSetReader
+| Attribute | Content |
+| --- | --- |
+| `data` | list of count arrays, one per data block; the last axis is the micro-time |
+| `times` | list of time axes in seconds, one per block |
+| `measure_info` | measurement description records |
+| `block_headers` | data-block headers; `block_measure_info(i)` returns block *i*'s description |
+| `header` | file header |
+| `info` | the ASCII info section |
+| `setup` | the setup block |
 
-Reader for Becker & Hickl SPC `.set` files, which contain setup parameters for time-resolved measurements.
+Only "SPC Setup & Data" and "SPC FCS Data" files are read; any other SDT type
+raises `NotImplementedError`. A block whose size matches the scan or image
+dimensions is reshaped to `(x, y, channels)`; otherwise it is `(n, channels)`.
 
-**Key Properties:**
-- `macro_time_resolution`: Coarse (macro) time resolution in seconds
-- `micro_time_resolution`: Fine (micro) time resolution in nanoseconds
-- `tac_range`: Full TAC span in seconds
+## BeckerHicklSetReader
 
-**Methods:**
-- `get_param(name, default=None)`: Get a raw SPC parameter
-- `summary()`: Print a summary of key timing parameters
-
-### SdtFile
-
-Reader for Becker & Hickl `.sdt` files, which contain time-correlated single photon counting data.
-
-**Key Attributes:**
-- `data`: List of data arrays containing photon counts
-- `times`: List of time axes for each data set
-- `measure_info`: Measurement description blocks
-- `header`: File header information
-- `info`: General file information in ASCII format
-- `setup`: Setup block containing system parameters
-
-## Migration from Previous Modules
-
-If you were previously using `becker_hickl_set` or `sdtfile` modules directly, you can continue to use the same classes as before. The imports in `__init__.py` have been updated to maintain backward compatibility:
-
-```python
-# Old code still works
-from chisurf.core.fio.fluorescence import BeckerHicklSetReader
-from chisurf.core.fio.fluorescence import SdtFile
-```
-
-For new code, it's recommended to import directly from the unified module:
-
-```python
-# Recommended for new code
-from chisurf.core.fio.fluorescence.bhfiles import BeckerHicklSetReader, SdtFile
-```
-
-## Implementation Details
-
-The module combines the functionality of the previous separate modules:
-
-- `BeckerHicklSetReader`: Parses `.set` files using regular expressions to extract parameters
-- `SdtFile`: Reads binary `.sdt` files with complex header structures and data blocks
-
-Both readers provide access to timing parameters and other metadata from Becker & Hickl SPC hardware, making them complementary tools for working with time-resolved spectroscopy data.
+| Member | Content |
+| --- | --- |
+| `macro_time_resolution` | $1/\lvert f_\mathrm{sync}\rvert$, in seconds |
+| `micro_time_resolution` | `SP_TAC_TC`, in **nanoseconds** |
+| `tac_range` | `SP_TAC_R`, in seconds |
+| `get_param(name, default=None)` | a raw parameter, named without the `SP_` prefix |
+| `summary()` | prints the timing parameters |

@@ -1,51 +1,54 @@
 ---
 type: File Format
 title: PDA TTTR files
-description: This section describes how to load Photon Distribution Analysis (PDA) data from TTTR files (PTU/HT3/SPC) into ChiSurf using the PDA experiment.
+description: How the PDA experiment builds photon-distribution histograms from TTTR files, burst tables and burst-analysis folders.
 tags: [reference, file-formats, pda, tttr, photons]
 ---
 
 # PDA TTTR files {#pda-tttr}
 
-This section describes how to load Photon Distribution Analysis (PDA) data from
-TTTR files (PTU/HT3/SPC) into ChiSurf using the **PDA** experiment.
+How the **PDA** experiment turns photon streams into the histograms photon
+distribution analysis fits. Theory: {doc}`/concepts/pda2c` and
+{doc}`/concepts/pda3c`; workflows: {doc}`/guides/11_pda2c` and
+{doc}`/guides/42_pda3c`.
 
-## Supported file formats
+## Inputs
 
-The PDA TTTR reader supports TTTR files handled by `tttrlib`, in particular:
+The `PTU/HT3/SPC` reader (`chisurf.core.experiments.pda2c.Pda2cReader`) takes:
 
-- PicoQuant PTU files (`*.ptu`)
-- Becker & Hickl SPC/HT3 files (`*.spc`, `*.ht3`)
+- TTTR files `tttrlib` reads — PicoQuant PTU/HT3, Becker & Hickl SPC, …;
+- `.bur` burst tables, which name per burst the measurement file and its first
+  and last photon, so exactly those photons are used;
+- burst-analysis folders; a TTTR file with a `bi4_bur` (or `bur`) folder beside
+  it is read burst-wise from the tables in that folder.
 
-Additional formats supported by `tttrlib.TTTR` may also work, provided they
-contain the required micro-time and macro-time information.
+Two further file types read three-colour data without a TTTR file:
+`Burst table (CSV/NPZ)` and `Simulator (3-colour)`.
 
-## Reader setup: PTU/HT3/SPC
+## Reader setup
 
-In the main GUI, select:
+In the **Read data** dock choose **Experiment** `PDA` and **File type**
+`PTU/HT3/SPC`, add the files and press **+ Data**. Three things decide which
+photons become a histogram:
 
-- **Experiment**: `PDA`
-- **Setup**: `PTU/HT3/SPC`
+- **the detector rows** — one routing-channel group per colour (defaults `0,3`
+  green and `1,2` red), with a micro-time window per detector for two colours
+  or per excitation period of the PIE cycle for three (**Colours**);
+- **the time windows** (**TW [ms]**) — each window is read as a dataset of its
+  own;
+- **the inputs** above.
 
-Then drop or select your TTTR files in the PDA reader widget.
-
-The reader will:
-
-1. Load one or more TTTR files using `tttrlib.TTTR`.
-2. Apply optional burst slicing (if configured) to restrict analysis to
-   selected time intervals.
-3. Compute experimental S1S2 histograms via `tttrlib.Pda.compute_experimental_histograms`.
-4. Attach the resulting PDA data (S1S2 matrix, probabilities, indices, etc.)
-   to ChiSurf `DataCurve` objects, which can then be fitted with PDA models.
+With two colours a burst or time window becomes a row of the S1S2 histogram
+(**nPh min** / **nPh max** bound its photon number); with three it becomes a
+row of a five-column photon table. The resulting `DataCurve` carries the PDA
+payload; a model that cannot fit it hides itself from the model list.
 
 ## Typical workflow
 
-1. Configure detector channels (green/red) and micro-time windows in the PDA
-   setup.
-2. Load TTTR files recorded for your sample.
-3. Inspect the S1S2 histogram and projections.
-4. Choose an appropriate PDA model (e.g. simple or Gaussian distance model).
-5. Fit the model and inspect residuals and parameter estimates.
+1. Set the detector rows, the micro-time windows and the time windows.
+2. Read the TTTR files, burst tables or folders of the sample.
+3. Inspect the S1S2 histogram and its projections.
+4. Choose a PDA model, e.g. *simple* or *Gaussian distance*.
+5. Fit and inspect the residuals and parameters.
 
-For details on user-defined PDA models and how to extend the analysis, see the
-main PDA documentation and user model guide.
+User-defined PDA models: {doc}`/reference/user_models`.

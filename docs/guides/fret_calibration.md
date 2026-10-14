@@ -15,7 +15,7 @@ See {ref}`concept-fret` for the Förster mechanism and the R0 / efficiency relat
 Turning raw single-molecule photon counts into an **accurate** FRET efficiency
 requires a handful of instrument/photophysics **calibration factors**. ChiSurf
 models these as ordinary [fitting parameters](../reference/user_models.md) with a Bayesian
-workflow: the **light-path calculator** provides a physically-motivated *prior*,
+workflow: the **light-path simulator** provides a physically-motivated *prior*,
 and **optimizing against the measured data** yields the *posterior* factors used
 for accurate FRET. The same calibration can be shared across many datasets
 (global analysis) and pushed to ndxplorer.
@@ -52,7 +52,7 @@ Four correction factors (Greek-letter convention):
 These four scalars are the **two-colour special case** of the general
 correction. Physically, leakage and detection live in the **emission crosstalk
 matrix** and direct excitation lives in the **excitation crosstalk matrix** — the
-two matrices the light-path calculator produces. ChiSurf can correct directly
+two matrices the light-path simulator produces. ChiSurf can correct directly
 from those matrices (see [The general case](#the-general-case-crosstalk-matrices)
 below), which also handles three or more chromophores and channel bleed the
 scalars cannot express; the scalar path is the convenient reduction when there
@@ -104,7 +104,7 @@ found, not gates drawn by hand.
 
 ### 1. Light-path prior → data-optimized posterior
 
-The [light-path calculator](../reference/plugins/index.md) computes the spectral crosstalk matrices
+The [light-path simulator](104_lightpath_simulator.md) computes the spectral crosstalk matrices
 of the optical setup (spectra, filters, detector QE). Those give a
 *physically-motivated* value for each factor, attached as a **Gaussian prior**;
 the factor stays free and is refined against the data.
@@ -203,7 +203,7 @@ bootstrap uncertainties.
 
 Hellenkamp's four scalars assume two colours and no acceptor→acceptor bleed. The
 general correction consumes the two crosstalk matrices the
-[light-path calculator](../reference/plugins/index.md) produces and needs no scalar factors at all:
+[light-path simulator](104_lightpath_simulator.md) produces and needs no scalar factors at all:
 
 * the **excitation matrix** $X_{lk}$ — the rate at which laser $l$ directly
   excites chromophore $k$ (absorption × flux); off-diagonals are direct
@@ -314,7 +314,7 @@ push_unmixed_columns_to_ndx(
 
 Nothing about the channel naming is hard-coded — the caller passes the emission
 matrix, the measured-channel column names and the source labels (all obtainable
-from the light-path calculator), so the same bridge serves any N-colour setup.
+from the light-path simulator), so the same bridge serves any N-colour setup.
 
 ## Per-pixel / FLIM imaging
 

@@ -27,17 +27,11 @@ The reader supports two main input types:
 
 ## Reader setup: Image correlation (RICS/STICS/TICS/iMSD)
 
-In the main GUI, select:
+In the **Read data** dock choose **Experiment** `Image correlation` and
+**File type** `Image correlation (RICS/STICS/TICS/iMSD)`, then read a TTTR file
+(e.g. `*.ptu`) or a TIFF stack (`*.tif`, `*.tiff`) with **+ Data**.
 
-- **Experiment**: `Image correlation`
-- **Setup**: `Image correlation (RICS/STICS/TICS/iMSD)`
-
-Then load either:
-
-- A TTTR file (e.g. `*.ptu`), or
-- A TIFF image stack (e.g. `*.tif`, `*.tiff`).
-
-The reader will:
+The reader:
 
 1. For TIFF stacks
    - Read the image data through `chisurf.core.fio.image`.
@@ -52,6 +46,8 @@ The reader will:
    correlation map per frame lag — with options for:
    - ROI selection (`x_range`, `y_range`),
    - average subtraction mode (`subtract_average` = frame/stack),
+   - inter-frame drift correction (`drift_correction` = first/previous/mean
+     frame),
    - the **maximum frame lag** (`max_frame_lag`), and
    - optional FFT centring of the zero lag (`fftshift`).
 4. Build a ChiSurf `DataCurve` whose y-axis is the flattened carpet, with

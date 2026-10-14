@@ -1,69 +1,71 @@
 ---
 type: File Format
 title: TCSPC file readers
-description: The TCSPC TXT/CSV reader loads time‑correlated single photon counting (TCSPC) decays from plain text or CSV files and converts them into ChiSurf TCSPC datasets that can be used for lifetime fitting and FRET analysis.
+description: The four TCSPC readers — TXT/CSV, TTTR-file, Becker-SDT and Simulator — and how each turns its input into decay curves for lifetime and FRET fits.
 tags: [reference, file-formats, tcspc, photons, lifetime, fitting, fret]
 ---
 
 # TCSPC file readers
 
+The **TCSPC** experiment has four readers, chosen as the **File type** in the
+**Read data** dock. Each one's settings appear under *File parameters*; they
+change the reader directly and are saved with a project.
+
 ## TXT/CSV {#tcspc-txtcsv}
 
-Select the **TCSPC** experiment and **TXT/CSV** reader. The native settings
-form has **CSV input**, **Timing** and **Anisotropy (VV/VH)** groups. Settings
-change the reader directly and are retained when a project is saved/reopened.
+The settings form has three groups: **CSV input**, **Timing** and
+**Anisotropy (VV/VH)**.
 
-### Source and import
+![TXT/CSV reader settings for the shipped IBH decay: 10 skipped rows, 0.0141 ns per channel](figures/tcspc_csv_native.png)
 
-Type a filename, use **Browse**, or use **Database** to materialize a dataset
-from MMFDB. **+ Data** imports the selected source with this reader's settings.
-With an empty source, it opens the same native picker and imports once after
-selection. The existing reader help remains available through **?**.
+### Source
 
-![Native CSV reader with a measured IBH decay](figures/tcspc_csv_native.png)
+Type a filename, use **Browse**, or use **Database** to take a dataset from
+MMFDB. **+ Data** reads the selected source; with no source it opens the file
+picker first.
 
 ### Format, columns and errors
 
-- **Auto** detects the existing text/vendor or serialized curve format.
-- **CSV** reads delimited numeric text; an empty delimiter retains inference.
-  An explicit delimiter is passed to the parser.
-- **YAML** reads serialized DataCurve data. Auto also recognizes JSON.
-- **FWF** reads fixed-width text using widths such as `5, 7`, or zero-based,
-  stop-exclusive ranges such as `(3, 8), (10, 17)`. Ranges can skip padding.
+| Format | Reads |
+| --- | --- |
+| **Auto** | detects text, vendor and serialized-curve files (YAML or JSON) |
+| **CSV** | delimited numbers; an empty **Delimiter** is inferred, an explicit one is passed to the parser |
+| **YAML** | a serialized `DataCurve` |
+| **FWF** | fixed-width text; **Fixed-width columns** takes widths (`5, 7`) or zero-based, stop-exclusive ranges (`(3, 8), (10, 17)`), and ranges can skip padding |
 
-**Skip rows** removes the preamble. **Header** follows the skipped preamble
-for fixed-width files; delimited tables retain their established header
-handling. Column numbers are zero-based: choose **X column** and **Y column**.
-With **X values** off, the reader generates consecutive channel numbers.
-With it on, the configured X column is read before time calibration.
+**Skip rows** drops the preamble; for fixed-width files **Header** marks the
+line after it as a header. Columns are zero-based (**X column**,
+**Y column**). With **X values** off the x-axis is the channel number; with it
+on, the X column is read and then calibrated.
 
-Enable **X error** or **Y error** to read standard deviations from their
-configured columns. X errors follow the time calibration. Independent Y
-errors combine in quadrature during rebinning. With these flags off, the
-reader retains zero X errors and its established counting-noise estimates.
+**X error** and **Y error** read standard deviations from **X error column**
+and **Y error column**. X errors are calibrated with the x-axis; Y errors add
+in quadrature when rebinned. With both off, X errors are zero and Y errors are
+the counting noise of the decay.
 
 ### Timing and polarization
 
-**dt** specifies nanoseconds per channel; **scale dt**, X/Y rebin and
-repetition rate in MHz retain their existing meanings. Set these to match the
-measurement before importing. For the shipped IBH sample, use 10 skipped
-rows and 0.0141 ns per channel.
+**dt [ns/ch]** is the channel width, **rebin x** / **rebin y** bin the decay
+(**scale dt** multiplies dt by the y-rebin factor; set automatically for
+stacked VV/VH files), and **rep. [MHz]** is the repetition rate. For the shipped IBH sample
+(`test/data/tcspc/ibh_sample/Decay_577D.txt`) use 10 skipped rows and
+0.0141 ns per channel.
 
-The anisotropy controls retain stacked mode, VM/VV/VH/VV-VH selection,
-G-factor, leakage fractions l1/l2 and integer VH channel shift. Enabling
-**Link l1/l2** copies l1 to l2 and keeps them equal on subsequent l1 edits.
-**g-factor** opens the native calibration inspector; closing a completed
-calculation applies finite G, rounded shift and available mixing estimates.
-Closing the owning settings view cancels its child and prevents late updates.
+**stacked** reads a file holding VV and VH one after the other; **pol.**
+selects VM, VV, VH or both (VV,VH). **g-factor**, the mixing fractions
+**l1**/**l2** and the integer **VH shift [ch]** are applied to the anisotropy
+pair; **Link l1/l2** keeps l2 equal to l1. The **g-factor** button opens the
+G-factor calibration; closing it after a finished calculation applies the G
+factor, the rounded shift and any mixing estimates it found.
 
 ### Workflow
 
-1. Select TXT/CSV and choose the measurement source.
-2. Check format, skipped/header rows and the X/Y/error columns.
-3. Set timing and the measurement's polarization/calibration.
-4. Press **+ Data** and inspect the imported decay before fitting.
+1. Choose the source.
+2. Check the format, the skipped and header rows and the columns.
+3. Set the timing and the polarization.
+4. Press **+ Data** and inspect the decay before fitting.
 
-For a headless read with the same settings:
+Headless, with the same settings:
 
 ```python
 from chisurf.core.experiments.tcspc import TCSPCReader
@@ -73,152 +75,103 @@ reader = TCSPCReader(filename="test/data/tcspc/ibh_sample/Decay_577D.txt",
 curves = reader.read()
 ```
 
-The lower-level `read_tcspc_csv` API also supports explicit matrix column
-sets. The form's working integer fields select the input columns directly.
+The lower-level `read_tcspc_csv` also takes explicit sets of matrix columns.
 
 ---
 
 ## TTTR-file {#tcspc-tttr}
 
-### Purpose
+Builds a decay from a time-tagged photon stream (PicoQuant PTU/HT3, Becker &
+Hickl SPC, …) with `tttrlib`, by histogramming the micro-times. Implemented by
+`chisurf.core.experiments.tcspc.TCSPCTTTRReader`.
 
-The **TTTR-file** reader converts time-tagged, time-resolved (TTTR) photon
-streams into TCSPC decay histograms using `tttrlib`. It is implemented by
-`chisurf.core.experiments.tcspc.TCSPCTTTRReader` and the
-`TCSPCTTTRReaderControlWidget` controller.
+### Settings
 
-Use this reader when you have photon-stream data from hardware that stores
-individual photon arrival times (e.g. PicoQuant PTU/HT3 or Becker & Hickl SPC
-TTTR formats) and want to build decays by integrating the micro-time axis.
+- **Detector** — **Setup** and **Detector** pick a named detector of a saved
+  detector setup, which sets the routing channels, the micro-time window and
+  the setup's LUTs; or set **Routine** (the TTTR container type, e.g. `PTU`,
+  `HT3`, `SPC-130`) and **Routing chs** by hand.
+- **Acquisition** — **coarsen**, the micro-time binning factor (neighbouring
+  bins are summed), and **shift [bins]**, an integer shift of the histogram.
+- **Anisotropy (VV/VH)** — **pol.**, **g-factor** and **VH shift [bins]**.
+  This reader does not apply them yet (a known issue): it always returns one
+  decay of the selected channels. For a VV/VH pair, read the two channel
+  groups as two decays, or use the anisotropy wizard.
 
-When you select **Experiment → TCSPC** and **File type → TTTR-file**, the
-"File parameters" group shows a compact TTTR panel:
+### What a read does
 
-- **Routine** (`reading_routine`)
-  - Drop-down list of TTTR container types, e.g. `PTU`, `HT3`, `SPC132`,
-    `SPC630`.
-  - Passed as the second argument to `tttrlib.TTTR(filename, reading_routine)`.
-
-- **Channels** (`channel_numbers`)
-  - Comma-separated list of routing channel indices (e.g. `0, 3`).
-  - The reader calls `tttr.get_tttr_by_channel(self.channel_numbers)` to
-    restrict the TTTR stream to these channels before histogramming.
-
-- **Binning** (`micro_time_coarsening`)
-  - Discrete micro-time binning factor (`1`, `2`, `4`, `8`, `16`).
-  - Used as the argument to
-    `tttr_selected.get_microtime_histogram(self.micro_time_coarsening)`.
-
-### Data generation
-
-For each selected TTTR file, the reader:
-
-1. Constructs a `tttrlib.TTTR` instance with the chosen routine.
-2. Selects photons from the specified channels.
-3. Computes a micro-time histogram with the configured coarsening factor.
-4. Converts the micro-time axis from seconds to nanoseconds (`x *= 1e9`).
-5. Trims trailing zero bins so the decay stops at the last non-zero count.
-6. Creates a `chisurf.core.data.DataCurve` with:
-   - `x`: micro-time in ns,
-   - `y`: counts per bin,
-   - `ey`: Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise(y)`,
-   - `experiment`: the current TCSPC experiment,
-   - `data_reader`: the `TCSPCTTTRReader` instance.
-
-The curve name is derived from the filename and channel list, e.g.
-`"file_ch(0,3)"`.
-
-### Typical workflow
-
-1. **Select experiment and reader**
-   - In the *Read data* dock, choose **Experiment → TCSPC**.
-   - In **File type**, choose **TTTR-file**.
-
-2. **Configure TTTR parameters**
-   - Set **Routine** to match the acquisition container (e.g. `PTU`, `HT3`).
-   - Enter the routing **Channels** to include in the decay.
-   - Choose a **Binning** factor for micro-time (trade-off between resolution
-     and noise).
-
-3. **Load data**
-   - Click **Data** and select one or more TTTR files.
-   - The reader builds decay histograms and adds them as datasets.
+1. Opens the file as `tttrlib.TTTR` with the routine.
+2. Keeps the photons of the routing channels.
+3. Histograms their micro-times with the coarsening factor and applies the
+   shift.
+4. Converts the micro-time axis to ns and drops the trailing empty bins.
+5. Returns a `DataCurve` with counts per bin, Poisson errors
+   (`chisurf.core.fluorescence.tcspc.counting_noise`) and the file header in
+   its metadata, named `<file>_ch(<channels>)`, e.g. `sample_ch(0,3)`.
 
 ---
 
 ## Becker-SDT {#tcspc-sdt}
 
-Select **Becker-SDT**, then choose an SDT file with the native source input.
-The form decodes the file's identification, title, version, revision, date,
-time, author, company and contents. **Preview curve** selects one measured
-histogram for the displayed calibration. **+ Data** imports every measured
-curve, preserving their order and using each block's own time axis.
+Reads a Becker & Hickl `.sdt` file (see {doc}`becker_hickl_files`). Choose the
+file under **File**; **File information** shows its identification, title,
+version, revision, date, time, author, company and contents.
 
-![Configured native SDT reader](figures/tcspc_sdt_native.png)
+![Becker-SDT reader settings for the shipped 140507p.sdt, previewing curve 2](figures/tcspc_sdt_native.png)
 
-Channel width is shown in nanoseconds and repetition rate in MHz, both
-read-only from the selected measurement descriptor. For an excitation period
-T in nanoseconds, the rate is `1000 / T` MHz. The shipped `140507p.sdt` has
-three 1024-bin curves, 0.019537081674680934 ns channel spacing and an exact
-600 ns excitation period (1.6666666666666667 MHz in float64).
-
-1. Choose the SDT measurement and inspect its file information.
-2. Select a preview if you want to inspect another block's calibration.
-3. Press **+ Data**; preview selection does not filter imported curves.
-
-For a headless read:
+**Repetition rate [MHz]** and **Channel width [ns]** are read-only, taken from
+the measurement descriptor of the curve chosen in **Preview curve**; for an
+excitation period $T$ in ns the rate is $1000/T$ MHz. **+ Data** reads *every*
+curve of the file in order, each with its own time axis — the preview does not
+filter. The shipped `test/data/tcspc/BH_SDT/140507p.sdt` holds three 1024-bin
+curves with 0.019537 ns channels and a 600 ns excitation period (1.667 MHz).
 
 ```python
 from chisurf.core.experiments.tcspc.sdt_reader import SDTReader
 
 reader = SDTReader(filename="test/data/tcspc/BH_SDT/140507p.sdt",
                    curve_nbr=2, record_provenance=False)
-curves = reader.read()  # All three measured curves.
+curves = reader.read()  # all three curves
 ```
 
-Source configuration/restoration stays lazy, so an archive can reopen without
-its original file. Reading or previewing requires the source to be available.
-Historical SDT widget descriptors restore the scientific core reader. The old
-unconnected embedded Add button is retired; use the functional **+ Data** route.
+A project stores the source without opening it, so it reopens without the
+original file; reading or previewing needs the file.
 
 ---
 
 ## Simulator {#tcspc-simulator}
 
-Select the **Simulator** reader for a native three-tab form. The configured
-application starts with sample name Dummy-sample, lifetime spectrum
-`0.4, 1.1, 0.6, 4.1` and rotation spectrum `0.2, 1`. These are explicit GUI
-presets; constructing a view does not overwrite a caller's scientific values.
+Simulates decays instead of reading them. The form has three tabs —
+**Decay**, **Anisotropy** and **Preview** — and opens with the sample name
+`Dummy-sample`, the lifetime spectrum `0.4, 1.1, 0.6, 4.1` and the rotation
+spectrum `0.2, 1`.
+
+![Simulator Decay tab with the IBH prompt as IRF and seed 154](figures/tcspc_simulator_native.png)
 
 ### Decay
 
-Set name, interleaved amplitude/lifetime spectrum, TAC bin count, peak count,
-bin width and repetition rate. A spectrum file can contain one interleaved
-column or amplitude/lifetime columns. Browse or type its path; changing tabs
-commits a pending valid path. Invalid input retains the prior scientific values.
+**Name**, **Lifetime spectrum** (interleaved amplitude, lifetime), **TAC bins**,
+**Peak count**, **Bin width [ns]** and **Repetition rate [MHz]**. A
+**Spectrum file** holds the spectrum as one interleaved column or as amplitude
+and lifetime columns. An invalid entry keeps the previous values.
 
-Choose a measured session curve as the IRF, or unload it to use Gaussian mean
-and sigma in nanoseconds. Group-member selection uses the chosen parent and
-member identities, preserving its actual arrays. Enable Poisson noise as
-needed; a blank seed means unseeded sampling, an integer seed gives repeatable
-results.
-
-![Configured native simulator decay settings](figures/tcspc_simulator_native.png)
+The IRF is a measured curve of the session (**Session curve**, then
+**Select IRF**), or, after **Unload IRF**, a Gaussian of **Gaussian mean [ns]**
+and **Gaussian sigma [ns]**. **Poisson noise** adds counting noise; an empty
+**Random seed** samples unseeded, an integer makes the noise repeatable.
 
 ### Anisotropy
 
-Choose VM or VV/VH, set interleaved rotation amplitude/correlation time,
-G-factor and leakage l1/l2. The anisotropy preview uses a linear r(t) axis.
+**Mode** VM or VV/VH, the rotation spectrum **Rotation b, rho [ns]**
+(interleaved amplitude, correlation time), **g** and the mixing fractions
+**l1**/**l2**.
 
 ### Preview and Add
 
-**Simulate** displays the actual reader output on a log-counts axis. VM has
-one decay; VV/VH retains both channels. The scaled IRF overlay is display-only.
-**Add** submits that cached group once, preserving the displayed noise
-realization, arrays/errors/masks, calibration, IRF and identities across local
-or server API import. It does not run the simulation again. External **+ Data**
-uses the ordinary generator read route; the auxiliary spectrum file is never
-treated as its primary measurement input.
+**Simulate** shows the reader's output on log counts — one decay for VM, both
+channels for VV/VH, with the scaled IRF overlaid for display only. **Add**
+adds exactly that simulation (the same noise realization) to the session
+without simulating again; **+ Data** in the Read data dock simulates afresh.
 
 ```python
 from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
@@ -227,10 +180,9 @@ reader = TCSPCSimulatorSetup(lifetime_spectrum=[0.4, 1.1, 0.6, 4.1],
                              rotation_spectrum=[0.2, 1],
                              polarization="vv/vh", seed=154,
                              record_provenance=False)
-curves = reader.read()
+curves = reader.read()  # VV and VH
 ```
 
-API defaults remain empty spectra, TCSPC-Dummy, noisy unseeded sampling,
-4096 bins, 0.0141 ns/channel, peak10000 and Gaussian5/0.2 ns. Supply the
-spectrum you intend to simulate. Projects retain the existing core reader
-class through the frontend retirement.
+The Python defaults differ from the form's presets: empty spectra, the name
+`TCSPC-Dummy`, unseeded noise, 4096 bins of 0.0141 ns, a peak of 10 000 counts,
+10 MHz and a Gaussian IRF at 5 ns with σ = 0.2 ns. Pass the spectrum you want.

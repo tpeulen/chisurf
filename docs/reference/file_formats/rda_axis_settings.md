@@ -1,45 +1,36 @@
 ---
 type: File Format
 title: R_DA axis settings
-description: 'The global donor–acceptor distance axis (R_DA) used in FRET-related models is controlled by the entries in settings_chisurf.yaml under the fret section:'
+description: The global donor–acceptor distance axis (R_DA) of the FRET models, set in the fret section of settings_chisurf.yaml.
 tags: [reference, file-formats, settings, fitting, global-analysis, fret]
 ---
 
 # R_DA axis settings
 
-The global donor–acceptor distance axis (R_DA) used in FRET-related models is
-controlled by the entries in `settings_chisurf.yaml` under the `fret` section:
+The global donor–acceptor distance axis $R_{DA}$ of the FRET models is set by
+the `fret` section of `settings_chisurf.yaml`:
 
-- `rda_min` – lower bound of the distance grid.
-- `rda_max` – upper bound of the distance grid.
-- `rda_resolution` – number of points in the grid.
-- `rda_scale` – spacing of the grid, either `log` (logarithmic) or `lin`
-  (linear). If missing, `log` is assumed.
+| Key | Meaning | Shipped |
+| --- | --- | --- |
+| `rda_min` | lower bound of the grid, Å | 1 |
+| `rda_max` | upper bound of the grid, Å | 130 |
+| `rda_resolution` | number of grid points | 96 |
+| `rda_scale` | `log` (`numpy.logspace`) or `lin` (`numpy.linspace`); `log` when missing | `log` |
 
-At runtime these values are loaded into `chisurf.settings.fret` and used to
-construct the global axis
+At start-up they are read into `chisurf.core.settings.fret` and built into
+`chisurf.core.fluorescence.rda_axis`.
 
-- `chisurf.core.fluorescence.rda_axis`
+The axis is used by:
 
-If `rda_scale` is `log`, the axis is created with `numpy.logspace`; if it is
-`lin`, `numpy.linspace` is used instead.
+- the PDA Gaussian-distance model (`chisurf.core.models.pda2c.pdagauss`) and its
+  per-component distance curves;
+- structural distance histograms that take an `rda_axis` argument and default
+  to the global axis.
 
-This axis is consumed by several components:
+The TCSPC FRET models are BFF descriptions and carry their own axis as the
+scalars `rda_min`, `rda_max`, `rda_resolution` and `rda_linear`.
 
-- Photon-distribution and structural distance models (below). The TCSPC FRET
-  models are BFF descriptions and carry their own axis as the scalars
-  `rda_min`, `rda_max`, `rda_resolution` and `rda_linear`.
-- PDA Gaussian-distance models and their per-component distance curves in
-  `chisurf.core.models.pda2c.pdagauss` and `chisurf.gui.widgets.models.pda2c.widgets`.
-- Structural distance histograms that accept an `rda_axis` argument and default
-  to the global R_DA axis.
-
-The **R_DA axis (FRET distance)** widget, available from the main GUI via
-**Settings → FRET R_DA axis ...**, provides a compact UI around these
-settings. Changing the values and pressing **Save axis** will:
-
-- Update `chisurf.settings.fret['rda_min']`, `['rda_max']`,
-  `['rda_resolution']` and `['rda_scale']`.
-- Rebuild `chisurf.core.fluorescence.rda_axis` on the fly.
-- Request an update of the current fit so that FRET-related distance
-  distributions use the new axis.
+**Settings → FRET RDA axis…** edits the four values (**R_DA min**,
+**R_DA max**, **N points**, **Scale**). **Save axis** writes them to the
+settings, rebuilds `chisurf.core.fluorescence.rda_axis` and updates the open
+fits, so their distance distributions use the new axis.
