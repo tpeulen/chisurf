@@ -48,7 +48,8 @@ The input is a binned intensity trace (auto-correlation) or three channel traces
 
 A Poisson trace with injected short, correlated bursts. $g^{(3)}$ is strongly
 elevated at short $(\tau_1,\tau_2)$ — the three-photon bunching signature — and
-decays to ≈ 1 as either lag grows beyond the burst width.
+decays to ≈ 1 once both lags exceed the burst width; along the axes, where one
+lag stays short, the pair bunching keeps it above 1.
 
 ```{figure} figures/g3.png
 :name: fig-g3
@@ -60,4 +61,5 @@ Second-order correlation g^(3).
 ## See also
 
 - {src}`chisurf/core/fluorescence/fcs/correlate.py` (`second_order_correlation`)
-- The pair-correlation machinery in the same module (`correlate`, `log_corr`, `make_fine`).
+- Pair correlation of photon streams: `tttrlib.Correlator`, in the FCS **Correlator**
+  ({doc}`73_tttr_decay_and_correlation`).

@@ -41,10 +41,10 @@ no photon-level access needed.
 
 The $P_\text{same}(\tau)$ curve is drawn by **Burst Fusion** — step
 **3. Burst Fusion (optional)** of **Spectroscopy → Single-Molecule → Burst Analysis** (it has no
-menu entry of its own; `python -m chisurf.emtk --plugin burst_fusion` opens it alone). Point **Folder** (**…**) at a
-burst-analysis folder (the one Burst Selection wrote) and press ▶. The tool
-estimates $P_\text{same}$ over all bursts of the folder and reads off the
-longest lag at which it still meets **P(same) ≥**.
+menu entry of its own; `python -m chisurf.emtk --plugin burst_fusion` opens it alone). **Open burst folder**
+takes a burst-analysis folder (the one Burst Selection wrote). **Estimate**
+computes $P_\text{same}$ over all bursts of the folder, writes nothing, and reads
+off the longest lag at which it still meets **P(same) ≥**.
 
 ```{figure} figures/02_rasp_p_same.png
 :name: fig-rasp-p-same
@@ -59,11 +59,11 @@ ceiling the fusion is capped at.
 
 | Control | Default | Meaning |
 |---|---|---|
-| **Folder** | — | Burst-analysis folder (`bi4_bur/`) to read. |
+| **Folder** | — | Burst-analysis folder (`bi4_bur/`) to read (**Open burst folder**). |
 | **P(same) ≥** | 0.50 | Threshold the curve is inverted at. |
 | **Max gap** | 10 ms | Longest gap ever fused, whatever $P_\text{same}$ says. |
 | **Max fragments** | 0 (no limit) | Largest number of bursts merged into one. |
-| **P(same molecule) estimate** | collapsed | Lag range and bin count of the $P_\text{same}$ estimate. |
+| **P(same molecule) estimate** | 0.1–1000 ms, 60 bins | **Lag from**, **Lag to**, **Lag bins**, **Min pairs/bin**, **Pool files** of the $P_\text{same}$ estimate. |
 
 The status block states the result in words
 (*P(same molecule) ≥ 0.50 holds out to 68.239 ms … 2980 → 1603 bursts*) and the
@@ -95,14 +95,16 @@ r.plot(e_range=(0.0, 0.4), dt_range_s=(1e-3, 0.1))
 ```
 
 `bursts.recurrence()` needs a burst table with a proximity ratio or
-per-detector photon counts; see *Known defects*.
+per-detector photon counts; `select_bursts` writes both from the setup's
+detectors.
 
 ## Result
 
 Molecules that recur within ~30 ms and inter-convert between a low-FRET
 (E ≈ 0.25) and a high-FRET (E ≈ 0.75) state were simulated. **Left:**
-$P_\text{same}$ is high at short lags and decays — beyond ~100 ms a recurring
-burst is no longer the same molecule. **Right:** the recurrence histogram for the
+$P_\text{same}$ is high from ~3 to ~30 ms and falls to near zero beyond it,
+where a recurring burst is no longer the same molecule (below ~3 ms the
+simulation has almost no burst pairs). **Right:** the recurrence histogram for the
 initial low-E population is dominated by the high-E state, directly showing the
 inter-conversion the single-burst histogram cannot resolve.
 
@@ -120,11 +122,3 @@ RASP: same-molecule probability and recurrence histogram.
 - Tool: **Burst Fusion** (`chisurf/plugins/burst/burst_fusion/`), which uses
   $P_\text{same}$ to merge fragments of one passage.
 
-## Known defects
-
-- **`Bursts.recurrence()` fails on bursts from `BurstWorkflow.select_bursts`.**
-  `select_bursts` builds its `AnalysisRequest` without the setup's detectors,
-  so the burst table has no `Number of Photons (green|red)` columns and no
-  `Proximity Ratio`; `recurrence()` then raises *"no FRET efficiency /
-  proximity-ratio column"* (measured on `m000`–`m002.spc`, 2026-09-23). Use
-  the core functions above with an efficiency column you computed.

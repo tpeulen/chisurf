@@ -35,18 +35,11 @@ bursts below 4–10.
 
 ## In ChiSurf
 
-The standalone native window declares **1100 × 720** pixels on first use;
-saved geometry takes precedence. Scroll the control pane on a smaller host.
-Resizing does not change the variant, kernel, time constant or routing-channel
-selection for the calculation already displayed. Reopen the input folder and
-choose the analysis settings again after a fresh launch; geometry preferences
-are not a saved analysis result.
-
-Legacy folder input shares BVA’s canonical table discovery, so binary PTO cache
-sidecars beside a BUR table remain on disk without being decoded as text.
-Companion files retain positional burst alignment. A burst skipped because its
-measurement is unavailable keeps its output row and missing-value sentinel;
-legacy numeric companions encode missing results as zero.
+Open **Spectroscopy → Single-Molecule → 2CDE** on its own, or use step
+**5. Burst 2CDE** of the burst workflow. **Folder** takes a burst-analysis
+folder (the `.bur` tables and their photon files). The result keeps one row
+per burst, in order: a burst whose photon file is missing gets a missing-value
+row (zero in the legacy numeric companion), so later bursts do not shift.
 
 ```{figure} figures/burst_2cde_native_primary_window.png
 :width: 90%

@@ -64,7 +64,10 @@ your detectors. The fit weights each bin by the Poisson error of its count
 data of {numref}`fig-pch-tool` one component gives ε = 0.308, ⟨N⟩ = 1.92 and
 χ²ᵣ = 196 — a single species does not describe a burst-rich histogram — and two
 components (starting values ε = 2, ⟨N⟩ = 3 per species) give ε = 9.57 and
-0.084, ⟨N⟩ = 0.0185 and 6.18, χ²ᵣ = 3.6.
+0.084, ⟨N⟩ = 0.0185 and 6.18, χ²ᵣ = 3.6. Components may come back in either order; a
+pair (ε, ⟨N⟩) stays together. **Save Results** writes `<base>.npz`, `.csv` and
+`.txt` plus `<base>_histogram.png` (P(k) with its fit) and `<base>_window.png`
+(the intensity trace above it).
 
 ### FIDA in the PCH experiment
 
@@ -136,12 +139,3 @@ FIDA photon-counting histograms.
   arguments, but the function calls `tttrlib.fida_pch(k_max, species, n, bg)`
   without them, so a custom brightness profile has no effect.
 
-**Save Results** writes `<base>.npz`, `.csv` and `.txt` plus two pictures, `<base>_histogram.png` (the P(k) plot with its fit) and `<base>_window.png` (the intensity trace above it).
-
-The native PCH tool starts at 1100×720, preserving saved geometry, loaded photons
-and completed fitted species. Symmetric mixture components can exchange order
-without changing their paired brightness/occupancy or predicted histogram.
-Validate numerical parameters and the objective rather than rounded display
-strings. A one-component model can poorly describe a burst-rich histogram: the
-measured demonstration retains that mismatch and large goodness-of-fit value,
-rather than treating successful optimization as model adequacy.
