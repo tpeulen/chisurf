@@ -3507,6 +3507,9 @@ ray out.png, 900, 650
 
 This blocks regenerating `chimol_molmap.png` and `chimol_map_isomesh.png`, which
 are chrome-free ray renders; the existing files are correct and were left alone.
+(2026-10-14: `chimol_map_isomesh.png` is now made through the WebGPU path instead
+— `png` on the offscreen `ChimolApp`, `docs/guides/screenshots/chimol_map_shot.py`
+— which sidesteps this; `chimol_molmap.png` is still the old ray render.)
 
 **Worth knowing whichever path you use:** give `isomesh` **no level**. A map
 opens already contoured, and a level argument *appends* a second contour rather
