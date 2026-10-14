@@ -2855,8 +2855,9 @@ Open, highest value first:
     spectrum (164/543 Chroma dyes carry excitation only); a cached R0
     silently overrides user Q_D/ε/n. Staging DB: ATTO-550 carries ATTO 565's
     data; the ATTO-TEC ATTO488 record is soft-deleted.
-14. **Smaller**: MFD Prepare unreachable from any menu/hub; `csc mfd-prepare
-    fit` AttributeError; partial `streams=` IndexError; burst fusion writes an
+14. **Smaller**: MFD Prepare unreachable from any menu/hub; (`csc mfd-prepare
+    fit` AttributeError and partial `streams=` IndexError fixed 2026-10-14);
+    burst fusion writes an
     empty folder before validating; burst-FCS progress bar never closes; H2MM
     floor rates printed as measured; `fcs-convert` etc. HDF5 "compressed ~4×"
     wording (measured 2.8×); CLSM-Draw "&" mnemonic; ndX

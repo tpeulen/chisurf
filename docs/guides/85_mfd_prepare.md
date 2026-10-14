@@ -145,6 +145,13 @@ print(prep.summary["stream_origin"], prep.summary["count_agreement"])
 # caller {'green': 1.0, 'red': 1.0, 'yellow': 1.0}
 ```
 
+Explicit definitions are matched to the detector columns by name, in any
+order. Every detector needs one: leaving `yellow` out raises
+`ValueError: streams= must define every detector of … (green, red, yellow): no
+definition for 'yellow'`, and a name the folder does not have is refused the
+same way. A detector is never completed from a guess, because its name does
+not determine its definition.
+
 `prep.counts`, `prep.spans` (per-detector first-to-last photon span, s),
 `prep.mean_micro_time` (ns), `prep.duration`, `prep.first_photon`/`last_photon`
 (always inclusive) and `prep.rows` (positions in the concatenated table, for
@@ -160,14 +167,6 @@ consumes; `prep.summary` holds the diagnostics.
 * **Read the photon-index line** for folders written by older software: an
   `exclusive` folder is fine, provided everything downstream reads it through
   this function.
-
-## Known defects
-
-* **A partial `streams=` crashes.** Passing definitions for green and red
-  only, on a folder with three detectors, raises `IndexError: index 2 is out
-  of bounds` in `prepare_burst_folder` (`mfd/prepare.py`, count-agreement
-  loop) instead of saying which detector has no definition. Pass one entry per
-  detector.
 
 ## See also
 

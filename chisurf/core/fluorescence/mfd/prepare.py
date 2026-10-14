@@ -872,6 +872,66 @@ def infer_streams(
     return resolved
 
 
+def _align_caller_streams(
+    streams: Sequence[StreamDef], names: Sequence[str], bur_dir: pathlib.Path
+) -> list[StreamDef]:
+    """Return caller definitions in the folder's detector-column order.
+
+    Every later step indexes the definitions by detector column, so they are
+    matched by name (case-insensitively) rather than trusted by position: a
+    reordered list would otherwise check and fit each detector against another's
+    photons. A definition for every detector is required, because no single
+    detector can be completed from a guess — ``red`` is ungated in one analysis
+    and gated to the prompt window in another.
+
+    Parameters
+    ----------
+    streams : sequence of StreamDef
+        The caller's definitions.
+    names : sequence of str
+        Detector names, in column order.
+    bur_dir : pathlib.Path
+        The burst directory, for the error message.
+
+    Returns
+    -------
+    list of StreamDef
+
+    Raises
+    ------
+    ValueError
+        If a detector has no definition, a definition names no detector, or a
+        detector is defined twice.
+    """
+    by_name: dict[str, StreamDef] = {}
+    for stream in streams:
+        key = str(stream.name).lower()
+        if key in by_name:
+            raise ValueError(f"streams= defines detector {stream.name!r} twice")
+        by_name[key] = stream
+    lowered = [str(n).lower() for n in names]
+    missing = [n for n, key in zip(names, lowered) if key not in by_name]
+    unknown = [s.name for key, s in by_name.items() if key not in lowered]
+    if missing or unknown:
+        problems = []
+        if missing:
+            problems.append(f"no definition for {', '.join(map(repr, missing))}")
+        if unknown:
+            problems.append(f"no detector named {', '.join(map(repr, unknown))}")
+        raise ValueError(
+            f"streams= must define every detector of {bur_dir} "
+            f"({', '.join(names)}): " + "; ".join(problems)
+        )
+    return [
+        StreamDef(
+            name=name,
+            channels=list(by_name[key].channels),
+            micro_time_ranges=list(by_name[key].micro_time_ranges),
+        )
+        for name, key in zip(names, lowered)
+    ]
+
+
 def _fallback_streams(names: Sequence[str]) -> list[StreamDef]:
     """Return channel definitions guessed from conventional detector names."""
     known = {s.name: s for s in default_streams()}
@@ -1009,7 +1069,8 @@ def prepare_burst_folder(
         The analysis folder, its ``bi4_bur`` directory, or a single ``.bur`` file.
     streams : sequence, optional
         Channel definitions, as :class:`~chisurf.core.fluorescence.burst.photons.StreamDef`
-        objects or plain dictionaries. When omitted they are taken from the folder's
+        objects or plain dictionaries, one per detector, matched to the detector
+        columns by name in any order. When omitted they are taken from the folder's
         manifest, and failing that guessed from the detector names and **checked
         against the count columns**.
     with_photons : bool
@@ -1030,7 +1091,8 @@ def prepare_burst_folder(
     UnresolvedPhotonSource
         If the photon streams cannot be located or read, and they are needed.
     ValueError
-        If the channel definition disagrees with the burst tables.
+        If the channel definition disagrees with the burst tables, or ``streams``
+        leaves a detector undefined or names one the folder does not have.
     """
     analysis_dir, bur_dir = burst_directory(folder)
     paths = sorted(bur_dir.glob("*.bur"))
@@ -1068,7 +1130,9 @@ def prepare_burst_folder(
         dicts = [item for item in streams if isinstance(item, dict)]
         if defs and dicts:
             raise TypeError("streams mixes StreamDef objects and dicts; pass one kind")
-        resolved_streams = defs if defs else streams_from_dicts(dicts)
+        resolved_streams = _align_caller_streams(
+            defs if defs else streams_from_dicts(dicts), names, bur_dir
+        )
         stream_origin = "caller"
 
     counts = np.column_stack(
