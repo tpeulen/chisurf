@@ -345,7 +345,8 @@ def test_rate_matrix_cells_and_the_link_menu(shell):
     call = next(
         c
         for item_id, c in menu.calls.items()
-        if getattr(c, "__defaults__", None) and c.__defaults__[0] == target["uid"]
+        # A link action is ``functools.partial(views.link, record, target_uid)``.
+        if getattr(c, "args", ())[-1:] == (target["uid"],)
     )
     menu.panel.open = False
     call()

@@ -26,6 +26,7 @@ address; the server refuses what the model's ``view.json`` does not declare.
 from __future__ import annotations
 
 import csv
+import functools
 import math
 from pathlib import Path
 from typing import Any, Callable
@@ -55,7 +56,7 @@ SCALAR_COLUMNS = [
 #: Columns of the ``global_parameter_table`` (the Qt section's, in its order).
 #: Short of width it drops, as the parameter tables do, the bounds first, then
 #: the error, then the link columns, then Fixed; owner, parameter and value stay.
-GLOBAL_COLUMNS = [
+GLOBAL_COLUMNS: list[dict[str, Any]] = [
     {
         "key": "row",
         "label": "Row",
@@ -531,7 +532,8 @@ class LinkMenu:
 
         self.views = views
         self.record = dict(record)
-        self.calls: dict[int, Callable[[], None]] = {}
+        # Menu actions; what one returns (link/unlink report success) is not used.
+        self.calls: dict[int, Callable[[], object]] = {}
         source = str(record.get("uid", ""))
         name = str(record.get("name", ""))
         fit_menus = []
@@ -563,7 +565,7 @@ class LinkMenu:
                     if not uid or uid == source or not p.get("active_in_structure", True):
                         continue
                     item = MenuItem(str(p.get("name", "")))
-                    self.calls[id(item)] = lambda target=uid: views.link(self.record, target)
+                    self.calls[id(item)] = functools.partial(views.link, self.record, uid)
                     items.append(item)
                 if member_name:
                     entries.append(Menu(str(member_name), items))
@@ -593,8 +595,8 @@ class LinkMenu:
         for label in [prior_families.BOX_LABEL] + [s[0] for s in prior_families.PRIOR_FAMILY_SPECS]:
             item = MenuItem(tr(label), checked=label == current, checkable=True)
             typed = "Box" if label == prior_families.BOX_LABEL else label
-            self.calls[id(item)] = lambda text=typed: self.views.docks.edit_model_parameter(
-                self.record, "prior", text
+            self.calls[id(item)] = functools.partial(
+                self.views.docks.edit_model_parameter, self.record, "prior", typed
             )
             items.append(item)
         return Menu(tr("Prior"), items)
@@ -1220,7 +1222,7 @@ class SectionViews:
             im.same_line()
             corner = data.get("corner_index")
             im.begin_disabled(corner is None or not options.get("select_action"))
-            if im.button(tr("⌾ corner") + f"##corner-{ident}"):
+            if im.button(tr("⌾ corner") + f"##corner-{ident}") and corner is not None:
                 self.call(ident, "select", {"index": int(corner)}, tr("Picking the weight…"))
             self._rect(state, f"lcurve.{ident}.corner")
             im.set_item_tooltip(tr("Adopt the weight at the detected corner."))

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, TypeVar
 
 import numpy as np
 
@@ -809,6 +809,10 @@ def fit_import(state: SessionState, filename: str, event_bus: Any = None) -> Ser
     return {"ok": True, "fit_uids": uids, "datasets": len(restored.datasets)}
 
 
+#: Element of a series :func:`_downsample` thins (a float, or ``None`` for a gap).
+_V = TypeVar("_V")
+
+
 def _report_images(fit: Any) -> list:
     """The report's pictures of *fit*, drawn by emtk."""
     from chisurf.emtk.fit_report import render_fit_images
@@ -817,9 +821,9 @@ def _report_images(fit: Any) -> list:
 
 
 def _downsample(
-    values: list[float] | None,
+    values: list[_V] | None,
     max_points: int,
-) -> list[float | None] | None:
+) -> list[_V] | None:
     """Downsample *values* to at most *max_points*.
 
     Parameters
@@ -1516,6 +1520,11 @@ def fit_model_search(
                 restore(prepared.problem)
             return {"ok": True, "outcome": outcome, "missing": list(missing)}
         best = result.get_best_state()
+        if prepared.binding is None:
+            return service_error(
+                "BFF model search selected a structure but has no binding",
+                error_code=OPERATION_FAILED,
+            )
         prepared.binding.apply_state(prepared.problem, best)
         if event_bus is not None:
             event_bus.publish("fit.updated", {"fit_index": idx, "fit_uid": uid})

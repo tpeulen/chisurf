@@ -328,7 +328,7 @@ class _EnsembleSamplerBase:
         """
         self._chain[self.iteration] = state.coords
         self._log_prob[self.iteration] = state.log_prob
-        if state.blobs is not None:
+        if state.blobs is not None and self._blobs is not None:
             self._blobs[self.iteration] = state.blobs
         self.accepted += accepted
         self.iteration += 1
@@ -590,9 +590,12 @@ class _EnsembleSamplerBase:
             if self._previous_state is None:
                 raise ValueError("run_mcmc has never been called, so there is nothing to resume")
             initial_state = self._previous_state
-        result = None
+        result: EnsembleState | None = None
         for result in self.sample(initial_state, iterations=int(nsteps), **kwargs):
             pass
+        if result is None:
+            # No step was taken, so there is no final state to hand back.
+            raise ValueError(f"run_mcmc needs at least one step, got nsteps={nsteps}")
         self._previous_state = result
         return result
 
@@ -1098,7 +1101,7 @@ class EnsembleSliceSampler(_EnsembleSamplerBase):
             hit = idx[on_slice]
             new_x[hit] = probe[on_slice]
             new_log_prob[hit] = log_prob[on_slice]
-            if probe_blobs is not None:
+            if probe_blobs is not None and blobs is not None:
                 blobs[hit] = probe_blobs[on_slice]
             pending[hit] = False
 
@@ -1162,9 +1165,9 @@ def _parse_moves(moves) -> tuple:
     if not isinstance(moves, (list, tuple)):
         return [moves], np.ones(1)
     if moves and isinstance(moves[0], (list, tuple)):
-        items, weights = zip(*moves)
-        items = list(items)
-        weights = np.asarray(weights, dtype=np.float64)
+        move_items, move_weights = zip(*moves)
+        items = list(move_items)
+        weights = np.asarray(move_weights, dtype=np.float64)
     else:
         items = list(moves)
         weights = np.ones(len(items), dtype=np.float64)
