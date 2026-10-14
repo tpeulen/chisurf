@@ -99,21 +99,28 @@ def apply_node_graph_settings(style: typing.Any) -> None:
 
     Notes
     -----
-    The grid is drawn white at the configured opacity -- primary lines at
-    :data:`_PRIMARY_RATIO` times it -- because every ChiSurf graph runs on the
-    dark palette; a graph that restyles its background afterwards (Global
-    View's is darker than emtk's) keeps these lines, which is the point: the
-    setting is *the* grid, wherever it is drawn.
+    The style first takes the window theme's node palette (:func:`emtk.nodes.sync_theme`);
+    the grid is then drawn in the theme's text colour at the configured opacity -- primary
+    lines at :data:`_PRIMARY_RATIO` times it -- so it is light on the dark theme and dark on
+    the light one. A graph that restyles its background afterwards (Global View's is the
+    theme's plot area) keeps these lines, which is the point: the setting is *the* grid,
+    wherever it is drawn. :class:`~chisurf.emtk.node_editor.control.GraphControl` applies it
+    again when the theme changes.
     """
     settings = node_graph_settings()
     style.grid_spacing = max(float(settings["grid_spacing"]), 4.0)
     style.grid_line_width = max(float(settings["grid_line_width"]), 0.0)
+    # The window theme's node palette first (emtk.theme: dark or light), the settings over it.
+    emtk_nodes.sync_theme(style)
+
+    from emtk import style as _style
 
     alpha = max(float(settings["grid_opacity"]), 0.0)
     minor = min(int(round(255.0 * alpha)), 255)
     primary = min(int(round(255.0 * alpha * _PRIMARY_RATIO)), 255)
-    style.colors[emtk_nodes.Col.GRID_LINE] = (255, 255, 255, minor)
-    style.colors[emtk_nodes.Col.GRID_LINE_PRIMARY] = (255, 255, 255, primary)
+    ink = tuple(_style.TEXT[:3])  # light lines on the dark theme, dark ones on the light
+    style.colors[emtk_nodes.Col.GRID_LINE] = (*ink, minor)
+    style.colors[emtk_nodes.Col.GRID_LINE_PRIMARY] = (*ink, primary)
 
     if bool(settings["show_grid"]):
         style.flags |= emtk_nodes.StyleFlags.GRID_LINES

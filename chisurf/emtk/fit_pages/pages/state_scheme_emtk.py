@@ -49,10 +49,19 @@ NODE_PALETTE = (
     ("#26c6da", "#00838f"),
     ("#ec407a", "#ad1457"),
 )
-BACKDROP = (21, 21, 21)
 GRID_STEP = 35.0
 ACCENT = (0, 229, 255)
 ACCENT_ALT = (255, 64, 129)
+#: A rate badge on the excitation edge, and one being edited: white ink reads on both.
+BADGE_EXCITATION = (0, 140, 170, 230)
+BADGE_EDITING = (90, 20, 20, 240)
+#: Ink on a coloured disc or badge (it sits on the disc, not on the window).
+ON_COLOUR = (255, 255, 255)
+#: The rim of a state disc, and of the one being dragged.
+NODE_RIM = (240, 240, 240)
+NODE_RIM_DRAGGED = (255, 235, 59)
+#: The outline of the rate field being typed into.
+EDIT_OUTLINE = (255, 51, 51, 255)
 NODE_RADIUS = 26.0
 ZOOM_RANGE = (0.25, 6.0)
 
@@ -404,14 +413,17 @@ class SchemeCanvas:
 
     # -- drawing ------------------------------------------------------- #
     def draw(self, p, x: float, y: float, w: float, h: float) -> None:
+        from emtk import style
         from emtk.drawlist import DrawList
 
         self._box = (x, y, w, h)
         dl = DrawList(p)
-        p.fill_rect(x, y, w, h, BACKDROP)
-        # White at 8% over the backdrop, as the Qt canvas drew it; a solid
+        # The plot area of the theme (emtk.theme), so the canvas sits in a light window too.
+        backdrop = tuple(style.PLOT_BG[:3])
+        p.fill_rect(x, y, w, h, backdrop)
+        # The text colour at 8% over the backdrop, as the Qt canvas drew it; a solid
         # colour, because a line's alpha is not honoured by every painter.
-        grid = (31, 31, 31)
+        grid = style.lerp_colour(backdrop, style.TEXT, 0.08)[:3]
         gx = x + GRID_STEP
         while gx < x + w:
             dl.add_line((gx, y), (gx, y + h), grid)
@@ -420,7 +432,7 @@ class SchemeCanvas:
         while gy < y + h:
             dl.add_line((x, gy), (x + w, gy), grid)
             gy += GRID_STEP
-        dl.add_rect((x, y), (x + w, y + h), (50, 50, 50))
+        dl.add_rect((x, y), (x + w, y + h), style.BORDER)
         n = self.ensure_layout()
         if n <= 0:
             p.text(
@@ -430,7 +442,7 @@ class SchemeCanvas:
                 p.line_height(),
                 0,
                 "This model has no rate scheme to draw.",
-                (170, 170, 170),
+                style.DIM,
             )
             return
         p.push_clip(x, y, w, h)
@@ -462,14 +474,17 @@ class SchemeCanvas:
         text_w = p.text_width(edge.label)
         bw, bh = max(40.0, text_w + 12.0), max(20.0, p.line_height() + 6.0)
         bx, by = mid[0] - bw / 2.0, mid[1] - bh / 2.0
-        fill = (0, 140, 170, 230) if edge.excitation else (20, 20, 20, 225)
+        from emtk import style
+
+        # A plain badge is a card of the theme with its text; the coloured ones carry white ink.
+        fill, ink = style.CARD_BG, style.TEXT
+        if edge.excitation:
+            fill, ink = BADGE_EXCITATION, ON_COLOUR
         if self.editing == (edge.i, edge.j):
-            fill = (90, 20, 20, 240)
+            fill, ink = BADGE_EDITING, ON_COLOUR
         dl.add_rect_filled((bx, by), (bx + bw, by + bh), fill, 6.0)
         dl.add_rect((bx, by), (bx + bw, by + bh), edge.colour, 6.0, 0, 1.2)
-        p.text(
-            bx + (bw - text_w) / 2.0, by, text_w + 2.0, bh, _align(), edge.label, (255, 255, 255)
-        )
+        p.text(bx + (bw - text_w) / 2.0, by, text_w + 2.0, bh, _align(), edge.label, ink)
         self._badges[(edge.i, edge.j)] = (bx, by, bw, bh)
 
     def _draw_node(self, dl, p, i: int, label: str) -> None:
@@ -485,7 +500,7 @@ class SchemeCanvas:
             off = r * 0.3 * t
             dl.add_circle_filled((cx - off, cy - off), rad, colour, 32)
         dragged = self._drag is not None and self._drag[0] == "node" and self._drag[1] == i
-        rim = (255, 235, 59) if dragged else (240, 240, 240)
+        rim = NODE_RIM_DRAGGED if dragged else NODE_RIM
         dl.add_circle((cx, cy), r, rim, 32, 3.0 if dragged else 2.0)
         tw = p.text_width(label)
         p.text(
@@ -495,7 +510,7 @@ class SchemeCanvas:
             p.line_height(),
             _align(),
             label,
-            (255, 255, 255),
+            ON_COLOUR,
             True,
         )
 
@@ -711,6 +726,7 @@ class StateSchemePlot(Plot):
     def _draw_rate_field(self) -> None:
         """The field over a double-clicked badge: Enter writes the rate, Escape drops it."""
         from emtk import im
+        from emtk import style as _style
         from emtk.keys import KEY_ESCAPE
 
         canvas = self.canvas
@@ -733,13 +749,13 @@ class StateSchemePlot(Plot):
         draw.add_rect_filled(
             (ax - 48.0, ay - height / 2 - 3.0),
             (ax + 48.0, ay + height / 2 + 3.0),
-            (26, 26, 26, 255),
+            _style.CARD_BG,
             4.0,
         )
         draw.add_rect(
             (ax - 48.0, ay - height / 2 - 3.0),
             (ax + 48.0, ay + height / 2 + 3.0),
-            (255, 51, 51, 255),
+            EDIT_OUTLINE,
             4.0,
             0,
             2.0,

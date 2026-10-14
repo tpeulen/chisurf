@@ -11,6 +11,7 @@
       "description": "Measured decay and instrument response files read by the LLTF analysis.",
       "sections": [
         {"type": "choice", "attr": "mode", "label": "Data", "options": ["Magic angle", "VV/VH"], "style": "radio",
+         "descriptions": ["One decay recorded at the magic angle, fitted with lifetimes only.", "A polarization-resolved VV/VH pair fitted jointly: shared lifetimes, an anisotropy decay r(t) and the G/l1/l2 calibration."],
          "description": "Magic angle: one decay. VV/VH: a polarization-resolved pair fitted jointly — shared lifetimes, an anisotropy decay r(t) and the G/l1/l2 calibration. The decay file is then a stacked VV/VH file (one column), a three-column file (time, VV, VH), or the VV channel with a separate VH file."},
         {"type": "custom", "key": "lltf_files", "description": "List of the decay and IRF files; drop files here or add them with the buttons."}
       ]

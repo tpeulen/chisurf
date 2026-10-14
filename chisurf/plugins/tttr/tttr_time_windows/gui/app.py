@@ -32,7 +32,8 @@ WINDOW_BG = (30, 32, 38, 255)
 #: More boundaries than this are not drawn (they would only cover the trace).
 MAX_BOUNDARY_LINES = 300
 ACCENT_RED = (214, 80, 80, 255)
-BOUNDARY_COLOUR = (220, 220, 220, 180)
+#: A window boundary: mid grey, visible on the dark and the light plot (emtk.theme).
+BOUNDARY_COLOUR = (140, 140, 150, 200)
 
 
 #: The time-window duration, as a form field (typed, clamped to the Qt spin box's range).

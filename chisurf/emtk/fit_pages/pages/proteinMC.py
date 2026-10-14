@@ -12,6 +12,7 @@ import time
 import typing
 
 import numpy as np
+from emtk import style as _style
 
 import chisurf as cs
 import chisurf.core.plotting.appearance as appearance
@@ -28,6 +29,11 @@ _REPRESENTATIONS = ("cartoon", "ca_trace", "atoms")
 
 #: Seconds between two playback steps.
 PLAY_INTERVAL = 0.12
+#: The current-frame cursor, a contact edge and a residue node of the network: mid-tone
+#: colours, readable on the dark and the light plot background (emtk.theme).
+FRAME_CURSOR = (230, 160, 0, 220)
+NETWORK_EDGE = (128, 128, 136, 140)
+NETWORK_NODE = (150, 160, 175)
 
 
 class ProteinMCPlot(Plot):
@@ -75,7 +81,7 @@ class ProteinMCPlot(Plot):
         # A movable=False "current frame" cursor on each panel.
         self.frame_lines = []
         for plot_item in (self.rmsd_plot, self.drmsd_plot, self.energy_plot, self.fret_plot):
-            line = plot_item.vline(0, movable=False, pen=cp.to_pen((255, 255, 0, 180), width=1))
+            line = plot_item.vline(0, movable=False, pen=cp.to_pen(FRAME_CURSOR, width=1))
             self.frame_lines.append(line)
 
         try:
@@ -535,8 +541,7 @@ class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
         self._network_node_positions = {}
         self._network_static_items = []
         self.plot_widget = cp.Panel()
-        self.plot_widget.set_aspect_locked(True)
-        self.plot_widget.set_background((20, 20, 20))
+        self.plot_widget.set_aspect_locked(True)  # the theme's plot background (emtk.theme)
         self.plot_widget.set_axis_visible(left=False, bottom=False)
         self.panel_items = [PanelItem(self.plot_widget, self.plot_widget.control())]
         self.update_all()
@@ -633,7 +638,7 @@ class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
             if p1 is None or p2 is None:
                 continue
             item = self.plot_widget.line(
-                [p1[0], p2[0]], [p1[1], p2[1]], pen=(80, 80, 80, 120), width=1.0
+                [p1[0], p2[0]], [p1[1], p2[1]], pen=NETWORK_EDGE, width=1.0
             )
             self._network_edges.append(edge)
             self._network_edge_items.append(item)
@@ -641,8 +646,8 @@ class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
             [self._network_node_positions[name][0] for name in nodes],
             [self._network_node_positions[name][1] for name in nodes],
             size=8,
-            brush=(230, 230, 230),
-            pen=(30, 30, 30),
+            brush=NETWORK_NODE,
+            pen=tuple(_style.BORDER[:3]),
         )
         self._network_static_items.append(scatter)
         for name in nodes:
@@ -650,7 +655,7 @@ class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
             label = self.plot_widget.text(
                 str(name),
                 (float(pos[0] * 1.12), float(pos[1] * 1.12)),
-                color=(230, 230, 230),
+                color=tuple(_style.PLOT_LABEL_TEXT[:3]),
                 anchor=(0.5, 0.5),
             )
             self._network_static_items.append(label)
@@ -674,7 +679,7 @@ class ProteinMCDistanceNetworkPlot(_FramePlayback, Plot):
         self.plot_widget.text(
             str(message),
             (0.0, 0.0),
-            color=(230, 230, 230),
+            color=tuple(_style.PLOT_LABEL_TEXT[:3]),
             anchor=(0.5, 0.5),
         )
         self.plot_widget.set_xlim(-1, 1, padding=0.02)

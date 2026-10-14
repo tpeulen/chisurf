@@ -251,6 +251,8 @@ class GlobalViewModel:
             on_unlink=self._on_graph_unlink,
         )
         ev.apply_network_style(self.control.editor)
+        control = self.control
+        control.style_hooks.append(lambda _style: ev.apply_network_style(control.editor))
         self.control.read_only = False
         self.rebuild(force=True)
 

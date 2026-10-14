@@ -29,8 +29,6 @@ from .view_model import TwoCdeViewModel
 __all__ = ["BurstTwoCdeApp", "BurstTwoCdeGui", "WINDOW_BG"]
 
 WINDOW_BG = (30, 32, 38, 255)
-PANEL_BG = (38, 41, 48, 255)
-PANEL_BORDER = (55, 60, 72, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 

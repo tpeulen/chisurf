@@ -33,8 +33,6 @@ from .view_model import BvaViewModel
 __all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG"]
 
 WINDOW_BG = (30, 32, 38, 255)
-PANEL_BG = (38, 41, 48, 255)
-PANEL_BORDER = (55, 60, 72, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)

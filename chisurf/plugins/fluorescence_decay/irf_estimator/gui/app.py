@@ -412,12 +412,11 @@ class IRFEstimatorApp(ImApp):
                 pos, size = implot.get_plot_pos(), implot.get_plot_size()
                 pixel = implot.plot_to_pixels(mouse.x, mouse.y)
                 draw = implot.get_plot_draw_list()
-                draw.add_line(
-                    (pixel[0], pos[1]), (pixel[0], pos[1] + size[1]), (180, 180, 180, 180)
-                )
-                draw.add_line(
-                    (pos[0], pixel[1]), (pos[0] + size[0], pixel[1]), (180, 180, 180, 180)
-                )
+                from emtk import style
+
+                cross = style.PLOT_AXIS_LINE  # the crosshair in the plot's own line colour
+                draw.add_line((pixel[0], pos[1]), (pixel[0], pos[1] + size[1]), cross)
+                draw.add_line((pos[0], pixel[1]), (pos[0] + size[0], pixel[1]), cross)
                 im.set_tooltip(self.pointer_text)
             implot.end_plot()
         self.item_rects["plot"] = tuple(box)

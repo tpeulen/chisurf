@@ -9,31 +9,40 @@ timestamp: '2026-10-14T00:00:00Z'
 
 # Where to pick this up
 
-1. **Measure what is still dark-only.** `test/test_theme_tokens.py` scans only literal colours
-   handed to `im.text_colored` / `im.push_style_color`. Two kinds of colour slip past it:
-   module constants and draw-list fills. Count the constants with
-   `grep -rnE "^[A-Z_]+(BG|BACKDROP|BORDER|PANEL)[A-Z_]*\s*=\s*\(\s*[0-9]{1,2},\s*[0-9]{1,2},\s*[0-9]{1,2}" chisurf | grep '\.py:'`
-   (2026-10-14: 33 constants in 20 files). Most are `WINDOW_BG` exports that only colour a
-   Qt `ControlHost`. The ones a light window shows:
-   - `fit_pages/pages/state_scheme_emtk.py`: the state-scheme canvas;
-   - `fit_pages/pages/proteinMC.py`: `set_background((20, 20, 20))`;
-   - `burst_ebfret` painter fills;
-   - the burst apps' `PANEL_BG`.
+The list of 2026-10-14 is closed. What remains is retired with the Qt host or is by design.
 
-   Trap: pick the screenshot state with care. The 2CDE and splitter screenshots show these
-   gaps only once a tool is opened on its data.
-2. **Open: the node editor (`emtk/nodes.py`, 47 literals) and `emtk/implot3d` are not
-   themed.** Neither is in the shell's default layout. They need a token pass like the
-   one 0.1.18 gave plots and markdown.
-3. **Open: the code editor's syntax palette** comes from its own colour-scheme preference
-   (`palette_for(self.color_scheme, …)`), not from the theme. On the light theme its
-   dark-scheme default draws light tokens on a white field. Its chrome already follows
-   (`DARK_CHROME` is pushed only on the dark theme). Make the scheme default `auto`, meaning
-   the theme's palette.
-4. **Open: `emtk/tk_host.py`** still clears to (30, 32, 38). The tk host is not used by the
-   shell.
-5. **Owned by the LLTF lane:** two missing radio tooltips in `lltf.view.json` fail
-   `test/test_tooltips.py`. Not theme-related.
+1. **Measure.** `test/test_theme_tokens.py` now scans three kinds of colour in shipped emtk
+   code:
+   - literal colours handed to `text_colored` / `push_style_color`;
+   - literal colours handed to painter and draw-list calls (`fill_rect`, `add_rect_filled`,
+     `add_text`, …);
+   - module constants named as a surface or its text (`*_BG`, `BACKDROP`, `PANEL*`,
+     `*TITLE*`, `*TEXT*`, `DIM`, `BRIGHT`, `*GRID*`) that are drawn with.
+
+   It reports zero. Exempt by design:
+   - the games (`plugins/misc/games/`), which keep their own board palettes;
+   - the splash (`emtk/splash.py`), artwork drawn before a theme is applied.
+
+   Data colours (series, gates, regions, graph edges) and accent rims are free to be
+   constants. Trap: a data colour picked for the dark plot can vanish on a white one.
+   Fixed so far: `burst_background` `REGION_FILL` was white at 30, and
+   `tttr_time_windows` `BOUNDARY_COLOUR` was a light grey. The scan cannot see this:
+   read a light screenshot of the tool on its data.
+2. **Retired with the Qt host (S6), not emtk surfaces.** `WINDOW_BG` exports that only
+   colour a Qt `ControlHost` (`test_theme_tokens.qt_host_only_constants`):
+   - in use: `help/gui/help_app.py` (via `help/gui/tool.py`),
+     `calculator/kappa2_dist/gui/app.py` (via `gui/widgets/models/tcspc/kappa2_helpers.py`),
+     `code_editor/gui/editor_app.py` (via its `gui/tool.py`),
+     `gui/widgets/fitting/plot_settings_host.py` `BACKGROUND`;
+   - exported, read by nothing: `fit_pages/surface.py` `BACKGROUND`, and `WINDOW_BG` in
+     accurate_fret, alex_suite, burst_2cde, burst_analysis (2), burst_background,
+     burst_browser, burst_bva, burst_fusion, burst_gs, burst_irf_bg, phasor_calculator,
+     tttr_count_rate_analysis, tttr_header_edit, tttr_splitter and tttr_time_windows.
+
+   Delete them with their Qt tools.
+3. **Not screenshotted: the ProteinMC network page.** It needs a ProteinMC fit with a
+   labelling file. Its background now follows the theme, and its nodes, edges, labels and
+   frame cursor are mid tones or theme text. Check it on the next ProteinMC session.
 
 # How it works
 
@@ -84,9 +93,31 @@ fixed:
   warnings, section captions) name theme colours instead of literals.
 - Hand-painted green/red buttons became button roles ([UI vocabulary](ui-vocabulary.md)).
 
-**Guard.** `test/test_theme_tokens.py` checks four things:
+**Second pass (emtk 0.1.20 `4e3f3b0` + `d1d07c9`, chisurf).**
 
-- no shipped emtk code hands `text_colored` / `push_style_color` a literal colour tuple;
+- The node editor follows the theme.
+  - emtk: `nodes.Style.follow_theme` / `sync_theme`; a light mini map.
+  - chisurf: the node-graph settings draw the grid in the theme's text colour.
+    `GraphControl` rebuilds its style on a theme switch and runs host `style_hooks`, which
+    keep Global View's background, now the theme's `PLOT_BG`.
+- ImPlot3D is reset to automatic colours with ImPlot.
+- **State-scheme canvas:** backdrop, grid, frame and plain rate badges come from the theme;
+  the coloured discs and badges keep white ink.
+- **ProteinMC network page:** the plot background follows the theme; the cursor, edges and
+  nodes are mid tones.
+- **ebFRET:** frames, dialog, titles and errors come from the theme.
+- **Smaller sites:** the channel-definition cells, notebook cell headers, the Global View
+  legend, help callouts, the mmfdb spectra placeholder, the IRF crosshair, the plot-settings
+  grid preview and the chiplot grips.
+- **Code editor:** its colour scheme defaults to `Theme` (Light on a light window, Dark on a
+  dark one). A picked scheme or an edited colour wins.
+- **emtk tk host:** its wheel notch comes from `tk_wheel_unit` (Tk 8.6 on macOS reports
+  lines). That was the root cause of `test_tk_host`'s -360.
+
+**Guard.** `test/test_theme_tokens.py` checks:
+
+- no shipped emtk code hands `text_colored` / `push_style_color`, or a painter / draw-list
+  call, a literal colour tuple, and draws no surface constant;
 - the choice round-trips through `gui.theme`;
 - the plot background follows the theme unless set;
 - the Settings menu switches the theme.

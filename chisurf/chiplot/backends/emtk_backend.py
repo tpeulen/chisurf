@@ -46,6 +46,13 @@ from chisurf.chiplot import style as S
 from chisurf.chiplot.backends import base
 
 
+def _theme_style():
+    """:mod:`emtk.style`, whose palette names follow the window theme (read as one draws)."""
+    from emtk import style
+
+    return style
+
+
 def _rgb(color: Any, default: tuple[int, int, int] = (200, 200, 200)) -> tuple[int, int, int]:
     """Return ``color`` as an ``(r, g, b)`` triple emtk understands."""
     if color is None:
@@ -1415,7 +1422,7 @@ class EmtkCanvas(base.Canvas):
                 gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP, (*colour, 255)
             )
             painter.stroke_rect(
-                gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP, (20, 22, 28, 255)
+                gx - self.GRIP, gy - self.GRIP, 2 * self.GRIP, 2 * self.GRIP, _theme_style().BORDER
             )
 
     def _draw_arrow(self, painter, plot, entry: _Entry) -> None:

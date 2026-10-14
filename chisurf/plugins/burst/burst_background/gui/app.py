@@ -43,13 +43,12 @@ __all__ = ["BurstBackgroundApp", "BurstBackgroundGui", "WINDOW_BG"]
 logger = logging.getLogger(__name__)
 
 WINDOW_BG = (30, 32, 38, 255)
-PANEL_BG = (38, 41, 48, 255)
-PANEL_BORDER = (55, 60, 72, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
-REGION_FILL = (255, 255, 255, 30)
-REGION_BORDER = (200, 210, 230, 255)
+#: The fit region: a blue wash and rim, visible on the dark and the light plot (emtk.theme).
+REGION_FILL = (46, 117, 182, 50)
+REGION_BORDER = (90, 160, 240, 255)
 
 
 def _hex_to_rgba(col: Any, alpha: int = 255) -> tuple[int, int, int, int]:

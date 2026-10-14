@@ -223,7 +223,10 @@ def apply_network_style(editor: typing.Any) -> None:
     style = editor.style
     style.link_routing = emtk_nodes.LinkRouting.ARC
     style.flags &= ~emtk_nodes.StyleFlags.NODE_OUTLINE
-    style.colors[emtk_nodes.Col.GRID_BACKGROUND] = (24, 26, 31, 255)
+    from emtk import style as _style
+
+    # the plot area of the window theme (emtk.theme): dark on the dark theme, white on the light
+    style.colors[emtk_nodes.Col.GRID_BACKGROUND] = tuple(_style.PLOT_BG)
     # A disc is its own connector, so the pointer must be able to catch it
     # near its input/output pin rather than on a dot that is not drawn. The
     # pins sit 12 px either side of the centre, so the radius stays below that:
@@ -261,8 +264,10 @@ def draw_legend(document: GraphDocument, box: tuple) -> None:
     row = draw.calc_text_size("X")[1] + 3.0
     width = max(draw.calc_text_size(KIND_LABELS[k])[0] for k in present) + 34.0
     x, y = box[0] + 8.0, box[1] + 8.0
-    draw.add_rect_filled((x, y), (x + width, y + row * len(present) + 8.0), (18, 20, 24, 205), 4.0)
-    draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0), (70, 76, 86, 180), 4.0)
+    from emtk import style
+
+    draw.add_rect_filled((x, y), (x + width, y + row * len(present) + 8.0), style.PLOT_LEGEND_BG, 4.0)
+    draw.add_rect((x, y), (x + width, y + row * len(present) + 8.0), style.BORDER, 4.0)
     for index, kind in enumerate(present):
         centre_y = y + 4.0 + row * index + row * 0.5
         if kind == NODE_FACTOR:
@@ -272,7 +277,7 @@ def draw_legend(document: GraphDocument, box: tuple) -> None:
         else:
             draw.add_circle_filled((x + 14.0, centre_y), 5.0, KIND_COLOURS[kind])
         draw.add_text(
-            (x + 24.0, centre_y - row * 0.5 + 1.0), (216, 220, 228, 255), KIND_LABELS[kind]
+            (x + 24.0, centre_y - row * 0.5 + 1.0), style.PLOT_LABEL_TEXT, KIND_LABELS[kind]
         )
 
 

@@ -26,7 +26,7 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 import emtk
-from emtk import im, implot, keys
+from emtk import im, implot, keys, style
 from emtk.i18n import tr
 from emtk.overlays import holding
 from emtk.view_form import FormState, draw_form, draw_sections, find_section
@@ -77,11 +77,9 @@ TOUR_TARGETS = {
 ROW_H = 50.0
 PAD = 4.0
 
-PANEL_EDGE = (92, 98, 110, 255)
-PANEL_TITLE = (200, 205, 215, 255)
-WINDOW_BG = (30, 32, 38, 255)
-DIM = (150, 155, 165, 255)
-RED = (255, 110, 110, 255)
+#: A plot line without a colour of its own: a mid grey, readable on either theme. The
+#: window's own colours (panel frames, titles, the dialog) come from emtk.style as it draws.
+DEFAULT_LINE = (150, 152, 160, 255)
 
 #: Panel geometry as ``MainWindow.m`` writes it: ``(x, y_bottom, w, h)`` in
 #: normalized window units, with ``hp``/``vp``/``bh`` resolved at draw time.
@@ -275,7 +273,7 @@ class EbfretGui(TourTarget):
         if ylim and all(v is not None for v in ylim):
             implot.setup_axis_limits(implot.AXIS_Y1, float(ylim[0]), float(ylim[1]))
         for index, line in enumerate(spec.get("lines") or []):
-            colour = _rgb255(line.get("color")) or (200, 200, 200, 255)
+            colour = _rgb255(line.get("color")) or DEFAULT_LINE
             label = f"##{name}{index}"
             xs, ys = line.get("x") or [], line.get("y") or []
             if not xs:
@@ -742,7 +740,7 @@ class App:
         self.box = (x, y, w, h)
         self._sync_menus()
         self.menubar.set_viewport(x + w, y + h)
-        painter.fill_rect(x, y, w, h, WINDOW_BG)
+        painter.fill_rect(x, y, w, h, style.WINDOW_BG)
         self.panels = self.layout(x, y, w, h)
         for title, (px, py, pw, ph) in self.panels.items():
             _panel_frame(painter, px, py, pw, ph, title)
@@ -786,7 +784,8 @@ class App:
             self._draw_dialog(painter, x, y, w, h)
         g.dialogs = [d for d in g.dialogs if not d.done]
         if g.error:
-            painter.text(x + w - 520.0, y + 3.0, 510.0, MENU_H - 6.0, 2, g.error[:90], RED)
+            painter.text(x + w - 520.0, y + 3.0, 510.0, MENU_H - 6.0, 2, g.error[:90],
+                         style.TEXT_DANGER)
         self.menubar.draw(painter, x, y, w, MENU_H)
         self._remember_menu_rects()
 
@@ -801,8 +800,8 @@ class App:
                 continue
             tx, ty, tw, th = self.panels[host]
             box = (tx + tw * 0.5, ty + 14.0, tw * 0.5 - 8.0, th - 22.0)
-            painter.fill_rect(box[0] - 1, box[1] - 1, box[2] + 2, box[3] + 2, PANEL_EDGE)
-            painter.fill_rect(box[0], box[1], box[2], box[3], WINDOW_BG)
+            painter.fill_rect(box[0] - 1, box[1] - 1, box[2] + 2, box[3] + 2, style.BORDER)
+            painter.fill_rect(box[0], box[1], box[2], box[3], style.WINDOW_BG)
             self.table_boxes.append(box)
             with emtk.frame(painter, (x, y, w, h), io=self.table_io, storage=self.table_storage):
                 im.begin(
@@ -817,12 +816,12 @@ class App:
 
     def _draw_dialog(self, painter: Any, x: float, y: float, w: float, h: float) -> None:
         dialog = self.gui.dialogs[-1]
-        painter.fill_rect(x, y, w, h, (0, 0, 0, 110))
+        painter.fill_rect(x, y, w, h, style.MODAL_DIM_BG)
         dw, dh = min(dialog.size[0], w - 20.0), min(dialog.size[1] + 24.0, h - 40.0)
         dx, dy = x + (w - dw) / 2.0, y + max(MENU_H + 10.0, (h - dh) / 2.0)
-        painter.fill_rect(dx - 1, dy - 1, dw + 2, dh + 2, (95, 110, 150, 255))
-        painter.fill_rect(dx, dy, dw, dh, (40, 43, 52, 255))
-        painter.text(dx + 8.0, dy + 3.0, dw - 16.0, 18.0, 0, dialog.title, (150, 180, 255, 255))
+        painter.fill_rect(dx - 1, dy - 1, dw + 2, dh + 2, style.BORDER)
+        painter.fill_rect(dx, dy, dw, dh, style.POPUP_BG)
+        painter.text(dx + 8.0, dy + 3.0, dw - 16.0, 18.0, 0, dialog.title, style.HEADING_1)
         with emtk.frame(painter, (x, y, w, h), io=self.dialog_io, storage=self.dialog_storage):
             im.begin(
                 f"##dialog-{id(dialog)}",
@@ -924,10 +923,10 @@ class App:
 
 def _panel_frame(painter: Any, x: float, y: float, w: float, h: float, title: str) -> None:
     """A ``uipanel`` with a title: an etched rectangle broken by its caption."""
-    painter.stroke_rect(x, y + 6.0, w, h - 6.0, PANEL_EDGE)
+    painter.stroke_rect(x, y + 6.0, w, h - 6.0, style.BORDER)
     tw = painter.text_width(title) + 8.0
-    painter.fill_rect(x + 8.0, y, tw, 12.0, WINDOW_BG)
-    painter.text(x + 12.0, y - 1.0, tw, 14.0, 0, title, PANEL_TITLE)
+    painter.fill_rect(x + 8.0, y, tw, 12.0, style.WINDOW_BG)
+    painter.text(x + 12.0, y - 1.0, tw, 14.0, 0, title, style.HEADING_4)
 
 
 def make_app(**kwargs) -> App:

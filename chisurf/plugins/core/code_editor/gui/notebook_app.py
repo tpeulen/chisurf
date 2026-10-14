@@ -869,13 +869,13 @@ class NativeNotebook:
             ctx.draw.add_rect_filled(
                 header,
                 (header[0] + width, header[1] + header_height),
-                (36, 41, 50, 255) if index == self.active_index else (33, 35, 41, 255),
+                _style.HEADER if index == self.active_index else _style.TITLE_BG,
                 0,
             )
             ctx.draw.add_rect_filled(
                 header,
                 (header[0] + 4, header[1] + header_height),
-                (82, 170, 228, 255) if index == self.active_index else (64, 68, 78, 255),
+                _style.NAV_CURSOR if index == self.active_index else _style.BORDER,
                 2,
             )
             count = str(cell.execution_count) if cell.execution_count is not None else " "

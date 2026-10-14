@@ -38,11 +38,14 @@ def _clean_html_text(text: str) -> str:
     return html.unescape(s).strip()
 
 
-ACCENT_BLUE = (0.4, 0.8, 1.0, 1.0)
-TEXT_WHITE = (0.95, 0.95, 0.95, 1.0)
-TEXT_MUTED = (0.65, 0.7, 0.75, 1.0)
+#: The tour's spotlight rims (a step's target, an awaited one) and the card's grip strip:
+#: accents, readable on either theme. Text and the card itself come from emtk.style.
 BORDER_BLUE = (70, 140, 240, 255)
 BORDER_GREEN = (56, 210, 80, 255)
+GRIP_STRIP = (60, 90, 160, 200)
+#: The shade behind a help dialog and behind the tour: a shadow, dark on either theme.
+SHADE_DIALOG = (0, 0, 0, 110)
+SHADE_TOUR = (0, 0, 0, 95)
 
 
 def resolve_resource_file(resource: str | Path, owner: Any = None) -> Path | None:
@@ -189,7 +192,7 @@ class EmTkHelpWindow:
         fx, fy, fw, fh = frame
 
         # Translucent backdrop to dim the background behind the dialog
-        ctx.draw.add_rect_filled((fx, fy), (fx + fw, fy + fh), (0, 0, 0, 110))
+        ctx.draw.add_rect_filled((fx, fy), (fx + fw, fy + fh), SHADE_DIALOG)
 
         pressed = self.dlg.begin(frame)
 
@@ -460,7 +463,7 @@ class EmTkGuidedTour:
         ctx = im.get_current_context()
 
         # 1. Dimmed backdrop
-        ctx.draw.add_rect_filled((0.0, 0.0), (width, height), (0, 0, 0, 95))
+        ctx.draw.add_rect_filled((0.0, 0.0), (width, height), SHADE_TOUR)
 
         # 2. Target Spotlight
         target = step.get("target")
@@ -536,7 +539,7 @@ class EmTkGuidedTour:
         )
 
         ctx.draw.add_rect_filled(
-            (cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), (60, 90, 160, 200), rounding=3.0
+            (cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), GRIP_STRIP, rounding=3.0
         )
         ctx.draw.add_text(
             (cx + card_w - 128.0, cy + 8.0), _style.DIM, tr("drag here to move")

@@ -317,6 +317,13 @@ class GraphControl:
         from chisurf.emtk.node_editor.style_settings import apply_node_graph_settings
 
         apply_node_graph_settings(self.editor.style)
+        from emtk import theme as _theme
+
+        #: The theme the style was last built for; a switch rebuilds it (:meth:`draw`).
+        self._theme_seen = _theme.current_theme()
+        #: ``hook(style)`` run after the settings whenever the style is rebuilt: a host's own
+        #: colours (Global View's background) survive a theme switch this way.
+        self.style_hooks: list = []
         self.show_minimap = True
         self.io = im.IO()
         self.storage: dict = {}
@@ -414,8 +421,23 @@ class GraphControl:
             The box, in the painter's coordinates.
         """
         self._box = (x, y, w, h)
+        self._follow_theme()
         with im.frame(painter, (x, y, w, h), io=self.io, storage=self.storage):
             self._draw_graph((x, y, w, h))
+
+    def _follow_theme(self) -> None:
+        """Rebuild the style (settings, then the host's hooks) when the window theme changed."""
+        from emtk import theme as _theme
+
+        name = _theme.current_theme()
+        if name == self._theme_seen:
+            return
+        self._theme_seen = name
+        from chisurf.emtk.node_editor.style_settings import apply_node_graph_settings
+
+        apply_node_graph_settings(self.editor.style)
+        for hook in self.style_hooks:
+            hook(self.editor.style)
 
     def _draw_graph(self, box: tuple) -> None:
         """Submit the whole editor for one frame.

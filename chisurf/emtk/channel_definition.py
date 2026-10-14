@@ -266,7 +266,7 @@ class _ButtonCells:
             bx0, by0, bh0 = cx + (cw - width) / 2.0, cy + 2.0, ch - 4.0
             hot = self.hot == (index, key)
             p.fill_rect(
-                bx0, by0, width, bh0, (25, 25, 28, 255)
+                bx0, by0, width, bh0, style.FRAME_BG
             )  # opaque: the cell's own text lies under it
             p.stroke_rect(
                 bx0,
@@ -274,7 +274,7 @@ class _ButtonCells:
                 width,
                 bh0,
                 style.BORDER,
-                (66, 110, 170, 255) if hot else (46, 66, 98, 255),
+                style.BUTTON_HOVERED if hot else style.BUTTON,
             )
             p.text(bx0, by0, width, bh0, ALIGN_HCENTER | ALIGN_VCENTER, caption, style.TEXT)
         p.pop_clip()

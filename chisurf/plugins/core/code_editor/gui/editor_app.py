@@ -48,6 +48,9 @@ from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
 from .editor_preferences import (
     COLOR_SCHEMES,
     LANGUAGES,
+    SCHEME_CHOICES,
+    THEME_SCHEME,
+    concrete_scheme,
     font_choices,
     language_for,
     palette_for,
@@ -57,10 +60,11 @@ from .editor_preferences import (
 if TYPE_CHECKING:
     from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
 
+#: The Qt host's background behind the editor (``gui/tool.py``); not drawn by emtk.
 WINDOW_BG = (24, 26, 32, 255)
 #: The editor's own dark chrome, pushed over the dark theme (``Col`` role, colour).
 DARK_CHROME = (
-    (Col.WINDOW_BG, WINDOW_BG),
+    (Col.WINDOW_BG, (24, 26, 32, 255)),
     (Col.FRAME_BG, (38, 41, 48, 255)),
     (Col.FRAME_BG_HOVERED, (48, 52, 62, 255)),
     (Col.FRAME_BG_ACTIVE, (35, 85, 140, 255)),
@@ -218,8 +222,9 @@ class EditorModel:
         self.font_family = "monospace"
         self.font_size = 0
         self.language = "Auto"
-        self.color_scheme = "Dark"
-        self.display_colors = dict(COLOR_SCHEMES["Dark"])
+        #: ``Theme`` follows the window theme until the user picks a scheme or edits a colour.
+        self.color_scheme = THEME_SCHEME
+        self.display_colors = dict(COLOR_SCHEMES[concrete_scheme(THEME_SCHEME)])
         self.caret_line_visible = True
         self.enable_ruff = True
         self.run_ruff_on_save = False
@@ -629,9 +634,9 @@ class EditorModel:
             self.document_store.active_document_id = self.active_doc.document_id
 
     def set_color_scheme(self, name: str) -> None:
-        if name in COLOR_SCHEMES:
+        if name in SCHEME_CHOICES:
             self.color_scheme = name
-            self.display_colors = dict(COLOR_SCHEMES[name])
+            self.display_colors = dict(COLOR_SCHEMES[concrete_scheme(name)])
 
     def set_display_color(self, name: str, value: str) -> bool:
         if name not in self.display_colors:
@@ -641,6 +646,9 @@ class EditorModel:
         except (ValueError, TypeError):
             self.log_output("Invalid editor color: use #aabbcc or #aabbccdd")
             return False
+        if self.color_scheme == THEME_SCHEME:
+            # an edited colour is a choice: the scheme stops following the theme
+            self.color_scheme = concrete_scheme(THEME_SCHEME)
         self.display_colors[name] = value
         return True
 
@@ -658,6 +666,8 @@ class EditorModel:
         return {"family": self.font_family, "size": self.font_size}
 
     def apply_editor_preferences(self, editor: TextEditor, *, apply_language: bool = True) -> None:
+        if self.color_scheme == THEME_SCHEME:  # the theme may have switched since the last frame
+            self.display_colors = dict(COLOR_SCHEMES[concrete_scheme(THEME_SCHEME)])
         editor.config.show_line_numbers = self.show_line_numbers
         editor.config.show_spaces = self.show_whitespace
         editor.config.show_tabs = self.show_whitespace
@@ -710,11 +720,13 @@ class EditorModel:
         }
 
     def restore_settings(self, settings: dict) -> None:
-        if settings.get("color_scheme") in COLOR_SCHEMES:
+        if settings.get("color_scheme") in SCHEME_CHOICES:
             self.set_color_scheme(settings["color_scheme"])
-        for name in self.display_colors:
-            if isinstance(settings.get(name), str):
-                self.set_display_color(name, settings[name])
+        if self.color_scheme != THEME_SCHEME:
+            # the stored colours are the scheme's own; under Theme they follow the theme
+            for name in self.display_colors:
+                if isinstance(settings.get(name), str):
+                    self.set_display_color(name, settings[name])
         family = settings.get("font_family")
         if family in font_choices():
             self.font_family = family
@@ -2784,7 +2796,7 @@ class CodeEditorGui:
         im.set_item_tooltip(tr("Point size; 0 preserves the native baked font's default metrics"))
         if changed:
             self.model.font_size = size
-        schemes = list(COLOR_SCHEMES)
+        schemes = list(SCHEME_CHOICES)
         changed, selected = im.combo(
             "Color scheme", schemes.index(self.model.color_scheme), schemes
         )

@@ -555,9 +555,11 @@ class MMFDBAdminApp(ImApp):
         if not traces:
             im.dummy((w, h))
             draw = im.get_window_draw_list()
-            draw.add_rect((x, y), (x + w, y + h), (140, 140, 140, 120))
+            from emtk import style
+
+            draw.add_rect((x, y), (x + w, y + h), style.BORDER)
             tw = im.calc_text_size(empty)[0]
-            draw.add_text((x + (w - tw) / 2, y + h / 2 - 8), (130, 130, 130, 255), empty)
+            draw.add_text((x + (w - tw) / 2, y + h / 2 - 8), style.DIM, empty)
             im.set_item_tooltip(
                 tr("The spectra plot: pick a row, or tick several to overlay them.")
             )

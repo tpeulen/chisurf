@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from emtk import im, implot
+from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.view_form import FormState, draw_sections
 
@@ -37,8 +37,6 @@ _SIDE_BY_SIDE_MIN_WIDTH = 620.0
 _COLUMN_SHARE, _COLUMN_MIN, _COLUMN_MAX = 0.42, 320.0, 520.0
 #: Height shares of the preview's panels, as a fit window stacks them.
 _PANEL_SHARES = (("acorr", 0.2), ("residuals", 0.22), ("data", 0.58))
-#: The theme's gridline colour at strength 1 (emtk's plot grid).
-_GRID_RGBA = (255, 255, 255, 20)
 
 
 def _legend_label(label: str) -> str:
@@ -168,7 +166,8 @@ class PlotSettingsApp(ImApp):
             grid = preview["grid"][panel]
             grid_flags = 0 if grid is not None else implot.AXIS_FLAGS_NO_GRID_LINES
             strength = appearance.grid_strength(grid) if grid is not None else 0.0
-            grid_rgba = (*_GRID_RGBA[:3], min(255, int(round(_GRID_RGBA[3] * strength))))
+            theme_grid = style.PLOT_GRID  # the theme's grid line (emtk.theme), at the strength set
+            grid_rgba = (*theme_grid[:3], min(255, int(round(theme_grid[3] * strength))))
             legend = panel == "data" and preview["legend"]
             flags = implot.FLAGS_NO_TITLE | implot.FLAGS_NO_MENUS
             flags |= 0 if legend else implot.FLAGS_NO_LEGEND

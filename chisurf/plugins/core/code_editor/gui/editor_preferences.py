@@ -34,7 +34,21 @@ COLOR_SCHEMES = {
         "caret_line_background_color": "#3e3d32",
     },
 }
+#: The scheme that follows the window theme (:mod:`emtk.theme`): ``Light`` on a light window,
+#: ``Dark`` on a dark one. The default; a scheme the user picks (or a colour they edit) wins.
+THEME_SCHEME = "Theme"
+#: Every scheme the picker offers, the theme-following one first.
+SCHEME_CHOICES = (THEME_SCHEME, *COLOR_SCHEMES)
 LANGUAGES = ("Auto", "Python", "JSON", "YAML", "Markdown", "C++", "Plain text")
+
+
+def concrete_scheme(name: str) -> str:
+    """The :data:`COLOR_SCHEMES` entry *name* stands for now (:data:`THEME_SCHEME` resolves by theme)."""
+    if name != THEME_SCHEME:
+        return name
+    from emtk import theme
+
+    return "Light" if theme.is_light() else "Dark"
 
 
 def rgba(value: str) -> tuple[int, int, int, int]:
@@ -70,6 +84,7 @@ def language_for(name: str):
 
 
 def palette_for(scheme: str, text_color: str):
+    scheme = concrete_scheme(scheme)
     colors = list(LIGHT_PALETTE if scheme in ("Light", "ChiSurf") else DARK_PALETTE)
     if scheme == "Monokai":
         colors[int(Token.KEYWORD)] = (249, 38, 114)
