@@ -23,14 +23,16 @@ plateaus; choosing $T$ and $s$ well means the border between them contains no ph
 
 Open **Tools → Photon data → TTTR Tools**, then select **ALEX Creator**. Press **Open…** and choose a TTTR file (`.sm`, `.ptu`, `.ht3`, ...), or
 type or paste its path into **File** and press Enter, or drop the file on the window. The photon count appears under
-the modulation fields and the folded histogram on the right.
+the modulation fields and the folded histogram on the right; excitation regions are inferred at once (section 5).
 
 ```{figure} figures/alex_creator.png
 :name: fig-alex-creator
 :width: 100%
 
-The ALEX Creator with a loaded file and a two-file batch queue. Left: file row, formats, the **Period** and **Shift**
-spin fields and the batch queue. Right: the micro-time histogram of the loaded file.
+The ALEX Creator on a two-colour µs-ALEX calibration (`.sm`, 3.77 M photons) after **Detect period** set
+**Period** to 8000 (contrast 155278×). Left: file row, formats, **Period**, **Shift**, **Detect period** and the batch
+queue. Right: the inferred excitation regions (one *Candidate*, three *Review transition*) and the folded
+micro-time histogram with the regions shaded.
 ```
 
 ## 2. Choose period and shift
@@ -63,41 +65,19 @@ overwritten. The written path is shown above the histogram.
    joined with continuing macro time before folding; the default folder is that of the first input).
 3. Press **Run batch**. The written names appear above the histogram; a missing queue or folder is reported there in red.
 
-## Command line and Python
+### Convert each or merge
 
-```bash
-csc alex convert --help
-csc alex merge --help
-```
+**Merge into one** joins the streams on a new contiguous macro-time axis with
+the first input's header and folds the joined stream once, so use it only for
+recordings with the same clock settings. Choose **Convert each** when each
+recording should keep its own phase reference.
 
-```python
-from chisurf.plugins.tttr.ptu_alex_creator import core
-hist = core.alex_histogram("data.ptu", 4000, 23)
-core.convert_file("data.ptu", "data_alex.ptu", 4000, 23, "PTU", "Auto")
-```
+## 5. Excitation regions and multiple lasers
 
-## See also
-
-- [Plugin reference: ALEX Creator](../reference/plugins/ptu_alex_creator.md)
-- [µs-ALEX concept](../concepts/us_alex.md)
-- [Handling TTTR files](12_handling_tttr_files.md)
-
-## Native layout and saved conversion settings
-
-The native ALEX Creator starts at 1100 × 720; a saved user size takes
-precedence. Period, phase shift, input/output format and queue settings keep
-their values when the host is resized or reopened. Changing the layout does
-not change the live phase histogram or the photons and header written by the
-conversion. Reload the input to regenerate its preview after reopening.
-
-![Native ALEX Creator after converting real TTTR events](figures/alex_creator_native_window.png)
-
-## Automatic excitation regions and multiple lasers
-
-Loading a file now detects excitation-phase candidates automatically using
-**every routing channel**, at the configured Period and Shift. **Re-detect**
-repeats inference after changes. There is no two-region cap: a three-color
-measurement can retain all three phases, and higher phase counts are supported.
+Loading a file infers excitation-phase candidates from **every routing
+channel**, at the configured **Period** and **Shift**. **Re-detect** repeats the
+inference after a change and replaces edited regions. There is no cap on the
+number of phases: a three-colour measurement keeps all three.
 
 The names Phase 1, Phase 2, … identify measured emission phases, not wavelength
 assignments. Review the candidates before naming lasers. A real two-color
@@ -112,20 +92,12 @@ End cells are editable by double-clicking and typing; crossing phase zero is
 represented by two increasing ranges. Editing resets Review confirmation.
 The table and overlays are inspection aids; they do not filter photons.
 
-```{figure} figures/alex_regions.png
-:width: 100%
-
-Default real calibration and narrow three-phase example. The calibration's four
-measured candidates include explicit transition warnings; the three-phase input
-retains all three regions and all 90,000 photons.
-```
-
 Period remains an instrument setting in macro-time ticks. Region inference
 works at the configured period and does not infer it; an incorrect period
 smears the phases into many short "regions". Press **Detect period** to
-measure it from the data first (section 2). Single-file, convert-each and merge exports retain their original
-folding behavior, photon arrays, routing/event types and clock/header contract.
-The input file is unchanged. The full user-operated Guide remains available.
+measure it from the data first (section 2). The regions do not change what is
+written: every export folds the photons the same way and keeps routing
+channels, event types and header.
 
 ```python
 from chisurf.plugins.tttr.ptu_alex_creator import core
@@ -153,16 +125,22 @@ phases. T2, SM and CZ store no microtime field. Both single and merge workflows
 reject an output that would truncate or discard a nonzero phase; choose an
 appropriate T3 or Photon-HDF5 output. A failed writer is reported as an error.
 
-Source: `chisurf/plugins/tttr/ptu_alex_creator/`
+## Command line and Python
 
-### Choosing a batch mode
+```bash
+csc alex convert --help
+csc alex merge --help
+```
 
-Hover over **Convert each** or **Merge into one** for operation-specific help,
-including localized explanations. Convert each folds each file independently
-and writes one output per input. Merge joins the streams with a continuing
-macro-time axis and folds the joined stream once, writing one output.
+```python
+from chisurf.plugins.tttr.ptu_alex_creator import core
+hist = core.alex_histogram("data.ptu", 4000, 23)
+core.convert_file("data.ptu", "data_alex.ptu", 4000, 23, "PTU", "Auto")
+```
 
-The merged stream uses a new contiguous time origin and the first input's
-header. Use recordings with compatible clock settings and apply the intended
-Period/Shift to that joined axis. Choose Convert each when each recording
-should retain its own original phase reference.
+## See also
+
+- [Plugin reference: ALEX Creator](../reference/plugins/ptu_alex_creator.md)
+- [µs-ALEX concept](../concepts/us_alex.md)
+- [Handling TTTR files](12_handling_tttr_files.md)
+- Source: `chisurf/plugins/tttr/ptu_alex_creator/`

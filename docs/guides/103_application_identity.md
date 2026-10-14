@@ -7,14 +7,13 @@ tags: [guides, application, identity]
 
 # Application details for a support request
 
-Open **About ChiSurf** (`about`) from the application menu, or start its native
-window with `pixi run -e test python -m chisurf.emtk --plugin about`.
+Open **Help → About ChiSurf**, or start the window on its own with `pixi run -e test python -m chisurf.emtk --plugin about`.
 
 ```{figure} figures/about_application_details.png
 :width: 380px
 
-The real application logo and identity fields are retained; the declared row
-provides Help, Copy details, Guide and Close.
+About ChiSurf: logo, version, developer contact and repository, with **Help**,
+**Copy details**, **Guide** and **Close**.
 ```
 
 1. Open **Guide**, then press the highlighted **Help** yourself. Read the field

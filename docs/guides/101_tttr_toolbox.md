@@ -14,8 +14,9 @@ built the first time you select it and stays alive (with its loaded files) while
 :name: fig-tttr-toolbox
 :width: 100%
 
-TTTR Tools with **Count Rate Analysis** selected. Left: **Help**, **Guide**, the search field and the tool list. Above the
-tool: its name, **Tool help** and its description. Bottom: the status line with **Back** and **Next**.
+TTTR Tools with **Count Rate Analysis** after **Calculate** on three SPC-132 dsDNA files (detector `green`,
+routing channels 0 and 1, from **0. Setup**). Left: **Help**, **Guide**, the search field and the step list. Above the
+tool: its name, its **Help** and its description. Bottom: the status line with **Back** and **Next**.
 ```
 
 ## Two clocks
@@ -27,17 +28,17 @@ macro time; PIE gating reads the micro time: the ALEX Creator moves one into the
 
 ## Using the window
 
-1. In the native hub, open **0. Setup** first. Select or define detector routing,
-   PIE windows, polarization, reading calibration and LUTs once. **Count Rate
-   Analysis** and **Audifier** use that shared definition. Their setup panes
-   show its name and **Edit setup…**, which returns to step0. Standalone tools
-   retain their full editor.
-2. Click a tool in the rail. **Photon Table** shows individual photon records;
-   **Search** narrows the list by name, description or id. Children are created
-   lazily and receive the latest setup when opened.
-3. **Back** and **Next** visit neighbouring tools. **Help** explains the hub;
-   **Tool help** opens the selected tool's help. **Guide** waits for you to select
-   Count Rate Analysis and ALEX Creator yourself.
+1. Open **0. Setup** first and define detector routing, PIE windows,
+   polarization, reading calibration and LUTs once. **Count Rate Analysis** and
+   **Audifier** use that shared definition; their setup panes show its name and
+   **Edit setup…**, which returns to **0. Setup**. Opened on its own, a tool keeps
+   its full editor.
+2. Click a tool in the list. The search field narrows the list by name,
+   description or id. A tool is built when first selected and receives the
+   current setup.
+3. **Back** and **Next** visit neighbouring tools. The **Help** at the top left
+   explains the hub; the **Help** beside the tool's name opens that tool's help.
+   **Guide** waits for you to select Count Rate Analysis and ALEX Creator yourself.
 4. Add your TTTR measurement in Count Rate Analysis and press **Calculate**.
    Open Audifier, load the stream, select a detector and a macro-time interval,
    then press **Update** to compute its waterfall. Playing sound is a separate
@@ -51,18 +52,20 @@ macro time; PIE gating reads the micro time: the ALEX Creator moves one into the
 :name: fig-tttr-toolbox-shared-setup
 :width: 100%
 
-One complete shared detector editor at step0, reading the BH SPC-132 sample's
-13.5ns macro-time clock and3.2958984375ps micro-time clock. The green detector
-uses routing0/1. PIE, reading, polarization, LUT and optical controls are here.
+The shared detector editor at **0. Setup**, reading the SPC-132 sample's
+13.5 ns macro-time clock and 3.2958984375 ps micro-time clock. Detector `green`
+uses routing channels 0 and 1. PIE, reading, polarization, LUT and optical
+controls are all here.
 ```
 
 ```{figure} figures/tttr_toolbox_shared_audifier.png
 :name: fig-tttr-toolbox-shared-audifier
 :width: 100%
 
-Audifier inside the hub after loading174438 photons and computing a2-second
-waterfall for green routing0/1. Its setup pane is a summary/Edit setup link;
-the waterfall, detector colours and analysis controls remain in the tool.
+Audifier inside the hub after loading `m000.spc` and computing a 2-second
+waterfall for detector `green`. Its setup pane is only the setup name and
+**Edit setup…**; the waterfall, detector colours and audio controls stay in the
+tool.
 ```
 
 Launch the native tool with `pixi run -e test python -m chisurf.emtk --plugin tttr_toolbox`.
@@ -74,28 +77,27 @@ from emtk.testing import Driver
 from chisurf.plugins.tttr.tttr_toolbox.gui.app import make_app
 
 hub = make_app()
-driver = Driver(hub, (1280, 900))
-setup = hub.ensure_child("setup")
-setup.page.load_definition(your_detector_definition)
+driver = Driver(hub, (1280, 860))
+hub.ensure_child("setup").page.load_definition({
+    "detectors": {"green": {"chs": [0, 1], "micro_time_ranges": [], "g_factor": 1.0}},
+    "windows": {},
+    "tttr_reading": {"file_type": "SPC-130"},
+})
 child = hub.select("count_rate")
-child.tool.add_paths(["measurement.spc"])
+child.tool.add_paths(["m000.spc"])
 child.tool.calculate()
-driver.frame(3)  # Continue frames until child.tool.job.running is false.
+while child.tool.job.running:
+    driver.frame()
 hub.close()
 ```
+
+{src}`docs/guides/screenshots/tttr_toolbox_shot.py` is this script with the
+bundled files; it draws {numref}`fig-tttr-toolbox`.
 
 ## See also
 
 - [Plugin reference: TTTR Tools](../reference/plugins/tttr_toolbox.md)
 - [Handling TTTR files](12_handling_tttr_files.md)
-
-## Window size
-
-TTTR Tools initially requests 1100×720 logical pixels. Resize it to suit your
-screen; reopening through the native launcher retains the saved dimensions.
-Qt clamps the initial window to the available display. A narrow setup pane
-scrolls to reach the LUT and optical setup controls. Geometry changes leave
-photon counts and analysis settings unchanged.
 
 ## Theory
 

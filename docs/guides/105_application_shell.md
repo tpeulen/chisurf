@@ -20,7 +20,7 @@ the next start. Without a main window (a headless run) it reports that nothing c
 
 *Setup → Switch User* is the login form of the MMFDB.
 
-1. Enter **Server** and **Port** (a remote MMFDB: its http or https **URL**), pick **User**, type **Password**.
+1. Enter **Server** and **Port** (for a remote MMFDB its http or https **MMFDB URL**), pick **User**, type **Password**.
 2. Press **Login**. A refusal shows **Login Failed** and changes nothing.
 3. **Save selected user** makes the account the default; **Log in automatically when allowed** keeps a session token in
    the operating system's credential store. The password is never stored.

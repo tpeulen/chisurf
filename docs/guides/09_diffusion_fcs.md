@@ -88,8 +88,9 @@ G = g_3d_gauss(tau, N=2.0, td=1e-4, s=5.0, trip_a=0.2, trip_t=3e-6)
 ## Result
 
 The 3-D Gaussian diffusion correlation for three diffusion times (faster
-diffusion → shorter decay), and the effect of adding a triplet term (dashed): a
-short-lag rise above the diffusion plateau.
+diffusion → shorter decay), and the effect of adding a triplet term (dashed,
+$\tau_D = 0.1$ ms, 20 % triplet at 3 µs): an extra fast decay at short lag, so
+the curve sits below the triplet-free one (blue) beyond the triplet time.
 
 ```{figure} figures/fcs_diffusion.png
 :name: fig-fcs-diffusion

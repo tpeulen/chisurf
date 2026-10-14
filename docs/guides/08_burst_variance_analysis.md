@@ -29,18 +29,8 @@ line.
 
 ## In ChiSurf
 
-The standalone native window declares **1100 × 720** pixels on first use.
-Saved geometry takes precedence. Its controls and plot remain available at
-smaller sizes; scroll the controls or detector table to inspect all settings.
-The declaration sets the host size without changing the variance calculation
-or replacing the existing control renderer.
-
-Legacy input discovery reads `.bur` tables and the matching files in companion
-directories whose names end in `4`, including namespaced and dotted endings.
-A binary PTO cache beside a BUR file is not decoded as a text table. The cache
-stays on disk; a PTO container supplied as the input still uses its separate
-container-reader route. Positional companion alignment and genuine skipped
-burst rows remain intact.
+BVA reads the `.bur` tables of a burst folder together with the companion
+directories whose names end in `4`, or a `.pto` container.
 
 The engine is the `tttrlib.BVA` burst feature (parallel over bursts); the
 `burst_bva` plugin wraps it. Open it as step **4. Burst BVA** of
@@ -72,9 +62,9 @@ draggable E/σ region that can be dropped onto the other burst tools.
 :name: fig-bva-native-primary-window
 :width: 100%
 
-The native BVA worker on the measured 152-burst folder at its declared host
-size: 135 bursts have positive slice standard deviation. The static line and
-profile use the same channel and slicing definition as the burst points.
+The *BVA Settings* tab on a measured 152-burst folder: 135 bursts have a
+positive slice standard deviation. The static line and the profile use the same
+channels and slicing as the burst points.
 ```
 
 | Control | Default | Meaning |
@@ -85,6 +75,7 @@ profile use the same channel and slicing definition as the burst points.
 | **Donor detector** / **Acceptor detector** (*Channel Definitions* tab) | first two detectors | Which detectors form $p = n_A/(n_D+n_A)$. |
 | **Bins X** / **Bins Y** | 51 / 51 | Columns of the mean-σ profile (cyan) along E, and its σ resolution. |
 | **Show static line** / **Auto update** | on / on | Overlay the shot-noise line; recompute on every change. |
+| **Donor / Acceptor routing channels**, **microtime ranges**, **File type** (*Manual routing*) | 0,8 / 1,9, full range, SPC-130 | The routing actually used, editable when no saved setup applies. |
 
 The status line (*Done – 1118 bursts with Std > 0 on 1130 total*) says how many
 bursts had at least one full slice.

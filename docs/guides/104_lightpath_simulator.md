@@ -70,8 +70,8 @@ appears while a backend call runs. The tabs:
 ## 4. Save, load, export
 
 **Save Graph** and **Load Graph** use JSON files (a dropped `.json` file also loads). **Save Preset** stores the graph
-under a name for Easy Mode. **Save to MMFDB** and **Load from MMFDB** keep simulations in the database. **Export
-Instrument** writes the instrument setting of the last simulation (lasers, filters, detectors, fluorophores) as JSON.
+under a name for Easy Mode. **Save to MMFDB** and **Load from MMFDB** keep simulations in the database. **Export…**
+(grey until a simulation has run) writes the instrument setting of the last simulation (lasers, filters, detectors, fluorophores) as JSON.
 
 ## 5. Headless
 

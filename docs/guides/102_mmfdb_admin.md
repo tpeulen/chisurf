@@ -14,8 +14,8 @@ artifact into which. What it stores and why it is kept as a graph is explained i
 {doc}`The measurement database </concepts/measurement_database>`. This guide
 covers the administration tool.
 
-Open **Tools → System → MMFDB Admin**, or run it on its own with `python -m chisurf.emtk --plugin mmfdb_admin`. The window is
-drawn natively (emtk); the older Qt window is retired.
+Open **Tools → System → MMFDB Admin**, or run it on its own with
+`python -m chisurf.emtk --plugin mmfdb_admin`.
 
 For headless fluorophore curation, the same plugin declares the owning MMFDB
 Click command under `csc fluorophore`. Its commands operate on the configured
@@ -117,6 +117,27 @@ exports the sample table as CSV / XLSX. **Backup** writes a copy of the active
 database. **Reset** first asks, then writes a backup, and finally replaces the
 user database with the curated source.
 
+## 7. Demo data
+
+**Import / Export → Demo data…** fills the database with the packaged synthetic
+smFRET burst tables, after asking; declining starts nothing. The backend reads
+120 rows from three packaged CSVs, stores the 63-row selection with hashes and
+lineage, and shows the summary in the panel. These are metadata examples: no
+photons are acquired and no test files are needed.
+
+```{figure} figures/102_mmfdb_demo_result.png
+:name: fig-mmfdb-demo-result
+:width: 100%
+
+MMFDB Admin after **Demo data…** on a seeded temporary database: the summary
+(sample, experiment, processing run, source files and raw-data ids) in the
+*Import / Export* panel; the status bar reports 3 raw files.
+```
+
+For a headless example, call `mmfdb.admin.seed_example.seed_example` on an explicitly
+selected demo database; its sources and the produced table become managed
+objects in that database's object store.
+
 ## Headless and Python
 
 Every action of the tool is an MMFDB RPC method that the server runs. The same
@@ -142,24 +163,6 @@ The plugin's tests drive it against a seeded temporary database
   stored, the provenance graph, and the access rules.
 - {doc}`Inspecting a container </guides/63_pto_inspector>` covers provenance
   inside a single `.pto` file.
-
-
-## Administrative metadata example
-
-**Import / Export → Demo data…** populates the database with the packaged
-synthetic smFRET burst tables, after asking; declining starts nothing. (The
-retired Qt window hid this behind ten clicks on its header label.) The
-authenticated backend uses 120 source rows from three packaged CSVs and stores
-the real 63-row selection with hashes and lineage; the result summary is shown
-in the panel. These are metadata examples: the action acquires no photons and
-needs no checkout test files.
-
-![The retired Qt administrator showing the synthetic table result](figures/102_mmfdb_demo_result.png)
-
-For a headless administrative example, use the owning MMFDB `seed_example`
-API with an explicitly selected demo database; its sources and produced table
-are managed objects in that database's object store.
-
-Tool: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`).
-
-Tool: Database Connector, the service-only plugin that opens, backs up, resets and imports the database (`chisurf/plugins/core/database_connector/`).
+- Tools: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`); Database Connector,
+  the service-only plugin that opens, backs up, resets and imports the database
+  (`chisurf/plugins/core/database_connector/`).
