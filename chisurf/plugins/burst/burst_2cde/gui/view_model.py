@@ -17,10 +17,13 @@ from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.core.runtime import analysis_cache
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 
+_proximity_ratio: Callable[[Any], np.ndarray | None] | None
 try:
-    from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
+    from chisurf.plugins.burst.burst_selection.api.features import (
+        proximity_ratio as _proximity_ratio,
+    )
 except Exception:  # pragma: no cover
-    proximity_ratio = None
+    _proximity_ratio = None
 
 ALGORITHM_VERSION = 1
 logger = logging.getLogger(__name__)
@@ -155,7 +158,7 @@ class TwoCdeViewModel:
         col = core.column_for_variant(self.last_computed_variant)
         vals = numeric_column(self.df, col)
         finite = np.isfinite(vals)
-        e = proximity_ratio(self.df) if proximity_ratio is not None else None
+        e = _proximity_ratio(self.df) if _proximity_ratio is not None else None
         if e is not None:
             e = np.asarray(e, dtype=float)
             m = finite & np.isfinite(e)

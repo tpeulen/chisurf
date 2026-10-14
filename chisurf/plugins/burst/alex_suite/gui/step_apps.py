@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from emtk import im
 from emtk.i18n import tr
@@ -25,6 +25,10 @@ from .app import AlexAlternationApp, LegacyExportApp, TitrationApp
 from .export_model import LegacyExportModel
 from .titration_view_model import TitrationViewModel
 
+if TYPE_CHECKING:
+    from emtk.dialog_window import DialogWindow
+    from emtk.file_dialog import FileDialog
+
 logger = logging.getLogger("chisurf.plugins.burst")
 
 #: Burst tables the titration file chooser offers.
@@ -35,8 +39,8 @@ class _Dialog:
     """One in-app file chooser at a time: open it, draw it over the app, hand the chosen paths to a callback."""
 
     def __init__(self) -> None:
-        self.dialog = None
-        self.window = None
+        self.dialog: FileDialog | None = None
+        self.window: DialogWindow | None = None
         self.on_done: Callable[[list[str]], None] | None = None
 
     def open(self, title: str, mode: str, on_done, *, filters=None, filename: str = "") -> None:
@@ -49,8 +53,9 @@ class _Dialog:
         if filename:
             options["filename"] = filename
         self.dialog = FileDialog(title, mode=mode, multiselect=mode == "open", **options)
-        self.window = DialogWindow(title, size=(640.0, 460.0), key="alex-suite-file")
-        self.window.show()
+        window = DialogWindow(title, size=(640.0, 460.0), key="alex-suite-file")
+        window.show()
+        self.window = window
         self.on_done = on_done
 
     @property
@@ -58,7 +63,7 @@ class _Dialog:
         return self.dialog is not None
 
     def draw(self, frame) -> None:
-        if self.dialog is None:
+        if self.dialog is None or self.window is None:
             return
         pressed = self.window.begin(frame)
         result = self.dialog.draw()

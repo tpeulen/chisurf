@@ -129,9 +129,9 @@ class AccurateFretParameters(FittingParameterGroup):
             if label in seen:
                 continue
             for key in (f"E_{label}", f"R_{label}"):
-                parameter = self.parameter(key)
-                if parameter is not None:
-                    edit_parameter(parameter, value=float("nan"))
+                existing = self.parameter(key)
+                if existing is not None:
+                    edit_parameter(existing, value=float("nan"))
         self.population_labels = seen
 
 

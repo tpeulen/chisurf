@@ -19,6 +19,7 @@ from chisurf.plugins.burst.alex_suite.api.histograms import Corrections, Thresho
 from chisurf.plugins.burst.alex_suite.api.titration import (
     BINDING_MODELS,
     Condition,
+    TitrationResult,
     run_titration,
 )
 
@@ -67,7 +68,7 @@ class TitrationViewModel:
             "Add one burst file per ligand concentration, type the "
             "concentrations, and press **Fit series**."
         )
-        self._result = None
+        self._result: TitrationResult | None = None
         self._observers: list[Callable[[str], None]] = []
         #: Set by the Qt panel to a callable returning chosen paths. The model
         #: never opens a dialog itself, so the same object drives a script.

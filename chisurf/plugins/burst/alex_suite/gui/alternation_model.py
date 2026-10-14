@@ -381,7 +381,11 @@ class AlexAlternationModel:
         if not self.converted:
             self.status_text = "Detection succeeded but no file could be converted - see the log."
             return
-        self._publish(windows or self._windows_from_state() or self.result["windows"])
+        target = windows or self._windows_from_state()
+        if target is None and self.result is not None:
+            target = self.result["windows"]
+        if target is not None:
+            self._publish(target)
         note = f" ({len(failed)} failed - see the log)" if failed else ""
         self.status_text = (
             f"Converted {len(self.files)} file(s) into {self.converted[0].name}{note}; detector setup "

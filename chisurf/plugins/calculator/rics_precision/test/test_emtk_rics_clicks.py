@@ -183,7 +183,10 @@ def test_export_to_an_unwritable_place_is_reported(ui, tmp_path, monkeypatch):
 
 
 # -- the fields ----------------------------------------------------------------------------------------
-FIELDS = [
+#: (field, typed text, value it parses to, (below-range text, clamped low, above-range text, clamped high))
+FieldCase = tuple[str, str, float, tuple[str, float, str, float]]
+
+FIELDS: list[FieldCase] = [
     # attribute, typed text, expected value, the Qt spec's bound that clamps it
     ("diffusion_coefficient", "250", 250.0, ("1e-06", 1e-06, "999999", 100000.0)),
     ("n_particles", "12.5", 12.5, ("0", 0.01, "9999999", 1000000.0)),
@@ -197,7 +200,7 @@ FIELDS = [
     ("ny", "96", 96, ("1", 8, "99999", 4096)),
     ("n_images", "250", 250, ("0", 1, "9999999", 100000)),
 ]
-ESTIMATOR = [
+ESTIMATOR: list[FieldCase] = [
     ("n_lags", "5", 5, ("0", 1, "99", 15)),
     ("n_repeats", "60", 60, ("0", 5, "99999", 2000)),
     ("seed", "7", 7, ("-5", 0, "99999999", 1000000)),

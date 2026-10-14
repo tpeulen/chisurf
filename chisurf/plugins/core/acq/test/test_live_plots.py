@@ -38,7 +38,8 @@ class PlotsApp(ImApp):
     def __init__(self, plots: LivePlots):
         self.model = plots
         self.events: queue.Queue = queue.Queue()
-        self.form, self.item_rects = FormState(), {}
+        self.form = FormState()
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.form.custom.update(
             {
                 k: plots.draw_plot

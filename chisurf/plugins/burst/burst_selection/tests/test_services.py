@@ -45,7 +45,7 @@ def test_register_burst_selection_services() -> None:
         """Minimal dispatcher double."""
 
         def __init__(self) -> None:
-            self.names = []
+            self.names: list[str] = []
 
         def register(self, name: str, handler):
             self.names.append(name)

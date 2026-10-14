@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import pathlib
 import sys
+from typing import Any
 
 import numpy as np
 import scipy.io as sio
@@ -37,7 +38,7 @@ def main(path: str) -> None:
     mat = sio.loadmat(path, squeeze_me=True, struct_as_record=False)
     series, analysis, controls = mat["series"], mat["analysis"][3], mat["controls"]
     clip = (float(controls.clip.min), float(controls.clip.max))
-    out = {
+    out: dict[str, Any] = {
         "source": "ebFRET simulated-K04-N350-ebfret-session.mat, analysis(4), series 1..%d"
         % N_SERIES,
         "clip": clip,

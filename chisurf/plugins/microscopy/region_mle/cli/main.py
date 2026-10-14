@@ -197,14 +197,23 @@ def serve(host: str, port: int) -> None:
     try:
         from chisurf.server.dispatcher import ServiceDispatcher
         from chisurf.server.session import SessionState
+        from chisurf.server.transport.zmq import ZmqServer
 
         from ..backend.services import register_services
 
         state = SessionState()
         dispatcher = ServiceDispatcher(state)
         register_services(dispatcher)
+        # The dispatcher has no ``serve`` (calling it made this command fail every
+        # time): a ZMQ server hands each request to it, publishing on port + 1.
+        server = ZmqServer(
+            handler=lambda method, params: dispatcher.dispatch(method, params or {}),
+            cmd_port=port,
+            pub_port=port + 1,
+            host=host,
+        )
         click.echo("Services registered. Listening…")
-        dispatcher.serve(host=host, port=port)
+        server.serve_forever()
     except Exception as exc:
         click.echo(f"Failed to start service: {exc}", err=True)
         raise SystemExit(1) from exc

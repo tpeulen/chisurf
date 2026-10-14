@@ -73,7 +73,7 @@ class RicsPrecisionApp(ImApp):
         self.file_window = DialogWindow(
             tr("Export precision sweep"), size=(760.0, 520.0), key="rics-export"
         )
-        self._plot_signature = None
+        self._plot_signature: int | None = None
         self.help_window = EmTkHelpWindow(
             title=tr("RICS precision — Help & Reference"),
             resource=HERE / "help.md",

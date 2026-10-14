@@ -70,7 +70,8 @@ class ProteinMCApiServer:
     def stop(self) -> None:
         """Stop the server."""
         if self._zmq is not None:
-            self._zmq._running = False
+            # (``_running`` is a read-only property now: assigning it raised AttributeError)
+            self._zmq.stop()
         if self._runner is not None:
             self._runner.stop()
         self._zmq = None

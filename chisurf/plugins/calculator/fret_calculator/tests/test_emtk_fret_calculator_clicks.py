@@ -19,7 +19,6 @@ from .test_emtk_fret_calculator_parity import (
     SMALL,
     click,
     draw,
-    edit,
     hermetic,  # noqa: F401  (autouse fixture)
     hetero_state,
     homo_state,
@@ -384,4 +383,3 @@ def test_the_flow_works_in_the_small_window_too(app):
         and hetero_state(m)["R"] == 57.0
         and homo_state(app.model.homo)["R_DA"] != 51.35
     )
-    assert edit  # (re-exported helper kept for symmetry with the parity tests)

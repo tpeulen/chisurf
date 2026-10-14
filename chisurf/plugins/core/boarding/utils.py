@@ -49,7 +49,7 @@ def settings_paths() -> dict[str, pathlib.Path]:
     }
 
 
-def _html_code(text: str) -> str:
+def _html_code(text: object) -> str:
     return f"<code>{html.escape(str(text))}</code>"
 
 
@@ -123,10 +123,10 @@ def detector_setups_summary() -> dict:
             import json
 
             with open(p, encoding="utf-8") as fh:
-                n = len((json.load(fh) or {}).get("setups", {}) or {})
+                count: int | None = len((json.load(fh) or {}).get("setups", {}) or {})
         except Exception:
-            n = None
-        return {"count": n, "store": "file", "detail": f"in {p}"}
+            count = None
+        return {"count": count, "store": "file", "detail": f"in {p}"}
     return {"count": 0, "store": "none", "detail": ""}
 
 

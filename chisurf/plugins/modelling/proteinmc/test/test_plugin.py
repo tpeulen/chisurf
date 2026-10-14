@@ -208,3 +208,25 @@ def test_cli_writes_rmf3(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert output.exists()
     assert str(output) in result.output
+
+
+def test_api_server_stop_shuts_its_zmq_loop_down() -> None:
+    """``stop()`` ends a running server (it used to assign a read-only property and raise)."""
+    import socket
+
+    from chisurf.plugins.modelling.proteinmc.api.server import ProteinMCApiServer
+
+    def _free_port() -> int:
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+
+    server = ProteinMCApiServer(cmd_port=_free_port(), pub_port=_free_port())
+    server.start()
+    assert server._thread is not None
+    for _ in range(200):
+        if server._zmq is not None and server._zmq.wait_ready(0.05):
+            break
+    server.stop()
+    server._thread.join(timeout=10.0)
+    assert not server._thread.is_alive()

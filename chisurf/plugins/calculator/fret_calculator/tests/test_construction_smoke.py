@@ -37,8 +37,7 @@ def test_package_root_has_no_qt_tool() -> None:
     """The package root no longer exposes a Qt tool."""
     import chisurf.plugins.calculator.fret_calculator as plugin
 
-    with pytest.raises(AttributeError):
-        plugin.FretCalculatorTool
+    assert not hasattr(plugin, "FretCalculatorTool")
 
 
 def test_package_root_imports_without_qt() -> None:

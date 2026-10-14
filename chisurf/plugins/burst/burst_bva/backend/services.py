@@ -164,7 +164,7 @@ def _settings_from_workflow(
     if settings:
         return BvaSettings(**settings)
 
-    channel_settings = {}
+    channel_settings: dict[str, Any] = {}
     if workflow_context:
         channel_settings = workflow_context.get("channel_settings") or {}
     detectors = channel_settings.get("detectors") or {}

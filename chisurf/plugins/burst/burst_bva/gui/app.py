@@ -418,7 +418,7 @@ class BurstBvaGui:
             "save_plot": self.on_save,
             "save_defaults": self.on_save_settings,
         }
-        action = actions.get(pressed)
+        action = actions.get(pressed) if pressed else None
         if callable(action):
             action()
         pressed = button_row(

@@ -335,7 +335,7 @@ class BurstTwoCdeGui:
 
     def _draw_status(self) -> None:
         """Status readout, and the progress of a running computation."""
-        if self.model.is_running and getattr(self.model, "progress_text", ""):
+        if self.model.is_running and self.model.progress_text:
             im.separator()
             fraction = self.model.progress
             # An unknown amount (reading, writing) shows as an empty bar with its caption.

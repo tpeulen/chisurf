@@ -5,6 +5,7 @@ import json
 from concurrent.futures import CancelledError, ThreadPoolExecutor
 from pathlib import Path
 from threading import Event
+from typing import Any
 
 import numpy as np
 
@@ -22,6 +23,8 @@ class BurstFcsController(RunPickerMixin):
     """
 
     run_picker_attr = "run_container"
+    #: The correlation curves of the last run, as exported (one dict per curve).
+    _curves: list[dict[str, Any]]
 
     @property
     def run_container(self) -> str:

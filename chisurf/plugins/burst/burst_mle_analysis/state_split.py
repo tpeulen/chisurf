@@ -288,7 +288,7 @@ def pooled_state_fits(
         return [], 0, "Pooled state lifetimes: nothing to pool."
     # Every job carries the same per-detector configuration; a file without its raw measurement carries an empty one
     # and can be first, so take the first real one.
-    shared_cfg = next((j[9] for j in jobs if j[9]), {})
+    shared_cfg: dict = next((j[9] for j in jobs if j[9]), {})
     fits = fit_pooled_state_decays(pooled, det_order, shared_cfg, shift)
     rows = state_lifetime_rows(fits, model, param_names, perdet_cfg=shared_cfg)
     seeded = seed_state_fits(jobs, fits)

@@ -13,6 +13,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from emtk.testing import RecordingPainter
@@ -37,7 +38,13 @@ QT_STEPS = [
 ]
 
 
-class Folder(type(Path())):
+if TYPE_CHECKING:
+    _ConcretePath = Path
+else:  # ``Path`` itself cannot be subclassed before Python 3.12: take its concrete flavour
+    _ConcretePath = type(Path())
+
+
+class Folder(_ConcretePath):
     """The temporary settings folder, remembering which folders the wizard asked to open."""
 
     opened: list
