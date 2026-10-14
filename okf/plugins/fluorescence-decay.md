@@ -25,10 +25,11 @@ timestamp: '2026-07-05T00:00:00Z'
    `lltf/test/test_polarized.py` (seeds 1–3, plus mixing, two rotations, r∞, the Wizard cross-check: LLTF
    3.999 / 1.997 / 0.380 vs ChiSurf's linked fit 3.997 / 2.007 / 0.381). Code: `lltf/core/polarized.py`
    reuses `calculcate_spectrum` (made Schaffer for l1/l2 the same day, RF-954). Open:
-   (a) r0 comes back +0.002…+0.004 high on all five demo seeds — cause not found (suspect the IRF window or
-   the shared count-conservation scale with per-channel backgrounds); (b) G is held fixed — a tail-matching G
-   could be fitted when r(t) has decayed inside the window; (c) at 800×600 the VV/VH Results summary needs a
-   scroll below r0; (d) an associated anisotropy (one r(t) per lifetime) is outside the model.
+   (a) [closed] r0 +0.002…+0.004 on demo seeds 1–5 was chance: over 30 seeds 0.3503 ± 0.0004 (sd 0.0020),
+   noise-free counts give 0.3500; fixing the backgrounds at 0 or Neyman changed nothing (scratch probe:
+   simulate 30 seeds, mean r0 — do not judge a bias from five); (b) G is held fixed — a tail-matching G
+   could be fitted when r(t) has decayed inside the window; (c) [closed] the VV/VH summary is five lines and
+   fits 800×600; (d) an associated anisotropy (one r(t) per lifetime) is outside the model.
    Traps: the IRF must be windowed by its baseline noise, not by a fraction of its peak (0.1 % cut the
    example IRF's real tail and moved 1 ns to 1.05 ns; no window left a pedestal, χ²ᵣ 3.8); the magic-angle
    pre-fit that seeds the lifetimes stops off (5.0 / 2.78 ns), so the joint fit runs from two starts.

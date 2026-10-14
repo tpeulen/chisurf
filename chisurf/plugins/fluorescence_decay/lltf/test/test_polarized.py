@@ -51,6 +51,33 @@ def test_two_lifetimes_one_rotation_are_recovered(seed):
     assert r["converged"]
 
 
+def test_a_noise_free_pair_returns_its_truth_exactly():
+    """Simulator and fitter are one forward model: the expected counts give r0 = 0.3500.
+
+    Over 30 Poisson seeds r0 averages 0.3503 +- 0.0004 (sd 0.0020); seeds 1-5 happen
+    to sit at 0.3518-0.3535.
+    """
+    from chisurf.core.fluorescence.decay import synthetic_aniso_decay
+
+    vv, vh = synthetic_aniso_decay(
+        IRF.size,
+        [1.0, 4.0],
+        amplitudes=[0.3, 0.7],
+        anisotropy_spectrum=[0.35, 1.5],
+        g_factor=1.2,
+        bin_width=DT,
+        irf=IRF,
+        normalize=True,
+    )
+    pd = P.PolarizedDecay(np.arange(IRF.size) * DT, vv * 2e6, vh * 2e6, IRF, IRF, 1.2)
+    settings = merged_settings()
+    pd.setup(settings)
+    r = pd.fit(2, 1, settings=settings)
+    assert r["r0"] == pytest.approx(0.35, abs=2e-4)
+    assert r["rotations"][0]["rho"] == pytest.approx(1.5, abs=2e-3)
+    assert [c["lifetime"] for c in r["lifetimes"]] == pytest.approx([4.0, 1.0], abs=3e-3)
+
+
 @pytest.mark.parametrize("seed", [1, 2])
 def test_schaffer_mixing_and_g_are_applied(seed):
     """G = 0.8, l1 = 0.05, l2 = 0.08: rho 2.0 ns and r0 0.30 come back."""

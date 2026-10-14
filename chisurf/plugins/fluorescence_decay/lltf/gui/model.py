@@ -120,21 +120,31 @@ class LLTFModel:
         elif result.get("converged") is False:
             message = result.get("optimizer_message") or tr("Optimization did not converge.")
             lines.append(tr("Optimizer warning: {message}").format(message=message))
-        if "chi_square" in result:
-            lines.append(f"Chi-square: {result['chi_square']:.3f}")
-        if "reduced_chi_square" in result:
-            lines.append(f"Reduced chi-square: {result['reduced_chi_square']:.3f}")
         if result.get("mode") == "vv_vh":
+            # Two tables sit above this in VV/VH mode: five lines, so the summary
+            # still fits the Results tab of an 800x600 window.
             lines.append(
-                f"VV / VH reduced chi-square: {result['reduced_chi_square_vv']:.3f} / "
-                f"{result['reduced_chi_square_vh']:.3f}"
+                f"Chi-square: {result['chi_square']:.1f}, reduced "
+                f"{result['reduced_chi_square']:.3f} (VV {result['reduced_chi_square_vv']:.3f}, "
+                f"VH {result['reduced_chi_square_vh']:.3f})"
             )
-            lines.append(f"r0: {result['r0']:.3f}")
             source = result.get("calibration_source", {})
             lines.append(
-                f"G: {result['g_factor']:.4g} ({source.get('g_factor', '?')}), "
-                f"l1: {result['l1']:.4g}, l2: {result['l2']:.4g}"
+                f"r0: {result['r0']:.3f}; G {result['g_factor']:.4g} "
+                f"({source.get('g_factor', '?')}), l1 {result['l1']:.4g}, l2 {result['l2']:.4g}"
             )
+        else:
+            if "chi_square" in result:
+                lines.append(f"Chi-square: {result['chi_square']:.3f}")
+            if "reduced_chi_square" in result:
+                lines.append(f"Reduced chi-square: {result['reduced_chi_square']:.3f}")
+        if result.get("mode") == "vv_vh":
+            lines.append(
+                f"Time range: {result['time_range']['start']:.3f} - "
+                f"{result['time_range']['stop']:.3f} ns; lifetimes: {result['n_lifetimes']}, "
+                f"rotations: {result['n_rotations']}"
+            )
+            return "\n".join(lines)
         if "time_range" in result:
             lines.append(
                 f"Time range: {result['time_range']['start']:.3f} - {result['time_range']['stop']:.3f} ns"

@@ -390,6 +390,13 @@ def test_vv_vh_example_is_loaded_fitted_and_shown(ui):
     assert any(s.startswith("r0: ") for s in ui.last.strings)
     ui.press_text("r(t)")
     assert "r(t) data" in ui.last.strings and "r(t) fit" in ui.last.strings
+    # the whole summary, below two tables, still fits an 800x600 window
+    ui.size = (800, 600)
+    ui.draw(4)
+    summary = [s for s in ui.last.strings if s.startswith("Time range")]
+    assert summary and "rotations: 1" in summary[0]
+    _, y, _, h = ui.last.texts[[t[5] for t in ui.last.texts].index(summary[0])][:4]
+    assert y + h <= 0.55 * 600
 
 
 def test_magic_angle_hides_the_vv_vh_controls(ui):

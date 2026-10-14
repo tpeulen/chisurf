@@ -355,8 +355,9 @@ over both channels, Poisson deviance):
 | 4 ns, $\rho$ 0.3 ns (0.15) + 5 ns (0.20) | 1–5 | $\rho$ 0.24–0.33 ns (0.143–0.171) and 4.68–5.19 ns (0.195–0.207) |
 | 4 ns, $\rho$ 1.5 ns (0.25), $r_\infty$ 0.10 | 1–3 | $r_\infty$ 0.097–0.102, $\rho$ 1.48–1.55 ns |
 
-All five seeds of the first row return $r_0$ slightly above 0.35 (+0.002 to
-+0.004). On the Anisotropy Wizard's simulated example (4 ns, 2 ns, 0.38, separate
+Seeds 1–5 of the first row return $r_0$ = 0.352–0.354, which is chance, not a
+bias: over 30 seeds $r_0$ = 0.3503 ± 0.0004 (s.d. 0.0020), and the expected
+(noise-free) counts give 0.3500 exactly. On the Anisotropy Wizard's simulated example (4 ns, 2 ns, 0.38, separate
 VV and VH IRFs on a 4-count baseline) LLTF returns 3.999 ns, 1.997 ns and 0.380
 ($\chi^2_r$ 0.98) where ChiSurf's linked global fit of the same files returns
 3.997 ns, 2.007 ns and 0.381 ($\chi^2_r$ 0.98).
