@@ -2768,9 +2768,12 @@ Open:
    (YAML + two in `fit_lifetime`); CLI `-f` overwrites `selection_mode`; the
    `$TMPDIR/lltf_config.yml` copy is never refreshed; `plot_decay_curve` calls
    `plt.show()` unconditionally.
-   **Resolved 2026-10-14** except the default sets and the `selection_mode`
-   overwrite (guide 76, Known defects): the scan uses the extra-sum-of-squares F
-   test and warm-starts n+1 from n. The remaining 3.0+4.5 ns error (2.4 + 4.1 ns
+   **Resolved 2026-10-14.** The scan uses the extra-sum-of-squares F test and
+   warm-starts n+1 from n. `fit_lifetime` and the CLI take their defaults from
+   the packaged `lifetime_settings.yml` only (`selection_mode: lower`); `-m`,
+   `-pt`, `-sm` override the file only when given
+   (`lltf/test/test_settings_source.py`). The panel writes a fresh per-run
+   config and no path calls `plt.show()`. The remaining 3.0+4.5 ns error (2.4 + 4.1 ns
    on every seed) was the Neyman objective's low-count bias, not the test:
    `lifetime_fit_parameter.noise_model: poisson` (CLI `--noise-model`) fits the
    deviance and returns 2.8–3.0 + 4.4–4.5 ns at 2e6 photons

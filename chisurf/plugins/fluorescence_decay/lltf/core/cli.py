@@ -49,22 +49,24 @@ def cli():
     "--max-lifetimes",
     "-m",
     type=int,
-    default=6,
-    help="Maximum number of lifetimes to try when finding optimal",
+    default=None,
+    help="Maximum number of lifetimes to try when finding optimal (default: the configuration's, 6)",
 )
 @click.option(
     "--prob-threshold",
     "-pt",
     type=float,
-    default=0.68,
-    help="Probability threshold for selecting the best number of lifetimes",
+    default=None,
+    help="Probability threshold for selecting the best number of lifetimes "
+    "(default: the configuration's, 0.68)",
 )
 @click.option(
     "--selection-mode",
     "-sm",
     type=click.Choice(["lower", "upper"]),
-    default="lower",
-    help="Mode for selecting the best number of lifetimes (lower: fewer components, upper: more components)",
+    default=None,
+    help="Mode for selecting the best number of lifetimes (lower: fewer components, upper: "
+    "more components; default: the configuration's, lower)",
 )
 @click.option(
     "--noise-model",
@@ -171,12 +173,15 @@ def fit(
     n_lifetimes = 1 if n_lifetimes is None else n_lifetimes
     if noise_model is not None:
         config_dict.setdefault("lifetime_fit_parameter", {})["noise_model"] = noise_model
-    if find_optimal:
-        if "lifetime_fit_parameter" not in config_dict:
-            config_dict["lifetime_fit_parameter"] = {}
-        config_dict["lifetime_fit_parameter"]["maximum_number_of_lifetimes"] = max_lifetimes
-        config_dict["lifetime_fit_parameter"]["prob_threshold"] = prob_threshold
-        config_dict["lifetime_fit_parameter"]["selection_mode"] = selection_mode
+    # Only options actually given override the configuration; an unset one used to
+    # overwrite the file with the CLI's own default (selection_mode "lower" always won).
+    for key, value in (
+        ("maximum_number_of_lifetimes", max_lifetimes),
+        ("prob_threshold", prob_threshold),
+        ("selection_mode", selection_mode),
+    ):
+        if value is not None:
+            config_dict.setdefault("lifetime_fit_parameter", {})[key] = value
 
     # Set default intermediate_base if not specified but save_intermediate is enabled
     if save_intermediate and not intermediate_base:

@@ -105,7 +105,13 @@ def qt(tmp_path_factory):
 def _without_config(cmd):
     cmd = list(cmd)
     i = cmd.index("-c")
-    return cmd[:i] + cmd[i + 2 :], cmd[i + 1]
+    cmd, config = cmd[:i] + cmd[i + 2 :], cmd[i + 1]
+    # Deliberate addition over the Qt wizard: the panel's Noise Model choice.
+    if "--noise-model" in cmd:
+        j = cmd.index("--noise-model")
+        assert cmd[j + 1] in ("neyman", "poisson")
+        cmd = cmd[:j] + cmd[j + 2 :]
+    return cmd, config
 
 
 # 1. the same command as the Qt wizard, fixed count and search; the subprocess never shows figures

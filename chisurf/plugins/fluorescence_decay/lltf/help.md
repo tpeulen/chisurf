@@ -42,7 +42,7 @@ IRF shift, two backgrounds and χ². No uncertainties. The results are written a
 ## Further reading
 
 - [The decay tools, Lazy Lifetime Analysis and synthetic decays](docs/guides/76_decay_analysis_tools.md)
-  — every setting, the CLI, the ground-truth test and the known defects.
+  — every setting, the CLI and the ground-truth test.
 - [TCSPC: fluorescence-lifetime fitting](docs/concepts/tcspc_lifetime.md) —
   reconvolution, and how many components a decay supports.
 - [Fitting objectives](docs/concepts/fitting_objectives.md) — why weighting by

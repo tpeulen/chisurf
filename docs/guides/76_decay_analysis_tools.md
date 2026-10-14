@@ -174,11 +174,17 @@ scan).
 | `pile_up_correction.enabled`, `rep_rate` (MHz), `dead_time` (ns), `measurement_time` (s) | off, 80, 85, 60 | Coates-type pile-up applied to the model |
 
 The file's `lifetime_fit_parameter` block also holds `find_optimal`,
-`maximum_number_of_lifetimes`, `prob_threshold` and `selection_mode`. With
-*Find Optimal* ticked, the panel's values override the first three and
-`selection_mode` is forced to `lower` (below). Unticked, the panel passes its
-*Number of Lifetimes* and that switches the file's `find_optimal` off: the
-panel decides.
+`maximum_number_of_lifetimes`, `prob_threshold` and `selection_mode` (default
+`lower`, below). With *Find Optimal* ticked, the panel's values override the
+first three; `selection_mode` is taken from the file. Unticked, the panel passes
+its *Number of Lifetimes* and that switches the file's `find_optimal` off: the
+panel decides. The panel's **Noise Model** always overrides the file's
+`noise_model`.
+
+These defaults are the only ones: the CLI without `-c` and `fit_lifetime`
+without `config` start from the same packaged `lifetime_settings.yml`, and a
+given configuration overrides it key by key. On the command line, `-m`, `-pt`,
+`-sm` and `--noise-model` override the file only when they are given.
 
 ### Reading the output
 
@@ -247,9 +253,9 @@ to three lifetimes with the packaged configuration and threshold 0.68:
 | 4.0 ns | `neyman` | 1, 1, 1 | 3.98 ns; $\chi^2_r$ 1.09–1.15 |
 | | `poisson` | 1, 1, 1 | 4.00 ns; $\chi^2_r$ 1.01–1.07 |
 | 1.0 + 4.0 ns, equal amplitudes | `neyman` | 2, 2, 2 | 3.94 ns (0.51) and 0.95–0.96 ns (0.49) |
-| | `poisson` | 2, 2, 3 | 3.99–4.00 ns (0.50) and 0.98–1.00 ns (0.50); seed 3 adds a 0.03 ns component of 0.11 |
+| | `poisson` | 2, 2, 2 | 3.99–4.00 ns (0.50) and 0.98–1.00 ns (0.50) |
 | 3.0 + 4.5 ns, equal amplitudes | `neyman` | 2, 2, 2 | 4.12–4.15 ns (0.76–0.78) and 2.35–2.47 ns: wrong |
-| | `poisson` | 2, 2, 2 | 2.81 / 4.36, 2.93 / 4.46 and 2.99 / 4.49 ns, fractions 0.40–0.51 |
+| | `poisson` | 2, 2, 2 | 2.81 / 4.36, 2.93 / 4.45 and 2.98 / 4.47 ns, short fraction 0.40–0.48 |
 
 **Use `poisson` on raw counts.** Weighting each channel by its own counts
 gives low channels too much weight, which pulls the model down in the tail: a
@@ -263,11 +269,11 @@ it also fits curves that are not counts (the packaged example is scaled to a
 peak of 100 000).
 
 **What remains is resolution.** With the deviance, the profile over $\tau_1$
-for seed 1 (everything else refitted) rises by 5.2 at 2.5 ns, 2.4 at the true
-3.0 ns and 17 at 3.2 ns from its minimum at 2.81 ns: at $2\times10^6$ photons
+for seed 1 (everything else refitted) rises by 5.1 at 2.5 ns, 2.5 at the true
+3.0 ns and 18 at 3.2 ns from its minimum at 2.81 ns: at $2\times10^6$ photons
 $\tau_1$ is known to roughly ±0.15 ns. A fixed two-lifetime fit of the same
-decay gives 2.65–3.40 / 4.33–5.28 ns at $2\times10^5$ photons and
-2.99–3.03 / 4.50–4.52 ns at $2\times10^7$ photons.
+decay gives 2.31–3.23 / 4.06–5.03 ns at $2\times10^5$ photons and
+2.97–3.02 / 4.49–4.51 ns at $2\times10^7$ photons.
 
 Read the scan as a table of fits, not as a verdict: open `optimal_fitting` in
 the JSON, check that $\chi^2_r$ falls monotonically with $n$, and judge the
@@ -403,7 +409,7 @@ res = fit_lifetime(
             "plot_resulting_fit": False},
     save_intermediate_results=False)
 print(res["n_lifetimes"], res["lifetime_spectrum"])   # 2 [0.511 3.936 0.489 0.949]
-print(res["optimal_fitting"]["scores"])               # [10.403 1.101 1.102]
+print(res["optimal_fitting"]["scores"])               # [10.482 1.101 1.102]
 ```
 
 The generator underneath is
@@ -434,19 +440,6 @@ your measured IRF also carries its floor and shape.
 **Keep the window long.** Bins × Δt of at least 3–5 times the longest lifetime;
 the generator's default 256 × 0.032 ns (8.2 ns) is too short for its own
 default 4 ns component.
-
-## Known defects
-
-:::{admonition} Known defects
-:class: warning
-
-- **Two default sets.** The panel starts from `lifetime_settings.yml`; the CLI
-  without `-c` (and `fit_lifetime` without `config`) uses its own defaults
-  (`area` 0.999, `start_fraction` 0.1, starting lifetimes 0.5–5 ns), so the
-  same decay can be fitted over a different range. With *Find Optimal* the CLI
-  overrides the file's `selection_mode` with its own default `lower`, so `upper`
-  from the file is never used from the panel.
-:::
 
 ## See also
 

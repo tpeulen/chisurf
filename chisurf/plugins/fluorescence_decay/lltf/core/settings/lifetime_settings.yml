@@ -29,7 +29,7 @@ lifetime_fit_parameter:
   find_optimal: false
   maximum_number_of_lifetimes: 6
   prob_threshold: 0.68
-  selection_mode: upper
+  selection_mode: lower
   plot_probabilities: true
   plot_weighted_residuals: true
   randomize_initial_values:

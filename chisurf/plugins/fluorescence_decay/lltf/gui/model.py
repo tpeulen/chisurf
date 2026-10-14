@@ -40,7 +40,9 @@ class LLTFModel:
         self.max_lifetimes = 4
         self.prob_threshold = 0.68
         self.verbose = True
-        self.config_text = yaml.safe_dump(get_default_settings(), sort_keys=False)
+        defaults = get_default_settings()
+        self.noise_model = defaults["lifetime_fit_parameter"]["noise_model"]
+        self.config_text = yaml.safe_dump(defaults, sort_keys=False)
         self.config_dirty = False
         self.loaded_config_file = ""
         self.process = None
@@ -139,6 +141,7 @@ class LLTFModel:
         config = config_file if config_file is not None else self.config_file
         if config:
             command.extend(["-c", config])
+        command.extend(["--noise-model", self.noise_model])
         if self.find_optimal:
             command.extend(["-f", "-m", str(self.max_lifetimes), "-pt", str(self.prob_threshold)])
         else:
@@ -281,6 +284,7 @@ class LLTFModel:
                 "config_file",
                 "output_dir",
                 "n_lifetimes",
+                "noise_model",
                 "find_optimal",
                 "max_lifetimes",
                 "prob_threshold",

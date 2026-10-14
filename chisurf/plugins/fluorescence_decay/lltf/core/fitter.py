@@ -17,6 +17,7 @@ from chisurf.core.math.special import fdtr
 
 from .convolve import add_pile_up_to_model, convolve_lifetime_spectrum
 from .scaling import scale_model_to_data
+from .settings import get_default_settings
 
 
 # @njit(nopython=True, nogil=True)
@@ -1525,110 +1526,20 @@ def fit_lifetime(
         For any other errors that occur during fitting
     """
     try:
-        # Load configuration
-        if config is None:
-            # Default configuration
-            config = {
-                "verbose": verbose,
-                "estimate_background_parameter": {
-                    "enabled": True,
-                    "initial_irf_background": 0.0,
-                    "fit_irf_background": True,
-                    "average_window": 10,
-                },
-                "analysis_range_parameter": {
-                    "count_threshold": 10.0,
-                    "area": 0.999,
-                    "start_at_peak": False,
-                    "start_fraction": 0.1,
-                    "skip_first_channels": 0,
-                    "skip_last_channels": 0,
-                },
-                "estimate_irf_shift_parameters": {
-                    "enabled": True,
-                    "apply_shift": True,
-                    "irf_time_shift_scan_range": (-8.0, 8.0),
-                    "irf_time_shift_scan_n_steps": 20,
-                },
-                "lifetime_fit_parameter": {
-                    "find_optimal": False,
-                    "maximum_number_of_lifetimes": 6,
-                    "prob_threshold": 0.68,
-                    "selection_mode": "lower",
-                    "plot_probabilities": True,
-                    "plot_weighted_residuals": True,
-                    "randomize_initial_values": {
-                        "enabled": False,
-                        "min_lifetime": 0.5,
-                        "max_lifetime": 5.0,
-                        "amplitude_variation": 0.5,
-                    },
-                },
-                "pile_up_correction": {
-                    "enabled": False,
-                    "rep_rate": 80.0,
-                    "dead_time": 85.0,
-                    "measurement_time": 60.0,
-                },
-                "plot_resulting_fit": True,
-            }
-        else:
-            # Merge provided configuration with default settings
-            default_config: dict[str, typing.Any] = {
-                "verbose": verbose,
-                "estimate_background_parameter": {
-                    "enabled": True,
-                    "initial_irf_background": 0.0,
-                    "fit_irf_background": True,
-                    "average_window": 10,
-                },
-                "analysis_range_parameter": {
-                    "count_threshold": 10.0,
-                    "area": 0.999,
-                    "start_at_peak": False,
-                    "start_fraction": 0.1,
-                    "skip_first_channels": 0,
-                    "skip_last_channels": 0,
-                },
-                "estimate_irf_shift_parameters": {
-                    "enabled": True,
-                    "apply_shift": True,
-                    "irf_time_shift_scan_range": (-8.0, 8.0),
-                    "irf_time_shift_scan_n_steps": 20,
-                },
-                "lifetime_fit_parameter": {
-                    "find_optimal": False,
-                    "maximum_number_of_lifetimes": 6,
-                    "prob_threshold": 0.68,
-                    "selection_mode": "lower",
-                    "plot_probabilities": True,
-                    "plot_weighted_residuals": True,
-                    "randomize_initial_values": {
-                        "enabled": False,
-                        "min_lifetime": 0.5,
-                        "max_lifetime": 5.0,
-                        "amplitude_variation": 0.5,
-                    },
-                },
-                "pile_up_correction": {
-                    "enabled": False,
-                    "rep_rate": 80.0,
-                    "dead_time": 85.0,
-                    "measurement_time": 60.0,
-                },
-                "plot_resulting_fit": True,
-            }
+        # One source of defaults: the packaged lifetime_settings.yml, which the
+        # panel starts from too. A given configuration overrides it key by key.
+        merged: dict[str, typing.Any] = get_default_settings()
+        merged["verbose"] = verbose
 
-            # Update default config with provided config (provided config takes precedence)
-            def update_dict(d, u):
-                for k, v in u.items():
-                    if isinstance(v, dict) and k in d and isinstance(d[k], dict):
-                        update_dict(d[k], v)
-                    else:
-                        d[k] = v
+        def update_dict(d, u):
+            for k, v in u.items():
+                if isinstance(v, dict) and k in d and isinstance(d[k], dict):
+                    update_dict(d[k], v)
+                else:
+                    d[k] = v
 
-            update_dict(default_config, config)
-            config = default_config
+        update_dict(merged, config or {})
+        config = merged
 
         # Override verbose with the value from the configuration if provided
         if "verbose" in config:
