@@ -234,6 +234,8 @@ def _surface_class():
             self.request_frame()
 
         def _draw_export(self, box) -> None:
+            if self._export is None:
+                return
             kind, plot, dialog, window = self._export
             closed = window.begin(box)
             paths = dialog.draw()

@@ -34,6 +34,7 @@ def _find_test_ptu() -> str | None:
 def test_shift_file_roundtrip() -> None:
     """Read->shift->write->read produces expected micro-time values."""
     src = _find_test_ptu()
+    assert src is not None
     tt_orig = tttrlib.TTTR(src)
     n_mt = tt_orig.header.get_effective_number_of_micro_time_channels()
     routing = tt_orig.routing_channels

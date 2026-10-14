@@ -1,5 +1,5 @@
 {
- "total": 2699,
+ "total": 532,
  "files": {
   "chisurf/gui/__init__.py": 3,
   "chisurf/gui/autoform/auto_form.py": 7,
@@ -19,6 +19,7 @@
   "chisurf/gui/chigame/audio.py": 7,
   "chisurf/gui/chigame/game.py": 2,
   "chisurf/gui/chinsole/widget.py": 5,
+  "chisurf/gui/chiplot/canvas.py": 1,
   "chisurf/gui/dialogs.py": 1,
   "chisurf/gui/gui_tweaks.py": 3,
   "chisurf/gui/i18n.py": 8,
@@ -99,7 +100,6 @@
   "chisurf/plugins/chimol/test/web_parity.py": 1,
   "chisurf/plugins/chimol/test/widget_gallery.py": 5,
   "chisurf/plugins/core/batch_analysis/gui/model.py": 1,
-  "chisurf/plugins/core/batch_analysis/gui/view_model.py": 1,
   "chisurf/plugins/core/lightpath_simulator/backend/simulator.py": 1,
   "chisurf/plugins/core/lightpath_simulator/core/parameters.py": 4,
   "chisurf/plugins/core/lightpath_simulator/core/workflow.py": 1,
@@ -107,11 +107,9 @@
   "chisurf/plugins/core/lightpath_simulator/gui/emtk_view.py": 1,
   "chisurf/plugins/core/lightpath_simulator/gui/panel.py": 1,
   "chisurf/plugins/core/lightpath_simulator/tests/test_emtk_view.py": 2,
-  "chisurf/plugins/core/lightpath_simulator/tests/test_native_ui.py": 1,
   "chisurf/plugins/core/mmfdb_admin/gui/client.py": 15,
   "chisurf/plugins/core/mmfdb_admin/gui/entity_schema.py": 1,
   "chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py": 1,
-  "chisurf/plugins/misc/games/number_quest/gui/tool.py": 1,
   "chisurf/plugins/ndxplorer/calibration_bridge.py": 3,
   "chisurf/startup/gui_services.py": 1
  }

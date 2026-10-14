@@ -67,6 +67,7 @@ def fresh_session(bur: Path) -> engine.MleSession:
 def set_window(session: engine.MleSession) -> None:
     session.build_decay()
     window = engine.select_fit_range(session.decay)
+    assert window is not None, "no fit range found in the restored decay"
     session.settings.micro_time_start, session.settings.micro_time_stop = window
     session.build_decay()
 
@@ -183,6 +184,7 @@ def displaced_session(inputs, bins: int = 3) -> tuple[engine.MleSession, float]:
     """Auto IRF with the VH half displaced by *bins*; returns the session and the tau of the undisplaced fit."""
     session = fresh_session(inputs["bur"])
     session.auto_extract()
+    assert session.outcome is not None, "auto_extract produced no fit"
     reference = session.outcome.x[0]
     irf = session.irf_np["synthetic"].copy()
     half = irf.size // 2

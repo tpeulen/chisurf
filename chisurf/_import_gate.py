@@ -125,12 +125,12 @@ def install() -> None:
             "first imports on this Python"
         )
     _original = found
-    _bootstrap._find_and_load = _gated_find_and_load
+    setattr(_bootstrap, "_find_and_load", _gated_find_and_load)
 
 
 def installed() -> bool:
     """Whether :func:`install` has put the gate in place."""
-    return _bootstrap._find_and_load is _gated_find_and_load
+    return getattr(_bootstrap, "_find_and_load", None) is _gated_find_and_load
 
 
 def holder() -> tuple[str, str] | None:
