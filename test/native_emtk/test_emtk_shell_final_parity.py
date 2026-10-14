@@ -80,3 +80,75 @@ def test_the_pda_editor_draws_its_binning_labels_and_light_path_note_readably():
     assert not any("<sub>" in s for s in strings), strings
     assert "min" in strings, "the binning row's label is drawn (as x with a subscript min)"
     assert any("γ" in s for s in strings), "the note is drawn as wrapped text with its γ"
+
+
+def _wide_tool_shell(state=None, size=(1440, 900)):
+    from emtk import im
+    from emtk.app import ImApp
+
+    from chisurf.emtk.plugins import manifests
+
+    def make(plugin_id):
+        app = ImApp(lambda: im.text_unformatted(plugin_id))
+        app.window_size = (1200, 800) if plugin_id == "setup" else (300, 400)
+        return app
+
+    catalog = {k: manifests()[k] for k in ("setup", "about")}
+    shell = EmtkShellApp(catalog, loader=make, console_history=False, console_session_file=False)
+    if state is not None:
+        shell.docks.restore(state)
+    return shell, Driver(shell, size)
+
+
+def _open(shell, driver, plugin_id):
+    import time
+
+    hosted = shell.open_plugin(plugin_id)
+    end = time.monotonic() + 30
+    while (hosted.app is None or not hosted.extra.get("placed")) and time.monotonic() < end:
+        driver.frame(1)
+        time.sleep(0.02)
+    driver.frame(3)
+    return hosted
+
+
+def test_a_tool_wider_than_its_dock_floats_at_its_declared_size():
+    """Settings declares 1200 x 800; docked right of the workspace (~390 px) it clipped its own
+    Save button (final shell parity pass). It opens floating at its declared size; a narrow tool
+    (About, 300 px) still docks; tile / cascade of the workspace are untouched."""
+    shell, driver = _wide_tool_shell()
+    try:
+        driver.frame(2)
+        wide = _open(shell, driver, "setup")
+        assert shell.docks.region_of(wide.key) is None, "the wide tool floats"
+        frame = shell.docks.window(wide.key).frame or shell.docks.window(wide.key).box
+        room = shell.docks.box[3] - 40.0  # the declared 800 px, as far as the window has room
+        assert abs(frame[2] - 1200.0) < 2.0 and abs(frame[3] - min(800.0, room)) < 2.0, frame
+        narrow = _open(shell, driver, "about")
+        assert shell.docks.region_of(narrow.key) == "right", "a narrow tool docks"
+    finally:
+        shell.close()
+
+
+def test_a_wide_tool_the_user_docked_stays_docked():
+    """The choice is remembered: docked by hand, closed and reopened (this run or the next,
+    through the saved layout), the wide tool goes back to its dock."""
+    shell, driver = _wide_tool_shell()
+    try:
+        driver.frame(2)
+        hosted = _open(shell, driver, "setup")
+        shell.docks.dock(hosted.key, "right")
+        driver.frame(2)
+        shell.close_plugin("setup")
+        again = _open(shell, driver, "setup")
+        assert shell.docks.region_of(again.key) == "right"
+        state = shell.docks.state()
+    finally:
+        shell.close()
+    shell, driver = _wide_tool_shell(state)
+    try:
+        driver.frame(2)
+        hosted = _open(shell, driver, "setup")
+        assert shell.docks.region_of(hosted.key) == "right", "the saved layout keeps it docked"
+    finally:
+        shell.close()

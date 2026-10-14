@@ -180,7 +180,9 @@ def test_hmm_tw_and_ndx_open_their_docks_with_the_payload_applied(shell, work, t
     assert app.model.counts.shape[0] > 6000 and app.model.counts.shape[1] == len(app.model.labels)
     window = shell.docks.window(trace.key)
     assert window is not None and window.workspace is False  # a tool is a dock, never a fit window
-    assert shell.docks.region_of(trace.key) == TOOL_REGION
+    # Docked right of the workspace, or floating at its declared size when that dock is
+    # narrower than the tool (the shell's wide-tool rule): never in the workspace.
+    assert shell.docks.region_of(trace.key) in (TOOL_REGION, None)
     assert browser.model.status_text.startswith("Sent m001.spc") and browser.model.error_text == ""
     driver.screenshot(out / "1_hmm_intensity_trace.png")
 

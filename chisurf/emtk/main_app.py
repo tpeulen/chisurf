@@ -398,6 +398,10 @@ class EmtkShellApp(ImApp):
         if entry is None:
             raise KeyError(f"No native plugin {plugin_id!r} in the shell menus")
         hosted = HostedPlugin(entry)
+        # A tool the user has placed before (docked or floated, this run or a saved layout)
+        # goes back there; only a tool never placed gets a first place chosen (_place_wide_tool).
+        remembers = getattr(self.docks, "remembers", None)  # emtk >= 0.1.14
+        hosted.extra["placed"] = bool(callable(remembers) and remembers(hosted.key))
         hosted.build = BackgroundBuild(wake=self.request_frame)
         loader = self.loader
         hosted.build.start(
@@ -491,6 +495,40 @@ class EmtkShellApp(ImApp):
             self._run_ready(hosted)
         self.request_frame()
         return hosted
+
+    def _place_wide_tool(self, hosted: HostedPlugin) -> None:
+        """Once, as a never-placed tool first draws: float it at its declared size when its
+        dock region is narrower than that.
+
+        The Qt window opened every tool as a window of its declared size; docked right of the
+        workspace (~390 px at 1440) a tool declared 1200 px wide (Settings) clipped its own
+        controls. Such a tool floats over the window at its declared size instead; a narrow tool
+        stays docked. The user may dock it again, and that place is kept (``placed``): the shell
+        never re-decides it. The workspace's tile / cascade are not involved (tools are not
+        workspace windows).
+        """
+        hosted.extra["placed"] = True
+        docks = self.docks
+        region = docks.region_of(hosted.key)
+        if region is None:
+            return
+        app = getattr(hosted.app, "_control", hosted.app)
+        try:
+            want_w, want_h = (float(v) for v in getattr(app, "window_size")[:2])
+        except (AttributeError, TypeError, ValueError):
+            return
+        rect = docks.region_boxes.get(region)
+        if rect is None:
+            hosted.extra["placed"] = False  # not laid out yet: decide on the next frame
+            return
+        if want_w <= rect[2] + 1.0:
+            return
+        bx, by, bw, bh = docks.box
+        w = min(want_w, bw - 40.0)
+        h = min(want_h, bh - 40.0)
+        docks.undock(hosted.key, (bx + (bw - w) / 2.0, by + (bh - h) / 2.0, w, h))
+        docks.focus(hosted.key)
+        self.request_frame()
 
     def _tool_region(self) -> str:
         """The region a tool opens in: the docks right of the workspace.
@@ -1359,6 +1397,8 @@ class EmtkShellApp(ImApp):
         x, y, w, h = (float(v) for v in box)
         hosted.box = (x, y, max(1.0, w), max(1.0, h))
         if hosted.app is not None:
+            if not hosted.extra.get("placed"):
+                self._place_wide_tool(hosted)
             self.host_child(hosted.key, hosted.key, hosted.app, hosted.box)
         elif hosted.error:
             im.text_wrapped(tr("The tool could not be opened."))
