@@ -267,7 +267,10 @@ def test_a_linked_parameter_is_drawn_in_the_linked_ink_and_names_its_master(shel
     position = control.order().index(index)
     bx, by, bw, _bh = control._body_box
     tip, _part = control.tooltip_at(bx + bw / 4, by + control._row_h * (position + 0.5) - control.bar.top * control._row_h)
-    assert tip == "linked to N"
+    # The first line names the master. A narrow table also folds the cells of
+    # its dropped columns (Lo/Hi/Bounds/Prior) into the tooltip below it --
+    # emtk 9bdd67a, wired in e20cb4c6e -- so it need not be the only line.
+    assert tip.splitlines()[0] == "linked to N", tip
     driver.screenshot(SHOTS / "emtk_parameter_linked.png")
 
 
