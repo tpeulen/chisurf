@@ -195,6 +195,16 @@ def ensure_experiments_registered(force: bool = False) -> dict[str, ExperimentEn
         )
         if cs.experiment.get(global_experiment.name) is None:
             _register_readers(global_experiment, global_config.get("readers", []))
+            if not global_experiment.readers:
+                # A user copy with a stale or broken reader path (e.g. the pre-``core``
+                # ``chisurf.experiments.globalfit.GlobalFitSetup``) still gets the
+                # built-in global-fit reader, rather than a global experiment that
+                # cannot take a fit.
+                from chisurf.core.experiments.globalfit import GlobalFitSetup
+
+                global_experiment.add_reader(
+                    GlobalFitSetup(name="Global-Fit", experiment=global_experiment)
+                )
             _register_models(global_experiment, global_config.get("models", []))
             cs.experiment[global_experiment.name] = global_experiment
 
