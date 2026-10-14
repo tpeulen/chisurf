@@ -7,7 +7,8 @@ tell at a glance that the page is unchecked.
 
 The hard release gate lives elsewhere: ``csc help review-check`` (the
 ``docs-check-reviewed`` task) exits non-zero when any tracked page is unreviewed
-or stale. This extension only makes the state visible.
+or stale; an AI or human sign-off passes it. This extension only makes the
+state visible.
 
 Set ``review_banner_enabled = False`` in ``conf.py`` to suppress the banners.
 """

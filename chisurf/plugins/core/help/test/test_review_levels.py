@@ -7,8 +7,9 @@ this" and "a human vouches for it", and collapsing it into *unreviewed* throws
 away the only signal that says which pages still need the **first** pass.
 
 These tests pin the three properties that make the distinction worth having:
-an agent's sign-off does not clear the release gate, it never overwrites a
-human's, and either level goes stale the moment the page is edited.
+an agent's sign-off clears the release gate (owner decision 2026-10-14), it
+never overwrites a human's, and either level goes stale the moment the page is
+edited — and a stale page blocks again.
 """
 
 import pytest
@@ -49,13 +50,21 @@ def test_ai_review_is_recorded_with_its_kind(tracked_page):
     assert status.date
 
 
-def test_ai_review_does_not_clear_the_release_gate(tracked_page):
+def test_ai_review_clears_the_release_gate(tracked_page):
     review.set_status(tracked_page, review.STATUS_AI_REVIEWED, "agent")
     report = review.scan()
     assert len(report.ai_reviewed) == 1
-    assert report.blocking, "an agent's read must not ship as a human's review"
-    assert not report.ok
+    assert report.blocking == []
+    assert report.ok
     assert "AI-reviewed" in report.summary()
+
+
+def test_a_stale_ai_review_blocks_the_release_gate(tracked_page):
+    review.set_status(tracked_page, review.STATUS_AI_REVIEWED, "agent")
+    tracked_page.write_text("Title\n=====\n\nEdited.\n", encoding="utf-8")
+    report = review.scan()
+    assert [p.status for p in report.blocking] == [review.STATUS_STALE]
+    assert not report.ok
 
 
 def test_a_human_sign_off_replaces_an_agents(tracked_page):
@@ -136,8 +145,6 @@ def test_the_shipped_manual_records_its_ai_review():
         pytest.skip("no manual in this checkout")
     assert not [p.rel_path for p in manual if p.status == review.STATUS_UNREVIEWED]
     assert not [p.rel_path for p in manual if p.status == review.STATUS_STALE]
-    # And it is still honest about needing a human.
-    assert not report.ok
 
 
 def test_the_rest_of_the_documentation_is_tracked_and_says_so():

@@ -115,7 +115,7 @@ drawn figure's rectangle, so a click is matched against it directly.
    package built by `build_tools/build_installer.py`, which assembles a runtime
    on top of `pip install .`; the recipe needs no change, but nobody has opened
    Help in an installed build.
-1. Blocked: **The manual is AI-reviewed and awaits a human** — `csc help review-list`
+1. Done for the gate: **The manual is AI-reviewed**, which clears `review-check` since the owner ruled 2026-10-14 that AI review counts; a human pass is optional extra assurance — `csc help review-list`
    reports `0 reviewed, 94 AI-reviewed, 0 stale, 231 unreviewed` over the whole
    tree; the manual's own 79 are all AI-reviewed. All 79 pages
    have been read end to end and corrected against the source code; what remains
@@ -426,8 +426,9 @@ says which pages still need the **first** pass — which of 79 pages nobody and
 nothing has been through. Three properties make the distinction safe, each with
 a test in `test_review_levels.py`:
 
-* an agent's sign-off **does not clear the release gate** — `review-check` still
-  exits non-zero, and `report.ok` is still human-only;
+* an agent's sign-off **clears the release gate** (owner decision 2026-10-14,
+  "AI review counts"; until then it did not) — `review-check` blocks only on
+  *unreviewed* and *stale* pages;
 * an agent **never overwrites a human's** sign-off, so a sweep over the whole
   manual cannot quietly erase what somebody actually checked;
 * either level goes **stale** the moment the page is edited, and the record

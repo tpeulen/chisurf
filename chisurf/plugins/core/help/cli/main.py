@@ -114,10 +114,9 @@ def ask_docs(question: tuple, model: str, provider: str, as_json: bool):
 def review_check(quiet: bool):
     """Fail if any review-tracked page is unreviewed or stale.
 
-    This is the release gate: exit code 1 means human-unchecked documentation
-    would ship. An *ai-reviewed* page has been read and corrected by an agent
-    but still counts as blocking — an agent cannot check a screenshot against
-    the running interface. Pages become *stale* when edited after sign-off.
+    This is the release gate: exit code 1 means unread documentation would
+    ship. A human (*reviewed*) or agent (*ai-reviewed*) sign-off both pass.
+    Pages become *stale* when edited after sign-off and then block again.
     """
     from chisurf.plugins.core.help.api import review
 
@@ -175,9 +174,8 @@ def review_list(status: str):
     "--ai",
     is_flag=True,
     help=(
-        "Record an agent's review instead of a human's. Weaker: it says the "
-        "page was read and corrected, not that it was checked against the "
-        "running application, and it does not clear the release gate."
+        "Record an agent's review instead of a human's. It clears the release "
+        "gate; a later human sign-off replaces it, and it never overwrites one."
     ),
 )
 @click.option("--unreview", is_flag=True, help="Clear the sign-off instead of granting it.")

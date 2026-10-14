@@ -224,8 +224,9 @@ Two levels, and they mean different things:
 | `ai-reviewed` | Read end to end and corrected against the source code. | An agent, with `csc help review-set <page> --ai` |
 | `reviewed` | Checked against the *running application*: screenshots match, the procedure works. | A human, with `--reviewer <name>` |
 
-An agent must never record the second. Either level lapses automatically when
-the page is edited, so sign off page by page rather than in a sweep.
+An agent must never record the second. Either level clears the release gate
+(`csc help review-check`) and lapses automatically when the page is edited, so
+sign off page by page, after the last edit, rather than in a sweep.
 
 ### What ships with the application
 
@@ -257,7 +258,7 @@ carried, so add the suffix there rather than working around it.
 | `python build_tools/docs/make_registers.py --check` | The figure, table and code registers are current |
 | `python build_tools/docs/make_bibliography.py --check` | The Literature page matches the bibliography |
 | `python -m sphinx -b html -q docs <out>` | The published site builds without a warning |
-| `csc help review-check` | No unreviewed page ships |
+| `csc help review-check` | No unreviewed or stale page ships (a human or `--ai` sign-off passes) |
 
 All of them are cheap. Run them before you start, so you know what was already
 broken, and after you finish, so you know what you changed.

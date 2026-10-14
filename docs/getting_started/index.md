@@ -176,9 +176,9 @@ Maintainers can turn on the *Authoring* toolbar in that window to edit a page in
 place, list the developer documentation, and record reviews. Two levels are
 tracked: **AI-reviewed** means an agent has read the page and corrected what it
 could verify against the source code, and **reviewed** means a human has
-confirmed it against the running application. Only the second clears the release
-gate (`csc help review-check`), and either lapses automatically when the page
-is edited.
+confirmed it against the running application. Either clears the release gate
+(`csc help review-check`), and either lapses automatically when the page is
+edited.
 
 
 ## If startup fails

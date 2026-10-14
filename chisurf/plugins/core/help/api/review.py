@@ -12,10 +12,10 @@ states:
 ``reviewed``
     A human signed the page off *and* the file still has the content they saw.
 ``ai-reviewed``
-    An agent read and corrected it. Worth more than nothing and less than a
-    human: it cannot open the application, so it cannot tell whether a
-    screenshot still matches the interface or a procedure still works. **Does
-    not clear the release gate.**
+    An agent read the page end to end, checked its facts against the source,
+    re-captured any figure that no longer matched the interface, and corrected
+    what it found. **Clears the release gate** (owner decision 2026-10-14: an
+    AI page review counts); a human sign-off still ranks above it.
 ``stale``
     The page was signed off at some level, but has been edited since. The
     sign-off no longer applies and the page counts as unreviewed for gating.
@@ -117,11 +117,11 @@ class PageStatus:
     def is_blocking(self) -> bool:
         """Whether this page would block a release.
 
-        Only a *human* sign-off clears the gate: an agent cannot open the
-        application, so it cannot confirm that a screenshot still matches the
-        interface or that a procedure still works.
+        Any current sign-off clears the gate, a human's or an agent's; only an
+        *unreviewed* or *stale* page blocks. The owner ruled on 2026-10-14 that
+        an AI page review counts for the release.
         """
-        return self.status != STATUS_REVIEWED
+        return self.status not in SIGNED_STATUSES
 
 
 @dataclasses.dataclass
@@ -152,12 +152,12 @@ class ReviewReport:
 
     @property
     def blocking(self) -> list[PageStatus]:
-        """Every page that is not cleanly reviewed."""
+        """Every page that is unreviewed or stale."""
         return [p for p in self.pages if p.is_blocking]
 
     @property
     def ok(self) -> bool:
-        """Whether every tracked page is cleanly reviewed."""
+        """Whether every tracked page carries a current sign-off (human or AI)."""
         return not self.blocking
 
     def summary(self) -> str:

@@ -231,7 +231,8 @@ Enforcement is split deliberately. `docs-html` still builds unreviewed pages —
 dropping them would hole the toctree and break cross-references — but a Sphinx
 extension (`docs/_ext/review_banner.py`) stamps each with a visible warning. The
 hard gate is the separate `docs-check-reviewed` task, which `docs-release`
-depends on, so a production build refuses to publish human-unchecked prose.
+depends on, so a production build refuses to publish unread or stale prose. An
+AI page review (`review-set --ai`) passes it — owner decision 2026-10-14.
 
 Reading the manual at all is new: discovery previously globbed `*.md` only, so
 the 79 `.rst` pages were invisible. `api/rst.py` renders them through bare

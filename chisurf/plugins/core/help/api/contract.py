@@ -215,8 +215,8 @@ def contract_descriptor() -> dict[str, Any]:
             },
             METHOD_REVIEW_CHECK: {
                 "summary": (
-                    "Report every tracked page that is not cleanly reviewed. "
-                    "Used as the release gate."
+                    "Report every tracked page that is unreviewed or stale. "
+                    "Used as the release gate; a human or AI sign-off passes."
                 ),
                 "params": {},
                 "result": {

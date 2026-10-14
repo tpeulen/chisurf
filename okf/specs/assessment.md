@@ -821,7 +821,7 @@ rather than adding another `Structure(...)` call site; a new call site violates 
 | [W11](/prds/prd-154.md) | Snappiness | 26 first frames over 100 ms; PSF not 3-D | ✅ DONE 2026-10-11 — all 122 measurable plugins under 100 ms; PSF isosurface ~65 fps |
 | [W12](/prds/prd-154.md) | imp.bff | Flat `src/` and `include/` | 🚧 PARTIAL 2026-10-11 — `src/` themed with READMEs; `include/` still flat |
 | [W13](/prds/prd-154.md) | mmfdb, flrCIF | Round trip, provenance, ELN gateway | ✅ DONE 2026-10-11 — open: no live Chemotion smoke test, PRD-48 phases 2-4 |
-| [W14](/prds/prd-154.md) | Documentation | Reviewed pages, concept and guide per plugin | 🚧 PARTIAL 2026-10-11 — HTML build green; `docs-release` blocked on human review (322 unreviewed of 420) |
+| [W14](/prds/prd-154.md) | Documentation | Reviewed pages, concept and guide per plugin | 🚧 PARTIAL 2026-10-11 — HTML build green; `docs-release` blocked on page review (322 unreviewed of 420); AI review counts since 2026-10-14 |
 
 Part D gates 1, 2 and 4 of PRD-154 remain open (mypy 5076 errors, docs-release review, Qt allow-lists, board and root strays);
 the completed rows do not mark the entire programme done.
