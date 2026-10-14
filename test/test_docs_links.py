@@ -67,6 +67,17 @@ def test_every_citation_resolves():
     assert not bad, "citations with no bibliography entry:\n" + "\n".join(sorted(set(bad)))
 
 
+def test_bibliography_numbers_survive_yaml():
+    """Volume and page fields are text: an unquoted ``022001`` is YAML octal.
+
+    PyYAML reads a leading-zero integer as octal, so an article number
+    ``022001`` rendered as page ``9217`` on the Literature page.
+    """
+    raw = (DOCS / "references" / "bibliography.yaml").read_text(encoding="utf-8")
+    bad = re.findall(r"^\s+(?:pages|volume|issue): 0\d+\s*$", raw, flags=re.M)
+    assert not bad, "quote these leading-zero numbers:\n" + "\n".join(bad)
+
+
 def test_every_ref_resolves():
     """A {ref} names an anchor some page actually defines."""
     anchors = set()

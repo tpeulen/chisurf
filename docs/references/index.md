@@ -37,7 +37,7 @@ and the citation renders as a link to the paper. The source of truth is
 (blumen1979)=
 
 **[Blumen & Manz (1979)](https://doi.org/10.1063/1.438253)** — A. Blumen, J. Manz. *On the concentration and time dependence of the energy transfer to randomly distributed acceptors*. Journal of Chemical Physics **71**, 4694-4702. (1979).  
-*The general d-dimensional result, exp[-Γ(1-d/6) n V_d R0^d (t/τ)^{d/6}], for d = 1, 2, 3.*
+*The general $d$-dimensional result, $\exp[-\Gamma(1-d/6)\, n V_d R_0^d (t/\tau)^{d/6}]$, for $d = 1, 2, 3$.*
 
 (chen2012)=
 
@@ -66,7 +66,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (dimura2020)=
 
-**[Dimura et al. (2020)](https://doi.org/10.1038/s41467-020-19023-1)** — Mykola Dimura, Thomas-Otavio Peulen, Hugo Sanabria, Dmitro Rodnin, Katherina Hemmen, Christian A. Hanke, Claus A. M. Seidel, Holger Gohlke. *Automated and optimally FRET-assisted structural modeling*. Nature Communications **11**. (2020).  
+**[Dimura et al. (2020)](https://doi.org/10.1038/s41467-020-19023-1)** — Mykola Dimura, Thomas-Otavio Peulen, Hugo Sanabria, Dmitro Rodnin, Katherina Hemmen, Christian A. Hanke, Claus A. M. Seidel, Holger Gohlke. *Automated and optimally FRET-assisted structural modeling*. Nature Communications **11**, 5394. (2020).  
 *FRET-assisted structural modelling, and how labelling positions are chosen.*
 
 (foerster1948)=
@@ -77,7 +77,7 @@ and the citation renders as a link to the paper. The source of truth is
 (foerster1949)=
 
 **[Förster (1949)](https://doi.org/10.1515/zna-1949-0501)** — T. Förster. *Experimentelle und theoretische Untersuchung des zwischenmolekularen Übergangs von Elektronenanregungsenergie*. Zeitschrift für Naturforschung A **4**, 321-327. (1949).  
-*The t^{1/2} donor decay for acceptors randomly distributed in three dimensions.*
+*The $t^{1/2}$ donor decay for acceptors randomly distributed in three dimensions.*
 
 (grinvald1972)=
 
@@ -192,7 +192,7 @@ and the citation renders as a link to the paper. The source of truth is
 (wolber1979)=
 
 **[Wolber & Hudson (1979)](https://doi.org/10.1016/S0006-3495(79)85171-1)** — P. K. Wolber, B. S. Hudson. *An analytic solution to the Förster energy transfer problem in two dimensions*. Biophysical Journal **28**, 197-210. (1979).  
-*The t^{1/3} law for acceptors in a membrane plane, including an excluded area of closest approach.*
+*The $t^{1/3}$ law for acceptors in a membrane plane, including an excluded area of closest approach.*
 
 (zheng2018)=
 
@@ -224,7 +224,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (goetz2022)=
 
-**[Götz et al. (2022)](https://doi.org/10.1038/s41467-022-33023-3)** — M. Götz, A. Barth, S. S. Bohr, R. Börner, J. Chen, et al. *A blind benchmark of analysis tools to infer kinetic rate constants from single-molecule FRET trajectories*. Nature Communications **13**. (2022).  
+**[Götz et al. (2022)](https://doi.org/10.1038/s41467-022-33023-3)** — M. Götz, A. Barth, S. S. Bohr, R. Börner, J. Chen, et al. *A blind benchmark of analysis tools to infer kinetic rate constants from single-molecule FRET trajectories*. Nature Communications **13**, 5402. (2022).  
 *The blind benchmark of kinetic-inference tools on single-molecule FRET trajectories - the accuracy a rate constant can claim.*
 
 (ha2012)=
@@ -364,7 +364,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (harris2022)=
 
-**[Harris et al. (2022)](https://doi.org/10.1038/s41467-022-28632-x)** — Paul David Harris, Alessandra Narducci, Christian Gebhardt, Thorben Cordes, Shimon Weiss, Eitan Lerner. *Multi-parameter photon-by-photon hidden Markov modeling*. Nature Communications **13**. (2022).  
+**[Harris et al. (2022)](https://doi.org/10.1038/s41467-022-28632-x)** — Paul David Harris, Alessandra Narducci, Christian Gebhardt, Thorben Cordes, Shimon Weiss, Eitan Lerner. *Multi-parameter photon-by-photon hidden Markov modeling*. Nature Communications **13**, 1000. (2022).  
 *Multi-parameter photon-by-photon hidden Markov modelling.*
 
 (huang2001)=
@@ -1438,7 +1438,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (demchenko2020)=
 
-**[Demchenko (2020)](https://doi.org/10.1088/2050-6120/ab7365)** — A. P. Demchenko. *Photobleaching of organic fluorophores: quantitative characterization, mechanisms, protection <sup>*</sup>*. Methods and Applications in Fluorescence **8**, 9217. (2020).  
+**[Demchenko (2020)](https://doi.org/10.1088/2050-6120/ab7365)** — A. P. Demchenko. *Photobleaching of organic fluorophores: quantitative characterization, mechanisms, protection*. Methods and Applications in Fluorescence **8**, 022001. (2020).  
 *Photobleaching mechanisms and their rates - what sets the photon budget of a single-molecule measurement.*
 
 (dickson1997)=
@@ -1498,7 +1498,7 @@ and the citation renders as a link to the paper. The source of truth is
 
 (levitus2020)=
 
-**[Levitus (2020)](https://doi.org/10.1088/2050-6120/ab7e10)** — M. Levitus. *Tutorial: measurement of fluorescence spectra and determination of relative fluorescence quantum yields of transparent samples*. Methods and Applications in Fluorescence **8**, 13825. (2020).  
+**[Levitus (2020)](https://doi.org/10.1088/2050-6120/ab7e10)** — M. Levitus. *Tutorial: measurement of fluorescence spectra and determination of relative fluorescence quantum yields of transparent samples*. Methods and Applications in Fluorescence **8**, 033001. (2020).  
 *A working tutorial for relative quantum yields: inner filter, refractive index and the corrections that get skipped.*
 
 (vandeLinde2018)=

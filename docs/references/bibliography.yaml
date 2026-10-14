@@ -266,6 +266,7 @@ goetz2022:
   journal: Nature Communications
   year: 2022
   volume: 13
+  pages: "5402"
   doi: 10.1038/s41467-022-33023-3
   note: The blind benchmark of kinetic-inference tools on single-molecule FRET trajectories - the accuracy a rate constant can claim.
   topics: [hmm, dynamics, smfret]
@@ -1454,6 +1455,7 @@ dimura2020:
   journal: Nature Communications
   year: 2020
   volume: 11
+  pages: "5394"
   doi: 10.1038/s41467-020-19023-1
   note: FRET-assisted structural modelling, and how labelling positions are chosen.
   topics: [structure, fret]
@@ -1475,6 +1477,7 @@ harris2022:
   journal: Nature Communications
   year: 2022
   volume: 13
+  pages: "1000"
   doi: 10.1038/s41467-022-28632-x
   note: Multi-parameter photon-by-photon hidden Markov modelling.
   topics: [dynamics, hmm]
@@ -1769,19 +1772,18 @@ levitus2020:
   journal: Methods and Applications in Fluorescence
   year: 2020
   volume: 8
-  pages: 033001
+  pages: "033001"
   doi: 10.1088/2050-6120/ab7e10
   note: "A working tutorial for relative quantum yields: inner filter, refractive index and the corrections that get skipped."
   topics: [photophysics]
 
 demchenko2020:
   authors: A. P. Demchenko
-  title: "Photobleaching of organic fluorophores: quantitative characterization, mechanisms, protection
-                    <sup>*</sup>"
+  title: "Photobleaching of organic fluorophores: quantitative characterization, mechanisms, protection"
   journal: Methods and Applications in Fluorescence
   year: 2020
   volume: 8
-  pages: 022001
+  pages: "022001"
   doi: 10.1088/2050-6120/ab7365
   note: Photobleaching mechanisms and their rates - what sets the photon budget of a single-molecule measurement.
   topics: [photophysics]
@@ -2239,7 +2241,7 @@ colyer2012:
   journal: Journal of Biomedical Optics
   year: 2012
   volume: 17
-  pages: 016008
+  pages: "016008"
   doi: 10.1117/1.JBO.17.1.016008
   note: The AB (polar) plot as the visual basis of phasor FLIM.
   topics: [imaging, phasor]
@@ -3743,7 +3745,7 @@ foerster1949:
   volume: 4
   pages: 321-327
   doi: 10.1515/zna-1949-0501
-  note: The t^{1/2} donor decay for acceptors randomly distributed in three dimensions.
+  note: 'The $t^{1/2}$ donor decay for acceptors randomly distributed in three dimensions.'
   topics: [fret, acceptor_density]
 
 wolber1979:
@@ -3754,7 +3756,7 @@ wolber1979:
   volume: 28
   pages: 197-210
   doi: 10.1016/S0006-3495(79)85171-1
-  note: The t^{1/3} law for acceptors in a membrane plane, including an excluded area of closest approach.
+  note: 'The $t^{1/3}$ law for acceptors in a membrane plane, including an excluded area of closest approach.'
   topics: [fret, acceptor_density, membranes]
 
 blumen1979:
@@ -3765,7 +3767,7 @@ blumen1979:
   volume: 71
   pages: 4694-4702
   doi: 10.1063/1.438253
-  note: The general d-dimensional result, exp[-Γ(1-d/6) n V_d R0^d (t/τ)^{d/6}], for d = 1, 2, 3.
+  note: 'The general $d$-dimensional result, $\exp[-\Gamma(1-d/6)\, n V_d R_0^d (t/\tau)^{d/6}]$, for $d = 1, 2, 3$.'
   topics: [fret, acceptor_density]
 
 baumann1986:
