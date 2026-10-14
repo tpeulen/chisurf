@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -91,11 +92,21 @@ class MleNativeApp(TourTarget, ImApp):
         self.gate_min: float | None = None
         self.gate_max: float | None = None
         self._editor_read_only_before_job: bool | None = None
-        #: MMFDB pickers (the Qt tool's "Database" buttons): burst tables, measured IRF files, measured background files.
+
+        # MMFDB pickers (the Qt tool's "Database" buttons): burst tables, measured IRF files,
+        # measured background files.
+        def adder(method: str) -> Callable[[list], None]:
+            """A picker callback calling the model's *method* at pick time (its count is not needed)."""
+
+            def add_paths(paths: list) -> None:
+                getattr(self.model, method)(paths)
+
+            return add_paths
+
         self.pickers = {
-            "db_files": DatasetPicker(on_paths=lambda paths: self.model.add_files(paths)),
-            "db_irf_files": DatasetPicker(on_paths=lambda paths: self.model.add_irf_files(paths)),
-            "db_bg_files": DatasetPicker(on_paths=lambda paths: self.model.add_bg_files(paths)),
+            "db_files": DatasetPicker(on_paths=adder("add_files")),
+            "db_irf_files": DatasetPicker(on_paths=adder("add_irf_files")),
+            "db_bg_files": DatasetPicker(on_paths=adder("add_bg_files")),
         }
         self.editor = ChannelDefinitionWidget(
             self.model.session.definition_payload(),
@@ -214,7 +225,8 @@ class MleNativeApp(TourTarget, ImApp):
             ):  # a run in a .pto is not a directory: start beside the container
                 from chisurf.core.fio.analysis_path import split_container_path
 
-                options["directory"] = str(split_container_path(first)[0].parent)
+                container = split_container_path(first)[0]
+                options["directory"] = str((container or first).parent)
             else:
                 options["directory"] = str(first.parents[2] if pattern else first.parent)
         filename = "burst_mle_settings.json" if action == "save_settings" else ""

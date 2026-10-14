@@ -398,8 +398,10 @@ def resolve_labels(settings: RegionMleSettings, shape) -> np.ndarray:
 
         labels = np.zeros(shape, dtype=np.int32)
         for index, item in enumerate(source, start=1):
-            mask = as_roi(item).to_mask(shape)
-            labels[mask] = index
+            roi = as_roi(item)
+            if roi is None:
+                raise ValueError(f"region {index} is not a region: {item!r}")
+            labels[roi.to_mask(shape)] = index
 
     if labels.shape != tuple(shape):
         raise ValueError(
@@ -740,12 +742,10 @@ def _molecule_vv_vh(
     return assemble_vv_vh(cp, cs), n_p, n_s
 
 
-def _initial_and_fixed(s: RegionMleSettings) -> tuple[np.ndarray, np.ndarray]:
-    x0 = np.array([s.tau, s.gamma, s.r0, s.rho], dtype=np.float64)
-    fixed = np.array(
-        [int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)],
-        dtype=np.int16,
-    )
+def _initial_and_fixed(s: RegionMleSettings) -> tuple[list[float], list[int]]:
+    """Start values and fixed flags of (tau, gamma, r0, rho), as fit2x takes them."""
+    x0 = [float(s.tau), float(s.gamma), float(s.r0), float(s.rho)]
+    fixed = [int(s.fix_tau), int(s.fix_gamma), int(s.fix_r0), int(s.fix_rho)]
     return x0, fixed
 
 

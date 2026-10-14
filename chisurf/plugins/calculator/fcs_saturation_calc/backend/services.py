@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -10,6 +10,19 @@ from chisurf.plugins.calculator.fcs_saturation_calc.core import (
     calculate_fcs_curves,
     volume_expansion,
 )
+
+
+class _Optics(TypedDict):
+    """The excitation, photophysics and focus both the curves and the volume read."""
+
+    power_mW: float
+    extinction: float
+    dark_matrix: np.ndarray
+    exc_matrix: np.ndarray
+    brightness: np.ndarray
+    w_r_nm: float
+    w_z_nm: float
+    wavelength_nm: float
 
 
 def compute_saturation_rpc(
@@ -56,16 +69,16 @@ def compute_saturation_rpc(
     dark = np.asarray(dark_matrix, dtype=float)
     exc = np.asarray(exc_matrix, dtype=float)
     q = np.asarray(brightness, dtype=float)
-    shared = dict(
-        power_mW=power_mW,
-        extinction=extinction,
-        dark_matrix=dark,
-        exc_matrix=exc,
-        brightness=q,
-        w_r_nm=w_r_nm,
-        w_z_nm=w_z_nm,
-        wavelength_nm=wavelength_nm,
-    )
+    shared: _Optics = {
+        "power_mW": power_mW,
+        "extinction": extinction,
+        "dark_matrix": dark,
+        "exc_matrix": exc,
+        "brightness": q,
+        "w_r_nm": w_r_nm,
+        "w_z_nm": w_z_nm,
+        "wavelength_nm": wavelength_nm,
+    }
     tau_ms, g_unpert, g_sat = calculate_fcs_curves(
         D_um2s=D_um2s, N=N, include_bunching=include_bunching, **shared
     )

@@ -314,10 +314,9 @@ class PhasorGui(TourTarget):
                     "mixture inside on the chord between its components."
                 )
             )
-        self.remember("plot", tuple(box))  # the window's content: the plot fills it
-        self.remember(
-            "phasor", tuple(box)
-        )  # the spec's name for the plot section, which the guide targets
+        self.remember("plot", box)  # the window's content: the plot fills it
+        # the spec's name for the plot section, which the guide targets
+        self.remember("phasor", box)
         if im.is_item_clicked():
             self.tour.notify_used("plot")
             self.tour.notify_used("phasor")
@@ -329,13 +328,17 @@ class PhasorGui(TourTarget):
         from chisurf.plugins.microscopy.img_pixel_phasor import analysis
 
         freq = float(m.frequency) * int(m.harmonic)
-        return [(tau, *analysis.lifetime_to_phasor(tau, freq)) for tau in m._tau_list()]
+        rows = []
+        for tau in m._tau_list():
+            g, s = analysis.lifetime_to_phasor(tau, freq)
+            rows.append((tau, float(g), float(s)))
+        return rows
 
     def _draw_results(self, box: tuple[float, float, float, float]) -> None:
         self.results_form.rects.clear()
         draw_form(SPEC["results"], self.panel, self.results_form, titles=False)
         self.item_rects.update(self.results_form.rects)
-        self.remember("results", tuple(box))
+        self.remember("results", box)
 
 
 class PhasorCalcApp(ImApp):

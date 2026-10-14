@@ -87,7 +87,7 @@ def compute_fret_from_distance(
     kappa2: float = 0.667,
     sigma: float = 0.0,
     distribution: str = "gaussian",
-) -> dict[str, float]:
+) -> dict[str, float | str]:
     """Compute FRET parameters from donor-acceptor distance.
 
     Parameters
