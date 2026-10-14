@@ -210,8 +210,12 @@ a user expects an alphabetical menu, not a topological one.
 `chisurf/core/plugin/edges.py` derives the true graph from the tree -- AST
 imports, AST string constants, and JSON string values (`panels.json`,
 `view.json`, manifest entrypoints) -- under one rule: a `chisurf.plugins.<...>`
-dotted name resolving to another plugin is an edge. That is what the guardrail
-test compares the manifests against, so a declaration cannot drift from the code.
+dotted name resolving to another plugin is an edge. A hand-off is the one
+channel with no module name in it: `chisurf.core.plugin.handoff.hand_off(id, kind,
+payload)` opens its target by manifest id, so in a module that imports
+`handoff`, a string constant equal to another plugin's id is an optional edge
+(trace_browser -> ndxplorer is one). That is what the guardrail test compares
+the manifests against, so a declaration cannot drift from the code.
 
 # The plugin manager
 

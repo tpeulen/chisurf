@@ -14,7 +14,10 @@ So one rule covers every channel:
     one owning the file is an edge. So is a string that is a plugin's directory
     relative to the plugin tree (``"microscopy/img_flow"``): the native hubs read
     a child's ``manifest.json`` from there to build it on first use, which is the
-    same click-time coupling the dotted form used to carry.
+    same click-time coupling the dotted form used to carry. And in a module that
+    uses :mod:`chisurf.core.plugin.handoff`, a string that *is* another plugin's
+    manifest id is a hand-off target: ``hand_off("ndxplorer", ...)`` opens that
+    plugin by id, never by module, so no import or dotted string would show it.
 
 Edges are classified by *when* they fire, because only one class constrains boot
 order:
@@ -53,6 +56,9 @@ SKIP_PARTS = ("__pycache__",)
 
 #: JSON files that can name another plugin's entrypoint.
 JSON_GLOBS = ("*.json",)
+
+#: The module whose ``hand_off(plugin_id, kind, payload)`` opens a plugin by id.
+HANDOFF_MODULE = "chisurf.core.plugin.handoff"
 
 
 @dataclass(frozen=True, order=True)
@@ -303,6 +309,33 @@ def _iter_json_strings(node) -> list[str]:
     return []
 
 
+def _uses_handoff(tree: ast.AST) -> bool:
+    """Whether a module imports :data:`HANDOFF_MODULE` or a name from it."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(alias.name == HANDOFF_MODULE for alias in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom) and not node.level:
+            if node.module == HANDOFF_MODULE:
+                return True
+            if node.module == HANDOFF_MODULE.rsplit(".", 1)[0] and any(
+                alias.name == "handoff" for alias in node.names
+            ):
+                return True
+    return False
+
+
+def _handoff_targets(tree: ast.AST, plugin_ids: frozenset[str]) -> list[tuple[str, int]]:
+    """``(plugin id, line)`` for every string constant that is a plugin's id."""
+    return [
+        (node.value, node.lineno)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
+        and node.value in plugin_ids
+    ]
+
+
 def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
     """Every cross-plugin edge in the tree.
 
@@ -323,6 +356,7 @@ def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
     base = root.parent.parent
     owners = module_owners(root)
     relative_dirs = _relative_dirs(owners)
+    plugin_ids = frozenset(owners.values())
     edges: set[PluginEdge] = set()
 
     for path in sorted(root.rglob("*.py")):
@@ -344,6 +378,12 @@ def collect_edges(root: pathlib.Path | None = None) -> list[PluginEdge]:
                 continue
             where = f"{path.relative_to(base)}:{lineno}"
             edges.add(PluginEdge(source, target, "hard" if hard else "optional", where))
+        if _uses_handoff(tree):
+            # A hand-off opens its target at click time: optional by construction.
+            for target, lineno in _handoff_targets(tree, plugin_ids):
+                if target != source:
+                    where = f"{path.relative_to(base)}:{lineno}"
+                    edges.add(PluginEdge(source, target, "optional", where))
 
     for glob in JSON_GLOBS:
         for path in sorted(root.rglob(glob)):

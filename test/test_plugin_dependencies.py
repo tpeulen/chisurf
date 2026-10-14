@@ -392,3 +392,30 @@ def test_an_import_under_type_checking_is_not_a_hard_edge():
     visitor.visit(ast.parse(source))
     hard = {dotted for dotted, is_hard, _ in visitor.found if is_hard}
     assert hard == {"chisurf.plugins.c.core"}, visitor.found
+
+
+def test_a_hand_off_target_is_an_optional_edge(tmp_path):
+    """``hand_off("<plugin id>", ...)`` couples two plugins with no import between them.
+
+    The hand-off opens its target by manifest id, so neither an import nor a
+    dotted string carries the edge; without this channel a real dependency
+    (trace_browser -> ndxplorer) read as a stale declaration. A plugin id in a
+    module that does not hand off is just a word.
+    """
+    from chisurf.core.plugin.edges import collect_edges
+
+    root = tmp_path / "chisurf" / "plugins"
+    for plugin_id in ("sender", "receiver", "bystander"):
+        folder = root / plugin_id
+        folder.mkdir(parents=True)
+        (folder / "manifest.json").write_text(json.dumps({"id": plugin_id, "version": "1.0"}))
+    (root / "sender" / "routes.py").write_text(
+        "from chisurf.core.plugin import handoff\n"
+        "ROUTES = {'open': ('receiver', 'open_path')}\n"
+        "def go(payload):\n"
+        "    return handoff.hand_off(*ROUTES['open'], payload)\n"
+    )
+    (root / "bystander" / "notes.py").write_text("LABEL = 'receiver'\n")
+
+    pairs = {(e.source, e.target, e.kind) for e in collect_edges(root)}
+    assert pairs == {("sender", "receiver", "optional")}
