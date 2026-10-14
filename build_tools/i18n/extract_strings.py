@@ -4,27 +4,18 @@
 ChiSurf's user-facing text lives in three surfaces (see
 ``okf/references/ui-glossary.md`` and the ``chisurf.core.support.i18n`` module docstring):
 
-* **data-driven** — ``*.view.json`` (AutoForm) and ``manifest.json`` plugin specs.
-  These are *data*, not source literals, so Qt's ``pylupdate5`` cannot see them.
-  This script walks them and emits a generated Python stub
-  (``_i18n_autogen.py``) full of ``QCoreApplication.translate("chisurf", "...")``
-  calls — one per unique string — which ``pylupdate5`` *can* extract.
-* **declarative** — the hand-built ``.ui`` files. ``pylupdate5`` extracts these
-  natively (context = the form's class name), so they are translated for free at
-  runtime once a ``QTranslator`` is installed.
-* **imperative** — ``chisurf.core.support.i18n.tr(...)`` calls in ``.py`` (message boxes,
-  window titles, custom-section labels). ``pylupdate5`` cannot see the aliased
-  ``i18n.tr`` token, so :func:`_collect_from_python` walks the AST and feeds those
-  literals into the same ``_i18n_autogen.py`` stub under the ``chisurf`` context.
+* **data-driven** — ``*.view.json`` (AutoForm), ``*guide*.json`` and ``manifest.json``
+  plugin specs, walked as data.
+* **imperative** — ``chisurf.core.support.i18n.tr(...)`` calls in ``.py`` (window titles,
+  custom-section labels), found by walking the AST (:func:`_collect_from_python`).
 
-The script then runs ``pylupdate5`` over a generated ``.pro`` project listing the
-generated stub, every ``.ui`` form, and the ``.py`` sources, merging into
-``chisurf/gui/i18n/chisurf_<code>.ts`` for each target locale. Existing human
-translations are preserved by ``pylupdate5``'s merge; new strings appear
-``unfinished`` and dropped strings are marked ``obsolete``.
-
-Compile the resulting ``.ts`` to ``.qm`` with ``pixi run i18n-compile``
-(``lrelease``). Run this extractor with ``pixi run i18n-extract``.
+Every string lands in the one flat ``chisurf`` context. :func:`merge_catalogue` then merges
+them into ``chisurf/gui/i18n/chisurf_<code>.ts`` for each target locale, in pure Python (the
+Qt ``pylupdate5`` merge went with the Qt shell): a string already in the catalogue keeps its
+translation, a new one is added ``unfinished``, a string no longer collected -- and every
+message of a retired Qt form's context -- is marked ``obsolete``, which keeps its translation
+on record without installing it. The emtk shell reads the ``.ts`` files directly
+(:mod:`chisurf.emtk.i18n`); nothing is compiled.
 """
 
 from __future__ import annotations
@@ -34,20 +25,18 @@ import ast
 import json
 import pathlib
 import re
-import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 CHISURF = REPO / "chisurf"
 I18N_DIR = CHISURF / "gui" / "i18n"
-AUTOGEN = pathlib.Path(__file__).resolve().parent / "_i18n_autogen.py"
 
 #: Target locales to (re)generate. English is the source language; its ``.ts`` is
 #: a translator template (empty translations) and is not installed at runtime.
 DEFAULT_LOCALES = ("en", "de", "es", "fr", "pt", "ru")
 
-#: Qt translation context shared by every data-driven string. Must match
+#: Translation context shared by every collected string. Must match
 #: :data:`chisurf.core.support.i18n.DEFAULT_CONTEXT`.
 CONTEXT = "chisurf"
 
@@ -148,21 +137,14 @@ def _collect_from_python(strings: set[str]) -> None:
     """Collect literal strings passed to the imperative ``i18n.tr(...)`` seam.
 
     Imperative GUI code (message boxes, window titles, custom-section labels)
-    localizes text through :func:`chisurf.core.support.i18n.tr`, which routes to
-    ``QCoreApplication.translate("chisurf", text)`` — the same flat ``chisurf``
-    context as the data-driven strings. ``pylupdate5`` only recognizes a literal
-    ``.tr(``/``translate(`` token, so an aliased ``i18n.tr`` call is invisible to
-    it; we walk the AST instead and feed the literals into the same autogen stub.
+    localizes text through :func:`chisurf.core.support.i18n.tr`, in the same flat
+    ``chisurf`` context as the data-driven strings; the AST walk collects the
+    literals.
 
     Matched call shapes (first argument a string literal):
 
     * ``i18n.tr("…")`` — the canonical form (receiver named ``i18n``);
     * a bare ``tr("…")`` where ``tr`` is the imported function;
-    * ``Msg("…")`` — a declared widget message
-      (:class:`chisurf.gui.widgets.messages.Msg`). Declarations are evaluated at
-      import, long before a translator exists, so the text is translated when the
-      message is rendered; the literal still has to reach the catalogue, and this
-      is the only place it appears.
 
     ``self.tr(...)`` is deliberately **not** matched: Qt resolves it under the
     enclosing class's context, not ``chisurf``, so it would not round-trip
@@ -253,51 +235,78 @@ def collect_strings() -> set[str]:
     return {s for s in strings if s and s.strip()}
 
 
-def write_autogen(strings: set[str]) -> None:
-    """Write the pylupdate5-scannable stub of translate() calls."""
-    # pylupdate5 is a token scanner: it only recognizes a literal ``translate(``
-    # (or ``.tr(``) call token — an aliased reference is invisible. Emit direct
-    # ``QtCore.QCoreApplication.translate("chisurf", "…")`` calls.
-    lines = [
-        "# AUTOGENERATED by build_tools/i18n/extract_strings.py — do not edit.",
-        "# Exposes ChiSurf's data-driven UI strings to pylupdate5 so they land in",
-        "# the .ts catalogue under the 'chisurf' context. Never imported at runtime.",
-        "from qtpy import QtCore",
-        "",
-        "",
-        "def _mark():",
-    ]
-    for s in sorted(strings):
-        literal = json.dumps(s, ensure_ascii=False)  # safe Python/JSON string escaping
-        lines.append(f"    QtCore.QCoreApplication.translate({CONTEXT!r}, {literal})")
-    lines.append("")
-    AUTOGEN.write_text("\n".join(lines), encoding="utf-8")
+def _write_ts(tree: ET.ElementTree, path: pathlib.Path) -> None:
+    """Write a ``.ts`` tree with the catalogues' layout (indent, kept trailing blanks)."""
+    ET.indent(tree, space="    ")
+    content = ET.tostring(tree.getroot(), encoding="unicode")
+    content = re.sub(r" +(?=\n)", lambda match: "&#32;" * len(match[0]), content)
+    path.write_text(
+        '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n' + content + "\n", encoding="utf-8"
+    )
 
 
-def write_pro(
-    ui_files: list[pathlib.Path], py_sources: list[pathlib.Path], locales
-) -> pathlib.Path:
-    """Write a pylupdate5 project file listing forms, sources and translations.
+def merge_catalogue(path: pathlib.Path, strings: set[str], language: str) -> dict[str, int]:
+    """Merge the collected *strings* into the ``.ts`` catalogue at *path* (created if absent).
 
-    pylupdate5 resolves the paths in a ``.pro`` relative to the ``.pro`` file's
-    own directory, so the project is written at the repo root and every path is
-    repo-relative.
+    Parameters
+    ----------
+    path : pathlib.Path
+        ``chisurf_<code>.ts``.
+    strings : set of str
+        Every source string collected for the ``chisurf`` context.
+    language : str
+        The catalogue's ``language`` attribute for a new file.
+
+    Returns
+    -------
+    dict
+        Counts: ``added`` (new, unfinished), ``revived`` (obsolete again in use),
+        ``obsoleted`` (no longer collected, or a retired context), ``kept``.
     """
-    pro = REPO / "chisurf_i18n.pro"
-
-    def _rel(p: pathlib.Path) -> str:
-        return p.resolve().relative_to(REPO).as_posix()
-
-    forms = " \\\n    ".join(_rel(p) for p in ui_files)
-    sources = " \\\n    ".join(_rel(p) for p in py_sources)
-    translations = " \\\n    ".join(
-        (I18N_DIR / f"chisurf_{code}.ts").relative_to(REPO).as_posix() for code in locales
+    counts = {"added": 0, "revived": 0, "obsoleted": 0, "kept": 0}
+    if path.is_file():
+        tree = ET.parse(path)
+        root = tree.getroot()
+    else:
+        root = ET.Element("TS", {"version": "2.1", "language": language})
+        tree = ET.ElementTree(root)
+    context = next(
+        (c for c in root.findall("context") if c.findtext("name") == CONTEXT), None
     )
-    pro.write_text(
-        f"FORMS = {forms}\n\nSOURCES = {sources}\n\nTRANSLATIONS = {translations}\n",
-        encoding="utf-8",
-    )
-    return pro
+    if context is None:
+        context = ET.SubElement(root, "context")
+        ET.SubElement(context, "name").text = CONTEXT
+    seen: set[str] = set()
+    for ctx in root.findall("context"):
+        own = ctx is context
+        for message in ctx.findall("message"):
+            source = message.findtext("source") or ""
+            translation = message.find("translation")
+            if translation is None:
+                translation = ET.SubElement(message, "translation", {"type": "unfinished"})
+            kind = translation.get("type")
+            if own and source in strings:
+                seen.add(source)
+                if kind in {"obsolete", "vanished"}:
+                    # Back in use: a translation on record is reinstated, an empty one
+                    # waits for a translator.
+                    if "".join(translation.itertext()):
+                        translation.attrib.pop("type", None)
+                    else:
+                        translation.set("type", "unfinished")
+                    counts["revived"] += 1
+                else:
+                    counts["kept"] += 1
+            elif kind not in {"obsolete", "vanished"}:
+                translation.set("type", "obsolete")
+                counts["obsoleted"] += 1
+    for source in sorted(strings - seen):
+        message = ET.SubElement(context, "message")
+        ET.SubElement(message, "source").text = source
+        ET.SubElement(message, "translation", {"type": "unfinished"})
+        counts["added"] += 1
+    _write_ts(tree, path)
+    return counts
 
 
 def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
@@ -338,16 +347,11 @@ def preserve_finished_translations(before: str, path: pathlib.Path) -> None:
             continue
         translation.text = old
         translation.attrib.pop("type", None)
-    ET.indent(tree, space="    ")
-    content = ET.tostring(tree.getroot(), encoding="unicode")
-    content = re.sub(r" +(?=\n)", lambda match: "&#32;" * len(match[0]), content)
-    path.write_text(
-        '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE TS>\n' + content + "\n", encoding="utf-8"
-    )
+    _write_ts(tree, path)
 
 
 def main() -> int:
-    """Collect strings, run pylupdate5, and (re)generate the ``.ts`` catalogues."""
+    """Collect strings and merge them into the ``.ts`` catalogues."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--locales",
@@ -355,61 +359,17 @@ def main() -> int:
         default=list(DEFAULT_LOCALES),
         help="Locale codes to (re)generate .ts for (default: %(default)s).",
     )
-    parser.add_argument(
-        "--keep-autogen",
-        action="store_true",
-        help="Keep the generated stub/.pro files (for debugging).",
-    )
     args = parser.parse_args()
 
     I18N_DIR.mkdir(parents=True, exist_ok=True)
-    previous = {
-        code: (I18N_DIR / f"chisurf_{code}.ts").read_text()
-        for code in args.locales
-        if (I18N_DIR / f"chisurf_{code}.ts").is_file()
-    }
-
     print("Collecting strings from view.json + manifest.json + i18n.tr() calls …")
     strings = collect_strings()
     print(f"  {len(strings)} unique source strings")
-    write_autogen(strings)
-
-    ui_files = sorted(CHISURF.rglob("*.ui"))
-    # Sources scanned for native tr()/translate() calls. Today only the generated
-    # stub carries strings (data-driven UI); imperative ``.py`` wrapping is a
-    # phased follow-up, at which point ``CHISURF.rglob('*.py')`` is added here.
-    py_sources = [AUTOGEN]
-    print(f"  {len(ui_files)} .ui forms, {len(py_sources)} .py source(s)")
-
-    pro = write_pro(ui_files, py_sources, args.locales)
-
-    pylupdate = _find_tool("pylupdate5")
-    if pylupdate is None:
-        print("ERROR: pylupdate5 not found on PATH (Qt dev tools).", file=sys.stderr)
-        return 2
-
-    print(f"Running {pylupdate} {pro.name} …")
-    proc = subprocess.run([pylupdate, str(pro)], cwd=str(REPO))
-    rc = proc.returncode
-
-    if not args.keep_autogen:
-        AUTOGEN.unlink(missing_ok=True)
-        pro.unlink(missing_ok=True)
-
-    if rc == 0:
-        for code in args.locales:
-            ts = I18N_DIR / f"chisurf_{code}.ts"
-            if code in previous:
-                preserve_finished_translations(previous[code], ts)
-            print(f"  → {ts.relative_to(REPO)}")
-        print("Done. Compile with: pixi run i18n-compile")
-    return rc
-
-
-def _find_tool(name: str) -> str | None:
-    import shutil
-
-    return shutil.which(name)
+    for code in args.locales:
+        ts = I18N_DIR / f"chisurf_{code}.ts"
+        counts = merge_catalogue(ts, strings, code)
+        print(f"  → {ts.relative_to(REPO)} {counts}")
+    return 0
 
 
 if __name__ == "__main__":
