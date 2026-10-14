@@ -186,11 +186,27 @@ next potential to add.
    double-click removes one.
 3. **Stride**, then **Process** and choose the output file.
 
-Only **Radius of Gyration**, **Clash potential** and **Ramachandran** run on a
-trajectory at present (see [Known defects](#known-defects)). On the example,
-the radius of gyration is 15.9 Å (15.3–16.4 Å over the frames). `FrameNbr` is
-1-based: at stride 10 the rows are 1, 11, 21, …, which are source frames 0,
-10, 20.
+The combo offers eight potentials. **Clash potential** and **Radius of
+Gyration** score the full-atom frame. **H-Bond**, **Iso-UNRES**,
+**Miyazawa-Jernigan**, **Go-Potential**, **ASA-Calpha** and **Ramachandran**
+score a residue-level model of it: backbone N, CA, C and O, one side-chain
+centroid per residue (the mass-weighted mean of CB and the atoms beyond it),
+and an amide H placed on the C(i−1)–N–CA bisector when the topology has none.
+H-Bond does not pair sequence neighbours. Go-Potential takes its native
+contacts from the first frame scored, so that frame is its minimum.
+Ramachandran sums the phi/psi map energy over the residues whose phi and psi
+are both defined (general, PRO and GLY maps).
+
+On the example at stride 10 (90 frames), the radius of gyration is 16.0 Å
+(15.1–17.3 Å), H-Bond finds about 170 backbone H-bonds per frame,
+Ramachandran scores 160 residues at −468 on average (about −2.9 per residue),
+and Miyazawa-Jernigan averages −910. H-Bond, the two contact potentials,
+Go-Potential and Ramachandran all score the first frame (the starting
+structure) lowest. `FrameNbr` is 1-based: at stride 10 the rows are 1, 11, 21,
+…, which are source frames 0, 10, 20.
+
+There is no accessible-volume potential. To score frames against FRET
+distances with accessible volumes, use `csc fret evaluate --top … --traj …`.
 
 ## FRET
 
@@ -303,9 +319,21 @@ view models follow the same pattern: `MDConverterViewModel.convert()`,
 `JoinTrajectoriesViewModel.save_joined(path)`,
 `RotateTranslateViewModel.save_rotated_translated(path)`,
 `SaveTopologyViewModel.save_topology(path)` and
-`PotentialEnergyViewModel.process(path)`. The energy potentials are the editor
-widgets of `chisurf.gui.widgets.structure.potentialDict`, so that view model
-needs a `QApplication`.
+`PotentialEnergyViewModel.process(path)`. The energy potentials are built
+without Qt:
+
+```python
+from chisurf.plugins.traj.potential_energy.potential_specs import make_potential
+from chisurf.plugins.traj.potential_energy.view_model import PotentialEnergyViewModel
+
+energy = PotentialEnergyViewModel()
+energy.set_topology(top)
+energy.set_trajectory(dcd)
+energy.stride = 10
+for name in ("H-Bond", "Ramachandran", "Radius of Gyration"):
+    energy.add_potential(make_potential(name), 1.0, name=name)
+energy.process("t4l_energy.txt")   # FrameNbr, then one column per potential
+```
 
 ## Using it well
 
@@ -332,14 +360,6 @@ Measured on the example data. File references are to the current tree.
 * **A multi-model PDB reads back as its first model.**
   `trajectory_data.load` takes a structure file as a single frame, so a
   multi-frame `.pdb` written by Convert opens in ChiSurf with one frame.
-* **Six of the nine potentials fail on a trajectory.** H-Bond,
-  Miyazawa-Jernigan and ASA-Calpha fail with `Structure object has no
-  attribute 'l_res'`. Iso-UNRES and Go-Potential fail with `no attribute
-  'dist_ca'`. AV-Potential fails with `AvPotential.__init__() got an
-  unexpected keyword argument 'structure'`. The scored
-  structure is a plain `Structure`, not the residue-level structure these
-  kernels need. Ramachandran runs but returns 0.000 for every frame. H-Bond is
-  the default combo entry.
 * **Stale units in `trajectory_data`.** The module, `Trajectory` and `rmsd`
   docstrings say nanometres. The coordinates, distances and RMSD are in
   ångström (the T4L coordinates span −29…34, and `compute_distances` itself

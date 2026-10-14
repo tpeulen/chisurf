@@ -149,8 +149,6 @@ def test_escape_closes_the_open_type_list_without_choosing():
     [
         ("H-Bond", "cutoff_ca", 8.0, 9.0, 0.0, 100.0, 0.5, float),
         ("H-Bond", "cutoff_hbond", 3.0, 4.0, 0.0, 20.0, 0.25, float),
-        ("AV-Potential", "av_samples", 10000, 500, 1, 999999, 1000, int),
-        ("AV-Potential", "min_av", 150, 20, 0, 999999, 50, int),
         ("Iso-UNRES", "ca_cutoff", 25.0, 12.0, 10.0, 27.0, 0.5, float),
         ("Miyazawa-Jernigan", "ca_cutcoff", 6.5, 7.0, 0.0, 100.0, 0.5, float),
         ("Go-Potential", "epsilon", 1.0, 2.0, 0.0, 1000.0, 0.1, float),

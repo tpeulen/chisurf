@@ -279,7 +279,9 @@ class Structure(chisurf.core.base.Base):
         ####################################################
         if isinstance(p_object, Structure):
             self.atoms = np.copy(p_object.atoms)
-            self.filename = copy.copy(p_object.filename)
+            # `filename` is only set on a structure read from a file; one built
+            # from a trajectory frame has `_filename` alone, and copying it failed.
+            self.filename = copy.copy(getattr(p_object, "filename", p_object._filename))
         elif p_object is None:
             self._atoms = None
             self._filename = None

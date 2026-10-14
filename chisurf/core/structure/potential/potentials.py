@@ -275,12 +275,53 @@ def go(ca_dist: np.ndarray, energy_matrix: np.ndarray, rm_matrix: np.ndarray):
     return energy
 
 
+def _ca_gate(dist_ca: np.ndarray, exclude_neighbours: bool = False) -> np.ndarray:
+    """The C-alpha pre-filter matrix the contact kernels compare to a *squared* cutoff.
+
+    ``dist_ca`` holds plain distances (the Gō kernel needs them so), while the
+    H-bond and ASA kernels gate residue pairs on ``gate < cutoff**2``. Passing
+    plain distances widened those gates (the 8 Å H-bond C-alpha cutoff became
+    64 Å). With *exclude_neighbours*, sequence-adjacent pairs never pass.
+    """
+    gate = np.square(np.asarray(dist_ca, dtype=np.float64))
+    if exclude_neighbours and gate.shape[0] > 1:
+        k = np.arange(gate.shape[0] - 1)
+        gate[k, k + 1] = np.inf
+        gate[k + 1, k] = np.inf
+    return gate
+
+
+def _dihedral(p0: np.ndarray, p1: np.ndarray, p2: np.ndarray, p3: np.ndarray) -> np.ndarray:
+    """IUPAC dihedral angles (degrees, -180..180] of the rows of four ``(n, 3)`` arrays."""
+    b0 = p0 - p1
+    b1 = p2 - p1
+    b2 = p3 - p2
+    b1 = b1 / np.linalg.norm(b1, axis=1, keepdims=True)
+    v = b0 - np.sum(b0 * b1, axis=1, keepdims=True) * b1
+    w = b2 - np.sum(b2 * b1, axis=1, keepdims=True) * b1
+    x = np.sum(v * w, axis=1)
+    y = np.sum(np.cross(b1, v) * w, axis=1)
+    return np.degrees(np.arctan2(y, x))
+
+
 class Ramachandran:
+    """Ramachandran (phi/psi) statistical potential, summed over the residues.
+
+    The table (``rama_ala_pro_gly.npy``) holds five rows of a 1° grid of
+    360 × 360 points: phi, psi, and the pseudo-energies for the general
+    (ALA), PRO and GLY maps, phi-major. A residue is scored when its
+    neighbours close its phi and psi -- a C(i-1)-N(i) and C(i)-N(i+1) peptide
+    bond shorter than :attr:`bond_cutoff`; chain ends and gaps are skipped.
+    Lower is more favourable (the helical and β regions are about -3 to -4.5).
+    """
+
+    #: Residue-level: scores a :class:`~chisurf.core.structure.protein.ProteinCentroid`.
+    residue_level = True
+    #: Longest C-N distance (Å) still taken for a peptide bond.
+    bond_cutoff = 2.0
+
     def __init__(self, structure: chisurf.core.structure.Structure, filename: str | None = None):
-        """
-        :param filename:
-        :return:
-        """
+        """Load the Ramachandran table *filename* (the bundled one by default)."""
         if filename is None:
             from chisurf.core.settings.path_utils import get_path
 
@@ -291,14 +332,61 @@ class Ramachandran:
         self.name = "rama"
         self.filename = filename
         self.ramaPot = np.load(self.filename)
+        self.E = 0.0
+        self.n_scored = 0
+
+    def phi_psi(self):
+        """Return ``(residues, phi, psi)`` of the scorable residues (degrees)."""
+        from chisurf.core.structure.protein import a2id
+
+        c = self.structure
+        look = np.asarray(c.l_res)
+        n_at, ca_at, c_at = (look[:, a2id[k]] for k in ("N", "CA", "C"))
+        xyz = np.asarray(c.xyz, dtype=np.float64)
+        r = np.arange(1, look.shape[0] - 1)
+        ok = (
+            (n_at[r] >= 0)
+            & (ca_at[r] >= 0)
+            & (c_at[r] >= 0)
+            & (c_at[r - 1] >= 0)
+            & (n_at[r + 1] >= 0)
+        )
+        r = r[ok]
+        if r.size == 0:
+            return r, np.zeros(0), np.zeros(0)
+        prev_c, n, ca, cc, next_n = (
+            xyz[c_at[r - 1]],
+            xyz[n_at[r]],
+            xyz[ca_at[r]],
+            xyz[c_at[r]],
+            xyz[n_at[r + 1]],
+        )
+        bonded = (np.linalg.norm(n - prev_c, axis=1) < self.bond_cutoff) & (
+            np.linalg.norm(next_n - cc, axis=1) < self.bond_cutoff
+        )
+        r = r[bonded]
+        phi = _dihedral(prev_c[bonded], n[bonded], ca[bonded], cc[bonded])
+        psi = _dihedral(n[bonded], ca[bonded], cc[bonded], next_n[bonded])
+        return r, phi, psi
 
     def getEnergy(self) -> float:
-        """Calculate and return the Ramachandran potential energy."""
-        import logging
+        """Sum the map energy over every residue whose phi and psi are defined."""
+        from chisurf.core.structure.protein import res2id
 
-        logging.warning("Ramachandran potential: ramaEnergy C function not available — returning 0")
-        self.E = 0.0
-        return 0.0
+        residues, phi, psi = self.phi_psi()
+        if residues.size == 0:
+            self.E, self.n_scored = 0.0, 0
+            return 0.0
+        types = np.asarray(self.structure.residue_types)[residues]
+        channel = np.full(residues.size, 2)
+        channel[types == res2id["PRO"]] = 3
+        channel[types == res2id["GLY"]] = 4
+        i_phi = np.clip(np.floor(phi + 180.0).astype(int), 0, 359)
+        i_psi = np.clip(np.floor(psi + 180.0).astype(int), 0, 359)
+        energies = self.ramaPot[channel, i_phi * 360 + i_psi]
+        self.E = float(np.sum(energies))
+        self.n_scored = int(residues.size)
+        return self.E
 
 
 class Electrostatics:
@@ -334,6 +422,8 @@ class LJ_Bead:
 
 class HPotential:
     name = "H-Bond"
+    #: Residue-level: scores a :class:`~chisurf.core.structure.protein.ProteinCentroid`.
+    residue_level = True
 
     def __init__(
         self,
@@ -359,11 +449,18 @@ class HPotential:
         self.updateParameter()
 
     def getEnergy(self):
-        """Calculate and return the hydrogen bond potential energy."""
+        """Calculate and return the hydrogen bond potential energy.
+
+        Sequence neighbours are not scored: their N and C are joined by the
+        peptide bond, which lands on the repulsive core of the C-N term. The
+        OH/ON/CN/CH switches act through :attr:`hPot`.
+        """
         s1 = self.structure
         cca2 = self.cutoffCA**2
         ch2 = self.cutoffH**2
-        nHbond, Ehbond = _hbond_kernel(s1.l_res, s1.dist_ca, s1.xyz, self._hPot, cca2, ch2)
+        nHbond, Ehbond = _hbond_kernel(
+            s1.l_res, _ca_gate(s1.dist_ca, exclude_neighbours=True), s1.xyz, self.hPot, cca2, ch2
+        )
         self.E = Ehbond
         self.nHbond = nHbond
         return self.E
@@ -401,6 +498,7 @@ class HPotential:
 
 class GoPotential:
     name = "go"
+    residue_level = True
 
     def __init__(
         self,
@@ -435,8 +533,14 @@ class GoPotential:
         self.eMatrix, self.sMatrix = _go_init_kernel(c.dist_ca, self.epsilon, nnEFactor, cutoff)
 
     def getEnergy(self):
-        """Calculate and return the Gō potential energy."""
+        """Calculate and return the Gō potential energy.
+
+        The native contacts are those of the first structure scored when none
+        was given at construction -- for a trajectory, its first frame.
+        """
         c = self.structure
+        if getattr(self, "eMatrix", None) is None:
+            self.setGo()
         Etot = _go_kernel(c.dist_ca, self.eMatrix, self.sMatrix)
         self.E = Etot
         return Etot
@@ -464,6 +568,7 @@ class GoPotential:
 
 class MJPotential:
     name = "Miyazawa-Jernigan"
+    residue_level = True
 
     def __init__(
         self,
@@ -495,7 +600,17 @@ class MJPotential:
         """Calculate and return the Miyazawa-Jernigan potential energy."""
         c = self.structure
         nCont, Emj = _mj_kernel(
-            c.l_res, c.residue_types, c.dist_ca, c.xyz, self.mjPot, cutoff=self.ca_cutoff
+            # Plain distances on purpose: the kernel's C-alpha gate assumes the
+            # contact site sits within 1.6 Å of the C-alpha, which a side-chain
+            # centroid does not, so a squared gate would drop real contacts.
+            # Against plain distances it never binds and the centroid cutoff
+            # alone decides, as it always has.
+            c.l_res,
+            c.residue_types,
+            c.dist_ca,
+            c.xyz,
+            self.mjPot,
+            cutoff=self.ca_cutoff,
         )
         self.E = Emj
         self.nCont = nCont
@@ -520,6 +635,7 @@ class CEPotential:
     """
 
     name = "Iso-UNRES"
+    residue_level = True
 
     def __init__(
         self, structure: chisurf.core.structure.Structure, potential: str | None = None, **kwargs
@@ -592,6 +708,7 @@ class CEPotential:
 
 class ASA:
     name = "Asa-Ca"
+    residue_level = True
 
     def __init__(
         self,
@@ -611,10 +728,17 @@ class ASA:
     def getEnergy(self) -> float:
         """Calculate and return the accessible surface area."""
         c = self.structure
+        from chisurf.core.structure.protein import a2id
+
+        # The kernel reads each residue's representative sphere from column 6
+        # of the lookup; in the ChiSurf table that column is CG, which only
+        # PRO has, so the C-alpha is put there.
+        look = np.array(c.l_res[:, :7], dtype=np.int32, copy=True)
+        look[:, 6] = c.l_res[:, a2id["CA"]]
         asa_val = _asa_kernel(
-            c.xyz, c.l_res, c.dist_ca, self.sphere_points, self.probe, self.radius
+            c.xyz, look, _ca_gate(c.dist_ca), self.sphere_points, self.probe, self.radius
         )
-        return asa_val
+        return float(asa_val)
 
 
 class ClashPotential:

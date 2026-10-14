@@ -1,5 +1,5 @@
 {
- "total": 532,
+ "total": 531,
  "files": {
   "chisurf/gui/__init__.py": 3,
   "chisurf/gui/autoform/auto_form.py": 7,
@@ -62,7 +62,6 @@
   "chisurf/gui/widgets/ribbon/titlewidget.py": 8,
   "chisurf/gui/widgets/roi/editor.py": 3,
   "chisurf/gui/widgets/settings_editor.py": 10,
-  "chisurf/gui/widgets/structure/potentials_av.py": 1,
   "chisurf/gui/widgets/structure/potentials_clash.py": 1,
   "chisurf/gui/widgets/structure/potentials_go.py": 1,
   "chisurf/gui/widgets/synthetic_decay_editor.py": 1,

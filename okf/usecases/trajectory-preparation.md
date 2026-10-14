@@ -71,7 +71,7 @@ front; the status bar names the active tab.
    **▶ Convert**.
 8. **Energy Calc** — put the prepared trajectory in the **Trajectory** field
    (its own field only — the window-level drop is refused here, RF-709), pick a
-   potential from the combo (H-Bond, AV-Potential, Iso-UNRES,
+   potential from the combo (H-Bond, Iso-UNRES,
    Miyazawa-Jernigan, Go-Potential, ASA-Calpha, Radius of Gyration, Clash
    potential, Ramachandran), set its parameters and **Weight**, press
    **➕ Add**, repeat, then **⚙️ Process** and save the per-frame energy table.

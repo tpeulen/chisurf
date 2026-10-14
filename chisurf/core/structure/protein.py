@@ -157,6 +157,196 @@ def make_residue_lookup_table(structure: Structure):
     return l_residue, l_ca, l_cb, l_c, l_n, l_h
 
 
+#: Residue names that are a standard amino acid under another name
+#: (protonation states, disulfides, selenomethionine).
+_RESIDUE_ALIASES = {
+    "HID": "HIS",
+    "HIE": "HIS",
+    "HIP": "HIS",
+    "HSD": "HIS",
+    "HSE": "HIS",
+    "HSP": "HIS",
+    "CYX": "CYS",
+    "CYM": "CYS",
+    "MSE": "MET",
+}
+
+
+def residue_type_ids(structure: Structure) -> np.ndarray:
+    """One residue-type id (:data:`res2id`) per residue, in lookup-table order.
+
+    The statistical potentials index their tables by residue, so the array has
+    one entry per row of :func:`make_residue_lookup_table`. (It used to carry
+    one entry per *atom*, which the per-residue kernels misread silently or
+    rejected.) A name that is not a standard amino acid scores as ALA.
+
+    Parameters
+    ----------
+    structure : Structure
+        The structure whose residues are typed.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``int32`` array of length ``structure.n_residues``.
+    """
+    ids = []
+    for residue in structure.residue_dict.values():
+        name = str(next(iter(residue.values()))["res_name"])
+        ids.append(res2id.get(_RESIDUE_ALIASES.get(name, name), res2id["ALA"]))
+    return np.array(ids, dtype=np.int32)
+
+
+class CentroidFrameMap:
+    """Score full-atom frames with the residue-level (centroid) potentials.
+
+    The contact, H-bond, Gō, ASA and Ramachandran potentials work on a
+    :class:`ProteinCentroid`: backbone N, CA, C, O, amide H and one side-chain
+    centroid per residue (carried in the CB slot), with a residue lookup table
+    and a C-alpha distance matrix. A trajectory frame is full-atom, so this
+    builds that centroid structure once from the topology and then projects
+    every frame onto it: backbone atoms are copied, the centroid is the
+    mass-weighted mean of CB and the side-chain atoms beyond it (as
+    :func:`move_center_of_mass` builds it), and an amide H the topology lacks
+    is placed on the bisector of C(i-1)-N-CA, 1.01 Å from N.
+
+    Parameters
+    ----------
+    structure : Structure
+        Full-atom structure naming the atoms of every frame (the topology).
+
+    Attributes
+    ----------
+    centroid : ProteinCentroid
+        The structure the residue-level potentials score; updated by
+        :meth:`set_frame`.
+    """
+
+    #: N-H bond length in Ångström used for a placed amide hydrogen.
+    nh_bond = 1.01
+
+    def __init__(self, structure: Structure):
+        full = structure.atoms
+        self.n_atoms = int(full.shape[0])
+        centroid = ProteinCentroid(structure)
+        index = {
+            (str(a["chain"]), int(a["res_id"]), str(a["atom_name"])): i for i, a in enumerate(full)
+        }
+        atoms = centroid.atoms
+        source = np.array(
+            [index[(str(a["chain"]), int(a["res_id"]), str(a["atom_name"]))] for a in atoms],
+            dtype=np.int64,
+        )
+        # Side-chain centroids: CB plus every atom the coarse model folds into it.
+        cb_rows, members, weights, groups = [], [], [], []
+        for row, atom in enumerate(atoms):
+            if atom["atom_name"] != "CB":
+                continue
+            key = (str(atom["chain"]), int(atom["res_id"]))
+            internal = residue_atoms_internal.get(str(atom["res_name"]), ())
+            in_residue = np.where((full["chain"] == key[0]) & (full["res_id"] == key[1]))[0]
+            group = len(cb_rows)
+            for i in in_residue:
+                name = str(full[i]["atom_name"])
+                if name == "CB" or name not in internal:
+                    members.append(i)
+                    weights.append(float(full[i]["mass"]) or 1.0)
+                    groups.append(group)
+            cb_rows.append(row)
+        self._cb_rows = np.array(cb_rows, dtype=np.int64)
+        self._members = np.array(members, dtype=np.int64)
+        self._weights = np.array(weights, dtype=np.float64)
+        self._groups = np.array(groups, dtype=np.int64)
+        self._mass = np.bincount(self._groups, weights=self._weights, minlength=len(cb_rows))
+        self._source = source
+        self._add_amide_hydrogens(centroid)
+        self.centroid = centroid
+
+    def _add_amide_hydrogens(self, centroid: ProteinCentroid) -> None:
+        """Append an amide H to every residue that lacks one and can carry it."""
+        l_res = centroid.l_res
+        donors, self._h_frames = [], []
+        n_res = l_res.shape[0]
+        for r in range(1, n_res):
+            n_i, ca_i = l_res[r, a2id["N"]], l_res[r, a2id["CA"]]
+            c_prev = l_res[r - 1, a2id["C"]]
+            if l_res[r, a2id["H"]] >= 0 or min(n_i, ca_i, c_prev) < 0:
+                continue
+            if centroid.atoms[n_i]["res_name"] == "PRO":
+                continue
+            if centroid.atoms[n_i]["chain"] != centroid.atoms[c_prev]["chain"]:
+                continue
+            donors.append(n_i)
+            self._h_frames.append((c_prev, n_i, ca_i))
+        if not donors:
+            self._h_rows = np.zeros(0, dtype=np.int64)
+            return
+        # Fancy indexing copies; a structured scalar `atoms[i]` would be a view
+        # and renaming it would rename the N it was taken from.
+        new_rows = centroid.atoms[np.array(donors, dtype=np.int64)]
+        new_rows["atom_name"] = "H"
+        new_rows["element"] = "H"
+        new_rows["mass"] = 1.008
+        first = centroid.atoms.shape[0]
+        atoms = np.concatenate([centroid.atoms, new_rows])
+        atoms["i"] = np.arange(atoms.shape[0])
+        centroid.atoms = atoms
+        centroid._residue_dict = None
+        (
+            centroid.l_res,
+            centroid.l_ca,
+            centroid.l_cb,
+            centroid.l_c,
+            centroid.l_n,
+            centroid.l_h,
+        ) = make_residue_lookup_table(centroid)
+        self._h_rows = np.arange(first, atoms.shape[0], dtype=np.int64)
+        self._h_frames = np.array(self._h_frames, dtype=np.int64)
+        self._place_hydrogens(centroid.xyz)
+
+    def _place_hydrogens(self, xyz: np.ndarray) -> None:
+        """Put each added H on the C(i-1)-N-CA bisector, :attr:`nh_bond` from N."""
+        if self._h_rows.size == 0:
+            return
+        c_prev, n, ca = (xyz[self._h_frames[:, k]] for k in range(3))
+        u = n - c_prev
+        v = n - ca
+        u /= np.linalg.norm(u, axis=1, keepdims=True)
+        v /= np.linalg.norm(v, axis=1, keepdims=True)
+        b = u + v
+        b /= np.linalg.norm(b, axis=1, keepdims=True)
+        xyz[self._h_rows] = n + self.nh_bond * b
+
+    def set_frame(self, xyz: np.ndarray) -> ProteinCentroid:
+        """Project full-atom coordinates *xyz* (Å, ``(n_atoms, 3)``) onto :attr:`centroid`.
+
+        Returns
+        -------
+        ProteinCentroid
+            :attr:`centroid`, with its coordinates and C-alpha distances updated.
+        """
+        xyz = np.asarray(xyz, dtype=np.float64).reshape(-1, 3)
+        if xyz.shape[0] != self.n_atoms:
+            raise ValueError(f"the frame has {xyz.shape[0]} atoms, the topology {self.n_atoms}")
+        centroid = self.centroid
+        out = np.array(centroid.xyz, dtype=np.float64, copy=True)
+        out[: self._source.size] = xyz[self._source]
+        if self._cb_rows.size:
+            for d in range(3):
+                out[self._cb_rows, d] = (
+                    np.bincount(
+                        self._groups,
+                        weights=self._weights * xyz[self._members, d],
+                        minlength=self._cb_rows.size,
+                    )
+                    / self._mass
+                )
+        self._place_hydrogens(out)
+        centroid.xyz = out
+        centroid.update_dist()
+        return centroid
+
+
 def internal_to_cartesian(
     bond: np.ndarray,
     angle: np.ndarray,
@@ -548,10 +738,7 @@ class ProteinCentroid(Structure):
         self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = make_residue_lookup_table(
             self
         )
-        self.residue_types = np.array(
-            [res2id[res] for res in list(self.atoms["res_name"]) if res in list(res2id.keys())],
-            dtype=np.int32,
-        )
+        self.residue_types = residue_type_ids(self)
 
     def update_dist(self):
         """Update the C-alpha distance matrix."""
@@ -633,8 +820,7 @@ class ProteinCentroid(Structure):
         self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = make_residue_lookup_table(
             self
         )
-        tmp = [res2id[res] for res in list(self.atoms["res_name"]) if res in list(res2id.keys())]
-        self.residue_types = np.array(tmp, dtype=np.int32)
+        self.residue_types = residue_type_ids(self)
         self.dist_ca = np.zeros((self.n_residues, self.n_residues), dtype=np.float64)
 
         ####################################################

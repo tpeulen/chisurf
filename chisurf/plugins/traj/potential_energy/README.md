@@ -6,7 +6,6 @@ This plugin provides a graphical interface for calculating potential energy comp
 
 - Calculation of various energy terms including:
   - H-Bond potential
-  - AV-Potential (Accessible Volume)
   - Iso-UNRES potential
   - Miyazawa-Jernigan potential
   - Go-Potential

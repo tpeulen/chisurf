@@ -16,14 +16,20 @@ Choose a type, set its parameters and press **Add**. The **Weight** field scales
 potentials are listed in the table; **double-click** a row (or select it and press Delete) to remove it. The
 parameters of a type are kept while you look at another type; after **Add** they are back at their defaults.
 
-- **H-Bond** — hydrogen-bond contacts (C-alpha and heavy-atom cutoffs, which pair types count, the potential table).
-- **AV-Potential** — accessible-volume restraints from an FPS labeling file.
-- **Iso-UNRES**, **Miyazawa-Jernigan** — statistical contact potentials (C-alpha cutoff, potential table).
-- **Go-Potential** — native and non-native contacts.
-- **ASA-Calpha** — accessible surface area of the C-alpha atoms.
-- **Clash potential** — van-der-Waals overlaps beyond a tolerance.
-- **Ramachandran** — backbone dihedral potential.
-- **Radius of Gyration** — compactness, no parameters.
+- **H-Bond** — backbone hydrogen bonds (C-alpha and H···O cutoffs, which pair terms count, the potential table).
+  Sequence neighbours are not paired.
+- **Iso-UNRES**, **Miyazawa-Jernigan** — statistical contact potentials between side-chain centroids (cutoff,
+  potential table).
+- **Go-Potential** — native and non-native C-alpha contacts; the native contacts are those of the first frame scored.
+- **ASA-Calpha** — accessible surface area of the C-alpha spheres.
+- **Clash potential** — van-der-Waals overlaps beyond a tolerance, over all atoms.
+- **Ramachandran** — phi/psi map energy summed over the residues (general, PRO and GLY maps).
+- **Radius of Gyration** — compactness over all atoms, no parameters.
+
+H-Bond, the contact potentials, Go, ASA and Ramachandran score a residue-level model of each frame: backbone N, CA, C,
+O, one side-chain centroid per residue, and an amide H placed from the backbone when the topology has none. Clash and
+Radius of Gyration score the full-atom frame. Accessible-volume (FRET) scoring of a trajectory is
+`csc fret evaluate --top … --traj …`.
 
 ## Stride
 

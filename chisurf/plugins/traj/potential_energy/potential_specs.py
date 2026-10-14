@@ -10,6 +10,11 @@ The defaults are the *effective* values the Qt path computes with (which is not 
 what its spinboxes display — the Iso-UNRES CA-cutoff spinbox shows 20.0 while the
 constructor passes 25.0, and the ASA probe field shows 3.5 while the core constructor
 resets it to 1.0), so energies scored with untouched defaults match the Qt tool.
+
+There is no accessible-volume entry. The one that was here built a stub whose
+volumes were never computed and whose chi-squared was always 0; scoring frames
+against FRET distances with real accessible volumes is ``csc fret evaluate``
+(``chisurf.plugins.modelling.fret.core.evaluate.evaluate_trajectory``).
 """
 
 from __future__ import annotations
@@ -85,39 +90,6 @@ _SPECS: dict[str, PotentialSpec] = {
                     "file",
                     _database("hb.npy"),
                     tip="NumPy table of the hydrogen-bond potential (the bundled hb.npy by default).",
-                ),
-            ),
-        ),
-        PotentialSpec(
-            "AV-Potential",
-            "chisurf.core.structure.potential.av_potential:AvPotential",
-            (
-                PotentialParam(
-                    "av_samples",
-                    "nSamples",
-                    "int",
-                    10000,
-                    1,
-                    999999,
-                    1000,
-                    "Number of Monte-Carlo samples per accessible volume.",
-                ),
-                PotentialParam(
-                    "min_av",
-                    "MinAV",
-                    "int",
-                    150,
-                    0,
-                    999999,
-                    50,
-                    "Minimum number of accessible-volume points.",
-                ),
-                PotentialParam(
-                    "labeling_file",
-                    "Labeling file",
-                    "file",
-                    "",
-                    tip="FPS JSON naming the labeling positions and distances; empty uses none.",
                 ),
             ),
         ),
