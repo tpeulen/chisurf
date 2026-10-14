@@ -51,10 +51,9 @@ def test_registered_in_hub():
 
 
 def test_view_spec_loads():
-    from chisurf.plugins.calculator.phasor_calculator.gui.model import _PhasorCalcModel
+    from chisurf.plugins.calculator.phasor_calculator.gui.app import SPEC
 
-    spec = _PhasorCalcModel().view_spec()
-    assert spec is not None
+    assert SPEC["controls"] and SPEC["results"]
 
 
 def test_native_app_constructs_and_renders():

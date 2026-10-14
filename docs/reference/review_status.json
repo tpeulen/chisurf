@@ -668,7 +668,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "1917d4ad55410f6ec64296041542ef78e464c7dfc0973db2d7750fceefbfb871",
+    "sha256": "83940ff4e19ef043c81d1d52d5feb611ccb7c3d7c8f47d74bd212ab54777c364",
     "status": "ai-reviewed"
   },
   "plugins/photon_table.md": {

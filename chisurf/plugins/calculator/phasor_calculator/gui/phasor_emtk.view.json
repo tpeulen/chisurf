@@ -1,5 +1,5 @@
 {
-  "_comment": "Phasor calculator for the emtk window: the controls of phasor.view.json (the AutoForm spec the Qt tool rendered), grouped, with spin arrows and two columns for the g/s pairs; the results table is a data_table. Drawn by emtk.view_form.",
+  "_comment": "Phasor calculator for the emtk window: the controls of the AutoForm spec the Qt tool rendered (frozen in tests/qt_spec.json), grouped, with spin arrows and two columns for the g/s pairs; the results table is a data_table. Drawn by emtk.view_form.",
   "window": {
     "width": 640,
     "height": 480

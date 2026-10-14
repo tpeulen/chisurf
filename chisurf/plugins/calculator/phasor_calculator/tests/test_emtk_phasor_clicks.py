@@ -341,8 +341,8 @@ def test_settings_round_trip_clamp_and_ignore_garbage(app):
 
 
 def test_every_label_of_the_qt_spec_is_drawn(drv):
-    """The Qt tool rendered phasor.view.json with AutoForm: each of its field labels is on screen (groups opened)."""
-    spec = json.loads((PLUGIN / "gui/phasor.view.json").read_text())
+    """The Qt tool rendered tests/qt_spec.json with AutoForm: each of its field labels is on screen (groups opened)."""
+    spec = json.loads((PLUGIN / "tests/qt_spec.json").read_text())
     labels = []
 
     def walk(sections):

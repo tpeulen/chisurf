@@ -1,6 +1,6 @@
 """The native phasor calculator at parity with the retired Qt PhasorCalculatorTool.
 
-The Qt tool rendered ``phasor.view.json`` with AutoForm over an inline model; the model moved
+The Qt tool rendered ``tests/qt_spec.json`` (then ``gui/phasor.view.json``) with AutoForm over an inline model; the model moved
 unchanged to ``gui/model.py``. The Qt model's overlay geometry and results for the ``ON`` settings
 were recorded in ``qt_reference.json`` before the tool was deleted; they are compared with the emtk
 app's, and the reference table against the phasor formulas.
@@ -18,7 +18,8 @@ from emtk.testing import RecordingPainter
 
 HERE = Path(__file__).parent
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-SPEC = json.loads((HERE.parent / "gui" / "phasor.view.json").read_text())
+#: The AutoForm spec the Qt tool rendered, frozen as the parity inventory when the tool was retired.
+SPEC = json.loads((HERE / "qt_spec.json").read_text())
 
 from chisurf.plugins.calculator.phasor_calculator.gui.app import make_app  # noqa: E402
 

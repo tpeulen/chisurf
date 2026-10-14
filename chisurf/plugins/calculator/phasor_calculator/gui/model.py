@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import pathlib
-
-_GUI_DIR = pathlib.Path(__file__).parent
-
 
 class _PhasorCalcModel:
-    """Backing model for the phasor calculator; fields declared in phasor.view.json."""
+    """Backing model for the phasor calculator; fields declared in phasor_emtk.view.json."""
 
     #: Plot extent (slightly padded around the universal semicircle).
     PHASOR_G_RANGE = (-0.05, 1.05)
@@ -33,11 +29,6 @@ class _PhasorCalcModel:
         self.show_cursor = False
         self.cursor_g, self.cursor_s = 0.55, 0.30
         self.cursor_radius = 0.05
-
-    def view_spec(self):
-        from chisurf.core.dataspec import load_view_spec
-
-        return load_view_spec(_GUI_DIR / "phasor.view.json")
 
     # -- helpers ----------------------------------------------------------------------
     def _tau_list(self) -> list[float]:

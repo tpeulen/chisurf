@@ -2,7 +2,7 @@
 
 A data-free phasor plot for the Calculators hub: place reference lifetimes, a FRET
 trajectory and a two-component mixing line on the universal semicircle. Built from a
-declarative ``phasor.view.json`` (AutoForm) over a plain model that assembles the
+declarative ``phasor_emtk.view.json`` spec drawn by emtk over a plain model that assembles the
 overlay geometry through the shared phasor toolkit
 (:mod:`chisurf.plugins.microscopy.img_pixel_phasor.analysis`).
 """
