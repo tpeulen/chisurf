@@ -129,8 +129,8 @@ class _Response:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc) -> bool:
-        return False
+    def __exit__(self, *exc) -> None:
+        return None
 
 
 class Fakes:

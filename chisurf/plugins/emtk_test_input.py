@@ -219,7 +219,9 @@ def assert_tour_card_clear(tour: Any, size: tuple[int, int] = SIZE) -> None:
         and tx + tw <= size[0] + 1
         and ty + th <= size[1] + 1
     ), f"step {step.get('title')!r}: target {key!r} {rect} is not inside the {size} window"
-    cx, cy, cw, ch = tour_card_box(tour, size)
+    card = tour_card_box(tour, size)
+    assert card is not None, f"step {step.get('title')!r}: the tour shows no card"
+    cx, cy, cw, ch = card
     covered = not (cx + cw <= tx or cx >= tx + tw or cy + ch <= ty or cy >= ty + th)
     assert not covered, (
         f"step {step.get('title')!r}: the card {(cx, cy, cw, ch)} covers its target {key!r} {rect}"

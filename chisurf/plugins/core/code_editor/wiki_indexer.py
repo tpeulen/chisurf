@@ -166,7 +166,7 @@ class ChisurfAPIIndexer:
             args = ""
         return f"{prefix} {node.name}({args})"
 
-    def _source_snippet(self, lines: list[str], node: ast.AST) -> str:
+    def _source_snippet(self, lines: list[str], node: ast.stmt) -> str:
         """Return a bounded source snippet around an AST node."""
         start = max(0, node.lineno - 1)
         end = min(len(lines), start + 80)

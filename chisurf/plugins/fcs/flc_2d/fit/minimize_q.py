@@ -368,5 +368,5 @@ def minimize_q(
         estimates=np.asarray(x if x is not None else [], dtype=float),
         q_table=np.asarray(table, dtype=float),
         regulator=lam,
-        mi=mi,
+        mi=mi if mi is not None else np.empty(0),  # no regulator trial ran
     )

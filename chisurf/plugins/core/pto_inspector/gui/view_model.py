@@ -323,9 +323,9 @@ class PtoInspectorViewModel:
 
         tools = tools_for_operation(item.operation)
         if tools:
-            names = ", ".join(html.escape(m.display_name or m.id) for m in tools)
+            tool_names = ", ".join(html.escape(m.display_name or m.id) for m in tools)
             out.append(
-                f"<p style='color:#888'>Computed by a <b>{names}</b> step — "
+                f"<p style='color:#888'>Computed by a <b>{tool_names}</b> step — "
                 "▶ Open tool re-opens it.</p>"
             )
         elif item.operation:

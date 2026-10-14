@@ -35,7 +35,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from chisurf.core.agent.context import AgentContext
-from chisurf.core.agent.llm import LLMClient, LLMError, LLMResponse, ToolCall
+from chisurf.core.agent.llm import ChatCompleter, LLMClient, LLMError, LLMResponse, ToolCall
 from chisurf.core.agent.prompt import (
     build_system_prompt,
     parse_text_protocol,
@@ -233,7 +233,7 @@ class AgentSession:
 
     Parameters
     ----------
-    llm : LLMClient
+    llm : ChatCompleter
         Chat-completion client.
     context : AgentContext, optional
         Execution context.  A default one rooted at the current directory is
@@ -252,7 +252,7 @@ class AgentSession:
 
     def __init__(
         self,
-        llm: LLMClient,
+        llm: ChatCompleter,
         context: AgentContext | None = None,
         registry: ToolRegistry | None = None,
         config: AgentConfig | None = None,

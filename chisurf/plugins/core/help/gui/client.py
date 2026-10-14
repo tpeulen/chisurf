@@ -46,10 +46,12 @@ class HelpClient:
         Returns
         -------
         dict
-            ``{"entries": [...], "tree": {...}}``
+            The service envelope: ``{"ok": True, "result": {"entries": [...],
+            "tree": {...}}}``, or ``{"ok": False, "error": ...}`` when the help
+            service cannot be reached.
 
         """
-        return self._call(METHOD_LIST_DOCS)
+        return self._call(METHOD_LIST_DOCS) or {"ok": False, "error": "help service unavailable"}
 
     def read_doc(self, path: str) -> dict[str, Any] | None:
         """Read a documentation file.

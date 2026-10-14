@@ -49,7 +49,7 @@ REAL_CHISURF = Path(os.path.expanduser("~")) / ".chisurf"
 
 def _snapshot(root: Path) -> dict:
     """``{path: (size, mtime_ns)}`` under *root*, ignoring ``logs`` (written by every ChiSurf process)."""
-    out = {}
+    out: dict[str, tuple[int, int]] = {}
     if not root.exists():
         return out
     for path in sorted(root.rglob("*")):

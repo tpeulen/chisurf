@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import html as _html
 import re
+from collections.abc import Callable
+from typing import Any
 
 #: Sphinx roles that bare docutils does not know. Rendered as their text so a
 #: cross-reference degrades to a readable label instead of an error marker.
@@ -194,7 +196,7 @@ def _register_sphinx_directives() -> None:
         required_arguments = 0
         optional_arguments = 99
         has_content = True
-        option_spec = {}
+        option_spec: dict[str, Callable[[str], Any]] = {}
 
         def run(self):
             return []

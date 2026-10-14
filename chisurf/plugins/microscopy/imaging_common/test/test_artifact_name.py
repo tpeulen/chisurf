@@ -20,7 +20,9 @@ def _model(cls_name: str, window_kind=None):
     """Return a view-model instance whose class name is *cls_name*."""
     from chisurf.plugins.microscopy.imaging_common.base import ImagingMapViewModel
 
-    made = type(cls_name, (ImagingMapViewModel,), {"WINDOW_KIND": window_kind})
+    made: type[ImagingMapViewModel] = type(
+        cls_name, (ImagingMapViewModel,), {"WINDOW_KIND": window_kind}
+    )
     return made.__new__(made)
 
 

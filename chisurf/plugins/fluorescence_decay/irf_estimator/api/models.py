@@ -43,8 +43,8 @@ class DecayData:
     filename: str | None = None
 
 
-def dataclass_to_dict(value: Any) -> dict[str, Any]:
-    """Convert a dataclass to a JSON-safe dictionary."""
+def dataclass_to_dict(value: Any) -> Any:
+    """Convert a dataclass (or a list/dict holding them) to JSON-safe values."""
     if hasattr(value, "to_dict"):
         return value.to_dict()
     if hasattr(value, "__dataclass_fields__"):

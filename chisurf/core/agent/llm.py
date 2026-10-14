@@ -25,7 +25,7 @@ import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -264,6 +264,24 @@ class LLMSettings:
                 + " and ".join(missing)
                 + ". Set it in Settings → AI."
             )
+
+
+class ChatCompleter(Protocol):
+    """What an agent session needs from a model: its settings and one completion.
+
+    :class:`LLMClient` is the real one; a test replays scripted turns through the
+    same two members.
+    """
+
+    settings: LLMSettings
+
+    def complete(
+        self,
+        messages: Sequence[dict[str, Any]],
+        tools: Sequence[dict[str, Any]] | None = None,
+    ) -> LLMResponse:
+        """Run one chat completion."""
+        ...
 
 
 class LLMClient:

@@ -98,7 +98,7 @@ class PluginCheckApp(ImApp):
             self.model.selected_key = selected
             self._last_selected = selected
         try:
-            delay = float(settings.get("delay"))
+            delay = float(settings.get("delay", float("nan")))  # absent: NaN fails the range check
             if 0.0 <= delay <= 5.0:
                 self.model.delay = delay
         except (TypeError, ValueError):

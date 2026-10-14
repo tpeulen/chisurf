@@ -91,6 +91,8 @@ def _view_spec_of(model_class) -> tuple[str, bool]:
         import importlib
 
         module = importlib.import_module(declaring.__module__)
+        if module.__file__ is None:  # a namespace package has no folder to resolve against
+            return spec, False
         base = pathlib.Path(module.__file__).parent
     except Exception:
         return spec, False

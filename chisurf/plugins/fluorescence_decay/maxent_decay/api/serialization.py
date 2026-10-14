@@ -12,7 +12,7 @@ from .models import MEMRequest, MEMResult, MEMSettings
 
 def to_jsonable(value: Any) -> Any:
     """Return a JSON-compatible representation of ``value``."""
-    if is_dataclass(value):
+    if is_dataclass(value) and not isinstance(value, type):
         return to_jsonable(asdict(value))
     if isinstance(value, dict):
         return {str(k): to_jsonable(v) for k, v in value.items()}

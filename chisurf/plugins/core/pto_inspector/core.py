@@ -221,9 +221,8 @@ class PtoInspection:
     def __enter__(self) -> PtoInspection:
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> bool:
+    def __exit__(self, exc_type, exc, tb) -> None:
         self.close()
-        return False
 
     @property
     def measurement(self) -> Measurement:

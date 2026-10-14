@@ -16,6 +16,19 @@ from chisurf.plugins.core.user_editor.api.records import (
 _VIEW_JSON = pathlib.Path(__file__).parent / "users.view.json"
 
 
+def _field(name: str) -> property:
+    """Property forwarding one edited-account field to the view."""
+
+    def getter(self: UserEditorViewModel) -> Any:
+        return getattr(self.edited, name)
+
+    def setter(self: UserEditorViewModel, value: Any) -> None:
+        setattr(self.edited, name, value)
+        self.notify("edited")
+
+    return property(getter, setter)
+
+
 class UserEditorViewModel:
     """State and behaviour of the user editor panel.
 
@@ -200,18 +213,6 @@ class UserEditorViewModel:
 
     # -- edited fields, bound by the view spec ---------------------------
 
-    def _field(name: str):  # noqa: N805 - descriptor factory
-        """Property forwarding one edited-account field to the view."""
-
-        def getter(self):
-            return getattr(self.edited, name)
-
-        def setter(self, value):
-            setattr(self.edited, name, value)
-            self.notify("edited")
-
-        return property(getter, setter)
-
     user_id = _field("user_id")
     display_name = _field("display_name")
     email = _field("email")
@@ -224,7 +225,6 @@ class UserEditorViewModel:
     details = _field("details")
     is_admin = _field("is_admin")
     allow_autologin = _field("allow_autologin")
-    del _field
 
     # -- actions ---------------------------------------------------------
 

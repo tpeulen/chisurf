@@ -239,8 +239,11 @@ class UpdaterModel(DialogMixin):
     @property
     def solver_text(self) -> str:
         """Which solver would run the update and where it lives (the Qt status label's tooltip)."""
+        manager = self.updater.pkg_manager
+        if manager is None:
+            return "Solver information unavailable"
         try:
-            solver_path = self.updater.pkg_manager.pkg_exe()
+            solver_path = manager.pkg_exe()
             solver_name = os.path.basename(solver_path).lower()
             if "micro" in solver_name:
                 solver_type = "micromamba"

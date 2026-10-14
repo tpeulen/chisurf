@@ -313,7 +313,7 @@ def _as_the_browser_renders(page: pathlib.Path, math: "MathRenderer") -> str:
     handing the text to a renderer, so a test that calls the renderer alone
     checks something no reader ever sees.
     """
-    from chisurf.gui.widgets.tools.doc_links import expand_roles
+    from chisurf.emtk.doc_links import expand_roles
     from chisurf.plugins.core.help.api.bibliography import expand_citations
     from chisurf.plugins.core.help.api.render import render_document
     from chisurf.plugins.core.help.api.source_links import expand_source_roles

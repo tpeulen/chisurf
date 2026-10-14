@@ -14,7 +14,7 @@ from typing import Any
 
 try:
     # Preferred location: ChiSurf user settings directory
-    from chisurf.core.settings.path_utils import get_path as _get_path  # type: ignore
+    from chisurf.core.settings.path_utils import get_path as _get_path
 except Exception:  # pragma: no cover - fallback when chisurf.core.settings is unavailable
     _get_path = None  # type: ignore[assignment]
 

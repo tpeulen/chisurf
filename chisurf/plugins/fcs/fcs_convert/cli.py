@@ -32,7 +32,7 @@ _SUPPORTED_OUTPUT_TYPES: tuple[str, ...] = (
 )
 
 
-def _normalize(value: str) -> str:
+def _normalize(value: str | None) -> str:
     return str(value or "").strip().lower()
 
 

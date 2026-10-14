@@ -48,7 +48,7 @@ class FTestApp(ImApp):
         self.menu_open = False
         self.status = ""
         self.example_folder = None  # None: the plugin's demo cache
-        self.item_rects = {}
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         self.spec = json.loads(Path(__file__).with_name("ftest.view.json").read_text())
         self.window_size = window_size(self.spec, (1200, 800))
         for panel in self.spec["sections"]:

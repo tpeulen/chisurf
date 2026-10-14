@@ -38,7 +38,7 @@ PLUGINS_ROOT = HERE.parents[2]  # chisurf/plugins
 
 def _snapshot(root: Path) -> dict:
     """``{relative path: (size, mtime_ns)}`` of every file under *root* (no caches)."""
-    out = {}
+    out: dict[str, tuple[int, int]] = {}
     if not root.exists():
         return out
     for path in sorted(root.rglob("*")):

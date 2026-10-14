@@ -127,6 +127,8 @@ def filtered_correlation(
     for i in range(n_species):
         for j in range(i + 1, n_species):
             _, cross[(i, j)] = _corr(weights[i], weights[j])
+    if lag is None:
+        raise ValueError("species correlation needs at least one species filter")
     return SpeciesCorrelation(lag_s=lag, auto=auto, cross=cross)
 
 

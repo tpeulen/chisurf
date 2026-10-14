@@ -25,7 +25,8 @@ def test_document_store_lists_gets_and_replaces() -> None:
 
     replacement = store.replace(doc_id, "x = 2\n", expected_revision=1)
     assert replacement.revision == 2
-    assert store.get(document_id=doc_id).content == "x = 2\n"
+    snapshot = store.get(document_id=doc_id)
+    assert snapshot is not None and snapshot.content == "x = 2\n"
 
 
 def test_document_store_rejects_stale_revision() -> None:

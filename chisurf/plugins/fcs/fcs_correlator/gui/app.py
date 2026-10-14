@@ -9,6 +9,7 @@ step is opened.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from emtk.i18n import tr
 
@@ -41,7 +42,7 @@ class FcsHubApp(ToolHubApp):
         self.filter_model = FilterSettingsModel()
         self.correlator_model = CorrelatorSettingsModel()
         self._setup_seen: str | None = None
-        steps = [
+        steps: list[dict[str, Any]] = [
             {"name": "Correlator", "separator": True},
             {
                 "name": "1. Channel Definitions",
@@ -80,7 +81,9 @@ class FcsHubApp(ToolHubApp):
                 "description": "Screen and merge the computed correlation curves.",
             },
         ]
-        panels = steps + ([{"name": "Tools", "separator": True}, *tools] if tools else [])
+        panels: list[dict[str, Any]] = steps + (
+            [{"name": "Tools", "separator": True}, *tools] if tools else []
+        )
         super().__init__(
             title,
             panels,
