@@ -318,7 +318,7 @@ class BreakoutModel:
         ----------
         dt : float
             Seconds elapsed.
-        keys : chisurf.gui.chigame.input.InputMap
+        keys : object
             Controller state.
         """
         if keys.just_pressed("menu"):

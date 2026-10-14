@@ -2,7 +2,7 @@
 
 import pytest
 
-from chisurf.gui.widgets.node_editor.validation import (
+from chisurf.emtk.node_editor.validation import (
     NodeGraphValidationError,
     validate_graph_dict,
 )

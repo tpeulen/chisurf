@@ -51,31 +51,11 @@ def unregister_emtk_editor(editor: Any) -> None:
         _ACTIVE_EMTK_EDITORS.remove(editor)
 
 
-def _is_qt_active() -> bool:
-    """Return whether a Qt application event loop is actively running."""
-    try:
-        widgets = sys.modules.get("qtpy.QtWidgets")
-        if widgets is None:
-            for name in (
-                "PySide6.QtWidgets",
-                "PyQt6.QtWidgets",
-                "PySide2.QtWidgets",
-                "PyQt5.QtWidgets",
-            ):
-                widgets = sys.modules.get(name)
-                if widgets is not None:
-                    break
-        return widgets is not None and widgets.QApplication.instance() is not None
-    except Exception:
-        return False
-
-
 def open_source(
     target: str,
     base: pathlib.Path | None = None,
-    prefer_emtk: bool | None = None,
 ) -> bool:
-    """Open *target* in the full code editor (qt->qt; emtk->emtk).
+    """Open *target* in the full code editor.
 
     Parameters
     ----------
@@ -83,10 +63,6 @@ def open_source(
         ``path``, ``path#symbol`` or ``src:path#symbol``.
     base : pathlib.Path, optional
         Directory a relative path is resolved against first.
-    prefer_emtk : bool, optional
-        If True, route to EMTK code editor.
-        If False, route to Qt code editor.
-        If None, route to EMTK if active or Qt absent, otherwise Qt.
 
     Returns
     -------
@@ -103,86 +79,50 @@ def open_source(
 
     line_num = resolved.line or None
 
-    if prefer_emtk is True:
-        use_emtk = True
-    elif prefer_emtk is False:
-        use_emtk = False
-    else:
-        use_emtk = bool(_ACTIVE_EMTK_EDITORS) or not _is_qt_active()
-
-    # 1. EMTK Environment: route to full EMTK code editor
-    if use_emtk:
-        for editor in reversed(_ACTIVE_EMTK_EDITORS):
-            if editor is not None:
-                try:
-                    editor.open_file(str(resolved.path), line=line_num)
-                    return True
-                except Exception:
-                    logger.debug("could not open in active EMTK editor", exc_info=True)
-
-        # No editor yet: the open emtk shell makes one as a dock and hands it the file
-        # (chisurf.core.plugin.handoff, the editor's manifest declares open_file), not a second
-        # process whose OS window falls behind the main one; without a shell, a standalone editor.
-        from chisurf.core.plugin import handoff
-
-        if handoff.available("code_editor", "open_file"):
-            try:
-                handoff.hand_off(
-                    "code_editor", "open_file", {"path": str(resolved.path), "line": line_num or 0}
-                )
-                return True
-            except handoff.HandoffError:
-                logger.debug("the shell refused the code editor hand-off", exc_info=True)
-        try:
-            import subprocess
-            import sys
-
-            cmd = [
-                sys.executable,
-                "-m",
-                "chisurf.emtk",
-                "--plugin",
-                "code_editor",
-                "--path",
-                str(resolved.path),
-            ]
-            if line_num:
-                cmd.extend(["--anchor", str(line_num)])
-            subprocess.Popen(cmd)
-            return True
-        except Exception:
-            logger.debug("could not spawn EMTK code editor process", exc_info=True)
-            return False
-
-    # 2. Qt window (--qt): raise an open editor window, else open one (the emtk editor in a Qt host).
-    try:
-        from qtpy import QtWidgets
-
-        from chisurf.plugins.core.code_editor.gui.tool import CodeEditorEmtkTool
-
-        window = next(
-            (
-                widget
-                for widget in QtWidgets.QApplication.topLevelWidgets()
-                if widget.isVisible() and isinstance(widget, CodeEditorEmtkTool)
-            ),
-            None,
-        )
-        if window is None:
-            window = CodeEditorEmtkTool()
-        window.open_file(str(resolved.path), line=line_num)
-        window.show()
-        window.raise_()
-        window.activateWindow()
-        return True
-    except Exception:
-        logger.debug("could not open the code editor window", exc_info=True)
-        return False
-
     if resolved.missing_symbol:
         logger.warning(
             "%s no longer defines %r — the documentation link is stale",
             resolved.path.name,
             resolved.symbol,
         )
-    return True
+    for editor in reversed(_ACTIVE_EMTK_EDITORS):
+        if editor is not None:
+            try:
+                editor.open_file(str(resolved.path), line=line_num)
+                return True
+            except Exception:
+                logger.debug("could not open in active EMTK editor", exc_info=True)
+
+    # No editor yet: the open emtk shell makes one as a dock and hands it the file
+    # (chisurf.core.plugin.handoff, the editor's manifest declares open_file), not a second
+    # process whose OS window falls behind the main one; without a shell, a standalone editor.
+    from chisurf.core.plugin import handoff
+
+    if handoff.available("code_editor", "open_file"):
+        try:
+            handoff.hand_off(
+                "code_editor", "open_file", {"path": str(resolved.path), "line": line_num or 0}
+            )
+            return True
+        except handoff.HandoffError:
+            logger.debug("the shell refused the code editor hand-off", exc_info=True)
+    try:
+        import subprocess
+        import sys
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "chisurf.emtk",
+            "--plugin",
+            "code_editor",
+            "--path",
+            str(resolved.path),
+        ]
+        if line_num:
+            cmd.extend(["--anchor", str(line_num)])
+        subprocess.Popen(cmd)
+        return True
+    except Exception:
+        logger.debug("could not spawn EMTK code editor process", exc_info=True)
+        return False

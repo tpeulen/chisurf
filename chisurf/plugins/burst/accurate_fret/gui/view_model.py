@@ -159,41 +159,6 @@ class AccurateFretViewModel:
         words = tuple(DETECTOR_ROLE_WORDS)
         return any(any(word in str(name).lower() for word in words) for name in self._columns)
 
-    def load_from_ndxplorer(self) -> str:
-        """Take the burst columns from an open ndX window.
-
-        The usual workflow: bursts are already selected and plotted in ndX,
-        so the calibration should run on exactly those columns instead of a file
-        exported in between.
-
-        Returns
-        -------
-        str
-            A status message.
-        """
-        try:
-            from chisurf.plugins.ndxplorer.calibration_bridge import (
-                find_ndx_windows,
-                ndx_columns,
-            )
-        except Exception:
-            return "ndX is not available."
-        windows = find_ndx_windows()
-        if not windows:
-            return "No open ndX window found."
-        data_source = getattr(windows[-1], "data_source", None)
-        if data_source is None or data_source.empty:
-            return "The ndX window holds no burst data."
-        columns = ndx_columns(data_source)
-        if not columns:
-            return "No numeric burst columns in the ndX window."
-        self._columns = columns
-        self.filename = "<ndX>"
-        self._map_columns()
-        self._result = None
-        self.notify("file")
-        return f"Loaded {len(next(iter(columns.values())))} bursts from ndX."
-
     def column_names(self) -> list[str]:
         """Column names of the loaded table (for the column pickers)."""
         return ["", *self._columns.keys()]
@@ -682,30 +647,6 @@ class AccurateFretViewModel:
 
         register_calibration(self._result.calibration.calibration, name="Calibration")
         return "Calibration registered in the session (linkable from any fit)."
-
-    def push_to_ndxplorer(self) -> str:
-        """Push the posterior factors into an open ndX window.
-
-        Returns
-        -------
-        str
-            A status message.
-        """
-        if self._result is None:
-            return "Nothing to push — run a calibration first."
-        try:
-            from chisurf.plugins.ndxplorer.calibration_bridge import (
-                find_ndx_windows,
-                push_calibration_to_ndx,
-            )
-        except Exception:
-            return "ndX is not available."
-        windows = find_ndx_windows()
-        if not windows:
-            return "No open ndX window found."
-        for window in windows:
-            mapping = push_calibration_to_ndx(window, self._result.calibration.calibration)
-        return f"Pushed {len(mapping)} constants to {len(windows)} ndX window(s)."
 
     def export_csv(self, path: str) -> None:
         """Write the per-burst accurate values (with the calibration header) to *path*."""

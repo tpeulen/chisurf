@@ -1,7 +1,7 @@
 """The emtk ebFRET window, drawn headlessly and driven by clicks.
 
 No Qt: the window is drawn into a ``PixelPainter`` and fed pointer events the
-way ``emtk.qt_host`` feeds them. What is checked is what a screenshot cannot
+way the shell feeds them. What is checked is what a screenshot cannot
 promise -- that every declared control is on screen, that pressing it does what
 the MATLAB callback did, and that the guided tour points at controls that exist.
 """

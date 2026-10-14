@@ -8,8 +8,7 @@ place a key becomes a class: :data:`PLOT_CLASSES` declares the shipped pages as
 what a fit window calls: the model's pages, their accessors resolved, then the
 fit-level pages (:data:`FIT_PLOT_KEYS`) every fit window has.
 
-Qt-free: both shells (:mod:`chisurf.emtk.fit_window` and the Qt
-``chisurf.gui.widgets.fitting.fit_subwindow``) read their pages from here.
+Toolkit-free: the fit windows (:mod:`chisurf.emtk.fit_window`) read their pages from here.
 """
 
 from __future__ import annotations

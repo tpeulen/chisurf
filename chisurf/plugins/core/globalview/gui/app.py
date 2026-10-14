@@ -38,13 +38,13 @@ FILE_ACTIONS = {
     "Load network": ("load_network", "open"),
 }
 
-#: The fitting client lives under ``chisurf.gui``; it is only *used* when the
+#: The fitting client lives in ``chisurf.core.api``; it is only *used* when the
 #: host already loaded it (inside ChiSurf), never imported from here.
 _FITTING_CLIENT_MODULE = "chisurf.core.api.fitting_client"
 
 
 def _layout_store() -> LayoutStore | None:
-    """The dock arrangement, kept where the Qt window keeps it."""
+    """The dock arrangement, kept in the settings folder."""
     try:
         from chisurf.core.settings import chisurf_settings_path
     except Exception:  # noqa: BLE001 - no settings folder: the layout is not kept

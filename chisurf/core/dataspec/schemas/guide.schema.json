@@ -25,7 +25,7 @@
             },
             "text": {
               "type": "string",
-              "description": "Rich text; <b> and <i> are honoured by the Qt tour."
+              "description": "Rich text; <b> and <i> are honoured by the tour card."
             },
             "target": {
               "oneOf": [
@@ -213,7 +213,7 @@
                 },
                 "text": {
                   "type": "string",
-                  "description": "Rich text; <b> and <i> are honoured by the Qt tour."
+                  "description": "Rich text; <b> and <i> are honoured by the tour card."
                 },
                 "target": {
                   "oneOf": [
@@ -390,7 +390,7 @@
         },
         "text": {
           "type": "string",
-          "description": "Rich text; <b> and <i> are honoured by the Qt tour."
+          "description": "Rich text; <b> and <i> are honoured by the tour card."
         },
         "target": {
           "oneOf": [

@@ -6,7 +6,7 @@ import os
 import pathlib
 import sys
 
-# Initialize environment (PATH, Qt plugins, vispy, FreeType) as early as possible
+# Initialize environment (PATH, FreeType) as early as possible
 from . import env_bootstrap  # noqa: F401
 from .cleanup import clear_logging_files, clear_settings_folder, clear_user_plugins_folder
 
@@ -15,7 +15,6 @@ from .file_utils import safe_open_file
 from .path_utils import get_path
 from .settings_utils import (
     copy_settings_to_user_folder,
-    copy_styles_to_user_folder,
     get_chisurf_settings,
 )
 
@@ -126,18 +125,6 @@ colors = get_chisurf_settings(color_settings_file)
 
 package_directory = pathlib.Path(__file__).parent
 chisurf_root = package_directory.parent.parent
-style_sheet_file = chisurf_root / "gui" / "styles" / gui["style_sheet"]
-# The core without the GUI package (a browser page) has no style sheets; that
-# is not an error worth reporting on every import.
-style_sheet = (
-    safe_open_file(
-        file_path=style_sheet_file,
-        default_value="",
-        error_message=f"Error opening style sheet file {style_sheet_file}",
-    )
-    if style_sheet_file.parent.is_dir()
-    else ""
-)
 structure_data = safe_open_file(
     file_path=package_directory / "constants" / "structure.json",
     processor=json.load,

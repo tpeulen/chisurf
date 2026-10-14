@@ -1,9 +1,3 @@
-def test_general_waterfall_section_registered():
-    from chisurf.gui.autoform.sections.registry import get_section_factory
-
-    assert get_section_factory("waterfall") is not None
-
-
 def test_view_model_channel_state():
     from chisurf.plugins.tttr.audifier.gui.view_model import AudifierViewModel
 

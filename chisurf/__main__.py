@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import logging
-import os
 from collections.abc import Callable
 
 
 def _run_with_crash_log(launch: Callable[[], int]) -> int:
     """Run *launch* with a native crash log open, logging and re-raising any failure.
 
-    Both windows go through here, so a start that fails -- in the emtk shell (its splash
-    included) or in the Qt window -- leaves the same record: the traceback in the diagnostic
+    A start that fails -- in the emtk shell, its splash included -- leaves one record: the traceback in the diagnostic
     log (``logging.exception``), a ``crash_<time>.log`` in the settings folder for faults in
     native code, and the original exception re-raised, so the terminal shows it too.
 
@@ -95,39 +93,41 @@ def _require_emtk() -> None:
         raise SystemExit(2) from None
 
 
+USAGE = """usage: python -m chisurf [--size WxH] [--screenshot PATH [--backend offscreen]]
+
+Open the ChiSurf window (the emtk shell).
+
+options:
+  -h, --help         show this message and exit
+  --size WxH         the main window's size in pixels
+  --screenshot PATH  render one frame of the window offscreen to PATH and exit
+  --backend offscreen
+                     draw offscreen (implied by --screenshot)
+"""
+
+
 def main() -> None:
     """Run the application, logging and re-raising any startup failure.
 
-    The emtk main surface (``chisurf.emtk.main_app``) is the ChiSurf window; it does not import Qt.
-    ``--qt`` opens the Qt main window instead, kept as the reference the emtk window is measured
-    against until it reaches parity. ``--emtk-shell`` is accepted and selects the default.
+    The emtk main surface (``chisurf.emtk.main_app``) is the ChiSurf window; it does not import
+    Qt. ``--emtk-shell`` is still accepted and selects it; ``-h`` / ``--help`` prints
+    :data:`USAGE` without opening a window.
     """
     import sys
 
     args = sys.argv[1:]
-    # Both windows draw with emtk (the Qt one hosts emtk surfaces): check it first.
+    if "-h" in args or "--help" in args:
+        print(USAGE, end="")
+        raise SystemExit(0)
     _require_emtk()
-    if "--qt" not in args:
-        argv = [arg for arg in args if arg != "--emtk-shell"]
+    argv = [arg for arg in args if arg != "--emtk-shell"]
 
-        def launch_emtk() -> int:
-            from chisurf.emtk.main_app import main as emtk_shell
+    def launch_emtk() -> int:
+        from chisurf.emtk.main_app import main as emtk_shell
 
-            return emtk_shell(argv)
+        return emtk_shell(argv)
 
-        raise SystemExit(_run_with_crash_log(launch_emtk))
-
-    sys.argv = [sys.argv[0], *(arg for arg in args if arg != "--qt")]
-
-    def launch_qt() -> int:
-        from chisurf.gui import get_app
-
-        return get_app().exec()
-
-    exit_code = _run_with_crash_log(launch_qt)
-    # Keep the existing hard exit until native extension shutdown is retired:
-    # interpreter finalization can crash while tearing down Qt object graphs.
-    os._exit(exit_code)
+    raise SystemExit(_run_with_crash_log(launch_emtk))
 
 
 if __name__ == "__main__":

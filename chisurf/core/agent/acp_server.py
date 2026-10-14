@@ -568,7 +568,6 @@ def run_acp_server(
     cwd: str | pathlib.Path | None = None,
     safety: str = SAFETY_WRITE,
     verbose: bool = False,
-    no_qt: bool = False,
     presenter: Callable | None = None,
 ) -> int:
     """Entry point to launch the ACP server over stdio."""
@@ -607,9 +606,6 @@ def main() -> int:
     parser.add_argument("--directory", "-C", default=None, help="Working directory")
     parser.add_argument("--safety", default=SAFETY_WRITE, help="Default safety tier")
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose logging")
-    parser.add_argument(
-        "--no-qt", action="store_true", help="Compatibility flag: the ACP server is always headless"
-    )
     args, _ = parser.parse_known_args()
 
     return run_acp_server(
@@ -618,7 +614,6 @@ def main() -> int:
         cwd=args.directory,
         safety=args.safety,
         verbose=args.verbose,
-        no_qt=args.no_qt,
     )
 
 

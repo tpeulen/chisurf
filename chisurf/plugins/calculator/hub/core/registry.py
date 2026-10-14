@@ -1,11 +1,10 @@
 """Registry of embeddable calculators for the Calculators hub (Qt-free).
 
 The hub is a two-panel tool: a list of calculators on the left, the selected
-calculator embedded on the right. Each entry names an *embeddable* ``QWidget``
-(a plain panel or window, no required constructor arguments) by dotted import
-path; the GUI resolves and instantiates it lazily on first selection. Keeping the
-catalogue here — as plain data — lets it be unit-tested and extended without
-importing Qt.
+calculator embedded on the right. Each entry names an *embeddable* emtk app
+factory (no required arguments) by dotted import path; the GUI resolves and
+instantiates it lazily on first selection. Keeping the catalogue here — as
+plain data — lets it be unit-tested and extended without importing a GUI.
 """
 
 from __future__ import annotations
@@ -26,8 +25,8 @@ class CalculatorEntry:
     description : str
         One-line summary shown above the embedded calculator.
     widget : str
-        Dotted import path ``"pkg.module:ClassName"`` of an embeddable ``QWidget``
-        that constructs with no required arguments.
+        Dotted import path ``"pkg.module:make_app"`` of an embeddable emtk app
+        factory that takes no required arguments.
     icon : str
         Optional emoji/icon shown next to the label.
     """

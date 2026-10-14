@@ -599,14 +599,4 @@ def create_app(client=None, on_close=None, dataset_client=None):
     return GFactorApp(client=client, on_close=on_close, dataset_client=dataset_client)
 
 
-def create_host(parent=None, client=None, on_close=None, dataset_client=None):
-    """Host the existing native calculator in a legacy Qt caller."""
-    from emtk.qt_host import ControlHost
-
-    control = create_app(client=client, on_close=on_close, dataset_client=dataset_client)
-    host = ControlHost(control, parent=parent)
-    host.setWindowTitle(control.window_title)
-    return host
-
-
 make_app = create_app

@@ -30,7 +30,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.quenching_estimator.gui.tool:QuEstTool",
     "emtk": "chisurf.plugins.quenching_estimator.gui.app:make_app",
     "cli": "quest=chisurf.plugins.quenching_estimator.cli.cli:cli",
     "services": "chisurf.plugins.quenching_estimator.rpc.services:register_services"

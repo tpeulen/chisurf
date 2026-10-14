@@ -162,7 +162,7 @@ class PongModel:
         ----------
         dt : float
             Seconds elapsed.
-        keys : chisurf.gui.chigame.input.InputMap
+        keys : object
             Player one's controller.
         """
         if keys.just_pressed("menu"):

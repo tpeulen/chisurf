@@ -474,8 +474,8 @@ def test_app_draws_populated_and_empty_at_both_sizes(size, fake_registry, monkey
     assert "Parse-Model" not in empty.strings
 
 
-def test_real_registry_populates_the_app(qapp):
-    """The registry the Qt tool shows: the app draws its models too."""
+def test_real_registry_populates_the_app():
+    """The real registry: the app draws its models too."""
     app = make_app(
         __import__(
             "chisurf.plugins.core.model_manager.gui.model", fromlist=["x"]

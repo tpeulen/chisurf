@@ -13,8 +13,8 @@ Prefer the named constants in widget labels::
 
     from chisurf.core.glyphs import Glyphs
 
-    btn = QtWidgets.QPushButton(f"{Glyphs.DELETE} Delete")
-    act = menu.addAction(f"{Glyphs.REFRESH} Refresh")
+    if im.button(f"{Glyphs.DELETE} Delete"): ...
+    im.menu_item(f"{Glyphs.REFRESH} Refresh")
 
 For JSON manifests / view specs (which cannot import Python) use the *same*
 canonical literals listed here so a later normalization pass stays a no-op.

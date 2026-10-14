@@ -14,7 +14,7 @@ Peulen, Opanasyuk & Seidel, *J. Phys. Chem. B* **2017**, 121, 8211
 - ``rpc/`` -- the method table, handlers and the in-process dispatcher; the host registers them.
 - ``cli/`` -- ``csc quest``.
 - ``gui/`` -- the Qt-free project form model, its generated view spec (en/de/fr), the native emtk
-  window and the Qt dock that hosts it.
+  window.
 - ``demo.py`` / ``examples/`` -- T4 lysozyme, so the guided tour runs without the user's files.
 
 # Nothing heavy at import
@@ -25,23 +25,8 @@ here is inside a function.
 
 from __future__ import annotations
 
-from typing import Any
-
 #: Plugin brand icon (unified emoji set).
 icon = "💧"
 
 name = "Structure:Computation:QuEst"
 
-
-def __getattr__(name: str) -> Any:
-    """Resolve the GUI classes on first access.
-
-    `QuEstWindow` is the name ChiSurf's legacy discovery and the plugin's own
-    test use; `QuEstTool` is what the manifest points at. They are the same
-    widget, and neither is imported until asked for.
-    """
-    if name in {"QuEstTool", "QuEstWindow"}:
-        from .gui.tool import QuEstTool
-
-        return QuEstTool
-    raise AttributeError(name)

@@ -3,8 +3,7 @@
 A backend turns chiplot's renderer-neutral API into concrete drawing. It
 supplies a single-panel :class:`Canvas`, a multi-panel :class:`GridCanvas` and
 an :class:`ImageViewCanvas` -- each a control a surface draws, toolkit-free --
-plus global configuration. Hosting one in a widget is the host layer's job
-(:mod:`chisurf.gui.chiplot`), never the backend's.
+plus global configuration. Hosting one is the surface's job, never the backend's.
 
 The public :class:`~chisurf.chiplot.Panel` / :class:`~chisurf.chiplot.PanelGrid`
 wrappers delegate to these. Concrete backends live alongside this module

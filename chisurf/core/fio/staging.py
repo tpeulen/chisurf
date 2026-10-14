@@ -18,8 +18,7 @@ gives back genuine progress *and* transfer speed for that case:
 
 The staged copy is **ephemeral**: :func:`staged_source` deletes it once the
 caller is done. Because there is no Qt dependency here, this is usable from the
-headless server/CLI as well as the GUI; the GUI layer
-(``chisurf.gui.widgets.staged_loading``) only adds a progress dialog on top.
+headless server/CLI as well as the GUI.
 
 Examples
 --------
@@ -94,7 +93,7 @@ def _filter(label: str, extensions) -> str:
     return f"{label} ({' '.join('*' + e for e in extensions)})"
 
 
-#: Qt file-dialog filter for opening photon data.
+#: File-dialog filter for opening photon data.
 #:
 #: One definition, because a dialog that lists a different set from the reader
 #: is a dialog that hides files ChiSurf can open — which is how `.pto` was
@@ -166,8 +165,7 @@ DEFAULTS = {
     "probe_min_seconds": DEFAULT_PROBE_MIN_SECONDS,
     "probe_min_bytes": DEFAULT_PROBE_MIN_BYTES,
     "progress_interval": DEFAULT_PROGRESS_INTERVAL,
-    # Per-guard persisted "stop asking" choices for
-    # chisurf.gui.widgets.dropguard, keyed by guard name (e.g. "tttr_to_pto").
+    # Per-guard persisted "stop asking" choices of the drop guards, keyed by guard name (e.g. "tttr_to_pto").
     # A namespace rather than a single flat flag, so a second guard never has
     # to avoid colliding with the first one's key.
     "drop_guards": {},

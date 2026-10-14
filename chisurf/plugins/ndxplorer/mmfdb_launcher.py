@@ -1,16 +1,12 @@
 """Open a registered burst selection from MMFDB in ndX.
 
-The chisurf side of the ndX ↔ MMFDB round trip. Reuses the existing dataset
-picker (the sample/measurement selection widget) and ``mmfdb.datasets.open`` to
-resolve an artifact to a local path, then opens it in ChiSurf's ndX window
-(:func:`chisurf.plugins.ndxplorer.gui.app.open_in_ndx`); the window's own
-File > Import > From MMFDB is the emtk dataset picker.
+The chisurf side of the ndX ↔ MMFDB round trip. ``mmfdb.datasets.open`` resolves
+an artifact to a local path (:func:`resolve_dataset_path`), which is then opened
+in ChiSurf's ndX window (:func:`chisurf.plugins.ndxplorer.gui.app.open_in_ndx`);
+the picking itself is the window's File > Import > From MMFDB, the emtk dataset
+picker (:class:`chisurf.emtk.dataset_picker.DatasetPicker`), filtered by
+:data:`BURST_KINDS` and :data:`BURST_FORMATS`.
 ``modules/ndxplorer`` stays chisurf-free; this module is the only glue.
-
-Usable directly (e.g. from the Code Editor) for a manual round-trip test::
-
-    from chisurf.plugins.ndxplorer.mmfdb_launcher import open_burst_selection_from_mmfdb
-    open_burst_selection_from_mmfdb(client=authenticated_mmfdb_client)
 """
 
 from __future__ import annotations
@@ -52,50 +48,6 @@ def open_path_in_ndxplorer(path: str) -> Any:
     except Exception as exc:  # noqa: BLE001 - the caller says "could not be opened"
         logger.error("ndX could not be opened: %s", exc)
         return None
-
-
-def pick_burst_selection_path(
-    parent: Any = None,
-    scope: str = "all",
-    *,
-    client: Any,
-) -> str | None:
-    """Let the user pick a registered burst selection; return its local path.
-
-    ``None`` when nothing was picked or the artifact has no local path.
-    """
-    from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
-
-    sel = MmfdbDatasetPickerDialog.pick_dataset(
-        parent=parent,
-        kinds=BURST_KINDS,
-        formats=BURST_FORMATS,
-        scope=scope,
-        client=client,
-    )
-    if sel is None:
-        return None
-    path = resolve_dataset_path(client, sel.artifact_id)
-    if not path:
-        logger.error("Could not resolve a local path for artifact %s", sel.artifact_id)
-        return None
-    return path
-
-
-def open_burst_selection_from_mmfdb(
-    parent: Any = None,
-    scope: str = "all",
-    *,
-    client: Any,
-) -> Any:
-    """Pick a registered burst selection from MMFDB and open it in ndX.
-
-    Pick (the sample/measurement selection widget) → resolve the artifact to a
-    local path → open in ndX. Returns the ndX window, or ``None`` if nothing
-    was selected / it could not be opened.
-    """
-    path = pick_burst_selection_path(parent, scope, client=client)
-    return open_path_in_ndxplorer(path) if path else None
 
 
 def send_path_to_ndxplorer(path: str, parent: Any = None) -> Any:

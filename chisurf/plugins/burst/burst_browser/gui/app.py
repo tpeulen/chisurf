@@ -13,8 +13,7 @@ An immediate-mode emtk application (:class:`BurstBrowserApp`) over
 - Center pane: Gated per-burst table with pagination and multi-row selection.
 - Right pane: Live histogram of the selected column with emtk.implot.
 
-Runs toolkit-free under :class:`emtk.qt_host.ControlHost` in Qt,
-in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
+Runs toolkit-free in a desktop window (:mod:`emtk.native`), or in a WebGPU browser page (:mod:`emtk.web`).
 """
 
 from __future__ import annotations

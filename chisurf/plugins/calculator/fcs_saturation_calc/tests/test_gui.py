@@ -20,13 +20,7 @@ def SaturationCalculatorTool():
     return SaturationModel()
 
 
-@pytest.fixture
-def qapp():
-    """Kept as a no-op so the tests read as before: no Qt application is needed."""
-    yield None
-
-
-def test_power_sweep_series(qapp):
+def test_power_sweep_series():
     """Assert power sweep properties generate valid volume and diffusion time series."""
     tool = SaturationCalculatorTool()
     tool.power_mW = 5.0
@@ -41,7 +35,7 @@ def test_power_sweep_series(qapp):
     assert tau_series[1]["x"][0] == 5.0
 
 
-def test_compute_updates_info_text(qapp):
+def test_compute_updates_info_text():
     """Assert that clicking compute populates summary info text."""
     tool = SaturationCalculatorTool()
     tool._on_compute()
@@ -51,7 +45,7 @@ def test_compute_updates_info_text(qapp):
     assert "Peak focal rate" in info
 
 
-def test_bunching_toggle_affects_curves(qapp):
+def test_bunching_toggle_affects_curves():
     """Assert that toggling bunching dynamics changes the initial saturated curve value."""
     tool = SaturationCalculatorTool()
     tool.power_mW = 2.0
@@ -67,7 +61,7 @@ def test_bunching_toggle_affects_curves(qapp):
     assert g_sat_bunching_0 > g_sat_nobunching_0
 
 
-def test_rate_unit_switching(qapp):
+def test_rate_unit_switching():
     """Assert that switching rate_unit rescales dark rates and updates header label."""
     tool = SaturationCalculatorTool()
     tool.rate_unit = "1/ms"
@@ -80,7 +74,7 @@ def test_rate_unit_switching(qapp):
     assert tool.rate_unit == "1/us"
 
 
-def test_scheme_presets_set_state_count_labels_and_rates(qapp):
+def test_scheme_presets_set_state_count_labels_and_rates():
     """Assert scheme preset loading updates state count, labels, rates, and HMM graph widget."""
     tool = SaturationCalculatorTool()
 
@@ -97,7 +91,7 @@ def test_scheme_presets_set_state_count_labels_and_rates(qapp):
     assert tool.saturation.exc.rates_by_name()["sigma1_2"].value == 1.0
 
 
-def test_save_and_load_kinetics_scheme(tmp_path, qapp):
+def test_save_and_load_kinetics_scheme(tmp_path):
     """Assert saving and loading a custom kinetics scheme JSON restores all rates and parameters."""
     tool = SaturationCalculatorTool()
     tool.saturation.n_states = 3
@@ -114,7 +108,7 @@ def test_save_and_load_kinetics_scheme(tmp_path, qapp):
     assert abs(tool2.saturation.dark.rates_by_name()["k2_3"].value - 12.34) < 1e-5
 
 
-def test_user_settings_persistence(tmp_path, monkeypatch, qapp):
+def test_user_settings_persistence(tmp_path, monkeypatch):
     """Assert tool settings are saved to and restored from user settings directory."""
     settings_file = str(tmp_path / "settings.json")
     monkeypatch.setattr(SaturationModel, "get_user_settings_path", lambda self: settings_file)
@@ -131,7 +125,7 @@ def test_user_settings_persistence(tmp_path, monkeypatch, qapp):
     assert tool2.normalize_fcs is True
 
 
-def test_number_of_states_updates_brightness_parameters(qapp):
+def test_number_of_states_updates_brightness_parameters():
     """Assert changing n_states updates brightness parameters and table sizes."""
     tool = SaturationCalculatorTool()
     assert tool.saturation.n_states == 3
@@ -150,7 +144,7 @@ def test_number_of_states_updates_brightness_parameters(qapp):
     assert tool.saturation.dark.n_states == 6
 
 
-def test_wavelength_and_dye_are_exposed(qapp):
+def test_wavelength_and_dye_are_exposed():
     """The excitation wavelength must be settable and reach the computation."""
     tool = SaturationCalculatorTool()
     tool.power_mW = 2.0
@@ -162,7 +156,7 @@ def test_wavelength_and_dye_are_exposed(qapp):
     assert isinstance(tool.dye_names(), list)
 
 
-def test_state_profile_series_has_one_curve_per_state(qapp):
+def test_state_profile_series_has_one_curve_per_state():
     """The profile plot must follow the scheme size, not a fixed S0/S1/T1 trio."""
     tool = SaturationCalculatorTool()
     tool.power_mW = 2.0
@@ -174,7 +168,7 @@ def test_state_profile_series_has_one_curve_per_state(qapp):
     assert not any(n.startswith("P") for n in hidden)
 
 
-def test_zero_power_leaves_the_two_curves_identical(qapp):
+def test_zero_power_leaves_the_two_curves_identical():
     """P = 0 is unsaturated by definition; the GUI must not fake a power."""
     import numpy as np
 
@@ -184,7 +178,7 @@ def test_zero_power_leaves_the_two_curves_identical(qapp):
     np.testing.assert_allclose(series[0]["y"], series[1]["y"], rtol=1e-12)
 
 
-def test_dragging_the_power_reuses_cached_results(qapp):
+def test_dragging_the_power_reuses_cached_results():
     """Revisiting a power must hit the cache rather than integrate again."""
     tool = SaturationCalculatorTool()
     powers = [0.05, 0.2, 1.0, 5.0]
@@ -202,7 +196,7 @@ def test_dragging_the_power_reuses_cached_results(qapp):
     np.testing.assert_allclose(tool.fcs_curves_series[1]["y"], first, rtol=1e-12)
 
 
-def test_the_cache_is_dropped_when_the_scheme_changes(qapp):
+def test_the_cache_is_dropped_when_the_scheme_changes():
     """A cached curve must never survive a change it does not account for."""
     tool = SaturationCalculatorTool()
     tool.power_mW = 2.0
@@ -213,7 +207,7 @@ def test_the_cache_is_dropped_when_the_scheme_changes(qapp):
     assert not np.allclose(before, after)
 
 
-def test_the_residual_panel_shows_the_second_diffusion_time(qapp):
+def test_the_residual_panel_shows_the_second_diffusion_time():
     """Flat under no saturation, systematically structured under it.
 
     The whole point of the residual panel: the deviation from a single
@@ -237,7 +231,7 @@ def test_the_residual_panel_shows_the_second_diffusion_time(qapp):
     assert "no longer describes" in tool.info_text()
 
 
-def test_the_fit_overlay_can_be_switched_off(qapp):
+def test_the_fit_overlay_can_be_switched_off():
     """It costs a fit per update, so it must be optional."""
     tool = SaturationCalculatorTool()
     tool.power_mW = 5.0

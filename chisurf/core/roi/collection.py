@@ -17,8 +17,8 @@ that list, and they disagreed:
 
 This module is the one type behind all three: an ordered list of
 :class:`RegionEntry` — a region, a name, an ``enabled`` flag and an ``invert``
-flag — plus the rule for reducing them to one region. It is Qt-free on purpose;
-the widget in :mod:`chisurf.gui.widgets.roi` edits it, and a headless script or
+flag — plus the rule for reducing them to one region. It is toolkit-free on purpose;
+the emtk region editor edits it, and a headless script or
 an RPC service uses the same object with no GUI in sight.
 """
 

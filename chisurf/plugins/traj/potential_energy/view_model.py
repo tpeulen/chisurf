@@ -6,14 +6,11 @@ trajectory and its topology, the read stride, the selected potential type and we
 and performs the actual work — iterating a trajectory frame by frame, scoring
 every configured potential for each frame and writing the per-potential energies
 to a CSV file. It is deliberately free of Qt so the logic can be unit-tested
-headlessly; the GUI (``sections`` + ``widget``) owns all Qt concerns and drives
-this model.
+headlessly; the emtk app (``app.py``) drives this model.
 
-The concrete potential *objects* added through :meth:`add_potential` originate
-from the Qt :data:`chisurf.gui.widgets.structure.potentialDict` registry (the
-parameter editors double as the potentials), but this model only ever calls
-their Qt-free ``getEnergy`` / ``name`` / ``structure`` interface, so the compute
-path stays Qt-free. Mirrors
+The concrete potential *objects* added through :meth:`add_potential` are built from
+the :mod:`.potential_specs` registry; this model only ever calls their
+``getEnergy`` / ``name`` / ``structure`` interface. Mirrors
 :class:`chisurf.plugins.traj.traj_align.view_model.AlignTrajectoryViewModel`.
 """
 
@@ -92,15 +89,10 @@ class PotentialEnergyViewModel:
 
     # ── potential registry ──────────────────────────────────────────────
     def potential_names(self) -> list[str]:
-        """Return the available potential-type names.
+        """Return the available potential-type names (the registry of :mod:`.potential_specs`)."""
+        from chisurf.plugins.traj.potential_energy.potential_specs import potential_names
 
-        The only registry is the Qt :data:`chisurf.gui.widgets.structure.potentialDict`
-        (its editor widgets double as the potentials), so this imports Qt lazily;
-        the compute path (:meth:`process`) stays Qt-free.
-        """
-        from chisurf.gui.widgets.structure import potentialDict
-
-        return list(potentialDict)
+        return potential_names()
 
     # ── file wiring ─────────────────────────────────────────────────────
     def set_trajectory(self, filename: str) -> None:
@@ -123,8 +115,8 @@ class PotentialEnergyViewModel:
         ----------
         potential_obj : object
             Any object exposing the potential interface (a ``getEnergy()`` method
-            and a settable ``structure`` attribute); in the GUI this is the
-            selected ``potentialDict`` editor widget.
+            and a settable ``structure`` attribute); in the app this is built by
+            :func:`.potential_specs.make_potential`.
         weight : float
             Scaling factor applied to this potential's energy.
         name : str, optional

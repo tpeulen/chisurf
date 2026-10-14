@@ -115,18 +115,15 @@ def entry_form_view(
     values: typing.Mapping[str, typing.Any] | None = None,
     on_change: typing.Callable | None = None,
 ):
-    """An :class:`~chisurf.gui.autoform.AutoForm` model for one registry entry.
+    """A form model (``view_spec()``, ``params()``) for one registry entry.
 
     The entry's ``params_schema`` is JSON Schema, and chisurf already renders
     JSON Schema, so the parameter widgets — labels, ranges, units, tooltips and
     defaults — are generated rather than authored, for any category. Usage::
 
-        from chisurf.gui.autoform import AutoForm
         view = entry_form_view("burst_search", "maxtree")
-        form = AutoForm(view)
-        view.params()   # -> the edited parameter values
-
-    Importing this pulls in Qt; the rest of this module does not.
+        view.view_spec()   # -> the sections an emtk form draws
+        view.params()      # -> the edited parameter values
 
     Raises
     ------

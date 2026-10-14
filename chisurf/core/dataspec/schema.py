@@ -7,7 +7,7 @@ plugin: the AutoForm **view spec** (``*.view.json``) and the **guided tour**
 (``gui/guide.json``). Both loaders are forgiving in the same way, and it is the
 expensive way -- :func:`~chisurf.core.dataspec.load_view_spec` keeps only the
 keys its dataclasses declare and **silently drops the rest**, and
-:func:`~chisurf.gui.widgets.tools.guided_tour.load_tour` returns an empty tour
+:class:`~chisurf.emtk.help_guide.EmTkGuidedTour` shows an empty tour
 rather than raising. So a misspelled key is not an error; it is a control that
 never appears, or a tour step that points at nothing, discovered by a user.
 
@@ -66,7 +66,7 @@ GUIDE_SCHEMA_PATH = SCHEMA_DIR / "guide.schema.json"
 #: Top-level keys a view spec may carry that are not sections.
 #:
 #: ``title`` and ``model`` are read by chimol, which builds painted forms from
-#: the same files (`emtk.view_spec`); the Qt loader ignores both.
+#: the same files (`emtk.view_spec`); the ChiSurf loader ignores both.
 #: They are in the scheme because a key that one reader honours and another
 #: ignores is still part of the format -- leaving it out would make chimol's
 #: own specs invalid.
@@ -109,7 +109,7 @@ _VIEW_TOP_LEVEL = {
     },
 }
 
-#: ``kind`` values :mod:`chisurf.gui.autoform.sections.builtin` actually
+#: ``kind`` values the form renderer (`emtk.view_form`) actually
 #: implements for a ``value`` section. Anything else falls through to a plain
 #: string field -- which is how ``kind: "path"`` shipped twice, rendering with
 #: no browse button and nothing to say so.
@@ -451,7 +451,7 @@ def build_guide_schema() -> dict:
 
     Written out rather than derived: the tour loader reads a plain dict by hand
     instead of declaring dataclasses, so there is nothing to derive *from*. The
-    keys are taken from :mod:`chisurf.gui.widgets.tools.guided_tour`, and the
+    keys are taken from :mod:`chisurf.emtk.help_guide`, and the
     test that walks every shipped tour is what keeps this honest.
     """
     target = {
@@ -514,7 +514,7 @@ def build_guide_schema() -> dict:
             "title": {"type": "string"},
             "text": {
                 "type": "string",
-                "description": "Rich text; <b> and <i> are honoured by the Qt tour.",
+                "description": "Rich text; <b> and <i> are honoured by the tour card.",
             },
             "target": {"oneOf": [target, {"type": "string", "minLength": 1}]},
             "tab": {"type": "string"},
@@ -585,7 +585,7 @@ def build_guide_schema() -> dict:
         "title": "ChiSurf guided tour",
         "description": (
             "A tour points at one real control at a time and waits for the "
-            "user to use it. Read by chisurf.gui.widgets.tools.guided_tour "
+            "user to use it. Read by chisurf.emtk.help_guide "
             "and, for painted chrome, by chimol.tour."
         ),
         # Dispatched on the file's shape rather than expressed as a `oneOf`,

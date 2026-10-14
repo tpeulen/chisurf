@@ -13,16 +13,16 @@ strict split between data/computation (``chisurf/core``) and presentation
   GUI side owns a registry that maps those keys to concrete widgets.
 
 Because this package is pure data, an entire editor can be inspected and
-asserted in a headless test with Qt not even installed::
+asserted in a headless test with no GUI toolkit::
 
     spec = model.view_spec()
     assert any(s.target == "lifetimes" for s in spec.sections)
 
 It was lifted out of ``chisurf.core.models.view_spec`` so editors for
 models, settings, metadata and tool panels can all be declared the same way;
-``chisurf.core.models.view_spec`` remains as a backwards-compatible shim. See
-:mod:`chisurf.gui.widgets.models.auto_model_widget` for the renderer that
-consumes these descriptors.
+``chisurf.core.models.view_spec`` remains as a backwards-compatible shim. The
+model editor (:mod:`chisurf.emtk.model_editor`) is the renderer that consumes
+these descriptors.
 """
 
 from __future__ import annotations

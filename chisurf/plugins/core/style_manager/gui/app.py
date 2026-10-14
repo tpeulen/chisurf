@@ -134,7 +134,7 @@ class StyleManagerModel:
         self.status = ""
         self.apply_callback = None
         #: ``application_callback(qss_text)`` restyles the running application; ``None`` uses
-        #: :meth:`restyle_application` (the Qt application when one is already loaded in this process).
+        #: :meth:`restyle_application` (no hook: the style takes effect at the next launch).
         self.application_callback = None
         self.applied_style = None
         self.ignored_rules = []
@@ -227,29 +227,14 @@ class StyleManagerModel:
         return "\n\n".join(part for part in (*parts, theme_text) if part)
 
     def restyle_application(self, qss_text):
-        """Apply *qss_text* to the running Qt application, as the legacy Apply did; ``True`` when one was restyled.
+        """Hand *qss_text* to the host's restyle hook; ``True`` when the host restyled itself.
 
-        Qt is never imported here: a process without a Qt application (the standalone native window) has
-        nothing to restyle and the style takes effect at the next launch.
+        Without a hook (the standalone native window) there is nothing to restyle and the style takes
+        effect at the next launch.
         """
         if callable(self.application_callback):
             return bool(self.application_callback(qss_text))
-        import sys
-
-        widgets = sys.modules.get("qtpy.QtWidgets")
-        application = widgets.QApplication.instance() if widgets is not None else None
-        if application is None:
-            return False
-        application.setStyleSheet(qss_text)
-        try:
-            import chisurf as cs
-
-            cs.core.settings.style_sheet = (
-                qss_text  # what the startup compares against to skip a re-apply
-            )
-        except Exception:  # noqa: BLE001 - the sheet is applied; only the cache of it is missing
-            pass
-        return True
+        return False
 
     def apply(self):
         if not self.save():

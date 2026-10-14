@@ -2,10 +2,9 @@
 
 Everything the window needs that is not drawing lives here, with no Qt in it:
 the settings its ``globalview.view.json`` binds, the network or factor graph
-it draws (as a :class:`~chisurf.gui.widgets.node_editor.document.GraphDocument`
+it draws (as a :class:`~chisurf.emtk.node_editor.document.GraphDocument`
 the emtk node editor takes), the records of its two tables, the selection, and
-an action per button. :mod:`.surface` draws it and :mod:`.tool` hosts it in a
-window; a test drives it with neither.
+an action per button. :mod:`.surface` draws it; a test drives it without a window.
 
 Where the graph comes from
 --------------------------
@@ -177,7 +176,7 @@ class GlobalViewModel:
     mutator : object, optional
         Changes parameters (``set_value``, ``set_fixed``, ``set_bounds``,
         ``set_bounds_on``, ``link``, ``unlink``). Defaults to
-        :class:`~chisurf.gui.widgets.fitting.parameter_mutator.FittingClientParamMutator`.
+        :class:`~chisurf.plugins.core.globalview.gui.parameter_mutator.FittingClientParamMutator`.
 
     Attributes
     ----------
@@ -198,7 +197,9 @@ class GlobalViewModel:
         self._groups = groups if groups is not None else _registered_groups
         if mutator is None:
             try:
-                from chisurf.gui.widgets.fitting.parameter_mutator import FittingClientParamMutator
+                from chisurf.plugins.core.globalview.gui.parameter_mutator import (
+                    FittingClientParamMutator,
+                )
 
                 mutator = FittingClientParamMutator()
             except Exception:

@@ -160,43 +160,6 @@ def test_nothing_shown_is_reported_and_nothing_is_drawn(cmd, tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# Progress reporting
-# --------------------------------------------------------------------------- #
-def test_the_progress_display_survives_the_whole_qprogressdialog_setup(window):
-    """`ray` drove `ChiSurfProgress` as if it were a ``QProgressDialog``.
-
-    The facade carries most of that surface on purpose, so five of the six calls
-    worked and the sixth raised ``'ChiSurfProgress' object has no attribute
-    'setMinimumSize'`` -- before a single ray was cast, on every run that had a
-    window, which is every run a user makes. Only the headless path, which skips
-    the display entirely, ever worked, and that is the path the tests took.
-
-    Both ends are pinned: the facade answers the calls, and `ray` uses its own
-    spelling rather than relying on the shim.
-    """
-    from chisurf.gui.progress import ChiSurfProgress
-
-    progress = ChiSurfProgress(window, "Ray tracing...", 100, title="Rendering")
-    try:
-        for call, args in (
-            ("setWindowTitle", ("Rendering",)),
-            ("setMinimumDuration", (0,)),
-            ("setValue", (0,)),
-            ("setAutoClose", (False,)),
-            ("setAutoReset", (False,)),
-            ("setMinimumSize", (360, 100)),
-        ):
-            getattr(progress, call)(*args)
-        # What `ray` itself calls.
-        progress.set_value(50)
-        progress.set_text("Ray tracing... 50%")
-        assert progress.was_canceled() is False
-    finally:
-        progress.close()
-    progress.deleteLater()  # a Qt call site closes and then deletes
-
-
-# --------------------------------------------------------------------------- #
 # Transparency
 # --------------------------------------------------------------------------- #
 def _shell_over_ball(shell_alpha: float):

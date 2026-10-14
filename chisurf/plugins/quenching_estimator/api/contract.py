@@ -45,7 +45,7 @@ def contract_descriptor() -> dict[str, Any]:
 
     descriptor = _descriptor()
     descriptor["host_plugin_id"] = PLUGIN_ID
-    descriptor["transport"]["gui"] = "chisurf.plugins.quenching_estimator.gui.tool:QuEstTool"
+    descriptor["transport"]["emtk"] = "chisurf.plugins.quenching_estimator.gui.app:make_app"
     return descriptor
 
 

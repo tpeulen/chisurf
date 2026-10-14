@@ -1,7 +1,7 @@
 """RPC contract for the LUT tools: method names + JSON-Schemas.
 
 Each schema's ``description`` fields become tooltips when a form is rendered with
-:meth:`chisurf.gui.autoform.AutoForm.from_rpc_method`. The backend
+the RPC-method form builder. The backend
 (``backend/services.py``) registers handlers under these names; the GUI client
 and CLI call them.
 """

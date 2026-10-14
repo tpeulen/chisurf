@@ -41,7 +41,6 @@
     }
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.core.code_editor.gui.tool:CodeEditorEmtkTool",
     "emtk": "chisurf.plugins.core.code_editor.gui.editor_app:make_editor_app"
   },
   "accepts": [

@@ -3,8 +3,7 @@
 Everything inside a fit window -- the plot pages, their tabs and dock regions,
 the data table, the report, the Code face -- is drawn by emtk on a single
 surface. The emtk shell hosts it as a dock window (:mod:`chisurf.emtk.fit_window`);
-the Qt shell hosts it inside an MDI sub-window through
-:class:`chisurf.gui.widgets.fitting.fit_plots_area.FitPlotsArea`.
+the emtk shell docks it in its Workspace.
 
 The surface is :class:`FitWindowSurface`, an :class:`emtk.app.ImApp`. Its pages
 are windows of an :class:`emtk.docking.DockManager`: tabs in one region by

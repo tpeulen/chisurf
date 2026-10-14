@@ -8,8 +8,7 @@ can be registered without touching any call site.
 This package is the toolkit-free core: the panel API (:class:`PlotAPI`,
 the grid and image view controls (:mod:`chisurf.chiplot.backends`), the handles,
 the styles. Nothing in it imports a toolkit (``test/test_chiplot_core_qt_free.py``
-greps the source). Widget wrappers are the optional host layer
-:mod:`chisurf.gui.chiplot`, which re-exports everything here.
+greps the source). An emtk surface draws a panel as a control; there is no widget layer.
 
 Quick start
 -----------

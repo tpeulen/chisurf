@@ -7,7 +7,7 @@ intervals; this service turns those intervals into a PDA S1/S2 experimental
 histogram, ready to fit, by driving :class:`chisurf.core.experiments.pda2c.Pda2cReader`
 with its ``burst_slices`` path.
 
-Transport-agnostic and Qt-free — the ``chisurf.gui`` module is never imported.
+Transport-agnostic and toolkit-free.
 It is the server endpoint the ndX PDA bridge
 (:meth:`ndxplorer.analysis.burst_bridge.BurstAnalysisBridge.send_to_pda`) calls
 as ``pda.from_bursts``.

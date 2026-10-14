@@ -16,7 +16,7 @@ never by a toolkit index. A front end applies its own hint when there is one and
 other toolkits are kept but ignored. Projects written before this module stored the Qt snapshot at the top level
 (``geometry``, ``dock_state``, ``mdi_area``); :func:`backend_hint` reads those as the ``qt`` hint.
 
-A front end registers a :class:`LayoutBackend` (the Qt one: :mod:`chisurf.gui.layout_state`). Applying a layout is
+A front end registers a :class:`LayoutBackend`. Applying a layout is
 presentation: a part that cannot be applied is skipped and reported, it never stops a project from opening.
 """
 
@@ -36,7 +36,7 @@ VIEW_STATES = ("normal", "maximized", "minimized")
 #: Top-level keys of projects written before the neutral layout: the Qt snapshot, now the ``qt`` hint.
 LEGACY_QT_KEYS = ("geometry", "dock_state", "mdi_area")
 #: Modules that register a backend when imported; tried when no registered backend claims a window.
-KNOWN_BACKENDS = ("chisurf.gui.layout_state",)
+KNOWN_BACKENDS: tuple[str, ...] = ()
 
 
 @dataclass

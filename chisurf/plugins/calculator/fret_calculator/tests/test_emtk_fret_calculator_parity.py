@@ -1,19 +1,16 @@
-"""The native FRET calculator against the Qt tool it replaces, and against the backend services.
+"""The native FRET calculator against the values the Qt tool showed, and against the backend services.
 
-Hermetic: settings in a temporary folder, no files, no network. The Qt tool is the one committed
-before the emtk migration (its source is kept in ``okf/plugins/emtk-ports/fret_calculator/
-pre-upgrade/HEAD_tool.py``); it is built offscreen and driven with the same edits as the native
-window, every edit typed into the real emtk field (click, type, Enter) so that the spec's ``call``
-wiring is what is tested. The numbers of both must agree to the decimals of the Qt spin boxes.
+Hermetic: settings in a temporary folder, no files, no network. The Qt tool is deleted: its numbers
+are frozen in ``okf/plugins/emtk-ports/fret_calculator/qt_values.json`` and pinned below. Every edit
+is typed into the real emtk field (click, type, Enter) so that the spec's ``call`` wiring is what is
+tested.
 """
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import math
 import re
-import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +30,6 @@ from chisurf.plugins.emtk_layout import action_caption
 HERE = Path(__file__).parent
 GUI = HERE.parent / "gui"
 REPO = next(p for p in HERE.parents if (p / "pyproject.toml").exists())
-BASELINE = REPO / "okf/plugins/emtk-ports/fret_calculator/pre-upgrade/HEAD_tool.py"
 SIZE = (1200, 800)
 SMALL = (800, 600)
 
@@ -105,164 +101,7 @@ def homo_state(m):
     }
 
 
-# -- the Qt tool, built from the committed source -------------------------------------------- #
-
-
-def _load_qt_class():
-    source = BASELINE.read_text(encoding="utf-8")
-    real = f"Path({str(GUI)!r})\n"
-    source = source.replace("Path(__file__).parent\n", real).replace(
-        "Path(__file__).parents[1]", f"Path({str(GUI.parent)!r})"
-    )
-    path = Path(tempfile.mkdtemp()) / "qt_baseline.py"
-    path.write_text(source, encoding="utf-8")
-    name = "chisurf.plugins.calculator.fret_calculator.gui.qt_baseline"
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.FretCalculatorTool
-
-
-@pytest.fixture
-def qt_tool():
-    QtWidgets = pytest.importorskip("qtpy.QtWidgets")
-    qapp = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-    tool = _load_qt_class()()
-    tool._qapp = qapp
-    yield tool
-    tool.close()
-
-
-def qt_edit(tool, tab, attr, value):
-    """The Qt tab's field takes the value and runs its editingFinished handler."""
-    if attr == "use_chi":
-        tab.check_chi.setChecked(bool(value))
-    else:
-        spin = {
-            "tau0": "spin_tau0",
-            "R0": "spin_R0",
-            "R": "spin_R",
-            "sigma": "spin_sigma",
-            "tau": "spin_tau",
-            "E": "spin_E",
-            "kFRET": "spin_kFRET",
-            "t_RM": "spin_tRM",
-            "rho": "spin_rho",
-            "R_DA": "spin_Rhomo",
-        }[attr]
-        widget = getattr(tab, spin)
-        widget.setValue(value)
-        widget.editingFinished.emit()
-    tool._qapp.processEvents()
-
-
-def qt_hetero(tab):
-    return {
-        "tau0": tab.spin_tau0.value(),
-        "R0": tab.spin_R0.value(),
-        "tau": tab.spin_tau.value(),
-        "R": tab.spin_R.value(),
-        "sigma": tab.spin_sigma.value(),
-        "E": tab.spin_E.value(),
-        "kFRET": tab.spin_kFRET.value(),
-        "use_chi": tab.check_chi.isChecked(),
-    }
-
-
-def qt_homo(tab):
-    return {
-        "tau0": tab.spin_tau0.value(),
-        "R0": tab.spin_R0.value(),
-        "t_RM": tab.spin_tRM.value(),
-        "rho": tab.spin_rho.value(),
-        "sigma": tab.spin_sigma.value(),
-        "k_homo": tab.spin_kHomo.value(),
-        "R_DA": tab.spin_Rhomo.value(),
-        "use_chi": tab.check_chi.isChecked(),
-    }
-
-
-def assert_same(native, qt, what):
-    assert native.keys() == qt.keys()
-    for key in native:
-        if isinstance(native[key], bool):
-            assert native[key] == qt[key], (what, key)
-        else:
-            assert native[key] == pytest.approx(qt[key], abs=1e-9), (
-                what,
-                key,
-                native[key],
-                qt[key],
-            )
-
-
-# ── 1. numbers equal the Qt tool and the backend ----------------------------------------------- #
-
-HETERO_EDITS = [
-    ("tau0", 3.5),
-    ("R0", 60.0),
-    ("R", 55.0),
-    ("sigma", 8.0),
-    ("use_chi", True),
-    ("E", 0.8),
-    ("tau", 2.0),
-    ("kFRET", 0.5),
-    ("use_chi", False),
-    ("E", 0.0),
-    ("E", 1.0),
-    ("tau", 0.0),
-    ("kFRET", 0.0),
-    ("R", 0.1),
-    ("sigma", 0.1),
-]
-HOMO_EDITS = [
-    ("tau0", 2.5),
-    ("R0", 55.0),
-    ("rho", 20.0),
-    ("t_RM", 1.5),
-    ("R_DA", 45.0),
-    ("use_chi", True),
-    ("sigma", 10.0),
-    ("R_DA", 0.0),
-    ("t_RM", 0.001),
-    ("R_DA", 60.0),
-]
-
-
-def test_hetero_defaults_and_every_edit_equal_the_qt_tool(app, qt_tool):
-    qt = qt_tool.tabs.widget(0)
-    assert_same(hetero_state(app.model.hetero), qt_hetero(qt), "defaults")
-    for attr, value in HETERO_EDITS:
-        qt_edit(qt_tool, qt, attr, value)
-        edit(app, attr, value)
-        assert_same(hetero_state(app.model.hetero), qt_hetero(qt), f"after {attr}={value}")
-
-
-def test_homo_every_edit_equals_the_qt_tool(app, qt_tool):
-    app.select_tab(1)
-    draw(app)
-    qt = qt_tool.tabs.widget(1)
-    # The Qt tab leaves the read-only k_homo field stale after an edit of tau0, R0 or rho (and shows 0 at
-    # start) although R_DA was recomputed: the native field always shows the backend's rate. Everything else
-    # agrees step by step, and k_homo agrees whenever the Qt field was refreshed (t_RM and R_DA edits).
-    native, qt_values = homo_state(app.model.homo), qt_homo(qt)
-    assert native["k_homo"] == pytest.approx(0.46875) and qt_values["k_homo"] == 0.0
-    native.pop("k_homo"), qt_values.pop("k_homo")
-    assert_same(native, qt_values, "defaults")
-    for attr, value in HOMO_EDITS:
-        qt_edit(qt_tool, qt, attr, value)
-        edit(app, attr, value)
-        native, qt_values = homo_state(app.model.homo), qt_homo(qt)
-        if attr in ("tau0", "R0", "rho", "sigma", "use_chi"):
-            if attr in ("tau0", "R0", "rho"):
-                h = app.model.homo
-                rate = services.homo_compute_handler(t_RM=h.t_RM, rho=h.rho, tau0=h.tau0, R0=h.R0)[
-                    "result"
-                ]["k_homo"]
-                assert native["k_homo"] == pytest.approx(rate, abs=5e-7), (attr, value)
-            native.pop("k_homo"), qt_values.pop("k_homo")
-        assert_same(native, qt_values, f"after {attr}={value}")
-
+# ── 1. numbers equal the frozen Qt values and the backend ----------------------------------------------- #
 
 def test_the_numbers_the_qt_tool_showed_are_pinned(app):
     """Values read off the Qt window (okf/plugins/emtk-ports/fret_calculator/qt_values.json)."""
@@ -319,37 +158,6 @@ def test_homo_forward_and_backmap_are_inverse_on_the_time(app):
     h.backmap()
     assert h.R_DA == r_da
     assert h.t_RM == pytest.approx(t_rm, rel=2e-3)
-
-
-def test_plot_series_equal_the_qt_plots(app, qt_tool):
-    het, homo = qt_tool.tabs.widget(0), qt_tool.tabs.widget(1)
-    for attr, value in (("tau0", 3.5), ("R0", 60.0), ("R", 55.0), ("sigma", 8.0)):
-        qt_edit(qt_tool, het, attr, value)
-        edit(app, attr, value)
-    qt_edit(qt_tool, het, "use_chi", True)
-    edit(app, "use_chi", True)
-    het._sync_model()
-    for native, qt in (
-        (app.model.hetero.distance_plot_series(), het._model.distance_plot_series()),
-        (app.model.hetero.rate_plot_series(), het._model.rate_plot_series()),
-    ):
-        assert [s["name"] for s in native] == [s["name"] for s in qt]
-        for a, b in zip(native, qt):
-            np.testing.assert_allclose(a["x"], b["x"])
-            np.testing.assert_allclose(a["y"], b["y"])
-            assert (a["style"], a["width"]) == (b["style"], b["width"])
-    app.select_tab(1)
-    for attr, value in (("tau0", 2.5), ("rho", 20.0), ("R_DA", 45.0)):
-        qt_edit(qt_tool, homo, attr, value)
-        edit(app, attr, value)
-    homo._sync_model()
-    for native, qt in (
-        (app.model.homo.distance_plot_series(), homo._model.distance_plot_series()),
-        (app.model.homo.aniso_time_plot_series(), homo._model.aniso_time_plot_series()),
-    ):
-        for a, b in zip(native, qt):
-            np.testing.assert_allclose(a["x"], b["x"])
-            np.testing.assert_allclose(a["y"], b["y"])
 
 
 # ── 2. actions, errors -------------------------------------------------------------------------- #
@@ -491,12 +299,6 @@ def test_a_dropped_file_says_the_calculator_has_no_file_input(app):
     assert app.model.homo.status == ""
     # the Qt host reaches the drop through the same hooks
     assert callable(getattr(app, "files_dropped")) and callable(getattr(app, "on_paths_dropped"))
-
-
-def test_the_qt_tool_still_says_so_for_a_drop(qt_tool, tmp_path):
-    """The behaviour the hook above replaces (kept in the baseline)."""
-    qt_tool.on_paths_dropped([tmp_path / "run.ptu"])
-    assert qt_tool.Information.no_file_input.is_shown
 
 
 # ── 3. spec, tooltips, drawing ------------------------------------------------------------------ #

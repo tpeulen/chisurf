@@ -173,7 +173,7 @@ def test_multi_file_run_registers_single_grouped_directory(
     folder should be registered, and it must surface a real name (the folder
     basename) rather than its artifact UUID.
     """
-    from chisurf.gui.widgets.mmfdb.dataset_browser import _get_display_name
+    from chisurf.emtk.dataset_picker import _display_name as _get_display_name
 
     files = [tmp_path / f"m00{i}.spc" for i in range(3)]
     for f in files:

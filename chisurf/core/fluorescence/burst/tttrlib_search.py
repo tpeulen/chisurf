@@ -14,10 +14,9 @@ description is JSON Schema, which chisurf already renders, so the GUI for a
 burst search is built with no algorithm-specific code::
 
     from chisurf.core.registry import tttrlib as tttrlib_registry
-    from chisurf.gui.autoform import AutoForm
 
     view = tttrlib_registry.entry_form_view("burst_search", "maxtree")
-    form = AutoForm(view)
+    view.view_spec()  # the sections an emtk form draws
 
 A new algorithm in tttrlib therefore appears in the interface on upgrade, with
 no change here.

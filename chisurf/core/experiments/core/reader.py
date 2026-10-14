@@ -360,9 +360,8 @@ class ExperimentReader(chisurf.core.base.Base):
             )
             return [], [], None
 
-        pending = list(self._pending_sample_files)
-        if pending and self.controller is not None:
-            self._prompt_for_sample_batch(pending)
+        # Files with no MMFDB sample stay in ``_pending_sample_files``; the front end asks
+        # (the emtk shell's sample picker), the reader never opens a dialog.
         return source_uuids, derived_uuids, op_id
 
     def _ensure_sample_exists(self, sample_id: str) -> None:
@@ -380,27 +379,6 @@ class ExperimentReader(chisurf.core.base.Base):
                 self.db.add_sample(sample_id, details="")
         except Exception as e:
             logger.warning("Failed to ensure sample %s exists: %s", sample_id, e)
-
-    def _prompt_for_sample_batch(self, pending):
-        """Prompt the user to assign a sample for each newly loaded file."""
-        for filename, content_md5, object_uuid in pending:
-            self._prompt_for_sample(filename, content_md5, object_uuid)
-
-    def _prompt_for_sample(self, filename, content_md5, object_uuid):
-        """Prompt the user to assign a sample if the file is new to MMFDB."""
-        try:
-            from chisurf.gui.widgets.experiments.sample_selector_widget import (
-                show_sample_lookup_dialog,
-            )
-
-            show_sample_lookup_dialog(
-                self.controller,
-                str(filename),
-                content_md5,
-                object_uuid,
-            )
-        except Exception:
-            pass
 
     def _register_sources(self, filename) -> list[str]:
         """Register source file(s) in the object store.

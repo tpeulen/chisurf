@@ -1133,7 +1133,7 @@ class HelpModel:
         if text.startswith(("src:", "source:", "code:")) or is_source_path(text):
             from chisurf.emtk.code_links import open_source
 
-            if open_source(text, base, prefer_emtk=True):
+            if open_source(text, base):
                 return True
             self.navigation_error = f"Source target was not found: {text}"
             return False
@@ -2049,7 +2049,7 @@ class HelpGui:
             base = self.model.current_path.parent if self.model.current_path else None
             from chisurf.emtk.code_links import open_source
 
-            open_source(target, base, prefer_emtk=True)
+            open_source(target, base)
             return
 
         if target.startswith("#"):

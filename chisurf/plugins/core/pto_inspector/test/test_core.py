@@ -129,7 +129,7 @@ def test_a_root_has_no_input_port(container: Path):
 
 def test_the_graph_validates_against_the_node_editor_schema(container: Path):
     """The viewer refuses a graph outright; a missing key must fail here."""
-    from chisurf.gui.widgets.node_editor.validation import validate_graph_dict
+    from chisurf.emtk.node_editor.validation import validate_graph_dict
 
     with PtoInspection(container) as insp:
         validate_graph_dict(insp.graph())

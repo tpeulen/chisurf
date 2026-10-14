@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("qtpy")
 
 from chimol.core.model.hierarchy import HierarchyNode  # noqa: E402
 from chimol.plugins.hierarchy.window import HierarchyWindow  # noqa: E402

@@ -1,7 +1,7 @@
 """Qt-free view model behind the plugin manager.
 
-Everything the panel shows and every edit it makes lives here; ``tool.py`` only
-builds a toolbar and hands this object to :class:`~chisurf.gui.autoform.AutoForm`.
+Everything the panel shows and every edit it makes lives here; the emtk app
+(``gui/app.py``) hands this object to the AutoForm view spec.
 That split is what makes the manager testable headlessly -- the old widget put
 the data model, the settings writer, the installer and an HTTP client inside Qt
 callbacks, so none of it could be exercised without a display.
@@ -476,7 +476,6 @@ class PluginManagerViewModel:
         from chisurf.core.settings.settings_utils import update_settings_section
 
         written = update_settings_section("plugins", dict(self._settings_block))
-        self._refresh_host_toolbar()
         if written:
             self.set_status("Settings saved. Menu changes appear after a restart.")
         else:
@@ -488,13 +487,3 @@ class PluginManagerViewModel:
         self.settings.revert()
         self.reload()
         self.set_status("Unsaved changes discarded.")
-
-    @staticmethod
-    def _refresh_host_toolbar() -> None:
-        """Rebuild the main window's plugin toolbar, if a Qt shell is up (never fails the save)."""
-        try:
-            from chisurf.gui.plugin_toolbar import refresh_plugin_toolbar
-
-            refresh_plugin_toolbar()
-        except Exception:
-            pass

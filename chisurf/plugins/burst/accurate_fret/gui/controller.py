@@ -202,13 +202,7 @@ class AccurateFretController:
     def from_ndx(self):
         windows = self._ndx_sources()
         if not windows:
-            if any(
-                name in sys.modules
-                for name in ("qtpy.QtWidgets", "PyQt5.QtWidgets", "PySide6.QtWidgets")
-            ):
-                self.status = self.model.load_from_ndxplorer()
-            else:
-                self.status = "No native ndX source registered; open ndX or load a burst table."
+            self.status = "No native ndX source registered; open ndX or load a burst table."
             return
         source = windows[-1]
         getter = getattr(source, "get_burst_columns", None)
@@ -236,13 +230,7 @@ class AccurateFretController:
             return
         windows = self._ndx_sources()
         if not windows:
-            if any(
-                name in sys.modules
-                for name in ("qtpy.QtWidgets", "PyQt5.QtWidgets", "PySide6.QtWidgets")
-            ):
-                self.status = self.model.push_to_ndxplorer()
-            else:
-                self.status = "No native ndX source registered."
+            self.status = "No native ndX source registered."
             return
         calibration = self.model.result.calibration.calibration
         for source in windows:

@@ -1,7 +1,7 @@
 """Core plugin for switching the active MMFDB user.
 
 The window is the native emtk app in :mod:`.app`; importing this package needs no Qt binding.
-The main window's own start-up sign-in (``chisurf.gui.LoginDialog``) is a shell dialog.
+The shell's own start-up sign-in is a shell dialog.
 """
 
 from __future__ import annotations

@@ -15,10 +15,6 @@ import pytest
 #: (module, attribute) pairs holding the setups file path, fixed when the module is imported.
 _SETUPS_FILE_CONSTANTS = (
     ("chisurf.core.data_io.detector_setups", "DETECTOR_SETUPS_FILE"),
-    (
-        "chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups",
-        "DETECTOR_SETUPS_FILE",
-    ),
 )
 #: (module, attribute) pairs holding a SetupTypeConfig whose ``canonical_file`` is that path.
 _SETUP_CONFIGS = (
@@ -31,7 +27,7 @@ def _module(name):
     """Import *name* (with the real settings, before redirection); ``None`` if unavailable."""
     try:
         return importlib.import_module(name)
-    except Exception:  # Qt or a binding missing: nothing to redirect then
+    except Exception:  # module unavailable: nothing to redirect then
         return sys.modules.get(name)
 
 

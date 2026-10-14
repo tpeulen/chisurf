@@ -653,7 +653,7 @@ def add_dataset(
             find_reader,
         )
 
-        ensure_experiments_registered(allow_widgets=False)
+        ensure_experiments_registered()
         named = find_reader(None, str(reader_name))
         if named is None:
             return service_error(f"unknown reader {reader_name!r}", error_code=INVALID_INPUT)

@@ -3,9 +3,8 @@
 The fit window's "State Scheme" page shows a model's rate scheme as a
 node-link diagram: states as discs, each non-zero rate as a curved arrow with
 its value on a badge, the externally driven transition (a laser) as ``k_exc``.
-The marks are the shared node-link vocabulary of
-:mod:`chisurf.gui.widgets.graph_canvas` -- dark grid, gradient discs, cyan and
-pink arrows -- so this diagram and the Qt form section look like one tool.
+The marks are ChiSurf's node-link vocabulary -- dark grid, gradient discs, cyan and
+pink arrows.
 
 Two halves, neither of which imports Qt:
 
@@ -79,7 +78,7 @@ def edge_route(
 ):
     """Route a curved edge from circle *p_i* to circle *p_j*.
 
-    The same geometry as :func:`chisurf.gui.widgets.graph_canvas.edge_path`:
+    The geometry of the node-link edges:
     endpoints on the rims, a two-way pair pushed apart sideways, a signed bow.
 
     Returns

@@ -74,7 +74,7 @@ CONTINUATION = "   ...: "
 #: The guided tour's target name for the console, shared with the Qt console's tour.
 VIEW_KEY = "chinsole_view"
 #: Help page and guided tour, shared with the Qt console (read as files: no Qt import).
-_CHINSOLE = pathlib.Path(__file__).resolve().parents[1] / "gui" / "chinsole"
+_CHINSOLE = pathlib.Path(__file__).resolve().parents[1] / "core" / "console"
 HELP_FILE = _CHINSOLE / "help.md"
 GUIDE_FILE = _CHINSOLE / "guide.json"
 #: The file filter of a saved macro.

@@ -20,22 +20,4 @@ else:
 icon = "📖"
 
 
-def __getattr__(attribute):
-    """Resolve the optional Qt host adapter without affecting native EMTK imports."""
-    if attribute in {"HelpEmtkTool", "HelpTool"}:
-        from chisurf.plugins.core.help.gui import tool
-
-        value = tool.HelpEmtkTool
-        globals()[attribute] = value
-        return value
-    raise AttributeError(f"module {__name__!r} has no attribute {attribute!r}")
-
-
-__all__ = ["HelpEmtkTool", "HelpTool"]
-
-# Entry point support — when loaded via plugin mechanism
-if __name__ == "plugin":
-    from chisurf.plugins.core.help.gui.tool import HelpEmtkTool
-
-    window = HelpEmtkTool()
-    window.show()
+__all__ = ["name", "cli_entrypoint", "icon"]

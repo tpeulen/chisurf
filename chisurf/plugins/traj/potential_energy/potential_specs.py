@@ -1,15 +1,13 @@
 """Qt-free potential registry for the native Potential-Energy app.
 
-The Qt tool builds its potentials from :data:`chisurf.gui.widgets.structure.potentialDict`,
-whose editor widgets double as the potential objects. Importing that registry pulls in
-Qt, so the native app cannot use it. This module mirrors the same potential set over the
-Qt-free core classes in :mod:`chisurf.core.structure.potential.potentials` (the same
-classes the Qt editors subclass) together with the parameters each Qt editor exposes.
+This mirrors the potential set of the retired Qt tool over the Qt-free core classes in
+:mod:`chisurf.core.structure.potential.potentials`, together with the parameters each of
+its editors exposed.
 
 The defaults are the *effective* values the Qt path computes with (which is not always
 what its spinboxes display — the Iso-UNRES CA-cutoff spinbox shows 20.0 while the
 constructor passes 25.0, and the ASA probe field shows 3.5 while the core constructor
-resets it to 1.0), so energies scored with untouched defaults match the Qt tool.
+resets it to 1.0), so energies scored with untouched defaults match the retired Qt tool.
 """
 
 from __future__ import annotations

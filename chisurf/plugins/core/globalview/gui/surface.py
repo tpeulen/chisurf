@@ -12,7 +12,7 @@ One immediate-mode frame draws everything:
 
 Every control is declared in the view spec and drawn by :mod:`emtk.view_form`;
 the only thing drawn by hand is the graph, which the node editor draws, and
-its colour key. Qt appears nowhere here -- :mod:`.tool` hosts this in a window.
+its colour key. No toolkit appears here.
 """
 
 from __future__ import annotations

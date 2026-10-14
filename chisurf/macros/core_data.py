@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pathlib
-import traceback
 
 import chisurf as cs
 import chisurf.core.base
@@ -100,9 +99,6 @@ def restore_global_fit_dataset(
         except Exception:
             pass
         cs.imported_datasets.append(dataset)
-        gui = getattr(cs, "cs", None)
-        if update_ui and gui is not None:
-            cs.gui.run_on_gui_thread(gui.update)
         _record_history(
             action_type="dataset_restore_global_fit",
             summary="restore global-fit dataset",
@@ -350,19 +346,8 @@ def remove_datasets(
         f"\nDependent fits to close: {len(dependent_fit_indices)}."
         f"\nPlease confirm to proceed."
     )
-    gui = getattr(cs, "cs", None)
-    proceed = True
-    if gui is not None:
-        # Imported here, not at module scope: macros run headless (server mode,
-        # CLI, action dispatch) and must not drag Qt in just to define them.
-        from chisurf.gui import dialogs
-
-        proceed = dialogs.confirm(gui, "Remove dataset(s)", message)
-    else:
-        logging.info("""Removing datasets without GUI confirmation: %s""", message)
-
-    if not proceed:
-        return
+    # The front end asks before it dispatches; the macro only logs what it removes.
+    logging.info("""Removing datasets: %s""", message)
 
     if dependent_fit_indices:
         old_confirm = cs.core.settings.gui.get("confirm_close_fit", True)
@@ -505,21 +490,6 @@ def add_dataset(
             except Exception:
                 pass
 
-            # When a GUI is available, drive a progress dialog while large files
-            # are staged from slow/network storage. The read runs on the GUI
-            # thread, but the staging copy loop is pure Python and pumps
-            # processEvents via the dialog, so the interface stays responsive
-            # and shows transfer speed. Headless callers skip this entirely.
-            _stage_finish = None
-            if gui is not None and hasattr(experiment_reader, "set_stage_callbacks"):
-                try:
-                    from chisurf.gui.widgets.staged_loading import make_lazy_stage_dialog
-
-                    _p_cb, _c_cb, _stage_finish = make_lazy_stage_dialog(gui, "Loading data")
-                    experiment_reader.set_stage_callbacks(_p_cb, _c_cb)
-                except Exception:
-                    _stage_finish = None
-
             try:
                 dataset = experiment_reader.get_data(**kwargs)
             except StagingCancelled:
@@ -531,8 +501,6 @@ def add_dataset(
                         experiment_reader.set_stage_callbacks(None, None)
                     except Exception:
                         pass
-                if _stage_finish is not None:
-                    _stage_finish()
             try:
                 logging.info(
                     "PDA TRACE: core_data.add_dataset get_data returned object of type %s",
@@ -555,15 +523,6 @@ def add_dataset(
                 else "No experiment reader available for the provided file."
             )
             cs.logging.error("add_dataset: no dataset read from %s. %s", filename, details)
-            if gui is not None:
-                from chisurf.gui import dialogs
-
-                dialogs.error(
-                    gui,
-                    "Error",
-                    "No data could be read. Check reading settings and file.",
-                    detail=details,
-                )
             return
 
         # Normalize to a group without modifying global state yet.
@@ -610,15 +569,6 @@ def add_dataset(
                 f"\nFilename: {filename}"
             )
             cs.logging.error("add_dataset: the reader returned an empty group. %s", details)
-            if gui is not None:
-                from chisurf.gui import dialogs
-
-                dialogs.error(
-                    gui,
-                    "Error",
-                    "No data entries found in the selected file using the current reader.",
-                    detail=details,
-                )
             return
 
         # Append valid data. Preserve ExperimentDataGroup objects even when
@@ -665,8 +615,6 @@ def add_dataset(
             )
         except Exception:
             pass
-        if gui is not None:
-            cs.gui.run_on_gui_thread(gui.update)
 
         try:
             logging.info("PDA TRACE: core_data.add_dataset finished successfully")
@@ -706,21 +654,11 @@ def add_dataset(
         )
 
     except Exception as e:
-        error_trace = traceback.format_exc()
         cs.logging.error("add_dataset: could not read %s: %s", primary_filename, e)
-        if gui is None:
-            # Without a GUI the caller is the one that must hear about it: a
-            # logged line alone would let a failed read look like a successful
-            # one to a script, the CLI or the assistant.
-            raise
-        from chisurf.gui import dialogs
-
-        dialogs.error(
-            gui,
-            "Error",
-            "Error reading data. Check Reading settings and file.",
-            detail=error_trace,
-        )
+        # The caller is the one that must hear about it: a logged line alone would
+        # let a failed read look like a successful one to a script, the CLI, the
+        # server or the assistant.
+        raise
 
 
 def reinitialize_application(main_window=None, progress_callback=None) -> None:
@@ -730,8 +668,8 @@ def reinitialize_application(main_window=None, progress_callback=None) -> None:
 
     Parameters
     ----------
-    main_window : QtWidgets.QMainWindow, optional
-        Main window instance for UI operations
+    main_window : object, optional
+        A front end window whose fit windows are closed first
     progress_callback : callable, optional
         Callback function for progress updates with signature (step_name, progress_value)
     """
@@ -790,23 +728,6 @@ def reinitialize_application(main_window=None, progress_callback=None) -> None:
                 restore_global_fit_dataset(_from_controller=True, update_ui=False)
         except Exception:
             _log_exception("clear imported_datasets")
-
-    def _clear_fit_windows():
-        """Close and clean up all fit windows"""
-        try:
-            if hasattr(cs.gui, "fit_windows"):
-                fit_windows = list(cs.gui.fit_windows)
-                cs.gui.fit_windows.clear()
-
-                for fw in fit_windows:
-                    try:
-                        if hasattr(fw, "close_confirm"):
-                            fw.close_confirm = False
-                        fw.close()
-                    except Exception:
-                        pass
-        except Exception:
-            _log_exception("clear fit windows")
 
     def _clear_global_caches():
         """Clear specific cs caches safely"""
@@ -903,7 +824,6 @@ def reinitialize_application(main_window=None, progress_callback=None) -> None:
     # Execute reinitialization steps
     _run("Closing all fits", lambda: main_window.onCloseAllFits() if main_window else None, 1)
     _run("Closing subwindows", _close_subwindows, 2)
-    _run("Clearing fit windows", _clear_fit_windows, 3)
     _run("Clearing datasets", _clear_imported_datasets_keep_global, 4)
     _run("Clearing global caches", _clear_global_caches, 5)
     _run(

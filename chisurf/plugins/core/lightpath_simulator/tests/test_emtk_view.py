@@ -12,8 +12,8 @@ import pytest
 
 emtk = pytest.importorskip("emtk")
 
-from chisurf.gui.widgets.node_editor.document import GraphDocument  # noqa: E402
-from chisurf.gui.widgets.node_editor.emtk_control import GraphControl  # noqa: E402
+from chisurf.emtk.node_editor.document import GraphDocument  # noqa: E402
+from chisurf.emtk.node_editor.control import GraphControl  # noqa: E402
 from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import (  # noqa: E402
     WAVELENGTHS,
 )
