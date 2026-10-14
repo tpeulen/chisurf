@@ -114,6 +114,9 @@ suspicious of.
 
 ## The parameters, in the order that matters
 
+These are the arguments of the photon library's `hdbscan`. ndX exposes the
+first two, both defaulting to 5.
+
 | Parameter | What it decides |
 |---|---|
 | `min_cluster_size` | The smallest group that counts as a population. The one parameter that has a scientific answer: how many bursts must a species contribute before it is a species? |
@@ -142,7 +145,8 @@ before clustering, or cluster on the axes that share units.
 ## See also
 
 - Tools in ChiSurf: **ndX** (`chisurf/plugins/ndxplorer/`) offers this clustering
-  over any set of columns and writes the labels back as a column.
+  over any set of columns and writes the result back as the columns
+  `Cluster Label` and `Cluster Probability`.
 - {ref}`concept-multidimensional-exploration` — the table these clusters are
   found in, and the projections that make them visible.
 - The workflow: {doc}`ndX </guides/46_ndxplorer>`.

@@ -42,12 +42,10 @@ getter once. A provider/header getter already expressed in ns uses that unit
 directly. Mixing the two paths creates a factor-of-1000 error.
 
 Timing read from a provider or header is distinct from independently known
-acquisition calibration. An unsaved initializer is not provenance. For the
-headerless measured BH132 fixture, the provider-derived micro-time step is
-3.2958984375 ps; it is not an independently verified instrument calibration.
-An explicit manual or saved timing override must be based on its own stated
-purpose. The 25 ps setting used in legacy histogram validation establishes
-count/control comparison, not a new acquisition clock. See the
+acquisition calibration. For the headerless BH SPC-132 test file, the
+provider-derived micro-time step is 3.2958984375 ps; that is what the reader
+reports, not a verified instrument calibration. A manual timing override should
+state why it is there. See the
 [microtime histogram workflow](../guides/89_microtime_histogram.md).
 
 ## Calibration and TAC corrections
@@ -76,11 +74,10 @@ operations; saving a name is another persistence action. Additional scientific
 metadata must survive each operation rather than being reduced to visible
 detector columns.
 
-The native editor uses this same portable model in standalone and hosted
-pages. Existing wizard navigation can require successful definition export
-before completion; cancelled or failed export does not satisfy that policy.
-The current controls and Python interfaces are described in
-[the detector-definition guide](../guides/87_channel_definition.md).
+The editor uses this same portable model standalone and inside wizards; a
+wizard step that requires an exported definition is not satisfied by a
+cancelled or failed export. Controls and Python interfaces are in the
+[channel-definition guide](../guides/87_channel_definition.md).
 
 ## See also
 
@@ -88,15 +85,9 @@ The current controls and Python interfaces are described in
 - [Measurement and provenance](measurement_database.md).
 - Portable model: {src}`chisurf/core/setup_channel_definition.py`.
 - Reading/LUT adapter: {src}`chisurf/core/data_io/detector_setups.py`.
-
-Native preset-editor geometry is declared alongside its controls. Restoring a
-window retains the selected detector setup and correlation pairs; changing its
-size does not modify the instrument definition or saved presets. See the
-[channel workflow](../guides/87_channel_definition.md).
-
-The native calibration host reads its primary size before preparing controls.
-Saved host geometry does not modify detector histograms, IRF/background windows
-or the deep-copied snapshot published by Apply. The
-[calibration workflow](../guides/99_img_calibration.md) documents this distinction.
-
-Tools: IRF & BG (`chisurf/plugins/microscopy/img_calibration/`), Channel Definition (`chisurf/plugins/core/setup_channel_definition/`), LUT Tools (`chisurf/plugins/tttr/tttr_lut_tools/`).
+- Tools: **Setup › Channel Definition**
+  (`chisurf/plugins/core/setup_channel_definition/`, guide:
+  [channel definition](../guides/87_channel_definition.md)), **IRF & BG**
+  (`chisurf/plugins/microscopy/img_calibration/`, guide:
+  [calibration](../guides/99_img_calibration.md)), **Tools › TTTR › LUT Tools**
+  (`chisurf/plugins/tttr/tttr_lut_tools/`).

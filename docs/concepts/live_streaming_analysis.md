@@ -99,7 +99,7 @@ second one on, with nothing raising.
 
 ## The acquisition plugin
 
-`chisurf/plugins/core/acq/` applies this to a running measurement. One Qt-free `AcquisitionPipeline` decodes the device
+**Tools › Views › Acquisition** (`chisurf/plugins/core/acq/`) applies this to a running measurement. One Qt-free `AcquisitionPipeline` decodes the device
 words with the photon library's record decoder (a carried decode state keeps macro times absolute across chunks) and feeds
 streaming consumers for the decay, correlation, count rate, MCS and macro time. The sources are Simulation, Becker-Hickl,
 PicoQuant and BrickMic. Selecting hardware never contacts it: you press **Initialize device** first, and a missing driver

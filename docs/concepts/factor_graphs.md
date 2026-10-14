@@ -56,10 +56,9 @@ are. The coupling between parameters is therefore never stated directly — it i
 *implied*, through the factors they share, and recovering it explicitly is the
 first step of everything below.
 
-The **structural** machinery is what ChiSurf takes from this, and it transfers
-exactly. The *inference* is a longer story, and it is worth telling because the
-short version — "those kernels do not transfer to a continuous posterior" — is
-what this page and the source said until recently, and it is wrong.
+The **structural** machinery transfers to a fit exactly. The *inference*
+machinery transfers too, but only in part, and it is easy to conclude wrongly
+that it does not transfer at all.
 
 Factor graphs are best known as the substrate for the sum-product algorithm,
 whose great success is decoding capacity-approaching error-correcting codes.

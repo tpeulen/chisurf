@@ -83,9 +83,10 @@ than the formalism {cite}`peulen2017`:
 ## Choosing what $p(R)$ to fit
 
 The choice is a modelling decision, not a technical one, and it is where the
-physics enters. ChiSurf ships four, in increasing amount of assumed structure.
+physics enters. ChiSurf ships four distribution models, roughly in increasing
+amount of assumed structure, plus a discrete one.
 
-**Gaussian** (`FRET: FD (Gaussian)`). One or more Gaussians in $R$, each with a
+**Gaussian** (`FRET: Gaussian distances`). One or more Gaussians in $R$, each with a
 mean and a width. Assumes nothing about the polymer, which makes it the default
 when the question is "how broad is this?" rather than "which chain model
 applies?". Several Gaussians describe discrete conformational states, and the
@@ -93,14 +94,14 @@ usual caution applies — two Gaussians will fit a broad unimodal distribution
 convincingly. The Gaussian is the form used since the first decay-based distance
 distributions {cite}`haas1975`.
 
-**Worm-like chain** (`FRET: FD (Worm-like chain)`). $p(R)$ from a contour length
+**Worm-like chain** (`FRET: worm-like chain`). $p(R)$ from a contour length
 and a persistence length, the standard model for a semi-flexible chain such as
 duplex DNA or an unfolded but stiff peptide; ChiSurf evaluates the analytical
 radial distribution of {cite}`becker2010`. Two physical parameters instead of
 a free shape, so it is far better conditioned — when the model is right. An
 optional linker width broadens the result to account for the dye clouds.
 
-**SAW-ν** (`FRET: FD (SAW-ν)`). A self-avoiding walk parameterized by the RMS
+**SAW-ν** (`FRET: self-avoiding chain (SAW-ν)`). A self-avoiding walk parameterized by the RMS
 end-to-end distance and the Flory scaling exponent $\nu$
 {cite}`flory1949`, in the des Cloizeaux form
 $p(R) \propto R^{2+(\gamma-1)/\nu}\exp[-(R/r_0)^{1/(1-\nu)}]$
@@ -112,16 +113,16 @@ $\nu \approx 0.59$ is a good solvent (expanded), $\nu \to 1/3$ a poor one
 {cite}`hofmann2012` {cite}`schuler2016`. Fitting $\nu$ rather than assuming it
 is what makes the measurement a statement about chain–solvent interaction.
 
-**Ising chain** (`FRET: FD (Ising)`). A two-state chain in which a field drives
+**Ising chain** (`FRET: Ising two-state chain`). A two-state chain in which a field drives
 folded (compact) against unfolded (expanded) segments, with a nearest-neighbour
 coupling for cooperativity — the helix–coil model of {cite}`zimm1959` with a
 Gaussian bond per residue state, solved by a transfer-matrix product. It gives a
 distance distribution that changes shape with the field rather than merely
 shifting.
 
-**Discrete rates** (`FRET: FD (Discrete)`) is the degenerate case: fit transfer
-rate constants directly, with no distance model at all. Useful when the
-distribution is genuinely a small number of states and you would rather not
+**Discrete distances** (`FRET: discrete distances`) is the degenerate case: a
+few donor–acceptor distances, each with an amplitude and no width. Useful when
+the distribution is genuinely a small number of states and you would rather not
 impose a shape on it.
 
 For the workflow and worked parameter sweeps, see

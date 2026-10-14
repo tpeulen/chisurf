@@ -72,18 +72,18 @@ in local quenching, in orientation, and therefore in decay. Excitation migrating
 between them produces a decay that is not the decay of either.
 
 ChiSurf's **partial donor–donor energy migration** model
-(`FRET: PDDEM`, {cite}`kalinin2004`) describes exactly this: two donor
+(`PDDEM: partial donor-donor energy migration`, {cite}`kalinin2004`) describes exactly this: two donor
 populations $A$ and $B$, each carrying its own multi-exponential lifetime
 spectrum, coupled by transfer rates in **both** directions. The parameters that
 matter, beyond the two decays:
 
-- **$\alpha_A$, $\alpha_B$** — the transfer efficiencies $A\!\to\!B$ and
-  $B\!\to\!A$. They are independent, and their inequality is what "partial"
+- **$\alpha_A$, $\alpha_B$** (`AtB`, `BtA`) — the transfer efficiencies
+  $A\!\to\!B$ and $B\!\to\!A$. They are independent, and their inequality is what "partial"
   refers to: migration is not symmetric when the two sites are not equivalent.
-- **Excitation probabilities $p_x^A$, $p_x^B$** — how the initial excitation is
+- **Excitation probabilities $p_x^A$, $p_x^B$** (`xA`, `xB`) — how the initial excitation is
   divided between the sites, set by the two absorption cross-sections at the
   excitation wavelength.
-- **Emission probabilities $p_m^A$, $p_m^B$** — how much of each site's emission
+- **Emission probabilities $p_m^A$, $p_m^B$** (`mA`, `mB`) — how much of each site's emission
   reaches the detector, set by the detection band.
 
 The transfer rate is taken from a **distance distribution** rather than a single
@@ -107,15 +107,15 @@ one, two or three dimensions each give a distinct decay law.
 Two consequences worth knowing before fitting such a sample:
 
 - The observable is a **surface or volume density of acceptors**, not a distance.
-  Fitting a distance to a acceptor population spread at random returns a number with
-  no physical referent.
+  Fitting a distance to a randomly distributed acceptor population returns a
+  number with no physical referent.
 - The decay is strongly non-exponential by construction, so a multi-exponential
   fit will describe it with components that are not species. This is the same
   trap as in {ref}`concept-maximum-entropy`, arriving from a different direction.
 
-For a randomly acceptor population spread at random there is a characteristic
-concentration at which transfer becomes efficient, set by $R_0$ — for
-$R_0 = 25$ Å it is in the tens of millimolar, which is why homo-transfer between
+For acceptors distributed at random in three dimensions there is a
+characteristic concentration at which transfer becomes efficient,
+$C_0 = 447/R_0^3$ M with $R_0$ in Å — for $R_0 = 25$ Å about 30 mM, which is why homo-transfer between
 freely diffusing dyes needs concentrations far above those used in
 single-molecule work and is a non-issue there.
 

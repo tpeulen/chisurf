@@ -165,7 +165,10 @@ $f \in \{0, 0.25, 0.5, 0.75, 1\}$.
   {src}`chisurf/plugins/tttr/trace_browser/core/binning.py#bin_trace`, the HMM
   fit {src}`chisurf/plugins/core/hmm/core/analysis.py#fit_traces`, dwell times
   {src}`chisurf/plugins/core/hmm/core/analysis.py#dwell_times`.
-- Tools in ChiSurf: **Intensity trace** (`chisurf/plugins/tttr/intensity_trace/`) bins a TTTR file per detector, histograms the counts and fits an HMM.
+- Tools in ChiSurf: **Spectroscopy › Single-Molecule › Intensity trace**
+  (`chisurf/plugins/tttr/intensity_trace/`) bins a TTTR file per detector,
+  histograms the counts and fits an HMM; **Tools › TTTR › Count Rate Analysis**
+  (`chisurf/plugins/tttr/tttr_count_rate_analysis/`).
 
 ## References
 
@@ -183,22 +186,11 @@ $f \in \{0, 0.25, 0.5, 0.75, 1\}$.
 - {cite}`page1957`, {cite}`watkins2005`, {cite}`ensign2010` — change-point
   detection, classical and photon-by-photon.
 
-## Synthetic workflow check
+## A trace with a known answer
 
-The [intensity workflow](../guides/74_intensity_traces_and_file_tools.md)
-provides a seeded two-state photon demo through `make_demo()`. The primary SPC
-and JSON settings are cached under `demos/intensity_trace` in the settings
-folder. Generator mean dwells of 20 / 80 ms and fitted demonstration dwells
-of 22.0 / 87.2 ms are distinct quantities; the latter are finite-sample estimates.
-
-## Cooperative fitting cancellation
-
-HMM estimation and BIC state-count scans may be stopped between EM maps.
-Cancellation is a lifecycle operation: it does not change the likelihood,
-state ordering, convergence criterion or completed-fit values. A cancelled
-scan does not substitute a partial curve for the last complete scan; cancelled
-HMM fits do not write partial exports. One already-running lattice sweep is
-indivisible, so stopping waits for that sweep to return.
-See [the native workflow](../guides/22_binned_photon_traces.md).
-
-Tool: Count Rate Analysis (`chisurf/plugins/tttr/tttr_count_rate_analysis/`).
+The tool ships a seeded two-state photon demo (`make_demo()` in
+`chisurf/plugins/tttr/intensity_trace/demo.py`, walked through in the
+[guide](../guides/74_intensity_traces_and_file_tools.md)). Its generator
+dwells are 20 and 80 ms; the fitted dwells come out longer (near 26 and 105 ms
+at 2 ms bins), because an excursion shorter than a few bins is not resolved and
+merges two dwells — the bin-width trade-off above, measured.

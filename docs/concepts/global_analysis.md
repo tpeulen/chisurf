@@ -158,10 +158,23 @@ The linking scheme is a graph: parameters are nodes, links are directed edges,
 and the connected components are the quantities the analysis actually estimates.
 That is the same structure {ref}`the factor graph <concept-factor-graphs>`
 exposes numerically — the picture and the report are two views of one object.
-ChiSurf's **Global View** draws exactly that graph and lets it be edited — see
-the [guide](../guides/60_global_analysis.md). The same information appears as a
-table, and both are views of one live state: a link made in either is a link in
-the fit.
+ChiSurf's **Tools › Views › Global View** (`chisurf/plugins/core/globalview/`)
+draws exactly that graph and lets it be edited; the same information appears as
+a link table, and both are views of one live state: a link made in either is a
+link in the fit. Free, linked and fixed parameters have distinct colours, and
+the layout never changes the fit.
+
+Its **factor graph** view draws each dataset as a likelihood (square) joined to
+the variables it reads, with links resolved, so a shared lifetime is one
+variable joined to both squares. The status line counts likelihoods, variables,
+shared variables and **independent blocks**; two blocks are two separate fits,
+however many links were drawn. Networks save as GraphML and can be re-applied to
+a new set of datasets.
+
+For a catalogue model with selectable equations, the link-target menu offers
+only the parameters the *active* equation reads (including fixed ones); the
+model keeps every equation's parameters so switching equations preserves
+identity and saved state. Controls: the [guide](../guides/60_global_analysis.md).
 
 For the posterior's structure — which parameters the data actually constrains
 *jointly*, whether or not they were linked — see
@@ -182,34 +195,3 @@ For the posterior's structure — which parameters the data actually constrains
   {cite}`beechem1985` global versus target analysis; {cite}`ameloot1986` which
   rate constants a decay surface can determine at all; {cite}`beechem1992` the
   method review — what to link, what not to, and how to test a link.
-
-
-## Active equations and completed global results
-
-A catalogue model retains the parameter ports of every selectable equation so
-changing its topology preserves parameter identity and saved state. Linking is
-presented against the active equation: the target menu offers only the ports
-that equation reads, including its fixed parameters. For example, the FCS
-equation **3D Gauss, 1 bunching** has six active targets even though the whole
-catalogue owns 134 ports.
-
-Completion refreshes the global fit and the member fit windows from the same
-computed model objects. Notifications do not require evaluating the fitted
-curve again. A displayed reduced chi-square of **1.0000** can be ordinary
-rounding: the shipped three-A488 Confocor example gives approximately
-0.9999763242, whose explicit weighted-residual sum agrees with the reported
-value. Check the residual arithmetic before treating that display as a defect.
-The [global-analysis workflow](../guides/60_global_analysis.md) shows the target menu.
-
-## Global View: the parameter network
-
-`chisurf/plugins/core/globalview/` draws every open fit, its parameters and the links between them. A **link** makes a
-follower take its master's value, so two datasets sharing one lifetime are two fits whose `tau` parameters are linked. A
-link that would close a cycle is refused. Free, linked and fixed parameters have distinct colours; the layout only
-decides where nodes sit and never changes the fit.
-
-The **factor graph** view draws the same fits as the posterior a global fit estimates: each dataset is a likelihood
-(square), joined to the variables it reads with links resolved, so a shared lifetime is one variable joined to both
-squares. The status line counts the likelihoods, the variables, the shared ones and the **independent blocks**; two
-blocks are two separate fits sharing a window, however many links were drawn. Networks save as GraphML and re-apply to a
-new set of datasets. The controls are in the [global-analysis workflow](../guides/60_global_analysis.md).

@@ -34,11 +34,67 @@
     "sha256": "8b29d680e5ba4e33c88340e91335a1e48bd29eedc72b6ea0bb73d07ee9d64ef0",
     "status": "ai-reviewed"
   },
+  "deconvolution.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4e795fdac8d91f963fd0607fc3148df4b7eb5b03f50697e455d837a44c4af5cc",
+    "status": "ai-reviewed"
+  },
+  "density_clustering.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7fb353993f95bdf0dba82a765ad644fc60424c6060b4f18ecbcb225be9706305",
+    "status": "ai-reviewed"
+  },
+  "detector_setup.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a86359dbc993e39ae4fce1ac70363a17eba049d4a18c827db3842f1127f4f598",
+    "status": "ai-reviewed"
+  },
+  "distance_distributions.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f0ef1f4996c3bb42f5398bd5e7bf4249a3e28f676c386af340b707a1db168147",
+    "status": "ai-reviewed"
+  },
+  "drift_correction.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "048e1b52ded250ce0b7a5b4387b93752181c40ee0546e1678d4beafbc04a5717",
+    "status": "ai-reviewed"
+  },
+  "dye_quenching.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ef13319db77e9fc4949dbd791e7bdcab4ed6fccd0ed7e48a85837dbad058a280",
+    "status": "ai-reviewed"
+  },
   "ebfret.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "e7e2c72192313b131def345eddb348164f63fbb7abbc788f3214e057edef179c",
+    "status": "ai-reviewed"
+  },
+  "energy_migration.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "67a86e0ed7479b356ba4f09e54a801e00d6657c36de54df28029628980b692c1",
+    "status": "ai-reviewed"
+  },
+  "factor_graphs.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "9f157a4d12cd25a8b220f4e4152c3c1e6d0da43ecf2855e322010c62825fb646",
     "status": "ai-reviewed"
   },
   "fcs_correlation.md": {
@@ -55,11 +111,32 @@
     "sha256": "729858e78feb23fe04a61e85d3b193cfbd76a440cb976738c9d45520dafa8d2d",
     "status": "ai-reviewed"
   },
+  "file_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e6fefc25a8538d2c2c7d6b7c27bae6744f1e049fc1d33c0e08a2aa7be860de3c",
+    "status": "ai-reviewed"
+  },
   "filtered_fcs.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "365ee6ae4329fcc416283e570dc4b1b278e709af312847037aae4873ef3e154b",
+    "status": "ai-reviewed"
+  },
+  "fitting_objectives.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ee109fa1c97d369b5e119bd498fb0641c573fcf9a007a639eaba614501b9331d",
+    "status": "ai-reviewed"
+  },
+  "frap.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "77caaa2d06ba857241b5dcb2016946e1f360655986842b977c37d0c0a319cbb5",
     "status": "ai-reviewed"
   },
   "frc_resolution.md": {
@@ -76,6 +153,20 @@
     "sha256": "c125eb3e26a9130c08461ffb0d183e35e455f5f515d6d335b1b07a6704aecafd",
     "status": "ai-reviewed"
   },
+  "games.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "df3bb9a24fc233b056088075974210a743e1490232ba28e182400e83c8882a8a",
+    "status": "ai-reviewed"
+  },
+  "global_analysis.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f09c1ea4ff74f782413cf66b89d5b7d74f5aba897eaeaf2a0327c7709714d929",
+    "status": "ai-reviewed"
+  },
   "h2mm.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
@@ -90,11 +181,46 @@
     "sha256": "6f77e86b8f1f7eec5f06cb863bd634cf2f46d676c6898c1b16045419dcc694d0",
     "status": "ai-reviewed"
   },
+  "hydrodynamics.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "783e3f8bb4088b3409642c051ac208d5e3bd96c8898dcd02330f6a0250c500eb",
+    "status": "ai-reviewed"
+  },
+  "image_correlation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0c9a1637cd34ea6464c09c0b4b2361e59c25b36c7f94162ec97eeb410b8ec6c8",
+    "status": "ai-reviewed"
+  },
   "imaging_flim_phasor.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "b6f26cfeeca74108718ce660ae76f4744ab9f3935c01db08249e4ae3f861de67",
+    "status": "ai-reviewed"
+  },
+  "intensity_traces.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2091c2d3dbf4440f1f658c78a457caf4965ed95db47ab9230d27b42398879e87",
+    "status": "ai-reviewed"
+  },
+  "kappa2_orientation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "eff4c6cc6e352c31a71acfc4ac26b7416ccc662bea555b29b3f1d16aeb51396b",
+    "status": "ai-reviewed"
+  },
+  "live_streaming_analysis.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1a907ae80b59f6c8cd90671d13552cbf49744b5518ff435752a1aa0140b6b423",
     "status": "ai-reviewed"
   },
   "pch_fida.md": {

@@ -166,3 +166,6 @@ consecutive frames are most similar in brightness.
 ## See also
 
 - Tools in ChiSurf: **Drift Correction** (`chisurf/plugins/microscopy/img_drift/`) measures the shift and applies it — to the frames of a stack, or to the coordinates of a photon stream.
+- Python: {src}`chisurf/core/fluorescence/imaging/drift.py` — `estimate_drift`
+  (`reference="first" | "previous" | "mean"`, `smooth=2.0`, `subpixel=False`),
+  `apply_drift` (`mode="wrap" | "constant"`) and `correct_drift`.

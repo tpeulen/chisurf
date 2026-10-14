@@ -183,12 +183,3 @@ smaller values, because a tethered dye diffuses more slowly than a free one.
   viscosity of bead models.
 - {cite}`garciadelatorre2001`: what the hydration in a hydrodynamic model
   means.
-
-### Native HydroPro display contract
-
-The native host declares an initial 1100 × 720 logical-pixel window, with saved
-geometry taking precedence. This declaration does not alter hydrodynamic
-settings, the external runner or diffusion coefficients. The [HydroPro workflow](../guides/79_hydropro.md)
-distinguishes parser-format fixture evidence from a physical calculation: a
-stand-in report can verify parsing and display, but cannot validate a bead model
-or an external executable.

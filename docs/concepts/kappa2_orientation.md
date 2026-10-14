@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: The orientation factor κ² and what it costs
-description: The Förster radius contains $kappa^2$, the mutual orientation of the donor emission dipole and the acceptor absorption dipole.
+description: The Förster radius contains κ², the mutual orientation of the donor emission dipole and the acceptor absorption dipole; this page shows when κ² = 2/3 holds and how measured anisotropies bound the distance error.
 tags: [concepts, fret, kappa2, orientation, anisotropy]
 anchor: concept-kappa2-orientation
 ---
@@ -272,8 +272,3 @@ do not, because $E(R)$ is non-linear.
   mobility and the $\kappa^2$ uncertainty into time-resolved FRET analysis;
   {cite}`lakowicz2006`,
   energy-transfer chapters, for the geometry and the averaging regimes.
-
-The native calculator's input, model and statistic hints distinguish anisotropy
-assumptions from the sampled orientation distribution. Seeded before/after
-comparisons verify that compact geometry and text localization do not change
-that distribution. See the [workflow](../guides/61_kappa2_distribution.md).

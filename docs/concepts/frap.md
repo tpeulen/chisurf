@@ -42,7 +42,13 @@ difference of two error functions per axis, and diffusion simply widens
 $N(t)$ with time. Fitting the spatial profile at every frame uses far more of
 the data than collapsing each frame to one number, and it keeps the bleach
 geometry ($L_x$, $L_y$, $r$) separate from the transport ($D$) instead of
-entangling them. The half-time of the fit is a derived, reported quantity
+entangling them. The mobile fraction $k$ scales what recovers:
+
+$$
+F_\text{obs}(x, y, t) = F(x, y, 0) + k\,\bigl[F(x, y, t) - F(x, y, 0)\bigr].
+$$
+
+The half-time of the fit is a derived, reported quantity
 ({src}`chisurf/core/fluorescence/imaging/frap.py#FrapResult`); stacks are
 normalised against pre-bleach and unbleached references before fitting
 ({src}`chisurf/core/fluorescence/imaging/frap.py#normalise_frap_stack`).

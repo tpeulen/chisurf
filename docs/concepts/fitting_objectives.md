@@ -19,7 +19,7 @@ See [parameter uncertainty](parameter_uncertainty.md) for what happens to the
 error bars afterwards, and [TCSPC lifetimes](tcspc_lifetime.md) for the models
 this applies to.
 
-## The four statistics
+## The statistics
 
 Write $d_i$ for the measured value in channel $i$, $m_i$ for the model there,
 and $\sigma_i$ for the weight.
@@ -32,7 +32,10 @@ distinguishes the variants is entirely where $\sigma_i$ comes from.
 | **Neyman** $\chi^2$ | $\sigma_i^2 = \max(d_i, 1)$ — from the **data** | fast, familiar, **biased low** at small counts |
 | **Pearson** $\chi^2$ | $\sigma_i^2 = m_i$ — from the **model** | nearly unbiased; the weights move as the fit moves |
 | **Poisson MLE** ($2I^*$) | none — a likelihood, not a weighted square | the correct estimator for counts |
-| **Gehrels** | an approximate Poisson confidence interval | a middle ground when least squares is required and counts are low |
+
+Decay and general fits choose between Neyman (`default`) and Poisson
+(`poisson`), below. PDA models offer all three through their own
+**Statistic** control (`poisson` by default).
 
 A photon-counting histogram has $\mathrm{Var}(d_i) = \lambda_i$, the *expected*
 count. Neyman substitutes the observed count for it and Pearson substitutes the

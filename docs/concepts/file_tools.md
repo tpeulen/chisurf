@@ -17,12 +17,13 @@ and none of them estimates a physical quantity. The File tools are ordinary tool
 
 | tool | does |
 |---|---|
-| TTTR Split / Convert | splits a recording into files of $N$ photons; converts between container formats |
+| Split/Convert | splits a recording into files of $N$ photons; converts between container formats |
 | ⇄ .pto | packs vendor files into a `.pto` container and unpacks one back |
 | PTO Inspector | lists what a `.pto` contains before it is used |
-| TTTR header | shows and corrects the tags a vendor wrote into the header; the edited header is saved as a **new** PTU |
-| TTTR → Time Windows | cuts each recording into fixed-duration windows, written as a burst-ID (`.bst`) file with one row per window |
-| BID → Analysis | turns a BID/`.bst` file into a burst table in the measurement's `.pto` |
+| TTTR Header editor | shows and corrects the tags a vendor wrote into the header; the edited header is saved as a **new** PTU |
+| TTTR→Time-Window BIDs | cuts each recording into fixed-duration windows, written as a burst-ID (`.bst`) file with one row per window |
+| BID→Analysis | turns a BID/`.bst` file into a burst table in the measurement's `.pto` |
+| MFD Prepare | resolves the photon sources of a burst folder, checks channel counts and computes mean micro times before MFD analysis |
 
 ## What stays the same
 
@@ -38,5 +39,9 @@ The one-measurement-one-file arrangement behind the `.pto` is explained in
 - [Intensity traces and file tools](../guides/74_intensity_traces_and_file_tools.md)
 - [Handling TTTR files](../guides/12_handling_tttr_files.md)
 - [Inspecting a container](../guides/63_pto_inspector.md)
+- [MFD Prepare](../guides/85_mfd_prepare.md)
 
-Tools: Split/Convert (`chisurf/plugins/tttr/tttr_splitter/`), TTTR Header editor (`chisurf/plugins/tttr/tttr_header_edit/`), TTTR→Time-Window BIDs (`chisurf/plugins/tttr/tttr_time_windows/`), ⇄ .pto (`chisurf/plugins/core/tttr_to_pto/`).
+Tools: Split/Convert (`chisurf/plugins/tttr/tttr_splitter/`), ⇄ .pto (`chisurf/plugins/core/tttr_to_pto/`),
+PTO Inspector (`chisurf/plugins/core/pto_inspector/`), TTTR Header editor (`chisurf/plugins/tttr/tttr_header_edit/`),
+TTTR→Time-Window BIDs (`chisurf/plugins/tttr/tttr_time_windows/`), BID→Analysis (`chisurf/plugins/burst/bid_to_analysis/`),
+MFD Prepare (`chisurf/plugins/burst/mfd_prepare/`).
