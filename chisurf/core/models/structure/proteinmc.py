@@ -196,7 +196,7 @@ def _residue_index_map(structure: ProteinCentroid) -> dict[tuple[str, int], int]
         mask = atoms["res_id"] == res_id
         if not mask.any():
             continue
-        chain = _as_text(atoms[mask][0]["chain"]) if "chain" in atoms.dtype.names else "A"
+        chain = _as_text(atoms[mask][0]["chain"]) if "chain" in (atoms.dtype.names or ()) else "A"
         idx_map[(chain, int(res_id))] = n
     return idx_map
 
@@ -342,11 +342,11 @@ class DirectLabelingPotential:
             residue = int(position["residue_seq_number"])
             atom_name = str(position.get("atom_name", "CA"))
             mask = np.ones(len(atoms), dtype=bool)
-            if "chain" in atoms.dtype.names:
+            if "chain" in (atoms.dtype.names or ()):
                 mask &= np.array([_as_text(v) == chain for v in atoms["chain"]])
-            if "res_id" in atoms.dtype.names:
+            if "res_id" in (atoms.dtype.names or ()):
                 mask &= atoms["res_id"] == residue
-            if "atom_name" in atoms.dtype.names:
+            if "atom_name" in (atoms.dtype.names or ()):
                 atom_mask = np.array([_as_text(v) == atom_name for v in atoms["atom_name"]])
                 fallback_ca = np.array([_as_text(v) == "CA" for v in atoms["atom_name"]])
                 selected = np.where(mask & atom_mask)[0]

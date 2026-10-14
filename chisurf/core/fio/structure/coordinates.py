@@ -255,10 +255,10 @@ _STANDARD_RESIDUES = {
 
 def find_atom_index(
     atoms: np.ndarray,
-    chain_identifier: str,
-    residue_seq_number: int,
-    atom_name: str,
-    residue_name: str,
+    chain_identifier: str | None,
+    residue_seq_number: int | None,
+    atom_name: str | None,
+    residue_name: str | None,
     verbose: bool = False,
     ignore_multiple_selections: bool = True,
 ):
@@ -291,7 +291,7 @@ def find_atom_index(
         )[0]
         if verbose:
             print(
-                f"-- WARNING no chain specified. Possible attachment atoms: {attachment_atom_index: }"
+                f"-- WARNING no chain specified. Possible attachment atoms: {attachment_atom_index}"
             )
     else:
         attachment_atom_index = np.where(

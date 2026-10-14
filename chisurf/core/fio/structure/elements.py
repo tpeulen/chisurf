@@ -13,6 +13,11 @@ metal in half the files in the world.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # numpy is imported where it is used, to keep this import light
+    import numpy
+
 __all__ = [
     "ATOMIC_MASS",
     "VDW_RADIUS",
@@ -291,7 +296,7 @@ def mass_of(symbol: str) -> float | None:
     return ATOMIC_MASS.get(str(symbol).strip().upper())
 
 
-def radii_for(symbols) -> numpy.ndarray:  # noqa: F821
+def radii_for(symbols) -> numpy.ndarray:
     """Van der Waals radii for a sequence of symbols, vectorised over a cache."""
     import numpy as np
 
@@ -306,7 +311,7 @@ def radii_for(symbols) -> numpy.ndarray:  # noqa: F821
     return values
 
 
-def masses_for(symbols) -> tuple[numpy.ndarray, int]:  # noqa: F821
+def masses_for(symbols) -> tuple[numpy.ndarray, int]:
     """Masses for a sequence of symbols, and how many were not recognised.
 
     Returns

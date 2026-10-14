@@ -254,7 +254,7 @@ def _measure_internal_coordinates(structure: Structure, plans: list) -> int:
     an ``(n, 3)`` array.
     """
     quads = [payload for kind, payload in plans if kind == "quad"]
-    lengths = angles = dihedrals = None
+    lengths = angles = dihedrals = np.empty(0)
     if quads:
         n = len(quads)
         xyz = structure.atoms["xyz"]
@@ -262,9 +262,10 @@ def _measure_internal_coordinates(structure: Structure, plans: list) -> int:
             xyz[np.fromiter((q[k]["i"] for q in quads), dtype=np.int64, count=n)] for k in range(4)
         ]
         v1, v2, v3, vn = gather
-        lengths = cs.core.math.linalg.norm3(v3 - vn)
-        angles = cs.core.math.linalg.angle(v2, v3, vn)
-        dihedrals = cs.core.math.linalg.dihedral(v1, v2, v3, vn)
+        # Stacked (n, 3) inputs: each helper returns one value per quadruple.
+        lengths = np.asarray(cs.core.math.linalg.norm3(v3 - vn))
+        angles = np.asarray(cs.core.math.linalg.angle(v2, v3, vn))
+        dihedrals = np.asarray(cs.core.math.linalg.dihedral(v1, v2, v3, vn))
 
     ai = 0
     q = 0
@@ -556,7 +557,7 @@ class ProteinCentroid(Structure):
         """Update the C-alpha distance matrix."""
         atom_dist(self.dist_ca, self.l_res, self.xyz, a2id["CA"])
 
-    def update(self, start_point: int = 0):
+    def update(self, start_point: int = 0, **kwargs):
         """Update cartesian coordinates from internal coordinates."""
         ic = self.internal_coordinates
         n_atoms = ic.shape[0]

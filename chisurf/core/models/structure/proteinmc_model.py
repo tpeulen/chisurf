@@ -20,7 +20,7 @@ import re
 import threading
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -34,6 +34,9 @@ from chisurf.core.models.structure.proteinmc import (
     list_flexfit_sets,
     load_json,
 )
+
+if TYPE_CHECKING:
+    from chisurf.core.structure import Structure
 
 #: The energy terms ProteinMC can score with: the label shown, the name the
 #: runner takes, the default weight, whether it is on in a fresh model, and the
@@ -225,7 +228,8 @@ class ProteinMCModel(Model):
                 self.add_potential(key)
 
         # Trajectory state. The plots read these directly.
-        self.proteinmc_structure = None
+        #: The structure being sampled (a centroid model once a run starts).
+        self.proteinmc_structure: Structure | None = None
         self.trajectory_frames: list[np.ndarray] = []
         self.current_frame_index: int = 0
         self.rmsd: list[float] = []
@@ -333,7 +337,7 @@ class ProteinMCModel(Model):
 
     # -- energy terms --------------------------------------------------
 
-    def potential_choices(self) -> list[str]:
+    def potential_choices(self) -> list[tuple[str, str]]:
         """Return the ``(key, label)`` pairs of every available energy term."""
         return [(key, str(spec["label"])) for key, spec in POTENTIAL_SPECS.items()]
 

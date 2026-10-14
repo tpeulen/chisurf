@@ -183,12 +183,12 @@ class Topology:
         :meth:`add_atom`.
     """
 
-    def __init__(self, atoms: np.ndarray = None):
+    def __init__(self, atoms: np.ndarray | None = None):
         from chisurf.core.fio.structure.coordinates import atom_dtype
 
         self._atoms = np.zeros(0, dtype=atom_dtype) if atoms is None else np.asarray(atoms)
-        self._residue_index = None
-        self._chain_index = None
+        self._residue_index: np.ndarray | None = None
+        self._chain_index: np.ndarray | None = None
         # Only used while building; a topology read from a file never touches
         # these, and rebuilding the index arrays is what keeps the two paths
         # from disagreeing.

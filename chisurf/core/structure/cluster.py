@@ -57,7 +57,7 @@ def cluster(
 
     print("\n\nFlattening the clusters...")
     assignments = fcluster(Z, t=threshold, criterion=criterion)
-    cl = dict()
+    cl: dict[int, list[int]] = dict()
     for c in np.unique(assignments):
         cl[c] = list()
     for i, a in enumerate(assignments):

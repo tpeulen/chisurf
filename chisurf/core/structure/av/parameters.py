@@ -281,7 +281,10 @@ class Sticking(ParameterGroup):
         :param quenching_parameter:
         :param kwargs:
         """
-        super().__init__(fit, **kwargs)
+        # The fit is the owner, not the parameter list: passed positionally it
+        # landed in ``ParameterGroup.parameters`` and the group iterated a Fit.
+        super().__init__(**kwargs)
+        self.fit = fit
         self.verbose = kwargs.get("verbose", chisurf.core.settings.cs_settings["verbose"])
         self.quenching_parameter = quenching_parameter
         self.structure = structure

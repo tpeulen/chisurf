@@ -197,7 +197,10 @@ def _tokenize(expression: str) -> list[str]:
         pos = match.end()
         if match.group("other"):
             raise SelectionError(f"unexpected {match.group('other')!r} in {expression!r}")
-        tokens.append(match.group(match.lastgroup))
+        kind = match.lastgroup
+        if kind is None:  # unreachable: every alternative of _TOKEN is named
+            continue
+        tokens.append(match.group(kind))
     return tokens
 
 

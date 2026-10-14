@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import typing
 
 import numpy as np
 
@@ -54,7 +55,12 @@ def write_open_dx(
         fp.write(s)
 
 
-def open_dx(density: np.ndarray, ro: np.ndarray, rn: np.ndarray, dr: np.ndarray) -> str:
+def open_dx(
+    density: np.ndarray,
+    ro: np.ndarray,
+    rn: typing.Sequence[int] | np.ndarray,
+    dr: typing.Sequence[float] | np.ndarray,
+) -> str:
     """Returns a open_dx string compatible with PyMOL
 
     :param density: 3d-grid with values (densities)

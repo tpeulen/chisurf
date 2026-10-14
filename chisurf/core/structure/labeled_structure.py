@@ -57,7 +57,7 @@ def av_fret_rate_spectrum(
     forster_radius = kwargs.get(
         "forster_radius", chisurf.core.settings.cs_settings["fret"]["forster_radius"]
     )
-    kappa2 = kwargs.get("forster_radius", chisurf.core.settings.cs_settings["fret"]["kappa2"])
+    kappa2 = kwargs.get("kappa2", chisurf.core.settings.cs_settings["fret"]["kappa2"])
     tau0 = kwargs.get("tau0", chisurf.core.settings.cs_settings["fret"]["tau0"])
     interleave = kwargs.get("interleave", True)
 
@@ -72,7 +72,7 @@ def av_fret_rate_spectrum(
         d, tau0=tau0, kappa2=kappa2, forster_radius=forster_radius
     )
     if interleave:
-        return np.hstack(rs).ravel([-1])
+        return np.hstack(rs).ravel()
     else:
         return rs
 
@@ -301,7 +301,7 @@ class LabeledStructure(Structure):
         rs = chisurf.core.fluorescence.general.distribution2rates(
             d, tau0=tau0, kappa2=kappa2, forster_radius=forster_radius
         )
-        return np.hstack(rs).ravel([-1])
+        return np.hstack(rs).ravel()
 
     @property
     def lifetime_spectrum(self) -> np.ndarray:

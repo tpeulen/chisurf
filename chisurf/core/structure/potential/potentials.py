@@ -328,7 +328,7 @@ class LJ_Bead:
     def getEnergy(self) -> float:
         """Calculate and return the Lennard-Jones bead energy."""
         structure = self.structure
-        self.E = lennard_jones_calpha(structure.atoms["xyz"])
+        self.E = lennard_jones_calpha(structure)
         return self.E
 
 
@@ -622,7 +622,7 @@ class ClashPotential:
 
     def __init__(
         self,
-        structure: chisurf.core.structure.Structure = None,
+        structure: chisurf.core.structure.Structure | None = None,
         clash_tolerance: float = 2.0,
         covalent_radius: float = 1.5,
         **kwargs,
@@ -648,6 +648,8 @@ class ClashPotential:
     def getEnergy(self) -> float:
         """Calculate and return the clash (steric) potential energy."""
         c = self.structure
+        if c is None:
+            raise ValueError("ClashPotential has no structure to evaluate")
         return _clash_kernel(c.xyz, c.vdw, self.clash_tolerance, self.covalent_radius)
 
 

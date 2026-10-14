@@ -96,7 +96,7 @@ class Trajectory:
         ``(n_frames,)`` simulation time.
     """
 
-    def __init__(self, xyz, topology: Topology = None, time=None):
+    def __init__(self, xyz, topology: Topology | None = None, time=None):
         xyz = np.ascontiguousarray(xyz, dtype=np.float32)
         if xyz.ndim == 2:
             xyz = xyz[np.newaxis]
@@ -127,7 +127,16 @@ class Trajectory:
 
     @property
     def top(self) -> Topology:
-        """The topology; the short name the tree already uses."""
+        """The topology; the short name the tree already uses.
+
+        Raises
+        ------
+        ValueError
+            For a geometry-only trajectory, rather than handing back ``None``
+            for the caller to fail on one attribute later.
+        """
+        if self.topology is None:
+            raise ValueError("this trajectory has no topology")
         return self.topology
 
     def __len__(self) -> int:
@@ -136,8 +145,9 @@ class Trajectory:
 
     def __getitem__(self, key) -> Trajectory:
         """Return the selected frames as a new trajectory."""
-        index = [key] if isinstance(key, (int, np.integer)) else key
-        return Trajectory(self.xyz[index], self.topology, self.time[index])
+        if isinstance(key, (int, np.integer)):
+            key = [int(key)]  # keep the frame axis
+        return Trajectory(self.xyz[key], self.topology, self.time[key])
 
     def __repr__(self) -> str:
         """Return the frame and atom counts."""
