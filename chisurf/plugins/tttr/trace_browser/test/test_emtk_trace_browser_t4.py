@@ -363,13 +363,12 @@ def test_csv_has_the_header_the_bins_and_the_series_columns(work, tmp_path, monk
         files = sorted(p.name for p in dest.glob("*.csv"))
         assert files == ["m001_trace.csv"]
         rows = rows_of(dest / files[0])
-        assert rows[0] == ["time_ms"] + LABELS  # the RPC export's header (see below)
+        assert rows[0] == ["time_s"] + LABELS  # the RPC export's header: the axis is seconds
         assert len(rows) - 1 == BINS_10MS
         columns = list(zip(*[[float(v) for v in row] for row in rows[1:]]))
         assert [int(sum(c)) for c in columns[1:]] == SUMS
         assert columns[0][0] == 0.0 and abs(columns[0][-1] - 62.32) < 1e-6
-        # The first column is labelled time_ms by api/io.py but holds seconds (62.32 at the end of a
-        # 62.3 s measurement): pinned here so the day the label is corrected this test says so.
+        # Seconds (62.32 at the end of a 62.3 s measurement); the header said time_ms until 2026-10-14.
         assert "Exported 1/1 CSV file(s)" in app.model.status_text
     finally:
         app.close()
@@ -430,6 +429,8 @@ def test_the_emtk_app_exports_the_csv_the_qt_widget_wrote(work, tmp_path):
         app.close()
     assert [pathlib.Path(w).name for w in written] == [QT_CSV["name"]]
     data = (app_out / QT_CSV["name"]).read_bytes()
+    # Byte-identical to the Qt tool's file except the header, which now names the unit the values are in.
+    data = data.replace(b"time_s,", b"time_ms,", 1)
     assert len(data) == QT_CSV["size"]
     assert hashlib.sha256(data).hexdigest() == QT_CSV["sha256"]
     assert len(rows_of(app_out / QT_CSV["name"])) - 1 == BINS_10MS

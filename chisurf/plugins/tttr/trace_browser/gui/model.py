@@ -1355,7 +1355,7 @@ class TraceBrowserModel:
         """Write the binned trace of each of *paths* (default: the selection) as CSV into *dest*.
 
         As the Qt ``_on_export_csv``: the plugin's RPC export first (one
-        ``<stem>_trace.csv`` per file: the header ``time_ms`` then one column per series, one
+        ``<stem>_trace.csv`` per file: the header ``time_s`` then one column per series, one
         row per bin at the current bin window); when that gives nothing, the local fallback
         (``<stem>_bin<window>ms.csv``, header ``time_s``, image-like files skipped).
 

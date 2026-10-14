@@ -62,7 +62,7 @@ window holds the controls and the file table (**File**, **Rating** 0–3,
 right window the trace of the selected file: one line per detector plus their
 sum, the count histogram beside it, and the **Annotation** box (the same text
 as the Notes cell; ratings and notes are stored in a metadata file in the
-folder). **Open** (or a dropped folder) chooses the folder, **Include
+folder). **Open…** (or a dropped folder) chooses the folder, **Include
 subfolders**, **Filter** (rating), **Bin window [ms]** (fractional values
 allowed) and **Y min / Y max** shape the list and the plot; **Precompute**
 caches the traces of all listed files in the background, **Clear** and
@@ -73,8 +73,8 @@ The buttons under the folder row act on the selected files (click a row, or
 
 | Button | What it does |
 |---|---|
-| **Export** | copies the selected files, unchanged, into a folder you choose |
-| **CSV** | writes each selected trace (time and one column per series, at the current bin window) into a folder you choose |
+| **Export…** | copies the selected files, unchanged, into a folder you choose |
+| **CSV** | writes each selected trace (`time_s`, then one column per series, at the current bin window) into a folder you choose |
 | **DOCX** | writes a Word report (name, folder, rating, annotation, trace picture) into the opened folder; needs the optional `python-docx` package and is greyed without it |
 | **Delete** | after a confirmation, moves the selected files and the files that share their name to the `.trash` folder of the opened folder (nothing is deleted for good); the Delete key in the table does the same |
 | **HMM**, **TW**, **NDX** | hand the first selected file to another tool, which opens as a dock beside the Trace Browser: *Intensity Trace* reads and bins it (the bin window and the detector setup are passed on), *TTTR Time Window* queues and previews it with the bin window, ndX opens the burst table (**NDX** first writes it next to the data, in `<name>_TW_<ms>ms`, and opens ndX on that folder). A tool that is already open keeps its dock and takes the new file. They work inside ChiSurf and are greyed when the Trace Browser runs on its own |
@@ -88,10 +88,9 @@ The buttons under the folder row act on the selected files (click a row, or
 Trace Browser on the ten BH SPC-132 smFRET files of the burst-selection test
 folder (green 0/8, red 1/9, SPC-130), `m000.spc` selected, 10 ms bins (the
 default). The coincident green/red spikes are FRET bursts; the right column is
-the count histogram of each trace. HMM, TW and NDX are enabled because the
-Trace Browser is open in the ChiSurf window, which opens the tools they hand
-the file to; they are greyed when the Trace Browser runs without it. DOCX is
-greyed because `python-docx` is not installed.
+the count histogram of each trace. HMM, TW and NDX are greyed because this
+Trace Browser runs on its own; inside the ChiSurf window they hand the file on
+(below).
 ```
 
 ```{figure} figures/22_trace_browser_handoff.png
@@ -112,13 +111,7 @@ from chisurf.core.plugin import handoff
 handoff.hand_off("intensity_trace", "tttr_trace", {"file": "m001.spc", "window_ms": 10.0})
 ```
 
-### Known limits
-
-- The CSV written by the plugin's RPC export labels its first column
-  `time_ms`, but the values are seconds (the last row of a 62 s measurement
-  reads 62.32).
-- The list shows point measurements only: files that are scan images are
-  skipped.
+The list shows point measurements only: scan images are skipped.
 
 ## Result
 
@@ -138,13 +131,11 @@ Binned photon trace (MCS).
 
 ## Cancel an HMM fit or BIC scan
 
-In the native Intensity Trace tool, load the **Example**, open **HMM**, and
-press **Compute HMM** or **BIC Elbow**. While fitting, the top toolbar enables
-**Cancel**. Press it to stop at the next iteration boundary. The status reports
-that cancellation kept previous results; a partial fit is not exported.
+In the Intensity Trace tool, press **Load example**, open the **HMM** tab and
+press **Compute HMM** or **BIC Elbow**. While it fits, **Cancel** in the top row
+is enabled; it stops at the next iteration and keeps the previous results — a
+partial fit is not exported. Closing the tool cancels too.
 
-![Cancellation keeps the loaded trace and completed results](figures/intensity_trace_cancelled.png)
+![Cancel during an HMM fit: the trace and the earlier results stay](figures/intensity_trace_cancelled.png)
 
-The [intensity-trace concept](../concepts/intensity_traces.md) describes the
-statistical meaning of the completed results. Closing the tool also requests
-cancellation and bounds the worker cleanup wait.
+What the HMM results mean: [intensity traces](../concepts/intensity_traces.md).

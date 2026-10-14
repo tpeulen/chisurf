@@ -51,33 +51,37 @@ Pixel-wise analyses: `img_pixel_mle` (per-pixel `2I*` lifetime, same harness as
 ## Selecting pixels
 
 A decay is built from the pixels you select. Paint them with the brush on the
-image, then save the selection under a name in the **Regions** tab: each saved
-region is listed with what it actually is — *Shape* and a *Measurement* such as
-`13496 px, 85.8 ph/px` — so you can tell a real structure from a stray brush
-stroke without applying it. Clicking a region makes it the current selection and rebuilds the decay.
+image, type a **Region name** and press **Save painted region**: the region joins
+the list in the **Analysis regions** fold (also **Add rectangle / ellipse /
+polygon**, **Combine regions**, and per region **Enabled** / **Invert**).
+Selecting a region shows its area and mean intensity (`13496 px; mean intensity
+85.8`), so a real structure is told from a stray brush stroke at a glance.
 
-**Save** writes `.json` (the region itself: geometry, name, and nested
-combinations — the format to prefer) or a `.tif` / `.npy` mask image for tools
-that read nothing else. **Load** reads all of those back, plus a Cellpose
-`_seg.npy` segmentation, which arrives as one region per detected object.
+**Save regions** writes `.json` (geometry, name, flags — the format to prefer)
+or a `.tif` / `.npy` mask image for tools that read nothing else. **Load
+regions** reads all of those back, plus a Cellpose `_seg.npy` segmentation, which
+arrives as one region per detected object.
 
-The tool is **Spectroscopy ▸ Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`). Its left
+The tool is **Spectroscopy ▸ Imaging ▸ CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`);
+**Load example** opens a small simulated scan. Its left
 window holds the controls: **Open TTTR / imaging**, **Build CLSM**,
 **Add representation**, **Compute decay**, the exports, the **Setup preset** (PTU,
 Leica SP5/SP8, MFIS Olympus), **Detector channels**, the CLSM image and representation
 choices, the folded **Acquisition** fields (markers read from the file header,
 pixels per line), **Brush & Decay** (brush size/width, select/deselect, live
 update, *Image type* Intensity / Mean micro time, *Min #Ph*, micro-time *Coarsen*,
-*Frames* mode), **Paint selection**, **Save painted region**, the analysis regions
-and **Save / Load settings**. The image and the decay plot are two windows beside it;
+*Frames* mode), **Paint selection**, **Save painted region**, **Analysis regions**
+and **Save / Load settings**. Settings and named regions are restored on reopening;
+the image is not — load the measurement again. The image and the decay plot are two windows beside it;
 **Guide** walks through a first scan and **Help** is the reference.
 
 ```{figure} figures/24_clsm_draw_window.png
 :name: fig-24-clsm-draw-window
 :width: 100%
 
-CLSM-Draw on `test/data/clsm/Leica_SP5.ptu` (channel 0): the scan built, its
-intensity representation, a painted selection and the decay of those pixels.
+CLSM-Draw on `test/data/clsm/Leica_SP5.ptu` (preset *Leica SP5*, channel 0):
+the 256 × 256 scan, a disc of pixels selected (cyan) and the decay of those
+pixels.
 ```
 
 ```{figure} figures/24_clsm_draw.png
@@ -85,17 +89,17 @@ intensity representation, a painted selection and the decay of those pixels.
 :width: 100%
 
 CLSM-Draw on `test/data/clsm/Leica_SP8.ptu` (preset *Leica SP8*, channels
-0,1; 93 frames of 512 × 512 summed). **Left:** the intensity image with the
-brightest 5 % of pixels selected (white). **Right:** the decay of that
-selection, 1 157 700 photons.
+0,1; 93 frames of 512 × 512 summed). The brightest 5 % of pixels — the
+membranes — are the selection; the decay below holds their 1 157 701 photons.
 ```
 
 ```{figure} figures/24_clsm_draw_rois.png
 :name: fig-24-clsm-draw-rois
 :width: 90%
 
-The selection saved as the region *bright patch*: a mask of 13 496 px at
-85.8 photons per pixel. *Combine* sets how enabled regions merge (∪ / ∩).
+The selection saved as the region *bright patch* and selected in **Analysis
+regions**: 13 496 px at a mean of 85.8 photons per pixel. **Combine regions** sets
+how enabled regions merge (or / and / xor).
 ```
 
 The same regions work headlessly:
@@ -142,7 +146,7 @@ intensity images and why dim pixels are masked rather than fitted.
 **Intensity** (`img_pixel_intensity`) is the first per-pixel step: it counts the photons of every pixel for each detector window and writes the imaging HDF5 the
 other per-pixel tools enrich.
 
-1. Type a path into **TTTR file** and press Enter, press **Browse** or **Database**, or drop a PTU/HT3 file on the window (a drop is also run).
+1. Type a path into **TTTR file** and press Enter, press **Browse…** or **Database**, or drop a PTU/HT3 file on the window (a drop is also run).
 2. Optionally open the **Detectors** tab: it is the Setup tool's detector editor; without a window the channel-0 window is computed.
 3. Press **Run**. **Cancel** stops a running calculation.
 4. Read the **Intensity**, **Count rate (kHz)** and **Frames (movie)** tabs; **Detector window** chooses the window shown. Wheel zooms, drag pans.
@@ -164,7 +168,7 @@ and the **Detectors** tab.
 - **Phasor-FLIM** (`img_pixel_phasor`) computes (g, s) per pixel at the **Frequency** (MHz, -1 reads the header) with the **IRF reference** of each window.
   On the **Phasor plot** add an ellipse, rectangle or polygon cursor under **Analysis regions** and drag its handles; the **Selected** tab shows the pixels
   it picks out.
-- **Pixel-wise MLE** (`img_pixel_mle`) fits every pixel by Poisson maximum likelihood: add the photon files and the IRF, name the parallel and perpendicular
+- **Pixel-wise MLE** (`img_pixel_mle`) fits every pixel by Poisson maximum likelihood: add the photon files and the IRF (or press **Load example**), name the parallel and perpendicular
   channels, set the fit window and the model, and press **Run**; the **Lifetime map** tab shows tau and each file's table is written beside it.
 
 ```{figure} figures/24_micro_time_tool.png
@@ -176,13 +180,13 @@ Mean micro-time of a simulated scan whose left half decays in 1 ns and right hal
 ```{figure} figures/24_phasor_tool.png
 :width: 90%
 
-The phasor plot of the same scan with an ellipse cursor round the 1 ns cluster; the universal semicircle is drawn in yellow.
+The phasor plot of the same scan (40 MHz) with an ellipse cursor round the 1 ns cluster; the universal semicircle is yellow. No **IRF reference** is set, so both clusters are rotated by the instrument delay — the 3 ns one lands above the semicircle. Set the reference to place them on it.
 ```
 
 ```{figure} figures/24_mle_tool.png
 :width: 90%
 
-The pixel-wise MLE lifetime map of the simulated two-detector scan.
+Pixel-wise MLE after **Load example** and **Run**: the simulated image decays in 1.5 ns on the left and 3.5 ns on the right, and the fitted map recovers both halves (medians 1.50 and 3.53 ns).
 ```
 
 ## See also
@@ -192,29 +196,4 @@ The pixel-wise MLE lifetime map of the simulated two-detector scan.
   {ref}`concept-imaging-flim-phasor`, [lifetime from bursts](21_lifetime_from_bursts.md).
 - Tool: **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`), **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`) and **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`).
 - Also for images: **Intensity** (`chisurf/plugins/microscopy/img_pixel_intensity/`) for the plain photon-count map, **IRF & BG** (`chisurf/plugins/microscopy/img_calibration/`) for the per-detector calibration the lifetime tools consume, **CLSM-Draw** (`chisurf/plugins/microscopy/clsm/`) to build an image from a stream by hand, **CLSM Generator** (`chisurf/plugins/microscopy/clsm_generator/`) to simulate one whose answer is known, and the **Image Browser** (`chisurf/plugins/tttr/tttr_image_browser/`) to page through a folder ({doc}`86_image_browser`).
-
-## Known defects
-
-- The *Brush & Decay* dock tab of CLSM-Draw reads **Brush _Decay**: the `&` in
-  the title is taken as a Qt mnemonic marker.
-
-## Native analysis window defaults
-
-The intensity, mean micro-time, pixel MLE, number/brightness and phasor panels
-declare 1100×720 initial dimensions. Shared detector setup and saved resizing
-remain available. MLE parameter hints state units, physical roles and fixed
-candidate behavior; IRF/background/performance folds explain their purpose.
-Number/brightness folds describe corrections, detectors, estimation and gates.
-These changes preserve computed maps and exported values.
-
-### Native layout and saved settings
-
-CLSM-Draw starts at 1100 × 720. Saved user dimensions and dock placement
-win over that default. Resizing leaves the reconstruction, painted pixels and
-selected-photon decay intact. Acquisition, brush, decay and named-region
-settings now restore automatically on reopening, using the same format as
-**Save settings**. Load the measurement again to rebuild its image and decays.
-
-![Native CLSM-Draw with a real Leica scan and painted decay](figures/clsm_native_window.png)
-
-Tools: the shared per-pixel tool shell (Imaging Common) (`chisurf/plugins/microscopy/imaging_common/`), the shared maximum-likelihood base of the spot, region and pixel MLE tools (MLE Common) (`chisurf/plugins/microscopy/mle_common/`).
+- Shared: the per-pixel tool shell (`chisurf/plugins/microscopy/imaging_common/`) and the shared maximum-likelihood base of the spot, region and pixel MLE tools (`chisurf/plugins/microscopy/mle_common/`).

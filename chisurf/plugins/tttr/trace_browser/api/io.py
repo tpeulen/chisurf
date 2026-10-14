@@ -86,7 +86,7 @@ def export_csv(
         csv_path = out / f"{pathlib.Path(path).stem}_trace.csv"
         with csv_path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.writer(handle)
-            writer.writerow(["time_ms", *labels])
+            writer.writerow(["time_s", *labels])  # the time axis is in seconds
             for idx, time_value in enumerate(time_axis):
                 writer.writerow([time_value, *counts[idx].tolist()])
         written.append(str(csv_path))

@@ -26,12 +26,11 @@ or Gaussian models, connects a measured efficiency to a structure.
 
 ## In ChiSurf
 
-`chisurf/core/structure/av/` implements the standard grid-based AV: a
+`chisurf/core/structure/av/` wraps the grid-based AV of `IMP.bff`: a
 `BasicAV` samples the volume reachable by a dye of one (`AV1`) or three (`AV3`)
 radii on a linker of given length and width, attached to an atom of a loaded
 `Structure`; `ACV` adds an accessible-*contact* volume (surface-sticking
-fraction) and `DynamicAV` the diffusion-with-quenching variant. The fast kernel
-uses the LabelLib backend when available. Given two AVs, the inter-dye distance
+fraction) and `DynamicAV` the diffusion-with-quenching variant. Given two AVs, the inter-dye distance
 distribution and the FRET-averaged distance come straight off the object:
 
 ```python
@@ -44,24 +43,28 @@ donor    = BasicAV(s, residue_seq_number=27, atom_name="CA", **kw)
 acceptor = BasicAV(s, residue_seq_number=95, atom_name="CA", **kw)
 
 p, r = donor.pRDA(acceptor)          # inter-dye distance distribution P(R_DA)
+rda = donor.dRDA(acceptor)           # <R_DA>
 rda_e = donor.dRDAE(acceptor, forster_radius=52.0)   # FRET-averaged <R_DA>_E
+rmp = donor.dRmp(acceptor)           # distance between the mean dye positions
 mean_donor_position = donor.Rmp      # mean dye position (for a structural restraint)
 ```
 
-ChiMOL's labelling window (Structure ▸ FRET ▸ FPS JSON Editor) edits FPS-style labelling/AV plans, the
-AV-based decay model (`models/tcspc/av_decay.py`) uses the simulated $P(R_{DA})$
-directly in a FRET decay fit, and the FRET-docking tools use AV clouds as
+ChiMOL's labelling window (**Structure ▸ FRET ▸ FPS JSON Editor**) edits FPS-style
+labelling/AV plans, the structure-ensemble FRET decay model
+({src}`chisurf/core/models/tcspc/fret_structure.py`) fits the simulated
+$P(R_{DA})$ of each structure directly, and the FRET-docking tools use AV clouds as
 restraints. The coarse-grained dye models for docking come from the external
 molecular-modelling framework.
 
 On 148L (residues 27 and 95, CA, AV1 as above) this gives $P(R_{DA})$ on 96
-bins with $\langle R_{DA}\rangle = 40.4$ Å and
-$\langle R_{DA}\rangle_E = 42.2$ Å ($R_0 = 52$ Å).
+bins, $R_\text{mp} = 40.4$ Å, $\langle R_{DA}\rangle = 44.1$ Å and
+$\langle R_{DA}\rangle_E = 45.2$ Å ($R_0 = 52$ Å).
 
 ### The FPS JSON editor (ChiMOL's labelling window)
 
 **Structure ▸ FRET ▸ FPS JSON Editor** opens ChiMOL with its **Labelling network**
-window on the *Positions* tab; inside ChiMOL the same window is **Tools ▸ Labelling**.
+window on the *Positions* tab; inside ChiMOL it is **Tools ▸ Labelling ▸ Labelling
+network…**.
 The editor is a plugin of ChiMOL, so every accessible volume it computes is an
 object of the viewer it sits in: a cloud with its mean position, shown, hidden,
 coloured and saved like any other object, and a line per distance. Its header
@@ -136,5 +139,5 @@ Accessible volumes and the inter-dye distance distribution.
 
 ## See also
 
-- `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, `calculate_1_radius`/`calculate_3_radius`); plugin `modelling/fps_json_editor`; the AV decay model `models/tcspc/av_decay.py`.
+- `chisurf/core/structure/av/` (`BasicAV`, `ACV`, `DynamicAV`, computed by `IMP.bff`); plugin `modelling/fps_json_editor`; the structure-ensemble decay model `chisurf/core/models/tcspc/fret_structure.py`.
 - Tool: the **FPS JSON Editor** entry (`chisurf/plugins/modelling/fps_json_editor/`) opens ChiMOL's labelling window (`chimol.plugins.labelling`); the headless payload validation, PDB fetch, CLI and RPC stay in that plugin.

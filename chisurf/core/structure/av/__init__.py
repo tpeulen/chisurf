@@ -358,8 +358,8 @@ class BasicAV:
     # -- distances to a second accessible volume ----------------------------
     #
     # `av_pair_statistics` takes a *sample* of pair distances and returns
-    # ⟨R_DA⟩, R_mp, ⟨R_DA⟩_E and ⟨E⟩ in one pass, so one sample serves all of
-    # them. The seed is fixed on purpose: a reported distance that changes when
+    # (R_mp, ⟨R_DA⟩, ⟨R_DA⟩_E, σ_R) in one pass — R_mp first — so one sample serves
+    # all of them. The seed is fixed on purpose: a reported distance that changes when
     # you ask for it twice is not a reported distance.
 
     #: Fixed so repeated calls agree. Sampling noise on ⟨R_DA⟩ at this count is
@@ -412,8 +412,8 @@ class BasicAV:
         )
 
     def dRDA(self, av, **kwargs) -> float:
-        """Mean donor–acceptor distance ⟨R_DA⟩."""
-        return float(self._pair_statistics(av, **kwargs)[0])
+        """Mean donor–acceptor distance ⟨R_DA⟩ (index 1: index 0 is R_mp)."""
+        return float(self._pair_statistics(av, **kwargs)[1])
 
     def widthRDA(self, av, **kwargs) -> float:
         """Width (weighted standard deviation) of the D–A distance distribution."""
