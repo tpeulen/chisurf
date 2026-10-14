@@ -163,6 +163,11 @@ class PhotonMeta:
         ``burst_id`` counts survivors and the concatenated order counts nothing
         at all, so without it a per-photon result (a Viterbi state, say) cannot
         be handed to any other analysis that slices the raw arrays itself.
+    burst_rows : numpy.ndarray or None
+        Row in the burst table of each kept burst (indexed by ``burst_id``), as
+        ``extract_burst_photons(..., with_rows=True)`` returns it; ``None`` when
+        the rows were not requested. Anything writing one row per burst back
+        beside the burst table needs it to stay aligned.
     """
 
     macro_time: np.ndarray
@@ -170,6 +175,7 @@ class PhotonMeta:
     channel: np.ndarray
     burst_id: np.ndarray
     photon_index: np.ndarray | None = None
+    burst_rows: np.ndarray | None = None
 
 
 def extract_burst_photons(

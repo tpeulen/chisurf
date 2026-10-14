@@ -160,12 +160,12 @@ def bursts_from_dataframe(
             [np.full(t.shape[0], b, dtype=np.int64) for b, t in enumerate(times)]
         ),
         photon_index=np.concatenate(index).astype(np.int64) if index else None,
+        # Which burst-table row each kept burst came from. Bursts below
+        # ``min_photons`` are skipped, so the burst index is a compacted sequence;
+        # anything writing one row per burst back beside the ``.bur`` files needs
+        # this to stay aligned.
+        burst_rows=rows,
     )
-    # Which burst-table row each kept burst came from. Bursts below
-    # ``min_photons`` are skipped, so the burst index is a compacted sequence;
-    # anything writing one row per burst back beside the ``.bur`` files needs
-    # this to stay aligned.
-    meta.burst_rows = rows
     return data, meta
 
 

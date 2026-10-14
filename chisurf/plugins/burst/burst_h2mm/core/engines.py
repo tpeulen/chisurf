@@ -39,10 +39,19 @@ construction. See the tttrlib ``h2mm-state-decoding`` guide.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 
 from .h2mm import MIN_TRANS, BurstPhotons, H2mmModel
+
+if TYPE_CHECKING:
+    from .surrogate import SurrogateModel
+
+#: A trained surrogate: a pickled model object, or the path of a stored one.
+SurrogateSource = Union["SurrogateModel", str, Path]
 
 logger = logging.getLogger(__name__)
 
@@ -215,7 +224,7 @@ def fit_one(
     n_states: int,
     engine: str = "em",
     *,
-    surrogates: dict[int, object] | None = None,
+    surrogates: Mapping[int, SurrogateSource] | None = None,
     refine_iters: int = 20,
     n_restarts: int = 2,
     max_iter: int = 500,

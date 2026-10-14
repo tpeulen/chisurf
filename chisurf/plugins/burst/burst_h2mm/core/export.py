@@ -510,14 +510,14 @@ def write_burst_states(
         mine = np.flatnonzero((files == name) & (runs == run))
         table = np.zeros((mine.size, len(H2MM_COMPANION_COLUMNS)), dtype=float)
         for local, global_row in enumerate(mine):
-            b = where.get(int(global_row))
-            if b is None:
+            k = where.get(int(global_row))
+            if k is None:
                 continue  # not analysed: zeros, and Fitted stays 0
             table[local] = (
-                dominant[b],
-                transitions[b],
-                0.0 if np.isnan(mean_e[b]) else mean_e[b],
-                photons[b],
+                dominant[k],
+                transitions[k],
+                0.0 if np.isnan(mean_e[k]) else mean_e[k],
+                photons[k],
                 1.0,
             )
         frame = store_from_arrays(
@@ -525,8 +525,7 @@ def write_burst_states(
         )
         written.append(
             write_h2mm_container(
-                run
-                or (container if container is not None else resolve_source(name, search_from)),
+                run or (container if container is not None else resolve_source(name, search_from)),
                 frame,
                 None,
                 parameters=parameters,

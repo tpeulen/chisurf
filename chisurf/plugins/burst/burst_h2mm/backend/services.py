@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -20,6 +20,9 @@ from ..api.contract import (
 )
 from ..api.models import H2mmResult, H2mmSettings, StateFitSummary, StreamSettings
 from ..api.serialization import settings_from_dict, to_jsonable
+
+if TYPE_CHECKING:
+    from ..core.surrogate import SurrogateModel
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +191,7 @@ def run_analysis(
     return result, bundle
 
 
-def _load_surrogates(settings: H2mmSettings) -> dict[int, object] | None:
+def _load_surrogates(settings: H2mmSettings) -> dict[int, SurrogateModel] | None:
     """Load a trained surrogate for the surrogate engines (keyed by its n_states)."""
     if not getattr(settings, "surrogate_path", "") or "surrogate" not in settings.engine:
         return None

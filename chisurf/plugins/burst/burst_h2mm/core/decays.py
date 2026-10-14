@@ -214,7 +214,7 @@ def state_decays(
         flat = ((states * n_streams + strm) * channels.size + chan_of) * n_bins + bin_of
         valid = (states >= 0) & (states < n_states) & (strm >= 0) & (strm < n_streams)
         tally = np.bincount(flat[valid], minlength=counts.size)
-        counts = tally[: counts.size].reshape(counts.shape)
+        counts[...] = tally[: counts.size].reshape(counts.shape)
 
     colours = [name for name, _ in groups]
     colour_counts = np.zeros((n_states, len(groups), n_bins), dtype=np.int64)

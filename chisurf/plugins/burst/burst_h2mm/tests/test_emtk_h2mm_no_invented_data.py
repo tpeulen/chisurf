@@ -78,6 +78,12 @@ class PlotSpy:
 
         return spy
 
+    def named(self, label: str) -> tuple[str, str, list[np.ndarray]]:
+        """The one call that drew *label* (fails when it was drawn not exactly once)."""
+        found = [c for c in self.calls if c[1] == label]
+        assert len(found) == 1, f"{label!r} drawn {len(found)} times: {[c[:2] for c in self.calls]}"
+        return found[0]
+
     def clear(self):
         self.calls.clear()
 
@@ -141,12 +147,3 @@ def test_the_app_source_cannot_make_data_up():
                 assert not isinstance(arg, (ast.List, ast.Tuple, ast.Constant)), (
                     f"literal data in {node.func.attr}"
                 )
-
-
-def _named(self, label):
-    found = [c for c in self.calls if c[1] == label]
-    assert len(found) == 1, f"{label!r} drawn {len(found)} times: {[c[:2] for c in self.calls]}"
-    return found[0]
-
-
-PlotSpy.named = _named
