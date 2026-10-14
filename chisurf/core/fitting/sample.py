@@ -360,7 +360,7 @@ def _seed_block_covariances(
     state: np.ndarray,
     step_size: float,
     model: cs.core.models.Model | None = None,
-) -> list[np.ndarray]:
+) -> tuple[list[np.ndarray], list[bool]]:
     """Return an initial proposal covariance for each block.
 
     The curvature of the objective at the optimum is very nearly the ideal
@@ -976,9 +976,8 @@ def walk_mcmc_blocked(
         model = fit.model
     dim = model.n_free
 
-    if blocks is None:
-        blocks = _default_blocks(fit, dim, model)
-    block_idx = [np.asarray(b, dtype=int) for b in blocks if len(b)]
+    chosen = blocks if blocks is not None else _default_blocks(fit, dim, model)
+    block_idx = [np.asarray(b, dtype=int) for b in chosen if len(b)]
     if not block_idx:
         block_idx = [np.arange(dim, dtype=int)]
 
@@ -1792,9 +1791,10 @@ def _component_blocks(fit: cs.core.fitting.fit.Fit, model: cs.core.models.Model)
         blocks_all = graph.sampling_blocks()
         out = []
         for component in components:
-            indices = sorted(i for i in (graph.index_of(k) for k in component) if i is not None)
-            blocks = [[graph.index_of(k) for k in b] for b in blocks_all if set(b) <= component]
-            blocks = [[i for i in b if i is not None] for b in blocks]
+            found = [graph.index_of(k) for k in component]
+            indices = sorted(i for i in found if i is not None)
+            named = [[graph.index_of(k) for k in b] for b in blocks_all if set(b) <= component]
+            blocks = [[i for i in b if i is not None] for b in named]
             blocks = [b for b in blocks if b]
             covered = sorted(i for b in blocks for i in b)
             if not indices or covered != indices:
@@ -1879,8 +1879,8 @@ def _default_blocks(
         graph = factorgraph.build_factor_graph(fit, model=model if model is not None else fit.model)
         out = []
         for block in graph.sampling_blocks():
-            idx = [graph.index_of(k) for k in block]
-            idx = [i for i in idx if i is not None and 0 <= i < dim]
+            found = [graph.index_of(k) for k in block]
+            idx = [i for i in found if i is not None and 0 <= i < dim]
             if idx:
                 out.append(np.array(sorted(idx), dtype=int))
         covered = sorted(int(i) for b in out for i in b)
@@ -2162,6 +2162,7 @@ def sample_ensemble(
     # states, which is the same fraction `_sample_ensemble` reports.
     from chisurf.core.fitting import sampler_bff
 
+    _route_callback: typing.Callable[..., typing.Any] | None
     if progress_bar is not None and hasattr(progress_bar, "setMaximum"):
         progress_bar.setMaximum(max(1, int(steps) // max(1, int(thin))))
 
@@ -2376,8 +2377,8 @@ def ensemble_result(
 
     # get_chain() is (n_steps, n_walkers, ndim); the diagnostics want one row
     # per chain, so the walker axis comes first.
-    per_walker = np.asarray(sampler.get_chain(), dtype=np.float64)
-    per_walker = per_walker.transpose(1, 0, 2) if per_walker.ndim == 3 else None
+    raw_chain = np.asarray(sampler.get_chain(), dtype=np.float64)
+    per_walker = raw_chain.transpose(1, 0, 2) if raw_chain.ndim == 3 else None
 
     try:
         acceptance = float(np.mean(sampler.acceptance_fraction))
@@ -2454,7 +2455,7 @@ def resolve_sampler(name: str) -> str:
         key = _catalog.resolve("sampler", name)
     except ValueError:
         key = None
-    if key not in SAMPLERS:
+    if key is None or key not in SAMPLERS:
         cs.logging.warning("unknown sampler %r; using 'ensemble'", name)
         return "ensemble"
     return key
@@ -2496,6 +2497,8 @@ def sample_registered_kernel(
     """
     from chisurf.core.fitting import sampler_bff
 
+    if sampler is None:
+        raise ValueError("sample_registered_kernel needs the sampler's registry key")
     result = sampler_bff.sample_via_graph(
         fit,
         model if model is not None else fit.model,

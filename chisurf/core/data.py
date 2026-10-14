@@ -150,11 +150,23 @@ class ExperimentalData(chisurf.core.base.Data):
 #: import at all. A curve is not the place to make that trade.
 _HAS_BFF_DATASET = hasattr(_bff, "FitDataset") and hasattr(_bff, "sync_dataset")
 
-_DATACURVE_BASES = (
-    (chisurf.core.curve.Curve, ExperimentalData, _bff.FitDataset)
-    if _HAS_BFF_DATASET
-    else (chisurf.core.curve.Curve, ExperimentalData)
-)
+
+class _NoFitDataset:
+    """Stand-in third base of :class:`DataCurve` on an IMP.bff without ``Dataset``.
+
+    Empty on purpose: the curve's calculus methods check ``_HAS_BFF_DATASET``
+    and say what is missing (:data:`_NO_BFF_DATASET`).
+    """
+
+
+# A fixed base list the type checker can read, with the third base chosen at
+# import time: bff's Dataset where it exists, an empty stand-in where it does not.
+if TYPE_CHECKING:
+    from IMP.bff import FitDataset as _FitDatasetBase
+elif _HAS_BFF_DATASET:
+    _FitDatasetBase = _bff.FitDataset
+else:  # pragma: no cover - IMP.bff without Dataset
+    _FitDatasetBase = _NoFitDataset
 
 _NO_BFF_DATASET = (
     "this DataCurve was built against an IMP.bff without Dataset, so it "
@@ -163,7 +175,7 @@ _NO_BFF_DATASET = (
 )
 
 
-class DataCurve(*_DATACURVE_BASES):
+class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _FitDatasetBase):
     """One-dimensional experimental curve with error estimates.
 
     Combines :class:`chisurf.core.curve.Curve` with :class:`ExperimentalData`
@@ -257,7 +269,6 @@ class DataCurve(*_DATACURVE_BASES):
         data_reader: ExperimentReader | None = None,
         experiment: Experiment | None = None,
         load_filename_on_init: bool = True,
-        *args,
         **kwargs,
     ):
         # Before the chisurf half, because `super().__init__` writes the
@@ -271,7 +282,6 @@ class DataCurve(*_DATACURVE_BASES):
             filename=filename,
             data_reader=data_reader,
             experiment=experiment,
-            *args,
             **kwargs,
         )
         # The companions are initialised *before* the file is read, because
@@ -412,7 +422,14 @@ class DataCurve(*_DATACURVE_BASES):
         if "mask" in v:
             self.mask = np.array(v["mask"], dtype=np.float64)
 
-    def load(self, filename: str, skiprows: int = 0, file_type: str = "csv", **kwargs) -> None:
+    def load(
+        self,
+        filename: str,
+        file_type: str = "csv",
+        verbose: bool = False,
+        skiprows: int = 0,
+        **kwargs,
+    ) -> None:
         """Load curve data from a file.
 
         Supports CSV files with 1–5 columns (x, y, ex, ey, mask).
@@ -422,10 +439,12 @@ class DataCurve(*_DATACURVE_BASES):
         ----------
         filename : str
             Path to the file.
-        skiprows : int
-            Number of header rows to skip.
         file_type : str
             File format (``'csv'`` or any format supported by the parent).
+        verbose : bool
+            Passed to the parent loader for non-CSV formats.
+        skiprows : int
+            Number of header rows to skip.
         **kwargs
             Additional arguments passed to the file reader.
         """
@@ -469,7 +488,7 @@ class DataCurve(*_DATACURVE_BASES):
                 self.ex = np.ones(1)
                 self.ey = np.ones(1)
         else:
-            super().load(filename=filename, file_type=file_type, **kwargs)
+            super().load(filename=filename, file_type=file_type, verbose=verbose, **kwargs)
         # `load` assigns x/y/ex/ey/mask directly rather than through
         # `set_data`, so without this the Dataset half would still hold what
         # the constructor put there. Third write path, and the one every

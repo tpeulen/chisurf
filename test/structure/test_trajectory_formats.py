@@ -99,3 +99,23 @@ def test_an_unreadable_suffix_is_refused(trajectory_file):
     # far from the cause.
     with pytest.raises(ValueError, match="expected .pdb"):
         trajectory_file("trajectory.bogus", topology=str(TOPOLOGY))
+
+
+def test_a_trajectory_is_a_base_that_can_be_renamed_and_saved(trajectory_file, tmp_path):
+    """TrajectoryFile honours both of its bases.
+
+    ``name`` was read-only, so renaming a Base raised on a trajectory alone, and
+    ``save`` meant two different things in its two bases. Now an empty
+    ``file_type`` writes coordinates by suffix and ``yaml`` serialises like any
+    other Base.
+    """
+    from chisurf.core.fio.trajectory import read_dcd
+
+    traj = trajectory_file(str(DCD), topology=str(TOPOLOGY))
+    traj.name = "transition"
+    assert traj.name == "transition"
+
+    out = tmp_path / "copy.dcd"
+    traj.save(str(out))
+    xyz, _, _ = read_dcd(str(out))
+    np.testing.assert_array_equal(xyz, traj.xyz)

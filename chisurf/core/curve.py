@@ -228,7 +228,7 @@ class NCurve(chisurf.core.base.Base):
         state = self.__dict__.copy()
         return state
 
-    def __getitem__(self, key) -> typing.Tuple[np.ndarray, np.ndarray]:
+    def __getitem__(self, key) -> typing.Tuple[np.ndarray, ...]:
         """Index into the flattened data array.
 
         Both members of the returned pair are indexed by the *same* ``key``, so
@@ -657,8 +657,12 @@ class Curve(NCurve):
 
     def __getitem__(
         self, key: typing.Union[slice, int, np.ndarray, str]
-    ) -> typing.Tuple[np.ndarray, np.ndarray]:
-        """Return a slice of curve as (x, y)."""
+    ) -> typing.Tuple[np.ndarray, ...]:
+        """Return a slice of the curve's columns, ``x`` and ``y`` first.
+
+        A subclass with more columns returns them too (a data curve adds
+        ``ex, ey, mask``), so the result is typed as a tuple of any length.
+        """
         return self.x[key], self.y[key]
 
 
