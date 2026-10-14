@@ -165,7 +165,8 @@ class Model:
         self.nvars = int(self.inits.shape[0])
 
         self.time = np.zeros(1, dtype=DTYPE)
-        self.series = np.zeros(1, dtype=DTYPE)
+        #: The simulated trajectories, (n_runs, n_steps, n_species) after :meth:`run`.
+        self.series: np.ndarray = np.zeros(1, dtype=DTYPE)
         self.steps = 0
         self.res: np.ndarray | None = None
 

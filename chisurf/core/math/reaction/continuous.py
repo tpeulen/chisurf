@@ -203,17 +203,19 @@ class ReactionSystem:
         self._concentrations = kwargs.get(
             "concentrations", np.array([[1.0], [1.0]], dtype=np.float64)
         )
-        self._species_brightness = []
+        self._species_brightness: typing.List[chisurf.core.fitting.parameter.FittingParameter] = []
         if "species_brightness" in kwargs:
             self.species_brightness = kwargs["species_brightness"]
         self._times = kwargs.get("times", np.array([0.0, 1.0], dtype=np.float64))
 
-        self.educts = list()
-        self.products = list()
-        self.educts_stoichometry = list()
-        self.products_stoichometry = list()
-        self.rates = []
-        self._initial_concentrations = []
+        #: Per reaction: the species indices consumed / produced and their
+        #: stoichiometric coefficients.
+        self.educts: typing.List[typing.List[int]] = list()
+        self.products: typing.List[typing.List[int]] = list()
+        self.educts_stoichometry: typing.List[typing.List[float]] = list()
+        self.products_stoichometry: typing.List[typing.List[float]] = list()
+        self.rates: typing.List[chisurf.core.fitting.parameter.FittingParameter] = []
+        self._initial_concentrations: list = []
         self._xmin = 0
         self._xmax = None
 

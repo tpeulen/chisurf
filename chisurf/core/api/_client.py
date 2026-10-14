@@ -4,7 +4,7 @@ import copy
 import json
 from collections.abc import Callable
 from importlib import resources
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chisurf.server.transport.zmq import ZmqClient
 
@@ -127,6 +127,16 @@ def _install_legacy_aliases(cls: type[ChisurfClient]) -> None:
 
 class ChisurfClient:
     """Small client wrapper around the ChiSurf JSON-RPC transport."""
+
+    if TYPE_CHECKING:
+        # Installed at import from the server protocol (``_install_rpc_methods``);
+        # declared here for the callers that use them by name.
+        def dataset__curve_data(self, *args: Any, **kwargs: Any) -> Any: ...
+        def dataset__remove(self, *args: Any, **kwargs: Any) -> Any: ...
+        def dataset__clear(self, *args: Any, **kwargs: Any) -> Any: ...
+        def fit__list(self, *args: Any, **kwargs: Any) -> Any: ...
+        def fit__remove(self, *args: Any, **kwargs: Any) -> Any: ...
+        def fit__clear(self, *args: Any, **kwargs: Any) -> Any: ...
 
     def __init__(
         self,

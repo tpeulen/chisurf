@@ -329,7 +329,8 @@ class ForsterCalculatorModel:
         self.available = False
         self.probe_names: dict[int, str] = {}
         self.probe_spectra: dict[int, dict[str, dict[str, np.ndarray]]] = {}
-        self.probe_properties: dict[int, dict[str, float]] = {}
+        #: Stored quantum yield / ε_max per probe, ``None`` where MMFDB has none.
+        self.probe_properties: dict[int, dict[str, float | None]] = {}
         self.donors: list[int] = []
         self.acceptors: list[int] = []
         if load:
@@ -400,6 +401,14 @@ class ForsterCalculatorModel:
         """``(probe_id, name)`` of every acceptor with an absorption spectrum, after the empty entry."""
         return [("", "")] + [(pid, self.probe_names[pid]) for pid in self.acceptors]
 
+    def _spectrum(self, pid: int | None, kind: str) -> dict[str, np.ndarray] | None:
+        """The stored *kind* spectrum of probe *pid*; ``None`` when there is none."""
+        return None if pid is None else self.probe_spectra.get(pid, {}).get(kind)
+
+    def _property(self, pid: int | None, key: str) -> float | None:
+        """The stored optical property *key* of probe *pid*; ``None`` when there is none."""
+        return None if pid is None else self.probe_properties.get(pid, {}).get(key)
+
     def spectra_text(self) -> str:
         """The chosen donor's emission and acceptor's absorption spectrum, one line each."""
         lines = []
@@ -407,7 +416,7 @@ class ForsterCalculatorModel:
             ("Donor", self.donor, "emission"),
             ("Acceptor", self.acceptor, "absorption"),
         ):
-            spectrum = self.probe_spectra.get(pid, {}).get(kind)
+            spectrum = self._spectrum(pid, kind)
             if spectrum is not None:
                 lines.append(f"{tr(label)}: {spectrum_summary(kind, spectrum)}")
         return "\n".join(lines)
@@ -424,7 +433,7 @@ class ForsterCalculatorModel:
     def set_donor(self, value: Any) -> None:
         """Choose the donor; its stored quantum yield fills :attr:`donor_qy`, then R0 is recomputed."""
         self.donor = self._probe_id(value)
-        qy = self.probe_properties.get(self.donor, {}).get("qy")
+        qy = self._property(self.donor, "qy")
         if qy is not None:
             self.donor_qy = qy
         self.compute()
@@ -432,7 +441,7 @@ class ForsterCalculatorModel:
     def set_acceptor(self, value: Any) -> None:
         """Choose the acceptor; its stored ε_max fills :attr:`acceptor_emax`, then R0 is recomputed."""
         self.acceptor = self._probe_id(value)
-        emax = self.probe_properties.get(self.acceptor, {}).get("emax")
+        emax = self._property(self.acceptor, "emax")
         if emax is not None:
             self.acceptor_emax = emax
         self.compute()
@@ -471,8 +480,8 @@ class ForsterCalculatorModel:
             :attr:`r0`; ``None`` while a probe or its spectrum is missing or the
             computation fails (:attr:`status` says why).
         """
-        donor_em = self.probe_spectra.get(self.donor, {}).get("emission")
-        acceptor_abs = self.probe_spectra.get(self.acceptor, {}).get("absorption")
+        donor_em = self._spectrum(self.donor, "emission")
+        acceptor_abs = self._spectrum(self.acceptor, "absorption")
         if donor_em is None or acceptor_abs is None:
             if self.available:
                 self._clear()
