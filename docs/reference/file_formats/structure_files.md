@@ -2,7 +2,7 @@
 type: File Format
 title: Single-file structure reader
 description: Reading one PDB structure into ChiSurf with the Modelling experiment.
-tags: [reference, file-formats, structure, settings]
+tags: [reference, file-formats, structure]
 ---
 
 # Single-file structure reader

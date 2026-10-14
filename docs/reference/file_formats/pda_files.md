@@ -2,7 +2,7 @@
 type: File Format
 title: PDA TTTR files
 description: How the PDA experiment builds photon-distribution histograms from TTTR files, burst tables and burst-analysis folders.
-tags: [reference, file-formats, pda, tttr, photons]
+tags: [reference, file-formats, pda, tttr, photons, bursts]
 ---
 
 # PDA TTTR files {#pda-tttr}

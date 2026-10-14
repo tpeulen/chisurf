@@ -2,7 +2,7 @@
 type: Guide
 title: Reading the photons of a TTTR file
 description: 'Tool: Tools → TTTR → Photon Table (photon_table). One row per record (photons and the scanner''s pixel, line and frame markers, each marker kind coloured) with routing channel, micro time and macro time, paged and filterable by channel and kind, to check what a file holds before any analysis.'
-tags: [guides, photons, tttr]
+tags: [guides, photons, tttr, file-formats]
 ---
 
 # Reading the photons of a TTTR file

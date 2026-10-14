@@ -2,7 +2,7 @@
 type: Guide
 title: Sampling a protein under FRET distance restraints
 description: 'Tool: Structure → Computation → Protein Monte Carlo (proteinmc), a command-line plugin. Samples torsion-angle conformations of a structure that satisfy FPS distance restraints and writes them as an RMF3 trajectory.'
-tags: [guides, structure, fret]
+tags: [guides, sampling, fret, structure, plugins]
 ---
 
 # Sampling a protein under FRET distance restraints

@@ -2,7 +2,7 @@
 type: Guide
 title: The decay tools, Lazy Lifetime Analysis and synthetic decays
 description: The seven tools of Spectroscopy > Decay; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count), what its component-count scan really tests, and its joint VV/VH fit of lifetimes and rotational correlation times; and the Synthetic Decay Generator for decays whose answer is known.
-tags: [guides, tcspc, decay, lifetime, fitting, corrections]
+tags: [guides, tcspc, decay, lifetime, fitting, corrections, correlation]
 ---
 
 # The decay tools, Lazy Lifetime Analysis and synthetic decays

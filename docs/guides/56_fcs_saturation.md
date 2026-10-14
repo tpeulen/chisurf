@@ -2,7 +2,7 @@
 type: Guide
 title: FCS saturation and focal-volume expansion
 description: 'Tool: Spectroscopy → Correlation → FCS Saturation · CLI: csc fcs-saturation · Model: FCS (kinetics)'
-tags: [guides, fcs, cli, headless, python, plugins, kinetics]
+tags: [guides, fcs, correlation, cli, headless, kinetics]
 ---
 
 # FCS saturation and focal-volume expansion

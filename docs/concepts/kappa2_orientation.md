@@ -2,7 +2,7 @@
 type: Concept
 title: The orientation factor κ² and what it costs
 description: The Förster radius contains κ², the mutual orientation of the donor emission dipole and the acceptor absorption dipole; this page shows when κ² = 2/3 holds and how measured anisotropies bound the distance error.
-tags: [concepts, fret, kappa2, orientation, anisotropy]
+tags: [concepts, fret, kappa2, orientation, anisotropy, uncertainty]
 anchor: concept-kappa2-orientation
 ---
 

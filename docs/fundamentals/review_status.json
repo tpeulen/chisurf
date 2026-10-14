@@ -3,7 +3,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "800d879c557ac83ccca1dcbc66a3896466e5d761d177c0627fc095aabdc39068",
+    "sha256": "88f9c89b5a74ce5935e1062959b45db7405d5b74f810889472ea7911a7e78f88",
     "status": "ai-reviewed"
   },
   "conventions.md": {
@@ -38,14 +38,14 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "dbda2ec71e3ebead5131663217da43070347f8c4be619aaadaae23a22e10bb56",
+    "sha256": "b22f9d581c06a47a6b9db4ad67d3d60b83581879e4f98c0d93b6d5ac15dcda42",
     "status": "ai-reviewed"
   },
   "lifetime_and_quantum_yield.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "28f8b01da204e7deacb75702e63af5cfe1c1e1ba4be207ad73178ead40a29e8b",
+    "sha256": "9fead0352ee07da55b9df570bcc258e6a48c45ecd9704084706b3c8d4502307d",
     "status": "ai-reviewed"
   },
   "photon_counting.md": {
@@ -80,7 +80,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "955abf949a7a3da39d432929639cfe13fc5747ac4d81bafac9b7f8860a2cfa86",
+    "sha256": "7722ac7cb59e48b09f9dc84a118ef1d89a6bde7d8d3d70a0594a2572e7a1e3b5",
     "status": "ai-reviewed"
   },
   "solvent_and_environment.md": {

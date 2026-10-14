@@ -2,7 +2,7 @@
 type: Concept
 title: 'Scan precision: choosing a dwell time before you measure'
 description: Why a raster-scan correlation measurement (RICS and its relatives) has an optimal pixel dwell time, and how the RICS-Precision planner predicts the relative error of D before the measurement.
-tags: [concepts, correlation, scan, precision]
+tags: [concepts, correlation, uncertainty]
 anchor: concept-scan-precision
 ---
 

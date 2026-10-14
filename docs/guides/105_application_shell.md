@@ -2,7 +2,7 @@
 type: Guide
 title: 'Working in the shell: interface, account and the two hubs'
 description: Switch between menu bar and ribbon, sign in as another MMFDB user, and use the Calculators and Wizards hubs.
-tags: [guides, application, settings]
+tags: [guides, database, mmfdb]
 ---
 
 # Working in the shell: interface, account and the two hubs

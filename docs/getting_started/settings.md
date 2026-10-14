@@ -1,8 +1,8 @@
 ---
-type: Guide
+type: Getting Started
 title: Settings, theme and fonts
 description: Where ChiSurf keeps its settings, how to switch between the dark and the light theme, and how to set the fonts, sizes and magnification of the window.
-tags: [getting-started, settings, theme, fonts, accessibility]
+tags: [getting-started, settings]
 ---
 
 # Settings, theme and fonts

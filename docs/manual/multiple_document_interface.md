@@ -2,7 +2,7 @@
 type: Manual Page
 title: Multiple document interface
 description: The Workspace is where the fit windows live and are arranged; every tool is a dock beside it.
-tags: [manual, multiple, document, interface, workspace, windows]
+tags: [manual, fitting, multiple, document, interface]
 ---
 
 # Multiple document interface

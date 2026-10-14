@@ -2,7 +2,7 @@
 type: File Format
 title: TCSPC file readers
 description: The four TCSPC readers — TXT/CSV, TTTR-file, Becker-SDT and Simulator — and how each turns its input into decay curves for lifetime and FRET fits.
-tags: [reference, file-formats, tcspc, photons, lifetime, fitting, fret]
+tags: [reference, file-formats, tcspc, tttr, photons, decay, lifetime, fret]
 ---
 
 # TCSPC file readers

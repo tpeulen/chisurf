@@ -232,6 +232,30 @@ def _quote(value: str) -> str:
     return text
 
 
+def _render_field(key: str, value: Any, lines: list[str]) -> None:
+    if key == "okf_version":
+        # The specification writes the version as a string; unquoted,
+        # "0.2" is a YAML float and a 0.10 release would read as 0.1.
+        lines.append(f'{key}: "{value}"')
+    elif isinstance(value, (list, tuple)):
+        if value and all(isinstance(item, dict) for item in value):
+            lines.append(f"{key}:")
+            for item in value:
+                first = True
+                for sub_key, sub_value in item.items():
+                    prefix = "  - " if first else "    "
+                    lines.append(f"{prefix}{sub_key}: {_quote(sub_value)}")
+                    first = False
+        else:
+            lines.append(f"{key}: [{', '.join(_quote(item) for item in value)}]")
+    elif isinstance(value, dict):
+        lines.append(f"{key}:")
+        for sub_key, sub_value in value.items():
+            lines.append(f"  {sub_key}: {_quote(sub_value)}")
+    else:
+        lines.append(f"{key}: {_quote(value)}")
+
+
 def render_front_matter(meta: dict[str, Any]) -> str:
     """Render a metadata mapping as an OKF front-matter block.
 
@@ -260,28 +284,17 @@ def render_front_matter(meta: dict[str, Any]) -> str:
         "status",
         "generator",
         "generated",
+        "sources",
     )
     lines = ["---"]
     for key in order:
         if key not in meta or meta[key] in (None, "", [], {}):
             continue
-        value = meta[key]
-        if key == "okf_version":
-            # The specification writes the version as a string; unquoted,
-            # "0.2" is a YAML float and a 0.10 release would read as 0.1.
-            lines.append(f'{key}: "{value}"')
-        elif isinstance(value, (list, tuple)):
-            lines.append(f"{key}: [{', '.join(_quote(item) for item in value)}]")
-        elif isinstance(value, dict):
-            lines.append(f"{key}:")
-            for sub_key, sub_value in value.items():
-                lines.append(f"  {sub_key}: {_quote(sub_value)}")
-        else:
-            lines.append(f"{key}: {_quote(value)}")
+        _render_field(key, meta[key], lines)
     for key in sorted(set(meta) - set(order)):
         if meta[key] in (None, "", [], {}):
             continue
-        lines.append(f"{key}: {_quote(meta[key])}")
+        _render_field(key, meta[key], lines)
     lines.append("---")
     return "\n".join(lines) + "\n"
 

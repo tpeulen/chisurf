@@ -2,7 +2,7 @@
 type: Concept
 title: Transfer to an acceptor density, and dimensionality
 description: Donor decays quenched by acceptors spread at random in a volume, a plane or a line, the characteristic density C0, why the decay shape reveals the dimensionality, and how to fit it.
-tags: [concepts, fret, acceptor, density]
+tags: [concepts, fret, tcspc, decay, fitting]
 anchor: concept-distributed-acceptors
 ---
 

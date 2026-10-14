@@ -2,7 +2,7 @@
 type: Guide
 title: The FRET calculator
 description: 'Tool: Tools → FRET-Calculator (fret_calculator). Converts between donor-acceptor distance, lifetime, efficiency and transfer rate for a single distance or a distance distribution, and between anisotropy migration time and distance for homo-FRET.'
-tags: [guides, fret, calculators]
+tags: [guides, fret, tcspc, lifetime, anisotropy]
 ---
 
 # The FRET calculator

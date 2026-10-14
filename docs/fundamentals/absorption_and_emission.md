@@ -2,7 +2,7 @@
 type: Fundamentals
 title: Absorption, the excited state, and emission
 description: Beer–Lambert absorption, the timescales between absorption and emission, the Stokes shift, Kasha's rule and the mirror-image rule with its units trap.
-tags: [fundamentals, absorption, emission]
+tags: [fundamentals, imaging, absorption, emission]
 anchor: fundamentals-absorption-emission
 ---
 

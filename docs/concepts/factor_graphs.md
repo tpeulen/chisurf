@@ -5,16 +5,16 @@ description: A ChiSurf posterior factorises exactly, and making that factorisati
 tags: [concepts, structure, fitting, global-analysis]
 anchor: concept-factor-graphs
 sources:
-  - text: 'Derived in part from the English Wikipedia article "Factor graph"'
+  - text: Derived in part from the English Wikipedia article "Factor graph"
     url: https://en.wikipedia.org/wiki/Factor_graph
     licence: CC-BY-SA-4.0
-  - text: 'Derived in part from the English Wikipedia article "Treewidth"'
+  - text: Derived in part from the English Wikipedia article "Treewidth"
     url: https://en.wikipedia.org/wiki/Treewidth
     licence: CC-BY-SA-4.0
-  - text: 'Derived in part from the English Wikipedia article "Junction tree algorithm"'
+  - text: Derived in part from the English Wikipedia article "Junction tree algorithm"
     url: https://en.wikipedia.org/wiki/Junction_tree_algorithm
     licence: CC-BY-SA-4.0
-  - text: 'Derived in part from the English Wikipedia article "Chordal graph"'
+  - text: Derived in part from the English Wikipedia article "Chordal graph"
     url: https://en.wikipedia.org/wiki/Chordal_graph
     licence: CC-BY-SA-4.0
 ---

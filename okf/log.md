@@ -29,6 +29,7 @@
 - Workspace as special dock window: per user request, workspace is a dock window docked in center of ShellDockManager (closable=False, core=True) containing self.workspace_docks where fit windows live; tools open in docks (center by default) taking full dock width without auto-floating; tests pass in test_emtk_shell_workspace.py, test_emtk_shell_fit_windows.py, and test_emtk_shell_final_parity.py; headless screenshots inspected.
 - emtk: density optimizations for tables (1.25 row scale, 4px cell padding, 50px flex min), buttons (16px min width floor), numeric steppers (0.6 frame height), comboboxes (3px pad, compact arrow); bumped to 0.1.21
 - shell density: MENU_BAR 30 -> 20 px, status strip HEIGHT 26 -> 18 px, tools tree indent 10 px; emtk docking MIN_TAB_W 32 px, DataTable CELL_PAD_X 3 px
+- docs: fix docs-release gate by adding local module resolution and tttrlib mock to docs/conf.py, fix list-of-dicts frontmatter in okf.py, and update prd-154
 
 ## 2026-10-13
 

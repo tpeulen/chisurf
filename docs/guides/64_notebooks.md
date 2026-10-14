@@ -2,7 +2,7 @@
 type: Guide
 title: Notebooks that run inside ChiSurf
 description: Open and run an .ipynb in the code editor, inside the ChiSurf process, with figures embedded under the cell that drew them.
-tags: [guides, gui, notebooks]
+tags: [guides, notebooks]
 ---
 
 # Notebooks that run inside ChiSurf

@@ -2,7 +2,7 @@
 type: Concept
 title: 'Protein Monte Carlo: torsion-angle sampling under distance restraints'
 description: How ProteinMC moves a protein through backbone and side-chain torsions, accepts or rejects each move by the Metropolis rule, and scores the structure with FRET distance restraints and structural potentials.
-tags: [concepts, structure, fret, sampling]
+tags: [concepts, sampling, structure, fret]
 anchor: concept-protein-monte-carlo
 ---
 

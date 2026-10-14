@@ -5,10 +5,10 @@ description: What microsecond alternating-laser excitation measures, why folding
 tags: [concepts, fret, alex]
 anchor: concept-us-alex
 sources:
-  - text: 'Derived in part from the English Wikipedia article "Hill equation (biochemistry)"'
+  - text: Derived in part from the English Wikipedia article "Hill equation (biochemistry)"
     url: https://en.wikipedia.org/wiki/Hill_equation_(biochemistry)
     licence: CC-BY-SA-4.0
-  - text: 'Derived in part from the English Wikipedia article "Dissociation constant"'
+  - text: Derived in part from the English Wikipedia article "Dissociation constant"
     url: https://en.wikipedia.org/wiki/Dissociation_constant
     licence: CC-BY-SA-4.0
 ---

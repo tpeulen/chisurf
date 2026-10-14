@@ -2,7 +2,7 @@
 type: Fundamentals
 title: Quenching mechanisms in detail
 description: The diffusion limit and its transient effect, Rehm–Weller energetics, nucleobase-specific quenching, and the structure-based simulation that replaces a bulk quenching constant.
-tags: [fundamentals, quenching, mechanisms]
+tags: [fundamentals, diffusion, structure, simulation]
 anchor: fundamentals-quenching-mechanisms
 ---
 

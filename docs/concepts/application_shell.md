@@ -2,7 +2,7 @@
 type: Concept
 title: 'The application shell: settings, interface, account, help and hubs'
 description: What the shell around the analysis tools holds as state, which of it is per user and which per machine, and where calculators and wizards sit in the menus.
-tags: [concepts, application, settings]
+tags: [concepts, settings, application, shell]
 anchor: concept-application-shell
 ---
 

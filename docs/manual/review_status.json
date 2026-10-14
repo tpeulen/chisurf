@@ -357,10 +357,10 @@
     "status": "ai-reviewed"
   },
   "multiple_document_interface.md": {
-    "date": "2026-10-13",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "77af08a6c5a1decf07c0f47f5d534e1540c354f030d0475826666974c0556028",
+    "sha256": "8de95c0af22ee0215b3c56531dcf028e6582429f2852ed6ed01333532f03c9a8",
     "status": "ai-reviewed"
   },
   "nuisances.md": {

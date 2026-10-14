@@ -2,7 +2,7 @@
 type: File Format
 title: Becker & Hickl File Readers
 description: Reading Becker & Hickl .sdt decay files and .set setup files from Python.
-tags: [reference, file-formats, becker, hickl, files]
+tags: [reference, file-formats, tcspc, decay, python]
 ---
 
 # Becker & Hickl File Readers

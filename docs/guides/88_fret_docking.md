@@ -1,8 +1,8 @@
 ---
 type: Guide
-title: 'FRET docking and pair selection'
+title: FRET docking and pair selection
 description: 'Tool: Structure → FRET → Docking & Screening.'
-tags: [guides, structure, fret, docking]
+tags: [guides, fret, structure]
 ---
 
 # FRET docking and pair selection

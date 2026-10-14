@@ -2,7 +2,7 @@
 type: Fundamentals
 title: Lifetime, quantum yield, and the rate picture
 description: The rate picture behind lifetime and quantum yield, the efficiency of any added process, species- versus intensity-weighted averages of a multi-exponential decay, and relative quantum-yield measurement.
-tags: [fundamentals, tcspc, lifetime]
+tags: [fundamentals, tcspc, lifetime, fret, decay]
 anchor: fundamentals-lifetime-quantum-yield
 ---
 

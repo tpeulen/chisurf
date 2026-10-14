@@ -16,6 +16,17 @@ import importlib.util
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('_ext'))
 
+for _mod in [
+    '../modules/chimol',
+    '../modules/ndxplorer',
+    '../modules/mmfdb/src',
+    '../modules/imp-tricks/src',
+    '../modules/chinet',
+]:
+    _abs = os.path.abspath(_mod)
+    if os.path.exists(_abs) and _abs not in sys.path:
+        sys.path.insert(0, _abs)
+
 
 # -- Project information -----------------------------------------------------
 
@@ -72,6 +83,19 @@ suppress_warnings = [
     # submodule was removed; tolerate the import-time miss on that dev-only page.
     'autodoc.import_object',
 ]
+
+_missing_c_extensions = []
+for _pkg in ['tttrlib', 'chinet', 'chimol']:
+    try:
+        __import__(_pkg)
+    except ImportError:
+        _missing_c_extensions.append(_pkg)
+
+if _missing_c_extensions:
+    from sphinx.ext.autodoc.mock import MockFinder
+    sys.meta_path.insert(0, MockFinder(_missing_c_extensions))
+
+autodoc_mock_imports = _missing_c_extensions
 
 for optional_extension in [
     'numpydoc',

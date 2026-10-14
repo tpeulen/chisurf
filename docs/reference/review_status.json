@@ -17,7 +17,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "c312ccb4863400bcee9c4ee3a4fecfe4df115418c9b66563f63be73c0f0927f9",
+    "sha256": "7c26e558dec3c1553f65c97ea7d9fd42c9596504959b064d37dfc3fd4ad7228d",
     "status": "ai-reviewed"
   },
   "file_formats/becker_hickl_set.md": {
@@ -59,7 +59,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "fe0b4ed07fead214e4dc96070ad429e291da6050280773174802a394a9754709",
+    "sha256": "bc11c16f90ecd3718e2c29e9bd375bb051b124a72f6231a55b37a95f38b7067b",
     "status": "ai-reviewed"
   },
   "file_formats/rda_axis_settings.md": {
@@ -73,14 +73,14 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "a4da35bc7bf77702c023647e1cb865f22b36c52cc5d9a7f61403f5d6386bf2fe",
+    "sha256": "db021975aafaacdc94e2f13c2cfab299d67d231288c9f7c0c3a0a5ecf11a123a",
     "status": "ai-reviewed"
   },
   "file_formats/tcspc_files.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "ae3ef9509bfc4a3faef97b8e69659c89569ee0dfeaad9c3a3478239cb6a2eddd",
+    "sha256": "ab43648a6af0616fbf14d4782d75b8d01e5f6a7f97fefcab7090e812d0cd4c08",
     "status": "ai-reviewed"
   },
   "index.md": {

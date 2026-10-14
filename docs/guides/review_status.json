@@ -101,28 +101,28 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "5e1b042921d022c02b20be5e4a572b5fe951af105f180cf30ad9332d732e4b5e",
+    "sha256": "9cff2f7f78c05c26ee8ed7b3270b549b001eb689ce950ac951f429a04e375e90",
     "status": "ai-reviewed"
   },
   "106_protein_monte_carlo.md": {
-    "date": "2026-10-13",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "65a3c805bae45299097b3ef2808ca5a02130cde0b41534bf98fe73dc717d3749",
+    "sha256": "0f3a1542b6abc1683032dfd756d208e5b513fb1b20b378a74ef0f93071e35bc9",
     "status": "ai-reviewed"
   },
   "107_fret_calculator.md": {
-    "date": "2026-10-13",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "f631a8e0a2d3e85f9f9fca597a75211dfc54413ec196904ce07d8c2f3cd0e408",
+    "sha256": "b6c5c8e7a0ca590eb1349fca1c6624e972c260d2fa7e7897c999e8b3b7cdcca3",
     "status": "ai-reviewed"
   },
   "108_photon_table.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "3481e47d6df088b51d314bf5b55f28a8fea3db99af5d581193a62a87195a7ad4",
+    "sha256": "2a5e3b3d0162c6d3544b13316763073ffd338aecfe189ee0a29731e761a300e9",
     "status": "ai-reviewed"
   },
   "10_lifetime_anisotropy_fitting.md": {
@@ -451,7 +451,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "24b021116fad014217f8d8c2dd3a2392b3ac4ac26fcc312b7abff191e212126f",
+    "sha256": "a72f05a2b39be40f395bfb34d7c4f5ecde1c18289daad5bd4084a9b2d31a33af",
     "status": "ai-reviewed"
   },
   "57_mfd_fitting.md": {
@@ -507,7 +507,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "f6474ddc7711921ab67a89e23854b0cb6ad03bf5310309745cb10351c33f85db",
+    "sha256": "586409565a2ca60fa6f5851d1f2fdafb6a88c0487decfbec1f8a46e44f66f120",
     "status": "ai-reviewed"
   },
   "65_live_acquisition.md": {
@@ -570,7 +570,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "d48a00c322372d980c7148f7a6a093e70bf4dfb406e820d647af7455c116ad80",
+    "sha256": "f06aa0757725f0e63a7600a3b9a2d55ed7a2e88df5a36cc7acaa8201416e7cb1",
     "status": "ai-reviewed"
   },
   "77_phasor_calculator.md": {
@@ -647,14 +647,14 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "37d1547c45f3e6f7b7ae907f80137b524db05f0f93179c958c17d21ad23fb970",
+    "sha256": "f3363f3a2f5509843700d8f893a6f6c1720393e55367fbba577668cdb8aca336",
     "status": "ai-reviewed"
   },
   "88_fret_docking.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2970f6c829b2e3555d1dba9762bc315eb5622289a84ddd7057067babf2d5f856",
+    "sha256": "9f40432156b9af4e778aab3f4040849e6b58d29356b585d6e7a59c4a9ec5ea1c",
     "status": "ai-reviewed"
   },
   "88_microtime_shifter.md": {
