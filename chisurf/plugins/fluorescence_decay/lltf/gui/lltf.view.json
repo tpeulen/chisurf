@@ -20,8 +20,8 @@
       "sections": [
         {"type": "value", "attr": "n_lifetimes", "label": "Number of Lifetimes", "kind": "int", "style": "spin", "minimum": 1, "maximum": 6, "step": 1,
          "description": "Exponential components of the fit. Used when Find Optimal is off; it then also switches the configuration file's own find_optimal off."},
-        {"type": "choice", "attr": "noise_model", "label": "Noise Model", "options": ["neyman", "poisson"], "style": "combo",
-         "description": "Objective of the fit. neyman: χ² weighted by the data, works on any curve but is biased at low counts (3.0 + 4.5 ns comes back near 2.4 + 4.1 ns). poisson: the Poisson deviance 2I*, unbiased; the decay must be raw photon counts. Overrides the configuration's noise_model."},
+        {"type": "choice", "attr": "noise_model", "label": "Noise Model", "options": ["poisson", "neyman"], "style": "combo",
+         "description": "Objective of the fit. poisson (default): the Poisson deviance 2I*, unbiased; the decay must be raw photon counts. neyman: χ² weighted by the data, for curves that are not counts, but biased at low counts (3.0 + 4.5 ns comes back near 2.4 + 4.1 ns). Overrides the configuration's noise_model."},
         {"type": "toggle", "attr": "find_optimal", "label": "Find Optimal",
          "description": "Find the optimal number of lifetimes: fit 1 … Max Lifetimes components and pick a count by the probability test. Read the χ²ᵣ sequence (Analysis Output, or optimal_fitting in the JSON) rather than taking the count as a verdict."},
         {"type": "value", "attr": "max_lifetimes", "label": "Max Lifetimes to Try", "kind": "int", "style": "spin", "minimum": 2, "maximum": 6, "step": 1,

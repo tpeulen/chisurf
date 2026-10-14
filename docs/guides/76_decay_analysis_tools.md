@@ -19,9 +19,10 @@ you choose, the only data on which LLTF's choices can be checked.
 Reconvolution, the nuisance terms and the two average lifetimes are in
 {ref}`concept-tcspc-lifetime`. How to decide the number of components is
 {ref}`concept-tcspc-model-selection`; how synthetic decays are sampled and what a
-photon budget allows is {ref}`concept-tcspc-synthetic-decays`. LLTF weights by
-the data (Neyman $\chi^2$) unless `noise_model: poisson` selects the deviance
-$2I^*$; both are discussed in {ref}`concept-fitting-objectives`.
+photon budget allows is {ref}`concept-tcspc-synthetic-decays`. LLTF minimises
+the Poisson deviance $2I^*$ unless `noise_model: neyman` selects weighting by
+the data (Neyman $\chi^2$); both are discussed in
+{ref}`concept-fitting-objectives`.
 :::
 
 ## Open the tools
@@ -98,10 +99,9 @@ hand, in this order:
 
 Lazy Lifetime Analysis after **Fit** on the plugin's example donor decay
 (`example/5-44_D0.dat` with `IRF_D0.dat` and the example `config.yml`), two
-lifetimes: 3.900 ns (0.899) and 0.780 ns (0.101), $\chi^2_r = 1.39$ over
-4.66–23.3 ns. The white lines are the automatic fit range. The status and the
-*Results* summary carry an optimizer warning: the fit stopped on its evaluation
-budget.
+lifetimes: 3.900 ns (0.899) and 0.782 ns (0.101), $\chi^2_r = 1.39$ over
+4.66–23.3 ns, Noise Model `poisson`. The white lines are the automatic fit
+range. The *Results* summary reports that the optimizer converged.
 ```
 
 The window has three docks: the inputs and options on the left, *Information*,
@@ -110,9 +110,9 @@ weighted residuals below.
 
 A fit that ends without converging still writes its numbers. The JSON records
 `optimizer_status`, `converged`, `optimizer_message` and `optimizer_source`, and
-the panel shows a warning when `converged` is false; the example above reaches
-its evaluation limit (status 5, `maxfev` 1600). A written file is not a
-convergence claim.
+the panel and its status line show a warning when `converged` is false (for
+example `maxfev` reached, status 5). A written file is not a convergence
+claim.
 
 Starting values come from a local random generator, seed 0 by default
 (`randomize_initial_values.seed`, forwarded to every fit of a scan; `None` draws
@@ -155,7 +155,7 @@ scan).
 
 | Key | Default | Meaning |
 |---|---|---|
-| `lifetime_fit_parameter.noise_model` | `neyman` | the objective: `neyman` weights each channel by its own counts (any curve; biased at low counts), `poisson` minimises the deviance $2I^*$ (unbiased; the decay must be raw photon counts). CLI `--noise-model` |
+| `lifetime_fit_parameter.noise_model` | `poisson` | the objective: `poisson` minimises the deviance $2I^*$ (unbiased; the decay must be raw photon counts), `neyman` weights each channel by its own counts (any curve; biased at low counts). Panel **Noise Model**, CLI `--noise-model` |
 | `analysis_range_parameter.start_fraction` | 0.005 | start where the rise crosses this fraction of the peak |
 | `…start_at_peak` | false | start at the peak instead |
 | `…area` | 0.9999 | stop at this fraction of the cumulative counts |
@@ -199,8 +199,9 @@ range, IRF scaled to the decay maximum) and the weighted residuals.
 :name: fig-lltf-output
 :width: 100%
 
-*Analysis Output* of the same fit. The `maxfev` warning means the optimizer
-stopped on its evaluation budget rather than on convergence.
+*Analysis Output* of the same fit: the range, background and starting values
+the fitter chose, then the fitted lifetimes, nuisance terms and $\chi^2$. A
+fit that stops on its evaluation budget prints a `maxfev` warning here.
 ```
 
 Two files are written to the output directory:
@@ -217,13 +218,17 @@ Two files are written to the output directory:
 of the scan.
 
 **The fit range decides the answer.** The same example decay fitted with two
-lifetimes gives 1.35 ns / 4.00 ns over the default range (4.57–44.1 ns,
+lifetimes gives 1.27 ns / 4.00 ns over the default range (4.57–44.1 ns,
 `area` 0.9999, `start_fraction` 0.005) and 0.78 ns / 3.90 ns over the example
 config's range (4.66–23.3 ns, `area` 0.99, `start_fraction` 0.1). Both
 residual traces look acceptable at a glance. When a short component moves by a
-factor of two with the fit window, the decay does not determine it. The example
-decay is also scaled to a peak of exactly 100 000, so it is not raw counts and
-its $\chi^2_r$ does not measure fit quality.
+factor of 1.6 with the fit window, the decay does not determine it. The example
+decay peaks at exactly 100 000 counts (an acquisition stopped at a peak limit),
+but its noise is Poisson on the stored values: the variance of channel-to-channel
+differences over twice the mean is 0.84–1.20 from the peak down to the
+15-count tail. It is raw counts as far as the deviance is concerned; with
+`neyman` the same two fits give 1.35 / 4.00 ns ($\chi^2_r$ 1.56 against 1.49)
+and 0.78 / 3.90 ns (1.39 for both).
 
 ### The component-count scan
 
@@ -264,9 +269,9 @@ lifetimes this bias moves the fit along the near-flat direction of the
 pair. On seed 1 of 3.0 + 4.5 ns (amplitudes and nuisances refitted at fixed
 lifetimes) the data-weighted $\chi^2$ scores the wrong pair 2.36 / 4.13 ns 138
 lower than the true pair; the deviance scores the true pair 12 lower than the
-wrong one. `neyman` stays the default because
-it also fits curves that are not counts (the packaged example is scaled to a
-peak of 100 000).
+wrong one. `poisson` is therefore the default; choose `neyman` only for a
+curve that is not counts (normalised, background-subtracted or averaged), where
+the deviance has no meaning.
 
 **What remains is resolution.** With the deviance, the profile over $\tau_1$
 for seed 1 (everything else refitted) rises by 5.1 at 2.5 ns, 2.5 at the true
@@ -371,15 +376,15 @@ csc synth-decay generate --lifetimes 1.0,4.0 --amplitudes 0.5,0.5 \
     --photons 2e6 --seed 2 --no-normalize -o bi.dat
 csc lltf fit bi.dat chisurf/plugins/fluorescence_decay/lltf/example/IRF_D0.dat \
     -f -m 3 -sp out_bi
-# Lifetime 1: 3.936 ns, Amplitude: 0.511
-# Lifetime 2: 0.949 ns, Amplitude: 0.489
-# Reduced chi-square: 1.10
+# Lifetime 1: 3.990 ns, Amplitude: 0.501
+# Lifetime 2: 0.981 ns, Amplitude: 0.499
+# Reduced chi-square: 1.02
 ```
 
 `bi.dat` holds 2 000 360 photons. `csc lltf fit` takes `-c` for a YAML
 configuration, `-n` for a fixed component count, `-pt`/`-sm` for the scan's
-threshold and mode, `--noise-model poisson` for the deviance on raw counts
-(`bi.dat` is raw counts: it returns 3.99 ns and 0.98 ns), `--skiprows`, `--delimiter`, `--time-column` and
+threshold and mode, `--noise-model neyman` for a curve that is not counts
+(on `bi.dat` it returns 3.94 ns and 0.95 ns), `--skiprows`, `--delimiter`, `--time-column` and
 `--counts-column` for the file layout, and `-si` to keep each scanned model.
 `csc synth-decay aniso` generates a VV/VH pair (`--rotation b,ρ,…`,
 `--g-factor`, `--l1`, `--l2`, `--vvvh-file`), and `csc synth-decay component`
@@ -408,8 +413,8 @@ res = fit_lifetime(
                                        "plot_weighted_residuals": False},
             "plot_resulting_fit": False},
     save_intermediate_results=False)
-print(res["n_lifetimes"], res["lifetime_spectrum"])   # 2 [0.511 3.936 0.489 0.949]
-print(res["optimal_fitting"]["scores"])               # [10.482 1.101 1.102]
+print(res["n_lifetimes"], res["lifetime_spectrum"])   # 2 [0.501 3.99  0.499 0.981]
+print(res["optimal_fitting"]["scores"])               # [10.645 1.024 1.024]
 ```
 
 The generator underneath is

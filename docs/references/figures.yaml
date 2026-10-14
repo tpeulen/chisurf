@@ -3188,8 +3188,9 @@ guides/figures/lltf_native_optimizer_warning.png:
     (lltf) headlessly at 1100 x 720 with Decay File example/5-44_D0.dat, IRF
     File example/IRF_D0.dat and Config File example/config.yml (all under
     chisurf/plugins/fluorescence_decay/lltf/), Number of Lifetimes 2, Find
-    Optimal off; press Fit, wait for the child process, open the Results tab
-    (it shows the maxfev optimizer warning) and save the frame here.
+    Optimal off, Noise Model poisson (the default); press Fit, wait for the
+    child process, open the Results tab (it reports "Optimizer converged.";
+    the file name predates that) and save the frame here.
   pages:
   - docs/guides/76_decay_analysis_tools.md
 

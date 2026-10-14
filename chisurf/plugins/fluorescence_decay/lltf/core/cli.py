@@ -73,8 +73,8 @@ def cli():
     "-nm",
     type=click.Choice(["neyman", "poisson"]),
     default=None,
-    help="Objective: neyman (data-weighted chi-square, the default; any curve) or poisson "
-    "(deviance 2I*, unbiased; the decay must be raw photon counts). Overrides the configuration.",
+    help="Objective: poisson (deviance 2I*, unbiased, the default; the decay must be raw photon "
+    "counts) or neyman (data-weighted chi-square; any curve). Overrides the configuration.",
 )
 @click.option("--skiprows", "-s", type=int, default=0, help="Number of rows to skip in data files")
 @click.option("--delimiter", "-d", type=str, default=None, help="Delimiter used in data files")

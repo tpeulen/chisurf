@@ -185,10 +185,10 @@ class Decay:
         self.irf_background = 0.0
         self.decay_background = 0.0
         self.apply_irf_shift = True  # Whether to apply IRF shift
-        # Objective: "neyman" weights each channel by its own counts (works on
-        # curves that are not raw counts, biased at low counts); "poisson" is
-        # the deviance 2I* (unbiased, needs raw photon counts).
-        self.noise_model = "neyman"
+        # Objective: "poisson" is the deviance 2I* (unbiased, needs raw photon
+        # counts); "neyman" weights each channel by its own counts (works on
+        # curves that are not raw counts, biased at low counts).
+        self.noise_model = "poisson"
 
         # Analysis range
         self.start = 0
@@ -1590,7 +1590,7 @@ def fit_lifetime(
 
         # Create decay object
         decay_obj = Decay(decay=decay, irf=irf, time_axis=time_axis)
-        noise_model = str(config.get("lifetime_fit_parameter", {}).get("noise_model", "neyman"))
+        noise_model = str(config["lifetime_fit_parameter"]["noise_model"])
         if noise_model not in ("neyman", "poisson"):
             raise ValueError(f"noise_model must be 'neyman' or 'poisson', not {noise_model!r}")
         decay_obj.noise_model = noise_model

@@ -23,9 +23,9 @@ estimate_irf_shift_parameters:
   irf_time_shift_scan_n_steps: 20
 
 lifetime_fit_parameter:
-  # neyman: chi-square weighted by the data (any curve, biased at low counts);
-  # poisson: deviance 2I* (unbiased; needs raw photon counts).
-  noise_model: neyman
+  # poisson: deviance 2I* (unbiased; needs raw photon counts);
+  # neyman: chi-square weighted by the data (any curve, biased at low counts).
+  noise_model: poisson
   find_optimal: false
   maximum_number_of_lifetimes: 6
   prob_threshold: 0.68
