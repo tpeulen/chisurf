@@ -123,6 +123,22 @@ def make_residue_lookup_table(structure):
     return l_residue, l_ca, l_cb, l_c, l_n, l_h
 
 
+def residue_type_ids(structure):
+    """One residue-type id (:data:`res2id`) per residue, in lookup-table order.
+
+    The array lines up with the rows of :func:`make_residue_lookup_table`. It
+    used to carry one entry per *atom* of a known residue, so entry *i* was not
+    residue *i*. A residue that is not an amino acid (a kept ligand) is -1.
+    """
+    return np.array(
+        [
+            res2id.get(str(next(iter(residue.values()))["res_name"]), -1)
+            for residue in structure.residue_dict.values()
+        ],
+        dtype=np.int32,
+    )
+
+
 def get_residue_sequence(structure):
     try:
         residue_dict = structure.residue_dict
@@ -236,10 +252,7 @@ class Structure:
             self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = (
                 make_residue_lookup_table(self)
             )
-            self.residue_types = np.array(
-                [res2id[res] for res in list(self.atoms["res_name"]) if res in list(res2id.keys())],
-                dtype=np.int32,
-            )
+            self.residue_types = residue_type_ids(self)
             self.dist_ca = np.zeros((self.n_residues, self.n_residues), dtype=np.float64)
 
             self.sequence = get_residue_sequence(self)
@@ -300,8 +313,7 @@ class Structure:
         self.l_res, self.l_ca, self.l_cb, self.l_c, self.l_n, self.l_h = make_residue_lookup_table(
             self
         )
-        tmp = [res2id[res] for res in list(self.atoms["res_name"]) if res in list(res2id.keys())]
-        self.residue_types = np.array(tmp, dtype=np.int32)
+        self.residue_types = residue_type_ids(self)
         self.dist_ca = np.zeros((self.n_residues, self.n_residues), dtype=np.float64)
 
         ####################################################
