@@ -1,11 +1,9 @@
 """Grab functions for guides 15-25 (screenshot pass 2).
 
-Written in ``docs/guides/make_screenshots.py`` style: each ``_grab_*`` uses the
-module constants ``_SPC_FILE``, ``FIG`` and ``_grab`` of that file, so the
-functions can be pasted in unchanged. Run standalone from the repo root with::
+Run standalone from the repo root with::
 
-    QT_QPA_PLATFORM=offscreen PYTHONPATH=modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. \
-        python <scratch>/shots2/grabs.py _grab_15_background ...
+    PYTHONPATH=modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:. \
+        python docs/guides/screenshots/guides_15_25.py _grab_15_background ...
 """
 
 from __future__ import annotations
@@ -16,105 +14,14 @@ import shutil
 import sys
 import tempfile
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 import numpy as np  # noqa: E402
-from qtpy.QtWidgets import QApplication  # noqa: E402
 
 import chisurf.core.settings  # noqa: E402,F401
 
 FIG = pathlib.Path(__file__).resolve().parents[1] / "figures"
 _SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
-
-
-def _grab(widget, name):
-    """Show *widget*, process events, and save a PNG grab into ``figures/``."""
-    widget.show()
-    QApplication.instance().processEvents()
-    widget.grab().save(str(FIG / name))
-    print("wrote", name)
-
-
-def _grab_rect(widget, name, height, width=None, top=0):
-    """Grab a band ``[top, top+height)`` (and left *width* px) of *widget*.
-
-    For tools whose minimum size leaves a short panel mostly empty, or whose
-    stacked docks make one grab too tall to read.
-    """
-    from qtpy.QtCore import QRect
-
-    widget.show()
-    _settle()
-    w = width or widget.width()
-    widget.grab(QRect(0, top, w, height)).save(str(FIG / name))
-    print("wrote", name)
-
-
-def _compose(pixmaps, name, gap=12):
-    """Save *pixmaps* side by side as one PNG in ``figures/``."""
-    from qtpy import QtGui
-
-    canvas = QtGui.QPixmap(
-        sum(p.width() for p in pixmaps) + gap * (len(pixmaps) - 1),
-        max(p.height() for p in pixmaps),
-    )
-    canvas.fill(QtGui.QColor("#f0f0f0"))
-    painter = QtGui.QPainter(canvas)
-    x = 0
-    for p in pixmaps:
-        painter.drawPixmap(x, 0, p)
-        x += p.width() + gap
-    painter.end()
-    canvas.save(str(FIG / name))
-    print("wrote", name)
-
-
-def _settle(n=10):
-    """Process events a few times so docks and plots lay out."""
-    app = QApplication.instance()
-    for _ in range(n):
-        app.processEvents()
-
-
-def _raise_tab(widget, title):
-    """Bring every tab whose text is *title* to the front (dock tab groups too)."""
-    from qtpy import QtWidgets
-
-    hit = False
-    for bar in widget.findChildren(QtWidgets.QTabBar):
-        for i in range(bar.count()):
-            if bar.tabText(i).strip() == title:
-                bar.setCurrentIndex(i)
-                hit = True
-    _settle()
-    if not hit:
-        print("tab not found:", title)
-    return hit
-
-
-def _tab_titles(widget):
-    """All tab texts under *widget* (for probing)."""
-    from qtpy import QtWidgets
-
-    return [
-        [bar.tabText(i) for i in range(bar.count())]
-        for bar in widget.findChildren(QtWidgets.QTabBar)
-    ]
-
-
-def _probe_tabs(widget, stem):
-    """Grab every tab of *widget* into the scratch dir as ``<stem>_<tab>.png``."""
-    from qtpy import QtWidgets
-
-    out = pathlib.Path(os.environ.get("SHOT_PROBE", "/tmp"))
-    for bar in widget.findChildren(QtWidgets.QTabBar):
-        for i in range(bar.count()):
-            bar.setCurrentIndex(i)
-            _settle()
-            name = "".join(c if c.isalnum() else "_" for c in bar.tabText(i))
-            widget.grab().save(str(out / f"{stem}_{name}.png"))
-    print("tabs:", _tab_titles(widget))
 
 
 _BH_SETUP = "BH SPC-132 smFRET"
@@ -132,15 +39,15 @@ def _ensure_bh_setup():
     empty selector otherwise.
     """
     from chisurf.core.fluorescence.fcs.channel_setups import save_fcs_channel_setups
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition.setup_client import (
-        DetectorSetupClient,
+    from chisurf.core.data_io.detector_setups import (
+        load_detector_setups,
+        save_detector_setups,
     )
 
-    # Two stores: the RPC service reads/writes settings/detector_setups.json,
-    # the SetupSelector reads MMFDB. Write both so every tool sees the setup.
-    client = DetectorSetupClient()
-    client.save_setup(_BH_SETUP, {"detectors": _BH_DETECTORS})
-    client.set_current({"detectors": _BH_DETECTORS, "name": _BH_SETUP})
+    # One store: the core detector-setup store the RPC service and every tool read.
+    save_detector_setups(
+        {"setups": {_BH_SETUP: {"detectors": _BH_DETECTORS}}, "last_used": _BH_SETUP}
+    )
     # A fresh isolated MMFDB has no row for the active user, and the FCS-pair
     # store references one (the detector store does not).
     from chisurf.core.fio import setup_store
@@ -169,7 +76,7 @@ def _ensure_bh_setup():
             "last_used_setup": _BH_SETUP,
         }
     )
-    print("setups:", client.list_setups())
+    print("setups:", sorted(load_detector_setups()["setups"]))
 
 
 # ---------------------------------------------------------------- guide 15
@@ -429,7 +336,7 @@ def _grab_22_trace_browser():
     from chisurf.plugins.tttr.trace_browser.gui.app import make_app
 
     work, _folder = _sm_dna_copy()
-    app = make_app()   # a QApplication runs here, so the HMM / TW / NDX buttons are hosted (enabled)
+    app = make_app()
     app.model.accept_setup(
         {
             "detectors": dict(_BH_DETECTORS),
@@ -555,7 +462,6 @@ def _grab_25_accurate_fret():
 
 
 if __name__ == "__main__":
-    app = QApplication.instance() or QApplication([])
     keep = []
     for n in sys.argv[1:]:
         keep.append(globals()[n]())

@@ -25,7 +25,7 @@ def _reader(experiment: str, name: str):
     import chisurf
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
     return next(r for r in chisurf.experiment[experiment].readers if str(r.name) == name)
 
 
@@ -159,7 +159,7 @@ def test_rate_matrix_scalar_table_and_global_table():
     from chisurf.core.api import ChiSurfAPI
 
     sys.path.insert(0, str(REPO / "test" / "native_emtk"))
-    from capture_shell_s2_models_qt_before import make_pda_curve
+    from pda_fixture import make_pda_curve
 
     state = SessionState()
     api = ChiSurfAPI(mode="local", state=state)

@@ -82,8 +82,7 @@ session open. The same decision protects project replacement and reset.
 
 ## In the native window
 
-The native window (the default window; `python -m chisurf --qt` opens the
-Qt window it replaces) has the same **File** menu and shortcuts: **Save Project**
+The ChiSurf window has the same **File** menu and shortcuts: **Save Project**
 (`Ctrl+S`), **Export Project…** (`Ctrl+Shift+S`, save under a new file), **Open
 Project…**, **Import Project…**, **Close Project**, **Reinitialize** (`Ctrl+R`),
 **Recent Projects** and **Quit** (`Ctrl+Q`); **View** has **Undo** (`Ctrl+Z`)
@@ -91,13 +90,13 @@ and **Redo** (`Ctrl+Y`). Closing the window, quitting, opening or closing a
 project ask the Save / Don't Save / Cancel question once, and only when the
 session has unsaved work; an empty session asks "Quit ChiSurf?" instead. The
 autosave writes the same `.autosave.cs.pto` copy. A fit window's **×** asks,
-then removes the fit, as in the Qt window.
+then removes the fit.
 
-**File ▸ Fits** saves and loads single fits as the Qt window does: **Current Fit**
+**File ▸ Fits** saves and loads single fits: **Current Fit**
 (`Ctrl+Alt+S`), **All Fits** and **Load Fit** (see
 [Saving & exporting the results](../manual/saving__exporting_the_results.md)).
-**Macro ▸ Record** and **Macro ▸ Run Macro…** work as in the Qt window (see
-[the console guide](59_console.md)). Undo and redo cover the session since it
+**Macro ▸ Record** and **Macro ▸ Run Macro…** are described in
+[the console guide](59_console.md). Undo and redo cover the session since it
 was opened; the undo history is not written into the project file.
 
 ## Failures do not mean an empty project

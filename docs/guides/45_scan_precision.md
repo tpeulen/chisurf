@@ -158,7 +158,7 @@ end of the working range this planner exists to keep you out of.
 
 - Tool: **RICS-Precision** (`chisurf/plugins/calculator/rics_precision/`).
 
-The native calculator and its Qt hosting wrapper initially use 640×480. Saved
+The native calculator initially uses 640×480. Saved
 window dimensions are restored after that default; embedding retains the
 parent's sizing. Fold/field hints explain the scan settings, with unchanged
 prediction curves and reported error values.

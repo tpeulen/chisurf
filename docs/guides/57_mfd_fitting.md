@@ -194,14 +194,6 @@ of 1.0000 each and a background of 0.001 kHz — the simulator adds no dark coun
 (`true_responses()` declares 0), so the estimate should be near zero; one static model evaluation
 (`model.score`) takes 0.3 s and the two-state kinetic one 1.5 s.
 
-## Known defects
-
-- After loading, the status bar reads *MFD reader form could not refresh:
-  'AutoForm' object has no attribute 'update_widgets'* —
-  `chisurf/gui/widgets/experiments/mfd.py` calls a method AutoForm does not have
-  (`sync_fields` is the current name), so the reader panel does not redraw after
-  a load.
-
 ## Two things not to misread
 
 **Amplitudes are not population fractions.** The donor-photon cut removes high-FRET

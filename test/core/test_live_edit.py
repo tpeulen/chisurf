@@ -84,18 +84,3 @@ def test_dataset_add_and_move():
         assert dataset_objects()[-2:] == [b, a]
     finally:
         cs.imported_datasets[:] = saved
-
-
-def test_parameter_table_edit_without_controller_changes_the_parameter():
-    """The table's no-controller fallback edits a real fit parameter via the seam."""
-    pytest.importorskip("qtpy")
-    from chisurf.core.fitting.parameter import FittingParameter
-    from chisurf.gui.autoform.sections.parameter_table import _set_param_value
-
-    p = FittingParameter(name="tau", value=1.0, lb=0.0, ub=10.0)
-    assert _set_param_value(p, "value", "2.5")
-    assert p.value == 2.5
-    assert _set_param_value(p, "fixed", True)
-    assert p.fixed is True
-    assert _set_param_value(p, "bounds_hi", "8")
-    assert p.ub == 8.0

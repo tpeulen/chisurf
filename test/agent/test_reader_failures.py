@@ -1,14 +1,9 @@
 """Loading must succeed, or fail — never hang.
 
-A reader that cannot read a file used to be reported by constructing a modal
-error dialog from inside the macro layer. With a GUI that is fine. Without one
-it is fatal: the box's ``exec_()`` blocks forever waiting for a click that will
-never come, and with no ``QApplication`` at all Qt aborts the process outright.
-Either way a head-less caller — the CLI, a script, a test, the assistant —
-never gets an answer. Reporting now goes through
-:class:`chisurf.gui.dialogs.ChiSurfMessageBox`, which logs and returns instead
-of blocking; without a GUI at all ``add_dataset`` re-raises, which is what these
-tests pin down.
+A reader that cannot read a file must report the failure to the caller, not
+wait on a modal error dialog that a head-less caller (the CLI, a script, a test,
+the assistant) can never answer. Without a GUI ``add_dataset`` re-raises, which
+is what these tests pin down.
 """
 
 from __future__ import annotations

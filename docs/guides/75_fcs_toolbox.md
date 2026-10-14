@@ -39,9 +39,8 @@ For what the curve means and how its error bars are estimated, see
   volume and concentration calculator, {ref}`concept-fcs-correlation`). A ⚠
   marks a tool flagged experimental.
 
-The controls are native emtk/AutoForm surfaces. The existing ChiSurf Qt windows
-host the same `FcsHubApp` used by the standalone launcher; there is no second
-Qt implementation of the workflow. Closing the hub closes its opened child
+The controls are native emtk/AutoForm surfaces: the shell docks the same `FcsHubApp`
+the standalone launcher opens. Closing the hub closes its opened child
 tools; a running Burst-wise FCS child receives cancellation and releases its
 worker executor when closed.
 
@@ -54,8 +53,8 @@ pixi run -e test python -m chisurf.emtk --plugin fcs_toolbox --size 1200x800
 The same launcher accepts `fcs_correlator` for the five workflow steps,
 `fcs_merger` for the merger alone, and `burst_fcs_correlator` for burst-wise FCS.
 These are manifest IDs, not separate `csg_fcs_*` commands. Native desktop
-launch needs a display; `QT_QPA_PLATFORM=offscreen` is for Qt-host captures,
-not a substitute for the native desktop renderer. The Python calculations
+launch needs a display; offscreen drawing (`emtk.testing.Driver`) is for captures,
+not a substitute for the desktop renderer. The Python calculations
 below run without a window.
 
 ## 1. Channel Definitions

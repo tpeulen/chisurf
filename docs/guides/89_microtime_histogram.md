@@ -18,13 +18,12 @@ Theory: how photons are selected and combined is in {ref}`concept-microtime-hist
 
 ## 1. Open the tool
 
-**Spectroscopy → Decay → Histogram-Microtime**. Two tabs share the left dock, as in the Qt tool:
+**Spectroscopy → Decay → Histogram-Microtime**. Two tabs share the left dock:
 **Inputs and options** and **Detector definition** (the shared detector editor: reading routine, PIE windows,
 detectors, TAC linearization). The decay is on the right and gets the room. **Guide** walks through the tool, **Help**
 explains every group.
 
-The existing ChiSurf and lifetime-analysis Qt windows host this same native
-emtk/AutoForm app. For a desktop with a working display/GPU, launch it with
+The ChiSurf shell docks this emtk/AutoForm app. For a desktop with a working display/GPU, launch it with
 `pixi run -e test python -m chisurf.plugins.tttr.microtime_histogram`.
 Its startup options can queue an existing burst-analysis folder:
 
@@ -174,8 +173,8 @@ print(demo_model.cumulative_parallel.sum(), demo_model.cumulative_perpendicular.
 
 ## Timing when comparing earlier results
 
-The retired Qt window displayed an unsaved 50 ps setting for this SPC fixture;
-that value was not a physically calibrated header measurement. The native
+The earlier Qt window displayed an unsaved 50 ps setting for this SPC fixture;
+that value was not a physically calibrated header measurement. The
 workflow reads the provider/file-container timing. A validation-only comparison used
 an explicitly declared **25 ps/bin** timing override in both implementations:
 the same 113-bin width then reads **2.825 ns**, with identical histogram/export

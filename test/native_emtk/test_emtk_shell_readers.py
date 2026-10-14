@@ -41,7 +41,7 @@ def experiments():
     import chisurf
     from chisurf.core.experiments.bootstrap import ensure_experiments_registered
 
-    ensure_experiments_registered(allow_widgets=False)
+    ensure_experiments_registered()
     return {str(e.name): e for e in chisurf.experiment.values()}
 
 

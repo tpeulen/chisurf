@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 """Generate GUI screenshots for the TTTR-LUT tutorial (headless, offscreen).
 
-Grabs real ChiSurf widgets via ``QWidget.grab()`` under the offscreen Qt platform
-so the tutorial shows the actual UI, not mockups. Run with the project on the
-path and an offscreen platform::
+Draws the real emtk apps offscreen (``PilPainter``) so the tutorial shows the actual UI,
+not mockups. Run with the project on the path::
 
-    QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/tutorials/make_screenshots.py
+    PYTHONPATH=. python docs/guides/make_screenshots.py
 
 Requires the full GUI environment (the arm64 conda env), unlike
 ``make_figures.py`` which only needs matplotlib.
@@ -13,19 +12,16 @@ Requires the full GUI environment (the arm64 conda env), unlike
 
 from __future__ import annotations
 
-import json
 import os
 import pathlib
 import shutil
 import tempfile
 import time
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 # LLTF's fitter calls plt.show(); keep it off-screen.
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 import numpy as np  # noqa: E402
-from qtpy.QtWidgets import QApplication  # noqa: E402
 
 os.environ.setdefault("CHISURF_SETTINGS_DIR", tempfile.mkdtemp(prefix="chisurf_grab_settings_"))
 import chisurf.core.settings  # noqa: E402,F401
@@ -39,18 +35,8 @@ _T4L_TOP = _T4L / "3GUN_NMSim_cl-rep-001.pdb"
 _T4L_DCD = _T4L / "3GUN_NMSim_cl-rep_894.dcd"
 
 
-def _grab(widget, name):
-    """Show *widget*, process events, and save a PNG grab into ``figures/``."""
-    widget.show()
-    QApplication.instance().processEvents()
-    widget.grab().save(str(FIG / name))
-    print("wrote", name)
-
-
 def _grab_ndx_overlay_axes():
     """Measured MFD bursts: pushing a FRET line selects its lifetime/E projection."""
-    from emtk.qt_host import ControlHost
-
     from chisurf.plugins.fret_line.gui.model import FretLineModel, push_to_ndx
     from chisurf.plugins.ndxplorer.gui.app import make_app
 
@@ -58,10 +44,8 @@ def _grab_ndx_overlay_axes():
     with tempfile.TemporaryDirectory(prefix="ndx-overlay-", dir=os.environ.get("TMPDIR")) as folder:
         copied = pathlib.Path(folder) / source.name
         shutil.copytree(source, copied)
-        # The emtk app in the host the --qt shell gives it.
         app = make_app(session_autosave=False)
         app.open_path(str(copied))
-        window = ControlHost(app)
         tool = FretLineModel()
         try:
             assert app.model.has_data, app.model.error
@@ -74,93 +58,10 @@ def _grab_ndx_overlay_axes():
             assert not tool.dialog_text, tool.dialog_text
             assert (app.model.x.name, app.model.y.name) == ("Tau (green)", "FRET efficiency")
             app.docks.focus("Overlays")
-            window.resize(900, 600)
-            for _ in range(4):
-                QApplication.instance().processEvents()
-                window.update()
-            _grab(window, "ndxplorer_overlay_axes.png")
+            _native_shot(app, "ndxplorer_overlay_axes.png", size=(900, 600))
         finally:
-            window.close()
             app.close()
             tool.close()
-
-
-def _grab_parameter_link_menu():
-    """Grab the parameter link menu (three levels) for the linking reference.
-
-    Submenus are separate popups, so each level is grabbed on its own and the
-    chain is composed side by side — a single grab of the top menu would show
-    only the fit list.
-    """
-    import numpy as np
-    from qtpy import QtGui
-
-    import chisurf
-    from chisurf.core.api.fitting_client import install_fitting_client
-    from chisurf.core.data import DataCurve, DataCurveGroup
-    from chisurf.core.fitting.fit import FitGroup
-    from chisurf.core.models.description import tcspc_lifetime
-    from chisurf.gui.widgets.fitting.parameter_widgets import (
-        FittingParameterProxyController,
-    )
-    from chisurf.server.services.fits import get_fit_info, list_fits
-    from chisurf.server.session import SessionState
-
-    def make(name, n_curves=1):
-        x = np.linspace(0.1, 25, 128)
-        y = 1000.0 * np.exp(-x / 4.0) + 1.0
-        curves = [
-            DataCurve(x=x, y=y, ey=np.sqrt(y), name=f"{name}-{i}") for i in range(n_curves)
-        ]
-        return FitGroup(
-            data=DataCurveGroup(curves, name=name), model_class=tcspc_lifetime
-        )
-
-    fits = [make("Donor-only"), make("FRET-global", n_curves=2)]
-    state = SessionState(fits=fits)
-
-    class _Direct:
-        def call(self, method, params):
-            if method == "fit.list":
-                return list_fits(state)
-            return get_fit_info(state, **params)
-
-    install_fitting_client(_Direct())
-    chisurf.fits = fits
-    try:
-        parameter = fits[0].model.parameters_all_dict["sc"]
-        menu = FittingParameterProxyController(parameter).build_link_menu()
-        menu.setTitle("Link sc to")
-        fit_menu = next(a.menu() for a in menu.actions() if a.menu() is not None)
-        group_menu = next(
-            a.menu() for a in fit_menu.actions()
-            if a.menu() is not None and a.text() == "Convolve"
-        )
-
-        app = QApplication.instance()
-        shots = []
-        for popup in (menu, fit_menu, group_menu):
-            popup.show()
-            app.processEvents()
-            popup.resize(popup.sizeHint())
-            app.processEvents()
-            shots.append(popup.grab())
-
-        gap = 18
-        canvas = QtGui.QPixmap(
-            sum(s.width() for s in shots) + gap * (len(shots) - 1),
-            max(s.height() for s in shots),
-        )
-        canvas.fill(QtGui.QColor("#f4f4f4"))
-        painter = QtGui.QPainter(canvas)
-        x_offset = 0
-        for shot in shots:
-            painter.drawPixmap(x_offset, 0, shot)
-            x_offset += shot.width() + gap
-        painter.end()
-        canvas.save(str(FIG / "parameter_link_menu.png"))
-    finally:
-        install_fitting_client(None)
 
 
 def _grab_burst_browser():
@@ -510,12 +411,9 @@ def _grab_chimol_viewer():
 
     Two mechanisms, because neither covers both:
 
-    * the **panel** is an ordinary widget grab;
+    * the **panel** is drawn by ``docs/guides/screenshots/guides_plugins_emtk.py`` (emtk);
     * the **render** goes through chimol's own ray tracer, which needs no GPU and
-      no display -- the same path the plugin's visual tests use. A GL grab is not
-      an option: ``QWidget.grab()`` reads the backing store and never sees OpenGL
-      content, and ``grabFramebuffer`` returns black without a display session, so
-      a window grab shows the panels over an empty viewport.
+      no display -- the same path the plugin's visual tests use.
 
     Note ``objects.widget`` is a **property**; calling it raises ``TypeError``
     rather than doing anything useful.
@@ -907,7 +805,8 @@ def _grab_global_view():
     from chisurf.core.data import DataCurve, DataCurveGroup
     from chisurf.core.fitting.fit import FitGroup
     from chisurf.core.models.description import tcspc_lifetime
-    from chisurf.plugins.core.globalview.gui.tool import GraphWizard
+    from chisurf.plugins.core.globalview.gui.app import make_app
+    from chisurf.plugins.core.globalview.gui.model import GlobalViewModel
 
     def make(name, tau, n_curves=1):
         x = np.linspace(0.1, 25, 256)
@@ -926,13 +825,13 @@ def _grab_global_view():
     for fit in fits[1:]:
         fit.model.parameters_all_dict["t0"].link = source
 
-    tool = GraphWizard(fit_list=fits, remember_layout=False)
-    tool.resize(1150, 760)
-    tool.model.rebuild(force=True)
-    _grab(tool, "globalview_network.png")
-    tool.model.representation = "factor graph"
-    tool.model.relayout()
-    _grab(tool, "globalview_factor_graph.png")
+    model = GlobalViewModel(fits=lambda: fits, groups=lambda: [])
+    app = make_app(model=model, remember_layout=False)
+    model.rebuild(force=True)
+    _native_shot(app, "globalview_network.png", size=(1150, 760))
+    model.representation = "factor graph"
+    model.relayout()
+    _native_shot(app, "globalview_factor_graph.png", size=(1150, 760))
 
 
 def _grab_ebfret_tool():
@@ -1445,14 +1344,6 @@ def _grab_fcs_toolbox():
     app.close()
 
 
-def _pump(seconds):
-    app = QApplication.instance()
-    end = time.time() + seconds
-    while time.time() < end:
-        app.processEvents()
-        time.sleep(0.02)
-
-
 def _grab_vv_vh_g_factor_window():
     """The VV/VH G-Factor Calculator (Spectroscopy > Decay), a fast dye and a slow protein loaded.
 
@@ -1765,10 +1656,7 @@ def _grab_fret_line_tool():
 
 def main():
     """Generate all guide screenshots."""
-    app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
-
     for grab in (
-        _grab_parameter_link_menu,
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,

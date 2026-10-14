@@ -313,9 +313,8 @@ view models follow the same pattern: `MDConverterViewModel.convert()`,
 `JoinTrajectoriesViewModel.save_joined(path)`,
 `RotateTranslateViewModel.save_rotated_translated(path)`,
 `SaveTopologyViewModel.save_topology(path)` and
-`PotentialEnergyViewModel.process(path)`. The energy potentials are the editor
-widgets of `chisurf.gui.widgets.structure.potentialDict`, so that view model
-needs a `QApplication`.
+`PotentialEnergyViewModel.process(path)`. The energy potential names come from
+`chisurf.plugins.traj.potential_energy.potential_specs`.
 
 ## Using it well
 

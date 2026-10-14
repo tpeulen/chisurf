@@ -5,7 +5,6 @@ on:
 
 env:
   PIXI_VERSION: latest
-  QT_QPA_PLATFORM: offscreen
   # See test-coverage.yml: pixi.toml's per-task env didn't reach the pytest
   # subprocess on real CI; setting it at the workflow level is unambiguous.
   PYTHONUNBUFFERED: "1"

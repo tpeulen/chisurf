@@ -1,43 +1,25 @@
 """Screenshot grabs for guides 47 (ndX bridges) and 52 (send bursts to analysis).
 
-make_screenshots.py style: the functions use the module constants ``FIG`` and
-``_grab`` and the ``_SPC_FILE`` path. Both drive ndX -- the emtk app, given the
+Uses ``FIG`` and ``_SPC_FILE`` from ``common.py``. Both drive ndX -- the emtk app, given the
 in-process ChiSurf RPC client as ChiSurf's ``Main → Tools → ndX`` gives it
 (``ndx_emtk``) -- on a burst folder built from the real ``BH_SPC132.spc``
 measurement.
 
 Run standalone::
 
-    QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=<scratch> \
+    CHISURF_SETTINGS_DIR=<scratch> \
     PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
-    python grabs_47_52.py
+    python docs/guides/screenshots/guides_47_52.py
 """
 
 from __future__ import annotations
 
-from common import FIG, _SPC_FILE, _grab, _pump  # noqa: F401,E402
+from common import FIG, _SPC_FILE, _pump  # noqa: F401,E402
 
-import os
 import pathlib
-import sys
 import tempfile
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 import numpy as np  # noqa: E402
-from qtpy.QtWidgets import QApplication  # noqa: E402
-
-if __name__ == "__main__":  # standalone: mirror make_screenshots.py's constants
-    FIG = pathlib.Path("docs/guides/figures")
-    _SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
-
-    def _grab(widget, name):
-        """Show *widget*, process events, and save a PNG grab into ``figures/``."""
-        widget.show()
-        QApplication.instance().processEvents()
-        widget.grab().save(str(FIG / name))
-        print("wrote", name)
-
 
 def _write_bur_folder(root: pathlib.Path) -> pathlib.Path:
     """Burst-search ``BH_SPC132.spc`` and write a Seidel-style burst folder.
@@ -169,6 +151,5 @@ def _grab_47_pda_bridge():
 
 if __name__ == "__main__":
     import chisurf.core.settings  # noqa: F401
-    app = QApplication.instance() or QApplication([])
     _grab_52_send_menu()
     _grab_47_pda_bridge()

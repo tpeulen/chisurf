@@ -1931,12 +1931,10 @@ To drive the command language without a GUI session, build a viewer and hand it
 to `Cmd`:
 
 ```python
-from qtpy import QtWidgets
 from chimol.commands.command import Cmd
-from chimol.core.viewer import MolView
+from chimol.core.viewer import Viewer
 
-app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-view = MolView()
+view = Viewer()
 view.add_structure(_read_full_model(cs_struct.Structure, "148l.pdb"), name="148l")
 
 
@@ -1957,7 +1955,7 @@ cmd.do("set dot_solvent, on")
 cmd.do("get_area polymer")
 ```
 
-Run it under an offscreen Qt platform (`QT_QPA_PLATFORM=offscreen`). The ray
+The ray
 tracer needs no GPU and no display, which is how the figure above was made; the
 OpenGL viewport does need a display, so `png` will not work headlessly while
 `ray` will.

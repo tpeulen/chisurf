@@ -1,6 +1,6 @@
-"""Every EMTK app's event handlers must accept the Qt host's call shapes.
+"""Every EMTK app's event handlers must accept the host's call shapes.
 
-``emtk.qt_host`` forwards pointer/keyboard events with a fixed arity
+A host forwards pointer/keyboard events with a fixed arity
 (``pointer_move(x, y, buttons, modifiers)`` and so on — the ``ImApp`` base
 signatures). An app that overrides a handler with a narrower signature imports
 fine, renders fine, and then crashes with a ``TypeError`` the first time the

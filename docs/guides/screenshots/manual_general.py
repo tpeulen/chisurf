@@ -26,7 +26,6 @@ import sys
 import tempfile
 import time
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.getcwd())
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -35,89 +34,6 @@ OUT = ROOT / "docs" / "manual" / "figures"
 IBH = ROOT / "test" / "data" / "tcspc" / "ibh_sample"
 #: The IBH sample files, in the order they are read.
 FILES = ("Decay_577D.txt", "Decay_577D+577A+GTPgS.txt", "Prompt.txt", "whitelight.txt")
-
-
-def _pump(app, n: int = 6) -> None:
-    for _ in range(n):
-        app.processEvents()
-        time.sleep(0.01)
-
-
-def _save(widget, name: str) -> None:
-    widget.grab().save(str(OUT / name))
-    print("wrote", name, flush=True)
-
-
-class Session:
-    """A real Main with the IBH decays read through the Read data dock."""
-
-    def __init__(self, case_dir: str) -> None:
-        # Before anything else: chisurf's imports pull in the standard library's ``test`` package, which
-        # would then shadow the repository's.
-        import chisurf as cs
-        from test.gui.fit_window_page_probe import _open_main
-
-        self.cs = cs
-        self.app, self.main, _result = _open_main(pathlib.Path(case_dir))
-        for window in self.main.mdiarea.subWindowList():
-            window.close_confirm = False
-            window.close()
-            self.main.mdiarea.removeSubWindow(window)  # a tabbed view lists hidden ones too
-            window.deleteLater()
-        cs.fits[:] = []
-        cs.imported_datasets[:] = []
-        self.main.resize(1500, 950)
-        self.main._refresh_experiment_ui()
-        self.main._refresh_setup_ui()
-        _pump(self.app)
-        self.reader = self.main.current_setup
-        self.reader.skiprows = 10
-        self.reader.dt = 0.0141
-        self.reader.rep_rate = 10.0
-        controller = getattr(self.reader, "controller", None)
-        rebuild = getattr(controller, "_rebuild_settings_form", None)
-        if callable(rebuild):  # the form shows the reader's values
-            rebuild()
-        csv = getattr(controller, "csv_widget", None)
-        if csv is not None:  # show the value; its own handler rewrites the whole setup
-            csv.spinBox.blockSignals(True)
-            csv.spinBox.setValue(10)
-            csv.spinBox.blockSignals(False)
-        self.reader.skiprows = 10
-        self.main.dataset_selector.update()
-        _pump(self.app)
-
-    def read_files(self) -> None:
-        import chisurf.macros as macros
-
-        for name in FILES:
-            macros.add_dataset(experiment_reader=self.reader, filename=str(IBH / name))
-            self.cs.imported_datasets[-1].name = name  # the list shows the file name
-        self.main.dataset_selector.update()
-        _pump(self.app)
-
-    def add_fits(self) -> None:
-        """Lifetime fits of the donor-only (one lifetime) and the FRET decay (two), against the prompt, fitted."""
-        import chisurf.macros as macros
-
-        cs = self.cs
-        prompt = cs.imported_datasets[2]
-        for index in (0, 1):
-            macros.add_fit(dataset_indices=[index], model_name="Lifetime")
-            _pump(self.app)
-            fit = cs.fits[-1]
-            for member in getattr(fit, "grouped_fits", [fit]):
-                member.model.set_dataset("response", prompt)
-                member.fit_range = (522, 3793)
-            fit.update()
-            fit.run()
-        self.main.fit_selector.update()
-        _pump(self.app, 10)
-        for window in self.main.mdiarea.subWindowList():
-            window.close_confirm = False
-            window.plot_tab_widget.setCurrentIndex(0)  # the Fit page
-            window.refresh_current_plot()
-        _pump(self.app, 10)
 
 
 # -- the main window (emtk shell) -----------------------------------------------
@@ -358,15 +274,15 @@ def global_view() -> None:
     install_fitting_client(saved[1])
 
 
-def global_view_save_load(s: Session) -> None:
-    """Save the IBH session's network, unlink, load it back: the link returns.
+def global_view_save_load() -> None:
+    """Save the four fits' network, unlink, load it back: the link returns."""
+    import chisurf
+    from chisurf.core.api.fitting_client import get_fitting_client, install_fitting_client
 
-    Driven on the Main's own fits: a loaded link is applied through the fitting
-    server, which knows the session's fits (a standalone fixture has none).
-    """
-    fits = s.cs.fits
-    master = fits[0].model.parameters_all_dict["t0"]
-    fits[1].model.parameters_all_dict["t0"].link = master
+    fits = _global_fits()
+    saved = chisurf.fits, get_fitting_client()
+    install_fitting_client(None)
+    chisurf.fits = fits
     tool = _global_view_app(fits)
     size = (1150, 760)
     path = pathlib.Path(tempfile.mkdtemp(prefix="manual-gml-")) / "network.gml"
@@ -381,6 +297,8 @@ def global_view_save_load(s: Session) -> None:
     print("after load:", tool.model.status, flush=True)
     _native(tool, "globalview_after_load.png", size=size)
     tool.close()
+    chisurf.fits = saved[0]
+    install_fitting_client(saved[1])
 
 
 # -- FCS hub ----------------------------------------------------------------------
@@ -435,8 +353,6 @@ def tools_montage() -> None:
     print("wrote tools_montage.png", flush=True)
 
 
-#: The Qt-driven figures that are still current (a loaded link is applied through the fitting server of a real Main).
-QT_SHOTS = {"global_view_save_load"}
 #: The emtk shell's figures of the main window, in order. The VV/VH shot is last: switching the reader to
 #: stacked VV/VH also switches its header and dt-scaling, which would change how the files read.
 SHELL_SHOTS = ["read_data_dock", "datasets_loaded", "datasets_context_menu", "datasets_grouped", "datasets_with_fits", "analysis_dock",
@@ -444,7 +360,7 @@ SHELL_SHOTS = ["read_data_dock", "datasets_loaded", "datasets_context_menu", "da
 
 
 def main(case_dir: str | None, only: set[str]) -> None:
-    """Write the figures named in *only* (all when empty); *case_dir* is only needed by the Qt-driven ones."""
+    """Write the figures named in *only* (all when empty)."""
     OUT.mkdir(parents=True, exist_ok=True)
 
     def want(name: str) -> bool:
@@ -452,11 +368,8 @@ def main(case_dir: str | None, only: set[str]) -> None:
 
     if any(want(name) for name in SHELL_SHOTS):
         run_shell_shots([name for name in SHELL_SHOTS if want(name)])
-    if want("global_view_save_load") and case_dir:
-        session = Session(case_dir)
-        session.read_files()
-        session.add_fits()
-        global_view_save_load(session)
+    if want("global_view_save_load"):
+        global_view_save_load()
     if want("global_view"):
         global_view()
     if want("fcs_hub"):

@@ -7,9 +7,8 @@ shebang) or through :mod:`_headless_runner`, which injects the ``cs`` namespace
 and registers the experiments the interactive endpoints expect
 (``console`` / ``ipython``).
 
-The interactive endpoints stay in a subprocess because registering the Qt model
-classes needs an off-screen ``QApplication``, which must not leak into this
-Qt-free suite.
+The interactive endpoints stay in a subprocess so their registrations do not leak into
+this suite.
 
 Adding a new script to ``examples/scripts/`` automatically adds a test node — no
 manual registration. Scripts are copied into a temporary directory before running
@@ -27,7 +26,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from _headless_runner import EXIT_NO_QT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "examples" / "scripts"
@@ -83,7 +81,6 @@ def _run_isolated(script: Path, workdir: Path) -> subprocess.CompletedProcess:
     else:
         command = [sys.executable, str(local)]
     env = _subprocess_env()
-    env.setdefault("QT_QPA_PLATFORM", "offscreen")
     return subprocess.run(
         command,
         env=env,
@@ -95,13 +92,7 @@ def _run_isolated(script: Path, workdir: Path) -> subprocess.CompletedProcess:
 
 
 def _assert_clean_exit(script: Path, proc: subprocess.CompletedProcess) -> None:
-    """Fail with the captured output unless ``proc`` exited cleanly.
-
-    A :data:`EXIT_NO_QT` exit skips instead — the machine has no Qt binding, so
-    the interactive endpoints cannot be exercised at all.
-    """
-    if proc.returncode == EXIT_NO_QT:
-        pytest.skip(f"{script.name}: no Qt binding available for the interactive endpoint")
+    """Fail with the captured output unless ``proc`` exited cleanly."""
     assert proc.returncode == 0, (
         f"{script.name} exited {proc.returncode}\n"
         f"--- stdout tail ---\n{proc.stdout[-2000:]}\n"

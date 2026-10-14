@@ -122,7 +122,7 @@ burst and PDA analyses.
 
 - Plugin: `chisurf/plugins/tttr/tttr_lut_tools/` (api / cli / backend / gui).
 - Reading seam: `chisurf/core/fio/staging.py::open_tttr`.
-- Channel definition: `chisurf/gui/widgets/wizard/tttr_channeldefinition/`.
+- Channel definition: `chisurf/emtk/channel_definition.py`.
 - Felekyan et al., *Rev. Sci. Instrum.* 76.8 (2005) 083104.
 
 The native LUT tool starts at 1100×720; a saved custom size takes precedence.

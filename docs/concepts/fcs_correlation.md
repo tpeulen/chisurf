@@ -428,7 +428,7 @@ it was.
 ## From measured correlations to burst results
 
 The [FCS hub](../guides/75_fcs_toolbox.md) uses the same native workflow in the
-remaining Qt hosts and standalone emtk launcher: detector/channel definitions,
+shell and the standalone emtk launcher: detector/channel definitions,
 files, optional photon filtering, correlation and repeat merging. Five optional
 tools share that hub, including [Burst-wise FCS](../guides/16_fret_fcs.md).
 Measured BH132 examples in those guides demonstrate chunked correlations,

@@ -42,7 +42,7 @@ Copy this verbatim into a new session when the documentation needs a refresh.
 >    never been read.
 > 3. **Regenerate what is generated** — plots with
 >    `python docs/guides/make_figures.py`, GUI screenshots with
->    `QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py`,
+>    `PYTHONPATH=. python docs/guides/make_screenshots.py`,
 >    the plugin catalogue with `python build_tools/docs/generate_plugin_docs.py`,
 >    then the registers, the Literature page and
 >    `python build_tools/docs/okf_frontmatter.py`.
@@ -148,8 +148,8 @@ guides/figures/fcs_model_editor.png:
 
 **When a page talks about the interface, it shows the interface.** Describing a
 panel in words when a picture would do is a defect. Take the screenshot
-headlessly (`QT_QPA_PLATFORM=offscreen`, `widget.grab().save(...)`), drive the
-widget into a *realistic* state — real data loaded, the analysis actually run —
+headlessly (emtk's `Driver.screenshot` or `PilPainter`), drive the
+app into a *realistic* state — real data loaded, the analysis actually run —
 and register it.
 
 **A figure fills the reading column, and clicking it opens it full size.** The

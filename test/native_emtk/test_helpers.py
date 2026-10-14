@@ -15,11 +15,9 @@ class BlockQt(importlib.abc.MetaPathFinder):
         if fullname.split('.')[0] in {'qtpy', 'PyQt5', 'PyQt6', 'PySide2', 'PySide6'}:
             raise RuntimeError('Qt import blocked: ' + fullname)
 sys.meta_path.insert(0, BlockQt())
-from chisurf.emtk import code_links, doc_links, help_guide, i18n, dataset_picker
+from chisurf.emtk import code_links, doc_links, help_guide, i18n, dataset_picker  # noqa: F401
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 from chisurf.plugins.core.mmfdb_admin.gui.session import cached_token
-assert not code_links._is_qt_active()
-assert doc_links._loaded_qt_core() is None
 assert 'chisurf.gui' not in sys.modules
 """
     result = subprocess.run(
@@ -111,7 +109,6 @@ def test_native_document_launch_does_not_construct_qt(monkeypatch, tmp_path):
     path.write_text("# Guide")
     commands = []
     monkeypatch.setattr(help_app, "open_help_page", lambda *args, **kwargs: False)
-    monkeypatch.setattr(doc_links, "_is_qt_active", lambda: False)
     monkeypatch.setattr(subprocess, "Popen", lambda command: commands.append(command))
     assert doc_links._open_document(path, "section")
     assert commands == [

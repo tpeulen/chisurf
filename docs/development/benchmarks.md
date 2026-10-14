@@ -466,9 +466,8 @@ per-process on large ones, and only the first kind is worth acting on.
 ## ChiMOL ray tracing
 
 **Work unit:** one `ray` render — the call a user waits on after typing the
-command. The scene build is excluded and measured separately by
-`benchmark_chimol_representations.py`; what is timed here is turning an already
-built scene into pixels.
+command. The scene build is excluded (its timing script was retired with the Qt window);
+what is timed here is turning an already built scene into pixels.
 
 The model is T4 lysozyme (**148L**, 1 314 atoms), which ships in the test data.
 It is small as structures go, and that is the point: a molecule this ordinary
@@ -712,11 +711,10 @@ thing anyone was waiting for. The work unit here is one repaint of one plot
 widget (1500x400) holding a raw per-photon series, because that is what the
 window pays on every settings change, tab switch and resize.
 
-```bash
-QT_QPA_PLATFORM=offscreen pixi run python test/benchmarks/benchmark_burst_plots.py
-```
+The timing script hosted the plot in a Qt widget and was retired with the Qt window; the
+table is the record.
 
-**Since 2026-10-10 the script times chiplot's emtk backend**, the only backend left.
+**Since 2026-10-10 the table is chiplot's emtk backend**, the only backend left.
 emtk draws the samples it is given, so viewport decimation, antialiasing and pen
 width (the pyqtgraph knobs below) no longer exist and the caller thins the data.
 Same machine, Python 3.12.13:
@@ -807,7 +805,6 @@ with a recording painter; they exclude GPU rasterisation. Targets: first frame <
 steady frame < 16 ms; work moved off the first frame must not reappear in `next5` or
 `settle`. emtk's installed-font table is a per-user cache that the script warms once per
 run (as on every launch after the first; the cold scan costs ~250 ms once per font change).
-`--startup` prints the GUI startup stage timings.
 
 Measured on an Apple-silicon laptop (load average 3-5), 122 of 123 plugins
 (`fcs_calculator` cannot construct without the MMFDB reference database in the scratch
@@ -883,10 +880,6 @@ The ten slowest steady frames:
 | fret_calculator | 11 | 5.6 |
 | phasor_calculator | 71 | 5.4 |
 | maxent_decay | 10 | 4.7 |
-
-GUI startup stages (`--startup`, splash phase, ms): gui_imports 582, load_tools 484,
-setup_style 199, startup_interface 177, init_setups 97, setup_ipython 58, the rest under 5.
-The `post_show` phase is not captured by this offscreen harness.
 
 ### Fixes and their effect
 

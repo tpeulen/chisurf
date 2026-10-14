@@ -89,7 +89,7 @@ sound preference, and closing releases it once.
 
 ## 3. Application
 
-The games are tested with real key and pointer events through the Qt window that hosts them
+The games are tested with real key and pointer events through the window that hosts them
 (`chisurf/plugins/misc/games/test/test_games_real_input.py`): the paddle, piece, cursor and dial must actually move.
 See also the generated reference pages for [Games](../reference/plugins/games.md) and
 [Breakout](../reference/plugins/breakout.md).

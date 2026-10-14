@@ -115,12 +115,6 @@ computed with the real `corrected_es`.
 
 ## Known defects
 
-- **Marker-only scatter series are drawn with black joining lines.** The
-  AutoForm plot section (`chisurf/gui/autoform/sections/builtin.py`, the
-  `no_line` branch of `PlotWidget.refresh`) passes a transparent pen
-  `(0, 0, 0, 0)`; it is drawn opaque black, so every class series in the E–S
-  and E–lifetime views is joined in data order and the legend swatches are
-  black.
 - Opening the tool logs `bound control commit failed (Donor/Acceptor):
   AccurateFretViewModel.apply_dye_selection() takes 1 positional argument but 2
   were given`: the view spec's `call` passes the new value, the method takes

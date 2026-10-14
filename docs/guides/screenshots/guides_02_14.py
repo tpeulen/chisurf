@@ -1,11 +1,10 @@
 """Screenshot grabs for guides 02, 03, 04, 05, 08, 12, 13, 14 (make_screenshots.py style).
 
-Merge into ``docs/guides/make_screenshots.py``: the functions use that module's
-``FIG``, ``_grab`` and ``_SPC_FILE`` and ``QApplication``. Standalone, run as::
+Run as::
 
-    QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=<scratch> \
+    CHISURF_SETTINGS_DIR=<scratch> \
     PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
-    python grabs.py
+    python docs/guides/screenshots/guides_02_14.py
 
 Two things these grabs must not do to a real installation:
 
@@ -24,13 +23,9 @@ import os
 import pathlib
 import shutil
 import tempfile
-import time
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ.setdefault("MPLBACKEND", "Agg")
 
-import numpy as np  # noqa: E402
-from qtpy.QtWidgets import QApplication  # noqa: E402
 
 import chisurf.core.settings  # noqa: E402,F401
 
@@ -41,23 +36,6 @@ FIG.mkdir(exist_ok=True)
 _SPC_FILE = pathlib.Path("test") / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
 _SM_DNA = pathlib.Path("chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna")
 _BH_SETUP = "BH SPC-132"
-
-
-def _grab(widget, name):
-    """Show *widget*, process events, and save a PNG grab into ``figures/``."""
-    widget.show()
-    QApplication.instance().processEvents()
-    widget.grab().save(str(FIG / name))
-    print("wrote", name)
-
-
-def _pump(seconds=0.3):
-    """Process events for *seconds* (background tasks finish on the GUI loop)."""
-    app = QApplication.instance()
-    end = time.time() + seconds
-    while time.time() < end:
-        app.processEvents()
-        time.sleep(0.01)
 
 
 def _sm_dna_copy() -> pathlib.Path:
@@ -88,17 +66,6 @@ def _bh_setup() -> None:
     }
     DETECTOR_SETUPS_FILE.parent.mkdir(parents=True, exist_ok=True)
     DETECTOR_SETUPS_FILE.write_text(json.dumps({"setups": {_BH_SETUP: setup}, "last_used": _BH_SETUP}))
-
-
-def _front_tab(widget, text) -> None:
-    """Bring the tab labelled *text* to the front in any tab bar of *widget*."""
-    from qtpy.QtWidgets import QTabBar
-
-    for bar in widget.findChildren(QTabBar):
-        for i in range(bar.count()):
-            if bar.tabText(i) == text:
-                bar.setCurrentIndex(i)
-    _pump(0.5)
 
 
 # ── guide 13: burst identification ──────────────────────────────────────
@@ -264,7 +231,6 @@ def main(names=()):
     """Run the grabs of this file named in *names* (all when empty)."""
     import sys
 
-    app = QApplication.instance() or QApplication([])  # noqa: F841
     work = _sm_dna_copy()
     grabs = {
         "13": lambda: _grab_13_burst_selection(work),

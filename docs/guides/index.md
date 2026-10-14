@@ -300,11 +300,11 @@ irf_estimation
 pixi run -e docs python docs/guides/make_figures.py   # regenerate all figures
 ```
 
-GUI screenshots (e.g. tutorial 37) are regenerated separately from the real
-widgets under an offscreen Qt platform (needs the full GUI environment):
+GUI screenshots (e.g. tutorial 37) are regenerated separately by drawing the real
+emtk apps offscreen (needs the full GUI environment):
 
 ```bash
-QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py
+PYTHONPATH=. python docs/guides/make_screenshots.py
 ```
 
 The calculators and generators that are native emtk apps (PSF, RICS precision, phasor, FCS

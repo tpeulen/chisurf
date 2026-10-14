@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import pathlib
 
-import pytest
 
 import chisurf.plugins
 
@@ -67,16 +66,6 @@ def test_builtin_manifests_declare_a_menu_path():
         "manifests whose display_name declares no menu path (they fall back to "
         f"Main/Uncategorized): {pathless}"
     )
-
-
-@pytest.mark.parametrize("display_name", ["Spectra Downloader", "", "Tools"])
-def test_pathless_names_fall_back(display_name):
-    """Pin the fallback these guards exist to prevent, on the live parser."""
-    from chisurf.gui.widgets.ribbon.ribbon_plugins import PluginMethodsMixin
-
-    hierarchy, leaf = PluginMethodsMixin._parse_hierarchical_plugin_name(None, display_name)
-    assert hierarchy == ["Main"]
-    assert leaf == display_name.strip()
 
 
 def test_spectra_downloader_keeps_a_full_menu_path():

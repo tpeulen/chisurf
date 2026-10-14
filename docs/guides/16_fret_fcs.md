@@ -145,7 +145,7 @@ columns. The PTO stores produced rows keyed by **Burst Index**, with per-pair
 diffusion-time columns in milliseconds, settings and lineage derived from the
 bursts. Extending an existing PTO preserves its earlier scientific lineage.
 Outputs are prepared before publication; cancellation or failure preserves
-previous outputs. **Stop**, or closing the native app or its Qt host, requests
+previous outputs. **Stop**, or closing the native app, requests
 worker cancellation; closing also shuts down its owned executor.
 
 ```{figure} figures/fcs_native_bh132_burst_simple.png

@@ -86,8 +86,7 @@ ALEX Suite's E–S step. Hosted, the window gets what only ChiSurf has:
 Phasor plots are not a hosted extra: they are ordinary overlays, the same in
 and outside ChiSurf ([below](#phasor-plots-are-overlays)).
 
-Both ChiSurf shells open the same app: the emtk shell docks it, the `--qt`
-shell shows it in a window of its own (there is no separate Qt ndX window). A
+The ChiSurf shell docks the app. A
 script or a tool reaches the open window — or has ChiSurf open one — with:
 
 ```python

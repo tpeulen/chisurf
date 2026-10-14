@@ -22,11 +22,11 @@ def test_every_runtime_dependency_is_classified():
 
 
 def test_the_binding_constraint_is_stated():
-    """GPL via PyQt5/sip today. If this fails, the dependency graph's
+    """Weak copyleft (MPL, imp-bff and LabelLib) today. If this fails, the dependency graph's
     licensing changed — regenerate docs/development/licenses.md and read the diff before
     adjusting the assertion.
     """
     data = collect()
     assert data["binding_class"] in CLASSES
-    assert data["binding_class"] == 4
-    assert "PyQt5" in data["blockers"]
+    assert data["binding_class"] == 2
+    assert "imp-bff" in data["blockers"]

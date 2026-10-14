@@ -60,9 +60,6 @@ _CLASS_PATTERNS = [
 #: Packages whose installed metadata is missing or misleading. The value is
 #: (license text, source of that claim).
 OVERRIDES = {
-    # Riverbank publishes PyQt5 and sip under GPL v3 (or commercial).
-    "PyQt5": ("GPL-3.0-only", "https://www.riverbankcomputing.com/commercial/license-faq"),
-    "sip": ("SIP license / GPL-3.0-only", "https://www.riverbankcomputing.com/commercial/license-faq"),
     # IMP states LGPL for the kernel and most modules.
     "imp": ("LGPL-2.1", "https://integrativemodeling.org/latest/doc/manual/licenses.html"),
     # Ships no license metadata at all; the repository states BSD-2-Clause.
@@ -220,11 +217,7 @@ def render_markdown(data: dict) -> str:
     if data["binding_class"] >= 4:
         lines += [
             "The binding dependencies are GPL, so the project as a whole "
-            "cannot be more permissive than GPL. The version wrinkle this "
-            "note used to flag is resolved: PyQt5/sip are **GPL v3**, and "
-            "ChiSurf was stated as GPL-2.0-only, which cannot combine with "
-            "GPL-3.0-only code. The project is now **GPL-3.0-or-later**, "
-            "which combines with both.",
+            "cannot be more permissive than GPL.",
             "",
         ]
     if data["unknown"]:

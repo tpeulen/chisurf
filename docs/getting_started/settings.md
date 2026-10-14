@@ -74,6 +74,3 @@ from emtk import fonts
 fonts.update(zoom=1.25, code={"family": "Menlo"})   # applies on the next frame
 fonts.config().to_dict()                              # what Settings → Fonts saves
 ```
-
-The Qt window (`python -m chisurf --qt`) keeps its own `gui.application_font_size`; its console
-takes the editor face from `gui.fonts.code` when that names an installed family.

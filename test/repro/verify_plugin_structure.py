@@ -2,10 +2,6 @@ import os
 import sys
 import unittest
 
-# Mocking Qt and other dependencies if necessary, but here we just want to check imports
-# and basic instantiation which might require a QApplication if we go deep.
-# However, the goal is to check if 'TwoDFCSPlugin' can be imported and instantiated.
-
 # Add the parent directory of 'chisurf' to sys.path
 sys.path.append(os.getcwd())
 
@@ -14,28 +10,26 @@ class TestPluginStructure(unittest.TestCase):
     def test_imports(self):
         print("Testing plugin imports...")
         try:
-            from chisurf.plugins.fcs.flc_2d import TwoDFCSPlugin
+            import chisurf.plugins.fcs.flc_2d  # noqa: F401
 
-            print("Successfully imported TwoDFCSPlugin from chisurf.plugins.fcs.flc_2d")
+            print("Successfully imported chisurf.plugins.fcs.flc_2d")
         except ImportError as e:
-            self.fail(f"Failed to import TwoDFCSPlugin: {e}")
+            self.fail(f"Failed to import the plugin package: {e}")
 
     def test_gui_package(self):
         print("Testing gui package structure...")
         try:
-            from chisurf.plugins.fcs.flc_2d.gui.tabs.data_tab import DataTab
-            from chisurf.plugins.fcs.flc_2d.gui.worker import TwoDFCSWorker
+            from chisurf.plugins.fcs.flc_2d.gui.app import make_app
 
-            from chisurf.plugins.fcs.flc_2d.gui import TwoDFCSWizard
-
-            print("Successfully imported gui components")
+            self.assertTrue(callable(make_app))
+            print("Successfully imported the emtk app factory")
         except ImportError as e:
             self.fail(f"Failed to import gui components: {e}")
 
     def test_fit_package(self):
         print("Testing fit package structure...")
         try:
-            from chisurf.plugins.fcs.flc_2d.fit import OneDMEMFitter, TwoDMEMFitter
+            from chisurf.plugins.fcs.flc_2d.fit import OneDMEMFitter, TwoDMEMFitter  # noqa: F401
 
             print("Successfully imported fit components")
         except ImportError as e:

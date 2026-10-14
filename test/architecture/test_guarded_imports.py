@@ -30,8 +30,7 @@ OPTIONAL = {
     "quest": "optional QuEsT accessible-volume extension",
     # platform
     "ctypes": "ctypes.wintypes exists on Windows only",
-    "shiboken6": "PySide6 binding; the tree runs on PyQt5",
-    # heavy or niche third-party extras
+        # heavy or niche third-party extras
     "OpenGL": "3-D viewers degrade without it",
     "pyopencl": "GPU acceleration is optional",
     "docx": "python-docx, report export only",

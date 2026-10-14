@@ -13,7 +13,6 @@ from mmfdb.provenance.result_registry import register_raw_measurement
 
 from chisurf.plugins.ndxplorer.mmfdb_launcher import (
     BURST_KINDS,
-    open_burst_selection_from_mmfdb,
     resolve_dataset_path,
 )
 
@@ -117,38 +116,3 @@ def test_burst_kinds_target_the_on_disk_burst_folder():
 
     assert BURST_KINDS == ["external_reference"]
     assert "directory" in BURST_FORMATS
-
-
-def test_picker_uses_explicit_client_instead_of_constructing_ambient_client(monkeypatch):
-    """GUI glue must preserve the authenticated client supplied by its owner."""
-
-    class Selection:
-        artifact_id = "artifact-1"
-
-    class Client:
-        def call(self, method, params):
-            assert method == "mmfdb.datasets.open"
-            assert params == {"artifact_id": "artifact-1"}
-            return {"local_path": "/tmp/selection"}
-
-    supplied = Client()
-    captured = {}
-
-    import chisurf.plugins.ndxplorer.mmfdb_launcher as launcher
-    from chisurf.gui.widgets.mmfdb import dataset_browser
-
-    def pick_dataset(**kwargs):
-        captured.update(kwargs)
-        return Selection()
-
-    monkeypatch.setattr(
-        dataset_browser.MmfdbDatasetPickerDialog,
-        "pick_dataset",
-        staticmethod(pick_dataset),
-    )
-    monkeypatch.setattr(launcher, "open_path_in_ndxplorer", lambda path: path)
-
-    result = open_burst_selection_from_mmfdb(client=supplied)
-
-    assert result == "/tmp/selection"
-    assert captured["client"] is supplied

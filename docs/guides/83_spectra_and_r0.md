@@ -136,8 +136,7 @@ value into the model's Förster radius.
 
 In the emtk shell the same calculator opens as a dialog over the window, with
 the same fields: R₀ stands in a read-only field of its own and $J$ on the line
-under it, the spectra used are listed under the two dye lists (the Qt window
-shows them as tooltips of the list entries), and **Apply R₀ to model** closes
+under it, the spectra used are listed under the two dye lists, and **Apply R₀ to model** closes
 the dialog; **✕ Close** closes it without changing the model. Headless, the
 calculator is `ForsterCalculatorModel` in
 `chisurf.core.fluorescence.fret.forster_calculator`:
