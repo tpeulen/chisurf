@@ -675,7 +675,7 @@ class ChannelResponse:
     background_rate: float = 0.0
     scatter_fraction: float = 0.0
     background_pattern: np.ndarray | None = None
-    _spectrum: np.ndarray = field(default=None, repr=False, init=False)
+    _spectrum: np.ndarray = field(default_factory=lambda: np.zeros(0, dtype=complex), repr=False, init=False)
 
     def __post_init__(self):
         """Normalise the response and cache its transform."""

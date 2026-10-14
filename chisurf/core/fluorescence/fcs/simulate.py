@@ -67,7 +67,7 @@ class SimulatedLifetimeFCS:
     micro_time_resolution_ns: float
     n_microtime_channels: int
     reference_decays: list = field(default_factory=list)
-    total_decay: np.ndarray = None
+    total_decay: np.ndarray = field(default_factory=lambda: np.zeros(0))
 
 
 def simulate_lifetime_fcs(

@@ -55,7 +55,7 @@ def scheme_parameter_names(model) -> list[str]:
         per-state brightnesses.
     """
     saturation = model.saturation
-    names = []
+    names: list[str] = []
     for group in (saturation.dark, saturation.exc):
         names.extend(p.name for p in getattr(group, "_rates", []))
     names.extend(p.name for p in getattr(saturation.brightness, "_brightness", []))

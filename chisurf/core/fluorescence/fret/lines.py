@@ -256,10 +256,11 @@ def distance_for_efficiency(
     line = static_fret_line(
         donor, r0=r0, sigma=sigma, distance_range=distance_range, n_points=n_points
     )
+    distances = line.parameter
+    if distances is None:  # static_fret_line records the mean distance of every point
+        raise RuntimeError("static FRET line carries no distance axis")
     # the line is sorted by tau_f, i.e. by decreasing efficiency
-    return np.interp(
-        np.asarray(efficiency, dtype=float), line.efficiency[::-1], line.parameter[::-1]
-    )
+    return np.interp(np.asarray(efficiency, dtype=float), line.efficiency[::-1], distances[::-1])
 
 
 # ---------------------------------------------------------------------------

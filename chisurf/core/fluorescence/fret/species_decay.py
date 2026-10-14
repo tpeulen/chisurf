@@ -292,6 +292,11 @@ def normalize_irf(irf: Any, n_bins: int) -> np.ndarray | None:
     """Return the IRF cropped/zero-padded to ``n_bins`` and **normalized to unit sum**."""
     if irf is None:
         return None
+    return _normalized_response(irf, n_bins)
+
+
+def _normalized_response(irf: Any, n_bins: int) -> np.ndarray:
+    """:func:`normalize_irf` for an IRF that is present."""
     response = np.asarray(irf, dtype=float).ravel()
     if response.size != int(n_bins):
         resized = np.zeros(int(n_bins), dtype=float)
@@ -307,7 +312,7 @@ def _apply_irf(
 ) -> np.ndarray:
     if irf is None:
         return decay
-    response = normalize_irf(irf, decay.size)
+    response = _normalized_response(irf, decay.size)
     if time_shift:
         response = periodic_shift(response, float(time_shift) / float(dt))
     if period is not None and float(period) > 0.0:

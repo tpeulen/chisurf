@@ -568,11 +568,14 @@ def refine_calibration(
         ``gamma_data``/``data_sigma`` are ``NaN``, ``gamma_updated`` is
         ``False`` and ``calib.gamma`` keeps its current (prior) value.
     """
-    from chisurf.core.fitting.priors import as_prior
+    from chisurf.core.fitting.priors import NormalPrior, as_prior
 
     labels = np.asarray(labels)
     prior = as_prior(calib._gamma.prior)
-    has_prior = prior is not None and hasattr(prior, "sigma")
+    # Only a Gaussian reduces to the (mu, sigma) pair the refinement takes. A
+    # duck-typed ``sigma`` let a half-normal through (no ``mu``: AttributeError)
+    # and a log-normal (whose mu/sigma are in log space) in as a linear Gaussian.
+    gaussian = prior if isinstance(prior, NormalPrior) else None
     # the resampling draws numpy's generator, as this function always did
     rng = np.random.default_rng(seed)
     n = labels.size
@@ -588,7 +591,7 @@ def refine_calibration(
         labels,
         alpha=calib.alpha,
         delta=calib.delta,
-        prior=(float(prior.mu), float(prior.sigma)) if has_prior else None,
+        prior=(gaussian.mu, gaussian.sigma) if gaussian is not None else None,
         data_sigma=data_sigma,
         n_bootstrap=int(n_bootstrap) if indices is not None else 0,
         seed=seed,

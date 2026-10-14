@@ -89,13 +89,14 @@ class BurstCounts:
     green : numpy.ndarray
         ``(n_bursts, 2)`` counts under green excitation, channel order
         (green, red) — ``F_GG``, ``F_GR``.
-    multiplicity : numpy.ndarray or None
-        Weight per row, set when duplicate bursts have been collapsed.
+    multiplicity : numpy.ndarray, optional
+        Weight per row, set when duplicate bursts have been collapsed. Omitted
+        (or empty), every burst counts once.
     """
 
     blue: np.ndarray
     green: np.ndarray
-    multiplicity: np.ndarray = None
+    multiplicity: np.ndarray = dataclasses.field(default_factory=lambda: np.zeros(0))
 
     def __post_init__(self):
         """Coerce to arrays and default the multiplicity to one per burst."""
@@ -103,9 +104,10 @@ class BurstCounts:
         self.green = np.atleast_2d(np.asarray(self.green, dtype=float))
         if self.blue.shape[0] != self.green.shape[0]:
             raise ValueError("blue and green count tables must have the same burst count")
-        if self.multiplicity is None:
-            self.multiplicity = np.ones(self.blue.shape[0], dtype=float)
-        self.multiplicity = np.asarray(self.multiplicity, dtype=float)
+        weights = np.asarray(
+            [] if self.multiplicity is None else self.multiplicity, dtype=float
+        )
+        self.multiplicity = weights if weights.size else np.ones(self.blue.shape[0], dtype=float)
 
     def collapsed(self) -> BurstCounts:
         """Return an equivalent table with duplicate bursts merged.

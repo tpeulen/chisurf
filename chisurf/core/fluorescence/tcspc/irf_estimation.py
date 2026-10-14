@@ -26,6 +26,8 @@ References
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from tttrlib.ndimage import median_filter as nd_median_filter
 from tttrlib.signal import savgol_filter
@@ -321,12 +323,12 @@ class IRFEstimator:
         self.time = np.arange(self.data.shape[0]) * dt
 
         self.num_samples, self.num_channels = self.data.shape
-        self.t0 = None  # shape (num_channels,)
-        self.t1 = None  # shape (num_channels,)
-        self.params = None  # dict with A, k, C
-        self.data_fit = None  # shape (num_samples, num_channels)
-        self.kernel = None  # shape (num_samples,)
-        self.irf = None  # shape (num_samples, num_channels)
+        self.t0: np.ndarray | None = None  # shape (num_channels,)
+        self.t1: np.ndarray | None = None  # shape (num_channels,)
+        self.params: dict[str, Any] | None = None  # dict with A, k, C
+        self.data_fit: np.ndarray | None = None  # shape (num_samples, num_channels)
+        self.kernel: np.ndarray | None = None  # shape (num_samples,)
+        self.irf: np.ndarray | None = None  # shape (num_samples, num_channels)
 
     def find_t0_t1(
         self,
@@ -496,6 +498,8 @@ class IRFEstimator:
         """
         if self.params is None:
             raise RuntimeError("Run fit_exponential first.")
+        if self.t0 is None:  # fit_exponential needs the onsets, so this is the same order
+            raise RuntimeError("Run find_t0_t1 first.")
 
         exp_curves = np.zeros_like(self.data)
 
@@ -560,6 +564,8 @@ class IRFEstimator:
             raise RuntimeError(
                 "Run generate_kernel() first or provide a convolution kernel manually."
             )
+        if self.params is None:  # the offset C subtracted below comes from the fit
+            raise RuntimeError("Run fit_exponential first.")
 
         # Initialize output
         x_est = np.ones_like(self.data)

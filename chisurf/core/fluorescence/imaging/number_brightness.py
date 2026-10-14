@@ -791,7 +791,7 @@ def nb_histogram_2d(
     ok = np.isfinite(x) & np.isfinite(y)
     if mask is not None:
         ok &= np.asarray(mask, dtype=bool).ravel()
-    bx, by = (bins, bins) if np.isscalar(bins) else tuple(bins)
+    bx, by = (bins, bins) if isinstance(bins, (int, np.integer)) else tuple(bins)
     hist, _, _ = np.histogram2d(
         x[ok],
         y[ok],

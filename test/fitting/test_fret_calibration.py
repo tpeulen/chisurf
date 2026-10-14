@@ -292,3 +292,23 @@ def test_refine_keeps_gamma_when_the_data_estimate_is_not_finite():
     # the prior-seeded value survives — in particular it is not the 0.05 bound
     assert c.gamma == pytest.approx(gamma_before)
     assert out["gamma"] == pytest.approx(gamma_before)
+
+
+def test_refine_ignores_a_prior_that_is_not_gaussian():
+    """Only a Gaussian prior reduces to the (mu, sigma) the refinement combines.
+
+    The check was ``hasattr(prior, "sigma")``: a half-normal prior (no ``mu``)
+    raised AttributeError, and a log-normal one would have entered with its
+    log-space mu/sigma read as a linear Gaussian.
+    """
+    from chisurf.core.fitting.priors import HalfNormalPrior
+
+    gamma, alpha, delta = 1.4, 0.08, 0.05
+    g, r, y, lab = _simulate(gamma, alpha, delta, [0.25, 0.55, 0.8], 500, seed=4)
+    c = CalibrationParameters()
+    c.alpha, c.delta = alpha, delta
+    c._gamma.prior = HalfNormalPrior(sigma=2.0)
+    out = refine_calibration(c, g, r, y, lab)
+    # without a usable prior the posterior is the data estimate
+    assert out["gamma"] == pytest.approx(out["gamma_data"])
+    assert out["gamma"] == pytest.approx(gamma, abs=0.05)

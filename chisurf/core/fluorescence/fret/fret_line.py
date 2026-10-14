@@ -234,7 +234,11 @@ class FRETLineGenerator:
 
     @property
     def donor_species_averaged_lifetime(self) -> float:
-        return donor_lifetime([self.model])
+        tau = donor_lifetime([self.model])
+        if tau is None:
+            # Every caller divides by it; None would surface as a TypeError.
+            raise ValueError("the model describes no donor lifetime (no donor.tau.i, no fret.tau0)")
+        return tau
 
     @property
     def transfer_efficiency(self) -> float:
@@ -276,7 +280,8 @@ class FRETLineGenerator:
         if parameter_name is not None:
             self.parameter_name = parameter_name
         if parameter_range is not None:
-            self.parameter_range = tuple(parameter_range)
+            low, high = parameter_range
+            self.parameter_range = (float(low), float(high))
         if n_points is not None:
             self.n_points = int(n_points)
         result = sweep(

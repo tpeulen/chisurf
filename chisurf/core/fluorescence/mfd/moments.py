@@ -41,6 +41,7 @@ the measurement matters more than a half-bin of nominal correctness.
 from __future__ import annotations
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 __all__ = [
     "background_moments",
@@ -277,7 +278,7 @@ def background_moments(n_channels: int, dt: float) -> tuple[float, float]:
 
 
 def mixture_moments(
-    weights: np.ndarray, means: np.ndarray, variances: np.ndarray
+    weights: ArrayLike, means: ArrayLike, variances: ArrayLike
 ) -> tuple[np.ndarray, np.ndarray]:
     """Combine component moments into the moments of their mixture.
 

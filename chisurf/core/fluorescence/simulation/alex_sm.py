@@ -115,14 +115,18 @@ def simulate_alex_sm(path, populations, *, seed: int = 1, smear: float = 0.08):
                 chan.append(channels)
             t = t + np.uint64(span)
 
-    macro = np.concatenate(macro)
-    chan = np.concatenate(chan)
-    order = np.argsort(macro, kind="stable")
-    macro = macro[order].astype(np.uint64)
-    chan = chan[order].astype(np.int8)
+    macro_all = np.concatenate(macro)
+    order = np.argsort(macro_all, kind="stable")
+    macro_sorted = macro_all[order].astype(np.uint64)
+    chan_sorted = np.concatenate(chan)[order].astype(np.int8)
 
     data = tttrlib.TTTR()
-    data.append_events(macro, np.zeros(macro.size, np.uint16), chan, np.zeros(macro.size, np.int8))
+    data.append_events(
+        macro_sorted,
+        np.zeros(macro_sorted.size, np.uint16),
+        chan_sorted,
+        np.zeros(macro_sorted.size, np.int8),
+    )
     data.header.tttr_container_type = SM_CONTAINER
     data.header.tttr_record_type = SM_RECORD_TYPE
     data.header.set_tag("MeasDesc_GlobalResolution", MACRO_RESOLUTION, TY_FLOAT8)

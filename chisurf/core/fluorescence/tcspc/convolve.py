@@ -148,7 +148,7 @@ def convolve_lifetime_spectrum(
     lifetime_spectrum: np.ndarray,
     instrument_response_function: np.ndarray,
     convolution_stop: int = -1,
-    time_axis: np.ndarray = None,
+    time_axis: np.ndarray | None = None,
     amplitude_threshold: float = 0,
     use_amplitude_threshold: bool = False,
 ) -> None:
@@ -171,6 +171,8 @@ def convolve_lifetime_spectrum(
     use_amplitude_threshold : bool, optional
         If True, filter components by amplitude threshold.
     """
+    if time_axis is None:
+        raise ValueError("time_axis is required: the channel width is read from it")
     dt = time_axis[1] - time_axis[0]
     tttrlib.fconv(
         output_decay, instrument_response_function, lifetime_spectrum, 0, convolution_stop, dt

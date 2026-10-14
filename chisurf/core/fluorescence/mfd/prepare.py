@@ -832,8 +832,8 @@ def infer_streams(
     candidates_channels.append(list(present))
 
     windows: list[tuple[int, int] | None] = [None]
-    for window in window_columns(frame):
-        windows.append(window)
+    for column_window in window_columns(frame):
+        windows.append(column_window)
 
     def counts_for(channels, window):
         """Return the per-burst count a candidate definition would produce."""
@@ -1064,12 +1064,11 @@ def prepare_burst_folder(
             resolved_streams = None
             stream_origin = "inferred"
     else:
-        first_item = next(iter(streams), None)
-        resolved_streams = (
-            list(streams)
-            if isinstance(first_item, StreamDef)
-            else streams_from_dicts(list(streams))
-        )
+        defs = [item for item in streams if isinstance(item, StreamDef)]
+        dicts = [item for item in streams if isinstance(item, dict)]
+        if defs and dicts:
+            raise TypeError("streams mixes StreamDef objects and dicts; pass one kind")
+        resolved_streams = defs if defs else streams_from_dicts(dicts)
         stream_origin = "caller"
 
     counts = np.column_stack(

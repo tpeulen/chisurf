@@ -857,12 +857,12 @@ def fit(
         # and would stall on its first reflection into a forbidden region.
         return -value if np.isfinite(value) else 1e12
 
-    start = list(np.log(initial_rates))
+    start_values = list(np.log(initial_rates))
     bounds = [(log_lo, log_hi)] * n_rates
     if not fix_efficiencies:
-        start += list(initial_efficiencies)
+        start_values += list(initial_efficiencies)
         bounds += [(0.0, 1.0)] * n_states
-    start = np.asarray(start, dtype=float)
+    start = np.asarray(start_values, dtype=float)
 
     key = method.lower().replace("_", "-")
     if key == "l-bfgs-b":

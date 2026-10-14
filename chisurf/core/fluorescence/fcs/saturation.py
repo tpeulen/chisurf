@@ -33,8 +33,8 @@ import numpy as np
 
 try:
     from numpy import trapezoid as _trapz
-except ImportError:  # NumPy < 2
-    from numpy import trapz as _trapz
+except ImportError:  # NumPy < 2, where the function still had its old name
+    _trapz = getattr(np, "trapz")
 
 logger = logging.getLogger(__name__)
 

@@ -15,7 +15,7 @@ assumes pure translation: no rotation, no scaling.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 import numpy as np
 
@@ -152,9 +152,11 @@ def estimate_drift(
 
     refs = _reference_stack(stack, reference)
 
-    gaussian_filter = None
+    smoother: Callable[..., np.ndarray] | None = None
     if smooth and smooth > 0:
-        from tttrlib.ndimage import gaussian_filter  # type: ignore[assignment]
+        from tttrlib.ndimage import gaussian_filter
+
+        smoother = gaussian_filter
 
     shifts = np.zeros((n_frames, 2), dtype=float)
     # Frame 0 *is* the reference under 'first' and 'previous', so its shift is
@@ -167,7 +169,7 @@ def estimate_drift(
         a = refs[k] - refs[k].mean()
         b = stack[k] - stack[k].mean()
         corr = np.fft.fftshift(np.real(np.fft.ifft2(np.fft.fft2(a) * np.conj(np.fft.fft2(b)))))
-        if gaussian_filter is not None:
+        if smoother is not None:
             # Wrap, not the default reflect: an FFT cross-correlation is
             # *circular*, so the lag axis has no edge — index 0 and index n-1
             # are neighbours. Reflecting there mirrors the peak back onto
@@ -175,7 +177,7 @@ def estimate_drift(
             # by a whole pixel. On a 32-pixel frame a true shift of 15 was
             # reported as 16, which then misaligns that frame in every
             # correlation it takes part in.
-            corr = gaussian_filter(corr, smooth, mode="wrap")
+            corr = smoother(corr, smooth, mode="wrap")
         dy, dx = _peak_shift(corr, subpixel)
         # The correlation peak sits at the offset that maps the frame onto the
         # reference, i.e. the correction. Negate it so the returned number is

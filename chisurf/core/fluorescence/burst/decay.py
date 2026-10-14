@@ -36,7 +36,7 @@ def _as_stream(stream) -> StreamDef:
     if isinstance(stream, StreamDef):
         return stream
     if isinstance(stream, Mapping):
-        return streams_from_dicts([stream])[0]
+        return streams_from_dicts([dict(stream)])[0]
     return StreamDef("stream", [int(c) for c in stream], [])
 
 

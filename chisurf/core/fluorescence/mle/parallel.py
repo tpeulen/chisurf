@@ -61,8 +61,8 @@ def fit_matrix_threaded(
         by the ``2I*`` fit quality, in the same order as ``rows`` (for ``FIT23``:
         ``[tau, gamma, r0, rho, 2I*]``).
     """
-    rows = np.asarray(rows)
-    n = len(rows)
+    row_index = np.asarray(rows)
+    n = len(row_index)
     width = len(parameter_names_of(model)) + 1
     params = np.empty((n, width), dtype=np.float64)
     if n == 0:
@@ -71,10 +71,10 @@ def fit_matrix_threaded(
     n_workers = max(1, int(n_workers))
     if n_workers == 1:
         fitter = Fit2x(settings, model=model)
-        params[:] = fitter.fit_many(data[rows], x0, fixed).stacked
+        params[:] = fitter.fit_many(data[row_index], x0, fixed).stacked
         return params
 
-    chunks = [c for c in np.array_split(rows, n_workers) if len(c)]
+    chunks = [c for c in np.array_split(row_index, n_workers) if len(c)]
     offsets = np.cumsum([0] + [len(c) for c in chunks])
     fitters = [Fit2x(settings, model=model) for _ in range(len(chunks))]
 

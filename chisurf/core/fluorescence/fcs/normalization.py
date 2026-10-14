@@ -59,7 +59,7 @@ def resolve_total_mean_count_rate(meta: dict[str, Any] | None) -> float | None:
 
 
 def diffusion_reference_component(
-    x: np.ndarray, td: float, s: float | None = None
+    x: np.ndarray, td: float | None, s: float | None = None
 ) -> np.ndarray | None:
     """Return a 2D or 3D Gaussian diffusion component.
 
@@ -78,6 +78,8 @@ def diffusion_reference_component(
     numpy.ndarray or None
         Diffusion component, or ``None`` if parameters are invalid.
     """
+    if td is None:
+        return None
     try:
         x = np.asarray(x, dtype=float)
         td = float(td)

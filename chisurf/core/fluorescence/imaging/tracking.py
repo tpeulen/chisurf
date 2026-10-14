@@ -222,7 +222,7 @@ class Tracks:
 # ──────────────────────────────────────────────────────────────────────────────
 # Detection
 # ──────────────────────────────────────────────────────────────────────────────
-def _atrous_spot_map(frame: np.ndarray, scale: int = 2) -> np.ndarray:
+def _atrous_spot_map(frame: np.ndarray, scale: int = 2) -> tuple[np.ndarray, float]:
     """Return the multiscale product that isolates diffraction-limited spots.
 
     The B3-spline à-trous transform smooths the image at successive dyadic
@@ -1076,7 +1076,7 @@ def simulate_particle_movie(
     for f in range(int(n_frames)):
         image = np.full((ny, nx), float(background)) if render else None
         for p in range(n_particles):
-            if render:
+            if image is not None:
                 image += amplitude * np.exp(
                     -((grid_y - y[p]) ** 2 + (grid_x - x[p]) ** 2) / (2.0 * sigma_psf**2)
                 )
@@ -1084,7 +1084,7 @@ def simulate_particle_movie(
             y_out.append(float(y[p]))
             x_out.append(float(x[p]))
             intensity_out.append(float(amplitude))
-        if render:
+        if movie is not None and image is not None:
             movie[f] = rng.poisson(np.clip(image, 0.0, None)) if poisson else image
 
         y = y + rng.normal(0.0, step, n_particles)

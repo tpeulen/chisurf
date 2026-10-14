@@ -350,8 +350,7 @@ def calculcate_spectrum(
             return vh_mixed
         elif polarization_type == "VV":
             return vv_mixed
-        elif polarization_type == "VV/VH":
-            # Return stacked VV and VH spectra for joint fitting
-            return np.hstack([vv_mixed, vh_mixed])
+        # "VV/VH": stacked VV and VH spectra for joint fitting
+        return np.hstack([vv_mixed, vh_mixed])
     else:
         return f
