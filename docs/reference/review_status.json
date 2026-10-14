@@ -1011,7 +1011,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "3fd4e44b3acab12498237f0269faf1a2a405d114bc030b364413d5791077bc1a",
+    "sha256": "d2c2d57fc34c9048cf5e48fd081e8d9ba99d4bc43d6deb7a94fb384d63c7f712",
     "status": "ai-reviewed"
   },
   "user_models.md": {
