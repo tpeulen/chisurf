@@ -139,7 +139,9 @@ class ProjectBrowserClient(MMFDBClient):
             },
         )
 
-    def create_branch(
+    # Project branches, not MMFDB provenance branches: the names differ from the base
+    # client's create_branch / list_branches, which these used to shadow incompatibly.
+    def create_project_branch(
         self,
         project_id: str,
         from_version_id: str,
@@ -154,7 +156,7 @@ class ProjectBrowserClient(MMFDBClient):
             },
         )
 
-    def list_branches(self, project_id: str) -> list[dict[str, Any]]:
+    def list_project_branches(self, project_id: str) -> list[dict[str, Any]]:
         return self._call(
             "project_browser.list_branches",
             {

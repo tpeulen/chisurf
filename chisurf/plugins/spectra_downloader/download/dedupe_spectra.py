@@ -294,7 +294,9 @@ def normalize_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text)
 
 
-def _maxima_likelihoods(v1: object, v2: object) -> tuple[float, float]:
+def _maxima_likelihoods(
+    v1: float | int | str | None, v2: float | int | str | None
+) -> tuple[float, float]:
     """(P(Δ|dup), P(Δ|not)) for a pair of absorption/emission maxima (nm)."""
     if v1 and v2:
         try:
@@ -343,8 +345,8 @@ def duplicate_probability(p1: dict[str, Any], p2: dict[str, Any]) -> float:
 def _abs_max(probe: dict[str, Any]) -> float:
     """Absorption maximum as a float, or a large sentinel when absent."""
     try:
-        return float(probe.get("abs_max"))
-    except (TypeError, ValueError):
+        return float(probe["abs_max"])
+    except (KeyError, TypeError, ValueError):
         return math.inf
 
 

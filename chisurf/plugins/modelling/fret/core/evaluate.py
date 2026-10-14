@@ -6,6 +6,7 @@ import concurrent.futures
 import glob
 import os
 import tempfile
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -88,7 +89,7 @@ def make_bodies_for_structure(
 def evaluate_structure(
     pdb_path: str,
     positions: dict,
-    evaluators: list[Evaluator],
+    evaluators: Sequence[Evaluator],
     disc_step: float | None = None,
 ) -> dict[str, EvaluatorResult]:
     """Run all evaluators on a single PDB structure.
@@ -124,7 +125,7 @@ def evaluate_structure(
 def evaluate_directory(
     pdb_dir: str,
     positions: dict,
-    evaluators: list[Evaluator],
+    evaluators: Sequence[Evaluator],
     pattern: str = "*.pdb",
     n_threads: int = 1,
     disc_step: float | None = None,
@@ -181,7 +182,7 @@ def evaluate_trajectory(
     top_path: str,
     traj_path: str,
     positions: dict,
-    evaluators: list[Evaluator],
+    evaluators: Sequence[Evaluator],
     disc_step: float | None = None,
 ) -> EvaluationStorage:
     """Run all evaluators on each frame of a trajectory using MDTraj.

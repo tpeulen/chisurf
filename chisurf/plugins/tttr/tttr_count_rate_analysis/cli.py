@@ -142,7 +142,7 @@ def get_channels_from_setup(setup_data: dict[str, Any]) -> dict[str, list[dict[s
     Returns:
         Dictionary mapping channel names to lists of channel info dictionaries
     """
-    channels = {}
+    channels: dict[str, list[dict[str, Any]]] = {}
     windows = setup_data.get("windows", {})
     detectors = setup_data.get("detectors", {})
 
@@ -179,7 +179,7 @@ def save_results_as_txt(
     try:
         with open(output_file, "w") as f:
             # Get all channel names
-            all_channels = set()
+            all_channels: set[str] = set()
             for file_rates in count_rates.values():
                 all_channels.update(file_rates.keys())
 

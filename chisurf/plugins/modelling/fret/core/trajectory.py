@@ -282,7 +282,7 @@ def compute_efficiencies_from_fps_av(
                     simulation_type=str(cfg.get("simulation_type", "AV1")),
                     chain_identifier=str(cfg.get("chain_identifier") or "").strip() or None,
                     residue_name=str(cfg.get("residue_name") or "").strip() or None,
-                    residue_seq_number=int(cfg.get("residue_seq_number")),
+                    residue_seq_number=int(cfg["residue_seq_number"]),
                     atom_name=str(cfg.get("atom_name") or "CA").strip() or "CA",
                     position_name=str(name),
                 )
@@ -407,7 +407,7 @@ def candidate_pairs_from_fps_json(
         return np.zeros((0, 2), dtype=np.int32), [], np.zeros((0,), dtype=np.float32), []
 
     effs_section = fps.get("Mean FRET Efficiencies")
-    dist_section = fps.get("Distances")
+    dist_section = fps.get("Distances") or {}
 
     pairs: list[tuple[int, int]] = []
     pair_names: list[str] = []

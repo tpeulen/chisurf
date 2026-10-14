@@ -9,6 +9,7 @@ against this model's requests.
 from __future__ import annotations
 
 import pathlib
+from typing import Any
 
 from chisurf.core.dataspec import load_view_spec
 
@@ -45,7 +46,7 @@ class DockingModel:
         self.save_trajectory = False
         # FPS-style docked state (transform vectors) from the last run / loaded
         # project; when ``continue_from_poses`` is set a dock resumes from these.
-        self.poses = []
+        self.poses: list[Any] = []  # pose_codec transform vectors, one per body
         self.pose_score = None
         self.continue_from_poses = False
         # results
@@ -53,7 +54,7 @@ class DockingModel:
         self.score = 0.0
         self.n_distances = 0
         # structure(s) shown in the 3D preview (str or list of PDB paths)
-        self.preview_models = []
+        self.preview_models: list[str] = []
 
     def view_spec(self):
         """Return the AutoForm view spec from ``fret_dock.view.json``."""

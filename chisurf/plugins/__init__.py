@@ -15,7 +15,7 @@ _log = logging.getLogger(__name__)
 
 
 def _set_hidden_on_windows(path: pathlib.Path) -> None:
-    if os.name != "nt":
+    if sys.platform != "win32":  # (the form type checkers read, same as os.name != "nt")
         return
     try:
         FILE_ATTRIBUTE_HIDDEN = 0x2

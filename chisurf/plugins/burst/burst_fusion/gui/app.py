@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import json
 import pathlib
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import emtk
 import numpy as np
@@ -41,6 +41,9 @@ from chisurf.plugins.emtk_layout import (
 )
 
 from .view_model import FusionViewModel
+
+if TYPE_CHECKING:
+    from .controller import FusionController
 
 __all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG"]
 
@@ -81,6 +84,13 @@ from chisurf.emtk.help_guide import TourTarget
 class BurstFusionGui(TourTarget):
     """The immediate-mode GUI logic and rendering for Burst Fusion."""
 
+    def remember(self, name: str, rect: tuple[float, float, float, float] | None = None) -> None:
+        """Store a control's rectangle, in the hosting app's registry when there is one."""
+        if self.remember_to is not None:
+            self.remember_to(name, rect)
+        else:
+            super().remember(name, rect)
+
     def __init__(
         self,
         model: FusionViewModel | None = None,
@@ -89,6 +99,10 @@ class BurstFusionGui(TourTarget):
         on_help: Callable[[], None] | None = None,
     ) -> None:
         self.model = model if model is not None else FusionViewModel()
+        #: the run controller, installed by the hosting app (``None``: run the model directly)
+        self.controller: FusionController | None = None
+        #: where remembered rectangles go when an app hosts this GUI (``None``: own dict)
+        self.remember_to: Callable[..., None] | None = None
         self.on_demo = on_demo
         self.on_guide = on_guide
         self.on_help = on_help
@@ -142,7 +156,7 @@ class BurstFusionGui(TourTarget):
         self.docks.add_window("plots", "Fusion plots", self._draw_plots, dock="plots")
 
     def _draw_controls(self, box):
-        controller = getattr(self, "controller", None)
+        controller = self.controller
         if controller:
             controller.draw_controls(remember=self.remember)
         running = bool(controller and controller.running)
@@ -222,7 +236,7 @@ class BurstFusionGui(TourTarget):
         self, section: dict | None, model: Any, state: FormState, width: float
     ) -> None:
         """The actions in two wrapped rows: run (Run, Estimate, Demo, Stop), then files and help."""
-        controller = getattr(self, "controller", None)
+        controller = self.controller
         running = bool(controller and controller.running)
         im.spacing()
         pressed = button_row(
@@ -474,7 +488,7 @@ class BurstFusionApp(ImApp):
         )
         self.model = self.fusion_gui.model
         self.item_rects = self.fusion_gui.item_rects
-        self.fusion_gui.remember = self.remember
+        self.fusion_gui.remember_to = self.remember
         self.fusion_gui.controller = self.controller
         super().__init__(gui=self._render)
 

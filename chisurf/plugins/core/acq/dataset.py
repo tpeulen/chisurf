@@ -31,7 +31,7 @@ class AcquisitionDataset(DataCurve):
 
     def __init__(
         self,
-        *args: Any,
+        *,
         name: str = "Acquisition",
         n_bins: int = 4096,
         tac_dt_ns: float = 0.004069,
@@ -52,7 +52,7 @@ class AcquisitionDataset(DataCurve):
 
         x = np.arange(int(n_bins), dtype=float) * float(tac_dt_ns)
         kwargs.setdefault("load_filename_on_init", False)
-        super().__init__(*args, x=x, y=np.zeros_like(x), name=name, **kwargs)
+        super().__init__(x=x, y=np.zeros_like(x), name=name, **kwargs)
         self.snapshot: dict[str, Any] | None = None
         self.live = LivePlots()
         self.live.tac_dt_ns = float(tac_dt_ns)

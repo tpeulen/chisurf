@@ -209,7 +209,7 @@ def test_actual_auth_and_private_version_detail_boundaries(
     for method in ("export_csp", "delete_version", "create_branch", "artifacts", "parameters"):
         with pytest.raises(Exception, match="[Pp]ermission|[Dd]enied|[Aa]ccess"):
             other._call("project_browser." + method, methods[method])
-    assert other.list_branches(saved["project_id"]) == []
+    assert other.list_project_branches(saved["project_id"]) == []
     assert other.version_graph(saved["project_id"])["nodes"] == []
     exported = client.export_csp(saved["version_id"])
     content = client._archive_content(exported["archive_bytes"])

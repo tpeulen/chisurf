@@ -166,11 +166,10 @@ class PluginCheckModel:
     def status_of(self, key: str) -> str:
         """The word in the Status column."""
         result = self.results.get(key)
-        return (
-            STATUS_WORDS.get(result.get("status"), result.get("status", ""))
-            if result
-            else NOT_CHECKED
-        )
+        if not result:
+            return NOT_CHECKED
+        status = str(result.get("status", ""))
+        return STATUS_WORDS.get(status, status)
 
     def check_rows(self) -> list[dict]:
         """One record per plugin for the table: Plugin, Status, Source, Depends on, Error."""

@@ -88,6 +88,7 @@ class ProteinMCApiClient:
 
     def close(self) -> None:
         """Disconnect the client."""
-        self._client._req_socket.close()
-        self._client._ctx.term()
+        # The client's own close: closing only the request socket left the
+        # subscription socket open, and Context.term() blocks until it is closed.
+        self._client.close()
         self._connected = False

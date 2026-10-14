@@ -21,6 +21,7 @@ milliseconds, and a full Sphinx build needs the whole documentation environment.
 
 from __future__ import annotations
 
+import functools
 import html as _html
 import re
 
@@ -213,7 +214,8 @@ class _Placeholders:
                     continue
                 # A block fragment the converter wrapped in a paragraph would
                 # nest a <div> inside a <p>, which Qt lays out badly.
-                text = re.sub(rf"<p>\s*{token}\s*</p>", lambda _m, h=html: h, text)
+                # a plain replacement string would read the HTML's backslashes as escapes
+                text = re.sub(rf"<p>\s*{token}\s*</p>", functools.partial(_constant, html), text)
                 text = text.replace(token, html)
             if text == before:
                 break
@@ -230,6 +232,11 @@ class _Placeholders:
             lambda m: self.add(f"<code>{_html.escape(m.group(2))}</code>"),
             text,
         )
+
+
+def _constant(text: str, _match: re.Match[str]) -> str:
+    """A ``re.sub`` replacement that inserts *text* verbatim (no escape processing)."""
+    return text
 
 
 def _admonition(kind: str, title: str, inner_html: str) -> str:
@@ -490,7 +497,7 @@ def _basic_markdown_to_html(text: str) -> str:
     in_ol = False
 
     def _process_inline_with_images(raw: str) -> str:
-        placeholders = {}
+        placeholders: dict[str, str] = {}
 
         def _img_repl(m):
             alt = m.group(1)

@@ -28,9 +28,9 @@ import base64
 import json
 
 try:  # optional — compact binary encoding
-    import msgpack  # type: ignore
+    import msgpack
 except ImportError:  # pragma: no cover - exercised via monkeypatch in tests
-    msgpack = None  # type: ignore
+    msgpack = None
 
 #: Codec used when ``msgpack`` is importable.
 _MSGPACK_CODEC = "msgpack+b64"

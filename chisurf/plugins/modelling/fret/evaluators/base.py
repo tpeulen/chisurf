@@ -124,7 +124,7 @@ class EvaluationStorage:
         """Convert accumulated results to a ``tttrlib.DataStore``."""
         from chisurf.core.datastore import store_from_arrays
 
-        data = {"filename": self.filenames}
+        data: dict[str, list[str] | list[float]] = {"filename": self.filenames}
         for name, vals in self.results.items():
             data[name] = vals
         return store_from_arrays(data)
@@ -144,7 +144,7 @@ class EvaluationStorage:
             writer = csv.writer(f)
             writer.writerow(headers)
             for i, fname in enumerate(self.filenames):
-                row = [fname]
+                row: list[str | float] = [fname]
                 for name in self.results:
                     row.append(self.results[name][i])
                 writer.writerow(row)

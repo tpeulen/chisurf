@@ -319,7 +319,7 @@ class ProjectBrowserModel:
         return {
             "artifacts": self.client.list_artifacts(version["version_id"]),
             "parameters": self.client.list_parameters(version["version_id"]),
-            "branches": self.client.list_branches(version["project_id"]),
+            "branches": self.client.list_project_branches(version["project_id"]),
             "graph": self.client.version_graph(version["project_id"]),
         }
 

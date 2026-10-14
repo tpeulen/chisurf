@@ -139,11 +139,14 @@ def _stop(stop_check: Callable[[], bool] | None):
     if stop_check is None:
         return None
     bff = _bff()
+    check = stop_check  # bound non-None for the director below
+    # A SWIG director class from a module without stubs: its type is only known at runtime.
+    stop_base: Any = bff.DockingStop
 
-    class _Stop(bff.DockingStop):
+    class _Stop(stop_base):
         def should_stop(self) -> bool:
             try:
-                return bool(stop_check())
+                return bool(check())
             except Exception:
                 # A predicate that raises must not take the run down with it;
                 # a docking job that dies at 90% because a progress dialog was
@@ -297,7 +300,7 @@ def dock(
     params=None,
     stop_check: Callable[[], bool] | None = None,
     initial_poses=None,
-) -> dict[str, Any]:
+) -> Result:
     """Dock by sampling, with the backend ``params.sampler`` names.
 
     Parameters
@@ -343,7 +346,7 @@ def dock_minimize(
     params=None,
     stop_check: Callable[[], bool] | None = None,
     initial_poses=None,
-) -> dict[str, Any]:
+) -> Result:
     """Dock by FRET-restrained energy minimisation.
 
     The deterministic road, and FPS's: a local descent from where the input
@@ -378,7 +381,7 @@ def refine(
     score_set: str = "",
     steps: int = 500,
     ev_weight: float = 1.0,
-) -> dict[str, Any]:
+) -> Result:
     """Polish a pose in place: minimise, write the structure and the table.
 
     Parameters

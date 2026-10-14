@@ -110,7 +110,12 @@ class SplitterGui(TourTarget):
     # ── one picker row: caption + field + browse button ───────────────────
 
     def _picker_row(
-        self, caption: str, value: str, hint: str, on_browse: Callable, target: str
+        self,
+        caption: str,
+        value: str,
+        hint: str,
+        on_browse: Callable[[], None] | None,
+        target: str,
     ) -> str:
         im.text(f"{caption}:")
         im.same_line()

@@ -155,6 +155,7 @@ def test_a_curve_reads_back_with_its_axis_units(container: Path):
     with PtoInspection(container) as insp:
         fcs = next(i for i in insp.infos() if i.name == "fcs")
         curve = insp.curve(fcs.uid)
+    assert curve is not None
     assert curve["x_units"] == "milliseconds"
     assert len(curve["x"]) == 64
 

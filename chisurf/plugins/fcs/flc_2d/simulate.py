@@ -109,7 +109,7 @@ def simulate_photon_stream(
     # different estimator, so the pattern is built far longer than the window and
     # the clip below does the rest.
     n_pattern = int(n_microtime_channels) * 64
-    decay = {"dt": float(tstep_ns), "n_bins": n_pattern}
+    decay: dict[str, float | int | list[float]] = {"dt": float(tstep_ns), "n_bins": n_pattern}
     if irf is not None and irf_time_ns is not None:
         # The engine convolves with a pattern on its own micro-time grid, so the
         # response is resampled onto that grid rather than being sampled from.
@@ -207,7 +207,7 @@ def dwell_time_histogram(
     if n_states is None:
         n_states = int(states.max()) + 1 if states.size else 1
     change = np.flatnonzero(np.diff(states) != 0)
-    dwells = {}  # (n, m) -> list of dwell times
+    dwells: dict[tuple[int, int], list[float]] = {}  # (n, m) -> list of dwell times
     start_t = t[0] if t.size else 0.0
     prev = states[0] if states.size else 0
     for idx in change:

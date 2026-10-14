@@ -58,6 +58,7 @@ def discover_docs() -> DocInfo:
         All discovered documents with tree structure and flat list.
 
     """
+    rel: pathlib.Path | str  # relative to its root, or the bare name outside it
     entries: list[DocEntry] = []
     tree: dict[str, list[dict]] = {
         "User manual": [],

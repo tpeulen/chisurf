@@ -5,9 +5,13 @@ from __future__ import annotations
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, TypeVar, get_args, get_origin, get_type_hints
+from typing import TYPE_CHECKING, Any, TypeVar, get_args, get_origin, get_type_hints
 
-T = TypeVar("T")
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+
+#: a settings dataclass (``fields`` and the dataclass constructor are what is used)
+T = TypeVar("T", bound="DataclassInstance")
 
 
 def to_jsonable(value: Any) -> Any:

@@ -23,7 +23,9 @@ def build(
     import tttrlib
 
     rng = np.random.default_rng(seed)
-    macro, chan, rows = [], [], []
+    macro: list[int] = []
+    chan: list[int] = []
+    rows: list[tuple[int, int]] = []
     t = 0
     for b in range(n_bursts):
         start = len(macro)
@@ -51,12 +53,12 @@ def build(
 
     folder = root / "burstwise"
     (folder / "bi4_bur").mkdir(parents=True, exist_ok=True)
-    chan = np.asarray(chan)
+    channels = np.asarray(chan)
     lines = [
         "First Photon\tLast Photon\tNumber of Photons (green)\tNumber of Photons (red)\tFirst File"
     ]
     for first, last in rows:
-        red = int(np.sum(chan[first : last + 1] == 1))
+        red = int(np.sum(channels[first : last + 1] == 1))
         lines += ["0\t0\t0\t0\t", f"{first}\t{last}\t{last - first + 1 - red}\t{red}\tm000.spc"]
     (folder / "bi4_bur" / "m000.bur").write_text("\n".join(lines))
     return folder

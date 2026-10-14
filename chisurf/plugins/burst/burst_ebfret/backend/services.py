@@ -157,10 +157,13 @@ def _set(session: Session, params: dict) -> dict:
             session.set_series(value=value)
         elif name == "ensemble":
             session.set_ensemble(value=value)
-        elif name == "min_states":
-            session.set_min_states(value)
-        elif name == "max_states":
-            session.set_max_states(value)
+        elif name in ("min_states", "max_states"):
+            if value is None:
+                raise ValueError(f"{name} needs a number")
+            if name == "min_states":
+                session.set_min_states(int(value))
+            else:
+                session.set_max_states(int(value))
         elif name == "crop_min":
             session.set_crop(crop_min=value)
         elif name == "crop_max":

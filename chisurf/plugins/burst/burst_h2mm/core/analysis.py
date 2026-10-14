@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import logging
 import warnings
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 import numpy as np
 
 from .engines import (
     DECODER_KEEPS_DWELLS,
+    SurrogateSource,
     decode,
     fit_one,
     normalize_decoder,
@@ -222,7 +223,7 @@ class H2mmAnalysis:
             seen to end"), not a missing key.
         """
         n_states = int(self.best.model.n_states)
-        out = {s: [] for s in range(n_states)}
+        out: dict[int, list[int]] = {s: [] for s in range(n_states)}
         for d in self.dwells:
             if d.is_edge and not include_edges:
                 continue
@@ -616,8 +617,10 @@ def profile_likelihood(
         for k, v in enumerate(grid):
             if param == "E":
                 m = _model_with_state_e(model, state, float(v), donor, acceptor)
-            else:
+            elif aex is not None:  # S is scanned only with an acceptor-excitation stream
                 m = _model_with_state_s(model, state, float(v), donor, acceptor, aex)
+            else:
+                continue
             ll[k] = fixed_loglik(m, data)
             done += 1
             if progress is not None:
@@ -644,7 +647,7 @@ def scan_states(
     tol: float = 1e-7,
     seed: int = 0,
     engine: str = "em",
-    surrogates: dict[int, object] | None = None,
+    surrogates: Mapping[int, SurrogateSource] | None = None,
     refine_iters: int = 20,
     criterion: str = "bic",
     patience: int | None = None,
@@ -850,7 +853,7 @@ def analyze(
     tol: float = 1e-7,
     seed: int = 0,
     engine: str = "em",
-    surrogates: dict[int, object] | None = None,
+    surrogates: Mapping[int, SurrogateSource] | None = None,
     refine_iters: int = 20,
     patience: int | None = None,
     divisors: int = 1,

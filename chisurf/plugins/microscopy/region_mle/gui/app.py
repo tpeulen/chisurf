@@ -28,6 +28,7 @@ from emtk.file_dialog import FileDialog
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_sections
 
+from chisurf.core.roi import EllipseROI
 from chisurf.emtk.dataset_picker import DatasetPicker
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
 from chisurf.emtk.image_canvas import ImageCanvas
@@ -330,6 +331,8 @@ class RegionMleApp(ImApp):
             labels = []
             for entry in found:
                 roi = entry.roi
+                if not isinstance(roi, EllipseROI):  # molecules are moment ellipses
+                    continue
                 labels.append(
                     {
                         "text": str(entry.name).rsplit(" ", 1)[-1],

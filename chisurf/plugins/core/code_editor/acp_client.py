@@ -447,12 +447,12 @@ class AcpClient:
             # Check for newline-delimited JSON
             nl_pos = self._buffer.find(b"\n")
             if nl_pos >= 0:
-                line = bytes(self._buffer[:nl_pos]).strip()
+                raw_line = bytes(self._buffer[:nl_pos]).strip()
                 del self._buffer[: nl_pos + 1]
-                if not line:
+                if not raw_line:
                     continue
                 try:
-                    self.handle_incoming_message(json.loads(line.decode("utf-8")))
+                    self.handle_incoming_message(json.loads(raw_line.decode("utf-8")))
                 except Exception as e:
                     _LOG.warning("Failed to decode ACP line: %s", e)
                 continue

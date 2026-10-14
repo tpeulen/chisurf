@@ -226,8 +226,8 @@ def screen_structure_library(
     fret_settings = getattr(chisurf.core.settings, "fret", {})
     tf_type = fret_settings.get("transfer_function", "Polynomial")
 
-    convfuns = {}
-    sigmas = {}
+    convfuns: dict[str, np.ndarray] = {}
+    sigmas: dict[str, float] = {}
     if tf_type != "None":
         convfuns, sigmas = compute_screening_transfer_functions(
             pdb_files[0], positions, distances, disc_step=disc_step, tf_type=tf_type

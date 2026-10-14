@@ -149,8 +149,8 @@ class PotentialEnergyViewModel:
     def remove_potential_activated(self, row: dict) -> None:
         """Remove the double-clicked table *row* (dispatched by the table section)."""
         try:
-            idx = int(row.get("idx"))
-        except (TypeError, ValueError):
+            idx = int(row["idx"])
+        except (KeyError, TypeError, ValueError):
             return
         self.remove_potential(idx)
 
@@ -204,9 +204,10 @@ class PotentialEnergyViewModel:
             handle.write(header)
 
         topology = self.topology_filename or None
-        self.structure = chisurf.core.structure.TrajectoryFile(
+        structure = chisurf.core.structure.TrajectoryFile(
             mdtraj.load_frame(self.trajectory_file, 0, top=topology)
         )[0]
+        self.structure = structure
 
         i = 0
         with open(energy_file, "a") as handle:
@@ -219,12 +220,12 @@ class PotentialEnergyViewModel:
                     # A single-frame trajectory's xyz is (1, n_atoms, 3). Ångström
                     # already, like the structure's: the ×10 here was a nm → Å
                     # conversion left behind when trajectories moved to Å.
-                    self.structure.xyz = frame.xyz[0]
-                    update_dist = getattr(self.structure, "update_dist", None)
+                    structure.xyz = frame.xyz[0]
+                    update_dist = getattr(structure, "update_dist", None)
                     if callable(update_dist):
                         update_dist()
                     row = f"{i * self.stride + 1}\t"
-                    for energy in self.universe.getEnergies(self.structure):
+                    for energy in self.universe.getEnergies(structure):
                         row += f"{energy:.3f}\t"
                     row += "\n"
                     handle.write(row)

@@ -201,8 +201,8 @@ def document_reference(
     if role == "cite":
         from chisurf.plugins.core.help.api import bibliography as bib
 
-        entry = bib.bibliography().get(label)
-        cite_label = bib.short_citation(entry) if entry else ""
+        cited = bib.bibliography().get(label)
+        cite_label = bib.short_citation(cited) if cited else ""
         ref_entry = ref_index().get(label)
         if ref_entry is not None:
             return ref_entry[0], label, caption or cite_label or ref_entry[1] or label

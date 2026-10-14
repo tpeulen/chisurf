@@ -44,8 +44,8 @@ def rgba(value: str) -> tuple[int, int, int, int]:
         value = "".join(char * 2 for char in value)
     if len(value) not in (6, 8):
         raise ValueError("Use a color such as #aabbcc or #aabbccdd")
-    values = tuple(int(value[index : index + 2], 16) for index in range(0, len(value), 2))
-    return (*values[:3], values[3] if len(values) == 4 else 255)
+    values = [int(value[index : index + 2], 16) for index in range(0, len(value), 2)]
+    return values[0], values[1], values[2], values[3] if len(values) == 4 else 255
 
 
 def font_choices() -> tuple[str, ...]:
