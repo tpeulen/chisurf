@@ -326,3 +326,24 @@ def test_dialog_is_translated(locale, title, decay):
     finally:
         app.close()
         i18n.install("en")
+
+
+def test_path_fields_are_declared_as_text():
+    """A path control without a ``kind`` is a float field: the folder could not be typed."""
+    import json
+    from pathlib import Path
+
+    spec = Path(__file__).resolve().parents[1] / "gui" / "sim_setup_emtk.view.json"
+
+    def walk(node):
+        if isinstance(node, dict):
+            yield node
+            for value in node.values():
+                yield from walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from walk(value)
+
+    paths = [s for s in walk(json.loads(spec.read_text())) if str(s.get("attr", "")).endswith("_path")]
+    assert paths, "no *_path control found"
+    assert all(s.get("kind") == "str" for s in paths), [s["attr"] for s in paths if s.get("kind") != "str"]

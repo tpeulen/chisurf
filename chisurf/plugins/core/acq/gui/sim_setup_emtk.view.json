@@ -39,6 +39,7 @@
                     "type": "value",
                     "description": "Folder where SPC/photon-stream files are written.",
                     "label": "Output folder",
+                    "kind": "str",
                     "attr": "output_path"
                 },
                 {

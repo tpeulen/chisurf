@@ -125,6 +125,13 @@
     "sha256": "a6be0adb31878dd54131c71d3faaf38af22f4ba9956b71c2a6be2b0e9fd8eeed",
     "status": "ai-reviewed"
   },
+  "plugins/acq.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e325273d701fd3ee30e92d0a8fbb76a39a0806c74346bf12b8e2d6e2a9b604e2",
+    "status": "ai-reviewed"
+  },
   "plugins/ai_settings.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
