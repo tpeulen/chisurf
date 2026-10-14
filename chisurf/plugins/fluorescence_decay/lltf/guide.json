@@ -3,35 +3,90 @@
   "steps": [
     {
       "title": "One decay, one IRF, choices made by rule",
-      "text": "This fits a single TCSPC decay with a few exponentials, reconvolved with a measured IRF. What makes it <b>lazy</b> is that the fit range, the background, the IRF shift and — if you ask — the number of components are decided by fixed rules instead of by you.<br/><br/>That is convenient and it is also the risk: each rule can be wrong for your data. Six steps.",
+      "text": "This fits a single TCSPC decay with a few exponentials, reconvolved with a measured IRF. What makes it <b>lazy</b> is that the fit range, the background, the IRF shift and — if you ask — the number of components are decided by fixed rules instead of by you.<br/><br/>That is convenient and it is also the risk: each rule can be wrong for your data. Six steps for one decay, then five for a polarized VV/VH pair.",
       "target": {}
     },
     {
       "title": "Load the decay",
       "text": "A text file with a time column in <b>ns</b> and a count column. Only the first two columns are read.<br/><br/>The plugin ships an example: <code>chisurf/plugins/fluorescence_decay/lltf/example/5-44_D0.dat</code>.",
-      "target": {"action": "Load..."},
-      "await": {"hint": "Press the first <b>Load...</b> and pick a decay file."}
+      "target": {
+        "action": "Load..."
+      },
+      "await": {
+        "hint": "Press the first <b>Load...</b> and pick a decay file."
+      }
     },
     {
       "title": "The IRF, and the settings file",
       "text": "Load the IRF the same way (second <b>Load...</b>; the example is <code>IRF_D0.dat</code>).<br/><br/><b>Edit...</b> opens the configuration file: fit range (<code>start_fraction</code>, <code>area</code>), background window, IRF-shift grid, starting lifetimes, pile-up. Everything not on this panel lives there.",
-      "target": {"action": "Edit..."}
+      "target": {
+        "action": "Edit..."
+      }
     },
     {
       "title": "Fix the number of lifetimes yourself",
       "text": "Start with a fixed number. <b>Find Optimal Number of Lifetimes</b> fits 1 … Max components and keeps a further one while an F test of the χ² drop (extra-sum-of-squares, nested pair) passes the threshold. A component on a parameter boundary makes that probability approximate, and a tiny extra component can pass it.<br/><br/>Use it to <i>see</i> the sequence of χ², not to decide.",
-      "target": {"action": "Find Optimal"}
+      "target": {
+        "action": "Find Optimal"
+      }
     },
     {
       "title": "Run the fit",
       "text": "The fit runs in a separate process; its log appears in <b>Analysis Output</b>. A <code>maxfev</code> warning there means the optimizer ran out of evaluations rather than converging.",
-      "target": {"action": "Fit"},
-      "await": {"hint": "Press <b>Fit</b>."}
+      "target": {
+        "action": "Fit"
+      },
+      "await": {
+        "hint": "Press <b>Fit</b>."
+      }
     },
     {
       "title": "Read the residuals, then move the range",
       "text": "<b>Results</b> shows species fractions (they sum to 1 — not intensity fractions), lifetimes, χ² and the fit range, above the fit and its weighted residuals.<br/><br/>Structure in the residuals means the model is wrong in a way χ² hides. Then change <code>start_fraction</code> or <code>area</code> and fit again: on the example decay the short lifetime moves from 0.78 to 1.35 ns between two reasonable ranges. A lifetime that moves with the window is not determined by the data.",
-      "target": {"tab": "Results"}
+      "target": {
+        "tab": "Results"
+      }
+    },
+    {
+      "title": "A polarized pair: VV/VH",
+      "text": "<b>Data → VV/VH</b> fits a parallel (VV) and a perpendicular (VH) decay <i>jointly</i>: both share the lifetimes of the population decay F(t), and their difference is the anisotropy r(t) = Σ b<sub>j</sub> exp(−t/ρ<sub>j</sub>):<br/><br/>VV = F (1 + (2 − 3 l1) r), VH = F (1 − (1 − 3 l2) r) / G.<br/><br/>Fitting both channels, not the noisy ratio, keeps the Poisson statistics and resolves ρ shorter than the IRF.",
+      "target": {
+        "action": "mode"
+      }
+    },
+    {
+      "title": "Load a pair whose answer is known",
+      "text": "<b>Load example</b> simulates a VV/VH pair with the example IRF: lifetimes 1 and 4 ns (fractions 0.3, 0.7), one rotation ρ = 1.5 ns with r0 = 0.35, and G = 1.2 in the file's footer. It switches the panel to VV/VH and selects the files.",
+      "target": {
+        "action": "Load example"
+      },
+      "await": {
+        "hint": "Press <b>Load example</b>."
+      }
+    },
+    {
+      "title": "Rotations and calibration",
+      "text": "<b>Rotations</b> sets how many correlation times r(t) has; <b>Residual anisotropy r∞</b> adds one that does not decay.<br/><br/>G, l1 and l2 come from the data when it carries them (a vv_vh footer, the TTTR reader's anisotropy panel), else from the configuration. <b>Override calibration</b> uses the three fields instead. A wrong G biases r0 and ρ; measure it with the VV/VH G-Factor Calculator.",
+      "target": {
+        "action": "n_rotations"
+      }
+    },
+    {
+      "title": "Fit both channels",
+      "text": "The fit runs as <code>lltf fit-vvvh</code>. Results lists the lifetimes and the rotations (b, ρ), r0, the reduced χ² of each channel and of the joint fit, and the G, l1, l2 used with their source.",
+      "target": {
+        "action": "Fit"
+      },
+      "await": {
+        "hint": "Press <b>Fit</b>."
+      }
+    },
+    {
+      "title": "r(t): data against fit",
+      "text": "<b>r(t)</b> shows the Schaffer-corrected anisotropy of the data and of the fit, both reconvolved with the IRF, so they are comparable channel by channel. The data's r(t) is noisy where counts are low; the fit is made on the two decays, not on this curve.<br/><br/>On the example: about 4.0 / 1.0 ns, ρ ≈ 1.5 ns and r0 ≈ 0.35.",
+      "target": {
+        "tab": "r(t)"
+      }
     }
   ]
 }

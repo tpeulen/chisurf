@@ -36,6 +36,7 @@ TAB_TIPS = {
 }
 
 #: The file rows: model attribute, caption, tooltip, browse action, browse caption, guide key of the browse button.
+#: The two VH rows are drawn in VV/VH mode only.
 FILE_ROWS = (
     (
         "decay_file",
@@ -46,12 +47,29 @@ FILE_ROWS = (
         "Load...",
     ),
     (
+        "vh_file",
+        "VH File (optional)",
+        "The VH channel as a two-column file (time, counts) when the decay file holds only VV. "
+        "Leave empty for a stacked VV/VH or a three-column (time, VV, VH) decay file.",
+        "vh_file",
+        "Load...",
+        "load_vh",
+    ),
+    (
         "irf_file",
         "IRF File",
         "Measured two-column instrument response: time (ns) and counts.",
         "irf_file",
         "Load...",
         "load_irf",
+    ),
+    (
+        "irf_vh_file",
+        "VH IRF (optional)",
+        "The VH channel's instrument response; empty: the IRF file serves both channels.",
+        "irf_vh_file",
+        "Load...",
+        "load_irf_vh",
     ),
     (
         "config_file",
@@ -153,6 +171,8 @@ class LLTFApp(TourTarget, ImApp):
         title = {
             "decay_file": "Load decay",
             "irf_file": "Load IRF",
+            "vh_file": "Load VH decay",
+            "irf_vh_file": "Load VH IRF",
             "config_file": "Load configuration",
             "output_dir": "Output directory",
             "save_config": "Save configuration",
@@ -196,15 +216,21 @@ class LLTFApp(TourTarget, ImApp):
         if action_button("help"):
             self.help_window.show()
         self.remember("help")
-        im.separator()
-        self.form.rects.clear()
+        # The actions come first: in VV/VH mode the options outgrow a small window,
+        # and Fit must stay reachable without scrolling.
         im.begin_disabled(m.running)
-        draw_form(self.controls_spec, m, self.form)
+        if im.button(tr("📂  Load example")):
+            self.error(m.load_example)
+            self.tour.notify_used("Load example")
         im.end_disabled()
-        self.item_rects.update(self.form.rects)
-        self.item_rects["Find Optimal"] = self.form.rects.get(
-            "find_optimal"
-        )  # the Qt tour's name for it
+        im.set_item_tooltip(
+            tr(
+                "Simulate a VV/VH pair whose answer is known (lifetimes 1 and 4 ns, ρ = 1.5 ns, "
+                "r0 = 0.35, G = 1.2), select it in VV/VH mode with the example IRF."
+            )
+        )
+        self.remember("Load example")
+        im.same_line()
         ready = Path(m.decay_file).is_file() and Path(m.irf_file).is_file()
         im.begin_disabled(m.running or not ready)
         if im.button(tr("▶  Fit")):
@@ -230,6 +256,15 @@ class LLTFApp(TourTarget, ImApp):
             im.text_colored(ERROR, m.status)
         else:
             im.text_wrapped(m.status)
+        im.separator()
+        self.form.rects.clear()
+        im.begin_disabled(m.running)
+        draw_form(self.controls_spec, m, self.form)
+        im.end_disabled()
+        self.item_rects.update(self.form.rects)
+        self.item_rects["Find Optimal"] = self.form.rects.get(
+            "find_optimal"
+        )  # the Qt tour's name for it
 
     def draw_files(self, section, model, state, width):
         """The four file rows of the Qt wizard, each as its caption and, under it, the path and its Load... / Edit... / Select... button.
@@ -244,6 +279,8 @@ class LLTFApp(TourTarget, ImApp):
         )
         spacing = im.get_style().item_spacing[0]
         for attr, label, tip, action, button, key in FILE_ROWS:
+            if attr in ("vh_file", "irf_vh_file") and not m.polarized:
+                continue
             im.text(label)
             im.set_next_item_width(max(60.0, width - button_w - spacing - 4.0))
             flags = 0 if attr == "config_file" else im.InputTextFlags.READ_ONLY
@@ -305,7 +342,7 @@ class LLTFApp(TourTarget, ImApp):
                     if tab == "Information":
                         im.text_wrapped(
                             tr(
-                                "Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model."
+                                "Load the measured decay and IRF, edit YAML settings if needed, choose a fixed or automatically selected lifetime count, then Fit. Analysis runs separately; inspect its output, fitted lifetimes and weighted residuals before interpreting the model. In VV/VH mode a polarized pair is fitted jointly: shared lifetimes, rotational correlation times and r0. Load example simulates one whose answer is known."
                             )
                         )
                     elif tab == "Analysis Output":
@@ -332,11 +369,62 @@ class LLTFApp(TourTarget, ImApp):
             im.end_tab_bar()
             self.pending_tab = None
 
+    def _range_lines(self, a):
+        for index, value in enumerate(a["range"]):
+            implot.drag_line_x(
+                index,
+                value,
+                flags=implot.DRAG_TOOL_FLAGS_NO_INPUTS | implot.DRAG_TOOL_FLAGS_NO_FIT,
+            )
+
+    def polarized_plots(self, a):
+        """VV and VH with their fits, both channels' weighted residuals, and r(t) data against fit."""
+        tips = {
+            "VV and VH": "Both channels and their joint fit, log scale, with the analysis range.",
+            "Weighted residuals": "Weighted residuals of VV and VH over the analysis range.",
+            "r(t)": "Anisotropy of the data and of the fit (both reconvolved, Schaffer-corrected).",
+        }
+        if im.begin_tab_bar("lltf_plot_tabs"):
+            for title, tip in tips.items():
+                opened = im.begin_tab_item(title)
+                self.item_rects[title] = im.get_item_rect()  # the tour points at r(t)
+                if opened:
+                    if implot.begin_plot(title, size=(-1.0, -1.0)):
+                        y_label = {"VV and VH": "Counts", "r(t)": "r(t)"}.get(
+                            title, "Weighted residual"
+                        )
+                        implot.setup_axes("Time (ns)", y_label)
+                        if title == "VV and VH":
+                            implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
+                            for name, x, y in [
+                                ("VV", a["time"], a["vv"]),
+                                ("VH", a["time"], a["vh"]),
+                                ("VV fit", a["model_time"], a["fit_vv"]),
+                                ("VH fit", a["model_time"], a["fit_vh"]),
+                            ]:
+                                implot.plot_line(name, x, np.where(np.asarray(y) > 0, y, np.nan))
+                            self._range_lines(a)
+                        elif title == "r(t)":
+                            implot.setup_axis_limits(implot.AXIS_Y1, -0.1, 0.5)
+                            implot.plot_line("r(t) data", a["r_time"], a["r_data"])
+                            implot.plot_line("r(t) fit", a["r_time"], a["r_model"])
+                        else:
+                            implot.plot_line("VV", a["model_time"], a["residuals_vv"])
+                            implot.plot_line("VH", a["model_time"], a["residuals_vh"])
+                            self._range_lines(a)
+                        implot.end_plot()
+                    im.end_tab_item()
+                im.set_item_tooltip(tr(tip))
+            im.end_tab_bar()
+
     def plots(self, box):
         if self.arrays is None:
             im.text_wrapped(tr("Fit plots appear after a successful analysis."))
             return
         a = self.arrays
+        if a.get("polarized"):
+            self.polarized_plots(a)
+            return
         if im.begin_tab_bar("lltf_plot_tabs"):
             for title in ("Decay and fit", "Weighted residuals"):
                 if im.begin_tab_item(title):

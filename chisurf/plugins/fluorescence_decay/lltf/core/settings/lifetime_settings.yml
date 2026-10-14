@@ -38,6 +38,18 @@ lifetime_fit_parameter:
     max_lifetime: 5.0
     amplitude_variation: 0.5
 
+# VV/VH (polarization-resolved) fit: the anisotropy calibration used when the
+# data do not carry it (a vv_vh footer or the TTTR reader's g_factor/l1/l2),
+# and the rotation model. G = S_par / S_perp divides the VH channel.
+polarization_parameter:
+  g_factor: 1.0
+  l1: 0.0
+  l2: 0.0
+  number_of_rotations: 1
+  fit_r_infinity: false
+  # channel width (ns) of a single-column stacked VV/VH file
+  channel_width: 0.008
+
 pile_up_correction:
   enabled: false
   rep_rate: 80.0

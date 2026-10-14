@@ -17,10 +17,9 @@ from chisurf.core.math.special import fdtr
 
 from .convolve import add_pile_up_to_model, convolve_lifetime_spectrum
 from .scaling import scale_model_to_data
-from .settings import get_default_settings
+from .settings import merged_settings
 
 
-# @njit(nopython=True, nogil=True)
 def _shift_irf_numba(original_irf: np.ndarray, shift_ch: float) -> np.ndarray:
     """
     Shift the IRF by a given number of channels.
@@ -42,22 +41,21 @@ def _shift_irf_numba(original_irf: np.ndarray, shift_ch: float) -> np.ndarray:
 
     # Split the shift into integer and fractional parts. Flooring keeps
     # 0 <= frac < 1 for negative shifts too, so shifted[dst] samples the
-    # original IRF at dst - shift_ch for either sign.
+    # original IRF at dst - shift_ch for either sign. Vectorised: the loop this
+    # replaced ran in Python (its numba decorator was off) and took 90 % of a fit.
     int_shift = int(np.floor(shift_ch))
     frac = shift_ch - int_shift
+    src = np.arange(n) - int_shift
 
     if frac == 0.0:
         # Integer shift - simple case
-        for dst in range(n):
-            src = dst - int_shift
-            if 0 <= src < n:
-                shifted[dst] = original_irf[src]
+        valid = (src >= 0) & (src < n)
+        shifted[valid] = original_irf[src[valid]]
     else:
         # Fractional shift - linear interpolation between src - 1 and src
-        for dst in range(n):
-            src = dst - int_shift
-            if 1 <= src < n:
-                shifted[dst] = frac * original_irf[src - 1] + (1.0 - frac) * original_irf[src]
+        valid = (src >= 1) & (src < n)
+        s = src[valid]
+        shifted[valid] = frac * original_irf[s - 1] + (1.0 - frac) * original_irf[s]
 
     return shifted
 
@@ -117,6 +115,74 @@ def select_number_of_lifetimes(
         else:
             break
     return best_idx
+
+
+def weighted_residuals(data: np.ndarray, model: np.ndarray, noise_model: str) -> np.ndarray:
+    """Residuals whose sum of squares is the fit objective.
+
+    Parameters
+    ----------
+    data, model : numpy.ndarray
+        Counts and model over the analysis range.
+    noise_model : str
+        ``"neyman"``: ``(y - m) / sqrt(max(y, 1))``. ``"poisson"``: the signed
+        deviance residuals ``sign(y - m) sqrt(2 (m - y + y ln(y / m)))``, whose
+        sum of squares is the Poisson deviance 2I*.
+
+    Returns
+    -------
+    numpy.ndarray
+        The weighted residuals.
+    """
+    if noise_model == "poisson":
+        m = np.maximum(model, 1e-12)
+        positive = data > 0
+        y_ln = np.where(positive, data * np.log(np.where(positive, data, 1.0) / m), 0.0)
+        deviance = np.maximum(2.0 * (m - data + y_ln), 0.0)
+        return np.sign(data - m) * np.sqrt(deviance)
+    return (data - model) / np.sqrt(np.maximum(data, 1.0))
+
+
+def nested_f_probabilities(
+    chi_squares: typing.Sequence[float], dofs: typing.Sequence[int]
+) -> list[float]:
+    """Extra-sum-of-squares F probability of each model against the one before it.
+
+    Mixture components have boundary/unidentified null parameters, so these are
+    an approximation, not calibrated probabilities. A model that does not lower
+    the objective scores 0; the first model scores 1 by convention.
+
+    Parameters
+    ----------
+    chi_squares : sequence of float
+        Objective (chi-square or deviance) of nested models of increasing size.
+    dofs : sequence of int
+        Their degrees of freedom.
+
+    Returns
+    -------
+    list of float
+        One probability per model.
+    """
+    probs = [1.0]
+    for i in range(1, len(chi_squares)):
+        improvement = chi_squares[i - 1] - chi_squares[i]
+        extra_parameters = dofs[i - 1] - dofs[i]
+        if (
+            not np.isfinite(improvement)
+            or not np.isfinite(chi_squares[i])
+            or improvement <= 0
+            or extra_parameters <= 0
+            or dofs[i] <= 0
+            or chi_squares[i] < 0
+        ):
+            probs.append(0.0)
+        elif chi_squares[i] == 0:
+            probs.append(1.0)
+        else:
+            f_value = (improvement / extra_parameters) / (chi_squares[i] / dofs[i])
+            probs.append(float(fdtr(extra_parameters, dofs[i], f_value)))
+    return probs
 
 
 def _optimizer_provenance(status: int, n_parameters: int) -> dict[str, typing.Any]:
@@ -821,24 +887,7 @@ class Decay:
         # Extra-sum-of-squares F for nested fits of the same weighted data.
         # Mixture components have boundary/unidentified null parameters, so
         # these confidences are an approximation, not calibrated probabilities.
-        probs = [1.0]
-        for i in range(1, len(scores)):
-            improvement = chi_squares[i - 1] - chi_squares[i]
-            extra_parameters = dofs[i - 1] - dofs[i]
-            if (
-                not np.isfinite(improvement)
-                or not np.isfinite(chi_squares[i])
-                or improvement <= 0
-                or extra_parameters <= 0
-                or dofs[i] <= 0
-                or chi_squares[i] < 0
-            ):
-                probs.append(0.0)
-            elif chi_squares[i] == 0:
-                probs.append(1.0)
-            else:
-                f_value = (improvement / extra_parameters) / (chi_squares[i] / dofs[i])
-                probs.append(float(fdtr(extra_parameters, dofs[i], f_value)))
+        probs = nested_f_probabilities(chi_squares, dofs)
 
         # Find the best number of lifetimes using ucfret's approach
         best_idx = select_number_of_lifetimes(
@@ -1299,22 +1348,9 @@ class Decay:
         ax.legend()
 
     def _weighted_residuals(self) -> np.ndarray:
-        """Residuals whose sum of squares is the objective of :attr:`noise_model`.
-
-        ``neyman``: ``(y - m) / sqrt(max(y, 1))``. ``poisson``: the signed
-        deviance residuals ``sign(y - m) sqrt(2 (m - y + y ln(y / m)))``,
-        whose sum of squares is the Poisson deviance 2I*.
-        """
+        """Residuals whose sum of squares is the objective of :attr:`noise_model`."""
         sl = slice(self.start, self.stop)
-        data = self._data()[sl]
-        model = self._computed_model()[sl]
-        if self.noise_model == "poisson":
-            m = np.maximum(model, 1e-12)
-            positive = data > 0
-            y_ln = np.where(positive, data * np.log(np.where(positive, data, 1.0) / m), 0.0)
-            deviance = np.maximum(2.0 * (m - data + y_ln), 0.0)
-            return np.sign(data - m) * np.sqrt(deviance)
-        return (data - model) / np.sqrt(np.maximum(data, 1.0))
+        return weighted_residuals(self._data()[sl], self._computed_model()[sl], self.noise_model)
 
     def _objective(self) -> float:
         """Sum of squared :meth:`_weighted_residuals` over the analysis range."""
@@ -1528,18 +1564,7 @@ def fit_lifetime(
     try:
         # One source of defaults: the packaged lifetime_settings.yml, which the
         # panel starts from too. A given configuration overrides it key by key.
-        merged: dict[str, typing.Any] = get_default_settings()
-        merged["verbose"] = verbose
-
-        def update_dict(d, u):
-            for k, v in u.items():
-                if isinstance(v, dict) and k in d and isinstance(d[k], dict):
-                    update_dict(d[k], v)
-                else:
-                    d[k] = v
-
-        update_dict(merged, config or {})
-        config = merged
+        config = merged_settings({"verbose": verbose, **(config or {})})
 
         # Override verbose with the value from the configuration if provided
         if "verbose" in config:

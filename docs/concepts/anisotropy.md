@@ -299,16 +299,21 @@ polarized decays from a *single* magic-angle intensity decay $f_\mathrm{VM}(t)$
 spectrum:
 
 $$
-f_\parallel(t) = f_\mathrm{VM}(t)\,\big(1 + 2\,r(t)\big), \qquad
-f_\perp(t)     = \frac{f_\mathrm{VM}(t)\,\big(1 - r(t)\big)}{G}.
+f_\parallel(t) = f_\mathrm{VM}(t)\,\big(1 + (2-3l_1)\,r(t)\big), \qquad
+f_\perp(t)     = \frac{f_\mathrm{VM}(t)\,\big(1 - (1-3l_2)\,r(t)\big)}{G}.
 $$
 
 $G = S_\parallel/S_\perp$ is the ratio of the two channel sensitivities, so the
 perpendicular channel records $1/G$ of what an equally sensitive one would: $G$
 *divides* the whole perpendicular channel rather than scaling only its
-depolarization term. That placement is the one the estimator at the top of this
-page inverts — $r = (f_\parallel - G\,f_\perp)/(f_\parallel + 2\,G\,f_\perp)$
-returns exactly the $r(t)$ the pair was built from, for any $G$. With $l_1, l_2$ the prefactors of $r(t)$ become $(2-3l_1)$ and $(1-3l_2)$, as above.
+depolarization term. That placement is the one the corrected estimator at the
+top of this page inverts —
+$r = (f_\parallel - G\,f_\perp)/\big((1-3l_2) f_\parallel + (2-3l_1)\,G\,f_\perp\big)$
+returns exactly the $r(t)$ the pair was built from, for any $G$, $l_1$, $l_2$
+{cite}`schaffer1999`. The time-domain kernel and the spectrum-domain kernel the
+fitting models call build the same pair (until 2026-10-14 the spectrum kernel
+mixed $l_1, l_2$ as a 2×2 matrix of two ideal channels, which this correction
+does not invert).
 
 Both channels are then reconvolved with the IRF and compared to the measured
 VV and VH histograms in **one combined fit**, with the lifetimes shared (linked)
@@ -319,12 +324,39 @@ short $\rho_i$ shorter than the IRF width be recovered from the *shape*
 difference between the channels. ChiSurf supports both a single stacked
 `vv/vh` dataset and a linked two-fit group (`vv` + `vh`).
 
+### The joint fit in Lazy Lifetime Analysis
+
+Lazy Lifetime Analysis fits the pair with the same forward model and its own
+rules. Each channel is a sum of exponentials — the lifetimes $\tau_i$ with
+fractions $x_i$ and the products $x_i b_j$ at $1/(1/\tau_i + 1/\rho_j)$, the
+rotation terms scaled by $2-3l_1$ (VV) and $-(1-3l_2)$ (VH), VH divided by $G$
+— reconvolved with that channel's IRF (median removed, restricted to the
+channels where it stands above its baseline noise) and shifted by its own IRF
+shift. **One scale** serves both channels, so $G$ fixes their ratio and is not
+a free parameter; each channel has its own constant background. A residual
+anisotropy $r_\infty$ is a rotation term that does not decay. The objective is
+the Poisson deviance $2I^*$ {cite}`maus2001` summed over both channels (the
+Neyman $\chi^2$ is selectable), and the number of lifetimes can be chosen by the
+extra-sum-of-squares F test of nested models, as for one decay
+({ref}`concept-tcspc-model-selection`).
+
+Assumptions: both channels share one time axis and one fit range (taken from
+the magic-angle sum $(1-3l_2) I_\mathrm{VV} + (2-3l_1)\,G\,I_\mathrm{VH}$);
+$G$, $l_1$, $l_2$ are known (from the data, the configuration or the user);
+the lifetimes do not depend on orientation, so one $F(t)$ describes both
+channels (an associated anisotropy, where each lifetime has its own $r(t)$, is
+outside this model). A wrong $G$ is not absorbed: on a simulated pair with
+$G$ = 1.2 fitted at $G$ = 1.0, $\chi^2_r$ rises to 1.40 and $\rho$ moves from 1.5
+to 2.6 ns. Measured recoveries and the comparison with ChiSurf's linked global
+fit are in {doc}`/guides/76_decay_analysis_tools`.
+
 ## See also
 
 - Fundamentals: {ref}`fundamentals-polarization` (photoselection, the 0.4
   ceiling, what depolarizes besides rotation).
-- Guide: {doc}`/guides/10_lifetime_anisotropy_fitting`; the intensity decay it
-  rides on: {ref}`concept-tcspc-lifetime`.
+- Guide: {doc}`/guides/10_lifetime_anisotropy_fitting`; the joint VV/VH fit of
+  Lazy Lifetime Analysis: {doc}`/guides/76_decay_analysis_tools`; the intensity
+  decay it rides on: {ref}`concept-tcspc-lifetime`.
 - Implementation: polarized-decay kernels
   {src}`chisurf/core/fluorescence/anisotropy/decay.py#vm_rt_to_vv_vh` builds
   VV/VH from the magic-angle decay and the rotation spectrum; the anisotropy

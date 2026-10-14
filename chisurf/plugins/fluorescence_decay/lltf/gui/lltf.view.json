@@ -10,6 +10,8 @@
       "title": "Input Files",
       "description": "Measured decay and instrument response files read by the LLTF analysis.",
       "sections": [
+        {"type": "choice", "attr": "mode", "label": "Data", "options": ["Magic angle", "VV/VH"], "style": "radio",
+         "description": "Magic angle: one decay. VV/VH: a polarization-resolved pair fitted jointly — shared lifetimes, an anisotropy decay r(t) and the G/l1/l2 calibration. The decay file is then a stacked VV/VH file (one column), a three-column file (time, VV, VH), or the VV channel with a separate VH file."},
         {"type": "custom", "key": "lltf_files", "description": "List of the decay and IRF files; drop files here or add them with the buttons."}
       ]
     },
@@ -34,6 +36,26 @@
     },
     {
       "type": "panel",
+      "title": "Anisotropy (VV/VH)",
+      "description": "Rotation model and detection calibration of the joint VV/VH fit: VV = F (1 + (2 − 3 l1) r), VH = F (1 − (1 − 3 l2) r) / G.",
+      "hidden_when": {"attr": "mode", "equals": "Magic angle"},
+      "sections": [
+        {"type": "value", "attr": "n_rotations", "label": "Rotations", "kind": "int", "style": "spin", "minimum": 1, "maximum": 3, "step": 1,
+         "description": "Rotational correlation times in r(t) = Σ b_j exp(−t/ρ_j); the lifetimes are counted separately (Number of Lifetimes / Find Optimal)."},
+        {"type": "toggle", "attr": "fit_r_inf", "label": "Residual anisotropy r∞",
+         "description": "Add an anisotropy that does not decay (hindered rotation); r0 is then Σ b_j + r∞."},
+        {"type": "toggle", "attr": "override_calibration", "label": "Override calibration",
+         "description": "Off: G, l1 and l2 come from the data (a vv_vh footer, the TTTR reader's anisotropy panel), else from the configuration's polarization_parameter; after a fit the greyed fields show the values used. On: the three values below are used."},
+        {"type": "value", "attr": "g_factor", "label": "G-factor", "kind": "float", "style": "spin", "minimum": 0.01, "maximum": 10.0, "step": 0.01, "decimals": 4,
+         "description": "G = S∥/S⊥, the parallel/perpendicular detection sensitivity ratio; it divides the VH channel. The VV/VH G-Factor Calculator measures it."},
+        {"type": "value", "attr": "l1", "label": "l1", "kind": "float", "style": "spin", "minimum": 0.0, "maximum": 0.3, "step": 0.001, "decimals": 4,
+         "description": "Schaffer polarization mixing of the VV channel (high-aperture objective); 0 for an ideal polarizer."},
+        {"type": "value", "attr": "l2", "label": "l2", "kind": "float", "style": "spin", "minimum": 0.0, "maximum": 0.3, "step": 0.001, "decimals": 4,
+         "description": "Schaffer polarization mixing of the VH channel; 0 for an ideal polarizer."}
+      ]
+    },
+    {
+      "type": "panel",
       "title": "Results",
       "description": "Fitted lifetimes and amplitudes with the fit report.",
       "sections": [
@@ -42,6 +64,13 @@
            {"key": "component", "label": "Component", "description": "Component number."},
            {"key": "amplitude", "label": "Amplitude", "format": "%.3f", "description": "Species fraction; the fractions sum to 1 (not intensity fractions)."},
            {"key": "lifetime", "label": "Lifetime (ns)", "format": "%.3f", "description": "Fitted lifetime in ns."}
+         ]},
+        {"type": "table", "description": "Fitted rotational correlation times of a VV/VH fit, with r∞ when fitted.", "source": "rotation_rows", "height": 50,
+         "hidden_when": {"attr": "mode", "equals": "Magic angle"},
+         "columns": [
+           {"key": "component", "label": "Rotation", "description": "Rotation number, or r∞."},
+           {"key": "b", "label": "b", "format": "%.3f", "description": "Anisotropy amplitude; they sum to r0."},
+           {"key": "rho", "label": "ρ (ns)", "format": "%.3f", "description": "Rotational correlation time in ns."}
          ]},
         {"type": "info", "source": "results_summary"}
       ]

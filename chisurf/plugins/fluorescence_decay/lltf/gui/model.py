@@ -42,6 +42,17 @@ class LLTFModel:
         self.verbose = True
         defaults = get_default_settings()
         self.noise_model = defaults["lifetime_fit_parameter"]["noise_model"]
+        # VV/VH mode: a polarized pair fitted jointly (lifetimes and rotations).
+        pol = defaults["polarization_parameter"]
+        self.mode = "Magic angle"
+        self.vh_file = ""
+        self.irf_vh_file = ""
+        self.n_rotations = int(pol["number_of_rotations"])
+        self.fit_r_inf = bool(pol["fit_r_infinity"])
+        self.override_calibration = False
+        self.g_factor = float(pol["g_factor"])
+        self.l1 = float(pol["l1"])
+        self.l2 = float(pol["l2"])
         self.config_text = yaml.safe_dump(defaults, sort_keys=False)
         self.config_dirty = False
         self.loaded_config_file = ""
@@ -53,6 +64,11 @@ class LLTFModel:
         self._queue = queue.Queue()
         self._reader = None
         self._workspace = None
+
+    @property
+    def polarized(self):
+        """True in VV/VH mode."""
+        return self.mode == "VV/VH"
 
     @property
     def running(self):
@@ -67,7 +83,20 @@ class LLTFModel:
             return not self.find_optimal
         if name in ("max_lifetimes", "prob_threshold"):
             return bool(self.find_optimal)
+        if name in ("g_factor", "l1", "l2"):
+            return bool(self.override_calibration)
         return True
+
+    def rotation_rows(self):
+        """The fitted rotations of a VV/VH fit, and r_inf when it was fitted."""
+        result = self.result or {}
+        rows = [
+            {"component": i + 1, "b": float(r["b"]), "rho": float(r["rho"])}
+            for i, r in enumerate(result.get("rotations", []))
+        ]
+        if result.get("fit_r_infinity"):
+            rows.append({"component": "r∞", "b": float(result["r_infinity"]), "rho": float("inf")})
+        return rows
 
     def lifetime_rows(self):
         """The fitted components, as the Qt results table listed them."""
@@ -95,6 +124,17 @@ class LLTFModel:
             lines.append(f"Chi-square: {result['chi_square']:.3f}")
         if "reduced_chi_square" in result:
             lines.append(f"Reduced chi-square: {result['reduced_chi_square']:.3f}")
+        if result.get("mode") == "vv_vh":
+            lines.append(
+                f"VV / VH reduced chi-square: {result['reduced_chi_square_vv']:.3f} / "
+                f"{result['reduced_chi_square_vh']:.3f}"
+            )
+            lines.append(f"r0: {result['r0']:.3f}")
+            source = result.get("calibration_source", {})
+            lines.append(
+                f"G: {result['g_factor']:.4g} ({source.get('g_factor', '?')}), "
+                f"l1: {result['l1']:.4g}, l2: {result['l2']:.4g}"
+            )
         if "time_range" in result:
             lines.append(
                 f"Time range: {result['time_range']['start']:.3f} - {result['time_range']['stop']:.3f} ns"
@@ -121,16 +161,17 @@ class LLTFModel:
         self.config_dirty = False
         self.status = f"Saved configuration to {path}."
 
+    def _output_name(self):
+        return Path(self.decay_file).stem + ("_vvvh_fit.json" if self.polarized else "_fit.json")
+
     def build_command(self, config_file=None):
         output_dir = self.output_dir or str(Path(self.decay_file).parent)
-        output_file = self.output_file or str(
-            Path(output_dir) / (Path(self.decay_file).stem + "_fit.json")
-        )
+        output_file = self.output_file or str(Path(output_dir) / self._output_name())
         command = [
             sys.executable,
             "-m",
             MODULE,
-            "fit",
+            "fit-vvvh" if self.polarized else "fit",
             self.decay_file,
             self.irf_file,
             "-sp",
@@ -138,6 +179,17 @@ class LLTFModel:
             "-o",
             output_file,
         ]
+        if self.polarized:
+            if self.vh_file:
+                command.extend(["--vh", self.vh_file])
+            if self.irf_vh_file:
+                command.extend(["--irf-vh", self.irf_vh_file])
+            command.extend(["-nr", str(self.n_rotations)])
+            command.append("--r-inf" if self.fit_r_inf else "--no-r-inf")
+            if self.override_calibration:
+                command.extend(
+                    ["-g", str(self.g_factor), "--l1", str(self.l1), "--l2", str(self.l2)]
+                )
         config = config_file if config_file is not None else self.config_file
         if config:
             command.extend(["-c", config])
@@ -165,7 +217,7 @@ class LLTFModel:
             raise ValueError("LLTF configuration must be a YAML mapping.")
         self.output_dir = self.output_dir or str(Path(self.decay_file).parent)
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
-        self.output_file = str(Path(self.output_dir) / (Path(self.decay_file).stem + "_fit.json"))
+        self.output_file = str(Path(self.output_dir) / self._output_name())
         self._workspace = tempfile.TemporaryDirectory(prefix="chisurf-lltf-")
         config = Path(self._workspace.name) / "configuration.yml"
         config.write_text(self.config_text)
@@ -242,12 +294,71 @@ class LLTFModel:
         if not isinstance(result, dict):
             raise ValueError("LLTF result must be a JSON object.")
         self.result = result
+        if result.get("mode") == "vv_vh" and not self.override_calibration:
+            # The greyed fields show the calibration the fit used (the data's, or the file's).
+            self.g_factor, self.l1, self.l2 = result["g_factor"], result["l1"], result["l2"]
         self.output_file = str(path)
         return result
+
+    def load_example(self, folder=None):
+        """Write the simulated VV/VH demo (known tau, rho, r0, G) and select it in VV/VH mode."""
+        from ..core.polarized import write_demo
+
+        if folder is None:
+            from chisurf.core.settings.path_utils import get_path
+
+            folder = get_path("settings") / "demos" / "lltf"
+        decay_file, irf_file = write_demo(folder)
+        self.mode = "VV/VH"
+        self.decay_file, self.irf_file = str(decay_file), str(irf_file)
+        self.vh_file = self.irf_vh_file = ""
+        from ..core.polarized import DEMO
+
+        self.find_optimal, self.n_lifetimes, self.n_rotations = False, 2, 1
+        self.override_calibration = False
+        self.g_factor, self.l1, self.l2 = DEMO["g_factor"], DEMO["l1"], DEMO["l2"]
+        self.output_dir = str(Path(folder) / "lltf_output")
+        self.status = tr("Example loaded: a simulated VV/VH pair. Press Fit.")
+        return decay_file
+
+    def _polarized_plot_arrays(self):
+        from ..core.polarized import read_polarized
+
+        r = self.result
+        data = read_polarized(
+            self.decay_file,
+            self.vh_file or None,
+            yaml.safe_load(self.config_text)
+            .get("polarization_parameter", {})
+            .get("channel_width", 0.008),
+        )
+        limits = r["time_range"]
+        first, last = int(limits["start_idx"]), int(limits["stop_idx"])
+        model_vv, model_vh = np.asarray(r["model"]["vv"]), np.asarray(r["model"]["vh"])
+        noise = r.get("noise_model", "poisson")
+        from ..core.fitter import weighted_residuals
+
+        return {
+            "polarized": True,
+            "time": data.time,
+            "vv": data.vv,
+            "vh": data.vh,
+            "model_time": np.asarray(r["model"]["time"]),
+            "fit_vv": model_vv,
+            "fit_vh": model_vh,
+            "residuals_vv": weighted_residuals(data.vv[first:last], model_vv, noise),
+            "residuals_vh": weighted_residuals(data.vh[first:last], model_vh, noise),
+            "r_time": np.asarray(r["anisotropy"]["time"]),
+            "r_data": np.asarray(r["anisotropy"]["data"]),
+            "r_model": np.asarray(r["anisotropy"]["model"]),
+            "range": (data.time[first], data.time[last - 1]),
+        }
 
     def plot_arrays(self):
         if self.result is None or "model" not in self.result:
             return None
+        if self.result.get("mode") == "vv_vh":
+            return self._polarized_plot_arrays()
         decay = np.genfromtxt(self.decay_file, delimiter=None, skip_header=0, usecols=[0, 1])
         irf = np.genfromtxt(self.irf_file, delimiter=None, skip_header=0, usecols=[0, 1])
         decay = decay[np.isfinite(decay).all(axis=1)]
@@ -285,6 +396,15 @@ class LLTFModel:
                 "output_dir",
                 "n_lifetimes",
                 "noise_model",
+                "mode",
+                "vh_file",
+                "irf_vh_file",
+                "n_rotations",
+                "fit_r_inf",
+                "override_calibration",
+                "g_factor",
+                "l1",
+                "l2",
                 "find_optimal",
                 "max_lifetimes",
                 "prob_threshold",

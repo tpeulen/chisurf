@@ -3194,6 +3194,27 @@ guides/figures/lltf_native_optimizer_warning.png:
   pages:
   - docs/guides/76_decay_analysis_tools.md
 
+guides/figures/lltf_vvvh_results.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Render the emtk Lazy Lifetime Analysis app
+    (lltf) headlessly at 1100 x 720, press Load example (it writes the
+    simulated VV/VH demo and switches to VV/VH mode), press Fit, wait for the
+    child process, open the Results tab with the VV and VH plot tab and save the
+    frame here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
+guides/figures/lltf_vvvh_rt.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. As guides/figures/lltf_vvvh_results.png, then
+    open the r(t) plot tab and save the frame here.
+  pages:
+  - docs/guides/76_decay_analysis_tools.md
+
 guides/figures/lltf_output.png:
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)

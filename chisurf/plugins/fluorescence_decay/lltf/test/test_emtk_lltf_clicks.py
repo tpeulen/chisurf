@@ -367,3 +367,31 @@ def test_a_full_session_leaves_the_real_chisurf_folder_untouched(ready):
 
 def test_qt_free():
     assert qt_free("lltf")
+
+
+def test_vv_vh_example_is_loaded_fitted_and_shown(ui):
+    """Load example → Fit: the joint VV/VH fit, its rotation table and the r(t) plot tab."""
+    from chisurf.plugins.fluorescence_decay.lltf.core.polarized import DEMO
+
+    ui.click("Load example")
+    m = ui.app.model
+    assert m.mode == "VV/VH" and Path(m.decay_file).is_file()
+    assert "Anisotropy (VV/VH)" in ui.last.strings and "VH File (optional)" in ui.last.strings
+    assert "fit-vvvh" in m.build_command("c.yml")
+    ui.click("Fit")
+    ui.settle()
+    assert m.result["mode"] == "vv_vh", m.status
+    assert m.result["calibration_source"]["g_factor"] == "data"
+    assert m.g_factor == DEMO["g_factor"]  # the greyed field shows the G that was used
+    (row,) = m.rotation_rows()
+    assert row["rho"] == pytest.approx(DEMO["rho"], abs=0.06)
+    ui.press_text("Results")
+    assert {"Rotation", "ρ (ns)"} <= set(ui.last.strings)
+    assert any(s.startswith("r0: ") for s in ui.last.strings)
+    ui.press_text("r(t)")
+    assert "r(t) data" in ui.last.strings and "r(t) fit" in ui.last.strings
+
+
+def test_magic_angle_hides_the_vv_vh_controls(ui):
+    assert "Anisotropy (VV/VH)" not in ui.last.strings
+    assert "VH File (optional)" not in ui.last.strings

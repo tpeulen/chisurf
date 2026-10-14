@@ -324,8 +324,12 @@ def test_every_spec_field_is_drawn_with_its_description(monkeypatch):
     app = LLTFApp()
     try:
         _draw(app)
+        drawn = set(app.form.rects)
+        app.model.mode = "VV/VH"  # the Anisotropy (VV/VH) panel is hidden at magic angle
+        _draw(app)
+        drawn |= set(app.form.rects)
         fields = [f for f in _fields(SPEC["sections"])]
-        assert {f["attr"] for f in fields} <= set(app.form.rects)
+        assert {f["attr"] for f in fields} <= drawn
         assert all(f["description"] in tips for f in fields)
     finally:
         app.close()
@@ -339,9 +343,20 @@ def test_the_guide_points_at_real_controls_and_waits(tmp_path):
         _draw(app, size, painter=PixelPainter)
         steps = app.tour.steps
         keys = {app.tour._target_key(s.get("target")) for s in steps} - {""}
-        assert keys == {"Load...", "Edit...", "Find Optimal", "Fit", "Results"} and keys <= set(
-            app.item_rects
-        )
+        # The Qt tour's targets, plus the VV/VH steps (mode switch, Load example, rotations,
+        # r(t) plot tab: drawn once a VV/VH fit is shown).
+        assert keys == {
+            "Load...",
+            "Edit...",
+            "Find Optimal",
+            "Fit",
+            "Results",
+            "mode",
+            "Load example",
+            "n_rotations",
+            "r(t)",
+        }
+        assert keys - {"n_rotations", "r(t)"} <= set(app.item_rects)
 
         def press(key):
             x, y, w, h = app.item_rects[key]

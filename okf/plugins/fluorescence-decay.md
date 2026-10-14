@@ -20,6 +20,18 @@ timestamp: '2026-07-05T00:00:00Z'
    (simulated 0), batch r∞ 0.047 (ρ 8 ns) / 0.230 (ρ 30 ns). Guide 91 is walkable; its figures
    (`gfactor_native_primary_window.png`, `vv_vh_g_factor_native_*.png`) still come from the screenshot scripts'
    own references and could be regenerated from the demo.
+3. Measure: **LLTF VV/VH mode** (2026-10-14) — Load example → Fit: 3.982 / 0.968 ns (0.705 / 0.295),
+   ρ 1.501 ns, r0 0.351, χ²ᵣ 1.007 (truth 4 / 1 ns, 0.7 / 0.3, ρ 1.5, r0 0.35, G 1.2). Re-derive with
+   `lltf/test/test_polarized.py` (seeds 1–3, plus mixing, two rotations, r∞, the Wizard cross-check: LLTF
+   3.999 / 1.997 / 0.380 vs ChiSurf's linked fit 3.997 / 2.007 / 0.381). Code: `lltf/core/polarized.py`
+   reuses `calculcate_spectrum` (made Schaffer for l1/l2 the same day, RF-954). Open:
+   (a) r0 comes back +0.002…+0.004 high on all five demo seeds — cause not found (suspect the IRF window or
+   the shared count-conservation scale with per-channel backgrounds); (b) G is held fixed — a tail-matching G
+   could be fitted when r(t) has decayed inside the window; (c) at 800×600 the VV/VH Results summary needs a
+   scroll below r0; (d) an associated anisotropy (one r(t) per lifetime) is outside the model.
+   Traps: the IRF must be windowed by its baseline noise, not by a fraction of its peak (0.1 % cut the
+   example IRF's real tail and moved 1 ns to 1.05 ns; no window left a pedestal, χ²ᵣ 3.8); the magic-angle
+   pre-fit that seeds the lifetimes stops off (5.0 / 2.78 ns), so the joint fit runs from two starts.
 
 The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting (TCSPC) microtime histograms: fitting lifetime decays, recovering the instrument response function (IRF), extracting lifetime or FRET-distance distributions, and resolving rotational anisotropy. These tools depend on a correct IRF and instrument corrections, so estimation and calibration steps sit alongside the fitting steps.
 
@@ -27,7 +39,7 @@ The `fluorescence_decay/` group analyses Time-Correlated Single Photon Counting 
 |---|---|---|
 | `irf_estimator` | IRF Estimation | Blind IRF estimation from decay data via truncated-exponential fitting and Richardson-Lucy deconvolution. |
 | `maxent_decay` | MaxEnt MEM | Maximum-entropy analysis of TCSPC decays for lifetime and FRET-distance distributions. |
-| `lltf` | Lazy Lifetime Analysis | Fast/low-setup lifetime estimation for TCSPC decay data. |
+| `lltf` | Lazy Lifetime Analysis | Fast/low-setup lifetime estimation for TCSPC decay data; in VV/VH mode a joint fit of a polarized pair (lifetimes, rotational correlation times, r0; `csc lltf fit-vvvh`). |
 | `tr_anisotropy` | Anisotropy-Wizard | Guided setup of a linked VV/VH global time-resolved anisotropy fit: loads polarised decays, background-corrects IRFs, sets instrument corrections and defines lifetime/rotation spectra. |
 | `vv_vh_g_factor` | VV/VH G-Factor Calculator | Calculates detector G-factors from VV/VH-format decay files and can archive calibration provenance through backend services. |
 | `vv_vh_anisotropy` | VV/VH Anisotropy Decay | Computes anisotropy decays from VV/VH-format VV/VH data, including batch processing. |

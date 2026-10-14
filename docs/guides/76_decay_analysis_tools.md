@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: The decay tools, Lazy Lifetime Analysis and synthetic decays
-description: The seven tools of Spectroscopy > Decay; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count) and what its component-count scan really tests; and the Synthetic Decay Generator for decays whose answer is known.
+description: The seven tools of Spectroscopy > Decay; the Lazy Lifetime Analysis fit (automatic range, background, IRF shift and component count), what its component-count scan really tests, and its joint VV/VH fit of lifetimes and rotational correlation times; and the Synthetic Decay Generator for decays whose answer is known.
 tags: [guides, tcspc, decay, lifetime, fitting, corrections]
 ---
 
@@ -34,7 +34,7 @@ Tools tree). Each opens directly in its own window with its own **?** help and *
 |---|---|---|---|
 | IRF Estimation | **Spectroscopy → Decay → IRF Estimation** | estimates an IRF from the decay itself when none was measured | {doc}`irf_estimation` |
 | MaxEnt MEM | **Spectroscopy → Decay → MaxEnt MEM** | lifetime or FRET-distance distribution without a component count | {doc}`62_maxent_decay` |
-| Lazy Lifetime Analysis | **Spectroscopy → Decay → Lazy Lifetime Analysis** (marked experimental). Headless: `csc lltf fit` | discrete multi-exponential fit of one decay file (below) | this page |
+| Lazy Lifetime Analysis | **Spectroscopy → Decay → Lazy Lifetime Analysis** (marked experimental). Headless: `csc lltf fit`, `csc lltf fit-vvvh` | discrete multi-exponential fit of one decay file, or a joint fit of a VV/VH pair with rotational correlation times (below) | this page |
 | Histogram-Microtime | **Spectroscopy → Decay → Histogram-Microtime** | builds the decay from a TTTR photon file | {doc}`73_tttr_decay_and_correlation` |
 | VV/VH G-Factor Calculator | **Spectroscopy → Decay → VV/VH G-Factor Calculator** | $G$ from a pair of polarized decays | {doc}`10_lifetime_anisotropy_fitting` |
 | VV/VH Anisotropy Decay | **Spectroscopy → Decay → VV/VH Anisotropy Decay** (deprecated) | the anisotropy decay $r(t)$ of one VV/VH file, with $G$, backgrounds and a VH shift | {doc}`10_lifetime_anisotropy_fitting` |
@@ -172,6 +172,9 @@ scan).
 | `…amplitude_variation` | 0.5 | random spread of starting amplitudes |
 | `…plot_probabilities`, `…plot_weighted_residuals` | true | extra figures from a scan run in Python, kept on `decay.figures` (`"probabilities"`, `"weighted_residuals"`, `"decay_curve"`; `.save(path)`, inline in a notebook); the CLI (and so the panel) switches them off and writes `<decay>_fit.png` instead |
 | `pile_up_correction.enabled`, `rep_rate` (MHz), `dead_time` (ns), `measurement_time` (s) | off, 80, 85, 60 | Coates-type pile-up applied to the model |
+| `polarization_parameter.g_factor`, `l1`, `l2` | 1, 0, 0 | VV/VH calibration when the data carry none ([below](#vv-vh-lifetimes-and-rotations-together)) |
+| `…number_of_rotations`, `…fit_r_infinity` | 1, false | the rotation model of a VV/VH fit |
+| `…channel_width` | 0.008 ns | channel width of a stacked VV/VH file without `dt` in its footer |
 
 The file's `lifetime_fit_parameter` block also holds `find_optimal`,
 `maximum_number_of_lifetimes`, `prob_threshold` and `selection_mode` (default
@@ -283,6 +286,116 @@ decay gives 2.31–3.23 / 4.06–5.03 ns at $2\times10^5$ photons and
 Read the scan as a table of fits, not as a verdict: open `optimal_fitting` in
 the JSON, check that $\chi^2_r$ falls monotonically with $n$, and judge the
 drop yourself.
+
+## VV/VH: lifetimes and rotations together
+
+**Data → VV/VH** fits a polarization-resolved pair instead of one decay. Both
+channels share the population decay $F(t) = \sum_i x_i e^{-t/\tau_i}$ and the
+anisotropy $r(t) = \sum_j b_j e^{-t/\rho_j}\,(+\,r_\infty)$, in ChiSurf's
+Schaffer/Eggeling forward model ({ref}`concept-anisotropy`):
+
+$$
+I_\mathrm{VV} \propto F\,[1 + (2-3l_1)\,r], \qquad
+I_\mathrm{VH} \propto F\,[1 - (1-3l_2)\,r]/G,
+$$
+
+with $G = S_\parallel/S_\perp$ dividing the VH channel. Each channel is
+reconvolved with its own IRF and has its own background and IRF shift; one
+scale serves both, so $G$ fixes their ratio. The objective is the Poisson
+deviance summed over both channels (`neyman` selectable), the fit range, starting
+backgrounds and IRF shift come from the same rules as above, applied to the
+magic-angle sum, and *Find Optimal* chooses the number of lifetimes by the same
+F test; the number of rotations is set by **Rotations**.
+
+**Input.** The decay file is a stacked VV/VH file (one column, VV then VH, the
+`vv_vh` format of the VV/VH G-Factor Calculator and the simulator), a
+three-column file (time, VV, VH), or the VV channel with **VH File** beside it.
+The IRF is one file for both channels or a pair (**VH IRF**). In Python a
+`DataCurveGroup` from the TTTR reader with VH channels is read directly
+(`polarized.from_data_group`).
+
+**Calibration.** $G$, $l_1$, $l_2$ are taken from the data when they carry them
+(a `g_factor`/`l1`/`l2` footer of a stacked file, the TTTR reader's anisotropy
+panel), else from `polarization_parameter` in the configuration; **Override
+calibration** (CLI `-g`, `--l1`, `--l2`) uses the panel's values. The result
+records which source each came from, and after a fit the greyed fields show the
+values used. $G$ is not fitted: fitting the demo below with $G = 1.0$ instead of
+1.2 gives $\chi^2_r$ 1.40 and $\rho$ = 2.61 ns instead of 1.5 ns. Measure $G$ with
+the VV/VH G-Factor Calculator ({doc}`10_lifetime_anisotropy_fitting`).
+
+**Load example** simulates a pair whose answer is known with the example IRF:
+lifetimes 1 and 4 ns (fractions 0.3, 0.7), one rotation $\rho$ = 1.5 ns with
+$r_0$ = 0.35, $G$ = 1.2 in the file's footer, $2\times10^6$ photons.
+
+```{figure} figures/lltf_vvvh_results.png
+:name: fig-lltf-vvvh-results
+:width: 100%
+
+**Load example** → **Fit** in VV/VH mode: 3.982 ns (0.705) and 0.968 ns
+(0.295), $\rho$ = 1.501 ns, $r_0$ = 0.351, $\chi^2_r$ 1.007 (VV 1.012, VH 1.001),
+$G$ = 1.2 read from the file. Below, both channels and their joint fit.
+```
+
+```{figure} figures/lltf_vvvh_rt.png
+:name: fig-lltf-vvvh-rt
+:width: 100%
+
+The **r(t)** tab of the same fit: the Schaffer-corrected anisotropy of the data
+and of the fit, both reconvolved with the IRF. The fit is made on the two decays;
+this curve only displays it, and it is noisy wherever the counts are low.
+```
+
+Measured on simulated pairs (example IRF, 8 ps channels, $2\times10^6$ photons
+over both channels, Poisson deviance):
+
+| Truth | Seeds | Recovered |
+|---|---|---|
+| 1 + 4 ns (0.3, 0.7), $\rho$ 1.5 ns, $r_0$ 0.35, $G$ 1.2 | 1–5 | 3.981–4.021 / 0.965–1.046 ns, short fraction 0.293–0.306, $\rho$ 1.465–1.490 ns, $r_0$ 0.352–0.354, $\chi^2_r$ 1.00–1.04 |
+| 4 ns, $\rho$ 2 ns, $r_0$ 0.30, $G$ 0.8, $l_1$ 0.05, $l_2$ 0.08 | 1–5 | 3.995–4.000 ns, $\rho$ 1.961–2.019 ns, $r_0$ 0.300–0.303, $\chi^2_r$ 1.02–1.04 |
+| 4 ns, $\rho$ 0.3 ns (0.15) + 5 ns (0.20) | 1–5 | $\rho$ 0.24–0.33 ns (0.143–0.171) and 4.68–5.19 ns (0.195–0.207) |
+| 4 ns, $\rho$ 1.5 ns (0.25), $r_\infty$ 0.10 | 1–3 | $r_\infty$ 0.097–0.102, $\rho$ 1.48–1.55 ns |
+
+All five seeds of the first row return $r_0$ slightly above 0.35 (+0.002 to
++0.004). On the Anisotropy Wizard's simulated example (4 ns, 2 ns, 0.38, separate
+VV and VH IRFs on a 4-count baseline) LLTF returns 3.999 ns, 1.997 ns and 0.380
+($\chi^2_r$ 0.98) where ChiSurf's linked global fit of the same files returns
+3.997 ns, 2.007 ns and 0.381 ($\chi^2_r$ 0.98).
+
+The IRF is used over the channels it occupies: its median is removed and it is
+zeroed outside the contiguous window around its peak where it stands 3σ above
+the baseline noise. Without that, the clipped positive half of a noisy baseline
+is a pedestal the convolution turns into an offset ($\chi^2_r$ 3.8 on the
+Wizard's example); a fixed 0.1 % of the peak instead cuts the real tail of the
+example IRF and moved a 1 ns lifetime to 1.05 ns.
+
+The same from the command line and Python:
+
+```bash
+csc lltf demo-vvvh demo/            # writes demo/lltf_vv_vh_demo.txt, prints the truth
+csc lltf fit-vvvh demo/lltf_vv_vh_demo.txt \
+    chisurf/plugins/fluorescence_decay/lltf/example/IRF_D0.dat -f -m 3 -sp out
+# Lifetime 1: 3.982 ns, Amplitude: 0.705
+# Lifetime 2: 0.968 ns, Amplitude: 0.295
+# Rotation 1: 1.501 ns, b: 0.351
+# r0: 0.351
+# g: 1.2 (data), l1: 0 (data), l2: 0 (data)
+# Reduced chi-square: 1.01 (VV 1.01, VH 1.00)
+```
+
+`fit-vvvh` takes `--vh` and `--irf-vh` for separate files, `-nr` for the number
+of rotations, `--r-inf`, `-g`/`--l1`/`--l2`, `-dt` for the channel width of a
+stacked file without one, and the scan options of `fit`. It writes
+`<decay>_vvvh_fit.json` (lifetimes, rotations, $r_0$, $r_\infty$, per-channel
+and joint $\chi^2$, the models, the magic-angle sum, $r(t)$ of data and model,
+the calibration and its sources) and `<decay>_vvvh_fit.png`.
+
+```python
+from chisurf.plugins.fluorescence_decay.lltf.core.polarized import fit_polarized, write_demo
+
+decay, irf = write_demo("demo")
+res = fit_polarized(decay, irf, config={"lifetime_fit_parameter": {"number_of_lifetimes": 2}})
+print(res["lifetimes"], res["rotations"], res["r0"])
+```
 
 ## Synthetic Decay Generator
 

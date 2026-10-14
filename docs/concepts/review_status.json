@@ -21,10 +21,10 @@
     "status": "ai-reviewed"
   },
   "anisotropy.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "84166ac88cb4aa8759890d272d030796c7a77fa57b4019a67a2913a7912c2816",
+    "sha256": "132c704d6b4c438422711a99fafe76ef3f899e9b323241552f3bcab142a97a69",
     "status": "ai-reviewed"
   },
   "application_identity.md": {

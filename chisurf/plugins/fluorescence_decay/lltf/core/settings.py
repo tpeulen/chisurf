@@ -28,6 +28,33 @@ def get_default_settings():
     return settings
 
 
+def merged_settings(config=None):
+    """
+    The packaged defaults with *config* laid over them key by key.
+
+    Parameters
+    ----------
+    config : dict, optional
+        A (partial) configuration; nested mappings override nested defaults.
+
+    Returns
+    -------
+    dict
+        The complete configuration.
+    """
+
+    def update(target, source):
+        for key, value in source.items():
+            if isinstance(value, dict) and isinstance(target.get(key), dict):
+                update(target[key], value)
+            else:
+                target[key] = value
+
+    settings = get_default_settings()
+    update(settings, config or {})
+    return settings
+
+
 def load_settings(filename):
     """
     Load settings from a file.

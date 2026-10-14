@@ -3,6 +3,8 @@
 Fits **one** TCSPC decay with a sum of exponentials, reconvolved with a
 measured IRF, and makes the choices around the fit by rule rather than by
 hand. That is what "lazy" means — there is no special algorithm underneath.
+In **VV/VH** mode it fits a polarized pair jointly: shared lifetimes plus the
+rotational correlation times and r0 of the anisotropy.
 
 Press **Guide** for the walk-through.
 
@@ -24,6 +26,23 @@ File**; **Edit…** opens it.
 Species fractions (they sum to 1 — not intensity fractions) and lifetimes, the
 IRF shift, two backgrounds and χ². No uncertainties. The results are written as
 `<decay>_fit.json` and `<decay>_fit.png` to the output directory.
+
+## VV/VH mode
+
+- **Data → VV/VH**: the decay file is a stacked VV/VH file (one column), a
+  three-column file (time, VV, VH), or the VV channel with **VH File**. One IRF
+  serves both channels unless **VH IRF** is given.
+- The model is VV = F (1 + (2 − 3 l1) r), VH = F (1 − (1 − 3 l2) r) / G with
+  r(t) = Σ b exp(−t/ρ) (+ r∞); both channels are fitted together, sharing one
+  scale, each with its own background and IRF shift.
+- **G, l1, l2** come from the data when it carries them, else from the
+  configuration; **Override calibration** uses the panel's. G is not fitted —
+  a wrong G shows as a misfit and a wrong ρ. Measure it with the VV/VH G-Factor
+  Calculator.
+- **Load example** simulates a pair with a known answer (1 + 4 ns, ρ 1.5 ns,
+  r0 0.35, G 1.2). Headless: `csc lltf fit-vvvh`.
+- **r(t)** shows data and fit, both reconvolved; the fit is made on the
+  decays, not on this noisy curve.
 
 ## Before you believe it
 

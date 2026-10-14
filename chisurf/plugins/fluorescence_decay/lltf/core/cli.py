@@ -258,6 +258,171 @@ def fit(
     click.echo(f"Reduced chi-square: {result['reduced_chi_square']:.2f}")
 
 
+@cli.command("fit-vvvh")
+@click.argument("decay_file", type=click.Path(exists=True))
+@click.argument("irf_file", type=click.Path(exists=True))
+@click.option(
+    "--vh",
+    "vh_file",
+    type=click.Path(exists=True),
+    help="VH channel as a two-column file (time, counts); DECAY_FILE is then VV",
+)
+@click.option(
+    "--irf-vh",
+    type=click.Path(exists=True),
+    help="VH IRF as a two-column file; without it IRF_FILE serves both channels",
+)
+@click.option("--output", "-o", type=click.Path(), help="Output JSON file")
+@click.option("--plot", "-p", type=click.Path(), help="Output plot file (VV, VH, residuals, r(t))")
+@click.option(
+    "--save-path",
+    "-sp",
+    type=click.Path(),
+    help="Output directory (default: lltf_output beside the data)",
+)
+@click.option("--config", "-c", type=click.Path(exists=True), help="Configuration YAML file")
+@click.option("--n-lifetimes", "-n", type=int, default=None, help="Number of lifetimes (default 1)")
+@click.option(
+    "--find-optimal", "-f", is_flag=True, help="Choose the number of lifetimes by the F test"
+)
+@click.option(
+    "--max-lifetimes", "-m", type=int, default=None, help="Largest number of lifetimes tried"
+)
+@click.option("--prob-threshold", "-pt", type=float, default=None, help="F-test acceptance level")
+@click.option("--selection-mode", "-sm", type=click.Choice(["lower", "upper"]), default=None)
+@click.option(
+    "--n-rotations", "-nr", type=int, default=None, help="Number of rotational correlation times"
+)
+@click.option("--r-inf/--no-r-inf", default=None, help="Fit a residual anisotropy r_inf")
+@click.option(
+    "--g-factor",
+    "-g",
+    type=float,
+    default=None,
+    help="G = S_par/S_perp (divides VH); default: the data's, else the configuration's",
+)
+@click.option("--l1", type=float, default=None, help="Schaffer mixing factor of VV")
+@click.option("--l2", type=float, default=None, help="Schaffer mixing factor of VH")
+@click.option(
+    "--channel-width", "-dt", type=float, default=None, help="ns per channel of a stacked file"
+)
+@click.option("--noise-model", "-nm", type=click.Choice(["neyman", "poisson"]), default=None)
+@click.option("--verbose", "-v", is_flag=True, help="Print verbose output")
+def fit_vvvh(
+    decay_file,
+    irf_file,
+    vh_file,
+    irf_vh,
+    output,
+    plot,
+    save_path,
+    config,
+    n_lifetimes,
+    find_optimal,
+    max_lifetimes,
+    prob_threshold,
+    selection_mode,
+    n_rotations,
+    r_inf,
+    g_factor,
+    l1,
+    l2,
+    channel_width,
+    noise_model,
+    verbose,
+):
+    """Fit a VV/VH pair jointly: lifetimes, rotational correlation times and r0.
+
+    DECAY_FILE is a stacked VV/VH file (one column, the vv_vh format), a
+    three-column file (time, VV, VH), or the VV channel with --vh. IRF_FILE is
+    one IRF for both channels (time, counts), or a pair in the same forms.
+    """
+    from .polarized import fit_polarized
+
+    config_dict = {}
+    if config:
+        with open(config) as f:
+            config_dict = yaml.safe_load(f) or {}
+    fit_parameters = config_dict.setdefault("lifetime_fit_parameter", {})
+    pol = config_dict.setdefault("polarization_parameter", {})
+    # Only options actually given override the configuration.
+    for target, key, value in (
+        (fit_parameters, "number_of_lifetimes", n_lifetimes),
+        (fit_parameters, "maximum_number_of_lifetimes", max_lifetimes),
+        (fit_parameters, "prob_threshold", prob_threshold),
+        (fit_parameters, "selection_mode", selection_mode),
+        (fit_parameters, "noise_model", noise_model),
+        (pol, "number_of_rotations", n_rotations),
+        (pol, "fit_r_infinity", r_inf),
+        (pol, "channel_width", channel_width),
+    ):
+        if value is not None:
+            target[key] = value
+    if find_optimal or n_lifetimes is not None:
+        fit_parameters["find_optimal"] = bool(find_optimal)
+
+    output_dir = save_path or os.path.join(
+        os.path.dirname(os.path.abspath(decay_file)), "lltf_output"
+    )
+    os.makedirs(output_dir, exist_ok=True)
+    base = os.path.splitext(os.path.basename(decay_file))[0]
+    output = output or os.path.join(output_dir, f"{base}_vvvh_fit.json")
+    plot = plot or os.path.join(output_dir, f"{base}_vvvh_fit.png")
+
+    result = fit_polarized(
+        decay_file,
+        irf_file,
+        vh_decay=vh_file,
+        irf_vh=irf_vh,
+        config=config_dict,
+        g_factor=g_factor,
+        l1=l1,
+        l2=l2,
+        output_file=output,
+        plot_file=plot,
+        verbose=verbose,
+    )
+    if result.get("converged", False):
+        click.echo("Fit completed successfully.")
+    else:
+        click.echo("Fit completed with optimizer warning.")
+        click.echo(result.get("optimizer_message", ""))
+    click.echo(f"Results saved to {output}")
+    click.echo(f"Plot saved to {plot}")
+    click.echo("\nFit results summary:")
+    for i, row in enumerate(result["lifetimes"], 1):
+        click.echo(f"Lifetime {i}: {row['lifetime']:.3f} ns, Amplitude: {row['amplitude']:.3f}")
+    for i, row in enumerate(result["rotations"], 1):
+        click.echo(f"Rotation {i}: {row['rho']:.3f} ns, b: {row['b']:.3f}")
+    click.echo(f"r0: {result['r0']:.3f}")
+    if result["fit_r_infinity"]:
+        click.echo(f"r_inf: {result['r_infinity']:.3f}")
+    source = result["calibration_source"]
+    click.echo(
+        f"g: {result['g_factor']:.4g} ({source['g_factor']}), "
+        f"l1: {result['l1']:.4g} ({source['l1']}), l2: {result['l2']:.4g} ({source['l2']})"
+    )
+    click.echo(
+        f"Reduced chi-square: {result['reduced_chi_square']:.2f} "
+        f"(VV {result['reduced_chi_square_vv']:.2f}, VH {result['reduced_chi_square_vh']:.2f})"
+    )
+
+
+@cli.command("demo-vvvh")
+@click.argument("folder", type=click.Path())
+def demo_vvvh(folder):
+    """Write the simulated VV/VH demo pair (known tau, rho, r0, g) and print its paths."""
+    from .polarized import DEMO, write_demo
+
+    decay_file, irf_file = write_demo(folder)
+    click.echo(f"decay: {decay_file}")
+    click.echo(f"irf: {irf_file}")
+    click.echo(
+        f"truth: lifetimes {DEMO['lifetimes']} ns, fractions {DEMO['amplitudes']}, "
+        f"rho {DEMO['rho']} ns, r0 {DEMO['r0']}, g {DEMO['g_factor']}"
+    )
+
+
 def main():
     """Entry point for the command-line interface."""
     cli()
