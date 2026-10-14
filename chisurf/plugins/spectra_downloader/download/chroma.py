@@ -119,7 +119,7 @@ def _import_filter_item(
     sp_id = item.get("spID")
     if not sp_id:
         return
-    kind = FILTER_KIND_MAP.get(item.get("Type"))
+    kind = FILTER_KIND_MAP.get(item.get("Type", ""))
     if kind is None:
         return
     raw_name = item.get("Number", "")

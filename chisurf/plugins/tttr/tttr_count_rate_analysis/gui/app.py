@@ -311,7 +311,7 @@ class CountRateGui(TourTarget):
             im.end_disabled()
             # The tour spotlights the whole channel window: the editor's last item is
             # only its footer button, which is not what the step is about.
-            self.remember("setup_source", tuple(box))
+            self.remember("setup_source", box)
             return
         refresh = getattr(tool, "refresh_setups", None)
         if callable(refresh):

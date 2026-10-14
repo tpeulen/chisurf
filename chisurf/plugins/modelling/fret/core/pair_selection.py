@@ -9,6 +9,8 @@ import numpy as np
 
 from chisurf.core.structure import trajectory_data as md
 
+from .trajectory import require_topology
+
 
 def preprocess_efficiency_matrix(
     effs: np.ndarray,
@@ -92,7 +94,7 @@ def compute_rmsd_matrix_from_pdb_dir(
     trajs = [md.load(p) for p in paths]
     combined = md.join(trajs)
 
-    atom_indices = combined.topology.select(selection)
+    atom_indices = require_topology(combined, pdb_dir).select(selection)
     if len(atom_indices) == 0:
         raise ValueError(f"Selection '{selection}' matches zero atoms in topology")
 
@@ -229,7 +231,7 @@ def compute_rmsd_matrix_from_trajectory(
     filenames : list of str — frame names, in matrix order
     """
     t = md.load(traj_path, top=top_path)
-    atom_indices = t.topology.select(selection)
+    atom_indices = require_topology(t, traj_path).select(selection)
     if len(atom_indices) == 0:
         raise ValueError(f"Selection '{selection}' matches zero atoms in topology")
 

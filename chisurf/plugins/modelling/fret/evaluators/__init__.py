@@ -13,7 +13,7 @@ from .geometry import EulerAngleEvaluator, MinDistanceEvaluator, TranslationEval
 from .positions import AVVolumeEvaluator, PositionEvaluator
 from .residuals import WeightedResidualEvaluator
 
-EVALUATOR_CLASSES = {
+EVALUATOR_CLASSES: dict[str, type[Evaluator]] = {
     "PositionEvaluator": PositionEvaluator,
     "AVVolumeEvaluator": AVVolumeEvaluator,
     "DistanceEvaluator": DistanceEvaluator,

@@ -55,6 +55,26 @@ def parse_residue_ranges(text: str) -> list[int]:
     return sorted(set(out))
 
 
+def require_topology(traj: md.Trajectory, source: str = "the trajectory") -> md.Topology:
+    """The topology of *traj*; chains, residues and atom selections all need one.
+
+    Parameters
+    ----------
+    traj : Trajectory
+        Coordinates, possibly without a topology (a bare DCD).
+    source : str
+        Names the input in the error message.
+
+    Raises
+    ------
+    ValueError
+        When *traj* has no topology.
+    """
+    if traj.topology is None:
+        raise ValueError(f"{source} carries no topology (atom names, residues, chains)")
+    return traj.topology
+
+
 def _chain_id_of(chain) -> str:
     cid = getattr(chain, "id", None)
     if cid is None:
@@ -137,9 +157,10 @@ def build_sites(
     atom_name: str,
     fallback_atom_name: str | None = None,
 ) -> list[ResidueSite]:
-    chain = get_chain(traj.topology, chain_spec)
+    topology = require_topology(traj)
+    chain = get_chain(topology, chain_spec)
     chain_id = _chain_id_of(chain)
-    index = _residue_index(traj.topology)
+    index = _residue_index(topology)
 
     sites: list[ResidueSite] = []
     for resseq in residue_numbers:
@@ -318,7 +339,7 @@ def compute_efficiencies_from_fps_av(
 
 def rmsd_matrix(traj: md.Trajectory, atom_selection: str | None = None) -> np.ndarray:
     if atom_selection:
-        atom_indices = traj.topology.select(atom_selection)
+        atom_indices = require_topology(traj).select(atom_selection)
         if atom_indices.size == 0:
             raise ValueError(f"RMSD selection '{atom_selection}' matched 0 atoms")
     else:
@@ -359,7 +380,7 @@ def positions_from_fps_json(traj: md.Trajectory, fps: dict) -> list[LabelPositio
         resname_cfg = str(cfg.get("residue_name") or "").strip()
 
         found_atom: tuple[int, str, int, str, str] | None = None
-        for chain in traj.topology.chains:
+        for chain in require_topology(traj).chains:
             chain_id = _chain_id_of(chain)
             if chain_identifier and chain_id != chain_identifier:
                 continue

@@ -15,6 +15,7 @@ import pathlib
 import threading
 import time
 import traceback
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -43,8 +44,13 @@ def _run_op_child(op: str, params: dict, queue) -> None:
     try:
         from chisurf.plugins.modelling.fret.api import operations as ops
 
-        fn = {"dock": ops.dock, "refine": ops.refine, "screen": ops.screen, "score": ops.score}[op]
-        queue.put(("ok", fn(params)))
+        operations: dict[str, Callable[[dict], dict]] = {
+            "dock": ops.dock,
+            "refine": ops.refine,
+            "screen": ops.screen,
+            "score": ops.score,
+        }
+        queue.put(("ok", operations[op](params)))
     except Exception:  # noqa: BLE001 - the parent shows the traceback
         queue.put(("err", traceback.format_exc()))
 

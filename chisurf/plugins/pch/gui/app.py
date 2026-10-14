@@ -54,7 +54,7 @@ class PchApp(ImApp):
             get_target_rect=lambda key: self.item_rects.get(key) or self.form.rects.get(key),
         )
         self.form.on_used = self.tour.notify_used
-        self._outcome = (None, None, None)
+        self._outcome: tuple[str | None, int | None, int | None] = (None, None, None)
         self._reported_error = ""
         self.docks = DockManager(Split("h", 0.6, Region("plots"), Region("settings")))
         self.docks.add_window(

@@ -517,6 +517,9 @@ class IntensityTraceApp(ImApp):
                     implot.end_plot()
                 if implot.begin_plot("State Counts##statebars", (-1, -1), plain):
                     implot.setup_axes("State (sorted)", "Bins")
+                    assert (
+                        m.states is not None
+                    )  # these plots are only laid out (extra > 0) with a state path
                     counts = np.bincount(m.states, minlength=int(m.n_states)).astype(float)
                     implot.plot_bars(
                         "bins per state", np.arange(len(counts), dtype=float), counts, bar_size=0.8

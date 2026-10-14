@@ -61,7 +61,9 @@ def _static_mean_efficiency() -> float:
     donor, acceptor = build(gen.FRET_PAIR[0]), build(gen.FRET_PAIR[1])
     rng = np.random.default_rng(0)
     n = 400_000
-    r = np.linalg.norm(donor[rng.integers(0, len(donor), n)] - acceptor[rng.integers(0, len(acceptor), n)], axis=1)
+    r = np.linalg.norm(
+        donor[rng.integers(0, len(donor), n)] - acceptor[rng.integers(0, len(acceptor), n)], axis=1
+    )
     return float(np.mean(1.0 / (1.0 + (r / R0) ** 6)))
 
 
@@ -82,6 +84,7 @@ def _simulated_efficiency(slow_factor: float, seed: int) -> float:
         dye["random_seed"] = seed
     result = simulate_project(project, save_outputs=False, render_data=False)
     assert result.quantum_yield_donor == pytest.approx(1.0)  # no quencher: E = 1 - QY_DA
+    assert result.fret_efficiency is not None
     return float(result.fret_efficiency)
 
 

@@ -82,7 +82,7 @@ def dwell_histograms(
     """Per state ``(centres_ms, counts, (A, tau_ms) or None)``: the histogram and its single-exponential fit."""
     from chisurf.core.math.numerics import curve_fit
 
-    out = {}
+    out: dict[Any, tuple[np.ndarray, np.ndarray, tuple[float, float] | None]] = {}
     if hi_ms <= lo_ms:
         return out
     edges = np.linspace(lo_ms, hi_ms, int(n_bins) + 1)

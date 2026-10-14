@@ -651,7 +651,7 @@ class FluorophoreDatabase(MFDatabase):
                 errors.append(f"{key} {value:.1f} out of range [200, 1000] nm")
         for spectrum_type in ("absorption", "emission"):
             spectrum = self.get_spectrum(probe_id, spectrum_type)
-            if spectrum is None:
+            if not isinstance(spectrum, tuple):
                 continue
             wavelengths, values = spectrum
             if wavelengths.size == 0 or wavelengths.size != values.size:

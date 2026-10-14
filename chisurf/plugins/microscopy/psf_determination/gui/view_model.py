@@ -266,7 +266,7 @@ class PsfViewModel:
             return None
         z0, y0, x0 = self.selected_bead
         roi, bounds = _psf.extract_roi(self.stack, z0, y0, x0, int(self.roi_xy), int(self.roi_z))
-        if roi is None:
+        if roi is None or bounds is None:
             self.results_text = (
                 "Selected bead is too close to the stack boundary for the requested ROI size."
             )

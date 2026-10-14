@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import importlib
 import json
+from collections.abc import Hashable
 from pathlib import Path
+from typing import Any
 
 from emtk import im
 from emtk.app import ImApp
@@ -64,7 +66,7 @@ class FretApp(ImApp):
         self.child_box = (NAV_WIDTH, HEADER, 950.0, 634.0)
         self._painter = None
         self._builder = BackgroundBuild(wake=self.request_frame)
-        self._prebuilt: dict[str, tuple] = {}
+        self._prebuilt: dict[Hashable, tuple[Any, BaseException | None]] = {}
         self.tour = EmTkGuidedTour(
             HERE / "guide.json",
             get_target_rect=self.item_rects.get,

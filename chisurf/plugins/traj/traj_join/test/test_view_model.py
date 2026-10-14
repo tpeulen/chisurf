@@ -12,8 +12,8 @@ def _read(path):
     return md.Trajectory(xyz, time=read_time_axis(path)[: len(xyz)])
 
 
-def _tiny_trajectory(path: str, n_frames: int = 5, n_atoms: int = 3) -> None:
-    """Write a minimal *n_frames* × *n_atoms* trajectory to *path* (.dcd)."""
+def _tiny_trajectory(path: str, n_frames: int = 5, n_atoms: int = 3) -> str:
+    """Write a minimal *n_frames* × *n_atoms* trajectory to *path* (.dcd); return its topology PDB."""
     from chisurf.core.structure import trajectory_data as md
 
     topology = md.Topology()

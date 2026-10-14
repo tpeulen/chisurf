@@ -114,7 +114,7 @@ def import_photochemcad_common_compounds(db: FluorophoreDatabase, common_dir: Pa
 
     imported = 0
 
-    with db.conn:  # type: ignore[attr-defined]
+    with db.conn:
         with db_path.open("r", encoding="utf-8", errors="ignore", newline="") as f:
             reader = csv.reader(f, delimiter="\t")
             header = next(reader, None)

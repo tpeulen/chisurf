@@ -51,8 +51,8 @@ def demo_folder() -> Path:
     return get_path("settings") / "demos" / "pch"
 
 
-def photon_times_ms() -> np.ndarray:
-    """Simulate the stream and return the ascending arrival times (ms)."""
+def photon_times_ms() -> tuple[np.ndarray, np.ndarray]:
+    """Simulate the stream and return the ascending arrival times (ms) and their micro times."""
     from chisurf.core.fluorescence.simulation import build_engine, seeds
 
     c = DEMO

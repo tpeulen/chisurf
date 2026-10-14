@@ -46,7 +46,7 @@ class GFactorApp(TourTarget, ImApp):
         self.window_title = tr("VV/VH G-Factor Calculator")
         self.model = GFactorModel()
         self.client = client or VvVhGFactorClient()
-        self.item_rects: dict[str, tuple[float, float, float, float] | None] = {}
+        self.item_rects: dict[str, tuple[float, float, float, float]] = {}
         panels = primary["panels"]
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}

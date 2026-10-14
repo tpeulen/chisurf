@@ -14,6 +14,7 @@ from ..evaluators import EvaluationStorage, Evaluator, EvaluatorResult
 from . import av as _av
 from . import distance as _distance
 from .engine import DistanceRestraint, RigidBody
+from .trajectory import require_topology
 
 
 def score_bodies(
@@ -215,7 +216,7 @@ def evaluate_trajectory(
     # (``_av.load_structure_with_vdw``) included.
     from chisurf.core.structure.av.radii import obstacle_radii
 
-    topology_atoms = list(t.topology.atoms)
+    topology_atoms = list(require_topology(t).atoms)
     vdw_radii = obstacle_radii(
         [atom.residue.name for atom in topology_atoms],
         [atom.name for atom in topology_atoms],

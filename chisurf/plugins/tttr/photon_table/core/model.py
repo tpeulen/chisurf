@@ -58,7 +58,8 @@ def record_kinds() -> tuple[RecordKind, ...]:
         the file is wrong and must fail where it is read.
     """
     data = yaml.safe_load(KINDS_FILE.read_text(encoding="utf-8")) or {}
-    kinds, seen = [], set()
+    kinds: list[RecordKind] = []
+    seen: set[int] = set()
     for entry in data.get("kinds") or []:
         key = str(entry.get("key") or "")
         codes = tuple(int(c) for c in entry.get("codes") or [])
@@ -118,8 +119,11 @@ def classify_records(tttr: Any) -> np.ndarray:
         except Exception:  # noqa: BLE001 - a scan tttrlib cannot frame has unnamed markers
             pass
     unnamed = tttrlib.CLSMSettings(
-        marker_frame_start=[], marker_line_start=-1, marker_line_stop=-1,
-        marker_event_type=1, use_pixel_markers=False,
+        marker_frame_start=[],
+        marker_line_start=-1,
+        marker_line_stop=-1,
+        marker_event_type=1,
+        use_pixel_markers=False,
     )
     return np.asarray(
         tttrlib.CLSMImage.classify_records_events(

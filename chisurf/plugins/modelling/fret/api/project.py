@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
+from typing import Any
 
 from chisurf.plugins.modelling.fret.api.pose_codec import decode_poses, encode_poses
 
@@ -105,7 +106,7 @@ class DockingProject:
     # -- requests ----------------------------------------------------------
     def to_dock_request(self) -> dict:
         """Return a dict accepted by :func:`...api.operations.dock`."""
-        req = {
+        req: dict[str, Any] = {
             "pdb_paths": list(self.pdb_paths),
             "fps_json": self.fps_json,
             "output_dir": self.output_dir,
@@ -219,9 +220,7 @@ def save_docking_project(
         "params": dict(params or {}),
     }
     if poses:
-        payload["poses"] = encode_poses(
-            list(poses), score=pose_score, method=pose_method or method
-        )
+        payload["poses"] = encode_poses(list(poses), score=pose_score, method=pose_method or method)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, indent=2)
     return path

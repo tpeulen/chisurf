@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import random
+from typing import Protocol
 
 DONOR_NM = 520.0
 ACCEPTOR_NM = 612.0
@@ -69,6 +70,12 @@ class Particle:
         self.life -= dt
 
 
+class _AxisInput(Protocol):
+    """The second player's controls: anything with a stick-like ``axis()``."""
+
+    def axis(self) -> tuple[float, float]: ...
+
+
 class PongModel:
     """The rules, input actions and scoring.
 
@@ -82,6 +89,8 @@ class PongModel:
 
     def __init__(self, host=None):
         self.host = host
+        #: The second player's input; the host hands it over for two-player games.
+        self.p2: _AxisInput | None = None
         self.restart()
 
     def restart(self) -> None:
@@ -178,7 +187,7 @@ class PongModel:
 
         if self.vs_computer:
             self._move_cpu(dt)
-        else:
+        elif self.p2 is not None:
             move2 = self.p2.axis()[1]
             self.cpu_y = min(max(self.cpu_y + move2 * PADDLE_SPEED * dt, half), FIELD_H - half)
 

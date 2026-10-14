@@ -68,7 +68,7 @@ def _handle_analyze(params: dict[str, Any]) -> dict[str, Any]:
         from ..core import PixelMleSettings, fit_pixel_lifetimes
 
         settings_raw = params.get("settings") or {}
-        known = {f.name for f in ApiSettings.__dataclass_fields__.values()}  # type: ignore[attr-defined]
+        known = {f.name for f in ApiSettings.__dataclass_fields__.values()}
         settings = ApiSettings(**{k: v for k, v in settings_raw.items() if k in known})
         request = PixelMleRequest(
             files=params["files"],

@@ -11,6 +11,7 @@ import json
 import shutil
 import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 from emtk import keys
@@ -120,7 +121,7 @@ class OfflineStructureClient:
 
     def __init__(self, path: Path) -> None:
         self.path = path
-        self.calls = []
+        self.calls: list[tuple[str, Any]] = []
 
     def call(self, method, params):
         self.calls.append((method, params))

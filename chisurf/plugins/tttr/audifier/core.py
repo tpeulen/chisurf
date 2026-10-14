@@ -88,7 +88,7 @@ def load_tttr_with_tttrlib(path: str, setup=None) -> TTTRData:
     Adapted from ChiSurf usage.
     """
     try:
-        import tttrlib  # type: ignore
+        import tttrlib
     except Exception as e:
         raise ImportError("tttrlib not available. Install or pass arrays via TTTRData.") from e
 
