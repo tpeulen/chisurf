@@ -474,5 +474,19 @@
     "reviewer_kind": "ai",
     "sha256": "a00ff5342b921f2e194518bf7729286cd360438ad8e692918ca928d0a414eec4",
     "status": "ai-reviewed"
+  },
+  "settings.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d825458087b019edbb7a0e19061e2458d92542817aca7f51e20f6c1028605b44",
+    "status": "ai-reviewed"
+  },
+  "tables.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3fd4e44b3acab12498237f0269faf1a2a405d114bc030b364413d5791077bc1a",
+    "status": "ai-reviewed"
   }
 }

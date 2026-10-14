@@ -215,11 +215,22 @@ class ChiSurfMessageBox:
         try:
             import chisurf as cs
 
-            if not cs.core.settings.cs_settings.get("fortune", False):
+            # The shipped setting is a block ({enabled, attempts, min_length,
+            # max_length}); a bare truth test on it was always true, so
+            # ``enabled: false`` never switched the fortune off and the length
+            # limits were never applied. A plain boolean is still accepted.
+            config = cs.core.settings.cs_settings.get("fortune", False)
+            if not isinstance(config, dict):
+                config = {"enabled": bool(config)}
+            if not config.get("enabled", False):
                 return informative
             from chisurf.gui.widgets import fortune as fortune_module
 
-            saying = fortune_module.get_fortune()
+            saying = fortune_module.get_fortune(
+                min_length=int(config.get("min_length", 0)),
+                max_length=int(config.get("max_length", 100)),
+                maximum_number_of_attempts=int(config.get("attempts", 1000)),
+            )
         except Exception:
             return informative
         if not saying:

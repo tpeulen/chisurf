@@ -190,18 +190,28 @@ def collect_tables() -> list[dict]:
         text = page.read_text(encoding="utf-8", errors="ignore")
         lines = text.splitlines()
         heading = ""
+        # A "# comment" inside a code fence is not a heading, and an underline
+        # title is reStructuredText only: in Markdown the line above a closing
+        # ``` or $$ fence would otherwise become the "section".
+        rst = page.suffix == ".rst"
+        in_fence = False
         for number, line in enumerate(lines):
-            match = _HEADING.match(line)
+            if line.lstrip().startswith(("```", "~~~")):
+                in_fence = not in_fence if not line.lstrip().startswith("```{") else True
+            match = None if in_fence else _HEADING.match(line)
             if match:
                 heading = match.group("title")
             elif (
-                number + 1 < len(lines)
+                rst
+                and number + 1 < len(lines)
                 and _RST_TITLE.match(lines[number + 1] or "")
                 and line.strip()
             ):
                 heading = line.strip()
+            # The separator row holds only pipes, colons, dashes and blanks: a
+            # body row whose first cell is empty ("| | Size |") is not one.
             if re.match(r"^\|", line) and number + 1 < len(lines) and re.match(
-                r"^\|[\s:|-]+\|", lines[number + 1]
+                r"^\|(?=[\s:|-]*-)[\s:|-]+\|\s*$", lines[number + 1]
             ):
                 columns = [c.strip() for c in line.strip().strip("|").split("|")]
                 tables.append(

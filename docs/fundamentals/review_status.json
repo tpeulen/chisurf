@@ -61,5 +61,26 @@
     "reviewer_kind": "ai",
     "sha256": "c6bd1952ae49b3e3290f38bacba2bd3a561981656f0a684095f3eced30dee1d7",
     "status": "ai-reviewed"
+  },
+  "polarization_and_rotation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7adcc40c40cb59ca9603b39920318e3f05d54d6d6097ad8a63c9227cceeacd69",
+    "status": "ai-reviewed"
+  },
+  "quenching_and_photophysics.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0170d1c67b7c75e419bfa35fd3376618597b134c9cbebb9ddc511991ac8f80a0",
+    "status": "ai-reviewed"
+  },
+  "quenching_mechanisms.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "955abf949a7a3da39d432929639cfe13fc5747ac4d81bafac9b7f8860a2cfa86",
+    "status": "ai-reviewed"
   }
 }

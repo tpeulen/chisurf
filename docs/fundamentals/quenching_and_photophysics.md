@@ -141,9 +141,8 @@ than contact is the other tell — it means the exponential is absorbing somethi
 else, usually a real complex.
 :::
 
-"Incomplete" is the word to hold onto: the sphere-of-action fraction is not
-quenched *by a rate* but *removed with a probability*, so it never appears in
-the decay at all. A quenching study that reports only $K_{SV}$ from an intensity
+The sphere-of-action fraction is not quenched *by a rate* but *removed with a
+probability*, so it never appears in the decay at all. A quenching study that reports only $K_{SV}$ from an intensity
 titration cannot tell you which of the three mechanisms produced it, and the
 literature contains many such numbers ({cite}`gehlen2020` catalogues what each
 deviation from linearity can mean, and how many mechanisms fit each one).
@@ -190,8 +189,9 @@ it drifts with the concentration range chosen.
 
 :::{important}
 Incomplete static quenching and a two-population mixture with an inaccessible
-fraction are **the same function**: put $K_b = 0$ in the sum above and it is the
-expression in the previous subsection with $f_a$ for $f$. No amount of curve
+fraction are **the same function**: for two species $a$, $b$ with $K_b = 0$ the
+sum above is the expression of the previous subsection with $f = f_a$ and
+$K_S = K_a$. No amount of curve
 fitting separates "a fraction the quencher cannot reach" from "a fraction that
 cannot form the complex" — they are distinguished by the lifetime (a mixture of
 *differently quenched* species has species-specific $\tau_i$; an unquenchable
@@ -233,8 +233,8 @@ Three cautions, in increasing order of how often they are ignored:
   population is quenched with even $K_b \approx 0.1\,K_a$, the modified plot
   still looks straight over a normal concentration range, and the extrapolated
   $f_a$ comes out too large — **0.74 against a true 0.50** in the figure above,
-  a 48 % overestimate from a plot that looks perfectly linear. The two-class resolution is *useful but arbitrary*;
-  it is a parameterization, not a count of populations.
+  a 48 % overestimate from a plot that looks perfectly linear. The two-class
+  resolution is a parameterization, not a count of populations.
 - **Two classes is a choice.** Nothing in the data says there are two rather
   than three, and a two-term fit will describe a continuum of accessibilities
   perfectly well — the same trap as fitting a continuous lifetime distribution
@@ -345,9 +345,7 @@ route, in which the long-lived dark states react (usually with oxygen), and a
 **higher-excited-state** route, in which a molecule already in $T_1$ or a radical
 absorbs another photon and reaches a state energetic enough to fragment. Removing
 oxygen suppresses the first and *worsens* the second, because the triplet then
-lives long enough to absorb again {cite}`ha2012`. A dye emits a finite total number of photons before it dies, and that
-budget — not the instantaneous brightness — is what limits a single-molecule
-experiment.
+lives long enough to absorb again {cite}`ha2012`.
 
 Practical consequences that recur throughout the documentation:
 

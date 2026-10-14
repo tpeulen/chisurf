@@ -1,7 +1,7 @@
 ---
 type: Fundamentals
 title: Quenching mechanisms in detail
-description: Added, or molecules are removed, and the Stern–Volmer plot bends one way or the other.
+description: The diffusion limit and its transient effect, Rehm–Weller energetics, nucleobase-specific quenching, and the structure-based simulation that replaces a bulk quenching constant.
 tags: [fundamentals, quenching, mechanisms]
 anchor: fundamentals-quenching-mechanisms
 ---
@@ -220,7 +220,7 @@ the linker and the surface — so the decay is determined by geometry, not by a
 concentration.
 
 ChiSurf models this directly rather than through a Stern–Volmer constant, and
-the companion tool **QuEst** (`modules/quest`, *QUenching ESTimation*) is built
+the tool **QuEst** (`chisurf/plugins/quenching_estimator/`, *QUenching ESTimation*) is built
 on exactly the concepts on this page:
 
 1. **Which residues quench, and how fast.** The same PET logic as the
@@ -257,9 +257,8 @@ Two things this buys that a fitted $k_q$ cannot:
   structure explains it — and if it does not, the discrepancy is evidence about
   the structure or the linker rather than a number to absorb into a fit.
 
-In ChiSurf the fittable form is `AVDecayModel`
-(`chisurf/core/models/tcspc/av_decay.py`), which puts the simulated
-quenching decay into the ordinary TCSPC fitting path
+The structure-derived donor decay is `IMP.bff.QuenchedDonorDecay`; QuEst
+computes it from a structure, to be compared with a measured donor-only decay
 ({ref}`concept-tcspc-lifetime`).
 
 The experimental groundwork this rests on is worth reading before trusting a
@@ -290,7 +289,7 @@ demonstration that $Q_D$ is a property of the *conformation* and not of the dye.
   `chisurf/core/settings/constants/structure.json`, the trajectory-based rate
   `IMP.bff.quenching_rate_per_frame`, the
   structure-derived donor decay `IMP.bff.QuenchedDonorDecay`, and the
-  QuEst simulator in `modules/quest`.
+  QuEst simulator in `chisurf/plugins/quenching_estimator/core/`.
 - Fundamentals: {ref}`fundamentals-energy-transfer` ·
   {ref}`fundamentals-fluorophores` · {ref}`fundamentals-solvent`.
 - Literature: {cite}`seidel1996` for the nucleobase ordering and the quenching

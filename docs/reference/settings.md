@@ -28,8 +28,7 @@ here.
 
 Used by:
 - `chisurf.plugins.fcs.fcs_correlator.correlator_model.CorrelatorSettingsModel` (the FCS correlator)
-- `chisurf.gui.widgets.wizard.tttr_correlator.WizardTTTRCorrelator`
-- `chisurf.plugins.burst.burst_fcs_correlator`
+- `chisurf.plugins.fcs.fcs_channel_preset` (the FCS channel presets)
 
 Keys:
 
@@ -59,20 +58,8 @@ Keys:
   resolution). If true, additional micro-time information is passed to
   `tttrlib.Correlator`.
 
-- **`time_window`**  
-  Time window (in milliseconds) used by the count‑rate filter (`CrFilterWidget`)
-  when enabled. Defines the width of the sliding window for count‑rate
-  evaluation.
-
-- **`max_count_rate`**  
-  Maximum allowed count rate (in kHz) within `time_window` in the count‑rate
-  filter. Bursts / intervals with higher count rate are marked and can be
-  suppressed.
-
-- **`count_rate_filter`**  
-  Intended master flag to enable/disable the count‑rate filter by default.
-  The current GUI uses an explicit checkbox; this field reflects the desired
-  default behavior.
+- **`microtime_binning`**  
+  Micro-time binning factor the FCS correlator starts with (1 = no binning).
 
 - **`weighting`**  
   Default index for the correlation weighting mode. Mapped to entries in
@@ -141,10 +128,9 @@ Used by: `chisurf.core.base.Data` for embedding raw files into YAML/JSON save fi
   without echoing the commands in the console UI. Serves as a global toggle
   for hiding implementation details from the interactive user.
 
-> **Removed:** `n_threads` governed the `numexpr` thread pool and had no other
-> reader. `numexpr` is gone — the one expression it evaluated is a Numba kernel
-> now — so thread counts come from the {ref}`threads <settings-threads>` section, which
-> sets `NUMBA_NUM_THREADS` before Numba is imported.
+> **Removed:** `n_threads` governed the `numexpr` thread pool and went with
+> `numexpr`; thread counts come from the {ref}`threads <settings-threads>`
+> section.
 
 ---
 
@@ -161,12 +147,12 @@ Used by: FCS utilities in `chisurf.core.fluorescence.fcs` and various FCS tools.
 
 ### 1.5 `fortune` (message‑box extras)
 
-Used by: `chisurf.gui.widgets.general.MyMessageBox` and
+Used by: `chisurf.gui.dialogs.ChiSurfMessageBox` and
 `chisurf.gui.widgets.fortune`.
 
 - **`enabled`**  
-  Master flag; if true, info dialogs may append a random “fortune cookie”
-  message from the bundled fortune databases.
+  Master flag; if true, message boxes append a random “fortune cookie”
+  from the bundled fortune databases.
 
 - **`attempts`**  
   Maximum number of attempts to pick a fortune of acceptable length.
@@ -180,31 +166,10 @@ Used by: `chisurf.gui.widgets.general.MyMessageBox` and
 
 ### 1.6 `fps` (structure accessible‑volume / flexible protein simulations)
 
-Used by: `chisurf.core.structure.av.*` and related structure modelling code.
-
-- **`allowed_sphere_radius`**  
-  Radius (nm) of the sphere around the attachment point that defines the
-  allowed volume for linker sampling.
-
-- **`distance_samples`**  
-  Number of Monte‑Carlo samples used when generating distance distributions
-  between labels.
-
-- **`dynamic.exponential`**  
-  Flag for using an exponential model in dynamic AV simulations (e.g. for
-  time‑dependent quenching / motion).
-
-- **`linknodes`**  
-  Number of discretization points along the linker for geometrical AV
-  calculations.
-
-- **`simulation_grid_resolution`**  
-  Base grid resolution (`dg`) used for AV density grids in
-  `structure.av.static` and `structure.av.dynamic`.
-
-- **`vdw_max`**  
-  Maximum van‑der‑Waals radius (Å or nm, depending on model) used when
-  constructing exclusion volumes for AV simulations.
+The keys left in this block (`distance_samples`, `dynamic.exponential`,
+`vdw_max`) are not read by ChiSurf any more: the accessible-volume calculation
+moved to IMP.bff (wrapped by `chisurf.core.structure.av`), which takes its
+parameters per labelling site.
 
 ---
 
@@ -221,8 +186,7 @@ Used by `chisurf.core.fluorescence.rda_axis` (the photon-distribution models and
   distributions and distance grids.
 
 - **`forster_radius`**  
-  Förster radius R
-a (in Å) used as the default in FRET decay and efficiency
+  Förster radius $R_0$ (in Å) used as the default in FRET decay and efficiency
   calculations.
 
 - **`tau0`**  
@@ -431,16 +395,11 @@ are removed from a user's settings file when it is loaded.
 (settings-threads)=
 ### 1.9 `threads` (numeric backend threading)
 
-Applied very early at startup by `env_bootstrap._apply_thread_env_from_settings`.
-These values are mapped to environment variables for NumPy/Numba/MKL/OMP.
-
-- **`numba_num_threads`**  
-  Value for `NUMBA_NUM_THREADS` – maximum number of threads used by Numba’s
-  parallel backend.
-
-- **`numba_threading_layer`**  
-  Value for `NUMBA_THREADING_LAYER` (e.g. `workqueue`). Controls Numba’s
-  internal threading implementation.
+Applied very early at startup by `env_bootstrap._apply_thread_env_from_settings`
+(`chisurf/core/settings/env_bootstrap.py`). The values become environment
+variables for MKL and OpenMP; both default to one thread, which also pins the
+OpenMP kernels of tttrlib and IMP.bff. A `threads` object in
+`~/.chisurf/settings.json` overrides the YAML values.
 
 - **`mkl_num_threads`**  
   Value for `MKL_NUM_THREADS` – maximum number of threads used by Intel MKL
@@ -448,7 +407,7 @@ These values are mapped to environment variables for NumPy/Numba/MKL/OMP.
 
 - **`omp_num_threads`**  
   Value for `OMP_NUM_THREADS` – maximum threads for OpenMP‑using libraries
-  (NumPy, SciPy, etc.).
+  (NumPy, SciPy, tttrlib, IMP.bff).
 
 - **`mkl_threading_layer`**  
   Value for `MKL_THREADING_LAYER` (e.g. `SEQUENTIAL`) to avoid nested
@@ -556,7 +515,7 @@ Sub‑sections:
 
 ### 1.12 `parameter` (per‑parameter GUI defaults)
 
-Used by: `chisurf.gui.widgets.fitting.widgets.parameter_settings` and
+Used by: the parameter widgets (`chisurf.gui.widgets.fitting.parameter_widgets`) and
 `chisurf.core.fitting.parameter.FittingParameter`.
 
 - **`bounds_on`**  
@@ -611,12 +570,18 @@ Used by: plugin manager, help browser, GUI menu construction, updater plugin.
 - **`disabled_plugins`**  
   List of plugin display names that should not be loaded/shown in menus.
 
-- **`hide_disabled_models`**  
-  If true, disabled models are hidden completely from GUI lists; if false,
-  they may be shown but disabled.
-
 - **`hide_disabled_plugins`**  
-  Similar to `hide_disabled_models`, for plugins.
+  If true, disabled plugins are hidden completely from menus and lists; if
+  false, they are shown but disabled.
+
+- **`show_demo_plugins`**  
+  If true, plugins that declare themselves demos appear in the generated
+  menus; off (shipped) leaves them out.
+
+- **`statefulness`**  
+  Whether plugin windows remember their size and position: `mode`
+  (`plugin_default` lets each manifest decide) and `per_plugin`, a mapping of
+  plugin id to its own choice. Edited in **Settings ▸ Plugins**.
 
 - **`icons_enabled`**  
   Master switch for showing plugin icons in menus and toolbars where available.
@@ -763,6 +728,45 @@ once the window passes — nothing has to be reset.
 
 ---
 
+### 1.18 `project` (autosave)
+
+- **`autosave.enabled`**, **`autosave.interval_s`**  
+  Write a silent `<name>.autosave.cs.pto` copy of a project holding data every
+  `interval_s` seconds (shipped: on, 120). Applies at the next start; see
+  [Saving and reopening projects](../guides/saving_projects.md).
+
+---
+
+### 1.19 `data_loading` (staging of slow files, plot budget)
+
+Read by `chisurf.core.fio.staging`; edited in **Settings ▸ Data loading…**.
+
+- **`enabled`**  
+  Copy a file to a local cache before reading it when its source is slow.
+
+- **`threshold_mbps`**, **`min_size`**  
+  A file is staged when the measured throughput is below `threshold_mbps`
+  (MB/s) and the file is at least `min_size` bytes.
+
+- **`probe_bytes`**, **`probe_min_bytes`**, **`probe_min_seconds`**  
+  How much of the file head is read to measure the throughput.
+
+- **`chunk_bytes`**, **`progress_interval`**  
+  Copy chunk size, and how often (seconds) the progress is reported.
+
+- **`import_to_container`**  
+  Opening a vendor photon file creates the measurement's `.pto` container;
+  off reads the vendor file where it lies.
+
+- **`drop_guards`**  
+  The "stop asking" choices of the drop prompts, keyed by prompt name.
+
+- **`max_plot_points`**  
+  Point budget of one raw per-photon plot (a time trace), across all its
+  curves.
+
+---
+
 ## 2. `experiment_configs.yaml` (experiment registry)
 
 This file defines how high‑level "experiment types" are mapped to
@@ -854,7 +858,8 @@ cycled for multiple data sets or used as theme colors by different plot types.
 ## 4. `setup_defaults.json` (experiment setup persistence)
 
 `setup_defaults.json` is stored in the user settings folder (`~/.chisurf`) and
-contains persisted experiment setup parameters. This allows users to retain their
+contains persisted experiment setup parameters of the legacy Qt window
+(`python -m chisurf --qt`; `chisurf/gui/widgets/experiments/setup_persistence.py`). This allows users to retain their
 preferred settings between sessions without re-entering them on every startup.
 
 ### 4.1 File location
@@ -913,8 +918,8 @@ preferred settings between sessions without re-entering them on every startup.
 
 ### 4.4 Resetting
 
-To reset all persisted setup defaults, use the **Clear local settings** option
-in the Settings menu. This deletes `setup_defaults.json` along with other local
+To reset all persisted setup defaults, use **Settings ▸ Reset local settings**
+(**Clear local settings** in the Qt window). This deletes `setup_defaults.json` along with other local
 settings.
 
 Resetting affects settings only. The settings folder also holds user data —

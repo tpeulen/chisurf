@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: 'Scan precision: choosing a dwell time before you measure'
-description: 'A raster-scan correlation measurement (RICS and its relatives) has a free parameter that nobody can set from first principles at the microscope: the pixel dwell time.'
+description: Why a raster-scan correlation measurement (RICS and its relatives) has an optimal pixel dwell time, and how the RICS-Precision planner predicts the relative error of D before the measurement.
 tags: [concepts, correlation, scan, precision]
 anchor: concept-scan-precision
 ---
@@ -110,7 +110,7 @@ forms $\tau$ from the raw lag. The difference moves the predicted error by well
 under its own Monte-Carlo uncertainty and does not change which dwell time is
 recommended.
 
-## The honest caveats
+## Caveats
 
 **The prediction is itself a Monte-Carlo quantity.** With $N$ realisations it
 carries a relative uncertainty of roughly $1/\sqrt{2N}$ — about 11 % at the

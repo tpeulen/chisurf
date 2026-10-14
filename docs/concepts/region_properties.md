@@ -214,6 +214,24 @@ a segmentation label, so a hand-drawn selection and a watershed output are
 comparable; and a measured region converts back into a region of interest, which
 closes the loop between measuring and selecting.
 
+## Intensity is a photon count
+
+Region intensities are photon counts, held as unsigned 32-bit integers so that
+bright pixels do not saturate. The geometry of a simulated raster comes from the
+scanner metadata stored with it and the time unit from the file's clock; neither
+is inferred when it is missing. See the [regions guide](../guides/48_regions.md).
+
+### Frozen molecules and the polarized model
+
+An immobilized molecule is one fixed dipole, not an orientational ensemble: its
+VV/VH ratio is set by its orientation and the collection cone. A polarized
+ensemble model with a fixed $r_0$ and a finite rotational correlation time can
+therefore miss both channel amplitudes of such a molecule while still recovering
+its lifetime. With the **2I\* (P+2S)** objective, judge the fit by the
+per-channel residuals and do not read the fixed anisotropy parameters as
+measured values. The intensity properties above do not depend on either
+assumption.
+
 ## See also
 
 - How to do it: {doc}`the regions guide </guides/48_regions>` — where regions
@@ -226,28 +244,5 @@ closes the loop between measuring and selecting.
 - Restricting a drift estimate to a structured patch:
   {ref}`concept-drift-correction`.
 - Tools in ChiSurf: **Region MLE** (`chisurf/plugins/microscopy/region_mle/`) fits each segmented region, and **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`) draws and stores the regions.
-
-Image intensity is a photon count and must retain bright-pixel values. Python
-CLSM images and selected-channel views use existing unsigned32-bit counters;
-the explicitly named legacy native getter remains unsigned16-bit. Versioned
-producer scanner metadata defines simulated-raster geometry, and physical PTU
-clocks define time units. Neither missing geometry nor placeholder timing can
-be repaired by adding duplicate frames or monkeypatching the reader. See the
-[region workflow](../guides/48_regions.md) for reconstruction and fitting.
-
-### Frozen molecules and the polarized model
-
-A single immobilized dipole is not an orientationally averaged ensemble.
-The simulated four-object field samples one fixed orientation per molecule;
-its VV/VH ratio is determined by the direction cosines and emission cone. An
-ensemble fit with fixed positive fundamental anisotropy and finite rotational
-correlation time can consequently miss both channel amplitudes. Matching the
-same reference implementation proves data delivery, not model adequacy.
-
-The lifetime demonstration selects the **2I* (P+2S)** objective; retain its
-split-channel residuals when assessing the fit and do not interpret the fixed
-anisotropy parameters as recovered physical values. The [Region MLE workflow](../guides/48_regions.md)
-explains this limitation. Region intensity measurements use uint32 photon
-counts independently of those lifetime and anisotropy assumptions.
 
 Tool: the shared maximum-likelihood base of the spot, region and pixel MLE tools (MLE Common) (`chisurf/plugins/microscopy/mle_common/`).

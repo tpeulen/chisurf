@@ -349,6 +349,13 @@
     "sha256": "ae0331acb32d9dc8f88f6087b060c81145bca44dda52eefc07bf2fb6fff64d4c",
     "status": "ai-reviewed"
   },
+  "point_spread_function.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8378fc29da75c742bf59967f4a445994b5439e4e8959c9fe0227328bd3909d27",
+    "status": "ai-reviewed"
+  },
   "protein_monte_carlo.md": {
     "date": "2026-10-13",
     "reviewer": "agent",
@@ -361,6 +368,20 @@
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "66e7ce4f8af3944b71a33e20fb561cc5050a51e93009e5fa048d62553204a6ed",
+    "status": "ai-reviewed"
+  },
+  "region_properties.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "da59386723684125933ce31d47c89a53d912b9853cdd736fd8cdf9ac6082e30c",
+    "status": "ai-reviewed"
+  },
+  "scan_precision.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ed4d28f0a72a9f80521d4910d1429107181e2233075662fcd545c72ea50593f9",
     "status": "ai-reviewed"
   },
   "smfret_bursts.md": {
