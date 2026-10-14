@@ -218,22 +218,21 @@ class LLTFApp(TourTarget, ImApp):
         self.remember("help")
         # The actions come first: in VV/VH mode the options outgrow a small window,
         # and Fit must stay reachable without scrolling.
-        im.begin_disabled(m.running)
-        if im.button(tr("📂  Load example")):
-            self.error(m.load_example)
-            self.tour.notify_used("Load example")
-        im.end_disabled()
-        im.set_item_tooltip(
-            tr(
+        if action_button(
+            "example",
+            enabled=not m.running,
+            tooltip=tr(
                 "Simulate a VV/VH pair whose answer is known (lifetimes 1 and 4 ns, ρ = 1.5 ns, "
                 "r0 = 0.35, G = 1.2), select it in VV/VH mode with the example IRF."
-            )
-        )
+            ),
+        ):
+            self.error(m.load_example)
+            self.tour.notify_used("Load example")
         self.remember("Load example")
         im.same_line()
         ready = Path(m.decay_file).is_file() and Path(m.irf_file).is_file()
         im.begin_disabled(m.running or not ready)
-        if im.button(tr("▶  Fit")):
+        if im.button(tr("▶  Fit"), role="primary"):
             self.error(self.start)
         im.set_item_tooltip(
             tr(
@@ -245,7 +244,7 @@ class LLTFApp(TourTarget, ImApp):
         im.end_disabled()
         im.same_line()
         im.begin_disabled(not m.running)
-        if im.button(tr("⏹  Stop")):
+        if im.button(tr("⏹  Stop"), role="danger"):
             self.model.stop()
         im.set_item_tooltip(
             tr("Terminate the running fit; its captured output stays in Analysis Output.")
@@ -346,7 +345,7 @@ class LLTFApp(TourTarget, ImApp):
                             )
                         )
                     elif tab == "Analysis Output":
-                        if im.button(tr("Clear output")):
+                        if im.button(tr("Clear output"), role="danger"):
                             m.clear_output()
                         im.set_item_tooltip(
                             tr("Clear displayed logs without interrupting the analysis.")

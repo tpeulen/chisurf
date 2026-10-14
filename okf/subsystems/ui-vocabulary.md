@@ -11,12 +11,9 @@ timestamp: '2026-10-14T00:00:00Z'
 
 Button roles (2026-10-14, emtk 0.1.16):
 
-1. Open: LLTF (`chisurf/plugins/fluorescence_decay/lltf/gui/app.py`) was held by
-   the LLTF lane while roles landed. Its `▶  Fit` (l. 236) wants `role="primary"`,
-   its `⏹  Stop` and `Clear output` `role="danger"`. Its `📂  Load example`
-   (l. 222) is drawn by hand, which fails
-   `test_shared_actions_are_drawn_through_the_vocabulary` at HEAD; port it to
-   `action_button("example")` too.
+1. Closed 2026-10-14: LLTF has `▶  Fit` `role="primary"`, `⏹  Stop` and
+   `Clear output` `role="danger"`, and Load example drawn by
+   `action_button("example")`; `test/test_ui_vocabulary.py` passes (23).
 2. Measure hand-drawn emtk buttons without a role: run the AST scan used when
    roles landed. It covers every `im.button` whose `_literal` caption has a
    `verb_role`; 44 sites had none, 28 were given a role. The guard only checks
