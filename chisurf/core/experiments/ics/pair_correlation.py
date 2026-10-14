@@ -305,7 +305,7 @@ class PcfCarpet:
     @property
     def shape(self) -> tuple[int, int, int]:
         """Shape of the carpet ``(n_delta, n_positions, n_tau)``."""
-        return tuple(np.asarray(self.correlation).shape)  # type: ignore[return-value]
+        return tuple(np.asarray(self.correlation).shape)
 
     def delta_index(self, distance: int) -> int:
         r"""Return the carpet index of a signed distance.

@@ -18,9 +18,9 @@ import numpy as np
 try:
     import tttrlib
 except Exception:  # pragma: no cover - optional at import time
-    tttrlib = None  # type: ignore[assignment]
+    tttrlib = None
 
-from chisurf.core.roi import as_mask
+from chisurf.core.roi import ROI, as_mask
 
 from .data import IcsCarpet, IcsSettings
 
@@ -168,7 +168,7 @@ def normalise_ics(
 def compute_ics_carpet(
     images: np.ndarray,
     settings: IcsSettings | None = None,
-    mask: np.ndarray | None = None,
+    mask: np.ndarray | ROI | None = None,
     use_fftshift: bool = True,
     **kwargs: Any,
 ) -> IcsCarpet:
@@ -286,7 +286,7 @@ def compute_ics_carpet(
             "frames_index_pairs": pairs,
         }
         ics_kwargs.update(kwargs)
-        raw = tttrlib.CLSMImage.compute_ics(**ics_kwargs)  # type: ignore[call-arg]
+        raw = tttrlib.CLSMImage.compute_ics(**ics_kwargs)
         # Correlator builds before the compute_ics fix allocate one map per frame
         # *pair* but declare the first dimension as the number of input *frames*.
         # For any lag > 0 there are fewer pairs than frames, so the returned

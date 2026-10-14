@@ -131,7 +131,7 @@ class Experiment(chisurf.core.base.Base):
         for v in self._readers:
             if isinstance(v, ExperimentReader):
                 readers.append(v)
-            elif isinstance(v, ExperimentReaderController):
+            elif isinstance(v, ExperimentReaderController) and v.experiment_reader is not None:
                 readers.append(v.experiment_reader)
         return readers
 

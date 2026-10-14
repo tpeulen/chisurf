@@ -599,6 +599,8 @@ class Pda2cTTTRWidget(QtWidgets.QWidget, reader.ExperimentReaderController):
         """A reader with the panel's settings, for one load of the file list."""
         self.onParametersChanged()
         bound = self.experiment_reader
+        if bound is None:
+            raise RuntimeError("no PDA reader is bound to this panel")
         pda_reader = Pda2cReader(
             channels=list(bound.channels),
             micro_time_ranges=list(bound.micro_time_ranges or []),

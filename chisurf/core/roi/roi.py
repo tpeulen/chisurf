@@ -24,6 +24,7 @@ from collections.abc import Iterable, Sequence
 from typing import Any, Optional
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 #: Registry of ROI type name -> class, populated by ``__init_subclass__``.
 _ROI_TYPES: dict[str, type] = {}
@@ -582,8 +583,8 @@ class MaskROI(ROI):
     def from_histogram(
         cls,
         mask: np.ndarray,
-        edges_x: Sequence[float],
-        edges_y: Sequence[float],
+        edges_x: ArrayLike,
+        edges_y: ArrayLike,
         name: str = "",
     ) -> MaskROI:
         """Build a region from a mask painted on a 2-D histogram.

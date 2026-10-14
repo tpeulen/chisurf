@@ -7,9 +7,9 @@ from typing import Any
 import numpy as np
 
 try:  # tttrlib is expected to be available in the chisurf dev environment
-    import tttrlib  # type: ignore
+    import tttrlib
 except Exception:  # pragma: no cover - import guard
-    tttrlib = None  # type: ignore[var-annotated]
+    tttrlib = None
 
 
 def _guess_tttr_type(path: pathlib.Path) -> str | None:
@@ -95,16 +95,16 @@ def load_clsm_from_tttr(
 
     if tttr_type is None:
         # Let tttrlib auto-detect type from header if possible
-        tttr = staging.open_tttr(str(path))  # type: ignore[call-arg]
+        tttr = staging.open_tttr(str(path))
     else:
-        tttr = staging.open_tttr(str(path), tttr_type)  # type: ignore[call-arg]
+        tttr = staging.open_tttr(str(path), tttr_type)
 
     if channels is None:
         channels = (0,)
 
     reading_routine = str(reading_routine or "default")
 
-    clsm = tttrlib.CLSMImage(  # type: ignore[call-arg]
+    clsm = tttrlib.CLSMImage(
         tttr_data=tttr,
         channels=list(channels),
         fill=bool(fill),
@@ -118,7 +118,7 @@ def load_clsm_from_tttr(
     meta: dict[str, Any] = {}
     try:
         if hasattr(clsm, "get_image_info"):
-            info = clsm.get_image_info()  # type: ignore[assignment]
+            info = clsm.get_image_info()
             if isinstance(info, dict):
                 meta.update(info)
     except Exception:

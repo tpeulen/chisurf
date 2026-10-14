@@ -185,7 +185,7 @@ def _settings() -> dict:
     """Return the ``data_loading`` settings section merged over :data:`DEFAULTS`."""
     cfg = dict(DEFAULTS)
     try:
-        import chisurf.settings as settings
+        import chisurf.core.settings as settings
 
         section = settings.cs_settings.get("data_loading")
         if isinstance(section, dict):
@@ -198,7 +198,7 @@ def _settings() -> dict:
 def _cache_dir() -> Path:
     """Directory used for ephemeral staging copies."""
     try:
-        import chisurf.settings as settings
+        import chisurf.core.settings as settings
 
         base = Path(settings._chisurf_user_cache_dir)
     except Exception:
@@ -632,6 +632,8 @@ def _cache_bytes(tttr) -> int:
     """
     for attribute in ("get_memory_usage_bytes", "nbytes"):
         value = getattr(tttr, attribute, None)
+        if value is None:
+            continue
         try:
             return int(value() if callable(value) else value)
         except Exception:

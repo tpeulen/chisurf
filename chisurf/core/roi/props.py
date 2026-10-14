@@ -1254,17 +1254,27 @@ def regionprops_table(
     0         0.5         0.5
     1         2.0         2.0
     """
-    items = list(label_image) if isinstance(label_image, (list, tuple)) else None
-    if items and all(isinstance(item, RegionProperties) for item in items):
-        props: list[RegionProperties] = items  # type: ignore[assignment]
+    # Already-measured regions are tabulated as they are; anything else is
+    # measured first.
+    measured: list[RegionProperties] = []
+    source: np.ndarray | ROI | list[ROI] | None = None
+    if isinstance(label_image, (np.ndarray, ROI)):
+        source = label_image
     else:
-        props = regionprops(
-            label_image,
-            intensity_image,
-            cache,  # type: ignore[arg-type]
-            extra_properties=extra_properties,
-            **kwargs,
+        items = list(label_image)
+        measured = [item for item in items if isinstance(item, RegionProperties)]
+        regions = [item for item in items if isinstance(item, ROI)]
+        if len(measured) + len(regions) != len(items) or (measured and regions):
+            raise TypeError("label_image must hold ROIs or measured regions, not a mix")
+        if not measured:
+            source = regions
+    props = (
+        measured
+        if source is None
+        else regionprops(
+            source, intensity_image, cache, extra_properties=extra_properties, **kwargs
         )
+    )
 
     if not props:
         # No regions still means a table with the right columns, so callers need

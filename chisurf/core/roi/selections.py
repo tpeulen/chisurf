@@ -30,10 +30,11 @@ region collection they all survive, because
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from .collection import RegionCollection, RegionEntry
 from .roi import ROI, EllipseROI, MaskROI, RectangleROI
@@ -71,8 +72,8 @@ def interval_roi(lower: float, upper: float, axis: int = 0, name: str = "") -> R
 
 
 def ellipse_from_covariance(
-    mu: Sequence[float],
-    cov: Sequence[Sequence[float]],
+    mu: ArrayLike,
+    cov: ArrayLike,
     sigma: float = 1.0,
     name: str = "",
 ) -> EllipseROI:

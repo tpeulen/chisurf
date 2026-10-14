@@ -163,9 +163,9 @@ class ICSReader(ExperimentReader):
         # Optional internal cache to reuse the most recently loaded image stack
         # for previews and data loading. Keyed by filename + selection.
         self._cache_filename: str | None = None
-        self._cache_images = None
-        self._cache_channels = None
-        self._cache_micro_time_ranges = None
+        self._cache_images: np.ndarray | None = None
+        self._cache_channels: tuple[int, ...] | None = None
+        self._cache_micro_time_ranges: tuple[tuple[int, int], ...] | None = None
 
     def autofitrange(self, data, **kwargs):
         """Return the full data range as the default fit interval.

@@ -571,7 +571,7 @@ class Pda2cReader(ExperimentReader):
         return 0, len(data.y.flatten())
 
     def read(
-        self, filename: typing.List[str] | None = None, *args, **kwargs
+        self, filename: str | typing.List[str] | None = None, *args, **kwargs
     ) -> chisurf.core.data.ExperimentDataGroup:
         """Read PDA TTTR data and return S1S2 histograms.
 
@@ -771,14 +771,14 @@ class Pda2cReader(ExperimentReader):
                 except Exception:
                     pass
                 t = self._open_tttr(fn.as_posix(), self.reading_routine)
-                for fn in filename[1:]:
-                    fn = pathlib.Path(fn)
-                    if fn.is_file():
+                for name in filename[1:]:
+                    path = pathlib.Path(name)
+                    if path.is_file():
                         try:
-                            logging.info("PDA TRACE: appending TTTR file %s", str(fn))
+                            logging.info("PDA TRACE: appending TTTR file %s", str(path))
                         except Exception:
                             pass
-                        d = self._open_tttr(fn.as_posix(), self.reading_routine)
+                        d = self._open_tttr(path.as_posix(), self.reading_routine)
                         t.append(d)
 
         if t is not None:

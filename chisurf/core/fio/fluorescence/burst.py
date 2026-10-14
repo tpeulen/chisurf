@@ -50,7 +50,7 @@ from chisurf.core.datastore import (
 DETECTOR_SENTINEL = -1.0
 
 
-def micro_time_resolution_ns(tttr, override: float = None) -> float:
+def micro_time_resolution_ns(tttr, override: float | None = None) -> float:
     """Nanoseconds per micro-time channel, or ``0.0`` if the file does not say.
 
     The mean micro time is written in nanoseconds rather than raw channels so
@@ -647,6 +647,8 @@ def _read_burst_analysis_from_container(path: pathlib.Path) -> tuple:
     from chisurf.core.fio.staging import open_tttr
 
     container, _run = split_container_path(path)
+    if container is None:
+        raise FileNotFoundError(f"{path} does not name a measurement container")
     tables = read_tables(path, operation=OPERATION)
     # The run actually read, named even when *path* named none: a result
     # computed from these rows is written as derived from this run, not from
@@ -743,7 +745,7 @@ def read_burst_analysis(
     >>> print(tttrs.keys())  # doctest: +SKIP
     """
 
-    def update_tttr_dict(data_path, tttrs: dict[str, tttrlib.TTTR] = dict()):
+    def update_tttr_dict(data_path, tttrs: dict[str, tttrlib.TTTR]) -> dict[str, tttrlib.TTTR]:
         """Load the TTTR file each distinct ``First File`` value names.
 
         One pass over the *distinct* names rather than over the burst rows: a
@@ -822,7 +824,7 @@ def read_burst_analysis(
     typed.set_n_rows(row_count(df))
     df = typed
 
-    tttrs = dict()
+    tttrs: dict[str, tttrlib.TTTR] = dict()
     update_tttr_dict(data_path, tttrs)
     return df, tttrs
 

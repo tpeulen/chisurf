@@ -425,7 +425,7 @@ class IcsCarpet:
     @property
     def shape(self) -> tuple[int, int, int]:
         """Shape of the carpet ``(n_lags, ny, nx)``."""
-        return tuple(np.asarray(self.correlation).shape)  # type: ignore[return-value]
+        return tuple(np.asarray(self.correlation).shape)
 
     @property
     def n_lags(self) -> int:

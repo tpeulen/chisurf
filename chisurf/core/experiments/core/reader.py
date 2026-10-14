@@ -648,9 +648,9 @@ class ExperimentReaderController(chisurf.core.base.Base):
     :class:`ExperimentReader` instance.
     """
 
-    experiment_reader: ExperimentReader = None
+    experiment_reader: ExperimentReader | None = None
 
-    def __init__(self, experiment_reader: ExperimentReader = None, *args, **kwargs):
+    def __init__(self, experiment_reader: ExperimentReader | None = None, *args, **kwargs):
         """Initialize the reader controller.
 
         Parameters

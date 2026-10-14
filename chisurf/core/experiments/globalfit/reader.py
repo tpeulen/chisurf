@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import numpy as np
+
 import chisurf.core.data
 from chisurf import typing
 from chisurf.core.experiments.core.reader import ExperimentReader
@@ -36,11 +38,14 @@ class GlobalFitSetup(ExperimentReader):
 
         return load_view_spec(pathlib.Path(__file__).with_name("globalfit_reader.view.json"))
 
-    def read(self, name: str = "Global-fit", *args, **kwargs):
+    def read(self, filename: str | None = None, *args, name: str = "Global-fit", **kwargs):
         """Create a placeholder data curve for global fitting.
 
         Parameters
         ----------
+        filename : str, optional
+            Unused: a global fit reads no file. Taken so the reader is called
+            like every other one.
         name : str
             Name for the placeholder data curve.
 
@@ -49,7 +54,9 @@ class GlobalFitSetup(ExperimentReader):
         chisurf.core.data.DataCurve
             A singleton data curve with zero-valued x/y.
         """
-        return chisurf.core.data.DataCurve(x=[0], y=[0], setup=self, name=name)
+        return chisurf.core.data.DataCurve(
+            x=np.zeros(1), y=np.zeros(1), setup=self, name=name
+        )
 
     def __str__(self):
         """Human-readable string representation."""

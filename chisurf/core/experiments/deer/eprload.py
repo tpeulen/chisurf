@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import typing
 
 import numpy as np
 
@@ -36,8 +37,14 @@ def load_bes3t(dsc_path: str, dta_path: str) -> tuple[np.ndarray, np.ndarray, di
     return _bes3t(dsc, dta)
 
 
-def find_companion(path: str) -> tuple[str | None, str | None]:
-    """Given a ``.DSC`` or ``.DTA`` path, return the ``(dsc, dta)`` pair."""
+def find_companion(path: str) -> tuple[str, str]:
+    """Given a ``.DSC`` or ``.DTA`` path, return the ``(dsc, dta)`` pair.
+
+    Raises
+    ------
+    ValueError
+        For any other suffix, which has no BES3T companion.
+    """
     root, ext = os.path.splitext(path)
     ext = ext.upper()
     if ext == ".DSC":
@@ -46,7 +53,7 @@ def find_companion(path: str) -> tuple[str | None, str | None]:
     if ext == ".DTA":
         dsc = root + (".DSC" if os.path.exists(root + ".DSC") else ".dsc")
         return dsc, path
-    return None, None
+    raise ValueError(f"not a BES3T file (.DSC/.DTA): {path!r}")
 
 
 def _bes3t(DSC: bytes, DTA: bytes) -> tuple[np.ndarray, np.ndarray, dict]:
@@ -58,7 +65,7 @@ def _bes3t(DSC: bytes, DTA: bytes) -> tuple[np.ndarray, np.ndarray, dict]:
     if nx is None:
         raise ValueError("No XPTS in DSC file.")
 
-    byteorder = ">" if par.get("BSEQ", "BIG") == "BIG" else "<"
+    byteorder: typing.Literal[">", "<"] = ">" if par.get("BSEQ", "BIG") == "BIG" else "<"
 
     fmt_map = {"C": "int8", "S": "int16", "I": "int32", "F": "float32", "D": "float64"}
     irfmt = par.get("IRFMT")

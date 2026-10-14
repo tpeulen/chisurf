@@ -339,7 +339,7 @@ def _distance_matrix(graph: Graph, weight: str) -> np.ndarray:
 
 def kamada_kawai_layout(
     graph: Graph,
-    dist: np.ndarray = None,
+    dist: np.ndarray | None = None,
     pos: dict | None = None,
     weight: str = "weight",
     scale: float = 1.0,

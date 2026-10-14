@@ -17,9 +17,12 @@ import logging
 import pathlib
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from chisurf.core.agent.spec import ToolError
+
+if TYPE_CHECKING:
+    from chisurf.core.experiments.bootstrap import ExperimentEntry
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +147,7 @@ class AgentContext:
         listing = ", ".join(entries[:30]) or "(empty)"
         return f"working directory is {root}; it contains: {listing}"
 
-    def ensure_experiments(self) -> dict[str, dict[str, list[str]]]:
+    def ensure_experiments(self) -> dict[str, ExperimentEntry]:
         """Make sure readers and model classes are registered.
 
         Returns

@@ -211,6 +211,8 @@ def read_graphml(path, node_type: typing.Callable = str) -> Graph:
         if _strip(element.tag) != "key":
             continue
         key_id = element.get("id")
+        if key_id is None:  # a <key> without an id cannot be referenced by any <data>
+            continue
         name = element.get("attr.name", key_id)
         type_name = element.get("attr.type", "string")
         default = None

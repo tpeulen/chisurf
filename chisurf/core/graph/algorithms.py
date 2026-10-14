@@ -119,7 +119,7 @@ def is_connected(graph: Graph) -> bool:
 
 def _undirected_neighbours(graph: Graph, node) -> typing.Iterator:
     """Yield the neighbours of ``node``, ignoring edge direction."""
-    if graph.is_directed():
+    if isinstance(graph, DiGraph):
         yield from graph.successors(node)
         yield from graph.predecessors(node)
     else:
@@ -281,7 +281,7 @@ def simple_cycles(graph: DiGraph) -> typing.Iterator[list]:
                 blocked.discard(current)
                 pending.extend(blocked_by.pop(current, ()))
 
-    remaining = sorted(graph.nodes, key=order.get)
+    remaining = sorted(graph.nodes, key=order.__getitem__)
     while remaining:
         subgraph_nodes = set(remaining)
         succ = {n: [s for s in succ_all[n] if s in subgraph_nodes and s != n] for n in remaining}
@@ -290,7 +290,7 @@ def simple_cycles(graph: DiGraph) -> typing.Iterator[list]:
             break
         # Start from the smallest-index node of the component holding it, which
         # is what makes every circuit reported exactly once.
-        start = min((min(c, key=order.get) for c in components), key=order.get)
+        start = min((min(c, key=order.__getitem__) for c in components), key=order.__getitem__)
         component = next(c for c in components if start in c)
         members = set(component)
         comp_succ = {n: [s for s in succ[n] if s in members] for n in component}

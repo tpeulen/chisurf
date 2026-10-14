@@ -292,7 +292,7 @@ class TCSPCSimulatorSetup(TCSPCReader):
         p0: float = 10000.0,
         rep_rate: float = 10.0,
         lifetime_spectrum: typing.List[float] | None = None,
-        instrument_response_function: chisurf.core.data.DataCurve = None,
+        instrument_response_function: chisurf.core.data.DataCurve | None = None,
         irf_mean: float = 5.0,
         irf_sigma: float = 0.2,
         add_noise: bool = True,

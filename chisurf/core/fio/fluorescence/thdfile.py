@@ -126,6 +126,8 @@ def read_tcspc_thd(
     rebin_x, rebin_y = rebin
 
     # Read THD file
+    if filename is None:
+        raise ValueError("read_tcspc_thd needs a filename")
     thd_reader = THDReader(filename)
     y = thd_reader.get_histogram()
 

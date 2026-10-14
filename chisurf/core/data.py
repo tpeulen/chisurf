@@ -38,7 +38,6 @@ class ExperimentalData(chisurf.core.base.Data):
     types such as :class:`DataCurve` derive from this class.
     """
 
-    meta_data: typing.Dict | None = None
     data_reader: ExperimentReader | None = None
     _experiment: Experiment | None = None
 

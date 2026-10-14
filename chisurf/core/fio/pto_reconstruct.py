@@ -44,9 +44,17 @@ class AnalysisReconstructor:
             if not candidates:
                 raise ValueError(f"No burst_selection artifact found in {self.pto_path}")
 
-            target_artifact = (
-                candidates[-1] if artifact_name is None else measurement.artifact(artifact_name)
-            )
+            if artifact_name is None:
+                target_artifact = candidates[-1]
+            else:
+                # Measurement has no by-name lookup (this called a missing
+                # ``measurement.artifact``); choose among the candidates.
+                named = [obj for obj in candidates if obj.name == artifact_name]
+                if not named:
+                    raise ValueError(
+                        f"no burst_selection artifact named {artifact_name!r} in {self.pto_path}"
+                    )
+                target_artifact = named[-1]
             target_uid = target_artifact.uid
 
             # Trace lineage back to instrument source
@@ -90,13 +98,16 @@ class AnalysisReconstructor:
                 tttr_data = tttrlib.TTTR(str(temp_stream_path), container_type)
 
                 # Re-run burst search using extracted parameters
-                int(settings.get("min_photons", settings.get("l_min", 30)))
-                int(settings.get("rate_window", settings.get("m_min", 5)))
+                min_photons = int(settings.get("min_photons", settings.get("l_min", 30)))
+                window_photons = int(settings.get("rate_window", settings.get("m_min", 5)))
                 T = float(settings.get("time_separation", settings.get("t_window_ms", 0.5)))
                 if T > 1.0:  # Convert ms to seconds if given in ms
                     T = T / 1000.0
 
                 bf = tttrlib.BurstFilter(tttr_data)
+                # The stored search parameters were read and then never handed
+                # to the filter, so the "reconstruction" ran tttrlib's defaults.
+                bf.set_burst_parameters(min_photons, window_photons, T)
                 bf.find_bursts()
                 n_bursts_reconstructed = bf.get_burst_count()
 

@@ -166,7 +166,7 @@ class GraphDef:
 
     def topological_node_ids(self) -> list[str]:
         # Simple topological sort using Kahn's algorithm
-        adj = {n.id: [] for n in self.nodes}
+        adj: dict[str, list[str]] = {n.id: [] for n in self.nodes}
         in_degree = {n.id: 0 for n in self.nodes}
 
         for edge in self.edges:

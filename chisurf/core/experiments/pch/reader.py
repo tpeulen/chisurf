@@ -77,7 +77,7 @@ class PCHReader(ExperimentReader):
             else None
         )
 
-    def autofitrange(self, data, **kwargs) -> tuple[int, int]:  # type: ignore[override]
+    def autofitrange(self, data, **kwargs) -> tuple[int, int]:
         """Return the full data range as the default fit interval.
 
         Parameters
@@ -280,7 +280,7 @@ class PCHReader(ExperimentReader):
         filename: str | Sequence[str] | None = None,
         *args,
         **kwargs,
-    ) -> chisurf.core.data.ExperimentDataCurveGroup:  # type: ignore[override]
+    ) -> chisurf.core.data.ExperimentDataCurveGroup:
         """Load a TTTR file and return a PCH histogram.
 
         Parameters

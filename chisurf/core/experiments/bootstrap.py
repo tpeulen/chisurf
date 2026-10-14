@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import importlib
 import logging
-from typing import Any
+from typing import Any, TypedDict
 
 import chisurf as cs
 import chisurf.core.experiments as experiments
@@ -31,6 +31,14 @@ from chisurf.core.experiments.core import Experiment
 logger = logging.getLogger(__name__)
 
 _SKIPPED_SECTIONS = {"experiment_types", "global"}
+
+
+class ExperimentEntry(TypedDict):
+    """One experiment's registrations, as :func:`describe_registry` reports them."""
+
+    readers: list[str]
+    models: list[str]
+    hidden: bool
 
 
 def _qt_widget_class(obj: Any) -> bool:
@@ -246,7 +254,7 @@ def _register_models(
 def ensure_experiments_registered(
     allow_widgets: bool | None = None,
     force: bool = False,
-) -> dict[str, dict[str, list[str]]]:
+) -> dict[str, ExperimentEntry]:
     """Populate :data:`chisurf.experiment` from the experiment configuration.
 
     Parameters
@@ -305,7 +313,7 @@ def ensure_experiments_registered(
     return describe_registry()
 
 
-def describe_registry() -> dict[str, dict[str, list[str]]]:
+def describe_registry() -> dict[str, ExperimentEntry]:
     """Return the readers and models registered per experiment.
 
     Returns
@@ -313,7 +321,7 @@ def describe_registry() -> dict[str, dict[str, list[str]]]:
     dict
         ``{experiment_name: {"readers": [...], "models": [...], "hidden": bool}}``.
     """
-    registry: dict[str, dict[str, list[str]]] = {}
+    registry: dict[str, ExperimentEntry] = {}
     for name, experiment in cs.experiment.items():
         registry[str(name)] = {
             "readers": [str(n) for n in experiment.reader_names],

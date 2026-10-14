@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import dataclasses
 import pathlib
+import typing
 
 import numpy as np
 
@@ -396,8 +397,9 @@ class DCDWriter:
         self.n_atoms = int(n_atoms)
         self.n_frames = 0
         self._path = pathlib.Path(path)
-        self._handle = open(path, "wb")
-        self._handle.write(
+        handle = open(path, "wb")
+        self._handle: typing.BinaryIO | None = handle
+        handle.write(
             _header_bytes(self.n_atoms, 0, first_step, step_interval, delta, title, False)
         )
 
@@ -414,9 +416,12 @@ class DCDWriter:
             frames = frames[np.newaxis]
         if frames.ndim != 3 or frames.shape[1:] != (self.n_atoms, 3):
             raise ValueError(f"expected (n_frames, {self.n_atoms}, 3), got {frames.shape}")
+        handle = self._handle
+        if handle is None:
+            raise ValueError("this DCD writer is closed")
         for frame in frames:
             for axis in range(3):
-                self._handle.write(
+                handle.write(
                     _record(np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes())
                 )
         self.n_frames += len(frames)

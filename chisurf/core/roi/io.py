@@ -110,7 +110,7 @@ def load_roi_metadata(path: str) -> dict:
     return dict(data.get("metadata", {})) if isinstance(data, dict) else {}
 
 
-def rois_from_cellpose(path: str, crop: bool = True) -> list[ROI]:
+def rois_from_cellpose(path: str, crop: bool = True) -> list[MaskROI]:
     """Read a Cellpose segmentation into one region per object.
 
     Cellpose writes a ``*_seg.npy`` holding a pickled dictionary whose ``masks``
@@ -160,7 +160,7 @@ def rois_from_cellpose(path: str, crop: bool = True) -> list[ROI]:
     return labels_to_rois(labels.astype(int), crop=crop)
 
 
-def rois_from_label_image(path: str, crop: bool = True) -> list[ROI]:
+def rois_from_label_image(path: str, crop: bool = True) -> list[MaskROI]:
     """Read an integer label image (TIFF or NumPy) into regions.
 
     Parameters
@@ -220,7 +220,7 @@ def load_regions(path: str, crop: bool = True) -> list[ROI]:
     if suffix == ".json":
         return load_rois(str(p))
     if p.name.lower().endswith("_seg.npy"):
-        return rois_from_cellpose(str(p), crop=crop)
+        return list(rois_from_cellpose(str(p), crop=crop))
 
     if suffix == ".npy":
         arr = np.asarray(np.load(str(p)))
@@ -234,7 +234,7 @@ def load_regions(path: str, crop: bool = True) -> list[ROI]:
     # An integer image carrying more than one object is a labelling, not a
     # mask: reading it as a mask would merge every object into one region.
     if np.issubdtype(arr.dtype, np.integer) and len(np.unique(arr[arr != 0])) > 1:
-        return labels_to_rois(arr.astype(int), crop=crop)
+        return list(labels_to_rois(arr.astype(int), crop=crop))
     return [MaskROI(arr != 0, name=p.stem)]
 
 

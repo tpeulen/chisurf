@@ -266,7 +266,7 @@ def save_setups(
     active-user resolution seams (used by tests and per-setup-type modules);
     they default to the shared ``get_db`` / ``resolve_active_user_id``.
     """
-    if use_mmfdb(file_path, config.canonical_file):
+    if file_path is None or use_mmfdb(file_path, config.canonical_file):
         db = (get_db_fn or get_db)()
         if db is None:
             print(f"Error: MMFDB unavailable for {config.description}; nothing was saved.")

@@ -602,7 +602,7 @@ class Measurement:
     def __enter__(self) -> Measurement:
         return self
 
-    def __exit__(self, exc_type, exc, tb) -> bool:
+    def __exit__(self, exc_type, exc, tb) -> None:
         # A read-only handle has nothing to commit, and asking it to would
         # turn an ordinary read into an error on the way out of the block.
         try:
@@ -611,7 +611,6 @@ class Measurement:
             self.close()
         finally:
             self._release_lock()
-        return False
 
     def _release_lock(self) -> None:
         """Drop the writer lock, if this handle holds one."""
