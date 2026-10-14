@@ -4,7 +4,7 @@ title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
 resource: chisurf/emtk/main_app.py, chisurf/emtk/post_show.py, chisurf/startup/services.d/35_emtk_post_show.json, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/status_strip.py, chisurf/emtk/fit_pages/plots.py, chisurf/emtk/fit_pages/surface.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
-timestamp: '2026-10-13T00:00:00Z'
+timestamp: '2026-10-14T00:00:00Z'
 ---
 
 # Where to pick this up
@@ -31,139 +31,13 @@ parity with the Qt status bar on 2026-10-13 (item 5), and the Qt post-show stage
 window run in the shell the same day: `check_updates` as a post-show stage, `warmup_imports` by the session's
 own startup stages (item 5): S5 is done.
 
-1. Measure: the allow-list is **empty** since the mmfdb_admin slice (2026-10-13; 30 entries at chisurf 7e0514d95, all mmfdb_admin, 33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
-   64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
-   (186 before that), 210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
-   slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
-   `grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .`; per area `grep -v '^#' test/plugin_qt_allowlist.txt |
-   cut -d/ -f3 | sort | uniq -c`: 0 everywhere. `test/test_plugin_qt_free.py` now rejects any Qt import under
-   `chisurf/plugins/`.
-   **mmfdb_admin slice (2026-10-13, 30 lines → 0).** The Qt `MMFDBWidget` (`gui/tool.py`, 7078 lines), its mixins,
-   entity/metadata docks, generic form, AutoForm entity form, login dialog, the six workflow views, eLabFTW view and
-   the optical-component dock/detail form/duplicates dialog/SpectrumView shim are deleted; the manifest names only
-   `entrypoints.emtk`. Evidence: the Qt half re-captured live before any change (459 controls,
-   `okf/plugins/emtk-ports/mmfdb_admin/retire_qt_before.json`), an audit of every *reachable* Qt action against the
-   twin (no backend call lost), and the after inventory (`retire_compare.json`). What the twin lacked was added, not
-   explained away: Enter in a connection field logs in, Enter in the eLabFTW search lists, Spectra search as you type
-   with **Auto**, the Spectra row menu (Open details, copy row/cell, check/uncheck selected, select all, clear
-   selection), Find Duplicates progress + Cancel, a click on a provenance **edge** shows its record (a node click
-   showed nothing either: the payload is a dict), the entity row's UUID on hover, the rail pictograms, **Open in ndX**
-   on Processed Products (`open_in_ndx` + `record_burst_ids_against_product`, hidden in Qt), and **Demo data…** (the
-   Qt ten-clicks-on-the-header population, never wired). Every Qt widget test (12 files, ~70 tests) is ported to the
-   app and the emtk Driver; `test/gui/test_mmfdb_demo_captions.py` too. Found and fixed at the root: emtk forms shared
-   widget ids across forms (toolbar `import_file` swallowed the panel's *Import file* press; emtk 0.1.12 scopes ids
-   per `FormState`), emtk value fields had no Enter action nor search-as-you-type (`enter_call`, `live`, emtk 0.1.11),
-   mmfdb read stored spectra bytes with `json.loads` so export validation failed for any sample with a measured
-   spectrum (mmfdb 2180b1a), and the twin then skipped validation silently (now it says so and asks).
-   Deliberate differences: the entity table's live filter has no *Auto* toggle (the emtk filter is client-side), and
-   window geometry is the host's (the app keeps the panel and its splits).
-   **ndX + chimol leftovers slice (2026-10-13, 8 lines → 0).** *ndX*: ChiSurf's Qt `NdxWindow`
-   (`plugins/ndxplorer/window.py`, the app in a `ChisurfDockTool`) is deleted; the manifest names only
-   `entrypoints.emtk` (`gui/app.py:make_app`) and declares window statefulness, so the `--qt` shell hosts the app
-   generically (`build_plugin_widget` → `ControlHost`) and keeps its geometry. What the window added is Qt-free:
-   `open_in_ndx` / `show_table_in_ndx` (hand-off in the emtk shell, else the open app, else the ChiSurf window
-   opens the plugin), `selection_provenance.record_burst_ids_against_product` (the MMFDB admin's *Open in ndX*),
-   close-on-host-detach and the Global View slot (already `make_app`'s). `find_ndx_windows` returned nothing for
-   the Qt window (it looked for `constants`/`data_source` on top-level widgets), so Accurate FRET's *Load from /
-   Push to ndX* never found it; it now returns the `"ndx"` session sources. Before/after on ndX's MFD fixture
-   (12237 bursts): 66 drawn / 39 interactive controls equal (`okf/plugins/emtk-ports/ndxplorer/retire_*`).
-   *chimol*: the display-defaults prompt is chimol's in-viewport question (`chimol.ui.dialogs.choice` +
-   `display_defaults`, chimol 19444d1), asked by `ChimolApp.run` and by ChiSurf's `make_app`; before/after in
-   `okf/plugins/emtk-ports/chimol/retire_prompt_*` (every control present; no icon, singular grammar, ASCII
-   arrow). `screenshot.py` grabs the offscreen canvas (`grab_window` / `grab_view` / `save_png`, refuses uniform
-   images); `chrome_baseline.capture` paints through the `QuadPainter` + `quad_raster` into `renders/chrome_quads`
-   and keeps `renders/chrome_baseline` (the QPainter half, byte-checked against the live QPainter just before) frozen;
-   the reachable-control inventory test passes against it. Both chimol benchmarks and `test_occlusion_switch`
-   (which had always skipped offscreen) run on `ChimolApp`.
-   **chimol slice (2026-10-13, 111 → 4).** The 110 test files under `chisurf/plugins/chimol/test/` drove
-   `chimol.hosts.qt.MolViewPluginWindow` (or a Qt-bound `Viewer()`) and pumped a `QApplication`; they now drive the
-   toolkit-free host every embedder uses -- `ChimolApp` on the offscreen canvas -- through the helper
-   `chisurf/plugins/chimol/test/native_window.py` (`NativeWindow`, `native_viewer`, `process_events`): pointer
-   events go to the renderer's `on_pointer_press/move/release` (what emtk's `CanvasEvents` delivers), wheels to
-   `on_wheel`, frames come back from `draw_frame`. Mouse selection runs for real (25 tests: click, ctrl-shift click,
-   shift box, middle box, pan, pivot). The Qt *window* went with them: the manifest has no `gui` entry, both shells
-   open `app:make_app` (the `--qt` shell hosts it in a `ControlHost`) and `chisurf/plugins/chimol/__init__.py`
-   imports no Qt. Before/after (148L, 1RTD, 1200x800; Qt half from a worktree of chimol `b2a3f2b`) in
-   `okf/plugins/emtk-ports/chimol/retire_*`: menus, toolbar, objects, panel rows and sequence rows equal, nothing
-   lost; the Qt half's only Qt controls were the hosting widgets. The Qt facts are frozen in
-   `chimol/test/qt_reference.json` (`test_emtk_chimol_parity.py`). Porting found the toolkit-free host short of the
-   Qt window in six places, each fixed in chimol rather than in the test: no structure reader (ChiSurf's
-   `Structure` now injected via `chimol.io.structure.set_structure_factory`, so Rg and sequence metadata appear),
-   no 3-D labels and no rubber-band box on screen (now emtk quads, `chimol/viewport/screen_overlays.py`; a
-   `distance` showed its dashes and no number), no chain markers / `seq_view` / hidden-object rule in the sequence
-   strip (`hosts/base.py::sequence_rows_for_object`), no degraded-load report, no canvas `resize`, a backdrop path
-   that was never validated. The 4 left then (the display-defaults prompt test, `chrome_baseline.py`,
-   `screenshot.py`, `test_screenshot_helper.py`) went in the leftovers slice above. Two lighting pixel tests ran for the first time (they had always skipped
-   on the Qt offscreen platform) and are strict xfails: silhouettes and the depth cue move no pixels in the
-   toolkit-free frame (`okf/references/known-issues.md`).
-   A test line goes by porting the test to the native app (or `emtk.testing.Driver`), never by deleting it; a Qt
-   host module goes when the emtk shell opens its twin (the manifest drops `gui`; the `--qt` window then hosts the
-   emtk app in a `ControlHost`, as for trace_browser). Each retirement re-captures before/after with
-   `python -m test.gui.emtk_port_parity before|after|compare <id> --out DIR` before the code is touched, and keeps
-   `retire_qt_before.json` / `retire_compare.json` in `okf/plugins/emtk-ports/<id>/` (PNGs there are gitignored).
-   **"Cannot be frozen" did not survive** (2026-10-13 leftovers slice): a live-Qt fact is frozen as
-   `qt_reference.json` beside the test, recorded once from the live widget and named by `_recorded.source_commit`.
-   Facts that follow `docs/` are frozen as a *rule*: help's `qt_home_links` / `qt_breadcrumb` restate the Qt start
-   page and breadcrumb Qt-free, and the record holds the widget's output beside the rule's output on the same
-   tree. Fresh ids are normalised (`<project NAME>`, `<version NAME vN>`, `<timestamp>`, `<user>`: project_browser).
-   Per-case dialogs are recorded per case (switch_user: 15 `LoginDialog` cases through the test's own `world`
-   fixture). The recorders are throwaway scripts and are not committed: a Qt importer under `chisurf/plugins/` is a
-   new allow-list entry. Retired that slice: the games' Qt hub and four Qt game containers (each was a chigame canvas
-   plus a *Sound* button; the `capture_qt.py` scripts went because the Qt renders are committed under
-   `games/*/test/renders/`), the F-test `FTestTool`, the Global View `GraphWizard` host and `wizard.py`, and the
-   Project Browser `ProjectBrowserTool` (its `SaveProjectDialog` / `CollisionDialog` are the Qt window's File-menu
-   dialogs and moved to `chisurf/gui/widgets/project_dialogs.py`, which goes with the Qt window).
-   **Trace Browser host retired (2026-10-13)** by a general **plugin hand-off**: a plugin calls
-   `chisurf.core.plugin.handoff.hand_off(plugin_id, kind, payload)`; the shell (`EmtkShellApp.hand_off`, installed as
-   the process's host) opens the target as a dock and, once `BackgroundBuild` has made its app, calls the receive hook
-   the target declares in its manifest `accepts` (`HandoffSpec`: `name`, `receive` = `module:function(app, payload)`,
-   `required` keys). Declared: Intensity Trace `tttr_trace`, TTTR Time Window `tttr_files`, ndX `open_path` + `table`.
-   Routed through it: Trace Browser HMM/TW/NDX (`gui/handoffs.py`, replacing `host.py` + `host_lookup.py`), H2MM
-   *dwells → ndX*, Burst Selection *send to ndX* (via `mmfdb_launcher.open_path_in_ndxplorer`) and the sampling
-   diagnostics page (`ndxplorer.gui.app.open_in_ndx`); each keeps its old path only when no shell is open. Evidence in
-   `okf/plugins/emtk-ports/trace_browser/`: `retire_qt_before.json` (the Qt adapter's three windows, recorded live
-   before the change), `retire_after.json`, `retire_compare.json` (0 controls lost in the browser and in each target;
-   deliberate: window → dock, one dock per tool so a second press re-delivers, file shown in the tool rather than the
-   window title). The T5 test is ported to the real shell driven by `emtk.testing.Driver` (real clicks, real
-   `BH_SPC132.spc`, three hand-offs asserted and rendered); mechanism tests in `test/core/test_plugin_handoff.py`.
-   Trap: a hosted child's `form.rects` are local to its dock box (`host_child` draws with `local_coordinates`), so a
-   click is `hosted.box` origin + rect. Not routed yet (other lanes' files): help/code_editor's `host_in_shell` page/file opening (could become `accepts` kinds
-   `open_page` / `open_file`). Under `--qt` the three buttons are now greyed (no Qt adapter); the Qt window is legacy.
-   **HydroPro, Code Editor and Help retired (2026-10-13, 25 lines struck; HEAD then has 159 with the Trace
-   Browser's 2).** HydroPro: the 12 parity cases frozen from the live tool with the fake HYDRO program
-   (`hydropro/test/qt_reference.json`, paths as `<home>`), Qt tool, dialogs, `hydrogui.py` and the QSettings
-   isolation deleted; the real-state guard runs the native capture and `chisurf.emtk.state` round trip. Help: the
-   Qt `HelpWidget`, Ask panel and figure dialog deleted, `gui/tool.py` keeps only the Qt host `HelpEmtkTool`;
-   `api/theme.py` takes emtk's palette (`from_tokens`). Code Editor: control parity first (lost `[]`,
-   `okf/plugins/emtk-ports/code_editor/parity_*`), out of `emtk_preview.json` (now empty), then the six Qt modules
-   deleted. Every Qt widget test was ported to the emtk app, and each behaviour the twin lacked was added to it,
-   not explained away (search ranking, reading measure, figure viewer, Shift+wheel zoom, Ask texts; menus,
-   Symbols/Kernel docks, project table, regex find, assistant file writes and modes, notebook terminal mirroring
-   and output clamp). Both plugins declare hand-offs (`help` `open_page`, `code_editor` `open_file`) and
-   `chisurf/emtk/{doc,code}_links.py` route through `chisurf.core.plugin.handoff`. Open from this slice: emtk
-   `38d6f8a` (0.1.10, regex find) is committed, not pushed, and `EMTK_MIN_VERSION` stays 0.1.8 -- the arm64 env's
-   emtk 0.1.9 shows "Regex search needs emtk 0.1.10" in the find bar until the pin moves; the assistant reports
-   validation issues but no longer re-prompts the model to fix them (known issues). Traps met: a Driver click
-   after a model change needs a frame first (rects are from the last frame); `im.begin_menu` has no nested
-   submenus (File > Open Notebook... is a picker); emtk tooltips need a hover delay, so tests read a state
-   (`hovered_figure`) instead; the global `gui.editor.enable_lsp` now starts pylsp in every editor app built.
-   Left, and why (each reason re-checked against the challenge):
-   Open: **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
-     the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
-   Done 2026-10-13: **mmfdb_admin** (30 lines; see the slice paragraph at the top of this item).
-   Done 2026-10-13 (acq/lightpath/batch/number_quest/plugins-root slice, −14): **acq** device dialogs (fa6f18819;
-     BH 40→90, BrickMic 10→61, PicoQuant 12→58, simulation 61→118 controls, lost [], `emtk-ports/acq/retire_*`;
-     `test_setup_widgets.py` drives the emtk dialog); **lightpath_simulator** Qt host + Qt Easy Mode (7e0514d95;
-     helpers in `core/easy_config.py`; Easy Mode 49→125 controls, lost []; the comparison found `_graph_to_config`
-     reading pre-schema port numbers, so Easy Mode had shown no dichroic, splitter spectrum or bandpass; parity
-     frozen in `tests/qt_reference.json`); **batch_analysis** Qt run (3b978b173; Qt run frozen in
-     `test/qt_reference.json`; the per-run fit picture in the DOCX, lost in the first port, is back: the template
-     fit's `FitWindow` on the CPU rasteriser, drawn on the polling thread); **number_quest** Qt container
-     (5d6b6bf8b); plugins root (89a74df47): `icon_utils.py` → `chisurf/gui/plugin_icons.py` (Qt shell code), the
-     QtSvg rasteriser and the `qapp` fixture (pytest-qt supplies it) deleted, the cookiecutter template generates an
-     emtk + AutoForm plugin (rendered and its tests run). Follow-up the same day closed the leftovers: acq BH/PicoQuant/BrickMic cards are view.json specs (655a57efd), lightpath detector names, the Detector Wizard's last-config write and a missed-completion race behind three click-test failures (26367e91e).
-   Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
-   `emtk.events`, not `emtk.app`).
+1. Measure: the plugin Qt allow-list is **empty** (since the mmfdb_admin slice, 2026-10-13; 244 before the
+   2026-10-12 test-port slice). Re-derive with `grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .` (0); guard
+   `test/test_plugin_qt_free.py`, which now rejects any Qt import under `chisurf/plugins/`. Every plugin is an emtk
+   app the `--qt` shell hosts through `ControlHost`. A Qt importer under `chisurf/plugins/` is a new failure, so
+   one-off Qt recorders stay uncommitted. The slice-by-slice record (counts, before/after evidence, what each
+   twin gained, traps) is in "History" below. Trap: the arm64 env imports a non-editable emtk from
+   site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in `emtk.events`, not `emtk.app`).
 2. Measure: the model editor's curve pickers and the nine `custom` sections (plus a lifetime group's
    `lifetime_amplitude_options`) are resolved by `chisurf/server/services/model_sections.py` and drawn by
    `chisurf/emtk/model_sections.py`; writes go through `model.curve.set` / `model.curve.unload` /
@@ -334,52 +208,17 @@ own startup stages (item 5): S5 is done.
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
    repro is `test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer`. Plugins with only an
    `action` entrypoint run from the shell (`run_plugin_action`; `menu_entries()` now 29 of 29 visible manifests).
-9. Blocked: S6 (delete the Qt shell) waits for item 6 and the owner's call. Done: the emtk shell is the
-   default window (`python -m chisurf`, the installers' launchers too; owner decision 2026-10-11), the Qt
-   shell stays behind `python -m chisurf --qt` as the reference the emtk shell is measured against until
-   parity; `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
-   (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`).
-   Every slice S1-S5 is at control parity (each `KNOWN_GAPS` empty). Item 6 is done (2026-10-13). Done the same
-   day (S6-blocker slice, chisurf 6300bcb8f, baf8e7f75, 23004c834, 94c945927 and the test port): chiplot's core
-   names no Qt -- panels, `PanelGrid` and the image viewer `ImagePanel` are emtk controls, hosts attach through a
-   duck-typed hook, `export_image` draws on emtk's CPU rasteriser -- and the `chisurf.gui.chiplot` widgets
-   (`Plot`, `PanelPlot`, `Grid`, `ImageView`, `VolumeView`) are deleted: every Qt form that showed one draws a
-   core panel and only hosts it with `cp.host()` (AutoForm sections decay_conv, phasor, quiver, waterfall, image,
-   plot, L-curve, the r(t) window; decay_panel, the PCH/TCSPC/ICS reader previews, the κ² dialogs,
-   spectrum_view, waterfall_plot, the photon-filter wizard); before/after from the HEAD snapshot, 14 of 17 widget
-   pairs pixel-equal, the three image viewers at control parity with the frame `QSlider`/`QLabel` drawn by emtk
-   inside the viewer (`chisurf/chiplot/image_panel.py`). What blocks deleting `gui/main.py` and `gui.ui` now: item 1
-   (the Qt hosts and tests on the allow-list, 64), and the Qt forms of the `--qt` reference shell that host
-   panels (the Qt AutoForm renderer and its sections, the Qt reader widgets, the κ² dialogs), whose emtk twins
-   exist; `chisurf.gui.chiplot` (`host`, `PanelHost`, `ImagePanelHost`) goes with them. Striking `qtpy` needs both,
-   and the owner's call. **chimol: `hosts/qt/` deleted (2026-10-13, chimol a53e512).** `Viewer` is never a
-   widget: it sits on `hosts/toolkit.py`'s stand-ins, which no longer import qtpy (`HeadlessViewer` is an alias),
-   and `Viewer()` with no `renderer_factory` builds into `SceneSink` (every host passes its own renderer). Gone
-   with it: the lazy `MolViewPluginWindow` export, `python -m chimol --qt` (it now says the Qt window was retired
-   and opens the desktop window), the Qt type hints in `commands/`, the mock viewer's `QObject` base, and
-   ChiSurf's unused Qt AutoForm `chimol` section (`chisurf/gui/autoform/sections/chimol_section.py`; no
-   `view.json` used it, and it embedded `Viewer` as a `QWidget`). Measure: `python tools/check_imports.py` in
-   chimol (299 modules import with Qt blocked, 0 allowed failures); `tests/test_viewer_is_toolkit_free.py`;
-   ChiSurf `chisurf/plugins/chimol/test/qt_import_allowlist.txt` is empty and `test_qt_seam.py` asserts
-   `hosts/qt` stays gone. Before/after: `okf/plugins/emtk-ports/chimol/retire_hostqt_*` -- ChiSurf's emtk ChiMOL
-   app on 148L and 1RTD at 1200x800 is pixel-identical with chimol 07a9b28 and a53e512, and its control inventory
-   matches the Qt before-grab `retire_qt_before_148l.png` (lost: none). Tests: the five chimol tests and the
-   ChiSurf chimol tests that imported the Qt host were ported (menu tables from `chimol.ui.menus.bar`,
-   `grouped_display_order` / `sequence_rows_for_object` from `chimol.hosts.base`, host checks on `ChimolApp` +
-   `Page`); `test/console/test_command_dispatch_rule.py` now drives `chimol.repl` + `ChimolDispatcher` with no
-   toolkit. **Retired** because they tested only the Qt window: `test_migrated_tool_windows.py::
-   test_chimol_window_constructs`, `test_object_list_groups.py::test_the_qt_window_uses_the_shared_builder`,
-   `test_render_appearance.py::test_the_default_layout_sizes_are_pixels` (Qt dock splitter sizes),
-   `test_keyboard_layout.py::test_the_qt_host_passes_the_character_qt_produced`, `test_dropped_files.py::
-   test_the_qt_widget_accepts_dropped_files` + `test_the_qt_host_describes_itself_at_all`,
-   `test_canvas_cadence.py`'s two Qt `resolve_present_method` tests, and `test_wgpu_view.py`'s Qt
-   `default_renderer` selection (replaced by a `Viewer()` -> `SceneSink` test). Leftovers closed the same day
-   (chimol a245145): the widget stand-ins moved from `hosts/toolkit.py` to `core/toolkit.py`, so
-   `chimol.core` imports nothing from `chimol.hosts` (guard `tests/test_core_layering.py`); the dead
-   `CHIMOL_TOOLKIT=none` settings are gone from chimol's tests, AGENTS.md, `tools/check_imports.py` and the ChiSurf
-   chimol tests; and the desktop (`CanvasView`) and browser (`Page`) hosts both declare `labels` and `ray_image`,
-   which both draw through `CanvasRenderer.frame_arguments` (label quads in `chrome`, a traced frame in
-   `overlay`; `tests/test_host_features.py` checks the frame, `test_browser_picking.py` keeps the two sets equal).
+9. Blocked: S6 waits only for the owner's go-ahead: delete the Qt shell (`chisurf/gui/main.py`, `gui.ui`,
+   `--qt`) and strike qtpy / pyqt from `pixi.toml`, `pyproject.toml` and the recipe. Measure: plugin Qt allow-list 0
+   (item 1); chimol imports no Qt (chimol a53e512, a245145; `hosts/qt` deleted); `test/ui_file_allowlist.txt` still
+   lists 1 (`gui.ui`). The emtk shell is the default window (`python -m chisurf` and the installers' launchers;
+   owner decision 2026-10-11), the Qt shell stays behind `python -m chisurf --qt` as the parity reference;
+   `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
+   (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`). Every
+   slice S1-S5 is at control parity (each `KNOWN_GAPS` empty) and item 6 is done. What goes with S6: the Qt forms
+   of the `--qt` reference shell that host panels (the Qt AutoForm renderer and its sections, the Qt reader
+   widgets, the κ² dialogs; their emtk twins exist) and `chisurf.gui.chiplot` (`host`, `PanelHost`,
+   `ImagePanelHost`). The S6-blocker slice and the chimol `hosts/qt` deletion are in "History" below.
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit
@@ -674,6 +513,187 @@ A missing control blocks the slice.
   - Strike `qtpy`, `pyqt` and `QT_API` from `pixi.toml`.
   - Gate: W7 click-all is green on the native host, and startup is no slower than the Qt baseline.
 - **S7: chimol.** Drop `hosts/qt`, and port the 110 chimol tests to the native host.
+
+# History
+
+Slice records moved out of "Where to pick this up" on 2026-10-14, unchanged except for re-wrapping; the
+resume items now carry only the current measurement.
+
+**Plugin Qt allow-list, 244 → 0 (former item 1).** Measure: the allow-list is **empty** since the mmfdb_admin slice (2026-10-13; 30 entries at chisurf 7e0514d95, all mmfdb_admin, 33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
+64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
+(186 before that), 210 before the 2026-10-13 leftovers slice, 211 before the S6-blocker
+slice, 221 before the 2026-10-13 slice, 244 before the 2026-10-12 test-port slice). Re-derive with
+`grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .`; per area `grep -v '^#' test/plugin_qt_allowlist.txt |
+cut -d/ -f3 | sort | uniq -c`: 0 everywhere. `test/test_plugin_qt_free.py` now rejects any Qt import under
+`chisurf/plugins/`.
+**mmfdb_admin slice (2026-10-13, 30 lines → 0).** The Qt `MMFDBWidget` (`gui/tool.py`, 7078 lines), its mixins,
+entity/metadata docks, generic form, AutoForm entity form, login dialog, the six workflow views, eLabFTW view and
+the optical-component dock/detail form/duplicates dialog/SpectrumView shim are deleted; the manifest names only
+`entrypoints.emtk`. Evidence: the Qt half re-captured live before any change (459 controls,
+`okf/plugins/emtk-ports/mmfdb_admin/retire_qt_before.json`), an audit of every *reachable* Qt action against the
+twin (no backend call lost), and the after inventory (`retire_compare.json`). What the twin lacked was added, not
+explained away: Enter in a connection field logs in, Enter in the eLabFTW search lists, Spectra search as you type
+with **Auto**, the Spectra row menu (Open details, copy row/cell, check/uncheck selected, select all, clear
+selection), Find Duplicates progress + Cancel, a click on a provenance **edge** shows its record (a node click
+showed nothing either: the payload is a dict), the entity row's UUID on hover, the rail pictograms, **Open in ndX**
+on Processed Products (`open_in_ndx` + `record_burst_ids_against_product`, hidden in Qt), and **Demo data…** (the
+Qt ten-clicks-on-the-header population, never wired). Every Qt widget test (12 files, ~70 tests) is ported to the
+app and the emtk Driver; `test/gui/test_mmfdb_demo_captions.py` too. Found and fixed at the root: emtk forms shared
+widget ids across forms (toolbar `import_file` swallowed the panel's *Import file* press; emtk 0.1.12 scopes ids
+per `FormState`), emtk value fields had no Enter action nor search-as-you-type (`enter_call`, `live`, emtk 0.1.11),
+mmfdb read stored spectra bytes with `json.loads` so export validation failed for any sample with a measured
+spectrum (mmfdb 2180b1a), and the twin then skipped validation silently (now it says so and asks).
+Deliberate differences: the entity table's live filter has no *Auto* toggle (the emtk filter is client-side), and
+window geometry is the host's (the app keeps the panel and its splits).
+**ndX + chimol leftovers slice (2026-10-13, 8 lines → 0).** *ndX*: ChiSurf's Qt `NdxWindow`
+(`plugins/ndxplorer/window.py`, the app in a `ChisurfDockTool`) is deleted; the manifest names only
+`entrypoints.emtk` (`gui/app.py:make_app`) and declares window statefulness, so the `--qt` shell hosts the app
+generically (`build_plugin_widget` → `ControlHost`) and keeps its geometry. What the window added is Qt-free:
+`open_in_ndx` / `show_table_in_ndx` (hand-off in the emtk shell, else the open app, else the ChiSurf window
+opens the plugin), `selection_provenance.record_burst_ids_against_product` (the MMFDB admin's *Open in ndX*),
+close-on-host-detach and the Global View slot (already `make_app`'s). `find_ndx_windows` returned nothing for
+the Qt window (it looked for `constants`/`data_source` on top-level widgets), so Accurate FRET's *Load from /
+Push to ndX* never found it; it now returns the `"ndx"` session sources. Before/after on ndX's MFD fixture
+(12237 bursts): 66 drawn / 39 interactive controls equal (`okf/plugins/emtk-ports/ndxplorer/retire_*`).
+*chimol*: the display-defaults prompt is chimol's in-viewport question (`chimol.ui.dialogs.choice` +
+`display_defaults`, chimol 19444d1), asked by `ChimolApp.run` and by ChiSurf's `make_app`; before/after in
+`okf/plugins/emtk-ports/chimol/retire_prompt_*` (every control present; no icon, singular grammar, ASCII
+arrow). `screenshot.py` grabs the offscreen canvas (`grab_window` / `grab_view` / `save_png`, refuses uniform
+images); `chrome_baseline.capture` paints through the `QuadPainter` + `quad_raster` into `renders/chrome_quads`
+and keeps `renders/chrome_baseline` (the QPainter half, byte-checked against the live QPainter just before) frozen;
+the reachable-control inventory test passes against it. Both chimol benchmarks and `test_occlusion_switch`
+(which had always skipped offscreen) run on `ChimolApp`.
+**chimol slice (2026-10-13, 111 → 4).** The 110 test files under `chisurf/plugins/chimol/test/` drove
+`chimol.hosts.qt.MolViewPluginWindow` (or a Qt-bound `Viewer()`) and pumped a `QApplication`; they now drive the
+toolkit-free host every embedder uses -- `ChimolApp` on the offscreen canvas -- through the helper
+`chisurf/plugins/chimol/test/native_window.py` (`NativeWindow`, `native_viewer`, `process_events`): pointer
+events go to the renderer's `on_pointer_press/move/release` (what emtk's `CanvasEvents` delivers), wheels to
+`on_wheel`, frames come back from `draw_frame`. Mouse selection runs for real (25 tests: click, ctrl-shift click,
+shift box, middle box, pan, pivot). The Qt *window* went with them: the manifest has no `gui` entry, both shells
+open `app:make_app` (the `--qt` shell hosts it in a `ControlHost`) and `chisurf/plugins/chimol/__init__.py`
+imports no Qt. Before/after (148L, 1RTD, 1200x800; Qt half from a worktree of chimol `b2a3f2b`) in
+`okf/plugins/emtk-ports/chimol/retire_*`: menus, toolbar, objects, panel rows and sequence rows equal, nothing
+lost; the Qt half's only Qt controls were the hosting widgets. The Qt facts are frozen in
+`chimol/test/qt_reference.json` (`test_emtk_chimol_parity.py`). Porting found the toolkit-free host short of the
+Qt window in six places, each fixed in chimol rather than in the test: no structure reader (ChiSurf's
+`Structure` now injected via `chimol.io.structure.set_structure_factory`, so Rg and sequence metadata appear),
+no 3-D labels and no rubber-band box on screen (now emtk quads, `chimol/viewport/screen_overlays.py`; a
+`distance` showed its dashes and no number), no chain markers / `seq_view` / hidden-object rule in the sequence
+strip (`hosts/base.py::sequence_rows_for_object`), no degraded-load report, no canvas `resize`, a backdrop path
+that was never validated. The 4 left then (the display-defaults prompt test, `chrome_baseline.py`,
+`screenshot.py`, `test_screenshot_helper.py`) went in the leftovers slice above. Two lighting pixel tests ran for the first time (they had always skipped
+on the Qt offscreen platform) and are strict xfails: silhouettes and the depth cue move no pixels in the
+toolkit-free frame (`okf/references/known-issues.md`).
+A test line goes by porting the test to the native app (or `emtk.testing.Driver`), never by deleting it; a Qt
+host module goes when the emtk shell opens its twin (the manifest drops `gui`; the `--qt` window then hosts the
+emtk app in a `ControlHost`, as for trace_browser). Each retirement re-captures before/after with
+`python -m test.gui.emtk_port_parity before|after|compare <id> --out DIR` before the code is touched, and keeps
+`retire_qt_before.json` / `retire_compare.json` in `okf/plugins/emtk-ports/<id>/` (PNGs there are gitignored).
+**"Cannot be frozen" did not survive** (2026-10-13 leftovers slice): a live-Qt fact is frozen as
+`qt_reference.json` beside the test, recorded once from the live widget and named by `_recorded.source_commit`.
+Facts that follow `docs/` are frozen as a *rule*: help's `qt_home_links` / `qt_breadcrumb` restate the Qt start
+page and breadcrumb Qt-free, and the record holds the widget's output beside the rule's output on the same
+tree. Fresh ids are normalised (`<project NAME>`, `<version NAME vN>`, `<timestamp>`, `<user>`: project_browser).
+Per-case dialogs are recorded per case (switch_user: 15 `LoginDialog` cases through the test's own `world`
+fixture). The recorders are throwaway scripts and are not committed: a Qt importer under `chisurf/plugins/` is a
+new allow-list entry. Retired that slice: the games' Qt hub and four Qt game containers (each was a chigame canvas
+plus a *Sound* button; the `capture_qt.py` scripts went because the Qt renders are committed under
+`games/*/test/renders/`), the F-test `FTestTool`, the Global View `GraphWizard` host and `wizard.py`, and the
+Project Browser `ProjectBrowserTool` (its `SaveProjectDialog` / `CollisionDialog` are the Qt window's File-menu
+dialogs and moved to `chisurf/gui/widgets/project_dialogs.py`, which goes with the Qt window).
+**Trace Browser host retired (2026-10-13)** by a general **plugin hand-off**: a plugin calls
+`chisurf.core.plugin.handoff.hand_off(plugin_id, kind, payload)`; the shell (`EmtkShellApp.hand_off`, installed as
+the process's host) opens the target as a dock and, once `BackgroundBuild` has made its app, calls the receive hook
+the target declares in its manifest `accepts` (`HandoffSpec`: `name`, `receive` = `module:function(app, payload)`,
+`required` keys). Declared: Intensity Trace `tttr_trace`, TTTR Time Window `tttr_files`, ndX `open_path` + `table`.
+Routed through it: Trace Browser HMM/TW/NDX (`gui/handoffs.py`, replacing `host.py` + `host_lookup.py`), H2MM
+*dwells → ndX*, Burst Selection *send to ndX* (via `mmfdb_launcher.open_path_in_ndxplorer`) and the sampling
+diagnostics page (`ndxplorer.gui.app.open_in_ndx`); each keeps its old path only when no shell is open. Evidence in
+`okf/plugins/emtk-ports/trace_browser/`: `retire_qt_before.json` (the Qt adapter's three windows, recorded live
+before the change), `retire_after.json`, `retire_compare.json` (0 controls lost in the browser and in each target;
+deliberate: window → dock, one dock per tool so a second press re-delivers, file shown in the tool rather than the
+window title). The T5 test is ported to the real shell driven by `emtk.testing.Driver` (real clicks, real
+`BH_SPC132.spc`, three hand-offs asserted and rendered); mechanism tests in `test/core/test_plugin_handoff.py`.
+Trap: a hosted child's `form.rects` are local to its dock box (`host_child` draws with `local_coordinates`), so a
+click is `hosted.box` origin + rect. Not routed yet (other lanes' files): help/code_editor's `host_in_shell` page/file opening (could become `accepts` kinds
+`open_page` / `open_file`). Under `--qt` the three buttons are now greyed (no Qt adapter); the Qt window is legacy.
+**HydroPro, Code Editor and Help retired (2026-10-13, 25 lines struck; HEAD then has 159 with the Trace
+Browser's 2).** HydroPro: the 12 parity cases frozen from the live tool with the fake HYDRO program
+(`hydropro/test/qt_reference.json`, paths as `<home>`), Qt tool, dialogs, `hydrogui.py` and the QSettings
+isolation deleted; the real-state guard runs the native capture and `chisurf.emtk.state` round trip. Help: the
+Qt `HelpWidget`, Ask panel and figure dialog deleted, `gui/tool.py` keeps only the Qt host `HelpEmtkTool`;
+`api/theme.py` takes emtk's palette (`from_tokens`). Code Editor: control parity first (lost `[]`,
+`okf/plugins/emtk-ports/code_editor/parity_*`), out of `emtk_preview.json` (now empty), then the six Qt modules
+deleted. Every Qt widget test was ported to the emtk app, and each behaviour the twin lacked was added to it,
+not explained away (search ranking, reading measure, figure viewer, Shift+wheel zoom, Ask texts; menus,
+Symbols/Kernel docks, project table, regex find, assistant file writes and modes, notebook terminal mirroring
+and output clamp). Both plugins declare hand-offs (`help` `open_page`, `code_editor` `open_file`) and
+`chisurf/emtk/{doc,code}_links.py` route through `chisurf.core.plugin.handoff`. Open from this slice: emtk
+`38d6f8a` (0.1.10, regex find) is committed, not pushed, and `EMTK_MIN_VERSION` stays 0.1.8 -- the arm64 env's
+emtk 0.1.9 shows "Regex search needs emtk 0.1.10" in the find bar until the pin moves; the assistant reports
+validation issues but no longer re-prompts the model to fix them (known issues). Traps met: a Driver click
+after a model change needs a frame first (rects are from the last frame); `im.begin_menu` has no nested
+submenus (File > Open Notebook... is a picker); emtk tooltips need a hover delay, so tests read a state
+(`hovered_figure`) instead; the global `gui.editor.enable_lsp` now starts pylsp in every editor app built.
+Left, and why (each reason re-checked against the challenge):
+Open: **ndX window** (`ndxplorer/window.py`, `calibration_bridge.py`, `__init__.py`, `tests/test_window_routes.py`):
+  the Qt window is still the `gui` entry; its routes test goes with it once the shell's ndX twin owns the routes.
+Done 2026-10-13: **mmfdb_admin** (30 lines; see the slice paragraph at the top of this item).
+Done 2026-10-13 (acq/lightpath/batch/number_quest/plugins-root slice, −14): **acq** device dialogs (fa6f18819;
+  BH 40→90, BrickMic 10→61, PicoQuant 12→58, simulation 61→118 controls, lost [], `emtk-ports/acq/retire_*`;
+  `test_setup_widgets.py` drives the emtk dialog); **lightpath_simulator** Qt host + Qt Easy Mode (7e0514d95;
+  helpers in `core/easy_config.py`; Easy Mode 49→125 controls, lost []; the comparison found `_graph_to_config`
+  reading pre-schema port numbers, so Easy Mode had shown no dichroic, splitter spectrum or bandpass; parity
+  frozen in `tests/qt_reference.json`); **batch_analysis** Qt run (3b978b173; Qt run frozen in
+  `test/qt_reference.json`; the per-run fit picture in the DOCX, lost in the first port, is back: the template
+  fit's `FitWindow` on the CPU rasteriser, drawn on the polling thread); **number_quest** Qt container
+  (5d6b6bf8b); plugins root (89a74df47): `icon_utils.py` → `chisurf/gui/plugin_icons.py` (Qt shell code), the
+  QtSvg rasteriser and the `qapp` fixture (pytest-qt supplies it) deleted, the cookiecutter template generates an
+  emtk + AutoForm plugin (rendered and its tests run). Follow-up the same day closed the leftovers: acq BH/PicoQuant/BrickMic cards are view.json specs (655a57efd), lightpath detector names, the Detector Wizard's last-config write and a missed-completion race behind three click-test failures (26367e91e).
+Trap: the arm64 env imports a non-editable emtk from site-packages, not `~/dev/emtk` (e.g. `NO_BUTTON` is in
+`emtk.events`, not `emtk.app`).
+
+**S6-blocker slice and chimol `hosts/qt` (former item 9).** Done 2026-10-13
+(S6-blocker slice, chisurf 6300bcb8f, baf8e7f75, 23004c834, 94c945927 and the test port): chiplot's core
+names no Qt -- panels, `PanelGrid` and the image viewer `ImagePanel` are emtk controls, hosts attach through a
+duck-typed hook, `export_image` draws on emtk's CPU rasteriser -- and the `chisurf.gui.chiplot` widgets
+(`Plot`, `PanelPlot`, `Grid`, `ImageView`, `VolumeView`) are deleted: every Qt form that showed one draws a
+core panel and only hosts it with `cp.host()` (AutoForm sections decay_conv, phasor, quiver, waterfall, image,
+plot, L-curve, the r(t) window; decay_panel, the PCH/TCSPC/ICS reader previews, the κ² dialogs,
+spectrum_view, waterfall_plot, the photon-filter wizard); before/after from the HEAD snapshot, 14 of 17 widget
+pairs pixel-equal, the three image viewers at control parity with the frame `QSlider`/`QLabel` drawn by emtk
+inside the viewer (`chisurf/chiplot/image_panel.py`). What blocks deleting `gui/main.py` and `gui.ui` now: item 1
+(the Qt hosts and tests on the allow-list, 64), and the Qt forms of the `--qt` reference shell that host
+panels (the Qt AutoForm renderer and its sections, the Qt reader widgets, the κ² dialogs), whose emtk twins
+exist; `chisurf.gui.chiplot` (`host`, `PanelHost`, `ImagePanelHost`) goes with them. Striking `qtpy` needs both,
+and the owner's call. **chimol: `hosts/qt/` deleted (2026-10-13, chimol a53e512).** `Viewer` is never a
+widget: it sits on `hosts/toolkit.py`'s stand-ins, which no longer import qtpy (`HeadlessViewer` is an alias),
+and `Viewer()` with no `renderer_factory` builds into `SceneSink` (every host passes its own renderer). Gone
+with it: the lazy `MolViewPluginWindow` export, `python -m chimol --qt` (it now says the Qt window was retired
+and opens the desktop window), the Qt type hints in `commands/`, the mock viewer's `QObject` base, and
+ChiSurf's unused Qt AutoForm `chimol` section (`chisurf/gui/autoform/sections/chimol_section.py`; no
+`view.json` used it, and it embedded `Viewer` as a `QWidget`). Measure: `python tools/check_imports.py` in
+chimol (299 modules import with Qt blocked, 0 allowed failures); `tests/test_viewer_is_toolkit_free.py`;
+ChiSurf `chisurf/plugins/chimol/test/qt_import_allowlist.txt` is empty and `test_qt_seam.py` asserts
+`hosts/qt` stays gone. Before/after: `okf/plugins/emtk-ports/chimol/retire_hostqt_*` -- ChiSurf's emtk ChiMOL
+app on 148L and 1RTD at 1200x800 is pixel-identical with chimol 07a9b28 and a53e512, and its control inventory
+matches the Qt before-grab `retire_qt_before_148l.png` (lost: none). Tests: the five chimol tests and the
+ChiSurf chimol tests that imported the Qt host were ported (menu tables from `chimol.ui.menus.bar`,
+`grouped_display_order` / `sequence_rows_for_object` from `chimol.hosts.base`, host checks on `ChimolApp` +
+`Page`); `test/console/test_command_dispatch_rule.py` now drives `chimol.repl` + `ChimolDispatcher` with no
+toolkit. **Retired** because they tested only the Qt window: `test_migrated_tool_windows.py::
+test_chimol_window_constructs`, `test_object_list_groups.py::test_the_qt_window_uses_the_shared_builder`,
+`test_render_appearance.py::test_the_default_layout_sizes_are_pixels` (Qt dock splitter sizes),
+`test_keyboard_layout.py::test_the_qt_host_passes_the_character_qt_produced`, `test_dropped_files.py::test_the_qt_widget_accepts_dropped_files` and
+`test_the_qt_host_describes_itself_at_all`,
+`test_canvas_cadence.py`'s two Qt `resolve_present_method` tests, and `test_wgpu_view.py`'s Qt
+`default_renderer` selection (replaced by a `Viewer()` -> `SceneSink` test). Leftovers closed the same day
+(chimol a245145): the widget stand-ins moved from `hosts/toolkit.py` to `core/toolkit.py`, so
+`chimol.core` imports nothing from `chimol.hosts` (guard `tests/test_core_layering.py`); the dead
+`CHIMOL_TOOLKIT=none` settings are gone from chimol's tests, AGENTS.md, `tools/check_imports.py` and the ChiSurf
+chimol tests; and the desktop (`CanvasView`) and browser (`Page`) hosts both declare `labels` and `ray_image`,
+which both draw through `CanvasRenderer.frame_arguments` (label quads in `chrome`, a traced frame in
+`overlay`; `tests/test_host_features.py` checks the frame, `test_browser_picking.py` keeps the two sets equal).
 
 # Citations
 

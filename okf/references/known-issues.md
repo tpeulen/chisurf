@@ -6,6 +6,8 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## `calc_transfer_matrix` never zeroes its donor-only bins (found 2026-10-14)
 
+status: resolved 2026-10-14
+
 Resolved 2026-10-14. `chisurf/core/fluorescence/general.py::calc_transfer_matrix` documents
 that the `n_donor_bins` (default 10) longest distances get rate 0 (donor-only), but did
 `rates[-1:-n_donor_bins] = 0.0` -- an empty slice, so nothing was zeroed. It now zeroes
@@ -48,6 +50,42 @@ status: resolved 2026-10-13
   (chimol a245145, see item 9): the stand-ins moved to `core/toolkit.py` (guard `tests/test_core_layering.py`), the dead
   `CHIMOL_TOOLKIT=none` settings were removed in both repos, and the desktop and browser hosts both declare
   `labels` / `ray_image`, which both draw through `CanvasRenderer.frame_arguments` (`tests/test_host_features.py`).
+
+## MMFDB Admin after the Qt retirement (2026-10-13)
+
+status: open
+
+The Qt window is gone (`okf/subsystems/qt-retirement.md` item 1, mmfdb_admin slice). Left:
+
+- **Open in ndX inside the emtk shell records nothing back: resolved 2026-10-13.** Fixed generically, not in
+  ndX's receiver: `chisurf.core.plugin.handoff.hand_off(..., on_delivered=)` and the shell's
+  `EmtkShellApp.hand_off` call `on_delivered(app)` with the target's built app right after its receive hook
+  took the payload (the hand-off itself still returns the dock record: the app is built later). ndX's
+  `open_in_ndx(path, on_opened=)` passes it through (standalone: called at once), and the admin's
+  `open_in_ndx` attaches `record_burst_ids_against_product` from that callback in both hosts. Tests:
+  `test/core/test_plugin_handoff.py` (on_delivered), ndX `test_window_routes.py`
+  (`test_the_opener_reaches_the_app_once_the_path_is_open`), admin `test_native_qt_parity.py`
+  (`test_open_in_ndx_in_the_shell_records_back_once_the_dock_app_exists`).
+- **emtk pin.** The admin needs emtk 0.1.12 (form-scoped widget ids: on 0.1.11 and older the Import / Export
+  panel's *Import file* press does nothing, because the toolbar's *Import* has the same action name) and 0.1.11
+  (`enter_call`, `live`). emtk 2eeec85 / 5bd6a82 are committed, not pushed, and `EMTK_MIN_VERSION` is unchanged
+  (no piecemeal pin moves); the arm64 env has 0.1.12 installed. Move the pin with the next emtk push.
+- **`chisurf/gui/widgets/spectrum_view.py` has no user left: resolved 2026-10-13.** Deleted with its
+  `test/gui/test_chiplot_api.py` test and import-list line (no importer was left; no allow-list still named
+  it). The trace conversion lives on in `chisurf/core/fluorescence/spectrum_traces.py`.
+
+## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
+
+status: resolved 2026-10-13 — standalone and in the emtk shell; see the entry above
+
+**Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
+when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
+`ndxplorer.record_analysis` (mmfdb `admin/backend/ndxplorer_services.py`) when
+burst IDs were saved; the emtk io feature has no such hook, so the admin now
+opens the path and nothing is recorded. **Blocks:** provenance of gate
+selections made from an MMFDB product. Fix: an app hook after
+`_write_burst_ids` that the host sets (as `app.mmfdb_opener`). Resume point:
+[ndxplorer-emtk-port](../plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
 
 ## Code Editor assistant: validation issues are reported, not fixed by the model (found 2026-10-13)
 
@@ -2398,42 +2436,6 @@ in-process RPC client, `session_autosave=True`, closing with the host (session k
 withdrawn); the MMFDB opener is the emtk `DatasetPicker` under the Qt label "From MMFDB…". Geometry is the
 host's; the dock layout lives in ChiSurf's native-state store instead of ndX's settings file. The route test
 now checks the app's wiring on either host. Report: `okf/plugins/emtk-ports/ndxplorer/REPORT.md`.
-
-## MMFDB Admin after the Qt retirement (2026-10-13)
-
-status: open
-
-The Qt window is gone (`okf/subsystems/qt-retirement.md` item 1, mmfdb_admin slice). Left:
-
-- **Open in ndX inside the emtk shell records nothing back: resolved 2026-10-13.** Fixed generically, not in
-  ndX's receiver: `chisurf.core.plugin.handoff.hand_off(..., on_delivered=)` and the shell's
-  `EmtkShellApp.hand_off` call `on_delivered(app)` with the target's built app right after its receive hook
-  took the payload (the hand-off itself still returns the dock record: the app is built later). ndX's
-  `open_in_ndx(path, on_opened=)` passes it through (standalone: called at once), and the admin's
-  `open_in_ndx` attaches `record_burst_ids_against_product` from that callback in both hosts. Tests:
-  `test/core/test_plugin_handoff.py` (on_delivered), ndX `test_window_routes.py`
-  (`test_the_opener_reaches_the_app_once_the_path_is_open`), admin `test_native_qt_parity.py`
-  (`test_open_in_ndx_in_the_shell_records_back_once_the_dock_app_exists`).
-- **emtk pin.** The admin needs emtk 0.1.12 (form-scoped widget ids: on 0.1.11 and older the Import / Export
-  panel's *Import file* press does nothing, because the toolbar's *Import* has the same action name) and 0.1.11
-  (`enter_call`, `live`). emtk 2eeec85 / 5bd6a82 are committed, not pushed, and `EMTK_MIN_VERSION` is unchanged
-  (no piecemeal pin moves); the arm64 env has 0.1.12 installed. Move the pin with the next emtk push.
-- **`chisurf/gui/widgets/spectrum_view.py` has no user left: resolved 2026-10-13.** Deleted with its
-  `test/gui/test_chiplot_api.py` test and import-list line (no importer was left; no allow-list still named
-  it). The trace conversion lives on in `chisurf/core/fluorescence/spectrum_traces.py`.
-
-## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
-
-status: resolved 2026-10-13 (standalone and in the emtk shell; see the entry above)
-
-**Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
-when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
-`ndxplorer.record_analysis` (mmfdb `admin/backend/ndxplorer_services.py`) when
-burst IDs were saved; the emtk io feature has no such hook, so the admin now
-opens the path and nothing is recorded. **Blocks:** provenance of gate
-selections made from an MMFDB product. Fix: an app hook after
-`_write_burst_ids` that the host sets (as `app.mmfdb_opener`). Resume point:
-[ndxplorer-emtk-port](../plugins/ndxplorer-emtk-port.md) "Hosted in ChiSurf".
 
 ## Two guard tests red on 2026-09-28, from uncommitted native-port files
 
