@@ -417,8 +417,11 @@ def fig_burst_search():
 
     fig, ax = plt.subplots(figsize=(6.4, 3.6))
     ax.plot(tc * 1e3, rate, color="0.4", lw=0.8)
-    ax.fill_between(tc * 1e3, rate, thr, where=rate > thr, color="#d62728", alpha=0.5,
-                    step="mid", label="detected bursts")
+    # one red line per window above the threshold, drawn over the trace: a burst is often a
+    # single 0.5 ms window, which a filled area between neighbouring samples would not show
+    above = rate > thr
+    ax.vlines(tc[above] * 1e3, thr, rate[above], color="#d62728", lw=1.6, zorder=3,
+              label="detected bursts")
     ax.axhline(thr, ls="--", color="k", lw=1, label="threshold")
     ax.set_xlabel("time (ms)"); ax.set_ylabel("count rate (kHz)")
     ax.set_title("Burst identification (sliding-window count rate)")
@@ -462,16 +465,24 @@ def fig_background():
     dark = rng.exponential(1 / bg_rate, 20000)
     burst = rng.exponential(1 / 2e5, 6000)     # bright bursts: short gaps
     gaps = np.concatenate([dark, burst]) * 1e3  # ms
-    bins = np.logspace(-4, 1.5, 60)
-    h, edges = np.histogram(gaps, bins=bins)
-    c = np.sqrt(edges[:-1] * edges[1:])
+    width = 0.05                               # ms, linear bins as the tool uses
+    edges = np.arange(0.0, 6.0 + width, width)
+    h, edges = np.histogram(gaps, bins=edges)
+    c = 0.5 * (edges[:-1] + edges[1:])
+    # fit the tail: a straight line in log(counts) over the window, Poisson-weighted
+    lo, hi = 1.0, 4.0
+    win = (c >= lo) & (c <= hi) & (h > 0)
+    slope, icpt = np.polyfit(c[win], np.log(h[win]), 1, w=np.sqrt(h[win]))
+    rate_khz = -slope                          # 1/ms = kHz
 
     fig, ax = plt.subplots(figsize=(5.4, 4.0))
-    ax.loglog(c, h + 1, "o", ms=3, color="#1f77b4")
-    tail = c > 0.5
-    ax.loglog(c[tail], (h[tail].max() + 1) * np.exp(-(c[tail] - c[tail][0]) * bg_rate / 1e3),
-              "r-", lw=1.5, label=f"tail fit → {bg_rate/1e3:.1f} kHz background")
-    ax.set_xlabel("inter-photon time (ms)"); ax.set_ylabel("counts")
+    ax.semilogy(c, np.where(h > 0, h, np.nan), "o", ms=3, color="#1f77b4", label="inter-photon times")
+    ax.axvspan(lo, hi, color="0.85", zorder=0, label="fit window")
+    xs = np.linspace(0, edges[-1], 100)
+    ax.semilogy(xs, np.exp(icpt + slope * xs), "r-", lw=1.5,
+                label=f"tail fit: {rate_khz:.2f} kHz (true {bg_rate / 1e3:.1f})")
+    ax.set_ylim(0.5, h.max() * 2)
+    ax.set_xlabel("inter-photon time (ms)"); ax.set_ylabel("counts per 0.05 ms")
     ax.set_title("Background from the inter-photon-time tail")
     ax.legend(fontsize=8)
     save(fig, "background.png")

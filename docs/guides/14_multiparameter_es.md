@@ -41,9 +41,10 @@ the window), check the columns **Channels** guessed — **I_DD (donor)**,
 **Calibrate**. The tool classifies donor-only, acceptor-only and doubly labelled
 bursts with a Gaussian mixture in $S$, takes α from the donor-only and δ from the
 acceptor-only bursts, and γ, β from the $1/S = \Omega + \Sigma E$ fit across the
-FRET populations, iterating until the classification is stable. The **Views**
-tabs show the factor table (with what determined each factor), the populations,
-the report, the corrected $E$–$S$ and $E$–lifetime plots and the $E$ histogram;
+FRET populations, iterating until the classification is stable. The tabs on the
+right show the factor table (**Correction factors**, with what determined each
+factor), **Populations**, the **Report**, and the corrected **E–S populations**,
+**E–lifetime and FRET lines** and **Accurate-E histogram** plots;
 **Store calibration on setup** (under *Data, session and catalogue actions*)
 saves the factors with the detector setup. The full workflow is in
 [Accurate FRET](41_accurate_fret.md).
@@ -58,7 +59,7 @@ E = 0.28 and 0.72, 500 donor-only and 500 acceptor-only bursts; true
 measurement. Recovered: α = 0.0800, δ = 0.0589, γ = 0.658, β = 1.389, each a
 *data estimate*, with 488 donor-only and 487 acceptor-only bursts found. The corrected $E$–$S$ plot
 puts the FRET populations at $S \approx 0.5$, donor-only at $S \to 1$ and
-acceptor-only at $S \to 0$. Rendered with the emtk plot backend.
+acceptor-only at $S \to 0$.
 ```
 
 ### Headless

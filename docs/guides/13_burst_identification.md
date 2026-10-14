@@ -32,20 +32,17 @@ max-tree and Bayesian Blocks — trade sensitivity against false positives.
 
 ### Open the tool
 
-The Burst Analysis workflow hosts the native emtk selection panel, which is also
-the tool's own window. The earlier Qt tool, its wizard launcher and the legacy
-fallback are retired. The search/API/backend and output contracts are unchanged.
+The Burst Selection panel is step 2 of the Burst Analysis workflow and also opens
+as a window of its own.
 
 ```{figure} figures/burst_native_selection_verified.png
 :name: fig-burst-native-selection-verified
 :width: 100%
 
-The native panel after processing copied bundled m000/m001 SPC measurements
-with the preserved test setup and filter settings: 198 bursts (71/127),
-353,909 photons and 45,868 selected photons. The active m000 table has 71 rows
-and ten numeric columns; every numeric-column hash and setting matched the
-preserved before run. This two-file validation is separate from the ten-file
-example below and is not an instrument-calibration claim.
+The **Burst Selection** tab after **Run** on copies of `m000.spc` and `m001.spc`:
+198 bursts (71 and 127), 45 868 of 353 909 photons selected, results in a
+`bi4_bur/` folder beside each file. Right: the count rate of the first 10 s of
+`m000.spc` and the proximity-ratio histogram of its 71 bursts.
 ```
 
 **Spectroscopy → Single-Molecule → Burst Analysis → 2. Burst Selection**. The panel has no
@@ -76,17 +73,19 @@ The **Filter settings** tab holds:
 | **Save as setup default** | — | Stores the burst parameters as the selected detector setup's defaults. |
 | **Channel selection** → **Detector**, **Micro-time window** | All | Detector and PIE-window gate applied before the search. |
 | **Macro time interval** | upper bound 0.15 ms, merge gap 3 | Accepted inter-photon times dT (**Use min dT** / **Use max dT**); gaps of up to **Merge gap** photons are bridged (**Fill gaps**). |
-| **Filter** → **Filter on** / **Invert** | on / off | Apply the search; **Invert** keeps the photons it rejects. |
-| **Display** | window 10 s | The visible window of the active file (**Window start**, **Window length**), the bin widths of the plots and **Pool all files**. |
+| **Filter** → **Filter on** / **Invert**, **Min photons**, **Count-rate photons** | on / off, 60, 5 | Apply the search; **Invert** keeps the photons it rejects. |
+| **Display** | window 10 s | The visible window of the active file (**Window start**, **Window length**), the plot bin widths (**MCS bin width**, **Decay coarsening**, **Burst bins**) and **Pool all files**. |
 
 The **Burst Selection** tab lists the inputs and says where results go. The destination
 follows the input: vendor files get a `bi4_bur/` folder beside them
 (*Results go to: a bi4_bur/ folder beside each file*), a `.pto` keeps its bursts
 inside. The ten files above gave 1130 bursts from 1 791 775 photons (264 806
 selected) in `sliding_window_All 0.1500#60/`; `m000.spc` alone gives 71 bursts
-(mean 4.28 ms, 211 photons). **Summary** shows the figures of the run, **Bursts** the
-per-burst table, **Histogram** a feature histogram with an optional GMM, and
-**Inter-photon time**, **Count rate**, **Micro-time decay** the diagnostics.
+(mean 4.28 ms, 211 photons). **Summary** shows the figures of the run; on the right, **Bursts** is the
+per-burst table, **Histogram** a feature histogram with an optional GMM,
+**Scatter** two features against each other, and **Count rate**,
+**Inter-photon time**, **Micro-time decay** and **Burst duration** are the
+diagnostics.
 
 ```{figure} figures/13_burst_selection_mcs.png
 :name: fig-burst-selection-mcs
@@ -126,7 +125,7 @@ bursts.table                                               # one row per burst
 ## Result
 
 A simulated photon stream (diffuse background with occasional bright transits)
-and its sliding-window count-rate trace; windows above the threshold (red) are
+and its count rate in 0.5 ms windows; the windows above the threshold (red) are
 the detected bursts.
 
 ```{figure} figures/burst_search.png

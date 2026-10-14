@@ -65,10 +65,10 @@ the correction/nuisance terms:
 :width: 90%
 
 The PDA (Gaussian-distance) model editor. **FRET parameters** hold $\tau_0$, the
-Förster radius $R_0$, and $\kappa^2$; **Distance distribution** is an add/remove
+Förster radius $R_0$, $\kappa^2$ and the donor-only fraction $x_{D,0}$; **Distance distribution** is an add/remove
 list of Gaussian components (mean $R_{P}$, width $s_{P}$, fraction $x_{P}$);
 **Corrections / nuisance** carries background, leakage, direct excitation and
-$\gamma$. These map onto the forward model in {ref}`concept-pda2c`.
+$\gamma$; **Diagnostics** is described below. These map onto the forward model in {ref}`concept-pda2c`.
 ```
 
 ## Reading bursts

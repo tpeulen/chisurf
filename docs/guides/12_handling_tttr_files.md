@@ -80,7 +80,7 @@ sidecar is always picked up automatically and never converted on its own.
 
 For converting outside those tools — or for turning a `.pto` back into the
 vendor file(s) it embeds — use the standalone **TTTR ⇄ .pto** tool
-(*TTTR → ⇄ .pto*): one drop target, no options, works either direction
+(*File → Data → ⇄ .pto*): one drop target, no options, works either direction
 depending on what you drop, and packs multiple dropped vendor files the same
 way.
 

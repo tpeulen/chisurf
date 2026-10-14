@@ -24,24 +24,10 @@ the background count rate.
 
 ## In ChiSurf
 
-The native standalone host declares **1100 × 720** pixels on first use;
-saved geometry takes precedence. Resize or scroll dock contents to reach the
-fit controls on a smaller host. Window geometry does not change the selected
-photons, detector definition or inter-photon-time fit window.
-
-The estimator reads the raw TTTR measurements. A burst-analysis folder helps
-identify the measurement and its detector setup; its per-burst rows are not
-the observations fitted by this tool. Check the decoded macro-time resolution
-when converting intervals to milliseconds, and distinguish the fitted rate
-from the mean rate of a measurement containing bright bursts.
-
-```{figure} figures/burst_background_native_primary_window.png
-:width: 100%
-
-Native measured-data estimate with three detector definitions: green 1.497,
-red 0.322 and yellow 0.338 kHz over the 3.824–6.357 ms tail window. These are the
-rates for the displayed gates and window, rather than a universal background.
-```
+The estimator fits the raw TTTR photons. A burst-analysis folder only
+identifies the measurement and its detector setup; its per-burst rows are not
+what is fitted. The fitted rate is the background, not the mean rate of a
+measurement that contains bright bursts.
 
 The tool is **Background** in the burst workflow (**Spectroscopy ▸ Single-Molecule ▸
 Burst Analysis**, below the numbered steps); it is not on the menu on its own. Inside
@@ -50,7 +36,9 @@ Selection*. The window has three docks: **Fit parameters** (the file list, *Fit
 Settings* and the green **Estimate Background** button, with *Channel definition*
 on a tab behind it), **Inter-photon time**, and **Rates & results** (per-detector
 bars beside a table of one row per file and detector, in kHz).
-Each file's rates are also recorded beside its photons.
+Each file's rates are also recorded beside its photons. A detector setup with
+more detectors simply gives more rows — a third detector gives a third bar and
+line.
 
 ```{figure} figures/15_burst_background.png
 :name: fig-15-burst-background
@@ -107,18 +95,12 @@ additionally recovers a scatter-derived **IRF** from the same non-burst photons
 feeding both the correction factors and the MLE lifetime fit — with no separate
 buffer acquisition. See [Lifetime from photon bursts](21_lifetime_from_bursts.md).
 
-## Stored result context
+## Stored results
 
-A stored rate result records the detector definition, actual reader corrections
-when available, bin width, minimum bin count, tail fraction and fitted time
-range. Each interval histogram links to that exact rate result. Repeating a
-configuration updates its run; changing fit or reader settings creates a
-separate result identity. Historical results retain their original provenance.
-
-Moving a fit-window control re-fits cached intervals on screen. It does not
-write a new stored result on every gesture. Run **Estimate Background** to
-publish the computed result with its frozen input and fit context; later edits
-to live controls do not relabel the completed computation.
+Each **Estimate Background** stores its rates with the detector definition,
+reader corrections, bin width, minimum bin count and fit window, so a stored
+rate says how it was obtained. Dragging the fit window re-fits on screen only;
+press **Estimate Background** again to store the new result.
 
 ## Choosing the fit window
 
@@ -142,9 +124,10 @@ lies on them inside the band rather than only crossing it.
 
 ## Result
 
-An inter-photon-time histogram (log–log): the short-gap peak is the bright bursts;
-the long-gap tail is the Poisson background, whose exponential slope gives the
-background rate.
+A simulated inter-photon-time histogram (2 kHz background plus bright bursts):
+the first bin holds the short gaps inside bursts; beyond it the counts fall as
+one exponential whose slope is the background rate. A weighted fit over the
+1–4 ms window returns 1.98 kHz.
 
 ```{figure} figures/background.png
 :name: fig-background
@@ -156,6 +139,5 @@ Background from inter-photon times.
 ## See also
 
 - {src}`chisurf/core/fluorescence/burst/background.py`, `.../irf_bg.py`; plugin `burst_background`.
-- Tool: **Burst Background Estimation** (`chisurf/plugins/burst/burst_background/`).
-
-Tool: Burst IRF & Background (`chisurf/plugins/burst/burst_irf_bg/`).
+- Tools: **Burst Background Estimation** (`chisurf/plugins/burst/burst_background/`);
+  **Burst IRF & Background** (`chisurf/plugins/burst/burst_irf_bg/`).

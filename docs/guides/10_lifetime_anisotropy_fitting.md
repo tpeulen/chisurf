@@ -31,18 +31,6 @@ rotational-correlation-time model are in {ref}`concept-anisotropy`. This guide
 shows how to fit in ChiSurf.
 :::
 
-## First-use behavior
-
-Adding a fit initializes the fit plot and parameter controls without constructing
-the hidden Code editor or importing unrelated optional GUI sections. **Code** is
-created when first opened and reused on subsequent visits. Other plot tabs remain
-available; a first visit may still need to initialize that feature.
-
-The metadata editor keeps the complete key catalog, completion, arbitrary custom
-keys and description tooltips, but loads catalog data only when needed. Solid
-curves use batched Qt drawing while retaining all samples and nonfinite gaps;
-this does not change fitting calculations or perform scientific resampling.
-
 ## In ChiSurf
 
 TCSPC is the most mature part of ChiSurf: the **TCSPC experiment** offers lifetime,
@@ -60,7 +48,8 @@ tables:
 
 The TCSPC lifetime model editor. **Convolution** selects the IRF curve and the
 convolution mode (`per`iodic / `exp` / `full`); **Generic** holds the scatter
-`sc`, background `bg`, and constant-background `tBg` nuisances; **Lifetimes** is
+`sc` and background `bg` amplitudes and the background and measurement times
+`tBg` / `tMeas`; **Lifetimes** is
 an add/remove table of amplitude–lifetime pairs ($x_L$, $\tau_L$) with
 normalization and linking; **Anisotropy** adds the polarised $r(t)$ model.
 ```
@@ -99,13 +88,15 @@ d_FRET   = decay([0.6, 3.5, 0.4, 0.7])     # + a 0.7 ns FRET-quenched fraction
 
 ## The Anisotropy Wizard (time-resolved anisotropy)
 
-*Tools → Calculators → Wizards*, entry **Anisotropy**, builds the linked VV/VH global fit from four
+*Spectroscopy → Decay → Anisotropy-Wizard* (also *Tools → Calculators → Wizards*, entry **Anisotropy**)
+builds the linked VV/VH global fit from four
 measured curves. It fits VV and VH themselves, linked, never the ratio $r(t)$ (forming the ratio first
 destroys the Poisson weights). The window has the six steps listed on the left, each with a check mark
 once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** starts the guided tour and
 **Help** opens the background text.
 
-1. **Data.** Type or paste the four paths (IRF VV, IRF VH, Data VV, Data VH), use **Browse**, or drop the
+1. **Data.** **Load example** fills in four simulated files (one 4 ns lifetime, one 2 ns rotation,
+   $r_0 = 0.38$) with matching reader settings. Otherwise type or paste the four paths (IRF VV, IRF VH, Data VV, Data VH), use **Browse**, or drop the
    files on the window (a dropped file fills the next empty path; a dropped `.spk.json` loads spectra).
    *Two stacked VV/VH files* switches to one IRF file and one data file that hold both channels. The
    reader settings (*Bin width*, *Repetition rate*, *Header rows*, *Use file header*, *First column is
@@ -116,7 +107,7 @@ once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** s
    :name: fig-tr-anisotropy-data
    :width: 90%
 
-   Data step with four synthetic polarised curves (tau 4 ns, rho 1.5 ns, r0 0.35).
+   The Data step after **Load example**: four files found, *First column is time* ticked, so *Bin width* is greyed.
    ```
 
 2. **Normalize IRF.** **Load / reload data** reads the files. Place the green box on a signal-free stretch
@@ -128,7 +119,7 @@ once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** s
    :name: fig-tr-anisotropy-normalize
    :width: 90%
 
-   Raw (faint) and corrected (solid) VV and VH IRFs with the background region.
+   The example's raw (faint) and corrected (solid) VV and VH IRFs with the background region 240–640.
    ```
 
 3. **Corrections.** *g-factor* scales the anisotropy as a whole; *l1* and *l2* correct the polarisation
@@ -142,7 +133,8 @@ once it is complete; **Back** and **Next** (bottom right) walk them, **Guide** s
    :name: fig-tr-anisotropy-components
    :width: 90%
 
-   The two spectra tables of the Components step.
+   The two spectra of the Components step, with the example's start values (one 3 ns lifetime, one
+   1 ns rotation) near but not at the simulated answer.
    ```
 
 5. **Finish.** **Create fits** adds the VV fit, the VH fit and the global fit to the session with the
@@ -183,39 +175,19 @@ report draws its pictures. Both ask where to save in ChiSurf's own file dialog.
 - Distance-distribution FRET models: [Polymer distance distributions](03_polymer_distance_distributions.md).
 - Tool: the **Anisotropy Wizard** (`chisurf/plugins/fluorescence_decay/tr_anisotropy/`), **VV/VH Anisotropy Decay** (`chisurf/plugins/vv_vh_anisotropy/`) and the **VV/VH G-Factor Calculator** (`chisurf/plugins/vv_vh_g_factor/`).
 
-## Direct VV/VH anisotropy host
+## VV/VH Anisotropy Decay (deprecated)
 
-The existing **VV/VH Anisotropy Decay** host remains callable and displays its
-deprecation notice; the G-factor and reader-integrated workflows are the
-preferred entry points. Its native window declares **1100 × 720** pixels,
-with saved geometry taking precedence. Preferences reload the existing input,
-settings and selected region and recompute the arrays.
+*Spectroscopy → Decay → VV/VH Anisotropy Decay* still opens and shows a
+deprecation notice; prefer the Anisotropy Wizard above and the
+[VV/VH G-Factor Calculator](../reference/plugins/vv_vh_g_factor.md). It loads one VV/VH file, applies **G-factor**,
+backgrounds and a VH shift, and reports the mean $r_\infty$ over the shaded region.
 
 ```{figure} figures/vv_vh_native_primary_window.png
 :width: 100%
 
-Known G = 2 rotational-anisotropy example. The shaded region selects bins for
-the reported mean r-infinity; that finite-window average is not proof of the
-true infinite-time asymptote. Resizing preserves the selected photons and values.
+A rotational-anisotropy example with $G = 2$. The shaded region gives the mean
+$r_\infty$ over those bins — a finite-window average, not the true asymptote.
 ```
 
-The direct host expresses its axis and shifts in channel bins. Keep that scale
-with exported traces; do not interpret the bin axis as nanoseconds without the
-measurement's time calibration.
-
-## Native anisotropy wizard host
-
-The six-step native wizard declares **1100 × 720** pixels, with saved geometry
-in preference to the default. Lifetime and rotation component panels sit side
-by side when space permits and stack on a narrow host. Window preferences
-retain inputs, settings and step selection; reload data after changing reader
-settings before creating fits. The wizard creates linked VV, VH and global
-fit groups. Creation verifies their configuration, not optimization quality.
-
-```{figure} figures/anis_wizard_native_primary_window.png
-:width: 100%
-
-The native component step after configured data and normalized IRFs have been
-loaded. Lifetime and rotation spectra retain their values when the host narrows.
-Use the final step to create the linked fit groups, then assess the actual fit.
-```
+Its axis and shifts are in channel bins; do not read the bin axis as
+nanoseconds without the measurement's time calibration.
