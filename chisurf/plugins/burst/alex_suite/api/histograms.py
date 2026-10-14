@@ -212,6 +212,10 @@ def burst_efficiency_stoichiometry(
     i_aa = channels.get("i_aa")
     tau_ms = channels.get("duration")
 
+    #: background photons per burst: a rate times each burst's duration, or none
+    bg_dd: float | np.ndarray
+    bg_da: float | np.ndarray
+    bg_aa: float | np.ndarray
     if tau_ms is None:
         bg_dd = bg_da = bg_aa = 0.0
     else:

@@ -79,6 +79,8 @@ class ResultPlots:
             implot.setup_axes_limits(0.0, 1.0, 0.0, 1.0)
 
             hist = result_view.tdp_histogram(ana)
+            if hist is None:  # transition points without a histogram: an empty plot
+                hist = np.zeros((1, 1))
             # rows are E after, row zero at the top: flip so E after grows upward (the Qt image's orientation)
             implot.plot_heatmap(
                 "Transitions",

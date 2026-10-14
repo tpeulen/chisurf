@@ -45,7 +45,7 @@ def parse_bst_handler(path: str) -> dict[str, Any]:
     )
 
 
-def parse_bur_handler(path: str, analysis_root: str = None) -> dict[str, Any]:
+def parse_bur_handler(path: str, analysis_root: str | None = None) -> dict[str, Any]:
     root = pathlib.Path(analysis_root) if analysis_root else pathlib.Path(path).parent
     tttr_path, ranges = parse_bur_file(pathlib.Path(path), root)
     return _ok(
@@ -56,7 +56,7 @@ def parse_bur_handler(path: str, analysis_root: str = None) -> dict[str, Any]:
     )
 
 
-def fit_curve_handler(tau, g, settings: dict[str, Any] = None) -> dict[str, Any]:
+def fit_curve_handler(tau, g, settings: dict[str, Any] | None = None) -> dict[str, Any]:
     s = BurstFcsSettings.from_dict(settings or {})
     return _ok(fit_curve(np.asarray(tau, dtype=float), np.asarray(g, dtype=float), s))
 
@@ -84,7 +84,7 @@ def correlate_file_handler(
     tttr_path: str,
     ranges: list,
     pairs: list[dict[str, Any]],
-    settings: dict[str, Any] = None,
+    settings: dict[str, Any] | None = None,
     filetype=None,
 ) -> dict[str, Any]:
     """Correlate one TTTR file, reporting an unreadable input as a service error.

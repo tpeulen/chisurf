@@ -139,7 +139,11 @@ class _CoupledModel:
         """The input fields (the outputs are recomputed on restore)."""
         return {attr: getattr(self, attr) for attr in (*self.input_fields, "use_chi")}
 
-    def restore_settings(self, settings: dict) -> None:
+    def recompute(self) -> None:
+        """Recompute the outputs from the inputs (each tab binds its forward calculation)."""
+        raise NotImplementedError
+
+    def restore_settings(self, settings: dict | None) -> None:
         """Restore :meth:`export_settings`; invalid or out-of-range entries are ignored."""
         if not isinstance(settings, dict):
             return

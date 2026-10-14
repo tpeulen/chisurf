@@ -5,6 +5,8 @@ No Qt, no ZMQ, no GUI dependencies — pure math only.
 
 from __future__ import annotations
 
+from typing import TypedDict
+
 import numpy as np
 
 from chisurf.core.fluorescence.general import (
@@ -15,6 +17,21 @@ from chisurf.core.fluorescence.general import (
     fretrate_to_distance,
     lifetime_to_fret_efficiency,
 )
+
+
+class DistanceResult(TypedDict):
+    """What :func:`compute_fret_from_distance` answers: the inputs and E, τ_DA, k_FRET."""
+
+    R: float
+    R0: float
+    tau0: float
+    kappa2: float
+    sigma: float
+    distribution: str
+    E: float
+    tau_DA: float
+    kFRET: float
+
 
 # ── heteroFRET ───────────────────────────────────────────────────
 
@@ -87,7 +104,7 @@ def compute_fret_from_distance(
     kappa2: float = 0.667,
     sigma: float = 0.0,
     distribution: str = "gaussian",
-) -> dict[str, float | str]:
+) -> DistanceResult:
     """Compute FRET parameters from donor-acceptor distance.
 
     Parameters

@@ -21,12 +21,12 @@ class BurstFcsClient:
     def parse_bst(self, path: str) -> dict[str, Any]:
         return self._client.call("burst_fcs.parse_bst", {"path": str(path)})
 
-    def parse_bur(self, path: str, analysis_root: str = None) -> dict[str, Any]:
+    def parse_bur(self, path: str, analysis_root: str | None = None) -> dict[str, Any]:
         return self._client.call(
             "burst_fcs.parse_bur", {"path": str(path), "analysis_root": analysis_root}
         )
 
-    def fit_curve(self, tau, g, settings: dict[str, Any] = None) -> dict[str, Any]:
+    def fit_curve(self, tau, g, settings: dict[str, Any] | None = None) -> dict[str, Any]:
         return self._client.call(
             "burst_fcs.fit_curve",
             {"tau": list(tau), "g": list(g), "settings": settings or {}},
@@ -43,7 +43,7 @@ class BurstFcsClient:
         tttr_path: str,
         ranges: list,
         pairs: list[dict[str, Any]],
-        settings: dict[str, Any] = None,
+        settings: dict[str, Any] | None = None,
         filetype=None,
     ) -> dict[str, Any]:
         return self._client.call(

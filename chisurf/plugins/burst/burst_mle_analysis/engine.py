@@ -1034,7 +1034,7 @@ class MleSession:
         """Return this file's effective timing without overwriting its physical header."""
         return effective_timing_ns(tttr, binning, self.definition.get("tttr_reading") or {})
 
-    def add_burst_files(self, paths: list[str | Path]) -> None:
+    def add_burst_files(self, paths: collections.abc.Sequence[str | Path]) -> None:
         """Add ``.bur`` tables. As in the wizard, the analysis folder of the first file is read whole: every ``.bur``
         under it (``<analysis>/<ending>/<stem>.bur``) becomes rows of the burst table."""
         for p in map(Path, paths):

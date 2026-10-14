@@ -5,7 +5,6 @@ from TTTR files using detector setups defined via the
 DetectorWizardPage JSON format.
 """
 
-import json
 import os
 from typing import Any
 
@@ -16,23 +15,9 @@ import tttrlib
 import chisurf.core.fluorescence.burst as cs_burst
 from chisurf.core.cli.support import DidYouMeanGroup
 
-# Import from chisurf if available, otherwise handle standalone usage
-try:  # pragma: no cover - convenience import
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
-except Exception:  # pragma: no cover - standalone / minimal environment
-
-    def load_detector_setups(file_path: str) -> dict[str, Any]:
-        """Load detector setups from a JSON file.
-
-        This is a minimal fallback used when the full ChiSurf GUI
-        components are not importable.
-        """
-        try:
-            with open(file_path, encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as exc:  # pragma: no cover - IO error path
-            click.echo(f"Error loading detector setups: {exc}", err=True)
-            return {"setups": {}}
+# The Qt-free loader every setup picker reads (the CLI used to reach into the
+# Qt wizard package for it, with a JSON-only fallback when that failed).
+from chisurf.core.data_io.detector_setups import load_detector_setups
 
 
 def estimate_background_for_files(
@@ -208,7 +193,7 @@ def analyze(
         idx = click.prompt(
             "Select a setup (number)",
             type=int,
-            default=1,  # type: ignore[arg-type]
+            default=1,
         )
         if idx < 1 or idx > len(available_setups):
             click.echo(
@@ -248,7 +233,7 @@ def analyze(
         return
 
     # Summary across files per detector
-    det_names = set()
+    det_names: set[str] = set()
     for det_bg in backgrounds.values():
         det_names.update(det_bg.keys())
 

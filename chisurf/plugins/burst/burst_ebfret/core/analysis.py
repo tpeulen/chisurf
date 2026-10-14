@@ -211,7 +211,10 @@ def analyse(
 
     best_k = max(scan, key=lambda k: -np.inf if np.isnan(scan[k]) else scan[k])
     fit = fits[best_k]
-    mu = np.asarray(fit.prior.mu, dtype=float)
+    prior = fit.prior
+    if prior is None:  # every scanned count was built with a guessed prior
+        raise RuntimeError("the empirical-Bayes fit kept no prior")
+    mu = np.asarray(prior.mu, dtype=float)
     order = np.argsort(mu)
     rank = np.empty_like(order)
     rank[order] = np.arange(order.size)
@@ -236,7 +239,7 @@ def analyse(
         )
         / total
     )
-    precision = np.asarray(fit.prior.nu, dtype=float) * np.asarray(fit.prior.W, dtype=float)
+    precision = np.asarray(prior.nu, dtype=float) * np.asarray(prior.W, dtype=float)
     states = [
         StateFit(
             index=i,
