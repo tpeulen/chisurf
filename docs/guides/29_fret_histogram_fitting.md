@@ -88,9 +88,10 @@ shape (rather than Gaussians), fit the histogram with a
 
 ## Result
 
-A simulated FRET-efficiency histogram, fitted with a
-three-component Gaussian mixture; each component's centre is its population's
-mean FRET efficiency, and the black curve is their sum.
+A simulated FRET-efficiency histogram of two populations, fitted with three
+Gaussian components; the black curve is their sum. The extra component splits the
+high-FRET peak (E = 0.68 and 0.76) — what an unasked-for component does, and why
+the count is chosen by BIC (**Auto components**).
 
 ```{figure} figures/e_hist_fit.png
 :name: fig-e-hist-fit

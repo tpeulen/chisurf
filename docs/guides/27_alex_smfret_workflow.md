@@ -54,26 +54,22 @@ searches) and moves on when it is done; **>>** walks the remaining steps; the li
 beside them names the setup, the files and the burst folder the later steps read.
 *Send to MLE* in IRF & Background fills both MLE steps.
 
-The native workflow keeps one complete detector editor at **0. Setup Selection**.
-The eight participating steps show **Setup: name** and **Edit setup…**, which
-returns there. Your per-tool fit/search settings and outputs remain in their
-own steps. Same-name edits reach every open child once; a late-opened child gets
-the current definition. Background/IRF readers resolve the current model rather
-than an old captured reader. Standalone tools still expose the complete editor.
-
-Restoring the hub retains raw/burst sources, provenance, fused-folder routing
-and measured IRF/background patterns. Saved child definitions cannot overwrite
-the authoritative setup. A running job holds its original input snapshot and
-receives the newest setup after completion; re-run results affected by an edit.
+The detector setup is edited in one place, **0. Setup Selection**; the later
+steps show its name and an **Edit setup…** link back there (a tool opened on its
+own keeps the full editor). An edit reaches every open step, and a step opened
+later starts from the current setup. Fit and search settings stay with their own
+step. A running job finishes on the setup it started with — re-run what an edit
+affects. Restoring the hub brings back the sources, the fused folder and the
+measured IRF/background patterns.
 
 ```{figure} figures/burst_shared_setup.png
 :name: fig-burst-shared-setup
 :width: 100%
 
-The complete shared setup and its Guide/Help/Proceed controls after the
-two-file BH workflow (`m000.spc`, `m001.spc`; green 0/8, red 1/9) found 198
-bursts. Every detector, reading, PIE, LUT and optical control remains reachable
-at step 0.
+Step 0 after the two-file BH workflow (`m000.spc`, `m001.spc`; green 0/8,
+red 1/9) found 198 bursts: the shared setup with its reading routine, PIE
+windows, detectors, LUTs and **Optical Setup…**, and **Proceed to Data
+Selection**.
 ```
 
 ```{figure} figures/burst_shared_mle.png

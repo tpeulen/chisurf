@@ -25,9 +25,10 @@ comparison between conditions.
 
 The 2-D fit is interactive in **ndX** (`ndxplorer`): put the two observables on
 the x and y axes of the 2-D histogram, open **View → Fit Gaussians**, click one
-seed on each population, and press **Fit**. Each component's centre (`x`, `y`),
-widths (`sd_x`, `sd_y`), correlation `rho` and weight `w` land in the fit table,
-where any of them can be held fixed; the 1σ/2σ/3σ ellipses are drawn over the
+seed on each population (**Select point** on; **add** / **del** edit the list), and
+press **Fit**. Each component's centre (x, y), widths (σx, σy), correlation ρ and
+weight w land in the table of the **Gaussian Fit** tab, numbered per component
+(`x1`, `σx,1`, …), where any of them can be held **Fixed** or bounded (**Lo**, **Hi**); the 1σ/2σ/3σ ellipses are drawn over the
 histogram and each component's marginal over the projections.
 
 ```{figure} figures/26_ndx_2d_gaussians.png

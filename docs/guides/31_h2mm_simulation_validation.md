@@ -73,9 +73,9 @@ With a 1 µs tick the truth is 5000 and 10 000 s⁻¹. The fit returns two state
 at E = 0.151 and 0.799 with rates of 4931 and 10 265 s⁻¹, and 95 % bootstrap
 intervals of [0.146, 0.156] and [0.794, 0.804], in about 4 s.
 
-In the **H2MM** window the same bootstrap is the **±** button (run after a
-fit; it overlays the intervals as error bars), and **📈** profiles the
-likelihood of each state's E/S instead. `burst_h2mm` also offers an
+In the **H2MM** window the same bootstrap is **Bootstrap** (run after a fit; it
+overlays the intervals as error bars), and **LL scan** profiles the likelihood of
+each state's E/S instead. `burst_h2mm` also offers an
 `em-float32` engine (the GUI default) and an optional trained neural surrogate
 for large datasets.
 
@@ -85,10 +85,11 @@ for large datasets.
 
 The H2MM window on the simulated two-state dataset of the second code block
 (400 bursts, 48 000 photons, donor = channel 0, acceptor = channel 1, no Aex
-stream, scan patience *off*). *Model selection*: BIC drops from 1 to 2 states
-and stays flat after. *Dwell FRET states*: dwells at E = 0.15 and 0.80.
-*Transition rates*: 4.9k and 10.3k s⁻¹ for a truth of 5k and 10k. *Per-state
-decay* is empty because the simulation has no micro times.
+stream, **Scan patience** −1 = off). *Rates and states*: E = 0.151 and 0.799,
+rates 4930 and 10 265 s⁻¹ for a truth of 5000 and 10 000. *Selection*: BIC drops
+from 1 to 2 states and stays flat after. *State path*: one burst switching from
+S0 to S1. The *Decays* tab stays empty because the simulation has no micro
+times.
 ```
 
 :::{admonition} Known defects

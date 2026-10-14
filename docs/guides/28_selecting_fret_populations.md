@@ -44,8 +44,7 @@ distribution — clearly bimodal, a donor-only peak near $E=0$ and a FRET popula
 around $E\approx0.4$.
 ```
 
-The native browser opens at **1200 × 800** pixels on first use. After loading a
-file or folder:
+**Open Folder** or **Open File** loads the bursts, then:
 
 1. Set the **E**, **S** and burst-size gates in **Burst gates**, then choose the
    histogram column. Corrected values and the displayed gate limits can extend
@@ -64,14 +63,12 @@ file or folder:
 :name: fig-burst-browser-native-columns
 :width: 95%
 
-The native Burst Browser on a real burst table, scrolled to its final
-measurement columns. Pagination remains above the scrolling table.
+A one-file burst table (152 bursts, 110 pass the gates) scrolled to its last
+column, *S*; the page controls stay above the table.
 ```
 
-Saved settings restore the window geometry and dock layout. Reopen the data and
-set the gates again after restarting; these are not restored as an analysis
-session. Table presentation does not change the measured quantities or the
-scientific gating and histogram calculations.
+The window layout is remembered; the data and gates are not — reopen the folder
+and set the gates again after a restart.
 
 The table is a datastore-backed column store. For Python selection, use
 `numeric_column` to obtain arrays rather than assuming it is a pandas DataFrame:
