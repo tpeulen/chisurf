@@ -18,7 +18,7 @@ Measure the resolution an image actually achieved by Fourier ring correlation �
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_frc` |
-| Menu path | Spectroscopy → Imaging → **FRC Resolution** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Imaging → **FRC Resolution** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

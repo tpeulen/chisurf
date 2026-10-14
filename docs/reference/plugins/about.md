@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: About ChiSurf
-description: 'ChiSurf About Plugin This plugin provides information about ChiSurf, including version, developer, and contact information. Features: - Display ChiSurf logo - Show version information - Display developer contact details'
+description: ChiSurf's logo, version, developer and contact details.
 resource: chisurf/plugins/core/about/
 tags: [reference, plugins, about, help]
 anchor: plugin-about
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-about)=
 # About ChiSurf
 
-ChiSurf About Plugin  This plugin provides information about ChiSurf, including version, developer, and contact information.  Features: - Display ChiSurf logo - Show version information - Display developer contact details
+ChiSurf's logo, version, developer and contact details.
 
 ## Identity
 
@@ -25,7 +25,7 @@ ChiSurf About Plugin  This plugin provides information about ChiSurf, including 
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

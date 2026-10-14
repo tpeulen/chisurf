@@ -35,22 +35,28 @@
   },
   "rpc_methods": [
     {
-      "name": "fret.info_backends"
+      "name": "fret.info_backends",
+      "description": "Report whether the IMP / IMP.bff backends are available."
     },
     {
-      "name": "fret.dock"
+      "name": "fret.dock",
+      "description": "FRET-restrained Monte-Carlo rigid-body docking."
     },
     {
-      "name": "fret.refine"
+      "name": "fret.refine",
+      "description": "Conjugate-gradient local refinement of a pose."
     },
     {
-      "name": "fret.score"
+      "name": "fret.score",
+      "description": "Score a single structure against the FRET restraints."
     },
     {
-      "name": "fret.screen"
+      "name": "fret.screen",
+      "description": "Score and rank a structure library."
     },
     {
-      "name": "fret.estimate_errors"
+      "name": "fret.estimate_errors",
+      "description": "Estimate docking errors from repeated trials."
     }
   ],
   "events": [],

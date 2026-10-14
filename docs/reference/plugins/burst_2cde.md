@@ -18,7 +18,7 @@ FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_2cde` |
-| Menu path | Spectroscopy → Single-Molecule → **2CDE** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **2CDE** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |
@@ -26,7 +26,7 @@ FRET-2CDE / ALEX-2CDE per-burst dynamics feature (Tomov et al. 2012).
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## JSON-RPC methods
 

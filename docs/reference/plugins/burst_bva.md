@@ -18,7 +18,7 @@ Burst Variance Analysis for single-molecule FRET experiments.
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_bva` |
-| Menu path | Spectroscopy → Single-Molecule → **BVA** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **BVA** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 2.1.0 |
 | Surfaces | cli, emtk, services |
@@ -26,7 +26,7 @@ Burst Variance Analysis for single-molecule FRET experiments.
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## JSON-RPC methods
 

@@ -26,7 +26,7 @@ Integrated burst workflow with burst selection, BVA, burst MLE, burst browser, a
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

@@ -18,12 +18,12 @@ Shared base classes for the per-pixel imaging tools: the common tool shell, the 
 | Field | Value |
 | --- | --- |
 | Plugin id | `imaging_common` |
-| Menu path | Uncategorized → **Imaging Common** |
+| Menu path | not in the menus; display name Uncategorized → **Imaging Common** |
 | Version | 1.0.0 |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin opens no window and has no parameters: it is shared code that other plugins import.
 
 ## Theory and workflow
 

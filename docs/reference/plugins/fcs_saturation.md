@@ -18,7 +18,7 @@ FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including C
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_saturation` |
-| Menu path | Spectroscopy → Correlation → **FCS Saturation** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Correlation → **FCS Saturation** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

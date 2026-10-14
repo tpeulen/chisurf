@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "display_name": "Help:About ChiSurf",
   "icon": "ℹ️",
-  "description": "ChiSurf About Plugin\n\nThis plugin provides information about ChiSurf, including version, developer,\nand contact information.\n\nFeatures:\n- Display ChiSurf logo\n- Show version information\n- Display developer contact details",
+  "description": "ChiSurf's logo, version, developer and contact details.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],

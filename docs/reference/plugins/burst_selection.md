@@ -18,7 +18,7 @@ Burst selection and FRET analysis for single-molecule fluorescence data.
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_selection` |
-| Menu path | Spectroscopy → Single-Molecule → **Burst Selection** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **Burst Selection** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 2.1.0 |
 | Surfaces | cli, emtk, services |

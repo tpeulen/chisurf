@@ -18,7 +18,7 @@ Apply one pre-optimised template fit to many datasets or files in one pass and e
 | Field | Value |
 | --- | --- |
 | Plugin id | `batch_analysis` |
-| Menu path | Main → Tools → **Batch-Analysis** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **Batch-Analysis** |
 | Categories | Main, Tools, Analysis |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |

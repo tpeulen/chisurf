@@ -24,28 +24,36 @@
   },
   "rpc_methods": [
     {
-      "name": "database_connector.status"
+      "name": "database_connector.status",
+      "description": "Report the connector's state and the active database."
     },
     {
-      "name": "database_connector.open"
+      "name": "database_connector.open",
+      "description": "Open the connector on a database (the configured one by default)."
     },
     {
-      "name": "database_connector.close"
+      "name": "database_connector.close",
+      "description": "Close the connector."
     },
     {
-      "name": "database_connector.backup"
+      "name": "database_connector.backup",
+      "description": "Back up the active user database."
     },
     {
-      "name": "database_connector.reset_from_source"
+      "name": "database_connector.reset_from_source",
+      "description": "Reset the user database from the curated source database."
     },
     {
-      "name": "database_connector.repository"
+      "name": "database_connector.repository",
+      "description": "Repository metadata, optionally with record counts."
     },
     {
-      "name": "database_connector.import_file"
+      "name": "database_connector.import_file",
+      "description": "Import a structure file into the database."
     },
     {
-      "name": "database_connector.export_sample"
+      "name": "database_connector.export_sample",
+      "description": "Export a sample as an FLR CIF file."
     }
   ],
   "menu_hidden": true

@@ -18,7 +18,7 @@ FCS confocal diffusion/volume calculator (tau, D, r_h, Veff, concentration).
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_calculator` |
-| Menu path | Spectroscopy → Correlation → **Diffusion/Volume Calculator** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Correlation → **Diffusion/Volume Calculator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

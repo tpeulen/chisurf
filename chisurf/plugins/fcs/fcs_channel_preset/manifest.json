@@ -2,7 +2,7 @@
   "id": "fcs_channel_preset",
   "version": "1.0.0",
   "display_name": "Setup:FCS Definitions",
-  "description": "FCS channel definition plugin per detector setup",
+  "description": "Define which detector channels are correlated with which, per detector setup.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
   "icon": "📡",

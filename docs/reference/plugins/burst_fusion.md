@@ -18,7 +18,7 @@ Fuse bursts the same molecule produced, using the recurrence same-molecule proba
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_fusion` |
-| Menu path | Spectroscopy → Single-Molecule → **Burst Fusion** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **Burst Fusion** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

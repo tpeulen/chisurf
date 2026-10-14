@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: FCS
-description: Unified FCS plugin — a meta tool hosting the FCS workflow behind a rail. Merges the FCS Correlator workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable NavigationPanelTool shell. The ribbon execs this file with __name__ == "plugin".
+description: 'The FCS workflow in one window: the correlator (detector → files → filter → correlate → merge) and the FCS tools — 2D-FLCS, Lifetime-FCS Sim, burst-wise FCS, the diffusion/volume and fFCS filter calculators and the channel presets — behind one navigation rail.'
 resource: chisurf/plugins/fcs/fcs_toolbox/
 tags: [reference, plugins, fcs-toolbox, spectroscopy, correlation]
 anchor: plugin-fcs_toolbox
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fcs_toolbox)=
 # FCS
 
-Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  Merges the FCS *Correlator* workflow (detector → files → filter → correlate → merge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS, diffusion/volume calculator, fFCS filter calculator, correlation-channel presets) into a single left-navigation tool. Built on the reusable ``NavigationPanelTool`` shell. The ribbon execs this file with ``__name__ == "plugin"``.
+The FCS workflow in one window: the correlator (detector → files → filter → correlate → merge) and the FCS tools — 2D-FLCS, Lifetime-FCS Sim, burst-wise FCS, the diffusion/volume and fFCS filter calculators and the channel presets — behind one navigation rail.
 
 ## Identity
 
@@ -25,7 +25,7 @@ Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.  
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

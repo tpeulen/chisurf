@@ -18,7 +18,7 @@ Maximum likelihood lifetime analysis for single-molecule burst data.
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_mle_analysis` |
-| Menu path | Spectroscopy → Single-Molecule → **Burst MLE** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **Burst MLE** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.1.0 |
 | Surfaces | emtk, services |

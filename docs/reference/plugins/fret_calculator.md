@@ -18,7 +18,7 @@ Combined heteroFRET and homoFRET parameter calculator.
 | Field | Value |
 | --- | --- |
 | Plugin id | `fret_calculator` |
-| Menu path | Main → Tools → **FRET-Calculator** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **FRET-Calculator** |
 | Categories | Main, Tools |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

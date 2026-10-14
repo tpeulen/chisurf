@@ -97,12 +97,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
-| `fret.info_backends` | no |  |
-| `fret.dock` | no |  |
-| `fret.refine` | no |  |
-| `fret.score` | no |  |
-| `fret.screen` | no |  |
-| `fret.estimate_errors` | no |  |
+| `fret.info_backends` | no | Report whether the IMP / IMP.bff backends are available. |
+| `fret.dock` | no | FRET-restrained Monte-Carlo rigid-body docking. |
+| `fret.refine` | no | Conjugate-gradient local refinement of a pose. |
+| `fret.score` | no | Score a single structure against the FRET restraints. |
+| `fret.screen` | no | Score and rank a structure library. |
+| `fret.estimate_errors` | no | Estimate docking errors from repeated trials. |
 
 ## Theory and workflow
 

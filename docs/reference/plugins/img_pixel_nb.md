@@ -18,7 +18,7 @@ Per-pixel Number & Brightness from TTTR imaging stacks: apparent B and N, molecu
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_pixel_nb` |
-| Menu path | Spectroscopy → Imaging → **Number & Brightness** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Imaging → **Number & Brightness** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |
@@ -84,7 +84,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [Photon-counting histogram (PCH) and FIDA](/concepts/pch_fida.md)
+- **Theory** — [Number & Brightness: molecule number and oligomeric state from pixel fluctuations](/concepts/number_and_brightness.md), [Photon-counting histogram (PCH) and FIDA](/concepts/pch_fida.md)
 - **Workflow** — [Number & Brightness](/guides/67_number_and_brightness.md)
 
 ## Source

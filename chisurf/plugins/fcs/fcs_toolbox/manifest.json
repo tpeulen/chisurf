@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "display_name": "Spectroscopy:Correlation:FCS",
   "icon": "〰️",
-  "description": "Unified **FCS** plugin — a meta tool hosting the FCS workflow behind a rail.\n\nMerges the FCS *Correlator* workflow (detector → files → filter → correlate →\nmerge) with the optional FCS tools (2D-FLCS, Lifetime-FCS Sim, Burst-wise FCS,\ndiffusion/volume calculator, fFCS filter calculator, correlation-channel\npresets) into a single left-navigation tool. Built on the reusable\n``NavigationPanelTool`` shell. The ribbon execs this file with\n``__name__ == \"plugin\"``.",
+  "description": "The FCS workflow in one window: the correlator (detector → files → filter → correlate → merge) and the FCS tools — 2D-FLCS, Lifetime-FCS Sim, burst-wise FCS, the diffusion/volume and fFCS filter calculators and the channel presets — behind one navigation rail.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],

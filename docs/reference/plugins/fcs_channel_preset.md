@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: FCS Definitions
-description: FCS channel definition plugin per detector setup
+description: Define which detector channels are correlated with which, per detector setup.
 resource: chisurf/plugins/fcs/fcs_channel_preset/
 tags: [reference, plugins, fcs-channel-preset, setup]
 anchor: plugin-fcs_channel_preset
@@ -11,14 +11,14 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fcs_channel_preset)=
 # FCS Definitions
 
-FCS channel definition plugin per detector setup
+Define which detector channels are correlated with which, per detector setup.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_channel_preset` |
-| Menu path | Setup → **FCS Definitions** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Setup → **FCS Definitions** |
 | Categories | Setup |
 | Version | 1.0.0 |
 | Surfaces | emtk |

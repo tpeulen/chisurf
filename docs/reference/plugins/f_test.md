@@ -18,7 +18,7 @@ F-test calculator: compare two nested model fits (confidence <-> chi2 threshold)
 | Field | Value |
 | --- | --- |
 | Plugin id | `f_test` |
-| Menu path | Main → Tools → **F-Test** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **F-Test** |
 | Categories | Main, Tools, Statistics |
 | Version | 2.0.0 |
 | Surfaces | emtk |

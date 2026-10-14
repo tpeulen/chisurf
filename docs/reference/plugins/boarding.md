@@ -18,7 +18,7 @@ Startup onboarding wizard for first-run ChiSurf configuration.
 | Field | Value |
 | --- | --- |
 | Plugin id | `boarding` |
-| Menu path | Help → **Boarding Wizard** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Help → **Boarding Wizard** |
 | Categories | Help |
 | Version | 1.0.0 |
 | Surfaces | emtk |
@@ -26,7 +26,7 @@ Startup onboarding wizard for first-run ChiSurf configuration.
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

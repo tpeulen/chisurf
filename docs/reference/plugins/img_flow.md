@@ -18,7 +18,7 @@ Map the velocity field of a sample from its own correlations — one arrow per t
 | Field | Value |
 | --- | --- |
 | Plugin id | `img_flow` |
-| Menu path | Spectroscopy → Imaging → **Flow Maps** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Imaging → **Flow Maps** |
 | Categories | Spectroscopy, Imaging |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |
@@ -68,7 +68,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [Image correlation: RICS, STICS, TICS and iMSD are one method](/concepts/image_correlation.md), [Pair correlation and flow maps: where molecules go](/concepts/pair_correlation.md)
+- **Theory** — [Image correlation: one correlation array, four methods](/concepts/image_correlation.md), [Pair correlation and flow maps: where molecules go](/concepts/pair_correlation.md)
 - **Workflow** — [Pair correlation and flow maps: measuring where molecules go](/guides/55_pair_correlation.md)
 
 ## Source

@@ -18,7 +18,7 @@ Estimate detector background rates from TTTR burst data.
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_background` |
-| Menu path | Spectroscopy → Single-Molecule → **Burst Background Estimation** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **Burst Background Estimation** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |

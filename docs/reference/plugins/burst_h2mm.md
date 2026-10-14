@@ -18,7 +18,7 @@ Photon-by-photon Hidden Markov Model (H2MM) analysis of single-molecule FRET bur
 | Field | Value |
 | --- | --- |
 | Plugin id | `burst_h2mm` |
-| Menu path | Spectroscopy → Single-Molecule → **H2MM** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Single-Molecule → **H2MM** |
 | Categories | Spectroscopy, Single-Molecule |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

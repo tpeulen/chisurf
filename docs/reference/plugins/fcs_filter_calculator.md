@@ -18,7 +18,7 @@ Compute filtered-FCS (fFCS) lifetime filters from microtime decay patterns.
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_filter_calculator` |
-| Menu path | Spectroscopy → Correlation → **FCS Filter Calculator** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Correlation → **FCS Filter Calculator** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

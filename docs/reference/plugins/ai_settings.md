@@ -18,7 +18,7 @@ AI Settings plugin for configuring API providers and backends.
 | Field | Value |
 | --- | --- |
 | Plugin id | `ai_settings` |
-| Menu path | Tools → **AI Settings** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → **AI Settings** |
 | Categories | Tools |
 | Version | 1.0.0 |
 | Surfaces | emtk |

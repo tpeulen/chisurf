@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: FCS Converter
-description: FCS conversion plugin. Convert fluorescence correlation spectroscopy files between supported formats directly from the ChiSurf CLI.
+description: Convert correlation-curve files between the supported FCS formats from the command line (csc).
 resource: chisurf/plugins/fcs/fcs_convert/
 tags: [reference, plugins, fcs-convert, spectroscopy, fluorescence-correlation-spectroscopy, correlation]
 anchor: plugin-fcs_convert
@@ -11,21 +11,21 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-fcs_convert)=
 # FCS Converter
 
-FCS conversion plugin.  Convert fluorescence correlation spectroscopy files between supported formats directly from the ChiSurf CLI.
+Convert correlation-curve files between the supported FCS formats from the command line (csc).
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `fcs_convert` |
-| Menu path | Spectroscopy → Correlation → **FCS Converter** |
+| Menu path | not in the menus; display name Spectroscopy → Correlation → **FCS Converter** |
 | Categories | Spectroscopy, Fluorescence Correlation Spectroscopy, Correlation |
 | Version | 1.0.0 |
 | Surfaces | cli |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin opens no window: it is a command-line tool (`csc fcs-convert --help` lists its options).
 
 ## Theory and workflow
 

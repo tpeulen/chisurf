@@ -18,27 +18,27 @@ Core database connector services for source/user database resolution, migration,
 | Field | Value |
 | --- | --- |
 | Plugin id | `database_connector` |
-| Menu path | Core → **Database Connector** |
+| Menu path | not in the menus; display name Core → **Database Connector** |
 | Categories | Core, Database, Fluorescence |
 | Version | 0.1.0 |
 | Surfaces | services |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin opens no window and has no parameters: it is shared code that other plugins import.
 
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
-| `database_connector.status` | no |  |
-| `database_connector.open` | no |  |
-| `database_connector.close` | no |  |
-| `database_connector.backup` | no |  |
-| `database_connector.reset_from_source` | no |  |
-| `database_connector.repository` | no |  |
-| `database_connector.import_file` | no |  |
-| `database_connector.export_sample` | no |  |
+| `database_connector.status` | no | Report the connector's state and the active database. |
+| `database_connector.open` | no | Open the connector on a database (the configured one by default). |
+| `database_connector.close` | no | Close the connector. |
+| `database_connector.backup` | no | Back up the active user database. |
+| `database_connector.reset_from_source` | no | Reset the user database from the curated source database. |
+| `database_connector.repository` | no | Repository metadata, optionally with record counts. |
+| `database_connector.import_file` | no | Import a structure file into the database. |
+| `database_connector.export_sample` | no | Export a sample as an FLR CIF file. |
 
 ## Theory and workflow
 
