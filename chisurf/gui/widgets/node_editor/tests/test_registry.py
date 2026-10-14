@@ -2,8 +2,10 @@
 
 import pytest
 
-from chisurf.gui.widgets.node_editor.model import PortSpec
-from chisurf.gui.widgets.node_editor.registry import NodeType, registry
+# The canonical modules: ``node_editor.model``/``.registry`` are runtime
+# sys.modules aliases of them, which a type checker cannot follow.
+from chisurf.emtk.node_editor.model import PortSpec
+from chisurf.emtk.node_editor.registry import NodeType, registry
 
 
 def test_registry_register_and_get():

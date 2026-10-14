@@ -12,7 +12,7 @@ class lineEdit_dragFile_injector:
         lineEdit,
         auto_inject=True,
         call=None,
-        target: typing.List[pathlib.Path] = None,
+        target: typing.List[pathlib.Path] | None = None,
         sorted: bool = True,
     ):
         self.lineEdit = lineEdit

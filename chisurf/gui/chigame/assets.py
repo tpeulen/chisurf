@@ -302,10 +302,10 @@ class ProceduralPack(AssetPack):
         if kind == "optic":
             # A mirror, dichroic or filter: hardware that redirects light. Tinted
             # by its own passband when one is given, otherwise plain glass.
-            rgb = wavelength_to_srgb(nm) if nm else self.PALETTE["glass"][:3]
+            r, g, b = wavelength_to_srgb(nm) if nm else self.PALETTE["glass"][:3]
             return Appearance(
                 shape=ROUND,
-                color=(*[0.35 + 0.65 * c for c in rgb], 1.0),
+                color=(0.35 + 0.65 * r, 0.35 + 0.65 * g, 0.35 + 0.65 * b, 1.0),
                 param=1.0,
                 softness=0.10,
             )

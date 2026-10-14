@@ -1,6 +1,8 @@
 import pytest
 
-from chisurf.gui.widgets.node_editor.graph import EdgeDef, GraphDef, NodeDef, PortDef
+# The canonical module: ``node_editor.graph`` is a runtime sys.modules alias of
+# it, which a type checker cannot follow.
+from chisurf.core.graph_definition import EdgeDef, GraphDef, NodeDef, PortDef
 
 
 def test_headless_graph_validation():

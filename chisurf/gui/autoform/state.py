@@ -172,6 +172,8 @@ def collect_state(form: Any) -> dict[str, Any]:
     state: dict[str, Any] = {}
     for section in iter_bound_sections(getattr(spec, "sections", ())):
         key = _key(section)
+        if key is None:  # iter_bound_sections yields keyed sections only
+            continue
         owner = _resolve_owner(model, getattr(section, "target", None))
         if owner is None:
             continue

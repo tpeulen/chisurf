@@ -267,7 +267,7 @@ def _convert_python_expression_to_latex_fallback(expression: str) -> str:
             if func_name == "gamma":
                 return r"\Gamma(" + ", ".join(args) + ")"
 
-            latex_name = func_latex_map.get(func_name)
+            latex_name = func_latex_map.get(func_name) if func_name is not None else None
             if latex_name:
                 return f"{latex_name}(" + ", ".join(args) + ")"
             if func_name is not None:

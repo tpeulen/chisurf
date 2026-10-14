@@ -228,13 +228,14 @@ def collect_setup_defaults(gui: Any) -> dict[str, Any]:
     Returns:
         Dict with experiments dict containing per-experiment defaults
     """
+    experiments_out: dict[str, dict[str, Any]] = {}
     result = {
         "schema_version": SCHEMA_VERSION,
         "last_selection": {
             "experiment_index": get_current_experiment_index(gui),
             "setup_index": get_current_setup_index(gui),
         },
-        "experiments": {},
+        "experiments": experiments_out,
     }
 
     try:
@@ -258,7 +259,7 @@ def collect_setup_defaults(gui: Any) -> dict[str, Any]:
                     exp_defaults[key] = reader_state
 
             if exp_defaults:
-                result["experiments"][exp_name] = exp_defaults
+                experiments_out[exp_name] = exp_defaults
 
     except Exception:
         pass

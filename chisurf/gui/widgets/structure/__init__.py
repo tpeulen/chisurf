@@ -1,6 +1,6 @@
 from . import potentials
 
-potentialDict = dict()
+potentialDict: dict[str, type] = dict()
 potentialDict["H-Bond"] = potentials.HPotentialWidget
 potentialDict["AV-Potential"] = potentials.AvPotentialWidget
 potentialDict["Iso-UNRES"] = potentials.CEPotentialWidget

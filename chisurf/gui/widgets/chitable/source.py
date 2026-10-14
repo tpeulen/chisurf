@@ -447,7 +447,8 @@ class DataStoreSource(TableSource):
         colorize = numeric if self._colorize is None else (name in self._colorize)
         editable = self._editable and name not in self._readonly
 
-        delegate, choices = "", ()
+        delegate = ""
+        choices: tuple[str, ...] = ()
         if kind == KIND_BOOL:
             delegate = "bool"
         elif kind == KIND_STR:

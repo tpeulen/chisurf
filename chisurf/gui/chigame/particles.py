@@ -316,7 +316,7 @@ class Field:
                     x=at[0] + self._rng.uniform(-scatter, scatter),
                     y=at[1] + self._rng.uniform(-scatter, scatter),
                     span=span,
-                    target=tuple(target),
+                    target=(float(target[0]), float(target[1])),
                     speed=speed * self._rng.uniform(0.8, 1.25),
                     kind=kind,
                     name=name,
