@@ -197,10 +197,19 @@ def database_picker_window_close_button_closes_it(app: Any, drv: Driver, path: A
 def drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(
     app: Any, drv: Driver, path: Any
 ) -> None:
-    assert drv.drop(path) is True
-    assert Path(app.model.filename) == Path(path) and app.job.busy
-    assert app.files_dropped([str(path)]) is False
-    drv.settle()
+    from chisurf.emtk import job_gate
+
+    # Hold the worker open: a small file computes faster than the drop's frames draw,
+    # and the "refused while running" half needs a run still in flight.
+    job_gate.arm()
+    try:
+        assert drv.drop(path) is True
+        assert Path(app.model.filename) == Path(path) and app.job.busy
+        assert app.files_dropped([str(path)]) is False
+        job_gate.release()
+        drv.settle()
+    finally:
+        job_gate.disarm()
     assert app.model._columns and app.files_dropped([]) is False
 
 

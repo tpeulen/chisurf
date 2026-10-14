@@ -91,8 +91,9 @@ class TttrlibSearchSettings:
 class PhotonFilterSettings:
     """Photon pre-filter settings used before burst detection."""
 
-    channels: list[int] = field(default_factory=list)
-    microtime_ranges: list[tuple[int, int]] = field(default_factory=list)
+    #: ``None`` (a GUI/RPC caller with nothing set) is normalised to ``[]`` = all photons
+    channels: list[int] | None = field(default_factory=list)
+    microtime_ranges: list[tuple[int, int]] | None = field(default_factory=list)
     filter_active: bool = True
     used_filter: BurstFilterMode = BurstFilterMode.COUNT_RATE
     count_rate_filter: CountRateFilterSettings = field(default_factory=CountRateFilterSettings)

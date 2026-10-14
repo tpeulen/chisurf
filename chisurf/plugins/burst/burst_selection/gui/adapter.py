@@ -311,7 +311,11 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
 
     from chisurf.gui.autoform.state import apply_state
 
-    data = asdict(settings) if is_dataclass(settings) else dict(settings or {})
+    data = (
+        asdict(settings)
+        if is_dataclass(settings) and not isinstance(settings, type)
+        else dict(settings or {})
+    )
     skipped: list[str] = []
 
     def _check(widget_name: str, value: Any) -> None:

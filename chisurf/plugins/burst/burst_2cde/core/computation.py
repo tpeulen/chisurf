@@ -10,6 +10,7 @@ raises -- there is no NumPy fallback.
 from __future__ import annotations
 
 import pathlib
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -61,15 +62,15 @@ def _to_pairs(ranges) -> list[tuple[int, int]]:
 def compute_2cde(
     df,
     tttrs: dict[str, tttrlib.TTTR],
-    donor_channels: list[int] = (0, 8),
-    donor_micro_time_ranges: list[tuple[int, int]] = ((0, 32768),),
-    acceptor_channels: list[int] = (1, 9),
-    acceptor_micro_time_ranges: list[tuple[int, int]] = ((0, 32768),),
+    donor_channels: Sequence[int] = (0, 8),
+    donor_micro_time_ranges: Sequence[tuple[int, int]] = ((0, 32768),),
+    acceptor_channels: Sequence[int] = (1, 9),
+    acceptor_micro_time_ranges: Sequence[tuple[int, int]] = ((0, 32768),),
     tau: float = 100e-6,
     kernel: str = "laplace",
     variant: str = "fret",
-    acceptor_excitation_channels: list[int] | None = None,
-    acceptor_excitation_micro_time_ranges: list[tuple[int, int]] | None = None,
+    acceptor_excitation_channels: Sequence[int] | None = None,
+    acceptor_excitation_micro_time_ranges: Sequence[tuple[int, int]] | None = None,
     progress_window=None,
 ):
     """Compute the per-burst 2CDE feature and add it as a dataframe column.

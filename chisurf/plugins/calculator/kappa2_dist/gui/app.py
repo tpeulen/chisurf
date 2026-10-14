@@ -22,6 +22,7 @@ from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
 from emtk.view_form import FormState, draw_form
 
+from chisurf.emtk import job_gate
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import window_size
 
@@ -305,7 +306,8 @@ class Kappa2Gui(TourTarget):
                     "produces, with the assumed true κ² marked."
                 )
             )
-        self.remember("plot", tuple(box))  # the window's content: the plot fills it
+        left, top, width, height = box
+        self.remember("plot", (left, top, width, height))  # the window's content: the plot fills it
 
     # ── the results ───────────────────────────────────────────────────────
 
@@ -507,9 +509,12 @@ def make_app(kappa2: float = 0.667, **kwargs):
         state.busy = True
         state.dirty = False
         snapshot = copy.copy(state._model)
+        # A test that arms the gate keeps the run in flight (Compute disabled) until it releases it.
+        ticket = job_gate.admit()
 
         def run():
-            snapshot.compute(client)
+            with job_gate.hold(ticket, lambda: False):
+                snapshot.compute(client)
             pending.append(snapshot)
             app.request_frame()  # wake an idle host: the result is drawn on the next frame
 

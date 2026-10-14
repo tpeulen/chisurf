@@ -6,6 +6,8 @@ import copy
 import queue
 import threading
 
+from chisurf.emtk import job_gate
+
 
 class SnapshotJob:
     def __init__(self, model):
@@ -65,10 +67,23 @@ class SnapshotJob:
         self.error = ""
         self.progress = method.replace("_", " ").capitalize() + "…"
 
+        # A test that arms the gate keeps the job open (``busy``) until it releases it or
+        # the snapshot's own Stop flag is set; in production this is free.
+        ticket = job_gate.admit()
+
+        def cancelled() -> bool:
+            event = getattr(snapshot, "cancel_event", None)
+            return bool(event is not None and event.is_set())
+
         def run():
             try:
-                getattr(snapshot, method)(*args, **kwargs)
-                self.messages.put(("done", snapshot, None, list(events)))
+                with job_gate.hold(ticket, cancelled) as go:
+                    if go:
+                        getattr(snapshot, method)(*args, **kwargs)
+                if go:
+                    self.messages.put(("done", snapshot, None, list(events)))
+                else:  # stopped while held: nothing was computed, the model keeps its state
+                    self.messages.put(("done", None, None, list(events)))
             except Exception as exc:
                 self.messages.put(("done", None, str(exc), list(events)))
 

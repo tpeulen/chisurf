@@ -261,7 +261,7 @@ def _run_burst_search(source: pathlib.Path, settings: dict, search: dict) -> pat
     reading manifest a fused folder is regenerated from — so the demo also shows
     the path a current burst analysis takes, not a special case.
     """
-    from chisurf.plugins.burst.burst_selection.api.models import AnalysisSettings
+    from chisurf.plugins.burst.burst_selection.api.models import AnalysisSettings, BurstFilterMode
     from chisurf.plugins.burst.burst_selection.api.selection import analyze_file
 
     analysis = source.parent / "burstwise_demo"
@@ -277,7 +277,7 @@ def _run_burst_search(source: pathlib.Path, settings: dict, search: dict) -> pat
     analysis_settings.burst_detection.min_photons = int(search["min_photons"])
     analysis_settings.burst_detection.photon_window = int(search["photon_window"])
     analysis_settings.burst_detection.time_window = float(search["time_window_ms"]) * 1e-3
-    analysis_settings.photon_filter.used_filter = "burst"
+    analysis_settings.photon_filter.used_filter = BurstFilterMode.BURST
     analysis_settings.photon_filter.filter_active = True
     # The whole micro-time axis: the demo's micro times carry no information, and
     # a window would silently discard photons.

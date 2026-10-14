@@ -12,6 +12,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
+from chisurf.emtk import job_gate
 from chisurf.plugins.emtk_layout import action_caption
 
 from .test_emtk_kappa2_dist_verify import (  # noqa: F401  (hermetic is an autouse fixture)
@@ -179,13 +180,20 @@ def test_the_compute_button_recomputes_and_is_disabled_while_a_run_is_in_flight(
     press_text(app, "Compute")
     settle(app)
     assert app.tool._model.k2_mean != first
-    app.kappa2_gui.on_compute()
-    assert app.tool.busy
-    runs = []
-    app.kappa2_gui.on_compute = lambda: runs.append(1)
-    press_text(app, "Compute")  # disabled while busy: the click does nothing
-    assert runs == []
-    settle(app)
+    # Hold the run open: it finishes faster than the press's frames draw, so without the
+    # gate the button was enabled again by the time it was clicked.
+    job_gate.arm()
+    try:
+        app.kappa2_gui.on_compute()
+        assert app.tool.busy
+        runs = []
+        app.kappa2_gui.on_compute = lambda: runs.append(1)
+        press_text(app, "Compute")  # disabled while busy: the click does nothing
+        assert runs == []
+        job_gate.release()
+        settle(app)
+    finally:
+        job_gate.disarm()
 
 
 def open_save_dialog(app, monkeypatch, tmp_path, size=SIZE):

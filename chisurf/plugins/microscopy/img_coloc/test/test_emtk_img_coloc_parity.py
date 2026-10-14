@@ -303,10 +303,18 @@ def test_the_database_picker_window_close_button_closes_it(app, drv, pair):
 
 
 def test_a_drop_loads_and_runs_the_file_and_a_drop_while_a_worker_runs_is_refused(app, drv, pair):
-    assert drv.drop(pair) is True
-    assert Path(app.model.filename) == pair and app.job.busy
-    assert app.files_dropped([str(pair)]) is False
-    drv.settle(timeout=120)
+    from chisurf.emtk import job_gate
+
+    # Hold the worker open: the small image computes faster than the drop's frames draw.
+    job_gate.arm()
+    try:
+        assert drv.drop(pair) is True
+        assert Path(app.model.filename) == pair and app.job.busy
+        assert app.files_dropped([str(pair)]) is False
+        job_gate.release()
+        drv.settle(timeout=120)
+    finally:
+        job_gate.disarm()
     assert app.model.metric_rows() and app.files_dropped([]) is False
 
 

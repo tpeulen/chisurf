@@ -204,7 +204,11 @@ class Setup:
         from chisurf.core.fluorescence.burst.photons import StreamDef
 
         return [
-            StreamDef(d.name, list(d.routing_channels), [tuple(r) for r in d.microtime_ranges])
+            StreamDef(
+                d.name,
+                list(d.routing_channels),
+                [(int(lo), int(hi)) for lo, hi in d.microtime_ranges],
+            )
             for d in self.detectors
         ]
 
@@ -1270,6 +1274,7 @@ class BurstWorkflow:
             AnalysisRequest,
             AnalysisSettings,
             BurstDetectionSettings,
+            BurstFilterMode,
             CountRateFilterSettings,
             DeltaMacroTimeFilterSettings,
             PhotonFilterSettings,
@@ -1292,7 +1297,7 @@ class BurstWorkflow:
         settings.photon_filter = PhotonFilterSettings(
             channels=setup.all_routing_channels(),
             filter_active=filter_active,
-            used_filter=filter_mode,
+            used_filter=BurstFilterMode(filter_mode),
             count_rate_filter=CountRateFilterSettings(
                 n_ph_max=min_photons, time_window=time_window
             ),
