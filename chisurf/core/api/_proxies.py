@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
-from typing import Any
+from collections.abc import Iterator, Sequence
+from typing import Any, overload
 
 import chisurf as cs
 from chisurf.core.api._client import ChisurfClient
@@ -398,8 +398,13 @@ class DatasetProxy:
         return f"<DatasetProxy {self.name}>"
 
 
-class ProxyList:
-    """Base class for list-like proxies backed by a ``ChisurfClient``."""
+class ProxyList(Sequence[Any]):
+    """Base class for list-like proxies backed by a ``ChisurfClient``.
+
+    A :class:`~collections.abc.Sequence`, so code typed against a sequence of
+    fits or datasets accepts the proxy that replaces ``cs.fits`` /
+    ``cs.imported_datasets`` in server mode.
+    """
 
     def __init__(self, client: ChisurfClient):
         self._client = client
@@ -417,8 +422,16 @@ class ProxyList:
     def __iter__(self) -> Iterator:
         return iter(self._wrap(d) for d in self._fetch())
 
-    def __getitem__(self, index: int):
+    @overload
+    def __getitem__(self, index: int) -> Any: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> list[Any]: ...
+
+    def __getitem__(self, index: int | slice) -> Any:
         items = self._fetch()
+        if isinstance(index, slice):
+            return [self._wrap(d) for d in items[index]]
         if index < 0:
             index += len(items)
         return self._wrap(items[index])

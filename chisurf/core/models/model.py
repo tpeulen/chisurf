@@ -290,7 +290,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
             xmax = fit.xmax
         return chisurf.core.fitting.calculate_weighted_residuals(
             fit.data,
-            fit.model,
+            fit.model_curve,
             xmin=xmin,
             xmax=xmax,
             noise_model=getattr(fit, "noise_model", "default"),

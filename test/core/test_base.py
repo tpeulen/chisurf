@@ -210,15 +210,15 @@ class Tests(unittest.TestCase):
 
         np.save(file=filename, arr=a)
         d = chisurf.core.base.Data(filename=filename, embed_data=True)
-        self.assertEqual(len(d.data), 8128)
+        self.assertEqual(len(d.embedded), 8128)
         self.assertEqual(d.embed_data, True)
 
         d = chisurf.core.base.Data(filename=filename, embed_data=False)
-        self.assertEqual(len(d.data), 0)
+        self.assertEqual(len(d.embedded), 0)
 
         d.embed_data = False
         self.assertEqual(d.embed_data, False)
-        self.assertEqual(d.data, None)
+        self.assertEqual(d.embedded, None)
 
     def test_hasattr(self):
         # Test that hasattr correctly returns True for existing attributes

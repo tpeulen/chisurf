@@ -34,8 +34,35 @@ import chisurf.core.info
 
 __version__ = chisurf.core.info.__version__
 
-fits: list[chisurf.core.fitting.fit.FitGroup] = list()
-imported_datasets: list[chisurf.core.data.DataGroup] = list()
+if typing.TYPE_CHECKING:
+    from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
+
+#: The fits of this process: a plain list locally; in server mode
+#: :func:`chisurf.core.api._proxies.install_proxies` replaces it with a list
+#: proxy whose items are :class:`~chisurf.core.api._proxies.FitProxy` records.
+fits: list[chisurf.core.fitting.fit.FitGroup] | ProxyFitList = list()
+#: The datasets of this process; a proxy list in server mode, as :data:`fits`.
+imported_datasets: list[chisurf.core.data.DataGroup] | ProxyDatasetList = list()
+
+
+def local_session_lists() -> tuple[
+    list[chisurf.core.data.DataGroup], list[chisurf.core.fitting.fit.FitGroup]
+]:
+    """``(imported_datasets, fits)`` as the in-process lists they are locally.
+
+    For code that builds a server session *over* this process's objects. In a
+    process whose fits live on a server (proxies installed) there are no such
+    lists to share, and wrapping the proxies would make the server talk to
+    itself; that is refused here rather than failing somewhere inside.
+
+    Raises
+    ------
+    RuntimeError
+        When :data:`fits` or :data:`imported_datasets` is a server proxy.
+    """
+    if not isinstance(imported_datasets, list) or not isinstance(fits, list):
+        raise RuntimeError("this process's fits and datasets live on a server (proxies installed)")
+    return imported_datasets, fits
 
 
 def registered_parameter_groups() -> list[tuple[str, str, typing.Any]]:

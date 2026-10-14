@@ -108,7 +108,8 @@ def _create_grouped_fit(indices: list[int], model_name: str) -> None:
     from chisurf.server.services.fits import fit_create
     from chisurf.server.session import SessionState
 
-    state = SessionState(datasets=cs.imported_datasets, fits=cs.fits)
+    datasets, fits = cs.local_session_lists()
+    state = SessionState(datasets=datasets, fits=fits)
     result = fit_create(state, dataset_indices=list(indices), model_name=str(model_name))
     if not result.get("ok"):
         raise ToolError(str(result.get("error", "grouped fit could not be created")))

@@ -135,6 +135,8 @@ Python ``update_model()`` calls, which is what a parse fit always made.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 import chisurf.logging
@@ -158,110 +160,125 @@ def have_minimizer() -> bool:
     return _bff is not None
 
 
-if _bff is not None:
+class _Unavailable:
+    """Base of the bff-backed classes when IMP.bff is missing: constructing one says so."""
 
-    class ResidualNode(_bff.FitObjective):
-        """A Python residual presented to C++ as a fit objective.
+    def __init__(self, *args, **kwargs):
+        raise ImportError(f"the C++ optimiser (IMP.bff) is not available: {_bff_import_error}")
 
-        The optimiser writes the trial vector into this node's input ports,
-        calls ``update()``, and reads the objective's residuals. Everything in between -- setting the
-        model's parameters, evaluating it, forming the weighted residual --
-        happens in one Python call instead of the several the old loop made.
 
-        The residual length must not depend on the parameters; the C++ side
-        refuses a vector that changes size, because Levenberg-Marquardt has
-        no meaning for an objective whose dimension moves.
-        """
-
-        def __init__(self, func, n_parameters: int, name: str = "residuals"):
-            super().__init__(name)
-            self._func = func
-            self._names = ["p%d" % i for i in range(n_parameters)]
-            for n in self._names:
-                self.add_input_port(n, _bff.GraphPort(0.0))
-            # Resolved once and held. `get_input_port` is a SWIG call and the
-            # ports do not move, so looking them up inside `evaluate` cost a
-            # crossing per parameter per residual evaluation -- on a
-            # four-parameter fit, four of them, for a lookup whose answer was
-            # settled in this constructor. Measured on a parse fit: 1.14 ms
-            # of optimisation against 1.06 without it.
-            self._ports = [self.get_input_port(n) for n in self._names]
-            self._out = self.get_residuals_port()
-            #: Set when the callback raised, so `minimize` can re-raise it in
-            #: Python rather than let it cross back through the director.
-            self.error = None
-
-        @property
-        def ports(self):
-            return list(self._ports)
-
-        def set_start(self, values) -> None:
-            for port, v in zip(self._ports, values):
-                port.value = float(v)
-
-        def evaluate(self):
-            parameters = np.array([p.value for p in self._ports], dtype=np.float64)
-            try:
-                residuals = np.asarray(self._func(parameters), dtype=np.float64).ravel()
-            except BaseException as exc:  # noqa: BLE001 - re-raised below
-                # A Python exception thrown through a SWIG director unwinds a
-                # C++ loop that is holding raw buffers. Record it, hand back
-                # the previous residual so the optimiser stays well-defined,
-                # and let `minimize` raise it once the C++ frame is gone.
-                if self.error is None:
-                    self.error = exc
-                self.set_valid(True)
-                return
-            # `set_values_array`, not `set_value_vector`: the latter takes a
-            # std::vector<double>, so from Python it builds a list of every
-            # residual before storing any of it. On a 512-point curve that
-            # conversion cost more than the optimiser step it served, and it
-            # is why this path measured *slower* than the scipy loop.
-            self._out.set_values_array(residuals)
-            self.set_valid(True)
-
-    class ProgressObserver(_bff.FitMinimizerObserver):
-        """chisurf's ``progress_callback`` contract, driven from C++.
-
-        Reports ``(evaluated, total)`` with ``chi2``/``chi2r`` offered as
-        keywords and falls back to the documented two-argument call, which is
-        what scipy-era ``leastsqbound._report_progress`` did and why: a callback
-        written to the documented signature raises ``TypeError`` on the
-        keywords, and swallowing that left the bar at zero for whole fits.
-
-        Cancellation is a **return value**, not an exception: the C++ loop
-        stops at the last accepted point and ``minimize`` raises
-        :class:`OptimizationCancelled` afterwards. Throwing through the
-        director would unwind that loop mid-iteration.
-        """
-
-        def __init__(self, callback, n_free: int = 0):
-            super().__init__()
-            self._callback = callback
-            self._n_free = int(n_free)
-            self.cancelled = False
-
-        def report(self, n_evaluations, total, chi2):
-            if self._callback is None:
-                return True
-            dof = max(1.0, float(self._n_free))
-            chi2r = float(chi2) / dof if self._n_free else float(chi2)
-            try:
-                try:
-                    self._callback(n_evaluations, total, chi2=float(chi2), chi2r=chi2r)
-                except TypeError:
-                    self._callback(n_evaluations, total)
-            except OptimizationCancelled:
-                self.cancelled = True
-                return False
-            except Exception:
-                # A broken progress bar must not take the optimisation down.
-                pass
-            return True
-
+# One definition per class, two possible bases: a checker sees the bff bases,
+# and an environment without IMP gets classes that raise on construction (see
+# :func:`have_minimizer`) instead of names bound to None.
+if TYPE_CHECKING:
+    from IMP.bff import FitMinimizerObserver as _ObserverBase
+    from IMP.bff import FitObjective as _ObjectiveBase
+elif _bff is not None:
+    _ObjectiveBase = _bff.FitObjective
+    _ObserverBase = _bff.FitMinimizerObserver
 else:  # pragma: no cover - environment without IMP.bff
-    ResidualNode = None
-    ProgressObserver = None
+    _ObjectiveBase = _ObserverBase = _Unavailable
+
+
+class ResidualNode(_ObjectiveBase):
+    """A Python residual presented to C++ as a fit objective.
+
+    The optimiser writes the trial vector into this node's input ports,
+    calls ``update()``, and reads the objective's residuals. Everything in between -- setting the
+    model's parameters, evaluating it, forming the weighted residual --
+    happens in one Python call instead of the several the old loop made.
+
+    The residual length must not depend on the parameters; the C++ side
+    refuses a vector that changes size, because Levenberg-Marquardt has
+    no meaning for an objective whose dimension moves.
+    """
+
+    def __init__(self, func, n_parameters: int, name: str = "residuals"):
+        super().__init__(name)
+        self._func = func
+        self._names = ["p%d" % i for i in range(n_parameters)]
+        for n in self._names:
+            self.add_input_port(n, _bff.GraphPort(0.0))
+        # Resolved once and held. `get_input_port` is a SWIG call and the
+        # ports do not move, so looking them up inside `evaluate` cost a
+        # crossing per parameter per residual evaluation -- on a
+        # four-parameter fit, four of them, for a lookup whose answer was
+        # settled in this constructor. Measured on a parse fit: 1.14 ms
+        # of optimisation against 1.06 without it.
+        self._ports = [self.get_input_port(n) for n in self._names]
+        self._out = self.get_residuals_port()
+        #: Set when the callback raised, so `minimize` can re-raise it in
+        #: Python rather than let it cross back through the director.
+        self.error = None
+
+    @property
+    def ports(self):
+        return list(self._ports)
+
+    def set_start(self, values) -> None:
+        for port, v in zip(self._ports, values):
+            port.value = float(v)
+
+    def evaluate(self):
+        parameters = np.array([p.value for p in self._ports], dtype=np.float64)
+        try:
+            residuals = np.asarray(self._func(parameters), dtype=np.float64).ravel()
+        except BaseException as exc:  # noqa: BLE001 - re-raised below
+            # A Python exception thrown through a SWIG director unwinds a
+            # C++ loop that is holding raw buffers. Record it, hand back
+            # the previous residual so the optimiser stays well-defined,
+            # and let `minimize` raise it once the C++ frame is gone.
+            if self.error is None:
+                self.error = exc
+            self.set_valid(True)
+            return
+        # `set_values_array`, not `set_value_vector`: the latter takes a
+        # std::vector<double>, so from Python it builds a list of every
+        # residual before storing any of it. On a 512-point curve that
+        # conversion cost more than the optimiser step it served, and it
+        # is why this path measured *slower* than the scipy loop.
+        self._out.set_values_array(residuals)
+        self.set_valid(True)
+
+
+class ProgressObserver(_ObserverBase):
+    """chisurf's ``progress_callback`` contract, driven from C++.
+
+    Reports ``(evaluated, total)`` with ``chi2``/``chi2r`` offered as
+    keywords and falls back to the documented two-argument call, which is
+    what scipy-era ``leastsqbound._report_progress`` did and why: a callback
+    written to the documented signature raises ``TypeError`` on the
+    keywords, and swallowing that left the bar at zero for whole fits.
+
+    Cancellation is a **return value**, not an exception: the C++ loop
+    stops at the last accepted point and ``minimize`` raises
+    :class:`OptimizationCancelled` afterwards. Throwing through the
+    director would unwind that loop mid-iteration.
+    """
+
+    def __init__(self, callback, n_free: int = 0):
+        super().__init__()
+        self._callback = callback
+        self._n_free = int(n_free)
+        self.cancelled = False
+
+    def report(self, n_evaluations, total, chi2):
+        if self._callback is None:
+            return True
+        dof = max(1.0, float(self._n_free))
+        chi2r = float(chi2) / dof if self._n_free else float(chi2)
+        try:
+            try:
+                self._callback(n_evaluations, total, chi2=float(chi2), chi2r=chi2r)
+            except TypeError:
+                self._callback(n_evaluations, total)
+        except OptimizationCancelled:
+            self.cancelled = True
+            return False
+        except Exception:
+            # A broken progress bar must not take the optimisation down.
+            pass
+        return True
 
 
 #: The variable an mdf FCS equation reads its diffusion shape from. It is a

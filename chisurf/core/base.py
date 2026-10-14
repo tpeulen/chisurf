@@ -840,12 +840,17 @@ class Data(Base):
             self._data = None
 
     @property
-    def data(self) -> bytes | None:
-        """Return the embedded binary data (or None)."""
+    def embedded(self) -> bytes | None:
+        """Return the embedded (possibly compressed) file content, or None.
+
+        Not ``data``: a subclass's ``data`` is its *numbers* (``DataCurve.data``
+        is the stacked ``x, y, ex, ey, mask``), and one name meaning bytes here
+        and arrays there made every curve violate the type of its own base.
+        """
         return self._data
 
-    @data.setter
-    def data(self, v: bytes | None):
+    @embedded.setter
+    def embedded(self, v: bytes | None):
         """Set the embedded binary data."""
         self._data = v
 

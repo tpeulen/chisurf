@@ -102,7 +102,7 @@ def _raw_fit_name(f) -> str:
         model_name = "no model"
 
     try:
-        data = getattr(f, "_data", None)
+        data = getattr(f, "data_group", None) or getattr(f, "_data", None)
         data_name = getattr(data, "name", None)
     except Exception:
         data_name = None
@@ -195,6 +195,10 @@ class _StagedProgress:
             self._callback(value, 1000, stage=self._stage + 1, n_stages=self.n_stages, **kwargs)
         except TypeError:
             self._callback(value, 1000)
+
+
+class NoModelError(AttributeError):
+    """A fit has no model attached yet (see :attr:`Fit.model`)."""
 
 
 class Fit(cs.core.base.Base):
@@ -353,16 +357,28 @@ class Fit(cs.core.base.Base):
         self._data = v
 
     @property
-    def model(self) -> cs.core.models.model.ModelCurve:
-        """Model curve used for fitting.
+    def model(self) -> cs.core.models.model.Model:
+        """The model this fit evaluates.
 
-        Returns
-        -------
-        cs.core.models.ModelCurve
-            The model instance associated with this fit (``None`` only for a
-            fit built without a model class, before one is attached).
+        Usually a :class:`~chisurf.core.models.model.ModelCurve`; a global fit,
+        a parameter transform or a structure model is a plain
+        :class:`~chisurf.core.models.model.Model`.
+
+        Raises
+        ------
+        NoModelError
+            For a fit built without a model class and not given one since. It
+            is an ``AttributeError``, so ``getattr(fit, "model", None)`` and
+            ``hasattr(fit, "model")`` answer "no model" exactly as they did when
+            this returned ``None``.
         """
-        return self._model
+        model = self._model
+        if model is None:
+            # Not ``self.name``: the derived name asks for the model, which
+            # would recurse back here.
+            uid = self.__dict__.get("meta_data", {}).get("unique_identifier", "?")
+            raise NoModelError(f"{type(self).__name__} {uid} has no model attached")
+        return model
 
     @model.setter
     def model(self, model: ModelSpec):
@@ -423,6 +439,24 @@ class Fit(cs.core.base.Base):
                 cs.logging.debug(f"initial model update at attach deferred: {e}")
 
     @property
+    def model_curve(self) -> cs.core.curve.Curve:
+        """The model as a curve, for the paths that slice or plot it.
+
+        Most models are curves; a structure model or a parameter transform is
+        not, and indexing one used to fail with an unhelpful TypeError deep in
+        a residual computation.
+
+        Raises
+        ------
+        TypeError
+            If the model computes no curve.
+        """
+        model = self.model
+        if not isinstance(model, cs.core.curve.Curve):
+            raise TypeError(f"{type(model).__name__} computes no curve")
+        return model
+
+    @property
     def weighted_residuals(self) -> cs.core.curve.Curve:
         """Weighted residuals within the current fit range.
 
@@ -431,7 +465,7 @@ class Fit(cs.core.base.Base):
         cs.core.curve.Curve
             Curve whose y-values are ``(data - model) / weights``.
         """
-        wres_x, _ = self.model[self.xmin : self.xmax]
+        wres_x, _ = self.model_curve[self.xmin : self.xmax]
         wres_y = self.model.weighted_residuals
         return cs.core.curve.Curve(x=wres_x, y=wres_y, copy_array=False)
 
@@ -1181,7 +1215,7 @@ class Fit(cs.core.base.Base):
                     wres_seg = np.asarray([], dtype=float)
 
             try:
-                _, mdl_seg = self.model[self.xmin : self.xmax]
+                _, mdl_seg = self.model_curve[self.xmin : self.xmax]
                 mdl_seg = np.asarray(mdl_seg, dtype=float)
             except Exception:
                 mdl_seg = np.asarray([], dtype=float)
@@ -1838,7 +1872,7 @@ class FitGroup(Fit):
         self.selected_fit.data = v
 
     @property
-    def model(self) -> cs.core.models.model.ModelCurve:
+    def model(self) -> cs.core.models.model.Model:
         """Model of the currently selected grouped fit.
 
         Returns
@@ -2299,7 +2333,11 @@ class FitGroup(Fit):
                 model_kw = dict()
             Fit(model_class=model_class, data=d, model_kw=model_kw, group=self.grouped_fits)
 
-        super().__init__(data=data)
+        # A group's data is a DataGroup, not the curve a Fit holds: it is kept
+        # as `data_group`, and `data` reads the selected member's curve. Handing
+        # the group to Fit.__init__ stored it where a curve is typed and read.
+        super().__init__(noise_model=cs.core.fitting.default_noise_model(data, model_class))
+        self.data_group: cs.core.data.DataGroup = data
         self._model = cs.core.models.global_model.GlobalFitModel(fit=self, fits=self.grouped_fits)
 
     def to_dict(

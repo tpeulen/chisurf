@@ -1,18 +1,8 @@
 {
- "total": 2264,
+ "total": 2275,
  "files": {
-  "chisurf/core/api/_proxies.py": 2,
-  "chisurf/core/console/magics_builtin.py": 2,
-  "chisurf/core/console/streams.py": 3,
-  "chisurf/core/data.py": 3,
-  "chisurf/core/fitting/fit.py": 2,
-  "chisurf/core/fitting/minimizer.py": 4,
-  "chisurf/core/nodes.py": 1,
-  "chisurf/core/structure/trajectory.py": 2,
+  "chisurf/core/data.py": 2,
   "chisurf/gui/__init__.py": 3,
-  "chisurf/history/projection.py": 3,
-  "chisurf/macros/core_fit.py": 4,
-  "chisurf/macros/model_parse.py": 1,
   "chisurf/plugins/chimol/app.py": 4,
   "chisurf/plugins/chimol/test/compare_wgsl.py": 1,
   "chisurf/plugins/chimol/test/test_browser_demos.py": 2,
@@ -50,14 +40,6 @@
   "chisurf/plugins/core/mmfdb_admin/gui/client.py": 15,
   "chisurf/plugins/core/mmfdb_admin/gui/entity_schema.py": 1,
   "chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py": 1,
-  "chisurf/plugins/ndxplorer/calibration_bridge.py": 3,
-  "chisurf/server/services/bursts.py": 2,
-  "chisurf/server/services/datasets.py": 2,
-  "chisurf/server/services/model_sections.py": 2,
-  "chisurf/server/services/parameters.py": 1,
-  "chisurf/server/services/plot_svc.py": 2,
-  "chisurf/server/services/projects.py": 1,
-  "chisurf/server/startup.py": 1,
-  "chisurf/startup/services.py": 4
+  "chisurf/plugins/ndxplorer/calibration_bridge.py": 3
  }
 }

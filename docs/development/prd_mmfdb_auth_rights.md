@@ -499,7 +499,7 @@ Redaction:
 - [ ] {src}`chisurf/plugins/core/mmfdb_admin/backend/services.py`
 - [ ] {src}`chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`
 - [ ] `chisurf/plugins/core/mmfdb_admin/backend/setup_services.py`
-- [ ] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
+- [ ] {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py`
 - [ ] `chisurf/plugins/core/user_editor/gui.py`
 - [ ] startup login dialog in {src}`chisurf/gui/__init__.py`
 - [ ] `chisurf/core/mmfdb/repository.py`

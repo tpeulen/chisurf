@@ -308,9 +308,48 @@ class TrajectoryFile(_Trajectory, chisurf.core.base.Base):
         it, and a trajectory without a file raised TypeError (``str + None``)
         past the ``except AttributeError`` meant to catch it.
         """
+        given = self.__dict__.get("name")
+        if given:
+            return str(given)
         if self.filename is None:
             return "None"
         return self.filename.replace("/", "/ ")
+
+    @name.setter
+    def name(self, v: str) -> None:
+        """Give the trajectory a display name in place of its file path.
+
+        Every :class:`~chisurf.core.base.Base` can be renamed; this one raised
+        AttributeError, so code renaming a Base failed on a trajectory alone.
+        """
+        self.__dict__["name"] = v
+
+    def save(
+        self,
+        filename: str,
+        file_type: str = "",
+        verbose: bool = False,
+        skip_qt_widgets: bool = False,
+    ) -> None:
+        """Write the trajectory, or serialise the object as Base does.
+
+        Parameters
+        ----------
+        filename : str
+            Output path.
+        file_type : str, optional
+            Empty writes the coordinates in the format the suffix names
+            (``.pdb``, ``.dcd``); ``"yaml"``/``"json"`` serialise the object's
+            state like any other :class:`~chisurf.core.base.Base`.
+        verbose, skip_qt_widgets : bool
+            Passed to the serialisation.
+        """
+        if file_type:
+            chisurf.core.base.Base.save(
+                self, filename, file_type, verbose=verbose, skip_qt_widgets=skip_qt_widgets
+            )
+        else:
+            _Trajectory.save(self, filename)
 
     @property
     def rmsd_ref_state(self) -> int:

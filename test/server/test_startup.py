@@ -102,6 +102,8 @@ def test_session_state_from_live_chisurf_with_mock():
     mock_cs = MagicMock()
     mock_cs.fits = ["fit1"]
     mock_cs.imported_datasets = ["ds1"]
+    # The in-process lists, as chisurf.local_session_lists hands them over.
+    mock_cs.local_session_lists.return_value = (["ds1"], ["fit1"])
 
     with patch.dict("sys.modules", {"chisurf": mock_cs}):
         with patch.object(startup_mod, "sync_current_fit_uid_from_live_chisurf") as mock_sync:
@@ -218,3 +220,23 @@ def test_sync_current_fit_uid_from_list_selected():
     with patch.dict("sys.modules", {"chisurf": mock_cs}):
         startup_mod.sync_current_fit_uid_from_live_chisurf(state)
     assert state.current_fit_uid == "fit-selected-1"
+
+
+def test_no_session_is_built_over_server_proxies():
+    """With the fits on a server there are no in-process lists to share."""
+    import chisurf
+    import chisurf.server.startup as startup_mod
+    from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
+
+    client = object()
+    with (
+        patch.object(chisurf, "fits", ProxyFitList(client)),
+        patch.object(chisurf, "imported_datasets", ProxyDatasetList(client)),
+    ):
+        try:
+            chisurf.local_session_lists()
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("proxies were handed over as local lists")
+        assert startup_mod.session_state_from_live_chisurf() is None

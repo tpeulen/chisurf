@@ -327,7 +327,7 @@ class GlobalFitModel(Model, Curve):
         try:
             re = list()
             for i, f in enumerate(self.fits):
-                if f.model is not None:
+                if getattr(f, "model", None) is not None:
                     re += ["%i:%s" % (i + 1, p.name) for p in f.model.parameters]
             re += self.global_parameters_names
             return re
@@ -340,7 +340,7 @@ class GlobalFitModel(Model, Curve):
         try:
             re = list()
             for f in self.fits:
-                if f.model is not None:
+                if getattr(f, "model", None) is not None:
                     re += [p for p in f.model.parameters_all]
             re += self.global_parameters_all
             return re
@@ -363,7 +363,7 @@ class GlobalFitModel(Model, Curve):
         try:
             re = list()
             for i, f in enumerate(self.fits):
-                if f.model is not None:
+                if getattr(f, "model", None) is not None:
                     re += ["%i:%s" % (i + 1, p.name) for p in f.model._parameters]
             re += self.global_parameters_all_names
             return re
@@ -619,7 +619,7 @@ class GlobalFitModel(Model, Curve):
                 xmin = f.xmin
             if xmax is None:
                 xmax = f.xmax
-            x, m = f.model[xmin:xmax]
+            x, m = f.model_curve[xmin:xmax]
             x, d, w = f.model.data[xmin:xmax]
             ml = min([len(m), len(d)])
             wr = np.array((d[:ml] - m[:ml]) * w[:ml], dtype=np.float64)
