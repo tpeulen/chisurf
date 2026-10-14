@@ -54,6 +54,7 @@ they stay in one group with their rates — that is what the PDA models do.
 from __future__ import annotations
 
 import logging
+import typing
 
 import numpy as np
 
@@ -76,7 +77,13 @@ logger = logging.getLogger(__name__)
 DEFAULT_RATE = 100.0
 
 
-class RateMatrixMixin:
+if typing.TYPE_CHECKING:
+    _Host = FittingParameterGroup
+else:
+    _Host = object
+
+
+class RateMatrixMixin(_Host):
     """Off-diagonal rate parameters of an ``n``-state scheme.
 
     Expects the host to be a

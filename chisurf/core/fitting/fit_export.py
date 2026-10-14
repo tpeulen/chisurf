@@ -22,7 +22,7 @@ import os
 import shutil
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 _log = logging.getLogger("chisurf.fitting.fit_export")
 
@@ -124,9 +124,17 @@ def write_report(fit: Any, path: str | Path, images: Images = ()) -> Path:
     return target
 
 
+class FitExport(TypedDict):
+    """What :func:`export_fit` wrote: the curve tables, the fit document, the report."""
+
+    csv: list[str]
+    document: str
+    report: str
+
+
 def export_fit(
     fit: Any, target_path: str | Path, images: Images = (), *, use_complex_name: bool = False
-) -> dict[str, str]:
+) -> FitExport:
     """*Current Fit*: write *fit*'s curves, its fit document and its report into *target_path*.
 
     Returns

@@ -40,7 +40,7 @@ from chisurf.core.models.fcs.mdf import compute_brightness, set_output_parameter
 from chisurf.core.models.model import ModelCurve
 
 
-class RateMatrixRates(FittingParameterGroup, RateMatrixMixin):
+class RateMatrixRates(RateMatrixMixin, FittingParameterGroup):
     """Off-diagonal transition rates of a photokinetic scheme as fit parameters.
 
     One class serves both the dark (rate) and excitation (cross-section)

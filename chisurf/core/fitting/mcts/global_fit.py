@@ -354,19 +354,21 @@ def prepare_global_model_search(
     native_groups: list[NativeParameterGroup] = []
     translated: dict[tuple[int, str], tuple[str, ...]] = {}
     shared_values: dict[int, tuple[float | None, float | None]] = {}
-    for logical_key, group in logical.items():
+    for logical_key, logical_group in logical.items():
         local_parameters: list[Any] = []
         local_seeds: list[float] = []
         local_initial: list[float] = []
         local_has_seeds = True
         local_has_initial = True
         keys: list[str] = []
-        for owner, seed, first in zip(group.owners, group.seeds, group.initial):
+        for owner, seed, first in zip(
+            logical_group.owners, logical_group.seeds, logical_group.initial
+        ):
             marker = id(owner)
             if marker in shared_key:
                 keys.append(shared_key[marker])
                 existing = shared_values.get(marker)
-                values = (seed, first)
+                values: tuple[float | None, float | None] = (seed, first)
                 if existing is not None:
                     for old, new in zip(existing, values):
                         if old is not None and new is not None and not math.isclose(old, new):
@@ -375,8 +377,9 @@ def prepare_global_model_search(
                                 f"shared owner {owner.name!r} has conflicting member seeds",
                                 str(owner.name),
                             )
-                    values = tuple(
-                        old if old is not None else new for old, new in zip(existing, values)
+                    values = (
+                        existing[0] if existing[0] is not None else values[0],
+                        existing[1] if existing[1] is not None else values[1],
                     )
                 shared_values[marker] = values
             else:
@@ -388,7 +391,7 @@ def prepare_global_model_search(
                 if first is not None:
                     local_initial.append(first)
         if local_parameters:
-            key = f"member:{group.member + 1}:{quote(group.key, safe='')}"
+            key = f"member:{logical_group.member + 1}:{quote(logical_group.key, safe='')}"
             keys.insert(0, key)
             native_groups.append(
                 NativeParameterGroup(

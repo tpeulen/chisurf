@@ -282,7 +282,7 @@ def confidence_intervals_from_scan_result(
     nu = int(result.get("nu", 1))
     n_extra_params = int(result.get("n_extra_params", 1))
     objective = str(result.get("objective", "least_squares"))
-    intervals = []
+    intervals: typing.List[typing.Dict[str, typing.Any]] = []
     if not np.isfinite(chi2r_min) or not np.isfinite(v0) or nu <= 0:
         return intervals
 
@@ -409,7 +409,7 @@ def _scan_one_side(
 def adaptive_scan_parameter(
     fit: Fit,
     parameter_name: str,
-    scan_range: typing.Tuple[float, float] = (None, None),
+    scan_range: typing.Tuple[float | None, float | None] = (None, None),
     p_value: float = 0.99,
     max_points_per_side: int = 50,
 ) -> typing.Dict:
@@ -476,7 +476,7 @@ def adaptive_scan_parameter(
     if bool(getattr(varied_parameter, "bounds_on", False)) and isinstance(
         getattr(varied_parameter, "bounds", None), (tuple, list)
     ):
-        bounds = getattr(varied_parameter, "bounds", None)
+        bounds = varied_parameter.bounds
         if len(bounds) == 2:
             p_min = _finite_parameter_bound(bounds[0]) if p_min is None else p_min
             p_max = _finite_parameter_bound(bounds[1]) if p_max is None else p_max

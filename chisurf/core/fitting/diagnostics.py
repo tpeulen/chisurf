@@ -125,7 +125,7 @@ def autocovariance(x: np.ndarray) -> np.ndarray:
     return acov / n
 
 
-def _pooled_variance(chains: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _pooled_variance(chains: np.ndarray) -> typing.Tuple[float, float, np.ndarray]:
     """Return ``(within, var_plus, acov)`` for one parameter across chains.
 
     ``within`` is the mean within-chain variance ``W``, ``var_plus`` the

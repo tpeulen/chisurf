@@ -293,7 +293,7 @@ def dependence(
     keep = np.isfinite(x) & np.isfinite(y)
     x, y = x[keep], y[keep]
 
-    out = {
+    out: typing.Dict[str, typing.Any] = {
         "mi": float("nan"),
         "mi_raw": float("nan"),
         "null_mean": float("nan"),

@@ -25,7 +25,7 @@ _NOISE_MODEL_ALIASES = {
 }
 
 
-def normalize_noise_model(noise_model: str) -> str:
+def normalize_noise_model(noise_model: str | None) -> str:
     """Map a user-facing noise-model name onto a canonical :data:`NOISE_MODELS` value."""
     if noise_model is None:
         return "default"
@@ -358,13 +358,14 @@ def find_fit_idx_of_model(
 
     :param model:
     :param fits:
-    :return:
+    :return: the index, or -1 when no fit holds *model* (it returned None)
     """
     if fits is None:
         fits = chisurf.fits
     for idx, f in enumerate(fits):
         if f.model is model:
             return idx
+    return -1
 
 
 def __getattr__(name: str):

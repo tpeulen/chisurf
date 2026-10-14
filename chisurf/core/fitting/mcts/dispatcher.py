@@ -105,10 +105,8 @@ def model_search_available(fit: Any) -> bool:
     capability declares it; a group can when every member can. There is no
     other engine to fall back on, so a fit this refuses has no model search.
     """
-    try:
-        from chisurf.core.models.description import DescriptionModel
-    except ImportError:
-        DescriptionModel = ()
+    from chisurf.core.models.description import DescriptionModel
+
     members = list(getattr(fit, "grouped_fits", []) or []) or [fit]
     for member in members:
         model = getattr(member, "model", None)
@@ -188,10 +186,8 @@ def _prepare(fit: Any) -> NativeSearchPreparation:
     # A model BFF owns is searched where it stands: the problem *is* the
     # model the user sees, so there is nothing to declare and nothing to copy.
     single = _single_fit(fit)
-    try:
-        from chisurf.core.models.description import DescriptionModel
-    except ImportError:
-        DescriptionModel = ()
+    from chisurf.core.models.description import DescriptionModel
+
     if isinstance(getattr(single, "model", None), DescriptionModel):
         return prepare_described_model_search(single)
 

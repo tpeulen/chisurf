@@ -287,7 +287,8 @@ def sample_via_graph(
                     except TypeError as error:
                         # Binding failures have only this frame; a Python
                         # callback body adds a frame and must not be retried.
-                        if error.__traceback__.tb_next is not None:
+                        trace = error.__traceback__
+                        if trace is not None and trace.tb_next is not None:
                             raise
                         callback(recorded, n_target)
                 else:

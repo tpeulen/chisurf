@@ -235,8 +235,9 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         #: what slow exchange actually means.
         self.method = "szabo-gopich"
         self.seed = int(seed)
-        self._mc_cache_key = None
-        self._mc_fractions = None
+        #: (rate matrix bytes, window, n_windows, seed) of the cached simulation.
+        self._mc_cache_key: tuple[bytes, float, int, int] | None = None
+        self._mc_fractions: np.ndarray | None = None
         kw_pda = {
             "hist2d_nmax": fit.data.pda["maximum_number_of_photons"],
             "hist2d_nmin": fit.data.pda["minimum_number_of_photons"],
@@ -323,10 +324,12 @@ class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
         sim_time = self.observation_time
         n_windows = self.states.n_windows
         key = (K.tobytes(), float(sim_time), int(n_windows), int(self.seed))
-        if key != self._mc_cache_key or self._mc_fractions is None:
-            self._mc_fractions = occupation_time_fractions(K, sim_time, n_windows, self.seed)
+        fractions = self._mc_fractions
+        if key != self._mc_cache_key or fractions is None:
+            fractions = occupation_time_fractions(K, sim_time, n_windows, self.seed)
+            self._mc_fractions = fractions
             self._mc_cache_key = key
-        return self._mc_fractions
+        return fractions
 
     def _mean_green_probability(self, R: float, sigma: float, r, pG) -> float:
         """Return a state's Gaussian-averaged per-photon green probability."""

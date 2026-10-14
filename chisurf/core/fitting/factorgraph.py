@@ -1121,7 +1121,7 @@ def build_factor_graph(fit, model=None) -> FactorGraph:
     elif local_fits:
         # Global fit: one likelihood per dataset, and tag each variable with the
         # local fit that owns it (globals and cross-linked masters keep None).
-        owner: typing.Dict[str, int] = {}
+        owner = {}
         for i, local in enumerate(local_fits):
             scope = _local_scope(local, known)
             local_model = getattr(local, "model", None)

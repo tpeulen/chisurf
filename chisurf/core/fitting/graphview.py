@@ -543,12 +543,12 @@ def structure_view(fit, model=None) -> GraphView:
     dataset_nodes = [n for n in nodes if n.kind == "dataset"]
     order = {}
     for n in dataset_nodes:
-        factor = graph.factors.get(n.key)
-        order[n.key] = getattr(factor, "fit_index", None)
+        dataset_factor = graph.factors.get(n.key)
+        order[n.key] = getattr(dataset_factor, "fit_index", None)
     dataset_nodes.sort(key=lambda n: (order.get(n.key) is None, order.get(n.key) or 0, n.label))
     rows = {n.key: i for i, n in enumerate(dataset_nodes)}
 
-    def _row_y(row: int, total: int) -> float:
+    def _row_y(row: float, total: int) -> float:
         """Return the vertical position of row ``row`` of ``total``."""
         if total <= 1:
             return 0.0
@@ -686,7 +686,7 @@ def correlation_view(
     # dropped rather than paired by position.
     dep = nonlinear = None
     dep_names, dep_raw, flags_raw = posterior_dependence(fit, model=model)
-    if dep_raw is not None:
+    if dep_raw is not None and flags_raw is not None:
         short_of = {str(n).split(":")[-1]: i for i, n in enumerate(dep_names)}
         index = [short_of.get(str(n).split(":")[-1]) for n in names]
         if all(i is not None for i in index):

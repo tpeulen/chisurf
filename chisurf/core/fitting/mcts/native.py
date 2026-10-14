@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -81,6 +81,13 @@ class NativeSearchDeclaration:
     score: NativeScore = field(default_factory=NativeScore)
 
 
+class SearchBinding(Protocol):
+    """What a prepared search hands back to apply (or undo) its winner."""
+
+    def apply_state(self, problem: Any, state: Any) -> None:
+        """Leave the live model at the search's *state*."""
+
+
 @dataclass
 class NativeSearchBinding:
     """Objects needed to interpret cached BFF states after a search."""
@@ -118,7 +125,7 @@ class NativeSearchPreparation:
 
     capability_id: str
     problem: Any | None = None
-    binding: NativeSearchBinding | None = None
+    binding: SearchBinding | None = None
     reasons: tuple[NativeSearchReason, ...] = ()
     #: Whether the problem also searches how each candidate is fitted.
     search_fit_settings: bool = False
@@ -140,8 +147,11 @@ def unsupported(
 
 
 def _unique(items: Sequence[Any]) -> tuple[Any, ...]:
-    seen: set[int] = set()
-    return tuple(item for item in items if not (id(item) in seen or seen.add(id(item))))
+    # By identity, first occurrence kept: dict keys keep insertion order.
+    by_id: dict[int, Any] = {}
+    for item in items:
+        by_id.setdefault(id(item), item)
+    return tuple(by_id.values())
 
 
 def _snapshot(parameters: Sequence[Any]) -> tuple[tuple[Any, ...], ...]:
@@ -275,6 +285,7 @@ def prepare_native_model_search(
 
     snapshot = _snapshot(live_parameters)
     built = None
+    reason: NativeSearchReason | None
     try:
         # graph_objective exposes ports only for free canonical owners.  The
         # graph is private, so temporarily exposing declared owners is safe as

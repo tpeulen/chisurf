@@ -239,7 +239,10 @@ class OptimizationSettingsModel:
     def sampling_settings(self) -> dict:
         """Return the sampling settings as they now stand."""
         self._remember_sampler_settings()
-        values = {"method": str(self.method), "chain_format": str(self.chain_format)}
+        values: dict[str, typing.Any] = {
+            "method": str(self.method),
+            "chain_format": str(self.chain_format),
+        }
         for key in self._sampling:
             if hasattr(self, f"sampling_{key}"):
                 values[key] = getattr(self, f"sampling_{key}")

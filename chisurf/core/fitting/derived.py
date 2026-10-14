@@ -150,9 +150,9 @@ def _from_draws(
     snapshot = list(model.parameter_values)
     values = np.full((keep.size, len(names)), np.nan, dtype=np.float64)
     try:
-        for row, index in enumerate(keep):
+        for draw, index in enumerate(keep):
             model.parameter_values = draws[index]
-            values[row] = evaluate_derived(model, names)
+            values[draw] = evaluate_derived(model, names)
     finally:
         model.parameter_values = snapshot
 
@@ -167,12 +167,12 @@ def _from_draws(
         effective = min(effective, float(keep.size))
 
     at_optimum = evaluate_derived(model, names)
-    rows = []
+    rows: typing.List[typing.Dict[str, typing.Any]] = []
     for i, name in enumerate(names):
         column = values[:, i]
         finite = column[np.isfinite(column)]
         summary = _engine.sample_asymmetry(column, effective, p_value=p_value)
-        row = {
+        row: typing.Dict[str, typing.Any] = {
             "name": str(name),
             "value": float(at_optimum[i]),
             "method": "draws",

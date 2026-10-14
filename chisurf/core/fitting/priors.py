@@ -156,8 +156,19 @@ class Prior(abc.ABC):
 
     @classmethod
     def from_state(cls, state: typing.Dict[str, typing.Any]) -> Prior:
-        """Reconstruct a prior from a :meth:`get_state` dictionary."""
-        return prior_from_state(state)
+        """Reconstruct a prior from a :meth:`get_state` dictionary.
+
+        Raises
+        ------
+        ValueError
+            For a state no prior can be rebuilt from (an unknown ``kind``, or
+            a runtime-only callback prior); :func:`prior_from_state` answers
+            ``None`` there instead.
+        """
+        prior = prior_from_state(state)
+        if prior is None:
+            raise ValueError(f"cannot rebuild a prior from {state!r}")
+        return prior
 
     def combine(self, other: PriorLike) -> Prior:
         """Return the prior proportional to the product of two prior densities.
@@ -727,7 +738,7 @@ class ProductPrior(Prior):
                 flat.extend(pr.priors)
             else:
                 flat.append(pr)
-        self.priors = flat
+        self.priors: typing.List[Prior] = flat
 
     def lnpdf(self, x: float) -> float:
         """Return the sum of the components' log densities."""

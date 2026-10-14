@@ -332,7 +332,7 @@ def weighted_quantile(
 def weighted_summary(
     samples: np.ndarray,
     log_weights: np.ndarray,
-    names: typing.Sequence[str] = None,
+    names: typing.Sequence[str] | None = None,
     quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.List[typing.Dict[str, typing.Any]]:
     """Summarise draws under importance weights, one entry per parameter.
@@ -418,7 +418,7 @@ def weighted_summary(
 def reweight(
     samples: np.ndarray,
     log_ratios: np.ndarray,
-    names: typing.Sequence[str] = None,
+    names: typing.Sequence[str] | None = None,
     quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.Dict[str, typing.Any]:
     """Reweight a set of draws by given log importance ratios.
@@ -484,7 +484,7 @@ def reweight_prior(
     result: typing.Dict[str, typing.Any],
     priors: typing.Dict[str, typing.Any],
     model=None,
-    old_priors: typing.Dict[str, typing.Any] = None,
+    old_priors: typing.Dict[str, typing.Any] | None = None,
     quantiles: typing.Sequence[float] = (0.025, 0.16, 0.5, 0.84, 0.975),
 ) -> typing.Dict[str, typing.Any]:
     r"""Ask what a stored chain would have looked like under different priors.
@@ -532,7 +532,7 @@ def reweight_prior(
     index = {n: i for i, n in enumerate(names)}
     # A global model prefixes its names; accept the short form too so a caller
     # need not know which model was sampled.
-    short = {}
+    short: typing.Dict[str, int] = {}
     for i, n in enumerate(names):
         short.setdefault(n.split(":")[-1], i)
 

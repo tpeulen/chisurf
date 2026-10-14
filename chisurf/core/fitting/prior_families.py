@@ -83,7 +83,8 @@ def family_label(state: dict | None) -> str:
 
 def describe(state: dict | None) -> str:
     """A prior state as the table shows and accepts it: ``Gaussian(4, 0.4)``; ``Box`` for none."""
-    kind = (state or {}).get("kind")
+    state = state or {}
+    kind = state.get("kind")
     if kind not in PRIOR_KIND_TO_SPEC:
         return "Box" if not kind or kind == "uniform" else str(kind)
     label, params = PRIOR_KIND_TO_SPEC[kind]
