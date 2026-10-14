@@ -1708,7 +1708,8 @@ def load_fit_project(project_path: str):
     """*Load Fit*: add a fit document's (or a project's) fits and data without replacing any live fit."""
     from chisurf.core.fitting.fit_export import import_fit
 
-    return import_fit(_project_archive_input_path(project_path), cs.imported_datasets, cs.fits)
+    datasets, fits = cs.local_session_lists()
+    return import_fit(_project_archive_input_path(project_path), datasets, fits)
 
 
 def _load_project_archive(project_path: str) -> CSProject:

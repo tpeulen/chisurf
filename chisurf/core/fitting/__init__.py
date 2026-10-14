@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 
 import chisurf.core.curve
@@ -249,7 +251,7 @@ def calculate_weighted_residuals(
 
 
 def find_fit_idx(
-    fit: chisurf.core.fitting.fit.Fit, fits: list[chisurf.core.fitting.fit.Fit] | None = None
+    fit: chisurf.core.fitting.fit.Fit, fits: typing.Sequence[typing.Any] | None = None
 ) -> int | None:
     """Find the position of a fit in the global fit list.
 
@@ -289,7 +291,7 @@ def find_fit_idx(
 
 def find_fit_idx_of_parameter(
     parameter: chisurf.core.fitting.parameter.FittingParameter,
-    fit_list: list[chisurf.core.fitting.fit.Fit] | None = None,
+    fit_list: typing.Sequence[typing.Any] | None = None,
 ) -> list[int]:
     """Find indices of fits that contain a specific parameter.
 
@@ -352,7 +354,7 @@ def find_fit_idx_of_parameter(
 
 
 def find_fit_idx_of_model(
-    model: chisurf.core.models.Model, fits: list[chisurf.core.fitting.fit.Fit] | None = None
+    model: chisurf.core.models.Model, fits: typing.Sequence[typing.Any] | None = None
 ) -> int:
     """Returns index of the fit of a model in chisurf.fits array
 

@@ -215,10 +215,8 @@ def session_state_from_live_chisurf() -> Any:
             return None
         from chisurf.server.session import SessionState
 
-        state = SessionState(
-            datasets=_cs.imported_datasets,
-            fits=_cs.fits,
-        )
+        datasets, fits = _cs.local_session_lists()
+        state = SessionState(datasets=datasets, fits=fits)
         sync_current_fit_uid_from_live_chisurf(state)
         return state
     except Exception:

@@ -1,9 +1,6 @@
 {
  "total": 2699,
  "files": {
-  "chisurf/core/api/_proxies.py": 2,
-  "chisurf/core/console/magics_builtin.py": 2,
-  "chisurf/core/console/streams.py": 3,
   "chisurf/core/data.py": 2,
   "chisurf/gui/__init__.py": 3,
   "chisurf/gui/autoform/auto_form.py": 7,
