@@ -42,6 +42,7 @@ BIG = (1200, 800)
 _make = importlib.util.spec_from_file_location(
     "drift_make_data", EVIDENCE / "scripts" / "make_data.py"
 )
+assert _make is not None and _make.loader is not None, "evidence make_data.py missing"
 _data = importlib.util.module_from_spec(_make)
 _make.loader.exec_module(_data)
 

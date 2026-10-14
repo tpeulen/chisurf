@@ -86,6 +86,15 @@ def test_the_empty_pane_says_what_it_is_for(pane):
     assert "gamma" in drawn.lower()
 
 
+def test_provider_settings_open_the_ai_settings_form(pane):
+    """The Ask pane's Provider settings… hosts the AI settings form (it raised ImportError)."""
+    app, driver = pane
+    driver.click("Provider settings…")
+    drawn = _drawn(driver)
+    assert app.help_gui.provider_settings_open and app.help_gui.provider_settings is not None
+    assert "Provider settings" in drawn
+
+
 def test_an_example_question_is_clickable(pane, stub):
     app, driver = pane
     driver.click(QUICK_QUESTIONS[0])

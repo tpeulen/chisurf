@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from html.parser import HTMLParser
+from typing import Any
 
 
 class HtmlOutputParser(HTMLParser):
@@ -10,13 +11,14 @@ class HtmlOutputParser(HTMLParser):
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.blocks = []
-        self.text = []
-        self.rows = None
-        self.row = None
-        self.cell = None
+        #: ("markdown", text) / ("image", attributes) / ("table", rows) in document order
+        self.blocks: list[tuple[str, Any]] = []
+        self.text: list[str] = []
+        self.rows: list[list[str]] | None = None
+        self.row: list[str] | None = None
+        self.cell: list[str] | None = None
         self.ignore = 0
-        self._links = []
+        self._links: list[str | None] = []
 
     def _append(self, value: str) -> None:
         (self.cell if self.cell is not None else self.text).append(value)

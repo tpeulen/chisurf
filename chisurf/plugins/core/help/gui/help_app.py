@@ -15,7 +15,7 @@ import re
 import threading
 from dataclasses import dataclass, field
 from queue import Empty, Queue
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 from emtk import im
 from emtk.app import ImApp
@@ -45,6 +45,9 @@ from chisurf.plugins.core.help.gui.reader import (
     measure_margin,
 )
 from chisurf.plugins.emtk_layout import SHORTCUT, action_button, window_size
+
+if TYPE_CHECKING:
+    from chisurf.plugins.ai_settings.gui.app import AISettingsApp
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -1194,8 +1197,9 @@ class HelpModel:
         curr_str = str(self.current_path)
         for i, node in enumerate(self.order):
             if node.path and str(pathlib.Path(node.path).resolve()) == curr_str:
-                if i > 0 and self.order[i - 1].path:
-                    self.open_page(self.order[i - 1].path)
+                previous = self.order[i - 1].path if i > 0 else None
+                if previous:
+                    self.open_page(previous)
                 return
 
     def go_next_order(self) -> None:
@@ -1204,8 +1208,9 @@ class HelpModel:
         curr_str = str(self.current_path)
         for i, node in enumerate(self.order):
             if node.path and str(pathlib.Path(node.path).resolve()) == curr_str:
-                if i < len(self.order) - 1 and self.order[i + 1].path:
-                    self.open_page(self.order[i + 1].path)
+                following = self.order[i + 1].path if i < len(self.order) - 1 else None
+                if following:
+                    self.open_page(following)
                 return
 
     # -- Search ---------------------------------------------------------------
@@ -1314,7 +1319,7 @@ class HelpGui:
     def __init__(self, model: HelpModel | None = None) -> None:
         self.model = model or HelpModel()
         self.texture_mgr = HelpTextureManager()
-        self.provider_settings = None
+        self.provider_settings: AISettingsApp | None = None
         self.provider_settings_open = False
         self._search_focus = False
         #: Rectangles of the controls the guided tour points at, by name.
@@ -2357,7 +2362,7 @@ class HelpGui:
                 (*im.get_cursor_screen_pos(), *im.get_content_region_avail()),
                 child_id="help_provider_fields",
             )
-            self.provider_settings.draw()
+            self.provider_settings.draw_inline()
             im.end_child()
         im.end()
 
@@ -2370,9 +2375,10 @@ class HelpGui:
         im.text_disabled(tr("Grounded Q&A from ChiSurf docs"))
         if im.small_button("Provider settings…"):
             if self.provider_settings is None:
-                from chisurf.plugins.ai_settings.gui.app import AISettingsGui
+                # (was AISettingsGui, which no longer exists: this button raised ImportError)
+                from chisurf.plugins.ai_settings.gui.app import AISettingsApp
 
-                self.provider_settings = AISettingsGui()
+                self.provider_settings = AISettingsApp()
             self.provider_settings_open = True
         im.set_item_tooltip(
             tr("Configure the shared API provider, masked credential, models and sampling")

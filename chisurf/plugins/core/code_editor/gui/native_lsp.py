@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
+import os
 import pathlib
 import shutil
 import subprocess
@@ -18,7 +20,7 @@ class NativeLspClient:
     def __init__(self, root_path, command=None) -> None:
         self.root_path = pathlib.Path(root_path).resolve()
         self.command = command
-        self.process = None
+        self.process: subprocess.Popen[bytes] | None = None
         self.is_ready = False
         self.status_changed = Signal(str)
         self.diagnostics_received = Signal(str, list)
@@ -136,7 +138,7 @@ class NativeLspClient:
     def _handle_message(self, message) -> None:
         if "id" in message and "method" in message:
             method = message["method"]
-            result = (
+            result: list[dict] | dict[str, object] | None = (
                 [{} for _ in message.get("params", {}).get("items", [])]
                 if method == "workspace/configuration"
                 else None
@@ -164,7 +166,13 @@ class NativeLspClient:
         process = self.process
         try:
             while process and process.stdout and not self._stopping:
-                chunk = process.stdout.read1(8192)
+                stream = process.stdout
+                # a pipe opened in binary mode is a BufferedReader: read what is there, not 8 KiB
+                chunk = (
+                    stream.read1(8192)
+                    if isinstance(stream, io.BufferedReader)
+                    else os.read(stream.fileno(), 8192)
+                )
                 if not chunk:
                     break
                 self.feed_data(chunk)

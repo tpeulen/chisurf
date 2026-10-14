@@ -54,7 +54,7 @@ def crop_box(volume: np.ndarray, threshold: float, pad: int = 2) -> tuple[slice,
         hit = np.nonzero(mask.any(axis=other))[0]
         lo, hi = (int(hit[0]), int(hit[-1])) if len(hit) else (0, volume.shape[axis] - 1)
         box.append(slice(max(lo - pad, 0), min(hi + pad, volume.shape[axis] - 1) + 1))
-    return tuple(box)
+    return box[0], box[1], box[2]
 
 
 class PSFVolumeView:
@@ -65,8 +65,9 @@ class PSFVolumeView:
         self.view = ChimolView(
             min_size=(320, 240), viewer_options={"scale_factor": 1.0}, skip_idle_frames=True
         )
-        self._volume_key = None
-        self._look_key = None
+        #: what the built volume and its look were drawn from (``None``: nothing built yet)
+        self._volume_key: tuple | None = None
+        self._look_key: tuple | None = None
         self._object_id = None
         self._grid_shape = None
 

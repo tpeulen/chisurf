@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import threading
 import time
 from typing import Any
 
@@ -33,15 +34,13 @@ class EditorRpcServer:
             pub_port=pub_port,
             host=host,
         )
-        self._thread = None
+        self._thread: threading.Thread | None = None
         self._startup_error: Exception | None = None
 
     def start(self) -> None:
         """Start the editor RPC server in a daemon thread."""
         if self._thread is not None:
             return
-        import threading
-
         self._startup_error = None
 
         def serve() -> None:
@@ -51,11 +50,12 @@ class EditorRpcServer:
                 self._startup_error = error
                 self._server._cleanup()
 
-        self._thread = threading.Thread(target=serve, daemon=True)
-        self._thread.start()
+        thread = threading.Thread(target=serve, daemon=True)
+        self._thread = thread
+        thread.start()
         deadline = time.monotonic() + 1.5
         while (
-            self._thread.is_alive()
+            thread.is_alive()
             and not self._server._running
             and self._startup_error is None
             and time.monotonic() < deadline
