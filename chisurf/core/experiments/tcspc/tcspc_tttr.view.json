@@ -38,9 +38,17 @@
     {
       "type": "panel",
       "title": "Anisotropy (VV/VH)",
-      "description": "Polarization channel(s) read from the file.",
+      "description": "Polarization channel(s) read from the file. With VH channels set, the routing channels are the parallel (VV) detectors.",
       "collapsed": false,
       "sections": [
+        {
+          "type": "value",
+          "attr": "vh_channel_numbers_str",
+          "kind": "str",
+          "label": "VH chs",
+          "placeholder": "e.g. 1,9 (empty: one decay)",
+          "description": "Routing channels of the perpendicular (VH) detectors, comma-separated. Empty: the routing channels give one decay and the polarization settings are not used."
+        },
         {
           "type": "choice",
           "attr": "polarization",
@@ -48,8 +56,8 @@
           "style": "radio",
           "options": ["vm", "vv", "vh", "vv/vh"],
           "labels": ["VM", "VV", "VH", "VV,VH"],
-          "descriptions": ["Magic-angle (total) decay.", "Parallel (VV) decay.", "Perpendicular (VH) decay.", "VV and VH stacked for anisotropy analysis."],
-          "description": "Polarization channel(s) to read when multiple routing channels are selected."
+          "descriptions": ["Magic-angle decay VV + 2 g VH.", "Parallel (VV) decay.", "Perpendicular (VH) decay.", "VV and VH stacked for anisotropy analysis."],
+          "description": "Decay(s) built from the VV (routing) and VH channels."
         },
         {
           "type": "value",
@@ -60,7 +68,7 @@
           "minimum": 0.0,
           "maximum": 10.0,
           "step": 0.01,
-          "description": "Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels."
+          "description": "Detection-efficiency ratio (g-factor) between the parallel and perpendicular channels; weights VH in the VM sum and is attached to a VV/VH pair for the fit."
         },
         {
           "type": "value",
@@ -69,7 +77,7 @@
           "kind": "int",
           "minimum": -1000000,
           "maximum": 1000000,
-          "description": "Channel shift applied to the VH decay relative to VV."
+          "description": "Integer shift (bins) applied to the VH decay relative to VV."
         }
       ]
     }

@@ -127,6 +127,7 @@ _READER_FIELDS.update(
             *_TCSPC_FIELDS,
             "channel_numbers",
             "channel",
+            "vh_channel_numbers",
             "micro_time_coarsening",
             "micro_time_shift",
             "channel_luts",

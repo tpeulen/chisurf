@@ -20,7 +20,14 @@ carried other agents' uncommitted edits at the time.
 
 ## TCSPC TTTR-file reader shows polarization controls it never applies (found 2026-10-14)
 
-status: open
+status: resolved 2026-10-14
+
+Resolved 2026-10-14. The reader gained **VH chs** (`vh_channel_numbers`, recorded in the
+session): with it set the routing channels are VV and `read()` builds VV, VH, the stacked
+VV/VH pair (a `DataCurveGroup`, g/l1/l2 attached) or VM = VV + 2 g VH (errors
+sqrt(VV + 4 g² VH)), with `vh_shift` applied to VH. Without VH channels it still returns one
+decay of the routing channels. Pinned against direct tttrlib histograms of BH_SPC132 by
+`test/experiments/test_tttr_reader_polarization.py`. Original report:
 
 `chisurf/core/experiments/tcspc/tcspc_tttr.view.json` offers an *Anisotropy (VV/VH)* panel
 (**pol.**, **g-factor**, **VH shift [bins]**), inherited as attributes from `TCSPCReader`, but

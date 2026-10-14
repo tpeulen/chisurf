@@ -93,21 +93,27 @@ Hickl SPC, …) with `tttrlib`, by histogramming the micro-times. Implemented by
   `HT3`, `SPC-130`) and **Routing chs** by hand.
 - **Acquisition** — **coarsen**, the micro-time binning factor (neighbouring
   bins are summed), and **shift [bins]**, an integer shift of the histogram.
-- **Anisotropy (VV/VH)** — **pol.**, **g-factor** and **VH shift [bins]**.
-  This reader does not apply them yet (a known issue): it always returns one
-  decay of the selected channels. For a VV/VH pair, read the two channel
-  groups as two decays, or use the anisotropy wizard.
+- **Anisotropy (VV/VH)** — **VH chs**, **pol.**, **g-factor** and
+  **VH shift [bins]**. With **VH chs** empty the routing channels give one
+  decay and the other three are not used. With **VH chs** set, the routing
+  channels are the parallel (VV) detectors and **pol.** selects the output:
+  **VV** or **VH** alone, **VV,VH** as two stacked curves (the structure an
+  anisotropy fit takes by position, with the g-factor attached), or **VM** =
+  VV + 2 g VH with errors $\sqrt{VV + 4g^2 VH}$. **VH shift [bins]** moves the
+  VH histogram before any of these.
 
 ### What a read does
 
 1. Opens the file as `tttrlib.TTTR` with the routine.
-2. Keeps the photons of the routing channels.
+2. Keeps the photons of the routing channels (and, when set, of the VH
+   channels as a second group).
 3. Histograms their micro-times with the coarsening factor and applies the
-   shift.
+   shift; then the VH shift and the polarization above.
 4. Converts the micro-time axis to ns and drops the trailing empty bins.
-5. Returns a `DataCurve` with counts per bin, Poisson errors
+5. Returns a `DataCurve` per output with counts per bin, Poisson errors
    (`chisurf.core.fluorescence.tcspc.counting_noise`) and the file header in
-   its metadata, named `<file>_ch(<channels>)`, e.g. `sample_ch(0,3)`.
+   its metadata, named `<file>_ch(<channels>)`, e.g. `sample_ch(0,3)`; a
+   polarized output appends ` VV`, ` VH` or ` VM`.
 
 ---
 
