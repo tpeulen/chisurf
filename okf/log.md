@@ -30,6 +30,7 @@
 - emtk: density optimizations for tables (1.25 row scale, 4px cell padding, 50px flex min), buttons (16px min width floor), numeric steppers (0.6 frame height), comboboxes (3px pad, compact arrow); bumped to 0.1.21
 - shell density: MENU_BAR 30 -> 20 px, status strip HEIGHT 26 -> 18 px, tools tree indent 10 px; emtk docking MIN_TAB_W 32 px, DataTable CELL_PAD_X 3 px
 - docs: fix docs-release gate by adding local module resolution and tttrlib mock to docs/conf.py, fix list-of-dicts frontmatter in okf.py, and update prd-154
+- okf: update prd-154 status: W14 done on docs-release gate, Part D gate 3 verified passed
 
 ## 2026-10-13
 
