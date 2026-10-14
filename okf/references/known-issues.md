@@ -6,12 +6,13 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## `calc_transfer_matrix` never zeroes its donor-only bins (found 2026-10-14)
 
-Open. `chisurf/core/fluorescence/general.py::calc_transfer_matrix` documents that the
-`n_donor_bins` (default 10) longest distances get rate 0 (donor-only), but does
-`rates[-1:-n_donor_bins] = 0.0` -- an empty slice, so nothing is zeroed. The intended
-`rates[-n_donor_bins:] = 0.0` changes the matrix `calc_decay_matrix` (its only caller)
-returns, so it was left for whoever owns that model to fix with a numerical check, not
-slipped into the mypy lane that found it.
+Resolved 2026-10-14. `chisurf/core/fluorescence/general.py::calc_transfer_matrix` documents
+that the `n_donor_bins` (default 10) longest distances get rate 0 (donor-only), but did
+`rates[-1:-n_donor_bins] = 0.0` -- an empty slice, so nothing was zeroed. It now zeroes
+`rates[-n_donor_bins:]` (none for `n_donor_bins=0`). Its only caller is `et2pRDA`, which
+nothing in the tree calls; no test held the old values. Pinned from first principles by
+`test/fluorescence/test_transfer_matrix_donor_only.py`. Found with it: `gaussian2rates`
+ignored its `kappa2` argument (hard-coded 0.66667); its doctest values were regenerated.
 
 ## Leftovers of the acq / lightpath Qt retirement (found 2026-10-13)
 

@@ -66,12 +66,12 @@ def combine_interleaved_spectra(
     scikit_fluorescence.math.datatools.two_column_to_interleaved :
 
     """
-    if fractions is None:
-        fractions = np.ones(len(lifetime_spectra), dtype=np.float64)
-    if normalize_fractions:
-        fn = np.array(fractions, dtype=np.float64) / np.sum(fractions)
-    else:
-        fn = fractions
+    f = (
+        np.ones(len(lifetime_spectra), dtype=np.float64)
+        if fractions is None
+        else np.asarray(fractions, dtype=np.float64)
+    )
+    fn = f / np.sum(f) if normalize_fractions else f
     scale = 1.0
     re = list()
     for i, ls in enumerate(lifetime_spectra):
@@ -399,7 +399,9 @@ def lifetime_to_fret_efficiency(tau: float, tau0: float) -> float:
     return 1 - tau / tau0
 
 
-def fret_efficiency_to_distance(fret_efficiency: float, forster_radius: float) -> float:
+def fret_efficiency_to_distance(
+    fret_efficiency: float | np.ndarray, forster_radius: float
+) -> float | np.ndarray:
     """
     Converts the transfer-efficiency to a distance
 
@@ -502,10 +504,14 @@ def calc_transfer_matrix(
             e_min = distance_to_fret_efficiency(rDA_min, R0)
             e_max = distance_to_fret_efficiency(rDA_max, R0)
             r_DA = transfer_space(e_min, e_max, n_steps, R0)
+        else:
+            raise ValueError(f"unknown distance spacing {space!r}; use 'lin', 'log' or 'trans'")
 
-    rates = distance_to_fret_rate_constant(r_DA, R0, tau0, kappa2)
-    # Use the last bins for D-Only
-    rates[-1:-n_donor_bins] = 0.0
+    rates = np.array(distance_to_fret_rate_constant(r_DA, R0, tau0, kappa2), dtype=np.float64)
+    # The last (longest-distance) bins stand for donor-only: no transfer. The
+    # former ``rates[-1:-n_donor_bins]`` was an empty slice and zeroed nothing.
+    if n_donor_bins > 0:
+        rates[-n_donor_bins:] = 0.0
     m = np.outer(rates, times)
     M = np.nan_to_num(np.exp(-m))
     return M, r_DA
@@ -749,40 +755,41 @@ def gaussian2rates(
     amplitude, rate, amplitude, rate, ...
 
     >>> gaussian2rates([50], [8.0], [1.0], interleaved=True, n_points=8)
-    array([0.06060222, 1.64157475, 0.10514622, 0.97760293, 0.1518205 ,
-           0.60669804, 0.18243106, 0.38998713, 0.18243106, 0.2584039 ,
-           0.1518205 , 0.17580315, 0.10514622, 0.12241858, 0.06060222,
-           0.0870186 ])
+    array([0.06060222, 1.64238732, 0.10514622, 0.97808684, 0.1518205 ,
+           0.60699836, 0.18243106, 0.39018018, 0.18243106, 0.25853181,
+           0.1518205 , 0.17589017, 0.10514622, 0.12247918, 0.06060222,
+           0.08706168])
 
     If *interleaved* is False a 2D-numpy array is returned. The first dimension corresponds
     to the amplitudes the second to the rates.
 
     >>> gaussian2rates([50], [8.0], [1.0], interleaved=False, n_points=8)
-    array([[0.06060222, 1.64157475],
-           [0.10514622, 0.97760293],
-           [0.1518205 , 0.60669804],
-           [0.18243106, 0.38998713],
-           [0.18243106, 0.2584039 ],
-           [0.1518205 , 0.17580315],
-           [0.10514622, 0.12241858],
-           [0.06060222, 0.0870186 ]])
+    array([[0.06060222, 1.64238732],
+           [0.10514622, 0.97808684],
+           [0.1518205 , 0.60699836],
+           [0.18243106, 0.39018018],
+           [0.18243106, 0.25853181],
+           [0.1518205 , 0.17589017],
+           [0.10514622, 0.12247918],
+           [0.06060222, 0.08706168]])
     """
-    means = np.array(means, dtype=np.float64)
-    sigmas = np.array(sigmas, dtype=np.float64)
-    amplitudes = np.array(amplitudes, dtype=np.float64)
-    n_gauss = means.shape[0]
+    mu = np.array(means, dtype=np.float64)
+    sd = np.array(sigmas, dtype=np.float64)
+    amp = np.array(amplitudes, dtype=np.float64)
+    n_gauss = mu.shape[0]
 
     rates = np.empty((n_gauss, n_points), dtype=np.float64)
     p = np.empty_like(rates)
 
     for i in range(n_gauss):
-        g_min = max(1e-9, means[i] - m_sigma * sigmas[i])
-        g_max = means[i] + m_sigma * sigmas[i]
+        g_min = max(1e-9, mu[i] - m_sigma * sd[i])
+        g_max = mu[i] + m_sigma * sd[i]
         bins = np.linspace(g_min, g_max, n_points)
-        p[i] = np.exp(-((bins - means[i]) ** 2) / (2 * sigmas[i] ** 2))
+        p[i] = np.exp(-((bins - mu[i]) ** 2) / (2 * sd[i] ** 2))
         p[i] /= np.sum(p[i])
-        p[i] *= amplitudes[i]
-        rates[i] = distance_to_fret_rate_constant(bins, R0, tau0, 0.66667)
+        p[i] *= amp[i]
+        # The caller's kappa2; a hard-coded 0.66667 used to override it.
+        rates[i] = distance_to_fret_rate_constant(bins, R0, tau0, kappa2)
     ls = rates.ravel()
     ps = p.ravel()
 

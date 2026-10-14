@@ -50,9 +50,7 @@ def _burst_file_stem(path: Any) -> str:
     if _is_container(path):
         from chisurf.core.fio.analysis_path import split_container_path
 
-        container = split_container_path(path)[0]
-        if container is not None:
-            return container.stem
+        return split_container_path(path)[0].stem
     return Path(path).stem
 
 
@@ -81,11 +79,9 @@ def read_burst_container(path: Any) -> tuple[Any, Path]:
     from chisurf.core.fio.fluorescence.burst import _read_burst_analysis_from_container
     from chisurf.core.fio.fluorescence.burst_tree import RUN_COLUMN
 
-    found, _run = split_container_path(path)
-    if found is None:
-        raise ValueError(f"not a measurement container: {path}")
+    container, _run = split_container_path(path)
     table, _tttrs = _read_burst_analysis_from_container(Path(path))
-    container = found.resolve()
+    container = container.resolve()
     n = row_count(table)
     run = split_container_path(str(np.asarray(table[RUN_COLUMN], dtype=object)[0]))[1] if n else _run
     set_constant(table, "burst_file", Path(path).name)
@@ -1240,7 +1236,7 @@ class MleSession:
         """Open one IRF / background measurement with the reader settings of the burst files."""
         from chisurf.core.fio.staging import open_tttr
 
-        file_type: str | None = self.file_type
+        file_type = self.file_type
         if not file_type or str(file_type).lower() == "auto":
             file_type = None
         return open_tttr(Path(path), file_type, cache=False, **self.tttrs.read_kwargs)
@@ -1425,7 +1421,7 @@ class MleSession:
         self.status = "" if not diverged else "Fit diverged: invalid fit quality (2I* < 0)"
         return self.outcome
 
-    def _fit_tail(self, d: np.ndarray, x0: np.ndarray, fixed: np.ndarray) -> FitOutcome | None:
+    def _fit_tail(self, d: np.ndarray, x0: np.ndarray, fixed: np.ndarray) -> FitOutcome:
         """Fit the tail of the total decay (VV + VH) with a sum of exponentials; no IRF is deconvolved.
 
         Each exponential decays from ``tail_start`` (a channel of the binned decay) and the rise and prompt before it
@@ -1591,16 +1587,13 @@ class MleSession:
             mask = first_file == fname
             groups[fname] = list(zip(fp[mask].tolist(), lp[mask].tolist()))
         # Per-photon H2MM states, when the batch is split by state (the wizard's ``_load_state_arrays``).
-        state_arrays: dict[str, np.ndarray] = {}
-        n_states = 0
+        state_arrays, n_states = {}, 0
         if self.split_by_state and any(not _is_container(p) for p in self.bur_files):
             from . import state_split
 
             state_arrays, n_states, self.status = self.state_arrays_by_measurement()
         self.n_states = int(n_states)
-        blocks: list[shared_memory.SharedMemory] = []
-        #: one worker argument tuple per measurement
-        jobs: list[tuple] = []
+        blocks, jobs = [], []
         try:
             for fname, bursts in groups.items():
                 tttr = self.tttrs.get(
