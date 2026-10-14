@@ -55,7 +55,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 ## Theory and workflow
 
 - **Theory** — [TCSPC: fluorescence-lifetime fitting](/concepts/tcspc_lifetime.md)
-- **Workflow** — [IRF Estimation - ChiSurf Integration](/guides/irf_estimation.md)
+- **Workflow** — [IRF estimation](/guides/irf_estimation.md)
 
 ## Source
 

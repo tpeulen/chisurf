@@ -37,7 +37,7 @@ This plugin's window is an EMTK app without declarative parameter sections: its 
 
 ## Theory and workflow
 
-- **Theory** — [Fitting the 2D MFD histogram](/concepts/mfd_fitting.md)
+- **Theory** — [File tools: operations on the container, not the measurement](/concepts/file_tools.md), [Fitting the 2D MFD histogram](/concepts/mfd_fitting.md)
 - **Workflow** — [Checking a burst folder before an MFD fit](/guides/85_mfd_prepare.md)
 
 ## Source

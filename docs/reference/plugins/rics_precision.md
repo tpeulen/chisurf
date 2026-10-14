@@ -65,7 +65,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [Image correlation: RICS, STICS, TICS and iMSD are one method](/concepts/image_correlation.md), [Scan precision: choosing a dwell time before you measure](/concepts/scan_precision.md)
+- **Theory** — [Image correlation: one correlation array, four methods](/concepts/image_correlation.md), [Scan precision: choosing a dwell time before you measure](/concepts/scan_precision.md)
 - **Workflow** — [Planning a scan: which dwell time measures D best?](/guides/45_scan_precision.md)
 
 ## Source

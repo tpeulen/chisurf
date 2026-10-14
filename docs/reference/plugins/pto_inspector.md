@@ -35,7 +35,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Theory and workflow
 
-- **Theory** — [The photon container: one measurement, one file](/concepts/photon_container.md)
+- **Theory** — [File tools: operations on the container, not the measurement](/concepts/file_tools.md), [The photon container: one measurement, one file](/concepts/photon_container.md)
 - **Workflow** — [Inspecting a container: what is in a `.pto`, and how it got there](/guides/63_pto_inspector.md)
 
 ## Source
