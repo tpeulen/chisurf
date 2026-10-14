@@ -7,10 +7,10 @@
     "status": "ai-reviewed"
   },
   "accessible_volume.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "20d8b8ba87adddacfb6539997de5faa2face9b8277246f1918c0e2b13f60392c",
+    "sha256": "91ce743a5e433a9d8ff79a63cc98c7739208e08236ec77f938f84564fd9d8674",
     "status": "ai-reviewed"
   },
   "accurate_fret.md": {
@@ -147,10 +147,10 @@
     "status": "ai-reviewed"
   },
   "fcs_correlation.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "c84356d60ddc176263e0e710c88dd1560da1b09fd12dc53eb3b3ea44e7f13896",
+    "sha256": "51bea5c8c38f2f6fdc3e8833622b8e46d692979a8e86801cc3f0ca3520407228",
     "status": "ai-reviewed"
   },
   "fcs_saturation.md": {
@@ -203,10 +203,10 @@
     "status": "ai-reviewed"
   },
   "fret.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "c125eb3e26a9130c08461ffb0d183e35e455f5f515d6d335b1b07a6704aecafd",
+    "sha256": "1d84ad409282fa19bd094bb9447483b3752f8739357f3c09bf3a2132383d8e78",
     "status": "ai-reviewed"
   },
   "games.md": {
@@ -224,10 +224,10 @@
     "status": "ai-reviewed"
   },
   "h2mm.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "3232ea3b36338d0d83ac6e7582a4d185ef9930310430d809880789b375892fb5",
+    "sha256": "6998651622ca138b9afe1f26e8321b2239c68bf8f7ba117272cdfd1615e145ce",
     "status": "ai-reviewed"
   },
   "hidden_markov_models.md": {
@@ -252,10 +252,10 @@
     "status": "ai-reviewed"
   },
   "imaging_flim_phasor.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "b6f26cfeeca74108718ce660ae76f4744ab9f3935c01db08249e4ae3f861de67",
+    "sha256": "0592c3661327011792cd78fe25ce6deae3c26ebfd47ad6178ff5746d82d17d4b",
     "status": "ai-reviewed"
   },
   "index.md": {
@@ -420,10 +420,10 @@
     "status": "ai-reviewed"
   },
   "protein_monte_carlo.md": {
-    "date": "2026-10-13",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "2cf86942bf638c093f25b3b8ae3d7b6146e249c8c204865763b8d991c8f2e32e",
+    "sha256": "ccc0e7064e88790d9cc658e73ec08ac81db92f8a81a8866063244774cae3f128",
     "status": "ai-reviewed"
   },
   "recurrence.md": {
@@ -448,10 +448,10 @@
     "status": "ai-reviewed"
   },
   "smfret_bursts.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "dd6a3ff714f79086b11d2295647604e63a0f966e1f40b8891fb18564ce875a94",
+    "sha256": "f86ba8630cb7e648a2a5a827e5b458963500c7c1c47d5ef5fb94459bfe333dc3",
     "status": "ai-reviewed"
   },
   "structure_trajectories.md": {
@@ -469,10 +469,10 @@
     "status": "ai-reviewed"
   },
   "tcspc_lifetime.md": {
-    "date": "2026-10-10",
+    "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "562967d158688fc7bf0ebaf42685cc5cced9683f9a0ecdf172c2611f8e809715",
+    "sha256": "d2e32bff5d9bf507c073b15de37300c779b73c7487c5c9462b20d15b1fdc43f8",
     "status": "ai-reviewed"
   },
   "tttr_stream_tools.md": {

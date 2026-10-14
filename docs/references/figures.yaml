@@ -229,20 +229,15 @@ guides/figures/chimol_groups_panel.png:
   pages:
   - docs/guides/44_molecular_viewer.md
 guides/figures/chimol_map_isomesh.png:
-  caption: A density contoured as an `isomesh` around the structure it belongs to. The wireframe leaves
-    the model visible inside, which is the point of that mode; the same contour as `isosurface` is a solid
-    envelope.
+  caption: T4 lysozyme (148L) inside its own molmap density at 6 A, contoured at 0.25 as an isomesh.
   kind: screenshot
-  origin: hand-made (not yet regenerable)
+  origin: docs/guides/screenshots/chimol_map_shot.py::main
   pages:
   - docs/guides/44_molecular_viewer.md
-  recipe: 'NOT REGENERABLE YET. A density contoured as an `isomesh`. The commands are known
-    and work -- `molmap all, 6` then `isomesh m, molmap_6` with NO level, which
-    restyles the contour the map opens with instead of appending a second one that
-    hides it -- but chimol''s ray tracer draws the mesh as long streaks rather than a
-    wireframe cage, while its WebGPU path renders it correctly. Regenerating today
-    would replace a correct figure with a wrong one.
-    See okf/references/known-issues.md.'
+  recipe: Run `python docs/guides/screenshots/chimol_map_shot.py` from the repository root; it builds
+    chimol's ChimolApp on the offscreen canvas, loads 148L as an orange cartoon, runs `molmap all, 6.0,
+    sim`, `volume_level sim, 0.25`, `isomesh sim, 0.25, color=skyblue`, `orient 148l`, and writes the
+    WebGPU frame with `png`.
 guides/figures/chimol_map_panel.png:
   caption: The Density panel on a 6 Å map of 148L. Each contour is a marker on the histogram — here a
     filled surface (blue) and a wireframe (orange, selected) on the same map. Drag a marker to move that
@@ -295,8 +290,7 @@ guides/figures/coloc_object_distances.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_coloc_objects()`.
 guides/figures/coloc_objects.png:
-  caption: 'Segmented objects of both channels: 1 = channel A only, 2 = channel B only, 3 = both. Coincidence
-    is read straight off the map.'
+  caption: 'Segmented objects of a simulated punctate image (Load example): 1 = channel A only, 2 = channel B only, 3 = both.'
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_coloc_objects
   pages:
@@ -304,8 +298,7 @@ guides/figures/coloc_objects.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_coloc_objects()`.
 guides/figures/coloc_scatter.png:
-  caption: Joint intensity histogram of the two channels with the draggable gate. The gated pixel population
-    gets its own coefficients.
+  caption: 'Joint intensity histogram of the confocal test image (green vs red). A gate box is typed under Scatter gate, or added with Add rectangle in the Gate regions list; the gated pixel population gets its own coefficients.'
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_coloc_tool
   pages:
@@ -313,8 +306,7 @@ guides/figures/coloc_scatter.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_coloc_tool()`.
 guides/figures/coloc_workspace.png:
-  caption: 'The colocalization tool on a two-detector confocal image: detector setup and channel pair
-    on the left, coefficients on the right.'
+  caption: 'The colocalization tool on the two-detector confocal test image (test/data/clsm/PQ_Olympus_MFIS.ht3, green vs red, auto background): settings and channel pair on the left, coefficients on the right.'
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_coloc_tool
   pages:
@@ -322,7 +314,7 @@ guides/figures/coloc_workspace.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_coloc_tool()`.
 guides/figures/combining_repeats.png:
-  caption: Combining technical repeats.
+  caption: 'Three simulated technical repeats (outlines) and their pooled histogram (grey).'
   kind: plot
   origin: docs/guides/make_figures.py::fig_combining_repeats
   pages:
@@ -349,9 +341,7 @@ guides/figures/drift_before.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_drift_tool()`.
 guides/figures/drift_workspace.png:
-  caption: 'The drift-correction workspace. Left: the settings, in workflow order. Right: the drift trace,
-    with `dx`, `dy` and the total displacement `|d|` per frame. This stack was built with a known linear
-    drift, so the trace is the ground truth.'
+  caption: 'The drift-correction workspace on a simulated 12-frame stack with a known linear drift. Left: the settings. Right: the drift trace, dx, dy and |d| per frame.'
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_drift_tool
   pages:
@@ -421,14 +411,15 @@ guides/figures/filtered_fcs.png:
 guides/figures/flow_tool.png:
   caption: 'The flow-map tool on its own demo. Left: the settings, in workflow order. Right: the headline
     numbers, the arrows over the time-averaged image, and the profile across the frame with the simulated
-    truth drawn beside it — which is how the 20 % shear bias becomes visible rather than theoretical.'
+    truth drawn beside it — which is how the roughly 23 % shear bias becomes visible rather than theoretical.'
   kind: screenshot
-  origin: hand-made (not yet regenerable)
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_55_flow
   pages:
   - docs/guides/55_pair_correlation.md
-  recipe: 'NOT REGENERABLE YET. The img_flow tool; the plugin ships a `demo.py` that simulates
-    a photon stream whose answer is known, which is the state to drive it into rather
-    than one of the user''s files.'
+  recipe: 'From docs/guides/screenshots, with CHISURF_SETTINGS_DIR set to a scratch folder, run
+    `python -c "import guides_56_65 as g; g._grab_55_flow()"`. It opens the native emtk Flow maps tool
+    (img_flow) at 1500x880, presses Load example (the simulated Poiseuille scan, peak 2 µm/s), then
+    Map flow with the default STICS settings (tile 24, 5 frame lags), and writes this PNG; 25 of 25 tiles.'
 guides/figures/frc_workspace.png:
   caption: 'The FRC workspace on a confocal photon stream. Left: the settings. Right: the headline resolution,
     the FRC curve against the 1/7 threshold with the crossing marked, and — behind the *Diagnostics* tabs
@@ -524,7 +515,7 @@ guides/figures/lifetime_anisotropy.png:
   recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
     `fig_lifetime_anisotropy()`.
 guides/figures/lut.png:
-  caption: DNL and its LUT correction.
+  caption: 'Simulated flat light: DNL and its LUT correction.'
   kind: plot
   origin: docs/guides/make_figures.py::fig_lut
   pages:
@@ -540,8 +531,7 @@ guides/figures/lut_channel_box.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `main()`.
 guides/figures/lut_tools_workspace.png:
-  caption: '① Compute LUT — per-channel: routing-channel selector, draggable linear region on the raw
-    TAC histogram, corrected preview below.'
+  caption: 'Compute LUT on a BH SPC-130 flat-light file: preview channel 0, the draggable linear region (orange) on the raw TAC histogram, and the corrected, equal-width preview below.'
   kind: screenshot
   origin: docs/guides/make_screenshots.py::main
   pages:
@@ -565,7 +555,7 @@ guides/figures/mdf.png:
   recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
     `fig_mdf()`.
 guides/figures/multispot.png:
-  caption: 8-spot multispot smFRET.
+  caption: 'Simulated 8-spot smFRET: per-spot E histograms, high-FRET median in red.'
   kind: plot
   origin: docs/guides/make_figures.py::fig_multispot
   pages:
@@ -596,7 +586,7 @@ guides/figures/ndxplorer_marginal_fit.png:
   recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
     `fig_ndxplorer()`.
 guides/figures/nsalex_etau.png:
-  caption: ns-ALEX FRET–lifetime plot.
+  caption: 'Simulated E–τ plot: two static populations (blue) on the static FRET line τ_D = τ_0(1−E) and a dynamic one (red) displaced above it.'
   kind: plot
   origin: docs/guides/make_figures.py::fig_nsalex_etau
   pages:
@@ -727,11 +717,8 @@ guides/figures/regions.png:
   recipe: Run `python docs/guides/make_figures.py` from the repository root; this figure is written by
     `fig_regions()`.
 guides/figures/regions_list.png:
-  caption: 'The region list, here in the CLSM tool. One row per region: its name, what kind of shape it
-    is, how big and how bright it is, and two tick boxes. The left tick includes a region in the selection;
-    unticking keeps it without using it — which is how you see what a region was contributing. The **~**
-    column uses everything *outside* that region instead. **Combine** says how the ticked ones reduce
-    to th'
+  caption: The Analysis regions panel in CLSM Draw, holding a painted mask, an inverted ellipse and a
+    rectangle switched off, combined by "and".
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_region_editor
   pages:
@@ -739,11 +726,8 @@ guides/figures/regions_list.png:
   recipe: Run `python docs/guides/make_screenshots.py` from the repository root; this figure is written
     by `_grab_region_editor()`.
 guides/figures/regions_overlay.png:
-  caption: 'The same three regions on the image. Drawn shapes get grab handles and write their new geometry
-    straight back into the list; the selected one is drawn thicker, and a region that is switched off
-    is greyed rather than hidden. A painted mask (the white patch) deliberately has **no** handle: there
-    is no small set of grips that would edit it, and a bounding box that replaced the mask on the first
-    drag '
+  caption: The same regions on the CLSM image; the drawn ellipse has grab handles, the painted mask has
+    none, and the switched-off rectangle is not drawn.
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_region_editor
   pages:
@@ -1102,10 +1086,11 @@ guides/figures/kappa2_tool.png:
   origin: docs/guides/make_screenshots.py::_grab_kappa2_tool
   pages:
   - docs/guides/61_kappa2_distribution.md
-  recipe: 'QT_QPA_PLATFORM=offscreen PYTHONPATH=. python docs/guides/make_screenshots.py. The tool is
-    opened with defaults, then r_Dinf is set to 0.15 and r_Ainf to 0.20 -- deliberately restricted, so
-    the panel shows a real distance penalty instead of the near-zero one a mobile pair gives -- and
-    Compute is pressed.'
+  recipe: 'From docs/guides (arm64 env, QT_QPA_PLATFORM=offscreen) run `python -c "from qtpy.QtWidgets
+    import QApplication; q = QApplication([]); import make_screenshots as s; s._grab_kappa2_tool()"`. The
+    native emtk calculator is opened with defaults at 640x820, then r_Dinf is set to 0.15 and r_Ainf to
+    0.20 -- deliberately restricted, so the panel shows a real distance penalty instead of the near-zero
+    one a mobile pair gives -- and Compute is pressed.'
 guides/figures/maxent_nu.png:
   caption: One broad lifetime distribution recovered at three regularization weights; the best-fitting
     one splits it into two peaks that are not there.
@@ -1302,17 +1287,17 @@ guides/figures/ai_assistant.png:
   pages:
   - docs/guides/40_ai_assistant.md
 guides/figures/console.png:
-  caption: The console reading chi-square off two fits that were actually run.
+  caption: The console asking api about the FCS demo after Fit -- the fit's current chi-square and N read back.
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::_grab_console
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_59_console
   pages:
   - docs/guides/59_console.md
-  recipe: 'python -c "import make_screenshots as m; m._grab_console()" from docs/guides (arm64 env,
-    QT_QPA_PLATFORM=offscreen). Drives the emtk console (chisurf.emtk.console.ShellConsole) hosted on
-    emtk.testing.Driver. Two lifetime fits are built with `build_lifetime_fit` and really run, then
-    installed as `chisurf.fits`, so every number on screen is a fitted one. The emtk console echoes each
-    executed line, so the transcript shows inputs and outputs; the input box is cleared at the end so the
-    last prompt is bare.'
+  recipe: 'From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_59_console()"`. It starts an emtk
+    shell on its own session (server on private ports), loads the FCS demo (Read data, Use demo, Load),
+    adds its fit and presses Fit, then hands the session api to the shell''s ShellConsole, drawn alone at
+    1000x320, and runs api.list_fits(statistics=True), the chi2r_current comprehension and
+    api.get_parameter("N", ...) in it.'
 guides/figures/globalview_factor_graph.png:
   caption: The same session as a factor graph -- three likelihoods over one shared lifetime, and the
     second FRET-low curve on its own, so two independent blocks.
@@ -2227,34 +2212,29 @@ guides/figures/21_burst_mle.png:
   - docs/guides/21_lifetime_from_bursts.md
 
 guides/figures/21_burst_mle_model_selection.png:
+  caption: Burst MLE on m000.bur (green) with Fit model switched to Fit24; A2 fits to zero.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/21_burst_mle_model_selection.png.
+  origin: docs/guides/screenshots/guide_21_burst_mle.py::grab_fit24
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off python docs/guides/screenshots/guide_21_burst_mle.py fit24` from the repository root; it drives the Burst MLE emtk app headlessly and writes this PNG.
   pages:
   - docs/guides/21_lifetime_from_bursts.md
 
 guides/figures/21_burst_mle_synthetic_demo.png:
+  caption: Burst MLE on its built-in example (16 synthetic 2 ns bursts) after Auto IRF/background and Fit bursts.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/21_burst_mle_synthetic_demo.png.
+  origin: docs/guides/screenshots/guide_21_burst_mle.py::grab_example
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off python docs/guides/screenshots/guide_21_burst_mle.py example` from the repository root; it drives the Burst MLE emtk app headlessly and writes this PNG.
   pages:
   - docs/guides/21_lifetime_from_bursts.md
 
 guides/figures/22_trace_browser.png:
   kind: screenshot
-  origin: docs/guides/screenshots/guides_15_25.py::frames
+  origin: docs/guides/screenshots/guides_15_25.py::_grab_22_trace_browser
   recipe: >-
-    Run the script named in origin (see the function that saves 22_trace_browser.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    From the repository root run CHISURF_SETTINGS_DIR=$(mktemp -d) QT_QPA_PLATFORM=offscreen
+    PYTHONPATH=docs/guides/screenshots:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python docs/guides/screenshots/guides_15_25.py _grab_22_trace_browser; it opens a copy of the
+    BH SPC-132 sm-DNA folder in the standalone Trace Browser (10 ms bins, m000.spc selected).
   pages:
   - docs/guides/22_binned_photon_traces.md
 
@@ -2289,33 +2269,26 @@ guides/figures/23_fps_editor_distances.png:
   - docs/guides/23_accessible_volume.md
 
 guides/figures/24_clsm_draw.png:
+  caption: CLSM-Draw on Leica_SP8.ptu (channels 0,1) with the brightest 5 % of pixels selected and their decay.
   kind: screenshot
-  origin: docs/guides/screenshots/guides_15_25.py::_grab_24_clsm_draw
-  recipe: >-
-    Run the script named in origin (see the function that saves 24_clsm_draw.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+  origin: docs/guides/screenshots/guide_24_scan_images.py::grab_sp8
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off python docs/guides/screenshots/guide_24_scan_images.py sp8` from the repository root; it drives the emtk tool headlessly into the state the guide describes and writes this PNG.
   pages:
   - docs/guides/24_scan_images.md
 
 guides/figures/24_clsm_draw_rois.png:
+  caption: The selection saved as the region bright patch, selected in Analysis regions (13496 px, mean 85.8).
   kind: screenshot
-  origin: docs/guides/screenshots/guides_15_25.py::_grab_24_clsm_draw
-  recipe: >-
-    Run the script named in origin (see the function that saves 24_clsm_draw_rois.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+  origin: docs/guides/screenshots/guide_24_scan_images.py::grab_sp8
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off python docs/guides/screenshots/guide_24_scan_images.py sp8` from the repository root; it drives the emtk tool headlessly into the state the guide describes and writes this PNG.
   pages:
   - docs/guides/24_scan_images.md
 
 guides/figures/24_clsm_draw_window.png:
+  caption: CLSM-Draw on Leica_SP5.ptu (preset Leica SP5, channel 0) with a disc selected and its decay.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/24_clsm_draw_window.png.
+  origin: docs/guides/screenshots/guide_24_scan_images.py::grab_sp5
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off python docs/guides/screenshots/guide_24_scan_images.py sp5` from the repository root; it drives the emtk tool headlessly into the state the guide describes and writes this PNG.
   pages:
   - docs/guides/24_scan_images.md
 
@@ -2342,13 +2315,10 @@ guides/figures/24_micro_time_tool.png:
   - docs/guides/24_scan_images.md
 
 guides/figures/24_mle_tool.png:
+  caption: Pixel-wise MLE after Load example and Run; the fitted map recovers 1.5 ns (left) and 3.5 ns (right).
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/24_scan_images.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/24_mle_tool.png.
+  origin: docs/guides/screenshots/guide_24_scan_images.py::grab_mle
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off python docs/guides/screenshots/guide_24_scan_images.py mle` from the repository root; it drives the emtk tool headlessly into the state the guide describes and writes this PNG.
   pages:
   - docs/guides/24_scan_images.md
 
@@ -2653,6 +2623,7 @@ guides/figures/about_application_details.png:
   - docs/guides/103_application_identity.md
 
 guides/figures/accurate_fret_native_identification.png:
+  caption: 'A measured table (bi4_bur/m000.bur of the BH SPC-132 sm-DNA fixture, no donor- or acceptor-only population): α, γ and δ reported as not identified; retained value, β from the 1:1-labelling assumption.'
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)
   recipe: >-
@@ -2664,23 +2635,15 @@ guides/figures/accurate_fret_native_identification.png:
   - docs/guides/41_accurate_fret.md
 
 guides/figures/alex_creator.png:
+  caption: The ALEX Creator on a two-colour µs-ALEX calibration after Detect period, with the inferred excitation regions.
   kind: screenshot
-  origin: chisurf/plugins/tttr/tttr_toolbox/test/test_emtk_toolbox_parity.py::test_the_search_matches_what_the_qt_search_does
+  origin: docs/guides/screenshots/alex_creator_shot.py::main
   recipe: >-
-    Run the script named in origin (see the function that saves alex_creator.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
-  pages:
-  - docs/guides/100_alex_creator.md
-
-guides/figures/alex_regions.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/100_alex_creator.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/alex_regions.png.
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    python docs/guides/screenshots/alex_creator_shot.py. It loads
+    tttr-data/sm/cal1/001_60g_25r_cal1_cy3b_8_18_33bp_atto647n.sm (sibling checkout, or
+    $CHISURF_TTTR_DATA) at Period 4000, presses Detect period (sets 8000), waits for the
+    region inference and grabs the emtk window at 1400x860.
   pages:
   - docs/guides/100_alex_creator.md
 
@@ -2715,17 +2678,6 @@ guides/figures/alex_suite_titration.png:
   pages:
   - docs/guides/66_alex_suite.md
 
-guides/figures/anis_wizard_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/10_lifetime_anisotropy_fitting.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/anis_wizard_native_primary_window.png.
-  pages:
-  - docs/guides/10_lifetime_anisotropy_fitting.md
-
 guides/figures/batch_analysis_loaded.png:
   kind: screenshot
   origin: docs/guides/screenshots/batch_analysis_emtk.py
@@ -2757,17 +2709,6 @@ guides/figures/burst_2cde_native_primary_window.png:
   pages:
   - docs/guides/01_fret_2cde.md
 
-guides/figures/burst_background_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/15_background_rates.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/burst_background_native_primary_window.png.
-  pages:
-  - docs/guides/15_background_rates.md
-
 guides/figures/burst_browser_native_columns.png:
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)
@@ -2780,24 +2721,29 @@ guides/figures/burst_browser_native_columns.png:
   - docs/guides/28_selecting_fret_populations.md
 
 guides/figures/burst_fcs_native_primary_window.png:
+  caption: 'Burst-wise FCS after Load example and Run FCS: 24 curves from eight bursts and three pairs.'
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/burst_fcs_shot.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/16_fret_fcs.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/burst_fcs_native_primary_window.png.
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    python docs/guides/screenshots/burst_fcs_shot.py. It presses Load example in the
+    native Burst-wise FCS window, runs Run FCS until the 24 curves are computed, and grabs
+    the Inputs and the Settings tab at 1200x800.
   pages:
   - docs/guides/16_fret_fcs.md
 
 guides/figures/burst_fusion_native_primary_window.png:
+  caption: The burst-fusion demo after Estimate and Run (Fuse) at P(same) 0.7, 419 searched bursts becoming 297 against 300 simulated molecules.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/make_screenshots.py::_grab_burst_fusion_tool
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/58_burst_fusion.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/burst_fusion_native_primary_window.png.
+    From the repository root, with CHISURF_SETTINGS_DIR set to a scratch folder,
+    run QT_QPA_PLATFORM=offscreen PYTHONPATH=modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python -c 'import sys; sys.path.insert(0, "docs/guides"); from qtpy.QtWidgets import QApplication;
+    qapp = QApplication([]); import make_screenshots as s; s._grab_burst_fusion_tool()'. It drives the
+    native emtk Burst Fusion window through its demo (Load example: 300 molecules, 419 bursts), sets
+    P(same) to 0.7, presses Estimate and Run (Fuse), and writes the whole window at 1100x720, then
+    the P(same) and Proximity ratio plot tabs at 1250x800 (the two figures below).
   pages:
   - docs/guides/58_burst_fusion.md
 
@@ -2820,17 +2766,6 @@ guides/figures/burst_irf_bg_native_primary_window.png:
     drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
     native windows) into the state the surrounding text describes, using the
     data that page names, and save the grab as guides/figures/burst_irf_bg_native_primary_window.png.
-  pages:
-  - docs/guides/21_lifetime_from_bursts.md
-
-guides/figures/burst_mle_native_pooled_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/21_lifetime_from_bursts.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/burst_mle_native_pooled_window.png.
   pages:
   - docs/guides/21_lifetime_from_bursts.md
 
@@ -2957,17 +2892,6 @@ guides/figures/ebfret_gui.png:
   pages:
   - docs/guides/20_ebfret_binned_hmm.md
 
-guides/figures/ebfret_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/20_ebfret_binned_hmm.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/ebfret_native_primary_window.png.
-  pages:
-  - docs/guides/20_ebfret_binned_hmm.md
-
 guides/figures/f_test_tool.png:
   kind: screenshot
   origin: docs/guides/screenshots/guides_plugins_emtk.py::_grab_f_test
@@ -3006,28 +2930,6 @@ guides/figures/fcs_merger_primary_window.png:
     data that page names, and save the grab as guides/figures/fcs_merger_primary_window.png.
   pages:
   - docs/guides/75_fcs_toolbox.md
-
-guides/figures/fcs_native_bh132_burst_settings.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/16_fret_fcs.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/fcs_native_bh132_burst_settings.png.
-  pages:
-  - docs/guides/16_fret_fcs.md
-
-guides/figures/fcs_native_bh132_burst_simple.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/16_fret_fcs.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/fcs_native_bh132_burst_simple.png.
-  pages:
-  - docs/guides/16_fret_fcs.md
 
 guides/figures/fcs_native_bh132_correlator.png:
   kind: screenshot
@@ -3177,17 +3079,6 @@ guides/figures/games_number_quest_header.png:
     data that page names, and save the grab as guides/figures/games_number_quest_header.png.
   pages:
   - docs/guides/95_games.md
-
-guides/figures/h2mm_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/19_h2mm_hidden_markov.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/h2mm_native_primary_window.png.
-  pages:
-  - docs/guides/19_h2mm_hidden_markov.md
 
 guides/figures/hmm_window.png:
   kind: screenshot
@@ -3399,24 +3290,26 @@ guides/figures/microtime_native_unpolarized.png:
   - docs/guides/89_microtime_histogram.md
 
 guides/figures/nb_brightness_map.png:
+  caption: 'Molecular brightness of the demo: about 0.5 on the monomer half, 1.0 on the dimer half, at the same intensity.'
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_67_nb
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/67_number_and_brightness.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/nb_brightness_map.png.
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_67_nb()"`. It opens the native
+    Number & Brightness tool at 1200x800, presses Load example (monomer / dimer demo), shows the
+    Brightness ε tab and saves this frame; the same run then writes nb_parameter_plane.png.
   pages:
   - docs/guides/67_number_and_brightness.md
 
 guides/figures/nb_parameter_plane.png:
+  caption: The parameter plane with a gate over the brighter (dimer) population.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_67_nb
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/67_number_and_brightness.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/nb_parameter_plane.png.
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_67_nb()"`. It opens the native
+    Number & Brightness tool at 1200x800, presses Load example (monomer / dimer demo), shows the
+    Brightness ε tab, then adds a gate rectangle (intensity 0-3.5 k, B 1.75-2.5) and saves the Parameter plane tab.
   pages:
   - docs/guides/67_number_and_brightness.md
 
@@ -3744,12 +3637,15 @@ guides/figures/traj_tools_fret.png:
   - docs/guides/81_trajectory_tools.md
 
 guides/figures/tttr_toolbox.png:
+  caption: TTTR Tools with Count Rate Analysis computed on three SPC-132 dsDNA files through the shared setup.
   kind: screenshot
-  origin: chisurf/plugins/tttr/tttr_toolbox/test/test_emtk_toolbox_parity.py::test_the_port_is_qt_free
+  origin: docs/guides/screenshots/tttr_toolbox_shot.py::main
   recipe: >-
-    Run the script named in origin (see the function that saves tttr_toolbox.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    MMFDB_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/tttr_toolbox_shot.py.
+    It loads detector green (routing 0,1, SPC-130) at 0. Setup, queues m000-m002.spc of
+    the bundled bh_spc132_sm_dna data in Count Rate Analysis, presses Calculate and grabs
+    the hub at 1280x860.
   pages:
   - docs/guides/101_tttr_toolbox.md
 
@@ -3903,13 +3799,14 @@ guides/figures/22_trace_browser_handoff.png:
   - docs/guides/22_binned_photon_traces.md
 
 guides/figures/console_inline_plot.png:
+  caption: A matplotlib figure drawn in the console transcript, under the cell that drew it.
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_59_console_inline_plot
   recipe: >-
-    No script draws this image. Drive the emtk shell console headlessly the way
-    test/native_emtk/test_emtk_shell_console_plots.py does (a plot command whose
-    figure is drawn inline in the output pane) and save the grab as
-    guides/figures/console_inline_plot.png.
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen) run
+    `python -c "import guides_56_65 as g; g._grab_59_console_inline_plot()"`. It hosts the shell's
+    ShellConsole alone at 760x560, runs the one-line pylab sine snippet of the guide, and saves the frame
+    with the inline figure under Out[1].
   pages:
   - docs/guides/59_console.md
 
@@ -3989,3 +3886,226 @@ reference/file_formats/figures/tcspc_simulator_native.png:
     is the same image).
   pages:
   - docs/reference/file_formats/tcspc_files.md
+guides/figures/notebook_editor.png:
+  caption: A notebook tab of the Code Editor with cells, an embedded figure, and the Kernel dock beside Output and Diagnostics.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the native Code Editor (app_from("code_editor"))
+    headlessly at 1180x1480 on a scratch folder holding demo.ipynb (markdown title, a
+    numpy decay cell, a printed table cell, a matplotlib semilogy cell ending in fig),
+    press Run all, show the Kernel dock, and save the frame as guides/figures/notebook_editor.png.
+  pages:
+  - docs/guides/64_notebooks.md
+
+guides/figures/pto_inspector_readable_data.png:
+  caption: The PTO Inspector in the file-tools hub, a burst table selected and its Data table scrolled sideways.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the native file-tools hub (File tools) headlessly
+    with emtk.testing.Driver at 1100x720, pick PTO Inspector in its tool list, open a
+    .pto converted from a .bid burst file (three bursts), select the bursts object and
+    press Export, then save the frame as guides/figures/pto_inspector_readable_data.png.
+  pages:
+  - docs/guides/63_pto_inspector.md
+
+guides/figures/pto_inspector_native_curve.png:
+  caption: A measured decay imported into a container, drawn on the Curve panel with its lineage in the graph.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the native PTO Inspector (app_from("pto_inspector"))
+    headlessly at 1200x800 on a .pto holding an .spc photon stream, its .bid burst
+    selection and an imported measured decay, select the measured_decay object so Data,
+    Curve and Details follow it, and save the frame as guides/figures/pto_inspector_native_curve.png.
+  pages:
+  - docs/guides/63_pto_inspector.md
+
+guides/figures/102_mmfdb_demo_result.png:
+  caption: MMFDB Admin after Import / Export → Demo data… on a seeded temporary database.
+  kind: screenshot
+  origin: docs/guides/screenshots/mmfdb_admin_demo_shot.py::main
+  recipe: >-
+    From the repository root run IMP_BFF_GPU=off python
+    docs/guides/screenshots/mmfdb_admin_demo_shot.py. It seeds a temporary MMFDB with the
+    plugin's test/seeded_admin.py fixture, opens the native MMFDB Admin on the Import / Export
+    panel, presses Demo data…, confirms, and grabs the window at 1200x800.
+  pages:
+  - docs/guides/102_mmfdb_admin.md
+
+guides/figures/burst_fusion_curve.png:
+  caption: The same-molecule probability, the chosen threshold and the resulting window, with the before/after summary beside it.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_burst_fusion_tool
+  recipe: >-
+    Written by the same run as burst_fusion_native_primary_window.png
+    (make_screenshots.py::_grab_burst_fusion_tool): the native Burst Fusion window
+    at 1250x800 on its demo, fused at P(same) 0.7, with the P(same) plot tab shown.
+  pages:
+  - docs/guides/58_burst_fusion.md
+
+guides/figures/burst_fusion_proximity.png:
+  caption: 'Proximity ratio before and after fusion: the fused distribution is taller and narrower.'
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_burst_fusion_tool
+  recipe: >-
+    Written by the same run as burst_fusion_native_primary_window.png
+    (make_screenshots.py::_grab_burst_fusion_tool): the native Burst Fusion window
+    at 1250x800 on its demo, fused at P(same) 0.7, with the Proximity ratio plot tab shown.
+  pages:
+  - docs/guides/58_burst_fusion.md
+
+guides/figures/tr_anisotropy_data.png:
+  caption: The Anisotropy Wizard's Data step after Load example.
+  kind: screenshot
+  origin: docs/guides/screenshots/tr_anisotropy_shot.py::main
+  recipe: >-
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    python docs/guides/screenshots/tr_anisotropy_shot.py. It presses Load example in the
+    native Anisotropy Wizard, then Load / reload data, and grabs the Data, Normalize IRF and
+    Components steps at 1200x800.
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md
+
+guides/figures/tr_anisotropy_normalize.png:
+  caption: 'The Normalize IRF step on the example: raw and corrected VV/VH IRFs and the background region.'
+  kind: screenshot
+  origin: docs/guides/screenshots/tr_anisotropy_shot.py::main
+  recipe: >-
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    python docs/guides/screenshots/tr_anisotropy_shot.py. It presses Load example in the
+    native Anisotropy Wizard, then Load / reload data, and grabs the Data, Normalize IRF and
+    Components steps at 1200x800.
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md
+
+guides/figures/tr_anisotropy_components.png:
+  caption: The Components step with the example's lifetime and rotation start values.
+  kind: screenshot
+  origin: docs/guides/screenshots/tr_anisotropy_shot.py::main
+  recipe: >-
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    python docs/guides/screenshots/tr_anisotropy_shot.py. It presses Load example in the
+    native Anisotropy Wizard, then Load / reload data, and grabs the Data, Normalize IRF and
+    Components steps at 1200x800.
+  pages:
+  - docs/guides/10_lifetime_anisotropy_fitting.md
+
+guides/figures/burst_fcs_settings.png:
+  caption: The Settings tab of the Burst-wise FCS example run, at its defaults.
+  kind: screenshot
+  origin: docs/guides/screenshots/burst_fcs_shot.py::main
+  recipe: >-
+    From the repository root run IMP_BFF_GPU=off CHISURF_SETTINGS_DIR=$(mktemp -d)
+    python docs/guides/screenshots/burst_fcs_shot.py. It presses Load example in the
+    native Burst-wise FCS window, runs Run FCS until the 24 curves are computed, and grabs
+    the Inputs and the Settings tab at 1200x800.
+  pages:
+  - docs/guides/16_fret_fcs.md
+
+images/acq_live_decay.png:
+  caption: The Decay tab after a pulsed simulator run, with the burst and phasor line under the plot.
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_65_live_plots
+  recipe: >-
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It runs the native
+    Acquisition window's own simulator (default species, pulsed excitation) for 300 000 photons at
+    1000x1300 and writes the Decay, Correlation and MCS tabs, each cropped to the Pipeline results block.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+images/acq_live_correlation.png:
+  caption: 'The Correlation tab: the autocorrelation of every photon of the simulated diffusing species.'
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_65_live_plots
+  recipe: >-
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It runs the native
+    Acquisition window's own simulator (default species, pulsed excitation) for 300 000 photons at
+    1000x1300 and writes the Decay, Correlation and MCS tabs, each cropped to the Pipeline results block.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+images/acq_live_mcs.png:
+  caption: 'The MCS tab: the last second of the simulated measurement at 1 ms bins.'
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_65_live_plots
+  recipe: >-
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen, CHISURF_SETTINGS_DIR on a
+    scratch folder) run `python -c "import guides_56_65 as g; g._grab_65_live_plots()"`. It runs the native
+    Acquisition window's own simulator (default species, pulsed excitation) for 300 000 photons at
+    1000x1300 and writes the Decay, Correlation and MCS tabs, each cropped to the Pipeline results block.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/65_acquisition_settings.png:
+  caption: Setup, Settings, Acquisition with the simulator selected and switched to pulsed excitation.
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_56_65.py::_grab_65_acquisition_settings
+  recipe: >-
+    From docs/guides/screenshots (arm64 env, QT_QPA_PLATFORM=offscreen) run
+    `python -c "import guides_56_65 as g; g._grab_65_acquisition_settings()"`. It opens the native
+    settings hub (setup) on a scratch settings folder at 1200x900, picks Acquisition in its sidebar,
+    sets the output folder to /data/acquisition, the device type to Simulation and the mode to Pulsed.
+  pages:
+  - docs/guides/65_live_acquisition.md
+
+guides/figures/region_mle_native_wide_counts.png:
+  caption: Region MLE after Load example and Run, the four detected regions outlined on the counts image.
+  kind: screenshot
+  origin: docs/guides/screenshots/region_mle_shot.py::main
+  pages:
+  - docs/guides/48_regions.md
+  recipe: Run `IMP_BFF_GPU=off python docs/guides/screenshots/region_mle_shot.py` from the repository
+    root; it opens the emtk Region MLE app at 1100x720, presses Load example (simulated four-region
+    field, standard Spot Finder workflow), then Run, waits for both workers and writes this PNG.
+guides/figures/ndxplorer_view_menu_rank.png:
+  caption: The two ranking entries in ndX's View menu, below UMAP.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open ndX (emtk app) on the cal1 burst table named in
+    docs/guides/46_ndxplorer.md, open the View menu headlessly with emtk.testing.Driver,
+    crop the grab to the menu and save it as guides/figures/ndxplorer_view_menu_rank.png.
+  pages:
+  - docs/guides/46_ndxplorer.md
+
+guides/figures/intensity_trace_cancelled.png:
+  caption: 'Cancel during an HMM fit: the trace and the earlier results stay.'
+  kind: screenshot
+  origin: docs/guides/screenshots/guide_22_intensity_trace_cancel.py::main
+  recipe: Run `CHISURF_SETTINGS_DIR=$(mktemp -d) python docs/guides/screenshots/guide_22_intensity_trace_cancel.py` from the repository root; it loads the Intensity Trace demo at 2 ms bins, presses Compute HMM, then Cancel, and writes this PNG.
+  pages:
+  - docs/guides/22_binned_photon_traces.md
+
+images/posterior_graph_structure.png:
+  caption: The Structure tab of the posterior graph for a four-dataset global fit sharing `a`, each dataset with its own `c`.
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_39_53.py::_grab_39_structure_whatif
+  pages:
+  - docs/guides/39_parameter_uncertainty.md
+  recipe: Run `QT_QPA_PLATFORM=offscreen IMP_BFF_GPU=off PYTHONPATH=modules/mmfdb/src:modules/chinet:.:docs/guides
+    python docs/guides/screenshots/guides_39_53.py _grab_39_structure_whatif` from the repository root; it builds the
+    star-linked global fit of four quadratics `c+a*x**2`, draws the emtk Posterior graph page on its Structure tab, and
+    writes this PNG.
+images/whatif_non_gaussian.png:
+  caption: What-if with the re-fit check on a bi-exponential with a weak second amplitude, the long lifetime `t` held.
+  kind: screenshot
+  origin: docs/guides/screenshots/guides_39_53.py::_grab_39_structure_whatif
+  pages:
+  - docs/guides/39_parameter_uncertainty.md
+  recipe: Written by the same `_grab_39_structure_whatif` run as the structure figure; it fits `a*exp(-x/s)+b*exp(-x/t)`
+    to a simulated decay with a weak second component, holds `t` at +1 sd on the emtk What-if page, runs the re-fit
+    check and writes this PNG.
+guides/figures/chimol_native_host.png:
+  caption: ChiMOL in ChiSurf with T4 lysozyme (148L) and its window furniture.
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the ChiMOL plugin's emtk app (chisurf.plugins.chimol.app.make_app)
+    on emtk's offscreen NativeHost at 1200x800, load test/data/atomic_coordinates/pdb_files/148l.pdb
+    (see chisurf/plugins/chimol/capture_native.py for the same steps at 900x620) and save the frame.
+  pages:
+  - docs/guides/44_molecular_viewer.md

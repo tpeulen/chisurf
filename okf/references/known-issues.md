@@ -4,6 +4,20 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Two screenshot recipes still overwrite review-retaken figures (found 2026-10-14)
+
+status: open
+
+The 2026-10-14 docs review re-captured some guide figures with new recipes, but
+older functions that write the same files still run from the bulk scripts:
+`docs/guides/make_screenshots.py::_grab_console` (called by its `main()`) writes
+`console.png` from a hand-set `cs.fits`, and
+`docs/guides/screenshots/guides_15_25.py::_grab_24_clsm_draw` writes
+`24_clsm_draw*.png` in the old PTU-preset state. Running either undoes the
+review's figures. Fix: make them call `guides_56_65._grab_59_console` and
+`guide_24_scan_images.py` respectively, or delete them. Left because both files
+carried other agents' uncommitted edits at the time.
+
 ## TCSPC TTTR-file reader shows polarization controls it never applies (found 2026-10-14)
 
 status: open
@@ -2807,8 +2821,9 @@ Open, highest value first:
 4. ~~**PCH plugin fit unusable**~~ **Fixed 2026-10-11** (Poisson-weighted fit, one χ²
    definition; FIDA bounds on by default — see the 2026-10-11 QA entry at the top).
    Still open: `fida_pch` ignores `profile`/`oversample`.
-5. **Flow demo draws no arrows** — demo PTU reads 29 of 30 frames, all 25
-   tiles refused; plugin's own test fails. Guide 55 keeps the intended figure.
+5. ~~**Flow demo draws no arrows**~~ **No longer reproduces (2026-10-14 docs
+   review):** the demo maps 25 of 25 tiles and `flow_tool.png` (guide 55) was
+   re-captured from it.
 6. **Acquisition**: routing-channel spinboxes never added to the dock (stay
    0–3) while the decay controller defaults to 8/9/10 → no decay at defaults;
    standalone window plot controllers overlap title bars.
@@ -3481,7 +3496,12 @@ algebra of its own".
 
 ## The Objects dock is retired, and the overlay that replaced it lists nothing
 
-status: open
+status: resolved (found so by the 2026-10-14 docs review)
+
+Resolved: the docs review of guide 44 (2026-10-14) found the emtk Object List
+drawing every loaded object (`all`, `148l`, `lig`, `nag`, `sele`), and
+`chimol_objects_panel.png` / `chimol_groups_panel.png` now show that overlay.
+The record below is kept as the history.
 
 `chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
 (the list is in the viewport)"* — so `window.objects` no longer exists and the
