@@ -282,6 +282,21 @@ own startup stages (item 5): S5 is done.
     Open: Windows/Linux transparency is unverified (glfw `TRANSPARENT_FRAMEBUFFER` + Vulkan `premultiplied`
     should work; where neither mode is offered the window draws opaque with black where the art is clear); no
     taskbar suppression (macOS shows the one Dock icon of the process anyway).
+13. Measure: the **final screenshot parity pass of the shell** (owner, 2026-10-14, before S6 deletes the Qt
+    window): 95 Qt/emtk pairs in `okf/plugins/emtk-ports/final-parity/shell/` (`index.html` side by side,
+    `report.json`, `README.md`). Re-derive: `capture_qt.py` then `capture_emtk.py` (one process at a time, scratch
+    `CHISURF_SETTINGS_DIR` and `HOME`), then `build_report.py <qt dir> <emtk dir>`; the verdicts are hand-written
+    in `verdicts.json` after reading every pair. Result: χ²ᵣ and every parameter of the four fits (TCSPC lifetime +
+    IRF, FCS, PDA, global) are bit-identical in both shells; 58 parity, 17 fixed in the pass, 3 deliberate, 17 gap.
+    The open gaps block nothing in S6 (they are layout, not lost controls): wide tools (Settings) open in a
+    ~390 px dock and clip, and the global parameter table drops columns at the default width; both are in
+    known issues. Traps: (a) the IBH `decay_fit` files carry no channel width -- set the reader's `dt` to
+    0.0141 ns in *both* shells or the TCSPC fit lands on nonsense in both; (b) headless on private RPC ports the
+    Qt fit window never gets `fit.ran`, so it shows the pre-fit curve until `window.update()` -- a harness
+    artefact, not a shell difference; (c) an emtk dialog's Escape used to need the pointer over it, so a driver
+    that "pressed Escape" left the modal up (fixed: emtk 0.1.13 and `shell_session.escape_pressed`).
+    Tried and reverted: widening the tool region to a tool's declared width on open -- nearly every tool declares
+    >= 1100 px, so it halved the workspace and broke tile / cascade (`test_emtk_shell_workspace.py`).
 
 
 # Traps for slice S2

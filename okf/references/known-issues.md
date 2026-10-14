@@ -4,6 +4,18 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## emtk shell: wide tools and the global parameter table are cramped at the default layout (found 2026-10-14)
+
+Measure: `okf/plugins/emtk-ports/final-parity/shell/` (rows "Settings: *" and "Global fit: Analysis dock").
+A tool opens as a dock right of the workspace, ~390 px at 1440 x 900; Settings declares 1200 x 800, so its
+pages stack labels over fields and wide rows clip (ChiSurf Settings' *Save* / *Save as* are off the right edge)
+until the dock is widened or floated. The Qt window opened each tool as a window of its declared size. The
+global parameter table at the default left-column width drops Fixed, link row, bounds and error (collapse
+tiers; the row tooltip lists them; they return when widened) where Qt scrolls sideways. Nothing is lost, the
+controls are reachable. Tried and reverted: widening the tool region to the declared width on open (halves the
+workspace for almost every tool, breaks tile / cascade). Owner decision: float wide tools by default, or give
+the hub a narrow layout. Status: open.
+
 ## Two screenshot recipes still overwrite review-retaken figures (found 2026-10-14)
 
 status: resolved 2026-10-14 — both functions now delegate to the recipes the figures were
