@@ -349,7 +349,8 @@ optimization:
   # `default` here, because an FCS curve, an anisotropy or a stopped-flow trace
   # is not a count and its error column is not sqrt(N); a Poisson deviance is
   # simply the wrong likelihood for them. TCSPC decays ARE counts and have
-  # their own key -- see `tcspc.noise_model` below, which is `poisson`.
+  # their own key -- see `tcspc.noise_model` below (also `default`; set
+  # `poisson` there for low counts).
   # Documented in docs/concepts/fitting_objectives.md.
   noise_model: default
   global_optimize_local_first: false
