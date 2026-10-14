@@ -106,7 +106,16 @@ p2 = fida.fida_pch(40, species=[(1.0, 4.0), (6.0, 0.3)], background=0.2)
 # Fit a measured histogram (Levenberg-Marquardt on the multinomial residuals)
 res = fida.fit_fida(counts, species_guess=[(1.5, 1.0)])
 res["species"], res["chi2r"]      # recovered (q, N) and reduced chi^2
+
+# Another detection volume: any (x, w) on a uniform x grid, w normalised to 1
+x = np.linspace(0.05, 1.0, 128)
+w = np.full_like(x, 1.0 / (x.size * (x[1] - x[0])))
+p3 = fida.fida_pch(40, species=[(3.0, 2.0)], profile=(x, w), oversample=16)
 ```
+
+`profile` defaults to the 3-D Gaussian `fida.dvdx_gaussian()`; `oversample`
+sets the FFT length, `oversample · (k_max + 1)`, and raising it removes the
+aliasing of a tail that extends beyond `k_max`.
 
 `counts` is the number of bins with $k = 0, 1, \dots$ photons. On the
 histogram above, one species gives χ²ᵣ = 8.4 × 10⁶; two species
@@ -132,10 +141,3 @@ FIDA photon-counting histograms.
 - {src}`chisurf/core/models/pch/fida.py` (`fida_pch`, `fit_fida`, `dvdx_gaussian`, `fida_residuals`)
 - Model: {src}`chisurf/core/models/pch/fida_model.py` (`FidaModel`, editor `fida.view.json`).
 - Tool: **PCH** (`chisurf/plugins/pch/`) — classical multi-species PCH.
-
-## Known defects
-
-- **`fida.fida_pch` ignores `profile` and `oversample`.** Both are documented
-  arguments, but the function calls `tttrlib.fida_pch(k_max, species, n, bg)`
-  without them, so a custom brightness profile has no effect.
-

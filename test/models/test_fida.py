@@ -8,6 +8,7 @@ the multinomial residuals.
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from scipy.stats import poisson
 
 from chisurf.core.models.pch import fida
@@ -92,3 +93,39 @@ def test_residuals_zero_at_truth():
     # Residuals vanish where the model has appreciable probability (empty tail
     # bins carry a negligible ~1/sqrt(n) offset from the p-floor and are ignored).
     assert np.max(np.abs(r[p > 1e-4])) < 1e-3
+
+
+# -- profile and oversample take effect -----------------------------------------------------
+
+
+def test_fida_profile_sets_the_mean_count():
+    """<k> = sum_i N_i q_i \\int x w(x) dx + bg, so the profile changes the mean as theory says."""
+    from chisurf.core.models.pch.fida import dvdx_gaussian, fida_pch
+
+    q, n, k_max = 2.0, 0.5, 60
+    x = np.linspace(0.9, 1.0, 64)
+    narrow = (x, np.full_like(x, 1.0 / (x.size * (x[1] - x[0]))))
+    k = np.arange(k_max + 1)
+    for profile in (dvdx_gaussian(), narrow):
+        px, pw = profile
+        expected = n * q * float(np.sum(px * pw) * (px[1] - px[0]))
+        p = fida_pch(k_max, [(q, n)], profile=profile)
+        assert float(np.sum(k * p)) == pytest.approx(expected, rel=1e-6)
+    # And the two profiles really give different histograms.
+    assert not np.allclose(fida_pch(k_max, [(q, n)], profile=narrow), fida_pch(k_max, [(q, n)]))
+
+
+def test_fida_oversample_controls_tail_aliasing():
+    """Background only: P(k) is Poisson(bg). A short FFT folds the tail beyond k_max back onto
+    low k (circular aliasing); oversampling removes it."""
+    from math import factorial
+
+    from chisurf.core.models.pch.fida import fida_pch
+
+    bg, k_max = 6.0, 8
+    exact = np.array([np.exp(-bg) * bg**k / factorial(k) for k in range(k_max + 1)])
+    exact /= exact.sum()
+    aliased = fida_pch(k_max, [(1.0, 0.0)], background=bg, oversample=1)
+    converged = fida_pch(k_max, [(1.0, 0.0)], background=bg, oversample=16)
+    assert np.max(np.abs(converged - exact)) < 1e-9
+    assert np.max(np.abs(aliased - exact)) > 1e-3

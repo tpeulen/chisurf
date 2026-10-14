@@ -87,7 +87,7 @@ def fida_pch(
         and mean number ``N`` in the reference volume.
     profile : (x, w), optional
         Spatial brightness profile (:func:`dvdx_gaussian` by default), with
-        ``w`` normalised to unit integral over ``x``.
+        ``w`` normalised to unit integral over ``x`` on a uniform ``x`` grid.
     background : float
         Mean background counts per bin.
     oversample : int
@@ -101,12 +101,29 @@ def fida_pch(
     """
     if profile is None:
         profile = dvdx_gaussian()
-    x, w = profile
+    x = np.asarray(profile[0], dtype=float).ravel()
+    w = np.asarray(profile[1], dtype=float).ravel()
+    if x.size != w.size or x.size < 2:
+        raise ValueError("profile needs matching x and w arrays of at least two bins")
+    # The kernel integrates with the spacing of the first two bins, so the grid must be uniform.
+    if not np.allclose(np.diff(x), x[1] - x[0], rtol=1e-6, atol=0.0):
+        raise ValueError("profile x must be a uniform grid")
 
     species_flat = []
     for q, n in species:
         species_flat.extend([float(q), float(n)])
-    return np.asarray(_ttl.fida_pch(k_max, species_flat, len(species), float(background)))
+    profile_flat = np.concatenate([x, w]).tolist()
+    return np.asarray(
+        _ttl.fida_pch(
+            int(k_max),
+            species_flat,
+            len(species),
+            float(background),
+            profile_flat,
+            int(x.size),
+            max(int(oversample), 1),
+        )
+    )
 
 
 def fida_residuals(
