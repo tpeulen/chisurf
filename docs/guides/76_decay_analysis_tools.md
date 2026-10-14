@@ -19,9 +19,9 @@ you choose, the only data on which LLTF's choices can be checked.
 Reconvolution, the nuisance terms and the two average lifetimes are in
 {ref}`concept-tcspc-lifetime`. How to decide the number of components is
 {ref}`concept-tcspc-model-selection`; how synthetic decays are sampled and what a
-photon budget allows is {ref}`concept-tcspc-synthetic-decays`. Weighting by the
-data (Neyman $\chi^2$), which LLTF uses, is discussed in
-{ref}`concept-fitting-objectives`.
+photon budget allows is {ref}`concept-tcspc-synthetic-decays`. LLTF weights by
+the data (Neyman $\chi^2$) unless `noise_model: poisson` selects the deviance
+$2I^*$; both are discussed in {ref}`concept-fitting-objectives`.
 :::
 
 ## Open the tools
@@ -155,6 +155,7 @@ scan).
 
 | Key | Default | Meaning |
 |---|---|---|
+| `lifetime_fit_parameter.noise_model` | `neyman` | the objective: `neyman` weights each channel by its own counts (any curve; biased at low counts), `poisson` minimises the deviance $2I^*$ (unbiased; the decay must be raw photon counts). CLI `--noise-model` |
 | `analysis_range_parameter.start_fraction` | 0.005 | start where the rise crosses this fraction of the peak |
 | `…start_at_peak` | false | start at the peak instead |
 | `…area` | 0.9999 | stop at this fraction of the cumulative counts |
@@ -241,15 +242,32 @@ Measured on decays from the Synthetic Decay Generator with the example IRF
 (6100 channels of 8 ps, $2\times10^6$ photons, three noise seeds each), scan up
 to three lifetimes with the packaged configuration and threshold 0.68:
 
-| True decay | Chosen $n$ (seeds 1, 2, 3) | Recovered |
-|---|---|---|
-| 4.0 ns | 1, 1, 1 | 3.98 ns; $\chi^2_r$ 1.09–1.15 |
-| 1.0 + 4.0 ns, equal amplitudes | 2, 2, 2 | 3.94 ns (0.51) and 0.95–0.96 ns (0.49) |
-| 3.0 + 4.5 ns, equal amplitudes | 2, 2, 2 | 4.12–4.15 ns (0.76–0.78) and 2.35–2.47 ns: the count is right, the lifetimes and fractions are not |
+| True decay | `noise_model` | Chosen $n$ (seeds 1, 2, 3) | Recovered |
+|---|---|---|---|
+| 4.0 ns | `neyman` | 1, 1, 1 | 3.98 ns; $\chi^2_r$ 1.09–1.15 |
+| | `poisson` | 1, 1, 1 | 4.00 ns; $\chi^2_r$ 1.01–1.07 |
+| 1.0 + 4.0 ns, equal amplitudes | `neyman` | 2, 2, 2 | 3.94 ns (0.51) and 0.95–0.96 ns (0.49) |
+| | `poisson` | 2, 2, 3 | 3.99–4.00 ns (0.50) and 0.98–1.00 ns (0.50); seed 3 adds a 0.03 ns component of 0.11 |
+| 3.0 + 4.5 ns, equal amplitudes | `neyman` | 2, 2, 2 | 4.12–4.15 ns (0.76–0.78) and 2.35–2.47 ns: wrong |
+| | `poisson` | 2, 2, 2 | 2.81 / 4.36, 2.93 / 4.46 and 2.99 / 4.49 ns, fractions 0.40–0.51 |
 
-A true single exponential gives $\chi^2_r$ = 1.09–1.15 rather than 1.0, the
-low-count bias of data weighting. Two close lifetimes are detected but not
-resolved: the decay is fitted equally well by a pair further apart.
+**Use `poisson` on raw counts.** Weighting each channel by its own counts
+gives low channels too much weight, which pulls the model down in the tail: a
+single 4.0 ns decay comes back 3.98 ns with $\chi^2_r$ 1.09–1.15. For two close
+lifetimes this bias moves the fit along the near-flat direction of the
+pair. On seed 1 of 3.0 + 4.5 ns (amplitudes and nuisances refitted at fixed
+lifetimes) the data-weighted $\chi^2$ scores the wrong pair 2.36 / 4.13 ns 138
+lower than the true pair; the deviance scores the true pair 12 lower than the
+wrong one. `neyman` stays the default because
+it also fits curves that are not counts (the packaged example is scaled to a
+peak of 100 000).
+
+**What remains is resolution.** With the deviance, the profile over $\tau_1$
+for seed 1 (everything else refitted) rises by 5.2 at 2.5 ns, 2.4 at the true
+3.0 ns and 17 at 3.2 ns from its minimum at 2.81 ns: at $2\times10^6$ photons
+$\tau_1$ is known to roughly ±0.15 ns. A fixed two-lifetime fit of the same
+decay gives 2.65–3.40 / 4.33–5.28 ns at $2\times10^5$ photons and
+2.99–3.03 / 4.50–4.52 ns at $2\times10^7$ photons.
 
 Read the scan as a table of fits, not as a verdict: open `optimal_fitting` in
 the JSON, check that $\chi^2_r$ falls monotonically with $n$, and judge the
@@ -354,7 +372,8 @@ csc lltf fit bi.dat chisurf/plugins/fluorescence_decay/lltf/example/IRF_D0.dat \
 
 `bi.dat` holds 2 000 360 photons. `csc lltf fit` takes `-c` for a YAML
 configuration, `-n` for a fixed component count, `-pt`/`-sm` for the scan's
-threshold and mode, `--skiprows`, `--delimiter`, `--time-column` and
+threshold and mode, `--noise-model poisson` for the deviance on raw counts
+(`bi.dat` is raw counts: it returns 3.99 ns and 0.98 ns), `--skiprows`, `--delimiter`, `--time-column` and
 `--counts-column` for the file layout, and `-si` to keep each scanned model.
 `csc synth-decay aniso` generates a VV/VH pair (`--rotation b,ρ,…`,
 `--g-factor`, `--l1`, `--l2`, `--vvvh-file`), and `csc synth-decay component`

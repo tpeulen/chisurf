@@ -66,6 +66,14 @@ def cli():
     default="lower",
     help="Mode for selecting the best number of lifetimes (lower: fewer components, upper: more components)",
 )
+@click.option(
+    "--noise-model",
+    "-nm",
+    type=click.Choice(["neyman", "poisson"]),
+    default=None,
+    help="Objective: neyman (data-weighted chi-square, the default; any curve) or poisson "
+    "(deviance 2I*, unbiased; the decay must be raw photon counts). Overrides the configuration.",
+)
 @click.option("--skiprows", "-s", type=int, default=0, help="Number of rows to skip in data files")
 @click.option("--delimiter", "-d", type=str, default=None, help="Delimiter used in data files")
 @click.option("--time-column", "-t", type=int, default=0, help="Column index for time data")
@@ -96,6 +104,7 @@ def fit(
     max_lifetimes,
     prob_threshold,
     selection_mode,
+    noise_model,
     skiprows,
     delimiter,
     time_column,
@@ -160,6 +169,8 @@ def fit(
     if find_optimal or n_lifetimes is not None:
         config_dict.setdefault("lifetime_fit_parameter", {})["find_optimal"] = bool(find_optimal)
     n_lifetimes = 1 if n_lifetimes is None else n_lifetimes
+    if noise_model is not None:
+        config_dict.setdefault("lifetime_fit_parameter", {})["noise_model"] = noise_model
     if find_optimal:
         if "lifetime_fit_parameter" not in config_dict:
             config_dict["lifetime_fit_parameter"] = {}

@@ -25,7 +25,7 @@
         {"type": "value", "attr": "max_lifetimes", "label": "Max Lifetimes to Try", "kind": "int", "style": "spin", "minimum": 2, "maximum": 6, "step": 1,
          "description": "Largest component count the search fits."},
         {"type": "value", "attr": "prob_threshold", "label": "Probability Threshold", "kind": "float", "style": "spin", "minimum": 0.0, "maximum": 1.0, "step": 0.01, "decimals": 2,
-         "description": "Probability a further component must reach to be kept. At the default 0.68 it needs about a 14 % drop in reduced χ², whatever the photon count."},
+         "description": "Probability a further component must reach to be kept: the F distribution's CDF of the extra-sum-of-squares F statistic of the χ² drop against the added parameters."},
         {"type": "toggle", "attr": "verbose", "label": "Verbose Output",
          "description": "Print the fitter's progress and diagnostics in Analysis Output."}
       ]

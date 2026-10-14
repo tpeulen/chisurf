@@ -30,9 +30,12 @@ IRF shift, two backgrounds and χ². No uncertainties. The results are written a
 - **Change the fit range** (`start_fraction`, `area`). On the example decay a
   short component moves from 0.78 to 1.35 ns between two reasonable ranges.
 - **Do not take the automatic component count as a verdict.** Its F test is an
-  approximation (an added component sits on a parameter boundary), and two
-  close lifetimes can be counted right but resolved wrong. Read the χ²ᵣ of
+  approximation (an added component sits on a parameter boundary). Read the χ²ᵣ of
   every model in the JSON (`optimal_fitting`) and decide yourself.
+- **On raw photon counts, set `noise_model: poisson`** in the Config File.
+  The default weights each channel by its own counts, which biases the fit:
+  3.0 + 4.5 ns comes back as about 2.4 + 4.1 ns, the deviance gives 2.8–3.0 +
+  4.4–4.5 ns at 2×10⁶ photons. Keep the default for curves that are not counts.
 - **Test it on a synthetic decay** made with your IRF, window and photon count
   (Synthetic Decay Generator, `csc synth-decay`).
 

@@ -19,7 +19,7 @@
     },
     {
       "title": "Fix the number of lifetimes yourself",
-      "text": "Start with a fixed number. <b>Find Optimal Number of Lifetimes</b> fits 1 … Max components and picks one, but its test needs a 14 % drop in reduced χ² at the default threshold whatever the photon count, and a failed fit with more components can make it count wrong.<br/><br/>Use it to <i>see</i> the sequence of χ², not to decide.",
+      "text": "Start with a fixed number. <b>Find Optimal Number of Lifetimes</b> fits 1 … Max components and keeps a further one while an F test of the χ² drop (extra-sum-of-squares, nested pair) passes the threshold. A component on a parameter boundary makes that probability approximate, and a tiny extra component can pass it.<br/><br/>Use it to <i>see</i> the sequence of χ², not to decide.",
       "target": {"action": "Find Optimal"}
     },
     {

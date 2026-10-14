@@ -184,6 +184,10 @@ class Decay:
         self.irf_background = 0.0
         self.decay_background = 0.0
         self.apply_irf_shift = True  # Whether to apply IRF shift
+        # Objective: "neyman" weights each channel by its own counts (works on
+        # curves that are not raw counts, biased at low counts); "poisson" is
+        # the deviance 2I* (unbiased, needs raw photon counts).
+        self.noise_model = "neyman"
 
         # Analysis range
         self.start = 0
@@ -450,23 +454,19 @@ class Decay:
         # Initialize scores array
         scores = np.zeros(len(shifts))
 
-        # Scan through shifts
-        for i, shift in enumerate(shifts):
-            # Set the shift
-            self.irf_shift = shift
-
-            # Calculate model decay
-            self.calculate_model_decay()
-
-            # Calculate chi-square
-            residuals = (
-                self.decay[self.start : self.stop] - self._computed_model()[self.start : self.stop]
-            )
-            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-            chi_square = np.sum((residuals * weights) ** 2)
-
-            # Store score
-            scores[i] = chi_square
+        # Scan through shifts. The scan is a coarse start for the fit, scored
+        # with the data-weighted chi-square whatever the noise model: at the
+        # placeholder lifetime the Poisson deviance prefers a shift nanoseconds
+        # off (it punishes the rising edge far harder), and the fit cannot
+        # walk back from there.
+        noise_model, self.noise_model = self.noise_model, "neyman"
+        try:
+            for i, shift in enumerate(shifts):
+                self.irf_shift = shift
+                self.calculate_model_decay()
+                scores[i] = self._objective()
+        finally:
+            self.noise_model = noise_model
 
         # Find the shift with the minimum chi-square
         best_idx = np.argmin(scores)
@@ -508,7 +508,9 @@ class Decay:
             start=self.start,
             stop=self.stop,
             experimental_background=self.decay_background,
-            use_weights=True,  # Use weights for better scaling
+            # Neyman: weighted least squares. Poisson: count conservation over
+            # the range, the maximum-likelihood scale of a Poisson model.
+            use_weights=self.noise_model != "poisson",
         )
 
         # 3. Pile-up correction if enabled
@@ -1021,11 +1023,7 @@ class Decay:
                 print(f"Optimal number of lifetimes found: {n_lifetimes}")
 
             # Calculate chi-square and other metrics for the final result
-            residuals = (
-                self.decay[self.start : self.stop] - self._computed_model()[self.start : self.stop]
-            )
-            weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-            chi_square = np.sum((residuals * weights) ** 2)
+            chi_square = self._objective()
             # The selected model owns its actual nuisance-mask parameter count.
             dof = optimal_result["dofs"][optimal_result["best_idx"]]
             reduced_chi_square = chi_square / max(1, dof)
@@ -1040,6 +1038,7 @@ class Decay:
                 "chi_square": float(chi_square),
                 "reduced_chi_square": float(reduced_chi_square),
                 "dof": int(dof),
+                "noise_model": self.noise_model,
                 "optimal_fitting": {
                     "scores": optimal_result["scores"],
                     "chi_squares": optimal_result["chi_squares"],
@@ -1172,19 +1171,29 @@ class Decay:
         # transform this plugin used to carry its own 365-line copy of. The
         # objective is a Python callable, so `minimize` takes its director
         # path; nothing else about the fit changes.
-        params, _ier = minimize(
-            lambda p: self.objective_function(p, fixed),
-            params,
-            args=(),
-            bounds=bounds,
-            ftol=1.49012e-8,
-            xtol=1.49012e-8,
-            gtol=0.0,
-            maxfev=0,
-            epsfcn=0.0,
-            factor=1000,
-            diag=None,
-        )
+        # The Poisson deviance converges slowly from a cold start (a single
+        # lifetime started at 1 ns runs out of evaluations far from the
+        # optimum), so it is refined from the data-weighted solution.
+        noise_model = self.noise_model
+        stages = ("neyman", "poisson") if noise_model == "poisson" else (noise_model,)
+        try:
+            for stage in stages:
+                self.noise_model = stage
+                params, _ier = minimize(
+                    lambda p: self.objective_function(p, fixed),
+                    params,
+                    args=(),
+                    bounds=bounds,
+                    ftol=1.49012e-8,
+                    xtol=1.49012e-8,
+                    gtol=0.0,
+                    maxfev=0,
+                    epsfcn=0.0,
+                    factor=1000,
+                    diag=None,
+                )
+        finally:
+            self.noise_model = noise_model
 
         # Extract parameters
         param_idx = 0
@@ -1225,13 +1234,9 @@ class Decay:
         # Calculate model decay
         self.calculate_model_decay()
 
-        # Calculate chi-square
-        residuals = (
-            self.decay[self.start : self.stop] - self._computed_model()[self.start : self.stop]
-        )
-        weights = 1.0 / np.sqrt(np.maximum(self.decay[self.start : self.stop], 1.0))
-        chi_square = np.sum((residuals * weights) ** 2)
-        dof = len(residuals) - len(params) + sum(fixed)
+        # Calculate chi-square (the deviance for the Poisson noise model)
+        chi_square = self._objective()
+        dof = (self.stop - self.start) - len(params) + sum(fixed)
         reduced_chi_square = chi_square / dof
 
         # Store fit results
@@ -1244,6 +1249,7 @@ class Decay:
             "chi_square": float(chi_square),
             "reduced_chi_square": float(reduced_chi_square),
             "dof": int(dof),
+            "noise_model": self.noise_model,
         }
 
         self.fit_result.update(_optimizer_provenance(_ier, len(params)))
@@ -1292,10 +1298,26 @@ class Decay:
         ax.legend()
 
     def _weighted_residuals(self) -> np.ndarray:
+        """Residuals whose sum of squares is the objective of :attr:`noise_model`.
+
+        ``neyman``: ``(y - m) / sqrt(max(y, 1))``. ``poisson``: the signed
+        deviance residuals ``sign(y - m) sqrt(2 (m - y + y ln(y / m)))``,
+        whose sum of squares is the Poisson deviance 2I*.
+        """
         sl = slice(self.start, self.stop)
-        data = self._data()
-        residuals = data[sl] - self._computed_model()[sl]
-        return residuals / np.sqrt(np.maximum(data[sl], 1.0))
+        data = self._data()[sl]
+        model = self._computed_model()[sl]
+        if self.noise_model == "poisson":
+            m = np.maximum(model, 1e-12)
+            positive = data > 0
+            y_ln = np.where(positive, data * np.log(np.where(positive, data, 1.0) / m), 0.0)
+            deviance = np.maximum(2.0 * (m - data + y_ln), 0.0)
+            return np.sign(data - m) * np.sqrt(deviance)
+        return (data - model) / np.sqrt(np.maximum(data, 1.0))
+
+    def _objective(self) -> float:
+        """Sum of squared :meth:`_weighted_residuals` over the analysis range."""
+        return float(np.sum(self._weighted_residuals() ** 2))
 
     def plot(self, filename: str | None = None):
         """
@@ -1657,6 +1679,10 @@ def fit_lifetime(
 
         # Create decay object
         decay_obj = Decay(decay=decay, irf=irf, time_axis=time_axis)
+        noise_model = str(config.get("lifetime_fit_parameter", {}).get("noise_model", "neyman"))
+        if noise_model not in ("neyman", "poisson"):
+            raise ValueError(f"noise_model must be 'neyman' or 'poisson', not {noise_model!r}")
+        decay_obj.noise_model = noise_model
 
         # Set pile-up correction parameters
         pile_up_params = config.get("pile_up_correction", {})

@@ -2768,6 +2768,13 @@ Open:
    (YAML + two in `fit_lifetime`); CLI `-f` overwrites `selection_mode`; the
    `$TMPDIR/lltf_config.yml` copy is never refreshed; `plot_decay_curve` calls
    `plt.show()` unconditionally.
+   **Resolved 2026-10-14** except the default sets and the `selection_mode`
+   overwrite (guide 76, Known defects): the scan uses the extra-sum-of-squares F
+   test and warm-starts n+1 from n. The remaining 3.0+4.5 ns error (2.4 + 4.1 ns
+   on every seed) was the Neyman objective's low-count bias, not the test:
+   `lifetime_fit_parameter.noise_model: poisson` (CLI `--noise-model`) fits the
+   deviance and returns 2.8–3.0 + 4.4–4.5 ns at 2e6 photons
+   (`lltf/test/test_noise_model.py`).
 3. **F-test tool reports the variance-ratio form** (`core/math/statistics.py`
    `f_test_confidence`), conservative for two fits of the same data: 0.59 vs
    extra-sum-of-squares p=0.003 on ibh donor 2→3 exp. Add the ESS F as a second
