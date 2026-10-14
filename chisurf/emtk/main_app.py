@@ -56,7 +56,7 @@ from chisurf.emtk.shell_session import MenuAction, ShellProject
 #: Settings id of the shell's own layout and preferences (``<settings>/emtk/emtk_shell.*.json``).
 SHELL_ID = "emtk_shell"
 #: Height of the menu bar strip.
-MENU_BAR = 30.0
+MENU_BAR = 20.0
 #: The region tools open in (tabbed docks beside the workspace in the central region).
 TOOL_REGION = "center"
 #: Prefix of a hosted plugin's dock window key.
@@ -1486,11 +1486,11 @@ class EmtkShellApp(ImApp):
             if not is_open:
                 continue
             for caption, entries in found.items():
-                im.indent()
+                im.indent(10.0)
                 if caption:
                     accents.caption(tr(caption), colour_of(groups[caption]))
                     self.item_rects[f"tools.group.{menu}.{caption}"] = im.get_item_rect()
-                    im.indent()
+                    im.indent(10.0)
                 for entry in entries:
                     shown += 1
                     label = entry_label(entry)
@@ -1504,8 +1504,8 @@ class EmtkShellApp(ImApp):
                     accents.mark_item(accent(self.task_categories.get(entry.plugin_id)))
                     im.set_item_tooltip(entry_tooltip(entry))
                 if caption:
-                    im.unindent()
-                im.unindent()
+                    im.unindent(10.0)
+                im.unindent(10.0)
         if words and not shown:
             im.text_disabled(tr("No tool matches the filter."))
 

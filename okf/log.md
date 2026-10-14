@@ -28,6 +28,7 @@
 - Light theme, second pass. The guard (test/test_theme_tokens.py) now also catches literal colours in painter and draw-list calls and drawn surface constants; it reports zero. Fixed in light mode: the state-scheme canvas, the ProteinMC network, ebFRET, the node editor (emtk 0.1.20: nodes follow the theme; light mini map) and smaller sites in seven tools. The code editor's colour scheme defaults to Theme. LLTF radio tooltips added. emtk test_tk_host fixed at the root: tk_wheel_unit by platform and Tk version. EMTK_MIN_VERSION 0.1.20. Qt-host-only WINDOW_BG exports listed for S6. Record: [Light and dark theme](subsystems/theme.md).
 - Workspace as special dock window: per user request, workspace is a dock window docked in center of ShellDockManager (closable=False, core=True) containing self.workspace_docks where fit windows live; tools open in docks (center by default) taking full dock width without auto-floating; tests pass in test_emtk_shell_workspace.py, test_emtk_shell_fit_windows.py, and test_emtk_shell_final_parity.py; headless screenshots inspected.
 - emtk: density optimizations for tables (1.25 row scale, 4px cell padding, 50px flex min), buttons (16px min width floor), numeric steppers (0.6 frame height), comboboxes (3px pad, compact arrow); bumped to 0.1.21
+- shell density: MENU_BAR 30 -> 20 px, status strip HEIGHT 26 -> 18 px, tools tree indent 10 px; emtk docking MIN_TAB_W 32 px, DataTable CELL_PAD_X 3 px
 
 ## 2026-10-13
 

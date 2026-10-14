@@ -32,13 +32,13 @@ from emtk import im
 from emtk.i18n import mark, tr
 
 #: Height of the strip, in logical pixels.
-HEIGHT = 26.0
+HEIGHT = 18.0
 #: The persistent label (the Qt bar's ``status_label``).
 READY = mark("Ready")
 #: Width of the operation's text before it is cut (the Qt host's label keeps 240 px).
-TASK_TEXT_WIDTH = 240.0
+TASK_TEXT_WIDTH = 200.0
 #: Width and height of the operation's bar (the Qt host's: 140 x 12).
-BAR_SIZE = (140.0, 12.0)
+BAR_SIZE = (120.0, 10.0)
 #: How fast a busy bar's segment slides (bar widths per second).
 BUSY_SPEED = 0.6
 
