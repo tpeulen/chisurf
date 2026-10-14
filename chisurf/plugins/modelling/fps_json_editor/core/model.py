@@ -39,7 +39,7 @@ class FpsJsonModel:
     @property
     def fps_json_payload(self) -> dict:
         """Return full fps.json payload as a Python dict (no file I/O)."""
-        p = {_FORMAT_VERSION_KEY: self.format_version}
+        p: dict[str, Any] = {_FORMAT_VERSION_KEY: self.format_version}
         p.update(self.extra_sections)
         p["Distances"] = self.distances
         p["Positions"] = self.positions

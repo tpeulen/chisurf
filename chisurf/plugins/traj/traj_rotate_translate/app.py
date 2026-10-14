@@ -102,11 +102,11 @@ class RotateTranslateApp(TrajToolApp):
         label_w = self.label_column()
         cell = min(CELL_WIDTH, (width - label_w - 2 * spacing) / 3.0)
         matrix = np.array(self.model.rotation_matrix, dtype=np.float32)
-        top = None
+        top = (0.0, 0.0)  # the first row's cell position, read below
         for i in range(3):
             im.text("Rotation matrix" if i == 0 else "")
             im.same_line(label_w)
-            if top is None:
+            if i == 0:
                 top = im.get_cursor_screen_pos()
             for j in range(3):
                 if j:
@@ -149,9 +149,9 @@ class RotateTranslateApp(TrajToolApp):
 
     def restore_settings(self, settings: dict) -> None:
         super().restore_settings(settings)
-        if np.shape(settings.get("rotation_matrix")) == (3, 3):
+        if np.shape(settings.get("rotation_matrix", ())) == (3, 3):
             self.model.rotation_matrix = np.asarray(settings["rotation_matrix"], dtype=np.float32)
-        if np.shape(settings.get("translation_vector")) == (3,):
+        if np.shape(settings.get("translation_vector", ())) == (3,):
             self.model.translation_vector = np.asarray(
                 settings["translation_vector"], dtype=np.float32
             )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pathlib
 from typing import Any
 
 from ..core import compute_average_correlations, merge_folder, parse_correlation_folder
@@ -9,7 +10,8 @@ from ..core import compute_average_correlations, merge_folder, parse_correlation
 
 def merge_folder_handler(folder: str, output: str | None = None) -> dict[str, Any]:
     try:
-        return {"ok": True, "result": merge_folder(folder, output)}
+        target = pathlib.Path(output) if output else None
+        return {"ok": True, "result": merge_folder(pathlib.Path(folder), target)}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 
@@ -35,7 +37,8 @@ def average_handler(correlations: list[dict]) -> dict[str, Any]:
 
 def parse_folder_handler(folder: str) -> dict[str, Any]:
     try:
-        return {"ok": True, "result": {"correlations": parse_correlation_folder(folder)}}
+        correlations = parse_correlation_folder(pathlib.Path(folder))
+        return {"ok": True, "result": {"correlations": correlations}}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
 

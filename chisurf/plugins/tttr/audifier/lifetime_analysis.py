@@ -151,11 +151,7 @@ def compute_lifetime_waterfall(
         Lifetime axis (seconds)
     """
     # Import TTTRData from core module to avoid circular imports
-    try:
-        from .core import TTTRData
-    except ImportError:
-        # Fallback for direct execution
-        from core import TTTRData
+    from .core import TTTRData
 
     # Validate inputs
     if not isinstance(data, TTTRData):
@@ -353,11 +349,7 @@ def plot_lifetime_waterfall_multichannel(
         ILT regularization parameter
     """
     # Import TTTRData to avoid circular imports
-    try:
-        from .core import TTTRData
-    except ImportError:
-        # Fallback for direct execution
-        from core import TTTRData
+    from .core import TTTRData
 
     # Validate inputs
     if not isinstance(data, TTTRData):
@@ -380,7 +372,8 @@ def plot_lifetime_waterfall_multichannel(
     vmax = 0.0
 
     # First pass: compute all data to determine shared color scale
-    channel_data = []
+    #: (amplitudes, macro times, lifetimes) per channel; ``None`` for a channel that failed
+    channel_data: list[tuple[np.ndarray, np.ndarray, np.ndarray] | None] = []
     for i, ch in enumerate(channels):
         try:
             A, macro_t_s, tau = compute_lifetime_waterfall(

@@ -12,10 +12,24 @@ from __future__ import annotations
 import logging
 import pathlib
 from collections.abc import Callable
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from chisurf.core.fluorescence.imaging.simulate import SimulatedImage
+
+
+class _StreamArrays(TypedDict, total=False):
+    """The photon arrays an ``.npz`` save holds (event types when the stream has them)."""
+
+    macro_times: np.ndarray
+    micro_times: np.ndarray
+    routing_channels: np.ndarray
+    event_types: np.ndarray
+
+
+logger =logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "generator.view.json"
 
@@ -39,7 +53,7 @@ class ClsmGeneratorViewModel:
         # Loaded inputs + result.
         self._intensity_in: np.ndarray | None = None
         self._lifetime_in: list[np.ndarray] = []
-        self._sim = None
+        self._sim: SimulatedImage | None = None
         self.current_view: str = "intensity_in"
         self.status_text: str = ""
         self._observers: list[Callable[[str], None]] = []
@@ -126,15 +140,16 @@ class ClsmGeneratorViewModel:
         from chisurf.core.fluorescence.imaging.simulate import simulate_clsm_from_maps
 
         ok, reason = self.can_generate()
-        if not ok:
+        intensity = self._intensity_in
+        if not ok or intensity is None:
             self.status_text = reason
             self.notify("done")
             return
         self.status_text = "Generating CLSM photon image…"
         self.notify("progress")
         try:
-            self._sim = simulate_clsm_from_maps(
-                self._intensity_in,
+            sim = simulate_clsm_from_maps(
+                intensity,
                 self._lifetime_in if len(self._lifetime_in) > 1 else self._lifetime_in[0],
                 pixel_size=self.pixel_size,
                 n_micro=self.n_micro,
@@ -151,8 +166,9 @@ class ClsmGeneratorViewModel:
             self.status_text = f"Generation failed: {exc}"
             self.notify("done")
             return
+        self._sim = sim
         self.current_view = "recon"
-        n_ph = int(np.asarray(self._sim.intensity).sum())
+        n_ph = int(np.asarray(sim.intensity).sum())
         self.status_text = f"Generated {n_ph} photons ({len(self._lifetime_in)} detector(s))."
         self.notify("done")
 
@@ -171,15 +187,16 @@ class ClsmGeneratorViewModel:
         Also writes ``<stem>_intensity.tif`` next to it.
         Returns the written path (empty when there is nothing to save).
         """
-        if self._sim is None:
+        sim = self._sim
+        if sim is None:
             self.status_text = "Nothing generated yet."
             self.notify("done")
             return ""
-        tttr = self._sim.tttr
+        tttr = sim.tttr
         p = pathlib.Path(path)
         try:
             if p.suffix.lower() == ".npz":
-                arrays = {
+                arrays: _StreamArrays = {
                     "macro_times": np.asarray(tttr.macro_times),
                     "micro_times": np.asarray(tttr.micro_times),
                     "routing_channels": np.asarray(tttr.routing_channels),
@@ -190,9 +207,9 @@ class ClsmGeneratorViewModel:
                 np.savez(p, **arrays)
             else:
                 tttr.write(str(p))
-            self._save_intensity_tif(p)
-            self._write_container(p)
-            self._write_scan_layout(p)
+            self._save_intensity_tif(sim, p)
+            self._write_container(sim, p)
+            self._write_scan_layout(sim, p)
         except Exception as exc:  # noqa: BLE001 - surfaced in the status line
             logger.debug("save failed", exc_info=True)
             self.status_text = f"Save failed: {exc}"
@@ -202,7 +219,7 @@ class ClsmGeneratorViewModel:
         self.notify("saved")
         return str(p)
 
-    def _write_container(self, path: pathlib.Path) -> None:
+    def _write_container(self, sim: SimulatedImage, path: pathlib.Path) -> None:
         """Put the generated stream and its intensity raster in one file.
 
         The generator writes a photon stream *and* a `<stem>_intensity.tif`
@@ -222,7 +239,7 @@ class ClsmGeneratorViewModel:
 
             write_image(
                 path,
-                np.asarray(self._sim.intensity, dtype=np.float32),
+                np.asarray(sim.intensity, dtype=np.float32),
                 name="intensity",
                 artifact_kind="image_data",
                 operation_type="measurement_import",
@@ -231,7 +248,7 @@ class ClsmGeneratorViewModel:
         except Exception:
             logger.debug("container export skipped", exc_info=True)
 
-    def _write_scan_layout(self, path: pathlib.Path) -> None:
+    def _write_scan_layout(self, sim: SimulatedImage, path: pathlib.Path) -> None:
         """Declare the simulated scanner's grid in the ``<stem>.json`` sidecar.
 
         A PTU or PTO stream carries the grid in its ``ImgHdr_*`` header tags
@@ -244,16 +261,16 @@ class ClsmGeneratorViewModel:
             return
         import json
 
-        layout = {"kind": "chisurf-simulated-raster", "n_pixel_per_line": int(self._sim.n_pixel)}
+        layout = {"kind": "chisurf-simulated-raster", "n_pixel_per_line": int(sim.n_pixel)}
         path.with_suffix(".json").write_text(json.dumps({"scan_layout": layout}, indent=1))
 
-    def _save_intensity_tif(self, path: pathlib.Path) -> None:
+    def _save_intensity_tif(self, sim: SimulatedImage, path: pathlib.Path) -> None:
         try:
             from chisurf.core.fio.image import imwrite
 
             imwrite(
                 path.with_name(f"{path.stem}_intensity.tif"),
-                np.asarray(self._sim.intensity, dtype=np.float32),
+                np.asarray(sim.intensity, dtype=np.float32),
             )
         except Exception:
             logger.debug("intensity TIFF export skipped", exc_info=True)

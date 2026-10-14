@@ -777,9 +777,10 @@ class TraceBrowserModel:
 
     def _make_row(self, p: pathlib.Path) -> dict[str, Any]:
         """Build the table row of file *p* from the disk and the metadata."""
+        folder = self.current_folder
         try:
-            rel_txt = str(p.relative_to(self.current_folder))
-        except Exception:
+            rel_txt = str(p.relative_to(folder)) if folder is not None else p.name
+        except ValueError:
             rel_txt = p.name
         try:
             sz = p.stat().st_size
@@ -1739,31 +1740,14 @@ class TraceBrowserModel:
             return None
         tw_ms = float(self.window_ms)
         tw_s = tw_ms / 1000.0
-        try:
-            from chisurf.core.fio.fluorescence import burst as burstio
-        except Exception:
-            burstio = None
-        try:
-            from chisurf.plugins.tttr.tttr_time_windows.api.selection import compute_bids_from_tttr
-        except Exception:
-            compute_bids_from_tttr = None
+        # Both in-tree and pure Python: the former None fallbacks (and a second,
+        # inline copy of the time-window search) could never run.
+        from chisurf.core.fio.fluorescence import burst as burstio
+        from chisurf.plugins.tttr.tttr_time_windows.api.selection import compute_bids_from_tttr
+
         try:
             tttr = tttrlib.TTTR(str(src))
-            if compute_bids_from_tttr is not None:
-                bids = compute_bids_from_tttr(tttr, tw_s)
-            else:
-                mt = tttr.macro_times
-                res = float(getattr(tttr.header, "macro_time_resolution", 0.0)) or float(
-                    getattr(tttr, "macro_time_resolution", 0.0)
-                )
-                if res <= 0:
-                    raise RuntimeError("Macro time resolution unavailable from TTTR header")
-                clocks_per_bin = max(1, int(np.floor(tw_s / res)))
-                max_clock = int(mt.max()) if len(mt) else 0
-                edges = np.arange(0, max_clock + 1, clocks_per_bin, dtype=np.int64)
-                starts = np.searchsorted(mt, edges, side="left")
-                stops = np.searchsorted(mt, edges + clocks_per_bin, side="left")
-                bids = np.stack([starts, stops], axis=1)
+            bids = compute_bids_from_tttr(tttr, tw_s)
             if bids is None or getattr(bids, "size", 0) == 0:
                 self.error_text = "No data to compute burst IDs."
                 return None
@@ -1784,8 +1768,6 @@ class TraceBrowserModel:
                 detectors = {"all": {"chs": chs, "micro_time_ranges": [full]}}
             windows = {"all": full}
             start_stop = [(int(a), int(b)) for a, b in np.asarray(bids).tolist()]
-            if burstio is None:
-                raise ImportError("burst utilities unavailable")
             df = burstio.generate_burst_dataframe(
                 start_stop, str(src.name), tttr, windows, detectors
             )

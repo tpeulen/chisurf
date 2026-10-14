@@ -65,7 +65,8 @@ def channels_signature(channels_map: dict[str, list[dict]]) -> list[dict]:
         if not isinstance(channels_map, dict):
             return sig
         for det_name, entries in sorted(channels_map.items(), key=lambda kv: str(kv[0])):
-            part = {"name": str(det_name), "entries": []}
+            part_entries: list[dict] = []
+            part = {"name": str(det_name), "entries": part_entries}
             for e in entries or []:
                 chs = e.get("detector_chs") or []
                 try:
@@ -80,10 +81,8 @@ def channels_signature(channels_map: dict[str, list[dict]]) -> list[dict]:
                         mtr = list(mtr)
                 else:
                     mtr = None
-                part["entries"].append({"chs": chs, "mtr": mtr})
-            part["entries"].sort(
-                key=lambda d: (tuple(d.get("chs") or []), tuple(d.get("mtr") or []))
-            )
+                part_entries.append({"chs": chs, "mtr": mtr})
+            part_entries.sort(key=lambda d: (tuple(d.get("chs") or []), tuple(d.get("mtr") or [])))
             sig.append(part)
     except Exception:
         return sig
@@ -420,7 +419,7 @@ def render_mosaic_array(
 
         # Format label name | mt: ranges | ch: routing channels
         try:
-            det_chs_set = set()
+            det_chs_set: set[int] = set()
             for e in entries:
                 chs = e.get("detector_chs") or []
                 try:

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -492,7 +493,7 @@ def load_histogram(path: str | pathlib.Path) -> np.ndarray:
 
 def compute_filters_from_files(
     total_path: str | pathlib.Path,
-    species_paths: list[str | pathlib.Path],
+    species_paths: Sequence[str | pathlib.Path],
 ) -> FilterResult:
     """Compute filters from histogram files."""
     total_path = pathlib.Path(total_path)
@@ -583,8 +584,8 @@ def compute_filters_mfd(
 def compute_filters_mfd_from_files(
     total_par_path: str | pathlib.Path,
     total_perp_path: str | pathlib.Path,
-    species_par_paths: list[str | pathlib.Path],
-    species_perp_paths: list[str | pathlib.Path],
+    species_par_paths: Sequence[str | pathlib.Path],
+    species_perp_paths: Sequence[str | pathlib.Path],
 ) -> FilterResultMFD:
     """Compute MFD filters from histogram files."""
     total_par_path = pathlib.Path(total_par_path)
