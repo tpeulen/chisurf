@@ -299,6 +299,8 @@ class EmtkShellApp(ImApp):
             ),
             name="shell",
         )
+        # The machine and versions, faint behind the fit windows (emtk >= 0.1.15).
+        self.docks.workspace_background = self._draw_workspace_background
         # ``core``: the shell's own docks, which "Close all panels" / "Close other panels" leave
         # open -- only the hosted tools (and what the user opened) go.
         self.docks.add_window(
@@ -1343,6 +1345,18 @@ class EmtkShellApp(ImApp):
             im.text_disabled(tr("No tool matches the filter."))
 
     def _draw_start(self, box) -> None:
+        # The watermark sits in the workspace's top-right corner (_draw_workspace_background):
+        # the Start text keeps clear of it.
+        watermark = self.item_rects.get("system_info")
+        reserve = float(watermark[2]) + 24.0 if watermark else 0.0
+        width = max(200.0, float(box[2]) - reserve)
+        im.begin_child("##start text", (width, max(1.0, float(box[3]))), scrollable=False)
+        try:
+            self._draw_start_text()
+        finally:
+            im.end_child()
+
+    def _draw_start_text(self) -> None:
         im.text_unformatted(tr("ChiSurf"))
         im.text_wrapped(
             tr(
@@ -1361,28 +1375,77 @@ class EmtkShellApp(ImApp):
         if self.project.status:
             im.text_disabled(self.project.status)
             self.item_rects["project.status"] = im.get_item_rect()
-        self._draw_system_info()
 
-    def _draw_system_info(self) -> None:
-        """The machine, the versions and the process's CPU and memory, as the Qt workspace showed them."""
+    #: The watermark's samples of CPU and memory use (one a second), as the Qt sparklines kept.
+    WATERMARK_SAMPLES = 60
+
+    def _draw_workspace_background(self, rect) -> None:
+        """The system-info watermark, faint in the workspace's top-right corner, under the fits.
+
+        Where the Qt window painted it over its MDI area (``system_info_watermark.py``): a
+        translucent panel 10 px from the corner with the CPU and memory sparklines and the
+        machine, version and environment lines. Draw-list only: it takes no input.
+        """
         import time
+
+        from emtk.style import is_dark
 
         from chisurf.core.system_info import process_usage, system_info_lines
 
         if getattr(self, "_system_lines", None) is None:
             self._system_lines = system_info_lines()
             self._usage_at, self._usage = 0.0, None
+            self._usage_history: list[tuple[float, float]] = []
         now = time.monotonic()
         if now - self._usage_at > 1.0:
             self._usage_at, self._usage = now, process_usage()
-        im.spacing()
-        im.separator_text(tr("System"))
-        if self._usage is not None:
-            cpu, mem = self._usage
-            im.text_disabled(tr("CPU: {cpu:.0f}%   Mem: {mem:.0f} MB").format(cpu=cpu, mem=mem))
-        for line in self._system_lines:
-            im.text_disabled(line)
-        self.item_rects["system_info"] = im.get_item_rect()
+            if self._usage is not None:
+                self._usage_history = (self._usage_history + [self._usage])[
+                    -self.WATERMARK_SAMPLES :
+                ]
+        # Under the workspace's tab strip too (where its floating windows may go), not on it.
+        x, y, w, h = (float(v) for v in self.docks.floating_bounds())
+        style = im.get_style()
+        dark = is_dark(style.color(im.Col.WINDOW_BG))
+        # Faint: the Qt panel's translucent black (96/255) under half-transparent text.
+        panel = (0.0, 0.0, 0.0, 96 / 255) if dark else (0.0, 0.0, 0.0, 24 / 255)
+        ink = (1.0, 1.0, 1.0, 0.45) if dark else (0.0, 0.0, 0.0, 0.45)
+        im.push_font_scale(0.85)
+        try:
+            line_h = im.get_text_line_height()
+            rows: list[tuple[str, int]] = []  # (text, sparkline index or -1)
+            if self._usage is not None:
+                cpu, mem = self._usage
+                rows.append((tr("CPU: {cpu:.0f}%").format(cpu=cpu), 0))
+                rows.append((tr("Mem: {mem:.0f} MB").format(mem=mem), 1))
+            rows += [(line, -1) for line in self._system_lines]
+            spark_w, pad = 80.0, 6.0
+            text_w = max((im.calc_text_size(t)[0] for t, _ in rows), default=0.0)
+            box_w = text_w + spark_w + 3 * pad
+            box_h = len(rows) * line_h + 2 * pad
+            if box_w > w - 20.0 or box_h > h - 20.0:
+                return  # no room: a watermark never covers what it sits under
+            bx, by = x + w - box_w - 10.0, y + 10.0
+            draw = im.get_window_draw_list()
+            draw.add_rect_filled((bx, by), (bx + box_w, by + box_h), panel, 3.0)
+            colours = ((100 / 255, 180 / 255, 220 / 255, 0.9), (100 / 255, 200 / 255, 100 / 255, 0.9))
+            for row, (text, spark) in enumerate(rows):
+                ty = by + pad + row * line_h
+                tx = bx + pad + (spark_w + pad if spark >= 0 else 0.0)
+                draw.add_text((tx, ty), ink, text)
+                history = [sample[spark] for sample in self._usage_history] if spark >= 0 else []
+                if len(history) > 1:
+                    top = max(max(history), 1e-9)
+                    step = spark_w / (self.WATERMARK_SAMPLES - 1)
+                    x0 = bx + pad + spark_w - step * (len(history) - 1)
+                    points = [
+                        (x0 + i * step, ty + line_h - 2.0 - (v / top) * (line_h - 4.0))
+                        for i, v in enumerate(history)
+                    ]
+                    draw.add_polyline(points, colours[spark], 0, 1.0)
+            self.item_rects["system_info"] = (bx, by, box_w, box_h)
+        finally:
+            im.pop_font_scale()
 
     def _draw_console(self, box) -> None:
         self.console.draw(box)

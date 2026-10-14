@@ -1480,11 +1480,15 @@ class DataDocks:
             return None
         window = FitWindow(uid, fit, title, request_frame=self.request_frame)
         self.windows[uid] = window
+        tabbed = self._workspace_is_tabbed()
         self.shell.docks.add_window(
             window.key,
             title,
             lambda box, u=uid: self._draw_window(u, box),
-            dock="center",
+            # A window inside the workspace, at the next cascade place (the Qt MDI's new
+            # subwindow); a tab only while the user keeps the workspace's fits tabbed.
+            dock="center" if tabbed else None,
+            box=None if tabbed else self._next_workspace_box(),
             scrollable=False,
             padding=0.0,
             min_size=(240.0, 160.0),
@@ -1495,6 +1499,31 @@ class DataDocks:
         )
         self.shell.docks.focus(window.key)
         return window
+
+    def _workspace_is_tabbed(self) -> bool:
+        """Whether the workspace shows its fits as tabs (*Tabbed*): every open fit window is
+        docked there. With none open, or any floating, a new fit is a window."""
+        docks = self.shell.docks
+        keys = [w.key for w in self.windows.values() if docks.window(w.key) is not None]
+        keys = [k for k in keys if docks.window(k).visible]
+        return bool(keys) and all(docks.region_of(k) is not None for k in keys)
+
+    def _next_workspace_box(self) -> tuple[float, float, float, float]:
+        """The next cascade place in the workspace: 60 % of it, a title bar below and right of
+        the last floating window (as *Cascade* lays them out, wrapping when it runs out of room)."""
+        docks = self.shell.docks
+        bx, by, bw, bh = docks.floating_bounds()
+        if bw <= 1.0 or bh <= 1.0:  # not laid out yet: the window's last-known box
+            bx, by, bw, bh = (0.0, 0.0, *self.shell.window_size)
+        step = docks._title_h + 8.0
+        w, h = max(bw * 0.6, 240.0), max(bh * 0.6, 160.0)
+        span = max(int(min(bw - w, bh - h) // step), 0) + 1
+        floating = [
+            k for k in docks.workspace_children()
+            if k in docks.z and docks.window(k).visible and not docks.window(k).minimized
+        ]
+        offset = step * (len(floating) % span)
+        return (bx + offset, by + offset, w, h)
 
     def show_fit(self, uid: str) -> None:
         """Make *uid* the current fit and bring its window forward (reopening a closed one)."""

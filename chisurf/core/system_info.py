@@ -23,6 +23,13 @@ def _version(distribution: str) -> str | None:
         return None
 
 
+def _module_version(name: str) -> str | None:
+    import sys
+
+    module = sys.modules.get(name)
+    return str(getattr(module, "__version__", "")) or _version(name)
+
+
 def _ram() -> str | None:
     try:
         import psutil
@@ -57,7 +64,8 @@ def system_info_lines() -> list[str]:
     lines.append(f"Date: {datetime.date.today():%Y-%m-%d}")
     lines.append(f"ChiSurf: {getattr(chisurf, '__version__', '?')}")
     for package in ("numpy", "tttrlib", "emtk"):
-        version = _version(package)
+        # emtk states its own version: a source checkout on the path carries stale metadata.
+        version = _module_version(package) if package == "emtk" else _version(package)
         if version:
             lines.append(f"{package}: {version}")
     for title, names in (

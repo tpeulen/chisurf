@@ -23,20 +23,32 @@ def test_system_info_lines_name_the_machine_and_the_versions():
     assert lines[-1].startswith("Log level: ")
 
 
-def test_the_start_document_draws_them():
+def test_the_watermark_is_drawn_in_the_workspace_background_under_the_fits():
+    """Owner, 2026-10-14: the watermark is the workspace's background, as in the Qt window --
+    top-right of the workspace body, not in the Start document, and under a floating window."""
+    from emtk import im
+
     shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
                          console_session_file=False)
     try:
         driver = Driver(shell, (1440, 900))
         driver.frame(3)
-        strings = set(driver.painter.strings)
-        assert "System" in strings
+        strings = [str(s) for s in driver.painter.strings]
         assert f"Python: {platform.python_version()}" in strings
         assert "system_info" in shell.item_rects
+        bx, by, bw, _bh = shell.item_rects["system_info"]
+        wx, wy, ww, _wh = shell.docks.floating_bounds()
+        assert abs((bx + bw) - (wx + ww - 10.0)) < 1.0 and abs(by - (wy + 10.0)) < 1.0
+        # A window floating in the workspace is drawn after (over) the watermark.
+        shell.docks.add_window(
+            "fit.x", "Fit X", lambda box: im.text_unformatted("FIT BODY"),
+            box=(wx + 20.0, wy + 30.0, 500.0, 300.0), workspace=True,
+        )
+        driver.frame(3)
+        order = [str(s) for s in driver.painter.strings]
+        assert order.index(f"Python: {platform.python_version()}") < order.index("FIT BODY")
     finally:
         shell.close()
-
-
 
 def test_the_pda_editor_draws_its_binning_labels_and_light_path_note_readably():
     """The PDA editor drew ``x<sub>min</sub>`` with its tags, and typeset the light-path note
