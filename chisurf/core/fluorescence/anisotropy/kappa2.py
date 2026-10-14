@@ -115,7 +115,7 @@ def kappasq_all_delta(
     n_bins: int = 31,
     k2_min: float = 0.0,
     k2_max: float = 4.0,
-) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Computes an orientation factor distribution for a wobbling-in-a-cone model
     for a given delta and dye order parameters.

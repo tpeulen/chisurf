@@ -57,8 +57,9 @@ the same. See :func:`column_at` for the whole story.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, overload
 
 import numpy as np
 
@@ -870,15 +871,39 @@ def read_table(path: Any, *, group: str = "/") -> Any:
 CSV_NA = ""
 
 
+@overload
 def write_csv_table(
-    path: Any,
+    path: None,
+    data: Any,
+    *,
+    delimiter: str = ...,
+    header: bool = ...,
+    columns: Sequence[str] | None = ...,
+    keep_decimal_point: bool = ...,
+) -> str: ...
+
+
+@overload
+def write_csv_table(
+    path: str | os.PathLike,
+    data: Any,
+    *,
+    delimiter: str = ...,
+    header: bool = ...,
+    columns: Sequence[str] | None = ...,
+    keep_decimal_point: bool = ...,
+) -> None: ...
+
+
+def write_csv_table(
+    path: str | os.PathLike | None,
     data: Any,
     *,
     delimiter: str = "\t",
     header: bool = True,
     columns: Sequence[str] | None = None,
     keep_decimal_point: bool = True,
-) -> None:
+) -> str | None:
     """Write a table as delimited text, in parallel.
 
     Measured against the frame writer it replaces, including the conversion into
