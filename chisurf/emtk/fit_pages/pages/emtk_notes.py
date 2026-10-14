@@ -117,7 +117,8 @@ class Tabs:
     def __init__(self, titles) -> None:
         self.titles = tuple(titles)
         self.current = 0
-        self._request = None
+        #: A tab to make current on the next frame.
+        self._request: int | None = None
 
     def select(self, index: int) -> None:
         """Make tab *index* current on the next frame."""

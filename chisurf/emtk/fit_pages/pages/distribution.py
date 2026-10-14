@@ -219,6 +219,7 @@ class OptionsForm:
             ],
         }
         description = f"{path} of the distribution options."
+        field: dict[str, object]
         if isinstance(value, bool):
             field = {"type": "toggle", "attr": path, "label": label, "description": description}
         elif isinstance(value, int):
@@ -696,6 +697,8 @@ class DistributionPlot(plotbase.Plot):
                 #   1: model     (stepped or sticks, main plot)
                 #   2: w.res.    (stepped or sticks, residual plot if present)
                 #   3+: extra curves (e.g. Gaussian components) -> smooth, main
+                # False (straight segments) or "right" (stepped).
+                curve_step: bool | str
                 if self.residual_plot is not None and i == 2:
                     target_plot = self.residual_plot
                     if use_sticks:

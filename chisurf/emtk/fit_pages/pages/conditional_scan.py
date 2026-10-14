@@ -15,6 +15,8 @@ that one. The numbers in real units are underneath.
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 
 import chisurf.core.fitting
@@ -52,9 +54,9 @@ class ConditionalScanPlot(Plot):
 
         super().__init__(fit)
         self.fit = fit
-        self._scan = None
-        self._engine = None
-        self._full_names = []
+        self._scan: dict[str, typing.Any] | None = None
+        self._engine: E.GaussianEngine | None = None
+        self._full_names: list[str] = []
         #: Index into :attr:`parameters` of the held parameter.
         self.parameter = 0
         #: The held value, in standard deviations from the optimum.
@@ -62,7 +64,7 @@ class ConditionalScanPlot(Plot):
         #: ``held = value`` above the plot, empty while there is no sweep.
         self.held_text = ""
         #: The notes under the plot (:mod:`~chisurf.emtk.fit_pages.pages.emtk_notes`).
-        self.readout = []
+        self.readout: list[N.Line | N.Table] = []
         # Frames until the requested re-fit check runs: one to show it started.
         self._check_pending = 0
 
@@ -73,9 +75,9 @@ class ConditionalScanPlot(Plot):
         )
         self.panel_items = [PanelItem(self.plot, self.plot.control())]
 
-        self._marker = None
-        self._exact = None
-        self._validity = None
+        self._marker: cp.handles.Marker | None = None
+        self._exact: dict[str, typing.Any] | None = None
+        self._validity: dict[str, typing.Any] | None = None
 
     @property
     def parameters(self) -> list:
@@ -273,7 +275,7 @@ class ConditionalScanPlot(Plot):
         this is the check that says whether the picture can be believed. It
         costs one fit per point, which is why it is a button.
         """
-        if self._scan is None:
+        if self._scan is None or self._engine is None:
             return
         try:
             self._exact = self._engine.exact_conditional_scan(
@@ -307,7 +309,7 @@ class ConditionalScanPlot(Plot):
                 self.plot.remove(self._marker)
                 self._marker = self.plot.vline(z, pen="#e0e0e0")
 
-        notes = []
+        notes: list[N.Line | N.Table] = []
         if self._validity is not None:
             valid = self._validity["valid_to"]
             colour = (

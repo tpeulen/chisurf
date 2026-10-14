@@ -263,6 +263,10 @@ def _normal_quantile(p: float) -> float:
     )
 
 
+#: The concrete engine a fluent ``add_*`` call returns.
+_Eng = typing.TypeVar("_Eng", bound="PosteriorEngine")
+
+
 class PosteriorEngine(abc.ABC):
     """Base class for every way of quantifying a fit's parameter uncertainty.
 
@@ -330,7 +334,7 @@ class PosteriorEngine(abc.ABC):
         self._ran = False
         return self
 
-    def add_target(self, name: str) -> PosteriorEngine:
+    def add_target(self: _Eng, name: str) -> _Eng:
         """Request the marginal of one parameter.
 
         Only declared targets are computed -- a profile scan of one parameter
@@ -342,7 +346,7 @@ class PosteriorEngine(abc.ABC):
         self._ran = False
         return self
 
-    def add_joint_target(self, names: typing.Sequence[str]) -> PosteriorEngine:
+    def add_joint_target(self: _Eng, names: typing.Sequence[str]) -> _Eng:
         """Request the joint answer over several parameters."""
         key = tuple(str(n) for n in names)
         if key not in self._joint_targets:
@@ -350,7 +354,7 @@ class PosteriorEngine(abc.ABC):
         self._ran = False
         return self
 
-    def add_all_targets(self) -> PosteriorEngine:
+    def add_all_targets(self: _Eng) -> _Eng:
         """Request the marginal of every free parameter."""
         for name in self.parameter_names:
             self.add_target(name)

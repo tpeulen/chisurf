@@ -24,12 +24,15 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
 from chisurf.core.support.i18n import tr
 from chisurf.emtk.fit_pages.pages.plotbase import Plot
+
+if TYPE_CHECKING:
+    from emtk.file_dialog import FileDialog
 
 __all__ = ["SchemeBinding", "SchemeCanvas", "StateSchemePlot", "Edge", "edge_route"]
 
@@ -62,7 +65,7 @@ def _align():
 
 def _hex(colour: str) -> tuple[int, int, int]:
     colour = colour.lstrip("#")
-    return tuple(int(colour[i : i + 2], 16) for i in (0, 2, 4))
+    return (int(colour[0:2], 16), int(colour[2:4], 16), int(colour[4:6], 16))
 
 
 def edge_route(
@@ -588,7 +591,7 @@ class StateSchemePlot(Plot):
     ):
         super().__init__(fit)
         #: The open emtk file dialog and whether it saves, or ``None``.
-        self._dialog = None
+        self._dialog: FileDialog | None = None
         self._dialog_saves = False
         model = getattr(fit, "model", None) if fit is not None else None
         self.binding = SchemeBinding(
@@ -599,9 +602,10 @@ class StateSchemePlot(Plot):
             on_changed=self._model_changed,
         )
         self.canvas = SchemeCanvas(self.binding)
-        self.panel_items = []
+        self.panel_items: list = []
         self._edit_text = ""
-        self._edit_for = None
+        #: The (row, column) rate cell being edited.
+        self._edit_for: tuple[int, int] | None = None
         show = options.get("show_toolbar", None)
         if show is None:
             show = len(self.binding.preset_names()) > 1 or self.binding.can_save()
@@ -654,6 +658,8 @@ class StateSchemePlot(Plot):
         """The open file dialog, in place of the diagram; a choice loads or saves."""
         from emtk import im
 
+        if self._dialog is None:
+            return
         im.text(self._dialog.title)
         result = self._dialog.draw()
         if result:

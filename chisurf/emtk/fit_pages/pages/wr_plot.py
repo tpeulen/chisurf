@@ -28,7 +28,7 @@ class ResidualPlot(plotbase.Plot):
     name = "Residuals"
 
     def __init__(self, fit: chisurf.core.fitting.fit.FitGroup, *args, **kwargs):
-        super().__init__(*args, fit=fit, **kwargs)
+        super().__init__(fit, *args, **kwargs)
         self.data_x, self.data_y = None, None
 
         curves = list()

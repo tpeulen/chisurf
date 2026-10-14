@@ -60,7 +60,7 @@ class MfdMapPlot(plotbase.Plot):
         from chisurf.emtk.fit_pages.pages.emtk_page import PanelItem
 
         self.panel_items = [PanelItem(self.panel, self.panel._canvas)]
-        self._image = None
+        self._image: cp.handles.Image | None = None
         self._extent = None
         self.update_all()
 

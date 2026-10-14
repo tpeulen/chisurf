@@ -76,7 +76,7 @@ class ParameterScanPlot(plotbase.Plot):
         self.p_values = ", ".join(f"{v:g}" for v in P_VALUE_LEVELS)
         self.bound_range = False
         #: ``(job_id, parameter, deadline)`` of a server scan being polled.
-        self._job = None
+        self._job: tuple[str, cs.core.parameter.Parameter, float] | None = None
         self._next_poll = 0.0
 
         # One panel; its title is what the single-tab dock around it used to say.
@@ -93,7 +93,7 @@ class ParameterScanPlot(plotbase.Plot):
             name="Data",
         )
 
-        self._overlay_items = []
+        self._overlay_items: list[cp.handles.Handle] = []
         self.refresh_parameters()
         self._update_range()
 
@@ -159,7 +159,7 @@ class ParameterScanPlot(plotbase.Plot):
         self.scan_upper = rel_range
 
     @property
-    def parameter(self) -> cs.core.parameter.Parameter:
+    def parameter(self) -> cs.core.parameter.Parameter | None:
         """The selected parameter object, or ``None``."""
         name = self._parameter_name
         if not name:
@@ -213,7 +213,7 @@ class ParameterScanPlot(plotbase.Plot):
             return
         n_steps = int(self.scan_steps)
         value = float(p.value)
-        scan_range = (
+        scan_range: tuple[float | None, float | None] = (
             (1.0 - float(self.scan_lower)) * value,
             (1.0 + float(self.scan_upper)) * value,
         )
@@ -254,7 +254,7 @@ class ParameterScanPlot(plotbase.Plot):
         job_id, param, deadline = self._job
         fc = get_fitting_client()
         done = fc is None or now > deadline
-        if not done:
+        if fc is not None and not done:
             try:
                 result = fc.parameter_scan_result(job_id)
                 status = result.get("status", "")
@@ -279,6 +279,7 @@ class ParameterScanPlot(plotbase.Plot):
         p = self.parameter
         if p is None or p.value is None:
             return
+        scan_range: tuple[float | None, float | None]
         if self.bound_range:
             value = float(p.value)
             scan_range = (

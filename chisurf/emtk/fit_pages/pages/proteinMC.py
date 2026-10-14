@@ -9,6 +9,7 @@ Playback is driven by the frames that draw the page or its settings
 
 import json
 import time
+import typing
 
 import numpy as np
 
@@ -217,8 +218,17 @@ class ProteinMCPlot(Plot):
         self.update_all(*args, **kwargs)
 
 
-class _FramePlayback:
+if typing.TYPE_CHECKING:
+    _PlaybackHost = Plot
+else:
+    _PlaybackHost = object
+
+
+class _FramePlayback(_PlaybackHost):
     """Frame navigation and playback over the ProteinMC model's shared frame.
+
+    Mixed into the ProteinMC :class:`Plot` pages (type checkers see that host
+    as the base; at runtime it is ``object``).
 
     The frame is the model's (``current_frame_index``, ``set_current_frame``,
     ``frame_count``), shared by every ProteinMC page. Playback is a flag and a
@@ -757,8 +767,8 @@ def _agreement_color(wres: float) -> tuple[int, int, int, int]:
     t = float(np.clip((abs(float(wres)) - 1.0) / 2.0, 0.0, 1.0))
     blue = np.array([45, 130, 255, 180], dtype=float)
     magenta = np.array([255, 0, 255, 230], dtype=float)
-    color = blue * (1.0 - t) + magenta * t
-    return tuple(int(v) for v in color)
+    r, g, b, a = (int(v) for v in blue * (1.0 - t) + magenta * t)
+    return (r, g, b, a)
 
 
 def _node_sort_key(name: str) -> tuple[int, str]:

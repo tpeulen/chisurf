@@ -120,13 +120,15 @@ class Curve(Handle, Protocol):
         """
         ...
 
-    def set_pen(self, pen) -> None:
+    def set_pen(self, pen, **overrides) -> None:
         """Restyle the curve's line.
 
         Parameters
         ----------
         pen : pen-like
             A colour/style spec or :class:`style.Pen` (coerced via ``to_pen``).
+        **overrides
+            Pen fields to override (``width=...``), as :func:`style.to_pen` takes.
         """
         ...
 

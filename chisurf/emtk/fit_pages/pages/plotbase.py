@@ -72,14 +72,16 @@ class Plot:
         #: surface draws for this page, stacked top to bottom (see add_panel).
         self.emtk_panels: list = []
         self._settings_form = None
-        self._settings_spec = None
+        self._settings_spec: dict | None = None
         self._refresh: typing.Callable[[], None] | None = None
         self._settings_refresh: typing.Callable[[], None] | None = None
         # Every page hears the one "a plot setting changed" notification (Settings > Plots) and
         # restyles itself; a page never polls for it and a window never patches its pages.
         from chisurf.core.plotting import appearance
 
-        self._appearance_off = appearance.subscribe(self._on_appearance)
+        self._appearance_off: typing.Callable[[], None] | None = appearance.subscribe(
+            self._on_appearance
+        )
 
     def _on_appearance(self, name: str = "") -> None:
         """A plot setting changed: restyle this page now, then ask for a frame."""
@@ -142,6 +144,8 @@ class Plot:
                 self._settings_spec = view
             else:
                 module = __import__(type(self).__module__, fromlist=["__file__"])
+                if module.__file__ is None:
+                    raise FileNotFoundError(f"{type(self).__name__}: {view} has no module folder")
                 path = pathlib.Path(module.__file__).with_name(view)
                 self._settings_spec = json.loads(path.read_text(encoding="utf-8"))
         return self._settings_spec

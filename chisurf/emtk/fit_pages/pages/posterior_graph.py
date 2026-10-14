@@ -70,7 +70,7 @@ class PosteriorGraphPlot(Plot):
         self.fit = fit
         self.tabs = N.Tabs(("Structure", "Dependence", "Junction tree"))
         self.panels = []
-        self.notes = []
+        self.notes: list[list[N.Line]] = []
         for _title in self.tabs.titles:
             panel = cp.Panel()
             panel.set_aspect_locked(False)

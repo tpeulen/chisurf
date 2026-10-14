@@ -453,9 +453,9 @@ class FitInfo(plotbase.Plot):
                     if routine or container:
                         return True
         # Fallback: look up by file extension.
-        info = _FILE_FORMATS.get(Path(fp).suffix.lower())
-        if info is not None:
-            return bool(info.get("tttrlib_container") or info.get("reading_routine"))
+        by_suffix = _FILE_FORMATS.get(Path(fp).suffix.lower())
+        if by_suffix is not None:
+            return bool(by_suffix.get("tttrlib_container") or by_suffix.get("reading_routine"))
         return False
 
     def _photon_streams_for_display(self) -> list[dict]:

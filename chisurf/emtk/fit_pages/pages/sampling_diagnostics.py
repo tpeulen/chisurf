@@ -66,10 +66,10 @@ class SamplingDiagnosticsPlot(Plot):
 
         self.rank_plot = cp.Panel()
         self.rank_plot.set_labels(bottom="rank (pooled over chains)", left="draws")
-        self.rank_notes = []
+        self.rank_notes: list[N.Line] = []
         self.ess_plot = cp.Panel()
         self.ess_plot.set_labels(bottom="draws per chain", left="effective sample size")
-        self.ess_notes = []
+        self.ess_notes: list[N.Line] = []
         self.panel_items = [
             PanelItem(self.rank_plot, self.rank_plot.control()),
             PanelItem(self.ess_plot, self.ess_plot.control()),
@@ -79,8 +79,9 @@ class SamplingDiagnosticsPlot(Plot):
         for plot in (self.rank_plot, self.ess_plot):
             plot.add_menu_action(*self._extra_menu_actions[0])
 
-        self._chains = None
-        self._names = []
+        #: (chains, draws, parameters) of the last loaded run.
+        self._chains: np.ndarray | None = None
+        self._names: list[str] = []
         self._draws = 0
         #: What the last :meth:`update` found (see :meth:`_load`).
         self.state = "none"
