@@ -4,17 +4,16 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
-## emtk shell: wide tools and the global parameter table are cramped at the default layout (found 2026-10-14)
+## emtk shell: the global parameter table drops columns at the default layout (found 2026-10-14)
 
-Measure: `okf/plugins/emtk-ports/final-parity/shell/` (rows "Settings: *" and "Global fit: Analysis dock").
-A tool opens as a dock right of the workspace, ~390 px at 1440 x 900; Settings declares 1200 x 800, so its
-pages stack labels over fields and wide rows clip (ChiSurf Settings' *Save* / *Save as* are off the right edge)
-until the dock is widened or floated. The Qt window opened each tool as a window of its declared size. The
-global parameter table at the default left-column width drops Fixed, link row, bounds and error (collapse
-tiers; the row tooltip lists them; they return when widened) where Qt scrolls sideways. Nothing is lost, the
-controls are reachable. Tried and reverted: widening the tool region to the declared width on open (halves the
-workspace for almost every tool, breaks tile / cascade). Owner decision: float wide tools by default, or give
-the hub a narrow layout. Status: open.
+Measure: `okf/plugins/emtk-ports/final-parity/shell/` (row "Global fit (TCSPC + FCS): Analysis dock"). At
+the default left-column width (a third of 1440) the global parameter table drops Fixed, link row, bounds and
+error (collapse tiers; the row tooltip lists them; they return when the dock is widened) where the Qt table
+scrolls sideways. Nothing is lost, every control is reachable. Status: open, cosmetic.
+Resolved the same day: wide tools (Settings, declared 1200 x 800) clipped in the ~390 px tool dock -- a tool
+wider than its dock, never placed by the user, now opens floating at its declared size (a docked choice is
+kept: emtk 0.1.14). Tried and reverted first: widening the tool region on open (halved the workspace for
+almost every tool, broke tile / cascade).
 
 ## Two screenshot recipes still overwrite review-retaken figures (found 2026-10-14)
 

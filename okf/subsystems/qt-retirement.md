@@ -288,9 +288,11 @@ own startup stages (item 5): S5 is done.
     `CHISURF_SETTINGS_DIR` and `HOME`), then `build_report.py <qt dir> <emtk dir>`; the verdicts are hand-written
     in `verdicts.json` after reading every pair. Result: χ²ᵣ and every parameter of the four fits (TCSPC lifetime +
     IRF, FCS, PDA, global) are bit-identical in both shells; 58 parity, 17 fixed in the pass, 3 deliberate, 17 gap.
-    The open gaps block nothing in S6 (they are layout, not lost controls): wide tools (Settings) open in a
-    ~390 px dock and clip, and the global parameter table drops columns at the default width; both are in
-    known issues. Traps: (a) the IBH `decay_fit` files carry no channel width -- set the reader's `dt` to
+    Owner follow-ups the same day: a tool wider than its dock (never placed by the user) opens floating at its
+    declared size; the system-info watermark is drawn in the workspace background (emtk 0.1.15
+    `DockManager.workspace_background`); every new fit opens as a cascaded window inside the workspace, a tab
+    only while the fits are tabbed (`test_emtk_shell_fit_windows.py`). Open, cosmetic: the global parameter
+    table drops columns at the default width (known issues). Traps: (a) the IBH `decay_fit` files carry no channel width -- set the reader's `dt` to
     0.0141 ns in *both* shells or the TCSPC fit lands on nonsense in both; (b) headless on private RPC ports the
     Qt fit window never gets `fit.ran`, so it shows the pre-fit curve until `window.update()` -- a harness
     artefact, not a shell difference; (c) an emtk dialog's Escape used to need the pointer over it, so a driver
