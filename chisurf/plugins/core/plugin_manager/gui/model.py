@@ -455,7 +455,10 @@ class PluginManagerModel(PluginManagerViewModel):
         self._provider_defaults()
         self.icon_status = ""
         self.icon_changed = False
-        self.icon_path_text = str(self.icon_file) if self.icon_file.is_file() else ""
+        icon_file = self.icon_file
+        self.icon_path_text = (
+            str(icon_file) if icon_file is not None and icon_file.is_file() else ""
+        )
         self.icon_open = True
 
     def icon_provider_labels(self) -> list[str]:
@@ -517,6 +520,10 @@ class PluginManagerModel(PluginManagerViewModel):
         """Save a PIL *image* as the plugin's icon (square canvas) and record it."""
         from PIL import Image
 
+        icon_file = self.icon_file
+        if icon_file is None:  # the selection went away while the panel was open
+            return
+
         scaled = image.convert("RGBA")
         scale = min(ICON_SIZE / scaled.width, ICON_SIZE / scaled.height)
         scaled = scaled.resize(
@@ -527,10 +534,10 @@ class PluginManagerModel(PluginManagerViewModel):
         canvas.alpha_composite(
             scaled, ((ICON_SIZE - scaled.width) // 2, (ICON_SIZE - scaled.height) // 2)
         )
-        canvas.save(self.icon_file, format="PNG")
+        canvas.save(icon_file, format="PNG")
         self._set_manifest_icon("icon.png")
         self.icon_changed = True
-        self.icon_path_text = str(self.icon_file)
+        self.icon_path_text = str(icon_file)
 
     def icon_use(self) -> None:
         """Write the chosen image as the plugin's icon (a PNG is copied as is)."""
@@ -538,10 +545,14 @@ class PluginManagerModel(PluginManagerViewModel):
         if not source.is_file():
             self._notice("No image", "Choose an image file first.")
             return
-        if self.icon_file.exists() and source.resolve() == self.icon_file.resolve():
+        icon_file = self.icon_file
+        if icon_file is None:
+            self._notice("No plugin", "Select a plugin first.")
+            return
+        if icon_file.exists() and source.resolve() == icon_file.resolve():
             return
         if source.suffix.lower() == ".png":
-            shutil.copyfile(source, self.icon_file)
+            shutil.copyfile(source, icon_file)
             self._set_manifest_icon("icon.png")
             self.icon_changed = True
             return
@@ -614,7 +625,9 @@ class PluginManagerModel(PluginManagerViewModel):
         self._ask("confirm_icon_clear", "Clear icon", f"Delete {self.icon_file}?")
 
     def _clear_icon_file(self) -> None:
-        self.icon_file.unlink()
+        icon_file = self.icon_file
+        if icon_file is not None:
+            icon_file.unlink(missing_ok=True)
         self._set_manifest_icon(None)
         self.icon_changed = True
         self.icon_path_text = ""

@@ -383,6 +383,8 @@ class AnisotropyViewModel:
 
         n = len(dataset_objects())
         fc = get_fitting_client()
+        if fc is None:
+            raise RuntimeError("no fitting session to add the fits to")
 
         chisurf.core.actions.dispatch(
             name="fit.add",

@@ -16,6 +16,8 @@ import numpy as np
 import tttrlib
 from emtk.i18n import tr
 
+from chisurf.core.fluorescence.fret.dyes import FretPair
+
 from .. import core as _core
 
 logger = logging.getLogger(__name__)
@@ -80,7 +82,7 @@ class AccurateFretViewModel:
         self._result: _core.CalibrationResult | None = None
         self._lightpaths: list[dict] = []
         self._dyes: list = []
-        self._dye_pair = None
+        self._dye_pair: FretPair | None = None
         self.results_text: str = (
             "Load a burst table (or drop one), map the channel columns and press Calibrate."
         )

@@ -16,7 +16,7 @@ import base64
 import datetime
 import logging
 from pathlib import Path
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from emtk import im
 from emtk.app import ImApp
@@ -28,6 +28,11 @@ from emtk.widgets.view_spec import load_view_spec
 from chisurf.core.fio.staging import TTTR_EXTENSIONS
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_caption, action_tooltip, button_row
+
+if TYPE_CHECKING:
+    from emtk.dialog_window import DialogWindow
+
+    from chisurf.emtk.dataset_picker import DatasetPicker
 
 HERE = Path(__file__).resolve().parent
 
@@ -275,7 +280,7 @@ class BurstDataSelectionModel:
 
 def _registered(entry: dict | None) -> bool:
     """Whether *entry* (an :attr:`BurstDataSelectionModel.imports` record) put the file in MMFDB."""
-    return bool(entry) and "error" not in entry and "skipped" not in entry
+    return entry is not None and bool(entry) and "error" not in entry and "skipped" not in entry
 
 
 def _status(entry: dict | None) -> str:
@@ -329,8 +334,8 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         self.spec = load_view_spec(str(HERE / "data_selection.view.json"))
         self.dialog = None
         self.dialog_action = ""
-        self._dialog_window = None
-        self.picker = None
+        self._dialog_window: DialogWindow | None = None
+        self.picker: DatasetPicker | None = None
         self.message = ""
         self.help_window = EmTkHelpWindow(
             title="Data Selection - Help",
@@ -437,8 +442,9 @@ class BurstDataSelectionApp(TourTarget, ImApp):
             options["filters"] = [("TTTR files", patterns), ("All files", ["*"])]
         self.dialog = FileDialog(title, mode=mode, multiselect=mode == "open", **options)
         self.dialog_action = action
-        self._dialog_window = DialogWindow(title, size=(640.0, 460.0), key="burst-data-file")
-        self._dialog_window.show()
+        window = DialogWindow(title, size=(640.0, 460.0), key="burst-data-file")
+        self._dialog_window = window
+        window.show()
 
     def _dialog_done(self, result: list[str]) -> None:
         try:
@@ -471,10 +477,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
 
         try:
             # ``on_paths`` makes the picker resolve the dataset to a local file before ``on_selected`` runs.
-            self.picker = DatasetPicker(
+            picker = DatasetPicker(
                 kinds=MMFDB_KINDS, scope="all", on_paths=lambda _paths: None, on_selected=chosen
             )
-            self.picker.open()
+            self.picker = picker
+            picker.open()
         except Exception as exc:  # noqa: BLE001 - no database
             self.picker = None
             self.message = f"MMFDB is not available: {exc}"
@@ -539,7 +546,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         elif pressed == "database":
             self.track("database")
             self.open_database()
-        elif pressed == "remove" and selected:
+        elif pressed == "remove" and selected and self.selected_index is not None:
             self.source.remove_index(int(self.selected_index))
             self._clamp_selection()
         elif pressed == "clear":
@@ -619,7 +626,7 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         im.bullet_text(f"In MMFDB: {registered} of {len(paths)}")
         im.separator()
         im.begin_disabled(not paths or not callable(self.on_proceed))
-        if im.button(self.PROCEED_LABEL):
+        if im.button(self.PROCEED_LABEL) and self.on_proceed is not None:
             self.track("proceed")
             self.on_proceed()
         im.end_disabled()
@@ -635,10 +642,11 @@ class BurstDataSelectionApp(TourTarget, ImApp):
         w, h = im.get_main_viewport().size
         frame = (0.0, 0.0, float(w), float(h))
         self.docks.draw(frame)
-        if self.dialog is not None:
-            pressed = self._dialog_window.begin(frame)
+        window = self._dialog_window
+        if self.dialog is not None and window is not None:
+            pressed = window.begin(frame)
             result = self.dialog.draw()
-            self._dialog_window.end()
+            window.end()
             if result:
                 self._dialog_done(result)
                 self.dialog = None

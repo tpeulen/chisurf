@@ -27,6 +27,8 @@ import numpy as np
 
 from chisurf.core.datastore import column_names, concat_stores, numeric_column, row_count
 
+from ..api.models import FusionAnalysis
+
 logger = logging.getLogger(__name__)
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "fusion.view.json"
@@ -65,7 +67,7 @@ class FusionViewModel:
         #: downstream steps at the fused bursts instead of the original ones.
         self.folder_written: Callable[[str], None] | None = None
 
-        self._analysis = None
+        self._analysis: FusionAnalysis | None = None
         self._status = "Select a burst-analysis folder and press Estimate (or Run)."
         self._written: str = ""
         #: The burst tables actually written, read back so the "after" curves stop
@@ -256,26 +258,28 @@ class FusionViewModel:
             return f"Not a folder: {self.folder}"
         return None
 
-    def analyze(self, cancel_check=None) -> None:
-        """Estimate ``P_same`` and the fusion the current threshold implies."""
+    def analyze(self, cancel_check=None) -> FusionAnalysis:
+        """Estimate ``P_same`` and the fusion the current threshold implies (and return it)."""
         reason = self.can_run()
         if reason is not None:
             raise ValueError(reason)
         from ..core.fusion import analyze
 
-        self._analysis = analyze(
+        analysis = analyze(
             pathlib.Path(self.folder),
             self.settings,
             **({"cancel_check": cancel_check} if callable(cancel_check) else {}),
         )
+        self._analysis = analysis
         self._emitted = None
-        stats = self._analysis.statistics
+        stats = analysis.statistics
         self._status = (
             f"{stats['n_bursts_before']} -> {stats['n_bursts_after']} bursts; "
-            f"gaps fused up to {self._analysis.tau_used_s * 1e3:.3f} ms."
+            f"gaps fused up to {analysis.tau_used_s * 1e3:.3f} ms."
         )
         logger.info("Burst fusion: %s", self._status)
         self.notify("analyzed")
+        return analysis
 
     def fuse(self) -> str:
         """Fuse and write in one action — what *running* this step means.
@@ -291,12 +295,11 @@ class FusionViewModel:
 
     def write(self) -> str:
         """Write the fused bursts as a new burst folder and return its path."""
-        if self._analysis is None:
-            self.analyze()
+        analysis = self._analysis if self._analysis is not None else self.analyze()
         from ..core.fusion import write_fused_analysis
 
         result = write_fused_analysis(
-            self._analysis,
+            analysis,
             detectors=self.detectors or None,
             windows=self.windows or None,
         )
@@ -338,6 +341,8 @@ class FusionViewModel:
         """
         if self._emitted:
             return "fused (written)", self._emitted
+        if self._analysis is None:
+            return "fused (preview)", []
         return "fused (preview)", [m.fused for m in self._analysis.measurements]
 
     def has_analysis(self) -> bool:

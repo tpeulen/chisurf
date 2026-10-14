@@ -165,12 +165,17 @@ def _standard_residue_pdb(source: str) -> str:
     return filename
 
 
+def _fields(atoms: np.ndarray) -> tuple[str, ...]:
+    """The column names of a structured atom table (none for a plain array)."""
+    return atoms.dtype.names or ()
+
+
 def _residue_keys(atoms: np.ndarray) -> list[tuple[str, int]]:
     """Return residue keys in atom-table order."""
     keys = []
     seen = set()
     for atom in atoms:
-        chain = _as_text(atom["chain"]) if "chain" in atoms.dtype.names else "A"
+        chain = _as_text(atom["chain"]) if "chain" in _fields(atoms) else "A"
         key = (chain, int(atom["res_id"]))
         if key not in seen:
             seen.add(key)
@@ -193,7 +198,7 @@ def _residue_index_map(structure: ProteinCentroid) -> dict[tuple[str, int], int]
         mask = atoms["res_id"] == res_id
         if not mask.any():
             continue
-        chain = _as_text(atoms[mask][0]["chain"]) if "chain" in atoms.dtype.names else "A"
+        chain = _as_text(atoms[mask][0]["chain"]) if "chain" in _fields(atoms) else "A"
         idx_map[(chain, int(res_id))] = n
     return idx_map
 
@@ -335,11 +340,11 @@ class DirectLabelingPotential:
             residue = int(position["residue_seq_number"])
             atom_name = str(position.get("atom_name", "CA"))
             mask = np.ones(len(atoms), dtype=bool)
-            if "chain" in atoms.dtype.names:
+            if "chain" in _fields(atoms):
                 mask &= np.array([_as_text(v) == chain for v in atoms["chain"]])
-            if "res_id" in atoms.dtype.names:
+            if "res_id" in _fields(atoms):
                 mask &= atoms["res_id"] == residue
-            if "atom_name" in atoms.dtype.names:
+            if "atom_name" in _fields(atoms):
                 atom_mask = np.array([_as_text(v) == atom_name for v in atoms["atom_name"]])
                 fallback_ca = np.array([_as_text(v) == "CA" for v in atoms["atom_name"]])
                 selected = np.where(mask & atom_mask)[0]

@@ -26,7 +26,7 @@ import tttrlib
 from chisurf.core.fluorescence.burst.table import columns_from_data, read_burst_table
 from chisurf.core.fluorescence.fret.accurate import AutoCalibration, auto_calibrate
 from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
-from chisurf.core.fluorescence.fret.lines import dynamic_fret_line, static_fret_line
+from chisurf.core.fluorescence.fret.lines import FretLine, dynamic_fret_line, static_fret_line
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +68,8 @@ class CalibrationResult:
     stoichiometry: np.ndarray | None
     tau_f: np.ndarray | None
     labels: np.ndarray
-    line: object | None = None
-    dynamic_line: object | None = None
+    line: FretLine | None = None
+    dynamic_line: FretLine | None = None
     distance: np.ndarray | None = None
     meta: dict = field(default_factory=dict)
 
