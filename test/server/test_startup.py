@@ -229,8 +229,9 @@ def test_no_session_is_built_over_server_proxies():
     from chisurf.core.api._proxies import ProxyDatasetList, ProxyFitList
 
     client = object()
-    with patch.object(chisurf, "fits", ProxyFitList(client)), patch.object(
-        chisurf, "imported_datasets", ProxyDatasetList(client)
+    with (
+        patch.object(chisurf, "fits", ProxyFitList(client)),
+        patch.object(chisurf, "imported_datasets", ProxyDatasetList(client)),
     ):
         try:
             chisurf.local_session_lists()
