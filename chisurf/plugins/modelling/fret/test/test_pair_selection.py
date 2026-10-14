@@ -121,6 +121,42 @@ def test_select_pairs_cli_writes_report(tmp_path, monkeypatch):
     assert lines[1].startswith("0\t--")  # the initial-RMSD row
 
 
+def test_select_pairs_endpoint_writes_report(tmp_path, monkeypatch):
+    """The REST ``/select-pairs`` endpoint writes the same report as the CLI.
+
+    It called ``pair_selection.select_informative_pairs`` (the selector lives in
+    ``olga_greedy``) and passed the report path and the initial RMSD in swapped
+    order, so every request answered HTTP 500.
+    """
+    import importlib
+
+    from ..core import av, io
+
+    api = importlib.import_module("chisurf.plugins.modelling.fret.api.router")
+    from ..core import pair_selection as ps
+
+    effs, rmsds = _toy_matrices()
+    monkeypatch.setattr(av, "select_backend", lambda *a, **k: None)
+    monkeypatch.setattr(io, "read_fps_json", lambda p: ({}, {}, None, None))
+    monkeypatch.setattr(
+        ps, "compute_rmsd_matrix_from_pdb_dir", lambda *a, **k: (rmsds, ["f0", "f1", "f2"])
+    )
+    monkeypatch.setattr(
+        ps, "compute_efficiency_matrix_from_evaluators", lambda *a, **k: (effs, ["P1", "P2", "P3"])
+    )
+    fps = tmp_path / "x.fps.json"
+    fps.write_text("{}")
+    out = tmp_path / "report.txt"
+    answer = api.run_pair_select(
+        api.PairSelectRequest(
+            fps_path=str(fps), pdb_dir=str(tmp_path), output_report=str(out), max_pairs=2
+        )
+    )
+    assert answer["status"] == "success" and answer["selected_pairs"]
+    lines = out.read_text().splitlines()
+    assert lines[0].startswith("#\tPair_added") and lines[1].startswith("0\t--")
+
+
 def test_trajectory_pair_selection():
     import tempfile
 

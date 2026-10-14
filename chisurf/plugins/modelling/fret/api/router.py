@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..core import av, evaluate, io, pair_selection, results, screening
+from ..core import av, evaluate, io, olga_greedy, pair_selection, results, screening
 
 router = APIRouter(prefix="/fret", tags=["fret"])
 
@@ -278,7 +278,7 @@ def run_eval(req: EvaluateRequest) -> dict[str, Any]:
         elif req.input_type == "PDB Directory":
             storage = evaluate.evaluate_directory(req.input_path, positions, evaluators)
             storage.to_csv(req.output_csv)
-            count = len(storage.frames)
+            count = len(storage.filenames)  # (``frames`` does not exist: this raised)
         elif req.input_type == "MDTraj Trajectory":
             if not req.traj_path:
                 raise HTTPException(
@@ -293,7 +293,7 @@ def run_eval(req: EvaluateRequest) -> dict[str, Any]:
                 req.input_path, req.traj_path, positions, evaluators
             )
             storage.to_csv(req.output_csv)
-            count = len(storage.frames)
+            count = len(storage.filenames)
         else:
             raise HTTPException(status_code=400, detail=f"Invalid input_type: {req.input_type}")
 
@@ -338,14 +338,15 @@ def run_pair_select(req: PairSelectRequest) -> dict[str, Any]:
         clean_pair_names = [pair_names[i] for i in valid_indices]
 
         # 4. Run greedy selection
-        selected_indices, decay = pair_selection.select_informative_pairs(
+        # (the selector lives in olga_greedy; pair_selection never had it)
+        selected_indices, decay = olga_greedy.select_informative_pairs(
             effs_clean, rmsds_clean, err=req.err, max_pairs=req.max_pairs
         )
         selected_pair_names = [clean_pair_names[i] for i in selected_indices]
 
-        # 5. Write decay report
+        # 5. Write decay report (initial RMSD before the path: the order was swapped)
         pair_selection.write_pair_selection_report(
-            selected_pair_names, decay, req.output_report, rmsds.mean()
+            selected_pair_names, decay, float(rmsds.mean()), req.output_report
         )
 
         return {

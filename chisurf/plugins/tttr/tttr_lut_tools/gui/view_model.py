@@ -118,18 +118,19 @@ class LutComputeViewModel:
     def _select_channel(self) -> None:
         """Histogram the currently selected routing channel + seed the region."""
         self._selected_channel = self.channel
-        if self._micro_all is None or not self.channel:
+        n_bins = self.n_bins  # set with the photons, cleared with them
+        if self._micro_all is None or n_bins is None or not self.channel:
             self.micro = self.counts = None
             self.current_table = None
             return
         ch = int(self.channel)
         self.micro = self._micro_all[self._route_all == ch]
-        self.counts = _lut.histogram_micro(self.micro, self.n_bins)
+        self.counts = _lut.histogram_micro(self.micro, n_bins)
         try:
             self.linear_start, self.linear_stop = _lut.autodetect_linear_region(self.counts)
         except Exception:
             self.linear_start, self.linear_stop = self._fallback_region()
-        self.ntac_required = int(self.n_bins)
+        self.ntac_required = int(n_bins)
         self.compute()
 
     def load_files(self, paths: list[str]) -> None:
@@ -209,12 +210,13 @@ class LutComputeViewModel:
 
     def _lut_for_channel(self, ch: int, linear_start=None, linear_stop=None) -> dict | None:
         """Build the LUT table for one routing channel (auto-region if unset)."""
-        if self._micro_all is None:
+        n_bins = self.n_bins
+        if self._micro_all is None or n_bins is None:
             return None
         micro = self._micro_all[self._route_all == int(ch)]
         if micro.size == 0:
             return None
-        counts = _lut.histogram_micro(micro, self.n_bins).astype(float)
+        counts = _lut.histogram_micro(micro, n_bins).astype(float)
         counts[counts < float(self.threshold)] = 0
         if linear_start is None or linear_stop is None:
             try:
@@ -241,6 +243,7 @@ class LutComputeViewModel:
         """
         out: dict[int, np.ndarray] = {}
         for ch in self.available_channels:
+            tbl: dict | None
             if str(ch) == str(self._selected_channel) and self.current_table is not None:
                 tbl = self.current_table
             else:
