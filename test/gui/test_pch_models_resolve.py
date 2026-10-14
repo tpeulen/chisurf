@@ -1,4 +1,4 @@
-"""PCH-experiment model-selector resolution guard (headless, offscreen).
+"""PCH-experiment model-selector resolution guard (headless).
 
 Every model configured for the PCH experiment must resolve to a class exposing
 a non-empty ``name`` (so a renamed/deleted widget fails here instead of silently
@@ -11,15 +11,6 @@ import importlib
 import pathlib
 
 import pytest
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    try:
-        from qtpy import QtWidgets
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"qtpy unavailable: {exc}")
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _pch_model_paths():
@@ -37,7 +28,7 @@ def _resolve(path):
     return getattr(importlib.import_module(module_name), class_name)
 
 
-def test_every_configured_pch_model_resolves_with_a_name(qapp):
+def test_every_configured_pch_model_resolves_with_a_name():
     paths = _pch_model_paths()
     assert paths, "no PCH models configured"
     problems, names = [], []
@@ -58,7 +49,7 @@ def test_every_configured_pch_model_resolves_with_a_name(qapp):
     assert any("FIDA" in n for n in names), f"FIDA model missing from {names}"
 
 
-def test_the_widget_pch_kernel_uses_the_three_dimensional_gaussian(qapp):
+def test_the_widget_pch_kernel_uses_the_three_dimensional_gaussian():
     """The kernel behind the model widget — pin its detection volume.
 
     ``Var/<k> - 1 == eps * gamma_2`` for a compound-Poisson PCH, and ``gamma_2``
@@ -85,7 +76,7 @@ def test_the_widget_pch_kernel_uses_the_three_dimensional_gaussian(qapp):
         assert np.isclose(gamma_2, 2.0**-1.5, rtol=1e-6)
 
 
-def test_the_widget_pch_kernel_survives_a_long_photon_count_axis(qapp):
+def test_the_widget_pch_kernel_survives_a_long_photon_count_axis():
     """Pin the Poisson term of the kernel behind the widget.
 
     ``lam**k / k!`` overflows a ``double`` at ``k = 171`` (zero from there on)
@@ -100,7 +91,7 @@ def test_the_widget_pch_kernel_survives_a_long_photon_count_axis(qapp):
     assert p1[200] > 0.0
 
 
-def test_a_photon_count_axis_that_is_not_counts_flattens_rather_than_lies(qapp):
+def test_a_photon_count_axis_that_is_not_counts_flattens_rather_than_lies():
     """A malformed count axis must not be answered for a different one.
 
     The axis is taken from the dataset, so it is the user's, and the compiled
@@ -118,7 +109,7 @@ def test_a_photon_count_axis_that_is_not_counts_flattens_rather_than_lies(qapp):
             pch_mixture(bad, [3.0], [2.0])
 
 
-def test_a_mixture_needs_one_occupancy_per_brightness(qapp):
+def test_a_mixture_needs_one_occupancy_per_brightness():
     """Unequal per-species lists are refused before they reach the library.
 
     tttrlib's ``pch_mixture`` subscripts the occupancies with the brightness
@@ -137,10 +128,9 @@ def test_a_mixture_needs_one_occupancy_per_brightness(qapp):
         pch_mixture(np.arange(30, dtype=float), [3.0, 8.0], [2.0])
 
 
-def test_fida_model_is_a_model_curve(qapp):
+def test_fida_model_is_a_model_curve():
     from chisurf.core.models.model import ModelCurve
-    from chisurf.gui.widgets.models.pch.fida_widget import FidaModel, FidaModelWidget
+    from chisurf.core.models.pch.fida_model import FidaModel
 
     assert issubclass(FidaModel, ModelCurve)
-    assert issubclass(FidaModelWidget, FidaModel)
-    assert str(getattr(FidaModelWidget, "name", "")).strip()
+    assert str(getattr(FidaModel, "name", "")).strip()

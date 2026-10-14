@@ -1,7 +1,7 @@
-"""PDA3c reaches the GUI: reader, model, editor and fit (PRD-65).
+"""PDA3c reaches the model editor: reader, model, spec and fit (PRD-65).
 
 Exercises the seam the ``test-model-editor`` skill covers — a model is only
-usable if it is registered, its dataset loads, ``build_model_editor`` renders it
+usable if it is registered, its dataset loads, its spec resolves
 without empty groups, and ``fit.run()`` moves the right parameters. A model that
 computes but cannot be opened is not a feature.
 """
@@ -10,13 +10,6 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _simulated_fit(correlation: float = 0.0, n_bursts: int = 1500, seed: int = 3):
@@ -112,30 +105,16 @@ def test_a_text_burst_table_loads(tmp_path):
 # ── the editor ─────────────────────────────────────────────────────────────
 
 
-def test_the_editor_renders_with_real_parameter_rows(qapp):
+def test_the_spec_resolves_with_real_parameter_rows():
     from chisurf.core.models import view_spec as vs
-    from chisurf.gui.autoform.sections.parameter_table import (
-        PairedParameterTableWidget,
-        ParameterGroupTableWidget,
-    )
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     fit = _simulated_fit(n_bursts=400)
     model = fit.model
 
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-
-    # Species tables: 7 columns of distance parameters, 3 of correlations.
-    paired = editor.findChildren(PairedParameterTableWidget)
-    widths = sorted(t.table_model.width for t in paired)
-    assert widths == [3, 7], widths
-    assert all(t.table_model.rowCount() == 1 for t in paired)
-
-    # The instrument group must not render as an empty box.
-    flat = editor.findChildren(ParameterGroupTableWidget)
-    assert sum(t.table_model.rowCount() for t in flat) >= 16
+    # Species tables: 7 columns of distance parameters, 3 of correlations, one row each.
+    assert len(model.species._distance_parameter_rows()) == 7
+    assert len(model.species._correlation_parameter_rows()) == 3
 
     spec = model.view_spec()
     for section in spec.flat_sections():
@@ -148,24 +127,14 @@ def test_the_editor_renders_with_real_parameter_rows(qapp):
     assert model_plot_specs(model), "no plot specs resolved"
 
 
-def test_adding_a_species_adds_one_row_to_both_tables(qapp):
-    from chisurf.gui.autoform.sections.parameter_table import PairedParameterTableWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
-
+def test_adding_a_species_adds_one_row_to_both_tables():
     fit = _simulated_fit(n_bursts=200)
-    editor = build_model_editor(fit.model)
-
     fit.model.species.append()
-    for table in editor.findChildren(PairedParameterTableWidget):
-        table.set_params(
-            fit.model.species._distance_parameter_rows()
-            if table.table_model.width == 7
-            else fit.model.species._correlation_parameter_rows()
-        )
-        assert table.table_model.rowCount() == 2
+    assert len(fit.model.species._distance_parameter_rows()) == 14
+    assert len(fit.model.species._correlation_parameter_rows()) == 6
 
 
-def test_the_model_computes_a_finite_curve(qapp):
+def test_the_model_computes_a_finite_curve():
     fit = _simulated_fit(n_bursts=400)
     fit.model.update()
     y = np.asarray(fit.model.y)
@@ -176,7 +145,7 @@ def test_the_model_computes_a_finite_curve(qapp):
 # ── the objective ──────────────────────────────────────────────────────────
 
 
-def test_the_residual_is_the_likelihood_in_disguise(qapp):
+def test_the_residual_is_the_likelihood_in_disguise():
     """sum(wres**2) must track -2 log L, so least squares *is* MLE here."""
     fit = _simulated_fit(n_bursts=600)
     model = fit.model
@@ -195,7 +164,7 @@ def test_the_residual_is_the_likelihood_in_disguise(qapp):
     assert moved_sum > reference_sum, "the wrong distance must cost more"
 
 
-def test_chi2r_is_finite_stable_and_discriminating(qapp):
+def test_chi2r_is_finite_stable_and_discriminating():
     """What chi2r can and cannot be trusted to do for this model.
 
     It is *not* calibrated to one: the saturated reference has three free cells
@@ -225,7 +194,7 @@ def test_chi2r_is_finite_stable_and_discriminating(qapp):
 
 
 @pytest.mark.slow
-def test_a_fit_from_the_gui_stack_recovers_the_simulated_distances(qapp):
+def test_a_fit_from_the_gui_stack_recovers_the_simulated_distances():
     """End to end: reader -> model -> fit.run() moves the means back to truth."""
     fit = _simulated_fit(n_bursts=3000, seed=9)
     model = fit.model
@@ -252,7 +221,7 @@ def test_a_fit_from_the_gui_stack_recovers_the_simulated_distances(qapp):
 # ── stochastic labelling ───────────────────────────────────────────────────
 
 
-def test_swapped_labels_add_a_mirror_population(qapp):
+def test_swapped_labels_add_a_mirror_population():
     """PAM's stochastic-labelling correction is a permutation, not a dropout.
 
     When the two labelling sites are chemically equivalent, green and red land
@@ -292,7 +261,7 @@ def test_swapped_labels_add_a_mirror_population(qapp):
     assert correlation(mirror, 1, 2) == pytest.approx(correlation(normal, 1, 2))
 
 
-def test_labelling_correction_is_off_by_default_and_free_to_enable(qapp):
+def test_labelling_correction_is_off_by_default_and_free_to_enable():
     fit = _simulated_fit(n_bursts=200)
     model = fit.model
     assert model.stochastic_labeling is False
@@ -305,7 +274,7 @@ def test_labelling_correction_is_off_by_default_and_free_to_enable(qapp):
     assert np.all(np.isfinite(model.y))
 
 
-def test_a_symmetric_swap_is_invisible(qapp):
+def test_a_symmetric_swap_is_invisible():
     """With R(BG) == R(BR) the mirror population is the same population.
 
     A correction that changed the answer here would be changing something other
@@ -372,7 +341,7 @@ def test_scaling_a_photon_number_distribution_moves_its_mean():
         assert (scaled @ counts) == pytest.approx(factor * (pmf @ counts), rel=0.02)
 
 
-def test_brightness_correction_is_off_by_default_and_changes_the_fit(qapp):
+def test_brightness_correction_is_off_by_default_and_changes_the_fit():
     fit = _simulated_fit(n_bursts=600)
     model = fit.model
     assert model.brightness_correction is False
@@ -411,7 +380,7 @@ def _fit_one_distance(n_bursts=2500, seed=13, start=48.0):
     return fit, model, mean
 
 
-def test_a_prior_pulls_the_fit_and_is_reported(qapp):
+def test_a_prior_pulls_the_fit_and_is_reported():
     """PRD-61 priors work on this model without anything PDA3c-specific.
 
     The prior framework is general, so the check is that PDA3c parameters are
@@ -456,7 +425,7 @@ def test_a_prior_pulls_the_fit_and_is_reported(qapp):
 
 
 @pytest.mark.slow
-def test_both_error_surface_routes_bracket_the_truth(qapp):
+def test_both_error_surface_routes_bracket_the_truth():
     """MCMC and the support plane must agree on a PDA3c parameter too.
 
     Same requirement PRD-50 placed on two-colour PDA. It matters more here: the
@@ -520,7 +489,7 @@ def _two_state_fit(k_ex=0.0, n_bursts=800):
     return fit, model
 
 
-def test_no_exchange_reproduces_the_static_mixture(qapp):
+def test_no_exchange_reproduces_the_static_mixture():
     """The dynamic model must nest the static one at K_ex = 0.
 
     Without exchange every molecule stays in one state for the whole burst, so
@@ -537,7 +506,7 @@ def test_no_exchange_reproduces_the_static_mixture(qapp):
     assert dynamic == pytest.approx(static, rel=2e-3), (static, dynamic)
 
 
-def test_fast_exchange_collapses_to_one_averaged_population(qapp):
+def test_fast_exchange_collapses_to_one_averaged_population():
     """At very fast exchange every molecule sees the same time-averaged state."""
     fit, model = _two_state_fit(k_ex=1e6)  # a true limit: at 5e3 the residual
     model.dynamic = True  # spread in f is still worth 0.15%
@@ -567,7 +536,7 @@ def test_fast_exchange_collapses_to_one_averaged_population(qapp):
     assert fast == pytest.approx(expected, rel=1e-3), (fast, expected)
 
 
-def test_exchange_fills_in_between_the_two_populations(qapp):
+def test_exchange_fills_in_between_the_two_populations():
     """Intermediate exchange must differ from both limits — that is the signal.
 
     Dynamic PDA works because partially-averaged molecules land between the two
@@ -586,7 +555,7 @@ def test_exchange_fills_in_between_the_two_populations(qapp):
     assert intermediate != pytest.approx(fast, rel=1e-3)
 
 
-def test_dynamic_leaves_a_third_species_static(qapp):
+def test_dynamic_leaves_a_third_species_static():
     """The incumbent's convention: only the first two states exchange."""
     fit, model = _two_state_fit(k_ex=2.0)
     model.species.append(r_gr=90.0, r_bg=90.0, r_br=90.0)
@@ -600,7 +569,7 @@ def test_dynamic_leaves_a_third_species_static(qapp):
 
 
 @pytest.mark.slow
-def test_the_guide_worked_example_still_produces_its_documented_numbers(qapp):
+def test_the_guide_worked_example_still_produces_its_documented_numbers():
     """docs/guides/42_pda3c.md prints numbers; they have to stay true.
 
     A guide whose output has drifted is worse than no guide — it teaches the

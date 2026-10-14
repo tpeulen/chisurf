@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from chisurf.chiplot import backends
-from chisurf.gui import chiplot as cp
+from chisurf import chiplot as cp
 
 
 @pytest.fixture(params=["emtk"])
@@ -30,15 +30,13 @@ def plot(request: Any) -> Iterator[cp.Panel]:
             os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
-@pytest.fixture
-def widget(plot: cp.Panel, qapp: Any) -> Iterator[Any]:
-    """The panel hosted in a Qt widget, for the tests that draw real frames through it."""
-    host = cp.host(plot)
-    try:
-        yield host
-    finally:
-        host.close()
-        qapp.processEvents()
+def _draw(plot: cp.Panel, width: int, height: int) -> Any:
+    """Draw one real frame of the panel through emtk's pixel painter."""
+    from emtk.testing import PixelPainter
+
+    painter = PixelPainter(width, height, background=(255, 255, 255, 255))
+    plot._canvas.draw(painter, 0.0, 0.0, float(width), float(height))
+    return painter
 
 
 def _metadata(panel: cp.Panel, side: str) -> tuple[str, str]:
@@ -106,8 +104,6 @@ class _RecordingPainter:
 @pytest.mark.parametrize("log", [False, True])
 def test_real_frames_si_ticks_do_not_rescale_data(
     plot: cp.Panel,
-    widget: Any,
-    qapp: Any,
     monkeypatch: Any,
     log: bool,
 ) -> None:
@@ -125,14 +121,11 @@ def test_real_frames_si_ticks_do_not_rescale_data(
         draw_axes(_RecordingPainter(painter, texts), *args)
 
     monkeypatch.setattr(canvas, "_draw_axes", record)
-    widget.resize(800, 450)
-    widget.show()
     for enabled, unit_label in [(False, "Hz"), (True, "kHz"), (False, "Hz")]:
         texts.clear()
         plot.set_si_prefix(y=enabled)
         plot.set_labels(left="Count rate")
-        qapp.processEvents()
-        assert not widget.grab().isNull()
+        _draw(plot, 800, 450)
         assert f"Count rate ({unit_label})" in texts
         assert "Duration (ms)" in texts
         # A real tick lies at 10,000 Hz: label 10, not 10000, when SI is enabled.
@@ -141,21 +134,18 @@ def test_real_frames_si_ticks_do_not_rescale_data(
         np.testing.assert_array_equal(curve.get_data()[1], y)
 
 
-def test_plain_labels_and_unit_only_bottom(plot: cp.Panel, widget: Any, qapp: Any) -> None:
+def test_plain_labels_and_unit_only_bottom(plot: cp.Panel) -> None:
     """Legacy labels stay plain, and a unit-only bottom title gets a visible row."""
     plot.set_labels(left="Counts", bottom="Time")
     assert _metadata(plot, "left") == ("Counts", "")
     plot.set_labels(bottom="", bottom_units="ms")
     plot.line([0, 1], [1, 2])
-    widget.resize(800, 450)
-    widget.show()
-    qapp.processEvents()
-    assert not widget.grab().isNull()
+    _draw(plot, 800, 450)
     assert _metadata(plot, "bottom") == ("", "ms")
 
 
 def test_real_bottom_si_prefix_preserves_seconds(
-    plot: cp.Panel, widget: Any, qapp: Any, monkeypatch: Any
+    plot: cp.Panel, monkeypatch: Any
 ) -> None:
     """Millisecond tick display keeps original second-valued samples."""
     canvas: Any = plot._canvas
@@ -172,10 +162,7 @@ def test_real_bottom_si_prefix_preserves_seconds(
     plot.set_labels(bottom="Time", bottom_units="s")
     plot.set_range(x=(0.001, 0.002), padding=0)
     plot.set_si_prefix(x=True)
-    widget.resize(800, 450)
-    widget.show()
-    qapp.processEvents()
-    assert not widget.grab().isNull()
+    _draw(plot, 800, 450)
     assert "Time (ms)" in texts
     assert "2.0" in texts
     np.testing.assert_array_equal(curve.get_data()[0], x)
@@ -184,8 +171,6 @@ def test_real_bottom_si_prefix_preserves_seconds(
 @pytest.mark.parametrize("plot", ["emtk"], indirect=True)
 def test_unit_only_title_and_boundary_tick_are_actually_visible(
     plot: cp.Panel,
-    widget: Any,
-    qapp: Any,
     monkeypatch: Any,
 ) -> None:
     """Reserve the unit-only title row and keep right-edge tick text on canvas."""
@@ -201,27 +186,22 @@ def test_unit_only_title_and_boundary_tick_are_actually_visible(
     plot.line([0, 1000, 2000], [1, 2, 3])
     plot.set_labels(bottom_units="ms")
     plot.set_range(x=(0, 2000), padding=0)
-    widget.resize(800, 450)
-    widget.show()
-    qapp.processEvents()
-    assert not widget.grab().isNull()
+    _draw(plot, 800, 450)
     assert "(ms)" in texts
     boundary = [(left, width) for left, width, text in boxes if text == "2000"]
     assert boundary
-    assert all(0 <= left and left + width <= widget.width() for left, width in boundary)
+    assert all(0 <= left and left + width <= 800 for left, width in boundary)
 
 
 def test_raw_samples_survive_log_downsampling_update_and_empty(
-    plot: cp.Panel, widget: Any, qapp: Any
+    plot: cp.Panel
 ) -> None:
     """The public curve handle returns source samples, including after edits/clear."""
     x = np.arange(1.0, 1001.0)
     y = x * 100.0
     curve = plot.line(x, y)
     plot.set_downsampling(auto=True, mode="subsample")
-    widget.resize(300, 200)
-    widget.show()
-    qapp.processEvents()
+    _draw(plot, 300, 200)
     for logarithmic in (True, False, True):
         plot.set_log(x=logarithmic, y=logarithmic)
         np.testing.assert_array_equal(curve.get_data()[0], x)

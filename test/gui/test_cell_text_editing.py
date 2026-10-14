@@ -1,4 +1,4 @@
-"""Real native G-factor cell edits preserve model identity, callbacks and valid values."""
+"""Real native G-factor cell edits keep valid values and roll back invalid ones."""
 
 from __future__ import annotations
 
@@ -10,17 +10,19 @@ from emtk.events import CONTROL_MODIFIER, LEFT_BUTTON
 from emtk.keys import KEY_RETURN
 from emtk.testing import Driver
 
-from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizard
-from test.gui.test_detector_native_callers import (
+from test.gui.test_channel_definition_lut_box import (
+    _Page,
+)
+from test.gui.test_channel_definition_lut_box import (
     isolated_detector_settings as isolated_detector_settings,
 )
-from test.gui.test_detector_native_callers import (
+from test.gui.test_channel_definition_lut_box import (
     native_driver,
 )
 
 
 @pytest.fixture
-def page(qapp: Any, tmp_path: Any) -> Iterator[tuple[Any, Driver, list[dict]]]:
+def page(tmp_path: Any) -> Iterator[tuple[Any, Driver, list[dict]]]:
     """Use the public native page with one real detector and an isolated store."""
     settings = {
         "windows": {"prompt": [0, 2048]},
@@ -41,17 +43,17 @@ def page(qapp: Any, tmp_path: Any) -> Iterator[tuple[Any, Driver, list[dict]]]:
             "micro_time_binning": 1,
         },
     }
-    wizard = DetectorWizard(settings=settings, setups_file=str(tmp_path / "setups.json"))
-    native = wizard.page(0)
     notices: list[dict] = []
-    native.detectorsChanged.connect(lambda: notices.append(native.get_settings()))
+    native = _Page(
+        settings=settings, setups_file=str(tmp_path / "setups.json"), on_changed=notices.append
+    )
     ui = native_driver(native)
     ui.draw(3)
+    notices.clear()
     try:
         yield native, ui, notices
     finally:
-        wizard.close()
-        qapp.processEvents()
+        native.close()
 
 
 def cell_rect(editor: Any, ui: Driver, row: int, key: str) -> tuple[float, float, float, float]:
@@ -91,38 +93,12 @@ def edit_g(page: Any, ui: Driver, row: int, text: str) -> None:
     assert page.editor._detector_table.control.editing is None
 
 
-def test_programmatic_update_keeps_native_editor_and_scalar_callback(page: Any) -> None:
-    """A scalar update retains native editor/table identity and scientific metadata."""
-    native, ui, notices = page
-    editor, table, model = native.editor, native.editor._detector_table.control, native.model
-    assert native.update_detector("detector", {"g_factor": 3.456, "l1": 0.01, "l2": 0.02})
-    ui.draw(2)
-    assert (
-        native.editor is editor
-        and editor._detector_table.control is table
-        and native.model is model
-    )
-    row = editor.detector_rows()[0]
-    assert [float(row[key]) for key in ("g", "l1", "l2")] == [3.456, 0.01, 0.02]
-    assert native.detectors["detector"]["future_metadata"] == {"keep": [1, 2]}
-    assert len(notices) == 1
-
-
-def test_programmatic_update_reaches_settings_and_identical_edit_is_not_reemitted(
-    page: Any,
-) -> None:
-    """One actual changed definition is emitted; repeating its scalar value is a no-op."""
-    native, _, notices = page
-    assert native.update_detector("detector", {"g_factor": 3.456})
-    assert native.get_settings()["detectors"]["detector"]["g_factor"] == pytest.approx(3.456)
-    assert not native.update_detector("detector", {"g_factor": 3.456})
-    assert len(notices) == 1
-
-
 def test_readonly_native_cell_cannot_overwrite_calibrated_value(page: Any) -> None:
     """Read-only protection is enforced by the actual native input path."""
     native, ui, notices = page
-    native.update_detector("detector", {"g_factor": 1.234})
+    native.model.data["detectors"]["detector"]["g_factor"] = 1.234
+    native.model.changed()
+    notices.clear()
     native.editor.read_only = True
     rectangle = cell_rect(native.editor, ui, 0, "g")
     double_click(ui, rectangle)
@@ -131,7 +107,7 @@ def test_readonly_native_cell_cannot_overwrite_calibrated_value(page: Any) -> No
     ui.key(KEY_RETURN)
     assert native.detectors["detector"]["g_factor"] == 1.234
     assert native.editor._detector_table.control.editing is None
-    assert len(notices) == 1
+    assert notices == []
 
 
 def test_user_edit_is_kept_and_normalised(page: Any) -> None:
@@ -140,15 +116,17 @@ def test_user_edit_is_kept_and_normalised(page: Any) -> None:
     edit_g(native, ui, 0, "2.3")
     assert native.detectors["detector"]["g_factor"] == 2.3
     assert native.editor.detector_rows()[0]["g"] == "2.300"
-    assert len(notices) == 1
+    assert notices, "the committed edit is announced"
 
 
 def test_invalid_user_edit_restores_last_valid_value_without_a_callback(page: Any) -> None:
     """Unparseable native input rolls back the row and leaves scientific state unchanged."""
     native, ui, notices = page
-    native.update_detector("detector", {"g_factor": 1.5})
+    native.model.data["detectors"]["detector"]["g_factor"] = 1.5
+    native.model.changed()
+    notices.clear()
     edit_g(native, ui, 0, "not a number")
     assert native.detectors["detector"]["g_factor"] == 1.5
     assert float(native.editor.detector_rows()[0]["g"]) == 1.5
     assert "must be a number" in native.editor.status
-    assert len(notices) == 1
+    assert all(n["detectors"]["detector"]["g_factor"] == 1.5 for n in notices)

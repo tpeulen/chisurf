@@ -8,11 +8,9 @@ reached nothing -- Settings ▸ Plots changed the preview and not one plot.
 from __future__ import annotations
 
 import copy
-import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 @pytest.fixture
@@ -24,7 +22,7 @@ def plot(monkeypatch):
     return gui.setdefault("plot", {})
 
 
-def _lineplot(qapp):
+def _lineplot():
     from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
@@ -33,29 +31,29 @@ def _lineplot(qapp):
     return page
 
 
-def test_curves_take_the_colours_and_width_set_after_import(qapp, plot):
+def test_curves_take_the_colours_and_width_set_after_import(plot):
     plot.setdefault("colors", {})["model"] = "#00ff00"
     plot["line_width"] = 4.0
-    page = _lineplot(qapp)
+    page = _lineplot()
     director = page.settings.director
     assert director["model"]["color"] == "#00ff00"
     assert director["model"]["lw"] == 4.0 and director["data"]["lw"] == 2.0
 
 
-def test_the_band_switched_off_builds_a_plot_with_the_band_hidden(qapp, plot):
+def test_the_band_switched_off_builds_a_plot_with_the_band_hidden(plot):
     plot["enable_region_selector"] = False
-    page = _lineplot(qapp)  # raised AttributeError: 'LinePlot' object has no attribute 'region'
+    page = _lineplot()  # raised AttributeError: 'LinePlot' object has no attribute 'region'
     assert page.region is not None and not page.region.visible  # kept, hidden: switching it on restyles
 
 
-def test_grid_off_turns_every_panel_grid_off(qapp, plot):
+def test_grid_off_turns_every_panel_grid_off(plot):
     plot["enable_grid"] = False
-    page = _lineplot(qapp)
+    page = _lineplot()
     for key in ("main_plot", "top_left_plot", "top_right_plot"):
         assert page.plots[key]._canvas._grid is False, key
 
 
-def test_the_grid_strength_reaches_the_drawn_gridlines(qapp, plot, monkeypatch):
+def test_the_grid_strength_reaches_the_drawn_gridlines(plot, monkeypatch):
     from emtk.testing import RecordingPainter
     from emtk.widgets import plot as emtk_plot
 
@@ -77,7 +75,7 @@ def test_the_grid_strength_reaches_the_drawn_gridlines(qapp, plot, monkeypatch):
     assert seen == [pytest.approx(0.5), pytest.approx(255 / 20)]
 
 
-def test_the_axis_text_size_scales_the_axis_text(qapp, plot):
+def test_the_axis_text_size_scales_the_axis_text(plot):
     from emtk import fonts
     from emtk.testing import RecordingPainter
 

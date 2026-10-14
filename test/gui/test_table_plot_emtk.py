@@ -11,12 +11,9 @@ chooser that were Qt dialogs are drawn in its place.
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from chisurf.emtk.fit_pages.pages.table_plot_emtk import _BASE_COLUMNS  # noqa: E402
 
@@ -177,29 +174,11 @@ def test_filter_narrows_visible_rows(emtk_plot):
     assert len(table.order()) == 1
 
 
-def test_the_registry_gives_the_emtk_page(qapp):
+def test_the_registry_gives_the_emtk_page():
     from chisurf.emtk.fit_pages.pages.table_plot_emtk import FitTablePlotEmtk
-    from chisurf.gui.autoform.sections.registry import get_plot_class
+    from chisurf.emtk.fit_pages.plots import get_plot_class
 
     assert get_plot_class("fit_table") is FitTablePlotEmtk
-
-
-def test_offscreen_render_on_the_fit_window_surface(emtk_plot, qapp, tmp_path):
-    from chisurf.gui.widgets.fitting.fit_plots_area import FitPlotsArea
-
-    plot, _ = emtk_plot
-    area = FitPlotsArea()
-    area.add_page("Data table", lambda: plot)
-    area.resize(int(WIDTH), int(HEIGHT))
-    area.show()
-    for _ in range(3):
-        qapp.processEvents()
-        area.host.repaint()
-    png = os.path.join(os.environ.get("CHISURF_EVIDENCE_DIR", str(tmp_path)), "fit_table_emtk.png")
-    area.host.grab().save(png)
-    assert os.path.exists(png)
-    assert plot.table.row_count() == 8
-    area.close()
 
 
 def test_a_hidden_page_reads_the_fit_only_when_drawn(emtk_plot, monkeypatch):

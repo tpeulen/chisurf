@@ -1,37 +1,30 @@
-"""The reaction-scheme editor's declarative wiring (PRD-38).
+"""The reaction-scheme editor's declarative wiring.
 
 The core tests in ``test/models/test_reaction_model.py`` cover the scheme and the
-integration. What only a rendered editor can show is whether the view spec
-actually reaches them: whether the reaction ``table`` gets its rows, whether the
-``button_row`` buttons call the zero-arg model methods, and whether the JSON
-field is bound to the property rather than to nothing.
-
-Run headless in the arm64 env, in its own process::
-
-    QT_QPA_PLATFORM=offscreen python -m pytest \\
-        test/gui/test_reaction_model_editor.py -p no:cov -o addopts=""
+integration. What the view spec adds is the set of ``button_row`` actions, which must
+name zero-argument model methods, and the scheme JSON field, which must be bound to the
+property. Both are checked on the model; the rendered editor is covered by the emtk shell
+tests (``test/native_emtk/test_emtk_shell_model_sections.py``).
 """
 
 from __future__ import annotations
 
+import inspect
+import json
+from pathlib import Path
+
 import numpy as np
 import pytest
 
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+import chisurf.core.models.stopped_flow as stopped_flow
 
 
 @pytest.fixture()
-def editor_and_model():
-    """Return ``(editor, model)`` for a reaction fit over a synthetic relaxation."""
+def model():
+    """Return the reaction model of a fit over a synthetic relaxation."""
     import chisurf.core.fitting.fit as fit_mod
     from chisurf.core.data import DataCurve
     from chisurf.core.models.stopped_flow.reaction import ReactionModel
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     x = np.linspace(0.0, 10.0, 200)
     data = DataCurve(
@@ -40,68 +33,59 @@ def editor_and_model():
         x=x,
         y=1.0 - 0.5 * np.exp(-x),
     )
-    fit = fit_mod.Fit(model_class=ReactionModel, data=data)
-    return build_model_editor(fit.model), fit.model
+    return fit_mod.Fit(model_class=ReactionModel, data=data).model
 
 
-def _buttons(editor):
-    """Return every clickable button in the editor, by text."""
-    from qtpy import QtWidgets
+def _button_actions() -> dict[str, str]:
+    """Return ``{label: action}`` for every ``button_row`` button of the spec."""
+    spec = json.loads((Path(stopped_flow.__file__).parent / "reaction.view.json").read_text())
+    found: dict[str, str] = {}
 
-    return {
-        b.text(): b
-        for b in editor.findChildren(QtWidgets.QToolButton)
-        + editor.findChildren(QtWidgets.QPushButton)
-    }
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get("type") == "button_row":
+                for b in node["buttons"]:
+                    found[b["label"]] = b["action"]
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
 
-
-def test_reaction_table_shows_the_steps_by_name(qapp, editor_and_model):
-    """The ``table`` section renders one row per reaction, written with names."""
-    from qtpy import QtWidgets
-
-    editor, model = editor_and_model
-    tables = [
-        t
-        for t in editor.findChildren(QtWidgets.QTableWidget)
-        if t.columnCount() == 2 and t.rowCount() == model.n_reactions
-    ]
-    assert tables, "the reaction table rendered no rows"
-    texts = {
-        tables[0].item(r, 0).text()
-        for r in range(tables[0].rowCount())
-        if tables[0].item(r, 0) is not None
-    }
-    assert texts == {"A → B", "B → A"}, texts
+    walk(spec)
+    return found
 
 
-def test_add_and_reset_buttons_drive_the_model(qapp, editor_and_model):
-    """``button_row`` actions are zero-arg model methods and are actually wired."""
-    editor, model = editor_and_model
-    buttons = _buttons(editor)
+def test_every_button_action_is_a_zero_argument_model_method(model):
+    """``button_row`` actions name callable model methods that take no arguments."""
+    actions = _button_actions()
+    assert actions, "the spec declares no buttons"
+    for label, action in actions.items():
+        method = getattr(model, action)
+        assert callable(method), f"{label}: {action} is not callable"
+        required = [
+            p
+            for p in inspect.signature(method).parameters.values()
+            if p.default is p.empty and p.kind in (p.POSITIONAL_ONLY, p.POSITIONAL_OR_KEYWORD)
+        ]
+        assert not required, f"{label}: {action} needs {required}"
 
-    add_step = next(b for label, b in buttons.items() if "Add step" in label)
-    add_step.click()
+
+def test_add_and_reset_buttons_drive_the_model(model):
+    """The actions the buttons name extend and reset the scheme."""
+    actions = {label.split(" ", 1)[-1]: action for label, action in _button_actions().items()}
+    getattr(model, actions["Add step"])()
     assert model.n_reactions == 3
 
-    reset = next(b for label, b in buttons.items() if "Reset" in label)
-    reset.click()
+    getattr(model, actions["Reset"])()
     assert model.n_reactions == 2
 
-    add_species = next(b for label, b in buttons.items() if "Add species" in label)
     before = len(model.species_names)
-    add_species.click()
+    getattr(model, actions["Add species"])()
     assert len(model.species_names) == before + 1
 
 
-def test_scheme_json_field_is_bound_to_the_property(qapp, editor_and_model):
-    """The ``value`` ``kind: "text"`` field shows the scheme the model holds."""
-    from qtpy import QtWidgets
-
-    editor, model = editor_and_model
-    fields = editor.findChildren(QtWidgets.QPlainTextEdit) + editor.findChildren(
-        QtWidgets.QTextEdit
-    )
-    assert len(fields) == 1, f"expected one scheme field, found {len(fields)}"
-    text = fields[0].toPlainText()
+def test_scheme_json_holds_the_species_and_reactions(model):
+    """The scheme field shows the scheme the model holds."""
+    text = model.reaction_json
     assert '"reactions"' in text and '"species"' in text
-    assert text == model.reaction_json

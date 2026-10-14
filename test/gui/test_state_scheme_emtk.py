@@ -147,48 +147,6 @@ def test_a_model_without_a_scheme_draws_a_note():
     assert canvas.coords == {}
 
 
-def test_the_page_draws_on_the_fit_window_surface(qapp, qtbot):
-    """Inside a real ControlHost: the page is emtk, typing a rate writes it."""
-    from emtk.qt_host import ControlHost
-    from qtpy import QtCore
-    from qtpy.QtTest import QTest
-
-    from chisurf.emtk.fit_pages.pages.emtk_page import page_body
-    from chisurf.emtk.fit_pages.pages.state_scheme_emtk import StateSchemePlot
-    from chisurf.gui.widgets.fitting.fit_plots_area import make_surface
-
-    fit = type("Fit", (), {"model": _Model()})()
-    page = StateSchemePlot(fit)
-    body = page_body(page)
-    assert body.draw is not None and body.missing == []
-
-    surface = make_surface()
-    surface.add_page("0:State Scheme", "State Scheme", lambda: page)
-    host = ControlHost(surface)
-    qtbot.addWidget(host)
-    host.resize(700, 500)
-    host.show()
-    for _ in range(3):
-        qapp.processEvents()
-        host.repaint()
-    bx, by, bw, bh = page.canvas._badges[(1, 2)]
-    point = QtCore.QPoint(int(bx + bw / 2), int(by + bh / 2))
-    QTest.mouseDClick(host, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier, point)
-    for _ in range(3):
-        qapp.processEvents()
-        host.repaint()
-    assert page.canvas.editing == (1, 2)
-    QTest.keyClick(host, QtCore.Qt.Key_A, QtCore.Qt.ControlModifier)
-    QTest.keyClicks(host, "777")
-    host.repaint()
-    QTest.keyClick(host, QtCore.Qt.Key_Return)
-    for _ in range(3):
-        qapp.processEvents()
-        host.repaint()
-    assert page.binding.rates()[1 * 3 + 2] == 777.0
-    assert page.canvas.editing is None
-
-
 def test_the_default_layout_follows_the_canvas_until_arranged():
     """A first frame drawn small must not cram the layout into a corner for good."""
     from emtk.testing import RecordingPainter

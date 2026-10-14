@@ -1,4 +1,4 @@
-"""The fit Info plot's visible contents are drawn by emtk, not Qt.
+"""The fit Info plot's visible contents are drawn by emtk.
 
 The fit window's plot surface is emtk (FitPlotsArea, the chiplot emtk
 backend). The Info page was the last plot page whose visible content was
@@ -21,7 +21,7 @@ HAVE_EMTK = importlib.util.find_spec("emtk") is not None
 
 
 @pytest.fixture()
-def plain_fit(qapp):
+def plain_fit():
     """A minimal single fit, the same recipe test_mfd_surface uses."""
     import chisurf.core.data
     import chisurf.core.models.parse
@@ -34,7 +34,7 @@ def plain_fit(qapp):
     )
 
 
-def test_text_view_round_trips_text(qapp):
+def test_text_view_round_trips_text():
     view = EmtkTextView()
     view.setPlainText("chi2r=1.02\nrange=5..90")
     assert view.toPlainText() == "chi2r=1.02\nrange=5..90"
@@ -43,16 +43,13 @@ def test_text_view_round_trips_text(qapp):
 
 
 @pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_text_view_draws_with_emtk(qapp):
+def test_text_view_draws_with_emtk():
     """The view is emtk's read-only TextEditor, and no Qt widget."""
     from emtk.widgets.text_editor import TextEditor
-    from qtpy import QtWidgets
-
     view = EmtkTextView()
     view.setPlainText("drawn by emtk")
     assert isinstance(view.editor, TextEditor)
     assert view.editor.config.read_only is True
-    assert not isinstance(view, QtWidgets.QWidget)
     asked = []
     view.set_refresh_target(lambda: asked.append(1))
     view.setPlainText("again")
@@ -60,22 +57,19 @@ def test_text_view_draws_with_emtk(qapp):
 
 
 @pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_the_info_page_is_no_widget_and_draws_its_report(plain_fit, qapp):
+def test_the_info_page_is_no_widget_and_draws_its_report(plain_fit):
     """The page body is the report editor; nothing on the page is Qt."""
-    from qtpy import QtWidgets
-
     from chisurf.emtk.fit_pages.pages.emtk_page import page_body
     from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
     info = FitInfo(plain_fit)
-    assert not isinstance(info, QtWidgets.QWidget)
     body = page_body(info)
     assert body.control is info.textedit.editor and body.missing == []
     assert info.textedit in body.refreshables
 
 
 @pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_fit_info_report_is_drawn_by_emtk(plain_fit, qapp):
+def test_fit_info_report_is_drawn_by_emtk(plain_fit):
     """The Info page's report is an emtk view with the old text contract."""
     from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
@@ -87,7 +81,7 @@ def test_fit_info_report_is_drawn_by_emtk(plain_fit, qapp):
 
 
 @pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_cif_preview_is_drawn_by_emtk(plain_fit, qapp):
+def test_cif_preview_is_drawn_by_emtk(plain_fit):
     """The Export tab's mmCIF preview is an emtk view too."""
     from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
@@ -97,7 +91,7 @@ def test_cif_preview_is_drawn_by_emtk(plain_fit, qapp):
     assert isinstance(info.cif_preview.toPlainText(), str)
 
 
-def test_mfd_surface_summary_contract_still_holds(plain_fit, qapp):
+def test_mfd_surface_summary_contract_still_holds(plain_fit):
     """The existing readers of ``textedit`` keep their text."""
     from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
@@ -109,7 +103,7 @@ def test_mfd_surface_summary_contract_still_holds(plain_fit, qapp):
 
 
 @pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_metadata_rows_write_through_and_keep_the_picked_row(plain_fit, qapp):
+def test_metadata_rows_write_through_and_keep_the_picked_row(plain_fit):
     """A typed value and a catalogue key reach the fit; the reload keeps the pick."""
     from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
@@ -127,7 +121,7 @@ def test_metadata_rows_write_through_and_keep_the_picked_row(plain_fit, qapp):
 
 
 @pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_dropped_files_become_external_references(plain_fit, qapp):
+def test_dropped_files_become_external_references(plain_fit):
     from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
 
     info = FitInfo(plain_fit)
@@ -135,33 +129,3 @@ def test_dropped_files_become_external_references(plain_fit, qapp):
     assert info.TABS[info.tabs.current] == "External data"
     streams = [(s["file_path"], s["file_format"]) for s in plain_fit.flr_photon_streams]
     assert streams == [("/data/run1.ptu", "ptu"), ("/data/irf.csv", "csv")]
-
-
-@pytest.mark.skipif(not HAVE_EMTK, reason="emtk not importable")
-def test_the_settings_tabs_draw_every_control(plain_fit, qapp):
-    """All four tabs of the analysis record render in the Plot-settings dock."""
-    from chisurf.emtk.fit_pages.pages.fitinfo import FitInfo
-    from chisurf.gui.widgets.fitting.plot_settings_host import PlotSettingsHost
-
-    info = FitInfo(plain_fit)
-    host = PlotSettingsHost()
-    host.resize(440, 640)
-    host.show_page(info)
-    host.show()
-    for tab in range(len(info.TABS)):
-        info.tabs.select(tab)
-        for _ in range(3):
-            qapp.processEvents()
-            host.host.repaint()
-    drawn = set(info.settings_form.rects)
-    assert {
-        "metadata_rows",
-        "detail_key",
-        "add_row",
-        "delete_row",
-        "external_rows",
-        "export_full_preview",
-        "export_copy",
-        "export_save",
-    } <= drawn
-    host.close()

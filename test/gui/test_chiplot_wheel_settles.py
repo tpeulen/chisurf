@@ -16,8 +16,6 @@ import os
 import numpy as np
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 testing_realistic = pytest.importorskip("emtk.testing_realistic")
 if not hasattr(testing_realistic, "assert_settles"):  # pragma: no cover - older emtk
     pytest.skip("emtk without assert_settles", allow_module_level=True)
@@ -45,7 +43,7 @@ def _emtk_backend():
             os.environ["CHISURF_PLOT_BACKEND"] = previous_env
 
 
-def _chiplot_app(qapp):
+def _chiplot_app():
     from chisurf import chiplot as cp
 
     panel = cp.Panel()
@@ -87,8 +85,8 @@ def _centre(out):
 
 @pytest.mark.parametrize("kind", ["chiplot", "implot"])
 @pytest.mark.parametrize("gesture", ["notch", "notch_out", "swipe"])
-def test_a_plot_zooms_once_and_then_holds_still_under_a_resting_pointer(qapp, kind, gesture):
-    app, out, view = _chiplot_app(qapp) if kind == "chiplot" else _implot_app()
+def test_a_plot_zooms_once_and_then_holds_still_under_a_resting_pointer(kind, gesture):
+    app, out, view = _chiplot_app() if kind == "chiplot" else _implot_app()
     driver = RealisticDriver(app, (700, 500), real_painter=False)
     driver.frame(3)
     centre = _centre(out)

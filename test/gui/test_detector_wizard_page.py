@@ -1,15 +1,23 @@
-"""The public wizard page hosts real native calibration controls."""
+"""The detector editor shows real native calibration controls."""
 
 from __future__ import annotations
 
-from test.gui.test_detector_native_callers import isolated_detector_settings, native_driver
+from test.gui.test_channel_definition_lut_box import (
+    _Page,
+    isolated_detector_settings,
+    native_driver,
+)
 
 
-def test_detector_wizard_page_constructs(qapp):
+def test_detector_wizard_page_constructs(tmp_path):
     """Latest remains an actual rendered calibration choice without a fake Qt combo."""
-    from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
+    from chisurf.plugins.core.setup_channel_definition.gui.model import default_settings
 
-    page = DetectorWizardPage(allow_finish=False)
+    page = _Page(
+        settings=default_settings(),
+        setups_file=str(tmp_path / "setups.json"),
+        show_setup_selection=True,
+    )
     try:
         ui = native_driver(page)
         ui.draw(2)

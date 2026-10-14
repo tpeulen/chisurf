@@ -3,10 +3,9 @@
 from types import SimpleNamespace
 
 import numpy as np
-from qtpy import QtWidgets
 
 
-def test_structure_plot_uses_angstrom_scale_factor(qapp, qtbot, monkeypatch):
+def test_structure_plot_uses_angstrom_scale_factor(monkeypatch):
     """ProteinMCStructurePlot must tell Chimol not to scale Angstrom coordinates.
 
     ChiSurf structure coordinates are in Angstrom. Chimol's default scale

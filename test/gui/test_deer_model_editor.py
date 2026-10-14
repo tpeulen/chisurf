@@ -20,11 +20,6 @@ import pytest
 from chisurf.core.models.deer import kernel as K
 
 
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _make_deer_data(
@@ -84,59 +79,9 @@ def _resolve(path):
     return getattr(importlib.import_module(mod), name)
 
 
-@pytest.mark.parametrize("model_path", DEER_MODELS)
-def test_deer_model_editor_renders_and_computes(qapp, model_path):
-    from qtpy import QtWidgets
-
-    from chisurf.core.models import view_spec as vs
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import (
-        build_model_editor,
-        model_plot_specs,
-    )
-
-    model_class = _resolve(model_path)
-    assert getattr(model_class, "view_spec_file", None), f"{model_path} has no view_spec_file"
-
-    fit = _make_deer_fit(model_class)
-    model = fit.model
-
-    # (a) build_model_editor returns a real AutoForm widget (add-fit crash site)
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)
-
-    # (b) editor is not a row of empty titled boxes — parameters render as
-    # per-parameter widgets and/or compact parameter-group tables.
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-
-    table_rows = sum(
-        t.table_model.rowCount() for t in editor.findChildren(ParameterGroupTableWidget)
-    )
-    assert len(editor.parameter_widgets) + table_rows > 1, "parameter groups rendered empty"
-
-    # (c) every parameter-group section resolves to a group that has parameters
-    spec = model.view_spec()
-    for section in spec.flat_sections():
-        if isinstance(section, (vs.ParameterGroupSection, vs.ParameterGroupTableSection)):
-            group = getattr(model, section.target)
-            if hasattr(group, "find_parameters") and not list(group.parameters_all):
-                group.find_parameters()
-            assert list(group.parameters_all), f"group {section.target!r} has no parameters"
-
-    # (d) the Gaussian model exposes a dynamic component group
-    if "DeerGaussianModel" in model_path:
-        dyn = [s for s in spec.flat_sections() if isinstance(s, vs.DynamicGroupSection)]
-        assert dyn, "no dynamic component group in DEER Gaussian editor"
-
-    # (e) plot specs resolve (distribution accessor imports) and model computes
-    assert model_plot_specs(model), "no plot specs resolved"
-    model.update()
-    y = np.asarray(model.y)
-    assert y.size > 0 and np.all(np.isfinite(y)), "model did not compute a finite curve"
 
 
-def test_deer_distance_accessor_returns_distribution(qapp):
+def test_deer_distance_accessor_returns_distribution():
     from chisurf.core.models.deer.common import get_deer_distance_distribution
 
     fit = _make_deer_fit(_resolve(DEER_MODELS[0]))
@@ -155,10 +100,10 @@ def test_deer_distance_accessor_returns_distribution(qapp):
         "chisurf.core.models.deer.deer.DeerMaxEntModel",
     ],
 )
-def test_deer_lcurve_plot_and_compute(qapp, model_path):
+def test_deer_lcurve_plot_and_compute(model_path):
     """The model-free models expose an L-curve plot that renders finite points."""
     from chisurf.emtk.fit_pages.pages.lcurve import LCurvePlot
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     fit = _make_deer_fit(_resolve(model_path))
     model = fit.model
@@ -180,10 +125,10 @@ def test_deer_lcurve_plot_and_compute(qapp, model_path):
 
 
 @pytest.mark.parametrize("model_path", DEER_MODELS)
-def test_deer_pr_confidence_band(qapp, model_path):
+def test_deer_pr_confidence_band(model_path):
     """Every model exposes a bootstrap P(r) confidence band that brackets P."""
     from chisurf.emtk.fit_pages.pages.deer_pr import DeerPrCIPlot
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     fit = _make_deer_fit(_resolve(model_path))
     model = fit.model
@@ -210,7 +155,7 @@ def test_deer_pr_confidence_band(qapp, model_path):
     assert plot._best.get_data()[0] is not None and len(plot._best.get_data()[0]) > 0
 
 
-def test_deer_gaussian_fit_recovers_distance(qapp):
+def test_deer_gaussian_fit_recovers_distance():
     """A least-squares run recovers the true mean distance from clean data."""
     model_class = _resolve("chisurf.core.models.deer.deer.DeerGaussianModel")
     fit = _make_deer_fit(model_class, r_mean=40.0, sigma=3.0, lam=0.35)

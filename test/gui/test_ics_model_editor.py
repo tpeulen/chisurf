@@ -1,4 +1,4 @@
-"""Headless editor and plot tests for the image-correlation view.
+"""Headless model and plot tests for the image-correlation view.
 
 The image-correlation model is a catalogue of carpet equations
 (``chisurf/core/models/ics/models.yaml``) viewed on BFF. A synthetic dataset
@@ -12,13 +12,6 @@ import numpy as np
 import pytest
 
 pytest.importorskip("IMP.bff")
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
 def _make_ics_data(n_lags: int = 3):
@@ -93,19 +86,13 @@ def _set(model, **values):
     model.update()
 
 
-def test_the_editor_renders_and_declares_the_image_plots(qapp):
-    from qtpy import QtWidgets
-
+def test_the_model_declares_the_image_plots():
     from chisurf.emtk.fit_pages.pages.residual_image import Residual2DPlot
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
-    from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
 
     fit = _make_ics_fit()
     model = fit.model
     assert model.problem is not None, model.missing
-    editor = build_model_editor(model)
-    assert isinstance(editor, AutoModelWidget)
-    QtWidgets.QVBoxLayout().addWidget(editor)
     assert {"transport", "imaging"} <= set(model.view_spec().section_targets())
 
     res2d = [opts for cls, opts in model_plot_specs(model) if cls is Residual2DPlot]
@@ -116,7 +103,7 @@ def test_the_editor_renders_and_declares_the_image_plots(qapp):
     assert callable(opts["max_frames_accessor"])
 
 
-def test_image_accessors_follow_the_frame_slider(qapp):
+def test_image_accessors_follow_the_frame_slider():
     from chisurf.core.models.grid_images import (
         get_grid_data_image,
         get_grid_model_image,
@@ -137,7 +124,7 @@ def test_image_accessors_follow_the_frame_slider(qapp):
         assert x.size == img.shape[1] and y.size == img.shape[0]
 
 
-def test_the_model_matches_the_data_it_was_generated_from(qapp):
+def test_the_model_matches_the_data_it_was_generated_from():
     fit = _make_ics_fit(n_lags=3)
     model = fit.model
     model.structure = "Image correlation (3D)"
@@ -145,7 +132,7 @@ def test_the_model_matches_the_data_it_was_generated_from(qapp):
     np.testing.assert_allclose(np.asarray(model.y), np.asarray(fit.data.y), rtol=1e-9, atol=1e-12)
 
 
-def test_the_fit_is_stable_for_every_equation(qapp):
+def test_the_fit_is_stable_for_every_equation():
     fit = _make_ics_fit()
     model = fit.model
     for key in list(model.problem.get_structure_keys()):
@@ -154,7 +141,7 @@ def test_the_fit_is_stable_for_every_equation(qapp):
         assert np.all(np.isfinite(np.asarray(model.y))), key
 
 
-def test_optional_terms_change_the_carpet(qapp):
+def test_optional_terms_change_the_carpet():
     fit = _make_ics_fit()
     model = fit.model
     model.structure = "Image correlation (3D)"
@@ -195,7 +182,7 @@ def test_ics_compute_is_finite_for_adversarial_params():
     )
 
 
-def test_residual_2d_plot_draws_and_maps_the_roi(qapp):
+def test_residual_2d_plot_draws_and_maps_the_roi():
     from chisurf.core.models.grid_images import get_grid_residual_image
     from chisurf.emtk.fit_pages.pages.residual_image import Residual2DPlot
 

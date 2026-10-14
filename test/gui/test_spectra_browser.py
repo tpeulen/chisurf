@@ -1,4 +1,4 @@
-"""Headless tests for the Spectra tool shell and the masked password field (the browser, overview and Add-to-MMFDB checks live in the plugin's tests/test_native.py)."""
+"""Headless test for the Spectra tool shell (the browser, overview and Add-to-MMFDB checks live in the plugin's tests/test_native.py)."""
 
 from __future__ import annotations
 
@@ -6,18 +6,6 @@ import os
 import tempfile
 
 import numpy as np
-import pytest
-
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-pytest.importorskip("qtpy")
-
-
-@pytest.fixture
-def qapp():
-    from qtpy import QtWidgets
-
-    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
-
 
 def _staging_db():
     from chisurf.plugins.spectra_downloader.mmfdb_adapter import FluorophoreDatabase
@@ -61,23 +49,3 @@ def test_spectra_tool_navigation_panels_build():
         assert tool.panel == name
         assert painter.strings, f"panel {name} drew no text"
     db.close()
-
-
-def test_autoform_password_kind_is_masked(qapp):
-    """The password ValueSection renders a masked QLineEdit."""
-    from qtpy import QtWidgets
-
-    from chisurf.core.dataspec import ModelView, ValueSection
-    from chisurf.gui.autoform import AutoForm
-
-    class _M:
-        secret = "hunter2"
-
-        def view_spec(self):
-            return ModelView(
-                sections=[ValueSection(attr="secret", label="Secret", kind="password")]
-            )
-
-    form = AutoForm(_M())
-    edits = form.findChildren(QtWidgets.QLineEdit)
-    assert any(e.echoMode() == QtWidgets.QLineEdit.Password for e in edits)

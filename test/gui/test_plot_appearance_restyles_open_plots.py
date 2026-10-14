@@ -9,11 +9,9 @@ reopened). The fix is one notification (``appearance.notify``) that every plot p
 from __future__ import annotations
 
 import copy
-import os
 
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 #: Settings that style node graphs, not plots: they have their own subscriber
 #: (``style_settings.refresh_open_graphs``, run by ``flush``), tested with the node editor.
@@ -39,7 +37,7 @@ def model(monkeypatch, tmp_path):
 
 
 @pytest.fixture
-def page(qapp, model):
+def page(model):
     """An open fit plot, drawn once, as a fit window holds it."""
     from chisurf.emtk.fit_pages.pages.lineplot.lineplot import LinePlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
@@ -142,7 +140,7 @@ def test_a_closed_plot_is_no_longer_restyled(model, page):
     assert _line(page, "model").state["width"] != 3.5
 
 
-def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model, qapp):
+def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model):
     import gc
 
     from chisurf.core.plotting import appearance
@@ -158,7 +156,7 @@ def test_a_dropped_plot_does_not_keep_the_subscriber_list_alive(model, qapp):
     assert len(appearance._subscribers) == count
 
 
-def test_the_residual_page_restyles_too(qapp, model):
+def test_the_residual_page_restyles_too(model):
     from chisurf.emtk.fit_pages.pages.wr_plot import ResidualPlot
     from test.gui.test_tcspc_project_visual_roundtrip import _simulated_fit
 
@@ -170,9 +168,9 @@ def test_the_residual_page_restyles_too(qapp, model):
         plot.close()
 
 
-def test_the_distribution_page_restyles_too(qapp, model):
+def test_the_distribution_page_restyles_too(model):
     from chisurf.emtk.fit_pages.pages.distribution import DistributionPlot
-    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    from chisurf.emtk.fit_pages.plots import model_plot_specs
     from test.gui.test_classic_tcspc_editor import _fit
 
     fit, tcspc_model = _fit("tcspc_fret_acceptor_density")

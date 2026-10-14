@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 
-from chisurf.gui.chinsole import settings as chinsole_settings
+from chisurf.core.console import settings as chinsole_settings
 
 OLD_DEFAULT = (
     "%matplotlib inline\n\n    %config Completer.use_jedi = False\n\n"

@@ -75,7 +75,7 @@ def test_a_drawn_region_is_not_movable_by_default(view):
     assert not handle.movable
 
 
-def test_a_click_is_refined_by_the_fit_before_it_becomes_a_pick(view, qapp):
+def test_a_click_is_refined_by_the_fit_before_it_becomes_a_pick(view):
     """The point of picking living here: the gesture and the refinement together."""
     picks = []
     view.picked.connect(picks.append)
@@ -83,7 +83,6 @@ def test_a_click_is_refined_by_the_fit_before_it_becomes_a_pick(view, qapp):
 
     # The click is two pixels off the planted spot at (20, 24).
     view.clicked.emit(26.0, 22.0)
-    qapp.processEvents()
 
     assert len(picks) == 1
     spot = picks[0]
@@ -92,7 +91,7 @@ def test_a_click_is_refined_by_the_fit_before_it_becomes_a_pick(view, qapp):
     assert spot.x == pytest.approx(24.0, abs=0.2)
 
 
-def test_a_pick_that_fails_is_still_emitted_with_its_reason(view, qapp):
+def test_a_pick_that_fails_is_still_emitted_with_its_reason(view):
     """A silently dropped click is indistinguishable from a click that did nothing."""
     flat = _image_view(np.full((48, 56), 7.0))
     picks = []
@@ -100,20 +99,18 @@ def test_a_pick_that_fails_is_still_emitted_with_its_reason(view, qapp):
     flat.enable_picking()
 
     flat.clicked.emit(20.0, 20.0)
-    qapp.processEvents()
 
     assert len(picks) == 1
     assert not picks[0].success
     assert picks[0].reason
 
 
-def test_picking_without_a_fit_takes_the_click_as_given(view, qapp):
+def test_picking_without_a_fit_takes_the_click_as_given(view):
     picks = []
     view.picked.connect(picks.append)
     view.enable_picking(fit="none")
 
     view.clicked.emit(31.0, 7.0)
-    qapp.processEvents()
 
     assert picks[0].success
     assert (picks[0].y, picks[0].x) == (7.0, 31.0)

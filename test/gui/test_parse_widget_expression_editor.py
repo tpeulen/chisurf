@@ -1,89 +1,40 @@
-"""The parse editors' equation field: validity badge, preview, parameter discovery.
+"""The parse models' equation: seeding from the catalogue and the declared scalar rows.
 
-These controls were the only reason ``parse/widget.py`` and ``parseWidget.ui``
-existed after the parse models became data-described (PRD-38). They are a
-``value`` section of ``kind: "expression"`` now, rendered by the shared
-:class:`~chisurf.gui.widgets.expression_input.ExpressionInput` — so this drives
-the *generated* editor rather than a hand-written widget, and the behaviour it
-asserts is the one every parse model gets.
+The shared Qt ``ExpressionInput`` (validity badge, preview, parameter discovery) went with the Qt
+shell; what is checked here is the model side every parse editor depends on.
 """
 
 from __future__ import annotations
 
-import os
-
 import numpy as np
 import pytest
 
-os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-
 
 @pytest.fixture()
-def equation_field(qapp):
-    """Return the ``ExpressionInput`` of a generated TCSPC parse editor."""
+def model():
+    """Return a TCSPC parse model over a synthetic decay with a response."""
     import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.curve import Curve
     from chisurf.core.data import DataCurve
     from chisurf.core.models.tcspc.parse.tcspc_parse import ParseDecayModel
-    from chisurf.gui.widgets.expression_input import ExpressionInput
-    from chisurf.gui.widgets.models.model_editor import build_model_editor
 
     x = np.linspace(0.05, 25, 256)
     data = DataCurve(name="synthetic", load_filename_on_init=False, x=x, y=np.exp(-x / 4.0) + 1.0)
-    model = fit_mod.Fit(model_class=ParseDecayModel, data=data).model
+    m = fit_mod.Fit(model_class=ParseDecayModel, data=data).model
     # The equations are convolved with a response, which the model needs.
-    from chisurf.core.curve import Curve
-
-    model.set_dataset("response", Curve(x=x, y=np.exp(-0.5 * ((x - 1.0) / 0.1) ** 2)))
-    model.set_scalar("period", 12.5)
-    editor = build_model_editor(model)
-    fields = editor.findChildren(ExpressionInput)
-    assert len(fields) == 1, f"expected one equation field, found {len(fields)}"
-    return fields[0], model
+    m.set_dataset("response", Curve(x=x, y=np.exp(-0.5 * ((x - 1.0) / 0.1) ** 2)))
+    m.set_scalar("period", 12.5)
+    return m
 
 
-def test_equation_field_is_the_shared_expression_input(equation_field):
-    """The parse editor's equation field is the validated shared widget."""
-    field, _model = equation_field
-    assert field.text(), "the equation field opened empty"
-    assert field.is_valid()
-    # The ✓/✗ badge and the names reference are what the old .ui was kept for.
-    assert field._badge.text() == "✓"
+def test_the_model_opens_on_the_catalogue_equation(model):
+    """It opens showing a non-empty equation the selected catalogue entry defines."""
+    assert str(model.func).strip()
+    assert model.model_name in list(model.catalogue_names)
 
 
-def test_field_is_seeded_from_the_catalogue(equation_field):
-    """It opens showing the equation the selected catalogue entry defines."""
-    field, model = equation_field
-    assert field.text() == str(model.func).strip()
-
-
-def test_editing_discovers_the_free_parameters(equation_field):
-    """Every name that is not x, a function or a constant is a parameter."""
-    field, _model = equation_field
-    field.setText("a1*exp(-x/tau1) + a2*exp(-x/tau2)")
-    assert field.is_valid()
-    assert field.discovered_parameters() == ["a1", "tau1", "a2", "tau2"]
-
-
-def test_unsafe_formula_is_flagged(equation_field):
-    """An expression reaching for attributes is rejected, not merely unparsed."""
-    field, _model = equation_field
-    field.setText("a1 * exp(-x/tau1).__class__")
-    assert not field.is_valid()
-    assert field._badge.text() == "✗"
-
-
-def test_committing_an_equation_reaches_the_model(equation_field):
-    """Pressing Return on a valid equation writes it through to the model."""
-    field, model = equation_field
-    field.setText("a1*exp(-x/tau1) + b")
-    field._on_return()
-    assert "b" in str(model.func)
-    assert "b" in model.parameters_all_dict
-
-
-def test_choosing_a_catalogue_entry_changes_the_equation(equation_field):
-    """The `choice` over ``catalogue_names`` drives ``func`` through the model."""
-    _field, model = equation_field
+def test_choosing_a_catalogue_entry_changes_the_equation(model):
+    """The ``choice`` over ``catalogue_names`` drives ``func`` through the model."""
     names = list(model.catalogue_names)
     if len(names) < 2:
         pytest.skip("catalogue has fewer than two entries")
@@ -92,19 +43,20 @@ def test_choosing_a_catalogue_entry_changes_the_equation(equation_field):
     assert str(model.func) != before
 
 
-def test_parse_convolution_rows_only_declare_persisted_scalars(equation_field):
-    """Generated ParseDecay rows cannot expose an inert non-persisted scalar."""
-    from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
-    from chisurf.gui.widgets.models.model_editor import model_editor_widget
+def test_committing_an_equation_discovers_its_parameters(model):
+    """Writing a valid equation to the model makes its free names parameters."""
+    model.func = "a1*exp(-x/tau1) + b"
+    model.find_parameters()
+    assert "b" in model.parameters_all_dict
+    assert "tau1" in model.parameters_all_dict
 
-    _field, model = equation_field
-    editor = model_editor_widget(model)
-    assert editor is not None and editor.model is model
+
+def test_parse_convolution_rows_only_declare_persisted_scalars(model):
+    """Generated ParseDecay rows cannot expose an inert non-persisted scalar."""
     unsupported = []
-    for table in editor.findChildren(ParameterGroupTableWidget):
-        for parameter in table.table_model._params:
-            binding = getattr(parameter, "display_binding", None)
-            if binding and binding["kind"] == "model_scalar":
-                if binding["path"] not in model.scalar_names():
-                    unsupported.append((parameter.name, binding["path"]))
+    for parameter in model.parameters_all:
+        binding = getattr(parameter, "display_binding", None)
+        if binding and binding["kind"] == "model_scalar":
+            if binding["path"] not in model.scalar_names():
+                unsupported.append((parameter.name, binding["path"]))
     assert not unsupported
