@@ -340,7 +340,10 @@ class LivePlots:
         key, xl, yl, logx, logy = spec
         series = self.series.get(key, [])
         self.drawn[key] = series
-        height = max(160.0, float(im.get_content_region_avail()[1]) - 4.0)
+        # The decay tab's burst/phasor line (``qc_text``) is drawn after the plot: leave it its row,
+        # or a plot filling the tab pushes it below the window and it is never seen.
+        below = float(im.get_text_line_height_with_spacing()) if name == "live_decay" else 0.0
+        height = max(160.0, float(im.get_content_region_avail()[1]) - 4.0 - below)
         if implot.begin_plot(f"##{name}", (-1.0, height), implot.FLAGS_NO_TITLE):
             implot.setup_axes(xl, yl)
             if logx:

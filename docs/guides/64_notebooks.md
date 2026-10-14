@@ -1,24 +1,25 @@
 ---
 type: Guide
 title: Notebooks that run inside ChiSurf
-description: Open and run an .ipynb in the code editor against the application's own interpreter, so the cells see the fits and datasets the GUI is showing.
+description: Open and run an .ipynb in the code editor, inside the ChiSurf process, with figures embedded under the cell that drew them.
 tags: [guides, gui, notebooks]
 ---
 
 # Notebooks that run inside ChiSurf
 
-**What you get:** an `.ipynb` that runs against *this* session — the same
-`cs.fits`, the same loaded datasets, the same in-memory objects the windows are
-drawing — with figures embedded under the cell that drew them, and a saved file
-any Jupyter reader can open.
+**What you get:** an `.ipynb` that runs inside the ChiSurf process — with the
+`chisurf` package already imported — with figures embedded under the cell that
+drew them, and a saved file any Jupyter reader can open.
 
 **What you need:** the Code Editor tool (`Tools → System → Code Editor`)
 and a notebook. `File → Open Notebook…` lists the ones ChiSurf ships under
 `examples/notebooks`, grouped by their name's prefix; click one to open it.
 
 There is no Jupyter kernel and no browser here. A notebook tab executes its
-cells through the same interpreter as the [console](59_console.md), so the two
-share variables and there is nothing to synchronise or export.
+cells with the same interpreter class as the [console](59_console.md)
+(`chisurf.core.console.shell.Shell`), but each tab has a namespace of its own:
+`chisurf`, `cs`, `np`, `os` and `sys` are predefined, and a variable defined in
+a cell is not visible at the console prompt.
 
 ![A notebook tab: the toolbar, cells with their prompts in their headers, an embedded figure, and the kernel terminal docked beside Diagnostics and Output](figures/notebook_editor.png)
 
@@ -109,11 +110,11 @@ instead, which is how you fix a corrupt one.
 
 The notebook tab is part of the code editor plugin's emtk window
 (`chisurf/plugins/core/code_editor/gui/notebook_app.py`), and the interpreter
-behind it is `chisurf.core.console.shell.Shell` — the same class documented in
-[Driving ChiSurf from its console](59_console.md). Every panel of that window,
+behind it is `chisurf.core.console.shell.Shell` — the class the console in
+[Driving ChiSurf from its console](59_console.md) runs on, one instance per tab. Every panel of that window,
 Kernel included, is a dock of the same dock manager, so they move, float and
 tab together.
 
 ## Theory
 
-- [Global analysis](../concepts/global_analysis.md): the fits and datasets a notebook sees are the ones the global analysis holds.
+- [Global analysis](../concepts/global_analysis.md): the usual reason to script across several fits.

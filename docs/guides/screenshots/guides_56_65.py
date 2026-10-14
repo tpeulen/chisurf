@@ -1,4 +1,4 @@
-"""Grab functions for guides 55, 56, 57, 59, 65.
+"""Grab functions for guides 55, 56, 57, 59, 65 (settings, fit window, live plots), 67.
 
 Uses FIG and _pump from common.py. Each
 function saves into FIG. Run each in its own subprocess with a timeout: the
@@ -186,3 +186,87 @@ def _grab_59_console_inline_plot():
         "console_inline_plot.png",
         size=(760, 560),
     )
+
+
+def _grab_65_live_plots():
+    """The native Acquisition window's live Decay, Correlation and MCS tabs after a pulsed simulator run.
+
+    The tool's own simulator (its default single species, switched to pulsed excitation), 300 000
+    photons; each grab is the window cropped to its *Pipeline results* block. Written to docs/images.
+    """
+    import time
+
+    from emtk.testing import Driver
+    from PIL import Image
+
+    from chisurf.plugins.core.acq.gui.app import AcquisitionApp, AcquisitionNativeModel
+
+    images = FIG.parent.parent / "images"
+    model = AcquisitionNativeModel()
+    params = model.simulation_params()
+    params.update({"pulsed_exc": 1, "N_ph_max": 300000})
+    model.stored_simulation = params
+    model.photon_limit = 300000
+    model.show_mcs = True
+    app = AcquisitionApp(model)
+    size = (1000, 1300)
+    driver = Driver(app, size)
+    driver.frame(3)
+    model.start()
+    end = time.monotonic() + 600
+    while model.running and time.monotonic() < end:
+        driver.frame(1)
+        time.sleep(0.01)
+    model.poll()
+    driver.frame(5)
+    print(model.status, "|", model.live.qc_text(), flush=True)
+    for tab, name in (("Decay", "acq_live_decay.png"), ("Correlation", "acq_live_correlation.png"),
+                      ("MCS", "acq_live_mcs.png")):
+        driver.click(f"(0,).{tab}")
+        driver.frame(5)
+        path = images / name
+        driver.screenshot(path)
+        x, y, w, h = app.form.rects["pipeline_results"]
+        image = Image.open(path)
+        image.crop((0, max(0, int(y) - 22), size[0], min(image.height, int(y + h) + 40))).save(path)
+        print("wrote", path.name, flush=True)
+    app.close()
+
+
+def _grab_67_nb():
+    """Number & Brightness on its own demo: the Brightness ε map, then the parameter plane gated on the dimers."""
+    from emtk.testing import Driver
+
+    from chisurf.core.roi import RectangleROI
+    from emtk_shot import app_from, wait
+
+    app = app_from("img_pixel_nb")
+    model = app.model
+    driver = Driver(app, (1200, 800))
+    driver.frame(3)
+    driver.click("load_example")
+    wait(driver, lambda: not app.job.busy and not model.busy, timeout=600)
+    driver.frame(4)
+    model.view_tab = "Brightness ε"
+    model.show_tab()
+    driver.frame(5)
+    driver.hover((12.0, 788.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "nb_brightness_map.png")
+    print("wrote nb_brightness_map.png |", model.status_line, flush=True)
+    model.gates.add(RectangleROI(0.0, 1.75, 3.5, 2.5, name="Rectangle"))
+    model.regions_changed()
+    model.view_tab = "Parameter plane"
+    model.show_tab()
+    driver.frame(5)
+    try:
+        driver.click("Analysis regions")
+    except Exception as exc:  # noqa: BLE001 - the fold header may be named differently
+        print("no Analysis regions header:", exc, flush=True)
+    driver.frame(5)
+    driver.hover((12.0, 788.0))
+    driver.frame(2)
+    driver.screenshot(FIG / "nb_parameter_plane.png")
+    print("wrote nb_parameter_plane.png", flush=True)
+    app.close()
+

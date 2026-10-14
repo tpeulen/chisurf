@@ -15,7 +15,7 @@ The alternation, the four ALEX streams and the titration model are in
 
 ## What it is
 
-**Tools → ALEX Suite** is the workflow the old ALEX-Suite program had, in the
+**Spectroscopy → Single-Molecule → ALEX Suite** is the workflow the old ALEX-Suite program had, in the
 order it had it. Every step is one of ChiSurf's own tools underneath, so the
 result is an ordinary ChiSurf burst analysis — one **`.pto` container per
 measurement** holding the photons, the bursts found in them and the companion

@@ -29,7 +29,7 @@ written. The columns are the container's own vocabulary rather than the tool's:
 | Operation | the `_mmfdb_operation.operation_type` that produced it; empty means it was *carried*, not computed (the instrument file, the README, the sample metadata) |
 | Grain | what one row **is** |
 | Rows / Size | the payload |
-| ← | how many objects it was derived from |
+| Parents | how many objects it was derived from |
 
 **Grain** is the load-bearing one. Nothing in a container is joined by position:
 a dwell table is finer than the bursts it came from and a fused-burst table is
@@ -61,7 +61,7 @@ that performs its step.
 
 One container, every panel at once. **Provenance** (top right) draws the two
 recorded steps: the instrument file (brown) → the burst table (blue) → the decay
-computed from those bursts (violet); the README sits unconnected because nothing
+computed from those bursts (selected, so drawn highlighted); the README sits unconnected because nothing
 was derived from it. The object list (left) is the same four objects as rows,
 with the kind, the operation that made each, the row grain and the size.
 **Data**, **Curve** and **Details** below all follow the selected node — here the
@@ -112,7 +112,7 @@ dsDNA_Cy3B_Cy5.ptu [tttr_photon_stream]
 
 ## Opening the tool that made a result
 
-Select a result and press **▶ Open tool** (or double-click its node). The
+Select a result and press **Open tool** above the graph (or double-click its node). The
 matching tool opens on the same file.
 
 The lookup is worth understanding, because it is what makes a container both
@@ -136,7 +136,7 @@ the details panel are still the whole recipe.
 
 ## Verifying
 
-**🔍 Verify** re-hashes every payload and compares it against the checksum
+**Verify** re-hashes every payload and compares it against the checksum
 recorded beside it. Do this before deleting an original file: *restorable*
 without verification is only *probably restorable*.
 
@@ -156,7 +156,7 @@ switched off.
 
 ## Export legacy
 
-**📤 Export legacy…** is the one way to get the old folder layout out of a container:
+**Export legacy…** is the one way to get the old folder layout out of a container:
 choose a folder and it receives `bi4_bur/<stem>.bur` for every burst run, beside one
 `<ending>4/<stem>.<ending>` companion per analysis (`bv4`, `2c4`, `bg4`/`br4`/`by4`,
 `bh4`, `td4`, `bf4`). Every companion has one row per burst of the measurement; a
@@ -186,11 +186,12 @@ from chisurf.plugins.core.pto_inspector.core import PtoInspection
 with PtoInspection("measurement.pto") as m:
     for item in m.infos():
         print(item.name, item.kind, item.operation, item.grain, item.rows)
+    uid = {item.name: item.uid for item in m.infos()}   # the payload calls take a UID
 
-    store = m.store("bursts")            # the payload, as a columnar store
-    curve = m.curve("decay_green")       # x, y and the axis units
-    steps = m.lineage("burst_lifetimes") # back to the photons
-    assert m.verify() == []              # every checksum matches
+    store = m.store(uid["bursts"])            # the payload, as a columnar store
+    curve = m.curve(uid["decay_green"])       # x, y and the axis units
+    steps = m.lineage(uid["burst_lifetimes"]) # back to the photons
+    assert m.verify() == []                   # every checksum matches
 ```
 
 ## See also
@@ -202,23 +203,17 @@ with PtoInspection("measurement.pto") as m:
 - {doc}`Reusing results </guides/53_reusing_results>` — the settings hash seen
   from the writing side.
 
-### Wide data tables
+### Wide tables and imported curves
 
-A result with many columns retains readable headers and cells. The data table
-scrolls horizontally to reach the rest of the schema; narrowing the host does
-not discard columns or alter exported rows. The table, export and provenance
-remain views of the same stored artifact.
+A result with many columns keeps readable headers; the **Data** table scrolls
+horizontally to reach the rest. The inspector is also one page of the file-tools
+hub, beside the TTTR converters:
 
-![Native computed workflow with readable controls and results](figures/pto_inspector_readable_data.png)
+![The PTO Inspector in the file-tools hub, a burst table selected and scrolled sideways](figures/pto_inspector_readable_data.png)
 
-### Native viewer dimensions and restored state
+A decay imported into the container (`import`, kind `analysis_result`) is drawn
+on **Curve** like a computed one:
 
-PTO Inspector reads its 1200 × 800 initial host dimensions from the primary
-view specification. Saved user dimensions, selected artifact, filters and graph
-preferences take precedence. Changing the host size preserves the container,
-artifact data, curve coordinates, exported CSV and provenance relationships.
-The data table retains readable column widths and horizontal navigation.
-
-![Native PTO Inspector showing a stored measured decay and provenance](figures/pto_inspector_native_curve.png)
+![A stored measured decay in the Curve panel, its lineage in the graph](figures/pto_inspector_native_curve.png)
 
 Tool: PTO Inspector (`chisurf/plugins/core/pto_inspector/`).

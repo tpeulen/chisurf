@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: 'Live acquisition: watching a measurement while it happens'
-description: Run a measurement from a TCSPC card or the built-in photon simulator, read the five live windows, and drive the same pipeline from Python without a GUI.
+description: Run a measurement from a TCSPC card or the built-in photon simulator, read the live plots, and drive the same pipeline from Python without a GUI.
 tags: [guides, tcspc, photons, python, gui]
 ---
 
@@ -50,8 +50,10 @@ photophysics — and produces the same B&H records a card does.
    settings page, 16384 photons by default).
 3. The four **routing channels** are the detector numbers the card emits, and
    window *i* of the decay and count-rate displays is channel *i* of that list.
-   They default to 8, 0, 9, 1 (the simulator emits 8 and 0, B&H numbering); the four
-   fields are in the window's *Routing and output* section.
+   They default to 8, 0, 9, 1; the simulator's green detectors are 8 and 9
+   (parallel and perpendicular, B&H numbering), so with the defaults its photons
+   land in windows 1 and 3. The four fields are in the window's *Routing and
+   output* section.
 4. Optionally set an **Output folder**. On devices that support it, raw vendor
    words are written there during the run; the simulator writes `mNNN.spc`
    files plus `simulation_config.json` and `simulation_info.txt`. The field is
@@ -99,14 +101,18 @@ dataset = open_demo()            # dataset + "Acquisition" fit, stream running
 dataset.refresh()                # newest pipeline snapshot -> dataset.y, dataset.live.series
 ```
 
-## What the windows show
+## What the plots show
+
+The plots sit under *Pipeline results* in the acquisition window, one tab each;
+the *Result visibility* boxes choose which tabs exist (Decay, Correlation and
+Count rate by default, Macrotime and MCS on request).
 
 **Fluorescence decays** — one micro-time histogram per routing channel,
 identical to a `bincount` of the saved micro times. The x axis is nanoseconds
 when the device states its TAC resolution, and TAC channels when it does not; it
 is never a guess.
 
-![The live decay window during a simulated acquisition, with the burst and phasor readout](../images/acq_live_decay.png)
+![The Decay tab after a pulsed simulator run of 300 000 photons, with the burst and phasor line under the plot](../images/acq_live_decay.png)
 
 The line under the plot is two quality numbers that come free with the same
 photon pass: the **burst count and rate** from a sliding-window burst search, and
@@ -114,20 +120,20 @@ the **phasor** (g, s) of all micro times. Both are diagnostics for alignment and
 sample quality, not analyses — a phasor that drifts during a measurement is worth
 knowing about before the measurement ends.
 
-**Correlation curve** — up to four live FCS curves. Each is a channel pair from
-the window's controller: the same channel twice is an autocorrelation, two
+**Correlation curve** — up to four live FCS curves. Each is a channel pair
+(*channel A*, *channel B* on the Correlation tab): the same channel twice is an autocorrelation, two
 different channels a cross-correlation with the lag running from the first to the
 second, and `-1` means *every* photon. The curve is the multi-tau correlator's,
 computed incrementally and agreeing with the offline correlator on the same
 photons.
 
-![A live FCS correlation curve from a simulated diffusing species](../images/acq_live_correlation.png)
+![The Correlation tab: the autocorrelation of every photon (-1 × -1) of the same simulated diffusing species](../images/acq_live_correlation.png)
 
 **MCS trace** — the intensity trace at the configured bin width, showing the last
-*rollaround* milliseconds. Only that window is kept, and it keeps its absolute
+*Rollaround (s)* seconds. Only that window is kept, and it keeps its absolute
 position on the time axis, so the trace scrolls rather than restarting.
 
-![The MCS trace showing the last second of a simulated measurement at 1 ms resolution](../images/acq_live_mcs.png)
+![The MCS tab showing the last second of the simulated measurement at 1 ms resolution](../images/acq_live_mcs.png)
 
 **Count rate** — one point per chunk per channel plus their sum, in counts per
 second, against macro time.
@@ -220,17 +226,16 @@ the answer without changing anything you can see.
   with background shows a spike in its first bin. The demo therefore has no
   background.
 
-## Live plots in the native window
+## The controls of each tab
 
-The native window draws the five live plots from `AcquisitionPipeline.snapshot()`
-(`chisurf/plugins/core/acq/gui/live_plots.py`, controls in `live_plots.view.json`),
-one tab each:
+The live plots are drawn from `AcquisitionPipeline.snapshot()`
+(`chisurf/plugins/core/acq/gui/live_plots.py`, controls in `live_plots.view.json`):
 
-- **Decay**: routing channel and Show per curve, Log Y, update frequency.
+- **Decay**: Curve 0–3 shown or hidden, Log Y scale, Update every (snapshots).
 - **Correlation**: channel A / channel B per curve (`-1` = every photon), Log lag axis.
 - **Count rate**: channel per curve, **Set to mean** (draws a line at the displayed
   mean), rolling window size, binning (points per bin), Log Y.
-- **MCS**: bin width, rollaround, manual Y range.
+- **MCS**: Bin width (ms), Rollaround (s), Manual Y range.
 - **Macrotime**: dt or absolute times.
 
 Routing channels, correlation pairs, MCS bin width and rollaround are fixed when the

@@ -1,7 +1,7 @@
 ---
 type: Guide
 title: Number & Brightness
-description: Map molecule number and brightness per pixel from a confocal image stack with the Number & Brightness step of Image Tools — corrections, analog calibration, gating a brightness population back onto the image, cross N&B, and the same analysis from the command line and Python.
+description: Map molecule number and brightness per pixel from a confocal image stack with the Number & Brightness tool — corrections, analog calibration, gating a brightness population back onto the image, cross N&B, and the same analysis from the command line and Python.
 tags: [guides, imaging, calibration, python]
 ---
 
@@ -15,7 +15,7 @@ The moments, the $-1$, analog detectors, cross N&B and what bleaching does are i
 
 ## What it is
 
-**Spectroscopy → Imaging → Image Tools → 2. Number & Brightness** computes, for every
+**Spectroscopy → Imaging → Number & Brightness** computes, for every
 detector window of the imaging setup, the per-pixel apparent brightness $B$ and
 number $N$, the molecular brightness $\varepsilon$ and the molecule number $n$
 of a confocal photon stream with many frames. The maps go to the imaging HDF5
@@ -49,7 +49,7 @@ the gated pixels' median $\varepsilon \approx 1.0$ and $n \approx 3$.
 :alt: Parameter plane of intensity versus apparent brightness with a gate rectangle over the dimer population
 :width: 100%
 
-The parameter plane with a gate over the brighter population (the *View* list brings any of the ten tabs forward).
+The parameter plane with a gate over the brighter population: 491 of 1024 pixels, median ε = 0.994, n = 3.01 (the *View* list brings any tab forward).
 ```
 
 ## Settings, in the order they matter

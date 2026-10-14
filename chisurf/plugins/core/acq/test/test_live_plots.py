@@ -257,3 +257,17 @@ def test_real_app_simulation_fills_decay_plot_mid_run_and_persists_settings():
         assert model.live.rate_binning == 9
     finally:
         app.close()
+
+
+def test_the_burst_and_phasor_line_stays_visible_under_the_decay_plot():
+    """The decay plot fills the tab; the qc line drawn after it must still land inside the window."""
+    plots = LivePlots()
+    app, _pipeline, thread = run_simulation(plots)
+    ui = Driver(app, (900, 700))
+    finish(app, thread, ui)
+    assert plots.qc_text().startswith("Bursts: ") and "Phasor: g=" in plots.qc_text()
+    painter = ui.draw(2)
+    rows = [t for t in painter.texts if str(t[5]).startswith("Bursts: ")]
+    assert rows, "the qc line was not drawn"
+    _x, y, _w, h = rows[0][:4]
+    assert y + h <= 700, f"qc line drawn at y={y:.0f}, below the 700 px window"
