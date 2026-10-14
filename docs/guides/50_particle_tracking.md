@@ -35,7 +35,7 @@ tracks is not many. The Movie view marks every detection; scrub the **Z slice** 
 
 ## Start with a simulation
 
-Before touching real data, tick **Simulate** and set the diffusion coefficient,
+Before touching real data, open *Simulate instead*, tick **Simulate** and set the diffusion coefficient,
 particle count and signal level to resemble what you expect. This is the only way
 to know the right answer, and the fastest way to learn what your frame rate and
 particle density can actually resolve.
@@ -179,8 +179,4 @@ the ground truth, which is the one diagnostic the GUI cannot show you.
 ## See also
 
 - Tool: **Particle Tracking** (`chisurf/plugins/microscopy/img_tracking/`).
-
-The native window declares 1100×720 initial dimensions and retains saved resizing.
-Its display and tooltips use the same scientific results. Validation compares
-exact detections/MSD samples and independently profiled fit objectives, so small
-optimizer decimal differences are checked against the actual fitting problem.
+- Concept: {ref}`concept-particle-tracking`.

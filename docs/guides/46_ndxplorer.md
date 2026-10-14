@@ -250,8 +250,7 @@ y(t), t range or t values, and its f / harmonic linked to f_rep / harmonic.
 A phasor computed from raw micro times carries the instrument: the IRF's
 position rotates it and the background shrinks it, so an image's pixels sit
 *outside* the universal circle and `tau_phi` is meaningless. ndX corrects the
-columns with equations in tttrlib's form (`DecayPhasor` in
-`modules/imaging/clsm`): the background photons of the row are taken out, then
+columns with equations in the form of tttrlib's `DecayPhasor`: the background photons of the row are taken out, then
 the phasor is divided by the IRF phasor,
 
 $$z_{corr} = \frac{z - f_{bg}\, z_{bg}}{(1 - f_{bg})\, z_{irf}},\qquad
@@ -463,7 +462,7 @@ print(result.data_params["gG/gR"])
 `refresh` must return the same number of points every time — hold the columns
 with `ridge_from_values(..., keep=...)`, which reports an emptied column as
 `nan` instead of dropping it. In the GUI that plumbing is
-`NDXplorer.build_data_parameters(...)`, and `cf.set_progress(cb)` reports each
+`ndxplorer.analysis.curve_fit_setup.build_data_parameters(...)`, and `cf.set_progress(cb)` reports each
 step to `cb(step)` — return `False` there to stop the fit.
 
 Three numerical details are load-bearing, and all three are easy to get wrong:
@@ -642,7 +641,8 @@ shared.
 
 Headless, the same fits are
 {py:func}`~ndxplorer.analysis.curve_fit_populations.build_population_fit`
-(``build_curve_fit_for`` picks it for a curve with a vector) and
+(``ndxplorer.analysis.curve_fit_setup.build_curve_fit_for`` picks it for a
+curve with a vector) and
 {py:func}`~ndxplorer.analysis.gaussian_populations.fit_population_mixture` /
 ``write_population_fit``.
 
@@ -770,10 +770,3 @@ the status line.
   (safe equation engine); histogram fitting alternative:
   {doc}`FRET-efficiency histogram fitting <29_fret_histogram_fitting>`.
 - Tool: **ndX** (`chisurf/plugins/ndxplorer/`).
-
-The native ndX owner declares a 1200×800 initial window, packaged with its
-application. Native/Tk launchers derive this default when `--size` is omitted;
-explicit sizes retain precedence. ChiSurf restores saved custom geometry after
-the owner default. Standalone host-size persistence is not introduced by this
-declaration. Numeric source tables, axes, histograms and marginals retain their
-values across window changes.

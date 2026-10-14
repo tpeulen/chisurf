@@ -67,10 +67,13 @@ population at τ ≈ 2 ns); after **Send selection to → PDA** the status line 
 attached)* — the table was opened from a folder, not from MMFDB.
 ```
 
-From the menu the analysis runs with the defaults ChiSurf advertises
-(`channels: [[0], [1]]`; PDA reads with `reading_routine="PTU"`). Where those do
-not fit the measurement — other detector numbers, a non-PTU file — use the
-bridge from a script, where every parameter can be passed. The RPC client is
+The reply is shown in a *Result from …* message and kept as `last_send` on the
+ndX app. From the menu the analysis runs with the defaults ChiSurf advertises
+({src}`chisurf/server/burst_consumers.json`: `channels: [[0], [1]]`, FCS pair
+`chs_a: [0]` × `chs_b: [1]`); PDA reads the container type the burst analysis
+recorded. Where those do not fit the measurement — other detector numbers, two
+detectors per colour — use the bridge from a script, where every parameter can
+be passed. The RPC client is
 ndX's injected ``chisurf_rpc`` (``ndx.chisurf_rpc`` in the ChiSurf console) or an
 in-process client built directly:
 
@@ -136,26 +139,15 @@ question:
 The no-FRET population, gated and sent the same way, gives the donor-only
 reference the correction factors need.
 
-## Known defects
+## Limits
 
-- **The menu discards the result.** **Send selection to** computes the analysis
-  and reports only the counts in the status line; the returned histogram,
-  decay or curves are not shown, opened as a fit, or kept (the menu's `send`
-  reports only the outcome message, `ndxplorer/app/features/selection.py`).
-  Only the provenance record (when the table came from MMFDB) survives. Use the
-  scripted bridge above to get the data.
-- **FCS from the menu yields no curves.** The advertised default pair
-  `{"ch1": [0], "ch2": [1]}` ({src}`chisurf/server/burst_consumers.json`) uses
-  keys the correlator does not read (`chs_a`/`chs_b`), so both channel lists are
-  empty and the reply is `curves: []`. Pass `chs_a`/`chs_b` from a script.
-- **PDA from the menu on non-PTU data is silently empty.** `pda.from_bursts`
-  defaults to `reading_routine="PTU"`; on `BH_SPC132.spc` the reader constructs
-  no TTTR and the service still answers `ok` with `curves: []`.
-- **`First File` is not resolved against the analysis folder.** The bridge
-  passes the file name from the table as-is, so a Seidel `.bur` carrying a bare
-  name (`m000.spc`) only opens when the working directory is the data folder;
-  the analyses then fail with *No such file or directory*. ChiSurf's own burst
-  reader resolves the name against the folder's parent.
+- **The menu result is a report, not a fit.** The returned histogram, decay or
+  curves are summarised in a message and kept as `last_send`; they are not
+  opened as a ChiSurf dataset. Use the scripted bridge above to fit them.
+- **`First File` is a leaf name.** The bridge resolves it against the folder the
+  table was read from (and one or two levels above, the
+  `<measurement>/burstwise_*/bi4_bur` layout); a file found nowhere is passed on
+  as given and the receiving service names it as missing.
 
 ## See also
 

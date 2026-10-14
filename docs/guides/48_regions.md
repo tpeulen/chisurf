@@ -19,71 +19,77 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 
 ## Where regions appear
 
+The imaging tools are steps of **Spectroscopy → Imaging → Image Tools**.
+
 | Tool | What a region does there |
 |---|---|
-| **Spectroscopy → Imaging → Lifetime → Molecule-wise MLE** | the editor confines the molecule search; every measured molecule is drawn back as a region |
-| **Spectroscopy → Imaging → CLSM-Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
-| **Spectroscopy → Imaging → Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
-| **Spectroscopy → Imaging → Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* dock shows the pixels they pick out |
-| **Spectroscopy → Imaging → Drift Correction** | a structured patch gives a sharper correlation peak than a mostly-dark frame |
+| **Spot Finder** | the analysis region confines the search; every detected object is written as a region |
+| **Region MLE** | fits one lifetime per detected region; its analysis region restricts which are fitted |
+| **CLSM Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
+| **Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
+| **5. Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* tab shows the pixels they pick out |
+| **Drift** (headless `--roi`) | a structured patch gives a sharper correlation peak than a mostly-dark frame |
 | **ndX** | a gate on any two parameters selects the bursts inside it |
 
-They are the same object in all six. A rectangle drawn on a confocal image and a
+They are the same object in all of them. A rectangle drawn on a confocal image and a
 rectangle drawn on an $E$–$S$ histogram differ only in the axes handed to them at
 the moment they are used.
 
 ## The region editor
 
-Wherever a tool shows a **Regions** panel, it is the same editor.
+Wherever a tool shows an **Analysis regions** panel, it is the same editor.
 
 ```{figure} figures/regions_list.png
 :name: fig-regions-list
 :width: 100%
 
-The region list, here in the CLSM tool. One row per region: its name, what kind
-of shape it is, how big and how bright it is, and two tick boxes. The left tick
-includes a region in the selection; unticking keeps it without using it — which
-is how you see what a region was contributing. The **~** column uses everything
-*outside* that region instead. **Combine** says how the ticked ones reduce to the
-one selection the analysis uses, and the footer reports the result: `2 of 3 →
-500 px`.
+The *Analysis regions* panel, here in CLSM Draw, holding a painted mask
+(*membrane ring*), a drawn ellipse used inverted (*nucleus*) and a rectangle
+switched off (*empty patch*). **Combine regions** reduces the enabled ones to the
+one selection the analysis uses.
 ```
 
-Each column earns its place:
-
-* **Region** — double-click to rename. Names are unique; asking for one that is
-  taken gives `cell (2)` rather than two rows reading `cell`.
-* **Shape** — `rectangle`, `ellipse`, `polygon`, `mask` (painted or loaded) or
-  `threshold`. A composite of several regions reads `composite`.
-* **Measurement** — area and mean intensity, recomputed against the displayed
-  image. These are the two numbers that say whether a selection is worth
+* **Add rectangle / Add ellipse / Add polygon** put an editable shape in the
+  centre of the displayed image.
+* **Enabled** includes a region in the selection; unticking keeps it without
+  using it — which is how you see what a region was contributing.
+* **Invert** uses everything *outside* the region. It is a flag rather than
+  baked into the geometry, so the region is still there to edit after you toggle
+  it.
+* **Combine regions** — `and`, `or` or `xor` over the enabled regions.
+* Click a region's name to select it. Then **Region name** renames it (names are
+  unique: asking for one that is taken gives `cell (2)`), its coordinates are
+  editable numbers, and its area and mean intensity are shown against the
+  displayed image — the two numbers that say whether a selection is worth
   building a decay from; the full property set is in
-  {ref}`concept-region-properties`.
-* **~** — invert. Kept as a flag rather than baked into the geometry, so the
-  region is still there to edit after you toggle it.
+  {ref}`concept-region-properties`. **Duplicate region** and **Remove region**
+  act on it.
+* **Save regions** writes JSON (shapes, names, ticks and rule) or a TIFF/NumPy
+  label raster; **Load regions** *adds* to the list rather than replacing it —
+  JSON, masks, label images or Cellpose files are each one more source of
+  regions.
 
-The toolbar: a name box and **+** keep whatever you are currently painting as a
-named region; **▭ ◯ ⬠** draw a new rectangle, ellipse or polygon; 🗑 and ⧉
-remove and duplicate; 📂 and 💾 load and save. Loading *adds* to the list rather
-than replacing it — a file is one more source of regions.
+In CLSM Draw, **Save painted region** keeps whatever you have painted as a mask
+region under the name in **Region name**.
 
 ```{figure} figures/regions_overlay.png
 :name: fig-regions-overlay
 :width: 100%
 
-The same three regions on the image. Drawn shapes get grab handles and write
-their new geometry straight back into the list; the selected one is drawn
-thicker, and a region that is switched off is greyed rather than hidden. A
-painted mask (the white patch) deliberately has **no** handle: there is no small
-set of grips that would edit it, and a bounding box that replaced the mask on
-the first drag would destroy what you painted.
+The same regions on the image. The drawn ellipse has grab handles that write its
+new geometry straight back into the list. The painted mask (the teal patch)
+deliberately has **no** handle: there is no small set of grips that would edit
+it, and a bounding box that replaced the mask on the first drag would destroy
+what you painted. The switched-off rectangle is not drawn.
 ```
 
 ## The single-molecule imaging workflow
 
-This is the clearest use of all three roles at once. Open **Spectroscopy → Imaging → Lifetime →
-Molecule-wise MLE**, add the CLSM file(s) and an IRF, and — optionally — an
-**Analysis region**.
+This is the clearest use of all three roles at once. Detection and fit are two
+steps of Image Tools: **Spot Finder** finds the molecules and writes them into
+each measurement's container, **Region MLE** fits one lifetime per region it
+finds there (see {doc}`84_spot_finder`). In Spot Finder add the CLSM file(s)
+and — optionally — an **Analysis region**.
 
 ```{figure} figures/regions.png
 :name: fig-regions
@@ -109,22 +115,22 @@ Three regions are involved:
 3. **The background** — *not* the complement of the foreground. Dilate first,
    as the figure shows, or every molecule looks dimmer than it is.
 
-Tune the segmentation with **Preview** before pressing **Run**: it draws the
-labels and one row per region, so *Smoothing σ*, *Threshold*, *Peak footprint*
-and *Min area (px)* can be set against what they actually produce.
+Tune the segmentation with **Preview** before pressing **▶ Detect**: it draws
+the labels on the **Regions** tab, so *Smoothing σ*, *Threshold*, *Peak
+footprint* and *Min area (px)* can be set against what they actually produce.
+Then, in Region MLE, add an IRF and press **Run**.
 
-The **Molecules** tab shows both kinds of region at once, and they behave
-differently on purpose:
+The analysis region and the molecules behave differently on purpose:
 
-* the **analysis region** has grab handles — it is a control, and moving it
-  re-runs the search;
-* each **molecule** is drawn as the ellipse with the same second moments as the
-  measured object: its centroid, its major and minor axis lengths and its
-  orientation, the numbers already in the result table. Those outlines are
-  read-only, because a drag there would claim to edit something the analysis
-  owns. They are what lets a segmentation be *checked* rather than trusted — an
-  ellipse that misses its spot, or swallows two, is visible at a glance where a
-  table of areas is not.
+* the **analysis region** has grab handles — it is a control;
+* each **molecule** is an outline of what was measured. It is read-only, because
+  a drag there would claim to edit something the analysis owns. The outlines are
+  what lets a segmentation be *checked* rather than trusted — one that misses its
+  spot, or swallows two, is visible at a glance where a table of areas is not.
+
+In Python a fitted molecule converts to the ellipse with the same second
+moments — its centroid, major and minor axis lengths and orientation, the
+numbers already in the result table.
 
 The same conversion is available in Python, so a measured object can be gated
 with, combined and stored like a drawn one:
@@ -178,12 +184,16 @@ The **Analysis region** list accepts, and tells them apart by content:
 
 ## Headless
 
-The GUI's **Analysis region** panel and this option are the same setting; the
-editor's 💾 writes a file the CLI reads.
+The GUI's **Analysis region** panel and `--roi` are the same setting; the
+editor's **Save regions** writes a file the CLI reads.
 
 ```bash
-csc region-mle analyze -i irf.ptu --roi cell_patch.json scan_001.ptu
+csc spot-finder detect --roi cell_patch.json scan_001.ptu
+csc region-mle analyze -i irf.ptu --regions scan_001.ptu scan_001.ptu
 ```
+
+`--regions` names where the regions are: a container the Spot Finder wrote (or a
+file beside it, as here), a label image, or a saved region file.
 
 ```
 Analyzing 1 file(s)…
@@ -192,8 +202,8 @@ Molecules fitted: 4
 Output TSVs: ['scan_001_molecules.tsv']
 ```
 
-Without `--roi` the whole frame is searched. The option takes the same three
-file kinds as the GUI list, so a segmentation produced elsewhere works as an
+Without `--roi` the whole frame is searched. It takes the same three file kinds
+as the GUI list, so a segmentation produced elsewhere works as an
 analysis mask with no conversion step.
 
 ## Python
@@ -265,7 +275,8 @@ from chisurf.plugins.microscopy.region_mle.core.region_mle import (
     RegionMleSettings, fit_regions_from_files,
 )
 
-settings = RegionMleSettings(roi=patch)       # a ROI, or its serialised dict
+# regions: a container (or a file beside it), a label image, or a list of ROIs
+settings = RegionMleSettings(regions="scan_001.ptu")
 result = fit_regions_from_files("scan_001.ptu", "irf.ptu", settings)
 
 result.molecule_rois()                        # one region per molecule
@@ -275,9 +286,29 @@ result.background_rate(margin=3)              # photons per background pixel
 result.region_properties()                    # the shape table
 ```
 
-Settings cross an RPC boundary as plain data, so `roi=` also accepts the
-serialised form a region takes in a project file — a region set in the GUI
+Settings cross an RPC boundary as plain data, so `roi=` (the analysis region)
+also accepts the serialised form a region takes in a project file — a region set in the GUI
 survives a save, a reload and a hop to a headless backend.
+
+## Region MLE: the demo's fit assumptions
+
+**Load example** in Region MLE simulates a four-object field, detects it with
+the standard Spot Finder workflow and fills the panel in. It is a lifetime exercise using the **2I\* (P+2S)**
+objective. Its individual simulated molecules have frozen dipole orientations. Their
+parallel/perpendicular intensity ratios therefore differ from the orientationally
+averaged anisotropy assumed by the fixed r0 and rho settings. Inspect **Decay**:
+the split-channel residuals can be strongly systematic even when the lifetime
+matches the explicit reference. This example does not validate anisotropy or a
+good polarized fit. Longer lifetimes also carry the finite 8.192 ns period
+bias: a finite laser period wraps the unrelaxed tail ({ref}`concept-tcspc-synthetic-decays`).
+
+```{figure} figures/region_mle_native_wide_counts.png
+:name: fig-region-mle-demo
+:width: 100%
+
+Region MLE after **Load example** and **▶ Run**: the four detected regions
+outlined on the counts image, region 1 fitted at τ = 1.00 ns from 57 492 photons.
+```
 
 ## Using it well
 
@@ -300,32 +331,6 @@ survives a save, a reload and a hop to a headless backend.
 - Object-based colocalization, which counts and compares segmented objects:
   {doc}`38_colocalization`.
 - Confocal images and per-pixel lifetime analysis: {doc}`24_scan_images`.
-- Tool: **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`).
-
-Region lifetime preview and file-based Fit23 reconstruction use the recognized
-simulated-raster sidecar when present, matching the producer scanner. Ordinary
-hardware inputs keep automatic reconstruction. Preview image counts and region
-photon indices stay consistent for bright pixels; physical timing is read from
-the correctly written PTU header. Compare finite-period lifetime fits against
-the same calibrated reference, rather than forcing ideal input lifetimes.
-
-## Region MLE: layout and the demo's fit assumptions
-
-Region MLE starts at 1100 × 720; saved dimensions and dock placement take
-precedence. The filter and region selector reserve space for their captions.
-Resizing preserves the selected region, fit settings, decays, model curves
-and exported rows. Reopening restores the input files, fit settings and layout;
-press Preview or Run to rebuild the result display.
-
-The four-object demo is a lifetime exercise using the **2I* (P+2S)** objective.
-Its individual simulated molecules have frozen dipole orientations. Their
-parallel/perpendicular intensity ratios therefore differ from the orientationally
-averaged anisotropy assumed by the fixed r0 and rho settings. Inspect **Decay**:
-the split-channel residuals can be strongly systematic even when the lifetime
-matches the explicit reference. This example does not validate anisotropy or a
-good polarized fit. Longer lifetimes also carry the finite 8.192 ns period
-bias discussed in [region properties](../concepts/region_properties.md).
-
-![Native known-field demonstration at the initial layout](figures/region_mle_native_wide_counts.png)
-
-Tool: Region MLE (`chisurf/plugins/microscopy/region_mle/`).
+- Detection: {doc}`84_spot_finder`.
+- Tools: **Image Tools** (`chisurf/plugins/microscopy/imaging_tools/`), **Region MLE**
+  (`chisurf/plugins/microscopy/region_mle/`).

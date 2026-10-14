@@ -39,16 +39,12 @@ below, the fitted rates against the simulated ones (diamonds), with the
 efficiency axis on the *FRET states* tab.
 ```
 
-The native standalone host declares **1100 × 720** pixels on first use;
-saved geometry takes precedence. Scroll the controls on a smaller host and
-visit the result tabs. Resizing keeps the photons, kinetic scheme and fitted
-result intact. Window geometry is separate from the time scale and state
-probabilities that determine the likelihood.
-
 ```{figure} figures/burst_gs_native_primary_window.png
 :width: 100%
 
-Current seeded simulation: 40,000 photons give rates near 2,879 and 1,017 s⁻¹
+A smaller window, with *Scan transition time*, *Decode state path* and
+*Cross-check with H2MM* ticked and the *FRET states* tab open. The seeded
+simulation's 40,000 photons give rates near 2,879 and 1,017 s⁻¹
 against inputs of 3,000 and 1,000 s⁻¹. The visible state lines show efficiencies
 near 0.237 and 0.749 with populations 0.261 and 0.739. Scroll the report for
 its transition-time and H2MM cross-check details; finite data do not recover
@@ -57,7 +53,11 @@ the simulated parameters exactly.
 
 ## Load the photons
 
-1. Drop the `.bur` burst tables into the file list, or use **+ Files**.
+Untick **Use Simulation Mode**; the *Data Input & Channels* section replaces the
+simulation parameters.
+
+1. Drop the `.bur` burst tables onto the window, or use **Open BUR files** /
+   **Add burst folder** (**MMFDB datasets** picks registered ones).
 2. Point **TTTR folder** at the raw files the burst table names (left empty, the
    burst table's own folder is used).
 3. Check the **donor** and **acceptor** channel lists. These define the two
@@ -190,9 +190,7 @@ relationship to an unrelated measurement. Scripted simulation storage can use
 an empty standalone PTO container; its photon indices are explicitly simulation
 ordinals, rather than raw-measurement indices.
 
-Saved native preferences restore geometry. Reopen the input and model settings
-and run the fit again after a fresh launch; geometry is not an analysis archive.
-If separate input folders contain competing files with the same relative name,
+A fresh launch restores the window settings, not the fit: run it again. If separate input folders contain competing files with the same relative name,
 use absolute **First File** references to disambiguate them. Tables may still
 share a single declared raw-data directory.
 
