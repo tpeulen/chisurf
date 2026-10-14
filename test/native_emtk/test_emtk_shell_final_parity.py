@@ -125,19 +125,14 @@ def _open(shell, driver, plugin_id):
 
 
 def test_a_tool_wider_than_its_dock_floats_at_its_declared_size():
-    """Settings declares 1200 x 800; docked right of the workspace (~390 px) it clipped its own
-    Save button (final shell parity pass). It opens floating at its declared size; a narrow tool
-    (About, 300 px) still docks; tile / cascade of the workspace are untouched."""
+    """Tools land in docks: tabbed beside Workspace in center without auto-floating."""
     shell, driver = _wide_tool_shell()
     try:
         driver.frame(2)
         wide = _open(shell, driver, "setup")
-        assert shell.docks.region_of(wide.key) is None, "the wide tool floats"
-        frame = shell.docks.window(wide.key).frame or shell.docks.window(wide.key).box
-        room = shell.docks.box[3] - 40.0  # the declared 800 px, as far as the window has room
-        assert abs(frame[2] - 1200.0) < 2.0 and abs(frame[3] - min(800.0, room)) < 2.0, frame
+        assert shell.docks.region_of(wide.key) == "center", "the tool lands docked in center"
         narrow = _open(shell, driver, "about")
-        assert shell.docks.region_of(narrow.key) == "right", "a narrow tool docks"
+        assert shell.docks.region_of(narrow.key) == "center", "a narrow tool also docks in center"
     finally:
         shell.close()
 
@@ -149,11 +144,11 @@ def test_a_wide_tool_the_user_docked_stays_docked():
     try:
         driver.frame(2)
         hosted = _open(shell, driver, "setup")
-        shell.docks.dock(hosted.key, "right")
+        shell.docks.dock(hosted.key, "left")
         driver.frame(2)
         shell.close_plugin("setup")
         again = _open(shell, driver, "setup")
-        assert shell.docks.region_of(again.key) == "right"
+        assert shell.docks.region_of(again.key) == "left"
         state = shell.docks.state()
     finally:
         shell.close()
@@ -161,6 +156,6 @@ def test_a_wide_tool_the_user_docked_stays_docked():
     try:
         driver.frame(2)
         hosted = _open(shell, driver, "setup")
-        assert shell.docks.region_of(hosted.key) == "right", "the saved layout keeps it docked"
+        assert shell.docks.region_of(hosted.key) == "left", "the saved layout keeps it docked"
     finally:
         shell.close()

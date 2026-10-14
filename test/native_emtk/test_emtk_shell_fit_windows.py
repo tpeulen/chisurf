@@ -94,7 +94,7 @@ def _add_fit(driver, shell):
 
 
 def _assert_in_workspace(shell, uids):
-    docks = shell.docks
+    docks = getattr(shell, "workspace_docks", shell.docks)
     bounds = docks.floating_bounds()
     frames = []
     for uid in uids:

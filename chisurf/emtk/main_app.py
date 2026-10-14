@@ -57,8 +57,8 @@ from chisurf.emtk.shell_session import MenuAction, ShellProject
 SHELL_ID = "emtk_shell"
 #: Height of the menu bar strip.
 MENU_BAR = 30.0
-#: The region tools open in (tabbed docks right of the workspace; the workspace holds the fits).
-TOOL_REGION = "right"
+#: The region tools open in (tabbed docks beside the workspace in the central region).
+TOOL_REGION = "center"
 #: Prefix of a hosted plugin's dock window key.
 PLUGIN_KEY = "plugin."
 _log = logging.getLogger("chisurf.emtk.shell")
@@ -196,6 +196,137 @@ def _default_loader(plugin_id: str) -> Any:
     return load_plugin(plugin_id)
 
 
+class ShellDockManager(DockManager):
+    """The shell's outer dock manager, delegating workspace document operations to workspace_docks."""
+
+    def __init__(self, *args, app: Any, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._app = app
+
+    @property
+    def focused(self) -> str | None:
+        if hasattr(self._app, "workspace_docks") and getattr(self, "_focused", None) == "workspace":
+            return self._app.workspace_docks.focused or "workspace"
+        return getattr(self, "_focused", None)
+
+    @focused.setter
+    def focused(self, val: str | None) -> None:
+        self._focused = val
+
+    @property
+    def _workspace_buttons(self) -> dict:
+        if hasattr(self._app, "workspace_docks"):
+            return getattr(self._app.workspace_docks, "_workspace_buttons", {})
+        return {}
+
+    def in_workspace(self, key: str) -> bool:
+        if hasattr(self._app, "workspace_docks"):
+            return bool(self._app.workspace_docks.in_workspace(key))
+        return False
+
+    def workspace_children(self) -> list[str]:
+        if hasattr(self._app, "workspace_docks"):
+            return list(self._app.workspace_docks.workspace_children())
+        return []
+
+    def tile_workspace(self, keys=None) -> None:
+        self._app.tile_windows()
+
+    def tab_workspace(self, keys=None) -> None:
+        self._app.tab_windows()
+
+    def cascade_workspace(self, keys=None) -> None:
+        self._app.cascade_windows()
+
+    def cycle_workspace(self, step: int = 1) -> str | None:
+        if hasattr(self._app, "workspace_docks"):
+            return self._app.workspace_docks.cycle_workspace(step)
+        return None
+
+    def floating_bounds(self, minimized: bool = False):
+        if hasattr(self._app, "workspace_docks"):
+            return self._app.workspace_docks.floating_bounds(minimized=minimized)
+        return super().floating_bounds(minimized=minimized)
+
+    def window(self, key: str):
+        w = super().window(key)
+        if w is not None:
+            return w
+        if hasattr(self._app, "workspace_docks"):
+            return self._app.workspace_docks.window(key)
+        return None
+
+    def minimize(self, key: str):
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            return self._app.workspace_docks.minimize(key)
+        return super().minimize(key)
+
+    def add_window(self, key: str, *args, **kwargs):
+        if kwargs.get("workspace"):
+            res = self._app.workspace_docks.add_window(key, *args, **kwargs)
+            self.show("workspace")
+            self.focus("workspace")
+            return res
+        return super().add_window(key, *args, **kwargs)
+
+    def remove_window(self, key: str) -> bool:
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            return self._app.workspace_docks.remove_window(key)
+        return super().remove_window(key)
+
+    def is_shown(self, key: str) -> bool:
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            return super().is_shown("workspace") and self._app.workspace_docks.is_shown(key)
+        return super().is_shown(key)
+
+    def hide(self, key: str):
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            return self._app.workspace_docks.hide(key)
+        return super().hide(key)
+
+    def show(self, key: str):
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            super().show("workspace")
+            return self._app.workspace_docks.show(key)
+        return super().show(key)
+
+    def focus(self, key: str):
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            super().show("workspace")
+            super().focus("workspace")
+            return self._app.workspace_docks.focus(key)
+        return super().focus(key)
+
+    def undock(self, key: str, box=None):
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            super().show("workspace")
+            super().focus("workspace")
+            return self._app.workspace_docks.undock(key, box=box)
+        return super().undock(key, box=box)
+
+    def region_of(self, key: str):
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            return self._app.workspace_docks.region_of(key)
+        return super().region_of(key)
+
+    def floating(self):
+        floats = list(super().floating())
+        if hasattr(self._app, "workspace_docks"):
+            floats.extend(self._app.workspace_docks.floating())
+        return floats
+
+    def state(self) -> dict:
+        data = super().state()
+        if hasattr(self._app, "workspace_docks"):
+            data["_workspace"] = self._app.workspace_docks.state()
+        return data
+
+    def restore(self, state: dict) -> None:
+        if hasattr(self._app, "workspace_docks") and isinstance(state, dict) and "_workspace" in state:
+            self._app.workspace_docks.restore(state["_workspace"])
+        super().restore(state)
+
+
 class EmtkShellApp(ImApp):
     """The ChiSurf main window: menu bar, Tools / Log docks and every opened plugin as a dock window.
 
@@ -281,33 +412,48 @@ class EmtkShellApp(ImApp):
         self._focus: str | None = None
         #: The children drawn in the last frame: child id -> (dock window key, app, box).
         self._drawn: dict[str, tuple[str, Any, tuple[float, float, float, float]]] = {}
-        self.docks = DockManager(
+        self.docks = ShellDockManager(
             Split(
                 "h",
                 # A third, as wide as the Qt window's left dock (474 of 1440 px): narrower, the
                 # model editor's parameter tables drop Lo / Hi / Bounds for width (collapse_order).
                 0.33,
                 Split("v", 0.5, Region("left"), Region("left_lower")),
-                # The workspace is where the fits live (their windows are its documents); the
-                # tools are docks, tabbed on its right by default, and dock anywhere else.
+                # The workspace is where the fits live (its dock window is in center); the
+                # tools are docks, tabbed beside Workspace by default in center, and dock anywhere else.
                 Split(
                     "v",
                     0.8,
-                    Split("h", 0.6, Region("center", workspace=True), Region(TOOL_REGION)),
+                    Region("center"),
                     Region("bottom"),
                 ),
             ),
+            app=self,
             name="shell",
         )
+        self.workspace_docks = DockManager(
+            Region("center", workspace=True),
+            name="workspace",
+        )
         # The machine and versions, faint behind the fit windows (emtk >= 0.1.15).
-        self.docks.workspace_background = self._draw_workspace_background
+        self.workspace_docks.workspace_background = self._draw_workspace_background
         # ``core``: the shell's own docks, which "Close all panels" / "Close other panels" leave
         # open -- only the hosted tools (and what the user opened) go.
         self.docks.add_window(
             "tools", mark("Tools"), self._draw_tools, dock="left", closable=False, core=True
         )
-        # Start fills the empty workspace (it says where the fits go), so it is one of its documents.
         self.docks.add_window(
+            "workspace",
+            mark("Workspace"),
+            self._draw_workspace_dock,
+            dock="center",
+            closable=False,
+            core=True,
+            scrollable=False,
+            padding=0.0,
+        )
+        # Start fills the empty workspace (it says where the fits go), so it is one of its documents.
+        self.workspace_docks.add_window(
             "start", mark("Start"), self._draw_start, dock="center", core=True, workspace=True
         )
         self.docks.add_window(
@@ -376,6 +522,7 @@ class EmtkShellApp(ImApp):
         self.docks.focus(ANALYSIS_KEY)
         self.docks.focus("tools")
         self.docks.focus("console")
+        self.docks.focus("workspace")
         # Last: the session's worker imports while it starts, so nothing of the shell may still be
         # importing on this thread when it begins (see :meth:`DataDocks.start`).
         self.data.start()
@@ -499,49 +646,12 @@ class EmtkShellApp(ImApp):
         return hosted
 
     def _place_wide_tool(self, hosted: HostedPlugin) -> None:
-        """Once, as a never-placed tool first draws: float it at its declared size when its
-        dock region is narrower than that.
-
-        The Qt window opened every tool as a window of its declared size; docked right of the
-        workspace (~390 px at 1440) a tool declared 1200 px wide (Settings) clipped its own
-        controls. Such a tool floats over the window at its declared size instead; a narrow tool
-        stays docked. The user may dock it again, and that place is kept (``placed``): the shell
-        never re-decides it. The workspace's tile / cascade are not involved (tools are not
-        workspace windows).
-        """
+        """Deprecated: tools always land docked in their region without auto-floating."""
         hosted.extra["placed"] = True
-        docks = self.docks
-        region = docks.region_of(hosted.key)
-        if region is None:
-            return
-        app = getattr(hosted.app, "_control", hosted.app)
-        try:
-            want_w, want_h = (float(v) for v in getattr(app, "window_size")[:2])
-        except (AttributeError, TypeError, ValueError):
-            return
-        rect = docks.region_boxes.get(region)
-        if rect is None:
-            hosted.extra["placed"] = False  # not laid out yet: decide on the next frame
-            return
-        if want_w <= rect[2] + 1.0:
-            return
-        bx, by, bw, bh = docks.box
-        w = min(want_w, bw - 40.0)
-        h = min(want_h, bh - 40.0)
-        docks.undock(hosted.key, (bx + (bw - w) / 2.0, by + (bh - h) / 2.0, w, h))
-        docks.focus(hosted.key)
-        self.request_frame()
 
     def _tool_region(self) -> str:
-        """The region a tool opens in: the docks right of the workspace.
-
-        A layout saved before that region existed (or one the user rearranged without it)
-        gets it back as a split of the workspace's right side.
-        """
-        docks = self.docks
-        if TOOL_REGION not in docks.regions:
-            docks.split_region(docks.workspace or "center", "right", TOOL_REGION, ratio=0.6)
-        return TOOL_REGION
+        """The region a tool opens in: the central dock region beside Workspace."""
+        return "center"
 
     def run_plugin_action(self, plugin_id: str) -> dict:
         """Run the command plugin *plugin_id* with this window as its main window; a failure is said."""
@@ -720,6 +830,11 @@ class EmtkShellApp(ImApp):
             category = dock_category(key, self.task_categories)
             window.accent = accent(category) or neutral()
             window.header_tint = True
+        if hasattr(self, "workspace_docks"):
+            for key, window in self.workspace_docks.windows.items():
+                category = dock_category(key, self.task_categories)
+                window.accent = accent(category) or neutral()
+                window.header_tint = True
 
     def _draw_ribbon(self, width: float) -> float:
         """The ribbon under the menu bar; returns its height (none while *Menu Switch* hid it)."""
@@ -1198,7 +1313,7 @@ class EmtkShellApp(ImApp):
         are docks, never workspace windows, so these commands leave them alone. The workspace's
         own tool bar and right-click menu carry the same commands.
         """
-        docks = self.docks
+        docks = self.workspace_docks
         group = tr("Workspace")
         has_windows = lambda: bool(docks.workspace_children())  # noqa: E731
         actions = [
@@ -1232,7 +1347,7 @@ class EmtkShellApp(ImApp):
             MenuAction(
                 "next_window",
                 tr("Next Window"),
-                lambda: docks.cycle_workspace(1),
+                self.next_window,
                 "",
                 group,
                 tr("Bring the next fit window to the front (Ctrl+Tab)."),
@@ -1241,6 +1356,8 @@ class EmtkShellApp(ImApp):
         ]
         for key in docks.workspace_children():
             window = docks.window(key)
+            if window is None:
+                continue
             label = tr(window.title)
             if window.minimized:
                 label = tr("{title} (minimized)").format(title=label)
@@ -1248,7 +1365,7 @@ class EmtkShellApp(ImApp):
                 MenuAction(
                     f"window.{key}",
                     label,
-                    partial(docks.focus, key),
+                    partial(self._focus_workspace_window, key),
                     "",
                     group,
                     tr("Bring this window to the front."),
@@ -1257,21 +1374,42 @@ class EmtkShellApp(ImApp):
             )
         return actions
 
+    def _focus_workspace_window(self, key: str) -> None:
+        self.docks.show("workspace")
+        self.docks.focus("workspace")
+        self.workspace_docks.focus(key)
+        self.request_frame()
+
+    def next_window(self) -> None:
+        self.docks.show("workspace")
+        self.docks.focus("workspace")
+        self.workspace_docks.cycle_workspace(1)
+        self.request_frame()
+
     def tile_windows(self) -> None:
         """*Tile Windows*: the workspace's windows in a near-square grid of usable tiles.
 
         :meth:`emtk.docking.DockManager.tile_workspace`: no tile is below :data:`MIN_TILE`; what
         the workspace cannot hold is minimized to its strip, a click away.
         """
-        self.docks.tile_workspace()
+        self.docks.show("workspace")
+        self.docks.focus("workspace")
+        self.workspace_docks.tile_workspace()
+        self.request_frame()
 
     def tab_windows(self) -> None:
         """*Tab Windows*: every window of the workspace a tab of it."""
-        self.docks.tab_workspace()
+        self.docks.show("workspace")
+        self.docks.focus("workspace")
+        self.workspace_docks.tab_workspace()
+        self.request_frame()
 
     def cascade_windows(self) -> None:
         """*Cascade Windows*: the workspace's windows float, each a little below the last."""
-        self.docks.cascade_workspace()
+        self.docks.show("workspace")
+        self.docks.focus("workspace")
+        self.workspace_docks.cascade_workspace()
+        self.request_frame()
 
     def window_actions(self) -> list[MenuAction]:
         """The Main tab's own window actions that no menu carries (*Screenshot*)."""
@@ -1370,6 +1508,9 @@ class EmtkShellApp(ImApp):
                 im.unindent()
         if words and not shown:
             im.text_disabled(tr("No tool matches the filter."))
+
+    def _draw_workspace_dock(self, box) -> None:
+        self.workspace_docks.draw(box)
 
     def _draw_start(self, box) -> None:
         # The watermark sits in the workspace's top-right corner (_draw_workspace_background):
@@ -1487,8 +1628,6 @@ class EmtkShellApp(ImApp):
         x, y, w, h = (float(v) for v in box)
         hosted.box = (x, y, max(1.0, w), max(1.0, h))
         if hosted.app is not None:
-            if not hosted.extra.get("placed"):
-                self._place_wide_tool(hosted)
             self.host_child(hosted.key, hosted.key, hosted.app, hosted.box)
         elif hosted.error:
             im.text_wrapped(tr("The tool could not be opened."))
@@ -1517,6 +1656,25 @@ class EmtkShellApp(ImApp):
                 frame[0] <= x < frame[0] + frame[2] and frame[1] <= y < frame[1] + frame[3]
             ):
                 continue
+            if key == "workspace" and hasattr(self, "workspace_docks"):
+                ws_order = list(reversed(self.workspace_docks.floating()))
+                ws_order += [self.workspace_docks.active_tab(r) for r in self.workspace_docks.regions]
+                for ws_key in ws_order:
+                    if not ws_key or not self.workspace_docks.is_shown(ws_key):
+                        continue
+                    ws_win = self.workspace_docks.window(ws_key)
+                    ws_frame = ws_win.frame if ws_win else None
+                    if ws_frame is None or not (
+                        ws_frame[0] <= x < ws_frame[0] + ws_frame[2]
+                        and ws_frame[1] <= y < ws_frame[1] + ws_frame[3]
+                    ):
+                        continue
+                    for child_id, (window_key, _app, box) in self._drawn.items():
+                        bx, by, bw, bh = box
+                        if window_key == ws_key and bx <= x < bx + bw and by <= y < by + bh:
+                            return child_id
+                    return None
+                return None
             for child_id, (window_key, _app, box) in self._drawn.items():
                 bx, by, bw, bh = box
                 if window_key == key and bx <= x < bx + bw and by <= y < by + bh:
@@ -1581,6 +1739,11 @@ class EmtkShellApp(ImApp):
     def key(self, key, text="", modifiers=0):
         if self.project.modal:
             return super().key(key, text, modifiers)
+        if hasattr(self, "workspace_docks") and self.workspace_docks.handle_key(key, modifiers):
+            self.docks.show("workspace")
+            self.docks.focus("workspace")
+            self.request_frame()
+            return True
         if self.docks.handle_key(key, modifiers):
             self.request_frame()
             return True  # Ctrl+Tab cycles the workspace's windows, whoever has the keys
@@ -1731,6 +1894,10 @@ class EmtkShellApp(ImApp):
         return min((delay for delay in delays if delay is not None), default=None)
 
     # ── persistence ───────────────────────────────────────────────────────
+
+    @property
+    def native_layouts(self) -> dict[str, DockManager]:
+        return {"shell": self.docks, "workspace": self.workspace_docks}
 
     def export_settings(self) -> dict:
         """The plugins open in the shell and the ribbon's pin (with a pinned ribbon's fold and tab)."""

@@ -219,20 +219,19 @@ own startup stages (item 5): S5 is done.
    of the `--qt` reference shell that host panels (the Qt AutoForm renderer and its sections, the Qt reader
    widgets, the κ² dialogs; their emtk twins exist) and `chisurf.gui.chiplot` (`host`, `PanelHost`,
    `ImagePanelHost`). The S6-blocker slice and the chimol `hosts/qt` deletion are in "History" below.
-10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
-    simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
-    `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit
-    windows (`fit_docks.open_window`) and *Start*, which fills it while there is no fit. They float inside it
-    (clamped back in on resize) or are its tabs, and dock nowhere else. Tile (emtk `tile_grid`, `MIN_TILE`;
-    overflow minimized to the strip), Cascade, Tabbed, the Windows list, Ctrl+Tab and *View ▸ Workspace* act on
-    them only. Tools, the help browser and the code editor (`main_app.host_in_shell`, via
-    `code_links.host_in_open_shell`) open as docks in `TOOL_REGION` ("right", right of the workspace;
-    `_tool_region` re-makes it as a split of the workspace when a saved layout lacks it); they dock in any
-    other region, float over the whole window, and are never workspace children. emtk enforces the rule
-    (`DockWindow.workspace`, `DockManager.admits` / `target_admits`; `dock()`, `add_window()` and `restore()`
-    redirect a window asked into the wrong place; emtk `410f791`, `tests/test_docking_workspace.py`).
-    Re-derive: `test/native_emtk/test_emtk_shell_workspace.py` (15, one with a real fit; run with
-    `PYTHONPATH=~/dev/emtk` until the pin moves past `410f791`). Figures: `docs/manual/figures/main_mdi_*.png`
+10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-14: "i want that tools
+    land in docks, workspace is also in dock, fitwindows land in workspace. in the end workspace is a dock, but a
+    special dock that cannot be closed"). The shell's outer dock manager (`ShellDockManager`) docks `"workspace"` in
+    the center region with `closable=False, core=True`; it contains `self.workspace_docks` (`Region("center", workspace=True)`).
+    Its documents are the windows added with `workspace=True` -- the fit windows (`fit_docks.open_window`) and *Start*,
+    which fills it while there is no fit. They float inside it (clamped back in on resize) or are its tabs, and dock
+    nowhere else. Tile (emtk `tile_grid`, `MIN_TILE`; overflow minimized to the strip), Cascade, Tabbed, the Windows list,
+    Ctrl+Tab and *View ▸ Workspace* act on them only. Tools, the help browser and the code editor (`main_app.host_in_shell`,
+    via `code_links.host_in_open_shell`) open as docks in `TOOL_REGION` ("center", sibling tabs of `"workspace"`;
+    taking full dock width without auto-floating); they dock in any other region, float over the whole window, and are
+    never workspace children. Re-derive: `test/native_emtk/test_emtk_shell_workspace.py` (15 passed),
+    `test/native_emtk/test_emtk_shell_fit_windows.py` (4 passed), `test/native_emtk/test_emtk_shell_final_parity.py` (5 passed).
+    Figures: `docs/manual/figures/main_mdi_*.png`
     (`docs/guides/screenshots/manual_general.py mdi_tiled_and_tabbed`). Deliberate: *Start* is a workspace
     document (it is what the empty workspace shows), so Tile/Tabbed include it while it is open. Tried and
     reverted: (a) tiling by splitting the centre into regions (it multiplied regions and stacked the overflow

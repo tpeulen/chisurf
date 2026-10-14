@@ -125,15 +125,14 @@ def test_tools_open_as_docks_and_fits_in_the_workspace():
     _open_tools(shell, driver)
     _open_fits(shell, driver)
     docks = shell.docks
-    assert docks.workspace == "center"
+    assert docks.region_of("workspace") == "center"
+    assert not docks.window("workspace").closable and docks.window("workspace").core
     for key in TOOLS:
         assert docks.region_of(key) == TOOL_REGION, key
         assert not docks.in_workspace(key)
     assert set(docks.workspace_children()) == {"start", *FITS}
-    assert not set(TOOLS) & set(docks.docked("center"))
-    workspace = docks.region_boxes["center"]
-    tools = docks.region_boxes[TOOL_REGION]
-    assert tools[0] >= workspace[0] + workspace[2] - 0.5, "the tool docks sit right of the workspace"
+    assert set(TOOLS) <= set(docks.docked("center"))
+    assert "workspace" in docks.docked("center")
     driver.screenshot(SHOTS / "emtk_shell_workspace_docks.png")
 
 
@@ -146,11 +145,12 @@ def test_a_floated_tool_floats_as_a_dock_not_as_a_workspace_window():
     frame = docks.window(TOOLS[0]).frame
     assert frame[0] < docks.floating_bounds()[0], "it may float over the Tools dock"
     assert TOOLS[0] not in docks.workspace_children()
-    # Dragged onto the workspace's centre pad, it does not become one of its tabs.
+    assert not docks.in_workspace(TOOLS[0])
+    # Dragged onto the workspace's centre pad, it stays a dock and not a workspace child.
     x, y, w, h = docks.region_boxes["center"]
     driver.drag(_title(shell, TOOLS[0]), (x + w / 2.0, y + h / 2.0))
     driver.frame(3)
-    assert docks.region_of(TOOLS[0]) != "center"
+    assert not docks.in_workspace(TOOLS[0])
     # Back in a dock region it is a tab there.
     left = docks.region_boxes["left"]
     driver.drag(_title(shell, TOOLS[0]), (left[0] + left[2] / 2.0, left[1] + left[3] / 2.0))
@@ -246,7 +246,7 @@ def test_tile_cascade_and_tabbed_arrange_the_fits_and_leave_the_tools_docked():
     assert ys == sorted(ys) and len(set(ys)) == 3 and docks.floating()[-1] == FITS[-1]
     _run_view(shell, "tab_windows")
     driver.frame(3)
-    assert set(FITS) <= set(docks.docked("center")) and not docks.floating()
+    assert set(FITS) <= set(shell.workspace_docks.docked("center")) and not shell.workspace_docks.floating()
     assert all(docks.region_of(k) == TOOL_REGION for k in TOOLS)
 
 
@@ -275,7 +275,7 @@ def test_right_click_on_the_empty_workspace_offers_its_commands():
     _open_fits(shell, driver)
     shell.docks.tile_workspace()
     driver.frame(2)
-    x, y, w, h = shell.docks.region_boxes["center"]
+    x, y, w, h = shell.workspace_docks.region_boxes["center"]
     driver.click((x + 40.0, y + 6.0), button=RIGHT_BUTTON)  # its tool bar
     driver.frame(2)
     assert len([t for t in driver.painter.texts if t[5].strip() == "Cascade"]) >= 2
@@ -305,7 +305,8 @@ def test_the_workspace_cannot_be_closed():
     docks = shell.docks
     docks.close_panels()
     driver.frame(4)
-    assert "center" in docks.region_boxes and docks.workspace == "center"
+    assert "center" in docks.region_boxes and docks.window("workspace").visible and not docks.window("workspace").closable
+    assert shell.workspace_docks.workspace == "center"
     assert "Workspace" in {t[5].strip() for t in driver.painter.texts}
     toggles = [a for _m, actions in shell.session_menus() for a in actions if a.key.startswith("dock.")]
     assert all("workspace" not in a.key and a.label != "Workspace" for a in toggles)

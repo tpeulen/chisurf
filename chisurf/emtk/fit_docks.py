@@ -1465,7 +1465,7 @@ class DataDocks:
         window = self.windows.get(uid)
         if window is None:
             return
-        dock = self.shell.docks.window(window.key)
+        dock = self.shell.workspace_docks.window(window.key)
         if dock is not None and dock.title != title:
             dock.title = dock.tooltip = window.title = title
 
@@ -1474,7 +1474,10 @@ class DataDocks:
         from chisurf.emtk.fit_window import FitWindow
 
         if uid in self.windows:
-            self.shell.docks.show(self.windows[uid].key)
+            self.shell.docks.show("workspace")
+            self.shell.docks.focus("workspace")
+            self.shell.workspace_docks.show(self.windows[uid].key)
+            self.shell.workspace_docks.focus(self.windows[uid].key)
             return self.windows[uid]
         fit = self.session.presentation_fit(uid) if self.session is not None else None
         if fit is None:
@@ -1482,7 +1485,7 @@ class DataDocks:
         window = FitWindow(uid, fit, title, request_frame=self.request_frame)
         self.windows[uid] = window
         tabbed = self._workspace_is_tabbed()
-        self.shell.docks.add_window(
+        self.shell.workspace_docks.add_window(
             window.key,
             title,
             lambda box, u=uid: self._draw_window(u, box),
@@ -1498,13 +1501,15 @@ class DataDocks:
             # A fit window is a document of the workspace: it lives there and nowhere else.
             workspace=True,
         )
-        self.shell.docks.focus(window.key)
+        self.shell.docks.show("workspace")
+        self.shell.docks.focus("workspace")
+        self.shell.workspace_docks.focus(window.key)
         return window
 
     def _workspace_is_tabbed(self) -> bool:
         """Whether the workspace shows its fits as tabs (*Tabbed*): every open fit window is
         docked there. With none open, or any floating, a new fit is a window."""
-        docks = self.shell.docks
+        docks = self.shell.workspace_docks
         keys = [w.key for w in self.windows.values() if docks.window(w.key) is not None]
         keys = [k for k in keys if docks.window(k).visible]
         return bool(keys) and all(docks.region_of(k) is not None for k in keys)
@@ -1512,7 +1517,7 @@ class DataDocks:
     def _next_workspace_box(self) -> tuple[float, float, float, float]:
         """The next cascade place in the workspace: 60 % of it, a title bar below and right of
         the last floating window (as *Cascade* lays them out, wrapping when it runs out of room)."""
-        docks = self.shell.docks
+        docks = self.shell.workspace_docks
         bx, by, bw, bh = docks.floating_bounds()
         if bw <= 1.0 or bh <= 1.0:  # not laid out yet: the window's last-known box
             bx, by, bw, bh = (0.0, 0.0, *self.shell.window_size)
@@ -1533,8 +1538,10 @@ class DataDocks:
         row = next((r for r in self.datasets.fits if r["uid"] == uid), None)
         window = self.open_window(uid, row["label"] if row else uid)
         if window is not None:
-            self.shell.docks.show(window.key)
-            self.shell.docks.focus(window.key)
+            self.shell.docks.show("workspace")
+            self.shell.docks.focus("workspace")
+            self.shell.workspace_docks.show(window.key)
+            self.shell.workspace_docks.focus(window.key)
         self.request_frame()
 
     def close_window(self, uid: str) -> None:
@@ -1542,12 +1549,12 @@ class DataDocks:
         if window is None:
             return
         window.close()
-        self.shell.docks.remove_window(window.key)
+        self.shell.workspace_docks.remove_window(window.key)
 
     def closed_by_user(self) -> None:
         """A fit window closed with its ``×`` only closes the window; the fit stays in the session."""
         for uid, window in list(self.windows.items()):
-            dock = self.shell.docks.window(window.key)
+            dock = self.shell.workspace_docks.window(window.key)
             if dock is not None and not dock.visible:
                 self.close_window(uid)
 
@@ -1558,7 +1565,7 @@ class DataDocks:
         tab on top of the centre when it changes; each is acted on once, when it changes, so the
         Datasets panel's own choice of a fit is not undone by the window that was focused before.
         """
-        docks = self.shell.docks
+        docks = self.shell.workspace_docks
         seen = (docks.focused, docks.active_tab("center"))
         before = self._seen_focus
         self._seen_focus = seen
@@ -1682,8 +1689,8 @@ class DataDocks:
         """The uid of the fit window drawn under (x, y), ``""`` if none."""
         for uid, window in self.windows.items():
             box = window.box
-            dock = self.shell.docks.window(window.key)
-            if box is None or dock is None or not self.shell.docks.is_shown(window.key):
+            dock = self.shell.workspace_docks.window(window.key)
+            if box is None or dock is None or not self.shell.workspace_docks.is_shown(window.key):
                 continue
             bx, by, bw, bh = box
             if bx <= x <= bx + bw and by - 30.0 <= y <= by + bh:
