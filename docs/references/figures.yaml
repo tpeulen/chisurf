@@ -3852,3 +3852,98 @@ guides/figures/vv_vh_native_primary_window.png:
     data that page names, and save the grab as guides/figures/vv_vh_native_primary_window.png.
   pages:
   - docs/guides/10_lifetime_anisotropy_fitting.md
+
+guides/figures/104_lightpath_simulator.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/lightpath_simulator_emtk.py::main
+  recipe: >-
+    Run python docs/guides/screenshots/lightpath_simulator_emtk.py from the repository
+    root; it drives the native Light-path Simulator headlessly and writes
+    guides/figures/104_lightpath_simulator.png.
+  pages:
+  - docs/guides/104_lightpath_simulator.md
+
+guides/figures/106_protein_monte_carlo.png:
+  kind: plot
+  origin: docs/guides/screenshots/proteinmc_run.py::main
+  recipe: >-
+    Run python docs/guides/screenshots/proteinmc_run.py from the repository root; it
+    runs a short ProteinMC simulation on the start structure, overlays it on the
+    written frame and saves guides/figures/106_protein_monte_carlo.png.
+  pages:
+  - docs/guides/106_protein_monte_carlo.md
+
+guides/figures/107_fret_calculator.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the FRET calculator described in
+    docs/guides/107_fret_calculator.md, drive it headlessly with the emtk renderer
+    into the state the surrounding text describes, and save the grab as
+    guides/figures/107_fret_calculator.png.
+  pages:
+  - docs/guides/107_fret_calculator.md
+
+guides/figures/108_photon_table.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/photon_table_shot.py::main
+  recipe: >-
+    Run python docs/guides/screenshots/photon_table_shot.py from the repository root;
+    it opens the Photon Table on the Becker & Hickl image scan the guide names and
+    writes guides/figures/108_photon_table.png.
+  pages:
+  - docs/guides/108_photon_table.md
+
+guides/figures/22_trace_browser_handoff.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. In the emtk shell, open the binned photon traces
+    described in docs/guides/22_binned_photon_traces.md, hand them to the Trace
+    Browser as that page describes, drive it headlessly into that state and save the
+    grab as guides/figures/22_trace_browser_handoff.png.
+  pages:
+  - docs/guides/22_binned_photon_traces.md
+
+guides/figures/console_inline_plot.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Drive the emtk shell console headlessly the way
+    test/native_emtk/test_emtk_shell_console_plots.py does (a plot command whose
+    figure is drawn inline in the output pane) and save the grab as
+    guides/figures/console_inline_plot.png.
+  pages:
+  - docs/guides/59_console.md
+
+images/native_window_task_colors.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open several native tool windows of different task
+    groups in the emtk shell as docs/getting_started/index.md describes, render
+    headlessly so the task colours of their title bars show, and save the grab as
+    images/native_window_task_colors.png.
+  pages:
+  - docs/getting_started/index.md
+
+images/settings_fonts.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the font settings page described in
+    docs/getting_started/settings.md, render it headlessly with the emtk renderer
+    at the default zoom, and save the grab as images/settings_fonts.png.
+  pages:
+  - docs/getting_started/settings.md
+
+images/settings_fonts_zoom125.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    No script draws this image. Open the font settings page described in
+    docs/getting_started/settings.md, set the interface zoom to 125 percent, render
+    it headlessly with the emtk renderer and save the grab as
+    images/settings_fonts_zoom125.png.
+  pages:
+  - docs/getting_started/settings.md

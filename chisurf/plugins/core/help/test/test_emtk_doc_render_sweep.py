@@ -182,10 +182,17 @@ def test_a_missing_figure_is_a_visible_placeholder_and_a_warning(app, tmp_path, 
 
 
 def test_an_svg_figure_is_drawn_at_its_css_size(app, tmp_path):
-    """An SVG (which Pillow cannot open) is rasterised at 2x and drawn at half that."""
+    """An SVG (which Pillow cannot open) is rasterised at 2x; its CSS size is what is drawn.
+
+    A block figure narrower than the column is enlarged, at most ``MAX_UPSCALE`` times its
+    own size. For an SVG that size is the CSS size, not the 2x raster: the 100 px wide
+    figure below is drawn 200 px wide, where taking the raster for its size gives 400.
+    """
+    from chisurf.plugins.core.help.gui.reader import MAX_UPSCALE
+
     (tmp_path / "f.svg").write_text(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100">'
-        '<rect width="300" height="100" fill="#3070c0"/><circle cx="50" cy="50" r="40" '
+        '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50">'
+        '<rect width="100" height="50" fill="#3070c0"/><circle cx="25" cy="25" r="20" '
         'fill="#f0c000"/></svg>',
         encoding="utf-8",
     )
@@ -195,8 +202,9 @@ def test_an_svg_figure_is_drawn_at_its_css_size(app, tmp_path):
     app.model.open_page(page)
     driver.frame(3)
     texture = app.help_gui.texture_mgr.get_figure_texture("f.svg", page)
-    assert texture is not None and texture.size == (600, 200)
+    assert texture is not None and texture.size == (200, 100)
     assert _figure_problem(texture) is None
     images = [c for c in driver.painter.calls if c[0] == "image" and c[5] is texture]
     assert images, "the SVG figure was not drawn"
-    assert images[0][3] == pytest.approx(300.0, abs=1.0)
+    assert images[0][3] == pytest.approx(100.0 * MAX_UPSCALE, abs=1.0)
+    assert images[0][4] == pytest.approx(50.0 * MAX_UPSCALE, abs=1.0)

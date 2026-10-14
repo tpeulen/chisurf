@@ -36,12 +36,12 @@ points.
 
 ## Current Facts To Respect
 
-- [x] MMFDB viewer lives mainly in {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+- [x] MMFDB viewer lives mainly in {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py` (the native emtk app; the Qt `gui/tool.py` this note was written against is retired).
 - [x] MMFDB client lives in {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`.
 - [x] `MMFDBClient` production default uses `ZmqClient`; `inprocess=True` is explicit.
 - [x] `SampleDatabaseClient` remains a legacy in-process compatibility client.
 - [x] MMFDB GUI no longer imports `FluorescenceDatabase` or `resolve_database_path`
-      directly in {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+      directly in {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py`.
 - [x] Provenance/data RPC handlers live in
       {src}`chisurf/plugins/core/mmfdb_admin/backend/measurement_services.py`.
 - [x] Node editor widget lives in `chisurf/gui/widgets/node_editor/editor.py` (since removed).
@@ -313,7 +313,7 @@ Edit {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`.
 
 ## MMFDB Viewer Changes
 
-Edit {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+Edit {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py`.
 
 ### Data table fixes
 
@@ -627,7 +627,7 @@ Arm64 conda verification completed with:
 
 Review scope:
 
-- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/provenance_graph.py`
 - [x] `chisurf/gui/widgets/node_editor/editor.py` (since removed)
@@ -659,14 +659,14 @@ Current review decision:
 Findings fixed in this implementation pass:
 
 - [x] **P1: MMFDB GUI no longer bypasses RPC for condition/probe operations.**
-      {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py` now uses typed `MMFDBClient`
+      {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py` now uses typed `MMFDBClient`
       helpers for condition save/lookup and probe loading, and no longer imports
       `FluorescenceDatabase` or `resolve_database_path` in that file.
   - [x] Condition save in `save_condition()` calls `self.client.save_sample_condition()`.
   - [x] Condition lookup in `_auto_fill_condition_details()` calls `self.client.get_sample_condition()`.
   - [x] Probe loading in `fill_probes()` calls `self.client.list_probes()`.
   - [x] `FluorescenceDatabase` and `resolve_database_path` imports were removed
-        from {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`.
+        from {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py`.
 - [x] **P1: `MMFDBClient` now defaults to a ZMQ JSON-RPC client.**
       {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py` builds `ZmqClient` by default;
       in-process construction is available only with `inprocess=True` or via
@@ -711,7 +711,7 @@ Review scope:
 - [x] `chisurf/gui/widgets/node_editor/tests/test_node_viewer.py` (since removed)
 - [x] `chisurf/gui/widgets/node_editor/tests/test_read_only.py` (since removed)
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/client.py`
-- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/tool.py`
+- [x] {src}`chisurf/plugins/core/mmfdb_admin/gui/app.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/backend/services.py`
 - [x] {src}`chisurf/plugins/core/mmfdb_admin/manifest.json`
 - [x] `test/plugins/test_sample_database_plugin.py`
