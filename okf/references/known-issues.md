@@ -6,7 +6,9 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## Two screenshot recipes still overwrite review-retaken figures (found 2026-10-14)
 
-status: open
+status: resolved 2026-10-14 — both functions now delegate to the recipes the figures were
+taken with (`guides_56_65._grab_59_console`, `guide_24_scan_images.grab_sp8`); re-running
+them reproduced `24_clsm_draw*.png` byte for byte and `console.png` up to the version string.
 
 The 2026-10-14 docs review re-captured some guide figures with new recipes, but
 older functions that write the same files still run from the bulk scripts:
@@ -2822,12 +2824,16 @@ Open, highest value first:
 2. **`Bursts.recurrence()` always raises** — `burst_analysis/api/workflow.py`
    ~1313 `select_bursts` builds its `AnalysisRequest` without the setup's
    detectors/windows, so the table has no per-detector counts (hit by two passes).
-3. **Burst Selection won't open on a fresh profile** —
-   `tttr_detector_setups.load_detector_setups` (~228) with owner
-   "user_default" hits a sqlite FOREIGN KEY when that user row is absent.
+3. ~~**Burst Selection won't open on a fresh profile**~~ **Fixed:** the setup
+   store creates the user row before the first save (`setup_store.save_setup_row`,
+   `test/fio/test_setup_store_fresh_database.py`). Verified 2026-10-14 by opening
+   the tool in a clean process on an empty `CHISURF_SETTINGS_DIR` holding a legacy
+   `detector_setups.json` (`burst_selection/tests/test_fresh_profile_opens.py`);
+   that run also found `load_setups` leaving the imported JSON behind, now removed.
 4. ~~**PCH plugin fit unusable**~~ **Fixed 2026-10-11** (Poisson-weighted fit, one χ²
    definition; FIDA bounds on by default — see the 2026-10-11 QA entry at the top).
-   Still open: `fida_pch` ignores `profile`/`oversample`.
+   `fida_pch` ignoring `profile`/`oversample` fixed 2026-10-14: both are passed to
+   `tttrlib.fida_pch` (`test/models/test_fida.py`, mean ∝ ∫x w dx and tail aliasing).
 5. ~~**Flow demo draws no arrows**~~ **No longer reproduces (2026-10-14 docs
    review):** the demo maps 25 of 25 tiles and `flow_tool.png` (guide 55) was
    re-captured from it.

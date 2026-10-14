@@ -505,28 +505,15 @@ def _grab_23_fps_editor():
 
 # ---------------------------------------------------------------- guide 24
 def _grab_24_clsm_draw():
-    """CLSM-Draw on the Leica SP8 test image: intensity, a brushed region, its decay."""
-    from emtk_shot import app_from, render
+    """CLSM-Draw figures of guide 24: delegated to ``guide_24_scan_images.grab_sp8``.
 
-    app = app_from("clsm")
-    m = app.model
-    m.apply_preset("Leica SP8")
-    m.load_file(str(pathlib.Path("test/data/clsm/Leica_SP8.ptu").resolve()))
-    m.setup.channels_text = os.environ.get("CLSM_CH", "0,1")
-    m.add_clsm()
-    m.add_representation()
-    img = m.current_image
-    print("image", img.shape, "max", img.max(), "mean", img.mean())
-    # The brightest 5 % of pixels as the painted selection.
-    m.selection_mask = (img >= np.quantile(img, 0.95)).astype(float)
-    m.notify("selection")
-    d = m.recompute_decay()
-    print("decay photons", float(np.sum(d["counts"])))
-    m.add_roi("bright patch")
-    print("summary:", m.region_summary("bright patch"))
-    render(app, "24_clsm_draw.png", size=(1400, 860))
-    render(app, "24_clsm_draw_rois.png", size=(900, 600))
-    return app
+    That recipe is the one the figures were taken with (Leica SP8, brightest 5 % of pixels
+    as the selection, saved as the region *bright patch*); keeping a second copy here let a
+    bulk run overwrite them with an older state.
+    """
+    import guide_24_scan_images
+
+    guide_24_scan_images.grab_sp8()
 
 
 # ---------------------------------------------------------------- guide 25
