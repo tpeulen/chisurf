@@ -26,18 +26,14 @@ likelihood** rather than least squares.
 
 ## Extracting patterns from non-burst photons
 
-The standalone native host declares **1100 × 720** pixels; saved geometry takes
-precedence. Scroll the parameter and detector panes on a smaller host. Resizing
-keeps the current inputs, extraction settings and computed arrays intact.
-Native preferences restore the window geometry. Reopen the measurement, apply
-its complete detector/reader definition and compute again after a fresh launch;
-this is not automatic analysis-session restoration.
-
+**Spectroscopy ▸ Single-Molecule ▸ Burst IRF & Background** (also a step of the
+burst workflow). The window remembers its layout, not its analysis: after a fresh
+start, open the measurement, apply its detector definition and **Compute** again.
 
 ```{figure} figures/burst_irf_bg_native_primary_window.png
 :width: 100%
 
-Native extraction on the 130,507-photon known-prompt stream with a clean
+Extraction on the 130,507-photon known-prompt stream with a clean
 reader definition. The histogram peak is near 2 ns; the **Prompt** column
 reports rising-edge positions of 1.968 and 1.941 ns. Estimated background
 rates near 1.993 kHz do not exactly recover the authored 2.5 kHz input.
@@ -61,8 +57,8 @@ switching files, including LUTs, shifts and timing overrides.
 **Micro-time binning** coarsens the exported MLE pattern once. A factor of 2
 changes each 4096-bin polarization half to 2048 bins; the full-period display
 histogram, raw photon micro-times and physical header clock remain unchanged.
-Choose binning through the authoritative reader definition so the synchronized
-analysis settings agree with it.
+Set binning in the detector definition so every tool reading it
+agrees.
 
 For a Qt-free extraction, save the following as `irf_background.py` and run
 `pixi run -e test python irf_background.py`:
@@ -88,7 +84,7 @@ for name, result in results.items():
 
 This direct example uses the decoded stream without a setup-owned LUT or shift.
 The native reader applies the configured corrections, so compare results only
-under the same complete input definition. **Export patterns** writes the
+under the same complete input definition. **Export MLE patterns** writes the
 computed per-detector MLE arrays as NPZ. **Send to MLE** hands them to the
 workflow’s receiver; standalone use reports when that receiver is unavailable.
 
@@ -136,25 +132,12 @@ tables that open in ndxplorer.
 ### The Burst MLE tool
 
 Step *6. Burst MLE* of **Spectroscopy ▸ Single-Molecule ▸ Burst Analysis** (no menu
-entry of its own; `python -m chisurf.emtk --plugin burst_mle_analysis` opens it alone). In the native tool, **Burst MLE** holds the
-input files, detector, fit window and editable parameter table; **IRF** holds
-pattern settings and **Detector setup** the shared channel editor. The existing
-wizard also exposes the same model selector in its embedded emtk panel.
-
-The standalone native window declares **1100 × 720** pixels on first use;
-stored geometry takes precedence on reopening. Resizing keeps the model choice,
-parameter values and detector/fit settings intact. Use **Save settings** and
-**Load settings** to carry the selected model and its per-model edits into
-another analysis. The layout does not change the selected tttrlib estimator.
-
-
-```{figure} figures/burst_mle_native_pooled_window.png
-:name: fig-burst-mle-native-pooled-window
-:width: 100%
-
-The native Burst MLE model selector and actual pooled Fit23 on the shipped
-16-burst photon demo. This pooled calculation does not prove batch execution.
-```
+entry of its own; `python -m chisurf.emtk --plugin burst_mle_analysis` opens it alone).
+Tabs on the left: **Burst MLE** (input files, runs, detector, fit window and the
+editable parameter table), **IRF** (pattern settings), **IRF/BG files** (measured
+patterns) and **Detector setup** (the shared channel editor). **Save settings** /
+**Load settings** carry the selected model and its per-model edits into another
+analysis.
 
 Select **Fit model** before running the preview or batch:
 
@@ -195,7 +178,7 @@ thresholds, shifts, 2I*/BIFL options and fix flags on the selected detector
 setup; selecting that detector applies them again.
 
 For a self-contained walk-through, press **Guide**, then press the highlighted
-**Generate synthetic demo** yourself. It replaces working inputs with 16
+**Load example** yourself. It replaces working inputs with 16
 synthetic bursts of 1000 photons each, a known input lifetime of 2 ns and a
 32 ps micro-time clock, stored in the settings cache. It does not fit for you.
 Choose a model, press **Auto IRF/background**, inspect the decay, then press
@@ -213,10 +196,10 @@ container instead of `bg4`/`br4` folders; **Export legacy...** in the PTO
 inspector makes those folders on request. **Split by H2MM state** still reads
 the loose `h2mm` folder and does not apply to a container.
 
-Saved detector definitions carry LUTs and channel shifts to the canonical
-photon reader in both interfaces. Physical header timing is used unless
-**Override timing** is explicitly selected; setup micro-time values are in ps,
-macro-time/period values in ns, and binning is applied once. A completed batch
+Saved detector definitions carry LUTs and channel shifts to the photon reader.
+The file header's timing is used unless a timing value is typed into the
+*Detector setup* reading fields, which overrides it; micro-time values there are
+in ps, macro-time and period in ns, and binning is applied once. A completed batch
 retains its original model/schema when you subsequently change the selector,
 so **Save results** cannot relabel earlier results as a different model.
 
@@ -257,18 +240,19 @@ the rising edge seen here.
 :name: fig-21-burst-mle-model-selection
 :width: 100%
 
-Real BH SPC-132 photons (green routing0/1), selected Fit24, editable registered
-parameter rows and the matching measured decay. The effective A2 is zero in
-this fit; this is not evidence for an identifiable second population.
+The same `m000.bur` (green = routing 0/8) with **Fit model** switched to Fit24:
+the parameter table now holds `tau1`, `gamma`, `tau2`, `A2`, `offset`. `A2`
+fits to zero here — no evidence for a second lifetime.
 ```
 
 ```{figure} figures/21_burst_mle_synthetic_demo.png
 :name: fig-21-burst-mle-synthetic-demo
 :width: 100%
 
-Generated 2 ns single-lifetime demonstration after Auto IRF/background and
-16 per-burst fits. The estimated pooled lifetime is 1.918 ns; finite counts,
-window selection and the estimated IRF give imperfect recovery of the input.
+**Load example** (16 synthetic bursts, 2 ns input lifetime), then **Auto
+IRF/background** and **Fit bursts** with Fit23: the decay fit gives 1.918 ns,
+the per-burst lifetimes (bottom) spread over 1.82–2.06 ns. Finite counts, the fit
+window and the estimated IRF keep the recovery from being exact.
 ```
 
 ## Result

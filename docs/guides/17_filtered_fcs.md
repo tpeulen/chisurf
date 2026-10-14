@@ -54,15 +54,9 @@ loop for validation.
 
 ### The Filter Calculator
 
-The standalone native calculator starts at **1100 × 720** pixels. Its five
-control tabs and the filter, reconstruction and residual plots remain available
-when the window is resized. Native preferences retain the window and dock
-layout; use **Save project...** and **Load project...** to preserve and rebuild
-the analysis configuration across restarts. Window preferences alone do not
-restore a fitted analysis.
-At small sizes, scroll the controls panel to reach its final component actions.
-Compact legend labels keep the plot readable; hover a label to read its full
-detector/component or rejected-nuisance name.
+The calculator opens at 1100 × 720. The window layout is remembered; the
+analysis is not — **Save project...** / **Load project...** keep it across
+restarts. Hover a truncated legend label to read its full name.
 
 ```{figure} figures/fcs_filter_primary_window.png
 :name: fig-filter-calculator-primary-window
@@ -101,7 +95,7 @@ filters. **Save project...** / **Load project...** save and restore the whole st
 
 The built-in example (two lifetimes with scatter and afterpulse) after **Auto-fit** with 2
 components and **Unmix**: 1.16 ns (66 %) and 3.38 ns (34 %), χ²ᵣ = 1.04. The nuisance
-components (afterpulse, scatter/IRF) are listed but *rejected* — they are fitted, not given a filter.
+terms (afterpulse, scatter/IRF; grey, dashed) are fitted alongside but are not species.
 ```
 
 ```{figure} figures/17_filter_calculator_autofit.png
@@ -173,9 +167,9 @@ $\beta$ (excitation-flux ratio of the acceptor to the donor laser), $\gamma$
 polarization calibration $G$, $l_1$, $l_2$, the Förster radius $R_0$ and the
 laser period.
 
-These are **pre-filled from the detector setup** you pick in the **Setup**
-dock. Measure them once with the [Accurate FRET tool](41_accurate_fret.md) and
-press *🔬 Store on setup*; every later session that selects the same setup starts
+These are **pre-filled from the detector setup** you pick in the **Detector
+setup** tab. Measure them once with the [Accurate FRET tool](41_accurate_fret.md)
+and press **Store calibration on setup**; every later session that selects the same setup starts
 from the measured values instead of the defaults. Anything you edit here wins
 over the stored value for the current session.
 
@@ -204,10 +198,3 @@ Filtered FCS patterns and filters.
 
 - {src}`chisurf/core/fluorescence/fcs/filtered.py`; plugins `fcs_filter_calculator`, `flc_2d`.
 - Tool: the **FCS Filter Calculator** (`chisurf/plugins/fcs/fcs_filter_calculator/`) and **2D-FLCS** (`chisurf/plugins/fcs/flc_2d/`).
-
-The native 2D-FLCS tool declares 1100×720 and retains saved geometry. Successful
-optional 1D-MEM processing restores the completed lifetime/kinetic status instead
-of leaving a Building message. Scientific spectra, residuals and correlations
-are retained. MEM solver comparisons use the same objective/gradient/bounds and
-stopping input; a broad unnormalized amplitude sum is not an invariant across
-the full regularization schedule.

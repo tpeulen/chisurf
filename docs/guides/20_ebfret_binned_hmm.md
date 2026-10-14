@@ -34,11 +34,10 @@ itself: the same panels, menus, dialogs and defaults as the MATLAB program, draw
 with emtk and running its analysis on the ChiSurf backend. New to it? Press
 **Guide** in the toolbar — the tour loads a simulated four-state dataset
 (**🧪 Load example**) and waits for you to press each control. Loading does not
-start the analysis; press **Run** yourself. The primary stacked donor/acceptor
-`.dat` and JSON parameters live in `demos/burst_ebfret` under the ChiSurf
-settings folder. `make_demo()` from
-`chisurf.plugins.burst.burst_ebfret.demo` returns that primary path, accepts a
-dedicated folder, and regenerates on `overwrite=True`.
+start the analysis; press **Run** yourself. The demo's stacked donor/acceptor
+`.dat` and its JSON parameters are written to `demos/burst_ebfret` in the ChiSurf
+settings folder; `make_demo()` in `chisurf.plugins.burst.burst_ebfret.demo`
+returns that path (`overwrite=True` regenerates it).
 
 ```{figure} figures/ebfret_gui.png
 :name: fig-ebfret-gui
@@ -83,8 +82,9 @@ The workflow, in the order the window is used:
 7. **File → Save** writes the whole session as a `.mat` ebFRET reads;
    **File → Export** writes the *Analysis Summary* (`.csv`, per number of states
    and per group, including the lower bound that decides the number of states),
-   the *Traces* (`.dat`/`.mat`, chosen channels incl. Viterbi state and mean) or
-   a *Single-molecule Dataset* (`.mat`/`.json`/`.json.gz`).
+   the *Traces* (`.dat`/`.mat`; the path first, then a *Channels* form — donor,
+   acceptor, FRET, Viterbi state, Viterbi mean — then the state count and group)
+   or a *Single-molecule Dataset* (`.mat`/`.json`/`.json.gz`).
 
 ### Headless
 
@@ -145,29 +145,3 @@ evidence against state count, maximal at the true K = 3.
 - `chisurf/plugins/burst/burst_ebfret/`; photon-by-photon HMM: [H2MM](19_h2mm_hidden_markov.md).
 - Binning the photon stream that feeds this: [binned photon traces](22_binned_photon_traces.md).
 - Concept: {ref}`concept-ebfret`.
-
-## Native host dimensions and trace export
-
-The native ebFRET window starts at **1100 × 720 logical pixels**. Saved host
-geometry takes precedence. Default and narrow layouts retain the time-series
-plots, ensemble plots and analysis controls; narrow controls wrap within their
-existing panels. Explicit **File → Save** remains the session-data workflow.
-
-```{figure} figures/ebfret_native_primary_window.png
-:width: 100%
-
-Export Traces reaches the Channels form at both sizes: donor, acceptor, FRET,
-Viterbi state and Viterbi mean. Behind it is the seeded, fitted four-level demo
-at fixed series 24.
-```
-
-**File → Export → Traces** first chooses the output path, then the channels, then
-the state count and group. The repaired callback now opens the existing channel
-form; its output matches the direct backend export byte for byte.
-
-The demo has authored levels 0.10, 0.35, 0.55 and 0.75. A four-state seeded fit
-with precision 0.001 and no extra restarts yields centers 0.0964, 0.3509, 0.5495
-and 0.7504 in this verification. These Gaussian simulated traces are not a
-biological measurement or a general identifiability guarantee. Backend progress
-updates the current series; select a specific series for comparisons. Host
-sizing does not alter the fitted arrays or summary export. See [ebFRET](../concepts/ebfret.md).

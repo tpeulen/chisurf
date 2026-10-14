@@ -68,7 +68,7 @@ the static cross-correlation (green) is flat at 1. Filter condition number 3.3.
 
 ### Setting up species and kinetics in the GUI
 
-The acquisition simulator is the *Simulation* device of **Main ▸ Tools ▸
+The acquisition simulator is the *Simulation* device of **Tools ▸ Views ▸
 Acquisition**. Press **Simulation setup…** (or **Device Setup…** with the
 Simulation source selected) to open its setup dialog, an emtk window declared as
 an AutoForm spec. **OK** merges the dialog over the tool's current simulator
@@ -130,27 +130,11 @@ validated against a known input.
 Simulated confocal trace and its correlation.
 ```
 
-## Known defects
-
-- The Lifetime-FCS simulator's parameter column is capped at 320 px, which
-  clips the **D₁**, **D₂** and **Photons** spin boxes (`8.0000`, `400000`
-  are cut in the figure).
-
 ## See also
 
 - `tttrlib.SimEngine`; {src}`chisurf/core/fluorescence/fcs/simulate.py`.
 - Tool: the **lifetime-FCS simulator** (`chisurf/plugins/fcs/fcs_lfcs_sim/`).
 
-The lifetime-FCS simulator declares a uniform microtime distribution over the
-configured laser period for positive uncorrelated background. It no longer
-uses the provider default of prompt scatter at microtime zero. Zero-background
-configuration and seeded signal arrays remain unchanged. Positive-background
-streams consume the appropriate microtime random samples, so seeded photon
-arrays can change; compare the corrected physical setup rather than historical
-prompt-scatter hashes.
-
-The native Lifetime-FCS simulator starts at 1100×720 with saved custom geometry
-taking precedence. Its concise Species fold retains all lifetime/diffusion
-controls and help in both native and legacy surfaces. Corrected uniform-TAC
-background results match the direct native reference; seeded outputs from the
-former prompt-scatter fallback are a separate physical baseline.
+Uncorrelated background in the lifetime-FCS simulator is spread uniformly over
+the laser period (not prompt scatter at micro-time zero), so a seeded run with
+background differs from one made before that change.

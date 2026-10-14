@@ -67,15 +67,18 @@ opens it alone). The left dock has two tabs.
 **Restart**, **Stop**, **Bootstrap**, **LL scan**, **Save plot**, **Dwells in
 ndX**, **Export dwells**, **Save settings**, **Load settings**, **Guide**,
 **Help**) above the settings form: *Data* (the **Burst folder**, and which
-detector is the **Donor**, the **Acceptor** and the optional **Aex** stream),
+detector is the **Donor detector**, the **Acceptor detector** and the optional
+**Aex detector**),
 *Model selection* (**Min/Max states**, **Criterion** bic/icl, **Scan
 patience**), *Optimisation* (**Engine**, **Restarts**, **Seed**, **Max
 iterations**, **Min photons / burst**, **Macro-time scale**, **Nanotime
-divisors**) and *Output* (**Photon table** HDF5/CSV, **Decoder** and its seed,
-**State photons** write/PTU/sidecar). **Detector setup** is the shared detector
+divisors**) and *Output* (**Photon table HDF5/CSV**, **Decoder** and **Decoder
+seed**, **Write state photons**, **State photons as PTU**, **State photons
+sidecar**). The settings file stores the analysis options, not the detector
+setup. **Detector setup** is the shared detector
 editor (reading routine, PIE windows, detectors with their routing channels and
-micro-time gates): the detectors defined there are what the Donor, Acceptor and
-Aex choices offer. On the right, *Rates and states* lists the fitted rates and
+micro-time gates): the detectors defined there are what the three detector choices
+offer. On the right, *Rates and states* lists the fitted rates and
 the per-state E and occupancy, and the plots are tabs: **Dwell FRET**,
 **Selection** (BIC/ICL), **Decays**, **LL scan**, **TDP**, **Dwell times** and
 **State path** (the **Burst** field and **Dynamic bursts only** pick the burst).
@@ -165,7 +168,7 @@ biased answer they exist to avoid.
 
 ## Writing the states back into the photons
 
-Tick **State photons → write** and the run writes its assignment beside each
+Tick **Write state photons** and the run writes its assignment beside each
 source measurement, so every other tool can select a state without knowing
 anything about H2MM:
 
@@ -261,9 +264,9 @@ read — see the per-channel micro-time shifts in the channel-definition editor.
 
 ## Result
 
-A two-state Viterbi state path and the resulting per-dwell FRET-efficiency
-histogram — two states cleanly separated (dashed lines mark the true state
-efficiencies).
+A simulated two-state Viterbi path and the per-dwell FRET-efficiency histogram.
+The dashed lines are the true state efficiencies; per-dwell E scatters widely
+around them because a short dwell holds few photons.
 
 ```{figure} figures/h2mm.png
 :name: fig-h2mm
@@ -272,38 +275,7 @@ efficiencies).
 H2MM state path and dwell E histogram.
 ```
 
-## Known defects
-
-- The *State path* dock gets ~20 px of plot height in the default layout, so the
-  E trace is flattened onto one line, and its time axis reads
-  `Time in burst (ms) (x0.001)` — µs presented as scaled ms.
-
 ## See also
 
 - `chisurf/plugins/burst/burst_h2mm/`; the binned-trace complement below.
 - HMM of binned traces: [ebFRET](20_ebfret_binned_hmm.md).
-
-## Native host dimensions and narrow controls
-
-The native H2MM host starts at **1100 × 720 logical pixels**, with saved host
-geometry taking precedence. Scroll the Rates and states dock to inspect all
-state rows, and the settings dock to reach the lower output controls on a
-narrow window. Narrow checkbox rows start at the left so their complete labels
-remain readable. The wide layout retains its existing field alignment.
-
-```{figure} figures/h2mm_native_primary_window.png
-:width: 100%
-
-Measured BH input after scrolling: both fitted state rows and all lower output
-controls are visible. This constrained two-state, seeded 40-iteration fit at
-macro-time scale 20 is display evidence, not a physical-state identification
-or a convergence/optimum claim.
-```
-
-The comparison uses 152 bursts and 17,282 photons with the production default
-donor/acceptor detector routing. Fitted arrays, clock scale, dwell export and
-settings values are unchanged by host sizing. Native geometry/dock layout
-restores; a computed fit still requires data loading and running the workflow.
-The current settings JSON stores analysis options rather than the complete
-detector definition; retain the detector setup separately until that contract
-is extended. See [H2MM](../concepts/h2mm.md).
