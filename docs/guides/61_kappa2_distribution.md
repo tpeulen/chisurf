@@ -12,8 +12,8 @@ $\kappa^2 = 2/3$. This guide runs ChiSurf's **κ² Distribution Calculator** to
 turn measured anisotropies into the range of distances your data actually
 supports. The theory is in {ref}`concept-kappa2-orientation`.
 
-**Open it:** *Tools ▸ Calculators ▸ Kappa2 Distribution*, or
-`csg_kappa2_dist` from a shell.
+**Open it:** *Structure ▸ FRET ▸ Kappa2 Distribution*, or
+`csg_kappa2distribution` from a shell.
 
 If this is your first time, press **Guide** in the tool for a six-step walk
 through the controls.
@@ -36,7 +36,7 @@ the honest answer rather than a falsely tight one.
 
 ## Step 1 — establish the worst case
 
-Select **Isotropic** and press **Compute**. No anisotropy inputs are used.
+Set **Model** to **Isotropic** and press **Compute**. No anisotropy inputs are used.
 
 The mean comes back at $2/3$ — the value everyone assumes — but look at the
 plot: the distribution is broad and piles up near zero, and **SD R_app/R_DA** is
@@ -48,17 +48,18 @@ is to see that a correct mean says nothing about the spread.
 
 ## Step 2 — use your own dyes
 
-Switch to **WIC (Cone)** and enter your measured anisotropies.
+Set **Model** to **WIC (Cone)** and enter your measured anisotropies.
 
-```{figure} /guides/figures/kappa2_tool.png
+```{figure} figures/kappa2_tool.png
 :alt: the kappa-squared distribution calculator with restricted dyes
 :width: 70%
 :align: center
 
 The calculator with a deliberately restricted pair ($r_{D\infty} = 0.15$,
-$r_{A\infty} = 0.20$). Mean $\kappa^2$ is still 0.66 — but **SD R_app/R_DA** is
-0.15, so the distance carries a 15% systematic range. The plot shows why: the
-distribution is broad, not the sharp spike a mobile pair gives.
+$r_{A\infty} = 0.20$). Mean $\kappa^2$ is still 0.66 — but **SD R_app/R_DA** in
+the **Orientation statistics** table is 0.15, so the distance carries a 15%
+systematic range. The plot shows why: the distribution is broad, not the sharp
+spike a mobile pair gives.
 ```
 
 Now lower `r_D∞` and `r_A∞` toward zero and recompute. The distribution narrows
@@ -126,8 +127,3 @@ print(result["k2_mean"], result["RappSD"])
   {doc}`23_accessible_volume` (the positional half of the same problem) ·
   {doc}`41_accurate_fret`.
 - Tool: **Kappa2 Distribution** (`chisurf/plugins/calculator/kappa2_dist/`).
-
-The native calculator declares 640×480 initial dimensions, with saved sizing
-retained. Hover the model, inputs and statistic columns for their definitions.
-Distribution draws remain stochastic; window and tooltip changes preserve
-the seeded results and computed statistics.

@@ -1,14 +1,14 @@
 ---
 type: Guide
 title: FCS saturation and focal-volume expansion
-description: 'Tool: Calculators → FCS Saturation · CLI: csg_fcs_saturation / python -m chisurf.plugins.calculator.fcs_saturation_calc.cli.main · Model: FCS (kinetics)'
+description: 'Tool: Spectroscopy → Correlation → FCS Saturation · CLI: csc fcs-saturation · Model: FCS (kinetics)'
 tags: [guides, fcs, cli, headless, python, plugins, kinetics]
 ---
 
 # FCS saturation and focal-volume expansion
 
-**Tool:** Calculators → FCS Saturation · **CLI:** `csg_fcs_saturation` /
-`python -m chisurf.plugins.calculator.fcs_saturation_calc.cli.main` ·
+**Tool:** Spectroscopy → Correlation → FCS Saturation · **CLI:** `csc fcs-saturation`
+(or `python -m chisurf.plugins.calculator.fcs_saturation_calc.cli.main`) ·
 **Model:** `FCS (kinetics)`
 
 This guide answers one question: *at the power I am using, how wrong is the
@@ -18,9 +18,10 @@ tool.
 
 ## 1. Open the calculator and pick a scheme
 
-Open **Calculators → FCS Saturation** (also on the ribbon as **Spectroscopy →
-Fluorescence Correlation Spectroscopy → Correlation → FCS Saturation**). The **Photophysics** panel on the left
-holds everything about the molecule and the optics; the other panels are output.
+Open **Spectroscopy → Correlation → FCS Saturation**. The **Photophysics and
+kinetics** panel on the left holds the scheme, power, wavelength and dye; the
+**FCS predictions** tabs on the right are output (the optics table sits on the
+**State diagram** tab).
 
 Start from a shipped scheme in the **Scheme** dropdown:
 
@@ -33,7 +34,7 @@ Start from a shipped scheme in the **Scheme** dropdown:
 
 A new scheme starts as the three-state singlet/triplet case, which is what most
 dyes do. A preset is a starting point, not a constraint: every rate,
-cross-section and brightness stays editable, and **Number of States** goes up to six.
+cross-section and brightness stays editable, and **Number of states** goes up to six.
 
 ## 2. Set the optics — wavelength before ε
 
@@ -47,13 +48,13 @@ Three fields, in this order:
    wavelength** off the stored absorption spectrum. This is the step people skip:
    the catalogued ε is the *peak* value, and exciting off the maximum can mean a
    factor of hundreds. Leave the box empty to type ε in yourself.
-3. **Laser Power** — total average power at the objective back aperture, in mW.
-   The slider is logarithmic, so the whole 0.001–100 mW range is reachable with
+3. **Laser power** — total average power at the objective back aperture, in mW.
+   The **Power (log)** slider below it is logarithmic, so the whole 0.001–100 mW range is reachable with
    even resolution. Drag it and the FCS curve follows: computed results are
    cached, so sweeping back over a power you already visited is instant.
 
-Then set `w_r`, `w_z` and `D` in the parameter table under the **State
-diagram**. At **P = 0** the saturated curve is identical to the unsaturated
+Then set `w_r`, `w_z` and `D` in the **Optics and measurement** table under the
+**State diagram**. At **P = 0** the saturated curve is identical to the unsaturated
 Gaussian — that is the definition of unsaturated, and a useful sanity check.
 
 ## 3. A worked case: Rhodamine 6G at 488 nm
@@ -201,12 +202,4 @@ model tells you how far from zero you are.
 * [Optical saturation in FCS](../concepts/fcs_saturation.md) — the physics
 * [Diffusion and FCS](09_diffusion_fcs.md) — the unsaturated case
 * [Photon-by-photon kinetics](../concepts/photon_by_photon_kinetics.md)
-- Tool: the **FCS Saturation Calculator** (`chisurf/plugins/calculator/fcs_saturation_calc/`).
-
-The native saturation calculator declares 640×480 initial dimensions. All six
-prediction tabs remain reachable; their controls and calculated curves are
-unchanged. Validation fits the one-component overlay against an independent
-Gaussian-shape least-squares reference, including declared convergence tolerance
-and parameter conditioning, instead of treating historical solver decimals as
-an accuracy oracle. The target is normalized to its first sampled lag while the
-fitted Gaussian shape is normalized at zero; this existing convention is retained.
+* Tool: the **FCS Saturation Calculator** (`chisurf/plugins/calculator/fcs_saturation_calc/`).

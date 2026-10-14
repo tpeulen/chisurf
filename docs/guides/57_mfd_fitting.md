@@ -31,7 +31,7 @@ Three settings are worth understanding before you press anything:
 |---|---|
 | **Donor / Acceptor** | Detector names as they appear in the `.bur` columns. Their channel definitions are *verified* against the count columns; a detector that fails is refused rather than used. |
 | **Min donor photons** (collapsed **Selection** panel) | Bursts below it are excluded, because the Gaussian kernel the model uses for `⟨t⟩` is not valid there. The model applies the identical cut. |
-| **⟨t⟩ min / max** | The mean-micro-time axis, in nanoseconds. Bursts outside it are excluded and counted. |
+| **⟨t⟩ min / max [ns]** | The mean-micro-time axis, in nanoseconds. Bursts outside it are excluded and counted. |
 
 The dataset reports what it dropped — typically 40–50% of bursts at a 20-photon
 cut on a measurement (22% on the simulated folder of §6: 3387 of 4340 bursts
@@ -89,7 +89,8 @@ bridge between them — the signature §4 is about.
 The plot tabs are **MFD map** (one heat map with a channel selector: measured,
 model, residual, difference), **MFD marginals** (the proximity-ratio and `⟨t⟩`
 marginals of both), **State Scheme**, **Info**, **Residuals 2D** and
-**Parameter scan**. Both axes are *raw* — proximity ratio and mean micro time —
+**Parameter scan**, followed by the sampling tabs every fit has (**Posterior
+graph**, **Chain diagnostics**, **What-if**). Both axes are *raw* — proximity ratio and mean micro time —
 and every correction lives in the model, so the measured histogram never moves
 while a correction factor is fitted.
 
@@ -110,7 +111,7 @@ exchange — and it is what the kinetic model exists to explain.
 
 ## 4. Add exchange
 
-Type rates into the **Exchange** matrix of the same model. Leaving them at zero is
+Type rates into the **Rate matrix** of the same model (row → column, 1/s). Leaving them at zero is
 the static analysis; any non-zero rate turns the occupation-time law on. Adding or
 removing a state resizes the matrix with it, and a new state never arrives already
 exchanging.
@@ -193,14 +194,6 @@ On the §6 folder `data.report()` lists the four detectors with a count agreemen
 of 1.0000 each and a background of 0.001 kHz — the simulator adds no dark counts
 (`true_responses()` declares 0), so the estimate should be near zero; one static model evaluation
 (`model.score`) takes 0.3 s and the two-state kinetic one 1.5 s.
-
-## Known defects
-
-- After loading, the status bar reads *MFD reader form could not refresh:
-  'AutoForm' object has no attribute 'update_widgets'* —
-  `chisurf/gui/widgets/experiments/mfd.py` calls a method AutoForm does not have
-  (`sync_fields` is the current name), so the reader panel does not redraw after
-  a load.
 
 ## Two things not to misread
 

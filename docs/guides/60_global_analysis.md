@@ -1,14 +1,14 @@
 ---
 type: Guide
 title: 'Global analysis: linking parameters across fits'
-description: 'Theory: Global analysis · Tool: Main ▸ Tools ▸ 🌐 Global View · Code: chisurf.core.fitting.fit, chisurf.core.models.global_model'
+description: 'Theory: Global analysis · Tool: Tools ▸ Views ▸ Global View · Code: chisurf.core.fitting.fit, chisurf.core.models.global_model'
 tags: [guides, fitting, global-analysis]
 ---
 
 # Global analysis: linking parameters across fits
 
 **Theory:** [Global analysis](../concepts/global_analysis.md) ·
-**Tool:** Main ▸ Tools ▸ 🌐 Global View ·
+**Tool:** Tools ▸ Views ▸ Global View ·
 **Code:** `chisurf.core.fitting.fit`, `chisurf.core.models.global_model`
 
 This tutorial ties two measurements together through a shared parameter: first
@@ -25,7 +25,7 @@ anything here.
 
 ## 2. Open the parameter network
 
-**Main ▸ Tools ▸ 🌐 Global View** draws every open fit, every parameter in it,
+**Tools ▸ Views ▸ Global View** draws every open fit, every parameter in it,
 and every link between parameters.
 
 - a large **blue** disc is a fit; a large **orange** one is a plugin's
@@ -227,14 +227,13 @@ free-parameter count per fit. It will remind you to re-run the fits.
 - Tool: **Global View** (`chisurf/plugins/core/globalview/`).
 
 
-## Link the active equation and inspect completion
+## Linking from the fit window
 
-In a Parse-Model parameter's link menu, **All parameters** lists the active
-equation's targets. Select **3D Gauss, 1 bunching** in an FCS fit: its menu has
-`b`, `ba`, `bt`, `N`, `s`, and `td`, rather than the parameters of all catalogue
-equations. Fixed parameters remain available as deliberate link targets.
-
-![Six active FCS equation link targets](figures/global_analysis_active_link_targets.png)
+Right-click a parameter in a fit's **Analysis** table for its link menu:
+**🔗 Link {name} to** ▸ a fit ▸ that fit's parameters, and **Unlink**. A
+catalogue model offers only the parameters of the equation it currently fits,
+not every equation's ports; fixed parameters remain available as deliberate link
+targets.
 
 After running a global fit, member windows refresh their curves and chi-square
 readouts, even when another window is active. The global report reflects the

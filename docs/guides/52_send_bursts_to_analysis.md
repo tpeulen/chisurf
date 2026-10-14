@@ -44,7 +44,7 @@ rather than failing later.
 :width: 100%
 
 ndX opened from ChiSurf on 293 bursts searched in `BH_SPC132.spc`, plotted as
-proximity ratio against the mean green micro time. The gate `FRET` (proximity
+proximity ratio against the green lifetime `tau green (ns)`. The gate `FRET` (proximity
 ratio 0.35–1.0) leaves 59 bursts; right-clicking the 2-D histogram offers the
 four consumers ChiSurf advertises under **Send selection to**.
 ```
@@ -195,14 +195,13 @@ half a percent of the span between the first and last gated photon, which is
 where `span` and `interior` part ways. Without `owner` (or a table opened from
 MMFDB), `provenance` is `None`.
 
-## Known defects
+## What comes back
 
-- **The result stays in ChiSurf's reply.** The menu shows the counts in the
-  status line and drops the returned decay, histogram or curves; nothing opens
-  as a dataset or fit. Use `bridge.send(...)` to keep them.
-- **Bare file names are resolved against the working directory**, not the
-  analysis folder, so a `.bur` naming `m000.spc` fails with *No such file or
-  directory* unless ndX runs from the data folder.
+The reply is kept as the app's `last_send` and summarised in a *Result from …*
+message (one line per decay, curve or histogram); nothing opens as a dataset or
+fit. Use `bridge.send(...)` to keep the arrays. A bare `First File` name
+(`m000.spc`) is looked up beside the table it was read from, one or two folder
+levels up, or inside the measurement container — not in the working directory.
 
 ## Related
 
@@ -213,4 +212,5 @@ MMFDB), `provenance` is `None`.
 ## See also
 
 - Tool: **ndX** (`chisurf/plugins/ndxplorer/`); the menu is
-  `ndxplorer/app/features/selection.py`, the bridge `ndxplorer/analysis/burst_bridge.py`.
+  `modules/ndxplorer/ndxplorer/app/features/selection.py`, the bridge
+  `modules/ndxplorer/ndxplorer/analysis/burst_bridge.py`.

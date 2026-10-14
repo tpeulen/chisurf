@@ -144,17 +144,20 @@ fills an empty panel, it does not overwrite your selection.
 
 ## The stamp files
 
-Each step that writes results writes a small JSON file next to them —
-`bv4/bva.stamp.json`, `2c4/2cde.stamp.json`, `burst_mle.stamp.json`. They record
-the fingerprint, the settings and the files involved:
+BVA and 2CDE write a small JSON file into the folder's `Info/` beside
+`analysis.json` — `Info/bva.stamp.json`, `Info/2cde.stamp.json`. The MLE steps
+keep their answer in the window and write no stamp. A stamp records the
+fingerprint, the settings and the files involved:
 
 ```json
 {
+  "format": "chisurf-analysis-stamp",
   "tool": "bva",
   "version": 2,
   "entries": [
     {
       "fingerprint": "3eae4503e38f2d32",
+      "tool": "bva",
       "params": {"minimum_window_length": 0.01, "number_of_photons_per_slice": 10},
       "inputs": ["…/bi4_bur/m000.bur", "…/Info/analysis.json", "…/m000.spc"],
       "outputs": [

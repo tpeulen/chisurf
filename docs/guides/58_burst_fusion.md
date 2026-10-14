@@ -61,13 +61,6 @@ folder written by the current burst selection records this in
 — the workflow's channel page does, and the CLI takes `--detectors` or
 `--setup`.
 
-The standalone native window declares **1100 × 720** pixels on first use;
-saved geometry takes precedence. On a smaller host, scroll the controls and
-visit the individual plot tabs. Resizing keeps the input, threshold, gap ceiling,
-fragment cap and displayed computation unchanged. Reopen the input and run
-Estimate or Fusion to rebuild results after a fresh launch; window preferences
-are not an analysis archive.
-
 ```{figure} figures/burst_fusion_native_primary_window.png
 :width: 100%
 
@@ -95,7 +88,7 @@ dashed line is your threshold; the dotted line is the lag actually fused up to.
 
 ![The same-molecule probability, the chosen threshold and the resulting window, with the before/after summary beside it](figures/burst_fusion_curve.png)
 
-On the demo the curve rises to about 0.9 near 1 ms — that hump *is* the split
+On the demo the curve rises to about 0.9 near 1.5 ms — that hump *is* the split
 crossings, pairs of bursts a millisecond apart far commoner than random arrivals
 would explain — and is gone by a few milliseconds.
 
@@ -121,7 +114,7 @@ story on one file:
 | Threshold | Window | Bursts | Proximity-ratio width |
 |---|---|---|---|
 | 0.9 | 1.7 ms | 338 | 0.042 → 0.036 |
-| **0.7** | **2.3 ms** | **297** | **0.042 → 0.033** |
+| **0.7** | **2.3 ms** | **297** | **0.042 → 0.032** |
 | 0.5 | 2.7 ms | 280 | 0.042 → 0.031 |
 
 0.9 leaves splits unrepaired; 0.7 lands within a few bursts of the truth; 0.5 goes *past* it, because
@@ -140,12 +133,12 @@ background inside a burst. The ceiling is what keeps the step to the case it
 exists for: a single passage the search cut in two.
 
 When the ceiling is what bound the window, the status block says so, and the
-summary's **Window, ms** row shows both numbers (what the probability allowed,
+summary's **Window, ms** row (scroll the table) shows both numbers (what the probability allowed,
 what was used).
 
 ## 4. Judge it from the summary, not from the burst count
 
-The table beside the controls is the point of the tool. What a healthy fusion
+The table under the controls is the point of the tool. What a healthy fusion
 looks like:
 
 | Row | Expected | What it means if not |
@@ -154,7 +147,7 @@ looks like:
 | Photons (mean) | rises | — |
 | PR width (std) | **falls** | the width was shot noise from fragments |
 | PR mean | roughly unchanged | a moving mean means you are merging *populations*, not fragments — raise the threshold |
-| Duration, ms (mean) | rises modestly | a rise of orders of magnitude means the gap ceiling is too generous |
+| Duration (ms) | rises modestly | a rise of orders of magnitude means the gap ceiling is too generous |
 
 ![Proximity ratio before and after fusion: the fused distribution is taller and narrower](figures/burst_fusion_proximity.png)
 

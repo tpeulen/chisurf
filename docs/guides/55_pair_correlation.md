@@ -17,11 +17,11 @@ limits the arrows — see {ref}`concept-pair-correlation`.
 
 ## The tool
 
-Velocity fields have their own tool: **Spectroscopy → Imaging → Image Tools → Flow**. It maps a TIFF stack or a photon stream
-into one arrow per tile, with no model and no fit — the velocity is read off
+Velocity fields have their own tool: **Spectroscopy → Imaging → Flow Maps**. It
+maps a TIFF stack or a photon stream into one arrow per tile, with no model and no fit — the velocity is read off
 where a correlation peak *is*.
 
-If you have never run one, press **Guide** at the top of its settings window. The tour simulates a
+If you have never run one, press **Guide** at the top of its settings panel. The tour simulates a
 scan whose flow profile is known — laminar flow through a channel, fastest in
 the middle and zero at the walls — and walks you through checking the answer
 against it. It points at the real buttons and waits for you to press them.
@@ -30,10 +30,11 @@ against it. It points at the real buttons and waits for you to press them.
 :name: fig-flow-tool
 :width: 100%
 
-The flow-map tool on its own demo. Left: the settings, in workflow order. Right:
-the headline numbers, the arrows over the time-averaged image, and the profile
-across the frame with the simulated truth drawn beside it — which is how the
-roughly 23 % shear bias becomes visible rather than theoretical.
+The flow-map tool on its own demo (**Load example**, then **Map flow**; 25 of 25
+tiles). Left: the settings, in workflow order. Right: the headline numbers, the
+arrows over the time-averaged image, and the profile across the frame with the
+simulated truth drawn beside it — which is how the roughly 23 % shear bias
+becomes visible rather than theoretical.
 ```
 
 Headless, the same thing:
