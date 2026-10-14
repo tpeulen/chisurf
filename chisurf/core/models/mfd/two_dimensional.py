@@ -450,13 +450,15 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         super().__init__(fit, **kwargs)
         self.calibration = MfdCalibration()
         self.state_group = MfdStates(n_states=n_states)
-        self.kinetics = RateMatrixParameters(name="kinetics", n_states=n_states)
         # Start with an *empty* scheme, so a fresh model is the static analysis.
         # The shared group defaults its rates to 100 Hz, which would mean every MFD
         # fit began with exchange nobody asked for — and at a rate that is neither
         # slow nor fast for a typical burst, so it would visibly move the answer.
-        self.kinetics.default_rate = 0.0
-        self.kinetics.set_rate_matrix(np.zeros((n_states, n_states)))
+        # The default goes in at construction: the group never holds fewer than two
+        # states, so for a one-state model a later zero matrix of the model's size
+        # would not reach the 100 Hz rates it had already built.
+        self.kinetics = RateMatrixParameters(name="kinetics", n_states=n_states, default_rate=0.0)
+        self.kinetics.set_rate_matrix(None)
         self._last_summary: dict = {}
         self.find_parameters()
         self.seed_from_data()
@@ -575,6 +577,9 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         -------
         numpy.ndarray or None
         """
+        if self.n_states < 2:
+            # One state cannot exchange; the shared group still keeps a 2x2 scheme.
+            return None
         matrix = np.asarray(self.kinetics.rate_matrix(), dtype=float)
         if matrix.size == 0 or not np.any(matrix > 0.0):
             return None

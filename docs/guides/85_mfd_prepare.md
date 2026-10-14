@@ -110,12 +110,20 @@ the MFD fit.
 csc mfd-prepare prepare "path/to/burstwise_All 0.1000#15" --report-only   # the report above
 csc mfd-prepare prepare FOLDER                                         # full JSON result
 csc mfd-prepare prepare FOLDER --no-photons                            # skip photon loading when possible
+csc mfd-prepare fit FOLDER --n-states 1                                # read, then fit the 2D MFD model
 csc mfd-prepare contract                                               # the RPC contract
 ```
 
 `--no-photons` only skips the photons when the table carries its mean micro
 times *and* a manifest defines the detectors; the shipped folder has neither,
 so the photons are read anyway and the counts still checked.
+
+`fit` reads the folder through the MFD reader, fits the {doc}`57_mfd_fitting`
+model with the Poisson score and prints JSON. On the shipped folder, one state
+on the default 41 × 41 grid (about 20 s) gives `tauD0` 2.81 ns, `alpha` 0.026,
+`R1` 54.0 Å, `donorOnly` 0.39 at χ²ᵣ 1.44; `--n-states 2` (about 90 s) splits
+off a minor 31 Å state. `uncertainties` is always `null`: the histogram score
+has no valid curvature, so use the model's `bootstrap()` or `burstwise_score()`.
 
 ```python
 from chisurf.core.fluorescence.mfd.prepare import prepare_burst_folder
@@ -155,9 +163,6 @@ consumes; `prep.summary` holds the diagnostics.
 
 ## Known defects
 
-* **`csc mfd-prepare fit` does not run.** On the shipped folder it fails with
-  `MfdReader object has no attribute 'data'`. Fit with
-  {doc}`57_mfd_fitting` instead.
 * **A partial `streams=` crashes.** Passing definitions for green and red
   only, on a folder with three detectors, raises `IndexError: index 2 is out
   of bounds` in `prepare_burst_folder` (`mfd/prepare.py`, count-agreement

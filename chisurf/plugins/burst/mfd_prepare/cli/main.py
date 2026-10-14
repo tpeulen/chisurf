@@ -121,13 +121,18 @@ def fit(
             n_micro_time_bins=n_micro_time_bins,
             min_green_photons=min_green_photons,
         )
-        reader.read(folder)
-        data = reader.data
+        group = reader.read(folder)
+        if not group:
+            raise ValueError(f"no MFD dataset could be read from {folder}")
+        data = group[0]
 
         fit = Fit(
             model_class=Mfd2DModel,
             data=data,
+            xmin=0,
+            xmax=int(data.y.size),
             model_kw={"n_states": n_states},
+            noise_model="poisson",
         )
         run_fit(fit)
 
@@ -137,16 +142,15 @@ def fit(
                 fit.model.parameter_values,
             )
         )
-        uncertainties = dict(
-            zip(
-                fit.model.parameter_names,
-                fit.model.parameter_uncertainties,
-            )
-        )
+        # The marginal-histogram score has no valid curvature, so the model
+        # refuses to report uncertainties; bootstrap() is the honest route.
         result = {
             "n_states": n_states,
             "parameters": params,
-            "uncertainties": uncertainties,
+            "chi2r": float(fit.chi2r),
+            "uncertainties": None,
+            "uncertainty_note": "use Mfd2DModel.bootstrap() or burstwise_score(); "
+            "the histogram score's curvature is not a valid uncertainty",
             "summary": fit.model.summary_text(),
         }
         click.echo(json.dumps(result, indent=2, default=str))
