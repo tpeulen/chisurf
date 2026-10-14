@@ -58,16 +58,20 @@ whole $r(t)$ curve shifts and biases $r_0$/$r_\infty$. In chisurf `g` is a
 and — like `l1`/`l2` — is default-linked from the first fit to the others in a
 VV/VH group (`_link_group_anisotropy_parameters`).
 
-Two **channel-mixing** factors $l_1, l_2$ model imperfect-polarizer cross-talk
-(defaults `l1=0.00308`, `l2=0.00368`):
+Two **polarization-mixing** factors $l_1, l_2$ (high-aperture objective;
+defaults `l1=0.00308`, `l2=0.00368` in the model editor) enter in the
+Schaffer/Eggeling parameterisation, as factors on the rotation term:
 
 $$
-I_{\parallel,\mathrm{m}} = (1-l_1)I_\parallel + l_1 I_\perp, \qquad
-I_{\perp,\mathrm{m}}     = l_2 I_\parallel + (1-l_2)I_\perp .
+I_\parallel = f_\mathrm{VM}\,[1 + (2-3l_1)\,r], \qquad
+I_\perp = f_\mathrm{VM}\,[1 - (1-3l_2)\,r]/G .
 $$
 
-These appear directly in `vm_rt_to_vv_vh` / `calculcate_spectrum` as the
-`vv_j = vv*(1-l1) + vh*l1`, `vh_j = vv*l2 + vh*(1-l2)` mixing.
+`vm_rt_to_vv_vh` (time domain) and `calculcate_spectrum` (spectrum domain) both
+build exactly this (`calculcate_spectrum` mixed two ideal channels with the
+Koshioka 2×2 matrix $(1-l_1)I_\parallel + l_1 I_\perp$ until 2026-10-14, a
+different meaning of $l_1, l_2$ that the Schaffer correction does not invert;
+RF-954).
 
 # Fundamental anisotropy r0 and the rotation spectrum
 
@@ -125,16 +129,16 @@ reconstructs the two polarized decays from the magic-angle decay $f_\mathrm{VM}$
 (the lifetime spectrum) and the rotation spectrum:
 
 $$
-f_\parallel(t) = f_\mathrm{VM}(t)\,(1 + 2 r(t)), \qquad
-f_\perp(t)     = G\,f_\mathrm{VM}(t)\,(1 - r(t)).
+f_\parallel(t) = f_\mathrm{VM}(t)\,[1 + (2-3l_1)\,r(t)], \qquad
+f_\perp(t)     = f_\mathrm{VM}(t)\,[1 - (1-3l_2)\,r(t)]/G .
 $$
 
-$G$ is a detection sensitivity and therefore scales the whole perpendicular
-channel, not only its depolarization term — that is the placement under which
-the pair inverts back to the anisotropy it was built from,
-$r = (f_\parallel - f_\perp/G)/(f_\parallel + 2 f_\perp/G)$. The alternative
-$f_\mathrm{VM}(1 - G r)$ agrees only at $G = 1$: at $r_0 = 0.38$, $G = 1.5$ it
-inverts back to 0.63.
+$G = S_\parallel/S_\perp$ is the parallel/perpendicular sensitivity ratio, so
+it **divides** the whole perpendicular channel; the pair inverts back to the
+anisotropy it was built from with the Schaffer correction
+$r = (f_\parallel - G f_\perp)/((1-3l_2) f_\parallel + (2-3l_1) G f_\perp)$
+for any $G, l_1, l_2$. The magic-angle sum is then
+$(1-3l_2) f_\parallel + (2-3l_1) G f_\perp = 3(1-l_1-l_2)\,f_\mathrm{VM}$.
 
 This is exactly `vm_rt_to_vv_vh` (time-domain) and `calculcate_spectrum`
 (spectrum-domain, used by `Anisotropy.get_decay`). Both channels are then

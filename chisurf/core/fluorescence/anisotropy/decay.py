@@ -215,23 +215,22 @@ def calculcate_spectrum(
     sensitivity of the channels is adjusted via the g_factor, while l1 and l2
     describe the mixing between the VV and VH channels.
 
-    The unmixed decays for VV and VH are given by:
-
-        f_VV(t) = f_VM(t) * (1 + 2 * r(t))
-        f_VH(t) = f_VM(t) * (1 - r(t)) / G
-
-    ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio, so
-    the perpendicular channel records ``1/G`` of what an equally sensitive one
-    would. That placement -- the same one :func:`vm_rt_to_vv_vh` uses -- is what
-    makes the pair invert back to the anisotropy it was built from:
-
-        r(t) = (f_VV - G * f_VH) / (f_VV + 2 * G * f_VH)
-
-    The polarization mixing enters the amplitudes themselves, as it does in
-    :func:`vm_rt_to_vv_vh`, rather than as a 2x2 mixing of an ideal pair:
+    The decays are built in the Schaffer/Eggeling parameterisation, the same
+    forward model as :func:`vm_rt_to_vv_vh` (and tttrlib's ``DecayFit23``):
 
         f_VV(t) = f_VM(t) * (1 + (2 - 3 * l1) * r(t))
         f_VH(t) = f_VM(t) * (1 - (1 - 3 * l2) * r(t)) / G
+
+    ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio, so
+    the perpendicular channel records ``1/G`` of what an equally sensitive one
+    would. The pair inverts back to ``r(t)`` with the Schaffer correction
+
+        r(t) = (f_VV - G f_VH) / ((1 - 3 l2) f_VV + (2 - 3 l1) G f_VH)
+
+    for any ``G``, ``l1`` and ``l2``. Each channel is a sum of exponentials:
+    the lifetime spectrum plus the products ``x_i b_j`` with lifetimes
+    ``1 / (1/tau_i + 1/rho_j)``, the rotation terms scaled by ``2 - 3 l1``
+    (VV) and ``-(1 - 3 l2)`` (VH).
 
     Parameters
     ----------
@@ -247,9 +246,9 @@ def calculcate_spectrum(
     g_factor : float, optional
         Correction factor for the detection channel sensitivity (default is 1.0).
     l1 : float, optional
-        Fraction of VH contributing to the VV channel (default is 0.0).
+        Polarization mixing of the VV channel (Schaffer ``l1``, default 0.0).
     l2 : float, optional
-        Fraction of VV contributing to the VH channel (default is 0.0).
+        Polarization mixing of the VH channel (Schaffer ``l2``, default 0.0).
 
     Returns
     -------
@@ -276,7 +275,7 @@ def calculcate_spectrum(
     ...     l1=0.0,
     ...     l2=0.0
     ... )
-    array([ 1. ,  4. ,  2. ,  0.8,  0. ,  4. , -0. ,  0.8])
+    array([1. , 4. , 2. , 0.8])
     >>> calculcate_spectrum(
     ...     lifetime_spectrum=lifetime_spectrum,
     ...     anisotropy_spectrum=anisotropy_spectrum,
@@ -285,7 +284,7 @@ def calculcate_spectrum(
     ...     l1=0.1,
     ...     l2=0.0
     ... )
-    array([ 0.9 ,  4.  ,  1.8 ,  0.8 ,  0.05,  4.  , -0.05,  0.8 ])
+    array([1. , 4. , 1.7, 0.8])
     >>> calculcate_spectrum(
     ...     lifetime_spectrum=lifetime_spectrum,
     ...     anisotropy_spectrum=anisotropy_spectrum,
@@ -294,7 +293,7 @@ def calculcate_spectrum(
     ...     l1=0.0,
     ...     l2=0.0
     ... )
-    array([ 0. ,  4. ,  0. ,  0.8,  0.5,  4. , -0.5,  0.8])
+    array([ 0.5,  4. , -0.5,  0.8])
     >>> out = calculcate_spectrum(
     ...     lifetime_spectrum=lifetime_spectrum,
     ...     anisotropy_spectrum=anisotropy_spectrum,
@@ -304,7 +303,7 @@ def calculcate_spectrum(
     ...     l2=0.1
     ... )
     >>> out.tolist()
-    [0.1, 4.0, 0.2, 0.8, 0.45, 4.0, -0.45, 0.8]
+    [0.5, 4.0, -0.35, 0.8]
 
     Notes
     -----
@@ -329,22 +328,19 @@ def calculcate_spectrum(
         # original code reused the same arrays, which collapsed the VH decay to
         # near-zero (only the scatter peak remained).
         d = chisurf.core.math.datatools.elte2(a, f)
-        vv = np.hstack([f, e1tn(d.copy(), 2.0)])  # f_VV = f * (1 + 2 r)
+        # Schaffer/Eggeling, the same forward model as `vm_rt_to_vv_vh` and
+        # tttrlib's DecayFit23: l1/l2 scale the rotation term of each channel,
+        #
+        #     f_VV = f (1 + (2 - 3 l1) r),    f_VH = f (1 - (1 - 3 l2) r) / G
+        #
         # G is the parallel/perpendicular sensitivity ratio, so the
         # perpendicular channel records 1/G of what an equally sensitive one
-        # would -- the placement `vm_rt_to_vv_vh` and the Schaffer correction
-        # applied downstream both use. Multiplying here instead put the two
-        # forward models a factor g**2 apart in VH.
-        vh = e1tn(
-            np.hstack([f, e1tn(d.copy(), -1.0)]),  # f_VH = f * (1 - r) / G
-            1.0 / g_factor,
-        )
-
-        # A mixed channel is the *union* of the scaled VV and VH components, so
-        # concatenate them. Element-wise addition (the previous behaviour) also
-        # summed the lifetime columns, doubling the decay times.
-        vv_mixed = np.hstack([e1tn(vv.copy(), 1.0 - l1), e1tn(vh.copy(), l1)])
-        vh_mixed = np.hstack([e1tn(vv.copy(), l2), e1tn(vh.copy(), 1.0 - l2)])
+        # would. This used to superpose two ideal channels with the Koshioka
+        # 2x2 matrix (`(1 - l1) vv + l1 vh`), a different meaning of l1/l2 that
+        # the Schaffer correction downstream does not invert: r = 0.30 at
+        # G = 1.5, l1 = 0.10, l2 = 0.05 came back as 0.270.
+        vv_mixed = np.hstack([f, e1tn(d.copy(), 2.0 - 3.0 * l1)])
+        vh_mixed = e1tn(np.hstack([f, e1tn(d.copy(), -(1.0 - 3.0 * l2))]), 1.0 / g_factor)
 
         if polarization_type == "VH":
             return vh_mixed

@@ -1,4 +1,5 @@
 import glob
+import itertools
 import unittest
 
 import numpy as np
@@ -47,10 +48,11 @@ class Tests(unittest.TestCase):
         from the implementation: with ``r(t)`` the anisotropy and
         ``G = S_par / S_perp`` the detection-sensitivity ratio,
 
-            f_VV(t)   = f_VM(t) * (1 + 2 r(t))
-            f_VH(t)   = f_VM(t) * (1 - r(t)) / G
-            f_VV,m(t) = (1 - l1) f_VV(t) + l1 f_VH(t)
-            f_VH,m(t) = l2 f_VV(t) + (1 - l2) f_VH(t)
+            f_VV(t) = f_VM(t) * (1 + (2 - 3 l1) r(t))
+            f_VH(t) = f_VM(t) * (1 - (1 - 3 l2) r(t)) / G
+
+        (Schaffer/Eggeling; l1/l2 scale the rotation term, they do not mix two
+        ideal channels with a 2x2 matrix).
 
         ``G`` divides the whole VH channel because it is the parallel/
         perpendicular sensitivity ratio, so the perpendicular channel records
@@ -66,8 +68,6 @@ class Tests(unittest.TestCase):
 
         vm = np.exp(-times / tau)
         rt = r0 * np.exp(-times / rho)
-        vv = vm * (1.0 + 2.0 * rt)
-        vh = vm * (1.0 - rt) / g_factor
 
         for l1, l2 in [(0.0, 0.0), (0.1, 0.0), (0.0, 0.1), (0.1, 0.2)]:
             kwargs = dict(
@@ -77,19 +77,17 @@ class Tests(unittest.TestCase):
                 l1=l1,
                 l2=l2,
             )
+            vv = vm * (1.0 + (2.0 - 3.0 * l1) * rt)
+            vh = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g_factor
             vv_spectrum = calculcate_spectrum(polarization_type="VV", **kwargs)
             vh_spectrum = calculcate_spectrum(polarization_type="VH", **kwargs)
             self.assertEqual(
-                np.allclose(
-                    self._decay_from_spectrum(vv_spectrum, times), (1.0 - l1) * vv + l1 * vh
-                ),
+                np.allclose(self._decay_from_spectrum(vv_spectrum, times), vv),
                 True,
                 msg=f"VV decay wrong for l1={l1}, l2={l2}",
             )
             self.assertEqual(
-                np.allclose(
-                    self._decay_from_spectrum(vh_spectrum, times), l2 * vv + (1.0 - l2) * vh
-                ),
+                np.allclose(self._decay_from_spectrum(vh_spectrum, times), vh),
                 True,
                 msg=f"VH decay wrong for l1={l1}, l2={l2}",
             )
@@ -210,19 +208,21 @@ class Tests(unittest.TestCase):
                     msg=f"anisotropy not recovered for g={g_factor}, l1={l1}, l2={l2}",
                 )
 
-        # The spectrum-domain sibling still mixes l1/l2 with the Koshioka 2x2
-        # matrix (RF-954), so the two forward models are only comparable where
-        # that parameterisation does not enter.
-        for g_factor in [0.8, 1.0, 1.5, 2.2]:
+        # The spectrum-domain sibling the fitting models call is the same
+        # forward model for any G, l1 and l2 (it used to mix l1/l2 with the
+        # Koshioka 2x2 matrix and agreed only at l1 = l2 = 0).
+        for (l1, l2), g_factor in itertools.product(
+            [(0.0, 0.0), (0.05, 0.03), (0.1, 0.05)], [0.8, 1.0, 1.5, 2.2]
+        ):
             vv, vh = chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh(
-                times, vm, anisotropy_spectrum, g_factor=g_factor
+                times, vm, anisotropy_spectrum, g_factor, l1, l2
             )
             kwargs = dict(
                 lifetime_spectrum=lifetime_spectrum,
                 anisotropy_spectrum=anisotropy_spectrum,
                 g_factor=g_factor,
-                l1=0.0,
-                l2=0.0,
+                l1=l1,
+                l2=l2,
             )
             self.assertEqual(
                 np.allclose(

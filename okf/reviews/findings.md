@@ -10681,11 +10681,18 @@ number below was executed in the project environment. Findings RF-953..RF-959.
   is untouched and still open.
 
 ### RF-954
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the model's l1/l2 mean something different from the l1/l2 the correction applies, so channel cross-talk biases the fitted anisotropy by ~10 % even once RF-953 is fixed)
 - **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:263-264` (`vv_mixed = hstack([e1tn(vv, 1-l1), e1tn(vh, l1)])`, `vh_mixed = hstack([e1tn(vv, l2), e1tn(vh, 1-l2)])` — the Koshioka 1995 2×2 matrix) against `:125-126` (`vv_j = vm*(1 + (2 − 3 l1)·rt)`, `vh_j = vm*(1 − (1 − 3 l2)·rt)/g_factor`) and the comment at `:118-124` that records why the generator was moved off the 2×2 form
 - **Finding:** `1ca181c22` replaced the 2×2 mixing in `vm_rt_to_vv_vh` with tttrlib's `DecayFit23` parameterisation, because the matrix is "a *different* meaning for l1/l2" than the Schaffer correction the rest of the stack applies. `calculcate_spectrum` still mixes with the 2×2 matrix, and it is the one the fitting model calls. Verified analytically with `r = 0.30, G = 1.5, l1 = 0.10, l2 = 0.05`: an ideal pair mixed the 2×2 way and then corrected with `(Sp − G·Ss)/((1−3l2)·Sp + (2−3l1)·G·Ss)` returns **0.270062** against a truth of 0.300000, while the Schaffer forward model returns 0.300000 exactly — and this is *after* granting RF-953's g placement, so the two defects do not cancel. The error scales with `l1 + l2` and vanishes at `l1 = l2 = 0`, the default. Build the mixed channels as `f·(1 + (2 − 3 l1)·r)` and `f·(1 − (1 − 3 l2)·r)/G` in the spectrum domain (i.e. scale the rotation term of the joint spectrum by `2 − 3 l1` and `−(1 − 3 l2)` rather than superposing two ideal channels), so that generator and correction share one parameterisation.
-- **Fix note:**
+- **Fix note:** fixed 2026-10-14 as the finding proposes: `calculcate_spectrum`
+  builds `[f, e1tn(d, 2 − 3 l1)]` (VV) and `e1tn([f, e1tn(d, −(1 − 3 l2))], 1/G)`
+  (VH) from `d = elte2(rotation, lifetime)`, the Schaffer form of
+  `vm_rt_to_vv_vh`. `test/fluorescence/test_fluorescence.py` now compares the two
+  forward models over `G ∈ {0.8, 1, 1.5, 2.2}` × `(l1, l2) ∈ {(0,0), (0.05,0.03),
+  (0.1,0.05)}` instead of only at `l1 = l2 = 0`; doctests and the OKF concept
+  `/references/anisotropy-theory.md` moved with it. The LLTF VV/VH joint fit
+  reuses this kernel.
 
 ### RF-955
 - **Status:** OPEN
