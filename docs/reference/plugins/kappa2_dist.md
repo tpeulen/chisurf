@@ -18,7 +18,7 @@ Calculate and visualise the k² orientation-factor distribution for FRET using W
 | Field | Value |
 | --- | --- |
 | Plugin id | `kappa2_dist` |
-| Menu path | Structure → FRET → **Kappa2 Distribution** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Structure → FRET → **Kappa2 Distribution** |
 | Categories | Structure, FRET |
 | Version | 1.1.0 |
 | Surfaces | cli, emtk, services |
@@ -67,7 +67,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
-| `kappa2_dist.compute` | no |  |
+| `kappa2_dist.compute` | no | Compute the κ² distribution and the apparent-distance statistics for the given model and anisotropies. |
 
 ## Theory and workflow
 

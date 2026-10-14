@@ -18,7 +18,7 @@ Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards
 | Field | Value |
 | --- | --- |
 | Plugin id | `psf_calculator` |
-| Menu path | Microscopy → **PSF Calculator** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Microscopy → **PSF Calculator** |
 | Categories | Microscopy, Optics |
 | Version | 1.0.0 |
 | Surfaces | emtk |

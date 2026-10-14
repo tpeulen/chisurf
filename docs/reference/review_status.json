@@ -1,0 +1,457 @@
+{
+  "plugins/intensity_trace.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "29472a2f2630211329f92554c1700d37f6737d43de804223aff6cf0fd0e7f133",
+    "status": "ai-reviewed"
+  },
+  "plugins/irf_estimator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "31e69f91b844b1091c619725f1f68baa9fb246a75a2218db6439955dae4fe498",
+    "status": "ai-reviewed"
+  },
+  "plugins/kappa2_dist.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a583133976c8347480387765791473a473226331e60cb063fbd8dcda37d6f6aa",
+    "status": "ai-reviewed"
+  },
+  "plugins/lightpath_simulator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "316a7d69f407dce59e4e625c71ee113e3c30a4fe08cf5870afccc3ed34c68e20",
+    "status": "ai-reviewed"
+  },
+  "plugins/lltf.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "50720a96f1017c5412bf4b890f58743fa4c0a4a06a9e0d2e4bfae308dd93bd78",
+    "status": "ai-reviewed"
+  },
+  "plugins/maxent_decay.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d96fed2864f0a3e5a5c43d815be616b4089d85d11dfed6653fed076621de1dd9",
+    "status": "ai-reviewed"
+  },
+  "plugins/menu_switch.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "af6c2914fb1f7ebc7001b1d5955d7c969f9ac953b2b045624f76aaf85432da56",
+    "status": "ai-reviewed"
+  },
+  "plugins/mfd_prepare.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2031bde3485388fcaf431226336f4e1206ca4a32b945fa62d4e8b03bc112400a",
+    "status": "ai-reviewed"
+  },
+  "plugins/microtime_histogram.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "821af84c2ac1c5bb3340bd52673692aec7930e5883787e52be73ca07792140e8",
+    "status": "ai-reviewed"
+  },
+  "plugins/microtime_shifter.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ffb543cf1f34712468321c719b28019a7dc2dab95fa1e44b625df059db552faa",
+    "status": "ai-reviewed"
+  },
+  "plugins/minesweeper.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d62dd836b10ea39b3bd76811496957aa9be8f71b65fd7ffcdf2fb1df3b8167c6",
+    "status": "ai-reviewed"
+  },
+  "plugins/mle_common.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "92ef123e77a2787b0ccef5f44caf2cce11f295817bafb0645a57ed14ca2fc191",
+    "status": "ai-reviewed"
+  },
+  "plugins/mmfdb_admin.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "35f633eff66cb78778f2071dfcbb8dd6aee0409082a7c01a1be9c49409856296",
+    "status": "ai-reviewed"
+  },
+  "plugins/model_manager.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1ae564583b766b4dac699396b7ebfa4ef67126b1fb7ea2c3a0afb93ee1c0e7cf",
+    "status": "ai-reviewed"
+  },
+  "plugins/ndxplorer.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "45f4d6137c9db194403e8572f5139743a5b4941537ccf4a3a6554b0c91f973f6",
+    "status": "ai-reviewed"
+  },
+  "plugins/number_quest.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4cbc42c92ee6746871fc38c13529c458449beb66cb9a845f7128e2769f29502b",
+    "status": "ai-reviewed"
+  },
+  "plugins/pch.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e00580c365078aa9a605239cb52353e34ade1b430f74da44f30cf42885f1d1fd",
+    "status": "ai-reviewed"
+  },
+  "plugins/phasor_calculator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1917d4ad55410f6ec64296041542ef78e464c7dfc0973db2d7750fceefbfb871",
+    "status": "ai-reviewed"
+  },
+  "plugins/photon_table.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b50019ef66bc897f94d29cf5ab7c68b0aae4eeac0f7b24031d39a0c682abe343",
+    "status": "ai-reviewed"
+  },
+  "plugins/plot_settings.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2c4881e672883abe2bc138bd9c1fa5719694c5726d66009b0842e757192ec820",
+    "status": "ai-reviewed"
+  },
+  "plugins/plugin_check.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "98ffa88b8fcf833b016f1ee0f640476704a1bdf4b4ed87aaa99a849d1162c3ed",
+    "status": "ai-reviewed"
+  },
+  "plugins/plugin_manager.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1ba4b6d704e240a9cbc736917bf343f26ebde5734dbc2a699d6d549fdf3e9a4d",
+    "status": "ai-reviewed"
+  },
+  "plugins/pong.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4c24d5ff9f511a2a4c289f66372667b264085753b8ac9bf5bb162c2468dfa6b5",
+    "status": "ai-reviewed"
+  },
+  "plugins/project_browser.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c902dd7f3a545d94d47f8eed9b826337d841e1415f48547d8384a573a3151196",
+    "status": "ai-reviewed"
+  },
+  "plugins/proteinmc.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ac66c84215295b83169252acdc6625fc44a83c0ebea422cfdbae777ef3ddcc6a",
+    "status": "ai-reviewed"
+  },
+  "plugins/psf_calculator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2863c8f611a048c14f1958c5b89ddeddf6e8cb6cbe096eb65609789f94630d36",
+    "status": "ai-reviewed"
+  },
+  "plugins/psf_determination.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ac5cf9cd9ce8c58950d08b4d2e0a9e574e32d11bbba3e741bc2862347b3dacf4",
+    "status": "ai-reviewed"
+  },
+  "plugins/pto_inspector.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e9e4b568f516a51dea7178e737d096eced211aa02763c8edcf7cbdae8fd3e7a6",
+    "status": "ai-reviewed"
+  },
+  "plugins/ptu_alex_creator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b7ea5618b77e9010b77810a16861707935af2a099a896e7bd56d2191c58dcb32",
+    "status": "ai-reviewed"
+  },
+  "plugins/quenching_estimator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "bddb35e4f86c984c22b3584a3b4751366964f165e08ec4c511e283342eb5dff9",
+    "status": "ai-reviewed"
+  },
+  "plugins/region_mle.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "008fd5941b8f2217c85f725b8d460db5abcabd539b4b0c3e882b2d7bf19490df",
+    "status": "ai-reviewed"
+  },
+  "plugins/rics_precision.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7f8f46d05e3c59916fef2c47ab4cbcaa80012b3972d6562c8ff154885db3047a",
+    "status": "ai-reviewed"
+  },
+  "plugins/setup.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f7bf2d39d809dc0c4b51b2b44414f9b80f03207ac62b062b577478e7ff135a8a",
+    "status": "ai-reviewed"
+  },
+  "plugins/setup_channel_definition.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5d10f9e06b7ca19062f30132edfb8b784d891aebbf05c4718ef16aa785f9ab49",
+    "status": "ai-reviewed"
+  },
+  "plugins/spectra_downloader.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d148d988c7d7858a632d773af7c9dc9d7e27d3288037b9b0d1eda1bbe6389d9c",
+    "status": "ai-reviewed"
+  },
+  "plugins/spot_finder.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a9d20e6654cc7ca1179d9cba15a3ab2f73ed47a6753337413fc536c468f9c551",
+    "status": "ai-reviewed"
+  },
+  "plugins/style_manager.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "eaa0fe6a08a860e09659d60f086746ccd176269d31f80c79af5ef5f8725c814d",
+    "status": "ai-reviewed"
+  },
+  "plugins/switch_user.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "01c8fc52a69aa126420c25534de33f0c40bd4ef246fd864a0646d650770550cd",
+    "status": "ai-reviewed"
+  },
+  "plugins/synthetic_decay.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a810391bfb96bc7294c3b43eb9aafc72eb5e39b9cb78517e4510801439d48943",
+    "status": "ai-reviewed"
+  },
+  "plugins/tetris.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "452eced5e22117325f12f56935403e153058d649e6d68635881142c84361ccf0",
+    "status": "ai-reviewed"
+  },
+  "plugins/tr_anisotropy.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3b8f05aa2c9c3da6870bc0b0920b802f73e7d81b05ecfb2012818e8083a522b1",
+    "status": "ai-reviewed"
+  },
+  "plugins/trace_browser.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3177e2fb82875d14136f327740e21e6c6ca72016ab5e0737933858898f32a338",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_align.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d8b67ad967752da0a614f1ae7e9a0967591061b631c73386b4e55eba7f57595b",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_convert.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f34573da2c2cc105bd12cd72fa81e74253dcdbf69874b2c2828e1ad2ee403d2a",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_energy_calculator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f01369f39bd983e4862813e5efd51b756fd0647e5c105449d3d1dedbd5c256ac",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_fret.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "df36df851f57ab9c41d77b28e2724eefdd003a3f03a6da30a9f621e5221dc44b",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_join.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "70c9a41dfac7a1439f8f1008db40fdc11096a75faa10dcf199c38e4f90506389",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_remove_clashes.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "6c68b41ae4ce9346fb156eeeb88754fcd0b0dfefa73379102afd5604a75b0543",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_rotate_translate.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "6e0345bda840a0d2a2bf6340b61400be532f0af8a7aab7227c8e8d8304c10b07",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_save_topology.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f7bb5d25a803a77b4c27b0290a6639b9399310c3a3cbeca8b61d79f32f611017",
+    "status": "ai-reviewed"
+  },
+  "plugins/traj_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1d03df65f0240ef85bbfa084c44744f8e689e8d4826e5e5e975fde5d1a5a0d51",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_audifier.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "693998114a51869b2c1d96ecf6436be2a230ae7a6c4eac18373f85ed95572e58",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_count_rate_analysis.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "31bb2284d38befb8931d5c1342496c806796b6a58292bf93a989dd6b054af806",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_header_edit.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "6a30e7833b33d0594bc06af45d1e2864f0d42e187208378afff89afab7a128c6",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_image_browser.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1e9fa789182f4d4f7aa0c373ca99eb69f76c73487e4f96b954f626f247c39b7e",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_lut_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "d31f2086ed36920f47394653c4dd2075360159d1eb526d62d728345e6f2459ab",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_splitter.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "bedcec64977c10cacbc0d89692869eeb4814de389a807dc8be63ade0267caa91",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_time_windows.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "cdd3de9cf16f44dfbbbe2a1f59b27aeef675dc8c7c933957442a9857cea5b636",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_to_pto.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ef98c030869656841898e1b5af179057ad58da59d1e22aa83fcd819f4daec774",
+    "status": "ai-reviewed"
+  },
+  "plugins/tttr_toolbox.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e29df95b269e1ce0ff15db10964e3efc9b3c6170f8be45c28fee7f9b915c24b2",
+    "status": "ai-reviewed"
+  },
+  "plugins/updater.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2f76ca23466a16d7388b477bc9b893b8d303aa6a346ec2b5082090af97cdda6d",
+    "status": "ai-reviewed"
+  },
+  "plugins/user_editor.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "da0bd5d72a4f2de42ea3a81528980399a399c7b34ea9fbf8426ed22b5a8e349e",
+    "status": "ai-reviewed"
+  },
+  "plugins/vv_vh_anisotropy.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c47f9b6d21176b9c903d833281780852da7acb3e496480402da473d9f2d5dbba",
+    "status": "ai-reviewed"
+  },
+  "plugins/vv_vh_g_factor.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "da02df133559d6915c17468542e8d850b731a1ce57d614209c452c30927d22ac",
+    "status": "ai-reviewed"
+  },
+  "plugins/wizards.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "a00ff5342b921f2e194518bf7729286cd360438ad8e692918ca928d0a414eec4",
+    "status": "ai-reviewed"
+  }
+}

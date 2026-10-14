@@ -18,7 +18,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 | Field | Value |
 | --- | --- |
 | Plugin id | `psf_determination` |
-| Menu path | Spectroscopy → Imaging → **PSF Determination** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Spectroscopy → Imaging → **PSF Determination** |
 | Categories | Spectroscopy, Imaging |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |

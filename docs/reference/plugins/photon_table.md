@@ -18,7 +18,7 @@ Inspect the photons of a TTTR file in a table: routing channel, micro-time and m
 | Field | Value |
 | --- | --- |
 | Plugin id | `photon_table` |
-| Menu path | Tools → TTTR → **Photon Table** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **Photon Table** |
 | Categories | Tools, TTTR |
 | Version | 1.0.0 |
 | Surfaces | emtk |

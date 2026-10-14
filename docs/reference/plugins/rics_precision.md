@@ -18,7 +18,7 @@ Predict how precisely a raster scan (RICS) will measure a diffusion coefficient,
 | Field | Value |
 | --- | --- |
 | Plugin id | `rics_precision` |
-| Menu path | Main → Tools → **RICS-Precision** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Main → Tools → **RICS-Precision** |
 | Categories | Main, Tools |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk |

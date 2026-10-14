@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Styles
-description: Style Manager Plugin for ChiSurf
+description: Edit ChiSurf's style sheets (.qss files in the settings directory) and apply one to the running application.
 resource: chisurf/plugins/core/style_manager/
 tags: [reference, plugins, style-manager, setup]
 anchor: plugin-style_manager
@@ -11,21 +11,21 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-style_manager)=
 # Styles
 
-Style Manager Plugin for ChiSurf
+Edit ChiSurf's style sheets (.qss files in the settings directory) and apply one to the running application.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `style_manager` |
-| Menu path | Setup → **Styles** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Setup → **Styles** |
 | Categories | Setup |
 | Version | 1.0.0 |
 | Surfaces | emtk |
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

@@ -18,7 +18,7 @@ How fit plots look: curve colours and width, fit-range band, global fits, axes a
 | Field | Value |
 | --- | --- |
 | Plugin id | `plot_settings` |
-| Menu path | Setup → **Plots** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Setup → **Plots** |
 | Categories | Setup |
 | Version | 1.0.0 |
 | Surfaces | emtk |

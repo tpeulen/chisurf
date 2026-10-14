@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Models
-description: Model Manager for ChiSurf
+description: List the registered fitting models and switch models off so they leave the model drop-down.
 resource: chisurf/plugins/core/model_manager/
 tags: [reference, plugins, model-manager, setup]
 anchor: plugin-model_manager
@@ -11,14 +11,14 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-model_manager)=
 # Models
 
-Model Manager for ChiSurf
+List the registered fitting models and switch models off so they leave the model drop-down.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `model_manager` |
-| Menu path | Setup → **Models** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Setup → **Models** |
 | Categories | Setup |
 | Version | 1.0.0 |
 | Surfaces | emtk |

@@ -2,7 +2,7 @@
   "id": "model_manager",
   "version": "1.0.0",
   "display_name": "Setup:Models",
-  "description": "Model Manager for ChiSurf",
+  "description": "List the registered fitting models and switch models off so they leave the model drop-down.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
   "icon": "⚙️",

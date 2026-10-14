@@ -18,7 +18,7 @@ Compute TTTR microtime LUTs and create channel LUT settings in one dockable work
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_lut_tools` |
-| Menu path | Tools → TTTR → **LUT Tools** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **LUT Tools** |
 | Categories | Tools, TTTR, Microtime, LUT |
 | Version | 1.0.0 |
 | Surfaces | cli, emtk, services |

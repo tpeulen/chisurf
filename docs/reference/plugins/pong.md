@@ -18,7 +18,7 @@ Classic Pong game with CPU opponent, score tracking, and particle effects; conta
 | Field | Value |
 | --- | --- |
 | Plugin id | `pong` |
-| Menu path | Tools → Miscellaneous → Games → **Pong** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Miscellaneous → Games → **Pong** |
 | Categories | Tools, Miscellaneous, Games |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |
@@ -26,7 +26,7 @@ Classic Pong game with CPU opponent, score tracking, and particle effects; conta
 
 ## Parameters
 
-This plugin's window is an EMTK app: its controls and tables are described in the plugin's guide, and the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin's window is an EMTK app without declarative parameter sections: its controls are described in the plugin's guide. Any fit/model parameter it edits is defined in the [parameter glossary](../parameters.md).
 
 ## Theory and workflow
 

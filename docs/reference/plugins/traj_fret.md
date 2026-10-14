@@ -18,7 +18,7 @@ Calculate FRET observables from molecular dynamics trajectories.
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_fret` |
-| Menu path | Structure → Trajectory → **FRET** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Structure → Trajectory → **FRET** |
 | Categories | Structure, Trajectory, FRET |
 | Version | 1.0.0 |
 | Surfaces | emtk |

@@ -18,7 +18,7 @@ Align molecular dynamics trajectories to a reference frame or structure.
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_align` |
-| Menu path | Structure → Trajectory → **Align** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Structure → Trajectory → **Align** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
 | Surfaces | emtk |

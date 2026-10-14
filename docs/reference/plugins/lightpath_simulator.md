@@ -21,7 +21,7 @@ Optical light path simulator to calculate crosstalk and R0 overlap integrals.
 | Menu path | Tools → Calculators → **Light Path Simulator** |
 | Categories | Tools, Calculators |
 | Version | 1.0.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `lightpath_simulator` |
 
 ## Parameters

@@ -2,7 +2,7 @@
   "id": "quenching_estimator",
   "version": "19.8.13",
   "display_name": "Structure:Computation:QuEst",
-  "description": "Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is this plugin's core/ (the former quest package).",
+  "description": "Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],

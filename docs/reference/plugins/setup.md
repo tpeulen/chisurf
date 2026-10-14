@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Settings
-description: Unified Settings for ChiSurf
+description: 'The Settings window: one searchable list of every settings panel (ChiSurf settings, acquisition, styles, plots, models, users, plugins, updates, detector setup, ...).'
 resource: chisurf/plugins/core/setup/
 tags: [reference, plugins, setup]
 anchor: plugin-setup
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-setup)=
 # Settings
 
-Unified Settings for ChiSurf
+The Settings window: one searchable list of every settings panel (ChiSurf settings, acquisition, styles, plots, models, users, plugins, updates, detector setup, ...).
 
 ## Identity
 

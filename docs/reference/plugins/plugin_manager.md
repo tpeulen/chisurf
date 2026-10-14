@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Plugins
-description: Plugin Manager for ChiSurf
+description: 'List the installed plugins: switch them off, pin them to the toolbar, rename their menu entry, set their icon and whether their window remembers its state.'
 resource: chisurf/plugins/core/plugin_manager/
 tags: [reference, plugins, plugin-manager, setup]
 anchor: plugin-plugin_manager
@@ -11,14 +11,14 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-plugin_manager)=
 # Plugins
 
-Plugin Manager for ChiSurf
+List the installed plugins: switch them off, pin them to the toolbar, rename their menu entry, set their icon and whether their window remembers its state.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `plugin_manager` |
-| Menu path | Setup → **Plugins** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Setup → **Plugins** |
 | Categories | Setup |
 | Version | 1.0.0 |
 | Surfaces | emtk |

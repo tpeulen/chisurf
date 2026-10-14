@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Protein Monte Carlo
-description: Protein Monte Carlo CLI plugin. Expose the ProteinMC cmd tool via the unified ChiSurf CLI.
+description: 'Command-line Protein Monte Carlo: torsion-angle sampling of a structure under FRET distance restraints, written as an RMF trajectory.'
 resource: chisurf/plugins/modelling/proteinmc/
 tags: [reference, plugins, proteinmc, structure, computation]
 anchor: plugin-proteinmc
@@ -11,21 +11,21 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-proteinmc)=
 # Protein Monte Carlo
 
-Protein Monte Carlo CLI plugin.  Expose the ProteinMC cmd tool via the unified ChiSurf CLI.
+Command-line Protein Monte Carlo: torsion-angle sampling of a structure under FRET distance restraints, written as an RMF trajectory.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `proteinmc` |
-| Menu path | Structure → Computation → **Protein Monte Carlo** |
+| Menu path | not in the menus; display name Structure → Computation → **Protein Monte Carlo** |
 | Categories | Structure, Computation |
 | Version | 1.0.0 |
 | Surfaces | cli |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin opens no window: it is a command-line tool (`csc proteinmc --help` lists its options).
 
 ## Theory and workflow
 

@@ -21,7 +21,7 @@ Manage the Multiparametric Fluorescence Database (MMFDB): samples, experiments, 
 | Menu path | Tools → System → **MMFDB Admin** |
 | Categories | Tools, System, Fluorescence, Database |
 | Version | 1.1.0 |
-| Surfaces | cli, emtk, gui, services |
+| Surfaces | cli, emtk, services |
 | State namespace | `mmfdb_admin` |
 
 ## Parameters
@@ -104,7 +104,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Component Type | `component` | choice |  | choices: `component_options` | Which kind of optical component to list. |
-| Search | `search` | str |  |  | List the components whose name contains this (Enter or a click elsewhere searches). |
+| Search | `search` | str |  |  | List the components whose name contains this: as you type (with Auto on), or on Enter. |
+| Auto | `auto_search` | bool |  |  | Search while typing (300 ms after the last key). Turn off for a large database and press Enter to search. |
 | Status | `status_filter` | choice |  | choices: `status_options` | List only the components with this curation status. |
 
 ### Provenance Graph
@@ -136,7 +137,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| query | `query` | str |  |  | Search the remote experiments. |
+| query | `query` | str |  |  | Search the remote experiments (Enter lists them). |
 
 ### Import into MMFDB
 

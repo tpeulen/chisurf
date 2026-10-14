@@ -27,7 +27,7 @@
     "services": "chisurf.plugins.calculator.kappa2_dist.backend.services:register_services"
   },
   "rpc_methods": [
-    {"name": "kappa2_dist.compute"}
+    {"name": "kappa2_dist.compute", "description": "Compute the κ² distribution and the apparent-distance statistics for the given model and anisotropies."}
   ],
   "events": [],
   "dependencies": {},

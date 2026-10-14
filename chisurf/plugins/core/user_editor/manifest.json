@@ -2,7 +2,7 @@
   "id": "user_editor",
   "version": "1.0.0",
   "display_name": "Setup:User Editor",
-  "description": "User editor plugin for Chisurf to manage users registered in the MMFDB.",
+  "description": "Manage the users registered in the MMFDB: create, edit and remove accounts.",
   "authors": [
     "Thomas-Otavio Peulen"
   ],

@@ -18,7 +18,7 @@ Convert TTTR photon streams to audio, with a live micro-time / lifetime waterfal
 | Field | Value |
 | --- | --- |
 | Plugin id | `tttr_audifier` |
-| Menu path | Tools → TTTR → **Audifier** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → TTTR → **Audifier** |
 | Categories | Tools, TTTR, Analysis |
 | Version | 2.0.0 |
 | Surfaces | emtk |

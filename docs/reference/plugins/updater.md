@@ -18,7 +18,7 @@ Update checker/installer and conda package manager. Surfaced as panels inside th
 | Field | Value |
 | --- | --- |
 | Plugin id | `updater` |
-| Menu path | Setup → **Updates & Packages** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Setup → **Updates & Packages** |
 | Categories | Setup |
 | Version | 1.0.0 |
 | Surfaces | emtk |

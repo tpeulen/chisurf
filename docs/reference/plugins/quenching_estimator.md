@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: QuEst
-description: 'Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is this plugin''s core/ (the former quest package).'
+description: 'Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff.'
 resource: chisurf/plugins/quenching_estimator/
 tags: [reference, plugins, quenching-estimator, structure, computation]
 anchor: plugin-quenching_estimator
@@ -11,7 +11,7 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-quenching_estimator)=
 # QuEst
 
-Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff. The engine is this plugin's core/ (the former quest package).
+Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers: accessible volume, Brownian dynamics and photon Monte-Carlo on IMP.bff.
 
 ## Identity
 

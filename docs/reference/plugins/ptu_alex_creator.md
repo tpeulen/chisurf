@@ -18,7 +18,7 @@ Convert ALEX macro-time modulation into micro-time (single, batch or merged), fo
 | Field | Value |
 | --- | --- |
 | Plugin id | `ptu_alex_creator` |
-| Menu path | Tools → Converter → **ALEX Creator** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → Converter → **ALEX Creator** |
 | Categories | Tools, Converter, TTTR |
 | Version | 2.0.0 |
 | Surfaces | cli, emtk, services |

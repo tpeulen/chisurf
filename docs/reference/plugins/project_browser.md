@@ -1,7 +1,7 @@
 ---
 type: Plugin Reference
 title: Open Project
-description: Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control.
+description: Browse, save, restore, export, and import ChiSurf projects using the MMFDB database with version control.
 resource: chisurf/plugins/core/project_browser/
 tags: [reference, plugins, project-browser, tools, project]
 anchor: plugin-project_browser
@@ -11,14 +11,14 @@ generator: build_tools/docs/generate_plugin_docs.py
 (plugin-project_browser)=
 # Open Project
 
-Browse, save, restore, export, and import Chisurf projects using the MMFDB database with version control.
+Browse, save, restore, export, and import ChiSurf projects using the MMFDB database with version control.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
 | Plugin id | `project_browser` |
-| Menu path | Tools → **Open Project** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Tools → **Open Project** |
 | Categories | Tools, Project |
 | Version | 1.0.0 |
 | Surfaces | emtk |
@@ -42,18 +42,18 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Method | Long-running | Summary |
 | --- | --- | --- |
-| `project_browser.list` | no |  |
-| `project_browser.save` | no |  |
-| `project_browser.restore` | no |  |
-| `project_browser.export_csp` | no |  |
-| `project_browser.import_preview` | no |  |
-| `project_browser.import_csp` | no |  |
-| `project_browser.delete_version` | no |  |
-| `project_browser.create_branch` | no |  |
-| `project_browser.list_branches` | no |  |
-| `project_browser.version_graph` | no |  |
-| `project_browser.artifacts` | no |  |
-| `project_browser.parameters` | no |  |
+| `project_browser.list` | no | List the readable project versions, grouped by project. |
+| `project_browser.save` | no | Save the current session as a new version of a project. |
+| `project_browser.restore` | no | Restore the exact session snapshot stored with a project version. |
+| `project_browser.export_csp` | no | Export a project version as a .pto file. |
+| `project_browser.import_preview` | no | Check a project file against the database before importing it. |
+| `project_browser.import_csp` | no | Import a project file as new project versions. |
+| `project_browser.delete_version` | no | Delete one project version. |
+| `project_browser.create_branch` | no | Start a branch from a project version. |
+| `project_browser.list_branches` | no | List the branches of the readable project versions. |
+| `project_browser.version_graph` | no | Return the version history of a project as a graph. |
+| `project_browser.artifacts` | no | List the artifacts stored with a project version. |
+| `project_browser.parameters` | no | List the parameters stored with a project version. |
 
 ## Theory and workflow
 

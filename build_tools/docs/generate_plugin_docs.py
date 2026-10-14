@@ -378,7 +378,17 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
         ]
 
     out += ["## Identity", "", "| Field | Value |", "| --- | --- |",
-            f"| Plugin id | `{pid}` |", f"| Menu path | {category} → **{leaf}** |"]
+            f"| Plugin id | `{pid}` |"]
+    if manifest.get("menu_hidden"):
+        # A hidden plugin has a display path but no menu entry; printing the path
+        # as a "menu path" sends the reader looking for an entry that is not there.
+        entry = manifest.get("entrypoints") or {}
+        where = " (opened from a hub or another tool)" if (
+            entry.get("emtk") or entry.get("gui")) else ""
+        out.append(f"| Menu path | not in the menus{where}; "
+                   f"display name {category} → **{leaf}** |")
+    else:
+        out.append(f"| Menu path | {category} → **{leaf}** |")
     if manifest.get("categories"):
         out.append(f"| Categories | {', '.join(manifest['categories'])} |")
     if manifest.get("version"):
@@ -432,9 +442,19 @@ def _plugin_page(manifest: dict, plugin_dir: pathlib.Path, registry_params: dict
         out += ["This plugin opens no window and has no parameters: it is an action on the "
                 f"ChiSurf host. {_md(action.get('description', ''))}{host}", ""]
     elif (manifest.get("entrypoints") or {}).get("emtk"):
-        out += ["This plugin's window is an EMTK app: its controls and tables are described in the "
-                "plugin's guide, and the fit/model parameters it edits are defined in the "
-                "[parameter glossary](../parameters.md).", ""]
+        out += ["This plugin's window is an EMTK app without declarative parameter sections: "
+                "its controls are described in the plugin's guide. Any fit/model parameter it "
+                "edits is defined in the [parameter glossary](../parameters.md).", ""]
+    elif not (manifest.get("entrypoints") or {}).get("gui"):
+        # No window at all: a command-line tool, or a library other plugins import.
+        cli = (manifest.get("entrypoints") or {}).get("cli")
+        if cli:
+            command = str(cli).split("=", 1)[0].strip()
+            out += ["This plugin opens no window: it is a command-line tool "
+                    f"(`csc {command} --help` lists its options).", ""]
+        else:
+            out += ["This plugin opens no window and has no parameters: it is shared code "
+                    "that other plugins import.", ""]
     else:
         out += ["This plugin builds its interface from custom Qt widgets (no "
                 "declarative `*.view.json` parameter sections were found). Its "

@@ -2,7 +2,7 @@
   "id": "style_manager",
   "version": "1.0.0",
   "display_name": "Setup:Styles",
-  "description": "Style Manager Plugin for ChiSurf",
+  "description": "Edit ChiSurf's style sheets (.qss files in the settings directory) and apply one to the running application.",
   "authors": ["Thomas-Otavio Peulen"],
   "categories": ["Setup"],
   "icon": "🎨",

@@ -18,12 +18,12 @@ Shared maximum-likelihood machinery for the spot/region/pixel MLE tools: the est
 | Field | Value |
 | --- | --- |
 | Plugin id | `mle_common` |
-| Menu path | Uncategorized → **Mle Common** |
+| Menu path | not in the menus; display name Uncategorized → **Mle Common** |
 | Version | 1.0.0 |
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+This plugin opens no window and has no parameters: it is shared code that other plugins import.
 
 ## Theory and workflow
 

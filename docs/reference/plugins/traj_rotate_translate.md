@@ -18,7 +18,7 @@ Apply rigid-body rotation and translation to trajectories.
 | Field | Value |
 | --- | --- |
 | Plugin id | `traj_rotate_translate` |
-| Menu path | Structure → Trajectory → **Rotate/Translate** |
+| Menu path | not in the menus (opened from a hub or another tool); display name Structure → Trajectory → **Rotate/Translate** |
 | Categories | Structure, Trajectory |
 | Version | 1.0.0 |
 | Surfaces | emtk |
