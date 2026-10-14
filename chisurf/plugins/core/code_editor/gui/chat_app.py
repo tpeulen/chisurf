@@ -650,7 +650,6 @@ class ChatModel:
         self.pending_permission = None
 
 
-
 class WikiWindow:
     """The LLM Wiki the assistant reads: search the pages, read one, feed the codebase in.
 
@@ -742,7 +741,9 @@ class WikiWindow:
         im.end_child()
         x, y = im.get_cursor_screen_pos()
         status_h = 22.0 if self.status else 0.0
-        im.begin_child((x, y, box[2], max(40.0, box[1] + box[3] - y - status_h)), child_id="wiki_page")
+        im.begin_child(
+            (x, y, box[2], max(40.0, box[1] + box[3] - y - status_h)), child_id="wiki_page"
+        )
         im.text_wrapped(self.page_text)
         im.end_child()
         if self.status:
@@ -812,9 +813,11 @@ class ChatGui:
         transcript_h = max(70.0, rem_h - input_total_h)
 
         # An empty transcript shows the mode's greeting: what the assistant is for.
-        shown = self.model.history if self.model.history.messages else [
-            ChatMessage(role="system", content=self.model.greeting)
-        ]
+        shown = (
+            self.model.history
+            if self.model.history.messages
+            else [ChatMessage(role="system", content=self.model.greeting)]
+        )
         draw_chat_transcript(
             shown,
             size=(width, transcript_h),
@@ -904,7 +907,9 @@ class ChatGui:
         im.same_line()
         if im.small_button(tr("📚 Wiki") + "##chat_wiki"):
             self.wiki.show()
-        im.set_item_tooltip(tr("Browse the LLM Wiki the assistant reads, or feed the codebase into it"))
+        im.set_item_tooltip(
+            tr("Browse the LLM Wiki the assistant reads, or feed the codebase into it")
+        )
         im.separator()
 
     def _draw_permission_banner(self) -> None:

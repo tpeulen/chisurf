@@ -87,7 +87,9 @@ def read_burst_container(path: Any) -> tuple[Any, Path]:
     table, _tttrs = _read_burst_analysis_from_container(Path(path))
     container = found.resolve()
     n = row_count(table)
-    run = split_container_path(str(np.asarray(table[RUN_COLUMN], dtype=object)[0]))[1] if n else _run
+    run = (
+        split_container_path(str(np.asarray(table[RUN_COLUMN], dtype=object)[0]))[1] if n else _run
+    )
     set_constant(table, "burst_file", Path(path).name)
     set_constant(table, "_burst_path", str(Path(path).resolve()))
     table["_measurement_path"] = [str(container / run) if run else str(container)] * n
@@ -818,7 +820,9 @@ class LazyTTTRs(collections.abc.MutableMapping):
             file_type = self.file_type
             if not file_type or str(file_type).lower() == "auto":
                 file_type = None
-            self._cache[physical] = open_tttr(self.paths[key], file_type, cache=False, **self.read_kwargs)
+            self._cache[physical] = open_tttr(
+                self.paths[key], file_type, cache=False, **self.read_kwargs
+            )
         return self._cache[physical]
 
     def __setitem__(self, key, value) -> None:
@@ -1057,7 +1061,9 @@ class MleSession:
             table, container = read_burst_container(path)
             tables.append(table)
             # Keyed by the run read; the photons are the container's, opened once however many runs name it.
-            for identity in dict.fromkeys(str(v) for v in np.asarray(table["_measurement_path"], dtype=object)):
+            for identity in dict.fromkeys(
+                str(v) for v in np.asarray(table["_measurement_path"], dtype=object)
+            ):
                 raw_paths[identity] = container
         self.df_bursts = concat_stores(tables)
         changed_paths = self.tttr_paths != raw_paths
