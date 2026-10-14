@@ -240,6 +240,7 @@ def action_button(
     id: str | None = None,
     size: tuple[float, float] | None = None,
     enabled: bool = True,
+    role: str | None = None,
 ) -> bool:
     """Draw shared action *key* as its canonical button; True on the frame it is pressed.
 
@@ -257,6 +258,9 @@ def action_button(
         Explicit button size, as for ``im.button``.
     enabled : bool
         A disabled button is greyed and cannot be pressed.
+    role : str, optional
+        An emtk button role for this drawing (a Restart that is now the thing to press is
+        ``"primary"``); default the action's own (:attr:`Action.role`).
 
     Returns
     -------
@@ -267,7 +271,9 @@ def action_button(
         raise ValueError(f"{key!r} is a {ACTIONS[key].kind}, not a button")
     if not enabled:  # (begin_disabled(False) would re-enable inside a disabled parent)
         im.begin_disabled(True)
-    pressed = im.button(f"{action_caption(key)}###{id or key}", size, role=ACTIONS[key].role)
+    pressed = im.button(
+        f"{action_caption(key)}###{id or key}", size, role=role or ACTIONS[key].role
+    )
     if not enabled:
         im.end_disabled()
     im.set_item_tooltip(action_tooltip(key, tooltip, shortcut))

@@ -82,6 +82,9 @@ gui:
   # and needs no catalogue; other codes load chisurf/gui/i18n/chisurf_<code>.qm
   # at startup. Applied on the next GUI start.
   language: en
+  # Colour theme of the window (Settings > Theme): dark (the default) or light.
+  # emtk.theme holds the colours; switching applies at once and is kept here.
+  theme: dark
   # Global application UI font point size. On macOS this compensates for the
   # low-resolution stability mode; set 0 to keep the platform default.
   application_font_size: 13

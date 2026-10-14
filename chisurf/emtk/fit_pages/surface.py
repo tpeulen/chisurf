@@ -62,6 +62,7 @@ class FitWindowSurface:
 
 def _surface_class():
     from emtk import im
+    from emtk import style as _style
     from emtk.app import ImApp
     from emtk.docking import DockManager, Region
 
@@ -180,7 +181,7 @@ def _surface_class():
                 return
             if body is not None and body.missing:
                 im.text_colored(
-                    (220, 90, 90),
+                    _style.TEXT_DANGER,
                     f"{page.title}: {', '.join(body.missing)} declares nothing to draw.",
                 )
                 return

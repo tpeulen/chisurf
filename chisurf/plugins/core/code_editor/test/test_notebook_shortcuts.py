@@ -48,8 +48,8 @@ def test_visible_run_button_executes_the_cell(monkeypatch, tmp_path):
     button = im.button
     run_rect = {}
 
-    def remember_run(label, size=None):
-        result = button(label, size)
+    def remember_run(label, size=None, role=None):
+        result = button(label, size, role=role)
         if label == "▶ Run · Shift+Enter":
             run_rect["box"] = im.get_item_rect()
         return result

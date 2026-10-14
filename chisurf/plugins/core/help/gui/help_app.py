@@ -18,6 +18,7 @@ from queue import Empty, Queue
 from typing import TYPE_CHECKING, Callable
 
 from emtk import im
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -1987,7 +1988,7 @@ class HelpGui:
             sym_str = f" :: {self.model.source_symbol}" if self.model.source_symbol else ""
             line_str = f" (Line {self.model.source_line})" if self.model.source_line else ""
             im.text_colored(
-                (140, 205, 255, 255), f"{self.model.source_path.name}{sym_str}{line_str}"
+                _style.HEADING_1, f"{self.model.source_path.name}{sym_str}{line_str}"
             )
 
             im.same_line()
@@ -2206,7 +2207,7 @@ class HelpGui:
                 if caption:
                     im.dummy(0.0, 2.0)
                     push_text_style("caption", zoom=zoom)
-                    im.push_style_color(Col.TEXT, (175, 185, 200, 255))
+                    im.push_style_color(Col.TEXT, _style.TEXT_QUOTE)
                     im.text_wrapped(f"{tr('Figure')}: {caption}")
                     im.pop_style_color()
                     pop_text_style()
@@ -2228,7 +2229,7 @@ class HelpGui:
                         pass
 
                 push_text_style("code", zoom=zoom)
-                im.push_style_color(Col.FRAME_BG, (20, 24, 30, 255))
+                im.push_style_color(Col.FRAME_BG, _style.CODE_BG)
                 im.text_wrapped(block.text)
                 im.pop_style_color()
                 pop_text_style()
@@ -2347,7 +2348,7 @@ class HelpGui:
         draw_list.add_rect((x, y), (x + box_w, y + box_h), (235, 120, 110, 255))
         im.dummy(0.0, 4.0)
         im.indent(8.0)
-        im.push_style_color(Col.TEXT, (245, 160, 150, 255))
+        im.push_style_color(Col.TEXT, _style.TEXT_DANGER)
         im.text_wrapped(tr("missing: {path}").format(path=path))
         im.pop_style_color()
         im.unindent(8.0)
@@ -2376,7 +2377,7 @@ class HelpGui:
     def _draw_ask_pane(self, box: tuple[float, float, float, float]) -> None:
         avail_w = box[2]
 
-        im.text_colored((140, 170, 210, 255), "Ask Documentation AI")
+        im.text_colored(_style.HEADING_1, "Ask Documentation AI")
         im.text_disabled(tr("Grounded Q&A from ChiSurf docs"))
         if im.small_button("Provider settings…"):
             if self.provider_settings is None:

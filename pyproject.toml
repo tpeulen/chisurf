@@ -71,7 +71,7 @@ dependencies = [
     # chimol import emtk.qt_host unguarded, so it is not optional.
     # emtk is on PyPI (source: github.com/tpeulen/emtk). The bound is
     # chisurf.emtk.requirement.EMTK_MIN_VERSION, checked at startup.
-    "emtk>=0.1.16",
+    "emtk>=0.1.19",
     "PyYAML",
     "packaging",
     "typing-extensions",

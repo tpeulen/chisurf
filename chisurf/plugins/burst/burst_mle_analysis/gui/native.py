@@ -16,6 +16,7 @@ from typing import Any
 
 import numpy as np
 from emtk import im, implot
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.im_core import get_current_context
@@ -451,19 +452,19 @@ class MleNativeApp(TourTarget, ImApp):
         if running or self.job.progress:
             im.text_wrapped(self.job.progress or self.model.status_text)
         elif self.job.error:
-            im.push_style_color(im.Col.TEXT, (0.9, 0.4, 0.4, 1.0))
+            im.push_style_color(im.Col.TEXT, _style.TEXT_DANGER)
             im.text_wrapped(self.job.error)
             im.pop_style_color()
         else:
             im.text_wrapped(self.model.status_text)
         ok, n_files = self.model.input_status()
         if ok:
-            im.push_style_color(im.Col.TEXT, (0.3, 0.85, 0.4, 1.0))
+            im.push_style_color(im.Col.TEXT, _style.TEXT_TIP)
             message = str(tr("IRF and background loaded for {detector}; {count} burst file(s)"))
             im.text_wrapped(message.format(detector=self.model.current_detector, count=n_files))
             im.pop_style_color()
         else:
-            im.push_style_color(im.Col.TEXT, (0.8, 0.8, 0.4, 1.0))
+            im.push_style_color(im.Col.TEXT, _style.TEXT_WARNING)
             message = str(tr("No IRF and background for {detector} yet; {count} burst file(s)"))
             im.text_wrapped(
                 message.format(

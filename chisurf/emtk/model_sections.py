@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im, implot
+from emtk import style as _style
 from emtk.i18n import tr
 
 from chisurf.plugins.emtk_layout import action_button
@@ -985,7 +986,7 @@ class SectionViews:
     def _draw_error(self, section, model, state, width) -> None:
         d = self._section(section)
         im.text_colored(
-            (220, 90, 90),
+            _style.TEXT_DANGER,
             tr("{kind}: {error}").format(
                 kind=d.get("title") or d.get("key", ""), error=d.get("error", "")
             ),

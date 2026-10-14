@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import unquote, urlparse
 
 import emtk.im as im
+from emtk import style as _style
+from emtk import theme as _theme
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -56,6 +58,22 @@ if TYPE_CHECKING:
     from chisurf.plugins.core.code_editor.rpc_server import EditorRpcServer
 
 WINDOW_BG = (24, 26, 32, 255)
+#: The editor's own dark chrome, pushed over the dark theme (``Col`` role, colour).
+DARK_CHROME = (
+    (Col.WINDOW_BG, WINDOW_BG),
+    (Col.FRAME_BG, (38, 41, 48, 255)),
+    (Col.FRAME_BG_HOVERED, (48, 52, 62, 255)),
+    (Col.FRAME_BG_ACTIVE, (35, 85, 140, 255)),
+    (Col.BUTTON, (44, 48, 56, 255)),
+    (Col.BUTTON_HOVERED, (55, 60, 72, 255)),
+    (Col.BUTTON_ACTIVE, (35, 85, 140, 255)),
+    (Col.HEADER, (44, 48, 56, 255)),
+    (Col.HEADER_HOVERED, (55, 60, 72, 255)),
+    (Col.TAB, (44, 48, 56, 255)),
+    (Col.TAB_SELECTED, (35, 85, 140, 255)),
+    (Col.BORDER, (55, 60, 72, 255)),
+    (Col.TEXT, (240, 240, 240, 255)),
+)
 
 # EMTK's default 8 pt chrome is too small for the editor's dense desktop
 # workspace. Keep text-zoom preferences relative to this readable baseline.
@@ -1520,27 +1538,20 @@ class CodeEditorGui:
         height = float(h or vp.size[1] or 720.0)
 
         # Cohesive dark chrome (same palette family as the burst shell): the
-        # default gray read as unfinished next to the Qt editor.
-        im.push_style_color(Col.WINDOW_BG, (24, 26, 32, 255))
-        im.push_style_color(Col.FRAME_BG, (38, 41, 48, 255))
-        im.push_style_color(Col.FRAME_BG_HOVERED, (48, 52, 62, 255))
-        im.push_style_color(Col.FRAME_BG_ACTIVE, (35, 85, 140, 255))
-        im.push_style_color(Col.BUTTON, (44, 48, 56, 255))
-        im.push_style_color(Col.BUTTON_HOVERED, (55, 60, 72, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (35, 85, 140, 255))
-        im.push_style_color(Col.HEADER, (44, 48, 56, 255))
-        im.push_style_color(Col.HEADER_HOVERED, (55, 60, 72, 255))
-        im.push_style_color(Col.TAB, (44, 48, 56, 255))
-        im.push_style_color(Col.TAB_SELECTED, (35, 85, 140, 255))
-        im.push_style_color(Col.BORDER, (55, 60, 72, 255))
-        im.push_style_color(Col.TEXT, (240, 240, 240, 255))
+        # default gray read as unfinished next to the Qt editor. Only on the dark
+        # theme: the light theme (emtk.theme) is the editor's look as it is.
+        pushed = 0
+        if not _theme.is_light():
+            for role, colour in DARK_CHROME:
+                im.push_style_color(role, colour)
+            pushed = len(DARK_CHROME)
         # Frame rounding and padding stay at the emtk defaults: the pushed
         # 4 px rounding turned every button into a rounded tile, and the
         # editor's chrome should look like the rest of the application's.
         try:
             self._draw_themed(width, height)
         finally:
-            for _ in range(13):
+            for _ in range(pushed):
                 im.pop_style_color()
 
     def _draw_themed(self, width: float, height: float) -> None:
@@ -2420,20 +2431,16 @@ class CodeEditorGui:
                 self._request_close(self.model.active_doc)
         self._same_line_or_wrap(box, 70.0)
         if self.model.is_running_script or notebook_running:
-            im.push_style_color(Col.BUTTON, (160, 60, 60, 255))
             if im.button(tr("■ Stop"), role="danger"):
                 self.model.stop_active_script()
             im.set_item_tooltip(tr("Stop — stop the running script subprocess"))
-            im.pop_style_color()
         else:
-            im.push_style_color(Col.BUTTON, (46, 140, 67, 255))
             if action_button(
                 "run",
                 tooltip=tr("Run Script — run the active Python document and display its output"),
             ):
                 self.model.run_active_script()
             self.item_rects["run"] = im.get_item_rect()
-            im.pop_style_color()
         self._same_line_or_wrap(box, 150.0)
         im.set_next_item_width(150.0)
         changed, endpoint = im.combo(
@@ -2687,11 +2694,11 @@ class CodeEditorGui:
         for line in self.model.output_logs:
             lower = line.lower()
             if any(k in lower for k in ("error", "exception", "traceback", "failed")):
-                im.text_colored((245, 110, 110, 255), line)
+                im.text_colored(_style.TEXT_DANGER, line)
             elif line.startswith("--- Running") or line.startswith("--- Process finished"):
-                im.text_colored((110, 195, 255, 255), line)
+                im.text_colored(_style.TEXT_NOTE, line)
             elif any(k in lower for k in ("saved", "success", "complete")):
-                im.text_colored((130, 220, 140, 255), line)
+                im.text_colored(_style.TEXT_TIP, line)
             else:
                 im.text_wrapped(line)
         im.end_child()

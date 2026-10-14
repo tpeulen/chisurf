@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 from emtk import im, implot
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -214,7 +215,7 @@ class SaturationApp(TourTarget, ImApp):
             if name in self.item_rects:
                 self.item_rects[name.title().replace("_", " ")] = self.item_rects[name]
         if self.error:
-            im.push_style_color(Col.TEXT, (255, 115, 100, 255))
+            im.push_style_color(Col.TEXT, _style.TEXT_DANGER)
             im.text_wrapped(self.error)
             im.pop_style_color(1)
         elif self.status:

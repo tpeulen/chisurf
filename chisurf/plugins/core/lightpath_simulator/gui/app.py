@@ -7,6 +7,7 @@ from pathlib import Path
 
 from emtk import im
 from emtk import nodes as _nodes
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region, Split
@@ -541,7 +542,7 @@ class LightPathApp(TourTarget, ImApp):
         self._form("calc", SPEC["results_buttons"])
         status = controller.status or ""
         if status.startswith("Error"):
-            im.push_style_color(Col.TEXT, (255, 115, 100, 255))
+            im.push_style_color(Col.TEXT, _style.TEXT_DANGER)
             im.text_wrapped(status)
             im.pop_style_color(1)
         elif status:

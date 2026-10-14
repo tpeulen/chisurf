@@ -812,6 +812,32 @@ class EmtkShellApp(ImApp):
 
     # ── session menus ─────────────────────────────────────────────────────
 
+    def _theme_actions(self) -> list[MenuAction]:
+        """Settings ▸ Dark theme / Light theme: switch now, keep it for the next start (``gui.theme``)."""
+        from emtk import theme
+
+        from chisurf.core.settings import theme as stored_theme
+
+        def choose(name: str) -> None:
+            stored_theme.choose(name, styles=[self.style])
+            self.request_frame()
+
+        return [
+            MenuAction(
+                f"theme_{name}",
+                label,
+                partial(choose, name),
+                "",
+                "",
+                tip,
+                checked=lambda name=name: theme.current_theme() == name,
+            )
+            for name, label, tip in (
+                ("dark", tr("Dark theme"), tr("Light text on dark surfaces (the default).")),
+                ("light", tr("Light theme"), tr("Dark text on light surfaces.")),
+            )
+        ]
+
     def session_menus(self) -> list[tuple[str, list[MenuAction]]]:
         """*File*, *View* and *Settings* as ``(title, [MenuAction])``; the shortcut table is read from them."""
         project, data = self.project, self.data
@@ -1024,6 +1050,7 @@ class EmtkShellApp(ImApp):
                 tr("Open the settings editor."),
                 lambda: "setup" in self.by_id,
             ),
+            *self._theme_actions(),
             MenuAction(
                 "fret_rda_axis",
                 tr("FRET RDA axis…"),
@@ -1794,12 +1821,15 @@ def main(argv: list[str] | None = None) -> int:
     ``--screenshot PATH`` (and ``--backend offscreen``) render one frame of the shell offscreen
     through :func:`emtk.native.main`, without a splash; ``--size WxH`` sets the main window's size.
     """
+    from chisurf.core.settings import theme as stored_theme
     from chisurf.core.settings.fonts import apply_stored
     from chisurf.emtk.i18n import install
 
     install(None)
     # The font settings (Settings ▸ Fonts) before the first window draws: sizes, faces, zoom.
     apply_stored()
+    # The colour theme (Settings ▸ Theme), likewise before the first frame.
+    stored_theme.apply_stored()
     args = list(argv or [])
     headless = "--screenshot" in args or any(
         arg == "offscreen" or arg.endswith("=offscreen") for arg in args

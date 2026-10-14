@@ -496,6 +496,7 @@ class PlotAPI:
         fill=None,
         border=None,
         anchored=False,
+        themed=False,
     ) -> Text:
         """Add a text label.
 
@@ -521,6 +522,10 @@ class PlotAPI:
             does not move or rescale with the data (for fixed overlays such as a
             fit-quality readout); ``pos`` is then a pixel offset. If ``False``
             (default) the label lives at a data coordinate.
+        themed : bool
+            If ``True`` the label is a box in the window theme's colours (text,
+            fill and border follow a light or dark theme, :mod:`emtk.theme`);
+            *color*, *fill* and *border* are then not used.
 
         Returns
         -------
@@ -535,6 +540,7 @@ class PlotAPI:
             fill=to_brush(fill) if fill is not None else None,
             border=to_pen(border) if border is not None else None,
             anchored=anchored,
+            themed=themed,
         )
 
     def legend(self, *, offset=(30, 30)) -> None:

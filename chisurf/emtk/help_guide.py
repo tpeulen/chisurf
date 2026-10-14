@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
+from emtk import style as _style
 from emtk.dialog_window import DialogWindow
 from emtk.i18n import tr
 from emtk.im_core import Col
@@ -197,7 +198,7 @@ class EmTkHelpWindow:
         spacing = im.get_style().item_spacing[0]
         im.align_text_to_frame_padding()
         im.push_text_wrap_pos(0.0)
-        im.text_colored(self.title, ACCENT_BLUE)
+        im.text_colored(self.title, _style.HEADING_1)
         im.pop_text_wrap_pos()
         used_width = im.get_item_rect()[2]
 
@@ -234,17 +235,14 @@ class EmTkHelpWindow:
                 shown = tr("All") if c == "All" else c
                 place_button(f" {shown} ")
                 is_sel = c == self.active_category
-                if is_sel:
-                    im.push_style_color(Col.BUTTON, (40, 90, 180, 255))
-                if im.button(f" {shown} ##filter_{c}"):
+                # the selected filter in the accent, readable on either theme
+                if im.button(f" {shown} ##filter_{c}", role="primary" if is_sel else None):
                     self.active_category = c
                 im.set_item_tooltip(
                     tr("Show all help sections.")
                     if c == "All"
                     else tr("Show the {section} help section.").format(section=c)
                 )
-                if is_sel:
-                    im.pop_style_color()
             im.separator()
 
         # Content scrolling area: the rest of the window. The header's ✕ Close is
@@ -526,7 +524,7 @@ class EmTkGuidedTour:
         ctx.draw.add_rect_filled(
             (cx, cy),
             (cx + card_w, cy + card_h),
-            (26, 28, 36, 250),
+            _style.CARD_BG,
             rounding=8.0,
         )
         ctx.draw.add_rect(
@@ -541,7 +539,7 @@ class EmTkGuidedTour:
             (cx + 1.0, cy + 1.0), (cx + card_w - 1.0, cy + 7.0), (60, 90, 160, 200), rounding=3.0
         )
         ctx.draw.add_text(
-            (cx + card_w - 128.0, cy + 8.0), (120, 130, 150, 255), tr("drag here to move")
+            (cx + card_w - 128.0, cy + 8.0), _style.DIM, tr("drag here to move")
         )
 
         # 4. Content Area with Native Word Wrapping
@@ -555,7 +553,7 @@ class EmTkGuidedTour:
             ),
             clip=True,
         )
-        im.push_style_color(Col.TEXT, ACCENT_BLUE)
+        im.push_style_color(Col.TEXT, _style.HEADING_1)
         im.text_wrapped(title_text)
         im.pop_style_color()
         im.spacing()

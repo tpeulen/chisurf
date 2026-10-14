@@ -695,13 +695,15 @@ class ImagePanel:
         return box
 
     def _draw_slider(self, painter, x: float, y: float, w: float, h: float) -> None:
-        painter.fill_rect(x, y, w, h, (30, 32, 38))
+        from emtk import style
+
+        painter.fill_rect(x, y, w, h, style.PLOT_BG)
         track = self._track()
         if track is None:
             return
         tx, ty, tw, th = track
         mid = ty + th / 2.0
-        painter.fill_rect(tx, mid - 2.0, tw, 4.0, (70, 74, 84))
+        painter.fill_rect(tx, mid - 2.0, tw, 4.0, style.TRACK_BG)
         count = self.frame_count
         at = tx + (tw * self.frame / (count - 1) if count > 1 else 0.0)
         thumb = (
@@ -717,7 +719,7 @@ class ImagePanel:
             h,
             _ALIGN_RIGHT_VCENTER,
             self.frame_label,
-            (220, 220, 220),
+            style.TEXT,
         )
 
     def _part_at(self, px: float, py: float) -> str | None:

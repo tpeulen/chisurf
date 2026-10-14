@@ -22,6 +22,7 @@ BACKGROUND = (30, 32, 38)
 
 def _surface_class():
     from emtk import im
+    from emtk import style as _style
     from emtk.app import ImApp
 
     class _PlotSettingsSurface(ImApp):
@@ -65,7 +66,7 @@ def _surface_class():
                 except Exception as exc:  # a broken form must not take the dock down
                     self.last_error = exc
                     logger.exception("drawing the settings of %s failed", page.name)
-                    im.text_colored((220, 90, 90), f"{page.name}: settings failed ({exc}).")
+                    im.text_colored(_style.TEXT_DANGER, f"{page.name}: settings failed ({exc}).")
             im.end()
 
     return _PlotSettingsSurface

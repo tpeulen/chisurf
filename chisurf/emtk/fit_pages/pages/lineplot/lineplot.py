@@ -594,18 +594,16 @@ class LinePlot(plotbase.Plot):
         self._panels = (p2, p1, p3)  # A.corr. residuals, residuals, data
         self.plot_stack = None
 
-        # Labels - draggable text box for the fit-quality metrics overlay: light
-        # text on a dark translucent box with a quiet border, pinned to the top
-        # of the data panel, clear of the axis.
+        # Labels - draggable text box for the fit-quality metrics overlay: a box in
+        # the theme's legend colours with a quiet border, pinned to the top of the
+        # data panel, clear of the axis.
         self.text = plots["main_plot"].text(
             "",
             (100, 6),
-            color="#e6e8ee",
-            border=(110, 116, 128, 200),
-            fill=(18, 20, 26, 200),
             anchor=(0, 0),
             draggable=True,
             anchored=True,
+            themed=True,
         )
 
         # Fitting-region selector

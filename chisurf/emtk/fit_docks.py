@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
+from emtk import style as _style
 from emtk.i18n import mark, tr
 from emtk.view_form import FormState, draw_form
 
@@ -1844,7 +1845,7 @@ class DataDocks:
         except Exception as exc:  # noqa: BLE001 - a broken form must not take the dock down
             _log.exception("drawing the settings of %s failed", page.name)
             im.text_colored(
-                (220, 90, 90),
+                _style.TEXT_DANGER,
                 tr("{name}: settings failed ({error}).").format(name=page.name, error=exc),
             )
 

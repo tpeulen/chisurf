@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from emtk import im, implot
+from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.i18n import tr
 from emtk.im_core import ItemFlags, get_current_context
@@ -473,7 +473,7 @@ class BurstBvaGui:
 
     def _draw_bva_parameter_fields(self) -> None:
         im.spacing()
-        im.text_colored((200, 210, 230, 255), "Analysis Parameters")
+        im.text_colored(style.HEADING_4, "Analysis Parameters")
 
         # Window length
         col_x = 175.0
@@ -509,7 +509,7 @@ class BurstBvaGui:
             self.model.notify("param")
 
         im.spacing()
-        im.text_colored((200, 210, 230, 255), "Display Options")
+        im.text_colored(style.HEADING_4, "Display Options")
 
         # Bins
         im.align_text_to_frame_padding()
@@ -564,7 +564,7 @@ class BurstBvaGui:
             return
         from chisurf.emtk.channel_setup_bar import UNSAVED
 
-        im.text_colored((200, 210, 230, 255), tr("FRET Pair Assignment"))
+        im.text_colored(style.HEADING_4, tr("FRET Pair Assignment"))
         bar = self.editor.toolbar
         setups = [UNSAVED, *bar.names]
         index = setups.index(bar.selected) if bar.selected in setups else 0
@@ -619,7 +619,7 @@ class BurstBvaGui:
         self.remember("manual_routing")
         if not opened:
             return
-        im.text_colored((200, 210, 230, 255), "Detector Routing")
+        im.text_colored(style.HEADING_4, "Detector Routing")
 
         im.text(tr("Donor routing channels:"))
         changed, donor = im.input_text("##donor_ch", self.model.donor_channels_text, hint="0,8")

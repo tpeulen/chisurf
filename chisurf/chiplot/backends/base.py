@@ -213,6 +213,7 @@ class Canvas(abc.ABC):
         fill: Brush | None = None,
         border: Pen | None = None,
         anchored: bool = False,
+        themed: bool = False,
     ) -> Text:
         """Draw a text label and return its handle.
 
@@ -220,6 +221,8 @@ class Canvas(abc.ABC):
         screen space (``pos`` is a pixel offset from the top-left) and does not
         move or rescale with the data — for fixed overlays like a fit-quality
         readout. When ``False`` (default) ``pos`` is a data coordinate.
+        ``themed`` draws it as a box in the window theme's colours (its text,
+        legend fill and border, read as it draws) instead of *color*/*fill*/*border*.
         """
 
     @abc.abstractmethod

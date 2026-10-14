@@ -64,7 +64,7 @@ from emtk.keys import (
     KEY_UP,
     letter_of,
 )
-from emtk.widgets.text_editor import DARK_PALETTE, Language, Pos, TextEditor, Token
+from emtk.widgets.text_editor import DARK_PALETTE, LIGHT_PALETTE, Language, Pos, TextEditor, Token
 
 _log = logging.getLogger("chisurf.emtk.console")
 
@@ -89,6 +89,17 @@ MIN_IMAGE_HEIGHT = 240.0
 _PALETTE = list(DARK_PALETTE)
 _PALETTE[Token.BRACKET_ERROR] = (240, 120, 120)
 OUTPUT_PALETTE = tuple(_PALETTE)
+#: The same on a light window (emtk's light token palette, a darker error red).
+_PALETTE = list(LIGHT_PALETTE)
+_PALETTE[Token.BRACKET_ERROR] = (176, 36, 36)
+OUTPUT_PALETTE_LIGHT = tuple(_PALETTE)
+
+
+def output_palette() -> tuple:
+    """The transcript's colours for the theme in effect (:mod:`emtk.theme`)."""
+    from emtk import theme
+
+    return OUTPUT_PALETTE_LIGHT if theme.is_light() else OUTPUT_PALETTE
 #: Transcript line kind -> colour role.
 _KIND_TOKEN = {
     "stdout": Token.TEXT,
@@ -342,6 +353,9 @@ class ConsoleControl:
 
     def draw(self, p, x: float, y: float, w: float, h: float) -> None:
         console = self.console
+        palette = output_palette()
+        for editor in (self.output, self.pager):
+            editor.palette = palette
         line_h = max(float(p.line_height()), 1.0)
         self._line_h = line_h
         rows = max(1, min(INPUT_LINES, len(self.input.document)))
@@ -373,7 +387,7 @@ class ConsoleControl:
                 line_h,
                 ALIGN_LEFT | ALIGN_VCENTER,
                 console.pager_title,
-                OUTPUT_PALETTE[Token.DECLARATION],
+                palette[Token.DECLARATION],
             )
             self.boxes["pager.close"] = (x + w - 22.0, top, 22.0, line_h)
             p.text(x + w - 18.0, top, 18.0, line_h, ALIGN_LEFT | ALIGN_VCENTER, "✕", TEXT)
@@ -396,7 +410,7 @@ class ConsoleControl:
                 line_h,
                 ALIGN_LEFT | ALIGN_VCENTER,
                 text,
-                OUTPUT_PALETTE[Token.DECLARATION],
+                palette[Token.DECLARATION],
             )
         self.input.config.carets_visible = self.has_focus and self.target == "input"
         self.input.draw(p, *self.boxes["input"])

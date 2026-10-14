@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from emtk import im
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.i18n import tr
 
@@ -578,7 +579,7 @@ class ToolHubApp(ImApp):
                     self.panel[flag + "_message"] for flag in MATURITY if self.panel.get(flag)
                 ]
                 if banners:
-                    im.push_style_color(im.Col.TEXT, (240, 190, 60, 255))
+                    im.push_style_color(im.Col.TEXT, _style.TEXT_WARNING)
                     im.text_wrapped(
                         MATURITY[
                             "experimental" if self.panel.get("experimental") else "deprecated"

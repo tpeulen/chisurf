@@ -16,10 +16,10 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
-from emtk import im, implot
+from emtk import im, implot, style
 from emtk.app import ImApp
 from emtk.i18n import tr
-from emtk.im_core import Col, get_current_context
+from emtk.im_core import get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button, action_caption, window_size
@@ -33,7 +33,6 @@ PANEL_BG = (38, 41, 48, 255)
 PANEL_BORDER = (55, 60, 72, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
-ACCENT_RED = (214, 39, 40, 255)
 
 
 class BurstTwoCdeGui:
@@ -187,26 +186,20 @@ class BurstTwoCdeGui:
 
         self._same_line_if_fits(action_caption("restart"))
         attention = bool(getattr(self.model, "restart_attention", False))
-        if attention:  # the Qt tool's flag_attention: a skipped run points at Restart
-            im.push_style_color(Col.BUTTON, (200, 120, 20, 255))
-            im.push_style_color(Col.BUTTON_HOVERED, (220, 140, 40, 255))
+        # The Qt tool's flag_attention: a skipped run points at Restart, which is then the
+        # action to take (primary).
         if action_button(
             "restart",
             tooltip=tr("Reset the analysis state and recompute the 2CDE values from scratch."),
+            role="primary" if attention else None,
         ):
             self.track("toolAction_restart")
             if not self.model.is_running and callable(self.on_restart):
                 self.on_restart()
         self.remember("restart")
         self.remember("toolAction_restart")
-        if attention:
-            im.pop_style_color(2)
 
         self._same_line_if_fits("⏹ Stop")
-        if self.model.is_running:
-            im.push_style_color(Col.BUTTON, ACCENT_RED)
-            im.push_style_color(Col.BUTTON_HOVERED, (234, 59, 60, 255))
-            im.push_style_color(Col.BUTTON_ACTIVE, (180, 20, 20, 255))
         if im.button(tr("⏹ Stop"), role="danger"):
             self.track("toolAction_stop")
             if self.model.is_running and callable(self.on_stop):
@@ -214,8 +207,6 @@ class BurstTwoCdeGui:
         im.set_item_tooltip(tr("Stop the running 2CDE analysis."))
         self.remember("stop")
         self.remember("toolAction_stop")
-        if self.model.is_running:
-            im.pop_style_color(3)
 
         self._same_line_if_fits("📁 Folder")
         if im.button(tr("📁 Folder")):
@@ -252,7 +243,7 @@ class BurstTwoCdeGui:
     def _draw_settings(self, width: float) -> None:
         """2CDE analysis parameters."""
         im.separator()
-        im.text_colored((200, 210, 230, 255), "2CDE Parameters")
+        im.text_colored(style.HEADING_4, "2CDE Parameters")
 
         # Variant
         im.text(tr("Variant:"))

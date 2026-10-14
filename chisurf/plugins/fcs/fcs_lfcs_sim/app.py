@@ -17,7 +17,7 @@ import numpy as np
 from emtk import i18n, im, implot
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
-from emtk.im_core import Col, get_current_context
+from emtk.im_core import get_current_context
 from emtk.view_form import FormState, draw_form
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow
@@ -112,11 +112,8 @@ class LifetimeFcsSimApp(ImApp):
     def draw_form_pane(self, box) -> None:
         busy = self.running
         im.begin_disabled(busy)
-        im.push_style_color(Col.BUTTON, (31, 122, 31, 255))
-        im.push_style_color(Col.BUTTON_HOVERED, (36, 145, 36, 255))
-        if im.button(tr(SIMULATE)):
+        if im.button(tr(SIMULATE), role="primary"):
             self.simulate()
-        im.pop_style_color(2)
         im.set_item_tooltip(
             tr("Generate synthetic photons, build lifetime filters and calculate correlations.")
         )

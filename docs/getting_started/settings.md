@@ -1,16 +1,34 @@
 ---
 type: Guide
-title: Settings and fonts
-description: Where ChiSurf keeps its settings and how to set the fonts, sizes and magnification of the window.
-tags: [getting-started, settings, fonts, accessibility]
+title: Settings, theme and fonts
+description: Where ChiSurf keeps its settings, how to switch between the dark and the light theme, and how to set the fonts, sizes and magnification of the window.
+tags: [getting-started, settings, theme, fonts, accessibility]
 ---
 
-# Settings and fonts
+# Settings, theme and fonts
 
 **Settings** (the ⚙️ entry under *File → Setup* in the **Tools** tree, or *Settings → Edit*)
 opens the Settings tool: a list of destinations on the left, the selected one on the right.
 Every destination edits `settings_chisurf.yaml` in your settings folder (or a file beside it);
 the packaged defaults sit underneath it, so the file holds only what you changed.
+
+## Theme
+
+*Settings → Dark theme* and *Settings → Light theme* switch the colours of the whole window at
+once: docks, tabs, tables, fields, menus, plots, the console and the workspace. The choice is
+saved to `gui.theme` (`dark`, the default, or `light`), so the next start opens in it. Both
+themes keep text readable on every surface (WCAG contrast of at least 4.5:1). The colours of
+data in a plot, task colours and button roles (the blue main action, the red destructive one)
+each have a light and a dark variant of their own.
+
+```{figure} ../images/settings_theme_light.png
+:alt: The ChiSurf window in the light theme with a TCSPC lifetime fit: light docks, white tables and plots, a blue Fit button and red Remove buttons.
+
+The light theme, with a TCSPC lifetime fit open.
+```
+
+From Python: `from emtk import theme; theme.apply_theme("light")` switches the running window
+without saving; `chisurf.core.settings.theme.choose("light")` also saves it.
 
 ## Fonts
 

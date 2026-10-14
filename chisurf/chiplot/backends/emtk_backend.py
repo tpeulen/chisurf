@@ -128,9 +128,6 @@ def _tick_labels(ticks: list[float], log: bool) -> list[str]:
     return labels
 
 
-#: Chrome colours for the axes, matched to emtk's plot frame.
-_TICK_TEXT = (170, 175, 186)
-_LABEL_TEXT = (196, 201, 212)
 #: The width reserved for y tick numbers. Fixed rather than measured, so panels
 #: stacked in one column put their left axes on one line whatever their values.
 _Y_TICK_WIDTH = 44.0
@@ -708,6 +705,48 @@ class EmtkCanvas(base.Canvas):
     _dragging: _Grab | None = None
     #: Where a pan was grabbed, in data coordinates.
     _panning: tuple[float, float] | None = None
+    #: Colours a caller set (``set_background``, ``set_axis_style``); ``None`` follows the
+    #: emtk theme (``PLOT_BG``, ``PLOT_TICK_TEXT``, ``PLOT_LABEL_TEXT``), read as it draws.
+    _background_set: tuple[int, int, int] | None = None
+    _tick_text_set: tuple[int, int, int] | None = None
+    _label_text_set: tuple[int, int, int] | None = None
+
+    @property
+    def _background(self) -> tuple[int, int, int]:
+        """The data area's colour: the one set, else the theme's ``PLOT_BG``."""
+        if self._background_set is not None:
+            return self._background_set
+        from emtk import style
+
+        return tuple(style.PLOT_BG[:3])
+
+    @_background.setter
+    def _background(self, value) -> None:
+        self._background_set = None if value is None else _rgb(value)
+
+    @property
+    def _tick_text(self) -> tuple[int, int, int]:
+        if self._tick_text_set is not None:
+            return self._tick_text_set
+        from emtk import style
+
+        return tuple(style.PLOT_TICK_TEXT[:3])
+
+    @_tick_text.setter
+    def _tick_text(self, value) -> None:
+        self._tick_text_set = None if value is None else _rgb(value)
+
+    @property
+    def _label_text(self) -> tuple[int, int, int]:
+        if self._label_text_set is not None:
+            return self._label_text_set
+        from emtk import style
+
+        return tuple(style.PLOT_LABEL_TEXT[:3])
+
+    @_label_text.setter
+    def _label_text(self, value) -> None:
+        self._label_text_set = None if value is None else _rgb(value)
 
     def __init__(self, *, title: str | None = None, background=None, **_: Any) -> None:
         self._entries: list[_Entry] = []
@@ -722,12 +761,10 @@ class EmtkCanvas(base.Canvas):
         self._grid_strength = 1.0
         self._tick_width = _Y_TICK_WIDTH
         self._legend = False
-        self._background = _rgb(background, (30, 32, 38))
+        self._background = None if background is None else _rgb(background)
         self._interactive = True
         self._y_inverted = False
         self._axis_visible = {"left": True, "bottom": True}
-        self._tick_text = _TICK_TEXT
-        self._label_text = _LABEL_TEXT
         self._axis_line: tuple[int, int, int] | None = None
         self._legend_text: tuple[int, int, int] | None = None
         self._custom_ticks: dict[str, list[tuple[float, str]]] = {}
@@ -1281,11 +1318,15 @@ class EmtkCanvas(base.Canvas):
                 left = min(max(left, plot.x), plot.x + max(plot.w - width, 0.0))
                 top = min(max(top, plot.y), plot.y + max(plot.h - height, 0.0))
             fill, border = state.get("fill"), state.get("border")
+            colour = state.get("color", (220, 220, 220))
+            if state.get("themed"):
+                from emtk import style
+
+                fill, border, colour = style.PLOT_LEGEND_BG, style.BORDER, style.PLOT_LABEL_TEXT
             if fill is not None:
                 painter.fill_rect(left, top, width, height, fill)
             if border is not None:
                 painter.stroke_rect(left, top, width, height, border)
-            colour = state.get("color", (220, 220, 220))
             for index, line in enumerate(lines):
                 painter.text(
                     left + pad,
@@ -2161,8 +2202,8 @@ class EmtkCanvas(base.Canvas):
         self.refresh()
 
     def set_background(self, color) -> None:
-        """Set the panel background colour."""
-        self._background = _rgb(color, self._background)
+        """Set the panel background colour; ``None`` follows the theme (``PLOT_BG``) again."""
+        self._background = None if color is None else _rgb(color, self._background)
         setter = getattr(self._host, "set_background", None)
         if callable(setter):
             setter(self._background)
@@ -2420,12 +2461,13 @@ class EmtkCanvas(base.Canvas):
         fill=None,
         border=None,
         anchored=False,
+        themed=False,
     ) -> H.Text:
         """Draw a text label and return its handle.
 
         ``anchored`` pins it to the plot area (``pos`` is a pixel offset from
         its top-left), otherwise ``pos`` is a data coordinate; ``draggable``
-        lets a press move it.
+        lets a press move it; ``themed`` boxes it in the theme's colours.
         """
         return self._add(
             "text",
@@ -2437,6 +2479,7 @@ class EmtkCanvas(base.Canvas):
             border=None if border is None else _rgba(border, (90, 95, 105, 255)),
             anchored=bool(anchored),
             movable=bool(draggable),
+            themed=bool(themed),
         )
 
 
@@ -2735,10 +2778,15 @@ class _ColorBar:
         self._refresh_target: Callable[[], None] | None = None
         #: ``(least, most)`` width in pixels a host or a grid gives the ramp.
         self.width_range: tuple[int, int] = self.WIDTH_RANGE
-        #: The background a host fills behind the ramp.
-        self.background = (30, 32, 38)
         if colormap is not None:
             image.set_colormap(colormap)
+
+    @property
+    def background(self) -> tuple[int, int, int]:
+        """The background a host fills behind the ramp: the theme's ``PLOT_BG``."""
+        from emtk import style
+
+        return tuple(style.PLOT_BG[:3])
 
     # -- the host ------------------------------------------------------
     def attach_host(self, host: Any) -> None:

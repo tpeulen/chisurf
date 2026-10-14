@@ -28,7 +28,9 @@ def test_hidden_toolbar_actions_are_available_in_emtk():
             "⚙  Save defaults",
         ):  # one press per frame, as a pointer gives
             # A button row draws "caption###key": the id is the key, not the caption.
-            im.button.side_effect = lambda text, label=label: text.split("###")[0] == label
+            im.button.side_effect = (
+                lambda text, *_, label=label, **__: text.split("###")[0] == label
+            )
             gui._draw_action_buttons()
         assert calls == ["clear", "save", "settings"]
         tips = [call.args[0] for call in im.set_item_tooltip.call_args_list]

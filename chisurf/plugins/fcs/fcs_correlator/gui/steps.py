@@ -633,9 +633,7 @@ class CorrelatorStepApp(ImApp):
             im.set_item_tooltip(tr("Stop after the current chunk (the chunks done are kept)."))
             self.item_rects["stop"] = im.get_item_rect()
         else:
-            im.push_style_color(im.Col.BUTTON, (31, 122, 31, 255))
-            pressed = im.button(tr("Correlate"))
-            im.pop_style_color(1)
+            pressed = im.button(tr("Correlate"), role="primary")
             im.set_item_tooltip(
                 tr("Correlate the photons of the ticked files (or the filtered photons).")
             )

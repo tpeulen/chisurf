@@ -20,6 +20,7 @@ from typing import Any
 from urllib.parse import unquote, unquote_to_bytes, urlparse
 
 from emtk import im
+from emtk import style as _style
 from emtk.i18n import tr
 from emtk.im_core import Col
 from emtk.texture import Texture
@@ -647,7 +648,7 @@ class NativeNotebook:
         if kind == "stream":
             text = strip_ansi(_source(output.get("text")))
             if output.get("name") == "stderr":
-                im.push_style_color(Col.TEXT, (245, 150, 150, 255))
+                im.push_style_color(Col.TEXT, _style.TEXT_DANGER)
                 im.text_wrapped(text)
                 im.pop_style_color()
             else:
@@ -660,7 +661,7 @@ class NativeNotebook:
             ):
                 return
             im.text_colored(
-                (245, 110, 110, 255), f"{output.get('ename', 'Error')}: {output.get('evalue', '')}"
+                _style.TEXT_DANGER, f"{output.get('ename', 'Error')}: {output.get('evalue', '')}"
             )
             im.text_wrapped(strip_ansi(_source(output.get("traceback", []))))
         else:
@@ -803,7 +804,7 @@ class NativeNotebook:
                 self.cancel_execution()
             im.set_item_tooltip(tr("Interrupt the running cell or cancel its input prompt"))
             im.same_line()
-            im.text_colored((235, 190, 105, 255), "Executing notebook…")
+            im.text_colored(_style.TEXT_WARNING, "Executing notebook…")
         else:
             if im.button(tr("▶ Run all"), role="primary"):
                 self.start_all()

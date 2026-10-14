@@ -16,9 +16,9 @@ import threading
 from typing import TYPE_CHECKING, Any, Callable
 
 import emtk.im as im
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.i18n import tr
-from emtk.im_core import Col
 from emtk.widgets.chat import (
     ChatHistory,
     ChatMessage,
@@ -862,7 +862,7 @@ class ChatGui:
             self.model.provider = PROVIDERS[new_p_idx]
         ready, why = self.model.provider_status()
         im.same_line()
-        im.text_colored((152, 195, 121, 255) if ready else (224, 108, 117, 255), "●")
+        im.text_colored(_style.TEXT_TIP if ready else _style.TEXT_DANGER, "●")
         im.set_item_tooltip(why)
 
         im.same_line()
@@ -917,7 +917,7 @@ class ChatGui:
         if not req:
             return
 
-        im.text_colored((255, 200, 80, 255), "Permission Request")
+        im.text_colored(_style.TEXT_WARNING, "Permission Request")
         width = max(80.0, im.get_content_region_avail()[0])
         title = str(req.get("title", "Tool execution requires approval."))
         details_h = min(140.0, max(28.0, im.calc_text_size(title, wrap_width=width)[1] + 8.0))
@@ -933,13 +933,13 @@ class ChatGui:
             opt_id = opt.get("optionId", "allow")
             opt_name = opt.get("name", opt_id)
             allowed = opt_id.startswith("allow") or opt_id in ("yes", "proceed")
-            im.push_style_color(Col.BUTTON, (46, 140, 67, 255) if allowed else (160, 60, 60, 255))
             if im.button(
-                f"{opt_name}##{opt_id}", (max(60.0, min(120.0, width / columns - 6)), 24.0)
+                f"{opt_name}##{opt_id}",
+                (max(60.0, min(120.0, width / columns - 6)), 24.0),
+                role="success" if allowed else "danger",
             ):
                 self.model.respond_permission(opt_id)
             im.set_item_tooltip(f"Respond to permission request: {opt_name}")
-            im.pop_style_color()
         im.separator()
 
     def _open_link(self, target: str) -> None:

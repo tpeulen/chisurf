@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from emtk import im
+from emtk import style as _style
 from emtk.app import ImApp
 from emtk.dialog_window import DialogWindow
 from emtk.docking import DockManager, Region
@@ -385,7 +386,7 @@ class CardShell(TourTarget, ImApp):
         if self.status_error:
             from emtk.im_core import Col
 
-            im.push_style_color(Col.TEXT, (235, 90, 80, 255))
+            im.push_style_color(Col.TEXT, _style.TEXT_DANGER)
         im.text_wrapped(self.status)
         if self.status_error:
             im.pop_style_color(1)
