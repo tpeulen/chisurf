@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://chisurf.org/schemas/guide.schema.json",
   "title": "ChiSurf guided tour",
-  "description": "A tour points at one real control at a time and waits for the user to use it. Read by chisurf.gui.widgets.tools.guided_tour and, for painted chrome, by chimol.tour.",
+  "description": "A tour points at one real control at a time and waits for the user to use it. Read by chisurf.emtk.help_guide and, for painted chrome, by chimol.tour.",
   "type": [
     "array",
     "object"
