@@ -21,17 +21,17 @@ refuses a detector, MFD Prepare shows why. The model the result feeds is
 
 ## 1. Where it is
 
-MFD Prepare is **not reachable from any menu or hub**. Its manifest is
-`menu_hidden`, and no hub tool embeds it (the burst hubs do not list it). It
-is reached from:
+**File → Data → MFD Prepare** opens the window (or
+`python -m chisurf.emtk --plugin mfd_prepare`). Without a window it is
+reached from:
 
 * the CLI, `csc mfd-prepare`;
-* Python, `chisurf.plugins.burst.mfd_prepare.api.prepare_folder`, or the core
-  function directly;
-* the RPC service `mfd_prepare.prepare`;
-* its window, launched with `python -m chisurf.emtk --plugin mfd_prepare`.
+* Python, `chisurf.plugins.burst.mfd_prepare.api.prepare_folder(PrepareRequest(folder=…))`
+  (`PrepareRequest` from `…mfd_prepare.api.models`), or the core function
+  directly;
+* the RPC service `mfd_prepare.prepare`.
 
-The window is an EMTK app. Top to bottom:
+The window opens at 1100 × 720 (a saved size takes precedence). Top to bottom:
 
 | control | what it does |
 |---|---|
@@ -155,46 +155,28 @@ consumes; `prep.summary` holds the diagnostics.
 
 ## Known defects
 
-* **The JSON result is not JSON.** With photons loaded (the default),
-  `PrepareResult.summary` carries the open TTTR objects under `_tttrs`, so
-  `json.dumps(result.to_dict())` raises `Object of type TTTR is not JSON
-  serializable`. The CLI hides it with `default=str`; the RPC method
-  `mfd_prepare.prepare` returns the same dict and cannot be serialised by the
-  transport. Fix: drop `_tttrs` in `prepare_folder` (or in `_jsonable`).
 * **`csc mfd-prepare fit` does not run.** On the shipped folder it fails with
-  `MfdReader object has no attribute 'experiment'`. Fit with
+  `MfdReader object has no attribute 'data'`. Fit with
   {doc}`57_mfd_fitting` instead.
 * **A partial `streams=` crashes.** Passing definitions for green and red
   only, on a folder with three detectors, raises `IndexError: index 2 is out
   of bounds` in `prepare_burst_folder` (`mfd/prepare.py`, count-agreement
   loop) instead of saying which detector has no definition. Pass one entry per
   detector.
-* **Not reachable from a menu** (see §1): the window is opened from the console, or as an EMTK app (`entrypoints.emtk`).
 
 ## See also
 
 - {doc}`57_mfd_fitting` — the fit this prepares for.
 - {ref}`concept-mfd-fitting` — why ⟨t⟩, the spans and raw observable space.
 - {ref}`concept-smfret-bursts` — bursts, detectors and PIE.
-
-## Native window and preparation report
-
-MFD Prepare starts at **1100 × 720 logical pixels** and restores saved host
-geometry. The detector, photon-source and summary tables show the actual local
-preparation result. Scroll the Report region to read its final detector checks
-when the window is narrow; its height stays within the remaining viewport.
+- Tool: MFD Prepare (`chisurf/plugins/burst/mfd_prepare/`).
 
 ```{figure} figures/mfd_prepare_native_primary_window.png
 :width: 100%
 
-Measured BH SPC-132 fixture: 152 logical bursts, 17,282 burst photons, three
-detectors with count agreement 1.0000 and a 174,438-photon source file. These
-are preparation diagnostics, not MFD fit results.
+MFD Prepare at its initial 1100 × 720 on a single-file excerpt of the same
+BH SPC-132 measurement (`burst_analysis_handoff`, inclusive photon indices):
+152 bursts, 17 282 burst photons, every detector's count agreement 1.0000. The
+folder is not remembered: choose it and press **Prepare** again after
+reopening. On a narrow window, scroll the **Report** to its last lines.
 ```
-
-Geometry is a native host preference. The selected burst folder and prepared
-results are rebuilt by selecting the folder and pressing Prepare after reopening.
-This display change preserves the preparation's photon-index convention, stream
-definitions and count-agreement threshold. See [MFD fitting](../concepts/mfd_fitting.md).
-
-Tool: MFD Prepare (`chisurf/plugins/burst/mfd_prepare/`).

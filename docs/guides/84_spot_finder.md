@@ -29,12 +29,12 @@ the menu bar.
 :name: fig-spot-finder-hub
 :width: 100%
 
-The Spot Finder with its built-in known-field demo detected (Load example, then
-Detect): the left window holds the files, workflow, detector settings and the
-action buttons; **Regions** shows what was found (the image with the region
-outlines, a region list and the analysis-region editing); the lower window has
-the **Run** table (one row per input file) and the **Region measurements**
-table.
+The Spot Finder in the Image Tools hub with its built-in known-field demo
+detected (**Load example**, then **Detect**): **Detection and analysis
+regions** holds the files, workflow, detector settings and the action buttons;
+**Regions** shows what was found (the selected region's measurements and the
+image with the region outlines); below, the **Run** table (one row per input
+file) and the **Region measurements** table.
 ```
 
 ## 2. Settings
@@ -121,10 +121,9 @@ image. At 50, the regions sit on the puncta and none on the nucleus:
 :name: fig-spot-finder-regions
 :width: 100%
 
-**Regions**: every detected region drawn as its second-moment ellipse on the
-intensity image; the list gives each one's area, and the panel below it the
-selected region's measurements. The larger circles are spots whose best scale
-was near max σ.
+**Regions**: every detected region outlined on the intensity image;
+**Selected region** picks one (with its area) and the line under it gives its
+measurements. The larger circles are spots whose best scale was near max σ.
 ```
 
 The widths: median σ 1.27 px, and 12 of 151 at max σ = 4. Spots at the top of
@@ -243,23 +242,19 @@ detect regions. The four input spots are synthetic references for the workflow.
 - {doc}`48_regions` — drawing, combining and reusing regions.
 - {doc}`50_particle_tracking` — the same detection problem, in time.
 - {ref}`concept-region-properties` — what each column measures.
+- Tool: Spot Finder (`chisurf/plugins/microscopy/spot_finder/`).
 
-Simulated-raster measurements carry a versioned scanner layout beside the
-photon file. Both region preview and filepath fitting use that declared layout;
-automatic hardware reconstruction remains the fallback for ordinary inputs.
-The producer writes its physical macro/micro clocks and TAC-bin count into the
-PTU header. Python image intensities use wide counters so bright regions retain
-all photons; the explicit legacy native16-bit getter remains available.
+## Window and bright pixels
 
-## Window layout and bright pixels
+The standalone Spot Finder opens at 1100 × 720; a saved layout takes
+precedence. The measurements table scrolls horizontally to reach all columns.
+Preview and Detect count photons in 32 bits, so a pixel brighter than 65 535
+photons is not wrapped. A simulated raster (such as the demo) carries its
+scanner layout beside the photon file, and Preview and Detect use it.
 
-The native Spot Finder starts at 1100 × 720; a saved user layout takes
-precedence. Changing the host size preserves the detection settings, region
-selection and measurements. The measurements table scrolls horizontally to
-reach all columns. Preview and Detect use uint32 photon counts, including
-pixels brighter than 65,535 photons, so the maximum and mean describe the
-actual photon population rather than a wrapped count.
+```{figure} figures/spot_finder_native_wide_counts.png
+:width: 100%
 
-![Native known-field demonstration at the initial layout](figures/spot_finder_native_wide_counts.png)
-
-Tool: Spot Finder (`chisurf/plugins/microscopy/spot_finder/`).
+The standalone Spot Finder at its initial size after **Load example** and
+**Preview**: 4 regions.
+```

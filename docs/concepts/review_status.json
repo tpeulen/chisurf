@@ -27,11 +27,32 @@
     "sha256": "21c80b9905c3b5e08c97d3c4d0db5bfe54915205210be136b127184057686760",
     "status": "ai-reviewed"
   },
+  "burst_fusion.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5298460435c4ca56e663450880690c04c55d4be3fb6ee2a6dbf3dbfec4e62409",
+    "status": "ai-reviewed"
+  },
   "bva.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "8b29d680e5ba4e33c88340e91335a1e48bd29eedc72b6ea0bb73d07ee9d64ef0",
+    "status": "ai-reviewed"
+  },
+  "code_editor.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8b1394405a09dc5cd193c03fa6dda401868d59c279e87ee2b5168b35acfb2925",
+    "status": "ai-reviewed"
+  },
+  "colocalization.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b7415066d2c96cc7c87cae96fa50cac32e8dcbeb0c3341419d2c393b7acd3466",
     "status": "ai-reviewed"
   },
   "deconvolution.md": {

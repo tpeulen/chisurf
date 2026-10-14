@@ -38,15 +38,7 @@ $$
 **Tools → Calculators → Spectra Downloader**. It is marked experimental: everything
 it fetches is stored as `unverified`.
 
-```{note}
-Until 2026-09-23 this menu entry opened nothing. The manifest named
-`get_db`, which returns the database rather than a window, so the launcher
-logged `'FluorophoreDatabase' object has no attribute 'show'`. The entry point
-is now `gui.tool:SpectraTool`. An older checkout can open it with
-`python -c "from chisurf.plugins.spectra_downloader.gui.tool import main; main()"`.
-```
-
-The window has four panels in its left list (select one, or step with **Back** / **Next** at the bottom; **Guide** walks you through them, **Help** opens the reference).
+The window has four panels in its left list (select one, or step with **Back** / **Next** at the bottom; **Guide** walks you through them, **Help** opens the reference). It opens at 1100 × 720; a saved size takes precedence.
 
 ```{figure} figures/spectra_overview.png
 :name: fig-spectra-overview
@@ -134,12 +126,11 @@ The result updates as you type. $\kappa^2$ is fixed at 2/3; orientation is
 handled in the FRET model's κ² controls. **Apply R₀ to model** writes the
 value into the model's Förster radius.
 
-In the emtk shell the same calculator opens as a dialog over the window, with
-the same fields: R₀ stands in a read-only field of its own and $J$ on the line
-under it, the spectra used are listed under the two dye lists (the Qt window
-shows them as tooltips of the list entries), and **Apply R₀ to model** closes
-the dialog; **✕ Close** closes it without changing the model. Headless, the
-calculator is `ForsterCalculatorModel` in
+The calculator is a dialog over the fit window. R₀ stands in a read-only field
+and $J$ on the line under it; the spectra used (points and wavelength range)
+are listed under the two dye lists. **Apply R₀ to model** closes the dialog;
+**✕ Close** closes it without changing the model. Headless, the calculator is
+`ForsterCalculatorModel` in
 `chisurf.core.fluorescence.fret.forster_calculator`:
 
 ```python
@@ -267,33 +258,23 @@ csc spectra-download push                  # staging → MMFDB
 
 - [Förster resonance energy transfer](../concepts/fret.md) — $R_0$, $J$, $\kappa^2$ and the error budget.
 - {ref}`fundamentals-absorption-emission` — what an absorption and an emission spectrum are.
-- [Accurate FRET](14_multiparameter_es.md) — where the $R_0$ goes next.
+- [Multiparameter E–S analysis](14_multiparameter_es.md) and
+  [Accurate FRET](41_accurate_fret.md) — where the $R_0$ goes next.
 
-## Native window and stacked Browse content
+## Narrow windows
 
-The native Spectra Downloader starts at **1100 × 720 logical pixels**; saved
-host geometry takes precedence on reopening. Browse puts the component list
-above the details when there is insufficient width for two columns. Scroll
-the content area over the component fields, or use its right scrollbar, to
-reach the properties and spectrum. Navigation and Back/Next remain fixed.
+Browse puts the component list above the details when the window is too
+narrow for two columns; scroll the content area to reach the properties and
+the spectrum. **Back** / **Next** stay fixed. Filters, the panel, the endpoint
+settings and the Push selection are remembered; the password is kept for the
+session only. On **Add to MMFDB**, **Local file** imports into the SQLite path
+below it, **Server (ZMQ)** into the configured server under the current
+session.
 
 ```{figure} figures/spectra_native_primary_window.png
 :width: 100%
 
-Default and narrow layouts after scrolling to the spectrum. The three local
-components and Gaussian emission curve are analytic fixtures, not measured
-vendor spectra and not evidence for a physical Förster radius.
+Browse at the default and a narrow width, scrolled to the spectrum. The
+component and its Gaussian emission curve are a test fixture, not measured
+data.
 ```
-
-The host metadata and content scrolling preserve stored spectral samples,
-component IDs and the selected Push set. Existing preferences retain filters,
-panel, endpoint settings and IDs; the password remains session-only. A restored
-Push selection does not itself reconstruct an open detail view: click a row
-to inspect its spectrum again. Scraping and MMFDB import remain explicit
-workflow actions. See the [FRET concept](../concepts/fret.md) for the spectral
-normalization and extinction-coefficient assumptions required for R₀.
-
-The endpoint radio options have separate help: **Local file** imports into the
-SQLite path selected below; **Server (ZMQ)** uses the configured server and
-current session. The Advanced panel explains its connection/authentication
-settings and reminds that passwords stay session-only.

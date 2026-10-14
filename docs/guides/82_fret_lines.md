@@ -41,14 +41,58 @@ component C1 (R_DA = 70 Å) as a table of its parameters. R0 = 52 Å and τ_D0 =
 throughout.
 ```
 
-The window is a dock area. Top left are the **Components**, **Sweep** and
-**FRET lines** tabs. Top right is the **Live model editor** of the selected component.
-The middle holds two plots: **FRET line** ($E$ against $\langle\tau\rangle_F$)
-and **τ_X(τ_F)** (species- against fluorescence-averaged lifetime, with the
-grey diagonal $\tau_X = \tau_F$); the wheel zooms and a drag pans them. The
-**Actions** bar at the bottom (**Add FRET line**, **Save CSV**, **Push to ndX**,
-**Help**, **Guide**) stays visible whatever tab is open. **Guide** walks through a static
-and a dynamic line.
+The window is a dock area. It opens on the **Your dyes** tab; its **Advanced**
+fold reveals the expert tabs **Components**, **Sweep**, **FRET lines** and the
+**Live model editor** of the selected component (a tab appears once it was
+opened). The middle holds two plots: **FRET line** ($E$ against
+$\langle\tau\rangle_F$) and **τ_X(τ_F)** (species- against
+fluorescence-averaged lifetime, with the grey diagonal $\tau_X = \tau_F$); the
+wheel zooms and a drag pans them. The **Actions** bar at the bottom (**Add FRET
+line**, **Save CSV**, **Push to ndX**, **Help**, **Guide**) stays visible
+whatever tab is open. **Guide** walks through a static and a dynamic line. The
+window opens at 640×480; on a narrow window the model editor is a full-width
+tab, and a saved layout takes precedence.
+
+## Start with your dye pair
+
+**Your dyes** asks for two numbers. Set **Dye pair** to the custom pair and
+enter the measured single-exponential donor-only lifetime (**Donor lifetime
+(ns)**) and **Förster radius (Å)**, then **Apply dye pair**: it sets the
+donor lifetime, τ0 and R0 of every FRET component and the reference τ_D0. R0
+must carry the orientation assumption of your model. A multi-exponential donor
+or a linked parameter is refused with a notice before anything changes; use
+**Advanced** for those. Lifetime-only components and lines already computed
+keep their inputs.
+
+**Load example** loads the illustrative pair instead (donor 4 ns, R0 = 52 Å,
+linker width 6 Å, distance sweep 20–120 Å) and clears old lines; **Add FRET
+line** is then the next press, and **Guide** waits for it.
+
+```{figure} figures/fret_pair_entry.png
+:width: 100%
+
+**Your dyes** at the default and a narrow width, and the expert tabs under
+**Advanced** (Components, Sweep, FRET lines, Live model editor), each after
+**Load example** and **Add FRET line**.
+```
+
+```python
+from chisurf.plugins.fret_line import demo
+from chisurf.plugins.fret_line.gui.model import FretLineModel
+
+path = demo.make_demo()  # illustrative curve and its JSON receipt
+model = FretLineModel()
+model.pair_tau, model.pair_r0 = 3.0, 60.0
+model.apply_dye_pair()
+model.minimum, model.maximum = 20.0, 120.0
+model.add_line()
+model.write_csv("my_pair.csv")
+model.close()
+```
+
+A broad distance distribution still bends the static line; entering one pair
+is not a claim that a measured population has one structure
+({ref}`concept-fret`).
 
 ## Set it up
 
@@ -91,8 +135,9 @@ cell to type a number, click a *Fixed* or *Bounds* box to flip it. The groups th
   Förster-radius calculator. See {ref}`concept-kappa2-orientation`.
 * **Gaussian distances** (or **Discrete distances**, or the chain parameters):
   R_DA, the width w (= σ, the linker width), the shape k, and the amplitude x
-  of each distance. **add** / **del** change the number of distances within
-  one component.
+  of each distance (`RDA0`, `s0`, `k0`, `x0` for the first). **Add
+  subcomponent** / **Remove subcomponent** under *distances* change the number
+  of distances within one component.
 
 The *Convolution* and *Generic* groups (IRF, background, n0) have no effect. A
 line is computed from the model's lifetime spectrum, and no decay is
@@ -128,7 +173,7 @@ lines is built by editing and pressing again.
 | chain | one *FD (Worm-like chain)* | `l` (contour length) or `lp` | e.g. 30–150 Å |
 
 The dynamic line can also be made inside a single *FD (Gaussian)* component
-with two distances (**add** in the distances table), sweeping the amplitude
+with two distances (**Add subcomponent** under *distances*), sweeping the amplitude
 `x1` of the second distance from 0 up to a large value.
 
 ## Read the result
@@ -287,64 +332,5 @@ closed form (see below). The curve $E(\tau_F)$ is the same either way.
   {ref}`concept-bva` · {ref}`concept-burst-2cde`.
 - Guides: {doc}`41_accurate_fret` · {doc}`14_multiparameter_es` ·
   {doc}`28_selecting_fret_populations` · {doc}`46_ndxplorer`.
-- Tool: **FRET Line Generator** (`chisurf/plugins/fret_line/`), reached through
-  the Calculators hub.
-
-## Compact native window
-
-The native FRET Line tool declares 640×480 initial dimensions. On a fresh narrow
-window, **Live model editor** is a full-width tab beside Components, Sweep and
-FRET lines. The plots remain below it; scroll the parameter table to reach its
-lower rows. **Subcomponents** can fold to leave more room. Tour targets reveal
-their own tab. Wide windows retain the side-by-side editor, and saved custom
-layouts win over either default. Reset restores the chosen initial layout.
-Deleting all text and pressing Enter now commits an empty filter; Escape keeps
-the previous value. These layout/editing changes preserve computed line arrays.
-
-## Start with your dye pair
-
-Open **Spectroscopy → FRET → FRET Line Generator**. The native calculator starts
-with **Your dyes**. Choose Custom pair and enter the measured single-exponential
-donor-only lifetime in ns and Förster radius in Å; **Apply dye pair** updates
-the FRET components' donor lifetime, rate reference and efficiency normalization.
-The radius must use the orientation assumptions of your model. No vendor dye
-properties are inferred from a name. Lifetime-only mixture components remain
-unchanged and require an appropriate expert reference interpretation.
-
-**Load example** replaces the mixture with an explicitly illustrative Gaussian
-pair: donor 4 ns, radius 52 Å, linker width 6 Å, distance sweep 20–120 Å. It clears
-old lines and loads inputs; **Add FRET line** remains your next action. Guide
-waits for these presses. The example is generated by the actual engine and
-cached with its declared parameters and checksum.
-
-```{figure} figures/fret_pair_entry.png
-:width: 100%
-
-Default and narrow pair inputs plus the retained Components, Sweep, FRET lines
-and full model editor under Advanced. The illustrative curve is numerically
-identical to the original expert workflow.
-```
-
-Open **Advanced** to reveal the original expert views. Applying a simple pair
-refuses multiexponential donor spectra or linked target parameters before
-changing any component; use the model editor and donor reference controls for
-those cases. Existing line arrays retain their recorded inputs when you apply
-a new pair. Validation appears in the existing notice dialog.
-
-```python
-from chisurf.plugins.fret_line import demo
-from chisurf.plugins.fret_line.gui.model import FretLineModel
-
-path = demo.make_demo()  # reproducible illustrative curve and JSON receipt
-model = FretLineModel()
-model.pair_tau, model.pair_r0 = 3.0, 60.0
-model.apply_dye_pair()
-model.minimum, model.maximum = 20.0, 120.0
-model.add_line()
-model.write_csv("my_pair.csv")
-model.close()
-```
-
-The starter assumes one donor lifetime per FRET component. A broad distance
-distribution still bends the static line; a simple pair is not a claim that a
-measured population has one structure. See [FRET](../concepts/fret.md).
+- Tool: **FRET Line Generator** (`chisurf/plugins/fret_line/`), on the ribbon
+  at **Spectroscopy → FRET**.

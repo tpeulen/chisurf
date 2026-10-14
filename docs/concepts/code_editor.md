@@ -10,7 +10,7 @@ anchor: concept-code-editor
 # Code Editor: scripts and notebooks inside the analysis session
 
 ChiSurf analyses are scriptable: the headless commands, the Python API and macros drive the same objects as the windows. The
-Code Editor (`chisurf/plugins/core/code_editor/`) is the place where such scripts are written. It is a shared
+Code Editor (**Tools → System → Code Editor**, `chisurf/plugins/core/code_editor/`) is the place where such scripts are written. It is a shared
 multi-document editor, not a fitting tool; it measures nothing.
 
 ## What it provides

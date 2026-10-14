@@ -2555,12 +2555,14 @@ guides/figures/82_fret_lines_in_ndx.png:
 
 guides/figures/88_docking_results.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/fret_docking_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/88_fret_docking.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/88_docking_results.png.
+    From the repository root, run QT_QPA_PLATFORM=offscreen IMP_BFF_GPU=off
+    CHISURF_SETTINGS_DIR=<scratch> MMFDB_SETTINGS_DIR=<scratch> MMFDB_DATABASE_PATH=<scratch>/m.sqlite
+    PYTHONPATH=docs/guides:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python docs/guides/screenshots/fret_docking_emtk.py. The emtk FRET window at 1200x800,
+    Docking & Screening: Load example (HIV-RT, 20 distances), Runs 3, Iterations 60, Run,
+    after the three runs finished. Scores vary from run to run (random starts).
   pages:
   - docs/guides/88_fret_docking.md
 
@@ -2925,17 +2927,6 @@ guides/figures/channel_definition_reference_mixing.png:
   pages:
   - docs/guides/87_channel_definition.md
 
-guides/figures/channel_definition_wizard_after_export.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/87_channel_definition.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/channel_definition_wizard_after_export.png.
-  pages:
-  - docs/guides/87_channel_definition.md
-
 guides/figures/vv_vh_g_factor_window.png:
   kind: screenshot
   origin: docs/guides/make_screenshots.py::_grab_vv_vh_g_factor_window
@@ -3133,21 +3124,23 @@ guides/figures/forster_calculator.png:
 
 guides/figures/fret_line_tool.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::front
+  origin: docs/guides/make_screenshots.py::_grab_fret_line_tool
   recipe: >-
-    Run the script named in origin (see the function that saves fret_line_tool.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    From the repository root, run QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=<scratch>
+    PYTHONPATH=docs/guides:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python -c 'import make_screenshots as s; s._grab_fret_line_tool()'. The emtk FRET Line
+    Generator at 1200x800: a static line (one Gaussian, sigma 6 A, RDA0 swept 20-120 A) and a
+    dynamic line (C0 at 40 A, C1 at 70 A, fraction of C0 swept 0-1), tau_D0 4 ns, with the
+    Components tab and the live model editor focused.
   pages:
   - docs/guides/82_fret_lines.md
 
 guides/figures/fret_line_tool_lines.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::front
+  origin: docs/guides/make_screenshots.py::_grab_fret_line_tool
   recipe: >-
-    Run the script named in origin (see the function that saves fret_line_tool_lines.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    Same run as fret_line_tool.png (_grab_fret_line_tool); the FRET lines tab focused
+    instead of Components.
   pages:
   - docs/guides/82_fret_lines.md
 
@@ -3232,12 +3225,15 @@ guides/figures/hydropro_tool.png:
 
 guides/figures/image_browser_mosaic.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/image_browser_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/86_image_browser.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/image_browser_mosaic.png.
+    From the repository root, run QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=<scratch>
+    MMFDB_SETTINGS_DIR=<scratch> MMFDB_DATABASE_PATH=<scratch>/mmfdb.sqlite
+    PYTHONPATH=docs/guides:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python docs/guides/screenshots/image_browser_emtk.py. The emtk Image Browser at 1200x800
+    with the two-detector setup (green ch 0,1; red ch 2), a copy of test/data/clsm/Leica_SP8.ptu
+    (and sub/Leica_SP5.ptu) dropped as a folder, Leica_SP8.ptu clicked, two stars, an annotation
+    typed.
   pages:
   - docs/guides/86_image_browser.md
 
@@ -3253,12 +3249,10 @@ guides/figures/image_browser_setup.png:
 
 guides/figures/image_browser_zoomed.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/image_browser_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/86_image_browser.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/image_browser_zoomed.png.
+    Same run as image_browser_mosaic.png, then six wheel notches over the green tile and a
+    drag of 60 px right, 20 px up.
   pages:
   - docs/guides/86_image_browser.md
 
@@ -3664,6 +3658,17 @@ guides/figures/spot_finder_hub.png:
   pages:
   - docs/guides/84_spot_finder.md
 
+guides/figures/spot_finder_native_wide_counts.png:
+  kind: screenshot
+  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  recipe: >-
+    The standalone emtk Spot Finder (spot_finder make_app) at its initial 1100x720, driven
+    headlessly with emtk.testing.Driver: Load example (spot_finder.demo.make_demo, four
+    synthetic spots), then Preview with the single_molecule workflow (4 regions). Screenshot
+    of the whole window.
+  pages:
+  - docs/guides/84_spot_finder.md
+
 guides/figures/spot_finder_regions.png:
   kind: screenshot
   origin: docs/guides/screenshots/spot_finder.py::_grab_spot_finder
@@ -3707,52 +3712,51 @@ guides/figures/synthetic_decay_vvvh.png:
 
 guides/figures/traj_tools_align.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::idx
+  origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Run the script named in origin (see the function that saves traj_tools_align.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    From the repository root, run QT_QPA_PLATFORM=offscreen CHISURF_SETTINGS_DIR=<scratch>
+    PYTHONPATH=docs/guides:modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:.
+    python -c 'import make_screenshots as s; s._grab_traj_tools()'. The emtk Traj Tools
+    hub (900x640) on the T4L NMSim ensemble (olga_t4l, 894 frames); Align tab after
+    saving the trajectory aligned on the 162 C-alpha atoms.
   pages:
   - docs/guides/81_trajectory_tools.md
 
 guides/figures/traj_tools_clashes.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::idx
+  origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Run the script named in origin (see the function that saves traj_tools_clashes.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    Same run as traj_tools_align.png (_grab_traj_tools). Remove Clashed tab after saving
+    the clash-free trajectory with atom selection "name CA" and min distance 3.5 A
+    (762 of 894 frames kept).
   pages:
   - docs/guides/81_trajectory_tools.md
 
 guides/figures/traj_tools_convert.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::idx
+  origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Run the script named in origin (see the function that saves traj_tools_convert.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    Same run as traj_tools_align.png (_grab_traj_tools). Convert tab after writing every
+    tenth frame to t4l_every10.dcd (90 frames of 1293 atoms).
   pages:
   - docs/guides/81_trajectory_tools.md
 
 guides/figures/traj_tools_energy.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::idx
+  origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    Run the script named in origin (see the function that saves traj_tools_energy.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    Same run as traj_tools_align.png (_grab_traj_tools). Energy Calc tab with Radius of
+    Gyration and Clash potential added (weight 1), stride 10, after Process (90 frames).
   pages:
   - docs/guides/81_trajectory_tools.md
 
-guides/figures/traj_tools_fret_native_hgbp.png:
+guides/figures/traj_tools_fret.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/make_screenshots.py::_grab_traj_tools
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/81_trajectory_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/traj_tools_fret_native_hgbp.png.
+    Same run as traj_tools_align.png (_grab_traj_tools). FRET tab with donor dipole
+    CA/CB of residue 36, acceptor CA/CB of residue 132, R0 52 A, tau0 4 ns, t-step 1 ns,
+    after Process trajectory (894 frames).
   pages:
   - docs/guides/81_trajectory_tools.md
 

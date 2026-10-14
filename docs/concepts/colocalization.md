@@ -278,7 +278,7 @@ A defensible colocalization result is not one number but a small set:
 
 ## See also
 
-- Tools in ChiSurf: **Colocalization** (`chisurf/plugins/microscopy/img_coloc/`) computes all four coefficient families on a TIFF stack or a photon-stream image, with the Costes randomisation test.
+- Tools in ChiSurf: **Colocalization** (**Spectroscopy → Imaging → Colocalization**, `chisurf/plugins/microscopy/img_coloc/`) computes the coefficients above, the cross-correlation profiles, intensity-resolved PCC and object-based statistics on a TIFF stack or a photon-stream image, with the Costes randomisation test. Workflow: {doc}`/guides/38_colocalization`.
 
 ## References
 
@@ -288,9 +288,3 @@ A defensible colocalization result is not one number but a small set:
 - {cite}`li2004` — the intensity-correlation-quotient, an alternative to a single coefficient.
 - {cite}`bolte2006` — a tour of the pitfalls: bleed-through, sampling and object-based analysis.
 - {cite}`vansteensel1996` — the cross-correlation-versus-shift test that separates real overlap from chance.
-
-The native tool's fold descriptions distinguish background correction, scatter
-gating, spatial regions, object analysis and statistical significance. Its
-intensity histogram is a display of computed counts; changing texture orientation
-in a renderer changes the visible image, not the coefficients or counts. The
-[workflow](../guides/38_colocalization.md) shows the rendered histogram.

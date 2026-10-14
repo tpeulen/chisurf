@@ -134,14 +134,15 @@ Fusion is diagnosable, and it is worth checking rather than trusting:
 
 ## Checking the written result
 
-Window geometry does not define the fusion calculation. Compare the burst
-indices, arrival-time calibration, probability curve, threshold and effective
-gap ceiling when checking a preview against a written result. Keep raw source
-files unchanged. A regenerated fused span retains the fragments’ photons and
-includes photons between them, so equal total photon counts before and after
-fusion would be the wrong conservation test. The `fu4` companion records the
-gained gap photons; group-index outputs preserve the mapping from original
-bursts to fused spans.
+A fused span keeps the fragments' photons and adds the photons between them,
+so equal total photon counts before and after fusion would be the wrong
+conservation test. The fused folder's `fu4` companion records, per fused
+burst, how many bursts it was made from (`Fused Bursts`) and the gap photons
+it gained (`Fused Gap Photons`); the optional `fg4` companion beside the
+source bursts records which fused burst each original burst went into
+(`Fusion Group`). A preview and
+the written result agree when the burst indices, the probability curve, the
+threshold and the effective gap ceiling agree.
 
 ## Where it sits in the pipeline
 
@@ -166,11 +167,12 @@ efficiency. They are recomputed on the fused folder instead.
 
 ## Synthetic workflow check
 
-The [fusion workflow](../guides/58_burst_fusion.md) generates a known
-300-molecule example through `make_demo()`, returning the searched burst-analysis
-folder. `read_demo(folder)` reads the source, search settings and truth sidecar.
-The cache lives under settings-owned `demos/burst_fusion`; its known molecule
-count is synthetic ground truth, distinct from fusion estimates.
+The [fusion workflow](../guides/58_burst_fusion.md) generates a synthetic
+example of 300 molecules with `make_demo()` (in
+`chisurf.plugins.burst.burst_fusion.demo`), which returns the searched
+burst-analysis folder; `read_demo(folder)` reads its source, search settings
+and true molecule count. It is cached under `demos/burst_fusion` in the
+settings folder.
 
 ## See also
 

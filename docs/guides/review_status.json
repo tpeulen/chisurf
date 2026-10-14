@@ -20,6 +20,76 @@
     "sha256": "5542d6b85f0eb847f7f771c1c25d07869bf3ca0eaf590f87e2ed456dadd053d9",
     "status": "ai-reviewed"
   },
+  "80_quenching_estimator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b47220499bb1902a62f666e0f719d95ade2102fcb6ad04312618e78743e8fb9e",
+    "status": "ai-reviewed"
+  },
+  "81_trajectory_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c165829b4e47e2223c24bf8e157dc13adc14532c1980f0f63f26aa0c55209acd",
+    "status": "ai-reviewed"
+  },
+  "82_fret_lines.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "426d1ccb1c7b2ea4044ffbdf1ae152278c9c0ae817805a9b6d8d51b946e88684",
+    "status": "ai-reviewed"
+  },
+  "83_spectra_and_r0.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e9c41462e050706955cf93d275a5d85aa76d674db11cce512c3e1dff25349e7a",
+    "status": "ai-reviewed"
+  },
+  "84_spot_finder.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "da400815f91a23b9d2b9b920f2202ab0cb7df357766a402a63bbc54ed67f4bcf",
+    "status": "ai-reviewed"
+  },
+  "85_mfd_prepare.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dc7112e23e644dd26d8eb6ee5af07fbf333275607b45dbd68f032cd4c885acfc",
+    "status": "ai-reviewed"
+  },
+  "86_image_browser.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2116c5ff88ef744ad3fb6e8a7e6b9c355470c7f841f50d6aa09acdf9c3284d31",
+    "status": "ai-reviewed"
+  },
+  "87_channel_definition.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "37d1547c45f3e6f7b7ae907f80137b524db05f0f93179c958c17d21ad23fb970",
+    "status": "ai-reviewed"
+  },
+  "88_fret_docking.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "2970f6c829b2e3555d1dba9762bc315eb5622289a84ddd7057067babf2d5f856",
+    "status": "ai-reviewed"
+  },
+  "88_microtime_shifter.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "28cc3ab9f1aa5b0b741cbdeeae2ebe7dfb6b2245687e99e3addc5d32f58f9c18",
+    "status": "ai-reviewed"
+  },
   "89_microtime_histogram.md": {
     "date": "2026-10-14",
     "reviewer": "agent",

@@ -25,7 +25,8 @@ browser is {doc}`24_scan_images`.
 ## 1. Open the tool
 
 It is the **Browser** step of **Spectroscopy → Imaging → Image Tools**, and **Next → Intensity** hands the picked
-image to the Intensity step. The window has two tabs: **Image browser** (the page it
+image to the Intensity step. **Spectroscopy → Imaging → Tools → Image Browser**
+opens it as a window of its own. The window has two tabs: **Image browser** (the page it
 opens on) and **Detector setup**.
 
 ```{figure} figures/image_browser_mosaic.png
@@ -157,16 +158,6 @@ model.do_export_tiff("tiffs")                  # the stacks of the selected file
 
 ## 9. Limits
 
-The detector setup editor offers 8 of the 15 reading routines the Qt
-wizard page had (no CZ-RAW, SM, PHOTONS, PHOTON-HDF5, SPC-QC, SPC-600_4096,
-BRIGHTEYES-TTR or FLIMLABS); a saved setup that has one keeps it. The
-preview is limited to 512 pixels on its longer side. Ratings and notes live in
-the data folder, not in ChiSurf's settings.
-
-## Window size
-
-The standalone native image browser initially requests 1200×800 logical pixels.
-The native launcher remembers dimensions after resizing, and Qt clamps the
-initial window to the display. The mosaic and detector controls follow the
-available area; changing geometry does not alter the photon data or detector
-selection.
+The preview is limited to 512 pixels on its longer side. Ratings and notes live in the data folder, not in ChiSurf's
+settings. The standalone window opens at 1200 × 800; a saved size takes
+precedence.

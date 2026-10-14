@@ -39,7 +39,6 @@ normal-mode ensemble in
 `chisurf/plugins/modelling/fret/examples/olga_t4l/`:
 `3GUN_NMSim_cl-rep_894.dcd` (894 frames) with the topology
 `3GUN_NMSim_cl-rep-001.pdb` (1293 heavy atoms, 162 Cα).
-The native FRET figure also shows the hgbp example described in that section.
 
 ## Align
 
@@ -183,9 +182,9 @@ next potential to add.
 
 1. **Trajectory**, **Topology**.
 2. Pick a potential in the combo and set its parameters in the box below it,
-   set **Weight**, then **➕ Add**. The table lists the potentials added, and a
+   set **Weight**, then **Add**. The table lists the potentials added, and a
    double-click removes one.
-3. **Stride**, then **⚙ Process** and choose the output file.
+3. **Stride**, then **Process** and choose the output file.
 
 Only **Radius of Gyration**, **Clash potential** and **Ramachandran** run on a
 trajectory at present (see [Known defects](#known-defects)). On the example,
@@ -197,17 +196,16 @@ the radius of gyration is 15.9 Å (15.3–16.4 Å over the frames). `FrameNbr` i
 
 Writes, for every frame, the donor–acceptor distance, the orientation factor
 and the FRET rate. The dye transition dipoles are taken from two atoms each.
-The hub's FRET tab hosts the same native panel as the standalone FRET window.
-Its **Reference**, **Dipole atoms**, **Parameters** and **Process** sections
-retain file browse and drops, settings, output selection and the live log.
+The panel has the sections **Reference**, **Dipole atoms**, **Parameters** and
+**Process**; the standalone FRET window is the same panel.
 
-```{figure} figures/traj_tools_fret_native_hgbp.png
+```{figure} figures/traj_tools_fret.png
 :name: fig-traj-tools-fret
 :width: 100%
 
-The native FRET panel inside Trajectory Tools after processing the hgbp
-trajectory at stride 4, R0 = 52 Å and τ0 = 4 ns. The donor atom indices are
-(1, 20), the acceptor indices (3000, 3010); the log confirms 116 output frames.
+FRET on the T4 lysozyme ensemble: donor dipole Cα→Cβ of residue 36, acceptor
+Cα→Cβ of residue 132, R0 = 52 Å, τ0 = 4 ns. The log confirms all 894 frames
+were processed.
 ```
 
 * **Trajectory**, **Topology** (the PDB naming the atoms; either may be chosen first), **Stride**.
@@ -225,23 +223,15 @@ trajectory at stride 4, R0 = 52 Å and τ0 = 4 ns. The donor atom indices are
   one gets `<name>.<i>.csv`.
 
 The inherited defaults are stride 1, R0 = 52 Å, τ0 = 2.6 ns, t-step = 1 ns and
-dipoles enabled. The worked scenes deliberately use a 4 ns donor lifetime.
-For the hosted figure, choose `hgbp1_transition.dcd` with `topol.pdb` from
-`test/data/atomic_coordinates/trajectory/hgbp1/` and the atom indices above.
-At stride 4 and τ0 = 4 ns this produces the accepted 116×6 table byte-for-byte;
-the distance, orientation and rate are also checked directly from coordinates.
-
-Open the same panel as a standalone native window:
+dipoles enabled; the example uses a 4 ns donor lifetime. The standalone
+window:
 
 ```bash
 csg_traj_fret_analysis --size 1200x800
 python -m chisurf.emtk --plugin traj_fret --size 1200x800
 ```
 
-Closing the parent Trajectory Tools hub closes its owned FRET panel once and
-cancels queued FRET work. The seven other tool tabs retain their existing
-ownership. Headless calculation uses `FretTrajectoryViewModel`, as shown
-[below](#headless).
+Headless calculation uses `FretTrajectoryViewModel` ([below](#headless)).
 
 The output columns are `Frame`, `time[ns]`, `RDA[Ang]`, `kappa`, `kappa2` and
 `FRETrate[1/ns]`, with $k = \tfrac32\,\kappa^2\,(R_0/R)^6/\tau_0$. On the
@@ -345,20 +335,18 @@ Measured on the example data. File references are to the current tree.
 * **Six of the nine potentials fail on a trajectory.** H-Bond,
   Miyazawa-Jernigan and ASA-Calpha fail with `Structure object has no
   attribute 'l_res'`. Iso-UNRES and Go-Potential fail with `no attribute
-  'dist_ca'`. AV-Potential fails with "Positions not set". The scored
+  'dist_ca'`. AV-Potential fails with `AvPotential.__init__() got an
+  unexpected keyword argument 'structure'`. The scored
   structure is a plain `Structure`, not the residue-level structure these
   kernels need. Ramachandran runs but returns 0.000 for every frame. H-Bond is
   the default combo entry.
 * **Stale units in `trajectory_data`.** The module, `Trajectory` and `rmsd`
   docstrings say nanometres. The coordinates, distances and RMSD are in
   ångström (the T4L coordinates span −29…34, and `compute_distances` itself
-  says Å). As a result, `chisurf/plugins/modelling/fret/core/trajectory.py:158`
-  (`compute_efficiencies`) still multiplies by 10 as a "nm → Å" step. That
-  gives E ≈ 2×10⁻⁵ where 0.97 is correct for a 27 Å pair at R0 = 52 Å, and
-  `rmsd_matrix` there is 10× too large.
-* The `traj2fret.py` command-line block (`__main__`) is Python 2
-  (`string.letters`) and reads `frame.timestep`, which the trajectory object
-  does not have.
+  says Å). As a result, `compute_efficiencies` in
+  `chisurf/plugins/modelling/fret/core/trajectory.py` still multiplies by 10
+  as a "nm → Å" step. That gives E ≈ 2×10⁻⁵ where 0.97 is correct for a 27 Å
+  pair at R0 = 52 Å, and `rmsd_matrix` there is 10× too large.
 
 ## See also
 
@@ -367,30 +355,9 @@ Measured on the example data. File references are to the current tree.
   factor: {ref}`concept-kappa2-orientation`.
 - Tool: **Traj Tools** (`chisurf/plugins/traj/traj_tools/`), on the ribbon at
   **Structure → Trajectory**.
-
-
-## Retained protein-quenching settings
-
-The existing quenching editor binds its kQ control to the scientific model
-parameter, so editing it and setting `kQ_scale` affect the same value.
-`quench_scale` is the canonical constructor option (default 0.01); the
-historical `k_quench_protein` option applies when no canonical value is given.
-The atom-exclusion editor accepts a whitespace-separated list, while the
-all-atoms flag chooses CB-only or non-excluded atoms for residue rate settings.
-Explicit per-residue atom lists keep their original meaning.
-
-## Native window geometry
-
-The shared native trajectory shell reads initial width/height from the tool's
-view spec before arranging its sections; an older spec defaults to 1100×720.
-Rotate/translate explicitly declares that size. Resizing is remembered by the
-native launcher, and Qt limits startup dimensions to the display. Geometry
-does not change matrices, translation, stride or exported coordinates.
-
-The FRET, energy, align, convert, join, clash-filter and topology tools now
-declare 1100×720 initial windows. Their fold and log descriptions explain inputs
-and outputs. Join's two radio options explain frame concatenation and atom
-stacking separately; atom stacking requires matching frame counts and an
-appropriate combined topology. Saved dimensions continue to take precedence.
-
-Tools: Align (`chisurf/plugins/traj/traj_align/`), Convert (`chisurf/plugins/traj/traj_convert/`), Join (`chisurf/plugins/traj/traj_join/`), Remove Clashed (`chisurf/plugins/traj/traj_remove_clashes/`), Rotate/Translate (`chisurf/plugins/traj/traj_rotate_translate/`), Save Topol (`chisurf/plugins/traj/traj_save_topology/`), Energy Calculator (`chisurf/plugins/traj/potential_energy/`), FRET (`chisurf/plugins/traj/fret_trajectory/`).
+- Tools: Align (`traj_align/`), Convert (`traj_convert/`), Join
+  (`traj_join/`), Remove Clashed (`traj_remove_clashes/`), Rotate/Translate
+  (`traj_rotate_translate/`), Save Topol (`traj_save_topology/`), Energy Calc
+  (`potential_energy/`) and FRET (`fret_trajectory/`), all under
+  `chisurf/plugins/traj/`. Each window opens at 1100×720; a saved size takes
+  precedence.
