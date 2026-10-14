@@ -135,10 +135,12 @@ def optimize_hyperparameters(
         return out
 
     cache: dict[tuple, float] = {}
-    best = {"cfg": None, "loss": float("inf")}
+    best_cfg: dict | None = None
+    best_loss = float("inf")
     state = {"stopped": False}
 
     def evaluate(cfg: dict) -> float:
+        nonlocal best_cfg, best_loss
         cfg = constrain(cfg)
         key = tuple(round(float(cfg[k]), 6) for k in keys)
         if key in cache:
@@ -149,8 +151,8 @@ def optimize_hyperparameters(
         _apply(session, cfg)
         value = _loss(session)
         cache[key] = value
-        if value < best["loss"]:
-            best["cfg"], best["loss"] = cfg, value
+        if value < best_loss:
+            best_cfg, best_loss = cfg, value
         if progress is not None:
             progress(min(len(cache), budget), budget)
         return value
@@ -181,24 +183,24 @@ def optimize_hyperparameters(
         evaluate(cfg)
     step = {k: 1 if use[k][2] == "int" else 0.25 * (use[k][1] - use[k][0]) for k in keys}
     quiet = 0
-    while best["cfg"] is not None and not state["stopped"] and len(cache) < budget and quiet < 3:
+    while best_cfg is not None and not state["stopped"] and len(cache) < budget and quiet < 3:
         improved = False
         for k in keys:
             for sign in (-1, 1):
                 if state["stopped"] or len(cache) >= budget:
                     break
-                before = best["loss"]
-                trial = dict(best["cfg"])
+                before = best_loss
+                trial = dict(best_cfg)
                 trial[k] = trial[k] + sign * step[k]
                 evaluate(trial)
-                improved |= best["loss"] < before
+                improved |= best_loss < before
         if not improved:
             quiet += 1
             for k in keys:
                 step[k] = max(1, step[k] // 2) if use[k][2] == "int" else step[k] * 0.5
         else:
             quiet = 0
-    if state["stopped"] or best["cfg"] is None:
+    if state["stopped"] or best_cfg is None:
         session.det_settings[session.current_detector] = entry
         session.fit()
         if not state["stopped"]:
@@ -210,11 +212,11 @@ def optimize_hyperparameters(
             "evaluations": len(cache),
             "stopped": True,
         }
-    _apply(session, best["cfg"])
+    _apply(session, best_cfg)
     session.fit()
     return {
-        "config": best["cfg"],
-        "loss": best["loss"],
+        "config": best_cfg,
+        "loss": best_loss,
         "start_loss": start_loss,
         "evaluations": len(cache),
         "stopped": False,

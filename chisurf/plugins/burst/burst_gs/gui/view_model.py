@@ -11,8 +11,11 @@ import logging
 import pathlib
 from collections.abc import Callable
 from concurrent.futures import CancelledError
+from typing import Any
 
 import numpy as np
+
+from chisurf.core.fluorescence.burst.gopich_szabo import PhotonBursts
 
 from .. import core as _core
 
@@ -63,7 +66,9 @@ class BurstGsViewModel:
         self.cross_check_h2mm: bool = False
 
         # ── runtime ──
-        self._bursts = None
+        self._bursts: PhotonBursts | None = None
+        #: what was loaded: counts, the source files (``load_photons``'s record)
+        self._info: dict[str, Any] = {}
         self._analysis: _core.GsAnalysis | None = None
         self.results_text: str = (
             "Drop .bur burst tables (or tick Simulate) and press Fit.\n\n"
@@ -150,7 +155,7 @@ class BurstGsViewModel:
     def load(self) -> str:
         """Load (or simulate) the photons, returning a status message."""
         if self.use_simulation:
-            self._bursts = _core.simulate_two_state(
+            self._bursts = bursts = _core.simulate_two_state(
                 k_forward=float(self.sim_k_forward),
                 k_backward=float(self.sim_k_backward),
                 efficiencies=(float(self.sim_e1), float(self.sim_e2)),
@@ -161,13 +166,13 @@ class BurstGsViewModel:
             )
             self._info = {
                 "source": "simulation",
-                "n_bursts": len(self._bursts),
-                "n_photons": self._bursts.n_photons,
+                "n_bursts": len(bursts),
+                "n_photons": bursts.n_photons,
                 "true_k_forward": float(self.sim_k_forward),
                 "true_k_backward": float(self.sim_k_backward),
                 "true_efficiencies": [float(self.sim_e1), float(self.sim_e2)],
             }
-            return f"Simulated {len(self._bursts)} bursts, {self._bursts.n_photons:,} photons."
+            return f"Simulated {len(bursts)} bursts, {bursts.n_photons:,} photons."
 
         streams = [
             {"name": "donor", "channels": self._parse_channels(self.donor_channels)},
@@ -206,6 +211,8 @@ class BurstGsViewModel:
             progress(0.01, message)
         try:
             n = int(self.n_states)
+            if self._bursts is None:  # load() sets them or raises
+                raise RuntimeError("no photons loaded")
             self._analysis = _core.analyse(
                 self._bursts,
                 n_states=n,
