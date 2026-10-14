@@ -6,6 +6,8 @@ description: Open, resolved and withdrawn defects with their measurement, owner 
 
 ## emtk shell: the global parameter table drops columns at the default layout (found 2026-10-14)
 
+status: open
+
 Measure: `okf/plugins/emtk-ports/final-parity/shell/` (row "Global fit (TCSPC + FCS): Analysis dock"). At
 the default left-column width (a third of 1440) the global parameter table drops Fixed, link row, bounds and
 error (collapse tiers; the row tooltip lists them; they return when the dock is widened) where the Qt table
@@ -14,6 +16,58 @@ Resolved the same day: wide tools (Settings, declared 1200 x 800) clipped in the
 wider than its dock, never placed by the user, now opens floating at its declared size (a docked choice is
 kept: emtk 0.1.14). Tried and reverted first: widening the tool region on open (halved the workspace for
 almost every tool, broke tile / cascade).
+
+## The Objects dock is retired, and the overlay that replaced it lists nothing (found 2026-10-14)
+
+status: resolved 2026-10-14 — found so by the 2026-10-14 docs review
+
+Resolved: the docs review of guide 44 (2026-10-14) found the emtk Object List
+drawing every loaded object (`all`, `148l`, `lig`, `nag`, `sele`), and
+`chimol_objects_panel.png` / `chimol_groups_panel.png` now show that overlay.
+The record below is kept as the history.
+
+`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
+(the list is in the viewport)"* — so `window.objects` no longer exists and the
+old grab raised `AttributeError`. That part is intended.
+
+What is **not** intended: the viewport Object List draws only `all` and `sele`.
+With three real objects loaded it still shows those two rows, before and after
+`refresh_objects()`:
+
+```python
+win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
+Cmd(win).do("create ligand, resn NAG")
+list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
+win.refresh_objects()         # overlay still shows only `all` and `sele`
+```
+
+So the panel that replaced the dock does not yet do the dock's job. Consequence
+for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
+44 show the **retired** Qt dock. They were deliberately *not* regenerated from
+the overlay — that would swap two figures that show the old UI correctly for two
+that show the new UI wrongly. The guide's prose around them (rows carrying
+the reference viewer's five **A S H L C** menus) still describes what the overlay draws, so it
+is not misleading, only dated.
+
+## mmfdb: `AnalysisReconstructor` has never been run against a real container (found 2026-10-14)
+
+status: resolved 2026-10-14
+
+**2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` claimed to re-run a stored
+burst search from a `.pto`. It read the stored settings under keys the burst
+selection never writes (`min_photons`, `rate_window`, `time_separation` at the
+top level) and searched with tttrlib's defaults, so its verdict meant nothing;
+it also called a `Measurement.artifact` method that does not exist, and
+"reconstructed" IRFs with a percentile background no writer uses.
+
+**Resolved 2026-10-14:** deleted, and replaced by
+`chisurf.plugins.burst.burst_selection.api.reproduce.reproduce_burst_search`,
+which walks `Measurement.lineage()` to the photon stream, rebuilds the
+`AnalysisSettings` from the stored `settings_json`, and re-runs the same
+`analyze_file` a normal run uses, read-only. Test:
+`chisurf/plugins/burst/burst_selection/tests/test_container_reproduce.py` (exact
+reproduction on real BH data, and a second run proving the result depends on
+the stored settings).
 
 ## Two screenshot recipes still overwrite review-retaken figures (found 2026-10-14)
 
@@ -3529,39 +3583,7 @@ loudly in its docstring rather than hidden behind a fallback. This is the
 one recorded exception to PRD-128's "patterns.py computes no spectrum
 algebra of its own".
 
-## The Objects dock is retired, and the overlay that replaced it lists nothing
-
-status: resolved (found so by the 2026-10-14 docs review)
-
-Resolved: the docs review of guide 44 (2026-10-14) found the emtk Object List
-drawing every loaded object (`all`, `148l`, `lig`, `nag`, `sele`), and
-`chimol_objects_panel.png` / `chimol_groups_panel.png` now show that overlay.
-The record below is kept as the history.
-
-`chimol/hosts/qt/window.py` states it plainly — *"Objects is permanently hidden
-(the list is in the viewport)"* — so `window.objects` no longer exists and the
-old grab raised `AttributeError`. That part is intended.
-
-What is **not** intended: the viewport Object List draws only `all` and `sele`.
-With three real objects loaded it still shows those two rows, before and after
-`refresh_objects()`:
-
-```python
-win = MolViewPluginWindow(); win.load_structure_from_path(pdb)
-Cmd(win).do("create ligand, resn NAG")
-list(win.viewer.objects)      # ['obj2', 'obj3', 'obj4']
-win.refresh_objects()         # overlay still shows only `all` and `sele`
-```
-
-So the panel that replaced the dock does not yet do the dock's job. Consequence
-for the docs: `chimol_objects_panel.png` and `chimol_groups_panel.png` in guide
-44 show the **retired** Qt dock. They were deliberately *not* regenerated from
-the overlay — that would swap two figures that show the old UI correctly for two
-that show the new UI wrongly. The guide's prose around them (rows carrying
-the reference viewer's five **A S H L C** menus) still describes what the overlay draws, so it
-is not misleading, only dated.
-
-## The ray tracer draws a mesh contour as streaks
+## The ray tracer draws a mesh contour as streaks (found 2026-08-31)
 
 status: open
 
@@ -8296,28 +8318,5 @@ which does reach the shader.
 Not fixed in the change that found it because the fix changes the size of every
 point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
-
----
-
-
-## mmfdb: `AnalysisReconstructor` has never been run against a real container
-
-status: resolved
-
-**2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` claimed to re-run a stored
-burst search from a `.pto`. It read the stored settings under keys the burst
-selection never writes (`min_photons`, `rate_window`, `time_separation` at the
-top level) and searched with tttrlib's defaults, so its verdict meant nothing;
-it also called a `Measurement.artifact` method that does not exist, and
-"reconstructed" IRFs with a percentile background no writer uses.
-
-**Resolved 2026-10-14:** deleted, and replaced by
-`chisurf.plugins.burst.burst_selection.api.reproduce.reproduce_burst_search`,
-which walks `Measurement.lineage()` to the photon stream, rebuilds the
-`AnalysisSettings` from the stored `settings_json`, and re-runs the same
-`analyze_file` a normal run uses, read-only. Test:
-`chisurf/plugins/burst/burst_selection/tests/test_container_reproduce.py` (exact
-reproduction on real BH data, and a second run proving the result depends on
-the stored settings).
 
 ---

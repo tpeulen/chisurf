@@ -9,57 +9,40 @@ timestamp: '2026-10-14T00:00:00Z'
 
 # Where to pick this up
 
-Button roles (2026-10-14, emtk 0.1.16):
+Button roles (2026-10-14, emtk 0.1.16). Closed 2026-10-14: LLTF has `▶  Fit` `role="primary"`,
+`⏹  Stop` and `Clear output` `role="danger"`, and Load example drawn by `action_button("example")`;
+`test/test_ui_vocabulary.py` passes (23).
 
-1. Closed 2026-10-14: LLTF has `▶  Fit` `role="primary"`, `⏹  Stop` and
-   `Clear output` `role="danger"`, and Load example drawn by
-   `action_button("example")`; `test/test_ui_vocabulary.py` passes (23).
-2. Measure hand-drawn emtk buttons without a role: run the AST scan used when
-   roles landed. It covers every `im.button` whose `_literal` caption has a
-   `verb_role`; 44 sites had none, 28 were given a role. The guard only checks
-   declared `button_row` entries, so this scan is the worklist for Python.
-   Left neutral on purpose:
-   - per-row `Remove##path` buttons in file lists (burst_background, burst_gs,
-     burst_irf_bg, clsm), because a column of red buttons is noise;
-   - the model section's `compute κ²` button, because it only opens the κ²
-     dialog. The dialog's own **Compute** is primary.
-
-   The `self.button(...)` wrappers of bid_to_analysis, microtime_histogram,
-   tttr_microtime_shifter and fcs_channel_preset now take a `role`:
-   - primary: Process, Apply;
-   - danger: Stop, Clear, Remove, Delete preset, Remove this pair.
-   - pto_inspector `Fit graph`, which frames the view.
-3. Open: the shell has no real light theme. `im.style_colors_light` inverts the
-   palette, and the docks keep their own dark fills. The light role variants
-   were judged on that inverted style. Re-judge them once a designed light
-   palette exists.
-4. Trap: `Fit` is not always the main action. It can mean "frame the view"
-   (lightpath, globalview `Fit view`) or "take values from a fit" (synthetic
-   decay `📥 Fit…`, `🔗 Fit group`, maxent `Fit`). Such entries declare
-   `"role": "default"`, or are listed in `NEUTRAL_CAPTIONS`.
-
-Shared actions:
-
-1. Measure: `python -c "import sys; sys.path.insert(0,'test'); import
-   test_ui_vocabulary as t; print(t.all_findings())"` lists every remaining
-   hand-drawn shared action. Trap: a button row that leads with a key
-   (`("Export", tip, lambda: …)`) is not recognised, because its key is often a
-   tour target; such rows were ported by hand (spot_finder, channel_definition,
-   fcs_correlator, synthetic_decay).
-2. Blocked: the emtk pin. `im.toggle_button` and the button-row `icon` live in
-   emtk `ed2f6f9`, `cda4a92`, `7f341f9`, `icon_caption` and later (local, unpushed; local HEAD ea91cb3). `pixi.lock` still
-   names `3416806a`; the test/docs envs were reinstalled from the local commit.
-   An env re-solved from the old pin raises `AttributeError: toggle_button` in
-   all five games.
-3. Open: ndxplorer (`modules/ndxplorer`, its own repo) draws its own chrome and
-   is not scanned; port its Help/Guide/Export to the same table there.
-4. Open: the Qt legacy toolbar ([Toolbar action vocabulary](gui-action-vocabulary.md))
-   uses `ℹ️` for Help where emtk uses `❓`; align it when that toolbar is next
-   touched. Compound captions (`Save JSON`, `Export CSV`, `Process`, `Start`)
-   are distinct actions and stay free.
-5. Measure: the literal and tooltip allow-lists key findings by line; ported
-   files shifted lines, so `test/test_i18n_literals.py` and
-   `test/test_tooltips.py` report relocated/stale keys until the root
+1. Measure: Hand-drawn emtk buttons without a role: run the AST scan used when roles landed. It covers
+   every `im.button` whose `_literal` caption has a `verb_role`; 44 sites had none, 28 were given a role.
+   The guard only checks declared `button_row` entries, so this scan is the worklist for Python. Left
+   neutral on purpose: (a) per-row `Remove##path` buttons in file lists (burst_background, burst_gs,
+   burst_irf_bg, clsm), because a column of red buttons is noise; (b) the model section's `compute κ²`
+   button, because it only opens the κ² dialog (the dialog's own Compute is primary). The `self.button(...)`
+   wrappers of bid_to_analysis, microtime_histogram, tttr_microtime_shifter and fcs_channel_preset now take a
+   `role`: primary for Process, Apply; danger for Stop, Clear, Remove, Delete preset, Remove this pair; default
+   for pto_inspector `Fit graph`, which frames the view.
+2. Open: The shell has no real light theme. `im.style_colors_light` inverts the palette, and the docks
+   keep their own dark fills. The light role variants were judged on that inverted style. Re-judge them
+   once a designed light palette exists.
+3. Open: Trap: `Fit` is not always the main action. It can mean "frame the view" (lightpath, globalview
+   `Fit view`) or "take values from a fit" (synthetic decay `📥 Fit…`, `🔗 Fit group`, maxent `Fit`). Such
+   entries declare `"role": "default"`, or are listed in `NEUTRAL_CAPTIONS`.
+4. Measure: `python -c "import sys; sys.path.insert(0,'test'); import test_ui_vocabulary as t; print(t.all_findings())"`
+   lists every remaining hand-drawn shared action. Trap: a button row that leads with a key (`("Export", tip,
+   lambda: …)`) is not recognised, because its key is often a tour target; such rows were ported by hand
+   (spot_finder, channel_definition, fcs_correlator, synthetic_decay).
+5. Blocked: The emtk pin. `im.toggle_button` and the button-row `icon` live in emtk `ed2f6f9`, `cda4a92`,
+   `7f341f9`, `icon_caption` and later (local, unpushed; local HEAD ea91cb3). `pixi.lock` still names
+   `3416806a`; the test/docs envs were reinstalled from the local commit. An env re-solved from the old pin
+   raises `AttributeError: toggle_button` in all five games.
+6. Open: ndxplorer (`modules/ndxplorer`, its own repo) draws its own chrome and is not scanned; port its
+   Help/Guide/Export to the same table there.
+7. Open: The Qt legacy toolbar ([Toolbar action vocabulary](gui-action-vocabulary.md)) uses `ℹ️` for Help
+   where emtk uses `❓`; align it when that toolbar is next touched. Compound captions (`Save JSON`,
+   `Export CSV`, `Process`, `Start`) are distinct actions and stay free.
+8. Measure: The literal and tooltip allow-lists key findings by line; ported files shifted lines, so
+   `test/test_i18n_literals.py` and `test/test_tooltips.py` report relocated/stale keys until the root
    regenerates them (they only shrink: ported controls left the measurement).
 
 # Why it exists

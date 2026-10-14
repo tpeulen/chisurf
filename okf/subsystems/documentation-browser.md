@@ -115,7 +115,7 @@ drawn figure's rectangle, so a click is matched against it directly.
    package built by `build_tools/build_installer.py`, which assembles a runtime
    on top of `pip install .`; the recipe needs no change, but nobody has opened
    Help in an installed build.
-1. Done for the gate: **The manual is AI-reviewed**, which clears `review-check` since the owner ruled 2026-10-14 that AI review counts; a human pass is optional extra assurance — `csc help review-list`
+1. Measure: Done for the gate: **The manual is AI-reviewed**, which clears `review-check` since the owner ruled 2026-10-14 that AI review counts; a human pass is optional extra assurance — `csc help review-list`
    reports `0 reviewed, 94 AI-reviewed, 0 stale, 231 unreviewed` over the whole
    tree; the manual's own 79 are all AI-reviewed. All 79 pages
    have been read end to end and corrected against the source code; what remains
