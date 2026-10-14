@@ -69,13 +69,6 @@ IRF and applying; it waits for you to press **Open TTTR…** and **Apply →**.
 * [The imaging workflow in one window](98_imaging_tools.md), [Confocal scan images](24_scan_images.md).
 * [Plugin reference: IRF & BG](../reference/plugins/img_calibration.md)
 
-The native calibration tool declares a1100×720 initial host size, read from
-the full primary spec before preparing its controls. Saved custom geometry
-retains precedence. Photon/IRF histograms, fit/background windows and the
-published deep calibration snapshot retain their values across window changes.
-An absent IRF still uses raw data; the concise empty-state caption makes this
-fallback visible in the smaller initial host.
-
 ## Theory
 
 - [Detector setups](../concepts/detector_setup.md): routing, windows and timing a calibration belongs to.

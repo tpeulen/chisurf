@@ -69,7 +69,8 @@ it does depolarize the emission — which is how it is usually detected
 
 Left: $E(R)$, with the usable window shaded — 98.5% at $0.5R_0$ and 1.5% at
 $2R_0$. Right: the distance error a fixed $\Delta E = 0.01$ produces. It is
-minimal at $R_0$ and rises steeply either side, which is why choosing a dye pair
+minimal just below $R_0$ (at $(5/7)^{1/6}R_0 \approx 0.95R_0$, where $E(R)$ is
+steepest) and rises steeply either side, which is why choosing a dye pair
 is choosing the window the experiment can see.
 ```
 
@@ -115,8 +116,9 @@ property of a dye pair *in some conditions*, not a constant. ChiSurf's
 implementation defaults to $\kappa^2 = 2/3$ and $n = 1.33$
 ({src}`chisurf/core/fluorescence/fret/forster.py#forster_radius`); the units
 convention is $J$ in M⁻¹ cm⁻¹ nm⁴, and the function returns $R_0$ in ångström
-even though the underlying prefactor $0.02108$ yields nanometres. Literature
-formulas working in ångström use a prefactor of $9.78\times10^3$ instead.
+even though the underlying prefactor $0.02108$ yields nanometres. Written for an
+ångström result the prefactor is $0.2108$, or $9.78\times10^3$ with $J$ in
+M⁻¹ cm³ ({ref}`fundamentals-conventions`).
 :::
 
 ## The orientation factor

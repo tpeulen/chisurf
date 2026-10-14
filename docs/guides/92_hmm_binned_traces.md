@@ -33,10 +33,11 @@ the dialog, or drop them on the window; several files are fitted jointly as sepa
 :name: fig-hmm-window
 :width: 100%
 
-A two-channel trace with three states (mean counts per bin 20 / 60 / 110 in channel 1), fitted with three
-states and scanned from one to five. **Top right**, the trace with the decoded state path drawn at each
-state's emission mean; **bottom left**, the fitted states and the transition matrix with rates; **bottom
-right**, the intensity histogram with the fitted emission densities (tabs: dwell times, state scan).
+The **Demo trace**: two channels, three states (mean counts per bin 20 / 60 / 110 in channel 1), fitted
+with three states and scanned from one to five. **Top right**, the trace with the decoded state path drawn
+at each state's summed emission mean; **bottom centre**, the fitted states and the transition matrix with
+rates; **bottom right**, the histogram of the summed counts with the fitted emission densities (further
+tabs: **Dwell times**, **Scan**).
 ```
 
 ## 2. Set the model
@@ -44,7 +45,7 @@ right**, the intensity histogram with the fitted emission densities (tabs: dwell
 *States* is the state count and *Covariance* the shape of the emission noise (`full`, `diag`, `spherical`
 or `tied`: fewer parameters are more stable on short traces). **Bin width (s)** turns probabilities into
 rates; leave it at 1 to report dwell times in bins. The **Fitting** section holds the maximum number of EM
-maps, the tolerance, the decoder (`viterbi` is the single most probable path, `map` decides every bin on
+iterations (**Max EM maps**), the tolerance, the decoder (`viterbi` is the single most probable path, `map` decides every bin on
 its own), the seed of the k-means start and the SQUAREM switch; **State scan range** holds the range
 the scan scores.
 
@@ -72,7 +73,7 @@ from chisurf.plugins.core.hmm.gui.view_model import HmmViewModel
 
 m = HmmViewModel(); m.set_traces([np.loadtxt("trace.csv", delimiter=",")])
 m.n_states = 3; m.time_step = 0.001; m.run(); m.run_scan()
-print(m.status)                      # e.g. "3 states · log L = ... · BIC = ..."
+print(m.status)                      # after the scan: "BIC prefers 3 states, AIC 3."
 print(m.fit.transition_rates)
 ```
 

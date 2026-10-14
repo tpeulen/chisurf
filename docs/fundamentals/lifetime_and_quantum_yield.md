@@ -1,7 +1,7 @@
 ---
 type: Fundamentals
 title: Lifetime, quantum yield, and the rate picture
-description: Symbols on this page follow ChiSurf's usage; the common alternatives are listed in.
+description: The rate picture behind lifetime and quantum yield, the efficiency of any added process, species- versus intensity-weighted averages of a multi-exponential decay, and relative quantum-yield measurement.
 tags: [fundamentals, tcspc, lifetime]
 anchor: fundamentals-lifetime-quantum-yield
 ---
@@ -154,7 +154,7 @@ Q = Q_{\mathrm{std}}\,
 $$
 
 where $n$ is the refractive index of each solvent. The $n^2$ factor is not a
-small correction — water against ethanol is already 7% — and it is the term most
+small correction — water against ethanol is already 4%, against DMSO 23% — and it is the term most
 often dropped. In practice the ratio $F/A$ is better taken as the slope of $F$
 against $A$ over a dilution series than from a single pair of numbers, because
 the slope exposes curvature that a single point hides.

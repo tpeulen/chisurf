@@ -39,16 +39,20 @@ selected channels and range and plays them; **Pause** freezes the playback, **St
 restarts; a white line follows the playback in the waterfall. **Save WAV** writes the same sound as 16-bit mono WAV.
 **Guide** walks through all of this; **Help** is the reference.
 
-Concept: [lifetime from photon streams](../concepts/fret.md) for the lifetime waterfall's inverse-Laplace model.
+Concept: [lifetime distributions](../concepts/maximum_entropy.md) for the regularized inverse-Laplace model of the
+lifetime waterfall.
 
-## Native layout and saved preferences
+## Layout and saved preferences
 
-Audifier starts at 1100 × 720; saved dimensions and dock placement win.
-Detector setup tables scroll horizontally to reach the trailing G-factor and
-remove controls. Window changes preserve the loaded photon data, waterfall,
-rendered waveform, range and channel configuration. Reopening restores setup
-and sound preferences; load the recording again to recompute its output.
+The window opens at 1100 × 720; saved dimensions and dock placement win. The detector table of **Detector setup**
+scrolls horizontally to reach the G-factor and remove columns. Reopening restores the setup and sound preferences, not
+the photon data: load the recording again.
 
-![Real BH photon waterfall at the native initial layout](figures/audifier_native_window.png)
+```{figure} figures/audifier_native_window.png
+:width: 100%
+
+The same SPC-132 file with the **Detector setup** tab in front (File Type `SPC-130`) after **Play / Resume** rendered
+62.3 s of audio.
+```
 
 Tool: Audifier (`chisurf/plugins/tttr/audifier/`).

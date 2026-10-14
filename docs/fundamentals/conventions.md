@@ -109,7 +109,7 @@ quantum yield. A tabulated $R_0$ is therefore not a constant of the dye pair
 | Anomalous exponent | $\alpha$ | — | $\alpha$ |
 
 :::{warning}
-Three collisions matter in practice, because both readings are plausible in a
+Five collisions matter in practice, because both readings are plausible in a
 multiparameter experiment:
 
 - $\gamma$ is the FRET detection-correction factor **and** the FCS structure
@@ -170,9 +170,9 @@ thermodynamic relations.
 The Förster-radius formula is evaluated with $J$ in M⁻¹ cm⁻¹ nm⁴ and the
 prefactor $0.02108$, which yields $R_0$ in **nanometres**
 ({ref}`concept-fret`); {src}`chisurf/core/fluorescence/fret/forster.py#forster_radius`
-converts and returns ångström. Literature formulas written in ångström use a
-prefactor of $9.78\times10^3$, and some are written for $J$ in M⁻¹ cm³. The
-difference is a power of ten and is easy to miss — check the units of an $R_0$
+converts and returns ångström. The same formula written for ångström has the
+prefactor $0.2108$; written for $J$ in M⁻¹ cm³ (ångström result) it is
+$9.78\times10^3$. The differences are powers of ten and easy to miss — check the units of an $R_0$
 before combining it with a distance from anywhere else.
 :::
 

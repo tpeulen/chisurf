@@ -92,8 +92,8 @@ What matters when choosing a dye for the methods in this documentation:
   {cite}`dale1979` — at the cost of a larger positional uncertainty that has to
   be modelled ({ref}`concept-accessible-volume`) {cite}`sindbert2011,kalinin2012`.
 
-The last two points are in direct conflict, and the resolution is always a
-compromise rather than an optimum.
+Rotational freedom and positional precision pull the linker length in opposite
+directions, so the choice is always a compromise rather than an optimum.
 
 ChiSurf ships reference spectra and properties for common dyes
 ({src}`chisurf/core/fluorescence/dyes.py#reference_dyes`), with Förster radii for

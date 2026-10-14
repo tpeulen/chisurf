@@ -9,7 +9,7 @@ tags: [guides, fret, calibration]
 
 **What you get:** the factor $G$ that makes the parallel (VV) and perpendicular (VH) channels of your
 instrument comparable, with its standard deviation, an estimate of the linked polarisation mixing
-$l_1 = l_2$, a check of the corrected anisotropy $r(t)$, and the steady anisotropy $r_\infty$ of any
+$l_1 = l_2$, a check of the corrected anisotropy $r(t)$, and the tail anisotropy $r_\infty$ (mean corrected $r(t)$ over the tail region) of any
 number of further decays under the same calibration.
 
 ## Theory
@@ -22,21 +22,6 @@ tail its anisotropy is zero and $I_\mathrm{VV}/I_\mathrm{VH}$ equals $G$ alone (
 numerical aperture additionally mixes the polarisations geometrically; one steady-state observable
 (a slow, long-lived reference with a known Perrin anisotropy) fixes only the single linked value
 $l_1 = l_2$, and an estimate outside 0 to 0.5 is shown but not applied. See {ref}`concept-anisotropy`.
-
-The standalone native window starts at **1100 × 720** pixels unless saved
-geometry takes precedence. Narrow batch tables keep readable column widths
-and scroll horizontally; hover a row for its file path. Native preferences
-restore the selected reference files and settings, reload existing files and
-recompute their results. The stored window state does not contain decay arrays.
-
-```{figure} figures/gfactor_native_primary_window.png
-:width: 100%
-
-Known references: tail matching gives G = 2. The calibrated fast reference has
-zero anisotropy; the slow-reference mixing estimate is l1 = l2 = 0.1, and its
-corrected anisotropy is 0.304. The example uses a manual 4 ns lifetime rather
-than treating the finite-window first moment as the exact input lifetime.
-```
 
 ## 1. Open the tool and load the fast reference
 
@@ -53,33 +38,28 @@ the two batch decays, and sets dt 0.05 ns/bin, ρ, r0, the 4 ns lifetime and bac
 matching then gives G = 1.239 (SD 0.13; the simulated 1.2 is within it) and the linked mixing estimate
 l1 = l2 = 0.014 (simulated 0).
 
-The controls and plots are one native emtk/AutoForm app. ChiSurf's existing
-detector-calibration and lifetime-analysis windows host that same app. Its
-**G-factor and mixing** and **Batch anisotropy** tabs share the reference,
-background, shift and mixing settings; **Help** explains the controls and
-**Guide** walks through them. **Stop** discards a pending calculation, although
-an archival already running may finish.
+The **G-factor and mixing** and **Batch anisotropy** tabs share the reference, background, shift and
+mixing settings; **Help** explains the controls and **Guide** walks through them. **Stop** discards a
+pending calculation; an archival already running may finish. The window opens at 1100 × 720 unless a
+saved geometry takes precedence; the saved state restores the reference files and settings and
+recomputes, it stores no decay arrays.
 
-For a desktop with a working display/GPU, launch it independently:
+As a standalone window:
 
 ```bash
 pixi run -e test python -m chisurf.plugins.vv_vh_g_factor
 ```
 
-The shared launcher also accepts
-`pixi run -e test python -m chisurf.emtk --plugin vv_vh_g_factor --size 1600x1000`.
-The calculations below run headlessly; offscreen Qt capture is a separate
-rendering path from the native desktop launcher.
+or `pixi run -e test python -m chisurf.emtk --plugin vv_vh_g_factor --size 1600x1000`.
 
 ```{figure} figures/vv_vh_g_factor_native_reference.png
 :name: fig-vv-vh-g-factor
 :width: 100%
 
-Synthetic seeded references: fast dye (rho 0.2 ns) and slow protein (rho 16 ns),
-with a generated detector ratio of 1.2 and background correction on. The
-calculated corrected G is about 1.21871 with SD 0.155055. The yellow lines mark
-the tail, the blue ones the background; the plots use TAC bins. These generated
-photons demonstrate the workflow, not a measured instrument calibration.
+After **Load example**: fast dye (ρ 0.2 ns) and slow protein (ρ 16 ns), simulated detector ratio 1.2,
+background correction on. G corrected is 1.239 (SD 0.132); the linked mixing estimate is
+l1 = l2 = 0.014 with the stated 4 ns lifetime. The yellow lines mark the tail, the blue ones the
+background; the plots use TAC bins. Simulated photons, not an instrument calibration.
 ```
 
 ## 2. Match the tails
@@ -112,8 +92,10 @@ lifetime or the Perrin estimate.
 
 ## 4. Batch, export, archive
 
-The **Batch anisotropy** tab queues further decays (**Add files...**; Delete removes the selected one),
-**Run batch** evaluates $r_\infty$ of each with the frozen calibration and **Save table...** writes a
+The **Batch anisotropy** tab queues further decays (**Add files**, **Folder**, **Database**; **Remove**
+drops the selected one, **Clear** all),
+**Run batch** evaluates $r_\infty$ of each (the mean corrected $r(t)$ between **Tail start** and
+**Tail stop**) with the frozen calibration and **Save table...** writes a
 tab-separated file. **Export calibration JSON...** writes the values and settings;
 **Archive reference calibration** registers the reference decay, corrected traces and provenance in MMFDB.
 
@@ -128,10 +110,8 @@ authenticated actor or configured local default.
 :name: fig-vv-vh-g-factor-native-batch
 :width: 100%
 
-Two synthetic seeded batch decays evaluated with the same corrected G
-(1.21871) and tail bins 358–460. Their steady anisotropies are approximately
-0.165208 and 0.342232. The native tab retains Add files, Folder, Database, Remove,
-Clear, Run batch and Save table; its table includes the file, anisotropy,
+The two example batch decays (ρ 8 and 30 ns) after **Run batch** with the example's corrected G
+(1.2395) and tail bins 358–460: $r_\infty$ = 0.047 and 0.230. The table lists file, $r_\infty$,
 region, G, both backgrounds and an error column.
 ```
 

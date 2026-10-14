@@ -1,13 +1,13 @@
 ---
 type: Guide
 title: 'The Settings window: one list, every settings panel'
-description: 'Tool: Setup → Settings (setup). One window holds the Getting Started assistant and fourteen settings destinations.'
+description: 'Tool: Setup → Settings (setup). One window holds the Getting Started assistant and fifteen settings destinations.'
 tags: [guides, settings]
 ---
 
 # The Settings window: one list, every settings panel
 
-**Tool:** *Setup → Settings* (`setup`). One window holds the **Getting Started** assistant and fourteen settings
+**Tool:** *Setup → Settings* (`setup`). One window holds the **Getting Started** assistant and fifteen settings
 destinations. Each destination is the dedicated panel of its own tool, hosted inside the window; nothing is a generic
 file editor except the destination that edits `settings_chisurf.yaml` itself.
 
@@ -24,12 +24,12 @@ right, **Guide** and **?** at the top right, the status line and **Back / >> / N
 | Where | Control | What it does |
 |---|---|---|
 | Left | **Search...** | Type part of a destination's name: the list keeps the destinations whose name contains it. **Enter** opens the first match. The open destination stays open when it is filtered out. |
-| Left | list | Getting Started, ChiSurf Settings, Acquisition, Styles, Plots, Models, User Editor, AI Settings, Plugins, Updates, Packages, Channel Definition, FCS Definitions, TTTR LUT Tools, Plugin Check. The mouse wheel scrolls it when the window is too short for all of them. |
+| Left | list | Getting Started, ChiSurf Settings, Fonts, Acquisition, Styles, Plots, Models, User Editor, AI Settings, Plugins, Updates, Packages, Channel Definition, FCS Definitions, TTTR LUT Tools, Plugin Check. The mouse wheel scrolls it when the window is too short for all of them. |
 | Top right | **Guide** | A walkthrough that waits for you to type in the search box, pick a destination and press **Next**. |
 | Top right | **?** | Explains the window. Every hosted panel has its own **Help** and **Guide** buttons as well. |
 | Bottom left | status line | `Ready`, an error that stopped a panel from opening, or the progress of the fast-forward. |
 | Bottom right | **< Back**, **Next >** | Previous / next destination in list order; greyed at the ends. |
-| Bottom right | **>>** | Fast-forward: visit every remaining destination in order (the status line counts `n/15`); press again (now **||**), press **Back** or pick a destination to stop. |
+| Bottom right | **>>** | Fast-forward: visit every remaining destination in order (the status line counts them, `Fast-forward n/m`); press again (now **||**), press **Back** or pick a destination to stop. |
 
 The window opens on Getting Started and remembers the destination you left it on, and the state of every panel you
 opened (an unsaved edit, a selected row, which sections are folded) while you look at another.
@@ -38,8 +38,9 @@ opened (an unsaved edit, a selected row, which sections are folded) while you lo
 
 | Destination | Panel | Figure |
 |---|---|---|
-| Getting Started | the eight-step onboarding assistant (settings, fix, experiments, dependencies, detector setup, FCS channels) | [](fig-settings-hub) |
-| ChiSurf Settings | the typed editor of `settings_chisurf.yaml`: **Language**, search, typed fields, **Edit source**, **Validate**, **Save**, **Reload**, **Help** | {numref}`fig-settings-chisurf` |
+| Getting Started | the eight-step onboarding assistant (settings, fix, experiments, dependencies, detector setup, FCS channels) | {numref}`fig-settings-hub` |
+| ChiSurf Settings | the typed editor of `settings_chisurf.yaml`: **Language**, **Open file**, **Reload**, **Validate**, **Help**, **Save**, **Save as**, **Edit source**, **Find a setting**, typed fields | {numref}`fig-settings-chisurf` |
+| Fonts | interface, editor and documentation fonts; magnification of the window | |
 | Acquisition | output folder (**Browse...**), chunk size, real-time simulation, device type and the simulator's parameters; every change is stored at once | {numref}`fig-settings-acquisition` |
 | Styles | the style-sheet editor ([Styles](../reference/plugins/style_manager.md)) | |
 | Plots | curve colours and width, fit-range band, global fits, axes and grid, beside a live preview laid out like a fit window ([Plot settings](../reference/plugins/plot_settings.md)); a change applies at once and is saved; the wheel zooms the preview, a drag pans it | |

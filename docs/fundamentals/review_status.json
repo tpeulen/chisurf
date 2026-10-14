@@ -1,0 +1,51 @@
+{
+  "absorption_and_emission.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "800d879c557ac83ccca1dcbc66a3896466e5d761d177c0627fc095aabdc39068",
+    "status": "ai-reviewed"
+  },
+  "conventions.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4310985697ee4f70b32c2e2ecd39962fbfb4f668cc2cb954091c9c0b7714096d",
+    "status": "ai-reviewed"
+  },
+  "energy_transfer.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b27c37afd8a871e4fa72d8f9e58dc5fe7de2d2e4b41426118efb2ea6283e489a",
+    "status": "ai-reviewed"
+  },
+  "fluorophores.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e6db06a5b3d0c40b80817462614654b69f345499333f0a31bbac4b1b16df5fff",
+    "status": "ai-reviewed"
+  },
+  "index.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b0ebd82225a4f6ce4a0af14e8aa10a766a9484a993a2ecba1245b5984afb7e48",
+    "status": "ai-reviewed"
+  },
+  "instrumentation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "dbda2ec71e3ebead5131663217da43070347f8c4be619aaadaae23a22e10bb56",
+    "status": "ai-reviewed"
+  },
+  "lifetime_and_quantum_yield.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "28f8b01da204e7deacb75702e63af5cfe1c1e1ba4be207ad73178ead40a29e8b",
+    "status": "ai-reviewed"
+  }
+}

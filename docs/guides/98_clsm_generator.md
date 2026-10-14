@@ -40,24 +40,18 @@ its header and its macro clock is the laser period (`n_micro · dt`), so the sav
 as it is (drop it on *1. Intensity*); a `<stem>.json` beside it declares the scanner for the `.spc` and `.ht3` formats,
 which only CLSM Draw, the Spot Finder and Region MLE read. **Guide** walks through the whole sequence, **Help** is the reference.
 
-## Native layout and saved settings
+## Saved settings and what the numbers mean
 
-The native generator starts at 1100 × 720; saved custom geometry wins.
-Input paths, simulation parameters, output format and display preferences
-restore automatically using the **Save settings** contract. Press **Generate**
-to recompute photons after reopening. Resizing preserves the existing inputs,
-reconstructed image and generated photon arrays.
+The window opens at 1100 × 720; a saved geometry wins. Input paths, simulation parameters, output format and display
+preferences are restored on reopening (the content of **Save settings**); press **Generate** to recompute the photons.
 
 **Brightness** sets an emission rate per detector at the brightest input
 pixel, rather than a guaranteed count in that pixel. Detected counts also
 depend on dwell and the excitation profile. Dwell is rounded to whole 10 ms
 integration windows, with a minimum of one window. Use multiples of 0.01 s
-when an exact requested exposure matters. The native simulator's default
-random seeds are 12345 and 54321, so unchanged maps and parameters repeat the
-same stream. Finite photon counts, map quantization and the excitation period
-must be included when comparing fitted lifetimes with the input maps.
-
-![Native generator after real map simulation](figures/clsm_generator_native_window.png)
+when an exact requested exposure matters. The simulator's default random seeds are 12345 and 54321, so unchanged maps
+and parameters repeat the same stream. Finite photon counts, map quantization and the excitation period must be included
+when comparing fitted lifetimes with the input maps.
 
 ## Theory
 

@@ -2571,36 +2571,45 @@ guides/figures/94_audifier_waterfall.png:
   pages:
   - docs/guides/94_tttr_audifier.md
 
-guides/figures/97_settings_acquisition.png:
+guides/figures/audifier_native_window.png:
+  caption: The audifier on the SPC-132 file with the Detector setup tab in front after rendering the audio.
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/97_settings_hub.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/97_settings_acquisition.png.
+    Open Audifier (emtk), choose File Type SPC-130 in Detector setup, Load TTTR
+    test/data/tttr/BH/132/BH_SPC132.spc, press Update and Play / Resume (no audio device
+    headlessly; the waveform is still rendered), bring the Detector setup tab to the front and
+    grab the window at 1100x720.
+  pages:
+  - docs/guides/94_tttr_audifier.md
+
+guides/figures/97_settings_acquisition.png:
+  kind: screenshot
+  origin: docs/guides/screenshots/settings_hub_emtk.py::main
+  recipe: >-
+    Run `IMP_BFF_GPU=off python docs/guides/screenshots/settings_hub_emtk.py` from the
+    repository root (scratch CHISURF_SETTINGS_DIR); it selects the Acquisition destination of
+    the Settings hub and grabs it at 1200x800.
   pages:
   - docs/guides/97_settings_hub.md
 
 guides/figures/97_settings_chisurf.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/settings_hub_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/97_settings_hub.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/97_settings_chisurf.png.
+    Run `IMP_BFF_GPU=off python docs/guides/screenshots/settings_hub_emtk.py` from the
+    repository root (scratch CHISURF_SETTINGS_DIR); it selects the ChiSurf Settings destination
+    of the Settings hub and grabs it at 1200x800.
   pages:
   - docs/guides/97_settings_hub.md
 
 guides/figures/97_settings_getting_started.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/settings_hub_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/97_settings_hub.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/97_settings_getting_started.png.
+    Run `IMP_BFF_GPU=off python docs/guides/screenshots/settings_hub_emtk.py` from the
+    repository root (scratch CHISURF_SETTINGS_DIR); it grabs the Settings hub on its first
+    destination, Getting Started, at 1200x800.
   pages:
   - docs/guides/97_settings_hub.md
 
@@ -3140,12 +3149,11 @@ guides/figures/fret_pair_entry.png:
 
 guides/figures/games_breakout.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/games_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/95_games.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/games_breakout.png.
+    Run `python docs/guides/screenshots/games_emtk.py` from the repository root. It opens the
+    Games hub, selects Breakout, launches the ball, lets it fly about a second of real time and
+    grabs the hub at 1200x800.
   pages:
   - docs/guides/95_games.md
 
@@ -3159,17 +3167,6 @@ guides/figures/games_number_quest_header.png:
     data that page names, and save the grab as guides/figures/games_number_quest_header.png.
   pages:
   - docs/guides/95_games.md
-
-guides/figures/gfactor_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/91_vv_vh_g_factor.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/gfactor_native_primary_window.png.
-  pages:
-  - docs/guides/91_vv_vh_g_factor.md
 
 guides/figures/h2mm_native_primary_window.png:
   kind: screenshot
@@ -3252,12 +3249,12 @@ guides/figures/image_browser_zoomed.png:
 
 guides/figures/imaging_tools.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/imaging_tools_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/98_imaging_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/imaging_tools.png.
+    Run `IMP_BFF_GPU=off python docs/guides/screenshots/imaging_tools_emtk.py` from the
+    repository root. It sets a one-detector setup on routing channel 1, hands a copy of
+    test/data/clsm/Leica_SP8.ptu to the hub as source, waits for the background precompute and
+    grabs the hub on 1. Intensity at 1200x800.
   pages:
   - docs/guides/98_imaging_tools.md
 
@@ -3822,23 +3819,21 @@ guides/figures/updater_pm_search_results.png:
 
 guides/figures/vv_vh_g_factor_native_batch.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/vv_vh_g_factor_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/91_vv_vh_g_factor.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/vv_vh_g_factor_native_batch.png.
+    Run `IMP_BFF_GPU=off python docs/guides/screenshots/vv_vh_g_factor_emtk.py` from the
+    repository root. It presses Load example (simulated references, known G = 1.2), runs the
+    batch over the two example decays and grabs the Batch anisotropy tab at 1600x1000.
   pages:
   - docs/guides/91_vv_vh_g_factor.md
 
 guides/figures/vv_vh_g_factor_native_reference.png:
   kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
+  origin: docs/guides/screenshots/vv_vh_g_factor_emtk.py::main
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/91_vv_vh_g_factor.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/vv_vh_g_factor_native_reference.png.
+    Run `IMP_BFF_GPU=off python docs/guides/screenshots/vv_vh_g_factor_emtk.py` from the
+    repository root. It presses Load example (simulated references, known G = 1.2), waits for
+    the tail matching and grabs the G-factor and mixing tab at 1600x1000.
   pages:
   - docs/guides/91_vv_vh_g_factor.md
 

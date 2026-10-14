@@ -15,14 +15,10 @@ opens on the right, and the hub keeps what they share, so you define the detecto
 :width: 100%
 
 Image Tools in the Spectroscopy ribbon, alongside Decay, Correlation,
-Single-Molecule and Kinetics. Plugin routes, identifiers and semantic categories
-are preserved. At narrow widths, use the horizontal arrow to reach Imaging.
+Single-Molecule and Kinetics. At narrow widths, use the horizontal arrow to reach Imaging.
 ```
 
-Menu-path preferences stored under the old full addresses migrate on settings
-load, retaining disabled, toolbar, ordering and statefulness choices. Stable
-plugin IDs and service entrypoints are unchanged. Launch the native hub directly
-with `pixi run -e test python -m chisurf.emtk --plugin imaging_tools`.
+Standalone: `pixi run -e test python -m chisurf.emtk --plugin imaging_tools`.
 
 ## 1. Open the hub
 
@@ -32,9 +28,10 @@ with `pixi run -e test python -m chisurf.emtk --plugin imaging_tools`.
 :name: fig-imaging-tools
 :width: 100%
 
-The hub on **1. Intensity** with a photon file chosen. Left: the **Search** field, the tools, the **Back / Next / Run all**
-stepper, **Help** and **Guide**, and the status line. Top right: the tool's name and description, and the shared **Source**
-and **HDF5**. Below: the tool itself, here the Intensity step.
+The hub on **1. Intensity** with `test/data/clsm/Leica_SP8.ptu` as source and a one-detector setup on routing
+channel 1, after the background precompute (*Imaging steps ready.*). Left: the **Search** field, the tools, the
+**Back / Next / Run all** stepper, **Help** and **Guide**, and the status line. Top right: the tool's name and
+description, and the shared **Source** and **HDF5** (none created yet). Below: the tool itself, here the Intensity step.
 ```
 
 ## 2. The list
