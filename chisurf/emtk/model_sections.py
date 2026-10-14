@@ -490,7 +490,7 @@ class Kappa2ComputeDialog(_Window):
 
         draw_form(self.spec, self.model, self.form, titles=True)
         self.rects.update({f"form.{k}": v for k, v in self.form.rects.items()})
-        if im.button(tr("Compute") + "##k2c-compute"):
+        if im.button(tr("Compute") + "##k2c-compute", role="primary"):
             self.compute()
         im.set_item_tooltip(tr("Compute the kappa-squared distribution for these settings."))
         self.rect("compute")

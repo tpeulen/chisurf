@@ -24,11 +24,13 @@ Button roles (2026-10-14, emtk 0.1.16):
    Left neutral on purpose:
    - per-row `Remove##path` buttons in file lists (burst_background, burst_gs,
      burst_irf_bg, clsm), because a column of red buttons is noise;
-   - `self.button(...)` wrappers (bid_to_analysis, microtime_histogram,
-     tttr_microtime_shifter, fcs_channel_preset), which need a `role`
-     parameter of their own first;
-   - the κ² compute buttons inside model sections, because the Analysis dock's
-     Fit is that panel's main action;
+   - the model section's `compute κ²` button, because it only opens the κ²
+     dialog. The dialog's own **Compute** is primary.
+
+   The `self.button(...)` wrappers of bid_to_analysis, microtime_histogram,
+   tttr_microtime_shifter and fcs_channel_preset now take a `role`:
+   - primary: Process, Apply;
+   - danger: Stop, Clear, Remove, Delete preset, Remove this pair.
    - pto_inspector `Fit graph`, which frames the view.
 3. Open: the shell has no real light theme. `im.style_colors_light` inverts the
    palette, and the docks keep their own dark fills. The light role variants

@@ -198,9 +198,9 @@ class BidToAnalysisApp(ImApp, TourTarget):
             multiselect=mode == "files",
         )
 
-    def button(self, label, tip, callback, key=None):
-        """Draw one action; a keyed action is a tour target and reports its use."""
-        if im.button(label):
+    def button(self, label, tip, callback, key=None, role=None):
+        """Draw one action in emtk button *role*; a keyed action is a tour target and reports its use."""
+        if im.button(label, role=role):
             callback()
             if key:
                 self.tour.notify_used(key)
@@ -235,7 +235,7 @@ class BidToAnalysisApp(ImApp, TourTarget):
             ),
             (tr("Clear"), tr("Remove all queued selections and log entries."), self.clear, "clear"),
         ]:
-            self.button(label, tip, action, key)
+            self.button(label, tip, action, key, role="danger" if key == "clear" else None)
             im.same_line()
         self.button(
             tr("Process"),
@@ -245,6 +245,7 @@ class BidToAnalysisApp(ImApp, TourTarget):
             ),
             self.process,
             "process",
+            role="primary",
         )
         for kind in ("pto", "bur", "sl5", "hdf5"):
             changed, enabled = im.checkbox(kind.upper(), kind in self.output_types)

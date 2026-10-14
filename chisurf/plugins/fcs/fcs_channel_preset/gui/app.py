@@ -118,8 +118,9 @@ class PresetApp(ImApp):
             filters=[("JSON", ["*.json"])],
         )
 
-    def button(self, label, tip, callback):
-        if im.button(tr(label)):
+    def button(self, label, tip, callback, role=None):
+        """Draw action *label* in emtk button *role*; its rectangle is the tour target *label*."""
+        if im.button(tr(label), role=role):
             self.tour.notify_used(label)
             self.run_action(callback)
         im.set_item_tooltip(tr(tip))
@@ -201,11 +202,13 @@ class PresetApp(ImApp):
             "Apply",
             "Save as the active preset and notify a connected correlator when provided.",
             self.apply,
+            role="primary",
         )
         self.button(
             "Delete preset",
             "Delete only the FCS preset; retain its detector definition.",
             self.delete,
+            role="danger",
         )
         self.button(
             "Import JSON",
@@ -305,6 +308,7 @@ class PresetApp(ImApp):
             "Remove this pair",
             "Remove the selected pair from this editing draft.",
             lambda: self.model.remove_pair(self.selected),
+            role="danger",
         )
 
     def export_state(self):

@@ -265,10 +265,10 @@ class HistogramApp(TourTarget, ImApp):
         self.model.set_setup(settings)
         self.plot_signature = None
 
-    def button(self, label, tip, callback, key=None):
-        """A button that tells the guide it was pressed, remembered under *key* (or its label)."""
+    def button(self, label, tip, callback, key=None, role=None):
+        """A button in emtk button *role* that tells the guide it was pressed, remembered under *key* (or its label)."""
         key = key or label
-        pressed = im.button(label)
+        pressed = im.button(label, role=role)
         im.set_item_tooltip(tip)
         self.remember(key)
         if pressed:
@@ -577,6 +577,7 @@ class HistogramApp(TourTarget, ImApp):
                 "writing may finish.",
                 self.job.stop,
                 key="stop",
+                role="danger",
             )
         im.begin_disabled(
             self.job.running or self.dialog is not None or self.dataset_picker.is_open

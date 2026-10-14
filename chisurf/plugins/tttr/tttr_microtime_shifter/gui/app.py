@@ -278,10 +278,10 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         )
         return self._session
 
-    def button(self, label, tip, callback, key=None):
-        """A button that tells the guide it was pressed, remembered under *key* (or its label)."""
+    def button(self, label, tip, callback, key=None, role=None):
+        """A button in emtk button *role* that tells the guide it was pressed, remembered under *key* (or its label)."""
         key = key or label
-        pressed = im.button(label)
+        pressed = im.button(label, role=role)
         im.set_item_tooltip(tip)
         self.remember(key)
         if pressed:
@@ -722,6 +722,7 @@ class MicrotimeShifterApp(TourTarget, ImApp):
                 "Discard pending results; a current file write or archive may finish.",
                 self.stop_operation,
                 key="stop",
+                role="danger",
             )
         im.begin_disabled(
             self.job.running
@@ -760,7 +761,9 @@ class MicrotimeShifterApp(TourTarget, ImApp):
         for i, (label, tip, callback, key) in enumerate(buttons):
             if i and im.get_line_avail() >= im.calc_text_size(label)[0] + pad:
                 im.same_line()  # wrap rather than run off a narrow dock
-            self.button(label, tip, callback, key=key)
+            self.button(
+                label, tip, callback, key=key, role="danger" if key in ("remove", "clear") else None
+            )
         top = im.get_cursor_screen_pos()
         for i, path in enumerate(list(self.files)):
             if im.selectable(f"{path.name}##file{i}", path == self.current_path):
