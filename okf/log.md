@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-14
+
+- PRD-154 mypy ratchet, non-plugin lane: chisurf/ outside plugins/ 1559 -> 979 in test/mypy_baseline.json across 12 commits (Parameter/FittingParameter/Fit/GlobalFit, Curve/DataCurve, dataspec RPC forms, HMM, shell session, PDA2c/PDA3c, FRET intensity functions, CSV sniffer, MFD fit, classic TCSPC editor, structure/trajectory, model/data macros, posterior engine, chiplot image view, emtk fit pages, ZMQ transport). Real bugs fixed with them: *args/keyword collisions in FittingParameter, Curve, Experiment and Residual2DPlot __init__; float(None) on unset bounds; ProbCh0 spectrum setter/link; FD/FA forward formula; leaking FRET globals; bars set_data; headless macro crashes on cs.cs None; tempfile.tempdir None; TrajectoryFile rmsd ndarray. Open: calc_transfer_matrix donor-only slice (known-issues); whole-tree --update owed.
+
 ## 2026-10-13
 
 - FRET line generator: the κ² regime is back in its editor. The Qt-retirement record had listed the Qt editor's `static κ²` / `dynamic κ²` as "no effect on a FRET line"; measured, static isotropic κ² moves the standard Gaussian line (R0 52 Å, σ 6 Å, τ_D0 4 ns) by up to ΔE = 0.17 (τ_F 1.23 vs 0.12 ns at 20 Å). The emtk editor draws the fit editor's `kappa2_controls` drawer on its own components (`fret_line/gui/sections.py` over the new `model_sections.call_model_section`), with a guide step; `qt_reference.json` gains `kappa2_static`, tests `test_kappa2_regime.py` + a parity test; [FRET-line guide](../docs/guides/82_fret_lines.md), [κ² concept](../docs/concepts/kappa2_orientation.md), [qt-retirement](subsystems/qt-retirement.md), [fret_line port report](plugins/emtk-ports/fret_line/REPORT.md) updated. Found on the way: a computed κ² distribution never reaches the static average (native kernel is isotropic-only; [known issues](references/known-issues.md)); the fit mixer listed member-fit uids instead of the session's (`test_a_mixture_lists_the_fits_of_its_own_session`, fixed).
