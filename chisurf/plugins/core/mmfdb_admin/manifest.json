@@ -70,421 +70,560 @@
       }
     },
     {
-      "name": "mmfdb.security.auth.change_password"
+      "name": "mmfdb.security.auth.change_password",
+      "summary": "Change the authenticated user's password."
     },
     {
-      "name": "mmfdb.security.auth.login"
+      "name": "mmfdb.security.auth.login",
+      "summary": "Authenticate a user and return a session token."
     },
     {
-      "name": "mmfdb.security.auth.logout"
+      "name": "mmfdb.security.auth.logout",
+      "summary": "Revoke the current session."
     },
     {
-      "name": "mmfdb.security.auth.me"
+      "name": "mmfdb.security.auth.me",
+      "summary": "Return the authenticated user, or fail if anonymous."
     },
     {
-      "name": "mmfdb.security.auth.sessions.list"
+      "name": "mmfdb.security.auth.sessions.list",
+      "summary": "List active sessions. Admin can see all; users see their own."
     },
     {
-      "name": "mmfdb.security.auth.sessions.revoke"
+      "name": "mmfdb.security.auth.sessions.revoke",
+      "summary": "Revoke a session by ID. Admin can revoke any; users revoke their own."
     },
     {
-      "name": "mmfdb.status"
+      "name": "mmfdb.status",
+      "summary": "Return the database identity, backend type and entity counts."
     },
     {
-      "name": "mmfdb.samples.list"
+      "name": "mmfdb.samples.list",
+      "summary": "List the samples the caller may read."
     },
     {
-      "name": "mmfdb.samples.get"
+      "name": "mmfdb.samples.get",
+      "summary": "Return one sample with its full record (read access required)."
     },
     {
-      "name": "mmfdb.samples.save"
+      "name": "mmfdb.samples.save",
+      "summary": "Create or update a sample; a structured payload goes through the structured-sample path."
     },
     {
-      "name": "mmfdb.samples.delete"
+      "name": "mmfdb.samples.delete",
+      "summary": "Delete a sample (write access required)."
     },
     {
-      "name": "mmfdb.samples.search"
+      "name": "mmfdb.samples.search",
+      "summary": "List the readable samples matching a free-text query (all of them without one)."
     },
     {
-      "name": "mmfdb.samples.key_values.save"
+      "name": "mmfdb.samples.key_values.save",
+      "summary": "Replace the key/value annotations of a sample."
     },
     {
-      "name": "mmfdb.samples.full_description"
+      "name": "mmfdb.samples.full_description",
+      "summary": "Return the nested public description of a sample."
     },
     {
-      "name": "mmfdb.samples.validate_export"
+      "name": "mmfdb.samples.validate_export",
+      "summary": "Return export validation warnings for a sample."
     },
     {
-      "name": "mmfdb.samples.create_structured"
+      "name": "mmfdb.samples.create_structured",
+      "summary": "Create a sample from a structured description (entities, probes, conditions)."
     },
     {
-      "name": "mmfdb.sample_conditions.list"
+      "name": "mmfdb.sample_conditions.list",
+      "summary": "List sample conditions."
     },
     {
-      "name": "mmfdb.sample_conditions.get"
+      "name": "mmfdb.sample_conditions.get",
+      "summary": "Return one sample-condition row."
     },
     {
-      "name": "mmfdb.sample_conditions.save"
+      "name": "mmfdb.sample_conditions.save",
+      "summary": "Create or update a sample condition."
     },
     {
-      "name": "mmfdb.sample_conditions.delete"
+      "name": "mmfdb.sample_conditions.delete",
+      "summary": "Soft-delete a sample condition."
     },
     {
-      "name": "mmfdb.entities.list"
+      "name": "mmfdb.entities.list",
+      "summary": "List entities globally or for one sample."
     },
     {
-      "name": "mmfdb.entities.get"
+      "name": "mmfdb.entities.get",
+      "summary": "Return one entity row."
     },
     {
-      "name": "mmfdb.entities.save"
+      "name": "mmfdb.entities.save",
+      "summary": "Create or update an entity and its sequence."
     },
     {
-      "name": "mmfdb.entities.delete"
+      "name": "mmfdb.entities.delete",
+      "summary": "Soft-delete an entity."
     },
     {
-      "name": "mmfdb.probes.list"
+      "name": "mmfdb.probes.list",
+      "summary": "List the probes with their optical properties."
     },
     {
-      "name": "mmfdb.probes.get"
+      "name": "mmfdb.probes.get",
+      "summary": "Return one probe identity row."
     },
     {
-      "name": "mmfdb.probes.save"
+      "name": "mmfdb.probes.save",
+      "summary": "Create or update a probe identity row."
     },
     {
-      "name": "mmfdb.probes.delete"
+      "name": "mmfdb.probes.delete",
+      "summary": "Soft-delete a probe identity row."
     },
     {
-      "name": "mmfdb.probes.optical_properties.get"
+      "name": "mmfdb.probes.optical_properties.get",
+      "summary": "Return the optical properties of a probe."
     },
     {
-      "name": "mmfdb.probes.optical_properties.save"
+      "name": "mmfdb.probes.optical_properties.save",
+      "summary": "Replace editable optical properties for a probe."
     },
     {
-      "name": "mmfdb.probes.positions.list"
+      "name": "mmfdb.probes.positions.list",
+      "summary": "List probe positions by sample or probe."
     },
     {
-      "name": "mmfdb.probes.positions.get"
+      "name": "mmfdb.probes.positions.get",
+      "summary": "Return one probe-position row."
     },
     {
-      "name": "mmfdb.probes.positions.save"
+      "name": "mmfdb.probes.positions.save",
+      "summary": "Create or update a polymer probe-position row."
     },
     {
-      "name": "mmfdb.probes.positions.delete"
+      "name": "mmfdb.probes.positions.delete",
+      "summary": "Soft-delete a polymer probe-position row."
     },
     {
-      "name": "mmfdb.fret_pairs.list"
+      "name": "mmfdb.fret_pairs.list",
+      "summary": "List FRET pair/Förster radius records globally or for one sample."
     },
     {
-      "name": "mmfdb.fret_pairs.get"
+      "name": "mmfdb.fret_pairs.get",
+      "summary": "Return one FRET pair/Förster radius row."
     },
     {
-      "name": "mmfdb.fret_pairs.save"
+      "name": "mmfdb.fret_pairs.save",
+      "summary": "Create a FRET pair/Förster radius record."
     },
     {
-      "name": "mmfdb.fret_pairs.delete"
+      "name": "mmfdb.fret_pairs.delete",
+      "summary": "Delete a FRET pair/Förster radius record."
     },
     {
-      "name": "mmfdb.pdbx.suggest_keys"
+      "name": "mmfdb.pdbx.suggest_keys",
+      "summary": "Return matching PDBx/flrCIF dictionary keys."
     },
     {
-      "name": "mmfdb.pdbx.validate_value"
+      "name": "mmfdb.pdbx.validate_value",
+      "summary": "Validate one PDBx/flrCIF key/value pair."
     },
     {
-      "name": "mmfdb.mock_data.populate"
+      "name": "mmfdb.mock_data.populate",
+      "summary": "Populate the authenticated database with packaged synthetic burst tables."
     },
     {
-      "name": "mmfdb.users.list"
+      "name": "mmfdb.users.list",
+      "summary": "List the database users. Admin only."
     },
     {
-      "name": "mmfdb.users.save"
+      "name": "mmfdb.users.save",
+      "summary": "Create or update a user account, optionally renaming it or setting its password."
     },
     {
-      "name": "mmfdb.users.delete"
+      "name": "mmfdb.users.delete",
+      "summary": "Delete a user account. Admin only."
     },
     {
-      "name": "mmfdb.devices.list"
+      "name": "mmfdb.devices.list",
+      "summary": "List the instruments/devices."
     },
     {
-      "name": "mmfdb.devices.get"
+      "name": "mmfdb.devices.get",
+      "summary": "Return one instrument/device row."
     },
     {
-      "name": "mmfdb.devices.save"
+      "name": "mmfdb.devices.save",
+      "summary": "Create or update an instrument/device row."
     },
     {
-      "name": "mmfdb.devices.delete"
+      "name": "mmfdb.devices.delete",
+      "summary": "Delete an instrument/device and return the remaining list."
     },
     {
-      "name": "mmfdb.experiment_types.list"
+      "name": "mmfdb.experiment_types.list",
+      "summary": "List the experiment types."
     },
     {
-      "name": "mmfdb.experiment_types.get"
+      "name": "mmfdb.experiment_types.get",
+      "summary": "Return one experiment type."
     },
     {
-      "name": "mmfdb.experiment_types.save"
+      "name": "mmfdb.experiment_types.save",
+      "summary": "Create or update an experiment type (an empty name gets an untitled one)."
     },
     {
-      "name": "mmfdb.experiment_types.delete"
+      "name": "mmfdb.experiment_types.delete",
+      "summary": "Delete an experiment type and return the remaining list."
     },
     {
-      "name": "mmfdb.experiments.list"
+      "name": "mmfdb.experiments.list",
+      "summary": "List experiments, optionally filtered by sample, project or type."
     },
     {
-      "name": "mmfdb.experiments.get"
+      "name": "mmfdb.experiments.get",
+      "summary": "Return one experiment with its data entries."
     },
     {
-      "name": "mmfdb.experiments.save"
+      "name": "mmfdb.experiments.save",
+      "summary": "Create or update an experiment."
     },
     {
-      "name": "mmfdb.experiments.delete"
+      "name": "mmfdb.experiments.delete",
+      "summary": "Delete an experiment."
     },
     {
-      "name": "mmfdb.experiments.key_values.save"
+      "name": "mmfdb.experiments.key_values.save",
+      "summary": "Replace the key/value annotations of an experiment."
     },
     {
-      "name": "mmfdb.experiments.data.save"
+      "name": "mmfdb.experiments.data.save",
+      "summary": "Attach a data entry (linked or stored) to an experiment."
     },
     {
-      "name": "mmfdb.experiments.data.delete"
+      "name": "mmfdb.experiments.data.delete",
+      "summary": "Remove a data entry from an experiment."
     },
     {
-      "name": "mmfdb.setups.list"
+      "name": "mmfdb.setups.list",
+      "summary": "List the readable instrument setups."
     },
     {
-      "name": "mmfdb.setups.get"
+      "name": "mmfdb.setups.get",
+      "summary": "Return one setup (read access required)."
     },
     {
-      "name": "mmfdb.setups.save"
+      "name": "mmfdb.setups.save",
+      "summary": "Create or update an instrument setup and its configuration."
     },
     {
-      "name": "mmfdb.setups.delete"
+      "name": "mmfdb.setups.delete",
+      "summary": "Delete a setup (write access required)."
     },
     {
-      "name": "mmfdb.setups.validate"
+      "name": "mmfdb.setups.validate",
+      "summary": "Validate a stored setup without bypassing its read ACL."
     },
     {
-      "name": "mmfdb.setups.detector_channels.list"
+      "name": "mmfdb.setups.detector_channels.list",
+      "summary": "List detector channel definitions."
     },
     {
-      "name": "mmfdb.setups.pie_windows.list"
+      "name": "mmfdb.setups.pie_windows.list",
+      "summary": "List PIE window definitions."
     },
     {
-      "name": "mmfdb.setups.fcs_pairs.list"
+      "name": "mmfdb.setups.fcs_pairs.list",
+      "summary": "List FCS channel-pair definitions."
     },
     {
-      "name": "raw_data.register"
+      "name": "raw_data.register",
+      "summary": "Register a raw TTTR/PTU/SPC/BH data reference."
     },
     {
-      "name": "raw_data.list"
+      "name": "raw_data.list",
+      "summary": "List raw-data artifacts."
     },
     {
-      "name": "raw_data.get"
+      "name": "raw_data.get",
+      "summary": "Return one raw-data artifact row."
     },
     {
-      "name": "processing.burst_selection.record"
+      "name": "processing.burst_selection.record",
+      "summary": "Record a Burst Selection processing run and its products."
     },
     {
-      "name": "processing.burst_selection.run"
+      "name": "processing.burst_selection.run",
+      "summary": "Run burst selection on photon files and record the run and its products with provenance."
     },
     {
-      "name": "processing.burst_selection.get"
+      "name": "processing.burst_selection.get",
+      "summary": "Return one Burst Selection processing run."
     },
     {
-      "name": "processing.burst_selection.list"
+      "name": "processing.burst_selection.list",
+      "summary": "List Burst Selection processing runs."
     },
     {
-      "name": "processed_data.register"
+      "name": "processed_data.register",
+      "summary": "Register a processed data product."
     },
     {
-      "name": "processed_data.list"
+      "name": "processed_data.list",
+      "summary": "List processed-data artifacts."
     },
     {
-      "name": "processed_data.get"
+      "name": "processed_data.get",
+      "summary": "Return one processed-data artifact."
     },
     {
-      "name": "provenance.edges.list"
+      "name": "provenance.edges.list",
+      "summary": "List provenance edges."
     },
     {
-      "name": "provenance.trace_processed_data"
+      "name": "provenance.trace_processed_data",
+      "summary": "Trace a product back through raw inputs and settings."
     },
     {
-      "name": "archive.burst_processing_manifest.export"
+      "name": "archive.burst_processing_manifest.export",
+      "summary": "Export an archive manifest for one Burst Selection run."
     },
     {
-      "name": "mmfdb.import_file"
+      "name": "mmfdb.import_file",
+      "summary": "Import a structure/description file into the database and return a summary."
     },
     {
-      "name": "mmfdb.export_sample"
+      "name": "mmfdb.export_sample",
+      "summary": "Export a sample's FRET analysis as flrCIF, to a file or as text. Admin only."
     },
     {
-      "name": "mmfdb.export_table"
+      "name": "mmfdb.export_table",
+      "summary": "Write the sample table (one sample or all) to a file. Admin only."
     },
     {
-      "name": "mmfdb.backup"
+      "name": "mmfdb.backup",
+      "summary": "Back up the database file and return the backup path. Admin only."
     },
     {
-      "name": "mmfdb.reset_from_source"
+      "name": "mmfdb.reset_from_source",
+      "summary": "Replace the user database with the curated seed and restore its admin."
     },
     {
-      "name": "mmfdb.v1.samples.register"
+      "name": "mmfdb.v1.samples.register",
+      "summary": "Register or update a sample in the FLR domain layer."
     },
     {
-      "name": "mmfdb.v1.samples.get"
+      "name": "mmfdb.v1.samples.get",
+      "summary": "Retrieve a sample by identifier."
     },
     {
-      "name": "mmfdb.v1.samples.list"
+      "name": "mmfdb.v1.samples.list",
+      "summary": "List samples."
     },
     {
-      "name": "mmfdb.v1.experiments.register"
+      "name": "mmfdb.v1.experiments.register",
+      "summary": "Register or update an experiment in the FLR domain layer."
     },
     {
-      "name": "mmfdb.v1.experiments.get"
+      "name": "mmfdb.v1.experiments.get",
+      "summary": "Retrieve an experiment by identifier."
     },
     {
-      "name": "mmfdb.v1.experiments.list"
+      "name": "mmfdb.v1.experiments.list",
+      "summary": "List experiments with optional filters."
     },
     {
-      "name": "mmfdb.v1.artifacts.register"
+      "name": "mmfdb.v1.artifacts.register",
+      "summary": "Register or update an MMFDB artifact in the database."
     },
     {
-      "name": "mmfdb.v1.artifacts.get"
+      "name": "mmfdb.v1.artifacts.get",
+      "summary": "Retrieve an artifact by its identifier."
     },
     {
-      "name": "mmfdb.v1.artifacts.list"
+      "name": "mmfdb.v1.artifacts.list",
+      "summary": "List artifacts with optional filtering."
     },
     {
-      "name": "mmfdb.v1.operations.record"
+      "name": "mmfdb.v1.operations.record",
+      "summary": "Record or update a processing or analysis operation."
     },
     {
-      "name": "mmfdb.v1.operations.record_with_artifacts"
+      "name": "mmfdb.v1.operations.record_with_artifacts",
+      "summary": "Record an operation and related artifacts atomically."
     },
     {
-      "name": "mmfdb.v1.operations.get"
+      "name": "mmfdb.v1.operations.get",
+      "summary": "Retrieve an operation by its identifier."
     },
     {
-      "name": "mmfdb.v1.operations.list"
+      "name": "mmfdb.v1.operations.list",
+      "summary": "List operations with optional filtering."
     },
     {
-      "name": "mmfdb.v1.operations.link_artifact"
+      "name": "mmfdb.v1.operations.link_artifact",
+      "summary": "Link an operation and an artifact."
     },
     {
-      "name": "mmfdb.v1.operations.link"
+      "name": "mmfdb.v1.operations.link",
+      "summary": "Alias of mmfdb.v1.operations.link_artifact: link an operation and an artifact."
     },
     {
-      "name": "mmfdb.v1.operations.transition_status"
+      "name": "mmfdb.v1.operations.transition_status",
+      "summary": "Transition an operation status."
     },
     {
-      "name": "mmfdb.v1.graph.traverse"
+      "name": "mmfdb.v1.graph.traverse",
+      "summary": "Traverse the canonical graph recursively, cycle-safe."
     },
     {
-      "name": "mmfdb.v1.graph.upstream"
+      "name": "mmfdb.v1.graph.upstream",
+      "summary": "Traverse upstream canonical graph edges."
     },
     {
-      "name": "mmfdb.v1.graph.downstream"
+      "name": "mmfdb.v1.graph.downstream",
+      "summary": "Traverse downstream canonical graph edges."
     },
     {
-      "name": "mmfdb.v1.graph.export"
+      "name": "mmfdb.v1.graph.export",
+      "summary": "Export a provenance graph as JSON-serializable nodes and edges."
     },
     {
-      "name": "mmfdb.v1.parameters.record"
+      "name": "mmfdb.v1.parameters.record",
+      "summary": "Record or update a semantic parameter."
     },
     {
-      "name": "mmfdb.v1.parameters.get"
+      "name": "mmfdb.v1.parameters.get",
+      "summary": "Retrieve a parameter by its UUID."
     },
     {
-      "name": "mmfdb.v1.parameters.list"
+      "name": "mmfdb.v1.parameters.list",
+      "summary": "List parameters with optional filters."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.save"
+      "name": "mmfdb.v1.chinet.sessions.save",
+      "summary": "Save a canonical chinet session schema payload to MMFDB."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.get"
+      "name": "mmfdb.v1.chinet.sessions.get",
+      "summary": "Load a chinet session artifact from MMFDB."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.list"
+      "name": "mmfdb.v1.chinet.sessions.list",
+      "summary": "List chinet session artifacts in MMFDB."
     },
     {
-      "name": "mmfdb.v1.chinet.sessions.restore"
+      "name": "mmfdb.v1.chinet.sessions.restore",
+      "summary": "Restore a chinet session artifact from MMFDB."
     },
     {
-      "name": "mmfdb.v1.setups.save"
+      "name": "mmfdb.v1.setups.save",
+      "summary": "Save or update an instrument/calibration setup configuration."
     },
     {
-      "name": "mmfdb.v1.setups.get"
+      "name": "mmfdb.v1.setups.get",
+      "summary": "Retrieve a setup configuration by its identifier."
     },
     {
-      "name": "mmfdb.v1.setups.list"
+      "name": "mmfdb.v1.setups.list",
+      "summary": "List setup snapshots."
     },
     {
-      "name": "mmfdb.v1.audit.list"
+      "name": "mmfdb.v1.audit.list",
+      "summary": "List audit log records with optional filtering."
     },
     {
-      "name": "mmfdb.v1.branches.create"
+      "name": "mmfdb.v1.branches.create",
+      "summary": "Create a branch pointer in the MMFDB provenance graph."
     },
     {
-      "name": "mmfdb.v1.branches.fork"
+      "name": "mmfdb.v1.branches.fork",
+      "summary": "Create a parallel branch from an existing branch."
     },
     {
-      "name": "mmfdb.v1.branches.get"
+      "name": "mmfdb.v1.branches.get",
+      "summary": "Return one branch by UUID or name."
     },
     {
-      "name": "mmfdb.v1.branches.list"
+      "name": "mmfdb.v1.branches.list",
+      "summary": "Return all non-deleted branches."
     },
     {
-      "name": "mmfdb.v1.branches.update_head"
+      "name": "mmfdb.v1.branches.update_head",
+      "summary": "Move a branch head to an operation or clear it."
     },
     {
-      "name": "mmfdb.v1.branches.delete"
+      "name": "mmfdb.v1.branches.delete",
+      "summary": "Soft-delete a branch when it is not protected or active."
     },
     {
-      "name": "mmfdb.v1.users.set_active_branch"
+      "name": "mmfdb.v1.users.set_active_branch",
+      "summary": "Set the active branch for a user (self, or any user when admin)."
     },
     {
-      "name": "mmfdb.v1.users.get_active_branch"
+      "name": "mmfdb.v1.users.get_active_branch",
+      "summary": "Return the active branch for a user (self, or any user when admin)."
     },
     {
-      "name": "mmfdb.v1.users.jump_to_operation"
+      "name": "mmfdb.v1.users.jump_to_operation",
+      "summary": "Create and activate a user branch at a historical operation."
     },
     {
-      "name": "mmfdb.groups.list"
+      "name": "mmfdb.groups.list",
+      "summary": "List all groups."
     },
     {
-      "name": "mmfdb.groups.get"
+      "name": "mmfdb.groups.get",
+      "summary": "Get a single group by ID."
     },
     {
-      "name": "mmfdb.groups.create"
+      "name": "mmfdb.groups.create",
+      "summary": "Create a new group. Admin only."
     },
     {
-      "name": "mmfdb.groups.update"
+      "name": "mmfdb.groups.update",
+      "summary": "Update a group. Admin or group manager only."
     },
     {
-      "name": "mmfdb.groups.delete"
+      "name": "mmfdb.groups.delete",
+      "summary": "Soft-delete a group. Admin only. Built-in groups cannot be deleted."
     },
     {
-      "name": "mmfdb.groups.members.list"
+      "name": "mmfdb.groups.members.list",
+      "summary": "List members of a group."
     },
     {
-      "name": "mmfdb.groups.members.add"
+      "name": "mmfdb.groups.members.add",
+      "summary": "Add a member to a group. Admin or group manager/owner only."
     },
     {
-      "name": "mmfdb.groups.members.remove"
+      "name": "mmfdb.groups.members.remove",
+      "summary": "Remove a member from a group. Admin or group manager/owner only."
     },
     {
-      "name": "mmfdb.permissions.get"
+      "name": "mmfdb.permissions.get",
+      "summary": "Get the ACL for an object. Requires read access on the object."
     },
     {
-      "name": "mmfdb.permissions.chmod"
+      "name": "mmfdb.permissions.chmod",
+      "summary": "Change mode bits on an object. Requires the manage permission (`x`)."
     },
     {
-      "name": "mmfdb.permissions.chown"
+      "name": "mmfdb.permissions.chown",
+      "summary": "Change object owner. Requires the manage permission (`x`)."
     },
     {
-      "name": "mmfdb.permissions.chgrp"
+      "name": "mmfdb.permissions.chgrp",
+      "summary": "Change object owning group. Requires the manage permission (`x`)."
     },
     {
-      "name": "mmfdb.permissions.grant"
+      "name": "mmfdb.permissions.grant",
+      "summary": "Grant or deny a permission on an object. Requires the manage permission (`x`)."
     },
     {
-      "name": "mmfdb.permissions.revoke"
+      "name": "mmfdb.permissions.revoke",
+      "summary": "Revoke an ACL entry. Requires the manage permission (`x`) on the referenced object."
     },
     {
       "name": "mmfdb.objects.put",
@@ -632,229 +771,304 @@
       }
     },
     {
-      "name": "analysis.run.delete"
+      "name": "analysis.run.delete",
+      "summary": "Delete an analysis run."
     },
     {
-      "name": "analysis.run.get"
+      "name": "analysis.run.get",
+      "summary": "Retrieve one analysis run with all details."
     },
     {
-      "name": "analysis.run.list"
+      "name": "analysis.run.list",
+      "summary": "List registered analysis runs."
     },
     {
-      "name": "analysis.run.record"
+      "name": "analysis.run.record",
+      "summary": "Record an analysis run with its parameters, inputs, products, and linkages."
     },
     {
-      "name": "archive.zip.export"
+      "name": "archive.zip.export",
+      "summary": "Package a full ZIP archive containing DB snapshot, graph, manifest and optionally data."
     },
     {
-      "name": "audit_log.list"
+      "name": "audit_log.list",
+      "summary": "Retrieve audit log records with optional filtering."
     },
     {
-      "name": "database.backup"
+      "name": "database.backup",
+      "summary": "Create a hot backup of the SQLite database to the specified target path."
     },
     {
-      "name": "fluorophores.ai_triage"
+      "name": "fluorophores.ai_triage",
+      "summary": "Run AI-assisted triage (deterministic checks plus a model review) on one probe."
     },
     {
-      "name": "fluorophores.approve"
+      "name": "fluorophores.approve",
+      "summary": "Approve a fluorophore probe."
     },
     {
-      "name": "fluorophores.find_duplicates"
+      "name": "fluorophores.find_duplicates",
+      "summary": "Return all probe data for the frontend to compute duplicate groupings."
     },
     {
-      "name": "fluorophores.forster_radius.lookup"
+      "name": "fluorophores.forster_radius.lookup",
+      "summary": "Look up the Förster radius R0 for a donor-acceptor pair."
     },
     {
-      "name": "fluorophores.get"
+      "name": "fluorophores.get",
+      "summary": "Get a single probe with its optical properties and spectra."
     },
     {
-      "name": "fluorophores.get_spectra_batch"
+      "name": "fluorophores.get_spectra_batch",
+      "summary": "Fetch all spectra data for a batch of probes."
     },
     {
-      "name": "fluorophores.import_default_set"
+      "name": "fluorophores.import_default_set",
+      "summary": "Seed ChiSurf's built-in default fluorophore spectra into the database."
     },
     {
-      "name": "fluorophores.import_reference_set"
+      "name": "fluorophores.import_reference_set",
+      "summary": "Import optical-component reference data from a scraped spectra.db."
     },
     {
-      "name": "fluorophores.list"
+      "name": "fluorophores.list",
+      "summary": "List fluorophore probes with optional filtering."
     },
     {
-      "name": "fluorophores.merge"
+      "name": "fluorophores.merge",
+      "summary": "Merge duplicate probes into a primary probe."
     },
     {
-      "name": "fluorophores.probe_types.list"
+      "name": "fluorophores.probe_types.list",
+      "summary": "List all available probe types."
     },
     {
-      "name": "fluorophores.reject"
+      "name": "fluorophores.reject",
+      "summary": "Reject a fluorophore probe."
     },
     {
-      "name": "fluorophores.set_quality"
+      "name": "fluorophores.set_quality",
+      "summary": "Set the quality level of a probe."
     },
     {
-      "name": "mmfdb.analysis.get"
+      "name": "mmfdb.analysis.get",
+      "summary": "Return one analysis operation."
     },
     {
-      "name": "mmfdb.analysis.full"
+      "name": "mmfdb.analysis.full",
+      "summary": "Return one analysis operation with parameters and linked products."
     },
     {
-      "name": "mmfdb.analysis.list"
+      "name": "mmfdb.analysis.list",
+      "summary": "List analysis operations."
     },
     {
-      "name": "mmfdb.artifacts.delete"
+      "name": "mmfdb.artifacts.delete",
+      "summary": "Soft-delete an artifact and its direct provenance links."
     },
     {
-      "name": "mmfdb.artifacts.validation.set"
+      "name": "mmfdb.artifacts.validation.set",
+      "summary": "Set the validation status for a raw or processed artifact."
     },
     {
-      "name": "mmfdb.branches.delete"
+      "name": "mmfdb.branches.delete",
+      "summary": "Soft-delete a branch."
     },
     {
-      "name": "mmfdb.branches.get"
+      "name": "mmfdb.branches.get",
+      "summary": "Return one branch by UUID or name."
     },
     {
-      "name": "mmfdb.branches.list"
+      "name": "mmfdb.branches.list",
+      "summary": "List MMFDB branches."
     },
     {
-      "name": "mmfdb.branches.save"
+      "name": "mmfdb.branches.save",
+      "summary": "Create or update a branch record."
     },
     {
-      "name": "mmfdb.calibrations.create"
+      "name": "mmfdb.calibrations.create",
+      "summary": "Register a calibration value (defaults to a user-provided / literature value)."
     },
     {
-      "name": "mmfdb.calibrations.list"
+      "name": "mmfdb.calibrations.list",
+      "summary": "List calibration records (type/method/value/notes), newest first."
     },
     {
-      "name": "mmfdb.calibrations.stale"
+      "name": "mmfdb.calibrations.stale",
+      "summary": "List uses whose calibration is superseded by a newer one of the same type."
     },
     {
-      "name": "mmfdb.datasets.browse"
+      "name": "mmfdb.datasets.browse",
+      "summary": "Browse datasets with scope-based access control and pagination."
     },
     {
-      "name": "mmfdb.datasets.open"
+      "name": "mmfdb.datasets.open",
+      "summary": "Open a dataset and return a local readable path."
     },
     {
-      "name": "mmfdb.elabftw.connect"
+      "name": "mmfdb.elabftw.connect",
+      "summary": "Probe credentials once and retain them behind an opaque handle."
     },
     {
-      "name": "mmfdb.elabftw.disconnect"
+      "name": "mmfdb.elabftw.disconnect",
+      "summary": "Discard an owner-bound remote connection handle."
     },
     {
-      "name": "mmfdb.elabftw.experiments.export"
+      "name": "mmfdb.elabftw.experiments.export",
+      "summary": "Create or explicitly update an eLabFTW experiment from MMFDB."
     },
     {
-      "name": "mmfdb.elabftw.experiments.import"
+      "name": "mmfdb.elabftw.experiments.import",
+      "summary": "Atomically import remote experiments with an explicit conflict policy."
     },
     {
-      "name": "mmfdb.elabftw.experiments.list"
+      "name": "mmfdb.elabftw.experiments.list",
+      "summary": "Return bounded remote experiment summaries for the Admin GUI."
     },
     {
-      "name": "mmfdb.lifecycle.definitions"
+      "name": "mmfdb.lifecycle.definitions",
+      "summary": "Return the authored lifecycle definitions (states + transitions per entity)."
     },
     {
-      "name": "mmfdb.lifecycle.history"
+      "name": "mmfdb.lifecycle.history",
+      "summary": "Return an entity's ordered transition history (already JSON-safe dicts)."
     },
     {
-      "name": "mmfdb.lifecycle.state"
+      "name": "mmfdb.lifecycle.state",
+      "summary": "Return an entity's current lifecycle state (null when it has none)."
     },
     {
-      "name": "mmfdb.lifecycle.transition"
+      "name": "mmfdb.lifecycle.transition",
+      "summary": "Transition an entity; an illegal jump is returned as an error, not raised."
     },
     {
-      "name": "mmfdb.pipelines.get"
+      "name": "mmfdb.pipelines.get",
+      "summary": "Return a pipeline's structure (nodes + typed edges), or an error."
     },
     {
-      "name": "mmfdb.pipelines.list"
+      "name": "mmfdb.pipelines.list",
+      "summary": "List stored pipeline definitions scoped mine/public/all."
     },
     {
-      "name": "mmfdb.pipelines.runs"
+      "name": "mmfdb.pipelines.runs",
+      "summary": "List runs (newest first) with operation counts, optionally for one pipeline."
     },
     {
-      "name": "mmfdb.processed_data.get"
+      "name": "mmfdb.processed_data.get",
+      "summary": "Return one processed-data artifact."
     },
     {
-      "name": "mmfdb.processed_data.list"
+      "name": "mmfdb.processed_data.list",
+      "summary": "List processed-data artifacts."
     },
     {
-      "name": "mmfdb.processing.get"
+      "name": "mmfdb.processing.get",
+      "summary": "Return one processing operation."
     },
     {
-      "name": "mmfdb.processing.list"
+      "name": "mmfdb.processing.list",
+      "summary": "List processing operations."
     },
     {
-      "name": "mmfdb.projects.get"
+      "name": "mmfdb.projects.get",
+      "summary": "Return one MMFDB project record by project ID or version operation ID."
     },
     {
-      "name": "mmfdb.projects.list"
+      "name": "mmfdb.projects.list",
+      "summary": "List MMFDB project records."
     },
     {
-      "name": "mmfdb.protocols.create"
+      "name": "mmfdb.protocols.create",
+      "summary": "Create a protocol (or a new version); an invalid category returns an error."
     },
     {
-      "name": "mmfdb.protocols.for_operation"
+      "name": "mmfdb.protocols.for_operation",
+      "summary": "Return the protocol/version recorded on an operation (run provenance)."
     },
     {
-      "name": "mmfdb.protocols.get"
+      "name": "mmfdb.protocols.get",
+      "summary": "Return a protocol (default latest) with its declared parameter schema."
     },
     {
-      "name": "mmfdb.protocols.list"
+      "name": "mmfdb.protocols.list",
+      "summary": "List the latest version of each protocol, scoped own/public/all."
     },
     {
-      "name": "mmfdb.protocols.versions"
+      "name": "mmfdb.protocols.versions",
+      "summary": "Return all versions of a protocol name (oldest first)."
     },
     {
-      "name": "mmfdb.raw_data.get"
+      "name": "mmfdb.raw_data.get",
+      "summary": "Return one raw-data artifact row."
     },
     {
-      "name": "mmfdb.raw_data.list"
+      "name": "mmfdb.raw_data.list",
+      "summary": "List raw-data artifacts."
     },
     {
-      "name": "mmfdb.reagents.create"
+      "name": "mmfdb.reagents.create",
+      "summary": "Create a reagent lot; a bad kind / missing name returns an error."
     },
     {
-      "name": "mmfdb.reagents.expired"
+      "name": "mmfdb.reagents.expired",
+      "summary": "List lots whose expiry is in the past (QC)."
     },
     {
-      "name": "mmfdb.reagents.list"
+      "name": "mmfdb.reagents.list",
+      "summary": "List reagent lots, optionally filtered by kind and excluding expired ones."
     },
     {
-      "name": "mmfdb.reagents.usage.add"
+      "name": "mmfdb.reagents.usage.add",
+      "summary": "Link a lot to an operation/setup/sample; a bad target_type returns an error."
     },
     {
-      "name": "mmfdb.reagents.usage.list"
+      "name": "mmfdb.reagents.usage.list",
+      "summary": "List the reagent lots used by an operation/setup/sample."
     },
     {
-      "name": "mmfdb.studies.create"
+      "name": "mmfdb.studies.create",
+      "summary": "Create a study; a missing name returns an error."
     },
     {
-      "name": "mmfdb.studies.fields.set"
+      "name": "mmfdb.studies.fields.set",
+      "summary": "Set a configurable per-study field."
     },
     {
-      "name": "mmfdb.studies.get"
+      "name": "mmfdb.studies.get",
+      "summary": "Return a study with its members and configurable fields."
     },
     {
-      "name": "mmfdb.studies.list"
+      "name": "mmfdb.studies.list",
+      "summary": "List studies scoped mine/public/all."
     },
     {
-      "name": "mmfdb.studies.members.add"
+      "name": "mmfdb.studies.members.add",
+      "summary": "Add a sample/artifact to a study; a bad member_type returns an error."
     },
     {
-      "name": "ndxplorer.load_burst_product"
+      "name": "ndxplorer.load_burst_product",
+      "summary": "Load a registered burst product into ndxplorer data structures."
     },
     {
-      "name": "ndxplorer.record_analysis"
+      "name": "ndxplorer.record_analysis",
+      "summary": "Record an ndxplorer analysis run and its generated products."
     },
     {
-      "name": "processing.run.record"
+      "name": "processing.run.record",
+      "summary": "Record a general processing run and its inputs/products."
     },
     {
-      "name": "provenance.dependencies.downstream"
+      "name": "provenance.dependencies.downstream",
+      "summary": "Retrieve downstream dependencies for a node."
     },
     {
-      "name": "provenance.dependencies.upstream"
+      "name": "provenance.dependencies.upstream",
+      "summary": "Retrieve upstream dependencies for a node."
     },
     {
-      "name": "provenance.graph.export"
+      "name": "provenance.graph.export",
+      "summary": "Export the provenance subgraph as a JSON-serializable structure."
     }
   ],
   "optional_requires": {

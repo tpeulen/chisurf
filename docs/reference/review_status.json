@@ -633,7 +633,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "35f633eff66cb78778f2071dfcbb8dd6aee0409082a7c01a1be9c49409856296",
+    "sha256": "29af800e4befa4f8f572edb25614f8a6ebe1bdb27043c9837bae3eb3c2da66fc",
     "status": "ai-reviewed"
   },
   "plugins/model_manager.md": {

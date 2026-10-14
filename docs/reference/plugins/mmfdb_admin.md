@@ -251,226 +251,226 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- |
 | `fluorophores.diffusion_reference` | no | List every probe carrying a diffusion coefficient D(25 °C, water). |
 | `fluorophores.import_diffusion_reference` | no | Seed literature diffusion coefficients as probe properties. |
-| `mmfdb.security.auth.change_password` | no |  |
-| `mmfdb.security.auth.login` | no |  |
-| `mmfdb.security.auth.logout` | no |  |
-| `mmfdb.security.auth.me` | no |  |
-| `mmfdb.security.auth.sessions.list` | no |  |
-| `mmfdb.security.auth.sessions.revoke` | no |  |
-| `mmfdb.status` | no |  |
-| `mmfdb.samples.list` | no |  |
-| `mmfdb.samples.get` | no |  |
-| `mmfdb.samples.save` | no |  |
-| `mmfdb.samples.delete` | no |  |
-| `mmfdb.samples.search` | no |  |
-| `mmfdb.samples.key_values.save` | no |  |
-| `mmfdb.samples.full_description` | no |  |
-| `mmfdb.samples.validate_export` | no |  |
-| `mmfdb.samples.create_structured` | no |  |
-| `mmfdb.sample_conditions.list` | no |  |
-| `mmfdb.sample_conditions.get` | no |  |
-| `mmfdb.sample_conditions.save` | no |  |
-| `mmfdb.sample_conditions.delete` | no |  |
-| `mmfdb.entities.list` | no |  |
-| `mmfdb.entities.get` | no |  |
-| `mmfdb.entities.save` | no |  |
-| `mmfdb.entities.delete` | no |  |
-| `mmfdb.probes.list` | no |  |
-| `mmfdb.probes.get` | no |  |
-| `mmfdb.probes.save` | no |  |
-| `mmfdb.probes.delete` | no |  |
-| `mmfdb.probes.optical_properties.get` | no |  |
-| `mmfdb.probes.optical_properties.save` | no |  |
-| `mmfdb.probes.positions.list` | no |  |
-| `mmfdb.probes.positions.get` | no |  |
-| `mmfdb.probes.positions.save` | no |  |
-| `mmfdb.probes.positions.delete` | no |  |
-| `mmfdb.fret_pairs.list` | no |  |
-| `mmfdb.fret_pairs.get` | no |  |
-| `mmfdb.fret_pairs.save` | no |  |
-| `mmfdb.fret_pairs.delete` | no |  |
-| `mmfdb.pdbx.suggest_keys` | no |  |
-| `mmfdb.pdbx.validate_value` | no |  |
-| `mmfdb.mock_data.populate` | no |  |
-| `mmfdb.users.list` | no |  |
-| `mmfdb.users.save` | no |  |
-| `mmfdb.users.delete` | no |  |
-| `mmfdb.devices.list` | no |  |
-| `mmfdb.devices.get` | no |  |
-| `mmfdb.devices.save` | no |  |
-| `mmfdb.devices.delete` | no |  |
-| `mmfdb.experiment_types.list` | no |  |
-| `mmfdb.experiment_types.get` | no |  |
-| `mmfdb.experiment_types.save` | no |  |
-| `mmfdb.experiment_types.delete` | no |  |
-| `mmfdb.experiments.list` | no |  |
-| `mmfdb.experiments.get` | no |  |
-| `mmfdb.experiments.save` | no |  |
-| `mmfdb.experiments.delete` | no |  |
-| `mmfdb.experiments.key_values.save` | no |  |
-| `mmfdb.experiments.data.save` | no |  |
-| `mmfdb.experiments.data.delete` | no |  |
-| `mmfdb.setups.list` | no |  |
-| `mmfdb.setups.get` | no |  |
-| `mmfdb.setups.save` | no |  |
-| `mmfdb.setups.delete` | no |  |
-| `mmfdb.setups.validate` | no |  |
-| `mmfdb.setups.detector_channels.list` | no |  |
-| `mmfdb.setups.pie_windows.list` | no |  |
-| `mmfdb.setups.fcs_pairs.list` | no |  |
-| `raw_data.register` | no |  |
-| `raw_data.list` | no |  |
-| `raw_data.get` | no |  |
-| `processing.burst_selection.record` | no |  |
-| `processing.burst_selection.run` | no |  |
-| `processing.burst_selection.get` | no |  |
-| `processing.burst_selection.list` | no |  |
-| `processed_data.register` | no |  |
-| `processed_data.list` | no |  |
-| `processed_data.get` | no |  |
-| `provenance.edges.list` | no |  |
-| `provenance.trace_processed_data` | no |  |
-| `archive.burst_processing_manifest.export` | no |  |
-| `mmfdb.import_file` | no |  |
-| `mmfdb.export_sample` | no |  |
-| `mmfdb.export_table` | no |  |
-| `mmfdb.backup` | no |  |
-| `mmfdb.reset_from_source` | no |  |
-| `mmfdb.v1.samples.register` | no |  |
-| `mmfdb.v1.samples.get` | no |  |
-| `mmfdb.v1.samples.list` | no |  |
-| `mmfdb.v1.experiments.register` | no |  |
-| `mmfdb.v1.experiments.get` | no |  |
-| `mmfdb.v1.experiments.list` | no |  |
-| `mmfdb.v1.artifacts.register` | no |  |
-| `mmfdb.v1.artifacts.get` | no |  |
-| `mmfdb.v1.artifacts.list` | no |  |
-| `mmfdb.v1.operations.record` | no |  |
-| `mmfdb.v1.operations.record_with_artifacts` | no |  |
-| `mmfdb.v1.operations.get` | no |  |
-| `mmfdb.v1.operations.list` | no |  |
-| `mmfdb.v1.operations.link_artifact` | no |  |
-| `mmfdb.v1.operations.link` | no |  |
-| `mmfdb.v1.operations.transition_status` | no |  |
-| `mmfdb.v1.graph.traverse` | no |  |
-| `mmfdb.v1.graph.upstream` | no |  |
-| `mmfdb.v1.graph.downstream` | no |  |
-| `mmfdb.v1.graph.export` | no |  |
-| `mmfdb.v1.parameters.record` | no |  |
-| `mmfdb.v1.parameters.get` | no |  |
-| `mmfdb.v1.parameters.list` | no |  |
-| `mmfdb.v1.chinet.sessions.save` | no |  |
-| `mmfdb.v1.chinet.sessions.get` | no |  |
-| `mmfdb.v1.chinet.sessions.list` | no |  |
-| `mmfdb.v1.chinet.sessions.restore` | no |  |
-| `mmfdb.v1.setups.save` | no |  |
-| `mmfdb.v1.setups.get` | no |  |
-| `mmfdb.v1.setups.list` | no |  |
-| `mmfdb.v1.audit.list` | no |  |
-| `mmfdb.v1.branches.create` | no |  |
-| `mmfdb.v1.branches.fork` | no |  |
-| `mmfdb.v1.branches.get` | no |  |
-| `mmfdb.v1.branches.list` | no |  |
-| `mmfdb.v1.branches.update_head` | no |  |
-| `mmfdb.v1.branches.delete` | no |  |
-| `mmfdb.v1.users.set_active_branch` | no |  |
-| `mmfdb.v1.users.get_active_branch` | no |  |
-| `mmfdb.v1.users.jump_to_operation` | no |  |
-| `mmfdb.groups.list` | no |  |
-| `mmfdb.groups.get` | no |  |
-| `mmfdb.groups.create` | no |  |
-| `mmfdb.groups.update` | no |  |
-| `mmfdb.groups.delete` | no |  |
-| `mmfdb.groups.members.list` | no |  |
-| `mmfdb.groups.members.add` | no |  |
-| `mmfdb.groups.members.remove` | no |  |
-| `mmfdb.permissions.get` | no |  |
-| `mmfdb.permissions.chmod` | no |  |
-| `mmfdb.permissions.chown` | no |  |
-| `mmfdb.permissions.chgrp` | no |  |
-| `mmfdb.permissions.grant` | no |  |
-| `mmfdb.permissions.revoke` | no |  |
+| `mmfdb.security.auth.change_password` | no | Change the authenticated user's password. |
+| `mmfdb.security.auth.login` | no | Authenticate a user and return a session token. |
+| `mmfdb.security.auth.logout` | no | Revoke the current session. |
+| `mmfdb.security.auth.me` | no | Return the authenticated user, or fail if anonymous. |
+| `mmfdb.security.auth.sessions.list` | no | List active sessions. Admin can see all; users see their own. |
+| `mmfdb.security.auth.sessions.revoke` | no | Revoke a session by ID. Admin can revoke any; users revoke their own. |
+| `mmfdb.status` | no | Return the database identity, backend type and entity counts. |
+| `mmfdb.samples.list` | no | List the samples the caller may read. |
+| `mmfdb.samples.get` | no | Return one sample with its full record (read access required). |
+| `mmfdb.samples.save` | no | Create or update a sample; a structured payload goes through the structured-sample path. |
+| `mmfdb.samples.delete` | no | Delete a sample (write access required). |
+| `mmfdb.samples.search` | no | List the readable samples matching a free-text query (all of them without one). |
+| `mmfdb.samples.key_values.save` | no | Replace the key/value annotations of a sample. |
+| `mmfdb.samples.full_description` | no | Return the nested public description of a sample. |
+| `mmfdb.samples.validate_export` | no | Return export validation warnings for a sample. |
+| `mmfdb.samples.create_structured` | no | Create a sample from a structured description (entities, probes, conditions). |
+| `mmfdb.sample_conditions.list` | no | List sample conditions. |
+| `mmfdb.sample_conditions.get` | no | Return one sample-condition row. |
+| `mmfdb.sample_conditions.save` | no | Create or update a sample condition. |
+| `mmfdb.sample_conditions.delete` | no | Soft-delete a sample condition. |
+| `mmfdb.entities.list` | no | List entities globally or for one sample. |
+| `mmfdb.entities.get` | no | Return one entity row. |
+| `mmfdb.entities.save` | no | Create or update an entity and its sequence. |
+| `mmfdb.entities.delete` | no | Soft-delete an entity. |
+| `mmfdb.probes.list` | no | List the probes with their optical properties. |
+| `mmfdb.probes.get` | no | Return one probe identity row. |
+| `mmfdb.probes.save` | no | Create or update a probe identity row. |
+| `mmfdb.probes.delete` | no | Soft-delete a probe identity row. |
+| `mmfdb.probes.optical_properties.get` | no | Return the optical properties of a probe. |
+| `mmfdb.probes.optical_properties.save` | no | Replace editable optical properties for a probe. |
+| `mmfdb.probes.positions.list` | no | List probe positions by sample or probe. |
+| `mmfdb.probes.positions.get` | no | Return one probe-position row. |
+| `mmfdb.probes.positions.save` | no | Create or update a polymer probe-position row. |
+| `mmfdb.probes.positions.delete` | no | Soft-delete a polymer probe-position row. |
+| `mmfdb.fret_pairs.list` | no | List FRET pair/Förster radius records globally or for one sample. |
+| `mmfdb.fret_pairs.get` | no | Return one FRET pair/Förster radius row. |
+| `mmfdb.fret_pairs.save` | no | Create a FRET pair/Förster radius record. |
+| `mmfdb.fret_pairs.delete` | no | Delete a FRET pair/Förster radius record. |
+| `mmfdb.pdbx.suggest_keys` | no | Return matching PDBx/flrCIF dictionary keys. |
+| `mmfdb.pdbx.validate_value` | no | Validate one PDBx/flrCIF key/value pair. |
+| `mmfdb.mock_data.populate` | no | Populate the authenticated database with packaged synthetic burst tables. |
+| `mmfdb.users.list` | no | List the database users. Admin only. |
+| `mmfdb.users.save` | no | Create or update a user account, optionally renaming it or setting its password. |
+| `mmfdb.users.delete` | no | Delete a user account. Admin only. |
+| `mmfdb.devices.list` | no | List the instruments/devices. |
+| `mmfdb.devices.get` | no | Return one instrument/device row. |
+| `mmfdb.devices.save` | no | Create or update an instrument/device row. |
+| `mmfdb.devices.delete` | no | Delete an instrument/device and return the remaining list. |
+| `mmfdb.experiment_types.list` | no | List the experiment types. |
+| `mmfdb.experiment_types.get` | no | Return one experiment type. |
+| `mmfdb.experiment_types.save` | no | Create or update an experiment type (an empty name gets an untitled one). |
+| `mmfdb.experiment_types.delete` | no | Delete an experiment type and return the remaining list. |
+| `mmfdb.experiments.list` | no | List experiments, optionally filtered by sample, project or type. |
+| `mmfdb.experiments.get` | no | Return one experiment with its data entries. |
+| `mmfdb.experiments.save` | no | Create or update an experiment. |
+| `mmfdb.experiments.delete` | no | Delete an experiment. |
+| `mmfdb.experiments.key_values.save` | no | Replace the key/value annotations of an experiment. |
+| `mmfdb.experiments.data.save` | no | Attach a data entry (linked or stored) to an experiment. |
+| `mmfdb.experiments.data.delete` | no | Remove a data entry from an experiment. |
+| `mmfdb.setups.list` | no | List the readable instrument setups. |
+| `mmfdb.setups.get` | no | Return one setup (read access required). |
+| `mmfdb.setups.save` | no | Create or update an instrument setup and its configuration. |
+| `mmfdb.setups.delete` | no | Delete a setup (write access required). |
+| `mmfdb.setups.validate` | no | Validate a stored setup without bypassing its read ACL. |
+| `mmfdb.setups.detector_channels.list` | no | List detector channel definitions. |
+| `mmfdb.setups.pie_windows.list` | no | List PIE window definitions. |
+| `mmfdb.setups.fcs_pairs.list` | no | List FCS channel-pair definitions. |
+| `raw_data.register` | no | Register a raw TTTR/PTU/SPC/BH data reference. |
+| `raw_data.list` | no | List raw-data artifacts. |
+| `raw_data.get` | no | Return one raw-data artifact row. |
+| `processing.burst_selection.record` | no | Record a Burst Selection processing run and its products. |
+| `processing.burst_selection.run` | no | Run burst selection on photon files and record the run and its products with provenance. |
+| `processing.burst_selection.get` | no | Return one Burst Selection processing run. |
+| `processing.burst_selection.list` | no | List Burst Selection processing runs. |
+| `processed_data.register` | no | Register a processed data product. |
+| `processed_data.list` | no | List processed-data artifacts. |
+| `processed_data.get` | no | Return one processed-data artifact. |
+| `provenance.edges.list` | no | List provenance edges. |
+| `provenance.trace_processed_data` | no | Trace a product back through raw inputs and settings. |
+| `archive.burst_processing_manifest.export` | no | Export an archive manifest for one Burst Selection run. |
+| `mmfdb.import_file` | no | Import a structure/description file into the database and return a summary. |
+| `mmfdb.export_sample` | no | Export a sample's FRET analysis as flrCIF, to a file or as text. Admin only. |
+| `mmfdb.export_table` | no | Write the sample table (one sample or all) to a file. Admin only. |
+| `mmfdb.backup` | no | Back up the database file and return the backup path. Admin only. |
+| `mmfdb.reset_from_source` | no | Replace the user database with the curated seed and restore its admin. |
+| `mmfdb.v1.samples.register` | no | Register or update a sample in the FLR domain layer. |
+| `mmfdb.v1.samples.get` | no | Retrieve a sample by identifier. |
+| `mmfdb.v1.samples.list` | no | List samples. |
+| `mmfdb.v1.experiments.register` | no | Register or update an experiment in the FLR domain layer. |
+| `mmfdb.v1.experiments.get` | no | Retrieve an experiment by identifier. |
+| `mmfdb.v1.experiments.list` | no | List experiments with optional filters. |
+| `mmfdb.v1.artifacts.register` | no | Register or update an MMFDB artifact in the database. |
+| `mmfdb.v1.artifacts.get` | no | Retrieve an artifact by its identifier. |
+| `mmfdb.v1.artifacts.list` | no | List artifacts with optional filtering. |
+| `mmfdb.v1.operations.record` | no | Record or update a processing or analysis operation. |
+| `mmfdb.v1.operations.record_with_artifacts` | no | Record an operation and related artifacts atomically. |
+| `mmfdb.v1.operations.get` | no | Retrieve an operation by its identifier. |
+| `mmfdb.v1.operations.list` | no | List operations with optional filtering. |
+| `mmfdb.v1.operations.link_artifact` | no | Link an operation and an artifact. |
+| `mmfdb.v1.operations.link` | no | Alias of mmfdb.v1.operations.link_artifact: link an operation and an artifact. |
+| `mmfdb.v1.operations.transition_status` | no | Transition an operation status. |
+| `mmfdb.v1.graph.traverse` | no | Traverse the canonical graph recursively, cycle-safe. |
+| `mmfdb.v1.graph.upstream` | no | Traverse upstream canonical graph edges. |
+| `mmfdb.v1.graph.downstream` | no | Traverse downstream canonical graph edges. |
+| `mmfdb.v1.graph.export` | no | Export a provenance graph as JSON-serializable nodes and edges. |
+| `mmfdb.v1.parameters.record` | no | Record or update a semantic parameter. |
+| `mmfdb.v1.parameters.get` | no | Retrieve a parameter by its UUID. |
+| `mmfdb.v1.parameters.list` | no | List parameters with optional filters. |
+| `mmfdb.v1.chinet.sessions.save` | no | Save a canonical chinet session schema payload to MMFDB. |
+| `mmfdb.v1.chinet.sessions.get` | no | Load a chinet session artifact from MMFDB. |
+| `mmfdb.v1.chinet.sessions.list` | no | List chinet session artifacts in MMFDB. |
+| `mmfdb.v1.chinet.sessions.restore` | no | Restore a chinet session artifact from MMFDB. |
+| `mmfdb.v1.setups.save` | no | Save or update an instrument/calibration setup configuration. |
+| `mmfdb.v1.setups.get` | no | Retrieve a setup configuration by its identifier. |
+| `mmfdb.v1.setups.list` | no | List setup snapshots. |
+| `mmfdb.v1.audit.list` | no | List audit log records with optional filtering. |
+| `mmfdb.v1.branches.create` | no | Create a branch pointer in the MMFDB provenance graph. |
+| `mmfdb.v1.branches.fork` | no | Create a parallel branch from an existing branch. |
+| `mmfdb.v1.branches.get` | no | Return one branch by UUID or name. |
+| `mmfdb.v1.branches.list` | no | Return all non-deleted branches. |
+| `mmfdb.v1.branches.update_head` | no | Move a branch head to an operation or clear it. |
+| `mmfdb.v1.branches.delete` | no | Soft-delete a branch when it is not protected or active. |
+| `mmfdb.v1.users.set_active_branch` | no | Set the active branch for a user (self, or any user when admin). |
+| `mmfdb.v1.users.get_active_branch` | no | Return the active branch for a user (self, or any user when admin). |
+| `mmfdb.v1.users.jump_to_operation` | no | Create and activate a user branch at a historical operation. |
+| `mmfdb.groups.list` | no | List all groups. |
+| `mmfdb.groups.get` | no | Get a single group by ID. |
+| `mmfdb.groups.create` | no | Create a new group. Admin only. |
+| `mmfdb.groups.update` | no | Update a group. Admin or group manager only. |
+| `mmfdb.groups.delete` | no | Soft-delete a group. Admin only. Built-in groups cannot be deleted. |
+| `mmfdb.groups.members.list` | no | List members of a group. |
+| `mmfdb.groups.members.add` | no | Add a member to a group. Admin or group manager/owner only. |
+| `mmfdb.groups.members.remove` | no | Remove a member from a group. Admin or group manager/owner only. |
+| `mmfdb.permissions.get` | no | Get the ACL for an object. Requires read access on the object. |
+| `mmfdb.permissions.chmod` | no | Change mode bits on an object. Requires the manage permission (`x`). |
+| `mmfdb.permissions.chown` | no | Change object owner. Requires the manage permission (`x`). |
+| `mmfdb.permissions.chgrp` | no | Change object owning group. Requires the manage permission (`x`). |
+| `mmfdb.permissions.grant` | no | Grant or deny a permission on an object. Requires the manage permission (`x`). |
+| `mmfdb.permissions.revoke` | no | Revoke an ACL entry. Requires the manage permission (`x`) on the referenced object. |
 | `mmfdb.objects.put` | no | Store a file or bytes in the object store (deduplicates by MD5). |
 | `mmfdb.objects.put_bytes` | no | Store base64-encoded bytes in the object store. |
 | `mmfdb.objects.get` | no | Retrieve blob content by object UUID (returns base64-encoded data). |
 | `mmfdb.objects.get_info` | no | Retrieve object metadata by UUID. |
 | `mmfdb.objects.delete` | no | Delete an object or decrement its refcount. |
 | `mmfdb.objects.list` | no | List objects with optional filtering. |
-| `analysis.run.delete` | no |  |
-| `analysis.run.get` | no |  |
-| `analysis.run.list` | no |  |
-| `analysis.run.record` | no |  |
-| `archive.zip.export` | no |  |
-| `audit_log.list` | no |  |
-| `database.backup` | no |  |
-| `fluorophores.ai_triage` | no |  |
-| `fluorophores.approve` | no |  |
-| `fluorophores.find_duplicates` | no |  |
-| `fluorophores.forster_radius.lookup` | no |  |
-| `fluorophores.get` | no |  |
-| `fluorophores.get_spectra_batch` | no |  |
-| `fluorophores.import_default_set` | no |  |
-| `fluorophores.import_reference_set` | no |  |
-| `fluorophores.list` | no |  |
-| `fluorophores.merge` | no |  |
-| `fluorophores.probe_types.list` | no |  |
-| `fluorophores.reject` | no |  |
-| `fluorophores.set_quality` | no |  |
-| `mmfdb.analysis.get` | no |  |
-| `mmfdb.analysis.full` | no |  |
-| `mmfdb.analysis.list` | no |  |
-| `mmfdb.artifacts.delete` | no |  |
-| `mmfdb.artifacts.validation.set` | no |  |
-| `mmfdb.branches.delete` | no |  |
-| `mmfdb.branches.get` | no |  |
-| `mmfdb.branches.list` | no |  |
-| `mmfdb.branches.save` | no |  |
-| `mmfdb.calibrations.create` | no |  |
-| `mmfdb.calibrations.list` | no |  |
-| `mmfdb.calibrations.stale` | no |  |
-| `mmfdb.datasets.browse` | no |  |
-| `mmfdb.datasets.open` | no |  |
-| `mmfdb.elabftw.connect` | no |  |
-| `mmfdb.elabftw.disconnect` | no |  |
-| `mmfdb.elabftw.experiments.export` | no |  |
-| `mmfdb.elabftw.experiments.import` | no |  |
-| `mmfdb.elabftw.experiments.list` | no |  |
-| `mmfdb.lifecycle.definitions` | no |  |
-| `mmfdb.lifecycle.history` | no |  |
-| `mmfdb.lifecycle.state` | no |  |
-| `mmfdb.lifecycle.transition` | no |  |
-| `mmfdb.pipelines.get` | no |  |
-| `mmfdb.pipelines.list` | no |  |
-| `mmfdb.pipelines.runs` | no |  |
-| `mmfdb.processed_data.get` | no |  |
-| `mmfdb.processed_data.list` | no |  |
-| `mmfdb.processing.get` | no |  |
-| `mmfdb.processing.list` | no |  |
-| `mmfdb.projects.get` | no |  |
-| `mmfdb.projects.list` | no |  |
-| `mmfdb.protocols.create` | no |  |
-| `mmfdb.protocols.for_operation` | no |  |
-| `mmfdb.protocols.get` | no |  |
-| `mmfdb.protocols.list` | no |  |
-| `mmfdb.protocols.versions` | no |  |
-| `mmfdb.raw_data.get` | no |  |
-| `mmfdb.raw_data.list` | no |  |
-| `mmfdb.reagents.create` | no |  |
-| `mmfdb.reagents.expired` | no |  |
-| `mmfdb.reagents.list` | no |  |
-| `mmfdb.reagents.usage.add` | no |  |
-| `mmfdb.reagents.usage.list` | no |  |
-| `mmfdb.studies.create` | no |  |
-| `mmfdb.studies.fields.set` | no |  |
-| `mmfdb.studies.get` | no |  |
-| `mmfdb.studies.list` | no |  |
-| `mmfdb.studies.members.add` | no |  |
-| `ndxplorer.load_burst_product` | no |  |
-| `ndxplorer.record_analysis` | no |  |
-| `processing.run.record` | no |  |
-| `provenance.dependencies.downstream` | no |  |
-| `provenance.dependencies.upstream` | no |  |
-| `provenance.graph.export` | no |  |
+| `analysis.run.delete` | no | Delete an analysis run. |
+| `analysis.run.get` | no | Retrieve one analysis run with all details. |
+| `analysis.run.list` | no | List registered analysis runs. |
+| `analysis.run.record` | no | Record an analysis run with its parameters, inputs, products, and linkages. |
+| `archive.zip.export` | no | Package a full ZIP archive containing DB snapshot, graph, manifest and optionally data. |
+| `audit_log.list` | no | Retrieve audit log records with optional filtering. |
+| `database.backup` | no | Create a hot backup of the SQLite database to the specified target path. |
+| `fluorophores.ai_triage` | no | Run AI-assisted triage (deterministic checks plus a model review) on one probe. |
+| `fluorophores.approve` | no | Approve a fluorophore probe. |
+| `fluorophores.find_duplicates` | no | Return all probe data for the frontend to compute duplicate groupings. |
+| `fluorophores.forster_radius.lookup` | no | Look up the Förster radius R0 for a donor-acceptor pair. |
+| `fluorophores.get` | no | Get a single probe with its optical properties and spectra. |
+| `fluorophores.get_spectra_batch` | no | Fetch all spectra data for a batch of probes. |
+| `fluorophores.import_default_set` | no | Seed ChiSurf's built-in default fluorophore spectra into the database. |
+| `fluorophores.import_reference_set` | no | Import optical-component reference data from a scraped spectra.db. |
+| `fluorophores.list` | no | List fluorophore probes with optional filtering. |
+| `fluorophores.merge` | no | Merge duplicate probes into a primary probe. |
+| `fluorophores.probe_types.list` | no | List all available probe types. |
+| `fluorophores.reject` | no | Reject a fluorophore probe. |
+| `fluorophores.set_quality` | no | Set the quality level of a probe. |
+| `mmfdb.analysis.get` | no | Return one analysis operation. |
+| `mmfdb.analysis.full` | no | Return one analysis operation with parameters and linked products. |
+| `mmfdb.analysis.list` | no | List analysis operations. |
+| `mmfdb.artifacts.delete` | no | Soft-delete an artifact and its direct provenance links. |
+| `mmfdb.artifacts.validation.set` | no | Set the validation status for a raw or processed artifact. |
+| `mmfdb.branches.delete` | no | Soft-delete a branch. |
+| `mmfdb.branches.get` | no | Return one branch by UUID or name. |
+| `mmfdb.branches.list` | no | List MMFDB branches. |
+| `mmfdb.branches.save` | no | Create or update a branch record. |
+| `mmfdb.calibrations.create` | no | Register a calibration value (defaults to a user-provided / literature value). |
+| `mmfdb.calibrations.list` | no | List calibration records (type/method/value/notes), newest first. |
+| `mmfdb.calibrations.stale` | no | List uses whose calibration is superseded by a newer one of the same type. |
+| `mmfdb.datasets.browse` | no | Browse datasets with scope-based access control and pagination. |
+| `mmfdb.datasets.open` | no | Open a dataset and return a local readable path. |
+| `mmfdb.elabftw.connect` | no | Probe credentials once and retain them behind an opaque handle. |
+| `mmfdb.elabftw.disconnect` | no | Discard an owner-bound remote connection handle. |
+| `mmfdb.elabftw.experiments.export` | no | Create or explicitly update an eLabFTW experiment from MMFDB. |
+| `mmfdb.elabftw.experiments.import` | no | Atomically import remote experiments with an explicit conflict policy. |
+| `mmfdb.elabftw.experiments.list` | no | Return bounded remote experiment summaries for the Admin GUI. |
+| `mmfdb.lifecycle.definitions` | no | Return the authored lifecycle definitions (states + transitions per entity). |
+| `mmfdb.lifecycle.history` | no | Return an entity's ordered transition history (already JSON-safe dicts). |
+| `mmfdb.lifecycle.state` | no | Return an entity's current lifecycle state (null when it has none). |
+| `mmfdb.lifecycle.transition` | no | Transition an entity; an illegal jump is returned as an error, not raised. |
+| `mmfdb.pipelines.get` | no | Return a pipeline's structure (nodes + typed edges), or an error. |
+| `mmfdb.pipelines.list` | no | List stored pipeline definitions scoped mine/public/all. |
+| `mmfdb.pipelines.runs` | no | List runs (newest first) with operation counts, optionally for one pipeline. |
+| `mmfdb.processed_data.get` | no | Return one processed-data artifact. |
+| `mmfdb.processed_data.list` | no | List processed-data artifacts. |
+| `mmfdb.processing.get` | no | Return one processing operation. |
+| `mmfdb.processing.list` | no | List processing operations. |
+| `mmfdb.projects.get` | no | Return one MMFDB project record by project ID or version operation ID. |
+| `mmfdb.projects.list` | no | List MMFDB project records. |
+| `mmfdb.protocols.create` | no | Create a protocol (or a new version); an invalid category returns an error. |
+| `mmfdb.protocols.for_operation` | no | Return the protocol/version recorded on an operation (run provenance). |
+| `mmfdb.protocols.get` | no | Return a protocol (default latest) with its declared parameter schema. |
+| `mmfdb.protocols.list` | no | List the latest version of each protocol, scoped own/public/all. |
+| `mmfdb.protocols.versions` | no | Return all versions of a protocol name (oldest first). |
+| `mmfdb.raw_data.get` | no | Return one raw-data artifact row. |
+| `mmfdb.raw_data.list` | no | List raw-data artifacts. |
+| `mmfdb.reagents.create` | no | Create a reagent lot; a bad kind / missing name returns an error. |
+| `mmfdb.reagents.expired` | no | List lots whose expiry is in the past (QC). |
+| `mmfdb.reagents.list` | no | List reagent lots, optionally filtered by kind and excluding expired ones. |
+| `mmfdb.reagents.usage.add` | no | Link a lot to an operation/setup/sample; a bad target_type returns an error. |
+| `mmfdb.reagents.usage.list` | no | List the reagent lots used by an operation/setup/sample. |
+| `mmfdb.studies.create` | no | Create a study; a missing name returns an error. |
+| `mmfdb.studies.fields.set` | no | Set a configurable per-study field. |
+| `mmfdb.studies.get` | no | Return a study with its members and configurable fields. |
+| `mmfdb.studies.list` | no | List studies scoped mine/public/all. |
+| `mmfdb.studies.members.add` | no | Add a sample/artifact to a study; a bad member_type returns an error. |
+| `ndxplorer.load_burst_product` | no | Load a registered burst product into ndxplorer data structures. |
+| `ndxplorer.record_analysis` | no | Record an ndxplorer analysis run and its generated products. |
+| `processing.run.record` | no | Record a general processing run and its inputs/products. |
+| `provenance.dependencies.downstream` | no | Retrieve downstream dependencies for a node. |
+| `provenance.dependencies.upstream` | no | Retrieve upstream dependencies for a node. |
+| `provenance.graph.export` | no | Export the provenance subgraph as a JSON-serializable structure. |
 
 ## Theory and workflow
 
