@@ -4,6 +4,57 @@ title: Known issues
 description: Open, resolved and withdrawn defects with their measurement, owner and status, newest first.
 ---
 
+## Qt-shell leftovers after S6 (found 2026-10-14, branch `s6-retire-qt-shell`)
+
+status: open
+
+Nothing here imports Qt (`test/test_no_qt_imports.py` is green); these are dead or degraded paths the Qt
+shell's deletion left, recorded rather than widened into the S6 change.
+
+- **`chisurf.cs` is never assigned.** It was the Qt main window. The duck-typed presenter paths that read it
+  are dead: `macros/core_fit.py` (`restore_gui_from_fits`, `change_selected_fit_of_group`, `save_fit_project`'s
+  MDI lookup), `macros/core_data.py` (`reinitialize_application`'s window steps),
+  `core/actions/project_actions.py`, `core/project/{transition,ui_state}.py`, `server/services/projects.py`'s
+  `present`. Measure: `grep -rn 'getattr(cs, "cs"' chisurf | wc -l`. Delete them with a review of what the
+  emtk shell's own session paths already cover (`chisurf/emtk/shell_session.py`).
+- **`skip_qt_widgets`** still threads through `core/base.py`, `core/data.py`, `core/parameter.py`
+  (`to_elementary`, `save`, `to_yaml`/`to_json`); with no Qt objects it never skips anything.
+- **Manifest `entrypoints.gui`** is still a schema field (`core/plugin/manifest.py`, `plugins/__init__.py`,
+  `plugin_manager/api/install.py`); one manifest still uses it (`spectra_downloader`, pointing at a Qt-free
+  launcher). **`controller_class`** in `experiment_configs.yaml` is null everywhere and read by nothing.
+- **`boarding.view.json`** still declares two `embed` sections naming deleted Qt widgets
+  (`DetectorWizardPage`, `FCSChannelEmbed`); it is the frozen declaration of the Qt wizard that
+  `test_emtk_boarding_parity.py` reads, the emtk wizard is `boarding_emtk.view.json`.
+- **Style Manager** still edits `.qss` files and converts them to emtk palette entries (`convert_qss`); its
+  default folder (`chisurf/gui/styles`) is gone, so it starts empty. Decide: emtk themes only, or keep `.qss` as
+  an import format.
+- **Behaviour without a Qt-free test any more**: the tttr_to_pto drop guard's remembered
+  ask / keep / delete choice (the drop-guard framework was Qt); Pong's acceptor-side bounce colour; the FRET
+  calculator's step-by-step and plot-series equality against the live Qt widget (its numbers stay pinned by
+  `qt_values.json`); img_flow's quiver caption through the Qt section; ptu_alex_creator's folder-drop expansion
+  through the Qt path list (check against the emtk `path_list` tests); burst settings round trip into the
+  photon-filter page with the `dT_max` ms-vs-s trap (`burst_selection/gui/adapter.py`'s `apply_*` functions are
+  duck-typed on the Qt wizard and now untested -- delete or port them); one undo reverting an edit plus its
+  derived recompute (`OperationHistory.undo_step` untested); macro file execution (`run_macro` error
+  propagation, `__file__`/globals isolation; the emtk `console.run_file` has no test); the release-scenario walk
+  through the app (`test/e2e/test_release_scenario.py` drove the Qt Main; each step is covered elsewhere, the
+  walk is not -- Part D gate 3 needs an emtk-shell version); sample picker / Förster calculator "MMFDB
+  unavailable" messages; the PDA fit-settings Axis commit writing `x_max`; MDI arrangement restore (no emtk
+  counterpart); `toolbar_plugins` legacy names; level-histogram, image and state-table sections in emtk.
+- **Possibly lost product code**, deleted with Qt and without a Qt-free twin found: the parse-model equation
+  LaTeX preview (`convert_python_expression_to_latex`, `expression_preview_png`), the LUT thumbnail renderer
+  (`render_lut_png`), `SyntheticDecayEditorModel`, the parameter link-menu figure
+  (`parameter_link_menu.png` has no emtk grab path). Old pickled class paths `chisurf.gui.widgets.models.*Widget`
+  no longer resolve.
+- **Prose**: OKF concepts and docs still describe Qt modules as current in places (e.g.
+  `okf/subsystems/gui-autoform.md`, `docs/development/plugin_architecture.md`, `docs/reference/settings.md`,
+  `docs/reference/plugins/*.md` "the Qt tool"); about 40 scripts and docs still set `QT_QPA_PLATFORM`, which is
+  now inert. `okf/log.md` keeps one historical link to the deleted `chisurf/gui/widgets/tools/chisurf_dock.py`
+  (append-only; the bundle lint may report it).
+- **Environment**: the arm64 env still has PyQt5 and pytest-qt; pytest-qt's plugin imports Qt at start-up, and
+  with `qt_api` no longer configured it picks whatever binding it finds. Run pytest with `-p no:pytest-qt` until
+  the env is rebuilt from the regenerated lock.
+
 ## `calc_transfer_matrix` never zeroes its donor-only bins (found 2026-10-14)
 
 status: resolved 2026-10-14

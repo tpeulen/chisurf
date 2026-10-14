@@ -2,12 +2,19 @@
 type: Subsystem
 title: Qt retirement (shell)
 description: Parity ledger for moving the ChiSurf main window from Qt to one emtk surface — every Qt capability the shell uses, its emtk equivalent or gap, the allow-list by area, and the ordered slices that keep the app shippable.
-resource: chisurf/emtk/main_app.py, chisurf/emtk/post_show.py, chisurf/startup/services.d/35_emtk_post_show.json, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/status_strip.py, chisurf/emtk/fit_pages/plots.py, chisurf/emtk/fit_pages/surface.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/gui/main.py, chisurf/gui/gui.ui, chisurf/gui/main_helper.py, test/plugin_qt_allowlist.txt
+resource: chisurf/emtk/main_app.py, chisurf/emtk/post_show.py, chisurf/startup/services.d/35_emtk_post_show.json, chisurf/emtk/shell_ribbon.py, chisurf/emtk/shell_session.py, chisurf/emtk/shell_log.py, chisurf/emtk/fit_report.py, chisurf/core/fitting/fit_export.py, chisurf/emtk/console.py, chisurf/emtk/fit_docks.py, chisurf/emtk/fit_window.py, chisurf/emtk/status_strip.py, chisurf/emtk/fit_pages/plots.py, chisurf/emtk/fit_pages/surface.py, chisurf/emtk/session.py, chisurf/emtk/model_editor.py, chisurf/emtk/model_sections.py, chisurf/emtk/pda_sections.py, chisurf/emtk/sample_picker.py, chisurf/emtk/fit_controls.py, chisurf/server/services/model_svc.py, chisurf/server/services/model_sections.py, chisurf/core/server_events.py, chisurf/__main__.py, chisurf/gui/__init__.py, test/test_no_qt_imports.py, okf/plugins/emtk-ports/shell/retire_qt_before.json
 tags: [gui, emtk, qt-retirement, shell, parity, ledger]
-timestamp: '2026-10-14T00:00:00Z'
+timestamp: '2026-10-14T12:00:00Z'
 ---
 
 # Where to pick this up
+
+**S6 is done on branch `s6-retire-qt-shell` (2026-10-14), waiting for the owner to merge it.** The Qt
+shell and every Qt module are deleted, `--qt` is gone, qtpy / pyqt / pytest-qt are struck from `pixi.toml`,
+`pyproject.toml` and the recipe (the lock regenerates when the branch is merged; nothing ran `pixi install`), and
+`test/test_no_qt_imports.py` rejects any Qt import under `chisurf/` with no allow-list. Until the merge, the main
+line still carries the Qt shell behind `--qt` and everything below describes it; after the merge read item 9 and
+the S6 paragraph in "History" first. What the merge needs: item 9.
 
 Phase 2 of [PRD-154](../prds/prd-154.md) W9. Slice S1 is done: `python -m chisurf` opens
 `chisurf/emtk/main_app.py` (the default since 2026-10-11; `--qt` opens the Qt window kept for parity). It has a manifest menu bar, Tools, Start and Log docks, and every native plugin opens as
@@ -33,7 +40,8 @@ own startup stages (item 5): S5 is done.
 
 1. Measure: the plugin Qt allow-list is **empty** (since the mmfdb_admin slice, 2026-10-13; 244 before the
    2026-10-12 test-port slice). Re-derive with `grep -v '^#' test/plugin_qt_allowlist.txt | grep -c .` (0); guard
-   `test/test_plugin_qt_free.py`, which now rejects any Qt import under `chisurf/plugins/`. Every plugin is an emtk
+   `test/test_plugin_qt_free.py`, which now rejects any Qt import under `chisurf/plugins/` (on the S6 branch the
+   list is deleted and the guard is `test/test_no_qt_imports.py` over all of `chisurf/`). Every plugin is an emtk
    app the `--qt` shell hosts through `ControlHost`. A Qt importer under `chisurf/plugins/` is a new failure, so
    one-off Qt recorders stay uncommitted. The slice-by-slice record (counts, before/after evidence, what each
    twin gained, traps) is in "History" below. Trap: the arm64 env imports a non-editable emtk from
@@ -208,17 +216,23 @@ own startup stages (item 5): S5 is done.
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
    repro is `test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer`. Plugins with only an
    `action` entrypoint run from the shell (`run_plugin_action`; `menu_entries()` now 29 of 29 visible manifests).
-9. Blocked: S6 waits only for the owner's go-ahead: delete the Qt shell (`chisurf/gui/main.py`, `gui.ui`,
-   `--qt`) and strike qtpy / pyqt from `pixi.toml`, `pyproject.toml` and the recipe. Measure: plugin Qt allow-list 0
-   (item 1); chimol imports no Qt (chimol a53e512, a245145; `hosts/qt` deleted); `test/ui_file_allowlist.txt` still
-   lists 1 (`gui.ui`). The emtk shell is the default window (`python -m chisurf` and the installers' launchers;
-   owner decision 2026-10-11), the Qt shell stays behind `python -m chisurf --qt` as the parity reference;
-   `--emtk-shell` is still accepted. Guard: `test/native_emtk/test_emtk_shell.py`
-   (`test_python_m_chisurf_opens_the_emtk_surface`, `test_qt_flag_opens_the_qt_window_kept_for_parity`). Every
-   slice S1-S5 is at control parity (each `KNOWN_GAPS` empty) and item 6 is done. What goes with S6: the Qt forms
-   of the `--qt` reference shell that host panels (the Qt AutoForm renderer and its sections, the Qt reader
-   widgets, the κ² dialogs; their emtk twins exist) and `chisurf.gui.chiplot` (`host`, `PanelHost`,
-   `ImagePanelHost`). The S6-blocker slice and the chimol `hosts/qt` deletion are in "History" below.
+9. Measure (branch `s6-retire-qt-shell`): S6 is done there and waits for the owner's merge. `chisurf/gui/` holds
+   only data (an import-free `__init__.py`, `i18n/*.ts`, `resources/icons/`); `python -m chisurf` opens the emtk
+   shell and `--help` prints the usage without opening a window; `--qt` is gone. Re-derive: `grep -rlE
+   '^\s*(from|import)\s+(qtpy|PyQt|PySide|pytestqt)' chisurf | wc -l` (0; guard `test/test_no_qt_imports.py`,
+   lazy imports and `emtk.qt_host` included, no allow-list); `grep -v '^#' test/ui_file_allowlist.txt | grep -c .`
+   (0). The Qt shell's last control inventory is frozen in
+   `okf/plugins/emtk-ports/shell/retire_qt_before.json` (recorded at 0108fa146; no control drift against
+   2026-10-11) and `test_emtk_shell_whole_parity.py` passes against it with `KNOWN_GAPS` empty. Before merging:
+   (a) `pixi install` (or `pixi lock`) to regenerate `pixi.lock` without qtpy / pyqt / pytest-qt / latexify-py;
+   (b) the arm64 env still has PyQt5 and pytest-qt installed, and pytest-qt's plugin then imports Qt at startup
+   (`qt_api` is no longer configured) -- run pytest with `-p no:pytest-qt` or uninstall it there; (c) run the
+   W7 click-all on the native host (Part D gate 2 of PRD-154 names it), which this branch did not run (machine
+   load ~110). Follow-ups recorded in known issues ("Qt-shell leftovers after S6"): the duck-typed main-window
+   paths that read `chisurf.cs` (never assigned now) in `macros/core_fit.py`, `macros/core_data.py`,
+   `core/actions/project_actions.py`, `core/project/{transition,ui_state}.py`, `server/services/projects.py`;
+   `skip_qt_widgets` in the serialisation API; the manifest `gui` entrypoint field; the dead
+   `controller_class` key in `experiment_configs.yaml`.
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit
@@ -506,7 +520,7 @@ A missing control blocks the slice.
     listed plugins have distinct ones), the language switch (`chisurf.emtk.i18n.choose_language`).
   - Open: toolbar plugins, status strip, `surface="emtk"` startup stages.
   - Delete the remaining Qt plugin tools (games, help, mmfdb_admin, hydropro, spectra_downloader, fret_line).
-- **S6: switch and delete.**
+- **S6 (done on branch `s6-retire-qt-shell`, 2026-10-14): switch and delete.** Record in "History".
   - `python -m chisurf` launches the emtk shell.
   - Delete `gui/main.py`, `main_helper.py`, `gui.ui`, `retranslate.py`, the ribbon, `widgets/tools/**` and
     `gui/chinsole/**` Qt views.
@@ -518,6 +532,41 @@ A missing control blocks the slice.
 
 Slice records moved out of "Where to pick this up" on 2026-10-14, unchanged except for re-wrapping; the
 resume items now carry only the current measurement.
+
+**S6, the Qt shell retired (2026-10-14, branch `s6-retire-qt-shell`, not merged).** Before anything was deleted,
+the whole Qt main window was captured one last time (`capture_shell_whole_qt_before.py` at 0108fa146, offscreen,
+scratch settings): no control added or lost against the 2026-10-11 record, three ribbon tooltips follow edited
+manifests. Frozen in `okf/plugins/emtk-ports/shell/retire_qt_before.json`; `test_emtk_shell_whole_parity.py`
+4 passed against it, `KNOWN_GAPS` empty, so no control had to be added to the emtk shell first. Deleted: 309
+tracked files under `chisurf/gui/` (the Qt main window `main.py`, `main_helper.py`, `gui.ui`, the ribbon, the Qt
+AutoForm renderer and its sections, every Qt widget, the Qt console `chinsole`, the `chiplot` Qt host layer, the
+legacy chigame engine and its five Game adapters, `.qm` catalogues, `.qss` style sheets, compiled resources),
+`startup/gui_services.py` with `services.d/20_gui_splash.json` / `30_gui_post_show.json`, `macros/plugin_check.py`
+(an unused Qt plugin runner), the plugin registry's Qt launch path (`build_plugin_widget`,
+`select_gui_entrypoint`, `_show_plugin`, `apply_manifest_statefulness`, `register_gui`), every plugin's
+`if __name__ == "plugin":` Qt launch block, the Qt hosts left in plugins (code_editor, help, quenching_estimator,
+`trace_browser/__plugin__.py`, `create_host` of microtime_histogram and vv_vh_g_factor, the tttr_to_pto drop
+guard, `setup_channel_definition/wizard.py`). Moved, being Qt-free and used: `autoform/state.py` ->
+`chisurf/core/dataspec/form_state.py`, node-editor `validation.py` -> `chisurf/emtk/node_editor/`, its three
+tests -> `test/node_editor/`, the console's `guide.json` / `help.md` -> `chisurf/core/console/`, globalview's
+`FittingClientParamMutator` -> `plugins/core/globalview/gui/parameter_mutator.py`. Made Qt-free in place: the
+experiment bootstrap (no QApplication, `allow_widgets` removed; `controller_class` entries null), the reader's
+sample prompt (the shell's picker asks; files stay in `_pending_sample_files`), the agent CLI and ACP server
+(`--no-qt` gone), `doc_links` / `code_links` (emtk routing only), `node_editor.style_settings.refresh_open_graphs`
+(walks the shell's hosted apps), the env bootstrap (no Qt plugin path, no vispy backend), the settings (no style
+sheet). One live path needed a native replacement: the CSV reader's *G-factor…* opened the calculator in a Qt
+host window; it now asks the shell for a dock through the new `reader_calibration` hand-off of `vv_vh_g_factor`
+(`chisurf.emtk.reader_settings.receive_reader_calibration`) and applies G, VH shift and mixing when it closes
+(`test/native_emtk/test_csv_reader_settings.py`, 5 passed). The model/view boundary's four `KNOWN_LEAKS` closed
+(`test/architecture/test_model_ui_boundary.py`, register now empty). Dependencies struck: qtpy, pyqt, sip,
+pytest-qt, `qt_api`, `QT_API` / `QT_QPA_PLATFORM` task env, the Qt mypy override, the `i18n-compile` (lrelease)
+task, and latexify-py (its only importer was the Qt parse-model widget). The translation extractor
+merged through Qt's `pylupdate5`; the merge is now Python (`build_tools/i18n/extract_strings.py::merge_catalogue`,
+tested; no catalogue regenerated). The Qt `init_setups` fallback for a stale `global` reader moved into the
+bootstrap (`test/agent/test_bootstrap.py`). Tests: Qt-only tests retired, behaviour
+tests ported to the emtk apps or the Qt-free API; the list is in the branch's commit bodies. Verified with Qt
+blocked by a meta-path finder: `import chisurf`, `python -m chisurf --help`, a headless shell frame (inspected),
+`test_emtk_shell.py` 11 passed, and the guard files one at a time.
 
 **Plugin Qt allow-list, 244 → 0 (former item 1).** Measure: the allow-list is **empty** since the mmfdb_admin slice (2026-10-13; 30 entries at chisurf 7e0514d95, all mmfdb_admin, 33 at 96d3b6f1d, 52 when the ndX/chimol-leftovers slice started,
 64 before the parallel 2026-10-13 slices, 171 before the chimol slice, 184 before the Trace Browser host went
