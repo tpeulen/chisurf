@@ -114,10 +114,12 @@ def _format_frame(
     source = frame.line
     if source:
         lines.append(f"        {source}")
-        if last and getattr(frame, "colno", None) is not None:
-            end = getattr(frame, "end_colno", None) or (frame.colno + 1)
-            pad = " " * (8 + frame.colno - (len(frame.line) - len(frame.line.lstrip())))
-            lines.append(paint(pad + "^" * max(1, end - frame.colno), _BRIGHT_RED))
+        # ``colno`` exists from Python 3.11 on.
+        colno = getattr(frame, "colno", None)
+        if last and colno is not None:
+            end = getattr(frame, "end_colno", None) or (colno + 1)
+            pad = " " * (8 + colno - (len(source) - len(source.lstrip())))
+            lines.append(paint(pad + "^" * max(1, end - colno), _BRIGHT_RED))
 
     if mode == "verbose" and last:
         locals_ = getattr(frame, "locals", None)

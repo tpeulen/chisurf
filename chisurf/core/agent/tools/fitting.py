@@ -527,7 +527,7 @@ def set_parameter(
             summary=f"agent set {parameter} {label}",
             payload={
                 "parameter_name": parameter,
-                label: list(given) if label == "bounds" else given,
+                label: list(given) if isinstance(given, (list, tuple)) else given,
                 "fits": fits_changed,
                 "origin": "agent",
             },

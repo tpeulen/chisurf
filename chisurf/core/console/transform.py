@@ -220,7 +220,7 @@ def strip_prompts(text: str) -> str:
     lines = text.splitlines()
     if not any(_PROMPT_RE.match(line) for line in lines):
         return text
-    kept = []
+    kept: list[str] = []
     for line in lines:
         match = _PROMPT_RE.match(line)
         if match is None:

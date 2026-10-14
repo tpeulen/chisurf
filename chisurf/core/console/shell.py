@@ -205,7 +205,8 @@ class Shell:
         self.aliases: dict[str, str] = {}
         self.xmode = "context"
         self.pdb_on_error = False
-        self.last_traceback = None
+        #: The last exception shown (the name follows IPython's attribute).
+        self.last_traceback: BaseException | None = None
         self.exit_requested = False
 
         self._cache_size = 1000
@@ -234,7 +235,7 @@ class Shell:
         # Only fill in ``get_ipython`` globally when nothing else claimed it: a
         # real IPython in the same process must keep its own.
         if not hasattr(builtins, "get_ipython"):
-            builtins.get_ipython = self.get_ipython
+            setattr(builtins, "get_ipython", self.get_ipython)
 
     def get_ipython(self) -> Shell:
         """Return this shell.
@@ -308,7 +309,7 @@ class Shell:
         """
         if self._write is not None:
             self._write("stdout", text)
-        else:
+        elif sys.__stdout__ is not None:  # None in a windowed (pythonw) process
             sys.__stdout__.write(text)
 
     def write_err(self, text: str) -> None:
@@ -320,7 +321,7 @@ class Shell:
         """
         if self._write is not None:
             self._write("stderr", text)
-        else:
+        elif sys.__stderr__ is not None:  # None in a windowed (pythonw) process
             sys.__stderr__.write(text)
 
     def display_data(
@@ -367,6 +368,7 @@ class Shell:
         metadata : dict, optional
         """
         for value in objects:
+            extra: dict
             if raw and isinstance(value, dict):
                 data, extra = dict(value), {}
             else:
@@ -395,7 +397,7 @@ class Shell:
         value : object
         """
         count = self.execution_count
-        builtins._ = value
+        setattr(builtins, "_", value)
         self.user_ns["___"] = self.user_ns.get("__")
         self.user_ns["__"] = self.user_ns.get("_")
         self.user_ns["_"] = value

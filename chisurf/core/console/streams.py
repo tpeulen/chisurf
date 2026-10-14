@@ -217,7 +217,7 @@ class InputStream(io.TextIOBase):
         """
         raise io.UnsupportedOperation("chinsole streams have no file descriptor")
 
-    def readline(self, size: int = -1) -> str:
+    def readline(self, size: int | None = -1) -> str:
         """Return one line typed at the console, newline included.
 
         Parameters
@@ -238,7 +238,7 @@ class InputStream(io.TextIOBase):
             line += "\n"
         return line if size is None or size < 0 else line[:size]
 
-    def read(self, size: int = -1) -> str:
+    def read(self, size: int | None = -1) -> str:
         """Read *size* characters, or until end of input.
 
         Parameters

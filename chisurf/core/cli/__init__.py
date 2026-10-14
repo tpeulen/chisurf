@@ -128,7 +128,7 @@ def _forward_plugin_cli(
             # ``chisurf.plugins.tttr.microtime_histogram.__main__.main``.
             prog = command_name or (friendly_name or module_path).split(".")[-1]
             sys.argv = [prog, *argv]
-            target()  # type: ignore[call-arg]
+            target()
         finally:
             sys.argv = old_argv
         return
@@ -343,7 +343,7 @@ def _register_plugin_clis() -> None:
         try:
             default_alias = str(metadata.get("plugin_id") or metadata.get("module_name") or "")
             command_name, module_path, attr_name = _parse_cli_entrypoint(
-                entry_spec, default_alias.replace("_", "-") or None
+                str(entry_spec), default_alias.replace("_", "-") or None
             )
         except ValueError as exc:
             _LOG.warning(
@@ -365,7 +365,7 @@ def _register_plugin_clis() -> None:
         # importing the plugin. We use the first non-empty line of the
         # description parsed from ``__init__.py``; if that is missing, fall
         # back to the human-readable plugin name or the module name.
-        raw_desc = (metadata.get("description") or "").strip()
+        raw_desc = str(metadata.get("description") or "").strip()
         if raw_desc:
             summary_line = raw_desc.splitlines()[0].strip()
         else:
@@ -375,12 +375,15 @@ def _register_plugin_clis() -> None:
             metadata.get("plugin_name") or metadata.get("module_name") or command_name
         )
 
+        plugin_name = metadata.get("plugin_name")
+        plugin_label = None if plugin_name is None else str(plugin_name)
+
         def _callback(
             ctx: click.Context,
             _command_name: str = command_name,
             _module_path: str = module_path,
             _attr_name: str = attr_name,
-            _plugin_label: str | None = metadata.get("plugin_name"),
+            _plugin_label: str | None = plugin_label,
         ) -> None:
             _forward_plugin_cli(
                 ctx,
@@ -441,7 +444,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         cli.main(args=argv, standalone_mode=True)
     except SystemExit as exc:  # normal click exit path
-        return exc.code
+        # SystemExit semantics: None is success, a message means failure.
+        if exc.code is None:
+            return 0
+        return exc.code if isinstance(exc.code, int) else 1
     return 0
 
 

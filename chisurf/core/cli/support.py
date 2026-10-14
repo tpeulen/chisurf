@@ -22,7 +22,13 @@ import click
 __all__ = ["DidYouMeanMixin", "DidYouMeanGroup"]
 
 
-class DidYouMeanMixin:
+if typing.TYPE_CHECKING:
+    _Host = click.Group
+else:
+    _Host = object
+
+
+class DidYouMeanMixin(_Host):
     """Suggest close command names when a subcommand is not found.
 
     Mixed into a click group (before the click base class) it turns the bare

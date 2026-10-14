@@ -518,8 +518,8 @@ class AcpServer:
                     if header_end >= 0 and buffer.startswith(b"Content-Length"):
                         header = bytes(buffer[:header_end]).decode("ascii", errors="replace")
                         length = 0
-                        for line in header.split("\r\n"):
-                            k, _, v = line.partition(":")
+                        for header_line in header.split("\r\n"):
+                            k, _, v = header_line.partition(":")
                             if k.strip().lower() == "content-length":
                                 try:
                                     length = int(v.strip())

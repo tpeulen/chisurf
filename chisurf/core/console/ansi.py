@@ -316,8 +316,10 @@ class AnsiParser:
                 colour, consumed = self._extended_colour(numbers, index)
                 index += consumed
                 if colour is not None:
-                    key = "fg" if code == 38 else "bg"
-                    state = dataclasses.replace(state, **{key: colour})
+                    if code == 38:
+                        state = dataclasses.replace(state, fg=colour)
+                    else:
+                        state = dataclasses.replace(state, bg=colour)
             index += 1
         return state
 

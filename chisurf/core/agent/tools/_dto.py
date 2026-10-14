@@ -167,19 +167,21 @@ def curve_summary(dataset: Any, detailed: bool = False) -> dict[str, Any]:
     if len(curves) < 2 or curves[0] is dataset:
         return {}
 
-    entries = []
+    entries: list[dict[str, Any]] = []
+    kinds_seen: set[str] = set()
     for position, curve in enumerate(curves[:_MEMBER_SAMPLE]):
-        entry = {"curve": position, "name": str(getattr(curve, "name", "") or "")}
+        entry: dict[str, Any] = {"curve": position, "name": str(getattr(curve, "name", "") or "")}
         meta = getattr(curve, "meta_data", None)
         kind = meta.get("correlation_type") if isinstance(meta, dict) else None
         if kind:
             entry["correlation_type"] = str(kind)
+            kinds_seen.add(str(kind))
         entries.append(entry)
 
     summary: dict[str, Any] = {"n_curves": len(curves)}
     if detailed:
         summary["curves"] = entries
-    kinds = sorted({entry["correlation_type"] for entry in entries if "correlation_type" in entry})
+    kinds = sorted(kinds_seen)
     if len(kinds) > 1:
         summary["note"] = (
             f"These {len(curves)} curves are not repeats of one measurement: "

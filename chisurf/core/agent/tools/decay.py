@@ -255,7 +255,8 @@ def assess_fit(fit: Any) -> dict[str, Any]:
     worst_entry = max(entries, key=lambda entry: entry["chi2r"] or 0.0)
     worst_verdict = _assess_one(members[worst_entry["member"]])
     ranking = {"good": 0, "acceptable": 1, "poor": 2, "unknown": 3}
-    if ranking.get(worst_verdict.get("quality"), 0) > ranking.get(verdict.get("quality"), 0):
+    worst_rank = ranking.get(str(worst_verdict.get("quality")), 0)
+    if worst_rank > ranking.get(str(verdict.get("quality")), 0):
         verdict["quality"] = worst_verdict["quality"]
         verdict["reason"] = (
             f"the {len(members)} curves in this dataset span reduced chi2 "

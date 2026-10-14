@@ -195,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
         library = SkillLibrary.discover()
         for name in library.names():
             skill = library.get(name)
+            if skill is None:
+                continue
             print(f"{name}\n    {skill.description.strip()}")
             if skill.triggers:
                 print(f"    triggers: {', '.join(skill.triggers)}")
