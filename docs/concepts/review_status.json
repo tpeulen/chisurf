@@ -454,11 +454,39 @@
     "sha256": "dd6a3ff714f79086b11d2295647604e63a0f966e1f40b8891fb18564ce875a94",
     "status": "ai-reviewed"
   },
+  "structure_trajectories.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "cfa161c9b1a20856a708788119362be8d779acc89268665117f374b02e472589",
+    "status": "ai-reviewed"
+  },
+  "super_resolution.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "86478e268053798d34631a22c9c3992ec897147a9a7307a4631cd41b5a337ade",
+    "status": "ai-reviewed"
+  },
   "tcspc_lifetime.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "562967d158688fc7bf0ebaf42685cc5cced9683f9a0ecdf172c2611f8e809715",
+    "status": "ai-reviewed"
+  },
+  "tttr_stream_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e50a62432b042977a2db9a4ef996a7f1b66ae8d3cb209a3ea038fb271269a554",
+    "status": "ai-reviewed"
+  },
+  "us_alex.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1aa08b04432ebc68e9d09cee600d11cca9b1cbb70c8af8cf7d282e5fb100fef9",
     "status": "ai-reviewed"
   }
 }

@@ -82,5 +82,12 @@
     "reviewer_kind": "ai",
     "sha256": "955abf949a7a3da39d432929639cfe13fc5747ac4d81bafac9b7f8860a2cfa86",
     "status": "ai-reviewed"
+  },
+  "solvent_and_environment.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "efebd80f630ba7514cf09123a66be5efb48a27fd2f8d7d521ef4f8941b05cd11",
+    "status": "ai-reviewed"
   }
 }

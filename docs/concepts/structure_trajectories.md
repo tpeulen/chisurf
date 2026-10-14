@@ -95,7 +95,7 @@ $$
 An RMSD is only meaningful with its fitting set and its reference frame stated.
 Two points follow from the T4 lysozyme ensemble:
 
-* **Superposition roughly halves the number.** The Cα RMSD of each frame
+* **Superposition removes about 40 % of the number.** The Cα RMSD of each frame
   against frame 0 has a median of 3.86 Å (range 1.83–6.68 Å) after
   superposition. The plain coordinate difference, without it, has a median of
   6.56 Å. Most of that difference is rigid-body motion.
@@ -215,14 +215,10 @@ What ChiSurf computes:
   ({src}`chisurf/plugins/modelling/fret/core/trajectory.py`) builds an AV per
   frame and returns $\langle E\rangle_\text{AV}$ per frame and label pair.
 
-The trajectory-tools FRET tab and standalone window share the native panel.
-Four chain → residue → atom triples select the dipole endpoints; each triple
-occupies one row and its choices cascade. The layout preserves the atom
-selections, per-frame geometry, units and rate above.
-The hgbp example in the {doc}`trajectory tools guide </guides/81_trajectory_tools>`
-uses stride 4 and a 4 ns donor lifetime and retains the previous 116-row,
-six-column table byte-for-byte, with independent distance, orientation and
-rate checks.
+The FRET tab of the trajectory tools and the standalone FRET window are the
+same panel: four chain → residue → atom rows select the two dipoles, and the
+choices of each row cascade. The worked example is in the
+{doc}`trajectory tools guide </guides/81_trajectory_tools>`.
 
 ## Assumptions worth stating
 
@@ -263,20 +259,6 @@ rate checks.
 - {cite}`hoefling2011` — FRET efficiency distributions from atomistic trajectories with explicit κ²(t).
 - {cite}`kalinin2012` — AV modelling, distance measures and averaging regimes (FPS).
 
-
-## Protein quenching parameter state
-
-The residue-based quenching model reads its all-atoms flag and excluded atom
-names through the same public properties as its editor. Explicit atom lists
-retain their specified membership and unit rate; residue rate dictionaries
-use CB atoms or all non-excluded atoms according to the flag. The scale
-multiplies the resulting rates.
-
-The native molecular host separates its window dimensions from molecular
-coordinates and representations. A stored host size does not rescale the
-scientific coordinate arrays; camera and viewport transforms determine how
-they are drawn. The [molecular viewer workflow](../guides/44_molecular_viewer.md)
-distinguishes host preferences from ChiMOL's display configuration and scene.
 
 Tool: Traj Tools (`chisurf/plugins/traj/traj_tools/`).
 

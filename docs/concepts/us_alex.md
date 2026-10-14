@@ -47,7 +47,7 @@ $$
 {cite}`lee2005,hellenkamp2018`; with $\gamma=\beta=1$ and raw counts it is the
 uncorrected $S$ of {cite}`kapanidis2004`.
 
-is near 1 when only a donor is present, near 0 when only an acceptor is, and
+$S$ is near 1 when only a donor is present, near 0 when only an acceptor is, and
 mid-range for a doubly labelled molecule. Gating on $S$ is what makes an $E$
 histogram a statement about FRET rather than about labelling
 {cite}`kapanidis2004`.
@@ -181,39 +181,30 @@ baseline.
   does not say.
 - {ref}`concept-smfret-bursts`, {ref}`concept-accurate-fret`.
 
-The native conversion host separates window geometry from alternation
-parameters. A stored size does not change the selected period or phase shift,
-and the same input produces the same converted event arrays and header.
-The [ALEX Creator workflow](../guides/100_alex_creator.md) documents saved
-settings and distinguishes state restoration from recomputing the preview.
+## More than two excitation phases
 
-## Multiple excitation phases in the converter
+Folding $\varphi = (t_{\text{macro}} - \Delta) \bmod T$ does not depend on the
+number of lasers. ALEX Creator finds every phase window at the known period
+from the phase histogram of all detectors: dark gaps separate the windows, and
+where the total intensity stays constant a change in which detector is bright
+marks the boundary. Guard bands trim the edges of each window; the photons and
+the header are not changed.
 
-Folding $\varphi=(t-s)\bmod T$ is independent of the number of excitation
-lasers. Creator detects all resolved emission-phase candidates at the known
-period from the full multichannel phase histogram. Dark gaps separate occupied
-regions; changes in detector composition can locate boundaries when total
-intensity stays constant. Guard bands trim the edges of each candidate, while
-the complete histogram and source photon/header arrays remain unchanged.
+A phase window is not proof of a laser: the switching hardware or the sample can
+produce extra windows, so these are flagged for review, and two phases that
+look identical in the photon arrivals cannot be told apart. A window that wraps
+around the period is stored as two ranges. The
+[ALEX Creator guide](../guides/100_alex_creator.md) shows the inspection.
 
-A phase is not proof of a laser identity: instrument switching and sample
-heterogeneity can yield additional statistical phases. Those candidates remain
-explicit and flagged for review. Indistinguishable excitation phases cannot be
-resolved from photon arrivals alone. Wrapped phases retain two increasing
-half-open ranges. The [Creator workflow](../guides/100_alex_creator.md) documents
-multiple phases, polarization grouping and manual inspection without changing
-the converter's original single/batch/merge contract.
+### Batch conversion and the phase reference
+
+Converting files one by one folds each file's own macro-time axis. Merging
+first concatenates the files into one continuous macro-time axis and folds that
+once, so its time origin, and with it the phase reference, can differ from the
+per-file result. One period and shift for all files assumes the files were
+recorded with the same clock settings.
 
 Source: `chisurf/plugins/tttr/ptu_alex_creator/`
-
-### Batch phase references
-
-Per-file conversion folds the original macro-time axis of each input. Merging
-first concatenates events into a contiguous macro-time axis and then folds
-that axis once; its time origin and therefore its phase reference can differ
-from independent conversions. A shared Period/Shift assumes compatible input
-clock settings. The [Creator batch workflow](../guides/100_alex_creator.md)
-explains this choice and the two operation-specific hover notes.
 
 ## The ALEX Suite pipeline
 
