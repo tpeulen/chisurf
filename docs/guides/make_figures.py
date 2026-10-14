@@ -1218,7 +1218,7 @@ def fig_timestamps():
         a2.axvspan(macro[s], macro[e], color="#1f77b4", alpha=0.12, zorder=0)
     a2.set_xlabel("macro time (arb. clock units)"); a2.set_ylabel("counts / bin")
     a2.set_title("The same stream binned — bursts are the count-rate spikes", fontsize=9)
-    fig.suptitle("A burst is a [first, last] *index range* into the photon arrays", y=1.0)
+    fig.suptitle("A burst is a [first, last] index range into the photon arrays", y=1.0)
     save(fig, "timestamps_bursts.png")
 
 

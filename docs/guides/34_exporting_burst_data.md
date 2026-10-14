@@ -63,7 +63,9 @@ export is designed to open directly in **ndxplorer**:
 ```python
 # burst table -> CSV (the burst table is a column store, not a pandas frame)
 from chisurf.core.datastore import write_csv_table
-write_csv_table("bursts.csv", bursts.table, delimiter=",")
+from chisurf.core.fluorescence.burst.photons import load_bur_dataframe
+bursts = load_bur_dataframe(["burstwise_All 0.1000#15/bi4_bur/m000.bur"])
+write_csv_table("bursts.csv", bursts, delimiter=",")
 
 # per-burst H2MM export: a per-photon HDF5 + a per-burst CSV with the ndX
 # FRET-line columns ("Mean Microtime (green)", "Proximity ratio", ...), from the
@@ -75,7 +77,7 @@ tables = export.build_tables(data, meta, path, fret, base_time_s=1e-6,
 export.write_hdf5(tables.photons, "h2mm/h2mm_photons.h5")
 export.write_csv(tables.bursts, "h2mm/h2mm_bursts.csv")
 
-# per-photon data of the selected bursts
+# per-photon data of the selected bursts ([first, last] index pairs, guide 33)
 import numpy as np
 sel = np.concatenate([np.arange(s, e + 1) for s, e in burst_bounds])
 photons = dict(macro=macro[sel], micro=micro[sel], channel=route[sel])
@@ -94,7 +96,7 @@ them up without any mapping — in particular the time axis is named
 | table | one row per | columns |
 |---|---|---|
 | per-photon (`h2mm_photons.h5`) | photon | `Mean Macro Time (s)`, `Macro Time`, `Micro Time`, `Channel`, `Stream`, `State`, `Burst` |
-| per-burst (`h2mm_bursts.csv`) | burst | `Burst`, `Number of Photons`, `Mean Macro Time (s)`, `Mean Microtime (<stream>)`, `Proximity ratio`, `Dominant State`, `Number of Transitions`, `Mean FRET E` |
+| per-burst (`h2mm_bursts.csv`) | burst | `Burst`, `Number of Photons`, `Mean Macro Time (s)`, `Mean Microtime (<stream>)`, `FRET efficiency`, `Proximity ratio`, `Dominant State`, `Number of Transitions`, `Mean FRET E` |
 
 `Mean Microtime (…)` is emitted once per photon stream and is in nanoseconds when
 the micro-time resolution is known — otherwise `NaN`. Colouring the per-photon

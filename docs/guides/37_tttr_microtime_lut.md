@@ -32,22 +32,24 @@ and micro-time shift. **Assign LUT…** assigns a LUT file to the selected row;
 **Configure LUTs…** opens the LUT tools window of the editor (compute from the
 read calibration decay with a linear region or automatically, assign, export, remove
 for one channel); **Adjust shifts…** aligns the channels on the decay. The standalone
-**LUT Tools** plugin below does the same on its own, with the **① Compute LUT** tab
-as the tool you use; tab ② (settings.tttr.json) is optional file interchange.
+**TTTR LUT Tools** window (*File → Setup → Settings*, entry **TTTR LUT Tools**) does the same on its own: its
+**Compute LUT** mode is the tool you use; **settings.tttr.json (optional)** is
+file interchange only.
 
 Load one or more TTTR files of a **uniform-illumination** (uncorrelated-light /
-scatter) measurement — light that *should* produce a flat TAC histogram. Because
-TAC differential non-linearity is **per routing channel**, pick a **Routing
-channel**, drag the orange region to mark the flat **linear plateau** (or
-auto-detect), then press the bold **➡ Add to Detector setup**. Repeat for each
-channel and close the window — that's the whole workflow. Saving a LUT file is
-optional.
+scatter) measurement — light that *should* produce a flat TAC histogram. TAC
+differential non-linearity is **per routing channel**: pick a **Preview channel**,
+drag the orange region to mark the flat **linear plateau** (or press
+**Auto-detect region**), then press **Add all channels to setup**, which computes
+one LUT per routing channel of the file and assigns them to the detector setup
+(**Apply to detector setup** sends them to the setup that opened the window).
+Saving a LUT file (**Save LUT file…**) is optional.
 
 ```{figure} figures/lut_tools_workspace.png
 :name: fig-lut-tools-workspace
 :width: 90%
 
-① Compute LUT — per-channel: routing-channel selector, draggable linear region on the raw TAC histogram, corrected preview below.
+**Compute LUT** on a BH SPC-130 flat-light file: preview channel 0, the draggable linear region (orange) on the raw TAC histogram, and the corrected, equal-width preview below.
 ```
 
 ### It lands in the detector setup
@@ -70,16 +72,16 @@ identical.
 ### Headless (CLI / API)
 
 ```bash
-# ① compute a LUT from a flat-light file
-chisurf lut-tools compute uniform.spc -o green.npy --routine SPC-130
-# ② build a settings bundle assigning it to channel 0 (+ a 3-bin shift)
-chisurf lut-tools settings --lut 0=green.npy --shift 0=3 -o settings.tttr.json
+# compute the LUT of routing channel 0 from a flat-light file
+csc lut-tools compute uniform.spc --channel 0 -o green.npy --routine SPC-130
+# optional: a settings bundle assigning it to channel 0 (+ a 3-bin shift)
+csc lut-tools settings --lut 0=green.npy --shift 0=3 -o settings.tttr.json
 ```
 
 ```python
 from chisurf.plugins.tttr.tttr_lut_tools import api
 
-tbl  = api.compute.compute_lut_from_files(["uniform.spc"], routine="SPC-130")
+tbl  = api.compute.compute_lut_from_files(["uniform.spc"], routine="SPC-130", channel=0)
 luts = {0: tbl["NTAC_fract"]}
 # corrected micro-time histogram of channel 0
 counts, axis = api.settings.corrected_histogram("data.spc", 0, luts, routine="SPC-130")
@@ -91,7 +93,10 @@ A uniform-illumination measurement is the reference because it *should* be flat:
 any structure in its TAC histogram is instrument DNL, not signal. The Felekyan
 et al. (Rev. Sci. Instrum. 2005) construction reads the local counts as *bin
 widths* — over-counted channels are "wide", under-counted ones "narrow" — and
-integrates them into a cumulative table `NTAC_fract`. That table maps each raw
+integrates them into a cumulative table `NTAC_fract`. Bins below the
+**Low-count threshold** (under **Advanced**; compared after division by the
+region mean when **Normalize** is on) are masked from the construction, so the
+two settings change the LUT together. That table maps each raw
 channel onto a corrected, equal-width axis; applying it (with stochastic
 dithering, so no binning artifacts) flattens the histogram.
 
@@ -99,7 +104,7 @@ dithering, so no binning artifacts) flattens the histogram.
 :name: fig-lut
 :width: 90%
 
-DNL and its LUT correction.
+Simulated flat light: DNL and its LUT correction.
 ```
 
 **Left** — the same flat-light photons before (red, wavy from DNL) and after
@@ -124,10 +129,3 @@ burst and PDA analyses.
 - Reading seam: `chisurf/core/fio/staging.py::open_tttr`.
 - Channel definition: `chisurf/gui/widgets/wizard/tttr_channeldefinition/`.
 - Felekyan et al., *Rev. Sci. Instrum.* 76.8 (2005) 083104.
-
-The native LUT tool starts at 1100×720; a saved custom size takes precedence.
-**Normalize** divides histogram counts by the selected region mean before
-comparison with the low-count threshold. Bins below that normalized threshold
-are masked from LUT construction, so changing it can change the LUT mapping
-and corrected preview. Choose normalization and threshold together; it is part
-of correction construction.

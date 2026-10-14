@@ -50,25 +50,21 @@ afterwards. No multispot fixture ships with ChiSurf, so this page has no
 screenshot of its own; the per-spot step is the single-spot one shown in
 [tutorial 27](27_alex_smfret_workflow.md).
 
-:::{admonition} Known defects
-:class: warning
-The burst table `select_bursts` returns carries no per-detector photon counts
-(see [tutorial 27](27_alex_smfret_workflow.md)), so a per-spot proximity-ratio
-histogram cannot be read off `bursts.table` yet; the photon-level analyses
-(`bva`, `two_cde`, `h2mm`) do see the spot's channels.
-:::
+The burst table `select_bursts` returns carries the setup's per-detector
+columns (`Number of Photons (<name>)` …), so a per-spot proximity-ratio histogram
+reads straight off `bursts.table`.
 
 ## Result
 
-Per-spot FRET-efficiency histograms of an 8-spot measurement; the population
-positions (red line = high-FRET median) agree across spots, validating the
-parallel acquisition.
+Per-spot FRET-efficiency histograms of a simulated 8-spot measurement; the
+population positions (red line = high-FRET median) agree across spots, which is
+the check a real multispot run has to pass.
 
 ```{figure} figures/multispot.png
 :name: fig-multispot
 :width: 90%
 
-8-spot multispot smFRET.
+Simulated 8-spot smFRET: per-spot E histograms, high-FRET median in red.
 ```
 
 ## See also

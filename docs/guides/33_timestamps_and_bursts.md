@@ -73,7 +73,7 @@ photon counts per detector).
 
 Bursts can be sliced into time bins (the basis of [BVA](08_burst_variance_analysis.md)),
 fused if separated by short gaps, or filtered by size/duration/background. The
-`burst_selection` plugin and the `BurstFeature` engines (`tttrlib.BVA`,
+`burst_selection` plugin and tttrlib's burst-feature engines (`tttrlib.BVA`,
 `tttrlib.TwoCDE`) all consume exactly this index-range representation.
 
 ## Result
@@ -104,8 +104,3 @@ table — set **Min photons** to 19 and **▶ Run** again to list them (161 burs
 - Binning the same stream: [binned photon traces](22_binned_photon_traces.md).
 - Getting the slices back out: [exporting burst data](34_exporting_burst_data.md).
 - Tool: the **TTTR Toolbox** (`chisurf/plugins/tttr/tttr_toolbox/`) and **Burst Analysis** (`chisurf/plugins/burst/burst_analysis/`).
-
-Native Burst Selection starts at 1100×720, with saved custom geometry taking
-precedence. Selection masks and scientific outputs are retained when resizing;
-wide detector tables expose their last columns through the existing horizontal
-scrollbar.

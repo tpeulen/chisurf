@@ -62,10 +62,10 @@ The per-burst donor lifetime proper is fitted by maximum likelihood in
 **Burst MLE** ([tutorial 21](21_lifetime_from_bursts.md), step 6 of Burst
 Analysis); the E–τ plot with the static-FRET line is drawn by the **Accurate
 FRET** tool ([accurate FRET](41_accurate_fret.md)) and by ndX. PIE/ALEX streams
-are prepared by the `ptu_alex_creator` and micro-time-gating tools.
+are prepared by the **ALEX Creator** ([guide 100](100_alex_creator.md)) and the micro-time-gating tools.
 
-**H2MM** adds the lifetime per *state* rather than per burst: its *Per-state
-decay* dock histograms the micro times of the photons each state was assigned,
+**H2MM** adds the lifetime per *state* rather than per burst: its *Decays*
+tab (plot *Per-state decay*) histograms the micro times of the photons each state was assigned,
 per detection colour, and the **Nanotime divisors** setting splits every stream
 into micro-time bins so that states with the same apparent E but different
 lifetimes can be told apart.
@@ -84,14 +84,15 @@ The colour and state boxes above the plot choose the curves; the line style is t
 
 ## Result
 
-An E–τ plot: two static FRET populations on the $\tau_0(1-E)$ line and a dynamic
+An E–τ plot: static FRET populations on the $\tau_0(1-E)$ line and a dynamic
 population displaced above it.
 
 ```{figure} figures/nsalex_etau.png
 :name: fig-nsalex-etau
 :width: 90%
 
-ns-ALEX FRET–lifetime plot.
+Simulated E–τ plot: two static populations (*blue*) on the static FRET line
+$\tau_D = \tau_0(1-E)$ and a dynamic one (*red*) displaced above it.
 ```
 
 ## See also

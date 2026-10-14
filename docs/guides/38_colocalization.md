@@ -41,7 +41,7 @@ file (`ch0`, `ch1`, …).
 
 ### 2. Load an image
 
-Type a path into **Image** and press Enter, press **Browse** for the disk, or **Database** to load a dataset registered
+Type a path into **Image** and press Enter, press **Browse…** for the disk, or **Database** to load a dataset registered
 in the database (the database resolves it to a local file, wherever its object
 store keeps the data — local disk or an S3-compatible endpoint), and a file
 dropped on the window works too. Choosing a file loads and runs it. Photon streams are
@@ -80,13 +80,15 @@ pixels above both thresholds.
 :name: fig-coloc-workspace
 :width: 100%
 
-The colocalization tool on a simulated two-channel image (two Gaussian structures,
-the second one partly shifted): the settings and the channel pair on the left, the coefficients on the right.
+The colocalization tool on the two-detector confocal test image
+(`test/data/clsm/PQ_Olympus_MFIS.ht3`, green vs red, auto background): the
+settings and the channel pair on the left, the coefficients on the right.
 ```
 
 ### 6. Check registration, then significance
 
-Set **van Steensel shift (px)** to a dozen pixels and look at the CCF tab: the
+Set **van Steensel shift (px)** to a dozen pixels and look at the **van Steensel
+CCF** tab: the
 profile must peak at 0. A peak elsewhere is a registration offset — fix it before
 believing any coefficient.
 
@@ -109,8 +111,8 @@ leaves the horizontal profile peaking at zero.
 
 ### 8. Restrict to a region (optional)
 
-Open the **Region of interest** panel, set a **Brush (px)** size, and paint on the
-*Channel A* map. Everything — background, Costes thresholds, the null model, the
+Open the **Region of interest** panel, tick **Paint ROI**, set a **Brush (px)**
+size, and paint on the *Channel A* map (**Erase** paints the region away). Everything — background, Costes thresholds, the null model, the
 profiles and the coefficients — is then computed inside that region only, and the
 table reports its area fraction. **🧽 Clear ROI** goes back to the whole image.
 
@@ -124,7 +126,7 @@ how many objects each channel has, what fraction has a partner within the
 lands inside an object of the other channel, and the median nearest-neighbour
 distance — all reported in both directions.
 
-**Min size** drops noise-sized detections, **Smoothing** helps when shot noise
+**Min size (px)** drops noise-sized detections, **Smoothing (σ px)** helps when shot noise
 fragments a spot, and **Split touching objects** separates puncta that merge
 (over-segments irregular shapes, so leave it off for those).
 
@@ -137,15 +139,15 @@ and independent puncta looks like.
 :name: fig-coloc-objects
 :width: 65%
 
-Segmented objects of the simulated image: 1 = channel A only, 2 = channel B only,
-3 = both. Coincidence is read straight off the map.
+Segmented objects of a simulated punctate image (**Load example**): 1 = channel A
+only, 2 = channel B only, 3 = both. Coincidence is read straight off the map.
 ```
 
 ```{figure} figures/coloc_object_distances.png
 :name: fig-coloc-object-distances
 :width: 75%
 
-Nearest-neighbour distances in both directions for the simulated image.
+Nearest-neighbour distances in both directions for the simulated punctate image.
 ```
 
 ### 10. Gate a population in the scatter
@@ -159,9 +161,10 @@ table, while the *Colocalized pixels* map highlights them.
 :name: fig-coloc-scatter
 :width: 70%
 
-Joint intensity histogram of the simulated channels. A gate box is typed under *Scatter gate*,
-or added with **Add rectangle** in the *Analysis regions* list and dragged by its handles; the gated
-pixel population gets its own coefficients.
+Joint intensity histogram of the confocal test image (green vs red). A gate box
+is typed under *Scatter gate*, or added with **Add rectangle** in the *Gate regions*
+list and dragged by its handles; the gated pixel population gets its own
+coefficients.
 ```
 
 Type the bounds into the **Scatter gate** panel for an exactly reproducible gate,
@@ -170,7 +173,8 @@ or press **🧹 Clear gate** to go back to all thresholded pixels.
 A population is rarely a rectangle, though — a real one is a band along the
 diagonal, or a cloud off it. **Paint it instead**: brush directly on the
 histogram and the painted bins become the gate, exactly as drawn. Painting takes
-precedence over the rectangle while it lasts, and **🧹 Clear gate** resets both.
+precedence over the rectangle while it lasts (tick **Paint gate** under *Scatter
+gate*), and **🧹 Clear gate** resets both.
 Under the hood the paint is the same kind of region as a mask drawn on an image
 — only its axes are intensities rather than pixels
 ({ref}`concept-region-properties`) — so it can be combined with another region
@@ -236,14 +240,3 @@ what a defensible report contains.
 ## See also
 
 - Tool: **Colocalization** (`chisurf/plugins/microscopy/img_coloc/`).
-
-## Native window and image orientation
-
-The native tool declares an initial 1100×720 window, limited by the display and
-overridden by saved dimensions. Hover the Background, Scatter gate, Region,
-Objects and Significance folds for their method explanations. The intensity
-scatter shows the computed histogram with increasing channel intensities on
-its axes; flipped texture coordinates now render correctly in the Qt host
-without changing coefficients or histogram counts.
-
-![Computed colocalization intensity histogram](figures/w6g_coloc_scatter.png)

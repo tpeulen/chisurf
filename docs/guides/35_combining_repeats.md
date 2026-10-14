@@ -28,8 +28,8 @@ quality control. Each file should be background-corrected on its **own** rate
 
 **Burst Selection** (and step 2 of **Burst Analysis**) takes any number of
 files: drop a folder on the window or use **Add files** / **Add folder**, and
-**Run** searches every file with the same settings, writing one `.bur` per file
-into one output folder. Each burst row keeps its `First File`, so per-file
+**▶ Run** searches every file with the same settings, writing one `.bur` per file
+into the search's `bi4_bur/` folder beside the files (or into each file's `.pto`). Each burst row keeps its `First File`, so per-file
 provenance survives pooling. Background is a separate step
 ([background rates](15_background_rates.md)) and is estimated per file there.
 
@@ -81,7 +81,7 @@ populations.
 :name: fig-combining-repeats
 :width: 90%
 
-Combining technical repeats.
+Three simulated technical repeats (outlines) and their pooled histogram (*grey*).
 ```
 
 ## See also
