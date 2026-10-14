@@ -77,9 +77,9 @@ def build_target_state(
         for key, delta in param_delta.items():
             parameter_state.setdefault(key, {}).update(delta)
         fit_range_state.update(range_delta)
-        for key in ("experiment", "setup"):
-            if setup_delta.get(key) is not None:
-                setup_state[key] = setup_delta[key]
+        for setup_key in ("experiment", "setup"):
+            if setup_delta.get(setup_key) is not None:
+                setup_state[setup_key] = setup_delta[setup_key]
         if setup_delta.get("params"):
             setup_state.setdefault("params", {}).update(setup_delta["params"])
         for fg_uid, fg_data in model_delta.items():

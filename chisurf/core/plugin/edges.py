@@ -257,7 +257,9 @@ class _ImportVisitor(ast.NodeVisitor):
         for child in node.body:
             self.visit(child)
         self._in_try = previous
-        for child in node.handlers + node.orelse + node.finalbody:
+        for handler in node.handlers:
+            self.visit(handler)
+        for child in node.orelse + node.finalbody:
             self.visit(child)
 
     # -- references -----------------------------------------------------

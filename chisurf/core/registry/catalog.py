@@ -123,7 +123,7 @@ def _merged() -> dict[str, dict[str, dict]]:
                 if key in target or key in implemented.get(category, ()):
                     continue
                 target[key] = entry
-    compiled_all = {}
+    compiled_all: dict[tuple[str, str], typing.Any] = {}
     for _, reg in _compiled():
         for category, entries in reg.items():
             for key, entry in entries.items():

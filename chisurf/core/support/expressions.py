@@ -109,10 +109,13 @@ DEFAULT_FUNCTIONS: dict[str, Callable[..., Any]] = {
     "heaviside": np.heaviside,
     "nan_to_num": np.nan_to_num,
     "sinc": np.sinc,
-    "erf": getattr(np, "erf", None),  # numpy>=2 has no erf; filtered below
 }
-# Drop any names numpy does not actually provide on this build.
-DEFAULT_FUNCTIONS = {k: v for k, v in DEFAULT_FUNCTIONS.items() if v is not None}
+# Functions only some numpy builds provide (numpy>=2 has no erf): added when
+# present rather than listed as None and filtered out.
+for _name in ("erf",):
+    _function = getattr(np, _name, None)
+    if callable(_function):
+        DEFAULT_FUNCTIONS[_name] = _function
 
 #: Named numeric constants offered by :data:`DEFAULT_POLICY`. Deliberately does
 #: *not* include ``tau`` — ``tau`` is the near-universal name for a fluorescence

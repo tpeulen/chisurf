@@ -357,7 +357,7 @@ class PluginRegistry:
 def _read_legacy_metadata(plugin_dir: pathlib.Path) -> dict[str, Any] | None:
     """Read legacy plugin metadata from ``__init__.py`` AST."""
     try:
-        from chisurf.plugins import _read_plugin_metadata  # type: ignore
+        from chisurf.plugins import _read_plugin_metadata
 
         init_py = plugin_dir / "__init__.py"
         name, description, cli_entrypoint, cli_only, menu_hidden = _read_plugin_metadata(init_py)

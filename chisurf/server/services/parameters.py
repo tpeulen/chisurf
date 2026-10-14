@@ -236,7 +236,7 @@ def get_parameter(
         return error
     return {
         "ok": True,
-        "parameter": _parameter_payload(parameter_name or getattr(p, "name", ""), p),
+        "parameter": _parameter_payload(str(parameter_name or getattr(p, "name", "")), p),
     }
 
 

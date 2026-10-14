@@ -112,6 +112,8 @@ def _group_channel(context: plot_transforms.PlotReferenceContext, code: float):
     """The curve of the group member whose model is set to polarization ``code``."""
     for fit in tuple(context.group_fits or ()) or (context.fit,):
         model = getattr(fit, "model", None)
+        if model is None:
+            continue
         try:
             if float(model.get_scalar("polarization")) != code:
                 continue

@@ -114,14 +114,15 @@ def normalize(layout: typing.Any) -> dict:
     ):
         if not isinstance(name, str) or not name or not isinstance(dock, dict):
             continue
-        d = {
+        d: dict[str, typing.Any] = {
             "visible": bool(dock.get("visible", True)),
             "floating": bool(dock.get("floating", False)),
         }
         if dock.get("area") in DOCK_AREAS:
             d["area"] = dock["area"]
-        if _rect(dock.get("rect")):
-            d["rect"] = _rect(dock["rect"])
+        rect = _rect(dock.get("rect"))
+        if rect:
+            d["rect"] = rect
         docks[name] = d
     if docks:
         out["docks"] = docks
@@ -144,7 +145,8 @@ def normalize(layout: typing.Any) -> dict:
 
 def backend_hint(state: dict, name: str) -> dict | None:
     """The exact snapshot of toolkit *name* in a saved UI state (the legacy top-level Qt keys count as ``qt``)."""
-    hints = state.get("backend") if isinstance(state.get("backend"), dict) else {}
+    backend = state.get("backend")
+    hints = backend if isinstance(backend, dict) else {}
     hint = hints.get(name)
     if isinstance(hint, dict) and hint:
         return copy.deepcopy(hint)

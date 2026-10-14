@@ -274,16 +274,16 @@ def from_bursts_decay(
 
     step = (dt_ns or 1.0) * step_size
     decays = []
-    for i, counts in enumerate(accum):
-        if counts is None:
+    for i, summed in enumerate(accum):
+        if summed is None:
             continue
         decays.append(
             {
                 "name": names[i] if i < len(names) else f"ch{i}",
                 "channels": groups[i] if groups is not None else None,
-                "counts": counts.tolist(),
-                "time_axis": (np.arange(counts.size) * step).tolist(),
-                "n_photons": int(counts.sum()),
+                "counts": summed.tolist(),
+                "time_axis": (np.arange(summed.size) * step).tolist(),
+                "n_photons": int(summed.sum()),
             }
         )
     if not decays:
@@ -468,7 +468,7 @@ def from_bursts_pch(
     return {"ok": True, "result": result}
 
 
-def consumers(state: SessionState = None) -> ServiceResult:
+def consumers(state: SessionState | None = None) -> ServiceResult:
     """Advertise what a gated burst population can be handed to.
 
     Registered as ``bursts.consumers``. This is the seam that lets an explorer

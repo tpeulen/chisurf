@@ -487,7 +487,7 @@ def render_track(track: dict) -> bytes:
         voice.setdefault("wave", track.get("wave", "triangle"))
         voices.append(voice)
 
-    length = 0
+    length: float = 0
     for voice in voices:
         length = max(length, sum(span for _, span in _notes(voice.get("notes"))))
     drums = str(track.get("drums", ""))

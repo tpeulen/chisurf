@@ -3,6 +3,7 @@ from __future__ import annotations
 import ctypes
 import os
 import pathlib
+import sys
 
 USER_SETTINGS_EXISTED_BEFORE = None
 
@@ -13,7 +14,7 @@ def _set_hidden_on_windows(path: pathlib.Path) -> None:
     This uses WinAPI via ctypes to OR the FILE_ATTRIBUTE_HIDDEN flag without
     clearing existing attributes.
     """
-    if os.name != "nt":
+    if sys.platform != "win32":  # also tells the type checker ctypes.windll exists
         return
     try:
         FILE_ATTRIBUTE_HIDDEN = 0x2

@@ -139,6 +139,20 @@ def set_linearization(
     _sync_editors(fit)
 
 
+def update(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
+    """Recompute the fit's model curves and statistics, and refresh its editors.
+
+    The ``model.update`` action has always called this; until it existed the
+    action raised AttributeError on every dispatch.
+    """
+    if fit is None:
+        fit = _current_fit()
+    if fit is None:
+        return
+    fit.update()
+    _sync_editors(fit)
+
+
 def unload_lintable(fit: cs.core.fitting.fit.FitGroup | None = None) -> None:
     if fit is None:
         fit = _current_fit()

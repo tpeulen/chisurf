@@ -7,12 +7,7 @@ from typing import Any
 import chisurf as cs
 import chisurf.core.experiments
 
-try:
-    # Optional imports for type checks; fall back gracefully if types move
-    from chisurf.core.fitting.fit import Fit, FitGroup  # type: ignore
-except Exception:  # pragma: no cover - robustness for environments without these symbols
-    Fit = object  # type: ignore
-    FitGroup = object  # type: ignore
+from chisurf.core.fitting.fit import Fit, FitGroup
 
 
 def _is_proxy_for(obj: Any, type_name: str) -> bool:

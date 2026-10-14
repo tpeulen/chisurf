@@ -308,7 +308,9 @@ def _prepare_cached_dataset(payload: Any, _seen: dict[str, Any] | None = None) -
         raise ValueError("unsupported cached dataset kind")
     arrays = {}
     raw_arrays = payload.get("arrays", {}) if kind == "curve" else payload
-    fields = ("x", "y", "ex", "ey", "mask") if kind == "curve" else ("x", "y", "ex", "ey")
+    fields: tuple[str, ...] = (
+        ("x", "y", "ex", "ey", "mask") if kind == "curve" else ("x", "y", "ex", "ey")
+    )
     if kind == "structure":
         # Atoms, not arrays: the structural snapshot of the project codec.
         if payload.get("arrays") or not isinstance(payload.get("structure"), dict):
@@ -785,6 +787,7 @@ def dataset_group(
         # curves of each one-file group are what is grouped, as the local macro does.
         curves = [c for d in selected for c in (d if isinstance(d, DataGroup) else [d])]
         name = str(group_name or "Data-Group")
+        group: ExperimentDataGroup
         if curves and all(isinstance(c, DataCurve) for c in curves):
             group = ExperimentDataCurveGroup(curves, name=name)
         else:

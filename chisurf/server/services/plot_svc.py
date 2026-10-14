@@ -21,7 +21,7 @@ from chisurf.server.services import (
 from chisurf.server.session import SessionState
 
 
-def _sanitize_float_list(values: Any) -> list:
+def _sanitize_float_list(values: Any) -> list[float | None]:
     """Convert numpy array or list to JSON-safe float list.
 
     Replaces NaN/Inf with None.
@@ -32,7 +32,7 @@ def _sanitize_float_list(values: Any) -> list:
         return []
     try:
         arr = np.asarray(values, dtype=float)
-        sanitized = []
+        sanitized: list[float | None] = []
         for v in arr.flat:
             if np.isnan(v) or np.isinf(v):
                 sanitized.append(None)

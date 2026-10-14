@@ -7,6 +7,8 @@ import sys
 import textwrap
 import warnings
 import weakref
+from collections.abc import Iterator
+from typing import Any
 
 __all__ = [
     "DeprecatedWarning",
@@ -71,7 +73,7 @@ def register(cls):
         _instances = set()
 
         @classmethod
-        def get_instances(cls) -> weakref.ReferenceType:
+        def get_instances(cls) -> Iterator[Any]:
             """Returns all live instances of the class as a generator.
 
             An instance whose Qt object has been deleted is not live, whatever still

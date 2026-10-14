@@ -1390,15 +1390,20 @@ def _validate_project_graph(project: Project) -> None:
             if layout.get("dataset_uid") not in dataset_uids:
                 raise SessionCodecError("dataset layout references missing dataset")
         else:
-            uid = layout.get("uid")
-            if not isinstance(uid, str) or not uid or uid in group_uids or uid in dataset_uids:
-                raise SessionCodecError(f"duplicate dataset-group UID {uid!r}")
-            group_uids.add(uid)
+            group_uid = layout.get("uid")
+            if (
+                not isinstance(group_uid, str)
+                or not group_uid
+                or group_uid in group_uids
+                or group_uid in dataset_uids
+            ):
+                raise SessionCodecError(f"duplicate dataset-group UID {group_uid!r}")
+            group_uids.add(group_uid)
             uids = layout.get("dataset_uids")
             if (
                 not isinstance(uids, list)
                 or not uids
-                or any(uid not in dataset_uids for uid in uids)
+                or any(member not in dataset_uids for member in uids)
             ):
                 raise SessionCodecError("invalid dataset group layout")
             if layout.get("group_type") not in {
@@ -1729,10 +1734,11 @@ def restore_session(
             raise SessionCodecError(
                 f"fit {record.get('uid')!r} references missing dataset"
             ) from exc
+        fit: Fit
         try:
             if record.get("kind") == "group":
-                fit = FitGroup(DataCurveGroup(curves))
-                for local, cls, saved in zip(fit.grouped_fits, classes, members):
+                fit_group = FitGroup(DataCurveGroup(curves))
+                for local, cls, saved in zip(fit_group.grouped_fits, classes, members):
                     # FitGroup's placeholder is an interactive construction:
                     # its group-position policy is allowed to set defaults.
                     # A canonical snapshot must instead construct its model
@@ -1746,14 +1752,15 @@ def restore_session(
                         raise
                     if group_context is not missing_group_context:
                         deferred_group_contexts.append((local, group_context))
-                fit.unique_identifier = str(record["uid"])
-                fit.name = str(record.get("name", ""))
+                fit_group.unique_identifier = str(record["uid"])
+                fit_group.name = str(record.get("name", ""))
                 from chisurf.core.models.global_model import GlobalFitModel
 
                 try:
-                    fit._model = GlobalFitModel(fit=fit, fits=fit.grouped_fits)
+                    fit_group._model = GlobalFitModel(fit=fit_group, fits=fit_group.grouped_fits)
                 except Exception as exc:
                     raise SessionCodecError(f"cannot construct group model: {exc}") from exc
+                fit = fit_group
             else:
                 # Interactive attachment evaluates immediately. Restoration
                 # must first restore topology, ranges, inputs and port state.
@@ -1765,7 +1772,7 @@ def restore_session(
             raise
         except Exception as exc:
             raise SessionCodecError(f"cannot construct fit {record.get('uid')!r}: {exc}") from exc
-        if record.get("kind") == "group":
+        if isinstance(fit, FitGroup):
             selected = int(record.get("selected", 0))
             if not 0 <= selected < len(members):
                 raise SessionCodecError(f"fit group {record['uid']!r} selection is out of range")
@@ -1775,7 +1782,7 @@ def restore_session(
             raise SessionCodecError(f"fit group {record['uid']!r} member count changed")
         for local, saved in zip(local_members, members):
             pending_models[(str(record["uid"]), str(saved["uid"]))] = (local, saved)
-        if record["kind"] == "group":
+        if isinstance(fit, FitGroup):
             from chisurf.core.fitting.parameter import FittingParameter
 
             aggregate_state = record["aggregate_model"]

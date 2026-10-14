@@ -18,9 +18,10 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 
 
+@runtime_checkable
 class _EntrypointLoader(Protocol):
     """Protocol for objects that load entrypoint callables."""
 
@@ -194,7 +195,7 @@ def _resolve_dotted_setting(dotted_path: str) -> Any:
     """Resolve a dotted path into ``chisurf.core.settings.cs_settings``."""
     import chisurf.core.settings
 
-    value = chisurf.core.settings.cs_settings
+    value: Any = chisurf.core.settings.cs_settings
     for part in dotted_path.split("."):
         if isinstance(value, dict):
             value = value.get(part)
@@ -240,14 +241,21 @@ class AppStartupServiceManager:
         *,
         specs: Iterable[AppStartupServiceSpec] | None = None,
         config_path: str | Path | None = None,
-        loader: _EntrypointLoader | None = None,
+        loader: _EntrypointLoader | Callable[[str], Any] | None = None,
     ) -> None:
-        """Initialise the app startup service manager."""
+        """Initialise the app startup service manager.
+
+        *loader* is an object with ``load(entrypoint)`` or that callable itself.
+        """
         self.dispatcher = dispatcher
         self.state = state
         self.event_bus = event_bus
         self.job_manager = job_manager
-        self._loader = loader or _DefaultEntrypointLoader()
+        if loader is None:
+            loader = _DefaultEntrypointLoader()
+        self._load: Callable[[str], Any] = (
+            loader.load if isinstance(loader, _EntrypointLoader) else loader
+        )
         self._stop_event = threading.Event()
         self._states: dict[str, _BackgroundServiceState] = {}
         self._results: dict[str, Any] = {}
@@ -313,7 +321,7 @@ class AppStartupServiceManager:
         phase : str, optional
             If set, only return specs matching this phase.
         """
-        filtered = self._specs
+        filtered = list(self._specs)
         if surface is not None:
             filtered = [s for s in filtered if s.surface == surface]
         if phase is not None:
@@ -666,7 +674,7 @@ class AppStartupServiceManager:
     def _run_service(self, spec: AppStartupServiceSpec, context: AppStartupContext) -> Any:
         """Load and call one service entrypoint."""
         try:
-            register_fn = getattr(self._loader, "load", self._loader)(spec.entrypoint)
+            register_fn = self._load(spec.entrypoint)
             result = register_fn(context)
             context.mark_ready()
             return result

@@ -87,7 +87,7 @@ RETIRED_KEYS: tuple[tuple, ...] = (
 
 def _parent(mapping: dict, path: tuple) -> dict | None:
     """The mapping holding the last key of *path*, or ``None``."""
-    parent = mapping
+    parent: object = mapping
     for key in path[:-1]:
         parent = parent.get(key) if isinstance(parent, dict) else None
     return parent if isinstance(parent, dict) else None

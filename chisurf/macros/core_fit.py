@@ -149,7 +149,7 @@ def _record_history(
     action_type: str,
     summary: str,
     payload: typing.Optional[typing.Dict[str, typing.Any]] = None,
-    source_uid: str = "",
+    source_uid: str | None = "",
     target_uid: str = "",
 ) -> None:
     try:
@@ -828,6 +828,7 @@ def add_fit(
     for data_set in data_sets:
         if data_set.experiment is data_sets[0].experiment:
             # Make sure the data set is a DataGroup
+            data_group: cs.core.data.DataGroup
             if not isinstance(data_set, cs.core.data.DataGroup):
                 data_group = cs.core.data.ExperimentDataCurveGroup([data_set])
             else:
@@ -1436,7 +1437,7 @@ def _build_fitgroup_payload(
     register_datacurve: typing.Callable[[cs.core.data.DataCurve], str],
     log: typing.Any,
     group_index: int = 0,
-) -> typing.Tuple[str, typing.Dict]:
+) -> typing.Tuple[str | None, typing.Dict]:
     """Helper to serialize a FitGroup into the Project payload.
 
     Works headlessly — no GUI window required.

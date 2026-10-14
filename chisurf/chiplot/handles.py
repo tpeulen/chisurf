@@ -243,8 +243,11 @@ class Scatter(Handle, Protocol):
 class Bars(Handle, Protocol):
     """A bar graph."""
 
-    def set_data(self, x: np.ndarray, height: np.ndarray) -> None:
+    def set_data(self, x: np.ndarray, height: np.ndarray, /) -> None:
         """Replace the bar positions/heights.
+
+        Positional: a backend's bar entry shares the generic ``set_data(x, y)``
+        of its series, so the second argument is not named ``height`` there.
 
         Parameters
         ----------

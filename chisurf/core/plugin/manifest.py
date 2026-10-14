@@ -452,7 +452,7 @@ def build_manifest_schema() -> dict:
     def _props(cls) -> dict:
         return {f.name: _type_fragment(f.type) for f in dataclasses.fields(cls)}
 
-    entrypoints_def = {
+    entrypoints_def: dict[str, Any] = {
         "type": "object",
         "properties": _props(PluginEntrypoints),
         "additionalProperties": False,

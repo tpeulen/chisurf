@@ -146,7 +146,8 @@ class FittingClient:
             params = {k: v for k, v in params.items() if k != "fit_uid"}
         if not self._rpc_available:
             self._try_bootstrap_transport()
-        if not self._rpc_available:
+        client = self._client if self._rpc_available else None
+        if client is None:
             import chisurf.logging
 
             chisurf.logging.warning(
@@ -154,7 +155,7 @@ class FittingClient:
             )
             return None
         try:
-            return self._client.call(method, params)
+            return client.call(method, params)
         except RemoteError as e:
             msg = str(e)
             if self._is_transport_failure(msg):

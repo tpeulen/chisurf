@@ -90,7 +90,7 @@ def subscribe(callback: Callable[[str], None]) -> Callable[[], None]:
         Takes no arguments; ends the subscription.
     """
     entry: weakref.ref | Callable[[str], None]
-    entry = weakref.WeakMethod(callback) if hasattr(callback, "__self__") else callback  # type: ignore[arg-type]
+    entry = weakref.WeakMethod(callback) if hasattr(callback, "__self__") else callback
     _subscribers.append(entry)
 
     def unsubscribe() -> None:

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import io
 import logging
+import os
 import selectors
 import subprocess
 from typing import Any
@@ -17,7 +19,10 @@ def _read_available_stderr(proc: subprocess.Popen[Any], limit: int) -> bytes:
     try:
         if not selector.select(timeout=0):
             return b""
-        return proc.stderr.read1(limit)
+        stream = proc.stderr
+        if isinstance(stream, io.BufferedReader):  # stderr=PIPE without text mode
+            return stream.read1(limit)
+        return os.read(stream.fileno(), limit)
     finally:
         selector.unregister(proc.stderr)
 

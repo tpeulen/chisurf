@@ -89,7 +89,7 @@ def scan_parameter(
 )
 def adaptive_scan_parameter(
     parameter_name: str,
-    scan_range: typing.Tuple[float, float] = (None, None),
+    scan_range: typing.Tuple[float | None, float | None] = (None, None),
     p_value: float = 0.99,
     max_points_per_side: int = 50,
     fit_index: int = 0,

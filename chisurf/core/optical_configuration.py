@@ -234,7 +234,7 @@ def _resolve_detector_chain(
     forward: dict[str, list[tuple[int, str, int]]],
 ) -> tuple[str, Any, Any]:
     """Walk from a node to find the detector, its bandpass, and QE probe."""
-    cur = start_id
+    cur: str | None = start_id
     bp_pid = None
     qe_pid = None
     det_name = "Channel"

@@ -171,14 +171,14 @@ def _kahn(hard: dict[str, set[str]], report: DependencyReport) -> list[str]:
         visited.add(root)
         stack = [(root, iter(sorted(hard[root])))]
         while stack:
-            plugin_id, targets = stack[-1]
-            target = next(targets, None)
-            if target is None:
+            plugin_id, unvisited = stack[-1]
+            successor = next(unvisited, None)
+            if successor is None:
                 finished.append(plugin_id)
                 stack.pop()
-            elif target not in visited:
-                visited.add(target)
-                stack.append((target, iter(sorted(hard[target]))))
+            elif successor not in visited:
+                visited.add(successor)
+                stack.append((successor, iter(sorted(hard[successor]))))
 
     components: list[list[str]] = []
     component_of: dict[str, int] = {}
@@ -201,8 +201,8 @@ def _kahn(hard: dict[str, set[str]], report: DependencyReport) -> list[str]:
     report.cycles = sorted(
         members for members in components if len(members) > 1 or members[0] in hard[members[0]]
     )
-    prerequisites = [set() for _ in components]
-    followers = [set() for _ in components]
+    prerequisites: list[set[int]] = [set() for _ in components]
+    followers: list[set[int]] = [set() for _ in components]
     for plugin_id, targets in hard.items():
         index = component_of[plugin_id]
         for target in targets:

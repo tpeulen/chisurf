@@ -113,7 +113,9 @@ def action(
             finally:
                 executing.discard(name)
 
-        wrapper._action_spec = spec
+        # A function attribute: the registered spec, reachable from the
+        # decorated name (tests call ``fn._action_spec.handler`` directly).
+        setattr(wrapper, "_action_spec", spec)
         return wrapper
 
     return decorator

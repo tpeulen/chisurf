@@ -306,7 +306,7 @@ class Project:
 
     def list_fit_uids(self) -> list[str]:
         """Return sorted fit UIDs."""
-        uids = [fit.get("uid") for fit in self.fits if fit.get("uid")]
+        uids = [str(fit["uid"]) for fit in self.fits if fit.get("uid")]
         return sorted(uids)
 
     def save_to_archive(self, archive) -> None:
@@ -367,7 +367,6 @@ class Project:
                 if name != "project.json"
             }
         )
-        project._archive_path = project_path
         return project
 
 

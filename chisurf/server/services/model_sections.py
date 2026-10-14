@@ -717,9 +717,10 @@ def _mixer_add(model, section, fit, state, fit_uids: list, name: str = "") -> di
     for f in _read(model, "lifetime_fits", []) or []:
         by_uid[str(getattr(f, "unique_identifier", "") or "")] = f
         by_uid[_session_uid(state, f)] = f
-    picked = [by_uid.get(str(u)) for u in (fit_uids or [])]
-    if not picked or any(f is None for f in picked):
+    wanted = [str(u) for u in (fit_uids or [])]
+    if not wanted or any(u not in by_uid for u in wanted):
         raise _Refused("pick fits the mixture lists")
+    picked = [by_uid[u] for u in wanted]
     added = 0
     for f in picked:
         count = len(_read(model, "model_names", []) or [])

@@ -25,6 +25,8 @@ class SessionState:
     project_resources: Any | None = field(default=None, repr=False)
     history: Any | None = field(default=None, repr=False)
     _project_gui: Any | None = field(default=None, repr=False)
+    #: Set once a GUI attaches: public headless RPC may then not replace the project.
+    _project_gui_required: bool = field(default=False, repr=False)
 
     def __post_init__(self):
         """Initialise the project registry after dataclass field assignment."""

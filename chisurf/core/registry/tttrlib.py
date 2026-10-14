@@ -143,6 +143,20 @@ def entry_form_view(
 ADVANCED_GROUP = "Advanced"
 
 
+def _first_panel(view):
+    """The panel a generated entry form opens with.
+
+    ``AutoForm`` builds an entry's view as one panel holding its fields; the
+    nested-form code below re-groups that panel's sections.
+    """
+    from chisurf.core.dataspec import PanelSection
+
+    panel = view.sections[0]
+    if not isinstance(panel, PanelSection):
+        raise TypeError(f"expected the form to open with a panel, got {type(panel).__name__}")
+    return panel
+
+
 def _group_sections(sections, properties, title, description):
     """Split one flat parameter list into foldable panels.
 
@@ -308,7 +322,7 @@ class CompositeEntryView:
 
         inner_entry = entries(self._inner_category).get(self.selector_value)
         self._inner = None
-        outer_panel = self._outer.view_spec().sections[0]
+        outer_panel = _first_panel(self._outer.view_spec())
         sections = list(
             _group_sections(
                 outer_panel.sections,
@@ -327,7 +341,7 @@ class CompositeEntryView:
             # Sections bind through `target`, resolved with getattr on this
             # object; the inner sections are re-pointed at the inner group so the
             # two forms edit separate value dicts.
-            inner_panel = self._inner.view_spec().sections[0]
+            inner_panel = _first_panel(self._inner.view_spec())
             inner_props = (inner_entry.get("params_schema") or {}).get("properties") or {}
             # Sections bind through `target`, resolved with getattr on this
             # object; the inner sections are re-pointed at the inner group so the

@@ -71,7 +71,7 @@ def _get_window(context):
 def gui_imports(context) -> None:
     """Import core GUI modules needed for the main window scaffold."""
     _import_all(_GUI_MODULES)
-    if cs.core.settings.exceptions_on_gui:
+    if cs.core.settings.cs_settings.get("exceptions_on_gui", False):
         importlib.import_module("chisurf.gui.exception_hook")
 
 

@@ -91,7 +91,7 @@ def _model_to_state(model: Any) -> dict[str, Any]:
         except (TypeError, ValueError):
             error_estimate = 0.0
 
-        state = {
+        param_state = {
             "uid": uid,
             "name": name,
             "value": value,
@@ -103,7 +103,7 @@ def _model_to_state(model: Any) -> dict[str, Any]:
             "link_target": None,
             "link_target_fit_uid": None,
         }
-        param_states[uid] = state
+        param_states[uid] = param_state
 
     # Second pass: resolve links by UID
     for uid, p_state in param_states.items():
