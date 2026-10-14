@@ -105,7 +105,7 @@ def test_gaussian_bootstrap_single_replica_matches_manual_fit():
     def resid(x):
         mm, ss, aa = unpack(x)
         p = dd_gauss_multi(r, mm, ss, aa)
-        vm = deer_signal(t, r, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=k_mat)
+        vm = deer_signal(t, r, p, mo.mod_depth, bg.kind, bg.k, bg.d, mo.scale, kernel=k_mat)
         return vm - replica
 
     m, node = director_objective(resid, x0)
@@ -204,7 +204,7 @@ def test_rice_bootstrap_single_replica_matches_manual_fit():
 
     def resid(x):
         p = dd_rice(r, x[0], abs(x[1]))
-        vm = deer_signal(t, r, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=k_mat)
+        vm = deer_signal(t, r, p, mo.mod_depth, bg.kind, bg.k, bg.d, mo.scale, kernel=k_mat)
         return vm - replica
 
     m, node = director_objective(resid, x0)

@@ -6,8 +6,6 @@ import numpy as np
 
 _trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
 
-from .distributions import normal_distribution
-
 
 def gaussian_chain_ree(segment_length: float, number_of_segments: int) -> float:
     """Calculates the root mean square end-to-end distance of a Gaussian chain
@@ -222,7 +220,10 @@ def worm_like_chain(
 
 
 def distance_between_gaussian(
-    distances: np.ndarray, separation_distance: float, sigma: float, normalize: bool = False
+    distances: np.ndarray,
+    separation_distance: float | np.ndarray,
+    sigma: float,
+    normalize: bool = False,
 ) -> np.ndarray:
     """Calculates the distance distribution between two separated Gaussians a distance
 
@@ -232,8 +233,8 @@ def distance_between_gaussian(
     :param normalize:
     :return:
     """
-    separation_distance = np.asarray(separation_distance, dtype=float)
-    if separation_distance.ndim == 0:
+    separation = np.asarray(separation_distance, dtype=float)
+    if separation.ndim == 0:
         # The scalar case is bff's. The broadcasting case is NOT: it builds a
         # 2-D kernel from a column of separations against a row of distances,
         # which the C++ signature (one scalar separation) cannot express. Its
@@ -242,27 +243,23 @@ def distance_between_gaussian(
         # for us -- see okf/log.md 2026-09-02.
         from IMP.bff import distance_between_gaussian as _f
 
-        return _f(np.asarray(distances, dtype=float), float(separation_distance), sigma, normalize)
-    positive = separation_distance > 0.0
-    safe_separation = np.where(positive, separation_distance, 1.0)
+        return _f(np.asarray(distances, dtype=float), float(separation), sigma, normalize)
+
+    def gaussian(x: np.ndarray, loc: np.ndarray | float) -> np.ndarray:
+        # Evaluated here, not through `normal_distribution`: that forwards to
+        # bff, whose `loc` is one double, so a column of separations raised
+        # TypeError and this branch never worked.
+        return np.exp(-0.5 * ((x - loc) / sigma) ** 2) / (sigma * np.sqrt(2.0 * np.pi))
+
+    distances = np.asarray(distances, dtype=float)
+    positive = separation > 0.0
+    safe_separation = np.where(positive, separation, 1.0)
     separated = (
         distances
         / safe_separation
-        * (
-            normal_distribution(
-                x=distances, loc=safe_separation, scale=sigma, norm=False
-            )
-            - normal_distribution(
-                x=distances, loc=-safe_separation, scale=sigma, norm=False
-            )
-        )
+        * (gaussian(distances, safe_separation) - gaussian(distances, -safe_separation))
     )
-    coincident = (
-        2.0
-        * distances**2
-        / sigma**2
-        * normal_distribution(x=distances, loc=0.0, scale=sigma, norm=False)
-    )
+    coincident = 2.0 * distances**2 / sigma**2 * gaussian(distances, 0.0)
     pr = np.where(positive, separated, coincident)
     if normalize:
         pr = pr / pr.sum()

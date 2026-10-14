@@ -15,8 +15,21 @@ import pathlib
 
 import numpy as np
 
+import typing
+
 import chisurf as cs
 from chisurf.core.models.description import for_family
+
+if typing.TYPE_CHECKING:
+    # ``for_family`` builds the class at import time. The family has a classic
+    # editor layout, so the class it builds has exactly these bases.
+    from chisurf.core.models.description import DescriptionModel
+    from chisurf.core.models.tcspc.classic_editor import ClassicTCSPCEditor
+
+    class _FretTabulated(ClassicTCSPCEditor, DescriptionModel): ...
+
+else:
+    _FretTabulated = for_family("tcspc_fret_tabulated")
 
 #: The label settings a structure's accessible volumes are computed with. The
 #: AV parameters are FPS's defaults (its first dye preset, an AV1 of radius
@@ -86,7 +99,7 @@ def av_distance_distribution(structure, axis, **labels) -> np.ndarray:
     return p
 
 
-class FRETStructure(for_family("tcspc_fret_tabulated")):
+class FRETStructure(_FretTabulated):
     """FRET: structure fit -- the fractions of an ensemble of PDB structures."""
 
     name = "FRET: Structure fit"

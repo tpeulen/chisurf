@@ -220,6 +220,7 @@ def image_correlation(
 
     # Blinking/triplet. a_triplet == 0 makes this exactly 1.
     at = float(a_triplet)
+    triplet: np.ndarray | float
     if at != 0.0:
         tau_t = _pos(tau_triplet, 1e-9) * 1.0e-3
         triplet = 1.0 + (at / max(1.0 - at, 1e-12)) * np.exp(-tau / tau_t)

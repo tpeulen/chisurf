@@ -73,3 +73,21 @@ class Tests(unittest.TestCase):
         ]
         for args, result in input_results:
             self.assertEqual(np.allclose(result, shift_array(*args)), True)
+
+
+def test_xcorr_fft_works_along_any_axis():
+    """Correlating along axis 1 is the transpose of correlating along axis 0.
+
+    The lag slice and the zero-lag normaliser were applied to axis 0 whatever
+    ``axis`` was, and the mean was not kept as a column, so axis=1 failed.
+    """
+    from chisurf.core.math.signal import xcorr_fft
+
+    rng = np.random.default_rng(1)
+    a = rng.normal(size=(64, 3))
+    b = rng.normal(size=(64, 3))
+    along_rows = xcorr_fft(a, b, axis=0)
+    along_columns = xcorr_fft(a.T, b.T, axis=1)
+    assert along_columns.shape == (3, 64)
+    np.testing.assert_allclose(along_columns, along_rows.T)
+    np.testing.assert_allclose(along_rows[0], 1.0)

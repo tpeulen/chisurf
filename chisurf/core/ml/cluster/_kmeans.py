@@ -231,6 +231,8 @@ def _kmeans(
         if inertia < best_inertia:
             best = (centers, labels.copy())
             best_inertia, best_n_iter = inertia, n_iter
+    if best is None:  # n_init < 1, or every restart's inertia was NaN
+        raise ValueError(f"no k-means restart produced a finite inertia (n_init={n_init})")
     return best[0], best[1], best_inertia, best_n_iter
 
 

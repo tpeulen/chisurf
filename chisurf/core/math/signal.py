@@ -187,19 +187,21 @@ def xcorr_fft(
         c = in_1
         d = in_2
         n = c.shape[axis]
-        m = [slice(None)] * len(c.shape)
 
         # Compute the FFT (after mean subtraction) for both arrays.
-        f1 = np.fft.fft(c - np.mean(c, axis=axis), n=2 * n, axis=axis)
-        f2 = np.fft.fft(d - np.mean(d, axis=axis), n=2 * n, axis=axis)
+        f1 = np.fft.fft(c - np.mean(c, axis=axis, keepdims=True), n=2 * n, axis=axis)
+        f2 = np.fft.fft(d - np.mean(d, axis=axis, keepdims=True), n=2 * n, axis=axis)
 
-        m[axis] = slice(0, n)
-        acf = np.fft.ifft(f1 * np.conjugate(f2), axis=axis)[m[axis]].real
-        m[axis] = 0
+        # Index along ``axis`` only. The slice and the zero lag used to be
+        # applied to axis 0 whatever ``axis`` was, which for axis=1 kept the
+        # padded half and divided every column by the first row.
+        lags: list[slice] = [slice(None)] * c.ndim
+        lags[axis] = slice(0, n)
+        acf = np.fft.ifft(f1 * np.conjugate(f2), axis=axis)[tuple(lags)].real
         if normalize:
-            return acf / acf[m[axis]]
-        else:
-            return acf
+            lags[axis] = slice(0, 1)
+            return acf / acf[tuple(lags)]
+        return acf
     else:
         return np.array([], dtype=in_1.dtype)
 

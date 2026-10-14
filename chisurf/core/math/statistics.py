@@ -59,9 +59,9 @@ def incremental_average(
     if previous_average is None:
         # No previous average: by definition the running average is the new sample
         return next_sample
-    try:
+    if fractions is not None:
         xp, xn = fractions
-    except (TypeError, ValueError):
+    else:
         xp, xn = (number_of_samples - 1) / number_of_samples, 1.0 / number_of_samples
     next_average = xp * previous_average + xn * next_sample
     return next_average

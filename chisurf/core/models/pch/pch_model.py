@@ -65,7 +65,7 @@ class PchMultiComponentModel(ModelCurve):
     # -- editor surface ------------------------------------------------------
     def _species_parameter_rows(self) -> list:
         """Return the parameters as one (brightness, occupancy) pair per row."""
-        rows = []
+        rows: list[FittingParameter] = []
         for eps, n in zip(self._eps, self._n):
             rows.extend((eps, n))
         return rows

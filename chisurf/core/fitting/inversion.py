@@ -376,7 +376,7 @@ def maxent(
     weight: float,
     *,
     convention: EntropyWeight,
-    weights: np.ndarray | None = None,
+    weights: np.ndarray | float | None = None,
     prior: np.ndarray | None = None,
     normalise: bool = False,
     max_iter: int = DEFAULT_MAXENT_ITERATIONS,

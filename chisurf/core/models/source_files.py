@@ -97,6 +97,8 @@ def apply_model_code(fit: Any, path: str, code: str) -> dict[str, Any]:
     if path not in files["files"]:
         raise ValueError(f"{path!r} is not a file of this fit's model")
     cls = compute_model_class(model)
+    if cls is None:  # unreachable: a model-less fit lists no files, so the check above raised
+        raise ValueError("this fit has no model")
     is_source = path == files["source"]
     target = path
     if not os.access(path, os.W_OK):

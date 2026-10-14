@@ -553,11 +553,11 @@ def _restricted(fun, jac, i_fixed: np.ndarray, x_fixed: np.ndarray):
 
     if jac is True:
 
-        def fun_free(x_free, *args):
+        def fun_and_grad_free(x_free, *args):
             value, grad = fun(expand(x_free), *args)
             return value, np.asarray(grad, dtype=float)[~i_fixed]
 
-        return fun_free, True
+        return fun_and_grad_free, True
 
     def fun_free(x_free, *args):
         return fun(expand(x_free), *args)

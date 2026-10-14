@@ -22,6 +22,24 @@ def test_distance_between_gaussian(distances, separation, sigma, normalize, expe
         assert np.isclose(np.sum(result), expected_sum)
 
 
+def test_distance_between_gaussian_broadcasts_a_column_of_separations():
+    """A column of separations gives one row per separation, each the scalar result.
+
+    The broadcasting branch passed an array ``loc`` to the bff Gaussian, whose
+    ``loc`` is one double, so it raised TypeError for every array input.
+    """
+    from chisurf.core.math.functions.rdf import distance_between_gaussian
+
+    distances = np.linspace(0.0, 100.0, 41)
+    separations = np.array([[30.0], [40.0], [0.0]])
+    table = distance_between_gaussian(distances, separations, 5.0)
+    assert table.shape == (3, distances.size)
+    for row, separation in zip(table, separations[:, 0]):
+        np.testing.assert_allclose(
+            row, distance_between_gaussian(distances, float(separation), 5.0), rtol=1e-12, atol=1e-300
+        )
+
+
 def test_histogram_rebin():
     counts = np.array([0, 2, 1])
     bin_edges = np.array([0, 5, 10, 15])

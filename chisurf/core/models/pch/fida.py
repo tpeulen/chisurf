@@ -112,7 +112,7 @@ def fida_pch(
 def fida_residuals(
     p_model: np.ndarray,
     counts: np.ndarray,
-    n_bins: int,
+    n_bins: float,
 ) -> np.ndarray:
     r"""Multinomial (Fretica ``FPCHFidaFit``) residuals for a PCH fit.
 
@@ -172,12 +172,12 @@ def fit_fida(
     n_species = len(guess)
 
     # Pack params as [q1, N1, q2, N2, ..., (bg)].
-    p0 = []
+    start: list[float] = []
     for q, n in guess:
-        p0 += [q, n]
+        start += [q, n]
     if fit_background:
-        p0.append(background)
-    p0 = np.array(p0, dtype=float)
+        start.append(background)
+    p0 = np.array(start, dtype=float)
 
     def unpack(p):
         species = [(abs(p[2 * i]), abs(p[2 * i + 1])) for i in range(n_species)]

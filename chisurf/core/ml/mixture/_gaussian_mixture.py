@@ -297,7 +297,13 @@ class GaussianMixture(BaseEstimator):
                     full[c] = np.cov(X[m].T, rowvar=True) + reg * np.eye(X.shape[1])
                 else:
                     full[c] = np.diag(X.var(axis=0)) + reg * np.eye(X.shape[1])
-            full = np.maximum(full, np.finfo(float).tiny)
+            # Floor the variances only: an off-diagonal covariance is negative
+            # for anti-correlated features, and clamping the whole matrix
+            # erased that from the seed.
+            diagonal = np.arange(X.shape[1])
+            full[:, diagonal, diagonal] = np.maximum(
+                full[:, diagonal, diagonal], np.finfo(float).tiny
+            )
         except Exception:
             reg = self.reg_covar
             full = np.tile(
@@ -313,6 +319,7 @@ class GaussianMixture(BaseEstimator):
             return np.trace(full, axis1=1, axis2=2) / X.shape[1]
         if covar_type == "tied":
             return full.mean(axis=0)
+        raise ValueError(f"invalid covariance_type: {covar_type!r}")
 
     # ----------------------------------------------------------------- EM ----
 

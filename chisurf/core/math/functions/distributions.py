@@ -203,7 +203,7 @@ def combine_distributions(
     x_axis,
     dist_function,
     dist_args,
-    weights: typing.List[float] = None,
+    weights: typing.List[float] | None = None,
     accumulate: bool = True,
     normalize: bool = False,
 ):

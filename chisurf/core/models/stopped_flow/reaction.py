@@ -184,7 +184,7 @@ class ReactionModel(ReactionSystem, ModelCurve):
             species carries ``species``, ``concentration`` and ``brightness``.
         """
         self.clear()
-        self._species_names = []
+        self._species_names: list[str] = []
         for reaction in scheme.get("reactions", ()):
             ReactionSystem.add_reaction(self, **reaction)
         for species in scheme.get("species", ()):

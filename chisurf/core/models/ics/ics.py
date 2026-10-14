@@ -18,8 +18,12 @@ the lag times the equations read -- and the imaging panel shows it.
 from __future__ import annotations
 
 import pathlib
+import typing
 
 from chisurf.core.models.description import for_catalogue
+
+if typing.TYPE_CHECKING:
+    from chisurf.core.models.tcspc.classic_editor import ScalarRow
 
 _HERE = pathlib.Path(__file__).parent
 
@@ -66,7 +70,7 @@ class _Panel:
         self._view = view
         self.key = key
         self.name = key
-        self._timing_rows = None
+        self._timing_rows: list[ScalarRow] | None = None
 
     def _group_parameters(self) -> list:
         group = next((g for g in self._view._groups.values() if g.key == self.key), None)
@@ -83,16 +87,19 @@ class _Panel:
 
         if self._timing_rows is None:
 
-            def read(attribute):
+            def read(attribute: str) -> float:
                 meta = (
                     getattr(getattr(self._view.fit, "data", None), "meta_data", None) or {}
                 ).get("ics", {})
                 return getattr(IcsTiming.from_meta(meta or {}), attribute)
 
+            def reader(attribute: str) -> typing.Callable[[], float]:
+                return lambda: read(attribute)
+
             self._timing_rows = [
                 ScalarRow(
                     name,
-                    lambda a=attribute: read(a),
+                    reader(attribute),
                     lambda _v: None,
                     display_binding=data_metadata_binding(f"ics.{attribute}"),
                     is_output=True,

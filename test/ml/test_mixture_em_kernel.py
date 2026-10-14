@@ -176,3 +176,19 @@ def test_the_gate_is_deterministic():
     first, second = tttrlib.gaussian_mixture_1d(x, 2), tttrlib.gaussian_mixture_1d(x, 2)
     np.testing.assert_array_equal(first["labels"], second["labels"])
     np.testing.assert_array_equal(first["means"], second["means"])
+
+
+def test_covariance_seed_keeps_anticorrelation():
+    """The data-driven seed floors variances, not every covariance entry.
+
+    ``np.maximum(full, tiny)`` over the whole matrix turned the negative
+    off-diagonal of anti-correlated features into ~0.
+    """
+    rng = np.random.default_rng(3)
+    t = rng.normal(size=400)
+    X = np.column_stack([t, -t + 0.1 * rng.normal(size=400)])
+    gm = GaussianMixture(n_components=1, covariance_type="full", random_state=0)
+    seed = gm._init_covars(X, X.mean(axis=0, keepdims=True), np.random.RandomState(0))
+    assert seed.shape == (1, 2, 2)
+    assert seed[0, 0, 1] < -0.5
+    assert np.all(np.diag(seed[0]) > 0)

@@ -91,7 +91,7 @@ class FidaModel(ModelCurve):
         list
             Six parameters, as three q/N pairs.
         """
-        rows = []
+        rows: list[FittingParameter] = []
         for q, n in zip(self._q, self._n):
             rows.extend((q, n))
         return rows

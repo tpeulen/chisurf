@@ -79,13 +79,13 @@ def sample_lcurve(
     LCurveData
         The sampled curve with the corner index from :func:`discrete_lcurve_corner`.
     """
-    regs = np.asarray(list(regs), dtype=float)
-    rho = np.empty(regs.size)
-    eta = np.empty(regs.size)
-    for i, r in enumerate(regs):
+    weights = np.asarray(list(regs), dtype=float)
+    rho = np.empty(weights.size)
+    eta = np.empty(weights.size)
+    for i, r in enumerate(weights):
         rho[i], eta[i] = solve(float(r))
     corner = discrete_lcurve_corner(rho, eta)
-    return LCurveData(reg=regs, residual_norm=rho, solution_norm=eta, corner_index=corner)
+    return LCurveData(reg=weights, residual_norm=rho, solution_norm=eta, corner_index=corner)
 
 
 def csvd(A: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

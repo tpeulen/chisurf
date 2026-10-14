@@ -164,6 +164,7 @@ def _gaussian_parameters(
     n_features: int,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Return zeroed (weights, means, covars) arrays in the compact layout."""
+    covar_shape: tuple[int, ...]
     if covariance_type == "full":
         covar_shape = (n_components, n_features, n_features)
     elif covariance_type == "diag":

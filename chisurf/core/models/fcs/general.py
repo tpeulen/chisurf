@@ -440,8 +440,8 @@ class GeneralFCSModel(ModelCurve):
 
     def _inactive_diffusion_groups(self) -> list:
         """Return the diffusion parameter groups the active mode does not use."""
-        mdf = [self.mdf_physical, self.mdf_optics, self.mdf_outputs]
-        others = {
+        mdf: list[FittingParameterGroup] = [self.mdf_physical, self.mdf_optics, self.mdf_outputs]
+        others: dict[str, list[FittingParameterGroup]] = {
             "mdf": [self.gauss, self.two_focus, self.species],
             "two_focus": mdf + [self.gauss, self.species],
             "species": mdf + [self.gauss, self.two_focus],

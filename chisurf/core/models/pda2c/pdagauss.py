@@ -9,6 +9,8 @@ been moved here for clarity.
 
 from __future__ import annotations
 
+import typing
+
 import numpy as np
 import tttrlib
 
@@ -205,6 +207,27 @@ class Pda2cGaussianDistances(FittingParameterGroup):
         self.limited_width = False
 
 
+class DistanceComponents(typing.Protocol):
+    """What a two-colour PDA distance model reads from its distance group.
+
+    The Gaussian components and the SAW-ν chain both provide it, which is what
+    lets :class:`Pda2cSawNuDistanceModel` reuse this model's machinery.
+    """
+
+    @property
+    def distribution(self) -> np.ndarray:
+        """The ``(r, p(r))`` distance distribution as a 2xN array."""
+        ...
+
+    def __len__(self) -> int:
+        """Return the number of components."""
+        ...
+
+    def append(self) -> None:
+        """Add a default component."""
+        ...
+
+
 class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
     """PDA model with a Gaussian distance distribution."""
 
@@ -222,7 +245,7 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
         self,
         fit: cs.core.fitting.fit.Fit,
         nuisance: Pda2cFretNuisance | None = None,
-        distances: Pda2cGaussianDistances | None = None,
+        distances: DistanceComponents | None = None,
         kw_hist: dict | None = None,
         **kwargs,
     ):
@@ -234,8 +257,9 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
             The fit object holding experimental data.
         nuisance : Pda2cFretNuisance, optional
             Nuisance parameter group.
-        distances : Pda2cGaussianDistances, optional
-            Gaussian distance components.
+        distances : DistanceComponents, optional
+            Distance components; Gaussian (:class:`Pda2cGaussianDistances`)
+            when omitted.
         kw_hist : dict, optional
             Histogram settings for 1D residuals.
         **kwargs
@@ -248,7 +272,7 @@ class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
         if distances is None:
             distances = Pda2cGaussianDistances(name="pda_distances", fit=fit, **kwargs)
         self.nuisance = nuisance
-        self.distances = distances
+        self.distances: DistanceComponents = distances
 
         # Bootstrap one Gaussian component so the editor/model have something
         # to show before the user adds components (previously done by widget).

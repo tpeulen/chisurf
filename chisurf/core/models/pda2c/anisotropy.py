@@ -227,9 +227,9 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
         if amps.size == 0 or rs.size == 0:
             return np.zeros(0, dtype=np.float64)
 
-        p_pars = []
+        p_parallel: list[float] = []
         for r in rs:
-            p_pars.append(
+            p_parallel.append(
                 anisotropy_to_p_parallel(
                     float(r),
                     float(G),
@@ -237,7 +237,7 @@ class Pda2cAnisotropySpecies(FittingParameterGroup):
                     float(l2),
                 )
             )
-        p_pars = np.asarray(p_pars, dtype=np.float64)
+        p_pars = np.asarray(p_parallel, dtype=np.float64)
 
         try:
             spec = cs.core.math.datatools.two_column_to_interleaved(amps, p_pars)

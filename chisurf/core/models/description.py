@@ -428,7 +428,7 @@ class DescriptionModel(ModelCurve):
     #: A ChiSurf equation catalogue this model is built from, if any.
     catalogue_path = None
     #: An authored editor for this model class (a catalogue's own view file).
-    view_file = None
+    view_file: pathlib.Path | str | None = None
     #: The catalogue equations this class offers (all of them when empty).
     catalogue_entries: typing.Tuple[str, ...] = ()
     #: Editor labels by parameter id, beside the layout's (a catalogue's own symbols).

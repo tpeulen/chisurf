@@ -147,7 +147,7 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
             None,
         )
         spec_file = decl_cls.__dict__["view_spec_file"] if decl_cls else None
-        if spec_file:
+        if decl_cls is not None and spec_file:
             try:
                 module_file = inspect.getfile(decl_cls)
                 path = pathlib.Path(module_file).parent / spec_file
@@ -530,7 +530,9 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
             x = np.array([], dtype=np.float64)
         else:
             x = fit.data.x
-        chisurf.core.curve.Curve.__init__(self, x=x, y=np.zeros_like(x), *args, **kwargs)
+        # The positional extras belong to the Model chain above; handed on here
+        # they bound to ``x``/``y`` a second time and raised TypeError.
+        chisurf.core.curve.Curve.__init__(self, x=x, y=np.zeros_like(x), **kwargs)
 
     def get_curves(
         self, copy_curves: bool = False

@@ -287,7 +287,7 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
 
     def __init__(
         self,
-        fit: chisurf.core.fitting.fit.Fit = None,
+        fit: chisurf.core.fitting.fit.Fit,
         *args,
         **kwargs,
     ):
@@ -295,8 +295,9 @@ class ParseModel(EquationCatalogueMixin, ModelCurve, FittingParameterGroup):
 
         Parameters
         ----------
-        fit : chisurf.core.fitting.fit.Fit, optional
-            Fit object this model is attached to.
+        fit : chisurf.core.fitting.fit.Fit
+            Fit object this model is attached to; required, since the model's
+            x-grid is read from ``fit.data``.
         """
         super().__init__(fit, *args, **kwargs)
         self._keys = list()

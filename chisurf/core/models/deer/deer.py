@@ -93,8 +93,9 @@ class DeerBackground(FittingParameterGroup):
     def __init__(self, name: str = "deer_background", **kwargs):
         """Initialize the background group."""
         super().__init__(name=name, **kwargs)
-        #: Background kind selected in the editor (choice widget).
-        self.model = "hom3d"
+        #: Background kind selected in the editor (choice widget). Not
+        #: ``model``: that is the owning Model on every parameter group.
+        self.kind = "hom3d"
         self._k = FittingParameter(
             value=0.05,
             name="bg_k",
@@ -326,7 +327,7 @@ class _DeerModelBase(ModelCurve):
 
     def get_state(self) -> dict:
         """Return distribution topology and declared background/solver choices."""
-        state: dict = {"background_model": self.background.model}
+        state: dict = {"background_model": self.background.kind}
         if hasattr(self, "gaussians"):
             state["n_gaussians"] = len(self.gaussians)
         if hasattr(self, "regularization"):
@@ -357,7 +358,7 @@ class _DeerModelBase(ModelCurve):
             if method not in ("gcv", "lcurve"):
                 raise ValueError("invalid DEER regularization method")
             self.regularization.method = method
-        self.background.model = background
+        self.background.kind = background
         self.find_parameters()
 
     def __init__(self, fit: cs.core.fitting.fit.Fit, **kwargs) -> None:
@@ -455,7 +456,7 @@ class _DeerModelBase(ModelCurve):
         self._r = self._build_r(t)
         r = self._r
         k_mat = self._get_kernel(t, r)
-        b = _bg(t, self.background.model, self.background.k, self.background.d)
+        b = _bg(t, self.background.kind, self.background.k, self.background.d)
         lam = float(np.clip(self.modulation.mod_depth, 1e-3, 1.0))
         s = self.modulation.scale or 1.0
         f = (np.asarray(v, dtype=float) / (s * np.clip(b, 1e-9, None)) - (1.0 - lam)) / lam
@@ -475,7 +476,7 @@ class _DeerModelBase(ModelCurve):
         t = t_raw - self.modulation.zero_time
         r = self._r if self._r is not None else self._build_r(t)
         k_mat = self._get_kernel(t, r)
-        b = _bg(t, self.background.model, self.background.k, self.background.d)
+        b = _bg(t, self.background.kind, self.background.k, self.background.d)
         lam = float(np.clip(self.modulation.mod_depth, 1e-3, 1.0))
         s = self.modulation.scale or 1.0
         f = (np.asarray(v, dtype=float) / (s * np.clip(b, 1e-9, None)) - (1.0 - lam)) / lam
@@ -657,7 +658,7 @@ class DeerGaussianModel(_DeerModelBase):
             g.sigmas,
             g.amplitudes,
             mod_depth=mo.mod_depth,
-            bg_model=bg.model,
+            bg_model=bg.kind,
             bg_k=bg.k,
             bg_d=bg.d,
             scale=mo.scale,
@@ -710,7 +711,7 @@ class DeerGaussianModel(_DeerModelBase):
             mm, ss, aa = unpack(x)
             p = dd_gauss_multi(_r_ref, mm, ss, aa)
             vm = deer_signal(
-                _t_ref, _r_ref, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref
+                _t_ref, _r_ref, p, mo.mod_depth, bg.kind, bg.k, bg.d, mo.scale, kernel=_k_ref
             )
             return vm - target_holder[0]
 
@@ -767,7 +768,7 @@ class DeerRiceModel(_DeerModelBase):
             rc.nu,
             rc.sigma,
             mod_depth=mo.mod_depth,
-            bg_model=bg.model,
+            bg_model=bg.kind,
             bg_k=bg.k,
             bg_d=bg.d,
             scale=mo.scale,
@@ -805,7 +806,7 @@ class DeerRiceModel(_DeerModelBase):
         def resid(x):
             p = dd_rice(_r_ref, x[0], abs(x[1]))
             vm = deer_signal(
-                _t_ref, _r_ref, p, mo.mod_depth, bg.model, bg.k, bg.d, mo.scale, kernel=_k_ref
+                _t_ref, _r_ref, p, mo.mod_depth, bg.kind, bg.k, bg.d, mo.scale, kernel=_k_ref
             )
             return vm - target_holder[0]
 
@@ -869,7 +870,7 @@ class DeerTikhonovModel(_DeerModelBase):
             r,
             v_data,
             mod_depth=mo.mod_depth,
-            bg_model=bg.model,
+            bg_model=bg.kind,
             bg_k=bg.k,
             bg_d=bg.d,
             scale=mo.scale,
@@ -994,7 +995,7 @@ class DeerMaxEntModel(_DeerModelBase):
             r,
             v_data,
             mod_depth=mo.mod_depth,
-            bg_model=bg.model,
+            bg_model=bg.kind,
             bg_k=bg.k,
             bg_d=bg.d,
             scale=mo.scale,

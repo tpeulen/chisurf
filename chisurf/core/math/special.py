@@ -118,9 +118,9 @@ def _elementwise(name: str, *args):
     """Broadcast ``args``, hand bff flat arrays, give back the broadcast shape."""
     arrays = [np.asarray(a, dtype=np.float64) for a in args]
     scalar = all(a.ndim == 0 for a in arrays)
-    arrays = np.broadcast_arrays(*arrays)
-    shape = arrays[0].shape
-    out = getattr(_bff(), f"{name}_array")(*[_flat(a) for a in arrays])
+    broadcast = np.broadcast_arrays(*arrays)
+    shape = broadcast[0].shape
+    out = getattr(_bff(), f"{name}_array")(*[_flat(a) for a in broadcast])
     return _result(out, shape, scalar)
 
 

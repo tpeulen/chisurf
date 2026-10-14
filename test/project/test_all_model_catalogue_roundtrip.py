@@ -196,7 +196,7 @@ def _edit_topology(model):
     if hasattr(model, "prior_kind"):
         model.prior_kind = "lognormal"
     if hasattr(model, "background") and hasattr(model.background, "model"):
-        model.background.model = "strexp"
+        model.background.kind = "strexp"
     if hasattr(model, "regularization"):
         model.regularization.method = "lcurve"
     if type(model).__name__ in {"DescriptionModel_tcspc_fret_gaussian", "DeerGaussianModel"}:

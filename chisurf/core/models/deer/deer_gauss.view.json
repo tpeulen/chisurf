@@ -43,7 +43,7 @@
         {
           "type": "choice",
           "target": "background",
-          "attr": "model",
+          "attr": "kind",
           "label": "Model",
           "options": [
             "hom3d",

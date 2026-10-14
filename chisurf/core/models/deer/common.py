@@ -66,4 +66,4 @@ def get_deer_background(fit_group, **kwargs):
         return np.zeros(0), np.zeros(0)
     t = np.asarray(t, dtype=float)
     tc = t - mo.zero_time
-    return t, mo.scale * _bg(tc, bg.model, bg.k, bg.d)
+    return t, mo.scale * _bg(tc, bg.kind, bg.k, bg.d)
