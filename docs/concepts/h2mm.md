@@ -200,10 +200,9 @@ path reports as zero.
 ## In ChiSurf
 
 The **Burst H2MM** plugin (`chisurf/plugins/burst/burst_h2mm/`) runs H2MM on
-`.bur` burst files read through `tttrlib`. The numeric core is a Numba engine
-(scaled forward-backward, Baum-Welch, Viterbi, BIC/ICL), with an optional
-drop-in **`tttrlib.H2MM`** C++ backend that reaches the same optimum
-several-fold faster; both are A/B-verified against the reference `H2MM_C`
+`.bur` burst files read through `tttrlib`. The numeric core (scaled
+forward-backward, Baum-Welch, Viterbi, BIC/ICL) is tttrlib's compiled
+**`tttrlib.HMM`** engine, A/B-verified against the reference `H2MM_C`
 library. Detector channels (plus PIE/ALEX micro-time windows and optional
 nanotime divisors) map to the H2MM channels, with an optional third $AA$ stream
 enabling per-state stoichiometry.
@@ -292,18 +291,9 @@ $\mathbf{A}$.
   {doc}`/guides/30_h2mm_workflow_results` ·
   {doc}`/guides/31_h2mm_simulation_validation`; binned-HMM alternative
   {doc}`/guides/20_ebfret_binned_hmm`.
-- Plugin: `chisurf/plugins/burst/burst_h2mm/`; engine `tttrlib.H2MM`.
+- Plugin: `chisurf/plugins/burst/burst_h2mm/`; engine `tttrlib.HMM`.
 - Key literature: {cite}`pirchi2016` is H2MM itself; {cite}`harris2022` is
   burstH2MM, whose plots this plugin follows; {cite}`schrimpf2018` a comparable
   framework with its own implementation; {cite}`gopich2009` the photon-by-photon
   theory underneath all three.
 
-### Native H2MM display contract
-
-The native host declares 1100 × 720 logical-pixel initial dimensions and restores
-saved geometry. Its narrow controls place output checkboxes on separate rows;
-scrolling the results dock exposes all fitted state rows. This display contract
-changes neither model selection nor the measured photon stream and rates. The
-[H2MM workflow](../guides/19_h2mm_hidden_markov.md) shows a measured constrained
-fit with its seed, iteration cap and time scale explicit, without inferring
-physical-state identities from the display.

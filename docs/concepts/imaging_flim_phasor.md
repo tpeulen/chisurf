@@ -361,28 +361,14 @@ fit the pixels that matter.
   components per pixel.
 - Guide: {doc}`/guides/77_phasor_calculator` — the Phasor-Calculator, with the
   headless equivalents of every overlay.
-- Tools in ChiSurf: the **Phasor-Calculator** (`chisurf/plugins/calculator/phasor_calculator/`) for the universal circle and the FRET trajectory; **Pixel Phasor** (`chisurf/plugins/microscopy/img_pixel_phasor/`), **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`) and **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`) for the maps themselves.
+- Tools in ChiSurf: the **Phasor-Calculator** (`chisurf/plugins/calculator/phasor_calculator/`) for the universal circle and the FRET trajectory; **Phasor-FLIM** (`chisurf/plugins/microscopy/img_pixel_phasor/`), **Mean Micro-Time** (`chisurf/plugins/microscopy/img_pixel_micro_time/`) and **Pixel-wise MLE** (`chisurf/plugins/microscopy/img_pixel_mle/`) for the maps themselves.
 
 
-## Finding imaging methods
+## Finding the imaging tools
 
-Image Tools now sits under **Spectroscopy → Imaging**. The acquisition and
-analysis methods are unchanged: the move groups fluorescence imaging with the
-other spectroscopy workflows. Deeper addresses retain their method groups
-(Imaging › Lifetime, Tools or Simulate); hidden tools remain reached through
-the hub. See {doc}`/guides/98_imaging_tools` for navigation and the workflow.
-
-Native parameter hints identify lifetime/rotation times in nanoseconds and
-separate starting values from fixed inputs. The analysis-window defaults and
-fold help are described in the [scan-image workflow](../guides/24_scan_images.md).
-A before/after output comparison proves UI preservation; an intentionally shifted
-IRF fixture is not proof of recovery of a simulated lifetime.
-
-Native CLSM host geometry is independent of the reconstruction and photon
-selection. A painted mask denotes the same pixel indices after resizing;
-its selected-photon decay retains its counts and time axis. Named masks and
-acquisition preferences share the existing settings serialization. The
-[CLSM workflow](../guides/24_scan_images.md) distinguishes saved preferences
-from reloading and recomputing the measurement.
+The imaging tools sit under **Spectroscopy → Imaging** (lifetime fitting under
+*Imaging → Lifetime*); the **Image Tools** hub gathers them in one window
+({doc}`/guides/98_imaging_tools`). Building the image, painting masks and the
+per-pixel analyses are in the [scan-image workflow](../guides/24_scan_images.md).
 
 Tools: CLSM-Draw (`chisurf/plugins/microscopy/clsm/`), Intensity (`chisurf/plugins/microscopy/img_pixel_intensity/`), Image Browser (`chisurf/plugins/tttr/tttr_image_browser/`), the shared per-pixel tool shell (Imaging Common) (`chisurf/plugins/microscopy/imaging_common/`).

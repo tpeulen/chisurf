@@ -25,26 +25,16 @@ This page is the theory. For the step-by-step ChiSurf workflow see the guides
 {doc}`/guides/27_alex_smfret_workflow`. Population gating and table selection
 are described in {doc}`/guides/28_selecting_fret_populations`.
 
-Burst MLE’s model selector remains an analysis choice across window resizes:
-Fit23, Fit24 and Fit25 use their own parameter declarations. Host geometry does
-not substitute another estimator or reinterpret its outputs; see
-{doc}`/guides/21_lifetime_from_bursts` for the actual model choices and settings.
-
 ## One acquisition definition across the burst workflow
 
 Detector routing, polarization, PIE windows, calibration and TAC corrections
-describe the acquisition. The native Burst Analysis hub keeps that definition
-at step0 and shares it with Burst Selection, both MLE steps, Background,
-IRF/Background, H2MM, Accurate FRET and Burst FCS. A child keeps its analysis
-settings and results while its acquisition editor becomes a summary and a link
-back to step0. Standalone tools retain their own editor.
-
-Snapshot workers use the definition captured when they started. Later changes
-wait until those workers finish; a re-run applies them to prior results.
-Workflow restoration preserves photon/burst sources, provenance, fused-folder
-selection and measured IRF/background patterns, while the shared definition wins
-over old child copies. See {doc}`/guides/27_alex_smfret_workflow` for the UI and
-API workflow.
+describe the acquisition, not an analysis. The Burst Analysis hub keeps that
+definition in its first step and shares it with Burst Selection, both MLE
+steps, Background, IRF & Background, H2MM, Accurate FRET and Burst FCS; inside
+the hub each of them shows it as a summary with a link back, and a tool opened
+on its own keeps its own editor. A running analysis uses the definition it
+started with; a change applies on the next run. See
+{doc}`/guides/27_alex_smfret_workflow`.
 
 ## Finding bursts
 
@@ -100,12 +90,10 @@ instrument-specific. $S_\text{raw}$ is the fraction of photons from donor
 excitation: FRET species sit near $S\approx0.5$, donor-only at $S\to1$,
 acceptor-only at $S\to0$.
 
-Background estimation operates on raw per-detector photon arrival intervals,
-with the decoded macro-time resolution supplying the physical time scale.
-Changing a window size cannot change those intervals or the selected tail fit.
-The fitted tail rate is a background estimate; the total count divided by the
-measurement duration also includes bright molecules and is not the same
-quantity. The [background workflow](../guides/15_background_rates.md) shows
+The backgrounds $B$ are estimated from the per-detector inter-photon times:
+the exponential tail of their distribution is the background rate. The total
+count divided by the measurement duration also includes the molecules and is
+not the same quantity. The [background workflow](../guides/15_background_rates.md) shows
 how to inspect the interval distribution and choose the fit window.
 
 ## The four correction factors
@@ -148,14 +136,11 @@ how to inspect the interval distribution and choose the fit window.
 
   $\beta$ shifts only $S$; $\gamma$ shifts both.
 
-Background subtraction and corrections can produce finite burst-level
-estimates outside $0\le E,S\le1$, particularly for small photon samples. Such
-values are measured estimates, not physical efficiencies to insert into the
-Förster distance relation. The Burst Browser preserves their values and shows
-gate ranges that include them; displaying a wider range does not apply an
-additional correction. Decide on population gates explicitly rather than
-assuming the table was clipped to the physical interval. See
-{doc}`/guides/28_selecting_fret_populations` for the controls.
+Background subtraction and corrections can give burst-level estimates outside
+$0\le E,S\le1$, particularly for small bursts. They are estimates, not
+efficiencies to put into the Förster relation; the Burst Browser keeps them
+unclipped and its gate ranges include them, so set population gates explicitly
+({doc}`/guides/28_selecting_fret_populations`).
 
 *Apply the full expression in one step.* Chaining single-factor corrections
 (γ-only, then leakage-only, …) is **not** equal to the combined formula — it is
@@ -252,11 +237,11 @@ comparable between instruments, but several systematic terms remain:
   structural restraint needs the accessible-volume treatment
   ({ref}`concept-accessible-volume`).
 - **Averaging is non-linear.** A molecule exchanging between states during a burst
-  does not report the mean distance: because $E$ is a steep function of $R$, the
-  burst-averaged efficiency is weighted toward the *high-FRET* (brighter
-  acceptor, shorter distance) state. Reading a mid-range $E$ as "one conformation
-  at an intermediate distance" is the classic misinterpretation — this is why the
-  static/dynamic tests matter before any structural interpretation.
+  reports (for $\gamma = 1$) the time-weighted mean of the states' efficiencies,
+  and because $E$ is a steep function of $R$ that mean does not convert to the
+  mean distance. Reading a mid-range $E$ as "one conformation at an intermediate
+  distance" is the classic misinterpretation — this is why the static/dynamic
+  tests matter before any structural interpretation.
 
 The multi-laboratory benchmark study {cite}`hellenkamp2018` puts numbers on
 this: with a carefully executed protocol, inter-laboratory agreement on
@@ -294,14 +279,5 @@ dye artefacts above.
   `chisurf/plugins/burst/`.
 - Tools in ChiSurf: **Burst Background Estimation** (`chisurf/plugins/burst/burst_background/`) for the rates the corrections subtract, **Burst IRF & Background** (`chisurf/plugins/burst/burst_irf_bg/`) for the per-detector IRF taken from the same file, and the **Burst Browser** (`chisurf/plugins/burst/burst_browser/`) for gating what comes out.
 
-
-The current [Burst Selection workflow](../guides/13_burst_identification.md)
-uses the native analysis-hub panel and the same search/API/backend contracts as
-retained modern callers. Retiring the earlier GUI fallback changes the entry
-surface, not the burst definition, selected photon indices or per-burst
-observables. The workflow guide records a measured-file regression with exact
-before/after column and settings agreement.
-
-Tool: BID→Analysis (`chisurf/plugins/burst/bid_to_analysis/`).
-
-Tool: Burst Selection (`chisurf/plugins/burst/burst_selection/`).
+Tools: Burst Selection (`chisurf/plugins/burst/burst_selection/`), BID→Analysis
+(`chisurf/plugins/burst/bid_to_analysis/`).

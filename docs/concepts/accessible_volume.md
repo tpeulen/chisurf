@@ -70,7 +70,8 @@ three grid steps along each axis at once (a $7\times7\times7$ cube), landing on 
 free point at its straight-line length. A hop can cross a wall thinner than three
 grid steps, which is what lets a linker leave a crowded attachment site. IMP.bff
 also offers a faster search that hops only out of the start sphere and then steps
-to the 74 nearest neighbours (`link_search = "fast"`); it returns ~7 % less volume. The result is a **weighted point cloud** — the
+to the 74 nearest neighbours (`link_search = "fast"`); it returns ~7 % less
+volume. The result is a **weighted point cloud** — the
 allowed grid points $\mathbf{r}_i$ with weights $w_i$.
 
 Two rules keep the attachment atom from walling in its own dye, both FPS's and both
@@ -96,9 +97,9 @@ IMP's radii as they are. It is **one radius set at every door**: the structure
 AVs of the fitting models, the FRET docking and screening tools, QuEst and
 ChiMOL's labelling editor all take IMP's radius for the atom's residue and name
 (`IMP.bff.imp_atom_radius`, IMP's own CHARMM mapping, available without IMP
-linked) times the same factor; none carries a radius table of its own. The search starts from the grid point nearest the
-attachment atom, so a site whose atom sits off-grid in a narrow pocket can come
-back empty at a fine grid where FPS, which centres its grid on the atom, finds
+linked) times the same factor; none carries a radius table of its own. The
+search starts from the grid point nearest the attachment atom, so a site whose
+atom sits off-grid in a narrow pocket can come back empty at a fine grid where FPS, which centres its grid on the atom, finds
 a volume (T4L N132 CB at 0.5 Å).
 
 ## The mean dye position
@@ -253,8 +254,8 @@ excluded-volume and other data). Combined with the analytic
 connects a measured efficiency to a structure or an ensemble.
 
 In ChiSurf the labeling/scoring configuration lives in an `fps.json` file edited in
-ChiMOL's labelling window (Structure ▸ FRET ▸ FPS JSON Editor); the AV grid engine is the external Bayesian-
-fluorescence framework (`IMP.bff`, dye code `IMP.bff.cgdye`), and the FRET plugin
+ChiMOL's labelling window (*Structure ▸ FRET ▸ FPS JSON Editor*); the AV grid
+engine is the external Bayesian-fluorescence framework (`IMP.bff`, dye code `IMP.bff.cgdye`), and the FRET plugin
 hands the network to an AV-restraint scoring function for docking and refinement.
 
 ## See also
@@ -272,9 +273,4 @@ hands the network to an AV-restraint scoring function for docking and refinement
   measures what the linker does to a distance; {cite}`kalinin2012` is the FPS
   toolkit and its benchmark; {cite}`dimura2016` reviews FRET-restrained
   integrative modelling.
-
-Host layout is independent of accessible-volume computation: the computed point
-clouds, mean positions and grid spacing are viewer objects and do not change with
-the window. The [workflow](../guides/23_accessible_volume.md) distinguishes loaded
-input from actual AV computation.
 

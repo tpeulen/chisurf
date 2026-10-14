@@ -33,8 +33,9 @@ P_\text{accept} = \min\!\bigl(1,\; e^{-(E_1 - E_0)/k_BT}\bigr),
 $$
 
 the rule of {cite}`metropolis1953`: a move that lowers $E$ is always kept, one that raises it is kept with the
-Boltzmann factor. The walk therefore samples $p(\text{structure}) \propto e^{-E/k_BT}$, a posterior over the
-structure when $E$ is a $\chi^2$ and $k_BT$ is 1. At the default $k_BT = 1.5$ it is a tempered version of that.
+Boltzmann factor. The walk therefore samples $p(\text{structure}) \propto e^{-E/k_BT}$. When $E$ is a $\chi^2$
+this is the posterior at $k_BT = 2$, because a Gaussian likelihood is $e^{-\chi^2/2}$; the default
+$k_BT = 1.5$ samples a slightly sharpened version of it.
 
 ## Energy
 

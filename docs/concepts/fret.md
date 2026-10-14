@@ -66,7 +66,7 @@ which sets the useful dynamic range of any dye pair.
 :name: fig-fret-ruler
 :width: 100%
 
-**The spectroscopic ruler, and the price of leaving its window.** *Left:* the efficiency computed by {src}`chisurf/core/fluorescence/general.py#distance_to_fret_efficiency` for $R_0 = 52$ Å, with the usable $0.5\,R_0 - 1.5\,R_0$ band shaded. *Right:* the same relation read as precision — $(\Delta R/R)/\Delta E = 1/[6E(1-E)]$, marked at $E$ = 0.1, 0.5 and 0.9. Mid-range costs 0.67, the ends 1.85, which is why a 2 % efficiency error is 1.3 % in distance at $E = 0.5$ and 7 % in the tails.
+**The spectroscopic ruler, and the price of leaving its window.** *Left:* the efficiency computed by {src}`chisurf/core/fluorescence/general.py#distance_to_fret_efficiency` for $R_0 = 52$ Å, with the usable $0.5\,R_0 - 1.5\,R_0$ band shaded. *Right:* the same relation read as precision — $(\Delta R/R)/\Delta E = 1/[6E(1-E)]$, marked at $E$ = 0.1, 0.5 and 0.9. Mid-range costs 0.67, the ends 1.85, which is why a 2 % efficiency error is 1.3 % in distance at $E = 0.5$ and 3.7 % at $E$ = 0.1 or 0.9.
 ```
 
 :::{note}
@@ -241,34 +241,16 @@ with the flexible dye-linker cloud handled by accessible volumes
   treatment, FRET chapters.
 - Tools in ChiSurf: the **FRET-Calculator** (`chisurf/plugins/calculator/fret_calculator/`) converts between $E$, $R$ and $R_0$; the **Spectra Downloader** (`chisurf/plugins/spectra_downloader/`) fetches the spectra the overlap integral needs, and {doc}`/guides/83_spectra_and_r0` computes $J$ and $R_0$ from them and checks the result against tabulated values.
 
-### Browsing spectra at different window sizes
-
-The native Spectra Downloader declares a 1100 × 720 logical-pixel initial host
-size and restores saved geometry. Its scrollable stacked Browse layout exposes
-the component metadata and spectrum on narrow windows without changing stored
-wavelength or intensity arrays. This display contract supplies no extinction
-calibration or spectral normalization: those remain prerequisites of the
-overlap integral. The [spectra workflow](../guides/83_spectra_and_r0.md) illustrates
-the native layout with explicitly labelled analytic fixtures.
-
-The Spectra endpoint help distinguishes local SQLite import from server import.
-This destination choice does not change the stored spectral samples or the
-normalization assumptions used in the overlap integral.
-
 ### Pair inputs in the FRET-line workflow
 
-The guided entry uses donor-only lifetime and Förster radius as explicit physical
-inputs. For a single distance and a single donor lifetime,
-$\tau_{DA}=\tau_{D0}/[1+(R_0/R)^6]$ and
-$E=1-\tau_{DA}/\tau_{D0}$. The starter updates both the model's donor lifetime
-and FRET-rate reference together with the line's normalization lifetime; changing
-only the visible reference would give a different efficiency. The nondefault
-3 ns/60 Å regression verifies this relation independently of the GUI.
+The guided entry of the [FRET-line tool](../guides/82_fret_lines.md) takes the
+donor-only lifetime and the Förster radius as its physical inputs. For one
+distance and one donor lifetime, $\tau_{DA}=\tau_{D0}/[1+(R_0/R)^6]$ and
+$E=1-\tau_{DA}/\tau_{D0}$; the starter sets the model's donor lifetime, its
+FRET-rate reference and the line's normalization lifetime together, since
+changing only one gives a different efficiency. Multi-exponential donors and
+linked parameters stay expert inputs: the scalar starter refuses them rather
+than collapsing them. Its 4 ns / 52 Å example is generic, not a named dye pair.
 
-Multiexponential donor spectra and linked parameters remain expert inputs. A
-scalar starter refuses those before writing; it does not collapse a spectrum or
-break a link silently. Its generic 4 ns/52 Å example supplies no named-dye
-calibration. The [FRET-line guide](../guides/82_fret_lines.md) shows the guided
-entry and retained advanced views.
-
-Calculator workflow: [The FRET calculator](../guides/107_fret_calculator.md).
+Converting between $E$, $R$ and $R_0$:
+[the FRET calculator](../guides/107_fret_calculator.md).

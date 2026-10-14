@@ -25,10 +25,10 @@ with the records of each kind; right, a page at a frame boundary, where the pixe
 and a frame marker (orange) interleave with the photons.
 ```
 
-Press **Open TTTR…** or drop a `.ptu`, `.ht3`, `.phu`, `.pt3`, `.ht2` or `.t3r` file on the window. The summary shows
+Press **Open TTTR...** or drop a photon file on the window: a `.pto` container or a vendor file tttrlib reads (`.ptu`, `.ht3`, `.spc`, …). The summary shows
 the photon count (and the marker count), the measurement time (last macro time × header resolution), the micro-time
-channels the header declares, the records of each kind and the routing channels present. A file that fails to open leaves the table that was shown and the status
-line says why.
+channels the header declares, the records of each kind and the routing channels present. A file that fails to open
+leaves the table that was shown, and the status line says why.
 
 ## 2. Photons and markers
 

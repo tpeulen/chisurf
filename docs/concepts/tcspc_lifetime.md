@@ -55,8 +55,8 @@ y_k = \#\{\,j \in S : \lfloor \mu_j / b \rfloor = k \,\}, \qquad
 \Delta t_b = b\,\Delta t ,
 $$
 
-with $S$ the selected photons and $b$ an integer **binning factor** (*TAC div*
-in **TTTR: Generate Decay**). The histogram then has $\lceil n_\text{TAC}/b\rceil$
+with $S$ the selected photons and $b$ an integer **binning factor** (**Binning**
+in **Histogram-Microtime**). The histogram then has $\lceil n_\text{TAC}/b\rceil$
 channels.
 
 - **Binning keeps the statistics Poisson.** A coarse channel is a sum of Poisson
@@ -75,13 +75,11 @@ channels.
   single-molecule bursts; the inverse keeps the sparse photons between bursts,
   which is a background or scatter decay taken from the same measurement.
 
-The non-burst selection is the complement of the complete burst intervals.
-The photon engine’s burst-search bounds include both the first and last photon;
-all photons in that inclusive interval must be removed before estimating a
-non-burst IRF or background. Overlapping intervals form one union of rejected
-photon indices. A half-open array slice must therefore end one position after
-the engine’s last index. Timing, routing and micro-time gates are applied to
-the retained photons, without changing the raw source stream.
+A non-burst (background or IRF) selection is the complement of the bursts.
+The burst search returns inclusive `[start, stop]` photon indices, so both end
+photons belong to the burst, and a half-open array slice must end at
+`stop + 1`; overlapping bursts are removed as one union. Routing and micro-time
+gates then apply to the photons that remain.
 
 ### What distorts the histogram
 
@@ -183,7 +181,8 @@ $$
   run: if the two imply fewer pulses than there are recorded photons the
   correction is undefined and is skipped rather than applied.
 - **Differential non-linearity $L_i$** — channel-width variations of the
-  time converter, flattened with a linearization table from uncorrelated light.
+  time converter, flattened with a linearization table from uncorrelated light
+  (building the table: {doc}`/guides/37_tttr_microtime_lut`).
 
 These are always applied to the *model*, never by pre-correcting the noisy data,
 so the residuals stay Poisson.
@@ -201,38 +200,14 @@ so the residuals stay Poisson.
 Both fit in convolved space; they differ in the statistic and in how many
 parameters a given photon budget can support.
 
-## Shared detector definitions in tool hubs
+## Burst-wise estimators
 
-Routing channels identify detectors, PIE windows identify excitation periods,
-and a TAC linearization table maps electronics channels to their calibrated
-micro-time coordinates. These describe the acquisition rather than an
-individual analysis result. A native tool hub therefore keeps one working
-definition at **0. Setup** and gives each participating tool the same complete
-reading, routing, window and LUT settings. Standalone tools keep their editor.
-
-Sharing settings does not recompute or relabel a completed analysis. A running
-snapshot uses its original input definition; changes are delivered to that tool
-after it finishes. Re-run the analysis when changing the definition should
-change the result. See {doc}`/guides/101_tttr_toolbox` for the shared setup,
-count-rate and audification workflow, and {doc}`/guides/12_handling_tttr_files`
-for the two clocks and file formats.
-
-## Registered burst estimators
-
-Burst MLE offers Fit23, Fit24 and Fit25 through the shared tttrlib facade.
-Fit23 models a single lifetime with polarization; Fit24 models a two-exponential
-mixture. Fit25 evaluates four fixed lifetime candidates and returns the selected
-index, rather than optimizing those candidate lifetimes continuously. Candidate
-values therefore remain inputs even after fitting. The provider's declared
-parameter/result schema determines table rows, units and exported columns.
-
-A scarce photon budget can make a two-lifetime decomposition poorly determined.
-Choose the model for the scientific question and inspect the fitted decay and
-residuals; adding components does not guarantee identifiable lifetimes. The
-single-lifetime generated demo has an input lifetime of 2 ns, so it demonstrates
-controls and finite-count variability rather than validating a multicomponent
-sample. See {doc}`/guides/21_lifetime_from_bursts` for model selection, parameter
-editing, the generated demonstration and the API.
+Burst MLE offers the tttrlib estimators Fit23 (one lifetime, with
+polarization), Fit24 (two lifetimes) and Fit25 (the best of four fixed
+candidate lifetimes — it returns which one, the candidates are inputs, not
+fitted). With tens of photons a two-lifetime split is often not identifiable;
+check the fitted decay and residuals rather than adding components. See
+{doc}`/guides/21_lifetime_from_bursts`.
 
 ## Average lifetimes and fractions
 
@@ -296,21 +271,6 @@ spectral channels — not goodness-of-fit alone.
 (concept-tcspc-model-selection)=
 ## How many components?
 
-LLTF’s component-count scan uses the nested extra-sum-of-squares statistic.
-For smaller/larger weighted residual sums $C_s,C_l$ and reported degrees of
-freedom $\nu_s,\nu_l$,
-
-$$
-F = \frac{(C_s-C_l)/(\nu_s-\nu_l)}{C_l/\nu_l}.
-$$
-
-A non-improving larger fit supplies zero improvement confidence. Nuisance fixed
-flags affect the stored degrees of freedom and are carried through the scan.
-The F confidence is approximate for exponential mixtures: an added component
-has zero amplitude under the null and its lifetime is then unidentified. It is
-a model-comparison diagnostic, not calibrated certainty or a posterior. See
-{doc}`/guides/76_decay_analysis_tools` for initialization and configuration.
-
 Models with $n$ and $n+1$ exponentials are **nested**: setting one amplitude to
 zero turns the larger into the smaller, so its minimum $\chi^2$ can only be
 lower. Whether the drop is more than noise is a test, not a reading of
@@ -333,11 +293,14 @@ $\Delta p = 2$:
 |---|---|---|---|
 | extra-sum-of-squares | $F(\Delta p, \nu_{n+1})$ | 1.0001 | 1.0011 |
 | ratio of reduced $\chi^2$ (the **F-Test** tool) | $F(\nu_n, \nu_{n+1})$ | 1.016 | 1.057 |
-| ratio against $F(2, \nu_{n+1})$ (**Lazy Lifetime Analysis**) | — | 1.14 | 3.0 |
 
-The first is the textbook test; the second treats the two $\chi^2$ as
-independent, which they are not, and is correspondingly conservative; the third
-is what {doc}`/guides/76_decay_analysis_tools` measures and flags as a defect.
+The first is the textbook test, and the one **Lazy Lifetime Analysis** uses for
+its component-count scan (a larger fit that does not improve gets confidence
+0); the second treats the two $\chi^2$ as independent, which they are not, and
+is correspondingly conservative. For exponential mixtures even the first is
+approximate — under the null the added amplitude sits at its bound and its
+lifetime is unidentified — so read it as a diagnostic, not a probability
+({doc}`/guides/76_decay_analysis_tools`).
 
 Three cautions apply whichever rule is used.
 
@@ -369,13 +332,6 @@ value wins. Adding an exponential costs 4 in AIC and $2\ln N$ in BIC (16 at
 (concept-tcspc-synthetic-decays)=
 ## Synthetic decays
 
-The generator’s window size and dock layout are presentation settings. Its
-channel width, lifetime/rotation spectra, instrument response and noise settings
-determine the curve; resizing does not change those physical inputs. A file
-containing time/count columns supplies its last count column, so its sample
-spacing still must match the requested channel width. The native workflow is in
-{doc}`/guides/76_decay_analysis_tools`.
-
 A decay generated from known parameters is the only data on which a fitted
 lifetime can be called right or wrong. ChiSurf builds one as the measurement
 does: the ideal decay on the channel grid, convolved with a normalized IRF, then
@@ -405,7 +361,9 @@ Two generator options model effects a real instrument has and the simple
 recipe above omits: a finite laser **period**, which wraps the unrelaxed tail of
 earlier pulses into the window through the periodic kernel (*Reconvolution*,
 above), and a sub-channel **time shift** of the IRF. Both are arguments of
-{src}`chisurf/core/fluorescence/decay.py#synthetic_decay`, not of the GUI.
+{src}`chisurf/core/fluorescence/decay.py#synthetic_decay`, not of the GUI. An
+IRF read from a file takes its last count column, whose sample spacing must
+match the requested channel width ({doc}`/guides/76_decay_analysis_tools`).
 
 ## Global fitting
 
@@ -441,11 +399,4 @@ FRET distance distributions and anisotropy decays are resolved; see
   pixel-wise fits; {cite}`wahl2015` the timing electronics and acquisition
   modes; {cite}`isbaner2016` dead-time distortion and its correction.
 - Tools in ChiSurf: *Spectroscopy → Decay* holds the decay tools — IRF estimation (`chisurf/plugins/fluorescence_decay/irf_estimator/`), **MaxEnt MEM** (`chisurf/plugins/fluorescence_decay/maxent_decay/`) for a lifetime *distribution*, **Lazy Lifetime Analysis** (`chisurf/plugins/fluorescence_decay/lltf/`) for an automated discrete-exponential fit of one decay file, and the **Synthetic Decay Generator** (`chisurf/plugins/fluorescence_decay/synthetic_decay/`) for a decay whose answer you know.
-
-Microtime linearization can mask low-count calibration bins before building
-the correction. When region-mean normalization is enabled, the low-count
-threshold compares counts relative to that mean. It can therefore change the
-accepted bins, correction mapping and corrected preview. The
-[LUT workflow](../guides/37_tttr_microtime_lut.md) documents this setting.
-
 Tool: Burst MLE (`chisurf/plugins/burst/burst_mle_analysis/`).
