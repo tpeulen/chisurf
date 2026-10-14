@@ -383,6 +383,14 @@ csc lltf fit-vvvh demo/lltf_vv_vh_demo.txt \
 # Reduced chi-square: 1.01 (VV 1.01, VH 1.00)
 ```
 
+The joint fit runs from two starts (a magic-angle LLTF fit of the
+$G$-weighted sum, and an even spread of lifetimes) and keeps the better; a
+`maxfev` warning in *Analysis Output* is about the fit that was kept. An
+intermediate stage that stops on its budget stays silent, and a seed fit that
+stops early while the joint fit converges is reported as such ("Seed fit (magic
+angle) stopped at its evaluation limit; the joint fit converged.";
+`seed_fit` in the JSON).
+
 `fit-vvvh` takes `--vh` and `--irf-vh` for separate files, `-nr` for the number
 of rotations, `--r-inf`, `-g`/`--l1`/`--l2`, `-dt` for the channel width of a
 stacked file without one, and the scan options of `fit`. It writes

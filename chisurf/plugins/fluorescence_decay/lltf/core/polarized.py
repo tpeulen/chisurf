@@ -17,12 +17,14 @@ the magic-angle scan uses.
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import pathlib
 import typing
 
 import numpy as np
 
-from chisurf.core.fitting.minimizer import minimize
+from chisurf.core.fitting.minimizer import ier_is_success, minimize
 from chisurf.core.fluorescence.anisotropy.decay import anisotropy_rt, calculcate_spectrum
 from chisurf.core.fluorescence.anisotropy.rt import rt_curves
 
@@ -40,6 +42,31 @@ from .settings import merged_settings
 #: Stand-in correlation time of a residual anisotropy r_inf (ns): exp(-t/1e9) = 1
 #: over any TCSPC window, and the product lifetime stays tau to 1e-8.
 R_INF_RHO = 1.0e9
+
+
+@contextlib.contextmanager
+def _quiet_minimizer():
+    """Hold back the minimizer's non-convergence warnings of intermediate fits.
+
+    The magic-angle pre-fit only seeds the joint fit, and the joint fit runs from
+    two starts and in two stages; a ``minimize:`` warning from any of these read
+    as a failed fit in the log although the fit that is kept converged. The seed's
+    status is reported as the seed's (``seed_fit`` in the result), and
+    :meth:`PolarizedDecay.fit` warns once, for the fit it keeps.
+    """
+
+    def drop(record):
+        return not str(record.getMessage()).startswith("minimize:")
+
+    root = logging.getLogger()
+    root.addFilter(drop)
+    try:
+        yield
+    finally:
+        root.removeFilter(drop)
+
+
+SEED_NOTE = "Seed fit (magic angle) stopped at its evaluation limit; the joint fit converged."
 
 
 # ── input ─────────────────────────────────────────────────────────────────────
@@ -381,14 +408,20 @@ class PolarizedDecay:
             # deterministic spread the magic-angle scan starts from.
             vm = self._vm
             vm.irf_shift = self._setup_shift
-            vm.fit(
-                n_lifetimes=n_lifetimes,
-                randomize_initial_values=True,
-                min_lifetime=rand["min_lifetime"],
-                max_lifetime=rand["max_lifetime"],
-                amplitude_variation=rand["amplitude_variation"],
-                seed=rand.get("seed", 0),
-            )
+            with _quiet_minimizer():
+                seed = vm.fit(
+                    n_lifetimes=n_lifetimes,
+                    randomize_initial_values=True,
+                    min_lifetime=rand["min_lifetime"],
+                    max_lifetime=rand["max_lifetime"],
+                    amplitude_variation=rand["amplitude_variation"],
+                    seed=rand.get("seed", 0),
+                )
+            self._seed_fit = {
+                "converged": bool(seed.get("converged", True)),
+                "optimizer_status": seed.get("optimizer_status"),
+                "optimizer_message": seed.get("optimizer_message", ""),
+            }
             starts.append((np.asarray(vm.lifetime_spectrum, float), float(vm.irf_shift)))
             spread = np.linspace(rand["max_lifetime"], rand["min_lifetime"], n_lifetimes + 2)[1:-1]
             starts.append(
@@ -414,7 +447,21 @@ class PolarizedDecay:
             + [(None, None)] * 2
             + [(0.0, None)] * 2
         )
-        best = None
+        results: list = []
+        with _quiet_minimizer():
+            self._run_starts(starts, b, rho, fit_r_inf, layout, bounds, results)
+        best = min(results, key=lambda item: item[0])
+        if not ier_is_success(best[2]):
+            # The kept fit did not converge: that is a real warning.
+            logging.warning(
+                "minimize: " + _optimizer_provenance(best[2], len(best[1]))["optimizer_message"]
+            )
+        self.result = self._report(best[1], layout, best[2])
+        self.result["seed_fit"] = getattr(self, "_seed_fit", None)
+        return self.result
+
+    def _run_starts(self, starts, b, rho, fit_r_inf, layout, bounds, results):
+        """Optimise from every start; append ``(objective, parameters, status)`` to *results*."""
         for spectrum, shift in starts:
             p0 = np.concatenate(
                 [
@@ -428,11 +475,7 @@ class PolarizedDecay:
                 ]
             )
             p, status = self._optimize(p0, layout, bounds)
-            objective = float(np.sum(self.residuals(p, layout) ** 2))
-            if best is None or objective < best[0]:
-                best = (objective, p, status)
-        self.result = self._report(best[1], layout, best[2])
-        return self.result
+            results.append((float(np.sum(self.residuals(p, layout) ** 2)), p, status))
 
     def _optimize(self, p0, layout, bounds):
         """MINPACK from *p0*; the deviance is refined from the Neyman optimum, as in the magic-angle fit."""
@@ -628,6 +671,17 @@ class PolarizedDecay:
         return figure
 
 
+def seed_notes(result: dict) -> list[str]:
+    """What to say about the seed fit: only that it stopped early, and only when the joint fit converged.
+
+    A joint fit that did not converge is reported by its own optimizer warning.
+    """
+    seed = result.get("seed_fit") or {}
+    if seed and not seed.get("converged", True) and result.get("converged"):
+        return [SEED_NOTE]
+    return []
+
+
 def fit_polarized(
     decay,
     irf,
@@ -710,7 +764,10 @@ def fit_polarized(
         n = int(fit_params.get("number_of_lifetimes") or 1)
         result = pd.fit(n, n_rot, r_inf, settings=settings)
     result["calibration_source"] = {k: cal[f"{k}_source"] for k in ("g_factor", "l1", "l2")}
+    result["notes"] = seed_notes(result)
     if verbose:
+        for note in result["notes"]:
+            print(note)
         for i, row in enumerate(result["lifetimes"], 1):
             print(f"Lifetime {i}: {row['lifetime']:.3f} ns, Amplitude: {row['amplitude']:.3f}")
         for i, row in enumerate(result["rotations"], 1):

@@ -8,6 +8,7 @@ example IRF (6100 channels of 8 ps), 2e6 photons over both channels.
 from __future__ import annotations
 
 import json
+import logging
 import pathlib
 
 import numpy as np
@@ -266,3 +267,45 @@ def test_agrees_with_chisurfs_own_anisotropy_fit(tmp_path, monkeypatch):
     assert ours["r0"] == pytest.approx(theirs["anisotropy.r0"], abs=0.005)
     assert ours["reduced_chi_square"] < 1.1 and global_fit.chi2r < 1.1
     assert ours["lifetimes"][0]["lifetime"] == pytest.approx(DEMO["tau_ns"], abs=0.03)
+
+
+# ── the seed fit's warning ────────────────────────────────────────────────────
+def _minimize_warnings(caplog):
+    return [r for r in caplog.records if r.getMessage().startswith("minimize:")]
+
+
+def test_a_seed_fit_that_stops_early_is_labelled_not_warned(tmp_path, monkeypatch, caplog):
+    """The magic-angle seed capped at 20 evaluations: no minimize warning, a seed note instead."""
+    from chisurf.plugins.fluorescence_decay.lltf.core import fitter
+
+    real = fitter.minimize
+    monkeypatch.setattr(fitter, "minimize", lambda *a, **k: real(*a, **{**k, "maxfev": 20}))
+    decay, irf = P.write_demo(tmp_path)
+    with caplog.at_level(logging.WARNING):
+        out = CliRunner().invoke(
+            cli, ["fit-vvvh", str(decay), str(irf), "-n", "2", "-sp", str(tmp_path / "out")]
+        )
+    assert out.exit_code == 0, out.output
+    assert "Fit completed successfully." in out.output and P.SEED_NOTE in out.output
+    assert not _minimize_warnings(caplog)
+    r = json.loads((tmp_path / "out" / "lltf_vv_vh_demo_vvvh_fit.json").read_text())
+    assert r["converged"] and r["seed_fit"]["converged"] is False
+    assert r["notes"] == [P.SEED_NOTE]
+    assert r["rotations"][0]["rho"] == pytest.approx(P.DEMO["rho"], abs=0.06)
+
+
+def test_a_joint_fit_that_does_not_converge_still_warns(tmp_path, monkeypatch, caplog):
+    """The joint fit capped at 15 evaluations: its minimize warning stays and no seed note hides it."""
+    real = P.minimize
+    monkeypatch.setattr(P, "minimize", lambda *a, **k: real(*a, **{**k, "maxfev": 15}))
+    decay, irf = P.write_demo(tmp_path)
+    with caplog.at_level(logging.WARNING):
+        out = CliRunner().invoke(
+            cli, ["fit-vvvh", str(decay), str(irf), "-n", "2", "-sp", str(tmp_path / "out")]
+        )
+    assert out.exit_code == 0, out.output
+    assert "Fit completed with optimizer warning." in out.output
+    assert P.SEED_NOTE not in out.output
+    assert _minimize_warnings(caplog)
+    r = json.loads((tmp_path / "out" / "lltf_vv_vh_demo_vvvh_fit.json").read_text())
+    assert r["converged"] is False and r["notes"] == []

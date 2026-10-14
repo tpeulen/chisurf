@@ -384,6 +384,9 @@ def fit_vvvh(
     )
     if result.get("converged", False):
         click.echo("Fit completed successfully.")
+        if not verbose:  # verbose output has printed it already
+            for note in result.get("notes", []):
+                click.echo(note)
     else:
         click.echo("Fit completed with optimizer warning.")
         click.echo(result.get("optimizer_message", ""))
