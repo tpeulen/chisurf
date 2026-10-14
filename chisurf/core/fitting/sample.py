@@ -12,6 +12,7 @@ import numpy as np
 import chisurf as cs
 import chisurf.core.fitting
 import chisurf.core.fitting.ensemble
+import chisurf.core.fitting.factorgraph
 import chisurf.core.fitting.minimizer
 from chisurf.core.registry import catalog as _catalog
 
