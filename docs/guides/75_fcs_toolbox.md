@@ -23,12 +23,12 @@ For what the curve means and how its error bars are estimated, see
 
 * **Correlator** — the five-step workflow this guide walks through:
   *Channel Definitions → Files & Steps → Photon / Burst Filter → Correlator →
-  FCS Merger*. It opens on *Files & Steps* (**Example** there adds a simulated
+  FCS Merger*. It opens on *Files & Steps* (**Load example** there adds a simulated
   measurement whose curve falls near 0.5 ms). Its photon file and JSON
   parameters live in `demos/fcs_correlator` under the ChiSurf settings folder;
   `make_demo()` from `chisurf.plugins.fcs.fcs_correlator.demo` returns the
   primary SPC path (`overwrite=True` regenerates it). The tour first reveals
-  this Files page and waits for your **Example** click. **Next** runs the open step where
+  this Files page and waits for your **Load example** click. **Next** runs the open step where
   it has a run (the Correlator correlates) and then moves on, **Back** goes back,
   and **>>** runs the remaining steps in order (press it again to stop). A step
   switched off in *Files & Steps* is grey and skipped. **Help** and **Guide** at
@@ -39,24 +39,19 @@ For what the curve means and how its error bars are estimated, see
   volume and concentration calculator, {ref}`concept-fcs-correlation`). A ⚠
   marks a tool flagged experimental.
 
-The controls are native emtk/AutoForm surfaces. The existing ChiSurf Qt windows
-host the same `FcsHubApp` used by the standalone launcher; there is no second
-Qt implementation of the workflow. Closing the hub closes its opened child
-tools; a running Burst-wise FCS child receives cancellation and releases its
-worker executor when closed.
+Closing the hub closes the tools it opened; a running Burst-wise FCS job is
+cancelled.
 
-For a desktop with a working GPU/display, launch the complete hub directly:
+The hub also starts on its own, outside the main window:
 
 ```bash
-pixi run -e test python -m chisurf.emtk --plugin fcs_toolbox --size 1200x800
+python -m chisurf.emtk --plugin fcs_toolbox --size 1200x800
 ```
 
 The same launcher accepts `fcs_correlator` for the five workflow steps,
-`fcs_merger` for the merger alone, and `burst_fcs_correlator` for burst-wise FCS.
-These are manifest IDs, not separate `csg_fcs_*` commands. Native desktop
-launch needs a display; `QT_QPA_PLATFORM=offscreen` is for Qt-host captures,
-not a substitute for the native desktop renderer. The Python calculations
-below run without a window.
+`fcs_merger` for the merger alone, and `burst_fcs_correlator` for burst-wise
+FCS (manifest IDs). It needs a display; the Python calculations below run
+without a window.
 
 ## 1. Channel Definitions
 
@@ -69,11 +64,12 @@ those detectors for correlation.
 :width: 100%
 
 Channel definitions for a two-detector setup: the two autocorrelations and the
-green × red cross-correlation, each with its own multi-tau settings.
+green × red cross-correlation, each with its own multi-tau settings; the
+selected pair is edited under the table.
 ```
 
 * **Detector setup** — the setup to pair. Setups themselves are created in the
-  channel-definition wizard; **🔄 Reload** re-reads them.
+  channel-definition wizard; **Reload** re-reads them.
 * **A / B / Add** — pick two logical channels and add the pair. Equal names make
   an autocorrelation (named `<A>_ACF`), different names a cross-correlation
   (`<A>×<B>`); the label is optional.
@@ -82,7 +78,9 @@ green × red cross-correlation, each with its own multi-tau settings.
   only the owner can change it.
 * **💾 Save** stores the pairs per setup (in the metadata database, or
   `fcs_channel_setups.json` in the settings folder when none is configured). The
-  Burst-wise FCS tool reads the same pairs.
+  Burst-wise FCS tool reads the same pairs. **Apply** hands them to the
+  Correlator, **Delete preset** removes them, and **Import JSON** /
+  **Export JSON** move them between machines.
 
 The selected detector setup is handed to the Correlator's **A**/**B** selectors.
 Check the actual **Ch A**/**Ch B** routing channels and micro-time gates before
@@ -94,7 +92,8 @@ running, especially when changing detector or PIE selections.
 :name: fig-fcs-toolbox-files
 :width: 100%
 
-One photon stream loaded, both optional steps switched on.
+One photon stream loaded (the BH SPC-132 test file); the photon filter is
+off and the FCS merger on, the defaults for a solution measurement.
 ```
 
 * **Files** — drop photon streams (`.ptu`, `.ht3`, `.spc`, `.hdf`/`.h5`), a
@@ -160,7 +159,7 @@ The native FCS hub displays two measured BH132 chunk curves, with channels
 0, 1 × 8, 9, nine bins and twenty cascades, Laurence normalization. The current
 workflow selection contains 96 774 of the fixture's 183 657 photons; the plot
 retains the earlier computed curves until **Correlate** is pressed again.
-The lag axis is in ms; these are measured photons, not the **Example** simulation.
+The lag axis is in ms; these are measured photons, not the **Load example** simulation.
 ```
 
 * **Ch A / Ch B** — routing channels of the two streams, comma- or
@@ -223,12 +222,9 @@ and the hub's Correlator view label lag time in ms.
 * **Add to ChiSurf** saves (if needed) and loads that file as an FCS dataset,
   ready for {doc}`09_diffusion_fcs`.
 
-ChiSurf's Kristine `.cor` writer, reader and FCS fitter use lag time in
-milliseconds. For this BH132 fixture, the header's raw macro-time tick is
-13.5 ns, or 0.0000135 ms; the measured-repeat producer converts its
-TTTR-aware correlator's seconds axis to ms before writing. An earlier
-seconds-based diagnostic fixture was corrected at its producer. That fixture
-is not evidence that existing user `.cor` files need a factor-of-1000 conversion.
+The Kristine `.cor` writer, reader and FCS fit all use lag time in
+milliseconds; the correlator converts its axis (macro-time ticks, 13.5 ns for
+this file) to ms before writing.
 
 The standalone **FCS-Merger** window (`chisurf/plugins/fcs/fcs_merger/`) has the
 same table for a folder of chunks you already have: drop the folder (or one of
@@ -237,18 +233,15 @@ click on a row includes or excludes a curve, and **Delete** removes it from the
 list (not from disk). **Target** is the file **💾 Save** writes, `<folder>.cor`
 beside the folder by default; **Save as…** writes elsewhere.
 
-On first use, the standalone native merger opens at **1100 × 720** pixels;
-saved window and dock geometry takes precedence on reopening. Reopen the curve
-folder and check the **Use** selections before saving a merge. Native window
-preferences are not a saved analysis session. Resizing does not change the
-screened curves, the averaging calculation or the exported lag-time units.
+The window remembers its size, not the analysis: reopen the folder and check
+the **Use** ticks before saving a merge.
 
 ```{figure} figures/fcs_merger_primary_window.png
 :name: fig-fcs-merger-primary-window
 :width: 100%
 
-The standalone native merger at its declared first-use size: six measured
-BH132 repeats, with the third excluded and the remaining five averaged.
+The standalone merger: six measured BH132 repeats, the third excluded (and
+selected, so its curve is highlighted), the remaining five averaged.
 ```
 
 Averaging assumes every ticked curve measures the same thing: the same
@@ -306,13 +299,6 @@ What survives:
 * **Uncertainties** — taken from the file where it has them; otherwise the
   photon-noise model fills them in on reading, and that model then travels into
   the written file as if measured.
-
-:::{admonition} Known issues
-:class: warning
-The `yaml` reader is not implemented, so a `yaml` file cannot be read back
-(convert *to* `yaml` only for archiving). `-v` turns verbose output on but
-`--verbose` turns it off (a flag-pair spelling slip).
-:::
 
 ## Headless
 

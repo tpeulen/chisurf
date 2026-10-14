@@ -9,16 +9,10 @@ anchor: concept-accurate-fret
 (concept-accurate-fret)=
 # Accurate FRET: correction factors, FRET lines, and where they come from
 
-The native calibration tool’s window and dock layout are presentation settings.
-Its detector mapping, measured burst observables and calibration assumptions
-determine the correction factors. Reproduce those inputs when comparing
-results; changing the host size alone must preserve the factors and corrected
-observables. The workflow is in {doc}`/guides/41_accurate_fret`.
-
 A single-molecule FRET histogram is a histogram of *photon ratios*. Turning it
 into a number another laboratory can reproduce — an **accurate** efficiency, and
 from it a distance — requires four correction factors. The multi-laboratory
-benchmark of Hellenkamp *et al.* (2018) showed that once these
+benchmark {cite}`hellenkamp2018` showed that once these
 are applied consistently, twenty laboratories agree on the same duplex to within
 a few per cent; without them they do not. The systematics, not the counting
 statistics, are what separate laboratories.
@@ -101,18 +95,6 @@ environment, filter tolerances, detector curves). It is therefore used as a
 
 ### 2. The reference populations (the data)
 
-Legacy burst-table padding is a storage convention, not an observation or an
-acceptor-only reference. It must be removed by the canonical format reader
-before calibration. Invalid or unassigned genuine bursts remain part of the
-measurement’s row identity; retaining them does not assert a valid population
-classification. The reader and analysis masks are separate responsibilities.
-
-A donor-only reference requires the donor-only mask. Invalid, unassigned and
-cluster-noise observations receive an explicit unassigned label, rather than
-being fabricated as a reference class. Retaining their measurement identity
-allows later analyses to account for skipped bursts without mistaking them for
-valid calibration evidence.
-
 A measurement usually contains its own references. A donor-only molecule emits
 nothing under acceptor excitation, so it sits at $S \approx 1$; an acceptor-only
 molecule at $S \approx 0$; doubly labelled molecules in between. From those,
@@ -123,9 +105,14 @@ $$
 \delta = \frac{\langle F_{12}\rangle_{\text{acceptor-only}}}{\langle F_{22}\rangle_{\text{acceptor-only}}} .
 $$
 
+Bursts that belong to no reference class (invalid, unassigned, or noise of
+the mixture fit) keep their row in the burst table but are labelled
+*unassigned*; they never enter a reference. Rows that only pad a legacy burst
+table are dropped by the reader before calibration.
+
 $\gamma$ and $\beta$ need populations of *different* efficiency. After leakage
 and direct excitation are removed, the apparent stoichiometry and efficiency of
-doubly labelled molecules obey a straight line (Lee *et al.*, 2005)
+doubly labelled molecules obey a straight line {cite}`lee2005`
 
 $$
 \frac{1}{S} = \Omega + \Sigma\,E,
@@ -145,7 +132,7 @@ against its **fluorescence-averaged** donor lifetime in the presence of the
 acceptor, $\langle\tau_{D(A)}\rangle_F$ — the lifetime a mono-exponential fit of
 the burst returns. A structurally homogeneous population cannot sit anywhere in
 that plane: it must lie on the **static FRET line**
-(Sisamakis *et al.*, 2010; Kalinin *et al.*, 2010).
+{cite}`sisamakis2010,kalinin2010`.
 
 ```{figure} ../guides/figures/accurate_fret_lines.png
 :alt: static and dynamic FRET lines, and a population displaced by a wrong gamma
@@ -195,7 +182,7 @@ If a molecule interconverts between two states faster than the burst lasts, the
 two lifetime spectra add as *species* while the plotted lifetime stays
 fluorescence-averaged. The population then leaves the static line and lands on
 the **dynamic line** connecting the two limiting states, bowing towards longer
-lifetimes (Barth *et al.*, 2022). This is the standard sub-burst-dynamics diagnostic,
+lifetimes {cite}`barth2022`. This is the standard sub-burst-dynamics diagnostic,
 and it is also the reason the lifetime route to $\gamma$ must be run on a sample
 believed to be static: a dynamic population would be mistaken for a
 mis-calibration and vice versa. Independent confirmation comes from
@@ -336,7 +323,16 @@ $$
 which behaves correctly at both extremes: an informative dataset overrides an
 uncertain optical model, and a factor the data cannot identify at all (no
 donor-only bursts in the file) falls back to the optical value *with the optical
-uncertainty* instead of to a fitted illusion. Because the factors are ordinary
+uncertainty* instead of to a fitted illusion.
+
+A number in the factor table is not proof that the data determined it. Each
+factor states its origin: *data estimate*, *optics prior*, *data + optics
+prior*, *stoichiometry assumption (1:1 labelling)* for $\beta$, *not identified;
+retained value* when the estimator declares it could not identify the factor,
+and *source not reported* when the input carries no such record. A retained
+$\gamma = 1$ is a usable number, not evidence that $\gamma$ is 1.
+
+Because the factors are ordinary
 [fitting parameters](../reference/user_models.md) in ChiSurf, the same priors also
 regularize them when they are optimized inside a larger model.
 
@@ -464,25 +460,9 @@ errors and the species model — are tttrlib's (`tttrlib.auto_calibrate`,
 
 ## References
 
-- {cite}`hellenkamp2018` — a multi-laboratory benchmark study.* Nat Methods 15:669–676.
+- {cite}`hellenkamp2018` — the multi-laboratory benchmark.
 - {cite}`lee2005` — the ALEX correction scheme and the 1/S-versus-E construction used here.
 - {cite}`sisamakis2010` — the multiparameter detection scheme and the correction factors it rests on.
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
-- {cite}`barth2022` — I. Theory of FRET-lines.* J Chem Phys 156:141501.
+- {cite}`barth2022` — the theory of FRET lines.
 - {cite}`kalinin2010b` — excess E-distribution width from acceptor photophysics, not dynamics.
-
-## Identification is distinct from a retained numerical factor
-
-A finite correction factor does not establish that the measurement identified
-it. In the report, the data gamma candidate is labeled **identified estimate**
-only when the estimator explicitly declares `estimated.gamma = true`. A false
-flag means **not identified; retained value**; absent legacy metadata means
-**identification unknown**. A retained gamma of 1 is a usable numerical input,
-not experimental evidence for gamma = 1.
-
-An identified data candidate is also distinct from the final posterior when
-optics priors are combined with data. The report lists the data, light-path
-prior and posterior separately and does not call the data candidate adopted.
-This changes provenance text only: factors, uncertainties, populations and
-corrected numeric exports retain their values. See the
-[Accurate FRET workflow](../guides/41_accurate_fret.md).

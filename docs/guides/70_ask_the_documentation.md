@@ -13,8 +13,9 @@ anchor: guide-ask-the-documentation
 together with the pages it was taken from — and one click from the answer to
 the page, so you can read the rest of it.
 
-**What you need:** a language-model provider configured in **Settings → AI**.
-The same one the {ref}`assistant that operates ChiSurf <guide-ai-assistant>`
+**What you need:** a language-model provider configured in **AI Settings**
+(**File → Settings → AI Settings**, or **Provider settings…** in the Ask Docs
+pane; "Settings → AI" below). The same one the {ref}`assistant that operates ChiSurf <guide-ai-assistant>`
 uses; if you already set that up there is nothing more to do.
 
 ## When you need it
@@ -31,7 +32,7 @@ Search cannot help with any of those, because it matches the words you typed.
 
 ## Asking
 
-In the help browser (**Help → Documentation**, or `F1`), open the **Ask Docs**
+In the help browser (**Help → Documentation**), open the **Ask Docs**
 tab beside **Documentation** — or press `Ctrl+Shift+A`. The empty pane says what
 the assistant is for and offers example questions; click one, or type the
 question and press **Send**.
@@ -47,7 +48,7 @@ generated, so the figure can be re-taken.
 ```
 
 **The answer itself is linked.** Where it names a page — or a heading on one —
-that is a link: click it and the viewer on the left opens there, at the
+that is a link: click it and the viewer on the right opens there, at the
 section, not at the top. The list underneath is **the pages it read**, and it
 is not the assistant's own footnote: it is recorded from what it opened, so a
 page in that list is a page it saw.

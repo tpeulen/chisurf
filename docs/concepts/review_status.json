@@ -1,4 +1,11 @@
 {
+  "acceptor_density.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "94c207ab78ced1a969d2175b723f1e5666ac2e00e2ae8a31c72e6bde5c161351",
+    "status": "ai-reviewed"
+  },
   "accessible_volume.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
@@ -6,11 +13,32 @@
     "sha256": "20d8b8ba87adddacfb6539997de5faa2face9b8277246f1918c0e2b13f60392c",
     "status": "ai-reviewed"
   },
+  "accurate_fret.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0b50e4d71491bed9ce2adc1fdd49c8773ab539f5c2af1b0190044032ab891328",
+    "status": "ai-reviewed"
+  },
   "anisotropy.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "84166ac88cb4aa8759890d272d030796c7a77fa57b4019a67a2913a7912c2816",
+    "status": "ai-reviewed"
+  },
+  "application_identity.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "f7a4c1baa7f1d6a1de03afcb315e47abec67c1c2bd225af513bdb03a276c6e62",
+    "status": "ai-reviewed"
+  },
+  "application_shell.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1d41bfb0ef52b151eba6c025d484f76ccbe43490a0aa6f593943f5370c0985e8",
     "status": "ai-reviewed"
   },
   "biofilm_growth.md": {

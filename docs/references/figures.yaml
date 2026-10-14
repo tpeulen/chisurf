@@ -3074,11 +3074,13 @@ guides/figures/fcs_saturation_tool.png:
 
 guides/figures/fcs_toolbox_channels.png:
   kind: screenshot
-  origin: docs/guides/make_screenshots.py::go
+  origin: docs/guides/screenshots/fcs_toolbox_channels.py::main
   recipe: >-
-    Run the script named in origin (see the function that saves fcs_toolbox_channels.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
+    From the repository root run CHISURF_SETTINGS_DIR=$(mktemp -d) python
+    docs/guides/screenshots/fcs_toolbox_channels.py. It builds the emtk FCS hub
+    (fcs_toolbox), gives step 1 a temporary detector setup "MFD green/red"
+    (Green = channels 0, 8; Red = 1, 9), adds the Green and Red autocorrelations
+    and the Green x Red cross-correlation, and grabs the step at 1280 x 800.
   pages:
   - docs/guides/75_fcs_toolbox.md
 
@@ -3198,17 +3200,6 @@ guides/figures/hmm_window.png:
   pages:
   - docs/guides/92_hmm_binned_traces.md
 
-guides/figures/hydro_native_primary_window.png:
-  kind: screenshot
-  origin: hand-driven headless capture of the tool the guide describes (no generating script)
-  recipe: >-
-    No script draws this image. Open the tool described in docs/guides/79_hydropro.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/hydro_native_primary_window.png.
-  pages:
-  - docs/guides/79_hydropro.md
-
 guides/figures/hydropro_exe_dialog.png:
   kind: screenshot
   origin: docs/guides/screenshots/guides_plugins_emtk.py::_grab_hydropro
@@ -3302,10 +3293,12 @@ guides/figures/lltf_native_optimizer_warning.png:
   kind: screenshot
   origin: hand-driven headless capture of the tool the guide describes (no generating script)
   recipe: >-
-    No script draws this image. Open the tool described in docs/guides/76_decay_analysis_tools.md,
-    drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
-    native windows) into the state the surrounding text describes, using the
-    data that page names, and save the grab as guides/figures/lltf_native_optimizer_warning.png.
+    No script draws this image. Render the emtk Lazy Lifetime Analysis app
+    (lltf) headlessly at 1100 x 720 with Decay File example/5-44_D0.dat, IRF
+    File example/IRF_D0.dat and Config File example/config.yml (all under
+    chisurf/plugins/fluorescence_decay/lltf/), Number of Lifetimes 2, Find
+    Optimal off; press Fit, wait for the child process, open the Results tab
+    (it shows the maxfev optimizer warning) and save the frame here.
   pages:
   - docs/guides/76_decay_analysis_tools.md
 
@@ -3317,16 +3310,6 @@ guides/figures/lltf_output.png:
     drive it headlessly (QT_QPA_PLATFORM=offscreen, or the emtk renderer for
     native windows) into the state the surrounding text describes, using the
     data that page names, and save the grab as guides/figures/lltf_output.png.
-  pages:
-  - docs/guides/76_decay_analysis_tools.md
-
-guides/figures/lltf_results.png:
-  kind: screenshot
-  origin: docs/guides/make_screenshots.py::draw
-  recipe: >-
-    Run the script named in origin (see the function that saves lltf_results.png);
-    it drives the tool headlessly (QT_QPA_PLATFORM=offscreen or the emtk
-    renderer) into the state the guide describes and writes the PNG here.
   pages:
   - docs/guides/76_decay_analysis_tools.md
 

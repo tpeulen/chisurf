@@ -108,8 +108,9 @@ background) before asking again.
 representative dataset, create the fit you intend to use, and **optimise it by
 hand**: its parameter values — and which parameters are fixed — seed every run.
 
-The wizard has five steps in a left rail; **Next ›** / **‹ Back** move along it
-and steps can be visited in any order.
+The wizard has five steps in a left rail; **Next** / **Back** move along it,
+steps can be visited in any order, and **Help** and **Guide** sit under the
+rail.
 
 ### 1. Welcome
 
@@ -127,15 +128,16 @@ the batch.
 
 A check-list of the datasets loaded in ChiSurf (the reserved *Global Dataset* is
 left out). Hover a row for the file name and a preview of the curve;
-**🔄 Refresh** re-reads the list after loading more.
+**Refresh** re-reads the list after loading more.
 
 ### 3. Files & fit
 
-* **Files to process** — **➕ Files**, **📁 Folder**, **🗄 Database**, drag and
-  drop; **➖ Remove**, **🗑 Clear**. Each file is loaded with the reader guessed
+* **Files to process** — **Files**, **Folder**, **Database**, drag and
+  drop; **Remove**, **Clear**. Each file is loaded with the reader guessed
   from its name, else the reader currently selected in ChiSurf, then fitted.
 * **Template fit** — the fit whose parameters seed every run, listed by fit
-  name (e.g. *Lifetime (magic angle only) - Decay_577D*).
+  name (e.g. *Lifetime (magic angle only) - Decay_577D*); **Refresh fits**
+  re-reads the open fits.
 
 Loaded datasets run first, then files, in list order.
 
@@ -145,13 +147,15 @@ Loaded datasets run first, then files, in list order.
 :name: fig-batch-analysis-run
 :width: 100%
 
-Ready to run: two loaded datasets, no files, the two-exponential template fit
-on the donor-only decay, and the results path.
+After **Run batch**: two loaded datasets, no files, the two-exponential
+template fit on the donor-only decay. Both items ran; the CSV and the ZIP were
+written, the DOCX report was not, because `python-docx` was missing in this
+environment.
 ```
 
-* **Results CSV** — the output path; **…** browses. Left empty, **Run batch**
-  asks for it.
-* **▶️ Run batch** — for each item: restore the template's parameter values and
+* **Results CSV** — the output path; **Browse…** picks it. Left empty,
+  **Run batch** asks for it.
+* **Run batch** — for each item: restore the template's parameter values and
   fixed flags, assign the dataset (or load the file), run the fit, save its
   curves, draw a picture of the fit window for the report, and record every
   parameter. The progress bar under the button counts the items
@@ -321,28 +325,12 @@ FCS curves; nothing stops you from ticking both (see *Known defects*).
   data it is conservative; on the example it gives 0.59 where the
   extra-sum-of-squares test gives $p = 0.003$. There is no readout of the
   extra-sum-of-squares $F$ or its $p$-value.
-* **Guide missing on the batch wizard.** The F-test window (the emtk app) has
-  its **Guide** and **?** buttons; the batch wizard does not call the shared
-  help/guide seam yet, so its shipped `guide.json` tour is not reachable.
-* **Batch: parameter restore can fail silently.** The shipped fitting client
-  writes parameters only over RPC and returns `{"ok": False}` when the server is
-  not reachable; `restore_parameters` ignores the result, so each item would
-  then start from the previous item's optimum rather than the template.
-* **Batch: headless `run_batch` crashes** with `module 'chisurf.core' has no
-  attribute 'actions'` unless `chisurf.core.actions` was imported first (the
-  import in the example above).
 * **Batch: mixed experiment types are not rejected.**
   `runner.datasets_have_mixed_types` exists and says mixing is "rejected
   upstream", but nothing calls it.
-* **Batch Results step is hard to read.** Values are printed at full float
-  precision, so cells wrap, and the table sits in a short scroll box above empty
-  space. Read the CSV instead.
 * **Batch rows include placeholder parameters** — the unused third component
   slot (`a2`, `t2`, fixed) and derived averages appear in the table alongside
   the fitted values; filter on **Fixed = No** for the free ones.
-* **The wizard rail hides the selected step's label** — the selected row is
-  painted in the highlighted-text colour on an almost-white highlight, so only
-  its icon is visible.
 
 ## See also
 

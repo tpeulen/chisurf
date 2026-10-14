@@ -1,7 +1,7 @@
 ---
 type: Concept
 title: Transfer to an acceptor density, and dimensionality
-description: Every expression in assumes one donor and one acceptor at one distance.
+description: Donor decays quenched by acceptors spread at random in a volume, a plane or a line, the characteristic density C0, why the decay shape reveals the dimensionality, and how to fit it.
 tags: [concepts, fret, acceptor, density]
 anchor: concept-distributed-acceptors
 ---
@@ -129,8 +129,9 @@ the volume.
 ## Fitting it
 
 The model is **FRET: acceptor density (1, 2 or 3 dimensions)** in the model selector (BFF family `tcspc_fret_acceptor_density`). It releases
-the density `C/C0` and the donor lifetimes, and the dimensionality is a radio
-button rather than a fitted parameter — the three laws are distinguishable, so
+the density `C/C0` and the donor lifetimes, and the dimensionality is a choice
+(**Dimensionality** in the *Distributed acceptors* panel) rather than a fitted
+parameter — the three laws are distinguishable, so
 the right way to choose is to fit each and compare, not to let an optimizer
 wander between them.
 

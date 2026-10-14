@@ -15,7 +15,7 @@ separates that state by owner.
 | State | Owner | Lives in | Changed by |
 |---|---|---|---|
 | Settings (language, paths, plots, styles, models) | the machine | `settings_chisurf.yaml` | Settings (`chisurf/plugins/core/setup/`) |
-| Interface (menu bar or ribbon) | the machine | the same file, restored at start | Menu Switch (`chisurf/plugins/core/menu_switch/`) |
+| Interface (ribbon shown or hidden under the menu bar) | the machine | the same file, restored at start | Menu Switch (`chisurf/plugins/core/menu_switch/`) |
 | Account | the MMFDB user | the `mmfdb` section; the password is never stored | Switch User (`chisurf/plugins/core/switch_user/`) |
 
 A result computed under one setting is not comparable with one computed under another unless the setting is recorded;

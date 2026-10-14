@@ -29,7 +29,8 @@ parameters into a volume.
 
 The PSF calculator at NA 1.4 in oil, 520 nm, linear x polarization, Full
 quality. Left: the parameters and the **Result** panel with the measured
-widths. Right: the computed volume, orbitable with the mouse. The focus is
+widths. Right: the computed volume, orbitable with the mouse, and under it the
+**Orthogonal Slice** through the focus (XY, XZ or YZ). The focus is
 251 nm wide along x and 510 nm along the axis. The formula gives 189 nm.
 ```
 
@@ -177,7 +178,5 @@ by tens of per cent.
   reached through the Calculators hub. Press **Guide** on its toolbar for
   a walk-through.
 
-The native window declares 640×480 initial dimensions and retains saved resizing.
-All three slice planes and the computed volume remain reachable; scroll the
-parameter and result docks when constrained. Geometry changes preserve the
-physical PSF volume and reported widths.
+The window opens at 640×480 and keeps a size you set. In a small window the
+parameter dock scrolls; the volume and the slice stay visible.

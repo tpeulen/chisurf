@@ -20,6 +20,69 @@
     "sha256": "5542d6b85f0eb847f7f771c1c25d07869bf3ca0eaf590f87e2ed456dadd053d9",
     "status": "ai-reviewed"
   },
+  "70_ask_the_documentation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "adadd061be1e7454905efa9a6a4c6c52cd02c522c99b3414f0222c429361b81f",
+    "status": "ai-reviewed"
+  },
+  "72_psf_calculator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ffb1eea9cc5775e9fc35606b40f98790e255ff53dc10f13c7ff5371363ec71e9",
+    "status": "ai-reviewed"
+  },
+  "73_tttr_decay_and_correlation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "76616bdbc1c899e7a5f0900958b406b95f809eafe4c66db6ed3266b35866b4e1",
+    "status": "ai-reviewed"
+  },
+  "74_intensity_traces_and_file_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "9ed4bf37f0a3d11ed0c9a0926b874a8e3e4e1cd6e021ae372f3650d463ea5658",
+    "status": "ai-reviewed"
+  },
+  "75_fcs_toolbox.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "33020733adc90bbedcdec7fe1b343f215662d12a64a9e999bc491d5677fbb92e",
+    "status": "ai-reviewed"
+  },
+  "76_decay_analysis_tools.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "3599d02c750cdc5b3a7e836b1ec8f08b2fb6a96d9d497d02fbc734b935e91f35",
+    "status": "ai-reviewed"
+  },
+  "77_phasor_calculator.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "643a0ae5bf4c5b3bda82105268fe47e59740fb834b848e1d4df20e4b0047c647",
+    "status": "ai-reviewed"
+  },
+  "78_model_comparison_and_batch.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "b17a4efddbc3634dfddcc2832a33a6b6247f87cde75db927e19cbded6ab28639",
+    "status": "ai-reviewed"
+  },
+  "79_hydropro.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "efb4e3433add586432d3d2085c59a681f7330a76f5ac0a14086c09174a715da4",
+    "status": "ai-reviewed"
+  },
   "80_quenching_estimator.md": {
     "date": "2026-10-14",
     "reviewer": "agent",

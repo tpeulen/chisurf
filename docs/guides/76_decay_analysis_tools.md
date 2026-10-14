@@ -92,83 +92,65 @@ hand, in this order:
 
 ### Settings
 
-```{figure} figures/lltf_results.png
+```{figure} figures/lltf_native_optimizer_warning.png
 :name: fig-lltf-results
 :width: 100%
 
-Lazy Lifetime Analysis after **Fit** on the plugin's example donor decay (`example/5-44_D0.dat`
-with `IRF_D0.dat`), two lifetimes, default settings: 1.350 ns (0.130) and
-4.005 ns (0.870), $\chi^2_r = 1.56$ over 4.57–44.1 ns. The dashed lines are the
-automatic fit range; the residuals keep a spike on the rising edge.
+Lazy Lifetime Analysis after **Fit** on the plugin's example donor decay
+(`example/5-44_D0.dat` with `IRF_D0.dat` and the example `config.yml`), two
+lifetimes: 3.900 ns (0.899) and 0.780 ns (0.101), $\chi^2_r = 1.39$ over
+4.66–23.3 ns. The white lines are the automatic fit range. The status and the
+*Results* summary carry an optimizer warning: the fit stopped on its evaluation
+budget.
 ```
 
-The standalone native LLTF window declares **1100 × 720** pixels on first use.
-Saved geometry and input/options take precedence on reopening; **Fit** rebuilds
-the result arrays. Inspect **Information**, **Analysis Output**, **Results**,
-the decay/fit plot and weighted residuals. The YAML editor remains available
-when the main host is narrow.
+The window has three docks: the inputs and options on the left, *Information*,
+*Analysis Output* and *Results* top right, the decay with its fit and the
+weighted residuals below.
 
-A finished subprocess can still return an unconverged optimizer result. The
-JSON records `optimizer_status`, `converged`, `optimizer_message` and
-`optimizer_source`; the GUI status and Results summary show an optimizer
-warning when convergence is false. The measured example reaches its evaluation
-limit (status 5, maxfev 1600) and still exports its numerical result. Inspect
-that provenance rather than treating a written file as a convergence claim.
+A fit that ends without converging still writes its numbers. The JSON records
+`optimizer_status`, `converged`, `optimizer_message` and `optimizer_source`, and
+the panel shows a warning when `converged` is false; the example above reaches
+its evaluation limit (status 5, `maxfev` 1600). A written file is not a
+convergence claim.
 
-```{figure} figures/lltf_native_optimizer_warning.png
-:name: fig-lltf-native-optimizer-warning
-:width: 100%
-
-The native LLTF Results panel retains the measured fit and exposes the actual
-iteration-limit warning in both its summary and status.
-```
-
-The current fitter uses a local random generator with default seed 0. The
-`randomize_initial_values.seed` configuration is forwarded through fixed-count
-fits and component-count scans; `None` requests a fresh random initialization.
-With the same data, IRF and configuration, an explicit seed makes the starting
-values reproducible; it does not make a mismatched model a good fit.
-
-**Find Optimal** compares nested fits using the decrease in weighted residual
-sum divided by the added degrees of freedom, relative to the larger model’s
-residual variance. The reported confidence is an approximate F statistic for
-exponential mixtures, whose new component lies on a parameter boundary; it is
-not a calibrated posterior probability. Scans preserve the three nuisance
-fixed flags and the selected model’s degrees of freedom. Lifetime-specific
-fixed flags have no defined mapping across changing counts and are rejected.
-Larger fits start from an extension of the previous solution and retain its
-exact embedding if optimization would worsen the residual sum. Inspect the
-returned `chi_squares`, `dofs` and residual plots as well as the selected count.
+Starting values come from a local random generator, seed 0 by default
+(`randomize_initial_values.seed`, forwarded to every fit of a scan; `None` draws
+fresh values). A fixed seed makes a run reproducible; it does not make a wrong
+model fit.
 
 *Input Files*
 
 - **Decay File / IRF File — Load…** — one file each. Only the first two columns
   are read (time, counts), whitespace-delimited, `#` lines skipped. The time
   step is taken from the first two time values and must be in ns.
-- **Config File — Edit…** — the YAML file holding every setting not on the
-  panel (table below). **Edit…** opens it in the settings editor
-  ({numref}`fig-lltf-settings`); **Save** there writes it back.
+- **Config File — Edit…** — the YAML configuration holding every setting not
+  on the panel (table below). Empty, it is the packaged `lifetime_settings.yml`.
+  **Edit…** opens it in the **LLTF configuration** editor
+  ({numref}`fig-lltf-settings`); the next **Fit** uses the edited text, saved or
+  not, and **Save configuration** writes it to a file.
 - **Output Directory — Select…** — where the result files go; defaults to the
   decay file's folder.
 
 *Fitting Options*
 
 - **Number of Lifetimes** — 1–6, used when *Find Optimal* is off.
-- **Find Optimal Number of Lifetimes** — run the component-count scan.
+- **Find Optimal** — run the component-count scan.
 - **Max Lifetimes to Try** (2–6) and **Probability Threshold** (0–1) — the
   scan's range and its acceptance level.
 - **Verbose Output** — print every step into *Analysis Output*.
 
-**Fit** (and *Analysis → Fit…*) runs `lltf fit` in a child Python process, so
-the window stays responsive; **Stop Process** on the *Analysis Output* tab
-terminates it.
+**▶ Fit** runs `lltf fit` in a child Python process, with the configuration
+written to a temporary folder for that run, so the window stays responsive;
+**⏹ Stop** terminates it.
 
 ```{figure} figures/lltf_settings.png
 :name: fig-lltf-settings
 :width: 70%
 
-**Edit…** — the configuration file in the settings editor. The file is the
-plugin's `lifetime_settings.yml`, copied once into the system temp folder.
+**Edit…** — the **LLTF configuration** editor, here holding the example
+`config.yml` (narrower range: `area` 0.99, `start_fraction` 0.1; no IRF-shift
+scan).
 ```
 
 | Key | Default | Meaning |
@@ -195,8 +177,7 @@ The file's `lifetime_fit_parameter` block also holds `find_optimal`,
 *Find Optimal* ticked, the panel's values override the first three and
 `selection_mode` is forced to `lower` (below). Unticked, the panel passes its
 *Number of Lifetimes* and that switches the file's `find_optimal` off: the
-panel decides. (It used to be ignored, so the shipped example, which sets
-`find_optimal: true`, ran the scan with the box unticked.)
+panel decides.
 
 ### Reading the output
 
@@ -239,33 +220,36 @@ its $\chi^2_r$ does not measure fit quality.
 
 ### The component-count scan
 
-The scan fits $n = 1 \dots n_\text{max}$ from fixed starting lifetimes, then
-walks up from $n = 1$ and accepts $n$ while its probability exceeds the threshold
-and its $\chi^2_r$ is lower than that of $n-1$ (`lower` mode; `upper` returns
-the largest accepted $n$ instead). The probability is
-$P = F_\text{cdf}(\chi^2_{r,n-1}/\chi^2_{r,n};\,2,\,\nu_n)$, which for any
-realistic $\nu$ equals $1 - e^{-R}$ with $R$ the ratio. A model that fits no
-better scores $0.632$, the 0.68 default threshold needs a 14 % drop in
-$\chi^2_r$, and 0.95 needs a threefold drop, independent of how many photons
-were recorded. {ref}`concept-tcspc-model-selection` compares this with the
-extra-sum-of-squares test.
+The scan fits $n = 1 \dots n_\text{max}$, each larger model starting from the
+previous solution with one component added (and keeping that solution if the
+optimizer would make it worse). It then walks up from $n = 1$ and accepts $n$
+while its probability exceeds the threshold and its $\chi^2_r$ is lower than
+that of $n-1$ (`lower` mode; `upper` returns the largest accepted $n$ instead).
+The probability is the extra-sum-of-squares F test of the nested pair,
+
+$$
+F = \frac{(\chi^2_{n-1} - \chi^2_n)/(\nu_{n-1} - \nu_n)}{\chi^2_n/\nu_n},
+\qquad P = F_\text{cdf}(F;\, \nu_{n-1} - \nu_n,\, \nu_n),
+$$
+
+with $\chi^2$ the weighted residual sum and $\nu$ the degrees of freedom; a fit
+that does not lower $\chi^2$ scores 0. Because an added component sits on a
+parameter boundary, $P$ is an approximation, not a calibrated probability
+({ref}`concept-tcspc-model-selection`).
 
 Measured on decays from the Synthetic Decay Generator with the example IRF
 (6100 channels of 8 ps, $2\times10^6$ photons, three noise seeds each), scan up
-to three lifetimes with the default configuration:
+to three lifetimes with the packaged configuration and threshold 0.68:
 
-| True decay | Chosen $n$ (seeds 1, 2, 3) | What went wrong |
+| True decay | Chosen $n$ (seeds 1, 2, 3) | Recovered |
 |---|---|---|
-| 4.0 ns | 1, 1, 1 | nothing; but $\chi^2_{r,2}$ was 30.2 against 1.13 for seed 3 |
-| 1.0 + 4.0 ns, equal amplitudes | 2, 3, 3 | the two-lifetime fit failed ($\chi^2_r$ 2.10 and 4.74 against 1.10); the three-lifetime fit then found the true model with a duplicated 3.94 ns component |
-| 3.0 + 4.5 ns, equal amplitudes | 2, 1, 2 | $P$ = 0.689, 0.667, 0.701 around the 0.68 threshold; for seed 2 ($\chi^2_r$ 1.34 → 1.22 over 3704 degrees of freedom) the extra-sum-of-squares test gives $p = 6\times10^{-78}$, and the recovered lifetimes (5.00/3.45, 4.15/2.47 ns) are far from the truth |
+| 4.0 ns | 1, 1, 1 | 3.98 ns; $\chi^2_r$ 1.09–1.15 |
+| 1.0 + 4.0 ns, equal amplitudes | 2, 2, 2 | 3.94 ns (0.51) and 0.95–0.96 ns (0.49) |
+| 3.0 + 4.5 ns, equal amplitudes | 2, 2, 2 | 4.12–4.15 ns (0.76–0.78) and 2.35–2.47 ns: the count is right, the lifetimes and fractions are not |
 
-A true single-exponential model gave $\chi^2_r$ = 1.09–1.15 rather than 1.0,
-the low-count bias of data weighting. With the CLI's built-in defaults instead
-of the YAML file (`area` 0.999, `start_fraction` 0.1, starting lifetimes
-0.5–5 ns), the same seed-2 bi-exponential decay is resolved correctly: $n = 2$,
-3.936 ns (0.511) and 0.949 ns (0.489), in 7 s. The scan's outcome therefore
-depends on which of two default sets is in force (see *Known defects*).
+A true single exponential gives $\chi^2_r$ = 1.09–1.15 rather than 1.0, the
+low-count bias of data weighting. Two close lifetimes are detected but not
+resolved: the decay is fitted equally well by a pair further apart.
 
 Read the scan as a table of fits, not as a verdict: open `optimal_fitting` in
 the JSON, check that $\chi^2_r$ falls monotonically with $n$, and judge the
@@ -273,19 +257,17 @@ drop yourself.
 
 ## Synthetic Decay Generator
 
-The standalone native generator declares **1100 × 720** pixels on first use.
-Generate in **VM** or **VV/VH** mode, and scroll the settings dock to reach the
-final spectrum controls on a small host. Saved geometry takes precedence over
-the declaration. The existing settings restore the input configuration; use
-**Generate** to rebuild the result rather than treating stored preferences as
-saved measured data. There is no separate FRET mode in this native window.
+The generator makes a magic-angle decay (**VM**) or a polarized pair
+(**VV/VH**). It restores its settings on reopening, not its curves: press
+**Generate** again.
 
 ```{figure} figures/synthetic_decay_native_window.png
 :name: fig-synthetic-decay-native-window
 :width: 100%
 
-The native generator with its lifetime/rotation settings and generated curves.
-The Mode options remain readable in small hosts through a vertical radio list.
+The generator in VV/VH mode: two lifetimes, two rotations, $g = 1.3$ and
+$l_1, l_2$ set, drawn with a measured IRF; the decays on the right, $r(t)$ of
+the rotation spectrum below.
 ```
 
 ```{figure} figures/synthetic_decay_vm.png
@@ -299,8 +281,8 @@ its $r(t)$ is plotted for reference.
 ```
 
 *Lifetime spectrum* — one row per component: **Amp** (pre-exponential
-amplitude, not intensity fraction) and **τ** (ns). **➕ Add** / **➖ Remove** edit
-rows (at least one stays); **📂 Load** reads a text file holding an interleaved
+amplitude, not intensity fraction) and **τ** (ns). **Add** / **Remove** edit
+rows (at least one stays); **Load** reads a text file holding an interleaved
 list `a1 τ1 a2 τ2 …` or a two-column amplitude/lifetime table.
 
 *Histogram* — **Bins** and **Δt** (ns) set the window, Bins × Δt; **Start** is
@@ -327,15 +309,14 @@ $r(t) = \sum_i b_i e^{-t/\rho_i}$. The two channels follow the forward model of
 :width: 70%
 
 The same spectrum as a polarized pair, $g = 1.1$, one rotation of 2 ns with
-$r_0 = 0.38$. VV starts above VH and the two converge as $r(t)$ decays. The
-native window keeps one **Generate / Save / Fit group** toolbar in both modes.
+$r_0 = 0.38$. VV starts above VH and the two converge as $r(t)$ decays.
 ```
 
-*Actions* (toolbar) — **🧪 Generate** computes and plots; the status line
-reports what was made. **💾 Save** writes CSV/text (two columns `time_ns counts`),
+*Actions* (toolbar) — **Generate** computes and plots; the status line
+reports what was made. **Browse IRF** picks the IRF file. **Save** writes CSV/text (two columns `time_ns counts`),
 `.npy` (counts only) or JSON (`x`, `y`) in VM mode, and a VV/VH `.dat` file whose
 footer carries g, l1, l2 and the mode in VV/VH mode, which the VV/VH reader
-restores on loading. **🔗 Fit group** adds the generated curve (or the VV/VH pair)
+restores on loading. **Fit group** adds the generated curve (or the VV/VH pair)
 as a dataset and opens a fit with the lifetime model (the polarized one for a
 pair), with the bin width and g, l1, l2 carried into the fit.
 
@@ -440,14 +421,12 @@ default 4 ns component.
 :::{admonition} Known defects
 :class: warning
 
-- **Two default sets.** The GUI copies `lifetime_settings.yml`; the CLI without
-  `-c` uses different defaults inside `fit_lifetime`, and the outcomes differ
-  (above). With *Find Optimal* the CLI always overrides the file's
-  `selection_mode` with its own default `lower`, so `upper` from the file is never
-  used from the panel.
-- **The config file is created once** in the system temp folder
-  (`lltf_config.yml`) and never refreshed, so a changed default in a new ChiSurf
-  version does not reach it; delete it to get the current defaults.
+- **Two default sets.** The panel starts from `lifetime_settings.yml`; the CLI
+  without `-c` (and `fit_lifetime` without `config`) uses its own defaults
+  (`area` 0.999, `start_fraction` 0.1, starting lifetimes 0.5–5 ns), so the
+  same decay can be fitted over a different range. With *Find Optimal* the CLI
+  overrides the file's `selection_mode` with its own default `lower`, so `upper`
+  from the file is never used from the panel.
 :::
 
 ## See also

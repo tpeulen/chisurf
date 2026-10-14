@@ -44,11 +44,11 @@ The bursts are the bright state. Right: the dwell times of the two states.
    which micro-time ranges, for PIE) make up each detector; it starts on the setup
    you last used. **Edit setups** opens the detector editor (setups, PIE windows,
    detectors, LUT handling) as a tab beside the results; a change there re-bins the
-   file. Each detector becomes one trace. **Example** loads a simulated molecule
+   file. Each detector becomes one trace. **Load example** loads a simulated molecule
    switching between two FRET states (dwells 20 / 80 ms), to try the tool on data
    whose input kinetics are known. The measured demonstration HMM dwell fits
    are 22.0 / 87.2 ms; they are estimates, not the 20 / 80 ms generator means.
-   **Guide** waits for your **Example** click and later analysis actions.
+   **Guide** waits for your **Load example** click and later analysis actions.
    The SPC and JSON parameters live in `demos/intensity_trace` under the
    ChiSurf settings folder; `make_demo()` from
    `chisurf.plugins.tttr.intensity_trace.demo` returns that primary SPC path
@@ -146,9 +146,9 @@ with a mean dwell of 12 ms — about one transit through the focus.
 :name: fig-file-tools
 :width: 100%
 
-**TTTR → Time-Window BIDs** with an Olympus HT3 scan queued: the preview
-shows its intensity trace; **Process** cuts the file into windows of the chosen
-**Time window (ms)** and each window becomes one row of the `.bst` file.
+**TTTR → Time-Window BIDs** after **Process** on the SPC-132 smFRET file
+with 1000 ms windows: the preview shows its intensity trace with the window
+edges, and the log reports 63 windows, each one row of the `.bst` file.
 ```
 
 ### The tools
@@ -167,12 +167,12 @@ TTTR Split / Convert with an SPC file loaded (183,657 photons), to be written as
   folder), **Input format** (*Auto* detects it) and **Output format** — any
   container tttrlib writes; a format different from the input transcodes.
 * *Split options*: **Split into files** cuts the stream into files of
-  **Photons/file** × 1000 photons (off: one file, `<stem>_all.<ext>`);
+  **Photons per file [k]** × 1000 photons (off: one file, `<stem>_all.<ext>`);
   **Reset macro times** starts each output at zero; **Keep original** — off
-  deletes the input after writing. The **µ-time binning** choice is currently
+  deletes the input after writing. The **Micro time binning** choice is currently
   not applied to the written files.
 * *Batch*: drop `.ptu` files or folders (scanned recursively) and **▶ Start
-  batch** with the options above; **Use file's parent as output folder** writes
+  batch** with the options above; **Output next to each file** writes
   each beside its source.
 * **Convert / Split** writes into `<output folder>/<stem>/`, pieces named
   `<stem>_00000.<ext>`, `<stem>_00001.<ext>`, …
@@ -189,24 +189,26 @@ Type, Value, Idx) with a live JSON view. **Open**, **Add**, **Remove** and
 and the edited tags, because PTU is the one container that keeps arbitrary
 tags; the source file is not changed.
 
-**TTTR → Time Windows** — cut each file into consecutive windows of fixed
+**TTTR → Time-Window BIDs** — cut each file into consecutive windows of fixed
 duration. **Time window** (ms, default 10) sets the width; **Output folder**
-left empty writes to `<stem>_TW_<w>ms/` beside the first file. Add files in the
-*Files* tab, press **Process**, and read counts per file in *Summary*. Each file
+left empty writes to `<stem>_TW_<w>ms/` beside the first file. Add files in
+**TTTR files**, press **Process**, and read the window count per file in
+**Processing log**. Each file
 gives one `<stem>.bst` with one row per window: first photon index, and the
 index of the first photon of the next window (the same end convention as the
-HMM `.bst` files above). *Preview* shows the trace with the window edges; with
+HMM `.bst` files above). **Intensity trace preview** shows the trace with the window edges; with
 short windows on a long file that is one line per window, so preview with a
 coarse window.
 
 **BID → Analysis** — turn `.bst` / `.bid` files into a burst table. Define the
-detectors and PIE windows in *Setup* (or leave the defaults: one detector per
-routing channel, full micro-time range), add files in *Files* and press
-**Process**. For each file the matching TTTR file is found by name — same stem,
+detectors and PIE windows in **Detector setup** (or leave the defaults: one detector per
+routing channel, full micro-time range), add files in **BID files and conversion**
+and press **Process**. For each file the matching TTTR file is found by name — same stem,
 or a stem the BID name starts with (so `<stem>_state_1.bst` finds `<stem>.spc`)
-— in the file's folder or up to three folders above. The burst table and the
-BID file are written into the measurement's `.pto`; an info folder
-`<bid stem>/` is created beside the TTTR file. **Load example** queues a
+— in the file's folder or up to three folders above. With the default **PTO**
+output the burst table and the BID file are written into the measurement's
+`.pto`; **BUR**, **SL5** and **HDF5** add legacy burst tables, a selection mask
+or a columnar table, in the info folder `<bid stem>/` beside the TTTR file. **Load example** queues a
 simulated stream with six known bursts and its BID file (from
 `chisurf.plugins.burst.bid_to_analysis.demo.make_demo()`): converted, it gives
 six bursts whose photon numbers are `last − first + 1` of each BID row.
@@ -295,34 +297,7 @@ many short traces, ebFRET ({doc}`20_ebfret_binned_hmm`).
   `tttr_splitter`, `tttr_to_pto`, `pto_inspector`, `tttr_header_edit`,
   `tttr_time_windows`, `bid_to_analysis` and `mfd_prepare`.
 
-The standalone native Intensity Trace tool declares an initial 1100×720 window.
-A saved custom size takes precedence. Traces, HMM states, dwell estimates and
-other computed results are retained across geometry restoration.
-
-Result-selector buttons wrap to remain readable in narrower panels. The FRET
-plot uses the concise caption “FRET efficiency by state”; its plot identity,
-axis state, data and user actions remain unchanged.
-
-The native Photon Table tool starts at 1100×720; Trace Browser starts at
-1200×800. Saved custom geometry takes precedence. Loaded event rows, timing,
-selected traces and count histograms retain their original values across
-geometry restoration.
-
-The native Count Rate and Time Windows base apps declare1100×720 initial
-geometry, including standalone and hosted factories. Saved custom geometry
-retains precedence. Rate summaries/curves and the time-window burst rows keep
-the same values across window restoration; generated window files are still
-written only to the selected output folder.
-
-### Native File tools layout
-
-Each file tool is its own native window and starts at 1100 × 720 unless a saved
-size exists: Split / Convert, ⇄ .pto, PTO Inspector, TTTR Header editor,
-TTTR → Time-Window BIDs, BID → Analysis and MFD Prepare. Split / Convert and
-Time-Window BIDs also restore their options between sessions.
-
-Split / Convert keeps progress, **Stop** and completion messages inside its
-existing input/output dock, so a completed operation leaves its controls
-reachable. PTO Inspector preserves useful column widths in wide result tables;
-scroll horizontally to inspect trailing values rather than shrinking every
-column to fit the viewport.
+Intensity trace and each File › Data tool open at 1100 × 720 and keep a size
+you set; Split / Convert and Time-Window BIDs also restore their options
+between sessions. Split / Convert shows its progress, **Stop** and completion
+message in the **Input / Output** dock.

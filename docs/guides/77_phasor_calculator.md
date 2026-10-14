@@ -43,8 +43,9 @@ their 50:50 photon mixture, at $(0.527, 0.310)$, inside the orange gating cursor
 :name: fig-phasor-calculator-controls
 :width: 100%
 
-The **Controls** dock in the same state, its groups (**Reference geometry**,
-**Two-component line**, **Mixing region**, **Cursor**) open, and the **Reference
+The **Controls** dock in the same state, its groups (**Excitation**,
+**Reference geometry**, **Two-component line**, **Mixing region**, **Cursor**)
+open, and the **Reference
 lifetimes** table: the phasor coordinates of each reference lifetime at the
 effective frequency.
 ```
@@ -203,7 +204,5 @@ become the fractions used here via $f_i = a_i\tau_i / \sum_j a_j\tau_j$.
   Calculators hub; the geometry lives in
   `chisurf/plugins/microscopy/img_pixel_phasor/analysis.py`.
 
-The native window declares 640×480 initial dimensions. Scroll the controls to
-reach the Cursor fields; the full final radius row remains visible at maximum
-scroll. Panel hints explain reference geometry, excitation and mixing. Saved
-geometry takes precedence, and overlays/reference values are unchanged.
+The window opens at 640×480 and keeps a size you set; in a small window the
+**Controls** dock scrolls.

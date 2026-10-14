@@ -28,7 +28,15 @@ on a Mac HydroPro can prepare the input but cannot run it (see
 ## Open the tool
 
 **Structure → Computation → HydroPro** (🌊), next to QuEst. It opens as a
-window of its own.
+window of its own: the parameters on the left, the results table and the
+**HYDRO Output** log on the right.
+
+**Load example** selects a simulated sphere (radius 17 Å) together with a
+stand-in solver that follows the HYDROPRO file protocol but computes only the
+Stokes–Einstein law, $D = kT/(6\pi\eta R)$. It lets you walk through **Run**
+without the real program and check that $D_t$ scales with **T** and **ETA**;
+its reports say they are not HYDROPRO, and real structures need the real
+executable.
 
 ```{figure} figures/hydropro_tool.png
 :name: fig-hydropro-tool
@@ -91,8 +99,9 @@ open the dialog below.
 
 **Run** checks the settings (INDMODE must be 1, 2 or 4, NSIG > 2 or −1, QMAX
 and RMAX > 0 when requested), stores them, and starts the jobs off the GUI
-thread. A **HYDRO Output** window streams the program's console output and has
-a **Cancel** button, which stops after the current job. Each structure runs in
+thread. The **HYDRO Output** dock streams the program's console output under a
+progress bar; **Cancel** stops after the current job, **Save Log…** writes the
+log and **Clear log** empties it. Each structure runs in
 its own folder, `~/.hydropp_gui/job_001`, `job_002`, …, and the table's second
 column fills with $D_t$ in cm²/s. **Save CSV** writes the two columns.
 
@@ -216,8 +225,7 @@ viscous than water.
   keep.
 - **Download page.** **Download page** and the dialog open the HYDRO++ page,
   not the HYDROPRO page
-  (`https://leonardo.inf.um.es/macromol/programs/hydropro/hydropro.htm`). The
-  dialog's *Don't show this on startup* check box is not stored.
+  (`https://leonardo.inf.um.es/macromol/programs/hydropro/hydropro.htm`).
 
 ## See also
 
@@ -228,23 +236,5 @@ viscous than water.
 - Program: HYDROPRO 10 {cite}`ortega2011`; the method
   {cite}`garciadelatorre2000`.
 
-## Native host dimensions
-
-The native HydroPro window starts at **1100 × 720 logical pixels** and restores
-a saved host size on reopening. Parameters, results and output remain docks;
-narrow windows wrap the parameter fields and retain the file, run and export
-controls. The declaration is in the native primary spec, while the existing
-parameter spec remains the shared source of settings and units.
-
-```{figure} figures/hydro_native_primary_window.png
-:width: 100%
-
-The native host with an actual 148L structure path and an explicitly labelled
-parser-format fixture. This stand-in report is NOT a HYDROPRO calculation.
-```
-
-Window geometry and model settings are preferences. Results and console output
-are rebuilt by the workflow rather than restored as a computed session. The
-host-size verification covers unchanged parser behavior and CSV formatting; it
-does not establish diffusion accuracy or the availability of an external
-HYDROPRO executable. See [hydrodynamics](../concepts/hydrodynamics.md).
+The window opens at 1100 × 720 and keeps a size you set. It restores the
+settings, not the results: run again to rebuild the table.
