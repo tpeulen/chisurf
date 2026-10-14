@@ -93,6 +93,93 @@ def _grab_39_posterior_plots():
     QtWidgets.QApplication.instance().processEvents()
 
 
+def _global_fit_39(n_datasets=4, seed=0):
+    """Four quadratics ``c + a x^2``, each with its own ``c``, all sharing ``a`` (guide 39, section 11)."""
+    import chisurf.core.data
+    import chisurf.core.fitting.fit
+    import chisurf.core.models.parse
+
+    rng = np.random.default_rng(seed)
+    x = np.linspace(0.0, 5.0, 48)
+    curves = []
+    for k in range(n_datasets):
+        y = (3.0 + 0.3 * k) + 1.2 * x**2 + rng.normal(0.0, 0.05, x.size)
+        curve = chisurf.core.data.DataCurve(x=x, y=y, ey=np.full_like(y, 0.05))
+        curve.name = f"data {k + 1}"
+        curves.append(curve)
+    fit = chisurf.core.fitting.fit.FitGroup(
+        data=chisurf.core.data.DataGroup(curves),
+        model_class=chisurf.core.models.parse.ParseModel,
+    )
+    for f in fit:
+        f.fit_range = 0, len(f.model.y)
+        f.model.func = "c+a*x**2"
+        f.model.find_parameters()
+    fit._model.find_parameters()
+    master = [p for p in fit[0].model.parameters_all if p.name == "a"][0]
+    for local in list(fit)[1:]:
+        [p for p in local.model.parameters_all if p.name == "a"][0].link = master
+    for local in fit:
+        local.model.find_parameters()
+    fit._model.find_parameters()
+    fit.run(local_first=False)
+    return fit
+
+
+def _weak_component_fit_39(seed=1):
+    """A bi-exponential ``a exp(-x/t) + b exp(-x/s)`` whose second amplitude ``b`` is weak."""
+    import chisurf.core.data
+    import chisurf.core.fitting.fit
+    import chisurf.core.models.parse
+
+    rng = np.random.default_rng(seed)
+    x = np.linspace(0.0, 12.0, 160)
+    y = 1.5 * np.exp(-x / 0.7) + 0.15 * np.exp(-x / 3.2)
+    ey = np.full_like(y, 0.01)
+    data = chisurf.core.data.DataCurve(x=x, y=y + rng.normal(0.0, 0.01, x.size), ey=ey)
+    data.name = "weak_component.txt"
+    fit = chisurf.core.fitting.fit.FitGroup(
+        data=chisurf.core.data.DataGroup([data]),
+        model_class=chisurf.core.models.parse.ParseModel,
+    )
+    fit.fit_range = 0, len(fit.model.y)
+    fit.model.func = "a*exp(-x/s)+b*exp(-x/t)"
+    fit.model.find_parameters()
+    start = {"a": 1.4, "s": 0.8, "b": 0.2, "t": 3.0}
+    for name, p in fit.model.parameters_all_dict.items():
+        if name in start:
+            p.value = start[name]
+    fit.run()
+    return fit
+
+
+def _grab_39_structure_whatif():
+    """Structure tab of a four-dataset global fit, and What-if with the re-fit check (emtk pages)."""
+    from chisurf.emtk.fit_pages.pages.conditional_scan import ConditionalScanPlot
+    from chisurf.emtk.fit_pages.pages.posterior_graph import PosteriorGraphPlot
+
+    out = pathlib.Path(__file__).resolve().parents[2] / "images"
+    fit = _global_fit_39()
+    graph = PosteriorGraphPlot(fit)
+    graph.update()
+    graph.tabs.select(0)  # Structure
+    host = _page_host(graph)
+    _pump(0.3)
+    host.grab().save(str(out / "posterior_graph_structure.png"))
+    print("wrote posterior_graph_structure.png", flush=True)
+
+    fit = _weak_component_fit_39()
+    page = ConditionalScanPlot(fit)
+    page.update()
+    page.set_parameter(page.parameters.index("t"))
+    page.set_held(1.0)
+    page._check_exact()
+    host = _page_host(page, 1050, 740)
+    _pump(0.5)
+    host.grab().save(str(out / "whatif_non_gaussian.png"))
+    print("wrote whatif_non_gaussian.png", page._validity, flush=True)
+
+
 _BURST_FIXTURE_53 = pathlib.Path(
     "chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All 0.1000#15"
 )

@@ -345,7 +345,7 @@ report = chisurf.core.fitting.fit.sample_fit(
 )
 ```
 
-In nDXplorer: **File → Open ChiSurf Sampling**, and pick the folder you gave
+In nDXplorer: **File → Import → ChiSurf-Sampling**, and pick the folder you gave
 `sample_fit` — not the timestamped one inside it. A folder holding several runs
 resolves to the most recent; separate timestamps are separate sessions and are
 never pooled, because stacking two posteriors makes a cloud that looks bimodal
@@ -358,7 +358,7 @@ R-hat, in a form you can look at. `chi2r` and `lnprior` are separate columns, so
 you can filter on the data misfit alone.
 
 Ensemble-sampler chains stored in HDF5 (`mcmc/chain`) open the same way through
-**Open MFD HDF5**; there `chain` is the walker index and `draw` the step.
+**File → Import → Analysis file (\*.zip, \*.hdf)**; there `chain` is the walker index and `draw` the step.
 
 ### The chain is part of the project
 
@@ -415,11 +415,12 @@ dots.
 
 ![What-if with the re-fit check on a weak second component](../images/whatif_non_gaussian.png)
 
-Near the optimum the dots sit on the lines. Past the red markers they do not,
-and the verdict says so: *breaks down beyond 1.5σ — quote a profile or sampled
-interval, not ±σ*. On this fit the worst disagreement is **4σ**, so a ±σ error
-bar taken from the curvature would be badly wrong two standard deviations out
-while looking perfectly respectable.
+The fit is `a*exp(-x/s)+b*exp(-x/t)` with a weak second amplitude `b`, the
+long lifetime `t` held. Near the optimum the dots sit on the lines. Past the red
+markers they do not, and the verdict says so: *breaks down beyond 1.5σ — quote a
+profile or sampled interval, not ±σ*. Here the worst disagreement is 1.4σ (on
+`a`), so an error bar taken from the curvature is already wrong by more than its
+own width two standard deviations out, while looking perfectly respectable.
 
 Read the verdict as a *range*, not a yes/no. A posterior is nearly always
 Gaussian close enough to the optimum; what matters is whether that region covers
@@ -509,7 +510,7 @@ output folder either way.
 Programmatically the same verdict comes back from the job status:
 
 ```python
-status = client.sampling_status(job_id)
+status = api.sampling_status(job_id)   # api = ChiSurfAPI(), see section 14
 status['status']      # 'completed'
 status['converged']   # False if R-hat / ESS checks failed
 status['warnings']    # what went wrong, per parameter

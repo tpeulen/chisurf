@@ -163,7 +163,7 @@ def _grab_assistant() -> None:
     history.add_message("user", "Fit the decays in test/data/tcspc/ibh and tell me the lifetimes.")
     for line in (
         "load_data(path='test/data/tcspc/ibh')  ->  3 dataset(s)",
-        "add_fit(model='Lifetime', dataset=0..2)  ->  3 fits",
+        "create_fit(model='Lifetime', dataset=0..2)  ->  3 fits",
         "run_fit(all)  ->  chi2r = 1.03, 1.12, 0.98",
     ):
         history.add_message("system", line)

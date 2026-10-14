@@ -15,8 +15,8 @@ one — see {ref}`concept-drift-correction`.
 
 ## Open the tool
 
-It lives in **Spectroscopy → Imaging → Image Tools**, as the **Drift** step between
-*Browser* and *1. Intensity* — deliberately, because every per-pixel map in the
+It lives in **Spectroscopy → Imaging → Image Tools**, as the **Drift** step after
+*Browser* and before the numbered steps (*1. Intensity* …) — deliberately, because every per-pixel map in the
 numbered pipeline below it is built from frames that must already be aligned.
 Correct the drift first, then walk the pipeline with **Next ▶**.
 
@@ -32,22 +32,26 @@ afterwards.
 
 ## Measure
 
-1. **Image** — browse, pick a database entry, or drop a file.
+1. **Image** — **Browse…**, pick a **Database** entry, or drop a file.
 2. **Measure on** — the channel that drives the estimate. Pick the brightest,
    most structured one. The sample moves as a whole, so this single estimate is
    applied to every channel.
 3. **Reference** — *First frame* for slow monotonic stage drift; *Previous
-   frame* for a long series that bleaches or wanders.
+   frame* for a long series that bleaches or wanders; *Stack mean* as a
+   compromise for noisy data.
 4. **Apply by** — *Wrapping* keeps all signal but makes the edge strip
-   meaningless; *Blanking* drops what leaves the frame.
+   meaningless; *Blanking* drops what leaves the frame. The collapsed
+   **Estimator** panel holds **Smoothing (σ px)** of the correlation and
+   **Sub-pixel refinement**.
 5. Press **Measure**. Choosing a file measures it at once; press **Measure** again after changing the reference, the channel or the estimator.
 
 ```{figure} figures/drift_workspace.png
 :name: fig-drift-workspace
 :width: 100%
 
-The drift-correction workspace. Left: the settings, in workflow order. Right:
-the drift trace, with `dx`, `dy` and the total displacement `|d|` per frame.
+The drift-correction workspace on a simulated 12-frame stack. Left: the
+settings, in workflow order. Right: the drift trace, with `dx`, `dy` and the
+total displacement `|d|` per frame.
 This stack was built with a known linear drift, so the trace is the ground
 truth.
 ```
@@ -148,11 +152,3 @@ clsm, shifts = core.correct_photon_image("scan.ptu", channels=[0])
 ## See also
 
 - Tool: **Drift Correction** (`chisurf/plugins/microscopy/img_drift/`).
-
-## Native window geometry
-
-Drift correction initially requests 1100×720 logical pixels, limited by the
-display when Qt hosts it. The native launcher restores dimensions after a
-resize. The shared shell reads the declaration before arranging the form.
-Narrow projection panes retain the image and controls, and automatically
-space axis labels; this does not change measured shifts or corrected pixels.

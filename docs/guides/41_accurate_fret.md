@@ -16,7 +16,8 @@ distances are explained in the concept page {ref}`concept-accurate-fret`.
 
 ## What it does
 
-The **Spectroscopy → Single-Molecule → Burst Analysis → Accurate FRET** tool (`accurate_fret`) takes a
+The **Accurate FRET** tool (`accurate_fret`; a side tool of *Spectroscopy →
+Single-Molecule → Burst Analysis*) takes a
 per-burst table and determines the Hellenkamp correction factors — leakage
 $\alpha$, direct excitation $\delta$, detection $\gamma$ and excitation-flux
 ratio $\beta$ — **from the measurement itself**, without hand-drawn population
@@ -50,16 +51,14 @@ acceptor-only): the channel mapping on the left, the **Report** (α 0.0800,
 :name: fig-accurate-fret-native-identification
 :width: 100%
 
-The measured logical-burst table retains unassigned rows and reports factors
-not identified by these data as retained values, rather than reference estimates.
+A measured table (`bi4_bur/m000.bur` of the BH SPC-132 sm-DNA fixture, no
+donor- or acceptor-only population): the *Correction factors* tab reports α, γ
+and δ as **not identified; retained value** and β from the 1:1-labelling
+assumption, rather than inventing estimates. The unassigned burst stays in the
+table (grey).
 ```
 
 ## Workflow
-
-The standalone native calibration window declares **1100 × 720** pixels on
-first use; saved geometry takes precedence. Its parameter, table and plot
-panels remain available after resizing. Window presentation does not change
-the photon ratios, correction factors or calibration calculation.
 
 ### 1. Load the bursts
 
@@ -92,7 +91,7 @@ Beta may explicitly report the **1:1 labelling** stoichiometry assumption.
 These labels do not infer which reference class an earlier iteration used
 from the final population masks.
 
-Use the **Burst table** row (or drop a file on the window): a generic delimited
+Press **Open burst table** (or drop a file on the window): a generic delimited
 `.csv`, `.tsv` or `.txt`, a legacy `.bur`, or an `.npz` archive. The loaded
 table has one logical row per burst.
 Alternatively press **From ndX** (under *Data, session and catalogue actions*)
@@ -536,10 +535,6 @@ them; fit the quantum yields and efficiencies they are made of.
 * **Distances are only quotable near $R \approx R_0$**; the sixth root inflates
   the error bar at both ends of the efficiency range.
 
-## See also
-
-- Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).
-
 ## Read the gamma report without mistaking a fallback for a measurement
 
 After calibration, inspect **Report** alongside the factor table. A data gamma
@@ -555,4 +550,8 @@ prior fusion. Read the separate light-path prior and posterior entries instead
 of treating the data candidate as the final factor. The correction values and
 exported numeric columns are unchanged by these status labels.
 [Identification and assumptions](../concepts/accurate_fret.md) explain the
-distinction. The formatter is shared by the TTTRlib consumers.
+distinction.
+
+## See also
+
+- Tool: **Accurate FRET** (`chisurf/plugins/burst/accurate_fret/`).

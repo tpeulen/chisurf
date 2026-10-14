@@ -29,7 +29,8 @@ cites the pages, and cannot change anything.
 ## Setting it up
 
 The assistant talks to a language-model provider over an OpenAI-compatible
-API. Configure one in **Settings → AI**: a provider, a model, and an API key.
+API. Configure one in **File → Setup → Settings**, panel **AI Settings**: a
+provider, a model, and an API key.
 
 | Provider | Base URL | Processing location | Key from |
 | --- | --- | --- | --- |
@@ -73,15 +74,15 @@ user does not have to guess what the thing can do.
 
 ## Using it in the GUI
 
-The assistant lives in the **AI Assistant** panel of the code editor
-(`Tools → System → Code Editor`, then the robot button). The selector
-in its header decides how much it may touch:
+The assistant lives in the **🤖 AI Assistant** panel of the code editor
+(*Tools → System → Code Editor*, then **🤖 Agent**). The mode selector in its
+header decides how much it may touch:
 
 | Mode | What it can do |
 | --- | --- |
-| 💬 Chat only | Answers and writes code into the editor. Touches nothing. |
-| 🔧 ChiSurf tools | Loads data, creates and runs fits, edits parameters, exports results. Stays inside ChiSurf. |
-| 🤖 Full control | Also runs Python inside the session, writes files, and **runs programs on your computer** — asking you before each. |
+| Chat only | Answers and writes code into the editor. Touches nothing. |
+| ChiSurf tools | Loads data, creates and runs fits, edits parameters, exports results. Stays inside ChiSurf. |
+| Full control | Also runs Python inside the session, writes files, and **runs programs on your computer** — asking you before each. |
 
 **Full control means what it says.** In that mode the assistant can run any
 program you can: unpack an archive, call a vendor converter, drive another
@@ -105,7 +106,7 @@ having to trust it.
 
 The assistant in **ChiSurf tools** mode, having been asked for lifetimes in
 ordinary words. The `[System]` lines between the question and the answer are the
-actual tool calls — `load_data`, `add_fit`, `run_fit` — with what each returned,
+actual tool calls — `load_data`, `create_fit`, `run_fit` — with what each returned,
 so the reduced chi-squares are visible *before* the prose that interprets them.
 The two selectors above the conversation choose the provider and the mode;
 **Provider settings…** opens the provider form.
@@ -127,8 +128,9 @@ python -m chisurf.core.agent --example fit-one-decay -C ./data
 ```
 
 Useful flags: `-C/--directory` sets what relative paths mean, `--safety
-read|write|dangerous` caps what it may do, `--yes` approves dangerous actions
-without prompting, and `--json` prints a machine-readable result.
+read|write|dangerous` caps what it may do, `-y/--yes` approves dangerous actions
+without prompting, `--provider`/`--model` override the configured ones, and
+`--json` prints a machine-readable result.
 
 ## Skills: how it knows *how*
 
@@ -157,6 +159,7 @@ even sees it, so the right method is in play from the first turn.
 | `fit-series` | a power series, titration, time course or repeats fitted together |
 | `estimate-uncertainty` | confidence intervals, error bars, whether a component is justified |
 | `program-chisurf` | writing plugins, models or patches to ChiSurf itself |
+| `answer-from-docs` | "what is", "how do I", "which tool" — answered from the documentation, with the page cited |
 
 `python -m chisurf.core.agent --list-skills` prints them with the phrases that
 trigger each one.
@@ -198,8 +201,8 @@ what the measurements *mean*.
 
 ### Writing your own
 
-A skill is a `SKILL.md` file with frontmatter, placed in
-`~/.chisurf/agent_skills/<name>/SKILL.md`:
+A skill is a `SKILL.md` file with frontmatter, placed in the settings folder
+under `agent_skills/<name>/SKILL.md` (`~/.chisurf/agent_skills/` by default):
 
 ```markdown
 ---
@@ -227,7 +230,7 @@ The assistant can also work *on* ChiSurf — a plugin, a fitting model, a
 script that uses the API. It does not know the codebase from memory, so it
 looks things up instead of guessing: `search_api` gives it the real
 signatures and docstrings straight from the source tree, `read_api_source`
-the implementation, `search_docs` the architecture concepts and guides, and
+the implementation, `search_documentation` the architecture concepts and guides, and
 `list_plugins` the nearest existing example to follow. `check_python` runs a
 syntax and lint check before anything is written to disk.
 
@@ -318,7 +321,3 @@ knowing:
 A request that never reaches the provider (no route, blocked port, wrong proxy)
 is reported as a connection error rather than a model error — worth checking
 before you blame the model or the key.
-
-Native AI Settings declares an initial 1100×720 window. Saved custom geometry
-takes precedence; sizing does not change provider endpoints, selected models or
-generation settings, and opening the panel makes no provider request.
