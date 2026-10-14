@@ -42,8 +42,8 @@ click = "*"
 # chisurf.core.dataspec.schema): without it those validators report every
 # document valid, because their import fails.
 jsonschema = "*"
-qtpy = "<2.0"
-pyqt = "*"
+# qtpy / pyqt were dropped (W9 S6): the window is the emtk shell and nothing imports Qt
+# (test/test_no_qt_imports.py).
 # pyqtgraph was dropped (W8): chiplot draws with emtk, and nothing imports it
 # (test/test_pyqtgraph_seam.py).
 # matplotlib was dropped: colour tables are emtk.colormaps, static figures
@@ -77,9 +77,8 @@ pillow = "*"
 # reads and writes .ipynb through chisurf/plugins/core/code_editor/ipynb.py,
 # byte-identical to nbformat's output (nbformat stays the test oracle).
 pyopengl = "*"
-# WebGPU: the graphics API behind chisurf.gui.chigame, and the platform surface
-# plumbing (Qt embedding, offscreen rendering) that goes with it. Both were only
-# incidentally present before and are now load-bearing.
+# WebGPU: the graphics API emtk draws the ChiSurf window, the plugins and chimol
+# with, and the platform surface plumbing (native windows, offscreen rendering).
 # The conda-forge package is `wgpu-py` (PyPI's is `wgpu`, imported as `wgpu`
 # either way) -- same mismatch pattern as msgpack-python below. `wgpu` does not
 # exist on conda-forge under that name on any platform, which is why `pixi
@@ -136,13 +135,12 @@ cereal = "*"
 llvm-openmp = ">=22.1.3,<23"
 rmf = ">=1.7.0,<2"
 
-# PyPI-only runtime deps (no conda package exists). latexify-py backs the LaTeX
-# expression renderer in chisurf/gui/widgets/models/parse/latex.py. This block is
-# the single home for such deps — the former chisurf-env.yaml pip section is gone.
+# PyPI-only runtime deps (no conda package exists). This block is the single home
+# for such deps — the former chisurf-env.yaml pip section is gone. (latexify-py
+# went with the Qt parse-model widget, its only importer.)
 [pypi-dependencies]
-latexify-py = "*"
-# The node-graph editor toolkit: chisurf.gui.widgets.node_editor and chimol
-# import emtk.qt_host unguarded, so it is not optional. Not on conda-forge;
+# The UI toolkit: the ChiSurf window, every plugin, the node editor and chimol
+# draw with it, so it is not optional. Not on conda-forge;
 # real PyPI package (tpeulen's own, published 2026-09). Declared here, not
 # just in pyproject.toml's [project.dependencies], because pixi.toml's own
 # [pypi-dependencies] is what the solver actually reads -- pyproject.toml's
@@ -187,7 +185,6 @@ cmake-build-extension = ">=0.6.1,<0.7"
 [feature.test.dependencies]
 pytest = "*"
 pytest-cov = "*"
-pytest-qt = "*"
 # The Linux/macOS CI test jobs hang somewhere in the suite (runs 35209068091,
 # 35211975593, 35215662404: stuck 30-55+ min with no configured timeout,
 # each cancelled rather than let run for hours). Per-test timeout turns a
@@ -341,14 +338,13 @@ PATH = "%VCPKG_INSTALLATION_ROOT%\\installed\\x64-windows\\bin;%PATH%"
      "build-mmfdb",
      "build-imp-tricks",
  ] }
- chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions", "i18n-compile"] }
+ chisurf = { cmd = "python -m chisurf", depends-on = ["build-extensions"] }
 
 # Internationalisation (translation kit). i18n-extract (re)generates the .ts
-# source catalogues from .ui forms + data-driven view.json/manifest.json specs;
-# i18n-compile compiles them to runtime .qm binaries. `chisurf` depends on the
-# compile so a launched GUI always has fresh translations.
+# catalogues from the data-driven view.json/manifest.json specs and tr() calls;
+# the emtk shell reads the .ts files directly (chisurf.emtk.i18n), so there is
+# nothing to compile.
 i18n-extract = { cmd = "python build_tools/i18n/extract_strings.py" }
-i18n-compile = { cmd = "lrelease chisurf/gui/i18n/chisurf_en.ts chisurf/gui/i18n/chisurf_de.ts chisurf/gui/i18n/chisurf_es.ts chisurf/gui/i18n/chisurf_fr.ts chisurf/gui/i18n/chisurf_pt.ts chisurf/gui/i18n/chisurf_ru.ts", inputs = ["chisurf/gui/i18n/*.ts"], outputs = ["chisurf/gui/i18n/*.qm"] }
 
 test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment on Linux'", depends-on = ["build-extensions"] }
 # Suites partition the tests BY MARKER, never by path list or `-k` substring (a node id
@@ -359,17 +355,17 @@ test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment
 # defined in pyproject and excluded from nothing, so a file marked slow still
 # ran in every default sweep. The slow ones build whole windows and grab them --
 # a minute against seconds for the rest -- and `test-slow` is how to ask for them.
-test = { cmd = "pytest -v -m 'not slow and not e2e and not gui and not widget' --timeout=120 --durations=20", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test = { cmd = "pytest -v -m 'not slow and not e2e and not gui and not widget' --timeout=120 --durations=20", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-slow = { cmd = "pytest -m slow", depends-on = ["build-extensions"] }
-test-gui = { cmd = "pytest -m '(gui or widget) and not slow and not e2e'", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-gui = { cmd = "pytest -m '(gui or widget) and not slow and not e2e'", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-doctest = { cmd = "pytest test --doctest-modules", depends-on = ["build-extensions"] }
 lint = { cmd = "ruff check chisurf/ test/ && ruff format --check chisurf/ test/" }
 fmt = { cmd = "ruff format chisurf/ test/ && ruff check --fix chisurf/ test/" }
 typecheck = { cmd = "mypy chisurf/" }
-test-cov = { cmd = "pytest -v -m 'not slow and not e2e and not gui and not widget' --timeout=120 --durations=20 --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-cov = { cmd = "pytest -v -m 'not slow and not e2e and not gui and not widget' --timeout=120 --durations=20 --cov=chisurf --cov-report=term --cov-report=xml --cov-report=html", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 test-linux = { cmd = "docker build -t chisurf-linux -f Dockerfile.linux . && docker run --rm chisurf-linux" }
 test-smoke = { cmd = "pytest test/test_basic.py -q", depends-on = ["build-extensions"] }
-test-e2e = { cmd = "pytest -m 'e2e and not slow' -q -p no:cacheprovider --timeout=300 --durations=15", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", QT_API = "pyqt5", QT_QPA_PLATFORM = "offscreen", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
+test-e2e = { cmd = "pytest -m 'e2e and not slow' -q -p no:cacheprovider --timeout=300 --durations=15", depends-on = ["build-extensions"], env = { PYTHONUNBUFFERED = "1", PYTHONUTF8 = "1", LC_NUMERIC = "C", OMP_NUM_THREADS = "1", OPENBLAS_NUM_THREADS = "1", MKL_NUM_THREADS = "1" } }
 # PRD-46: run the shipped example scripts + their public-API unit tests. These
 # also run as part of the default `test` task (they live under test/), so this is
 # a convenience entry point for iterating on the scripts alone.

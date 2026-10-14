@@ -1,4 +1,4 @@
-"""Designer retirement leaves only the explicitly deferred shell surface."""
+"""No Qt Designer files and no ``.ui`` loader calls are left (the allow-list is empty)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST = ROOT / "test/ui_file_allowlist.txt"
-LOADER_ALLOWLIST = {"chisurf/gui/main.py", "chisurf/gui/retranslate.py"}
+LOADER_ALLOWLIST: set[str] = set()
 LOADER_NAMES = {"loadUi", "loadUiType", "init_with_ui", "qtpy_loadUi"}
 
 
