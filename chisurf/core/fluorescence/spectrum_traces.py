@@ -4,8 +4,7 @@ A probe record from the fluorophore curation service carries its spectra as
 ``{"spectrum_type", "wavelengths", "intensity"}`` entries. A viewer draws them
 normalised to their maximum: one probe in a colour per spectrum type, several
 probes overlaid in a colour per probe with a line style per spectrum type.
-Shared by the Qt :class:`~chisurf.gui.widgets.spectrum_view.SpectrumView` and the
-native emtk MMFDB Admin.
+The native emtk MMFDB Admin's Spectra panel plots them.
 
 A trace is ``{"name", "x", "y", "color", "style", "width"}`` with ``style`` one of
 ``solid`` / ``dash`` / ``dot`` / ``dashdot``.

@@ -2404,24 +2404,26 @@ status: open
 
 The Qt window is gone (`okf/subsystems/qt-retirement.md` item 1, mmfdb_admin slice). Left:
 
-- **Open in ndX inside the emtk shell records nothing back.** The admin's **Open in ndX**
-  (`mmfdb_admin/gui/native/entity.py::open_in_ndx`) attaches `record_burst_ids_against_product` only when
-  `open_in_ndx` returns the ndX app (standalone); in the shell it returns the dock record of the `open_path`
-  hand-off. **Blocks:** provenance of gate selections made from an MMFDB product in the shell. Fix (ndX's
-  files): let the `open_path` hand-off carry `processed_data_id` / `experiment_id` and attach the recorder in
-  `receive_path`. This is the remaining half of the entry below.
+- **Open in ndX inside the emtk shell records nothing back: resolved 2026-10-13.** Fixed generically, not in
+  ndX's receiver: `chisurf.core.plugin.handoff.hand_off(..., on_delivered=)` and the shell's
+  `EmtkShellApp.hand_off` call `on_delivered(app)` with the target's built app right after its receive hook
+  took the payload (the hand-off itself still returns the dock record: the app is built later). ndX's
+  `open_in_ndx(path, on_opened=)` passes it through (standalone: called at once), and the admin's
+  `open_in_ndx` attaches `record_burst_ids_against_product` from that callback in both hosts. Tests:
+  `test/core/test_plugin_handoff.py` (on_delivered), ndX `test_window_routes.py`
+  (`test_the_opener_reaches_the_app_once_the_path_is_open`), admin `test_native_qt_parity.py`
+  (`test_open_in_ndx_in_the_shell_records_back_once_the_dock_app_exists`).
 - **emtk pin.** The admin needs emtk 0.1.12 (form-scoped widget ids: on 0.1.11 and older the Import / Export
   panel's *Import file* press does nothing, because the toolbar's *Import* has the same action name) and 0.1.11
   (`enter_call`, `live`). emtk 2eeec85 / 5bd6a82 are committed, not pushed, and `EMTK_MIN_VERSION` is unchanged
   (no piecemeal pin moves); the arm64 env has 0.1.12 installed. Move the pin with the next emtk push.
-- **`chisurf/gui/widgets/spectrum_view.py` has no user left.** Its only consumer was the retired Qt Spectra dock;
-  `test/gui/test_chiplot_api.py` still tests it and `test/chiplot_native_allowlist.txt` lists it. Delete it with
-  its test when the chiplot lane next touches the allow-list.
+- **`chisurf/gui/widgets/spectrum_view.py` has no user left: resolved 2026-10-13.** Deleted with its
+  `test/gui/test_chiplot_api.py` test and import-list line (no importer was left; no allow-list still named
+  it). The trace conversion lives on in `chisurf/core/fluorescence/spectrum_traces.py`.
 
 ## ndX opened from the MMFDB admin no longer records a selection back into MMFDB
 
-status: open (standalone: fixed 2026-10-13, the emtk admin's Open in ndX attaches the recorder; shell: see the
-entry above)
+status: resolved 2026-10-13 (standalone and in the emtk shell; see the entry above)
 
 **Since 2026-09-28** ChiSurf opens only the emtk ndX app. The legacy Qt window,
 when the MMFDB admin opened it with `processed_data_id`/`experiment_id`, called
