@@ -264,7 +264,11 @@ Moved here unchanged: notes that are history, done work or standing rules rather
    `_mmfdb_edge.source_node_id` (one per parent), `relationship_type` (a term,
    plus the join columns when grains differ), and `operation_type` with the
    **complete** `settings_json`. `Measurement.lineage()` walks to the instrument
-   file; `describe_lineage()` renders it.
+   file; `describe_lineage()` renders it. The closing check is
+   `burst_selection.api.reproduce.reproduce_burst_search(container, run)`: it
+   re-runs a stored burst search from the container alone (stored settings,
+   lineage to the photons, read-only) and reports whether the stored intervals
+   come back exactly.
 
    **The trap that produced this:** `source_node_id` exists in the database
    schema and was never declared in the dictionary, so the writer put the parent

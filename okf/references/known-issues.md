@@ -8228,24 +8228,22 @@ re-inspecting; that is its own change, with its own before/after images.
 
 ## mmfdb: `AnalysisReconstructor` has never been run against a real container
 
-status: open
+status: resolved
 
-**2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` re-runs a stored burst
-search from a `.pto` and compares the result with the stored table. The mypy
-sweep found two defects in it, both now fixed: a named artifact was looked up
-through a `Measurement.artifact` method that does not exist (AttributeError),
-and the stored search settings (`min_photons`, `rate_window`,
-`time_separation`) were read and then never handed to the filter -- since the
-file was first written, so every "reconstruction" ran tttrlib's default burst
-parameters and its verdict meant nothing. The filter now gets
-`set_burst_parameters(min_photons, window_photons, T)`.
+**2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` claimed to re-run a stored
+burst search from a `.pto`. It read the stored settings under keys the burst
+selection never writes (`min_photons`, `rate_window`, `time_separation` at the
+top level) and searched with tttrlib's defaults, so its verdict meant nothing;
+it also called a `Measurement.artifact` method that does not exist, and
+"reconstructed" IRFs with a percentile background no writer uses.
 
-What is still open: nothing calls the module and no test covers it, so the
-fix is unverified end to end. A test needs a `.pto` holding a
-`burst_selection` artifact with its `settings_json` and the source photon
-stream; the burst-tree writer in `chisurf/core/fio/fluorescence/burst_tree.py`
-can produce one from a simulated stream. The `T > 1.0 means milliseconds`
-heuristic in the same function is a guess about the stored unit and should be
-replaced by reading the unit the burst search records.
+**Resolved 2026-10-14:** deleted, and replaced by
+`chisurf.plugins.burst.burst_selection.api.reproduce.reproduce_burst_search`,
+which walks `Measurement.lineage()` to the photon stream, rebuilds the
+`AnalysisSettings` from the stored `settings_json`, and re-runs the same
+`analyze_file` a normal run uses, read-only. Test:
+`chisurf/plugins/burst/burst_selection/tests/test_container_reproduce.py` (exact
+reproduction on real BH data, and a second run proving the result depends on
+the stored settings).
 
 ---

@@ -140,6 +140,20 @@ the details panel are still the whole recipe.
 recorded beside it. Do this before deleting an original file: *restorable*
 without verification is only *probably restorable*.
 
+A checksum says the bytes are intact; it does not say the result follows from the
+recipe. For a burst search that check is a re-run: the stored settings, applied to
+the photon stream the lineage ends at, must give the stored bursts back.
+
+```python
+from chisurf.plugins.burst.burst_selection.api.reproduce import reproduce_burst_search
+
+report = reproduce_burst_search("measurement.pto", run="countrate_All 0.2000#60")
+assert report.is_exact, (report.n_stored, report.n_reproduced)
+```
+
+Nothing is written: the search runs on the container in place with every output
+switched off.
+
 ## Export legacy
 
 **📤 Export legacy…** is the one way to get the old folder layout out of a container:
