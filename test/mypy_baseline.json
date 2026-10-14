@@ -1,7 +1,6 @@
 {
  "total": 2699,
  "files": {
-  "chisurf/core/data.py": 2,
   "chisurf/gui/__init__.py": 3,
   "chisurf/gui/autoform/auto_form.py": 7,
   "chisurf/gui/autoform/sections/anisotropy_diagnostics_section.py": 1,

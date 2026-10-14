@@ -43,7 +43,9 @@ def _payload(fit):
     payload = meta.get("mfd_data")
     if payload is not None:
         return payload
-    if isinstance(data, list):
+    from chisurf.core.data import DataGroup
+
+    if isinstance(data, DataGroup):
         for member in data:
             payload = getattr(member, "mfd", None)
             if payload is not None:

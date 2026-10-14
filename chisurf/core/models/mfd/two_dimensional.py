@@ -74,9 +74,11 @@ def burst_payload(data):
     payload = meta.get("mfd_data")
     if payload is not None:
         return payload
-    # ``DataGroup`` subclasses ``list``, so this is the group case and only the
-    # group case — a bare curve is not iterable over datasets.
-    if isinstance(data, list):
+    # The group case, and only the group case -- a bare curve is not iterable
+    # over datasets.
+    from chisurf.core.data import DataGroup
+
+    if isinstance(data, DataGroup):
         for member in data:
             payload = burst_payload(member)
             if payload is not None:

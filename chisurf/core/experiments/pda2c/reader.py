@@ -643,7 +643,9 @@ class Pda2cReader(ExperimentReader):
             if source_filenames
             else pathlib.Path(filename[0])
         )
-        data_group = chisurf.core.data.ExperimentDataGroup([])
+        data_group: chisurf.core.data.ExperimentDataGroup[chisurf.core.data.DataCurve] = (
+            chisurf.core.data.ExperimentDataGroup([])
+        )
 
         # Optional burst slicing: dict[str, List[Tuple[int,int]]]
         burst_slices = kwargs.get("burst_slices", None)

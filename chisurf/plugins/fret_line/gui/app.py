@@ -359,10 +359,15 @@ class FRETLineApp(ImApp):
 
     def input_curves(self) -> list:
         import chisurf
+        from chisurf.core.data import DataGroup
 
         curves = list(self.loaded_curves)
         for group in getattr(chisurf, "imported_datasets", []):
-            if not isinstance(group, (list, tuple)) and hasattr(group, "x") and hasattr(group, "y"):
+            if (
+                not isinstance(group, (list, tuple, DataGroup))
+                and hasattr(group, "x")
+                and hasattr(group, "y")
+            ):
                 curves.append(group)
             else:
                 try:

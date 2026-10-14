@@ -218,5 +218,7 @@ def data_from_json(
 
     if len(curves) == 1:
         return curves[0]
-    group = chisurf.core.data.ExperimentDataGroup(curves)
+    group: chisurf.core.data.ExperimentDataGroup[chisurf.core.data.DataCurve] = (
+        chisurf.core.data.ExperimentDataGroup(curves)
+    )
     return group

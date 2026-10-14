@@ -687,7 +687,9 @@ def add_dataset(
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 
-    if isinstance(dataset_group, list):
+    from chisurf.core.data import DataGroup
+
+    if isinstance(dataset_group, (list, DataGroup)):
         for ds in dataset_group:
             state.add_dataset(ds)
     else:

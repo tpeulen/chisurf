@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import pathlib
+from collections.abc import MutableSequence
+from typing import overload
 
 import IMP.bff as _bff
 import numpy as np
@@ -59,7 +61,7 @@ class ExperimentalData(chisurf.core.base.Data):
         return None
 
     @experiment.setter
-    def experiment(self, v: Experiment) -> None:
+    def experiment(self, v: Experiment | None) -> None:
         """Set the experiment associated with this dataset."""
         self._experiment = v
 
@@ -763,17 +765,110 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData, _FitDatasetBase):
         return self.x[key], self.y[key], self.ex[key], self.ey[key], self.mask[key]
 
 
-class DataGroup(list, chisurf.core.base.Base):
+#: The member type of a group: any dataset (a curve, a structure), or a curve
+#: in a curve group.
+_D = typing.TypeVar("_D", bound=chisurf.core.base.Base)
+
+
+class DataGroup(chisurf.core.base.Base, MutableSequence[_D]):
     """Container for multiple experimental datasets.
 
-    Behaves like a list but tracks a *current* dataset and provides
+    A mutable sequence of datasets that tracks a *current* dataset and provides
     helpers to export the group to YAML.
+
+    A group is identified like every :class:`~chisurf.core.base.Base` -- by its
+    ``unique_identifier`` -- so two groups holding the same curves are two
+    groups, and a group is hashable. It used to *be* a ``list``, which compared
+    by contents and was unhashable, contradicting the UID it carried; the
+    members now live in a list the group holds. Everything callers use from a
+    list -- iteration, ``len``, indexing and slicing, ``index``, ``append``,
+    ``extend``, ``insert``, ``pop``, ``remove``, ``in`` -- is the
+    :class:`~collections.abc.MutableSequence` protocol, which the group
+    implements; it is no longer an ``isinstance(x, list)``.
     """
 
     def __repr__(self):
         """Return ``<DataCurveGroup 'name' [members]>``: the group's name and its curves."""
         name = str(getattr(self, "name", "") or "")
-        return f"<{type(self).__name__} {name!r} {list.__repr__(self)}>"
+        return f"<{type(self).__name__} {name!r} {self._members!r}>"
+
+    # -- the sequence protocol, over the members ------------------------------
+    @overload
+    def __getitem__(self, index: int) -> _D: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> typing.List[_D]: ...
+
+    def __getitem__(self, index: int | slice) -> _D | typing.List[_D]:
+        """Return a member, or a list of members for a slice (as a list did)."""
+        return self._members[index]
+
+    @overload
+    def __setitem__(self, index: int, value: _D) -> None: ...
+
+    @overload
+    def __setitem__(self, index: slice, value: typing.Iterable[_D]) -> None: ...
+
+    def __setitem__(self, index, value) -> None:
+        """Replace a member (or a slice of members)."""
+        self._members[index] = value
+
+    def __delitem__(self, index: int | slice) -> None:
+        """Remove a member (or a slice of members)."""
+        del self._members[index]
+
+    def __len__(self) -> int:
+        """Return the number of members."""
+        return len(self._members)
+
+    def __iter__(self) -> typing.Iterator[_D]:
+        """Iterate over the members."""
+        return iter(self._members)
+
+    def insert(self, index: int, value: _D) -> None:
+        """Insert a member at *index*."""
+        self._members.insert(index, value)
+
+    def sort(self, *, key=None, reverse: bool = False) -> None:
+        """Sort the members in place, as ``list.sort`` does."""
+        self._members.sort(key=key, reverse=reverse)
+
+    def to_dict(
+        self,
+        remove_protected: bool = False,
+        copy_values: bool = True,
+        convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False,
+    ) -> typing.Dict:
+        """Serialise the group's own state; the members are serialised by the caller.
+
+        The members live in ``__dict__`` now, where :meth:`Base.to_dict` would
+        pick them up; a list subclass kept them out of ``__dict__``, and
+        :meth:`to_yaml` adds them under ``data`` itself.
+        """
+        d = super().to_dict(
+            remove_protected=remove_protected,
+            copy_values=copy_values,
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets,
+        )
+        if d is self.__dict__:
+            d = dict(d)
+        d.pop("_members", None)
+        return d
+
+    def __getstate__(self):
+        """Pickle the members and the selection along with Base's state."""
+        state = super().__getstate__()
+        state["_members"] = list(self._members)
+        state["_current_dataset"] = self._current_dataset
+        return state
+
+    def __copy__(self):
+        """Shallow copy with its own member list (same members, same identity)."""
+        c = super().__copy__()
+        c.__dict__["_members"] = list(self._members)
+        return c
 
     @property
     def names(self) -> typing.List[str]:
@@ -781,7 +876,7 @@ class DataGroup(list, chisurf.core.base.Base):
         return [d.name for d in self]
 
     @property
-    def current_dataset(self) -> chisurf.core.base.Data:
+    def current_dataset(self) -> _D:
         """Return the currently selected dataset.
 
         Raises
@@ -883,7 +978,7 @@ class DataGroup(list, chisurf.core.base.Base):
         d["data"] = data
         return yaml.dump(data=d)
 
-    def append(self, dataset: chisurf.core.base.Data):
+    def append(self, dataset: _D):
         """Append a dataset (or list of datasets) to the group.
 
         Only :class:`ExperimentalData` instances are accepted; others
@@ -895,19 +990,21 @@ class DataGroup(list, chisurf.core.base.Base):
             Dataset(s) to append.
         """
         if isinstance(dataset, ExperimentalData):
-            list.append(self, dataset)
-        if isinstance(dataset, list):
+            self._members.append(dataset)
+        elif isinstance(dataset, (list, tuple, DataGroup)):
             for d in dataset:
                 if isinstance(d, ExperimentalData):
-                    list.append(self, d)
+                    self._members.append(d)
 
-    def __init__(self, seq: typing.Sequence, *args, **kwargs):
+    def __init__(self, seq: typing.Iterable = (), *args, **kwargs):
+        # Directly into __dict__: Base.__setattr__ routes through properties,
+        # and the members must exist before anything (a name lookup) reads them.
+        self.__dict__["_members"] = list(seq)
         self._current_dataset = 0
-        list.__init__(self, seq)
         chisurf.core.base.Base.__init__(self, *args, **kwargs)
 
 
-class DataCurveGroup(DataGroup):
+class DataCurveGroup(DataGroup[DataCurve]):
     """Data group whose elements are :class:`DataCurve` instances.
 
     Convenience properties proxy ``x``, ``y``, ``ex`` and ``ey`` to the
@@ -990,7 +1087,7 @@ class DataCurveGroup(DataGroup):
         super().__init__(*args, **kwargs)
 
 
-class ExperimentDataGroup(DataGroup):
+class ExperimentDataGroup(DataGroup[_D]):
     """Data group specialized for experiment-based datasets."""
 
     @property
@@ -1017,7 +1114,7 @@ class ExperimentDataGroup(DataGroup):
         super().__init__(*args, **kwargs)
 
 
-class ExperimentDataCurveGroup(ExperimentDataGroup, DataCurveGroup):
+class ExperimentDataCurveGroup(ExperimentDataGroup[DataCurve], DataCurveGroup):
     """Hybrid group combining experimental metadata and curve access."""
 
     @property

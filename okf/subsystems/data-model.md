@@ -97,8 +97,15 @@ The file therefore wins over the passed arrays, exactly as it already does for
 
 # Data groups
 
-Multiple datasets are held in `DataGroup(list, Base)` — a list that also tracks a
-`current_dataset`. Specializations: `DataCurveGroup` (proxies `x/y/ex/ey/mask` to
+Multiple datasets are held in `DataGroup(Base, MutableSequence[_D])` — a sequence
+of members (any `Base`; a curve in the curve groups) that also tracks a
+`current_dataset`. A group is identified by its UID like every `Base`: hashable,
+and two groups holding the same curves are two groups. It used to *subclass*
+`list`, which made it unhashable and compared it by contents; since 2026-10-14 it
+holds its members instead, so `isinstance(group, list)` is **False** — test for
+`DataGroup` (or `collections.abc.Sequence`) where a group can arrive. Slicing a
+plain group returns a list of members; `DataCurveGroup` keeps its old slice
+meaning (the current curve's `x, y, ex, ey, mask`). Specializations: `DataCurveGroup` (proxies `x/y/ex/ey/mask` to
 the current curve), `ExperimentDataGroup` (adds `experiment`/`setup`), and
 `ExperimentDataCurveGroup` (both). `get_data(...)` filters a dataset list down to
 `ExperimentalData`/`ExperimentDataGroup` instances, excluding e.g. `"Global-fit"`.

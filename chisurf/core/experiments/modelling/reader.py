@@ -99,7 +99,9 @@ class StructureReader(ExperimentReader):
         structure = chisurf.core.structure.Structure(
             p_object=filename, make_coarse=self.compute_internal_coordinates
         )
-        data_group = chisurf.core.data.ExperimentDataGroup(seq=[structure])
+        data_group: chisurf.core.data.ExperimentDataGroup[chisurf.core.structure.Structure] = (
+            chisurf.core.data.ExperimentDataGroup(seq=[structure])
+        )
         data_group.data_reader = self
         self.filename = str(filename) if filename is not None else ""
         self.n_atoms = structure.n_atoms

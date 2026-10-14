@@ -398,3 +398,51 @@ class TestGetData:
         d2 = chisurf.core.data.ExperimentalData(name="Global-fit")
         result = chisurf.core.data.get_data(curve_type="all", data_set=[d1, d2])
         assert len(result) == 2
+
+
+class TestDataGroupIdentity:
+    """A group is a Base: identified by its UID, not by the curves it holds.
+
+    It used to subclass ``list``, so ``==`` compared contents and the group was
+    unhashable -- two groups of the same curves were "equal" while carrying
+    different UIDs.
+    """
+
+    def test_a_group_is_hashable(self, sample_data_group):
+        assert hash(sample_data_group) == hash(sample_data_group)
+        assert {sample_data_group: 1}[sample_data_group] == 1
+
+    def test_equal_contents_are_distinct_groups(self, sample_curve_short):
+        a = chisurf.core.data.DataGroup([sample_curve_short])
+        b = chisurf.core.data.DataGroup([sample_curve_short])
+        assert a != b
+        assert a in [a] and a not in [b]
+        assert len({a, b}) == 2
+
+    def test_it_still_behaves_as_a_sequence(self, sample_data_group, sample_curve):
+        from collections.abc import MutableSequence
+
+        g = sample_data_group
+        assert isinstance(g, MutableSequence)
+        first, second = g
+        assert len(g) == 2 and g[0] is first and g[-1] is second
+        assert g[0:1] == [first]
+        assert g.index(second) == 1
+        g.append(sample_curve)
+        assert len(g) == 3 and g[2] is sample_curve
+        assert g.pop() is sample_curve and len(g) == 2
+
+    def test_a_copy_has_its_own_member_list(self, sample_data_group, sample_curve):
+        import copy
+
+        c = copy.copy(sample_data_group)
+        c.append(sample_curve)
+        assert len(sample_data_group) == 2 and len(c) == 3
+        assert c == sample_data_group  # the same logical group (same UID)
+
+    def test_yaml_holds_the_members_once(self, sample_data_group):
+        import yaml
+
+        doc = yaml.unsafe_load(sample_data_group.to_yaml())  # arrays are python-tagged
+        assert len(doc["data"]) == 2
+        assert "_members" not in doc

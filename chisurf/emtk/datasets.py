@@ -10,7 +10,9 @@ import numpy as np
 
 
 def _iter_group_members(group):
-    if isinstance(group, (list, tuple)):
+    from chisurf.core.data import DataGroup
+
+    if isinstance(group, (list, tuple, DataGroup)):
         yield from group
     else:
         yield group

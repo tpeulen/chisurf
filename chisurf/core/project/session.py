@@ -489,6 +489,7 @@ def owned_scientific_objects(owner: Any, *, include_plugins: bool = True) -> dic
     Session-local services use this index rather than the process registry.
     Walking explicit scientific edges also covers additive imports and groups.
     """
+    from chisurf.core.data import DataGroup
     from chisurf.core.models.model import Model
 
     result: dict[str, Any] = {}
@@ -504,7 +505,7 @@ def owned_scientific_objects(owner: Any, *, include_plugins: bool = True) -> dic
             for value in obj.values():
                 visit(value)
             return
-        if isinstance(obj, (list, tuple)):
+        if isinstance(obj, (list, tuple, DataGroup)):
             for value in obj:
                 visit(value)
         uid = getattr(obj, "unique_identifier", None)
@@ -899,6 +900,8 @@ def capture_session(
     resources: ResourceContext | None = None,
 ) -> Project:
     """Capture explicit runtime objects into a detached PTO payload."""
+    from chisurf.core.data import DataGroup
+
     curves: dict[str, Any] = {}
     layouts: list[dict[str, Any]] = []
 
@@ -910,11 +913,7 @@ def capture_session(
         return uid
 
     for item in datasets or []:
-        members = (
-            list(item)
-            if isinstance(item, list) and not isinstance(item, (str, bytes, dict))
-            else None
-        )
+        members = list(item) if isinstance(item, (list, DataGroup)) else None
         if members is None:
             layouts.append({"kind": "dataset", "dataset_uid": register(item)})
         else:
