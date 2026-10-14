@@ -20,10 +20,6 @@ what is left is asserted here.
 
 Both halves run in a **child process**, and that is not incidental:
 
-* the desktop half is the toolkit-free host, which is chosen once per process
-  from ``CHIMOL_TOOLKIT`` -- setting it here would reach every other test in
-  the session, and ``MolViewPluginWindow`` would then be handed a ``Viewer``
-  that is no longer a ``QWidget``;
 * the plugin registries are still one table per process with a refcount of
   live loads (``plugins.api.holds``), so a viewer built beside the other
   tests' viewers reports ``dbg(5)`` where a fresh page reports ``dbg(1)``.
@@ -56,10 +52,6 @@ def comparison(tmp_path_factory):
 
     out = tmp_path_factory.mktemp("parity")
     env = dict(os.environ)
-    # The toolkit-free host is the like-for-like comparison for a page, and it
-    # is chosen at import; a child process is the only place that choice can be
-    # made without reaching the rest of the session.
-    env["CHIMOL_TOOLKIT"] = "none"
     env["QT_QPA_PLATFORM"] = "offscreen"
     # Run in the report's directory: the capture presses every reachable
     # control, and one of them records an orbit movie into the working

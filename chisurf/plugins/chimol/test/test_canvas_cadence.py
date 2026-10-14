@@ -17,7 +17,7 @@ is interacting, so the fps readout -- computed only from inside a real draw --
 freezes at its last value forever rather than reporting the still viewport
 honestly. ``_arm_idle_settle`` schedules one follow-up draw past the idle gap
 using the codebase's existing host-independent timer
-(:class:`chimol.hosts.toolkit.Timer`, the same clock movie playback and the
+(:class:`chimol.core.toolkit.Timer`, the same clock movie playback and the
 cartoon settle-then-bake pass already use), and ``_note_frame_drawn`` makes
 sure that one follow-up draw does not rearm itself and free-run forever.
 """
@@ -192,7 +192,7 @@ def test_set_max_fps_swallows_a_surface_that_raises():
 # The idle-settle timer
 # --------------------------------------------------------------------------- #
 class _FakeTimer:
-    """Stands in for `chimol.hosts.toolkit.Timer`, recording what was asked."""
+    """Stands in for `chimol.core.toolkit.Timer`, recording what was asked."""
 
     def __init__(self) -> None:
         self.single_shot = None
@@ -241,7 +241,7 @@ def _fake_host(*, nerd: bool = False, debug: bool = False) -> SimpleNamespace:
 
 def test_arm_idle_settle_starts_a_singleshot_timer_past_the_idle_gap(monkeypatch):
     """With no readout on screen the timer is the one-shot settle."""
-    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
+    monkeypatch.setattr("chimol.core.toolkit.Timer", _FakeTimer, raising=True)
     host = _fake_host()
 
     CanvasRenderer._arm_idle_settle(host)
@@ -258,7 +258,7 @@ def test_a_live_readout_ticks_at_the_idle_tick_interval(monkeypatch):
     Past the idle gap it would only ever redraw after the rate had already
     been cleared to zero, which is a settle, not a counter.
     """
-    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
+    monkeypatch.setattr("chimol.core.toolkit.Timer", _FakeTimer, raising=True)
     from chimol.render.frame_stats import nerd_idle_tick_interval
 
     host = _fake_host(nerd=True)
@@ -281,7 +281,7 @@ def test_the_idle_tick_can_be_switched_off_entirely(monkeypatch):
     """0 is a real value: no redraws at all, the rate settles to zero and
     stays there. That is the setting to use while measuring.
     """
-    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
+    monkeypatch.setattr("chimol.core.toolkit.Timer", _FakeTimer, raising=True)
     monkeypatch.setattr(
         "chimol.render.frame_stats.nerd_idle_tick_interval",
         lambda: 0.0,
@@ -295,7 +295,7 @@ def test_the_idle_tick_can_be_switched_off_entirely(monkeypatch):
 
 
 def test_the_settle_timer_asks_for_another_draw(monkeypatch):
-    monkeypatch.setattr("chimol.hosts.toolkit.Timer", _FakeTimer, raising=True)
+    monkeypatch.setattr("chimol.core.toolkit.Timer", _FakeTimer, raising=True)
     host = _fake_host()
 
     CanvasRenderer._arm_idle_settle(host)

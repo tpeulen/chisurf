@@ -34,16 +34,10 @@ _PDB = (
 )
 
 
-#: Run in a subprocess with ``CHIMOL_TOOLKIT=none``, which is the browser's
-#: configuration and cannot be reached in-process.
-#:
-#: ``Viewer``'s base class is chosen by :mod:`chimol.hosts.toolkit` at
-#: class-definition time, so by the time any test runs, ``view.py`` is imported
-#: and the choice is made. An earlier version of this file asked for a
-#: ``QApplication`` instead -- which made the tests pass while exercising the
-#: **Qt** viewer, the one configuration the page never runs. Proving the
-#: windowless path takes a fresh interpreter, the same way
-#: ``test_engine_is_portable`` proves a module loads without a toolkit.
+#: Run in a subprocess, as a page runs: a fresh interpreter with nothing else in
+#: it. An earlier version of this file asked for a ``QApplication`` instead --
+#: which made the tests pass while exercising the (since retired) **Qt** viewer,
+#: the one configuration the page never ran.
 _SCRIPT = r"""
 import os, sys
 import numpy as np
@@ -198,7 +192,6 @@ def _run_in_page_configuration(tmp_path):
         encoding="utf-8",
     )
     env = dict(os.environ)
-    env["CHIMOL_TOOLKIT"] = "none"
     env["CHIMOL_SETTINGS_DIR"] = str(tmp_path / "settings")
     return subprocess.run(
         [sys.executable, str(script), str(_PDB)],

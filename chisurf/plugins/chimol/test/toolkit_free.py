@@ -2,25 +2,10 @@
 
 Why a subprocess
 ----------------
-``Viewer`` binds its base class **once, at import time**, from
-``CHIMOL_TOOLKIT``: a ``QWidget`` where Qt is chosen, a plain object where it is
-not. So a test that wants the toolkit-free host cannot simply set that variable
--- pytest imports every test module into one process at collection, so the
-setting reaches modules that expect Qt and they fail with things like
-*"'Viewer' object has no attribute 'deleteLater'"* while passing perfectly on
-their own.
-
-Two other approaches were tried first and are worth recording so they are not
-tried again:
-
-* setting the variable only when ``renderer.view`` is not yet imported -- which
-  is *always* true at collection time, so it changed nothing;
-* creating a ``QApplication`` and letting ``Viewer`` be a ``QWidget`` -- which
-  **aborts the interpreter**, because a Qt-bound viewer with an offscreen
-  rendercanvas is not a combination that works.
-
-A child process is the honest answer, and it is what
-``test_wheel_routing`` and ``test_engine_is_portable`` already do.
+A fresh interpreter is the configuration the desktop window and the page run
+in, and ``block_qt`` makes Qt unimportable there, which proves a gesture needs
+no toolkit. (This used to be the only way to get a viewer that was not a
+``QWidget``; since chimol's Qt host was retired the viewer never is one.)
 
 Use
 ---
@@ -152,7 +137,6 @@ def probe(script: str, *, timeout: int = 300, block_qt: bool = False) -> dict[st
     pytest.importorskip("rendercanvas", reason="the canvas host needs rendercanvas")
 
     env = dict(os.environ)
-    env["CHIMOL_TOOLKIT"] = "none"
     env["CHIMOL_CANVAS"] = "offscreen"
     # Never write into the developer's own settings while testing.
     env.setdefault("CHIMOL_SETTINGS_DIR", str(ROOT / "build" / "test-chimol-settings"))

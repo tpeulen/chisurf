@@ -90,8 +90,7 @@ class ChimolView:
 
     def _make(self, warm: bool = False):
         """Construct chimol (with *warm*, also render one frame, which compiles its pipelines). Thread-agnostic."""
-        # ChimolApp builds chimol's HeadlessViewer, never a QWidget, whatever this process imported first; no
-        # CHIMOL_TOOLKIT here -- that variable is process-wide and bound at the viewer's first import.
+        # ChimolApp builds chimol's viewer, which is never a toolkit widget.
         from chimol.hosts.native.app import ChimolApp
 
         app = ChimolApp(size=self.min_size, backend="offscreen", **self.viewer_options)

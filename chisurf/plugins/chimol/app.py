@@ -113,9 +113,7 @@ class ChimolHostApp(ImApp):
     def _start(self, surface: tuple[int, int] | None = None):
         """Construct chimol (and, with *surface*, render its first frame there): ``(app, frame)``. Runs on the
         start thread or, from :meth:`_ensure_chimol`, on the caller's."""
-        # ChimolApp builds chimol's HeadlessViewer, never a QWidget, so no
-        # CHIMOL_TOOLKIT is set here: that variable is process-wide, bound at
-        # the viewer's first import, and setting it broke the Qt window.
+        # ChimolApp builds chimol's viewer, which is never a toolkit widget.
         from chimol.hosts.native.app import ChimolApp
 
         app = ChimolApp(size=self._chimol_size, backend="offscreen")

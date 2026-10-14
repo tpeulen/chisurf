@@ -373,8 +373,13 @@ own startup stages (item 5): S5 is done.
    `test_keyboard_layout.py::test_the_qt_host_passes_the_character_qt_produced`, `test_dropped_files.py::
    test_the_qt_widget_accepts_dropped_files` + `test_the_qt_host_describes_itself_at_all`,
    `test_canvas_cadence.py`'s two Qt `resolve_present_method` tests, and `test_wgpu_view.py`'s Qt
-   `default_renderer` selection (replaced by a `Viewer()` -> `SceneSink` test). Leftovers (none blocking) in
-   [known issues](../references/known-issues.md) "Leftovers of the ndX / chimol Qt retirement".
+   `default_renderer` selection (replaced by a `Viewer()` -> `SceneSink` test). Leftovers closed the same day
+   (chimol a245145): the widget stand-ins moved from `hosts/toolkit.py` to `core/toolkit.py`, so
+   `chimol.core` imports nothing from `chimol.hosts` (guard `tests/test_core_layering.py`); the dead
+   `CHIMOL_TOOLKIT=none` settings are gone from chimol's tests, AGENTS.md, `tools/check_imports.py` and the ChiSurf
+   chimol tests; and the desktop (`CanvasView`) and browser (`Page`) hosts both declare `labels` and `ray_image`,
+   which both draw through `CanvasRenderer.frame_arguments` (label quads in `chrome`, a traced frame in
+   `overlay`; `tests/test_host_features.py` checks the frame, `test_browser_picking.py` keeps the two sets equal).
 10. Measure: the **Workspace is where the fits live; every tool is a dock** (owner, 2026-10-13: "workspace is
     simply where the fits live, the plugins, ie, the tools go separate all are in docks"). The shell's centre is
     `Region("center", workspace=True)`; its documents are the windows added with `workspace=True` -- the fit

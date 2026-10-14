@@ -80,7 +80,7 @@ ENGINE_MODULES = (
     "chimol.render.markers",
     "chimol.render.pack",
     # The viewer itself. It is a ``QWidget`` when there is a toolkit and a plain
-    # object when there is not (`chimol.hosts.toolkit`), which is what lets a page
+    # object when there is not (`chimol.core.toolkit`), which is what lets a page
     # run *the* viewer and *the* command layer rather than a second set of both.
     "chimol.core.viewer",
     "chimol.render.scene",

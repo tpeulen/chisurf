@@ -53,7 +53,7 @@ does `import PyQt5` and selects the Qt backend if that succeeds, so
 `canvas_view.canvas_module()` names the backend it wants instead.
 
 **Trap: importability is not a choice.** chimol runs inside a PyQt application,
-so `import qtpy` works on the Qt-free path too; `hosts/toolkit.py` therefore
+so `import qtpy` works on the Qt-free path too; `core/toolkit.py` (was `hosts/toolkit.py`) therefore
 selects from `CHIMOL_TOOLKIT` (the entry point sets `none`) rather than from
 whether Qt imports. Picking the base class from importability makes `Viewer` a
 `QWidget` with no `QApplication`, which is a SIGABRT, not an exception.
@@ -76,7 +76,7 @@ because they are the same code.
 **What made it possible, and it is small.** `Viewer` is the object store, the
 scene builder, the camera and everything `cmd/` drives (sixty-seven of its
 methods); being a `QWidget` was incidental to all of it and was the only reason
-a page could not import it. `hosts/toolkit.py` supplies the three things it needs
+a page could not import it. `core/toolkit.py` (was `hosts/toolkit.py`) supplies the three things it needs
 from a toolkit — a base class, four signals, a timer — and stand-ins when there
 is none. `view.py`'s Qt import is now guarded, and its widget-construction block
 was already guarded on the renderer *being* a widget (since `SceneSink`).

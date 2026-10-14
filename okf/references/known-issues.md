@@ -28,20 +28,16 @@ status: resolved 2026-10-13
 
 ## Leftovers of the ndX / chimol Qt retirement (found 2026-10-13)
 
-status: open
+status: resolved 2026-10-13
 
 - **MMFDB admin's *Open in ndX*: resolved 2026-10-13** (the emtk admin has it on Processed Products; what is
   left in the emtk shell is in "MMFDB Admin after the Qt retirement" below).
 - **chimol `hosts/qt/`: resolved 2026-10-13** — deleted in chimol a53e512 (`Viewer` is never a widget,
   `Viewer()` defaults to `SceneSink`, no qtpy import anywhere in chimol); details in
-  [qt-retirement](../subsystems/qt-retirement.md) item 9. Left open, none blocking: (a) chimol's
-  `CanvasView._BASE_FEATURES` still omits `labels` / `ray_image`, which the toolkit-free canvas now draws (quads;
-  NumPy blit), so the desktop-vs-browser parity report under-claims the desktop host — adding them makes the
-  browser look behind and `test_browser_picking.py` pins `Page.supported_features == CanvasView._BASE_FEATURES |
-  {"file_drop"}`, so it is a parity-report decision, not a one-line fix; (b) `CHIMOL_TOOLKIT=none` setdefaults
-  (chimol `tests/conftest.py`, `tests/test_bare_view.py`, AGENTS.md, several ChiSurf chimol tests) are no-ops now;
-  (c) the toolkit stand-ins still live in chimol `hosts/toolkit.py`, so `core/viewer` imports from `hosts/` (move
-  them to `core/` to close that layering edge).
+  [qt-retirement](../subsystems/qt-retirement.md) item 9. Its three leftovers were closed the same day
+  (chimol a245145, see item 9): the stand-ins moved to `core/toolkit.py` (guard `tests/test_core_layering.py`), the dead
+  `CHIMOL_TOOLKIT=none` settings were removed in both repos, and the desktop and browser hosts both declare
+  `labels` / `ray_image`, which both draw through `CanvasRenderer.frame_arguments` (`tests/test_host_features.py`).
 
 ## Code Editor assistant: validation issues are reported, not fixed by the model (found 2026-10-13)
 

@@ -136,7 +136,7 @@ def test_native_qt_blocked_factory():
         capture_output=True,
         text=True,
         timeout=120,
-        env={"CHIMOL_TOOLKIT": "none", "PATH": "/usr/bin:/bin"},
+        env={"PATH": "/usr/bin:/bin"},
     )
     # A clean headless machine may lack wgpu/rendercanvas; both a built viewer
     # and a recorded load error are acceptable, a Qt abort is not.

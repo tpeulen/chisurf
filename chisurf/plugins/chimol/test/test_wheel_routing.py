@@ -21,17 +21,11 @@ Two mistakes are easy and neither raises:
 
 Why this runs in a subprocess
 -----------------------------
-The routing lives in the toolkit-free :mod:`chimol.viewport.canvas`, and
-exercising it needs the toolkit-free viewer -- which is selected by
-``CHIMOL_TOOLKIT=none`` **before** ``renderer.view`` is imported, because
-``class Viewer(WidgetBase)`` binds its base at class-definition time.
-
-That is process-wide, and setting it here first cost four failures in
-``test_headless_scene.py``: every later test in the session then had a viewer
-that was no longer a ``QWidget``. Setting it *back* is not available either --
-the base is already bound. And simply not setting it does not work: with Qt
-present ``Viewer`` is a ``QWidget``, and building one over an offscreen
-``rendercanvas`` surface aborts the interpreter.
+The routing lives in the toolkit-free :mod:`chimol.viewport.canvas` and is
+driven in a child process, as the desktop window runs it. (This once chose the
+toolkit-free viewer through an environment variable that bound ``Viewer``'s
+base for the whole session; since chimol's Qt host was retired there is only
+the one viewer.)
 
 So the whole probe runs in a child process, which is the same device
 ``test_engine_is_portable.py`` uses and for the same reason: a global that can
@@ -211,7 +205,6 @@ def probe():
         pytest.skip(f"missing fixture {_PDB}")
 
     env = dict(os.environ)
-    env["CHIMOL_TOOLKIT"] = "none"
     # Never write into the developer's own settings while testing.
     env.setdefault("CHIMOL_SETTINGS_DIR", str(_ROOT / "build" / "test-chimol-settings"))
     script = f"PDB = {str(_PDB)!r}\n" + textwrap.dedent(_PROBE)

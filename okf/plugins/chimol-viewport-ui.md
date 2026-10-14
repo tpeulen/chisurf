@@ -300,7 +300,7 @@ possible to run chimol without qt. qt should be just an option, the default
 the embedding window"*.
 
 The architecture already allows this and most of the work is deletion, not
-design: `hosts/toolkit.py` makes `Viewer` a plain object when there is no
+design: `core/toolkit.py` (was `hosts/toolkit.py`) makes `Viewer` a plain object when there is no
 toolkit, `emtk/events.py` is a toolkit-free event vocabulary, and the browser
 *already* runs the real `Viewer` with the real `cmd` layer and no Qt at all.
 What is missing is a desktop host that is not a `QWidget`.

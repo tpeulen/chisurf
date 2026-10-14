@@ -8,7 +8,7 @@ events in ``wgpu_view``, the page in ``boot.js`` → ``web.page.Page`` →
 ``button_from_dom`` → ``canvas_base.on_pointer_*``. The shared part -- the
 part that must be right -- is ``on_pointer_press/move/release`` and
 everything behind them, and *that* is what this file drives, in a process
-where importing Qt is impossible (``CHIMOL_TOOLKIT=none``).
+where importing Qt is impossible.
 
 What runs where: the browser's own 20-line shim (DOM numbers → engine
 buttons, ``dblclick`` → ``double=True``) is covered by the
