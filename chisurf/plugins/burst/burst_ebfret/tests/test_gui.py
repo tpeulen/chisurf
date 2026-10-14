@@ -208,3 +208,16 @@ def test_the_window_rasterises(window, tmp_path):
     window.app.draw(painter, 0, 0, W, H)
     lit = sum(1 for i in range(0, len(painter.px), 4 * 97) if painter.px[i] > 100)
     assert lit > 50
+
+
+def test_a_host_closing_the_tool_releases_the_backend_session_once():
+    """The dock / window close calls ``close()``: that, not only File > Exit, ends the session."""
+    released = []
+    app = App(EbfretGui(EbfretClient(seed=2)), on_exit=lambda: released.append(True))
+    assert not app.close_requested
+    app.close()
+    app.close()
+    assert released == [True]
+    exiting = App(EbfretGui(EbfretClient(seed=2)), on_exit=lambda: released.append("exit"))
+    exiting.command("exit")
+    assert released[-1] == "exit" and exiting.close_requested, "File > Exit asks the host to close"

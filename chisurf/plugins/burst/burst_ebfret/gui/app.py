@@ -581,6 +581,8 @@ class App:
         self.gui = gui
         self.window_size = window_size(gui.spec, (1100, 720))
         self.on_exit = on_exit
+        #: Set by *File > Exit*; the host then closes the window or dock (and calls :meth:`close`).
+        self.close_requested = False
         self.actions_spec = load_view_spec(SPECS / "example_actions.view.json")
         self.tour = EmTkGuidedTour(
             steps=SPECS / "guide.json",
@@ -674,14 +676,25 @@ class App:
         """Open the shared method and workflow reference."""
         self.help.show()
 
+    def close(self) -> None:
+        """Release the backend session once: the host closed the tool (window or dock ``×``).
+
+        Without it a closed ebFRET kept its analysis session (and a running fit) alive, since
+        hosts close a tool through ``close()`` and only *File > Exit* reached ``on_exit``.
+        """
+        on_exit, self.on_exit = self.on_exit, None
+        if on_exit is not None:
+            on_exit()
+
     # -- commands ---------------------------------------------------------- #
     def command(self, name: str) -> None:
         """Run a menu entry by its key."""
         g = self.gui
         self.gui.track(f"menu.{name}")
         if name == "exit":
-            if self.on_exit is not None:
-                self.on_exit()
+            self.close()
+            # Every host closes a tool that asks to (ControlHost, the shell's dock).
+            self.close_requested = True
         elif name in ("show_viterbi", "show_prior", "show_posterior", "scale_plots"):
             g.toggle(name)
         elif name in ("table_series", "table_states"):
