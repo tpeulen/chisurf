@@ -60,3 +60,23 @@ def test_the_first_save_for_a_new_user_survives_closing_the_database(tmp_path):
     db.close()
 
     assert len(mmfdb.MFDatabase(path).list_setups()) == 1
+
+
+def test_load_setups_removes_the_imported_legacy_file(tmp_path, monkeypatch):
+    """Both migration entry points delete the JSON they imported.
+
+    ``load_setups`` used to leave it behind, so a user who later deleted their last stored
+    setup got the stale legacy setups imported again.
+    """
+    import dataclasses
+
+    legacy = tmp_path / "detector_setups.json"
+    legacy.write_text(json.dumps({"setups": {"ALEX Suite (auto)": SETUP}}))
+    config = dataclasses.replace(CONFIG, canonical_file=legacy)
+    monkeypatch.setattr(setup_store, "get_db", lambda db_path=None: _fresh_db(tmp_path))
+    monkeypatch.setattr(setup_store, "resolve_active_user_id", lambda: "a_user_nobody_seeded")
+
+    loaded = setup_store.load_setups(None, config)
+
+    assert "ALEX Suite (auto)" in loaded["setups"]
+    assert not legacy.exists()

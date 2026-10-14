@@ -343,7 +343,15 @@ def load_setups(
         if db is not None:
             try:
                 user_id = resolve_active_user_id()
-                migrate_json_to_mmfdb(db, config, path, user_id=user_id)
+                # Remove the legacy file once imported, as ``load_detector_setups`` does: left
+                # behind, it is re-imported the moment the user deletes their last stored setup.
+                if migrate_json_to_mmfdb(db, config, path, user_id=user_id):
+                    try:
+                        path.unlink(missing_ok=True)
+                    except OSError:
+                        logging.getLogger(__name__).warning(
+                            "Imported %s into MMFDB but could not remove it", path
+                        )
                 return load_mmfdb_setups(db, config, user_id, row_to_data=row_to_data)
             finally:
                 close_owned_db(db)
