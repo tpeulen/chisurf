@@ -106,7 +106,7 @@
               {"action": "apply_to_row", "label": "Apply to row", "description": "Update the picked row with the detail form's values."},
               {"action": "save_all", "label": "Save all", "description": "Save every row of this sample to the database."},
               {"action": "add_row", "label": "Add row", "description": "Add an empty row."},
-              {"action": "delete_row", "label": "Delete row", "description": "Remove the picked row (Save all writes the change)."}
+              {"action": "delete_row", "label": "Delete row", "role": "danger", "description": "Remove the picked row (Save all writes the change)."}
             ]}
          ]},
         {"type": "info", "source": "status_line", "description": "Which sample is open, how many keys it has, or what was saved."}

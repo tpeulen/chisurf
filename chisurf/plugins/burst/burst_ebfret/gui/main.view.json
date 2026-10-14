@@ -127,12 +127,14 @@
           "buttons": [
             {
               "label": "Run",
+              "role": "primary",
               "icon": "▶️",
               "action": "run",
               "description": "Start the empirical-Bayes analysis on the backend."
             },
             {
               "label": "Stop",
+              "role": "danger",
               "action": "stop",
               "description": "Stop the running analysis."
             },

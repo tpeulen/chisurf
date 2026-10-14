@@ -53,12 +53,14 @@
     },
     {
      "label": "Remove",
+     "role": "danger",
      "action": "remove_component",
      "description": "Remove the selected lifetime component (the last one if none is selected).",
      "icon": "➖"
     },
     {
      "label": "Clear pattern",
+     "role": "danger",
      "action": "clear_pattern",
      "description": "Drop the decay-pattern file so this species uses its lifetimes again.",
      "icon": "✕"

@@ -2119,11 +2119,17 @@ class CodeEditorGui:
         doc = self.model.active_doc
         notebook = doc.notebook if doc is not None else None
         im.begin_disabled(notebook is None)
-        if im.button(tr("🔄 Restart") + "##kernel_restart") and notebook is not None:
+        if (
+            action_button(
+                "restart",
+                id="kernel_restart",
+                tooltip=tr(
+                    "Restart the notebook's shell: variables and the execution count are reset"
+                ),
+            )
+            and notebook is not None
+        ):
             notebook.restart_shell()
-        im.set_item_tooltip(
-            tr("Restart the notebook's shell: variables and the execution count are reset")
-        )
         im.end_disabled()
         if notebook is None or doc is None:
             im.text_disabled(tr("Open a notebook to get a kernel terminal."))
@@ -2415,7 +2421,7 @@ class CodeEditorGui:
         self._same_line_or_wrap(box, 70.0)
         if self.model.is_running_script or notebook_running:
             im.push_style_color(Col.BUTTON, (160, 60, 60, 255))
-            if im.button(tr("■ Stop")):
+            if im.button(tr("■ Stop"), role="danger"):
                 self.model.stop_active_script()
             im.set_item_tooltip(tr("Stop — stop the running script subprocess"))
             im.pop_style_color()
@@ -2547,7 +2553,7 @@ class CodeEditorGui:
                     self._request_save(pending, close_after=True)
                     im.close_current_popup()
                 im.set_item_tooltip(tr("Save and close"))
-                if im.button(tr("Discard changes")):
+                if im.button(tr("Discard changes"), role="danger"):
                     self.model.close_document(index)
                     im.close_current_popup()
                 im.set_item_tooltip(tr("Discard changes"))
@@ -2659,7 +2665,7 @@ class CodeEditorGui:
 
     def _draw_output_console(self, box: tuple[float, float, float, float]) -> None:
         """Render the execution logs and output terminal."""
-        if im.button(tr("🗑 Clear")):
+        if im.button(tr("🗑 Clear"), role="danger"):
             self.model.output_logs.clear()
         im.set_item_tooltip(tr("🗑 Clear"))
         im.same_line()

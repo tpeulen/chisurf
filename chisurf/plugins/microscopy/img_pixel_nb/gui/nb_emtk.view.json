@@ -16,6 +16,7 @@
             {
               "action": "run_maps",
               "label": "Run",
+              "role": "primary",
               "icon": "▶️",
               "description": "Compute N, B, ε and n of every detector window with the stack corrections, detector corrections and moment smoothing set below, in the background. Nothing is recomputed when nothing changed."
             },
@@ -347,6 +348,7 @@
               "buttons": [
                 {
                   "label": "Clear gates",
+                  "role": "danger",
                   "action": "clear_gates",
                   "description": "Drop every gate region; all pixels are selected again."
                 }

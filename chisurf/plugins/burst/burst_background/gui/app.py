@@ -45,7 +45,6 @@ logger = logging.getLogger(__name__)
 WINDOW_BG = (30, 32, 38, 255)
 PANEL_BG = (38, 41, 48, 255)
 PANEL_BORDER = (55, 60, 72, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
@@ -230,12 +229,7 @@ class BurstBackgroundGui:
         im.end_disabled()
 
         # Action button
-        from emtk.im_core import Col
-
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button(tr("Estimate Background"), (avail_w, 28.0)):
+        if im.button(tr("Estimate Background"), (avail_w, 28.0), role="primary"):
             self.track("toolAction_run")
             self.track("bg_run")
             if callable(self.on_estimate):
@@ -252,7 +246,6 @@ class BurstBackgroundGui:
                 "Fit the tail of the inter-photon-time distribution to get the per-detector background rates."
             )
         )
-        im.pop_style_color(3)
 
         btn_half_w = max(50.0, (avail_w - 6.0) * 0.5)
         im.spacing()

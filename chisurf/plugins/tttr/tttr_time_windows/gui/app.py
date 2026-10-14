@@ -154,7 +154,7 @@ class TimeWindowGui(TourTarget):
         )
         self.remember("add_files")
         im.same_line()
-        if im.button(tr("Clear")):
+        if im.button(tr("Clear"), role="danger"):
             if callable(self.on_clear):
                 self.on_clear()
         im.set_item_tooltip(tr("Empty the file queue and reset the preview and the log."))
@@ -214,7 +214,7 @@ class TimeWindowGui(TourTarget):
     def _draw_settings(self, box: tuple[float, float, float, float]) -> None:
         tool = self.tool
 
-        if im.button(tr("Process")):
+        if im.button(tr("Process"), role="primary"):
             self._used("process")
             if callable(self.on_process):
                 self.on_process()

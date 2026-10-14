@@ -121,8 +121,8 @@
             {"label": "Add files…", "action": "choose_files", "description": "Queue TTTR files; duplicate paths are ignored."},
             {"label": "Folder…", "action": "choose_folder", "description": "Queue the supported TTTR files of a folder, scanned recursively."},
             {"label": "Database", "action": "choose_database", "description": "Queue TTTR data from the session database."},
-            {"label": "Remove", "action": "remove_selected", "description": "Remove the selected file from the queue; the file stays on disk. Grey until a row is selected."},
-            {"label": "Clear", "action": "clear_queue", "description": "Empty the queue without deleting files."}
+            {"label": "Remove", "role": "danger", "action": "remove_selected", "description": "Remove the selected file from the queue; the file stays on disk. Grey until a row is selected."},
+            {"label": "Clear", "role": "danger", "action": "clear_queue", "description": "Empty the queue without deleting files."}
           ]
         },
         {
@@ -159,7 +159,7 @@
           "type": "button_row",
           "buttons": [
             {"label": "Browse…", "icon": "📂", "action": "choose_output", "description": "Choose the output folder."},
-            {"label": "Run batch", "action": "run_batch", "description": "Convert each file or merge the queue using the current period, shift and formats."}
+            {"label": "Run batch", "role": "primary", "action": "run_batch", "description": "Convert each file or merge the queue using the current period, shift and formats."}
           ]
         }
       ]

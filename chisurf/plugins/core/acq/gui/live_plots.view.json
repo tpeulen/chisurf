@@ -403,6 +403,7 @@
           {
            "action": "clear_mean_lines",
            "label": "Clear lines",
+           "role": "danger",
            "description": "Remove every mean line."
           }
          ]

@@ -295,7 +295,7 @@ class BackgroundController:
             im.set_item_tooltip(f"Remove {Path(path).name} from the analysis.")
         self._show_channels_button(remember)
         im.end_disabled()
-        if im.button(tr("Stop computation")):
+        if im.button(tr("Stop computation"), role="danger"):
             self.stop()
         im.set_item_tooltip(tr("Cancel at the next file boundary and retain the previous results."))
         if self.status:

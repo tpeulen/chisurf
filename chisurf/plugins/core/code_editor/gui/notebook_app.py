@@ -799,13 +799,13 @@ class NativeNotebook:
         self._finish_pending_advance()
         left = im.get_cursor_screen_pos()[0]
         if self.is_running:
-            if im.button(tr("■  Stop execution")):
+            if im.button(tr("■  Stop execution"), role="danger"):
                 self.cancel_execution()
             im.set_item_tooltip(tr("Interrupt the running cell or cancel its input prompt"))
             im.same_line()
             im.text_colored((235, 190, 105, 255), "Executing notebook…")
         else:
-            if im.button(tr("▶ Run all")):
+            if im.button(tr("▶ Run all"), role="primary"):
                 self.start_all()
             im.set_item_tooltip(tr("Run every code cell in order (Ctrl+Shift+Enter)"))
             self._toolbar_next(left, width, tr("＋ Code cell"))
@@ -822,7 +822,7 @@ class NativeNotebook:
             ):
                 self.restart_shell()
             self._toolbar_next(left, width, tr("Clear outputs"))
-            if im.button(tr("Clear outputs")):
+            if im.button(tr("Clear outputs"), role="danger"):
                 self.clear_outputs()
             im.set_item_tooltip(tr("Remove all cell outputs and execution counts"))
             self._toolbar_next(left, width, "Hide terminal" if self.show_terminal else "Terminal")

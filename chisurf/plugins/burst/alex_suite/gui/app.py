@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 
 WINDOW_BG = (30, 32, 38, 255)
 PANEL_BORDER = (55, 60, 72, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_ORANGE = (255, 127, 14, 255)
 ACCENT_RED = (214, 39, 40, 255)
@@ -196,10 +195,7 @@ class LegacyExportGui(TourTarget):
             self.remember("parts")
 
             im.separator()
-            im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-            im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-            im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-            if im.button(tr("💾 Write ALEX-Suite CSVs")):
+            if im.button(tr("💾 Write ALEX-Suite CSVs"), role="primary"):
                 self.panel.run_export(
                     source=files[self.selected_index] if files else "",
                     sample=self.sample_text,
@@ -209,7 +205,6 @@ class LegacyExportGui(TourTarget):
             im.set_item_tooltip(
                 tr("Write the five ALEX-Suite CSV files beside the selected burst file.")
             )
-            im.pop_style_color(3)
             self.remember("run")
 
             same_line_or_wrap(action_caption("help"))
@@ -349,11 +344,9 @@ class TitrationGui(TourTarget):
             model.clear_rows()
         im.set_item_tooltip(tr("Clear the whole titration series."))
         same_line_or_wrap(tr("📈 Fit series"))
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        if im.button(tr("📈 Fit series")):
+        if im.button(tr("📈 Fit series"), role="primary"):
             model.run()
         im.set_item_tooltip(tr("Fit the selected binding model to the titration series."))
-        im.pop_style_color(1)
         self.remember("run")
         same_line_or_wrap(tr("💾 Export CSV"))
         if im.button(tr("💾 Export CSV")):
@@ -611,17 +604,13 @@ class AlexAlternationGui(TourTarget):
         self.remember("channels")
 
         im.spacing()
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button(tr("🚦 Detect alternation and convert")):
+        if im.button(tr("🚦 Detect alternation and convert"), role="primary"):
             panel.run(convert=True)
         im.set_item_tooltip(
             tr(
                 "Detect the µs-ALEX period and fold the photons into donor/acceptor excitation periods."
             )
         )
-        im.pop_style_color(3)
         self.remember("run")
 
         im.same_line()

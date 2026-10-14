@@ -30,6 +30,7 @@
           {
             "action": "delete",
             "label": "Delete Version",
+            "role": "danger",
             "description": "Soft-delete the selected version after confirmation; database manage permission is required. Greyed until a version row is selected."
           },
           {
@@ -82,6 +83,7 @@
               {
                 "action": "clear_search",
                 "label": "Clear",
+                "role": "danger",
                 "description": "Empty the search field and show every project again."
               }
             ]

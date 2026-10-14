@@ -14,6 +14,7 @@
           "buttons": [
             {
               "label": "▶  Fit",
+              "role": "primary",
               "action": "fit",
               "description": "Run the optimiser on the selected fit."
             },

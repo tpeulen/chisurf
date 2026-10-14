@@ -55,6 +55,7 @@
         },
         {
           "label": "Clear",
+          "role": "danger",
           "action": "clear_files",
           "description": "Clear all dropped files from the list."
         }

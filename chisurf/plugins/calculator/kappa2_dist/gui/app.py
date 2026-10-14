@@ -222,7 +222,7 @@ class Kappa2Gui(TourTarget):
 
     def _toolbar(self, busy: bool) -> None:
         im.begin_disabled(busy)
-        if im.button(tr("Compute") + "###Compute"):
+        if im.button(tr("Compute") + "###Compute", role="primary"):
             if callable(self.on_compute):
                 self.on_compute()
                 self.tour.notify_used("compute")

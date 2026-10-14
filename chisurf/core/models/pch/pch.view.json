@@ -15,6 +15,7 @@
             },
             {
               "label": "➖ Remove",
+              "role": "danger",
               "action": "remove_component",
               "description": "Switch off the last active species (one always remains)."
             }

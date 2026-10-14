@@ -16,6 +16,7 @@
             {
               "action": "run_maps",
               "label": "Run",
+              "role": "primary",
               "icon": "▶️",
               "description": "Compute the phasor (g, s) and the photon counts of every detector window, in the background. Nothing is recomputed when neither the file, the windows, the reference nor the settings changed."
             },
@@ -143,6 +144,7 @@
                 {
                   "action": "clear_irf",
                   "label": "Clear IRF",
+                  "role": "danger",
                   "description": "Remove the IRF reference of the chosen window: the uncalibrated phasor is computed."
                 }
               ]

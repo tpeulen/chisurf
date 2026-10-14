@@ -132,7 +132,7 @@ class PlaneMixin(_Host):
         if callable(summary):
             _im.text_wrapped(summary())
         if section.get("options", {}).get("clear", True):
-            if _im.button(f"Clear all##{name}"):
+            if _im.button(f"Clear all##{name}", role="danger"):
                 self.model.clear_regions()
             _im.set_item_tooltip(tr("Remove every region; all pixels are selected again."))
             self.item_rects[f"{name}.clear"] = _im.get_item_rect()

@@ -15,6 +15,7 @@
         {"action": "request_add", "label": "Add files...",
          "description": "Choose vendor photon files to pack into one .pto, or .pto containers to unpack. Same as dropping them on the window."},
         {"action": "clear_history", "label": "Clear history",
+         "role": "danger",
          "description": "Remove the finished entries from the list; the files on disk stay untouched."}
       ]
     },

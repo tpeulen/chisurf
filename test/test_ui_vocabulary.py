@@ -334,3 +334,113 @@ def test_vocabulary_module_stays_qt_free():
     code = "import sys, chisurf.plugins.emtk_layout; print('qtpy' in sys.modules)"
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=_ROOT)
     assert out.stdout.strip() == "False", out.stderr
+
+
+# --------------------------------------------------------------------------------------------
+# Button roles: the main action of a panel is primary, a destructive one danger
+# --------------------------------------------------------------------------------------------
+def _containers(node, where=""):
+    """Every container of a spec with the button-row entries drawn directly in it."""
+    if isinstance(node, dict):
+        if isinstance(node.get("sections"), list):
+            entries = [
+                (f"{where}/sections/{i}/buttons/{j}", item)
+                for i, section in enumerate(node["sections"])
+                if isinstance(section, dict) and section.get("type") == "button_row"
+                for j, item in enumerate(section.get("buttons") or [])
+                if isinstance(item, dict)
+            ]
+            yield where or "/", entries
+        for key, value in node.items():
+            yield from _containers(value, f"{where}/{key}")
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            yield from _containers(value, f"{where}/{index}")
+
+
+def role_findings(path: pathlib.Path) -> list[str]:
+    """Declared button roles that are unknown, missing where the vocabulary asks, or doubled."""
+    from emtk.style import BUTTON_ROLES
+
+    from chisurf.plugins.emtk_layout import verb_role
+
+    known = {"default", *BUTTON_ROLES}
+    try:
+        spec = json.loads(path.read_text(encoding="utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return []
+    found = []
+    for container, entries in _containers(spec):
+        primaries = [pointer for pointer, item in entries if item.get("role") == "primary"]
+        if len(primaries) > 1:
+            found.append(f"{_rel(path)}#{container}: {len(primaries)} primary buttons, one at most")
+        for pointer, item in entries:
+            where = f"{_rel(path)}#{pointer}"
+            role, label = item.get("role"), str(item.get("label", ""))
+            if role is not None and role not in known:
+                found.append(f"{where}: role {role!r} is not one of {sorted(known)}")
+            wanted = verb_role(label)
+            if wanted == "danger" and role is None:
+                found.append(f"{where}: {label!r} is destructive; declare \"role\": \"danger\"")
+            if wanted == "primary" and role is None and not primaries:
+                found.append(f"{where}: {label!r} is the panel's main action; declare \"role\": \"primary\"")
+    return found
+
+
+def test_the_fit_button_is_primary_and_remove_fit_danger():
+    """The owner's report: the fit controller's Fit button had no colour."""
+    spec = json.loads((_SOURCE / "emtk" / "views" / "analysis.view.json").read_text(encoding="utf-8"))
+    roles = {item.get("action"): item.get("role") for _pointer, item in _buttons(spec)}
+    assert roles["run_fit"] == "primary"
+    assert roles["remove_fit"] == "danger"
+    assert sum(role == "primary" for role in roles.values()) == 1
+
+
+def test_declared_button_roles_follow_the_vocabulary():
+    """Every shipped spec: known roles, one primary per panel, main and destructive actions declared."""
+    drift = [hit for path in _shipped("*.json") for hit in role_findings(path)]
+    assert not drift, "\n".join(drift)
+
+
+def test_role_scan_sees_missing_unknown_and_doubled_roles(tmp_path):
+    spec = {"sections": [{"type": "button_row", "buttons": [
+        {"label": "Run", "action": "run"},
+        {"label": "Compute", "action": "compute", "role": "primary"},
+        {"label": "▶ Fit", "action": "fit", "role": "primary"},
+        {"label": "Clear", "action": "clear"},
+        {"label": "Save", "action": "save", "role": "shiny"},
+        {"label": "Fit view", "action": "frame"},
+    ]}]}
+    probe = tmp_path / "probe.view.json"
+    probe.write_text(json.dumps(spec), encoding="utf-8")
+    hits = role_findings(probe)
+    assert any("2 primary" in hit for hit in hits)
+    assert any("'Clear' is destructive" in hit for hit in hits)
+    assert any("'shiny'" in hit for hit in hits)
+    assert not any("Fit view" in hit for hit in hits), "framing a view is not the main action"
+    assert len(hits) == 3
+
+
+def test_the_vocabulary_decides_roles():
+    from chisurf.plugins.emtk_layout import action_item, row_roles, verb_role
+
+    assert ACTIONS["run"].role == "primary"
+    assert action_item("run", "go")["role"] == "primary"
+    assert "role" not in action_item("save", "save")
+    assert verb_role("▶  Fit") == verb_role("Compute PCH") == verb_role("Run##x") == "primary"
+    assert verb_role("🗑 Clear") == verb_role("⏹ Stop") == verb_role("Delete row") == "danger"
+    assert verb_role("Save") is verb_role("Fit view") is verb_role("Clear selection") is None
+    rows = [{"label": "Run"}, {"label": "Fit"}, {"label": "Stop"}, {"label": "Simulate", "role": "default"}]
+    assert row_roles(rows) == ["primary", None, "danger", None]
+    assert row_roles([{"label": "Run"}, {"label": "Go", "role": "primary"}]) == [None, "primary"]
+
+
+def test_hand_drawn_rows_take_no_private_colours():
+    """The per-app green accent buttons are gone: the role is the declaration."""
+    drift = [
+        _rel(path)
+        for path in _shipped("*.py")
+        if "ACCENT_GREEN" in path.read_text(encoding="utf-8")
+        and "push_style_color(Col.BUTTON" in path.read_text(encoding="utf-8")
+    ]
+    assert not drift, drift

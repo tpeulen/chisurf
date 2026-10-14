@@ -20,6 +20,7 @@
             },
             {
               "label": "Run",
+              "role": "primary",
               "icon": "▶️",
               "action": "request_run",
               "description": "Fit every selected file pixel-by-pixel; writes <stem>_pixel_mle.csv next to each."

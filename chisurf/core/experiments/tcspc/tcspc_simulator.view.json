@@ -37,7 +37,7 @@
       ]},
       {"type": "tab", "key": "preview", "title": "Preview", "description": "Simulate and import the exact displayed histogram.", "sections": [
         {"type": "button_row", "buttons": [
-          {"label": "Simulate", "action": "simulate_preview", "description": "Generate a preview through the reader using all current settings, including noise and seed."},
+          {"label": "Simulate", "role": "primary", "action": "simulate_preview", "description": "Generate a preview through the reader using all current settings, including noise and seed."},
           {"label": "Add", "action": "add_preview", "description": "Import the cached preview group without drawing a fresh random realization."}
         ]},
         {"type": "custom", "key": "simulator_decay", "height": 420, "description": "Log-counts VM or VV/VH decay with the selected instrument response overlaid."}

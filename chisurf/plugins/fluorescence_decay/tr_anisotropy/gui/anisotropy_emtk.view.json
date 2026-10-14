@@ -67,7 +67,7 @@
            "minimum": 0.001, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Lifetime of the component to add, in nanoseconds."},
           {"type": "button_row", "buttons": [
             {"label": "Add component", "action": "add", "description": "Append the entered amplitude and lifetime."},
-            {"label": "Remove selected", "action": "delete", "description": "Remove the selected row (the last one when none is selected)."}
+            {"label": "Remove selected", "role": "danger", "action": "delete", "description": "Remove the selected row (the last one when none is selected)."}
           ]}
         ]}
       ]
@@ -89,7 +89,7 @@
            "minimum": 0.001, "maximum": 1000000.0, "decimals": 3, "step": 0.1, "description": "Rotational correlation time of the component to add, in nanoseconds."},
           {"type": "button_row", "buttons": [
             {"label": "Add component", "action": "add", "description": "Append the entered amplitude and correlation time."},
-            {"label": "Remove selected", "action": "delete", "description": "Remove the selected row (the last one when none is selected)."}
+            {"label": "Remove selected", "role": "danger", "action": "delete", "description": "Remove the selected row (the last one when none is selected)."}
           ]}
         ]}
       ]

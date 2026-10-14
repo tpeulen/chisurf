@@ -68,6 +68,7 @@
       },
       {
        "label": "Cancel",
+       "icon": "✕",
        "action": "cancel",
        "description": "Close this card without applying pending device-setting edits; earlier Apply operations remain in effect."
       }

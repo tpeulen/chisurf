@@ -227,7 +227,7 @@ class _StandaloneApp(SplitterApp):
         self.splitter_gui._draw_io(box)
         if self.tool.job.running:
             im.text(tr("Working…"))
-            if im.button(tr("Stop")):
+            if im.button(tr("Stop"), role="danger"):
                 self.tool.job.stop()
                 self.tool.message = (
                     "Stopping after the current chunk or file. Completed output remains."

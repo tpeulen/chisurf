@@ -34,11 +34,13 @@
                 {
                   "action": "clear",
                   "label": "Clear",
+                  "role": "danger",
                   "description": "Clear the file list and the preview. No file, rating or annotation is changed or deleted."
                 },
                 {
                   "action": "clear_caches",
                   "label": "Clear caches",
+                  "role": "danger",
                   "description": "Delete the cached mosaics of the opened folder (the .tttr_image_cache folders, in memory and on disk). They are rebuilt when a file is selected."
                 },
                 {

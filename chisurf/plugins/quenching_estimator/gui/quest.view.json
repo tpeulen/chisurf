@@ -489,6 +489,7 @@
       "buttons": [
         {
           "label": "▶ Simulate",
+          "role": "primary",
           "action": "run_simulation",
           "description": "Run the current project through quest.api."
         },

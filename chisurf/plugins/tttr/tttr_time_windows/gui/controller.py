@@ -329,7 +329,7 @@ class _StandaloneApp(TimeWindowApp):
         if self.tool.job.running:
             self._job_window.begin(frame)
             im.text(tr("Working…"))
-            if im.button(tr("Stop")):
+            if im.button(tr("Stop"), role="danger"):
                 self.tool.job.stop()
                 self.tool.notify(
                     "Stopped publication. The current file operation may finish writing output."

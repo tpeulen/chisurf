@@ -15,7 +15,10 @@ window and starts each group's fields at its own x. The helpers here work on the
   every window shares (Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel,
   Close, Load example): one icon, one English source label, one tooltip and one widget kind each, so the
   same action looks the same in every app. Declared button rows take the same table through
-  :func:`action_item`. The vocabulary and its rationale: ``okf/subsystems/ui-vocabulary.md``; the guard
+  :func:`action_item`;
+- :data:`PRIMARY_VERBS`, :data:`DANGER_VERBS` and :func:`verb_role` decide a button's colour (its emtk
+  button role): a panel's one main action (Fit, Run, Compute) is ``primary``, a destructive one (Delete,
+  Clear, Stop) ``danger``, the rest neutral. Declared rows spell it as the entry's ``role``. The vocabulary and its rationale: ``okf/subsystems/ui-vocabulary.md``; the guard
   that keeps hand-drawn variants out: ``test/test_ui_vocabulary.py``.
 """
 
@@ -32,6 +35,7 @@ APP_SECTION_KEYS = {
     ),
 }
 
+import re
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Sequence
 
@@ -100,6 +104,8 @@ class Action:
     widget: ``"button"`` or ``"toggle"`` (a button that stays pressed while on). ``fixed_tooltip`` actions
     mean the same thing in every window, so their tooltip cannot be replaced; the others name *what* is
     run/saved/opened in that tool, so a caller may pass a tool-specific tooltip instead of the default.
+    ``role`` is the emtk button role it is drawn in (:data:`emtk.style.BUTTON_ROLES`): ``"primary"`` for
+    the main action of a window (Run), ``None`` for the neutral button.
     """
 
     icon: str
@@ -107,6 +113,7 @@ class Action:
     tooltip: str
     kind: str = "button"
     fixed_tooltip: bool = False
+    role: str | None = None
 
 
 #: The shared action vocabulary. Keys are stable identifiers, not captions. The icons are the canonical
@@ -129,7 +136,7 @@ ACTIONS: dict[str, Action] = {
     ),
     "restart": Action("🔁", "Restart", "Start over from the beginning."),
     "close": Action("✕", "Close", "Close this window."),
-    "run": Action("▶\ufe0f", "Run", "Run with the current settings."),
+    "run": Action("▶\ufe0f", "Run", "Run with the current settings.", role="primary"),
     "cancel": Action("✕", "Cancel", "Stop or dismiss without applying the change."),
     "reset": Action("♻\ufe0f", "Reset", "Restore the default settings."),
     "save": Action("💾", "Save", "Save the result to a file."),
@@ -139,6 +146,45 @@ ACTIONS: dict[str, Action] = {
     "copy": Action("📋", "Copy", "Copy to the clipboard."),
     "example": Action("🧪", "Load example", "Load a built-in example to try this tool."),
 }
+#: Leading verbs of a window's main action: a button whose caption starts with one is drawn ``primary``
+#: (the first such button of a panel only -- one primary per panel).
+PRIMARY_VERBS = frozenset({
+    "run", "fit", "compute", "calculate", "simulate", "start", "search", "analyse", "analyze",
+    "process", "optimise", "optimize",
+})
+#: Leading verbs of a destructive action: a button whose caption starts with one is drawn ``danger``.
+DANGER_VERBS = frozenset({
+    "delete", "remove", "clear", "stop", "abort", "discard", "purge", "erase", "wipe",
+})
+#: Captions whose verb reads as a role but whose action is not one: framing a view ("Fit view"),
+#: dropping a selection. A declared row spells the exception as ``"role": "default"``.
+NEUTRAL_CAPTIONS = frozenset({"fit view", "clear selection"})
+
+
+def caption_verb(label: str) -> str:
+    """The first word of a button caption, without icon, ``##id`` or punctuation, case-folded."""
+    text = str(label).split("##", 1)[0]
+    words = re.findall(r"[^\W\d_]+", text)
+    return words[0].casefold() if words else ""
+
+
+def verb_role(label: str) -> str | None:
+    """The button role the vocabulary gives a caption: ``"primary"``, ``"danger"`` or ``None``.
+
+    ``"primary"`` is a candidate only: a panel has one primary action, so the caller (or the
+    guard, for declared rows) gives it to the first candidate of the panel.
+    """
+    verb = caption_verb(label)
+    words = " ".join(re.findall(r"[^\W\d_]+", str(label).split("##", 1)[0])).casefold()
+    if words in NEUTRAL_CAPTIONS:
+        return None
+    if verb in DANGER_VERBS:
+        return "danger"
+    if verb in PRIMARY_VERBS:
+        return "primary"
+    return None
+
+
 #: The muted state of the Sound toggle, and its tooltip when the window has no audio output.
 SOUND_OFF_ICON = "🔇"
 SOUND_UNAVAILABLE = "No sound here: this window has no audio output."
@@ -221,7 +267,7 @@ def action_button(
         raise ValueError(f"{key!r} is a {ACTIONS[key].kind}, not a button")
     if not enabled:  # (begin_disabled(False) would re-enable inside a disabled parent)
         im.begin_disabled(True)
-    pressed = im.button(f"{action_caption(key)}###{id or key}", size)
+    pressed = im.button(f"{action_caption(key)}###{id or key}", size, role=ACTIONS[key].role)
     if not enabled:
         im.end_disabled()
     im.set_item_tooltip(action_tooltip(key, tooltip, shortcut))
@@ -256,12 +302,15 @@ def action_item(key: str, action: str, description: str | None = None) -> dict:
     entry = ACTIONS[key]
     if description and entry.fixed_tooltip:
         raise ValueError(f"the {key!r} tooltip is shared by every window and cannot be replaced")
-    return {
+    item = {
         "action": action,
         "label": entry.label,
         "icon": entry.icon,
         "description": description or entry.tooltip,
     }
+    if entry.role:
+        item["role"] = entry.role
+    return item
 
 
 def labelled(sections: Sequence[dict]) -> Iterator[dict]:
@@ -425,6 +474,27 @@ def same_line_or_wrap(label: str) -> None:
         im.new_line()
 
 
+def row_roles(buttons: Sequence[dict]) -> list[str | None]:
+    """The button role of each entry of a row: its declared ``role``, else the vocabulary's.
+
+    A declared ``role`` wins (``"default"`` keeps a button neutral). Undeclared entries take
+    :func:`verb_role` of their ``label``; of those, only the first ``primary`` candidate is
+    primary, and none when the row already declares one -- one main action per row.
+    """
+    declared = [button.get("role") for button in buttons]
+    has_primary = "primary" in declared
+    roles: list[str | None] = []
+    for button, role in zip(buttons, declared):
+        if role is None:
+            role = verb_role(button.get("label", ""))
+            if role == "primary":
+                if has_primary:
+                    role = None
+                has_primary = True
+        roles.append(None if role == "default" else role)
+    return roles
+
+
 def button_row(
     buttons: Sequence[dict],
     width: float | None = None,
@@ -433,13 +503,15 @@ def button_row(
     """Draw actions in one row that wraps at *width* (default: the room left); the key of the one pressed.
 
     Each button is a dict: ``label``, ``key`` (what is returned and remembered; defaults to the label),
-    ``tip``, ``enabled`` (default True; a disabled button is greyed and cannot be pressed), ``colours``
-    (``(button, hovered, active)`` to push) and ``keys`` (more names to remember it under).
+    ``tip``, ``enabled`` (default True; a disabled button is greyed and cannot be pressed), ``role``
+    (an emtk button role; default: the vocabulary's :func:`verb_role` of the caption, the first
+    ``primary`` candidate of the row only) and ``keys`` (more names to remember it under).
     """
     width = float(im.get_content_region_avail()[0] if width is None else width)
     spacing = im.get_style().item_spacing[0]
     pressed = None
     used = 0.0
+    roles = row_roles(buttons)
     for i, button in enumerate(buttons):
         key = button.get("key", button["label"])
         # Measured and drawn translated, with the key as the id ("###"): the id no longer comes
@@ -453,21 +525,13 @@ def button_row(
             used += spacing + w
         else:
             used = w
-        colours = button.get("colours")
-        if colours:
-            from emtk.im_core import Col
-
-            for col, rgba in zip((Col.BUTTON, Col.BUTTON_HOVERED, Col.BUTTON_ACTIVE), colours):
-                im.push_style_color(col, rgba)
         enabled = button.get("enabled", True)
         if not enabled:  # (begin_disabled(False) would re-enable inside a disabled parent)
             im.begin_disabled(True)
-        if im.button(label) and enabled:
+        if im.button(label, role=roles[i]) and enabled:
             pressed = key
         if not enabled:
             im.end_disabled()
-        if colours:
-            im.pop_style_color(3)
         if button.get("tip"):
             im.set_item_tooltip(button["tip"])
         if remember is not None:
@@ -479,7 +543,13 @@ def button_row(
 __all__ = [
     "ACTIONS",
     "Action",
+    "DANGER_VERBS",
+    "NEUTRAL_CAPTIONS",
+    "PRIMARY_VERBS",
     "CHOICE_WIDTH",
+    "caption_verb",
+    "row_roles",
+    "verb_role",
     "ICON_GAP",
     "LabelColumn",
     "NUMBER_WIDTH",

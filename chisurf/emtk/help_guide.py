@@ -38,7 +38,6 @@ def _clean_html_text(text: str) -> str:
 
 
 ACCENT_BLUE = (0.4, 0.8, 1.0, 1.0)
-ACCENT_GREEN = (46, 160, 67, 255)
 TEXT_WHITE = (0.95, 0.95, 0.95, 1.0)
 TEXT_MUTED = (0.65, 0.7, 0.75, 1.0)
 BORDER_BLUE = (70, 140, 240, 255)
@@ -214,12 +213,10 @@ class EmTkHelpWindow:
 
         if callable(self.on_start_guide):
             place_button("Start Guided Tour")
-            im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-            if im.button(tr("Start Guided Tour") + "##help"):
+            if im.button(tr("Start Guided Tour") + "##help", role="primary"):
                 self.hide()
                 self.on_start_guide()
             im.set_item_tooltip(tr("Walk through the tool controls and workflow step by step."))
-            im.pop_style_color()
 
         place_button("Close")
         if action_button("close", id="help_top", tooltip=tr("Close this help window.")):
@@ -594,9 +591,8 @@ class EmTkGuidedTour:
         im.same_line()
         is_last = self.step_idx == len(self.steps) - 1
         next_label = (tr("Finish ✓") if is_last else tr("Next ►")) + "##tour_next"
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
         im.begin_disabled(self.awaiting)
-        if im.button(next_label):
+        if im.button(next_label, role="primary"):
             self.next()
         im.set_item_tooltip(
             tr("Use the highlighted control to continue.")
@@ -604,7 +600,6 @@ class EmTkGuidedTour:
             else (tr("Finish the guided tour.") if is_last else tr("Go to the next tour step."))
         )
         im.end_disabled()
-        im.pop_style_color()
 
         im.end()
 

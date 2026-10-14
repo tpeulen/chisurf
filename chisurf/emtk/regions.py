@@ -200,7 +200,7 @@ class RegionControls:
             im.set_item_tooltip(
                 tr("Copy the selected region including its enabled/inverted state.")
             )
-            if im.button(tr("Remove region")):
+            if im.button(tr("Remove region"), role="danger"):
                 collection.remove(self.selected)
                 self.selected = ""
                 self.changed()

@@ -282,7 +282,7 @@ class ImagePanel:
             im.set_item_tooltip(tr("Wrap around to the first frame at the end of the stack."))
             self.rects["loop"] = im.get_item_rect()
             im.same_line()
-            if im.button(f"Stop##{self.key}_stop"):
+            if im.button(f"Stop##{self.key}_stop", role="danger"):
                 self.stop()
             im.set_item_tooltip(tr("Stop playback and return to the first frame."))
             self.rects["stop"] = im.get_item_rect()

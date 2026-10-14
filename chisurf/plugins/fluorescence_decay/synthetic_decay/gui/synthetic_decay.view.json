@@ -24,7 +24,7 @@
           "type": "button_row",
           "buttons": [
             {"label": "➕ Add", "action": "add_row", "description": "Add a lifetime component."},
-            {"label": "➖ Remove", "action": "remove_row", "description": "Remove the selected lifetime component."},
+            {"label": "➖ Remove", "role": "danger", "action": "remove_row", "description": "Remove the selected lifetime component."},
             {"label": "📂 Load", "action": "load_spectrum", "description": "Load a lifetime spectrum from a CSV/text file (interleaved a,τ list or 2-column amplitude/lifetime table)."}
           ]
         }
@@ -106,7 +106,7 @@
           "type": "button_row",
           "buttons": [
             {"label": "➕ Add", "action": "add_rotation_row", "description": "Add a rotational correlation component."},
-            {"label": "➖ Remove", "action": "remove_rotation_row", "description": "Remove the selected rotational correlation component."}
+            {"label": "➖ Remove", "role": "danger", "action": "remove_rotation_row", "description": "Remove the selected rotational correlation component."}
           ]
         }
       ]
@@ -116,7 +116,7 @@
       "buttons": [
         {"label": "🧪 Generate", "action": "generate", "description": "Generate the decay and update the plot."},
         {"label": "Save", "icon": "💾", "action": "save", "description": "Save the generated decay (CSV / text / .npy / JSON). In VV/VH mode writes a VV/VH file whose footer carries g, l1, l2 and the mode."},
-        {"label": "🔗 Fit group", "action": "send_to_fit", "description": "Add the generated data as a dataset and create a fit group with the Lifetime model — same route as a VV/VH data load: VV and VH become group members with vv/vh polarizations and g, l1, l2 are carried over from the simulation."}
+        {"label": "🔗 Fit group", "action": "send_to_fit", "role": "default", "description": "Add the generated data as a dataset and create a fit group with the Lifetime model — same route as a VV/VH data load: VV and VH become group members with vv/vh polarizations and g, l1, l2 are carried over from the simulation."}
       ]
     },
     {"type": "info", "source": "status_text", "description": "Generator status."},

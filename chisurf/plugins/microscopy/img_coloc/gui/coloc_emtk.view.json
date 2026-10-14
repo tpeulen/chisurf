@@ -30,6 +30,7 @@
                 {
                   "action": "run_coloc",
                   "label": "Run",
+                  "role": "primary",
                   "icon": "▶️",
                   "description": "Compute the colocalization coefficients for the selected channel pair, in the background."
                 },
@@ -272,6 +273,7 @@
               "buttons": [
                 {
                   "label": "Clear gate",
+                  "role": "danger",
                   "action": "clear_gate",
                   "description": "Drop every gate region and recompute the coefficients over all thresholded pixels."
                 }
@@ -315,6 +317,7 @@
               "buttons": [
                 {
                   "label": "Clear ROI",
+                  "role": "danger",
                   "action": "clear_roi",
                   "description": "Discard the painted region and analyse the whole image again."
                 }

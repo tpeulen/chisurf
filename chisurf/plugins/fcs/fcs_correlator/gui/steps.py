@@ -628,7 +628,7 @@ class CorrelatorStepApp(ImApp):
 
     def _draw_correlate(self, section, model, state, width) -> None:
         if self.running:
-            if im.button(tr("Stop")):
+            if im.button(tr("Stop"), role="danger"):
                 self.stop()
             im.set_item_tooltip(tr("Stop after the current chunk (the chunks done are kept)."))
             self.item_rects["stop"] = im.get_item_rect()

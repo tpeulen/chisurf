@@ -20,7 +20,6 @@ import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
-from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from .native import NativeHeaderEditor
 
 WINDOW_BG = (30, 32, 38, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 
 _TABLE_FLAGS = im.TableFlags.BORDERS | im.TableFlags.ROW_BG | im.TableFlags.RESIZABLE
 
@@ -160,10 +158,7 @@ class HeaderEditorGui(TourTarget):
             im.new_line()
         else:
             im.same_line()
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button(tr("💾 Save as PTU")):
+        if im.button(tr("💾 Save as PTU"), role="primary"):
             if callable(self.on_save):
                 self.on_save()
                 self.tour.notify_used("save")
@@ -173,7 +168,6 @@ class HeaderEditorGui(TourTarget):
                 "data is copied verbatim."
             )
         )
-        im.pop_style_color(3)
         self.remember("save")
 
         im.separator()

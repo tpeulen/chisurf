@@ -1,13 +1,45 @@
 ---
 type: Subsystem
 title: emtk UI action vocabulary
-description: One icon, English source label, tooltip and widget kind for every action the emtk apps share (Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel, Close, Load example), drawn through one helper and guarded against hand-drawn variants.
+description: One icon, English source label, tooltip and widget kind for every action the emtk apps share (Help, Guide, Sound, Restart, Run, Save, Open, Browse, Export, Copy, Reset, Cancel, Close, Load example), drawn through one helper and guarded against hand-drawn variants; and the button roles (primary / danger) that colour a panel's main and destructive actions.
 resource: chisurf/plugins/emtk_layout.py
-tags: [gui, emtk, autoform, conventions, icons, i18n]
-timestamp: '2026-10-10T00:00:00Z'
+tags: [gui, emtk, autoform, conventions, icons, i18n, colour]
+timestamp: '2026-10-14T00:00:00Z'
 ---
 
 # Where to pick this up
+
+Button roles (2026-10-14, emtk 0.1.16):
+
+1. Open: LLTF (`chisurf/plugins/fluorescence_decay/lltf/gui/app.py`) was held by
+   the LLTF lane while roles landed. Its `▶  Fit` (l. 236) wants `role="primary"`,
+   its `⏹  Stop` and `Clear output` `role="danger"`. Its `📂  Load example`
+   (l. 222) is drawn by hand, which fails
+   `test_shared_actions_are_drawn_through_the_vocabulary` at HEAD; port it to
+   `action_button("example")` too.
+2. Measure hand-drawn emtk buttons without a role: run the AST scan used when
+   roles landed. It covers every `im.button` whose `_literal` caption has a
+   `verb_role`; 44 sites had none, 28 were given a role. The guard only checks
+   declared `button_row` entries, so this scan is the worklist for Python.
+   Left neutral on purpose:
+   - per-row `Remove##path` buttons in file lists (burst_background, burst_gs,
+     burst_irf_bg, clsm), because a column of red buttons is noise;
+   - `self.button(...)` wrappers (bid_to_analysis, microtime_histogram,
+     tttr_microtime_shifter, fcs_channel_preset), which need a `role`
+     parameter of their own first;
+   - the κ² compute buttons inside model sections, because the Analysis dock's
+     Fit is that panel's main action;
+   - pto_inspector `Fit graph`, which frames the view.
+3. Open: the shell has no real light theme. `im.style_colors_light` inverts the
+   palette, and the docks keep their own dark fills. The light role variants
+   were judged on that inverted style. Re-judge them once a designed light
+   palette exists.
+4. Trap: `Fit` is not always the main action. It can mean "frame the view"
+   (lightpath, globalview `Fit view`) or "take values from a fit" (synthetic
+   decay `📥 Fit…`, `🔗 Fit group`, maxent `Fit`). Such entries declare
+   `"role": "default"`, or are listed in `NEUTRAL_CAPTIONS`.
+
+Shared actions:
 
 1. Measure: `python -c "import sys; sys.path.insert(0,'test'); import
    test_ui_vocabulary as t; print(t.all_findings())"` lists every remaining
@@ -135,6 +167,77 @@ at the line and wraps a button row evenly.
 
 Item-rect keys, `remember()` names, awaited tour steps and keyboard shortcuts
 are not part of the vocabulary and did not change when the apps were ported.
+
+# Button roles: colour says what kind of action it is
+
+The owner's report: *"the fit btn lacks color, some colors improve the ux"*.
+Every emtk button was drawn in the same slate. Seven plugins painted their
+headline action green by hand (`push_style_color(Col.BUTTON, ACCENT_GREEN)`,
+or a `"colours"` tuple in `button_row`). The shell's Fit had no colour at all.
+
+**emtk (0.1.16).** `im.button(label, size, role=...)` and a declared
+`button_row` entry's `"role"` colour a button from the theme:
+
+| Role | Meaning | Dark fill / hover / held | Light fill / hover / held |
+|---|---|---|---|
+| `primary` | the one main action of a panel (Fit, Run, Compute, Start) | 38,104,196 / 44,112,206 / 28,88,170 | 25,103,210 / 21,90,190 / 13,71,161 |
+| `success` | a confirming action (`action_button(accent=True)`) | 28,120,56 / 34,134,64 / 24,104,48 | 30,126,58 / 26,112,52 / 20,96,44 |
+| `danger` | a destructive action (Delete, Remove, Clear, Stop) | 156,52,52 / 172,60,60 / 136,44,44 | 176,48,48 / 158,40,40 / 136,32,32 |
+| `default` / none | everything else | the theme's button colours | |
+
+- **Theme.** `emtk.style.BUTTON_ROLES` holds a `ThemedButtonRole` per role. The
+  variant is picked from the window background's lightness, like
+  `ThemedAccent`.
+- **Contrast.** White text keeps WCAG AA (≥ 4.5:1) in every state.
+- **Disabled.** A disabled role button is drawn with 30 % of its fill mixed
+  into the neutral button colour, dimmed, with the theme's dimmed text. It
+  reads as unavailable, not as a faint live button.
+- **Focus.** The focus ring takes the text colour, because the theme's blue
+  ring vanishes on a primary fill.
+- **Restyling.** An application can give a role its own colours with
+  `set_button_role`.
+- **Rejected colours.** The first danger red, 186,48,48, read as an alarm on
+  the full-width *Remove dataset* bar, so it was deepened.
+
+**The vocabulary decides.** These live in `chisurf/plugins/emtk_layout.py`:
+
+- `PRIMARY_VERBS`: run, fit, compute, calculate, simulate, start, search,
+  analyse, process, optimise.
+- `DANGER_VERBS`: delete, remove, clear, stop, abort, discard, purge, erase,
+  wipe. `unlink` is not in the list: unlinking can be undone.
+- `NEUTRAL_CAPTIONS`: `Fit view` and `Clear selection`.
+- `verb_role(caption)`: the role these give a caption.
+
+How the role reaches each kind of button:
+
+- `ACTIONS["run"]` carries `role="primary"`, so every `action_button("run")` is
+  primary, and `action_item("run", …)` writes the `role` into a declared row.
+- The hand-drawn `button_row` helper takes an entry's `role`. Without one it
+  uses `row_roles`: the vocabulary's role, with only the first primary
+  candidate of the row made primary. Its old `colours` key is gone.
+- Declared specs spell it out, as `"role": "primary"` / `"danger"`, or
+  `"default"` for an exception. 104 entries in 59 `*.view.json` files were
+  set from the vocabulary. Among them, the Analysis dock's **Fit** is primary
+  and **Remove fit** and **Remove dataset** are danger.
+
+**Guard.** `test/test_ui_vocabulary.py` checks every declared container:
+
+- every role is a known one;
+- there is at most one primary;
+- a destructive caption declares `danger`;
+- a panel whose buttons include a main-action verb declares a primary.
+
+It also pins Fit/Remove fit in `emtk/views/analysis.view.json` and checks
+that no shipped file pushes its own button colours.
+
+Screenshots judged (headless, arm64):
+
+- the shell with a TCSPC Lifetime fit, dark and inverted-light: Fit blue,
+  Remove fit and Remove dataset muted red;
+- tttr_splitter: Convert / Split and Start batch blue, Clear red;
+- burst_2cde: Run blue, Stop red;
+- pch: Compute PCH disabled, which reads disabled;
+- hmm: Fit disabled before data.
 
 # The games
 

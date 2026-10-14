@@ -27,6 +27,7 @@
             {
               "action": "request_clear",
               "label": "🧹 Clear",
+              "role": "danger",
               "description": "Remove every curve and the merge (the files stay on disk)."
             },
             {
@@ -138,6 +139,7 @@
             {
               "action": "request_stop",
               "label": "⏹ Stop",
+              "role": "danger",
               "hidden_when": {
                 "attr": "busy",
                 "equals": "false"

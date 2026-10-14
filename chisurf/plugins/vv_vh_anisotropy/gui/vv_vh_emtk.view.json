@@ -87,8 +87,10 @@
             {"action": "request_database", "label": "Database",
              "description": "Select VV/VH datasets from the session MMFDB database."},
             {"action": "remove_selected", "label": "Remove",
+             "role": "danger",
              "description": "Remove the selected file from the queue (it stays on disk)."},
             {"action": "clear_batch", "label": "Clear",
+             "role": "danger",
              "description": "Empty the queue and its results."}
           ]
         },
@@ -109,6 +111,7 @@
           "description": "Run the batch with the settings the window was opened with, or save its table.",
           "buttons": [
             {"action": "run_batch", "label": "Run Batch",
+             "role": "primary",
              "description": "Compute r-infinity for each queued VV/VH file with the settings that were current when this window opened. A file that cannot be read gets a row with its error."},
             {"action": "request_save_batch", "label": "Save CSV…",
              "description": "Save the results table as CSV: filename, r_inf, region_min, region_max, bg_vv, bg_vh, g_factor, error."},

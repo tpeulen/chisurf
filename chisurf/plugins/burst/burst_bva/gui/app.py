@@ -17,7 +17,7 @@ from typing import Any, Callable
 from emtk import im, implot
 from emtk.app import ImApp
 from emtk.i18n import tr
-from emtk.im_core import Col, ItemFlags, get_current_context
+from emtk.im_core import ItemFlags, get_current_context
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import (
@@ -35,7 +35,6 @@ __all__ = ["BurstBvaApp", "BurstBvaGui", "WINDOW_BG"]
 WINDOW_BG = (30, 32, 38, 255)
 PANEL_BG = (38, 41, 48, 255)
 PANEL_BORDER = (55, 60, 72, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
@@ -339,7 +338,7 @@ class BurstBvaGui:
                     "key": "run",
                     "keys": ("toolAction_run",),
                     "enabled": not running,
-                    "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+                    "role": "primary",
                     "tip": "Compute the per-burst standard deviation of the proximity ratio (BVA) for the loaded bursts.",
                 },
                 {

@@ -286,6 +286,7 @@ class MaxentApp(ImApp):
                         {
                             "label": "Fit",
                             "key": "use_fit",
+                            "role": "default",
                             "enabled": idle,
                             "tip": "Take data, range, response and nuisance values from the selected live fit.",
                         },

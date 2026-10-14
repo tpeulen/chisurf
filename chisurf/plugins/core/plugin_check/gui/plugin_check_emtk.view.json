@@ -26,6 +26,7 @@
             {
               "action": "stop",
               "label": "Stop",
+              "role": "danger",
               "description": "Stop the sweep and terminate the plugin that is being checked right now."
             }
           ]
@@ -42,6 +43,7 @@
             {
               "action": "clear_blacklist",
               "label": "Clear blacklist",
+              "role": "danger",
               "description": "Take every plugin off the blacklist (a plugin that failed five checks in a row is skipped) so it is tested again."
             }
           ]

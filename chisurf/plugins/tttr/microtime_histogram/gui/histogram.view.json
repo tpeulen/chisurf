@@ -23,6 +23,7 @@
             {
               "action": "compute",
               "label": "▶  Compute",
+              "role": "primary",
               "description": "Read the selected photons and burst gates in a background worker."
             },
             {

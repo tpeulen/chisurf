@@ -17,6 +17,7 @@
             },
             {
               "label": "➖ Remove",
+              "role": "danger",
               "action": "remove_species",
               "description": "Drop the last species; two always remain, since a reaction needs a side each."
             }
@@ -70,6 +71,7 @@
             },
             {
               "label": "➖ Remove",
+              "role": "danger",
               "action": "remove_selected_reaction",
               "description": "Drop the selected reaction (the last one when nothing is selected)."
             },

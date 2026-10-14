@@ -776,7 +776,7 @@ class BurstSelectionNativeApp(TourTarget, ImApp):
             draw_sections(self.metadata_sections, self.model, self.form)
         else:
             draw_sections(self.gmm_settings_sections, self.model.gmm, self.form)
-            if im.button(tr("Fit GMM with these settings")):
+            if im.button(tr("Fit GMM with these settings"), role="primary"):
                 try:
                     self.model.fit_gmm()
                 except Exception as exc:  # noqa: BLE001

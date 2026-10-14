@@ -32,7 +32,7 @@
     {"type": "button_row", "buttons": [
       {"label": "+ Analysis", "action": "add_fit",
        "description": "Add a fit of the selected model to the selected dataset; its window opens."},
-      {"label": "Remove dataset", "action": "remove_selected",
+      {"label": "Remove dataset", "role": "danger", "action": "remove_selected",
        "description": "Remove the selected dataset from the session."}
     ]}
   ]

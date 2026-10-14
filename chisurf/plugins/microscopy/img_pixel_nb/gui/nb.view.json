@@ -95,7 +95,7 @@
                              "refresh_on": ["gate", "run"]},
                  "description": "Regions drawn on the parameter plane. The pixels whose (x, y) fall inside are selected and shown in the Gated pixels map — a brightness population, back on the image. Tick to include, ~ for everything outside."},
                 {"type": "button_row", "buttons": [
-                  {"label": "🧹 Clear gates", "action": "clear_gates",
+                  {"label": "🧹 Clear gates", "role": "danger", "action": "clear_gates",
                    "description": "Drop every gate region; all pixels are selected again."}
                 ]}
               ]

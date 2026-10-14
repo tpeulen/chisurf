@@ -62,7 +62,7 @@
                "description": "Side of the square the fit sees. Wide enough to hold background as well as the spot — a window cropped to the spot has no baseline — and narrow enough not to contain the neighbouring spot, which is what pulls a fit sideways."},
               {"type": "button_row", "buttons": [
                 {"label": "➕ Add picks", "action": "request_add_picks", "description": "Turn the picked spots into regions of this detection, so they are written and fitted like any other."},
-                {"label": "🗑 Clear picks", "action": "request_clear_picks", "description": "Forget every picked spot."}
+                {"label": "🗑 Clear picks", "role": "danger", "action": "request_clear_picks", "description": "Forget every picked spot."}
               ]}
             ]},
             {"type": "button_row", "buttons": [

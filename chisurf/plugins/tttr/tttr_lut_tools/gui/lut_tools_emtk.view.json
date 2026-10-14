@@ -52,8 +52,10 @@
            {"action": "request_database", "label": "Database",
             "description": "Select photon files from the MMFDB object store."},
            {"action": "remove_file", "label": "Remove",
+            "role": "danger",
             "description": "Unload the selected input file."},
            {"action": "clear_files", "label": "Clear",
+            "role": "danger",
             "description": "Unload all input files; assigned LUTs are kept."}
          ]}
       ]
@@ -119,8 +121,10 @@
            {"action": "request_load_lut", "label": "Load LUT",
             "description": "Import a cumulative LUT from JSON, NumPy, CSV or text."},
            {"action": "remove_lut", "label": "Remove LUT",
+            "role": "danger",
             "description": "Remove the selected LUT from the import list; channel assignments are kept."},
            {"action": "clear_luts", "label": "Clear LUTs",
+            "role": "danger",
             "description": "Remove all loaded and assigned LUTs; shifts are kept."}
          ]},
         {"type": "custom", "key": "data_table", "title": "Loaded LUTs",

@@ -163,6 +163,7 @@
             {
               "action": "request_hmm",
               "label": "Compute HMM",
+              "role": "primary",
               "description": "Fit a hidden Markov model of the chosen number of states to the trace, then write burst IDs, traces and histograms beside the file (<file>_HMM#<n>_<ms>ms)."
             }
           ],

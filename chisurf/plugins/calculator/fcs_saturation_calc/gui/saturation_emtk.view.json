@@ -10,6 +10,7 @@
      {
       "action": "compute",
       "label": "Compute",
+      "role": "primary",
       "description": "Recompute the FCS curves, the one-component and two-component fits, the radial profiles and the power sweeps from the current kinetics and optics. The plots also follow every edit."
      },
      {

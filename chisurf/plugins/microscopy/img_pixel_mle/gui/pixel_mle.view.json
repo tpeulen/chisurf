@@ -60,7 +60,7 @@
                "description": "Fit worker threads. 0 = auto (cpu − 1); 1 = serial."}
             ]},
             {"type": "button_row", "buttons": [
-              {"label": "Run", "icon": "▶️", "action": "request_run", "description": "Fit every selected file pixel-by-pixel; writes <stem>_pixel_mle.csv next to each."}
+              {"label": "Run", "role": "primary", "icon": "▶️", "action": "request_run", "description": "Fit every selected file pixel-by-pixel; writes <stem>_pixel_mle.csv next to each."}
             ]}
           ]
         },

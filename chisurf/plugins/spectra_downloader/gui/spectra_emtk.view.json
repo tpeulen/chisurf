@@ -234,6 +234,7 @@
         "buttons": [
           {
             "label": "Run selected script",
+            "role": "primary",
             "action": "run_script",
             "description": "Run the selected scraper into the staging database (one at a time)."
           },

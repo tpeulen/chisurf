@@ -13,7 +13,7 @@
           "type": "button_row",
           "description": "Compute the maps, write them out, explore them or go on to the next step.",
           "buttons": [
-            {"action": "run_maps", "label": "Run", "icon": "▶️", "description": "Compute the per-pixel photon counts and count rates of every detector window, in the background. Nothing is recomputed when neither the file nor the detector windows changed."},
+            {"action": "run_maps", "label": "Run", "role": "primary", "icon": "▶️", "description": "Compute the per-pixel photon counts and count rates of every detector window, in the background. Nothing is recomputed when neither the file nor the detector windows changed."},
             {"action": "request_hdf5", "label": "Create imaging HDF5", "description": "Write the per-pixel table (counts, count rates, number of photons, the back-reference to the photon file) to the imaging HDF5 the next analysis steps enrich. With a file already remembered by the pipeline it is written there; otherwise a file is asked for."},
             {"action": "save_container", "label": "Save container", "description": "Write the same table as a pixel-map artifact into the container beside the photon file (the Qt tool did this when it closed)."},
             {"action": "open_ndx", "label": "ndX", "description": "Explore the per-pixel table in ndX, the shared live dataset. A Back button returns to the maps."},

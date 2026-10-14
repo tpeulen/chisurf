@@ -12,11 +12,13 @@
      {
       "action": "run",
       "label": "Run FCS",
+      "role": "primary",
       "description": "Correlate every ticked burst file with every ticked channel pair and fit each curve."
      },
      {
       "action": "stop",
       "label": "Stop",
+      "role": "danger",
       "description": "Cancel between burst files; the previous results are kept."
      },
      {
@@ -75,11 +77,13 @@
      {
       "action": "remove_files",
       "label": "Remove",
+      "role": "danger",
       "description": "Remove the selected input."
      },
      {
       "action": "clear",
       "label": "Clear",
+      "role": "danger",
       "description": "Remove every input and every curve."
      }
     ]
@@ -330,6 +334,7 @@
      {
       "action": "remove_pair",
       "label": "Remove pair",
+      "role": "danger",
       "description": "Remove the selected channel pair."
      },
      {

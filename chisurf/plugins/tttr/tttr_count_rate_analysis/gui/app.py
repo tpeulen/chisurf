@@ -215,7 +215,7 @@ class CountRateGui(TourTarget):
         if job is not None and job.running:
             current, count = self.tool.progress
             im.text(f"{current}/{count} files")
-            if im.button(tr("Stop analysis")):
+            if im.button(tr("Stop analysis"), role="danger"):
                 job.stop()
                 self.tool.message = "Stopped analysis; incomplete results will be discarded."
             im.set_item_tooltip(
@@ -234,7 +234,7 @@ class CountRateGui(TourTarget):
         self.remember("add_files")
         if im.get_line_avail() >= im.calc_text_size(tr("Clear"))[0] + 24:
             im.same_line()
-        if im.button(tr("Clear")):
+        if im.button(tr("Clear"), role="danger"):
             if callable(self.on_clear):
                 self.on_clear()
         im.set_item_tooltip(tr("Drop the file queue and any computed results."))
@@ -274,7 +274,7 @@ class CountRateGui(TourTarget):
         if self.selected_file not in files:
             self.selected_file = None
         im.begin_disabled(self.selected_file is None)
-        if im.button(tr("Remove")):
+        if im.button(tr("Remove"), role="danger"):
             self.remove_file(self.selected_file)
         im.set_item_tooltip(tr("Remove the selected file from the queue (it stays on disk)."))
         im.end_disabled()
@@ -431,7 +431,7 @@ class CountRateGui(TourTarget):
         m = self.model
 
         im.begin_disabled(self.busy())
-        if im.button(tr("Calculate")):
+        if im.button(tr("Calculate"), role="primary"):
             self._used("calculate")
             if callable(self.on_calculate):
                 self.on_calculate()

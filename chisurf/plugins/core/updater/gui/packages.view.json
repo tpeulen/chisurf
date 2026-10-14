@@ -81,6 +81,7 @@
             {
               "action": "ask_remove_selected",
               "label": "Remove Selected",
+              "role": "danger",
               "description": "Remove the selected package from the environment (asks first)."
             }
           ]
@@ -109,6 +110,7 @@
             {
               "action": "search_packages",
               "label": "Search",
+              "role": "primary",
               "description": "Search the configured channels for the package name."
             },
             {
@@ -204,6 +206,7 @@
             {
               "action": "ask_remove_env",
               "label": "Remove Selected",
+              "role": "danger",
               "description": "Delete the selected environment (asks first)."
             }
           ]
@@ -270,6 +273,7 @@
             {
               "action": "remove_channel",
               "label": "Remove Selected",
+              "role": "danger",
               "description": "Remove the selected channel from the configuration."
             }
           ]

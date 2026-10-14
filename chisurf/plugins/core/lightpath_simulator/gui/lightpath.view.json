@@ -120,11 +120,13 @@
               {
                 "action": "fit",
                 "label": "Fit",
+                "role": "default",
                 "description": "Frame the entire beam path without changing the saved node positions."
               },
               {
                 "action": "delete_selection",
                 "label": "Delete Selected",
+                "role": "danger",
                 "description": "Delete the selected nodes and connections. Greyed while nothing is selected."
               }
             ]
@@ -222,11 +224,13 @@
           {
             "action": "calculate",
             "label": "Calculate Emission Intensity",
+            "role": "primary",
             "description": "Propagate the spectra through the graph and fill the detector signals, the excitation, emission and detected crosstalk matrices and the Förster radii."
           },
           {
             "action": "stop",
             "label": "Stop",
+            "role": "danger",
             "hidden_when": {
               "attr": "running",
               "equals": "false"
@@ -430,6 +434,7 @@
               {
                 "action": "remove_link",
                 "label": "Remove Link",
+                "role": "danger",
                 "description": "Remove the link selected in the list below. Greyed while none is selected. The Delete key does the same."
               }
             ]

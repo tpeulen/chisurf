@@ -9,6 +9,7 @@
         {"action": "load", "label": "Load TTTR",
          "description": "Choose a photon-stream file (PTU, HT3, T2R, T3R, PTO, SPC) to analyse."},
         {"action": "compute", "label": "Compute PCH",
+         "role": "primary",
          "description": "Bin the photons of the loaded file into counting intervals and histogram the counts per bin."},
         {"action": "fit", "label": "Fit Model",
          "description": "Fit the species model (brightness and occupancy per component) to the histogram over the selected k range."},

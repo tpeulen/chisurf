@@ -45,7 +45,7 @@
                "description": "Largest state count to score."}
             ]},
             {"type": "button_row", "buttons": [
-              {"label": "▶ Fit", "action": "request_run",
+              {"label": "▶ Fit", "role": "primary", "action": "request_run",
                "description": "Fit the model with the chosen number of states and decode the state path."},
               {"label": "⇄ Scan states", "action": "request_scan",
                "description": "Fit every state count in the range and score each by AIC and BIC."}

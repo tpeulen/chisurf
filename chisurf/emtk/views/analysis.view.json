@@ -19,6 +19,7 @@
           "buttons": [
             {
               "label": "Fit",
+              "role": "primary",
               "action": "run_fit",
               "description": "Optimise the free parameters of the current fit."
             },
@@ -53,6 +54,7 @@
             },
             {
               "label": "Remove fit",
+              "role": "danger",
               "action": "remove_fit",
               "description": "Remove the current fit and close its window."
             }

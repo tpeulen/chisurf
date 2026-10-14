@@ -16,8 +16,10 @@
          "icon": "🧪",
          "description": "Simulate two small photon files into the settings folder and open that folder, so the browser can be tried without data of your own."},
         {"action": "clear", "label": "Clear",
+         "role": "danger",
          "description": "Clear the file list, the selection and the shown trace. No file and no rating or note is changed."},
         {"action": "clear_caches", "label": "Clear caches",
+         "role": "danger",
          "description": "Delete the cached traces and the cached image probes of this folder, in memory and on disk. Traces are computed again when needed."}
       ]
     },
@@ -35,6 +37,7 @@
         {"action": "export_docx", "label": "DOCX",
          "description": "Write a Word report of the selected files (name, folder, rating, annotation, trace picture) into the opened folder. Needs the python-docx package: greyed when it is not installed."},
         {"action": "delete_selected", "label": "Delete",
+         "role": "danger",
          "description": "Move the selected files, and the files that share their name, to the .trash folder of the opened folder after you confirm. Nothing is deleted for good. The Delete key does the same."}
       ]
     },
@@ -57,6 +60,7 @@
         {"action": "precompute_traces", "label": "Precompute",
          "description": "Compute and cache the trace of every listed file in the background, with the current bin window. Selecting a file afterwards shows its trace at once."},
         {"action": "stop_precompute", "label": "Stop",
+         "role": "danger",
          "description": "Stop the running precompute after the file it is working on. The traces computed so far stay cached."}
       ]
     },

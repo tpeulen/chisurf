@@ -6,8 +6,8 @@
       {"type":"button_row","description":"Explicit device lifecycle actions.","buttons":[
         {"action":"initialize_device","label":"Initialize device","description":"Construct and initialize the selected device only after this click. Missing drivers are reported safely."},
         {"action":"open_device_setup","label":"Device Setup…","description":"Open the selected device's native configuration card. Hardware settings remain locked while acquisition runs."},
-        {"action":"start","label":"Start","description":"Start the initialized device FIFO or encoded simulator stream through AcquisitionPipeline."},
-        {"action":"stop","label":"Stop","description":"Request a safe stop, interrupt an active FIFO, and flush pipeline state."}]},
+        {"action":"start","label":"Start", "role": "primary","description":"Start the initialized device FIFO or encoded simulator stream through AcquisitionPipeline."},
+        {"action":"stop","label":"Stop", "role": "danger","description":"Request a safe stop, interrupt an active FIFO, and flush pipeline state."}]},
       {"type":"value","attr":"time_limit_s","label":"Time limit (s)","kind":"float","minimum":0.0,"maximum":36000.0,"step":1.0,"decimals":1,"style":"spin","description":"Wall-clock stop condition. Set zero to disable it; retain a positive photon limit."},
       {"type":"value","attr":"photon_limit","label":"Photon limit","kind":"int","minimum":0,"maximum":1000000000,"step":1,"style":"spin","description":"Decoded-photon stop condition. Set zero only when a positive time limit is configured."},
       {"type":"info","source":"status","description":"Truthful initialization, streaming, stop, driver, and pipeline status."}]},
@@ -35,7 +35,7 @@
       {"type":"toggle","attr":"show_macrotime","label":"Macrotime plot","description":"Show the live macrotime plot tab."},
       {"type":"toggle","attr":"show_mcs","label":"MCS plot","description":"Show the live MCS trace tab."},
       {"type":"button_row","description":"Clear result data or restore native defaults.","buttons":[
-        {"action":"clear","label":"Clear","description":"Clear displayed pipeline results without changing device selection."},
+        {"action":"clear","label":"Clear", "role": "danger","description":"Clear displayed pipeline results without changing device selection."},
         {"action":"reset","label":"Reset","icon":"♻️","description":"Restore native defaults without constructing or contacting a device."}]}]},
     {"type":"panel","title":"Pipeline results","description":"Result tabs contain values calculated by AcquisitionPipeline from actual device FIFO or simulator records.","sections":[{"type":"custom","key":"pipeline_results","description":"Live decay, correlation, count-rate, MCS and macrotime plots with their own controls, drawn from pipeline snapshots."}]}
   ]

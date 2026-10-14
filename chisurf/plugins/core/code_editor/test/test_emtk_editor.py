@@ -165,7 +165,9 @@ def test_modified_close_requires_choice(tmp_path, monkeypatch, action):
     # simulated by answering button the way the click would. The popup's own
     # buttons have distinct labels, so the patch cannot hit them.
     monkeypatch.setattr(
-        im, "button", lambda label, size=None: "Close" in label and "Save and close" not in label
+        im,
+        "button",
+        lambda label, size=None, role=None: "Close" in label and "Save and close" not in label,
     )
     with im.frame(painter, (0, 0, 900, 600), storage=storage):
         gui._draw_editor_tabs((0, 0, 900, 600))
@@ -175,7 +177,9 @@ def test_modified_close_requires_choice(tmp_path, monkeypatch, action):
     if action == "Save and close":
         monkeypatch.setattr(model, "save_document", lambda index=None: False)
     monkeypatch.setattr(
-        im, "button", lambda label, size=None: label.split("###")[0].split("  ")[-1] == action
+        im,
+        "button",
+        lambda label, size=None, role=None: label.split("###")[0].split("  ")[-1] == action,
     )
     with im.frame(painter, (0, 0, 900, 600), storage=storage):
         gui._draw_editor_tabs((0, 0, 900, 600))
@@ -187,7 +191,7 @@ def test_modified_close_requires_choice(tmp_path, monkeypatch, action):
 
     if action == "Cancel":
         painter.texts.clear()
-        monkeypatch.setattr(im, "button", lambda label, size=None: False)
+        monkeypatch.setattr(im, "button", lambda label, size=None, role=None: False)
         monkeypatch.setattr(im, "small_button", lambda label, size=None: False)
         with im.frame(painter, (0, 0, 900, 600), storage=storage):
             gui._draw_editor_tabs((0, 0, 900, 600))

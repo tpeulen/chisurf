@@ -31,7 +31,6 @@ __all__ = ["BurstTwoCdeApp", "BurstTwoCdeGui", "WINDOW_BG"]
 WINDOW_BG = (30, 32, 38, 255)
 PANEL_BG = (38, 41, 48, 255)
 PANEL_BORDER = (55, 60, 72, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
@@ -176,9 +175,6 @@ class BurstTwoCdeGui:
         locked = self.model.is_locked or self.model.is_running
 
         # Run button
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
         if action_button(
             "run",
             tooltip=tr("Compute the 2CDE metric for every burst and plot FRET efficiency vs 2CDE."),
@@ -188,7 +184,6 @@ class BurstTwoCdeGui:
                 self.on_run()
         self.remember("run")
         self.remember("toolAction_run")
-        im.pop_style_color(3)
 
         self._same_line_if_fits(action_caption("restart"))
         attention = bool(getattr(self.model, "restart_attention", False))
@@ -212,7 +207,7 @@ class BurstTwoCdeGui:
             im.push_style_color(Col.BUTTON, ACCENT_RED)
             im.push_style_color(Col.BUTTON_HOVERED, (234, 59, 60, 255))
             im.push_style_color(Col.BUTTON_ACTIVE, (180, 20, 20, 255))
-        if im.button(tr("⏹ Stop")):
+        if im.button(tr("⏹ Stop"), role="danger"):
             self.track("toolAction_stop")
             if self.model.is_running and callable(self.on_stop):
                 self.on_stop()

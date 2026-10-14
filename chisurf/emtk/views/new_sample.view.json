@@ -189,6 +189,7 @@
             },
             {
               "label": "Clear",
+              "role": "danger",
               "action": "clear_mutations",
               "description": "Remove every mutation."
             }

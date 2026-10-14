@@ -30,11 +30,13 @@
      {
       "action": "compute",
       "label": "Compute filters",
+      "role": "primary",
       "description": "Solve the selected component filters over the fit range."
      },
      {
       "action": "stop",
       "label": "Stop",
+      "role": "danger",
       "description": "Discard the pending computation result."
      }
     ]
@@ -219,6 +221,7 @@
      {
       "action": "remove_component",
       "label": "Remove",
+      "role": "danger",
       "description": "Remove the selected component (no files are deleted)."
      }
     ]
@@ -394,6 +397,7 @@
        {
         "action": "autofit",
         "label": "Fit + filters",
+        "role": "primary",
         "description": "Fit the mixed decay, jointly fitting the synthetic IRF when no measured IRF is loaded, then compute the filters."
        }
       ],

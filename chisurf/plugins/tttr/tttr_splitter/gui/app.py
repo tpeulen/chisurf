@@ -18,7 +18,6 @@ import emtk.im as im
 from emtk.app import ImApp
 from emtk.docking import DockManager, Region, Split
 from emtk.i18n import tr
-from emtk.im_core import Col
 
 from chisurf.emtk.help_guide import EmTkGuidedTour, EmTkHelpWindow, TourTarget
 from chisurf.plugins.emtk_layout import action_button
@@ -27,7 +26,6 @@ if TYPE_CHECKING:
     from .controller import SplitterController
 
 WINDOW_BG = (30, 32, 38, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 #: The smallest chunk the Qt spin box allowed (``splitter.view.json`` ``minimum``), in thousands of photons.
 MIN_PHOTONS_PER_FILE_K = 100
 
@@ -141,10 +139,7 @@ class SplitterGui(TourTarget):
         tool = self.tool
         m = self.model
 
-        im.push_style_color(Col.BUTTON, ACCENT_GREEN)
-        im.push_style_color(Col.BUTTON_HOVERED, (56, 180, 77, 255))
-        im.push_style_color(Col.BUTTON_ACTIVE, (36, 140, 57, 255))
-        if im.button(tr("✂ Convert / Split")):
+        if im.button(tr("✂ Convert / Split"), role="primary"):
             if callable(self.on_run):
                 self.on_run()
                 self.tour.notify_used("run")
@@ -154,7 +149,6 @@ class SplitterGui(TourTarget):
                 "photon chunk, converting the container format when it differs."
             )
         )
-        im.pop_style_color(3)
         self.remember("run")
         im.same_line()
         if action_button("guide"):
@@ -298,7 +292,7 @@ class SplitterGui(TourTarget):
         im.set_item_tooltip(tr("Queue .ptu files recursively from a folder, sorted by name."))
         self.remember("batch_folder")
         im.same_line()
-        if im.button(tr("🗑️ Clear")):
+        if im.button(tr("🗑️ Clear"), role="danger"):
             if callable(self.on_clear_batch):
                 self.on_clear_batch()
         im.set_item_tooltip(tr("Empty the batch queue."))
@@ -341,7 +335,7 @@ class SplitterGui(TourTarget):
         m.batch_use_parent = checked
 
         im.spacing()
-        if im.button(tr("▶ Start batch")):
+        if im.button(tr("▶ Start batch"), role="primary"):
             if callable(self.on_run_batch):
                 self.on_run_batch()
         im.set_item_tooltip(tr("Split every queued file with the options set above."))

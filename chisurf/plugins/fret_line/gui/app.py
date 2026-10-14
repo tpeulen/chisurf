@@ -453,7 +453,7 @@ class FRETLineApp(ImApp):
                         tr("Add an independent {group} component.").format(group=group_name)
                     )
                     im.same_line()
-                    if im.button(tr("Remove subcomponent")):
+                    if im.button(tr("Remove subcomponent"), role="danger"):
                         model.remove_component(group_name)
                     im.set_item_tooltip(
                         tr("Remove the last {group} component; one stays.").format(group=group_name)

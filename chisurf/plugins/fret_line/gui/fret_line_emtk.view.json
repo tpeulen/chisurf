@@ -159,6 +159,7 @@
             {
               "action": "remove_component",
               "label": "Remove",
+              "role": "danger",
               "description": "Remove the selected component. One component always stays."
             }
           ]
@@ -329,11 +330,13 @@
             {
               "action": "remove_line",
               "label": "Remove",
+              "role": "danger",
               "description": "Remove the selected line (the last one when none is selected)."
             },
             {
               "action": "clear_lines",
               "label": "Clear all",
+              "role": "danger",
               "description": "Remove all computed lines."
             }
           ]

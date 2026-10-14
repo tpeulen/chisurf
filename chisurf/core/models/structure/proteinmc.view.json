@@ -123,6 +123,7 @@
             },
             {
               "label": "➖ Remove",
+              "role": "danger",
               "action": "remove_selected_potential",
               "description": "Drop the selected term (the last one when nothing is selected)."
             }

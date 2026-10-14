@@ -37,11 +37,13 @@
             },
             {
               "label": "➖ Remove",
+              "role": "danger",
               "action": "remove_selected_local_fit",
               "description": "Drop the selected row from the global fit."
             },
             {
               "label": "🗑 Clear",
+              "role": "danger",
               "action": "clear_local_fits",
               "description": "Remove every fit from the global fit."
             }

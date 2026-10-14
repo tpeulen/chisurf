@@ -374,6 +374,7 @@
             {
               "action": "icon_clear",
               "label": "Clear",
+              "role": "danger",
               "description": "Remove the icon file and the manifest reference (asks first)."
             }
           ]

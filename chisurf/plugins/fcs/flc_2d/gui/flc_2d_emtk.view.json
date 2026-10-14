@@ -41,6 +41,7 @@
                 {
                   "action": "request_run",
                   "label": "Run",
+                  "role": "primary",
                   "icon": "▶️",
                   "description": "Build 2D-FDC and resolve lifetimes."
                 },

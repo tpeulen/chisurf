@@ -77,7 +77,7 @@
                              "refresh_on": ["gate", "done", "result"]},
                  "description": "Every gate on the intensity scatter in one list: the typed box, a painted population, an ellipse or polygon drawn on the plane. Tick to include, ~ for everything outside, and pick how they combine — a cloud AND a threshold, not one overriding the other."},
                 {"type": "button_row", "buttons": [
-                  {"label": "🧹 Clear gate", "action": "clear_gate",
+                  {"label": "🧹 Clear gate", "role": "danger", "action": "clear_gate",
                    "description": "Drop every gate region and recompute the coefficients over all thresholded pixels."}
                 ]}
               ]
@@ -92,7 +92,7 @@
                 {"type": "value", "attr": "brush_size", "label": "Brush (px)", "kind": "int", "minimum": 1, "maximum": 64,
                  "description": "Edge length of the square brush used to paint the region of interest on the Channel A map. Painting restricts every coefficient — thresholds, the null model and the profiles — to that region, the way a hand-drawn cell outline should."},
                 {"type": "button_row", "buttons": [
-                  {"label": "🧽 Clear ROI", "action": "clear_roi",
+                  {"label": "🧽 Clear ROI", "role": "danger", "action": "clear_roi",
                    "description": "Discard the painted region and analyse the whole image again."}
                 ]}
               ]

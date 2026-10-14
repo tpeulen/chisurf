@@ -16,6 +16,7 @@
             {
               "action": "run_maps",
               "label": "Run",
+              "role": "primary",
               "icon": "▶️",
               "description": "Compute the mean micro-time and intensity of every detector window, in the background. Nothing is recomputed when neither the file, the windows nor Min. photons changed."
             },

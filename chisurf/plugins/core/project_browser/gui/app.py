@@ -344,7 +344,7 @@ class ProjectBrowserApp(ImApp):
                 f"ID: {self.pending['version_id']}\nThis soft-deletes the version and requires manage permission."
             )
             im.spacing()
-            if im.button(tr("Delete This Version")):
+            if im.button(tr("Delete This Version"), role="danger"):
                 self.tour.notify_used("confirm_delete")
                 self.error(self.confirm_delete)
                 done = True

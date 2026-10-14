@@ -50,7 +50,6 @@ __all__ = ["BurstFusionApp", "BurstFusionGui", "WINDOW_BG"]
 WINDOW_BG = (30, 32, 38, 255)
 PANEL_BG = (38, 41, 48, 255)
 PANEL_BORDER = (55, 60, 72, 255)
-ACCENT_GREEN = (46, 160, 67, 255)
 ACCENT_BLUE = (31, 119, 180, 255)
 ACCENT_GRAY = (158, 158, 158, 255)
 ACCENT_RED = (214, 39, 40, 255)
@@ -246,7 +245,7 @@ class BurstFusionGui(TourTarget):
                     "key": "toolAction_run",
                     "enabled": not running,
                     "keys": ("fusion_actions",),
-                    "colours": (ACCENT_GREEN, (56, 180, 77, 255), (36, 140, 57, 255)),
+                    "role": "primary",
                     "tip": "Fuse burst fragments that likely belong to the same molecule using the P(same) threshold.",
                 },
                 {

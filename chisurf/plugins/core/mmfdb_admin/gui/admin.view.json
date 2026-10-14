@@ -94,7 +94,7 @@
          "description": "Create, delete and the entity's own actions.",
          "buttons": [
            {"action": "new_record", "label": "New", "description": "Create a new record at once (an untitled id, or one the server assigns) and open it in the form."},
-           {"action": "delete_checked", "label": "Delete", "description": "Delete the ticked rows (asks first)."}
+           {"action": "delete_checked", "label": "Delete", "role": "danger", "description": "Delete the ticked rows (asks first)."}
          ]},
         {"type": "custom", "key": "data_table", "title": "",
          "description": "The records. Click a row to open it below; double-click an underlined cell to open the record it names; tick rows to delete several. Click a header to sort; type in the filter box to keep matching rows.",
@@ -158,7 +158,7 @@
         {"type": "progress", "attr": "fraction", "text_source": "percent_text",
          "description": "How far the task got."},
         {"type": "button_row", "description": "Stop the task.",
-         "buttons": [{"action": "cancel", "label": "Cancel", "description": "Stop the task; nothing is shown or changed."}]}
+         "buttons": [{"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Stop the task; nothing is shown or changed."}]}
       ]
     },
     {
@@ -224,7 +224,7 @@
         {"type": "button_row", "description": "Save, clear or cancel.",
          "buttons": [
            {"action": "save", "label": "Save", "icon": "💾", "description": "Save the password."},
-           {"action": "clear", "label": "Clear", "description": "Remove the password: the user may then sign in without one (asks first; not for administrators)."},
+           {"action": "clear", "label": "Clear", "role": "danger", "description": "Remove the password: the user may then sign in without one (asks first; not for administrators)."},
            {"action": "cancel", "label": "Cancel", "icon": "✕", "description": "Close and forget what was typed."}
          ]}
       ]

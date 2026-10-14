@@ -23,7 +23,7 @@
           {"type": "toggle", "attr": "log_hide", "label": "Hide",
            "description": "Hide the messages the filter does not match instead of dimming them."},
           {"type": "button_row", "buttons": [
-            {"label": "Clear", "action": "clear_log", "description": "Forget the messages shown so far."}
+            {"label": "Clear", "role": "danger", "action": "clear_log", "description": "Forget the messages shown so far."}
           ]}
         ]}
       ]},
@@ -32,7 +32,7 @@
        "sections": [
         {"type": "row", "n_col": 2, "sections": [
           {"type": "button_row", "buttons": [
-            {"label": "Clear", "action": "clear_rpc", "description": "Forget the calls shown so far."}
+            {"label": "Clear", "role": "danger", "action": "clear_rpc", "description": "Forget the calls shown so far."}
           ]},
           {"type": "toggle", "attr": "rpc_paused", "label": "Pause",
            "description": "Stop recording calls while on; the table keeps what it has."}
@@ -62,7 +62,7 @@
            "placeholder": "Action or summary", "min_chars": 18,
            "description": "Show the steps whose action or summary contain this text."},
           {"type": "button_row", "buttons": [
-            {"label": "Clear", "action": "clear_history",
+            {"label": "Clear", "role": "danger", "action": "clear_history",
              "description": "Forget the steps; what is open now stays as it is."}
           ]}
         ]},
