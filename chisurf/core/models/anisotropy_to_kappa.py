@@ -39,10 +39,10 @@ class AnisotropyToKappaModel(chisurf.core.fitting.parameter.FittingParameterGrou
         self.kappa_squared = FittingParameter(name="kappa_squared", value=2.0 / 3.0, fixed=True)
 
         # Add to group
-        self.append(self.r_donor)
-        self.append(self.r_acceptor)
-        self.append(self.r_sensitized)
-        self.append(self.kappa_squared)
+        self.add_parameter(self.r_donor)
+        self.add_parameter(self.r_acceptor)
+        self.add_parameter(self.r_sensitized)
+        self.add_parameter(self.kappa_squared)
 
     def _update_model(self):
         """Update the calculated kappa^2 value based on current anisotropy values."""
