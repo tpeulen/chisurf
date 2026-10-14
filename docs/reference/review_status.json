@@ -3,14 +3,14 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "a7d4d1c0788a1ae4835c9bceb92aff181aad2480d97f1bee895ab0dcca867378",
+    "sha256": "cc0596ad872d7a36fc3b7d73a1025976a4bc8c7867a06ff45c3cb0cadb322dd7",
     "status": "ai-reviewed"
   },
   "figures.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "b6b9ab379a4a79c8200dd7af0d73f644c4b0e8353602f005809c5f4cf7433cf7",
+    "sha256": "e14cf1a0cf53c1df4004b56fcb53c032b64f8471e63810d7015a0dd811e57a7d",
     "status": "ai-reviewed"
   },
   "file_formats/becker_hickl_files.md": {
@@ -80,7 +80,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "7af20471b6968d5ec0cb4154a818f99a3d5ba1f14c14d17852f6296ffded8f96",
+    "sha256": "ae3ef9509bfc4a3faef97b8e69659c89569ee0dfeaad9c3a3478239cb6a2eddd",
     "status": "ai-reviewed"
   },
   "index.md": {
@@ -1011,7 +1011,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "d2c2d57fc34c9048cf5e48fd081e8d9ba99d4bc43d6deb7a94fb384d63c7f712",
+    "sha256": "05b069a087913c0ce3f77832863c483b7e0a339dafa835f1db9041b6cdb257e0",
     "status": "ai-reviewed"
   },
   "user_models.md": {
