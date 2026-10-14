@@ -1133,8 +1133,14 @@ class ParameterGroup(chisurf.core.base.Base):
             return v.value
         return v
 
-    def append(self, parameter: Parameter, **kwargs):
-        """Append a :class:`Parameter` to the group."""
+    def add_parameter(self, parameter: Parameter) -> None:
+        """Add a :class:`Parameter` to the group.
+
+        Not ``append``: on the model groups derived from this one, ``append``
+        adds a *component* (a lifetime, a species, a Gaussian) and takes that
+        component's settings, which a parameter-taking ``append`` here
+        contradicted for every one of them.
+        """
         self._parameter.append(parameter)
 
     def clear(self):

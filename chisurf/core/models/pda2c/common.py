@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from chisurf.core.math.functions.distributions import normal_distribution
@@ -22,7 +24,7 @@ def mask_zero_photon_bins(fit, xmin: int, wres: np.ndarray) -> np.ndarray:
             return wres
         data_obj = getattr(fit, "data", None)
         y_data = getattr(data_obj, "y", None)
-        if y_data is None:
+        if data_obj is None or y_data is None:
             return wres
         y_arr = np.asarray(y_data, dtype=float)
 
@@ -383,11 +385,11 @@ def build_pda_histogram_function(model, axis: str):
 
     inner = _PDA_HISTOGRAM_AXES.get(axis, _PDA_HISTOGRAM_AXES["S1/(S0+S1)"])
 
-    def histogram_function(ch1, ch2, _cb=inner):
+    def ratio_function(ch1, ch2, _cb=inner):
         """Return the selected raw ratio axis for tttrlib.Pda S1S2 counts."""
         return _cb(ch1, ch2)
 
-    return histogram_function
+    return ratio_function
 
 
 def pda_weighted_residuals(
@@ -864,8 +866,20 @@ def pda_1d_residuals_from_s1s2(
         return np.zeros(0, dtype=np.float64)
 
 
-class Pda2cModelMixin:
+if TYPE_CHECKING:
+    from chisurf.core.fitting.parameter import FittingParameterGroup
+    from chisurf.core.models.model import ModelCurve
+
+    _Host = ModelCurve
+else:
+    _Host = object
+
+
+class Pda2cModelMixin(_Host):
     """What every two-colour PDA model shares: its data contract and diagnostics.
+
+    Mixed into :class:`~chisurf.core.models.model.ModelCurve` subclasses; type
+    checkers see that host as the base (runtime base is ``object``).
 
     Two diagnostics had headless APIs and no way to reach them from the GUI: the
     kinetic consistency check, and the light-path connection that fills the

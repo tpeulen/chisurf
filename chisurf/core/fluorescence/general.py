@@ -176,9 +176,36 @@ def fluorescence_averaged_lifetime(
         return np.sum(intensity * time_axis) / isum
 
 
+@typing.overload
 def distance_to_fret_rate_constant(
-    r: np.ndarray, forster_radius: float, tau0: float, kappa2: float = 2.0 / 3.0
-) -> np.ndarray:
+    r: float, forster_radius: float, tau0: float, kappa2: float = ...
+) -> float: ...
+
+
+@typing.overload
+def distance_to_fret_rate_constant(
+    r: np.ndarray,
+    forster_radius: float | np.ndarray,
+    tau0: float | np.ndarray,
+    kappa2: float | np.ndarray = ...,
+) -> np.ndarray: ...
+
+
+@typing.overload
+def distance_to_fret_rate_constant(
+    r: float,
+    forster_radius: float | np.ndarray,
+    tau0: float | np.ndarray,
+    kappa2: np.ndarray,
+) -> np.ndarray: ...
+
+
+def distance_to_fret_rate_constant(
+    r: float | np.ndarray,
+    forster_radius: float | np.ndarray,
+    tau0: float | np.ndarray,
+    kappa2: float | np.ndarray = 2.0 / 3.0,
+) -> float | np.ndarray:
     """Compute FRET rate constant for distances
 
     Parameters
@@ -371,7 +398,19 @@ def convolve_distance_with_k2_ratio(
     return r_app_centers[mask], r_app_hist[mask]
 
 
-def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float:
+@typing.overload
+def distance_to_fret_efficiency(distance: float, forster_radius: float) -> float: ...
+
+
+@typing.overload
+def distance_to_fret_efficiency(
+    distance: np.ndarray, forster_radius: float | np.ndarray
+) -> np.ndarray: ...
+
+
+def distance_to_fret_efficiency(
+    distance: float | np.ndarray, forster_radius: float | np.ndarray
+) -> float | np.ndarray:
     """
 
     .. math::

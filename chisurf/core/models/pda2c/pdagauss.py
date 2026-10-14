@@ -196,9 +196,9 @@ class Pda2cGaussianDistances(FittingParameterGroup):
             Forwarded to the parent constructor.
         """
         super().__init__(name=name, **kwargs)
-        self._means = list()
-        self._sigmas = list()
-        self._amplitudes = list()
+        self._means: list[FittingParameter] = list()
+        self._sigmas: list[FittingParameter] = list()
+        self._amplitudes: list[FittingParameter] = list()
         # When True, interpret the stored sigma parameters as *fractions*
         # of the corresponding mean distances in the distribution
         # property above.

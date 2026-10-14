@@ -210,8 +210,8 @@ class Tests(unittest.TestCase):
         group_name = "Parameter Gruppe"
         pg = chisurf.core.parameter.ParameterGroup(name=group_name)
         self.assertEqual(pg.name, group_name)
-        pg.append(p1)
-        pg.append(p2)
+        pg.add_parameter(p1)
+        pg.add_parameter(p2)
         self.assertEqual(pg.values, [22, 11])
         self.assertListEqual(pg.parameter_names, ["p1", "p2"])
 
@@ -251,8 +251,8 @@ class Tests(unittest.TestCase):
         p1 = chisurf.core.fitting.parameter.FittingParameter(value=22)
         p2 = chisurf.core.fitting.parameter.FittingParameter(value=33)
         pg = chisurf.core.fitting.parameter.FittingParameterGroup(name="jjk")
-        pg.append(p1)
-        pg.append(p2)
+        pg.add_parameter(p1)
+        pg.add_parameter(p2)
         pg.find_parameters(chisurf.core.fitting.parameter.FittingParameter)
 
     # def test_numpy(self):
@@ -316,8 +316,8 @@ class Tests(unittest.TestCase):
         p1 = chisurf.core.fitting.parameter.FittingParameter(value=22, name="p1")
         p2 = chisurf.core.fitting.parameter.FittingParameter(value=33, name="p2")
         pg = chisurf.core.fitting.parameter.FittingParameterGroup(name="grp1")
-        pg.append(p1)
-        pg.append(p2)
+        pg.add_parameter(p1)
+        pg.add_parameter(p2)
         pg.find_parameters(chisurf.core.fitting.parameter.FittingParameter)
 
         state = pg.get_state()
