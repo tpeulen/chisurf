@@ -142,14 +142,14 @@ $10^{-10}$ relative; the fixture and its generator live in `test/data/nb/`.
 - {cite}`dalal2008` — analog detectors and the gradient calibration of $S$ and the offset.
 - {cite}`schrimpf2018` — PAM, the reference implementation compared against.
 
-## Synthetic workflow check
+## Synthetic demonstration
 
-The [N&B workflow](../guides/67_number_and_brightness.md) provides a known
-monomer/dimer field through `make_demo()`, returning its primary PTU. Parameters
-are recorded in JSON under settings-owned `demos/img_pixel_nb`; a valid cache
-is reused and `overwrite=True` regenerates it. The tour waits for the real Demo
-click, which loads and analyzes the generated scan. The declared brightness and
-number are simulator inputs; the maps and gates are estimates from its photons.
+The tool's **Demo** (`make_demo()` in {src}`chisurf/plugins/microscopy/img_pixel_nb/demo.py`)
+simulates a monomer/dimer field with known brightness and number and analyses it,
+so the maps and gates can be compared against the simulator's inputs. It is
+cached under `demos/img_pixel_nb` in the settings folder; `overwrite=True`
+regenerates it. The [N&B workflow](../guides/67_number_and_brightness.md) walks
+through it.
 
 ## See also
 

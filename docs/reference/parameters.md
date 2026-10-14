@@ -31,7 +31,7 @@ Total registered parameters: **179**.
 | `conc` | Molecular concentration derived from N and the effective volume. |  |
 | `cpm` | Counts per molecule (molecular brightness), (I−B)/N. |  |
 | `cpm_all` | Counts per molecule summed over all detection channels. |  |
-| `D` | Model parameter D used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning. | TCSPC, lifetime |
+| `D` | Translational diffusion coefficient of the diffusing species (µm²/s). | FCS, diffusion |
 | `diam` | Known inter-focus distance (two-focus FCS) or scan diameter (scanning FCS), in µm. |  |
 | `eps1` | Molecular brightness of species 1 (counts/molecule/s). |  |
 | `eps2` | Molecular brightness of species 2 (counts/molecule/s). |  |
@@ -54,11 +54,11 @@ Total registered parameters: **179**.
 | `fcs.aba4` | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). | FCS, antibunching, anisotropy, amplitude |
 | `fcs.abf` | Total amplitude factor for a group of anticorrelation components. | FCS, anticorrelation, amplitude |
 | `fcs.abt` | Time constant of an antibunching or anticorrelation component. | FCS, antibunching, anticorrelation, correlation time |
-| `fcs.abt1` | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). | FCS, antibunching, anisotropy, amplitude |
-| `fcs.abt2` | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). | FCS, antibunching, anisotropy, amplitude |
-| `fcs.abt3` | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). | FCS, antibunching, anisotropy, amplitude |
-| `fcs.abt4` | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). | FCS, antibunching, anisotropy, amplitude |
-| `fcs.abt5` | Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless). | FCS, antibunching, anisotropy, amplitude |
+| `fcs.abt1` | Time constant of an individual antibunching / anticorrelation component. | FCS, antibunching, anisotropy, amplitude |
+| `fcs.abt2` | Time constant of an individual antibunching / anticorrelation component. | FCS, antibunching, anisotropy, amplitude |
+| `fcs.abt3` | Time constant of an individual antibunching / anticorrelation component. | FCS, antibunching, anisotropy, amplitude |
+| `fcs.abt4` | Time constant of an individual antibunching / anticorrelation component. | FCS, antibunching, anisotropy, amplitude |
+| `fcs.abt5` | Time constant of an individual antibunching / anticorrelation component. | FCS, antibunching, anisotropy, amplitude |
 | `fcs.af` | Overall amplitude factor for a set of anticorrelation components. | FCS, anticorrelation, amplitude |
 | `fcs.aR` | Amplitude of a relaxation or anticorrelation term (dimensionless). | FCS, relaxation, anticorrelation, amplitude |
 | `fcs.aR1` | Amplitude of a relaxation or anticorrelation term (dimensionless). | FCS, relaxation, anticorrelation, amplitude |
@@ -179,7 +179,7 @@ Total registered parameters: **179**.
 | `tcspc.kQ` | Quenching rate constant added to the inverse lifetime (1/tau + kQ). | TCSPC, lifetime, quenching, rate constant |
 | `tcspc.Nq` | Effective number or concentration of quenchers in the interaction volume. | TCSPC, lifetime, quenchers, concentration, quenching |
 | `tcspc.p0` | Overall normalization or intensity at time zero of the decay curve. | TCSPC, lifetime, normalization, initial intensity |
-| `tcspc.Rdye` | Characteristic interaction radius or distance parameter for the dye3quencher system. | TCSPC, lifetime, distance, interaction radius, quenching |
+| `tcspc.Rdye` | Characteristic interaction radius or distance parameter for the dye–quencher system. | TCSPC, lifetime, distance, interaction radius, quenching |
 | `tcspc.tau0` | Fluorescence lifetime or characteristic decay time of this component. | TCSPC, lifetime, decay time |
 | `tcspc.tau1` | Fluorescence lifetime or characteristic decay time of this component. | TCSPC, lifetime, decay time |
 | `tcspc.tau2` | Fluorescence lifetime or characteristic decay time of this component. | TCSPC, lifetime, decay time |
@@ -191,7 +191,7 @@ Total registered parameters: **179**.
 | `td_max` | Upper bound of the diffusion-time axis. |  |
 | `td_min` | Lower bound of the diffusion-time axis. |  |
 | `temp` | Sample temperature. |  |
-| `Veff` | Effective confocal detection volume, V_eff = π^{3/2}·γ·w_xy³. |  |
+| `Veff` | Effective confocal detection volume, V_eff = π^{3/2}·w_xy²·w_z. |  |
 | `w0` | Lateral 1/e² radius of the confocal detection volume (µm). |  |
 | `w_r` | Lateral 1/e² radius of the confocal detection volume (µm). |  |
 | `w_z` | Axial 1/e² radius of the confocal detection volume (µm). |  |

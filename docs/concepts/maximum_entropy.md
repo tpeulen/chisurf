@@ -55,13 +55,9 @@ $$
 S = \sum_i \left[ p_i - m_i - p_i \ln\frac{p_i}{m_i} \right] .
 $$
 
-The $p_i$ in this entropy are the solver’s dimensionless amplitudes. Public
-exports use coefficients of the unscaled decay basis, so their numerical sum
-is not a normalization to one. Their conversion uses the active basis, data
-and additive nuisance signal. The native **Amplitude** axis displays those
-exported coefficients; it does not relabel them as probabilities. Sampling
-must convert to the same solver coordinates for $S$ and $Q$, then restore
-export units.
+The $p_i$ in this entropy are the solver’s dimensionless amplitudes. Exported
+values are coefficients of the unscaled decay basis, so they do not sum to one;
+the **Amplitude** axis of the tool shows those coefficients, not probabilities.
 
 $S$ is maximal when $p = m$ and falls as $p$ develops structure. The fit
 minimizes
@@ -130,11 +126,9 @@ artefact.
 
 ## The two models
 
-The native tool’s host geometry and dock layout do not enter either model.
-The selected input/response, grid, nuisance parameters, prior and regularization
-weight do. Compare those settings and the objective when reproducing a result;
-resizing alone must preserve the distribution, model curve and residuals.
-The application workflow is in {doc}`/guides/62_maxent_decay`.
+A result is fixed by the selected data and response, the grid, the nuisance
+parameters, the prior and the regularization weight; compare those when
+reproducing one. The application workflow is in {doc}`/guides/62_maxent_decay`.
 
 **Lifetime: MaxEnt** (`tcspc_maxent_lifetime`) recovers $p(\tau)$ on a lifetime
 grid. Use it when the question is whether the sample has discrete states at all.

@@ -62,6 +62,4 @@ administrator can be created.
 - {doc}`The photon container </concepts/photon_container>`: the same provenance
   model, inside a single measurement file.
 
-Tool: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`).
-
-Tools: Database Connector (`chisurf/plugins/core/database_connector/`), Open Project (`chisurf/plugins/core/project_browser/`), User Editor (`chisurf/plugins/core/user_editor/`).
+Tools: MMFDB Admin (`chisurf/plugins/core/mmfdb_admin/`), Database Connector (`chisurf/plugins/core/database_connector/`), Open Project (`chisurf/plugins/core/project_browser/`), User Editor (`chisurf/plugins/core/user_editor/`).

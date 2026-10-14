@@ -82,7 +82,7 @@ FALLBACK_DESCRIPTIONS = {
     "w_r": "Lateral 1/e² radius of the confocal detection volume (µm).",
     "w_z": "Axial 1/e² radius of the confocal detection volume (µm).",
     "wem": "Emission-side Gauss–Lorentz detection waist.",
-    "Veff": "Effective confocal detection volume, V_eff = π^{3/2}·γ·w_xy³.",
+    "Veff": "Effective confocal detection volume, V_eff = π^{3/2}·w_xy²·w_z.",
     "conc": "Molecular concentration derived from N and the effective volume.",
     "cpm": "Counts per molecule (molecular brightness), (I−B)/N.",
     "cpm_all": "Counts per molecule summed over all detection channels.",
@@ -587,9 +587,9 @@ def generate() -> None:
            "JSON-RPC surface.", "",
            f"Of the **{written} plugins**, **{n_declarative}** build their interface "
            "from declarative AutoForm specs and get a full per-parameter table on "
-           "their page; the remainder use custom Qt widgets, so their controls are "
-           "described in each plugin's guide while every named fit/model parameter "
-           "is defined once in the **[parameter glossary](../parameters.md)**.", "",
+           "their page; the controls of the others are described in each plugin's "
+           "guide, and every named fit/model parameter is defined once in the "
+           "**[parameter glossary](../parameters.md)**.", "",
            "```{toctree}", ":hidden:", ":glob:", "", "*", "```", "",
            f"**{written} plugins** across {len(catalogue)} categories.", ""]
     for category in sorted(catalogue):

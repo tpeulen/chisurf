@@ -1,4 +1,25 @@
 {
+  "ndxplorer_headless_cli.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8665385de13b79d1c3d17ddd1f821086d22fbafbd99dc0acb99611614a9febcc",
+    "status": "ai-reviewed"
+  },
+  "parameter_linking.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "89f0163483dc6633b0f4c00374a4266fadf731ab02f35ac2b969e3bdf38a249e",
+    "status": "ai-reviewed"
+  },
+  "parameters.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "8bc83d52db30e8ae5363da97a3efc03ad95661e37b548bdaf90ece02d2d1279d",
+    "status": "ai-reviewed"
+  },
   "plugins/intensity_trace.md": {
     "date": "2026-10-14",
     "reviewer": "agent",

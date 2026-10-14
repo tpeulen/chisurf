@@ -203,12 +203,12 @@ Nothing accumulates, and parameters never have to be encoded in a directory name
 
 ## What this replaces, and what still works
 
-The legacy layouts are still **read**. They are written when you ask for them:
-in Burst Selection, tick **Seidel folder**.
+The legacy layouts are still **read**, and still written where the input calls
+for them: Burst Selection keeps the bursts of a `.pto` inside it, and gives a
+vendor file the `bi4_bur/` companion folder beside it.
 
-Vendor files still open directly — nothing forces you through the container. But
-opening one produces the `.pto`, because that is where the results of working on
-it will go.
+Vendor files still open directly — nothing forces you through the container;
+*File → Data → ⇄ .pto* packs one into a container (and unpacks it again).
 
 Your original file is never moved, altered or deleted. Deleting it once it is
 inside a container is a decision the container makes *safe*, not one it makes
@@ -233,26 +233,8 @@ silently re-interpreting old data.
   importing and reading photon data in practice.
 - {doc}`Burst fusion </concepts/burst_fusion>` and {doc}`H2MM </concepts/h2mm>`
   — the two analyses whose shapes the older format could not hold.
-
-A photon recording can drive both a count-based sound envelope and a
-macro-time/micro-time waterfall. Those derived arrays depend on the photon
-stream, channel gates and analysis settings, rather than the size of their
-native host. [Audifier](../guides/94_tttr_audifier.md) preserves its waveform
-and waterfall across layout changes; reopening preferences restores the
-configuration, while the recording is loaded again for recomputation.
-
-The File › Data tools keep container operations in the tools that own
-them. Packing, inspecting provenance, editing tags and preparing burst results
-are separate windows, not an additional photon algorithm. The
-[File tools workflow](../guides/74_intensity_traces_and_file_tools.md) lists all
-seven tools and their distinct input requirements.
-
-PTO Inspector's declared host dimensions are presentation preferences.
-Resizing or restoring them does not rewrite the container or regenerate its
-artifacts. Data rows, curve points, checksums and provenance remain properties
-of the same stored measurement. The [Inspector workflow](../guides/63_pto_inspector.md)
-explains artifact selection, graph preferences and wide-table navigation.
-
-Tool: PTO Inspector (`chisurf/plugins/core/pto_inspector/`).
-
-Tool: Photon Table (`chisurf/plugins/tttr/photon_table/`).
+- {doc}`File tools </guides/74_intensity_traces_and_file_tools>` — the seven
+  *File → Data* tools: packing, inspecting, editing headers, splitting and
+  preparing burst results.
+- Tools: PTO Inspector (`chisurf/plugins/core/pto_inspector/`), Photon Table
+  (`chisurf/plugins/tttr/photon_table/`).

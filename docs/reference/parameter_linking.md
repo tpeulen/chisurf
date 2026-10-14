@@ -19,29 +19,26 @@ follower.
 
 ## From the GUI
 
-Right-click a parameter — in a fit's parameter panel, in a
-[parameter table](plugins/index.md), or in the Global View — and open
-**🔗 Link \<name\> to**.
+Right-click a parameter in the parameter table of the **Analysis** dock and open **🔗 Link \<name\> to**.
 
-![The parameter link menu, three levels](../guides/figures/parameter_link_menu.png)
+![The link menu of N: Link N to, the session's fits, and the parameters of the second fit](../guides/figures/parameter_link_menu.png)
 
-The menu is a fit list, and under each fit its parameters:
+The menu lists the session's fits, and under each fit its parameters:
 
-* **One entry per fit.** A fit group holding several curves is expanded into its
-  member fits, because each curve carries its own parameters.
-* **Grouped as the model presents them** — *Convolve*, *Corrections*,
-  *Lifetimes*, *Nuisance*, *Anisotropy* — and again flat under **All
-  parameters**, sorted by name.
+* **One entry per fit.** A fit group holding several curves lists its member
+  curves first, because each curve carries its own parameters.
+* **Only the parameters of the fit's equation** are offered, not every port of
+  the model catalogue.
 * Every parameter is a target except the one being linked, including a parameter
-  of the *same name* in another fit. Linking `tau1` of one curve to `tau1` of
+  of the *same name* in another fit. Linking `N` of one curve to `N` of
   another is the ordinary global-analysis case, and the menu addresses the target
   by identity, not by name.
 
-A fit that has no parameters to offer says so instead of opening an empty
-submenu. **Unlink** in the same context menu makes the parameter free again; it
-is enabled only while the parameter is linked. Both work on parameters that
-belong to no fit — an ndX calibration constant, a plugin's working model —
-because each target is addressed by its UUID rather than by a name and a fit.
+**Unlink** in the same context menu makes the parameter free again; it is enabled
+only while the parameter is linked. **Prior** beside it sets the parameter's
+prior. Linking works on parameters that belong to no fit — an ndX calibration
+constant, a plugin's working model — because each target is addressed by its
+UUID rather than by a name and a fit.
 
 ## Reading a parameter table
 
@@ -49,9 +46,9 @@ A table says at a glance which numbers the fit will move:
 
 | Appearance | Meaning |
 |------------|---------|
-| upright, normal | free — the fit varies it |
-| dimmed value | **fixed**, or linked: the fit will not move this number |
-| *italic* row | **linked follower** — its value comes from its master, and the cell cannot be edited |
+| normal | free — the fit varies it |
+| dimmed | **fixed**, an output, or linked: the fit will not move this number, and the cell cannot be edited |
+| drawn in the link colour | **linked follower** — its value comes from its master |
 
 Hovering a follower's value names its master.
 
@@ -70,7 +67,7 @@ donor.model.parameters_all_dict["tau1"].link = fret.model.parameters_all_dict["t
 ```
 
 Through the action layer, which records the operation in the
-[history](../development/index.md) projection:
+[history](../development/history_project_mcp.md) projection:
 
 ```python
 chisurf.core.actions.dispatch(
@@ -84,7 +81,8 @@ chisurf.core.actions.dispatch(
 )
 ```
 
-Over the [RPC server](ndxplorer_headless_cli.md), `parameter.link` accepts the
+Over the [JSON-RPC server](../development/architecture_client_server.md)
+(`python -m chisurf.server`), `parameter.link` accepts the
 same addressing plus `parameter_uid` / `target_parameter_uid`, which is what lets
 a parameter outside any fit — a plugin's working model — join the same link graph:
 
@@ -104,14 +102,13 @@ client.call("parameter.link", {
 * [Global View](plugins/globalview.md) — the link graph as a network, where links
   can also be made and removed.
 
+## Saving a single parameter
 
-## Scalar files and explicit refresh
-
-For one finite, unlinked scalar, `Parameter.save(..., file_type="json")` or
-`"yaml"` writes portable value, bounds, fixed state, description, prior, name
-and JSON-compatible public metadata. Loading restores a usable native scalar
-and refreshes an attached editor. Infinite bounds use null in the file; stored
-bounds remain available while enforcement is disabled.
+For one finite, unlinked scalar, `Parameter.save(..., file_type="json")` (or
+`"yaml"`, the default) writes its name, value, bounds, fixed state, description,
+prior and JSON-compatible metadata. Loading restores the value and refreshes an
+attached editor. Infinite bounds are written as `null`; bounds are kept even
+while their enforcement is off.
 
 ```python
 from chisurf.core.parameter import Parameter
@@ -123,9 +120,8 @@ restored.load("scale.json", file_type="json")
 assert restored.value == 2.0
 ```
 
-Linked parameters and Python callables require the owning session/project
-archive; a standalone scalar file rejects them explicitly. Old files containing
-only a native-port repr cannot reconstruct their lost value and raise a clear
-error. Live in-process dictionary sharing remains available for graph objects.
-After changing a model value directly, `parameter.update()` refreshes an attached
-controller; ordinary value reads/writes keep their existing evaluation behavior.
+A linked parameter, or one whose value is a Python callable, is saved only with
+its session or project; a standalone file refuses it. An old file that holds only
+the parameter's repr has lost the value and raises an error on loading. After
+changing a model value directly, `parameter.update()` refreshes an attached
+editor.

@@ -30,6 +30,21 @@ guides/figures/ndxplorer_overlay_axes.png:
     (20-120 Angstrom, donor-only lifetime 4 ns), asserts Tau (green)/FRET efficiency,
     focuses Overlays, and grabs the actual ChiSurf ndX host at 900x600.
 
+guides/figures/parameter_link_menu.png:
+  caption: The link menu of N in the emtk shell's Analysis dock — Link N to, the session's two fits, and the parameters of the second fit.
+  kind: screenshot
+  origin: docs/guides/make_screenshots.py::_grab_parameter_link_menu
+  pages:
+  - docs/reference/parameter_linking.md
+  recipe: >-
+    From the repository root, CHISURF_SETTINGS_DIR=$(mktemp -d) IMP_BFF_GPU=off
+    PYTHONPATH=docs/guides:. python -c 'import docs.guides.make_screenshots as s;
+    s._grab_parameter_link_menu()'. emtk shell (make_app, 1500x950, private session);
+    data: test/data/fcs/kristine/Kristine_with_error.cor and the FCS demo (make_demo),
+    one FCS (general: diffusion + bunching/anticorr) fit each; the first fit current.
+    State: the LinkMenu of its N opened from the parameter table, Link N to and the
+    second fit expanded; cropped to the Analysis dock and the open menu.
+
 guides/figures/ask_the_documentation.png:
   caption: The Ask panel beside the page it cited, with the links in the answer's own prose.
   kind: screenshot

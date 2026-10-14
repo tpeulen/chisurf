@@ -24,6 +24,9 @@ only the photons of selected bursts ({ref}`concept-tcspc-lifetime` explains what
   alternating scheme (PIE / nsALEX).
 - **Bursts.** A burst-index file lists inclusive photon-index ranges; only photons inside any range are used and
   overlapping ranges count a photon once.
+- **Inter-photon filter.** Keeps a photon only when the next selected photon follows within *Max gap* macro-time
+  ticks — the photons of bright stretches. With *Invert* it keeps the isolated photons between them instead, a
+  background decay from the same measurement. The last selected photon has no successor and is always dropped.
 - **Binning** groups $b$ adjacent micro-time bins: the time step becomes $b\,\Delta t$.
 
 ## The combined trace
@@ -40,21 +43,10 @@ This is the trace shown as *VV + 2G VH*. Its full width at half maximum (the dis
 peak and the first bin after it at or below half the maximum) is a quick diagnostic of the instrument response of the
 channel pair, not a lifetime.
 
-The physical width depends on the acquisition time step as well as the bin
-width. The measured BH132 example in the [workflow](../guides/89_microtime_histogram.md)
-has provider/header-derived timing of 3.2958984375 ps (0.0032958984375 ns); its
-113-bin width is 0.3724365234375 ns at binning one under that timing. This
-headerless SPC fixture does not independently establish instrument calibration.
-The native tool retains the provider/header-derived value unless
-an explicit saved setup override or manual histogram step is selected.
-A 25 ps manual setting used for legacy validation gives 2.825 ns for the same
-113 bins. It establishes histogram/count parity, not physical time calibration;
-the older unsaved 50 ps field value is likewise not header provenance.
-
-The guided synthetic demonstration instead defines its clocks explicitly:
-32 ps micro-time bins and a 25 ns macro-time clock, with 3,000 parallel and
-1,500 perpendicular photons and a known four-bin width of 0.128 ns. Those
-generated values validate the workflow; they do not calibrate an instrument.
+The width in nanoseconds is the width in bins times the time step **dt**, which is read from the file header unless
+*Manual time step* overrides it. A width in nanoseconds is therefore only as good as that time step: the same 113
+bins of the BH SPC-132 example in the [workflow](../guides/89_microtime_histogram.md) are 0.372 ns at the
+header's 3.296 ps and 2.825 ns at a manual 25 ps.
 
 ## Histogram shifts
 
@@ -67,25 +59,18 @@ The shift pads with zeros and clips at the edge: counts are not wrapped. This di
 The polarized decay is written as one integer column, the VV bins followed by the VH bins, the layout the TCSPC reader for
 polarized decays takes. Without polarization resolution, the export contains one histogram instead.
 
-The native histogram app uses this same model in standalone and existing Qt
-hosts. Transfer passes the effective time step, G-factor and polarization to
-the TCSPC reader; the plain integer export carries no timing header. Preserve
-the calibration separately when loading that file outside the transfer route.
+The integer export carries no timing header. **Transfer to ChiSurf** instead hands the time step, G-factor and
+polarization to the TCSPC reader directly; a saved file loaded later needs those set again.
 
-## Synthetic workflow check
+## Synthetic demonstration
 
-The [histogram workflow](../guides/89_microtime_histogram.md) generates the
-same demonstration with `make_demo()`, returning its PTU path. Parameters and
-a byte checksum accompany the file under `demos/microtime_histogram` in the
-settings folder; valid caches are reused and `overwrite=True` regenerates them.
+**Generate synthetic demo** (`make_demo()` in {src}`chisurf/plugins/tttr/microtime_histogram/demo.py`) writes a PTU
+file with known clocks: 32 ps micro-time bins, a 25 ns macro-time clock, 3,000 parallel and 1,500 perpendicular photons
+and a four-bin (0.128 ns) prompt width. It is cached under `demos/microtime_histogram` in the settings folder;
+`overwrite=True` regenerates it.
 
 ## See also
 
 - Workflow: {doc}`/guides/89_microtime_histogram`.
 - Implementation: {src}`chisurf/plugins/tttr/microtime_histogram/gui/model.py`.
 - Key literature: {cite}`becker2005`, {cite}`lakowicz2006`.
-
-Host geometry is independent of histogram construction: restoring a saved
-window size keeps photon selections, channel definitions, physical timing and
-computed curves. The [workflow](../guides/89_microtime_histogram.md) describes
-the native initial and saved dimensions.

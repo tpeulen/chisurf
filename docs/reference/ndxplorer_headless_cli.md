@@ -27,13 +27,13 @@ needs to construct.
 ```bash
 # Filter a burst folder by parameter gates (AND across --select; range per param).
 ndxplorer filter --folder bursts/ \
-    --select "proximity_ratio:0.30-0.70" \
-    --select "n_photons:50-" \
+    --select "Number of Photons:50-" \
+    --select "Duration (ms):0.5-5" \
     --out bursts_filtered/
 # => {"input": …, "n_in": N, "n_out": M, "out": "bursts_filtered/"}
 
-# Or an arbitrary pandas expression:
-ndxplorer filter --folder bursts/ --query "n_photons > 50 and proximity_ratio < 0.7" \
+# Or a boolean expression over the columns (& | ~ are and, or, not):
+ndxplorer filter --folder bursts/ --query "(E > 0.2) & (S < 0.8)" \
     --out bursts_filtered/
 ```
 
@@ -52,10 +52,10 @@ csc burst-selection analyze m000.spc m001.spc \
 
 # 2) Burst Selection -> ndX filter
 csc ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite \
-    --select "proximity_ratio:0.30-0.70" --select "n_photons:50-" \
+    --select "Number of Photons:50-" \
     --to-mmfdb --sample-id <sample_id>
 #   => writes a FILTERED burst folder beside the same TTTR and registers it as a
-#      new burst selection (operation_type="burst_filter", parent=source).
+#      new burst selection (operation_type="burst_filtering", parent=source).
 ```
 
 `--from-mmfdb`/`--db` resolve against the configured database by default; pass the
@@ -98,11 +98,14 @@ csc ndxplorer image --from-mmfdb <tttr_or_image_artifact_id> --db mmfdb.sqlite \
 #      parented to the source artifact.
 ```
 
-## Canonical `--select` parameters
+## `--select` parameters
 
 `--select "<param>:<min>-<max>"` (open-ended `min-` or `-max` allowed). `param`
-matches ndX's column ids; the common burst columns are: `proximity_ratio`,
-`stoichiometry`, `lifetime`, `duration`, `count rate`, `n_photons`. Use `--query`
+matches a column name case-insensitively — the whole name, or the part before
+`|` of an annotated column — as it appears in the burst files, for example
+`Number of Photons`, `Duration (ms)`, `Count Rate (KHz)`, `Number of Photons (green)`.
+Columns derived by ndX's equations are available once computed. An unknown name
+is logged and the gate skipped, so check the reported `n_out`. Use `--query`
 for expressions over any loaded column.
 
 ## Round-trip parity

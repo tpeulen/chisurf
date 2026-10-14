@@ -335,15 +335,13 @@ The {doc}`workflow guide </guides/46_ndxplorer>` shows how to push these lines.
 
 ## A saved gate needs its input identity
 
-A selection mask has meaning relative to one source table and its row order.
+A selection mask has meaning only relative to one source table and its row order.
 For a burst table opened through ChiSurf's MMFDB picker, saving burst IDs also
-records a selection-mask artifact and an analysis operation linked to the
-original input artifact, using the picker's authenticated database session.
-The operation retains the gate and selected-row count without rewriting the
-source artifact. Replacing or merging the table invalidates that single-input
-identity; a path alone is not enough to infer database lineage. A save already
-in progress retains its original source and recorder when another table is opened.
-A write-back failure is reported separately from the successfully saved burst-ID files.
+records the mask as an artifact and the gate as an operation linked to the input
+artifact ({ref}`concept-measurement-database`); the source itself is not
+rewritten. Replacing or merging the table breaks that single-input identity, so
+no lineage is recorded for it — a file path alone does not establish one. A
+failed database write is reported separately; the burst-ID files are still saved.
 
 ## See also
 
@@ -355,8 +353,3 @@ A write-back failure is reported separately from the successfully saved burst-ID
 - {cite}`kalinin2010` — photon distribution analysis combined with lifetime, and what each adds.
 - {cite}`mcinnes2018` — the embedding used to lay out a many-dimensional burst set in two.
 - {cite}`campello2013` — the density-based clustering that finds populations without being told how many; the method is in {ref}`concept-density-clustering`.
-
-Viewer geometry is a presentation property: changing the owner window default
-or restoring a saved ChiSurf host size retains source tables, axis definitions,
-histograms and marginals. The [workflow](../guides/46_ndxplorer.md) distinguishes
-the declared default, explicit launcher override and existing host persistence.

@@ -214,7 +214,7 @@ gives 20 out of 20.
 
 ## See also
 
-- Tools in ChiSurf: **Particle Tracking** (`chisurf/plugins/microscopy/img_tracking/`) detects, links and fits the MSD, and writes the trajectories out per track.
+- Tools in ChiSurf: **Particle Tracking** (`chisurf/plugins/microscopy/img_tracking/`) detects, links and fits the MSD, and writes the trajectories out per track; **Spot Finder** (`chisurf/plugins/microscopy/spot_finder/`) runs the scale-space and intensity-threshold detectors.
 
 ## References
 
@@ -234,5 +234,3 @@ gives 20 out of 20.
   them, link them, check the recovered *identities* against the truth, and fit
   `D` with a bootstrapped error bar. It also shows how little crowding it takes
   to start merging tracks, and what fitting `alpha` costs.
-
-Tool: Spot Finder (`chisurf/plugins/microscopy/spot_finder/`).

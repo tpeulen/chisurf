@@ -82,7 +82,7 @@ A grid point is the deepest *point*, not the deepest *basin*: on a smooth
 objective the start you chose often descends further than any grid point does.
 Callers that cannot afford to be wrong about this run the local fit from both
 starts and keep the better result — which is what
-[nDXplorer's curve fit](../guides/46_ndxplorer.md) does behind its **Scan first**
+[ndX's curve fit](../guides/46_ndxplorer.md) does behind its **Scan first**
 box. Different in kind from the profile scan below, which maps *one* parameter's
 $\chi^2$ to get an interval, not to find where the minimum is.
 

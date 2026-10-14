@@ -86,81 +86,53 @@ def _grab_ndx_overlay_axes():
 
 
 def _grab_parameter_link_menu():
-    """Grab the parameter link menu (three levels) for the linking reference.
+    """Grab the parameter link menu of the emtk shell for the linking reference.
 
-    Submenus are separate popups, so each level is grabbed on its own and the
-    chain is composed side by side — a single grab of the top menu would show
-    only the fit list.
+    Two FCS fits (Kristine_with_error and the FCS demo, the general diffusion
+    model); the link menu of the first fit's N is opened from its parameter
+    table with *Link N to* and the second fit expanded, then the Analysis dock and
+    the open menu are cropped out of the 1500x950 shell.
     """
-    import numpy as np
-    from qtpy import QtGui
+    import io
+    import sys
 
-    import chisurf
-    from chisurf.core.api.fitting_client import install_fitting_client
-    from chisurf.core.data import DataCurve, DataCurveGroup
-    from chisurf.core.fitting.fit import FitGroup
-    from chisurf.core.models.description import tcspc_lifetime
-    from chisurf.gui.widgets.fitting.parameter_widgets import (
-        FittingParameterProxyController,
+    from PIL import Image
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
+    from screenshots.shell_driver import idle, shell
+
+    from chisurf.core.experiments.fcs.demo import DEMO, make_demo
+    from chisurf.emtk.model_sections import LinkMenu
+    from test.native_emtk.test_emtk_shell_fits import KRISTINE, MODEL, _add_fit, _load
+
+    driver, wait = shell(size=(1500, 950))
+    app = driver.app
+    _load(driver, app, KRISTINE)
+    first = _add_fit(driver, app)
+    _load(driver, app, make_demo(), DEMO["experiment"], DEMO["reader"])
+    result = app.data.session.api.add_fit(
+        [len(app.data.datasets.datasets) - 1], model_name=MODEL
     )
-    from chisurf.server.services.fits import get_fit_info, list_fits
-    from chisurf.server.session import SessionState
-
-    def make(name, n_curves=1):
-        x = np.linspace(0.1, 25, 128)
-        y = 1000.0 * np.exp(-x / 4.0) + 1.0
-        curves = [
-            DataCurve(x=x, y=y, ey=np.sqrt(y), name=f"{name}-{i}") for i in range(n_curves)
-        ]
-        return FitGroup(
-            data=DataCurveGroup(curves, name=name), model_class=tcspc_lifetime
-        )
-
-    fits = [make("Donor-only"), make("FRET-global", n_curves=2)]
-    state = SessionState(fits=fits)
-
-    class _Direct:
-        def call(self, method, params):
-            if method == "fit.list":
-                return list_fits(state)
-            return get_fit_info(state, **params)
-
-    install_fitting_client(_Direct())
-    chisurf.fits = fits
-    try:
-        parameter = fits[0].model.parameters_all_dict["sc"]
-        menu = FittingParameterProxyController(parameter).build_link_menu()
-        menu.setTitle("Link sc to")
-        fit_menu = next(a.menu() for a in menu.actions() if a.menu() is not None)
-        group_menu = next(
-            a.menu() for a in fit_menu.actions()
-            if a.menu() is not None and a.text() == "Convolve"
-        )
-
-        app = QApplication.instance()
-        shots = []
-        for popup in (menu, fit_menu, group_menu):
-            popup.show()
-            app.processEvents()
-            popup.resize(popup.sizeHint())
-            app.processEvents()
-            shots.append(popup.grab())
-
-        gap = 18
-        canvas = QtGui.QPixmap(
-            sum(s.width() for s in shots) + gap * (len(shots) - 1),
-            max(s.height() for s in shots),
-        )
-        canvas.fill(QtGui.QColor("#f4f4f4"))
-        painter = QtGui.QPainter(canvas)
-        x_offset = 0
-        for shot in shots:
-            painter.drawPixmap(x_offset, 0, shot)
-            x_offset += shot.width() + gap
-        painter.end()
-        canvas.save(str(FIG / "parameter_link_menu.png"))
-    finally:
-        install_fitting_client(None)
+    wait(lambda: idle(app) and result.get("uid") in app.data.windows)
+    app.data.show_fit(first)
+    wait(lambda: idle(app) and app.data.analysis.info)
+    fits: list = []
+    app.data.read_fits_for_links(fits.extend)
+    wait(lambda: idle(app) and fits)
+    record = next(p for p in app.data.analysis.parameters if p["name"] == "N")
+    views = app.data.editor.sections
+    menu = LinkMenu(views, record, fits, (150.0, 812.0))
+    views.dialogs.append(menu)
+    link_to = menu.panel.entries[0]
+    link_to.open = True
+    link_to.entries[1].open = True
+    driver.frame(4)
+    driver.hover((1400.0, 900.0))
+    driver.frame(3)
+    image = Image.open(io.BytesIO(driver.screenshot()))
+    image.crop((0, 520, 1000, 950)).save(FIG / "parameter_link_menu.png")
+    app.close()
+    print("wrote parameter_link_menu.png")
 
 
 def _grab_burst_browser():

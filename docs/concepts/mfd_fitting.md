@@ -154,9 +154,9 @@ This distribution enters the model **twice, in two different ways**, and swappin
 them is a real error:
 
 * the excited-state lifetime is short compared with linker sampling, so the decay is
-  a genuine *lifetime distribution* — `I(t) = ∫ dR\, p(R)\, e^{-t/\tau(R)}`;
+  a genuine *lifetime distribution* — $I(t) = \int \mathrm{d}R\, p(R)\, e^{-t/\tau(R)}$;
 * a burst is long compared with linker sampling, so the burst's efficiency is the
-  `p(R)`-average — `E = ∫ dR\, p(R)\, E(R)`.
+  $p(R)$-average — $E = \int \mathrm{d}R\, p(R)\, E(R)$.
 
 Averaging the efficiency first and quenching once gives the wrong decay shape;
 averaging the decay to a single lifetime gives the wrong efficiency. Together they
@@ -308,7 +308,8 @@ sources for as long as they existed, and the sources agreed throughout.
   because they share the model. The donor-photon weighting above was wrong in both
   for as long as it existed, and the two agreed with each other throughout. What
   distinguishes a shared modelling error from a correct model is an *independent
-  forward model* — see below — or known ground truth.
+  forward model* or known ground truth.
+
 ## The instrument response, and why a Gaussian is the right shape
 
 The response comes from the measurement's own **non-burst** photons — so no
@@ -332,7 +333,7 @@ optimum for `tau_d0` was **1.57 ns**, about half of anything a dye on DNA has.
 The fix is to fit a **Gaussian** to the prompt. A Gaussian cannot represent a slow
 tail, which is exactly the property wanted: least squares locks it onto the sharp
 scatter peak and leaves the fluorescence behind, while still following the measured
-position and width. Two details matter:
+position and width. Three details matter:
 
 * the width is taken from the **rising** edge only, mirrored. The falling side of a
   non-burst histogram is the decay, not the instrument, so a two-sided half-max
@@ -400,14 +401,8 @@ lost, are recorded in the project's design notes.
   from; {cite}`kalinin2010` exchange during a burst; {cite}`kalinin2012` the
   linker-broadened distance distribution and its use in structural modelling.
 
-### Preparation display and window geometry
-
-The native preparation tool declares a 1100 × 720 logical-pixel host size and
-restores saved geometry. Tables and the scrolling report display the local
-preparation API's diagnostics without changing burst counts, detector stream
-definitions or verification thresholds. The [preparation guide](../guides/85_mfd_prepare.md)
-shows measured BH fixture results and distinguishes this validation step from
-fitting an MFD model. The report region uses available viewport space rather
-than extending a forced minimum height below a narrow window.
+* Guide: [Preparing a burst folder for MFD fitting](../guides/85_mfd_prepare.md) —
+  the validation step before a fit; it reports diagnostics and changes no burst
+  counts, detector definitions or thresholds.
 
 Tool: MFD Prepare (`chisurf/plugins/burst/mfd_prepare/`).

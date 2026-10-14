@@ -10,9 +10,9 @@ anchor: concept-pda3c
 # Three-colour PDA (PDA3c)
 
 :::{note}
-Formerly **tcPDA**, and the packages were formerly `pda3c`. The name is now
-`PDA3c`, pairing with `c2PDA` for the two-colour method, so the colour count
-reads the same way in every spelling — module, class and prose.
+Formerly **tcPDA**. The name is now `PDA3c`, pairing with `PDA2c` for the
+two-colour method, so the colour count reads the same way in every spelling —
+module (`pda3c`), class (`Pda3cModel`) and prose.
 :::
 
 Two-colour FRET measures one distance per molecule. Label three sites and you
@@ -265,7 +265,8 @@ parametric bootstrap.
 
 - {cite}`gopich2010` — the multistate time-averaging approximation used for dynamics.
 - {cite}`antonik2006` — two-colour PDA, the foundation.
-- {cite}`kalinin2008` — dynamic PDA: exchange during a burst, and how the histogram reports it.
+- {cite}`kalinin2008` — several molecular states in one PDA fit.
+- {cite}`kalinin2010` — dynamic PDA: exchange during a burst, and how the histogram reports it.
 - {cite}`barth2019` — three-colour PDA, the extension this page describes.
 
 ## See also

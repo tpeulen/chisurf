@@ -614,11 +614,11 @@
     "D": {
       "aliases": [],
       "ambiguous": true,
-      "description": "Model parameter D used in TCSPC decay models. Refer to the specific model documentation for the detailed physical meaning.",
+      "description": "Translational diffusion coefficient of the diffusing species (µm²/s).",
       "flrcif_item_id": "_flr_fit_parameter.D",
       "keywords": [
-        "TCSPC",
-        "lifetime"
+        "FCS",
+        "diffusion"
       ],
       "label_texts": [],
       "sources": [
@@ -2022,7 +2022,7 @@
         "abt1"
       ],
       "ambiguous": false,
-      "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
+      "description": "Time constant of an individual antibunching / anticorrelation component.",
       "flrcif_item_id": "_flr_fit_parameter.fcs_abt1",
       "keywords": [
         "FCS",
@@ -2049,7 +2049,7 @@
         "abt2"
       ],
       "ambiguous": false,
-      "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
+      "description": "Time constant of an individual antibunching / anticorrelation component.",
       "flrcif_item_id": "_flr_fit_parameter.fcs_abt2",
       "keywords": [
         "FCS",
@@ -2076,7 +2076,7 @@
         "abt3"
       ],
       "ambiguous": false,
-      "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
+      "description": "Time constant of an individual antibunching / anticorrelation component.",
       "flrcif_item_id": "_flr_fit_parameter.fcs_abt3",
       "keywords": [
         "FCS",
@@ -2103,7 +2103,7 @@
         "abt4"
       ],
       "ambiguous": false,
-      "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
+      "description": "Time constant of an individual antibunching / anticorrelation component.",
       "flrcif_item_id": "_flr_fit_parameter.fcs_abt4",
       "keywords": [
         "FCS",
@@ -2130,7 +2130,7 @@
         "abt5"
       ],
       "ambiguous": false,
-      "description": "Amplitude of an individual antibunching / anisotropy / anticorrelation component (dimensionless).",
+      "description": "Time constant of an individual antibunching / anticorrelation component.",
       "flrcif_item_id": "_flr_fit_parameter.fcs_abt5",
       "keywords": [
         "FCS",
@@ -4473,7 +4473,7 @@
         "Rdye"
       ],
       "ambiguous": false,
-      "description": "Characteristic interaction radius or distance parameter for the dye\u00113quencher system.",
+      "description": "Characteristic interaction radius or distance parameter for the dye–quencher system.",
       "flrcif_item_id": "_flr_fit_parameter.tcspc_Rdye",
       "keywords": [
         "TCSPC",

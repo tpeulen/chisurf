@@ -47,5 +47,19 @@
     "reviewer_kind": "ai",
     "sha256": "28f8b01da204e7deacb75702e63af5cfe1c1e1ba4be207ad73178ead40a29e8b",
     "status": "ai-reviewed"
+  },
+  "photon_counting.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ceae2f80a7366943a686d4f7285a44a98fcd6d5ba43c01bc7791ec227a9d47b2",
+    "status": "ai-reviewed"
+  },
+  "photon_statistics.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "c6bd1952ae49b3e3290f38bacba2bd3a561981656f0a684095f3eced30dee1d7",
+    "status": "ai-reviewed"
   }
 }

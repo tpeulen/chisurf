@@ -223,11 +223,123 @@
     "sha256": "1a907ae80b59f6c8cd90671d13552cbf49744b5518ff435752a1aa0140b6b423",
     "status": "ai-reviewed"
   },
+  "maximum_entropy.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "df73e1b5743712d4cba0ad886c2e34c5d136772a64315458fe1364c865ed4eb2",
+    "status": "ai-reviewed"
+  },
+  "measurement_database.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "102b345dc791d815a6183428d07a58f6dbed6b632c8bb38f3ed48dfcf783e20c",
+    "status": "ai-reviewed"
+  },
+  "mfd_fitting.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ac14ed5c0ec206d9e6180f5bacb32ee3e6d3bef6eb41f253fc92c9ce3f5cf4c8",
+    "status": "ai-reviewed"
+  },
+  "microtime_histogram.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4ec1aedb7dcf6a9177331fd6c647f7cd2f7c680c3b81ae32a1f984c376317d9b",
+    "status": "ai-reviewed"
+  },
+  "microtime_shift.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "0255b53704da2d384ebadaee2802559eb3e16277dd9526f31de635d4f4fc749d",
+    "status": "ai-reviewed"
+  },
+  "molecular_surfaces.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1d1b1e75d3e6bfbe24a15300761d055e23d41e2d751fc963fe74c20a186eea18",
+    "status": "ai-reviewed"
+  },
+  "molecular_viewer.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "ba0dc204f38a56772b9fd0e8773e7611900b23d6ec19f250498e6bd6123f04cf",
+    "status": "ai-reviewed"
+  },
+  "multidimensional_exploration.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7e6f12e19c4f89853dd08dcc5af0c19522b3fdbd19b9b98a6eab5fd384e8902e",
+    "status": "ai-reviewed"
+  },
+  "number_and_brightness.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "4d19b5fca57d946742fca8b185bc1bc505a39dbb069547a96494d9732b600391",
+    "status": "ai-reviewed"
+  },
+  "pair_correlation.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e050a147af00690b2fe720bef4f28aa60246bdae1907fe68274f43a3c45c3b0e",
+    "status": "ai-reviewed"
+  },
+  "parameter_uncertainty.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "1fc5a6e232dbb3a5c255182ad5e10ae1582b70b0bec52d13ad1b24b75d45bb87",
+    "status": "ai-reviewed"
+  },
+  "particle_tracking.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "07e907dca94e247934aa7053391dd70369aff450dc6dcca2bcb3ca44c5ce8524",
+    "status": "ai-reviewed"
+  },
   "pch_fida.md": {
     "date": "2026-10-10",
     "reviewer": "agent",
     "reviewer_kind": "ai",
     "sha256": "30e5ab5975f6ae2e42c7239e041ffcb707619ebdea1692be737cfbdb45997d86",
+    "status": "ai-reviewed"
+  },
+  "pda2c.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "44b97b5a365b1047b871ec3a08d5f7078e967a205e7dc27a6a45f999bdc2b6ac",
+    "status": "ai-reviewed"
+  },
+  "pda3c.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "52599a6a239e0bc1fd9a1f57e07e0315f33c0128c8e7581b8076d030f0b9cdab",
+    "status": "ai-reviewed"
+  },
+  "photon_by_photon_kinetics.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "e77d213c2b3b3dabf5c73ef002afeb411e367b14d6e4f084c0def5dcdf3cecb9",
+    "status": "ai-reviewed"
+  },
+  "photon_container.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "5dae8dbd97f27cf80855fd5bd938586ad3a69519d88547c106a9c4e31b82a677",
     "status": "ai-reviewed"
   },
   "photophysics_simulation.md": {

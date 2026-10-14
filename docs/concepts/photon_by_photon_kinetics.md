@@ -34,21 +34,6 @@ single intermediate state in a histogram. Broadening beyond shot noise hints at
 it, and that is the basis of {doc}`BVA <bva>` and {doc}`2CDE <burst_2cde>`, but
 neither returns a rate constant.
 
-A kinetic fit depends on the selected photon identities, their colour
-assignment and the physical arrival-time differences. A macro-time override
-changes the rates’ time scale. Window dimensions change how controls and
-results are displayed; they do not set a time bin or change the photon-level
-likelihood. Keep the complete input and model settings with exported results
-when comparing analyses.
-
-Decoded states belong to selected photon observations. Preserve each
-observation’s measurement and raw photon index when joining a state path to
-other analyses; compacted fit order does not identify a raw-stream row. Burst
-row context distinguishes an observation reused by overlapping intervals.
-Simulation indices identify simulated observations and must remain separate
-from measured-file identity. These identity columns do not change the likelihood
-or the inferred state path.
-
 ## The likelihood
 
 Write the state kinetics as a rate matrix $K$, with $K_{ji}$ the $i \to j$ rate
@@ -229,6 +214,11 @@ Two failure modes deserve naming:
 * A **Viterbi state path** is a point estimate with no error bar. It assigns a
   definite state to every photon, including in bursts containing no evidence for
   any transition. It illustrates a fitted model; it does not measure one.
+* An exported state path is indexed by **photon**: each row carries its
+  measurement and raw photon index (and its burst, where intervals overlap).
+  Join it to other analyses on those columns — the row order of the fit is
+  compacted to the selected photons and does not identify a row of the raw
+  stream.
 
 ## See also
 

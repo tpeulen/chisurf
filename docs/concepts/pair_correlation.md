@@ -201,12 +201,13 @@ the trend.
 | peak time flat, then a step | two compartments with different transport |
 | arrows everywhere on a still sample | the quality threshold is too low; peak jitter fitted to a line is always *some* velocity |
 
-## Synthetic workflow check
+## Synthetic demonstration
 
-The Flow demo supplies known synthetic velocity truth. `make_demo()` returns
-a PTU with a parameter/truth sidecar; the [workflow](../guides/55_pair_correlation.md)
-compares the recovered profile with its input. The current default peak estimate
-is about 0.76845 of truth because of shear within a tile; it is not a calibration.
+The Flow Maps **Demo** (`make_demo()` in {src}`chisurf/plugins/microscopy/img_flow/demo.py`)
+simulates a flow of known velocity and writes the truth beside the photon file,
+so the [workflow](../guides/55_pair_correlation.md) can compare the recovered
+field against it. With the default tile size the recovered speed is about 0.77 of
+the truth — the in-tile shear loss described above, not a calibration factor.
 
 ## See also
 
