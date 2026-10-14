@@ -8,6 +8,7 @@ import copy
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -34,7 +35,7 @@ SHELL_EXECUTION_LOCK = threading.Lock()
 #: the next cells off screen).
 MAX_OUTPUT_HEIGHT = 360.0
 
-_ANSI = __import__("re").compile(r"\x1b\[[0-9;?]*[A-Za-z]")
+_ANSI = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def strip_ansi(text: str) -> str:
