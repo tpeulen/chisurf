@@ -1,6 +1,9 @@
-# Image-correlation (RICS/STICS/TICS/iMSD) equations over the carpet coordinates
-# xi (pixel lag), psi (line lag) and tau (lag time, s), which the ICS reader
-# supplies with the data. Transcribed from the former ImageCorrelationModel and
+# Image-correlation equations over the carpet coordinates xi (pixel lag),
+# psi (line lag) and tau (lag time, s), which the ICS reader supplies with the
+# data. RICS, STICS, TICS and iMSD are distinct methods (different input, clock
+# and estimator; see docs/concepts/image_correlation.md); these entries fit the
+# correlation function the reader produced, with flow (v_x, v_y) and anomalous
+# diffusion (alpha) as optional released terms. Transcribed from the former ImageCorrelationModel and
 # IcsGaussian2DModel; every entry competes in model search on BIC.
 ---
 Image correlation (3D):

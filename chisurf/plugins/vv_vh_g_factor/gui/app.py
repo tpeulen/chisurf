@@ -363,7 +363,7 @@ class GFactorApp(TourTarget, ImApp):
                     "label": "Run batch",
                     "key": "run",
                     "enabled": not busy and bool(m.batch_files) and m.g_factor is not None,
-                    "tip": "Compute the corrected steady anisotropy of every queued file with the current calibration.",
+                    "tip": "Compute r(inf), the mean corrected r(t) over the tail region, of every queued file with the current calibration.",
                 },
                 {
                     "label": "Save table...",
@@ -386,7 +386,7 @@ class GFactorApp(TourTarget, ImApp):
         if not m.batch_files:
             im.text_wrapped(
                 tr(
-                    "No files queued. Add VV/VH decays to evaluate their steady anisotropy with this calibration."
+                    "No files queued. Add VV/VH decays to evaluate their r(inf) over the tail region with this calibration."
                 )
             )
         self.form("batch", m)

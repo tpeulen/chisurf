@@ -30,8 +30,11 @@ molecules take to get from one point to the other — and its maximum is the
 typical crossing time.
 
 For the workflow, see the {doc}`pair-correlation guide </guides/55_pair_correlation>`.
-For the carpet this is a reading of, {ref}`concept-image-correlation`; for the
-single-point analogue, {ref}`concept-fcs-correlation`.
+Pair correlation is a method of its own, not a reading of the estimators in
+{ref}`concept-image-correlation`: RICS and STICS correlate over space, TICS
+correlates each pixel with itself in time, and pCF correlates two positions a
+distance $\delta$ apart in time. For the single-point analogue, see
+{ref}`concept-fcs-correlation`.
 
 ## What the peak time means
 

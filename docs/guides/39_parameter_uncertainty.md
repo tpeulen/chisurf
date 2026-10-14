@@ -88,6 +88,25 @@ under a different prior without resampling.
 
 Use `n_runs` of at least 2. A single run cannot be compared with anything.
 
+**Progress from the native sampler.** A BFF-backed fit can be sampled through
+`chisurf.core.fitting.sampler_bff.sample_via_graph`, which reports progress once
+per segment:
+
+```python
+from chisurf.core.fitting.sampler_bff import sample_via_graph
+
+def progress(done, total):          # counters only: cheap
+    print(f"{done}/{total}")
+
+result = sample_via_graph(fit, fit.model, "metropolis", steps=600, seed=31, callback=progress)
+```
+
+A callback that accepts a `result` keyword — `def progress(done, total,
+result=None)` — also receives the partial result dict (including
+`parameter_values`) for live plots or intermediate saving; building it costs
+more than counters. Exceptions raised inside the callback propagate. The final
+return value is the complete result either way.
+
 ## 4. Read the diagnostics before the answer
 
 ```python

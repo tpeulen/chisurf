@@ -20,6 +20,13 @@
     "sha256": "5542d6b85f0eb847f7f771c1c25d07869bf3ca0eaf590f87e2ed456dadd053d9",
     "status": "ai-reviewed"
   },
+  "39_parameter_uncertainty.md": {
+    "date": "2026-10-14",
+    "reviewer": "agent",
+    "reviewer_kind": "ai",
+    "sha256": "7e5cb82fd5a6180b6f90f496498567acd15f97889ed737fb1ac3c00184ba9cdb",
+    "status": "ai-reviewed"
+  },
   "70_ask_the_documentation.md": {
     "date": "2026-10-14",
     "reviewer": "agent",
@@ -73,7 +80,7 @@
     "date": "2026-10-14",
     "reviewer": "agent",
     "reviewer_kind": "ai",
-    "sha256": "b17a4efddbc3634dfddcc2832a33a6b6247f87cde75db927e19cbded6ab28639",
+    "sha256": "1c289e6b6d0b7292a5095735f8af9fcc4b96cca0e146cdc481c32bfd826ad833",
     "status": "ai-reviewed"
   },
   "79_hydropro.md": {
