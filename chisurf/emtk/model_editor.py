@@ -630,7 +630,7 @@ class ModelEditor:
 
     def cell_editable(self, record: Any, key: str) -> bool:
         record = record or {}
-        return not self.docks.busy and not record.get("output") and not record.get("linked")
+        return not record.get("output") and not record.get("linked")
 
     def edit_cell(self, record: Any, key: str, value: Any) -> None:
         """A cell of a parameter table was changed: send it to the server by the parameter's uid."""

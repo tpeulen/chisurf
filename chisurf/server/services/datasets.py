@@ -630,6 +630,9 @@ def add_dataset(
             ds = _restore_cached_dataset(prepared, _live_identities(state))
             if prepared["kind"] == "legacy" and name:
                 ds.name = str(name)
+            from chisurf.core.data import ensure_unique_dataset_uids
+
+            ensure_unique_dataset_uids(ds, state.datasets)
             state.add_dataset(ds)
             index = len(state.datasets) - 1
             if event_bus is not None and not _from_controller:

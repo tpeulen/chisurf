@@ -634,6 +634,9 @@ def add_dataset(
         except Exception:
             pass
 
+        from chisurf.core.data import ensure_unique_dataset_uids
+
+        ensure_unique_dataset_uids(dataset_group, getattr(cs, "imported_datasets", None))
         if is_experiment_group:
             cs.imported_datasets.append(dataset_group)
         elif len(dataset_group) == 1:

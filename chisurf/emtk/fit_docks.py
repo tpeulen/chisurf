@@ -567,6 +567,7 @@ class DataDocks:
         self._reader_errors: dict[int, str] = {}
         self._starting = BackgroundBuild(wake=self.request_frame)
         self._session_factory = session_factory
+        self._job_queue: list[tuple[str, Callable[[], Any], Any, Any]] = []
         docks = shell.docks
         docks.add_window(READ_KEY, mark("Read data"), self._draw_read, dock="left", closable=False)
         docks.add_window(
@@ -669,6 +670,9 @@ class DataDocks:
                 job, self.job = self.job, None
                 result, error = results.get("call", (None, None))
                 self._finished(job, result, error)
+                if self._job_queue and self.session is not None and self.job is None:
+                    next_label, next_call, next_after, next_failed = self._job_queue.pop(0)
+                    self._start(next_label, next_call, next_after, next_failed)
         if self.session is not None:
             self.session.events.drain()
         if self._dirty and self.session is not None and self.job is None:
@@ -712,12 +716,13 @@ class DataDocks:
         self._dirty |= {"current"}
 
     def _start(self, label: str, call: Callable[[], Any], after=None, failed=None) -> bool:
-        """Run *call* on the worker; one at a time."""
-        if self.session is None or self.busy:
-            self.status = (
-                tr("Busy: {label}").format(label=self.job.label) if self.job else self.status
-            )
+        """Run *call* on the worker; one at a time, queueing if already busy."""
+        if self.session is None:
             return False
+        if self.busy:
+            self._job_queue.append((label, call, after, failed))
+            self.status = label
+            return True
         job = _Job(label, after, BackgroundBuild(wake=self.request_frame), failed)
         self.job = job
         self.status = label

@@ -410,6 +410,9 @@ class ChiSurfAPI:
                     )
             if dataset is None:
                 return service_error("reader returned no dataset", error_code=INVALID_INPUT)
+            from chisurf.core.data import ensure_unique_dataset_uids
+
+            ensure_unique_dataset_uids(dataset, self._state.datasets)
             self._state.add_dataset(dataset)
             return {
                 "ok": True,

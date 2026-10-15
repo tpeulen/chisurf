@@ -7,6 +7,12 @@
        "sections": [
         {"type": "table", "source": "log_rows", "row_key": "index", "muted_key": "muted", "expand": true, "fit_columns": true,
          "description": "The log, newest last. Rows the filter does not match are dimmed, or hidden with Hide.",
+         "context_menu": [
+           {"label": "Copy message", "call": "copy_log_message", "description": "Copy the message text of this row to the clipboard."},
+           {"label": "Copy row", "call": "copy_log_row", "description": "Copy this log row to the clipboard."},
+           {"separator": true},
+           {"label": "Copy all visible", "call": "copy_all_logs", "description": "Copy all visible log lines to the clipboard."}
+         ],
          "columns": [
            {"key": "time", "label": "Time", "description": "When the message was written."},
            {"key": "level", "label": "Level", "description": "How serious the message is.",
@@ -23,6 +29,7 @@
           {"type": "toggle", "attr": "log_hide", "label": "Hide",
            "description": "Hide the messages the filter does not match instead of dimming them."},
           {"type": "button_row", "buttons": [
+            {"label": "Copy", "action": "copy_all_logs", "description": "Copy all visible log messages to the clipboard."},
             {"label": "Clear", "role": "danger", "action": "clear_log", "description": "Forget the messages shown so far."}
           ]}
         ]}
@@ -32,6 +39,7 @@
        "sections": [
         {"type": "row", "n_col": 2, "sections": [
           {"type": "button_row", "buttons": [
+            {"label": "Copy", "action": "copy_all_rpc", "description": "Copy all visible calls to the clipboard."},
             {"label": "Clear", "role": "danger", "action": "clear_rpc", "description": "Forget the calls shown so far."}
           ]},
           {"type": "toggle", "attr": "rpc_paused", "label": "Pause",
@@ -40,6 +48,12 @@
         {"type": "table", "source": "rpc_rows", "row_key": "index", "expand": true,
          "fit_columns": true,
          "description": "The calls, newest last.",
+         "context_menu": [
+           {"label": "Copy call", "call": "copy_rpc_row", "description": "Copy this server call to the clipboard."},
+           {"label": "Copy parameters", "call": "copy_rpc_params", "description": "Copy the parameters of this call to the clipboard."},
+           {"separator": true},
+           {"label": "Copy all visible", "call": "copy_all_rpc", "description": "Copy all visible server calls to the clipboard."}
+         ],
          "columns": [
            {"key": "time", "label": "Time", "description": "When the call was answered."},
            {"key": "origin", "label": "Origin", "description": "The service family that asked."},

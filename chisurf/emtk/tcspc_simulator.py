@@ -20,6 +20,7 @@ class SimulatorSettingsModel:
         self.reader = reader
         self.context = context
         self.preview = None
+        self._preview_added = False
         self.irf_candidate = ""
         self.status = ""
 
@@ -29,9 +30,14 @@ class SimulatorSettingsModel:
 
     def __setattr__(self, name, value):
         """Commit ordinary settings to the owner and invalidate outdated previews."""
-        if name in {"reader", "context", "preview", "irf_candidate", "status"} or name.startswith(
-            "_"
-        ):
+        if name in {
+            "reader",
+            "context",
+            "preview",
+            "_preview_added",
+            "irf_candidate",
+            "status",
+        } or name.startswith("_"):
             object.__setattr__(self, name, value)
         elif isinstance(getattr(type(self), name, None), property):
             object.__setattr__(self, name, value)
@@ -41,6 +47,7 @@ class SimulatorSettingsModel:
                 if name == "polarization":
                     self.reader.is_vv_vh = str(value) != "vm"
                 self.preview = None
+                self._preview_added = False
                 self.status = ""
             except ValueError as exc:
                 self.status = str(exc)
@@ -59,6 +66,7 @@ class SimulatorSettingsModel:
                 raise ValueError(tr("The random seed must be nonnegative."))
             self.reader.seed = seed
             self.preview = None
+            self._preview_added = False
             self.status = ""
         except ValueError as exc:
             self.status = str(exc)
@@ -135,12 +143,14 @@ class SimulatorSettingsModel:
             x=x, y=y, name=options[self.irf_candidate]
         )
         self.preview = None
+        self._preview_added = False
         self.status = ""
 
     def unload_irf(self):
         """Remove the measured IRF and leave the Gaussian parameters unchanged."""
         self.reader.instrument_response_function = None
         self.preview = None
+        self._preview_added = False
         self.status = ""
 
     def load_lifetime_spectrum_file(self, filename):
@@ -148,6 +158,7 @@ class SimulatorSettingsModel:
         try:
             self.reader.load_lifetime_spectrum_file(filename)
             self.preview = None
+            self._preview_added = False
             self.status = ""
         except (OSError, ValueError) as exc:
             self.status = str(exc)
@@ -155,13 +166,16 @@ class SimulatorSettingsModel:
     def simulate_preview(self):
         """Cache the actual reader result, preserving its noise, seed and group metadata."""
         self.preview = self.reader.read()
+        self._preview_added = False
         self.status = tr("Simulation ready.")
 
     def add_preview(self):
         """Submit the displayed group without repeating the scientific computation."""
-        if self.preview is None:
+        if self.preview is None or self._preview_added:
             self.simulate_preview()
-        result = self.context.load_dataset(experiment_reader=self.reader, dataset=self.preview)
+        to_load = self.preview
+        self._preview_added = True
+        result = self.context.load_dataset(experiment_reader=self.reader, dataset=to_load)
         self.status = tr("Simulation added.") if result.get("ok") else str(result.get("error", ""))
 
     def register_settings_sections(self, form):

@@ -306,6 +306,65 @@ class ShellLog:
             clear()
         self.details = ""
 
+    def copy_log_message(self, record: Any = None) -> None:
+        """Copy the message text of *record* to the clipboard."""
+        if isinstance(record, dict):
+            from emtk import clipboard
+
+            clipboard.copy(str(record.get("message", "")))
+
+    def copy_log_row(self, record: Any = None) -> None:
+        """Copy the formatted log row [time] [level] origin: message to the clipboard."""
+        if isinstance(record, dict):
+            from emtk import clipboard
+
+            clipboard.copy(
+                f"[{record.get('time', '')}] [{record.get('level', '')}] "
+                f"{record.get('origin', '')}: {record.get('message', '')}"
+            )
+
+    def copy_all_logs(self, record: Any = None) -> None:
+        """Copy all visible (filtered) log lines to the clipboard."""
+        from emtk import clipboard
+
+        rows = self.log_rows()
+        lines = [
+            f"[{r.get('time', '')}] [{r.get('level', '')}] {r.get('origin', '')}: {r.get('message', '')}"
+            for r in rows
+            if not r.get("muted")
+        ]
+        clipboard.copy("\n".join(lines))
+
+    def copy_rpc_row(self, record: Any = None) -> None:
+        """Copy the formatted RPC row to the clipboard."""
+        if isinstance(record, dict):
+            from emtk import clipboard
+
+            clipboard.copy(
+                f"[{record.get('time', '')}] {record.get('origin', '')} "
+                f"{record.get('target', '')} ({record.get('status', '')}, "
+                f"{record.get('duration', '')}) {record.get('params', '')}"
+            )
+
+    def copy_rpc_params(self, record: Any = None) -> None:
+        """Copy the parameters of the RPC call to the clipboard."""
+        if isinstance(record, dict):
+            from emtk import clipboard
+
+            clipboard.copy(str(record.get("params", "")))
+
+    def copy_all_rpc(self, record: Any = None) -> None:
+        """Copy all visible RPC calls to the clipboard."""
+        from emtk import clipboard
+
+        rows = self.rpc_rows()
+        lines = [
+            f"[{r.get('time', '')}] {r.get('origin', '')} {r.get('target', '')} "
+            f"({r.get('status', '')}, {r.get('duration', '')}) {r.get('params', '')}"
+            for r in rows
+        ]
+        clipboard.copy("\n".join(lines))
+
     def enabled(self, name: str) -> bool:
         if name == "clear_history":
             return bool(getattr(self.project, "history_ready", False)) and not getattr(

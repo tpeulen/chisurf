@@ -7,6 +7,7 @@
 - emtk shell: delegate is_visible to workspace_docks in ShellDockManager so fit window close queries evaluate correctly; implement _sync_order in ShellDockManager to place workspace dock windows at center region depth beneath floating shell windows (ensuring floating tools/log docks receive inputs above workspace center); verified with all 183 shell tests passing in test_emtk_shell*.py.
 - EMTK dock tabs and dialog windows: added close buttons (×) to each closable dock tab and removed the far-right region-level close button for better UX; set DialogWindow.HEADER_H to 16.0px matching DockManager title height uniformly across EMTK and ChiSurf.
 - Fit window Code button: moved Code toggle button into window title bar to the left of minimize and close buttons via EMTK DockWindow.title_buttons, removing the redundant vertical toolbar strip and reclaiming vertical space for fit plots and editors.
+- Fix simulated TCSPC duplicate scientific UID on repeated adds, queue parameter edits in DataDocks to prevent sluggish drops, improve DataTable cell editing and Enter commit, and add clipboard copy to log dock
 
 ## 2026-10-14
 
