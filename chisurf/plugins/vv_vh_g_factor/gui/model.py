@@ -356,6 +356,8 @@ class GFactorModel:
         if self.manual_l:
             rows.append({"quantity": "Manual l1", "value": f"{float(self.l1):.6g}"})
             rows.append({"quantity": "Manual l2", "value": f"{float(self.l2):.6g}"})
+        rows.append({"quantity": "Applied l1", "value": f"{float(self.l1):.6g}"})
+        rows.append({"quantity": "Applied l2", "value": f"{float(self.l2):.6g}"})
         return rows
 
     def batch_rows(self) -> list[dict[str, object]]:
@@ -535,6 +537,10 @@ class GFactorModel:
         )
         if self.manual_rs:
             expected = self.rs_override
+        elif np.isfinite(expected):
+            self.rs_override = float(expected)
+        if not self.manual_tau and np.isfinite(tau_est):
+            self.tau_override = float(tau_est)
         l = (
             client.solve_linked_l(
                 sp=float(p.sum()), ss=float(s.sum()), g_factor=g, r_target=expected
@@ -553,8 +559,18 @@ class GFactorModel:
                 f"Linked mixing estimate {l:g} is outside the physical [0, 0.5] range; not applied."
             )
             l = np.nan
-        l1_val = float(self.l1) if (self.manual_l or (np.isfinite(l) and 0 <= l <= 0.5)) else None
-        l2_val = float(self.l2) if (self.manual_l or (np.isfinite(l) and 0 <= l <= 0.5)) else None
+        else:
+            self.l_override = float(l)
+            self.l1_override = float(l)
+            self.l2_override = float(l)
+
+        if self.manual_l:
+            l1_val = float(self.l1_override)
+            l2_val = float(self.l2_override if not self.link_l1_l2 else self.l1_override)
+        else:
+            l1_val = float(l) if (np.isfinite(l) and 0 <= l <= 0.5) else None
+            l2_val = float(l) if (np.isfinite(l) and 0 <= l <= 0.5) else None
+
         self.fp_result = {
             "tau_estimate_ns": float(tau_est),
             "tau_used_ns": float(tau),
@@ -888,15 +904,6 @@ class GFactorModel:
         for name, value in state.items():
             if name in self.export_settings():
                 setattr(self, name, deepcopy(value))
-        # Support old vv_vh_anisotropy state format
-        if "loaded_file" in state and not self.sample_file:
-            self.sample_file = str(state["loaded_file"])
-        if "region_bounds" in state:
-            self.sample_region = list(map(float, state["region_bounds"]))
-        if "g_factor" in state and "manual_g" not in state:
-            self.g_factor = float(state["g_factor"])
-        if "apply_bg" in state:
-            self.background = bool(state["apply_bg"])
 
     def save_results(self, path: str | Path) -> None:
         Path(path).write_text(

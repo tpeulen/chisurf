@@ -10,6 +10,7 @@
 - Fix simulated TCSPC duplicate scientific UID on repeated adds, queue parameter edits in DataDocks to prevent sluggish drops, improve DataTable cell editing and Enter commit, and add clipboard copy to log dock
 - emtk shell & server: defensive UID disambiguation during session traversal and ingestion to eliminate duplicate scientific UID crashes; unique Datasets tree row keys for independent row selection; allow None (unload) IRF in DatasetPicker; responsive single-click editing, keyboard capture, and robust bounds/int-to-float conversions in DataTable
 - Combine VV/VH plugins into unified Anisotropy & G/L1/L2 plugin (chisurf/plugins/vv_vh_g_factor), adding sample decay r(t), L1/L2 mixing overrides, interactive r_inf region, single-file and batch exports, with zero lost functionality.
+- Fixed L1/L2 polarization mixing fit calculation and output display in unified vv_vh_g_factor plugin; added dedicated L1/L2 mixing dock tab with 7-row estimate table; eliminated redundant backward-compatibility mixing controls and legacy state restores; deprecated legacy vv_vh_anisotropy with in-window notice; updated dependent parity tests.
 
 ## 2026-10-14
 

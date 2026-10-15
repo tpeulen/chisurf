@@ -149,6 +149,11 @@ class AnisotropyApp(ImApp):
     # -- windows ----------------------------------------------------------------
     def draw_controls(self, box: Any) -> None:
         """The top window: the parameter form, then Help and Guide."""
+        im.text_colored(
+            (255, 100, 100, 255),
+            tr("[Deprecated] Use the unified VV/VH G-Factor and Anisotropy plugin instead."),
+        )
+        im.separator()
         draw_sections(self.panels["controls"]["sections"], self.model, self.form)
         if action_button("guide"):
             self.tour.start()

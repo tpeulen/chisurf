@@ -299,9 +299,9 @@
        "description": "Quantity and value of the mixing estimate.",
        "options": {
         "source": "mixing_rows",
-        "height": 140,
+        "height": 180,
         "stretch": 1,
-        "min_height": 140,
+        "min_height": 180,
         "editable": false,
         "columns": [
          {

@@ -104,7 +104,10 @@ class GFactorApp(TourTarget, ImApp):
             name="vv_vh_g_factor",
         )
         self.docks.add_window(
-            "controls", "G-factor and mixing", self.draw_controls, dock="controls", closable=False
+            "controls", "G-factor calibration", self.draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "mixing", "L1/L2 mixing", self.draw_mixing, dock="controls", closable=False
         )
         self.docks.add_window(
             "sample", "Sample anisotropy", self.draw_sample, dock="controls", closable=False
@@ -378,11 +381,64 @@ class GFactorApp(TourTarget, ImApp):
         im.separator()
         self.form("tail", m)
         self.form("results", m)
+
+    def draw_mixing(self, box):
+        m = self.model
+        m.busy = self.job.running
+        busy = self.job.running or self.dialog is not None
+        pressed = button_row(
+            [
+                {
+                    "label": "Slow protein...",
+                    "key": "load_slow",
+                    "enabled": not busy,
+                    "tip": "Load the slow-rotating protein VV/VH decay for the linked polarization-mixing estimate.",
+                },
+                {
+                    "label": "Fast reference...",
+                    "key": "load_fast",
+                    "enabled": not busy,
+                    "tip": "Load the fast-rotating reference dye VV/VH decay used for the tail-matching G calibration.",
+                },
+                {
+                    "label": "Export calibration JSON...",
+                    "key": "export",
+                    "enabled": m.g_factor is not None and not busy,
+                    "tip": "Export values, uncertainty, mixing diagnostics and scientific settings.",
+                },
+                {"label": action_caption("help"), "key": "help", "tip": action_tooltip("help")},
+                {"label": action_caption("guide"), "key": "guide", "tip": action_tooltip("guide")},
+            ],
+            remember=self.remember,
+        )
+        if pressed == "load_slow":
+            self.choose("Slow protein reference", lambda paths: self.load(paths[0], slow=True))
+        elif pressed == "load_fast":
+            self.choose("Fast reference", lambda paths: self.load(paths[0]))
+        elif pressed == "export":
+            self.choose(
+                "Calibration results",
+                lambda paths: self.run(lambda model: model.save_results(paths[0])),
+                mode="save",
+                filename="calibration.json",
+            )
+        elif pressed == "help":
+            self.help.show()
+        elif pressed == "guide":
+            self.guide.start()
+        self.path_row("Slow:", m.slow_file, "no slow reference loaded")
+        self.path_row("Fast:", m.fast_file, "no reference decay loaded")
+        im.text_wrapped(
+            m.fp_result.get("warning")
+            or (
+                f"Linked mixing estimate l1 = l2 = {m.l1:.5f} determined from Perrin steady-state relation."
+                if m.slow is not None and m.g_factor is not None
+                else "Load a slow protein reference and fast dye to estimate l1/l2."
+            )
+        )
+        im.separator()
         self.form("mixing", m)
         self.form("mixing_results", m)
-        im.text_wrapped(
-            m.fp_result.get("warning") or "Warning: load FP VV/VH data to estimate l1/l2."
-        )
 
     def draw_sample(self, box):
         m = self.model
