@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-15
+
+- Dock tabs spacing: add 2px horizontal padding and 2px inter-tab gap in emtk.docking for distinct visual separation
+
 ## 2026-10-14
 
 - PRD-154 mypy ratchet, non-plugin lane: chisurf/ outside plugins/ 1559 -> 979 in test/mypy_baseline.json across 12 commits (Parameter/FittingParameter/Fit/GlobalFit, Curve/DataCurve, dataspec RPC forms, HMM, shell session, PDA2c/PDA3c, FRET intensity functions, CSV sniffer, MFD fit, classic TCSPC editor, structure/trajectory, model/data macros, posterior engine, chiplot image view, emtk fit pages, ZMQ transport). Real bugs fixed with them: *args/keyword collisions in FittingParameter, Curve, Experiment and Residual2DPlot __init__; float(None) on unset bounds; ProbCh0 spectrum setter/link; FD/FA forward formula; leaking FRET globals; bars set_data; headless macro crashes on cs.cs None; tempfile.tempdir None; TrajectoryFile rmsd ndarray. Open: calc_transfer_matrix donor-only slice (known-issues); whole-tree --update owed.
