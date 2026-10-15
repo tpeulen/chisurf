@@ -279,6 +279,11 @@ class ShellDockManager(DockManager):
             return super().is_shown("workspace") and self._app.workspace_docks.is_shown(key)
         return super().is_shown(key)
 
+    def is_visible(self, key: str) -> bool:
+        if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
+            return self._app.workspace_docks.is_visible(key)
+        return super().is_visible(key)
+
     def hide(self, key: str):
         if hasattr(self._app, "workspace_docks") and key in self._app.workspace_docks.windows:
             return self._app.workspace_docks.hide(key)
@@ -325,6 +330,28 @@ class ShellDockManager(DockManager):
         if hasattr(self._app, "workspace_docks") and isinstance(state, dict) and "_workspace" in state:
             self._app.workspace_docks.restore(state["_workspace"])
         super().restore(state)
+
+    def _sync_order(self, ctx, names: list[str], before: set) -> None:
+        wanted = set(names)
+        by_name = {w.name: w for w in ctx.windows if w.name in wanted}
+        ws_prefix = (
+            f"##{self._app.workspace_docks.name}."
+            if hasattr(self._app, "workspace_docks")
+            else None
+        )
+        ws_windows = [w for w in ctx.windows if ws_prefix and w.name.startswith(ws_prefix)]
+        mine = []
+        for n in names:
+            if n in by_name:
+                mine.append(by_name[n])
+                if n == f"##{self.name}.region.center":
+                    mine.extend(ws_windows)
+        def is_ws(w) -> bool:
+            return bool(ws_prefix and w.name.startswith(ws_prefix))
+
+        earlier = [w for w in ctx.windows if w.name not in wanted and not is_ws(w) and id(w) in before]
+        later = [w for w in ctx.windows if w.name not in wanted and not is_ws(w) and id(w) not in before]
+        ctx.windows[:] = earlier + mine + later
 
 
 class EmtkShellApp(ImApp):
