@@ -264,9 +264,9 @@
        "description": "Quantity and value of the G-factor tail match.",
        "options": {
         "source": "result_rows",
-        "height": 150,
+        "height": 200,
         "stretch": 1,
-        "min_height": 150,
+        "min_height": 200,
         "editable": false,
         "columns": [
          {
@@ -446,6 +446,30 @@
        "kind": "str",
        "read_only": true,
        "description": "Mean anisotropy over the r-infinity region (five decimals)."
+      },
+      {
+       "type": "value",
+       "attr": "applied_g_text",
+       "label": "Applied G",
+       "kind": "str",
+       "read_only": true,
+       "description": "Detector G-factor applied to sample anisotropy."
+      },
+      {
+       "type": "value",
+       "attr": "applied_l1_text",
+       "label": "Applied l1",
+       "kind": "str",
+       "read_only": true,
+       "description": "Polarization mixing factor l1 applied to sample anisotropy."
+      },
+      {
+       "type": "value",
+       "attr": "applied_l2_text",
+       "label": "Applied l2",
+       "kind": "str",
+       "read_only": true,
+       "description": "Polarization mixing factor l2 applied to sample anisotropy."
       }
      ]
     }

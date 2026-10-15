@@ -104,7 +104,7 @@ class GFactorApp(TourTarget, ImApp):
             name="vv_vh_g_factor",
         )
         self.docks.add_window(
-            "controls", "G-factor calibration", self.draw_controls, dock="controls", closable=False
+            "controls", "Calibration (G & L1/L2)", self.draw_controls, dock="controls", closable=False
         )
         self.docks.add_window(
             "mixing", "L1/L2 mixing", self.draw_mixing, dock="controls", closable=False
@@ -377,10 +377,17 @@ class GFactorApp(TourTarget, ImApp):
             self.guide.start()
         self.path_row("Fast:", m.fast_file, "no reference decay loaded")
         self.path_row("Slow:", m.slow_file, "no slow reference loaded")
-        im.text_wrapped(m.message or "Load the fast-rotating reference dye VV/VH decay.")
+        status_msg = m.message or "Load the fast-rotating reference dye VV/VH decay."
+        if m.slow is not None and m.l1 is not None and np.isfinite(m.l1) and "l1" not in status_msg:
+            status_msg += f" | l1 = l2 = {m.l1:.5f} (mixing)"
+        im.text_wrapped(status_msg)
         im.separator()
         self.form("tail", m)
+        self.form("mixing", m)
         self.form("results", m)
+        self.form("mixing_results", m)
+        if m.fp_result.get("warning"):
+            im.text_colored((255, 180, 80, 255), m.fp_result["warning"])
 
     def draw_mixing(self, box):
         m = self.model
@@ -495,6 +502,13 @@ class GFactorApp(TourTarget, ImApp):
             self.model.compute_sample()
 
         self.path_row("Sample:", m.sample_file, "no sample decay loaded (using fast reference if available)")
+        if m.g_factor is not None:
+            l1_s = f"{m.l1:.5f}" if m.l1 is not None and np.isfinite(m.l1) else "0.00000"
+            l2_s = f"{m.l2:.5f}" if m.l2 is not None and np.isfinite(m.l2) else "0.00000"
+            im.text_colored(
+                (100, 200, 255, 255),
+                f"Applied calibration: G = {m.g_factor:.5f} | l1 = {l1_s} | l2 = {l2_s}",
+            )
         im.separator()
         self.form("sample", m)
 

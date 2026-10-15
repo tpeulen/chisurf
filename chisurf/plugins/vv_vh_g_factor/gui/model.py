@@ -267,6 +267,18 @@ class GFactorModel:
         val = self.fp_result.get("l2")
         return float(val) if val is not None and np.isfinite(val) else 0.0
 
+    @property
+    def applied_g_text(self) -> str:
+        return f"{self.g_factor:.5f}" if self.g_factor is not None else "1.00000"
+
+    @property
+    def applied_l1_text(self) -> str:
+        return f"{self.l1:.5f}" if self.l1 is not None and np.isfinite(self.l1) else "0.00000"
+
+    @property
+    def applied_l2_text(self) -> str:
+        return f"{self.l2:.5f}" if self.l2 is not None and np.isfinite(self.l2) else "0.00000"
+
     def enabled(self, name: str) -> bool:
         """Whether the control *name* means something now (no idle controls)."""
         if self.busy:
@@ -338,6 +350,8 @@ class GFactorModel:
             )
         if self.manual_g:
             rows.append({"quantity": "G used (manual)", "value": f"{float(self.g_override):.6g}"})
+        rows.append({"quantity": "l1 (polarization mixing)", "value": f"{float(self.l1):.6g}"})
+        rows.append({"quantity": "l2 (polarization mixing)", "value": f"{float(self.l2):.6g}"})
         return rows
 
     def mixing_rows(self) -> list[dict[str, str]]:
