@@ -22,7 +22,6 @@ from emtk.im_core import Col
 from emtk.keys import KEY_ESCAPE
 from emtk.type_scale import text_style
 
-from chisurf.plugins.emtk_layout import action_button
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +109,7 @@ class EmTkHelpWindow:
         self.size = size
         self.open = False
         self.active_category = "All"
-        self.dlg = DialogWindow(title, size=size, key=f"help_{title}", close_button=False)
+        self.dlg = DialogWindow(title, size=size, key=f"help_{title}")
 
         # Parsed help content: list of (heading, content_lines)
         self.sections: list[tuple[str, list[str]]] = []
@@ -222,9 +221,6 @@ class EmTkHelpWindow:
                 self.on_start_guide()
             im.set_item_tooltip(tr("Walk through the tool controls and workflow step by step."))
 
-        place_button("Close")
-        if action_button("close", id="help_top", tooltip=tr("Close this help window.")):
-            pressed = "close"
 
         im.separator()
 

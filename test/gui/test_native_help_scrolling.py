@@ -10,7 +10,7 @@ from emtk.events import LEFT_BUTTON
 from emtk.testing import Driver
 
 from chisurf.emtk.help_guide import EmTkHelpWindow, resolve_resource_file
-from chisurf.plugins.emtk_layout import action_caption
+
 
 RESOURCE = (
     Path(__file__).resolve().parents[2] / "chisurf/plugins/tttr/microtime_histogram/gui/help.md"
@@ -62,7 +62,7 @@ def test_last_category_is_drawn_inside_the_modal_and_can_be_clicked(size):
     assert any("maximum" in text for text in driver.painter.strings)
     driver.click(" All ")
     assert window.active_category == "All"
-    driver.click(action_caption("close"))
+    driver.click("×")
     assert not window.open
 
 
@@ -71,11 +71,11 @@ def test_all_help_can_scroll_to_real_document_links_without_moving_header_close(
     window, driver = _help_driver()
     opened = []
     monkeypatch.setattr(window, "_open_link", opened.append)
-    footer = driver.rect(action_caption("close"))
+    footer = driver.rect("×")
     dx, dy, dw, dh = window.dlg.box
     driver.wheel(-100, at=(dx + dw / 2, dy + dh / 2))
     driver.frame(3)
-    assert driver.rect(action_caption("close")) == footer
+    assert driver.rect("×") == footer
     assert "Close Help" not in {t[5] for t in driver.painter.texts}
     link = next(
         t[:4]
@@ -86,7 +86,7 @@ def test_all_help_can_scroll_to_real_document_links_without_moving_header_close(
     assert dy <= y
     driver.click(link)
     assert opened == ["docs/concepts/tcspc_lifetime.md"]
-    driver.click(action_caption("close"))
+    driver.click("×")
     assert not window.open
 
 
@@ -117,5 +117,5 @@ def test_header_close_and_start_guide_remain_real_actions(size):
     assert starts == [True] and not window.open
     window.show()
     driver.frame(3)
-    driver.click(action_caption("close"))
+    driver.click("×")
     assert not window.open

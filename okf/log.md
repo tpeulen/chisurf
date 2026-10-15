@@ -3,6 +3,7 @@
 ## 2026-10-15
 
 - Dock tabs spacing: add 2px horizontal padding and 2px inter-tab gap in emtk.docking for distinct visual separation
+- HelpWindow close button: use top-right border (x) button on DialogWindow instead of content close button for consistent UX across modal windows
 
 ## 2026-10-14
 
