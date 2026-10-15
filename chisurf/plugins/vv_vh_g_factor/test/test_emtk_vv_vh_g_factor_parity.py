@@ -441,7 +441,6 @@ def test_manual_g_overrides_the_calculated_value_and_is_clamped(ui, files):
 )
 def test_mixing_parameters_are_typed_and_change_the_estimate(ui, files, name, typed, expected):
     m = loaded(ui, files)
-    ui.click_text("L1/L2 mixing")
     before = dict(m.fp_result)
     m = type_value(ui, name, typed)
     assert getattr(m, name) == pytest.approx(expected)
@@ -450,7 +449,6 @@ def test_mixing_parameters_are_typed_and_change_the_estimate(ui, files, name, ty
 
 def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
     m = loaded(ui, files)
-    ui.click_text("L1/L2 mixing")
     for toggle, value_name, typed, key in (
         ("manual_tau", "tau_override", "5", "tau_used_ns"),
         ("manual_rs", "rs_override", "0.2", "r_expected"),
@@ -471,7 +469,6 @@ def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
 
 def test_an_out_of_range_estimate_is_shown_with_its_warning_and_not_applied(ui, files):
     m = loaded(ui, files)
-    ui.click_text("L1/L2 mixing")
     m.flip = True  # flipped channels put the linked estimate outside [0, 0.5]
     m.compute()
     assert m.fp_result["l1"] is None and "outside the physical" in m.fp_result["warning"]

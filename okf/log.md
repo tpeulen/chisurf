@@ -12,6 +12,7 @@
 - Combine VV/VH plugins into unified Anisotropy & G/L1/L2 plugin (chisurf/plugins/vv_vh_g_factor), adding sample decay r(t), L1/L2 mixing overrides, interactive r_inf region, single-file and batch exports, with zero lost functionality.
 - Fixed L1/L2 polarization mixing fit calculation and output display in unified vv_vh_g_factor plugin; added dedicated L1/L2 mixing dock tab with 7-row estimate table; eliminated redundant backward-compatibility mixing controls and legacy state restores; deprecated legacy vv_vh_anisotropy with in-window notice; updated dependent parity tests.
 - Surface l1 and l2 polarization mixing prominently across all calibration, mixing, and sample panels: unified Calibration (G & L1/L2) primary view with live status banner, l1/l2 in primary results table, applied G and l1/l2 in sample view, and inspected headless renders.
+- Unify L1/L2 polarization mixing directly into primary G-factor calibration view of vv_vh_g_factor plugin, removing separate mixing tab and updating parity tests.
 
 ## 2026-10-14
 
