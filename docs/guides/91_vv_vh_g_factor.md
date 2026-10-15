@@ -90,13 +90,19 @@ no estimate is not a request to erase the stored calibration. Set **dt** from
 the acquisition calibration in ns/bin before interpreting the slow-reference
 lifetime or the Perrin estimate.
 
-## 4. Batch, export, archive
+## 4. Target sample anisotropy
+
+The **Sample anisotropy** tab evaluates a target VV/VH decay using the determined calibration ($G$, $l_1$, $l_2$, shift, and background subtraction):
+- Press **Load sample...** (or drop a single decay file on the window) to load a VV/VH decay. Alternatively, press **Use Fast as sample** or **Use Slow as sample** to copy from the loaded reference decays.
+- Set **r-inf start** and **r-inf stop** (or drag the green vertical boundaries in the Anisotropy plot) to choose the tail interval where $r(t)$ is averaged into $r_\infty$.
+- Press **Save outputs...** to export the shifted decay pair (`<stem>_shifted.dat`), the full three-column anisotropy trace (`<stem>_anisotropy.txt`: channel, $r(t)$, and $r(t) - r_\infty$), and the metadata summary (`<stem>_rinf.csv`).
+
+## 5. Batch, export, archive
 
 The **Batch anisotropy** tab queues further decays (**Add files**, **Folder**, **Database**; **Remove**
 drops the selected one, **Clear** all),
-**Run batch** evaluates $r_\infty$ of each (the mean corrected $r(t)$ between **Tail start** and
-**Tail stop**) with the frozen calibration and **Save table...** writes a
-tab-separated file. **Export calibration JSON...** writes the values and settings;
+**Run batch** evaluates $r_\infty$ of each with the calibrated $G$, $l_1$, $l_2$, and backgrounds, and **Save table...** writes a
+tab-separated file with per-file $r_\infty$, bounds, and error reports. **Export calibration JSON...** writes the values and settings;
 **Archive reference calibration** registers the reference decay, corrected traces and provenance in MMFDB.
 
 The archive uses one resolved MMFDB session for the reference, processed traces

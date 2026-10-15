@@ -1,7 +1,8 @@
-"""Toolkit-free G-factor, FP mixing and anisotropy batch workflows."""
+"""Toolkit-free G-factor, FP mixing, sample anisotropy and batch workflows."""
 
 from __future__ import annotations
 
+import csv
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -9,10 +10,12 @@ from pathlib import Path
 import numpy as np
 
 from chisurf.core.fio import read_vv_vh
+from chisurf.core.fio.vv_vh import write_vv_vh
 
 from ..core.calculations import (
     calculate_g_factor_core,
     compute_background_levels,
+    compute_r_infinity,
     compute_rt,
     estimate_lifetime_first_moment,
     perrin_steady_state_anisotropy,
@@ -35,14 +38,32 @@ def _bound(index: int, attr: str) -> property:
     return property(get, put)
 
 
+BATCH_EXTENSIONS = (".dat", ".txt", ".csv")
+BATCH_COLUMNS = (
+    "file",
+    "r_inf",
+    "region_start",
+    "region_stop",
+    "bg_vv",
+    "bg_vh",
+    "g_factor",
+    "error",
+)
+
+
 class GFactorModel:
+    """Unified VV/VH G-factor, polarization mixing (l1, l2) and anisotropy calculator."""
+
     def __init__(self):
         self.fast_file = ""
         self.slow_file = ""
+        self.sample_file = ""
         self.fast = None
         self.slow = None
+        self.sample = None
         self.region = [0.0, 100.0]
         self.background_region = [0.0, 100.0]
+        self.sample_region = [0.0, 100.0]
         self.shift = 0.0
         self.background = False
         self.flip = False
@@ -57,11 +78,16 @@ class GFactorModel:
         self.manual_rs = False
         self.rs_override = 0.0
         self.manual_l = False
-        self.l_override = 0.0
+        self.link_l1_l2 = True
+        self.l1_override = 0.0
+        self.l2_override = 0.0
         self.fp_result = {}
+        self.sample_r_t = None
+        self.sample_r_infty = float("nan")
         self.batch_files = []
         self.batch_results = []
         self.message = ""
+        self.busy = False
 
     def snapshot(self):
         return deepcopy(self)
@@ -71,10 +97,177 @@ class GFactorModel:
     tail_stop = _bound(1, "region")
     background_start = _bound(0, "background_region")
     background_stop = _bound(1, "background_region")
+    sample_region_start = _bound(0, "sample_region")
+    sample_region_stop = _bound(1, "sample_region")
 
-    busy = False
+    # -- compatibility properties for legacy anisotropy callers --------------------------------- #
+    @property
+    def region_bounds(self) -> list[float]:
+        return self.sample_region if self.sample is not None else self.region
 
-    def enabled(self, name):
+    @region_bounds.setter
+    def region_bounds(self, val: list[float] | tuple[float, float]) -> None:
+        bounds = [float(val[0]), float(val[1])]
+        self.sample_region = list(bounds)
+        if self.fast is None and self.sample is not None:
+            self.region = list(bounds)
+
+    @property
+    def region_start(self) -> float:
+        return float(self.region_bounds[0])
+
+    @region_start.setter
+    def region_start(self, val: float) -> None:
+        self.region_bounds[0] = float(val)
+
+    @property
+    def region_end(self) -> float:
+        return float(self.region_bounds[1])
+
+    @region_end.setter
+    def region_end(self, val: float) -> None:
+        self.region_bounds[1] = float(val)
+
+    @property
+    def region_min(self) -> float:
+        return min(self.region_bounds)
+
+    @property
+    def region_max(self) -> float:
+        return max(self.region_bounds)
+
+    @property
+    def loaded_file(self) -> str:
+        return self.sample_file or self.fast_file
+
+    @loaded_file.setter
+    def loaded_file(self, val: str) -> None:
+        self.sample_file = str(val)
+
+    @property
+    def r_t(self) -> np.ndarray | None:
+        if self.sample_r_t is not None:
+            return self.sample_r_t
+        if self.fast is not None:
+            series = self.decay_series(slow=False)
+            return series.get("r_corrected") if series else None
+        return None
+
+    @r_t.setter
+    def r_t(self, val: np.ndarray | None) -> None:
+        self.sample_r_t = val
+
+    @property
+    def r_infty(self) -> float:
+        if np.isfinite(self.sample_r_infty):
+            return self.sample_r_infty
+        if self.fast is not None:
+            r = self.r_t
+            if r is not None:
+                return compute_r_infinity(np.arange(len(r), dtype=float), r, self.region)
+        return float("nan")
+
+    @r_infty.setter
+    def r_infty(self, val: float) -> None:
+        self.sample_r_infty = float(val)
+
+    @property
+    def r_infty_text(self) -> str:
+        val = self.r_infty
+        return f"{val:.5f}" if np.isfinite(val) else "N/A"
+
+    @property
+    def sample_r_infty_text(self) -> str:
+        val = self.sample_r_infty
+        return f"{val:.5f}" if np.isfinite(val) else "N/A"
+
+    @property
+    def apply_bg(self) -> bool:
+        return self.background
+
+    @apply_bg.setter
+    def apply_bg(self, val: bool) -> None:
+        self.background = bool(val)
+
+    @property
+    def bg_vv(self) -> float:
+        if self.background and self.result:
+            return float(self.result.get("bg_parallel_avg", 0.0))
+        return 0.0
+
+    @bg_vv.setter
+    def bg_vv(self, val: float) -> None:
+        pass
+
+    @property
+    def bg_vh(self) -> float:
+        if self.background and self.result:
+            return float(self.result.get("bg_perpendicular_avg", 0.0))
+        return 0.0
+
+    @bg_vh.setter
+    def bg_vh(self, val: float) -> None:
+        pass
+
+    @property
+    def has_data(self) -> bool:
+        return self.sample is not None or self.fast is not None
+
+    @property
+    def has_sample_data(self) -> bool:
+        return self.sample is not None
+
+    @property
+    def has_batch_files(self) -> bool:
+        return bool(self.batch_files)
+
+    @property
+    def has_batch_results(self) -> bool:
+        return bool(self.batch_results)
+
+    @property
+    def batch_file_rows(self) -> list[dict[str, str]]:
+        return [{"path": p, "name": Path(p).name} for p in self.batch_files]
+
+    @property
+    def batch_result_rows(self) -> list[dict[str, object]]:
+        return self.batch_rows()
+
+    # -- G and mixing properties ---------------------------------------------------------------- #
+    @property
+    def g_factor(self) -> float | None:
+        return float(self.g_override) if self.manual_g else self.result.get("g_factor")
+
+    @g_factor.setter
+    def g_factor(self, value: float) -> None:
+        self.manual_g = True
+        self.g_override = float(value)
+
+    @property
+    def l_override(self) -> float:
+        return float(self.l1_override)
+
+    @l_override.setter
+    def l_override(self, val: float) -> None:
+        self.l1_override = float(val)
+        if self.link_l1_l2:
+            self.l2_override = float(val)
+
+    @property
+    def l1(self) -> float:
+        if self.manual_l:
+            return float(self.l1_override)
+        val = self.fp_result.get("l1")
+        return float(val) if val is not None and np.isfinite(val) else 0.0
+
+    @property
+    def l2(self) -> float:
+        if self.manual_l:
+            return float(self.l2_override if not self.link_l1_l2 else self.l1_override)
+        val = self.fp_result.get("l2")
+        return float(val) if val is not None and np.isfinite(val) else 0.0
+
+    def enabled(self, name: str) -> bool:
         """Whether the control *name* means something now (no idle controls)."""
         if self.busy:
             return False
@@ -86,8 +279,10 @@ class GFactorModel:
             return self.manual_tau
         if name == "rs_override":
             return self.manual_rs
-        if name == "l_override":
+        if name in ("l_override", "l1_override", "link_l1_l2"):
             return self.manual_l
+        if name == "l2_override":
+            return self.manual_l and not self.link_l1_l2
         if (
             name
             in (
@@ -106,17 +301,24 @@ class GFactorModel:
             return False
         if name in ("fp_dt_ns", "fp_rho_ns", "fp_r0"):
             return self.slow is not None
+        if name in ("sample_region_start", "sample_region_stop"):
+            return self.sample is not None or self.fast is not None
         return True
 
-    def remove_batch(self, record=None):
+    def remove_batch(self, record: dict | None = None) -> None:
         """Drop the queued file of *record* (and its result row)."""
         path = (record or {}).get("path")
         if path in self.batch_files:
             self.batch_files.remove(path)
         self.batch_results = [r for r in self.batch_results if r.get("file") != path]
 
-    def result_rows(self):
-        """The G-factor results as ``{quantity, value}`` rows (what the Qt tool shows in its read-only fields)."""
+    def clear_batch(self) -> None:
+        """Empty the batch queue and results."""
+        self.batch_files = []
+        self.batch_results = []
+
+    def result_rows(self) -> list[dict[str, str]]:
+        """The G-factor results as ``{quantity, value}`` rows."""
         keys = [("G raw", "g_factor_uncorrected"), ("G SD", "g_factor_stddev_uncorrected")]
         if self.background:
             keys += [
@@ -138,7 +340,7 @@ class GFactorModel:
             rows.append({"quantity": "G used (manual)", "value": f"{float(self.g_override):.6g}"})
         return rows
 
-    def mixing_rows(self):
+    def mixing_rows(self) -> list[dict[str, str]]:
         rows = []
         for label, key in (
             ("Lifetime estimate (ns)", "tau_estimate_ns"),
@@ -151,23 +353,34 @@ class GFactorModel:
             rows.append(
                 {"quantity": label, "value": f"{float(value):.6g}" if value is not None else "none"}
             )
+        if self.manual_l:
+            rows.append({"quantity": "Manual l1", "value": f"{float(self.l1):.6g}"})
+            rows.append({"quantity": "Manual l2", "value": f"{float(self.l2):.6g}"})
         return rows
 
-    def batch_rows(self):
+    def batch_rows(self) -> list[dict[str, object]]:
         done = {r["file"]: r for r in self.batch_results}
         rows = []
         for path in self.batch_files:
             r = done.get(path, {})
             r_inf = r.get("r_inf")
+            reg = ""
+            if "region_start" in r and "region_stop" in r:
+                reg = f"{r['region_start']}-{r['region_stop']}"
+            elif "region_min" in r and "region_max" in r:
+                reg = f"{r['region_min']:.1f}-{r['region_max']:.1f}"
             rows.append(
                 {
                     "file": Path(path).name,
+                    "filename": Path(path).name,
                     "path": path,
-                    "r_inf": f"{r_inf:.5g}" if r_inf is not None else ("" if not r else "failed"),
-                    "region": f"{r['region_start']}-{r['region_stop']}"
-                    if "region_start" in r
-                    else "",
+                    "r_inf": f"{r_inf:.5g}" if (r_inf is not None and np.isfinite(r_inf)) else ("" if not r else "failed"),
+                    "region": reg,
+                    "region_min": r.get("region_start", r.get("region_min", 0.0)),
+                    "region_max": r.get("region_stop", r.get("region_max", 0.0)),
                     "g_factor": f"{r['g_factor']:.5g}" if r.get("g_factor") is not None else "",
+                    "l1": f"{r['l1']:.4g}" if r.get("l1") is not None else "",
+                    "l2": f"{r['l2']:.4g}" if r.get("l2") is not None else "",
                     "bg_vv": f"{r['bg_vv']:.6g}" if r.get("bg_vv") is not None else "",
                     "bg_vh": f"{r['bg_vh']:.6g}" if r.get("bg_vh") is not None else "",
                     "error": r.get("error", ""),
@@ -175,46 +388,62 @@ class GFactorModel:
             )
         return rows
 
-    def load(self, path, slow=False):
+    def load(self, path: str | Path, slow: bool = False, sample: bool = False) -> None:
+        """Load a VV/VH file into the requested slot (fast reference, slow reference, or sample)."""
         vv, vh = read_vv_vh(str(path), split=True)
         vv = np.asarray(vv, dtype=float)
         vh = np.asarray(vh, dtype=float)
         n = min(len(vv), len(vh))
         if n < 3 or not np.all(np.isfinite(vv[:n])) or not np.all(np.isfinite(vh[:n])):
             raise ValueError("VV/VH input requires at least three finite bins in each channel.")
-        if slow:
+        if sample:
+            self.sample = (vv[:n], vh[:n])
+            self.sample_file = str(path)
+            self.sample_region = [float(int(n * 0.7)), float(min(n - 1, int(n * 0.9)))]
+            self.compute_sample()
+            self.message = f"Loaded sample {Path(path).name}: {n} channels"
+        elif slow:
             self.slow = (vv[:n], vh[:n])
             self.slow_file = str(path)
+            if self.fast is not None:
+                self.compute()
+            else:
+                self.message = "Loaded slow reference; load a fast reference to determine G."
         else:
             self.fast = (vv[:n], vh[:n])
             self.fast_file = str(path)
             self.region = [float(int(n * 0.7)), float(min(n - 1, int(n * 0.9)))]
             self.background_region = [float(int(n * 0.05)), float(int(n * 0.15))]
-        if self.fast is not None:
             self.compute()
-        else:
-            self.message = "Loaded slow reference; load a fast reference to determine G."
 
-    def load_example(self, folder=None, client=None):
-        """Load the simulated references (:mod:`..demo`, known G = 1.2) as a user would load files.
+    def load_file(self, path: str | Path) -> bool:
+        """Unified loader for sample VV/VH decay (and fallback fast reference)."""
+        self.load(path, sample=True)
+        if self.fast is None:
+            self.fast = self.sample
+            self.fast_file = str(path)
+            n = len(self.fast[0])
+            self.region = [float(int(n * 0.7)), float(min(n - 1, int(n * 0.9)))]
+            self.background_region = [float(int(n * 0.05)), float(int(n * 0.15))]
+            try:
+                self.compute()
+            except Exception:
+                pass
+        return True
 
-        The fast dye becomes the fast reference, the slow protein the slow reference, the two further
-        decays join the batch queue; *dt*, rho, r0, the lifetime and background correction are set to
-        the simulation's.
-        """
+    def load_example(self, folder: str | Path | None = None, client: object | None = None) -> None:
+        """Load simulated references (known G = 1.2) for demonstrations and testing."""
         from ..demo import DEMO, make_demo
 
         files = make_demo(folder)
         self.fp_dt_ns = float(DEMO["dt_ns"])
         self.fp_r0 = float(DEMO["r0"])
         self.fp_rho_ns = float(dict((k, rho) for k, rho, _ in DEMO["decays"])["slow"])
-        # The first moment of a decay recorded after a pulse at 5 ns is ~5 ns + tau, not tau: the
-        # example states the simulated lifetime instead (the manual override a user with a known
-        # reference lifetime would use).
         self.manual_tau, self.tau_override = True, float(DEMO["tau_ns"])
         self.background = True
         self.load(files["fast"])
         self.load(files["slow"], slow=True)
+        self.load(files["fast"], sample=True)
         for key in ("batch1", "batch2"):
             if str(files[key]) not in self.batch_files:
                 self.batch_files.append(str(files[key]))
@@ -222,19 +451,28 @@ class GFactorModel:
             self.compute(client)
         self.message = f"Example loaded (simulated, true G = {DEMO['g_factor']}): {self.message}"
 
-    @property
-    def g_factor(self):
-        return float(self.g_override) if self.manual_g else self.result.get("g_factor")
-
-    def channels(self, slow=False):
-        channels = self.slow if slow else self.fast
-        if channels is None:
+    def channels(self, slow: bool = False, sample: bool = False) -> tuple[np.ndarray | None, np.ndarray | None]:
+        if sample:
+            pair = self.sample
+        elif slow:
+            pair = self.slow
+        else:
+            pair = self.fast
+        if pair is None:
             return None, None
-        return channels[::-1] if self.flip else channels
+        return pair[::-1] if self.flip else pair
 
-    def compute(self, client=None):
+    def compute(self, client: object | None = None) -> None:
+        """Calculate G-factor from fast reference and polarization mixing from slow reference."""
         if self.fast is None:
-            raise ValueError("Load the fast-rotating reference dye VV/VH decay first.")
+            if self.sample is not None:
+                self.fast = self.sample
+                self.fast_file = self.sample_file
+                n = len(self.fast[0])
+                self.region = [float(int(n * 0.7)), float(min(n - 1, int(n * 0.9)))]
+                self.background_region = [float(int(n * 0.05)), float(int(n * 0.15))]
+            else:
+                raise ValueError("Load the fast-rotating reference dye VV/VH decay first.")
         par, perp = self.channels()
         self.region = sorted(map(float, self.region))
         self.background_region = sorted(map(float, self.background_region))
@@ -256,13 +494,22 @@ class GFactorModel:
         if self.manual_g and (not np.isfinite(self.g_override) or self.g_override <= 0):
             raise ValueError("Manual G-factor must be positive and finite.")
         self.estimate_mixing(client)
+        self.compute_sample()
         self.message = (
             f"G = {self.g_factor:.6g}"
             if self.g_factor is not None
             else "Tail matching did not produce a finite G-factor."
         )
 
-    def estimate_mixing(self, client=None):
+    def recompute(self, _value: object = None) -> None:
+        """Callback for view spec changes."""
+        self.compute()
+
+    def recompute_sample(self, _value: object = None) -> None:
+        self.compute_sample()
+
+    def estimate_mixing(self, client: object | None = None) -> None:
+        """Estimate linked l1=l2 mixing parameter from slow reference and Perrin relation."""
         par, perp = self.channels(slow=True)
         self.fp_result = {}
         g = self.g_factor
@@ -306,17 +553,51 @@ class GFactorModel:
                 f"Linked mixing estimate {l:g} is outside the physical [0, 0.5] range; not applied."
             )
             l = np.nan
+        l1_val = float(self.l1) if (self.manual_l or (np.isfinite(l) and 0 <= l <= 0.5)) else None
+        l2_val = float(self.l2) if (self.manual_l or (np.isfinite(l) and 0 <= l <= 0.5)) else None
         self.fp_result = {
             "tau_estimate_ns": float(tau_est),
             "tau_used_ns": float(tau),
             "r_expected": float(expected),
-            "l1": float(l) if np.isfinite(l) else None,
-            "l2": float(l) if np.isfinite(l) else None,
+            "l1": l1_val,
+            "l2": l2_val,
             "warning": warning,
         }
 
-    def decay_series(self, slow=False):
-        par, perp = self.channels(slow)
+    def compute_sample(self) -> None:
+        """Compute time-resolved anisotropy r(t) and r-infinity for the sample decay."""
+        if self.sample is None:
+            if self.fast is not None:
+                self.sample = self.fast
+                self.sample_file = self.fast_file
+                self.sample_region = list(self.region)
+            else:
+                self.sample_r_t, self.sample_r_infty = None, float("nan")
+                return
+        par, perp = self.channels(sample=True)
+        if par is None:
+            self.sample_r_t, self.sample_r_infty = None, float("nan")
+            return
+        n = min(len(par), len(perp))
+        time = np.arange(n, dtype=float)
+        shifted = time + self.shift
+        bp, bs = (
+            compute_background_levels(par, perp, time, shifted, self.background_region)
+            if self.background
+            else (0.0, 0.0)
+        )
+        p = np.maximum(par[:n] - bp, 0.0)
+        s = np.maximum(perp[:n] - bs, 0.0)
+        corrected_perp = shift_interp_on_axis(time, s, self.shift)
+        g = self.g_factor
+        g_val = float(g) if (g is not None and np.isfinite(g) and g > 0) else np.nan
+        r_t = compute_rt(p, corrected_perp, g_val, l1=self.l1, l2=self.l2)
+        self.sample_r_t = r_t
+        self.sample_r_infty = compute_r_infinity(time, r_t, self.sample_region)
+
+    def decay_series(self, slow: bool = False, sample: bool = False) -> dict[str, np.ndarray]:
+        """Produce plotted vectors for the decays and time-resolved anisotropy."""
+        par, perp = self.channels(slow=slow, sample=sample)
         if par is None:
             return {}
         time = np.arange(len(par), dtype=float)
@@ -326,12 +607,12 @@ class GFactorModel:
             if self.background
             else (0.0, 0.0)
         )
-        p = np.maximum(par - bg[0], 0)
-        s = np.maximum(perp - bg[1], 0)
+        p = np.maximum(par - bg[0], 0.0)
+        s = np.maximum(perp - bg[1], 0.0)
         g = self.g_factor
-        g = float(g) if g is not None and np.isfinite(g) and g > 0 else np.nan
-        l1 = float(self.fp_result.get("l1") or 0)
-        l2 = float(self.fp_result.get("l2") or 0)
+        g_val = float(g) if g is not None and np.isfinite(g) and g > 0 else np.nan
+        l1 = self.l1
+        l2 = self.l2
         corrected = shift_interp_on_axis(time, s, self.shift)
         return {
             "time": time,
@@ -339,31 +620,35 @@ class GFactorModel:
             "vv_raw": par,
             "vh_raw": perp,
             "vv_corrected": p,
-            "vh_corrected": s * g,
+            "vh_corrected": s * g_val,
             "r_raw": np.clip(
-                compute_rt(par, perp, self.result.get("g_factor_uncorrected") or g), -0.5, 1.5
+                compute_rt(par, perp, self.result.get("g_factor_uncorrected") or g_val), -0.5, 1.5
             ),
-            "r_corrected": np.clip(compute_rt(p, corrected, g, l1=l1, l2=l2), -0.5, 1.5),
+            "r_corrected": np.clip(compute_rt(p, corrected, g_val, l1=l1, l2=l2), -0.5, 1.5),
         }
 
-    def batch_snapshot(self):
-        par, perp = self.channels()
-        if par is None or self.g_factor is None:
+    def batch_snapshot(self) -> dict[str, object]:
+        g = self.g_factor
+        if g is None or not np.isfinite(g) or g <= 0:
             raise ValueError("Determine G before applying batch anisotropy analysis.")
-        time = np.arange(len(par), dtype=float)
-        bg = compute_background_levels(par, perp, time, time + self.shift, self.background_region)
+        bp, bs = (0.0, 0.0)
+        par, perp = self.channels()
+        if par is not None:
+            time = np.arange(len(par), dtype=float)
+            bp, bs = compute_background_levels(par, perp, time, time + self.shift, self.background_region)
+        region = list(self.sample_region if self.sample is not None else self.region)
         return {
-            "g_factor": float(self.g_factor),
-            "l1": float(self.fp_result.get("l1") or 0),
-            "l2": float(self.fp_result.get("l2") or 0),
+            "g_factor": float(g),
+            "l1": float(self.l1),
+            "l2": float(self.l2),
             "shift": self.shift,
             "flip": self.flip,
             "background": self.background,
-            "background_levels": bg,
-            "region": list(self.region),
+            "background_levels": (bp, bs),
+            "region": region,
         }
 
-    def compute_batch(self, cancel_cb=None):
+    def compute_batch(self, cancel_cb: object | None = None) -> list[dict]:
         params = self.batch_snapshot()
         rows = []
         for filename in self.batch_files:
@@ -378,8 +663,8 @@ class GFactorModel:
                 n = min(len(par), len(perp))
                 time = np.arange(n, dtype=float)
                 bp, bs = params["background_levels"] if params["background"] else (0.0, 0.0)
-                p = np.maximum(par[:n] - bp, 0)
-                s = np.maximum(perp[:n] - bs, 0)
+                p = np.maximum(par[:n] - bp, 0.0)
+                s = np.maximum(perp[:n] - bs, 0.0)
                 anisotropy = compute_rt(
                     p,
                     shift_interp_on_axis(time, s, params["shift"]),
@@ -398,9 +683,13 @@ class GFactorModel:
                         "r_inf": float(np.mean(values)) if len(values) else None,
                         "region_start": start,
                         "region_stop": stop,
+                        "region_min": float(start),
+                        "region_max": float(stop),
                         "bg_vv": bp,
                         "bg_vh": bs,
                         "g_factor": params["g_factor"],
+                        "l1": params["l1"],
+                        "l2": params["l2"],
                         "error": "",
                     }
                 )
@@ -408,8 +697,11 @@ class GFactorModel:
                 rows.append({"file": filename, "r_inf": None, "error": str(exc)})
         self.batch_results = rows
         self.message = f"Processed {len(rows)} batch decays."
+        return rows
 
-    def export_batch(self, path):
+    run_batch = compute_batch
+
+    def export_batch(self, path: str | Path) -> None:
         if not self.batch_results:
             raise ValueError("Run batch analysis before exporting.")
         columns = [
@@ -432,8 +724,97 @@ class GFactorModel:
                     )
                     + "\n"
                 )
+        self.message = f"Saved {Path(path).name}"
 
-    def archive_parameters(self):
+    save_batch = export_batch
+
+    def add_batch_paths(self, paths: list[str | Path]) -> int:
+        """Queue .dat/.txt/.csv files and folders recursively into the batch."""
+        found = []
+        for path in paths or []:
+            p = Path(str(path))
+            found.extend(
+                sorted(q for q in p.rglob("*") if q.is_file())
+                if p.is_dir()
+                else [p]
+                if p.is_file()
+                else []
+            )
+        added = 0
+        for p in found:
+            if p.suffix.lower() in BATCH_EXTENSIONS and str(p) not in self.batch_files:
+                self.batch_files.append(str(p))
+                added += 1
+        if added:
+            self.message = f"Queued {added} file(s) for the batch."
+        else:
+            self.message = "Nothing to queue: choose .dat, .txt or .csv VV/VH files."
+        return added
+
+    def save_sample_outputs(self, base_path: str | Path) -> tuple[Path, Path, Path]:
+        """Save shifted decays, anisotropy trace, and summary CSV."""
+        if self.sample is None and self.fast is None:
+            raise ValueError("Load a VV/VH decay file before saving outputs.")
+        if self.sample is None:
+            self.sample = self.fast
+            self.sample_file = self.fast_file
+            self.sample_region = list(self.region)
+        self.compute_sample()
+        base = Path(base_path).with_suffix("")
+        par, perp = self.channels(sample=True)
+        time = np.arange(len(par), dtype=float)
+        shifted = time + self.shift
+        bp, bs = (
+            compute_background_levels(par, perp, time, shifted, self.background_region)
+            if self.background
+            else (0.0, 0.0)
+        )
+        p = np.maximum(par - bp, 0.0)
+        s = np.maximum(perp - bs, 0.0)
+        vh_shifted = shift_interp_on_axis(time, s, self.shift)
+        p = np.where(np.isfinite(p) & (p > 0), p, 0.0)
+        vh_shifted = np.where(np.isfinite(vh_shifted) & (vh_shifted > 0), vh_shifted, 0.0)
+
+        decay_file = base.with_name(base.name + "_shifted.dat")
+        trace_file = base.with_name(base.name + "_anisotropy.txt")
+        info_file = base.with_name(base.name + "_rinf.csv")
+
+        write_vv_vh(decay_file, vv=p, vh=vh_shifted)
+        r_t = self.sample_r_t
+        r_inf = self.sample_r_infty
+        corrected = r_t - r_inf if (r_t is not None and np.isfinite(r_inf)) else (r_t.copy() if r_t is not None else np.zeros_like(time))
+        np.savetxt(
+            trace_file,
+            np.column_stack((time, r_t if r_t is not None else np.zeros_like(time), corrected)),
+            header="channel\tr(t)\tr(t)-r_inf",
+            comments="",
+            delimiter="\t",
+            fmt="%.10g",
+        )
+        with info_file.open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.writer(stream, lineterminator="\n")
+            writer.writerow(
+                ("filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor", "l1", "l2")
+            )
+            writer.writerow(
+                (
+                    Path(self.sample_file).name,
+                    r_inf,
+                    min(self.sample_region),
+                    max(self.sample_region),
+                    bp,
+                    bs,
+                    self.g_factor,
+                    self.l1,
+                    self.l2,
+                )
+            )
+        self.message = f"Saved {decay_file.name}, {trace_file.name}, {info_file.name}"
+        return decay_file, trace_file, info_file
+
+    save = save_sample_outputs
+
+    def archive_parameters(self) -> dict[str, object]:
         if self.g_factor is None:
             raise ValueError("Determine a G-factor before archival.")
         return {
@@ -441,8 +822,8 @@ class GFactorModel:
             "g_factor_stddev": self.result.get(
                 "g_factor_stddev_corrected" if self.background else "g_factor_stddev_uncorrected"
             ),
-            "l1": self.fp_result.get("l1") or 0.0,
-            "l2": self.fp_result.get("l2") or 0.0,
+            "l1": self.l1,
+            "l2": self.l2,
             "decay_shift": self.shift,
             "use_bg": self.background,
             "flip": self.flip,
@@ -458,16 +839,13 @@ class GFactorModel:
             "fp_r_s_expected": self.fp_result.get("r_expected"),
         }
 
-    def detector_parameters(self, prior_l1=0.0, prior_l2=0.0, micro_time_resolution=None):
+    def detector_parameters(
+        self, prior_l1: float = 0.0, prior_l2: float = 0.0, micro_time_resolution: float | None = None
+    ) -> dict[str, object]:
         """Return the measured calibration plus detector-context mixing fallbacks."""
         parameters = self.archive_parameters()
-        for key, prior in (("l1", prior_l1), ("l2", prior_l2)):
-            value = self.fp_result.get(key)
-            if self.manual_l:
-                value = self.l_override
-            parameters[key] = (
-                float(value) if value is not None and np.isfinite(value) else float(prior)
-            )
+        parameters["l1"] = float(self.l1) if np.isfinite(self.l1) else float(prior_l1)
+        parameters["l2"] = float(self.l2) if np.isfinite(self.l2) else float(prior_l2)
         parameters.update(
             g_factor_uncorrected=self.result.get("g_factor_uncorrected"),
             g_factor_corrected=self.result.get("g_factor_corrected"),
@@ -478,12 +856,14 @@ class GFactorModel:
         )
         return parameters
 
-    def export_settings(self):
+    def export_settings(self) -> dict[str, object]:
         names = (
             "fast_file",
             "slow_file",
+            "sample_file",
             "region",
             "background_region",
+            "sample_region",
             "shift",
             "background",
             "flip",
@@ -497,23 +877,42 @@ class GFactorModel:
             "manual_rs",
             "rs_override",
             "manual_l",
-            "l_override",
+            "link_l1_l2",
+            "l1_override",
+            "l2_override",
             "batch_files",
         )
         return {name: deepcopy(getattr(self, name)) for name in names}
 
-    def restore_settings(self, state):
+    def restore_settings(self, state: dict[str, object]) -> None:
         for name, value in state.items():
             if name in self.export_settings():
                 setattr(self, name, deepcopy(value))
+        # Support old vv_vh_anisotropy state format
+        if "loaded_file" in state and not self.sample_file:
+            self.sample_file = str(state["loaded_file"])
+        if "region_bounds" in state:
+            self.sample_region = list(map(float, state["region_bounds"]))
+        if "g_factor" in state and "manual_g" not in state:
+            self.g_factor = float(state["g_factor"])
+        if "apply_bg" in state:
+            self.background = bool(state["apply_bg"])
 
-    def save_results(self, path):
+    def save_results(self, path: str | Path) -> None:
         Path(path).write_text(
             json.dumps(
                 {
                     "settings": self.export_settings(),
                     "g_result": self.result,
                     "fp_result": self.fp_result,
+                    "sample": {
+                        "file": self.sample_file,
+                        "r_inf": self.sample_r_infty,
+                        "region": self.sample_region,
+                        "l1": self.l1,
+                        "l2": self.l2,
+                        "g": self.g_factor,
+                    },
                 },
                 indent=2,
             )

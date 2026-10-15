@@ -777,7 +777,7 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text(action_caption("close"))
+    ui.click_text("×")
     assert not ui.app.help.open
     import re
 

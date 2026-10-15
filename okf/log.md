@@ -9,6 +9,7 @@
 - Fit window Code button: moved Code toggle button into window title bar to the left of minimize and close buttons via EMTK DockWindow.title_buttons, removing the redundant vertical toolbar strip and reclaiming vertical space for fit plots and editors.
 - Fix simulated TCSPC duplicate scientific UID on repeated adds, queue parameter edits in DataDocks to prevent sluggish drops, improve DataTable cell editing and Enter commit, and add clipboard copy to log dock
 - emtk shell & server: defensive UID disambiguation during session traversal and ingestion to eliminate duplicate scientific UID crashes; unique Datasets tree row keys for independent row selection; allow None (unload) IRF in DatasetPicker; responsive single-click editing, keyboard capture, and robust bounds/int-to-float conversions in DataTable
+- Combine VV/VH plugins into unified Anisotropy & G/L1/L2 plugin (chisurf/plugins/vv_vh_g_factor), adding sample decay r(t), L1/L2 mixing overrides, interactive r_inf region, single-file and batch exports, with zero lost functionality.
 
 ## 2026-10-14
 

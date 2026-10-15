@@ -45,6 +45,8 @@ class AnisotropyModel:
         self.vh_raw = None
         self.time_axis = None
         self.g_factor = 1.0
+        self.l1 = 0.0
+        self.l2 = 0.0
         self.apply_bg = True
         self.bg_vv = 0.0
         self.bg_vh = 0.0
@@ -199,10 +201,14 @@ class AnisotropyModel:
             self.r_t, self.r_infty = None, float("nan")
             return
         shifted = self.shifted(vh, self.shift)
-        denominator = vv + 2 * self.g_factor * shifted
-        r = np.full(len(vv), np.nan)
-        valid = np.isfinite(denominator) & (denominator > 0)
-        r[valid] = (vv[valid] - self.g_factor * shifted[valid]) / denominator[valid]
+        from chisurf.plugins.vv_vh_g_factor.core.calculations import compute_rt
+        r = compute_rt(
+            vv,
+            shifted,
+            self.g_factor,
+            l1=getattr(self, "l1", 0.0),
+            l2=getattr(self, "l2", 0.0),
+        )
         lo, hi = self.region_min, self.region_max
         left = int(np.argmin(abs(self.time_axis - lo)))
         right = int(np.argmin(abs(self.time_axis - hi)))
@@ -261,6 +267,8 @@ class AnisotropyModel:
             "bg_vv": float(self.bg_vv),
             "bg_vh": float(self.bg_vh),
             "g": float(self.g_factor),
+            "l1": float(getattr(self, "l1", 0.0)),
+            "l2": float(getattr(self, "l2", 0.0)),
             "shift": float(self.shift),
             "flip": bool(self.flip),
             "region_min": float(self.region_min),
@@ -272,6 +280,7 @@ class AnisotropyModel:
         lo, hi = snap["region_min"], snap["region_max"]
         scratch = AnisotropyModel()
         scratch.g_factor, scratch.apply_bg = snap["g"], snap["apply_bg"]
+        scratch.l1, scratch.l2 = snap.get("l1", 0.0), snap.get("l2", 0.0)
         scratch.bg_vv, scratch.bg_vh = snap["bg_vv"], snap["bg_vh"]
         scratch.flip, scratch.shift = snap["flip"], snap["shift"]
         try:

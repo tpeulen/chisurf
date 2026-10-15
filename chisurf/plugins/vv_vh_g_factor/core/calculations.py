@@ -74,6 +74,39 @@ def compute_rt(
         )
 
 
+def compute_r_infinity(
+    time_axis: np.ndarray,
+    r_t: np.ndarray,
+    region_bounds: list[float] | tuple[float, float],
+) -> float:
+    """Compute the mean anisotropy over the specified region.
+
+    Parameters
+    ----------
+    time_axis : np.ndarray
+        Time or channel axis.
+    r_t : np.ndarray
+        Anisotropy curve.
+    region_bounds : tuple or list of float
+        [region_min, region_max] channel bounds.
+
+    Returns
+    -------
+    float
+        Average r_infinity value, or NaN if no valid points.
+    """
+    if r_t is None or len(r_t) == 0:
+        return float("nan")
+    lo, hi = sorted(region_bounds)
+    left = int(np.argmin(np.abs(time_axis - lo)))
+    right = int(np.argmin(np.abs(time_axis - hi)))
+    if right <= left:
+        right = min(len(r_t), left + 1)
+    selection = r_t[left:right]
+    selection = selection[np.isfinite(selection)]
+    return float(np.mean(selection)) if len(selection) else float("nan")
+
+
 def compute_background_levels(
     par_raw: np.ndarray,
     perp_raw: np.ndarray,

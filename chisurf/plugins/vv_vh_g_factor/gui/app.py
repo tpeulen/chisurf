@@ -34,7 +34,7 @@ from .client import VvVhGFactorClient
 from .model import GFactorModel
 
 HERE = Path(__file__).parent
-DISPLAY = ("show_fast", "show_slow", "show_raw", "show_corrected", "log_y")
+DISPLAY = ("show_fast", "show_slow", "show_sample", "show_raw", "show_corrected", "log_y")
 
 
 class GFactorApp(TourTarget, ImApp):
@@ -51,6 +51,7 @@ class GFactorApp(TourTarget, ImApp):
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
         self.dataset_picker = DatasetPicker(client=dataset_client, on_paths=self.add_batch)
+        self.picker = self.dataset_picker
         self.path_list = PathListView(
             self,
             actions={
@@ -70,6 +71,7 @@ class GFactorApp(TourTarget, ImApp):
         self.help = EmTkHelpWindow(
             title="VV/VH G-factor: Help", resource=HERE / "help.md", owner=self
         )
+        self.help_window = self.help
         self.guide = EmTkGuidedTour(
             steps=HERE / "guide.json",
             get_target_rect=lambda key: (
@@ -79,6 +81,7 @@ class GFactorApp(TourTarget, ImApp):
             owner=self,
             wait_for_controls=True,
         )
+        self.tour = self.guide
         for form in self.forms.values():
             form.on_used = self.guide.notify_used
         self.job = BackgroundJob()
@@ -86,7 +89,7 @@ class GFactorApp(TourTarget, ImApp):
         self.dialog_window: DialogWindow | None = None
         self.dialog_callback: Callable[[list[str]], object] | None = None
         self.last_dir = ""
-        self.show_fast = self.show_slow = self.show_raw = self.show_corrected = True
+        self.show_fast = self.show_slow = self.show_sample = self.show_raw = self.show_corrected = True
         self.log_y = True
         self.plot_signature = None
         self.plot_info = {}
@@ -102,6 +105,9 @@ class GFactorApp(TourTarget, ImApp):
         )
         self.docks.add_window(
             "controls", "G-factor and mixing", self.draw_controls, dock="controls", closable=False
+        )
+        self.docks.add_window(
+            "sample", "Sample anisotropy", self.draw_sample, dock="controls", closable=False
         )
         self.docks.add_window(
             "batch", "Batch anisotropy", self.draw_batch, dock="controls", closable=False
@@ -143,9 +149,9 @@ class GFactorApp(TourTarget, ImApp):
             multiselect=multiple,
             filename=filename,
             directory=self.last_dir or None,
-            filters="VV/VH decay (*.dat *.txt);;All files (*)"
+            filters="VV/VH decay (*.dat *.txt *.csv);;All files (*)"
             if mode != "save"
-            else "Results (*.json *.tsv *.txt);;All files (*)",
+            else "Results (*.json *.tsv *.txt *.csv *.dat);;All files (*)",
         )
         self.dialog_window = DialogWindow(title, size=(760, 540))
         self.dialog_callback = callback
@@ -170,20 +176,35 @@ class GFactorApp(TourTarget, ImApp):
             work, publish, lambda exc: setattr(self.model, "message", f"Error: {exc}")
         )
 
-    def load(self, path, slow=False):
+    def load(self, path, slow=False, sample=False):
         self.last_dir = str(Path(path).parent)
 
         def operation(model):
-            model.load(path, slow=slow)
+            model.load(path, slow=slow, sample=sample)
             if model.fast is not None:
                 model.compute(self.client)
+            elif model.sample is not None:
+                model.compute_sample()
 
         ok = self.run(operation)
-        if ok and not slow:
+        if ok and not slow and not sample:
             self.guide.notify_used("load_fast")
         if ok and slow:
             self.guide.notify_used("load_slow")
+        if ok and sample:
+            self.guide.notify_used("load_sample")
         return ok
+
+    def load_file(self, path):
+        """Unified loader for sample VV/VH decay (and fallback fast reference)."""
+        self.last_dir = str(Path(path).parent)
+
+        def operation(model):
+            model.load_file(path)
+            if model.fast is not None:
+                model.compute(self.client)
+
+        return self.run(operation)
 
     example_folder = None  # None: the plugin's demo cache
 
@@ -232,6 +253,9 @@ class GFactorApp(TourTarget, ImApp):
             if str(path) not in self.model.batch_files:
                 self.model.batch_files.append(str(path))
 
+    def add_batch_paths(self, paths):
+        return self.model.add_batch_paths([str(p) for p in paths or []])
+
     def add_batch_folder(self, folders):
         """Queue the same supported VV/VH files as the legacy recursive folder picker."""
         self.add_batch(
@@ -246,13 +270,16 @@ class GFactorApp(TourTarget, ImApp):
         self.model.batch_results = []
 
     def files_dropped(self, paths):
-        """Host drop: the first file is the fast reference, the second the slow protein, any more join the batch queue."""
-        paths = [str(p) for p in paths]
+        """Host drop: first is fast reference, second slow protein, any more join batch queue. If fast loaded, single file is sample."""
+        paths = [str(p) for p in paths or []]
         if not paths:
             return False
+        if getattr(self.model, "batch_open", False):
+            return self.add_batch_paths(paths) > 0
+        if len(paths) == 1 and self.model.fast is not None:
+            return self.load(paths[0], sample=True)
         self.load(paths[0])
         if len(paths) > 1:
-            # the slow reference loads after the fast one finishes (one job at a time)
             self._follow = [lambda: self.load(paths[1], slow=True)]
             if paths[2:]:
                 self._follow.append(lambda: self.add_batch(paths[2:]))
@@ -260,6 +287,9 @@ class GFactorApp(TourTarget, ImApp):
 
     on_files_dropped = files_dropped
     on_paths_dropped = files_dropped
+
+    def window_resized(self, width: int | float, height: int | float) -> None:
+        self.window_size = (int(width), int(height))
 
     # -- windows ----------------------------------------------------------------------------- #
     def path_row(self, label, path, empty):
@@ -354,6 +384,64 @@ class GFactorApp(TourTarget, ImApp):
             m.fp_result.get("warning") or "Warning: load FP VV/VH data to estimate l1/l2."
         )
 
+    def draw_sample(self, box):
+        m = self.model
+        m.busy = self.job.running
+        busy = self.job.running or self.dialog is not None
+        pressed = button_row(
+            [
+                {
+                    "label": "Load sample...",
+                    "key": "load_sample",
+                    "enabled": not busy,
+                    "tip": "Load a VV/VH decay file for time-resolved anisotropy analysis.",
+                },
+                {
+                    "label": "Save outputs...",
+                    "key": "save_outputs",
+                    "enabled": not busy and (m.sample is not None or m.fast is not None),
+                    "tip": "Save shifted VV/VH decays (_shifted.dat), anisotropy trace (_anisotropy.txt), and r-infinity metadata (_rinf.csv).",
+                },
+                {
+                    "label": "Use Fast as sample",
+                    "key": "use_fast",
+                    "enabled": not busy and m.fast is not None,
+                    "tip": "Set the fast reference dye as the current sample decay.",
+                },
+                {
+                    "label": "Use Slow as sample",
+                    "key": "use_slow",
+                    "enabled": not busy and m.slow is not None,
+                    "tip": "Set the slow reference dye as the current sample decay.",
+                },
+            ],
+            remember=self.remember,
+        )
+        if pressed == "load_sample":
+            self.choose("Sample decay", lambda paths: self.load(paths[0], sample=True))
+        elif pressed == "save_outputs":
+            stem = Path(m.sample_file or m.fast_file or "sample").stem
+            self.choose(
+                "Save outputs base name",
+                lambda paths: self.run(lambda model: model.save_sample_outputs(paths[0])),
+                mode="save",
+                filename=f"{stem}_outputs",
+            )
+        elif pressed == "use_fast":
+            self.model.sample = self.model.fast
+            self.model.sample_file = self.model.fast_file
+            self.model.sample_region = list(self.model.region)
+            self.model.compute_sample()
+        elif pressed == "use_slow":
+            self.model.sample = self.model.slow
+            self.model.sample_file = self.model.slow_file
+            self.model.sample_region = list(self.model.region)
+            self.model.compute_sample()
+
+        self.path_row("Sample:", m.sample_file, "no sample decay loaded (using fast reference if available)")
+        im.separator()
+        self.form("sample", m)
+
     def draw_batch(self, box):
         m = self.model
         busy = self.job.running or self.dialog is not None
@@ -369,7 +457,7 @@ class GFactorApp(TourTarget, ImApp):
                     "label": "Save table...",
                     "key": "save",
                     "enabled": not busy and bool(m.batch_results),
-                    "tip": "Write per-file r(inf), region, backgrounds, G and errors as a tab-separated file.",
+                    "tip": "Write per-file r(inf), region, backgrounds, G, l1, l2 and errors as a table.",
                 },
             ],
             remember=self.remember,
@@ -394,10 +482,11 @@ class GFactorApp(TourTarget, ImApp):
     # -- plots ------------------------------------------------------------------------------- #
     def series(self):
         return [
-            (label, self.model.decay_series(slow))
-            for label, slow, enabled in [
-                ("Fast", False, self.show_fast),
-                ("Slow", True, self.show_slow),
+            (label, self.model.decay_series(slow=slow, sample=sample))
+            for label, slow, sample, enabled in [
+                ("Fast", False, False, self.show_fast),
+                ("Slow", True, False, self.show_slow),
+                ("Sample", False, True, self.show_sample),
             ]
             if enabled
         ]
@@ -408,6 +497,7 @@ class GFactorApp(TourTarget, ImApp):
         for attr, label in [
             ("show_fast", "Fast reference"),
             ("show_slow", "Slow reference"),
+            ("show_sample", "Sample"),
             ("show_raw", "Raw"),
             ("show_corrected", "Corrected"),
             ("log_y", "Log counts"),
@@ -423,7 +513,7 @@ class GFactorApp(TourTarget, ImApp):
             im.set_item_tooltip(tr("Show or hide this trace group, or change the intensity scale."))
             used += width
         im.new_line()
-        if self.model.fast is None and self.model.slow is None:
+        if self.model.fast is None and self.model.slow is None and self.model.sample is None:
             im.text_wrapped(tr("Load a VV/VH decay (button, or drop a file on the window)."))
             return
         if implot.begin_plot("##vvvh", (-1, -1)):
@@ -442,7 +532,7 @@ class GFactorApp(TourTarget, ImApp):
             if vectors:
                 peak = max(float(np.nanmax(v)) for v in vectors)
                 length = max(map(len, vectors))
-                sig = (id(self.model.fast), id(self.model.slow), self.log_y, peak)
+                sig = (id(self.model.fast), id(self.model.slow), id(self.model.sample), self.log_y, peak)
                 implot.setup_axes_limits(
                     0,
                     length,
@@ -485,18 +575,20 @@ class GFactorApp(TourTarget, ImApp):
             implot.end_plot()
 
     def draw_anisotropy(self, box):
-        if self.model.fast is None and self.model.slow is None:
+        if self.model.fast is None and self.model.slow is None and self.model.sample is None:
             im.text_wrapped(tr("The anisotropy r(t) of the loaded decays appears here."))
             return
         if implot.begin_plot("##anisotropy", (-1, -1)):
             implot.setup_axes("TAC bin", "Anisotropy r(t)")
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
+            max_len = max(
+                len(self.model.fast[0]) if self.model.fast else 0,
+                len(self.model.slow[0]) if self.model.slow else 0,
+                len(self.model.sample[0]) if self.model.sample else 0,
+            )
             implot.setup_axes_limits(
                 0,
-                max(
-                    len(self.model.fast[0]) if self.model.fast else 0,
-                    len(self.model.slow[0]) if self.model.slow else 0,
-                ),
+                max(1, max_len),
                 -0.2,
                 0.6,
                 cond=implot.COND_ONCE,
@@ -508,7 +600,23 @@ class GFactorApp(TourTarget, ImApp):
                     implot.plot_line(label + " raw", data["time"], data["r_raw"])
                 if self.show_corrected:
                     implot.plot_line(label + " corrected", data["time"], data["r_corrected"])
+
+            bounds = self.model.sample_region if self.model.sample is not None else self.model.region
+            implot.set_next_fill_style((60, 205, 100, 255), 0.2)
+            implot.plot_shaded(
+                "##rinf_region",
+                np.array([min(bounds), max(bounds)]),
+                np.array([0.6, 0.6]),
+                np.array([-0.2, -0.2]),
+            )
+            for index, value in enumerate(bounds):
+                result = implot.drag_line_x(200 + index, value, col=(60, 205, 100, 255))
+                if result.modified and not self.job.running:
+                    bounds[index] = round(result.value, 1)
+                    self.model.compute_sample()
+
             implot.end_plot()
+        im.set_item_tooltip(tr("Drag the green lines to choose the r(inf) region."))
 
     # -- frame ------------------------------------------------------------------------------- #
     def render(self):
@@ -547,6 +655,8 @@ class GFactorApp(TourTarget, ImApp):
             self.settings_signature = signature
             if self.model.fast is not None:
                 self.calculate()
+            elif self.model.sample is not None:
+                self.model.compute_sample()
 
     # -- settings ---------------------------------------------------------------------------- #
     def export_settings(self):
@@ -562,16 +672,22 @@ class GFactorApp(TourTarget, ImApp):
         for name, value in (state.get("display") or {}).items():
             if name in DISPLAY:
                 setattr(self, name, bool(value))
-        paths = [(self.model.fast_file, False), (self.model.slow_file, True)]
+        paths = [
+            (self.model.fast_file, False, False),
+            (self.model.slow_file, True, False),
+            (self.model.sample_file, False, True),
+        ]
         settings = self.model.export_settings()
 
         def operation(model):
-            for path, slow in paths:
+            for path, slow, sample in paths:
                 if path and Path(path).is_file():
-                    model.load(path, slow=slow)
+                    model.load(path, slow=slow, sample=sample)
             model.restore_settings(settings)
             if model.fast is not None:
                 model.compute(self.client)
+            elif model.sample is not None:
+                model.compute_sample()
 
         self.run(operation)
 

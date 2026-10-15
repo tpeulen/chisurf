@@ -1,5 +1,8 @@
 {
- "window": {"width": 1100, "height": 720},
+ "window": {
+  "width": 1100,
+  "height": 720
+ },
  "_comment": "The emtk forms of the G-factor calculator, drawn by emtk.view_form.draw_form over GFactorModel. This is the shared native calculator used by standalone and hosted callers.",
  "panels": {
   "tail": {
@@ -213,6 +216,36 @@
        "decimals": 4,
        "step": 0.01,
        "description": "Linked mixing parameter applied to l1 and l2."
+      },
+      {
+       "type": "toggle",
+       "attr": "link_l1_l2",
+       "label": "Link l1 = l2",
+       "description": "Keep l1 and l2 linked when adjusting mixing manually."
+      },
+      {
+       "type": "value",
+       "attr": "l1_override",
+       "label": "l1",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 0.5,
+       "decimals": 4,
+       "step": 0.01,
+       "description": "Manual mixing parameter l1."
+      },
+      {
+       "type": "value",
+       "attr": "l2_override",
+       "label": "l2",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 0.5,
+       "decimals": 4,
+       "step": 0.01,
+       "description": "Manual mixing parameter l2."
       }
      ]
     }
@@ -231,7 +264,9 @@
        "description": "Quantity and value of the G-factor tail match.",
        "options": {
         "source": "result_rows",
-        "height": 150, "stretch": 1, "min_height": 150,
+        "height": 150,
+        "stretch": 1,
+        "min_height": 150,
         "editable": false,
         "columns": [
          {
@@ -264,7 +299,9 @@
        "description": "Quantity and value of the mixing estimate.",
        "options": {
         "source": "mixing_rows",
-        "height": 140, "stretch": 1, "min_height": 140,
+        "height": 140,
+        "stretch": 1,
+        "min_height": 140,
         "editable": false,
         "columns": [
          {
@@ -292,7 +329,11 @@
      "target": "batch_files",
      "title": "VV/VH files",
      "description": "Queue files from disk, a folder or the database; remove or clear inputs without deleting their files.",
-     "options": {"target": "batch_files", "add_tip": "Choose VV/VH decay files to add.", "empty": "No VV/VH decays queued."}
+     "options": {
+      "target": "batch_files",
+      "add_tip": "Choose VV/VH decay files to add.",
+      "empty": "No VV/VH decays queued."
+     }
     },
     {
      "type": "custom",
@@ -328,8 +369,26 @@
         "title": "G",
         "tooltip": "G-factor applied."
        },
-       {"key": "bg_vv", "title": "bg VV", "tooltip": "Parallel background applied to this row."},
-       {"key": "bg_vh", "title": "bg VH", "tooltip": "Perpendicular background applied to this row."},
+       {
+        "key": "l1",
+        "title": "l1",
+        "tooltip": "l1 mixing factor applied."
+       },
+       {
+        "key": "l2",
+        "title": "l2",
+        "tooltip": "l2 mixing factor applied."
+       },
+       {
+        "key": "bg_vv",
+        "title": "bg VV",
+        "tooltip": "Parallel background applied to this row."
+       },
+       {
+        "key": "bg_vh",
+        "title": "bg VH",
+        "tooltip": "Perpendicular background applied to this row."
+       },
        {
         "key": "error",
         "title": "Error",
@@ -337,6 +396,58 @@
        }
       ]
      }
+    }
+   ]
+  },
+  "sample": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Sample decay",
+     "description": "Inspect time-resolved anisotropy r(t) and r-infinity of the sample decay.",
+     "sections": [
+      {
+       "type": "value",
+       "attr": "sample_file",
+       "label": "Sample file",
+       "kind": "str",
+       "read_only": true,
+       "elide": "start",
+       "description": "Loaded VV/VH decay file."
+      },
+      {
+       "type": "value",
+       "attr": "sample_region_start",
+       "label": "r-inf start (bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000.0,
+       "decimals": 1,
+       "step": 1.0,
+       "description": "First bin of the region averaged to r-infinity."
+      },
+      {
+       "type": "value",
+       "attr": "sample_region_stop",
+       "label": "r-inf stop (bin)",
+       "kind": "float",
+       "style": "spin",
+       "minimum": 0.0,
+       "maximum": 1000000.0,
+       "decimals": 1,
+       "step": 1.0,
+       "description": "Last bin of the region averaged to r-infinity."
+      },
+      {
+       "type": "value",
+       "attr": "sample_r_infty_text",
+       "label": "r(inf)",
+       "kind": "str",
+       "read_only": true,
+       "description": "Mean anisotropy over the r-infinity region (five decimals)."
+      }
+     ]
     }
    ]
   }
