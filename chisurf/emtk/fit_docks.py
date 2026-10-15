@@ -1500,6 +1500,13 @@ class DataDocks:
             core=True,
             # A fit window is a document of the workspace: it lives there and nowhere else.
             workspace=True,
+            title_buttons=[
+                (
+                    lambda u=uid: tr("Plots") if self.windows.get(u) and self.windows[u].code_shown() else tr("Code"),
+                    lambda u=uid: self.toggle_code(u),
+                    lambda: tr("Show the model's source and view.json, editable; or the plots again."),
+                )
+            ],
         )
         self.shell.docks.show("workspace")
         self.shell.docks.focus("workspace")
@@ -1861,18 +1868,11 @@ class DataDocks:
         if window is None:
             return
         x, y, w, h = (float(v) for v in box)
-        # A strip over the surface for the window's own actions: *Code* turns it over.
-        label = tr("Plots") if window.code_shown() else tr("Code")
-        strip = im.get_frame_height() + 4.0
-        bw = im.calc_text_size(label)[0] + 2.0 * im.get_style().frame_padding[0]
-        im.set_cursor_screen_pos((x + w - bw - 4.0, y + 2.0))
-        if im.button(f"{label}##code-{uid}"):
-            self.toggle_code(uid)
-        self.shell.item_rects[f"{window.key}.code"] = im.get_item_rect()
-        im.set_item_tooltip(
-            tr("Show the model's source and view.json, editable; or the plots again.")
-        )
-        window.box = (x, y + strip, max(1.0, w), max(1.0, h - strip))
+        docks = self.shell.workspace_docks
+        win = docks.window(window.key)
+        if win is not None and win.title_button_rects:
+            self.shell.item_rects[f"{window.key}.code"] = win.title_button_rects.get(0)
+        window.box = (x, y, max(1.0, w), max(1.0, h))
         self.shell.host_child(window.key, window.key, window.app, window.box)
 
     def toggle_code(self, uid: str) -> bool:
