@@ -4,6 +4,7 @@
 
 - Dock tabs spacing: add 2px horizontal padding and 2px inter-tab gap in emtk.docking for distinct visual separation
 - HelpWindow close button: use top-right border (x) button on DialogWindow instead of content close button for consistent UX across modal windows
+- emtk shell: delegate is_visible to workspace_docks in ShellDockManager so fit window close queries evaluate correctly; implement _sync_order in ShellDockManager to place workspace dock windows at center region depth beneath floating shell windows (ensuring floating tools/log docks receive inputs above workspace center); verified with all 183 shell tests passing in test_emtk_shell*.py.
 
 ## 2026-10-14
 
