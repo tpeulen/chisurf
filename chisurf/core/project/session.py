@@ -502,6 +502,8 @@ def owned_scientific_objects(owner: Any, *, include_plugins: bool = True) -> dic
         if obj is None or id(obj) in seen:
             return
         seen[id(obj)] = obj
+        if isinstance(obj, (int, float, str, bool, bytes, np.ndarray)):
+            return
         if isinstance(obj, dict):
             for value in obj.values():
                 visit(value)
@@ -509,14 +511,18 @@ def owned_scientific_objects(owner: Any, *, include_plugins: bool = True) -> dic
         if isinstance(obj, (list, tuple, DataGroup)):
             for value in obj:
                 visit(value)
+            if not isinstance(obj, DataGroup):
+                return
         uid = getattr(obj, "unique_identifier", None)
         if uid is not None:
             key = str(uid)
             if key in result and result[key] is not obj:
-                raise SessionCodecError(f"duplicate owned scientific UID {key!r}")
+                key = str(uuid.uuid4())
+                try:
+                    obj.unique_identifier = key
+                except Exception:
+                    pass
             result[key] = obj
-        else:
-            return
         for field in (
             "data",
             "data_reader",
@@ -530,6 +536,17 @@ def owned_scientific_objects(owner: Any, *, include_plugins: bool = True) -> dic
             "readers",
             "generic",
             "convolve",
+            "corrections",
+            "anisotropy",
+            "lifetimes",
+            "fa",
+            "fb",
+            "fret_parameters",
+            "orientation_parameter",
+            "gaussians",
+            "fret_rates",
+            "pddem",
+            "_classic_groups",
             "background_curve",
             "_irf",
             "instrument_response_function",

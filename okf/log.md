@@ -8,6 +8,7 @@
 - EMTK dock tabs and dialog windows: added close buttons (×) to each closable dock tab and removed the far-right region-level close button for better UX; set DialogWindow.HEADER_H to 16.0px matching DockManager title height uniformly across EMTK and ChiSurf.
 - Fit window Code button: moved Code toggle button into window title bar to the left of minimize and close buttons via EMTK DockWindow.title_buttons, removing the redundant vertical toolbar strip and reclaiming vertical space for fit plots and editors.
 - Fix simulated TCSPC duplicate scientific UID on repeated adds, queue parameter edits in DataDocks to prevent sluggish drops, improve DataTable cell editing and Enter commit, and add clipboard copy to log dock
+- emtk shell & server: defensive UID disambiguation during session traversal and ingestion to eliminate duplicate scientific UID crashes; unique Datasets tree row keys for independent row selection; allow None (unload) IRF in DatasetPicker; responsive single-click editing, keyboard capture, and robust bounds/int-to-float conversions in DataTable
 
 ## 2026-10-14
 

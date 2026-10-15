@@ -800,6 +800,7 @@ class DataDocks:
                     for i, d in enumerate(listed)
                 )
                 tree = _Rows()
+                seen_tree_uids: set[str] = set()
                 for row, d in zip(rows, listed):
                     # A file read is a group of one curve; that is not drawn as a group. A group made by
                     # *Group*, or a file of several curves, is: it unfolds into its members.
@@ -811,13 +812,22 @@ class DataDocks:
                     row["group"] = bool(members)
                     row["number"] = str(row["index"])
                     row["parent"] = ""
+                    uid = row["uid"]
+                    if not uid or uid in seen_tree_uids:
+                        uid = f"{uid or 'ds'}#{row['index']}"
+                        row["uid"] = uid
+                    seen_tree_uids.add(uid)
                     tree.append(row)
                     for position, member in enumerate(members):
+                        muid = str(member.get("uid", ""))
+                        if not muid or muid in seen_tree_uids:
+                            muid = f"{muid or 'm'}#{row['index']}.{position + 1}"
+                        seen_tree_uids.add(muid)
                         tree.append(
                             {
                                 "index": row["index"],
                                 "number": f"{row['index']}.{position + 1}",
-                                "uid": str(member.get("uid", "")),
+                                "uid": muid,
                                 "name": str(member.get("name", "")),
                                 "experiment": str(member.get("experiment", "")),
                                 "parent": row["uid"],
@@ -1110,6 +1120,12 @@ class DataDocks:
         elif key in ("lo", "hi"):
             lo = _number(value) if key == "lo" else _number(record.get("lo"))
             hi = _number(value) if key == "hi" else _number(record.get("hi"))
+            if lo is None and key != "lo":
+                lo = -float("inf")
+            if hi is None and key != "hi":
+                hi = float("inf")
+            if lo is None or hi is None:
+                return False
             change = lambda: api.set_parameter_bounds(name, (lo, hi), fit_uid=uid)  # noqa: E731
         elif key == "bounds_on":
             change = lambda: api.set_parameter_bounds_on(name, bool(value), fit_uid=uid)  # noqa: E731
@@ -1188,6 +1204,10 @@ class DataDocks:
         elif key in ("lo", "hi"):
             lo = _number(value) if key == "lo" else _number(record.get("lo"))
             hi = _number(value) if key == "hi" else _number(record.get("hi"))
+            if lo is None and key != "lo":
+                lo = -float("inf")
+            if hi is None and key != "hi":
+                hi = float("inf")
             if lo is None or hi is None:
                 return False
             fields["bounds"] = (lo, hi)
@@ -1267,14 +1287,17 @@ class DataDocks:
             anchor,
             on_pick=lambda row: self.set_curve(curve, row),
             title=tr("Pick the curve"),
+            allow_none=True,
         )
         self.request_frame()
 
     def set_curve(self, curve: str, row: dict | None) -> bool:
         """Give the curve picker *curve* the dataset *row* (``model.curve.set``)."""
         self.dataset_picker = None
+        if not row or not row.get("uid"):
+            return self.unload_curve(curve)
         uid, api = self.current_uid, self.session.api if self.session is not None else None
-        if not row or not uid or api is None:
+        if not uid or api is None:
             return False
         dataset = str(row.get("uid", ""))
         return self._then_update(

@@ -107,12 +107,21 @@ class DatasetPicker:
         anchor: Any,
         on_pick: Callable[[dict | None], object],
         title: str = "",
+        allow_none: bool = False,
     ):
         from emtk.widgets.menus import MenuItem, Popup
 
         self.rows = list(rows)
+        self.allow_none = allow_none
+        if allow_none:
+            self.rows.insert(0, {"name": tr("None (unload)"), "uid": "", "experiment": ""})
         self.on_pick = on_pick
-        items = [MenuItem(f"{row['name']}  ({row['experiment']})") for row in self.rows]
+        items = [
+            MenuItem(
+                row["name"] if not row.get("experiment") else f"{row['name']}  ({row['experiment']})"
+            )
+            for row in self.rows
+        ]
         self.panel = Popup(items, title=title or tr("Attach a dataset to this fit"))
         if anchor is not None:
             x, y, _w, h = anchor
@@ -122,7 +131,10 @@ class DatasetPicker:
 
     def pick(self, index: int) -> None:
         """Choose row *index* (what a click on its entry does)."""
-        self.on_pick(self.rows[index] if 0 <= index < len(self.rows) else None)
+        row = self.rows[index] if 0 <= index < len(self.rows) else None
+        if row is not None and not row.get("uid"):
+            row = None
+        self.on_pick(row)
 
     def draw(self) -> None:
         from emtk import overlays

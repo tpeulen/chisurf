@@ -1194,6 +1194,8 @@ def ensure_unique_dataset_uids(dataset: typing.Any, existing_datasets: typing.An
 
     existing: set[str] = set()
     for d in existing_datasets or ():
+        if d is dataset:
+            continue
         uid = getattr(d, "unique_identifier", None)
         if uid:
             existing.add(str(uid))
@@ -1204,10 +1206,25 @@ def ensure_unique_dataset_uids(dataset: typing.Any, existing_datasets: typing.An
                     existing.add(str(muid))
 
     uid = getattr(dataset, "unique_identifier", None)
-    if uid and str(uid) in existing:
-        dataset.unique_identifier = str(uuid.uuid4())
+    if not uid or str(uid) in existing:
+        new_uid = str(uuid.uuid4())
+        try:
+            dataset.unique_identifier = new_uid
+        except Exception:
+            pass
+        existing.add(str(getattr(dataset, "unique_identifier", new_uid)))
+    else:
+        existing.add(str(uid))
+
     if isinstance(dataset, (DataGroup, list, tuple)):
         for m in dataset:
             muid = getattr(m, "unique_identifier", None)
-            if muid and str(muid) in existing:
-                m.unique_identifier = str(uuid.uuid4())
+            if not muid or str(muid) in existing:
+                new_muid = str(uuid.uuid4())
+                try:
+                    m.unique_identifier = new_muid
+                except Exception:
+                    pass
+                existing.add(str(getattr(m, "unique_identifier", new_muid)))
+            else:
+                existing.add(str(muid))

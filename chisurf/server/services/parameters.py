@@ -39,13 +39,49 @@ def _owned_uid(state: SessionState, uid: str) -> Any:
     return owned_scientific_objects(state).get(str(uid))
 
 
+def _model_has_parameter(model: Any, parameter: Any) -> bool:
+    """Whether *model* directly or via a classic sub-group contains *parameter*."""
+    if model is None:
+        return False
+    if any(item is parameter for item in getattr(model, "parameters_all", ())):
+        return True
+    for field in (
+        "convolve",
+        "generic",
+        "corrections",
+        "anisotropy",
+        "lifetimes",
+        "fa",
+        "fb",
+        "fret_parameters",
+        "orientation_parameter",
+        "gaussians",
+        "fret_rates",
+        "pddem",
+    ):
+        group = getattr(model, field, None)
+        if group is not None and any(
+            item is parameter for item in getattr(group, "parameters_all", ())
+        ):
+            return True
+    classic = getattr(model, "_classic_groups", None)
+    if isinstance(classic, dict):
+        for group in classic.values():
+            if any(item is parameter for item in getattr(group, "parameters_all", ())):
+                return True
+    return False
+
+
 def _parameter_owner(state: SessionState, parameter: Any) -> Any:
     """Find the owning model so a UID edit refreshes active predictions."""
     from chisurf.core.project.session import owned_scientific_objects
 
     for obj in owned_scientific_objects(state).values():
-        if any(item is parameter for item in getattr(obj, "parameters_all", ())):
+        if _model_has_parameter(obj, parameter) or _model_has_parameter(_model_of(obj), parameter):
             return obj
+    for fit in getattr(state, "fits", ()):
+        if _model_has_parameter(getattr(fit, "model", None), parameter):
+            return fit
     return None
 
 
@@ -126,9 +162,12 @@ def _resolve_parameter(
             message = parameter_error or f"parameter uid '{parameter_uid}' not found"
             return None, None, service_error(message, error_code=NOT_FOUND)
         owner = _owned_uid(state, str(owner_uid)) if owner_uid else _parameter_owner(state, p)
-        if owner is None or not any(
-            item is p for item in getattr(_model_of(owner), "parameters_all", ())
-        ):
+        if owner is None:
+            for fit in getattr(state, "fits", ()):
+                if _model_has_parameter(getattr(fit, "model", None), p):
+                    owner = fit
+                    break
+        if owner is None or not _model_has_parameter(_model_of(owner), p):
             return None, None, service_error("parameter owner not found", error_code=NOT_FOUND)
         return owner, p, None
 

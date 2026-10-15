@@ -826,8 +826,6 @@ class SectionViews:
     # -- the table callbacks (the editor forwards them) ------------------------ #
     def editable(self, record: Any, key: str) -> bool:
         record = record or {}
-        if self.docks.busy:
-            return False
         section = self.data.get(str(record.get("_section", ""))) or {}
         if section.get("key") == "rate_matrix" and key.startswith("c"):
             i, j = int(record.get("_i", -1)), int(key[1:])

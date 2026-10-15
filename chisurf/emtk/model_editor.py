@@ -612,16 +612,16 @@ class ModelEditor:
 
     def enabled(self, name: str) -> bool:
         """Controls are live while no call is under way; *add* / *del* only where the group allows it."""
-        if self.docks.busy:
-            return False
         if name in self._actions:
             kind, _target, section = self._actions[name]
             if kind in ("press", "select"):
                 return True
             if kind == "add":
-                return bool(section.get("can_add", True))
-            return bool(section.get("can_remove", True)) and int(section.get("count", 0)) > int(
-                section.get("min_rows", 0)
+                return bool(section.get("can_add", True)) and not self.docks.busy
+            return (
+                bool(section.get("can_remove", True))
+                and int(section.get("count", 0)) > int(section.get("min_rows", 0))
+                and not self.docks.busy
             )
         control = self._controls.get(name)
         if control is not None:

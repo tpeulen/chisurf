@@ -668,8 +668,9 @@ def add_dataset(
                 error_code=OPERATION_FAILED,
                 exception=e,
             )
-        if name:
-            group.name = str(name)
+        from chisurf.core.data import ensure_unique_dataset_uids
+
+        ensure_unique_dataset_uids(group, state.datasets)
         state.add_dataset(group)
         index = len(state.datasets) - 1
         if event_bus is not None and not _from_controller:
@@ -690,14 +691,17 @@ def add_dataset(
     except Exception as e:
         return service_error(str(e), error_code=OPERATION_FAILED, exception=e)
 
-    from chisurf.core.data import DataGroup
+    from chisurf.core.data import DataGroup, ensure_unique_dataset_uids
 
+    ensure_unique_dataset_uids(dataset_group, state.datasets)
     if isinstance(dataset_group, (list, DataGroup)):
         for ds in dataset_group:
+            ensure_unique_dataset_uids(ds, state.datasets)
             state.add_dataset(ds)
     else:
         if hasattr(dataset_group, "__iter__") and not isinstance(dataset_group, (str, bytes)):
             for ds in dataset_group:
+                ensure_unique_dataset_uids(ds, state.datasets)
                 state.add_dataset(ds)
         else:
             state.add_dataset(dataset_group)
