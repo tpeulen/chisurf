@@ -21,6 +21,9 @@
         "min_column_width": 75,
         "fit_columns": true,
         "delete_call": "remove_reference",
+        "selected_call": "select_reference",
+        "editable": true,
+        "edited_call": "edit_reference",
         "expand": true,
         "height": 130,
         "columns": [
@@ -28,37 +31,99 @@
           "key": "file",
           "min_width": 140,
           "title": "File",
-          "tooltip": "Reference standard decay file name."
+          "tooltip": "Reference standard decay file name.",
+          "editable": false
          },
          {
           "key": "rho_ns",
           "title": "rho (ns)",
-          "tooltip": "Rotational correlation time (ns)."
+          "tooltip": "Rotational correlation time (ns). Click to edit.",
+          "editable": true
          },
          {
           "key": "tau_ns",
           "title": "tau (ns)",
-          "tooltip": "Fluorescence lifetime (ns)."
+          "tooltip": "Fluorescence lifetime (ns). Click to edit.",
+          "editable": true
          },
          {
           "key": "r0",
           "title": "r0",
-          "tooltip": "Fundamental limiting anisotropy."
+          "tooltip": "Fundamental limiting anisotropy. Click to edit.",
+          "editable": true
          },
          {
           "key": "tail_match",
           "title": "Tail match (G)",
-          "tooltip": "Reference used to determine detector G-factor via tail matching."
+          "tooltip": "Toggle checkbox to use this reference for tail matching G-factor.",
+          "editable": true
          },
          {
           "key": "r_expected",
           "title": "Target rS",
-          "tooltip": "Target steady-state anisotropy r0 / (1 + tau/rho)."
+          "tooltip": "Target steady-state anisotropy r0 / (1 + tau/rho).",
+          "editable": false
          },
          {
           "key": "l_estimate",
           "title": "l (mixing)",
-          "tooltip": "Estimated polarization mixing parameter l1 = l2 from this reference decay."
+          "tooltip": "Estimated polarization mixing parameter l1 = l2 from this reference decay.",
+          "editable": false
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "parameters": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Calibration parameters",
+     "description": "Interactive table for calibration inputs and overrides: tail matching, background, channel shift, and polarization mixing.",
+     "sections": [
+      {
+       "type": "custom",
+       "key": "data_table",
+       "description": "Table of calibration parameters.",
+       "options": {
+        "source": "parameter_rows",
+        "min_column_width": 70,
+        "fit_columns": true,
+        "editable": true,
+        "edited_call": "edit_parameter",
+        "expand": true,
+        "height": 190,
+        "columns": [
+         {
+          "key": "parameter",
+          "min_width": 145,
+          "title": "Parameter",
+          "editable": false,
+          "tooltip": "Calibration setting or override name."
+         },
+         {
+          "key": "value",
+          "min_width": 70,
+          "title": "Value",
+          "editable": true,
+          "tooltip": "Current value. Click to toggle boolean or click/double-click to edit number."
+         },
+         {
+          "key": "unit",
+          "min_width": 45,
+          "title": "Unit",
+          "editable": false,
+          "tooltip": "Physical or TAC channel unit."
+         },
+         {
+          "key": "description",
+          "min_width": 170,
+          "title": "Description",
+          "editable": false,
+          "tooltip": "How this parameter is used in the calibration."
          }
         ]
        }

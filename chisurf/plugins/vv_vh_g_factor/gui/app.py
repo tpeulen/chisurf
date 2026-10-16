@@ -440,25 +440,6 @@ class GFactorApp(TourTarget, ImApp):
             if ch_g and not is_tail_g:
                 m.set_reference_tail_match(active_idx)
 
-            im.text("rho [ns]:")
-            im.same_line()
-            im.set_next_item_width(65.0)
-            ch_rho, new_rho = im.input_float("##ref_rho", float(cur.get("rho_ns", 0.2)), 0.1, 1.0, fmt="%.2f")
-            im.set_item_tooltip(tr("Rotational correlation time rho [ns] of this reference standard."))
-            if ch_rho and new_rho > 0:
-                cur["rho_ns"] = new_rho
-                m.compute()
-
-            im.same_line()
-            im.text("tau [ns]:")
-            im.same_line()
-            im.set_next_item_width(65.0)
-            ch_tau, new_tau = im.input_float("##ref_tau", float(cur.get("tau_ns", 4.0)), 0.1, 1.0, fmt="%.2f")
-            im.set_item_tooltip(tr("Fluorescence lifetime tau [ns] of this reference standard."))
-            if ch_tau and new_tau > 0:
-                cur["tau_ns"] = new_tau
-                m.compute()
-
             im.same_line()
             if im.button("Remove##ref"):
                 m.remove_decay(decay_idx)
@@ -467,9 +448,10 @@ class GFactorApp(TourTarget, ImApp):
         status_msg = m.message or "Load reference standard VV/VH decay(s) for calibration."
         im.text_wrapped(status_msg)
         im.separator()
+        self.form("parameters", m)
+        self.form("results", m)
         self.form("tail", m)
         self.form("mixing", m)
-        self.form("results", m)
         warn = m.fp_result.get("warning")
         if warn and ("outside" in warn or "error" in warn.lower() or m.fp_result.get("l1") is None):
             im.text_colored((255, 180, 80, 255), warn)

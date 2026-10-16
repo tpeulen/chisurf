@@ -11,15 +11,15 @@ timestamp: '2026-07-29T00:00:00Z'
 # Where to pick this up
 
 1. Completed (2026-10-16):
+   - Interactive Editable Parameter Table: replaced/augmented stacked spinboxes with a dedicated, interactive `Calibration parameters` data table (`source: "parameter_rows"`, `editable: true`, `edited_call: "edit_parameter"`) providing in-place editing for all calibration inputs (Tail start/stop, Background subtraction, Background start/stop, VH shift, Flip VV/VH, dt, r0, rho, tau, Manual G override, Manual l1/l2 override) with clear units and descriptions.
+   - In-Place Reference Standards Editing: updated `Reference standards` table (`source: "reference_rows"`, `editable: true`, `edited_call: "edit_reference"`) supporting direct double-click editing of rotational correlation times $\rho$ [ns], fluorescence lifetimes $\tau$ [ns], limiting anisotropy $r_0$, and interactive checkbox toggling for tail-matching standard assignment.
    - MMFDB Universal Selection Endpoint: added Section 8 to `okf/prds/prd-10.md` formalizing MMFDB dataset picker endpoints; added `Database...` action button to load reference standard decays directly from MMFDB database.
-   - Reference Standards Table: eliminated arbitrary "fast" / "slow" dichotomy, replacing hardcoded buttons with a unified reference standards table (`source: "reference_rows"`) reporting file, rotational correlation time $\rho$ [ns], lifetime $\tau$ [ns], fundamental anisotropy $r_0$, tail-match indicator, Perrin target $r_S$, and solved mixing estimate $l$.
-   - Interactive Standard Editor: inline editing of $\rho$ and $\tau$, checkbox to toggle which reference standard is used for tail-matching $G$, and remove button.
    - Time-resolved VV/VH Ratio Plot: added dedicated `[VV/VH ratio (G-factor)]` dock tab plotting raw and background-corrected / shifted intensity ratio $I_{VV}(t)/I_{VH}(t)$, a horizontal baseline at $y = G$, shaded tail matching region with interactive draggable boundary lines, and CSV export via `export_active_ratio`.
    - Unified Unknown Samples Workflow: single unified tab "Unknown Samples (Batch)" for processing 1 to N unknown VV/VH files with interactive sample decay and anisotropy inspection.
-   - Verified 100% green test suite: 72/72 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines.
+   - Verified 100% green test suite: 73/73 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines.
    - Headless visual inspection: captured and verified `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_samples_unified.png`.
 2. Acceptance derivation:
-   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 72 tests pass).
+   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 73 tests pass).
    - Re-capture UI renders via `python scratch/capture_vv_vh_screens.py` and inspect `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_samples_unified.png`.
 3. Open:
    - Multi-component global anisotropy curve fitting in batch pipelines.

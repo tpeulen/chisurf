@@ -426,10 +426,10 @@ class GFactorModel:
                 "index": i,
                 "file": Path(d.get("path", d.get("name", ""))).name,
                 "path": str(d.get("path", "")),
-                "rho_ns": f"{float(rho):.2f}" if rho is not None else "",
-                "tau_ns": f"{float(tau):.2f}" if tau is not None else "",
-                "r0": f"{float(r0):.3f}" if r0 is not None else "",
-                "tail_match": "★ Yes" if is_g else "No",
+                "rho_ns": round(float(rho), 2) if rho is not None else 0.2,
+                "tau_ns": round(float(tau), 2) if tau is not None else 4.0,
+                "r0": round(float(r0), 3) if r0 is not None else 0.38,
+                "tail_match": bool(is_g),
                 "r_expected": f"{float(target_rs):.4f}" if target_rs is not None and np.isfinite(target_rs) else "",
                 "l_estimate": f"{float(l_est):.4f}" if l_est is not None and np.isfinite(l_est) else "",
             })
@@ -468,6 +468,214 @@ class GFactorModel:
         idx = next((i for i, d in enumerate(ref_decays) if d.get("path") == path), None)
         if idx is not None:
             self.selected_reference_idx = idx
+
+    def edit_reference(self, record: dict | None, key: str, value: Any) -> None:
+        """Handle in-place editing of reference standard table cells."""
+        if not record:
+            return
+        path = record.get("path")
+        d = next((item for item in self.decays if item.get("path") == path), None)
+        if not d:
+            return
+        try:
+            if key == "rho_ns":
+                new_rho = float(value)
+                if new_rho > 0:
+                    d["rho_ns"] = new_rho
+                    if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                        self.fp_rho_ns = new_rho
+                    if self.fast is not None:
+                        self.compute()
+            elif key == "tau_ns":
+                new_tau = float(value)
+                if new_tau > 0:
+                    d["tau_ns"] = new_tau
+                    if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                        self.manual_tau = True
+                        self.tau_override = new_tau
+                    if self.fast is not None:
+                        self.compute()
+            elif key == "r0":
+                new_r0 = float(value)
+                if -0.5 <= new_r0 <= 1.0:
+                    d["r0"] = new_r0
+                    if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                        self.fp_r0 = new_r0
+                    if self.fast is not None:
+                        self.compute()
+            elif key == "tail_match":
+                bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "★ yes"))
+                if bool_val:
+                    ref_decays = [x for x in self.decays if x.get("role") != "sample"]
+                    idx = next((i for i, x in enumerate(ref_decays) if x.get("path") == path), None)
+                    if idx is not None:
+                        self.set_reference_tail_match(idx)
+        except (ValueError, TypeError):
+            pass
+
+    def parameter_rows(self) -> list[dict[str, object]]:
+        """The calibration parameters and overrides as editable table rows."""
+        return [
+            {
+                "key": "tail_start",
+                "parameter": "Tail start",
+                "value": float(self.tail_start),
+                "unit": "bin",
+                "description": "First TAC bin of tail region for G-factor matching",
+            },
+            {
+                "key": "tail_stop",
+                "parameter": "Tail stop",
+                "value": float(self.tail_stop),
+                "unit": "bin",
+                "description": "Last TAC bin of tail region",
+            },
+            {
+                "key": "background",
+                "parameter": "Background subtraction",
+                "value": bool(self.background),
+                "unit": "toggle",
+                "description": "Subtract channel background before matching tails",
+            },
+            {
+                "key": "background_start",
+                "parameter": "Background start",
+                "value": float(self.background_start),
+                "unit": "bin",
+                "description": "First TAC bin of signal-free background region",
+            },
+            {
+                "key": "background_stop",
+                "parameter": "Background stop",
+                "value": float(self.background_stop),
+                "unit": "bin",
+                "description": "Last TAC bin of signal-free background region",
+            },
+            {
+                "key": "shift",
+                "parameter": "VH shift",
+                "value": float(self.shift),
+                "unit": "bins",
+                "description": "TAC bin shift applied to perpendicular channel",
+            },
+            {
+                "key": "flip",
+                "parameter": "Flip VV/VH",
+                "value": bool(self.flip),
+                "unit": "toggle",
+                "description": "Swap parallel (VV) and perpendicular (VH) channels",
+            },
+            {
+                "key": "fp_dt_ns",
+                "parameter": "Time resolution (dt)",
+                "value": float(self.fp_dt_ns),
+                "unit": "ns/bin",
+                "description": "TAC calibration bin width in nanoseconds",
+            },
+            {
+                "key": "fp_r0",
+                "parameter": "Limiting anisotropy (r0)",
+                "value": float(self.fp_r0),
+                "unit": "",
+                "description": "Fundamental limiting anisotropy at t=0",
+            },
+            {
+                "key": "fp_rho_ns",
+                "parameter": "Rotational time (rho)",
+                "value": float(self.fp_rho_ns),
+                "unit": "ns",
+                "description": "Rotational correlation time used in Perrin relation",
+            },
+            {
+                "key": "manual_tau",
+                "parameter": "Manual lifetime toggle",
+                "value": bool(self.manual_tau),
+                "unit": "toggle",
+                "description": "Override the slow reference intensity moment lifetime",
+            },
+            {
+                "key": "tau_override",
+                "parameter": "Lifetime (tau)",
+                "value": float(self.tau_override),
+                "unit": "ns",
+                "description": "Fluorescence lifetime override value",
+            },
+            {
+                "key": "manual_rs",
+                "parameter": "Manual target rS toggle",
+                "value": bool(self.manual_rs),
+                "unit": "toggle",
+                "description": "Override target steady-state anisotropy",
+            },
+            {
+                "key": "rs_override",
+                "parameter": "Target rS",
+                "value": float(self.rs_override),
+                "unit": "",
+                "description": "Expected steady-state anisotropy r0 / (1 + tau/rho)",
+            },
+            {
+                "key": "manual_g",
+                "parameter": "Manual G toggle",
+                "value": bool(self.manual_g),
+                "unit": "toggle",
+                "description": "Override the tail-matched G-factor",
+            },
+            {
+                "key": "g_override",
+                "parameter": "G override",
+                "value": float(self.g_override),
+                "unit": "",
+                "description": "Manual detector sensitivity ratio G used for correction",
+            },
+            {
+                "key": "manual_l",
+                "parameter": "Manual l1/l2 toggle",
+                "value": bool(self.manual_l),
+                "unit": "toggle",
+                "description": "Override Perrin solved polarization mixing parameter(s)",
+            },
+            {
+                "key": "l_override",
+                "parameter": "l1 = l2 override",
+                "value": float(self.l_override),
+                "unit": "",
+                "description": "Manual polarization mixing parameter l1 = l2",
+            },
+        ]
+
+    def edit_parameter(self, record: dict | None, key: str, value: Any) -> None:
+        """Update calibration parameter from table edit."""
+        if not record or key != "value":
+            return
+        param_key = record.get("key")
+        if not param_key:
+            return
+        try:
+            if param_key in ("background", "flip", "manual_g", "manual_tau", "manual_rs", "manual_l", "link_l1_l2"):
+                bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "t"))
+                setattr(self, param_key, bool_val)
+            else:
+                float_val = float(value)
+                setattr(self, param_key, float_val)
+                if param_key == "fp_rho_ns":
+                    for d in self.decays:
+                        if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                            d["rho_ns"] = float_val
+                elif param_key == "tau_override":
+                    for d in self.decays:
+                        if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                            d["tau_ns"] = float_val
+                elif param_key == "fp_r0":
+                    for d in self.decays:
+                        if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                            d["r0"] = float_val
+            if self.fast is not None:
+                self.compute()
+            elif self.sample is not None:
+                self.compute_sample()
+        except (ValueError, TypeError):
+            pass
 
     def result_rows(self) -> list[dict[str, str]]:
         """The G-factor and mixing results as ``{quantity, value, tooltip}`` rows."""

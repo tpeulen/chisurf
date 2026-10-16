@@ -6,6 +6,7 @@
 - vv_vh_g_factor: convert batch window to modal DialogWindow, add generalized multi-decay management with custom roles and rotational correlation times, compute dynamic Perrin l1/l2 mixing on slow reference change, add per-plot decay selector dropdowns, and format uncertainties on single line
 - vv_vh_g_factor: unified unknown samples tab with per-decay inspection, draggable tail bounds, CSV/TSV table and decay/anisotropy r(t) exports, multi-reference rho/tau calibration, and exact frozen parity (70/70 tests green)
 - Universal MMFDB dataset picker endpoint (PRD-10 Section 8), reference standards table with correlation times and inline editor, and time-resolved VV/VH ratio plot with calibrated G baseline and interactive tail region in vv_vh_g_factor plugin; 72/72 tests passing hermetically.
+- vv_vh_g_factor: interactive editable parameter table for calibration inputs and in-place reference standards editing (rho, tau, r0, tail match checkbox)
 
 ## 2026-10-15
 

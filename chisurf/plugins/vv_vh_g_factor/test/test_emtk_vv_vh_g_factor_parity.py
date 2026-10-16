@@ -593,18 +593,54 @@ def test_reference_table_and_multi_standard_calibration(ui, files):
     m = loaded(ui, files)
     rows = m.reference_rows()
     assert len(rows) == 2  # fast and slow references
-    assert any(r["tail_match"] == "★ Yes" for r in rows)
+    assert any(r["tail_match"] is True for r in rows)
     slow_row = next(r for r in rows if "slow" in r["file"].lower())
-    assert slow_row["rho_ns"] != ""
+    assert slow_row["rho_ns"] > 0
     assert slow_row["l_estimate"] != ""
 
     # Test selecting and switching tail-match reference
     m.select_reference(slow_row)
     assert m.selected_reference_idx == 1
 
+    # Test in-place editing of reference table
+    m.edit_reference(slow_row, "rho_ns", 24.0)
+    assert m.fp_rho_ns == pytest.approx(24.0)
+    m.edit_reference(slow_row, "tau_ns", 3.8)
+    assert m.manual_tau and m.tau_override == pytest.approx(3.8)
+
     # Test loading reference through add_reference_paths
     ui.app.add_reference_paths([files["batch1"]])
     assert len(m.reference_rows()) == 3
+
+
+def test_parameter_table_and_in_place_editing(ui, files):
+    m = loaded(ui, files)
+    param_rows = m.parameter_rows()
+    assert len(param_rows) >= 15
+    keys = [r["key"] for r in param_rows]
+    assert "tail_start" in keys
+    assert "tail_stop" in keys
+    assert "background" in keys
+    assert "shift" in keys
+    assert "fp_rho_ns" in keys
+    assert "fp_dt_ns" in keys
+
+    # Edit numeric parameter in table
+    tail_start_row = next(r for r in param_rows if r["key"] == "tail_start")
+    m.edit_parameter(tail_start_row, "value", 250.0)
+    assert m.tail_start == pytest.approx(250.0)
+    assert m.region[0] == pytest.approx(250.0)
+
+    # Edit boolean toggle parameter in table
+    bg_row = next(r for r in param_rows if r["key"] == "background")
+    m.edit_parameter(bg_row, "value", True)
+    assert m.background is True
+
+    # Edit shift parameter in table
+    shift_row = next(r for r in param_rows if r["key"] == "shift")
+    m.edit_parameter(shift_row, "value", 0.3)
+    assert m.shift == pytest.approx(0.3)
+
 
 
 # ───────────────────────────────── export, archive, batch ───────────────────────────────── #
