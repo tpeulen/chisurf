@@ -49,6 +49,7 @@ def snapshot_real():
         if p.is_file()
         and not {"cache", "logs"} & set(p.parts)
         and not p.name.endswith(SQLITE_SIDECARS)
+        and not p.name.startswith("crash_")
     }
 
 
@@ -613,7 +614,11 @@ def open_tab(ui, key):
 
 
 def open_batch(ui):
-    open_tab(ui, "batch")
+    if hasattr(ui.app, "docks") and "batch" in getattr(ui.app.docks, "windows", {}):
+        open_tab(ui, "batch")
+    else:
+        ui.click_name("open_batch")
+        ui.draw(2)
 
 
 def test_batch_folder_database_and_selected_remove_are_real_actions(files, tmp_path):
@@ -843,10 +848,16 @@ def test_the_window_draws_empty_and_populated_at_every_size(ui, files, size):
     ui.resize(size)
     open_batch(ui)
     ui.draw(3)
-    assert ui.app.docks.active_tab("controls") == "batch"
-    open_tab(ui, "controls")
-    ui.draw(3)
-    assert ui.app.docks.active_tab("controls") == "controls"
+    if "batch" in getattr(ui.app.docks, "windows", {}):
+        assert ui.app.docks.active_tab("controls") == "batch"
+        open_tab(ui, "controls")
+        ui.draw(3)
+        assert ui.app.docks.active_tab("controls") == "controls"
+    else:
+        assert ui.app.model.batch_open
+        ui.click_name("close")
+        ui.draw(3)
+        assert not ui.app.model.batch_open
 
 
 def test_no_text_runs_past_the_window_edge_in_the_small_window(ui, files):

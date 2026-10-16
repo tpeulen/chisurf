@@ -10,6 +10,7 @@
     {
      "type": "panel",
      "title": "Channels",
+     "n_col": 2,
      "description": "How the two channels of the reference file are used.",
      "sections": [
       {
@@ -29,6 +30,7 @@
     {
      "type": "panel",
      "title": "Tail matching",
+     "n_col": 2,
      "description": "Region of the fast-rotating reference whose VV/VH ratio gives G, the background region and the VH shift.",
      "sections": [
       {
@@ -96,6 +98,7 @@
     {
      "type": "panel",
      "title": "Manual G",
+     "n_col": 2,
      "description": "Use a G-factor of your own instead of the calculated one.",
      "sections": [
       {
@@ -125,6 +128,7 @@
     {
      "type": "panel",
      "title": "Slow-reference mixing",
+     "n_col": 2,
      "description": "Linked polarization-mixing estimate l1 = l2 from the slow protein reference and the Perrin relation.",
      "sections": [
       {
@@ -264,9 +268,9 @@
        "description": "Quantity and value of the G-factor and polarization-mixing calibration.",
        "options": {
         "source": "result_rows",
-        "height": 220,
+        "height": 160,
         "stretch": 1,
-        "min_height": 220,
+        "min_height": 160,
         "editable": false,
         "tooltip_key": "tooltip",
         "columns": [

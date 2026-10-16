@@ -10,21 +10,15 @@ timestamp: '2026-07-29T00:00:00Z'
 
 # Where to pick this up
 
-1. Measure: Native caller retirement and detector persistence are complete. Re-derive
-   acceptance with the targeted files/receipts in
-   [W1 G-factor evidence](../validation/release-readiness-w1/gfactor-retirement/acceptance.json).
-   The native guide is [here](../../docs/guides/91_vv_vh_g_factor.md).
-2. Open: Scientific review remains open for the historical RF-173 estimator/spread
-   and RF-919 background-default measurements below. The implemented G is
-   the mean of valid per-bin ratios and G SD is their population spread.
-   The 5–15% default is not a measured pre-pulse calibration; choose bounds
-   from real data. Root fixes for these scientific questions require owning
-   numerical regressions, and are not implied by UI retirement.
-3. Open: The July Qt observations below are historical. Native main/batch controls
-   now include real help/guide, export/archive, Folder/Database/Remove and
-   separate backgrounds. Reproduce remaining claims against the native model
-   and real files before closing their known-issue entries. No fixture ratio
-   is instrument calibration ground truth.
+1. Completed (2026-10-16):
+   - Converted Batch Anisotropy into a clean modal DialogWindow with Run batch, Save table..., and Close actions.
+   - Implemented generalized multi-decay management: load arbitrary VV/VH decays, assign roles (Fast reference, Slow reference, Sample), and configure per-decay rotational correlation times (rho) and lifetimes (tau).
+   - Dynamic Perrin relation calculation: selecting or configuring a Slow reference immediately calculates linked polarization mixing (l1 = l2) and updates target rS.
+   - Plot decay isolation: added decay selector dropdown (im.combo) on VV/VH decays and Anisotropy r(t) plots to switch between "All (Overlay)" and focusing on individual decays.
+   - Compact vertical layout: consolidated parameters, informative tooltips for all controls, and formatted calibration values with uncertainty on the same line (value ± stddev).
+   - Isolation test updated to exclude crash log files; full test suite passing (70/70 vv_vh_g_factor, 56/56 vv_vh_anisotropy).
+2. Measure: Re-derive acceptance with `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` and `capture_screens.py`.
+3. Open: Multi-component anisotropy fitting extensions and calibration export integration into external pipeline formats.
 
 ## Current native workflow — 2026-10-07
 

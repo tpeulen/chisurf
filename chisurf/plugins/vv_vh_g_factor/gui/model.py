@@ -86,6 +86,11 @@ class GFactorModel:
         self.sample_r_infty = float("nan")
         self.batch_files = []
         self.batch_results = []
+        self.batch_open = False
+        self.selected_batch_file = ""
+        self.forget_selection = False
+        self.decays = []
+        self.selected_decay_idx = 0
         self.message = ""
         self.busy = False
 
@@ -329,52 +334,149 @@ class GFactorModel:
         self.batch_files = []
         self.batch_results = []
 
+    def open_batch(self) -> None:
+        """Open the modal batch window."""
+        self.batch_open = True
+
+    def close_batch(self) -> None:
+        """Close the modal batch window."""
+        self.batch_open = False
+
+    def request_save_batch(self) -> None:
+        self.request = "save_batch"
+
+    def set_decay_role(self, index: int, role: str) -> None:
+        """Assign role ('fast', 'slow', 'sample') to decay at index."""
+        if not 0 <= index < len(self.decays):
+            return
+        d = self.decays[index]
+        d["role"] = role
+        if role == "fast":
+            self.fast = d["data"]
+            self.fast_file = d["path"]
+            self.compute()
+        elif role == "slow":
+            self.slow = d["data"]
+            self.slow_file = d["path"]
+            self.fp_rho_ns = float(d.get("rho_ns", 16.0))
+            if d.get("tau_ns") is not None:
+                self.manual_tau = True
+                self.tau_override = float(d["tau_ns"])
+            if self.fast is not None:
+                self.compute()
+        elif role == "sample":
+            self.sample = d["data"]
+            self.sample_file = d["path"]
+            self.sample_region = list(d.get("region", self.region))
+            self.compute_sample()
+
+    def set_decay_rho(self, index: int, rho_ns: float) -> None:
+        """Update rotational correlation time for decay at index."""
+        if not 0 <= index < len(self.decays):
+            return
+        d = self.decays[index]
+        d["rho_ns"] = float(rho_ns)
+        if d["role"] == "slow" or d["path"] == self.slow_file:
+            self.fp_rho_ns = float(rho_ns)
+            if self.fast is not None:
+                self.estimate_mixing()
+
+    def set_decay_tau(self, index: int, tau_ns: float) -> None:
+        """Update lifetime for decay at index."""
+        if not 0 <= index < len(self.decays):
+            return
+        d = self.decays[index]
+        d["tau_ns"] = float(tau_ns)
+        if d["role"] == "slow" or d["path"] == self.slow_file:
+            self.manual_tau = True
+            self.tau_override = float(tau_ns)
+            if self.fast is not None:
+                self.estimate_mixing()
+
+    def remove_decay(self, index: int) -> None:
+        """Remove decay at index from multi-decay manager."""
+        if not 0 <= index < len(self.decays):
+            return
+        d = self.decays.pop(index)
+        if self.fast_file == d["path"]:
+            self.fast = None
+            self.fast_file = ""
+        if self.slow_file == d["path"]:
+            self.slow = None
+            self.slow_file = ""
+        if self.sample_file == d["path"]:
+            self.sample = None
+            self.sample_file = ""
+            self.sample_r_t = None
+            self.sample_r_infty = float("nan")
+
     def result_rows(self) -> list[dict[str, str]]:
         """The G-factor and mixing results as ``{quantity, value, tooltip}`` rows."""
-        keys = [
-            ("G raw", "g_factor_uncorrected", "Detector sensitivity ratio VV/VH without background subtraction."),
-            ("G SD", "g_factor_stddev_uncorrected", "Standard deviation of per-bin VV/VH ratios across the tail matching region."),
-        ]
-        if self.background:
-            keys += [
-                ("G corrected", "g_factor_corrected", "Detector sensitivity ratio VV/VH after subtracting pre-pulse background."),
-                ("G corrected SD", "g_factor_stddev_corrected", "Standard deviation of background-corrected per-bin ratios."),
-                ("Background VV", "bg_parallel_avg", "Mean background counts per bin in parallel channel."),
-                ("Background VH", "bg_perpendicular_avg", "Mean background counts per bin in perpendicular channel."),
-            ]
         rows = []
-        for label, key, tip in keys:
-            value = self.result.get(key)
-            rows.append(
-                {
-                    "quantity": label,
-                    "value": f"{float(value):.6g}" if value is not None else "unavailable",
-                    "tooltip": tip,
-                }
-            )
+        g_raw = self.result.get("g_factor_uncorrected")
+        g_raw_sd = self.result.get("g_factor_stddev_uncorrected")
+        if g_raw is not None:
+            raw_val = f"{float(g_raw):.5f}"
+            if g_raw_sd is not None and np.isfinite(g_raw_sd):
+                raw_val += f" ± {float(g_raw_sd):.5f}"
+            rows.append({
+                "quantity": "G raw",
+                "value": raw_val,
+                "tooltip": "Detector sensitivity ratio VV/VH without background subtraction (mean ± SD).",
+            })
+        if self.background:
+            g_corr = self.result.get("g_factor_corrected")
+            g_corr_sd = self.result.get("g_factor_stddev_corrected")
+            if g_corr is not None:
+                corr_val = f"{float(g_corr):.5f}"
+                if g_corr_sd is not None and np.isfinite(g_corr_sd):
+                    corr_val += f" ± {float(g_corr_sd):.5f}"
+                rows.append({
+                    "quantity": "G corrected",
+                    "value": corr_val,
+                    "tooltip": "Detector sensitivity ratio VV/VH after subtracting pre-pulse background (mean ± SD).",
+                })
+            rows.append({
+                "quantity": "Background VV",
+                "value": f"{float(self.result.get('bg_parallel_avg', 0.0)):.5g}",
+                "tooltip": "Mean background counts per bin in parallel channel.",
+            })
+            rows.append({
+                "quantity": "Background VH",
+                "value": f"{float(self.result.get('bg_perpendicular_avg', 0.0)):.5g}",
+                "tooltip": "Mean background counts per bin in perpendicular channel.",
+            })
         if self.manual_g:
             rows.append({
                 "quantity": "G used (manual)",
-                "value": f"{float(self.g_override):.6g}",
+                "value": f"{float(self.g_override):.5f}",
                 "tooltip": "Manual override of the detector G-factor.",
             })
-        mix_tip = (
-            f"Polarization mixing factor l1 = l2 = {float(self.l1):.5g}. "
-            f"Linked estimate from Perrin relation "
-            f"(tau = {self.fp_result.get('tau_used_ns', 0):.2f} ns, target rS = {self.fp_result.get('r_expected', 0):.3f})."
-            if self.fp_result and self.l1 is not None and np.isfinite(self.l1)
-            else "Polarization mixing factor (objective depolarization correction)."
-        )
-        rows.append({
-            "quantity": "l1 (polarization mixing)",
-            "value": f"{float(self.l1):.6g}",
-            "tooltip": mix_tip,
-        })
-        rows.append({
-            "quantity": "l2 (polarization mixing)",
-            "value": f"{float(self.l2):.6g}",
-            "tooltip": mix_tip,
-        })
+        if self.l1 is not None and np.isfinite(self.l1):
+            l_sd = self.fp_result.get("l_sd") if self.fp_result else None
+            l1_val = f"{float(self.l1):.5f}"
+            if l_sd is not None and np.isfinite(l_sd) and not self.manual_l:
+                l1_val += f" ± {float(l_sd):.5f}"
+            l2_val = f"{float(self.l2):.5f}"
+            if l_sd is not None and np.isfinite(l_sd) and not self.manual_l:
+                l2_val += f" ± {float(l_sd):.5f}"
+            mix_tip = (
+                f"Polarization mixing factor l1 = {float(self.l1):.5g}. "
+                f"Fit-free estimate from Perrin relation "
+                f"(tau = {self.fp_result.get('tau_used_ns', 0):.2f} ns, target rS = {self.fp_result.get('r_expected', 0):.3f})."
+                if self.fp_result
+                else "Polarization mixing factor (objective depolarization correction)."
+            )
+            rows.append({
+                "quantity": "l1 (polarization mixing)",
+                "value": l1_val,
+                "tooltip": mix_tip,
+            })
+            rows.append({
+                "quantity": "l2 (polarization mixing)",
+                "value": l2_val,
+                "tooltip": mix_tip,
+            })
         return rows
 
     def mixing_rows(self) -> list[dict[str, str]]:
@@ -427,7 +529,15 @@ class GFactorModel:
             )
         return rows
 
-    def load(self, path: str | Path, slow: bool = False, sample: bool = False) -> None:
+    def load(
+        self,
+        path: str | Path,
+        slow: bool = False,
+        sample: bool = False,
+        role: str | None = None,
+        rho_ns: float | None = None,
+        tau_ns: float | None = None,
+    ) -> None:
         """Load a VV/VH file into the requested slot (fast reference, slow reference, or sample)."""
         vv, vh = read_vv_vh(str(path), split=True)
         vv = np.asarray(vv, dtype=float)
@@ -435,15 +545,49 @@ class GFactorModel:
         n = min(len(vv), len(vh))
         if n < 3 or not np.all(np.isfinite(vv[:n])) or not np.all(np.isfinite(vh[:n])):
             raise ValueError("VV/VH input requires at least three finite bins in each channel.")
-        if sample:
+
+        if role is None:
+            role = "sample" if sample else ("slow" if slow else "fast")
+
+        decay_rho = float(rho_ns) if rho_ns is not None else (self.fp_rho_ns if role == "slow" else 0.2)
+        decay_tau = float(tau_ns) if tau_ns is not None else (self.tau_override if self.manual_tau else 4.0)
+
+        entry = next((d for d in self.decays if d["path"] == str(path)), None)
+        if entry is None:
+            entry = {
+                "name": Path(path).name,
+                "path": str(path),
+                "data": (vv[:n], vh[:n]),
+                "role": role,
+                "rho_ns": decay_rho,
+                "tau_ns": decay_tau,
+                "r0": float(self.fp_r0),
+                "dt_ns": float(self.fp_dt_ns),
+                "region": [float(int(n * 0.7)), float(min(n - 1, int(n * 0.9)))],
+            }
+            self.decays.append(entry)
+        else:
+            entry["data"] = (vv[:n], vh[:n])
+            entry["role"] = role
+            if rho_ns is not None:
+                entry["rho_ns"] = decay_rho
+            if tau_ns is not None:
+                entry["tau_ns"] = decay_tau
+
+        if role == "sample":
             self.sample = (vv[:n], vh[:n])
             self.sample_file = str(path)
             self.sample_region = [float(int(n * 0.7)), float(min(n - 1, int(n * 0.9)))]
             self.compute_sample()
             self.message = f"Loaded sample {Path(path).name}: {n} channels"
-        elif slow:
+        elif role == "slow":
             self.slow = (vv[:n], vh[:n])
             self.slow_file = str(path)
+            if rho_ns is not None:
+                self.fp_rho_ns = float(rho_ns)
+            if tau_ns is not None:
+                self.manual_tau = True
+                self.tau_override = float(tau_ns)
             if self.fast is not None:
                 self.compute()
             else:
@@ -480,9 +624,9 @@ class GFactorModel:
         self.fp_rho_ns = float(dict((k, rho) for k, rho, _ in DEMO["decays"])["slow"])
         self.manual_tau, self.tau_override = True, float(DEMO["tau_ns"])
         self.background = True
-        self.load(files["fast"])
-        self.load(files["slow"], slow=True)
-        self.load(files["fast"], sample=True)
+        self.load(files["fast"], role="fast", rho_ns=0.2, tau_ns=float(DEMO["tau_ns"]))
+        self.load(files["slow"], role="slow", rho_ns=float(DEMO["decays"][1][1]), tau_ns=float(DEMO["tau_ns"]))
+        self.load(files["fast"], role="sample")
         for key in ("batch1", "batch2"):
             if str(files[key]) not in self.batch_files:
                 self.batch_files.append(str(files[key]))
@@ -490,8 +634,12 @@ class GFactorModel:
             self.compute(client)
         self.message = f"Example loaded (simulated, true G = {DEMO['g_factor']}): {self.message}"
 
-    def channels(self, slow: bool = False, sample: bool = False) -> tuple[np.ndarray | None, np.ndarray | None]:
-        if sample:
+    def channels(
+        self, slow: bool = False, sample: bool = False, entry: dict | None = None
+    ) -> tuple[np.ndarray | None, np.ndarray | None]:
+        if entry is not None:
+            pair = entry.get("data")
+        elif sample:
             pair = self.sample
         elif slow:
             pair = self.slow
@@ -608,12 +756,28 @@ class GFactorModel:
             l1_val = float(l) if (np.isfinite(l) and 0 <= l <= 0.5) else None
             l2_val = float(l) if (np.isfinite(l) and 0 <= l <= 0.5) else None
 
+        l_sd = None
+        if l1_val is not None and np.isfinite(l1_val) and 0 <= l1_val <= 0.5:
+            sp_val = float(p.sum())
+            ss_val = float(s.sum())
+            if sp_val > 0 and ss_val > 0 and expected > 0:
+                u = sp_val
+                v = g * ss_val
+                denom = 3.0 * (u + v) ** 2
+                if denom > 0:
+                    scale = (1.0 + 2.0 / expected) / denom
+                    dl_du = -v * scale
+                    dl_dv = u * scale
+                    var_l = (dl_du ** 2) * sp_val + (dl_dv ** 2) * (g ** 2) * ss_val
+                    l_sd = float(np.sqrt(max(var_l, 0.0)))
+
         self.fp_result = {
             "tau_estimate_ns": float(tau_est),
             "tau_used_ns": float(tau),
             "r_expected": float(expected),
             "l1": l1_val,
             "l2": l2_val,
+            "l_sd": l_sd,
             "warning": warning,
         }
 
@@ -648,9 +812,11 @@ class GFactorModel:
         self.sample_r_t = r_t
         self.sample_r_infty = compute_r_infinity(time, r_t, self.sample_region)
 
-    def decay_series(self, slow: bool = False, sample: bool = False) -> dict[str, np.ndarray]:
+    def decay_series(
+        self, slow: bool = False, sample: bool = False, entry: dict | None = None
+    ) -> dict[str, np.ndarray]:
         """Produce plotted vectors for the decays and time-resolved anisotropy."""
-        par, perp = self.channels(slow=slow, sample=sample)
+        par, perp = self.channels(slow=slow, sample=sample, entry=entry)
         if par is None:
             return {}
         time = np.arange(len(par), dtype=float)
@@ -935,12 +1101,29 @@ class GFactorModel:
             "l2_override",
             "batch_files",
         )
-        return {name: deepcopy(getattr(self, name)) for name in names}
+        out = {name: deepcopy(getattr(self, name)) for name in names}
+        out["batch_open"] = self.batch_open
+        out["decays"] = [
+            {
+                "name": d["name"],
+                "path": d["path"],
+                "role": d["role"],
+                "rho_ns": d["rho_ns"],
+                "tau_ns": d["tau_ns"],
+                "r0": d["r0"],
+                "dt_ns": d["dt_ns"],
+                "region": d["region"],
+            }
+            for d in self.decays
+        ]
+        return out
 
     def restore_settings(self, state: dict[str, object]) -> None:
         for name, value in state.items():
             if name in self.export_settings():
                 setattr(self, name, deepcopy(value))
+        if "batch_open" in state:
+            self.batch_open = bool(state["batch_open"])
 
     def save_results(self, path: str | Path) -> None:
         Path(path).write_text(
