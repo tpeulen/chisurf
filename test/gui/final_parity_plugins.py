@@ -1365,7 +1365,15 @@ def render(out: Path) -> None:
         lines.append(
             f"| `{pid}` | {e['verdict']} | {len(e['pairs'])} | {e['text_differences']} | {base_cell} | {note} |"
         )
-    (out / "README.md").write_text("\n".join(lines) + "\n")
+    (out / "README.md").write_text(
+        "---\n"
+        "type: Report\n"
+        "title: Final Qt-vs-emtk parity pass — plugins\n"
+        "description: Capture evidence for all 120 plugin GUIs opened in both the --qt\n"
+        "  ControlHost window and the emtk shell dock, driven into the same realistic state;\n"
+        "  reviewer verdicts are recorded against these pairs before the Qt shell is retired.\n"
+        "---\n\n" + "\n".join(lines) + "\n"
+    )
     (out / "index.html").write_text(_index_html(report, counts))
 
 
