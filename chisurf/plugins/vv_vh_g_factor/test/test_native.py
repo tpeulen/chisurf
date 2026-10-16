@@ -112,8 +112,8 @@ def test_native_all_controls_and_populated_plots_have_tooltips(tmp_path, monkeyp
     app.close()
 
 
-def test_load_example_recovers_the_simulated_g_and_no_mixing(tmp_path):
-    """The demo's references carry a known G (1.2) and no polarisation mixing; the calculator finds both."""
+def test_load_example_recovers_the_simulated_g_and_mixing(tmp_path):
+    """The demo's references carry a known G (1.2) and asymmetric polarisation mixing; the calculator finds both."""
     from chisurf.plugins.vv_vh_g_factor.demo import DEMO, make_demo
 
     files = make_demo(tmp_path)
@@ -124,7 +124,8 @@ def test_load_example_recovers_the_simulated_g_and_no_mixing(tmp_path):
     assert model.fast_file == str(files["fast"]) and model.slow_file == str(files["slow"])
     assert model.g_factor == pytest.approx(DEMO["g_factor"], rel=0.05)
     assert model.result["g_factor_stddev_corrected"] > abs(model.g_factor - DEMO["g_factor"])
-    assert model.fp_result["l1"] is not None and abs(model.fp_result["l1"]) < 0.05
+    assert model.fp_result["l1"] is not None and abs(model.fp_result["l1"] - DEMO.get("l1", 0.0)) < 0.05
+    assert model.fp_result["l2"] is not None and abs(model.fp_result["l2"] - DEMO.get("l2", 0.0)) < 0.05
     assert len(model.batch_files) == 2
     model.compute_batch()
     r_fast_rotor, r_slow_rotor = (row["r_inf"] for row in model.batch_results)

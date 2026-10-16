@@ -27,11 +27,13 @@ FILES = {
 }
 #: The simulation, in one place so the help text, the guide and the tests agree.
 DEMO: dict[str, Any] = {
-    "version": 1,
+    "version": 2,
     "seed": 5,
     "n_bins": 512,
     "dt_ns": 0.05,
     "g_factor": 1.2,
+    "l1": 0.020,
+    "l2": 0.045,
     "tau_ns": 4.0,
     "r0": 0.38,
     "irf_mean_ns": 5.0,
@@ -62,13 +64,18 @@ def simulate() -> dict[str, tuple[np.ndarray, np.ndarray]]:
     t = np.arange(n) * dt
     irf = np.exp(-0.5 * ((t - c["irf_mean_ns"]) / c["irf_sigma_ns"]) ** 2)
     decay = np.exp(-t / c["tau_ns"])
+    l1 = float(c.get("l1", 0.0))
+    l2 = float(c.get("l2", 0.0))
+    norm = max(1.0 - l1 - l2, 1e-6)
     out = {}
     for key, rho, scale in c["decays"]:
         # r(t) runs from the excitation, so the polarised decays are convolved, not r(t) applied
         # to the convolved intensity (which would start the rotation at the start of the TAC).
         r = c["r0"] * np.exp(-t / rho)
-        vv = np.convolve(irf, decay * (1 + 2 * r))[:n] * scale
-        vh = np.convolve(irf, decay * (1 - r))[:n] * scale / c["g_factor"]
+        i_par = np.convolve(irf, decay * (1 + 2 * r))[:n] * scale
+        i_perp = np.convolve(irf, decay * (1 - r))[:n] * scale
+        vv = ((1.0 - l1) * i_par + l1 * i_perp) / norm
+        vh = (l2 * i_par + (1.0 - l2) * i_perp) / (norm * c["g_factor"])
         bg = c["background_counts"]
         out[key] = (rng.poisson(vv + bg).astype(float), rng.poisson(vh + bg).astype(float))
     return out
@@ -127,7 +134,7 @@ def make_demo(folder: Path | None = None, *, overwrite: bool = False) -> dict[st
             {
                 "demo": DEMO,
                 "sha256": _digest(folder),
-                "truth": {"g_factor": DEMO["g_factor"], "l1": 0.0, "l2": 0.0, "r0": DEMO["r0"]},
+                "truth": {"g_factor": DEMO["g_factor"], "l1": DEMO.get("l1", 0.0), "l2": DEMO.get("l2", 0.0), "r0": DEMO["r0"]},
             },
             indent=2,
             sort_keys=True,

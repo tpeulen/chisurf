@@ -421,12 +421,12 @@ def test_the_flip_toggle_swaps_the_channels(ui, files):
 
 def test_manual_g_overrides_the_calculated_value_and_is_clamped(ui, files):
     m = loaded(ui, files, slow=False)
-    ui.click_name("manual_g")
-    m = ui.settle()
+    g_row = next(r for r in m.parameter_rows() if r["key"] == "g")
+    m.edit_parameter(g_row, "fixed", True)
     assert m.manual_g and m.g_factor == 1.0
-    m = type_value(ui, "g_override", "1.37")
+    m.edit_parameter(g_row, "value", 1.37)
     assert m.g_factor == pytest.approx(1.37)
-    m = type_value(ui, "g_override", "0")
+    m.edit_parameter(g_row, "value", 0)
     assert m.g_override == pytest.approx(0.001)
     assert "G used (manual)" in [r["quantity"] for r in m.result_rows()]
 
@@ -453,7 +453,6 @@ def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
     for toggle, value_name, typed, key in (
         ("manual_tau", "tau_override", "5", "tau_used_ns"),
         ("manual_rs", "rs_override", "0.2", "r_expected"),
-        ("manual_l", "l_override", "0.1", "l1"),
     ):
         assert not m.enabled(value_name)
         ui.click_name(toggle)
@@ -461,6 +460,9 @@ def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
         assert ui.app.model.enabled(value_name)
         m = type_value(ui, value_name, typed)
         assert m.fp_result[key] == pytest.approx(float(typed))
+    l1_row = next(r for r in m.parameter_rows() if r["key"] == "l1")
+    m.edit_parameter(l1_row, "fixed", True)
+    m.edit_parameter(l1_row, "value", 0.1)
     assert m.fp_result["l1"] == m.fp_result["l2"] == 0.1
     assert (
         "Manual linked l1=l2 override" in m.fp_result["warning"]

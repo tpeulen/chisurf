@@ -103,29 +103,29 @@ class GFactorModel:
         self.param_g = FittingParameter(name="G", value=1.0, fixed=False)
         self.param_l1 = FittingParameter(name="l1", value=0.0, fixed=False)
         self.param_l2 = FittingParameter(name="l2", value=0.0, fixed=False)
+        self.param_tau = FittingParameter(name="tau", value=4.0, fixed=True)
+        self.param_rho = FittingParameter(name="rho", value=16.0, fixed=True)
+        self.param_r0 = FittingParameter(name="r0", value=0.38, fixed=True)
+        self.param_dt = FittingParameter(name="dt", value=0.05, fixed=True)
         self.param_tail_start = FittingParameter(name="Tail start", value=2000.0, fixed=True)
         self.param_tail_stop = FittingParameter(name="Tail stop", value=3000.0, fixed=True)
         self.param_bg_start = FittingParameter(name="BG start", value=50.0, fixed=True)
         self.param_bg_stop = FittingParameter(name="BG stop", value=200.0, fixed=True)
         self.param_shift = FittingParameter(name="VH shift", value=0.0, fixed=True)
-        self.param_dt = FittingParameter(name="dt (ns)", value=0.032, fixed=True)
-        self.param_r0 = FittingParameter(name="r0", value=0.38, fixed=True)
-        self.param_tau = FittingParameter(name="tau (ns)", value=3.0, fixed=False)
-        self.param_rho = FittingParameter(name="rho (ns)", value=0.4, fixed=True)
-        self.param_rs = FittingParameter(name="Target rS", value=0.3, fixed=False)
+        self.param_rs = FittingParameter(name="Target rS", value=0.3, fixed=True)
 
         self.parameters.g = self.param_g
         self.parameters.l1 = self.param_l1
         self.parameters.l2 = self.param_l2
+        self.parameters.tau = self.param_tau
+        self.parameters.rho = self.param_rho
+        self.parameters.r0 = self.param_r0
+        self.parameters.dt = self.param_dt
         self.parameters.tail_start = self.param_tail_start
         self.parameters.tail_stop = self.param_tail_stop
         self.parameters.bg_start = self.param_bg_start
         self.parameters.bg_stop = self.param_bg_stop
         self.parameters.shift = self.param_shift
-        self.parameters.dt = self.param_dt
-        self.parameters.r0 = self.param_r0
-        self.parameters.tau = self.param_tau
-        self.parameters.rho = self.param_rho
         self.parameters.rs = self.param_rs
 
     def __deepcopy__(self, memo):
@@ -661,6 +661,60 @@ class GFactorModel:
                 "_parameter": self.param_l2,
             },
             {
+                "key": "bg_vv",
+                "parameter": "Background VV",
+                "name": "Background VV",
+                "value": float(self.bg_vv),
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
+            },
+            {
+                "key": "bg_vh",
+                "parameter": "Background VH",
+                "name": "Background VH",
+                "value": float(self.bg_vh),
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
+            },
+            {
+                "key": "tau_override",
+                "parameter": "tau",
+                "name": "tau",
+                "value": float(self.param_tau.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_tau,
+            },
+            {
+                "key": "fp_rho_ns",
+                "parameter": "rho",
+                "name": "rho",
+                "value": float(self.param_rho.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_rho,
+            },
+            {
+                "key": "fp_r0",
+                "parameter": "r0",
+                "name": "r0",
+                "value": float(self.param_r0.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_r0,
+            },
+            {
+                "key": "fp_dt_ns",
+                "parameter": "dt",
+                "name": "dt",
+                "value": float(self.param_dt.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_dt,
+            },
+            {
                 "key": "tail_start",
                 "parameter": "Tail start",
                 "name": "Tail start",
@@ -706,52 +760,6 @@ class GFactorModel:
                 "_parameter": self.param_shift,
             },
             {
-                "key": "fp_dt_ns",
-                "parameter": "dt (ns)",
-                "name": "dt (ns)",
-                "value": float(self.param_dt.value),
-                "fixed": True,
-                "error": "",
-                "_parameter": self.param_dt,
-            },
-            {
-                "key": "fp_r0",
-                "parameter": "r0",
-                "name": "r0",
-                "value": float(self.param_r0.value),
-                "fixed": True,
-                "error": "",
-                "_parameter": self.param_r0,
-            },
-            {
-                "key": "tau_override",
-                "parameter": "tau (ns)",
-                "name": "tau (ns)",
-                "value": float(self.param_tau.value),
-                "fixed": bool(self.param_tau.fixed),
-                "error": "",
-                "_parameter": self.param_tau,
-            },
-            {
-                "key": "fp_rho_ns",
-                "parameter": "rho (ns)",
-                "name": "rho (ns)",
-                "value": float(self.param_rho.value),
-                "fixed": True,
-                "error": "",
-                "_parameter": self.param_rho,
-            },
-            {
-                "key": "rs_override",
-                "parameter": "Target rS",
-                "name": "Target rS",
-                "value": float(self.param_rs.value),
-                "fixed": bool(self.param_rs.fixed),
-                "error": "",
-                "_parameter": self.param_rs,
-            },
-            # Compatibility entries
-            {
                 "key": "background",
                 "parameter": "Background subtraction",
                 "name": "Background subtraction",
@@ -765,60 +773,6 @@ class GFactorModel:
                 "parameter": "Flip VV/VH",
                 "name": "Flip VV/VH",
                 "value": bool(self.flip),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "manual_g",
-                "parameter": "Manual G",
-                "name": "Manual G",
-                "value": bool(self.manual_g),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "g_override",
-                "parameter": "G override",
-                "name": "G override",
-                "value": float(self.g_override),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "manual_l",
-                "parameter": "Manual l1/l2",
-                "name": "Manual l1/l2",
-                "value": bool(self.manual_l),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "l_override",
-                "parameter": "l1 = l2 override",
-                "name": "l1 = l2 override",
-                "value": float(self.l_override),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "manual_tau",
-                "parameter": "Manual lifetime",
-                "name": "Manual lifetime",
-                "value": bool(self.manual_tau),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "manual_rs",
-                "parameter": "Manual target rS",
-                "name": "Manual target rS",
-                "value": bool(self.manual_rs),
                 "fixed": True,
                 "error": "",
                 "_parameter": None,
@@ -854,16 +808,15 @@ class GFactorModel:
                 return
 
             if param_key in ("g", "g_override"):
-                float_val = float(value)
-                if float_val > 0:
-                    self.manual_g = True
-                    self.g_override = float_val
+                float_val = max(0.001, float(value))
+                self.manual_g = True
+                self.g_override = float_val
             elif param_key == "l1":
                 self.manual_l = True
-                self.l1_override = float(value)
+                self.l1_override = max(0.0, float(value))
             elif param_key == "l2":
                 self.manual_l = True
-                self.l2_override = float(value)
+                self.l2_override = max(0.0, float(value))
             elif param_key in ("background", "flip", "manual_g", "manual_tau", "manual_rs", "manual_l", "link_l1_l2"):
                 bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "t"))
                 setattr(self, param_key, bool_val)
@@ -950,12 +903,12 @@ class GFactorModel:
                 else "Polarization mixing factor (objective depolarization correction)."
             )
             rows.append({
-                "quantity": "l1 (polarization mixing)",
+                "quantity": "l1",
                 "value": l1_val,
                 "tooltip": mix_tip,
             })
             rows.append({
-                "quantity": "l2 (polarization mixing)",
+                "quantity": "l2",
                 "value": l2_val,
                 "tooltip": mix_tip,
             })
@@ -1140,7 +1093,12 @@ class GFactorModel:
         self.fp_rho_ns = float(dict((k, rho) for k, rho, _ in DEMO["decays"])["slow"])
         self.manual_tau, self.tau_override = True, float(DEMO["tau_ns"])
         self.background = True
+        self.link_l1_l2 = False
         self.load(files["fast"], role="fast", rho_ns=0.2, tau_ns=float(DEMO["tau_ns"]))
+        self.region = [200.0, 350.0]
+        self.compute()
+        self.load(files["batch1"], role="slow", rho_ns=float(DEMO["decays"][2][1]), tau_ns=float(DEMO["tau_ns"]))
+        self.load(files["batch2"], role="slow", rho_ns=float(DEMO["decays"][3][1]), tau_ns=float(DEMO["tau_ns"]))
         self.load(files["slow"], role="slow", rho_ns=float(DEMO["decays"][1][1]), tau_ns=float(DEMO["tau_ns"]))
         if "batch1" in files:
             self.load(files["batch1"], role="sample")
@@ -1151,7 +1109,7 @@ class GFactorModel:
                 self.batch_files.append(str(files[key]))
         if client is not None:
             self.compute(client)
-        self.message = f"Example loaded (simulated, true G = {DEMO['g_factor']}): {self.message}"
+        self.message = f"Example loaded (simulated, true G = {DEMO['g_factor']}, l1 = {DEMO.get('l1', 0.0)}, l2 = {DEMO.get('l2', 0.0)}): {self.message}"
 
     def channels(
         self, slow: bool = False, sample: bool = False, entry: dict | None = None
@@ -1350,25 +1308,70 @@ class GFactorModel:
             self.tau_override = float(tau_est)
 
         warning = "One steady-state observable determines only the linked estimate l1 = l2."
-        if self.manual_l:
-            l = self.l_override
-            warning = "Manual linked l1/l2 override is active."
-        elif not np.isfinite(l) or not 0 <= l <= 0.5:
-            warning = (
-                f"Linked mixing estimate {l:g} is outside the physical [0, 0.5] range; not applied."
-            )
-            l = np.nan
-        else:
-            self.l_override = float(l)
-            self.l1_override = float(l)
-            self.l2_override = float(l)
+        l1_val: float | None = None
+        l2_val: float | None = None
+
+        if not self.link_l1_l2 and len(slow_entries) >= 2:
+            A_sys, b_sys = [], []
+            for entry in slow_entries:
+                pair = entry.get("data")
+                if pair is None:
+                    continue
+                par_e, perp_e = pair[::-1] if self.flip else pair
+                n_e = min(len(par_e), len(perp_e))
+                time_e = np.arange(n_e, dtype=float)
+                shifted_e = time_e + self.shift
+                interp_e = np.interp(time_e, shifted_e, perp_e, left=0.0, right=0.0)
+                bp_e, bs_e = (
+                    compute_background_levels(par_e, perp_e, time_e, shifted_e, self.background_region)
+                    if self.background
+                    else (0.0, 0.0)
+                )
+                p_e = np.clip(par_e[:n_e] - bp_e, 0, None)
+                s_e = np.clip(interp_e[:n_e] - bs_e, 0, None)
+                sp_e = float(p_e.sum())
+                ss_e = float(s_e.sum())
+                rho_e = entry.get("rho_ns", self.fp_rho_ns)
+                tau_e = entry.get("tau_ns") or self.tau_override
+                r0_e = entry.get("r0", self.fp_r0)
+                r_e = perrin_steady_state_anisotropy(tau_ns=tau_e, rho_ns=rho_e, r0=r0_e)
+                if r_e > 0 and sp_e > 0 and ss_e > 0:
+                    row = [g * ss_e, sp_e]
+                    val = (1.0 / 3.0) * (sp_e + 2.0 * g * ss_e - (sp_e - g * ss_e) / r_e)
+                    norm = row[0] + row[1]
+                    if norm > 0:
+                        A_sys.append([row[0] / norm, row[1] / norm])
+                        b_sys.append(val / norm)
+            if len(A_sys) >= 2:
+                sol, _, _, _ = np.linalg.lstsq(A_sys, b_sys, rcond=None)
+                if 0 <= sol[0] <= 0.5 and 0 <= sol[1] <= 0.5:
+                    l1_val = float(sol[0])
+                    l2_val = float(sol[1])
+                    l = float((sol[0] + sol[1]) / 2.0)
+                    self.l1_override = l1_val
+                    self.l2_override = l2_val
+                    self.l_override = l
+                    warning = f"Estimated independent mixing factors l1 = {l1_val:.4f}, l2 = {l2_val:.4f}."
 
         if self.manual_l:
+            l = self.l_override
             l1_val = float(self.l1_override)
             l2_val = float(self.l2_override if not self.link_l1_l2 else self.l1_override)
-        else:
-            l1_val = float(l) if (np.isfinite(l) and 0 <= l <= 0.5) else None
-            l2_val = float(l) if (np.isfinite(l) and 0 <= l <= 0.5) else None
+            warning = "Manual linked l1/l2 override is active."
+        elif l1_val is None or l2_val is None:
+            if not np.isfinite(l) or not 0 <= l <= 0.5:
+                warning = (
+                    f"Linked mixing estimate {l:g} is outside the physical [0, 0.5] range; not applied."
+                )
+                l = np.nan
+                l1_val = None
+                l2_val = None
+            else:
+                self.l_override = float(l)
+                self.l1_override = float(l)
+                self.l2_override = float(l)
+                l1_val = float(l)
+                l2_val = float(l)
 
         l_sd = None
         if l1_val is not None and np.isfinite(l1_val) and 0 <= l1_val <= 0.5:

@@ -24,7 +24,7 @@
         "editable": true,
         "edited_call": "edit_reference",
         "expand": true,
-        "height": 130,
+        "height": 95,
         "columns": [
          {
           "key": "file",
@@ -53,21 +53,9 @@
          },
          {
           "key": "tail_match",
-          "title": "Tail match (G)",
+          "title": "Tail match",
           "tooltip": "Toggle checkbox to use this reference for tail matching G-factor.",
           "editable": true
-         },
-         {
-          "key": "r_expected",
-          "title": "Target rS",
-          "tooltip": "Target steady-state anisotropy r0 / (1 + tau/rho).",
-          "editable": false
-         },
-         {
-          "key": "l_estimate",
-          "title": "l (mixing)",
-          "tooltip": "Estimated polarization mixing parameter l1 = l2 from this reference decay.",
-          "editable": false
          }
         ]
        }
@@ -156,6 +144,7 @@
     {
      "type": "panel",
      "title": "Tail matching",
+     "collapsible": true,
      "description": "Tail matching bounds.",
      "n_col": 2,
      "sections": [
@@ -220,32 +209,6 @@
        "description": "Shift the VH time axis by this many TAC bins, fractional bins included (the Qt tool's 'Shift Perpendicular Decay')."
       }
      ]
-    },
-    {
-     "type": "panel",
-     "title": "Manual G",
-     "description": "Manual G-factor override.",
-     "n_col": 2,
-     "sections": [
-      {
-       "type": "toggle",
-       "attr": "manual_g",
-       "label": "Manual G",
-       "description": "Use the G-factor typed below instead of the calculated one (the Qt tool does this when its G field is edited)."
-      },
-      {
-       "type": "value",
-       "attr": "g_override",
-       "label": "G used",
-       "kind": "float",
-       "style": "spin",
-       "minimum": 0.001,
-       "maximum": 100.0,
-       "decimals": 4,
-       "step": 0.01,
-       "description": "Positive detector sensitivity ratio used for the corrected anisotropy."
-      }
-     ]
     }
    ]
   },
@@ -254,6 +217,7 @@
     {
      "type": "panel",
      "title": "Polarization mixing",
+     "collapsible": true,
      "description": "Polarization mixing parameters.",
      "n_col": 2,
      "sections": [
@@ -328,54 +292,6 @@
        "decimals": 4,
        "step": 0.01,
        "description": "Steady-state anisotropy the slow reference should have."
-      },
-      {
-       "type": "toggle",
-       "attr": "manual_l",
-       "label": "Manual l1 = l2",
-       "description": "Override the single linked polarization-mixing parameter."
-      },
-      {
-       "type": "value",
-       "attr": "l_override",
-       "label": "l1 = l2",
-       "kind": "float",
-       "style": "spin",
-       "minimum": 0.0,
-       "maximum": 0.5,
-       "decimals": 4,
-       "step": 0.01,
-       "description": "Linked mixing parameter applied to l1 and l2."
-      },
-      {
-       "type": "toggle",
-       "attr": "link_l1_l2",
-       "label": "Link l1 = l2",
-       "description": "Keep l1 and l2 linked when adjusting mixing manually."
-      },
-      {
-       "type": "value",
-       "attr": "l1_override",
-       "label": "l1",
-       "kind": "float",
-       "style": "spin",
-       "minimum": 0.0,
-       "maximum": 0.5,
-       "decimals": 4,
-       "step": 0.01,
-       "description": "Manual mixing parameter l1."
-      },
-      {
-       "type": "value",
-       "attr": "l2_override",
-       "label": "l2",
-       "kind": "float",
-       "style": "spin",
-       "minimum": 0.0,
-       "maximum": 0.5,
-       "decimals": 4,
-       "step": 0.01,
-       "description": "Manual mixing parameter l2."
       }
      ]
     }

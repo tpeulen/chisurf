@@ -425,7 +425,6 @@ class GFactorApp(TourTarget, ImApp):
         status_msg = m.message or "Load reference standard VV/VH decay(s) for calibration."
         im.text(status_msg)
         self.form("parameters", m)
-        self.form("results", m)
         self.form("tail", m)
         self.form("mixing", m)
         warn = m.fp_result.get("warning")
