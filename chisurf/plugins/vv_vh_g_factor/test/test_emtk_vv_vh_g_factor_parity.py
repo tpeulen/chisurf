@@ -562,6 +562,51 @@ def test_the_wheel_zooms_the_decay_plot(ui, files):
     assert [t[5] for t in ui.draw().texts] != before
 
 
+def test_vv_vh_ratio_plot_and_g_baseline(ui, files, tmp_path):
+    m = loaded(ui, files)
+    ui.app.docks.focus("ratio")
+    ui.settle()
+    series = ui.app.series()
+    assert len(series) > 0
+    label, data = series[0]
+    assert "ratio_raw" in data and "ratio_corrected" in data
+    # In the tail region, corrected ratio plateau equals calibrated G factor
+    tail_start, tail_stop = int(m.region[0]), int(m.region[1])
+    tail_ratios = data["ratio_corrected"][tail_start:tail_stop]
+    assert np.nanmean(tail_ratios) == pytest.approx(m.g_factor, rel=1e-3)
+
+    # Test toggles
+    assert ui.app.show_ratio_raw is True
+    assert ui.app.show_ratio_corrected is True
+    assert ui.app.show_g_line is True
+
+    # Test export of active ratio
+    ratio_csv = tmp_path / "ratio.csv"
+    m.export_active_ratio(ratio_csv)
+    assert ratio_csv.is_file()
+    lines = ratio_csv.read_text().strip().split("\n")
+    assert lines[0] == "time,ratio_raw,ratio_corrected"
+    assert len(lines) > 10
+
+
+def test_reference_table_and_multi_standard_calibration(ui, files):
+    m = loaded(ui, files)
+    rows = m.reference_rows()
+    assert len(rows) == 2  # fast and slow references
+    assert any(r["tail_match"] == "★ Yes" for r in rows)
+    slow_row = next(r for r in rows if "slow" in r["file"].lower())
+    assert slow_row["rho_ns"] != ""
+    assert slow_row["l_estimate"] != ""
+
+    # Test selecting and switching tail-match reference
+    m.select_reference(slow_row)
+    assert m.selected_reference_idx == 1
+
+    # Test loading reference through add_reference_paths
+    ui.app.add_reference_paths([files["batch1"]])
+    assert len(m.reference_rows()) == 3
+
+
 # ───────────────────────────────── export, archive, batch ───────────────────────────────── #
 
 

@@ -108,6 +108,12 @@ handler.
 If MMFDB is not connected, the browser shows a disabled "MMFDB not connected" state
 and `pick_dataset` returns `None`; consumers fall back to their file-load path.
 
+## 8. EMTK Universal Dataset Selection Endpoint
+The dataset browser and file chooser interfaces across all native EMTK tools and plugins must support MMFDB as a selectable endpoint alongside the local filesystem:
+- **Dual-Endpoint Browser:** In any file/dataset picker dialog or path list, users can select between "Local Filesystem" and "MMFDB Repository" as the source.
+- **Direct Materialization:** Datasets selected from MMFDB are resolved via `datasets.open` RPC to local cached/materialized paths, allowing seamless ingest into plugins (such as calibration decays, IRF references, and photon streams) without manual filesystem downloads.
+- **Native Integration:** EMTK tools embed `DatasetPicker` or a unified endpoint-switching browser with search, ownership filtering ("Mine", "Public", "All"), and structured kind/format filtering.
+
 # Multiple owners — a dataset can be co-owned (general, all plugins)
 **Problem.** Ownership is a single column (`mmfdb_artifact.created_by_user_id`)
 stamped by whoever registered the content first. Object-store content dedup means a

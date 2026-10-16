@@ -11,15 +11,16 @@ timestamp: '2026-07-29T00:00:00Z'
 # Where to pick this up
 
 1. Completed (2026-10-16):
-   - Unified Unknown Samples Workflow: eliminated disjoint "sample" dock and created a single unified tab "2. Unknown Samples (Batch)" for processing 1 to N unknown VV/VH files with continuous inspection.
-   - Interactive sample inspection: selecting any file in the batch table immediately focuses the VV/VH decays and Anisotropy r(t) plots on that decay, shows editable tail bounds (r(inf) start/stop), and synchronizes with the plot draggable bounds.
-   - Complete export suite: added one-click exports for summary tables (TSV, CSV), active raw/corrected decays (export_active_decay), active time-resolved anisotropy (export_active_rt), and all batch anisotropy curves (export_all_rt).
-   - Multi-reference calibration: supports loading arbitrary references with individual rho and tau, resolving detector G via tail matching and l1, l2 via Perrin steady-state mixing.
-   - Compact UX with tooltips: single-line uncertainties (G +/- sigma, l1 +/- sigma), rich tooltips on all controls, and visual separation between reference calibration and sample analysis.
-   - Verified 100% green test suite: 70/70 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines and PRD check compliance.
+   - MMFDB Universal Selection Endpoint: added Section 8 to `okf/prds/prd-10.md` formalizing MMFDB dataset picker endpoints; added `Database...` action button to load reference standard decays directly from MMFDB database.
+   - Reference Standards Table: eliminated arbitrary "fast" / "slow" dichotomy, replacing hardcoded buttons with a unified reference standards table (`source: "reference_rows"`) reporting file, rotational correlation time $\rho$ [ns], lifetime $\tau$ [ns], fundamental anisotropy $r_0$, tail-match indicator, Perrin target $r_S$, and solved mixing estimate $l$.
+   - Interactive Standard Editor: inline editing of $\rho$ and $\tau$, checkbox to toggle which reference standard is used for tail-matching $G$, and remove button.
+   - Time-resolved VV/VH Ratio Plot: added dedicated `[VV/VH ratio (G-factor)]` dock tab plotting raw and background-corrected / shifted intensity ratio $I_{VV}(t)/I_{VH}(t)$, a horizontal baseline at $y = G$, shaded tail matching region with interactive draggable boundary lines, and CSV export via `export_active_ratio`.
+   - Unified Unknown Samples Workflow: single unified tab "Unknown Samples (Batch)" for processing 1 to N unknown VV/VH files with interactive sample decay and anisotropy inspection.
+   - Verified 100% green test suite: 72/72 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines.
+   - Headless visual inspection: captured and verified `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_samples_unified.png`.
 2. Acceptance derivation:
-   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 70 tests pass).
-   - Re-capture UI renders via `python scratch/capture_vv_vh_screens.py` and inspect `gfactor_controls_dock.png`, `gfactor_samples_unified.png`, and `gfactor_decay_selected.png`.
+   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 72 tests pass).
+   - Re-capture UI renders via `python scratch/capture_vv_vh_screens.py` and inspect `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_samples_unified.png`.
 3. Open:
    - Multi-component global anisotropy curve fitting in batch pipelines.
 

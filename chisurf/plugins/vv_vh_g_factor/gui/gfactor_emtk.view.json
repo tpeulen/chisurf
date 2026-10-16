@@ -5,6 +5,68 @@
  },
  "_comment": "The emtk forms of the G-factor calculator, drawn by emtk.view_form.draw_form over GFactorModel. This is the shared native calculator used by standalone and hosted callers.",
  "panels": {
+  "references": {
+   "sections": [
+    {
+     "type": "panel",
+     "title": "Reference standards",
+     "description": "Loaded reference decay standards with their rotational correlation times and Perrin mixing parameters.",
+     "sections": [
+      {
+       "type": "custom",
+       "key": "data_table",
+       "description": "Table of reference decays.",
+       "options": {
+        "source": "reference_rows",
+        "min_column_width": 75,
+        "fit_columns": true,
+        "delete_call": "remove_reference",
+        "expand": true,
+        "height": 130,
+        "columns": [
+         {
+          "key": "file",
+          "min_width": 140,
+          "title": "File",
+          "tooltip": "Reference standard decay file name."
+         },
+         {
+          "key": "rho_ns",
+          "title": "rho (ns)",
+          "tooltip": "Rotational correlation time (ns)."
+         },
+         {
+          "key": "tau_ns",
+          "title": "tau (ns)",
+          "tooltip": "Fluorescence lifetime (ns)."
+         },
+         {
+          "key": "r0",
+          "title": "r0",
+          "tooltip": "Fundamental limiting anisotropy."
+         },
+         {
+          "key": "tail_match",
+          "title": "Tail match (G)",
+          "tooltip": "Reference used to determine detector G-factor via tail matching."
+         },
+         {
+          "key": "r_expected",
+          "title": "Target rS",
+          "tooltip": "Target steady-state anisotropy r0 / (1 + tau/rho)."
+         },
+         {
+          "key": "l_estimate",
+          "title": "l (mixing)",
+          "tooltip": "Estimated polarization mixing parameter l1 = l2 from this reference decay."
+         }
+        ]
+       }
+      }
+     ]
+    }
+   ]
+  },
   "tail": {
    "sections": [
     {
@@ -127,9 +189,9 @@
    "sections": [
     {
      "type": "panel",
-     "title": "Slow-reference mixing",
+     "title": "Polarization mixing",
      "n_col": 2,
-     "description": "Linked polarization-mixing estimate l1 = l2 from the slow protein reference and the Perrin relation.",
+     "description": "Polarization-mixing parameters l1, l2 determined from reference standards via the Perrin relation.",
      "sections": [
       {
        "type": "value",

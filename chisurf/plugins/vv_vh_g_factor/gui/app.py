@@ -52,6 +52,7 @@ class GFactorApp(TourTarget, ImApp):
         self.panels = {n: layout_spec(copy.deepcopy(p)) for n, p in panels.items()}
         self.forms = {n: FormState() for n in panels}
         self.dataset_picker = DatasetPicker(client=dataset_client, on_paths=self.add_batch)
+        self.ref_picker = DatasetPicker(client=dataset_client, on_paths=self.add_reference_paths)
         self.picker = self.dataset_picker
         self.path_list = PathListView(
             self,
@@ -116,11 +117,18 @@ class GFactorApp(TourTarget, ImApp):
         self.docks.add_window(
             "anisotropy", "Anisotropy r(t)", self.draw_anisotropy, dock="anisotropy", closable=False
         )
+        self.docks.add_window(
+            "ratio", "VV/VH ratio (G-factor)", self.draw_ratio, dock="anisotropy", closable=False
+        )
         self.batch_window = DialogWindow(
             tr("Batch Anisotropy"), size=(860.0, 540.0), key="vv_vh_batch"
         )
         self.plot_decay_idx = 0
         self.plot_aniso_decay_idx = 0
+        self.plot_ratio_decay_idx = 0
+        self.show_ratio_raw = True
+        self.show_ratio_corrected = True
+        self.show_g_line = True
         super().__init__(gui=self.render, continuous=True)
 
     # -- plumbing ---------------------------------------------------------------------------- #
@@ -271,6 +279,13 @@ class GFactorApp(TourTarget, ImApp):
     def add_batch_paths(self, paths):
         return self.model.add_batch_paths([str(p) for p in paths or []])
 
+    def add_reference_paths(self, paths):
+        """Add reference decay paths from MMFDB database picker."""
+        for path in paths or []:
+            self.model.load_reference(path)
+        if self.model.fast is not None:
+            self.calculate()
+
     def add_batch_folder(self, folders):
         """Queue the same supported VV/VH files as the legacy recursive folder picker."""
         self.add_batch(
@@ -333,22 +348,22 @@ class GFactorApp(TourTarget, ImApp):
                     ),
                 },
                 {
-                    "label": "Fast reference...",
+                    "label": "Add references...",
                     "key": "load_fast",
                     "enabled": not busy,
-                    "tip": "Load the fast-rotating reference dye VV/VH decay used for the tail-matching G calibration.",
+                    "tip": "Load reference standard VV/VH decay file(s) for G-factor calibration and polarization mixing.",
                 },
                 {
                     "label": "Slow protein...",
                     "key": "load_slow",
                     "enabled": not busy,
-                    "tip": "Load the slow-rotating protein VV/VH decay for the linked polarization-mixing estimate.",
+                    "tip": "Load a slow-rotating protein reference decay for polarization-mixing estimation.",
                 },
                 {
-                    "label": "Load decay...",
-                    "key": "load_decay",
+                    "label": "Database...",
+                    "key": "load_database",
                     "enabled": not busy,
-                    "tip": "Load any VV/VH decay file into the multi-decay manager.",
+                    "tip": "Select and load reference standard datasets directly from MMFDB database.",
                 },
                 {
                     "label": "Process samples ->",
@@ -382,11 +397,11 @@ class GFactorApp(TourTarget, ImApp):
         if pressed == "load_example":
             self.load_example()
         elif pressed == "load_fast":
-            self.choose("Fast reference", lambda paths: self.load(paths[0]))
+            self.choose("Reference standard decay", lambda paths: self.load(paths[0]))
         elif pressed == "load_slow":
             self.choose("Slow protein reference", lambda paths: self.load(paths[0], slow=True))
-        elif pressed == "load_decay":
-            self.choose("Load VV/VH decay", lambda paths: self.load_any_decay(paths[0]))
+        elif pressed == "load_database":
+            self.ref_picker.open()
         elif pressed == "open_batch":
             self.model.open_batch()
             self.docks.focus("batch")
@@ -405,50 +420,51 @@ class GFactorApp(TourTarget, ImApp):
             self.help.show()
         elif pressed == "guide":
             self.guide.start()
-        fast_name = Path(m.fast_file).name if m.fast_file else "none"
-        slow_name = Path(m.slow_file).name if m.slow_file else "none"
-        im.text("Fast:")
-        im.same_line()
-        im.text_disabled(fast_name)
-        if m.fast_file:
-            im.set_item_tooltip(f"Fast reference: {m.fast_file}")
-        im.same_line()
-        im.text(" | Slow:")
-        im.same_line()
-        im.text_disabled(slow_name)
-        if m.slow_file:
-            im.set_item_tooltip(f"Slow protein: {m.slow_file}")
-        ref_decays = [d for d in m.decays if d["role"] in ("fast", "slow")]
-        if len(ref_decays) > 1:
-            im.separator()
-            im.text("Loaded reference decays:")
-            for i, d in enumerate(ref_decays):
-                idx = m.decays.index(d)
-                im.push_id(f"decay_{idx}")
-                im.text(f"#{i+1} {d['name']}")
-                im.same_line()
-                role_opts = ["Fast", "Slow", "Sample"]
-                c_idx = role_opts.index(d["role"].capitalize()) if d["role"].capitalize() in role_opts else 1
-                im.set_next_item_width(75.0)
-                ch_role, new_role = im.combo("##role", c_idx, role_opts)
-                im.set_item_tooltip(tr("Assign the role of this decay: Fast reference, Slow reference, or Sample."))
-                if ch_role:
-                    m.set_decay_role(idx, role_opts[new_role].lower())
-                if d["role"] == "slow":
-                    im.same_line()
-                    im.text("rho:")
-                    im.same_line()
-                    im.set_next_item_width(65.0)
-                    ch_rho, new_rho = im.input_float("##rho", d.get("rho_ns", 16.0), 0.1, 1.0, fmt="%.1f")
-                    im.set_item_tooltip(tr("Rotational correlation time (ns) for this reference."))
-                    if ch_rho and new_rho > 0:
-                        m.set_decay_rho(idx, new_rho)
-                im.same_line()
-                if im.button("✕##del"):
-                    m.remove_decay(idx)
-                im.set_item_tooltip(tr("Remove this decay from the list."))
-                im.pop_id()
-        status_msg = m.message or "Load the fast-rotating reference dye VV/VH decay."
+
+        self.form("references", m)
+
+        ref_decays = [d for d in m.decays if d.get("role") != "sample"]
+        if ref_decays:
+            active_idx = getattr(m, "selected_reference_idx", 0)
+            if not 0 <= active_idx < len(ref_decays):
+                active_idx = 0
+                m.selected_reference_idx = 0
+            cur = ref_decays[active_idx]
+            decay_idx = m.decays.index(cur)
+
+            im.text(f"Selected: {cur['name']}")
+            im.same_line()
+            is_tail_g = cur.get("use_for_g", False) or (m.fast_file == cur.get("path"))
+            ch_g, new_g = im.checkbox("Tail G##use_g", is_tail_g)
+            im.set_item_tooltip(tr("Use this reference decay for determining the detector G-factor via tail-matching."))
+            if ch_g and not is_tail_g:
+                m.set_reference_tail_match(active_idx)
+
+            im.text("rho [ns]:")
+            im.same_line()
+            im.set_next_item_width(65.0)
+            ch_rho, new_rho = im.input_float("##ref_rho", float(cur.get("rho_ns", 0.2)), 0.1, 1.0, fmt="%.2f")
+            im.set_item_tooltip(tr("Rotational correlation time rho [ns] of this reference standard."))
+            if ch_rho and new_rho > 0:
+                cur["rho_ns"] = new_rho
+                m.compute()
+
+            im.same_line()
+            im.text("tau [ns]:")
+            im.same_line()
+            im.set_next_item_width(65.0)
+            ch_tau, new_tau = im.input_float("##ref_tau", float(cur.get("tau_ns", 4.0)), 0.1, 1.0, fmt="%.2f")
+            im.set_item_tooltip(tr("Fluorescence lifetime tau [ns] of this reference standard."))
+            if ch_tau and new_tau > 0:
+                cur["tau_ns"] = new_tau
+                m.compute()
+
+            im.same_line()
+            if im.button("Remove##ref"):
+                m.remove_decay(decay_idx)
+            im.set_item_tooltip(tr("Remove this reference standard."))
+
+        status_msg = m.message or "Load reference standard VV/VH decay(s) for calibration."
         im.text_wrapped(status_msg)
         im.separator()
         self.form("tail", m)
@@ -523,6 +539,12 @@ class GFactorApp(TourTarget, ImApp):
                     "tip": "Export the currently selected file's time-resolved anisotropy r(t) curve to a CSV file.",
                 },
                 {
+                    "label": "Export active ratio...",
+                    "key": "export_active_ratio",
+                    "enabled": not busy and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
+                    "tip": "Export the currently selected file's raw and corrected VV/VH intensity ratio to a CSV file.",
+                },
+                {
                     "label": "Export all r(t)...",
                     "key": "export_all_rt",
                     "enabled": not busy and bool(m.batch_files) and m.g_factor is not None,
@@ -565,6 +587,15 @@ class GFactorApp(TourTarget, ImApp):
                 lambda paths: self.model.export_active_rt(paths[0], active_file),
                 mode="save",
                 filename=f"{stem}_rt.csv",
+            )
+        elif pressed == "export_active_ratio":
+            active_file = self.get_active_batch_file()
+            stem = Path(active_file).stem if active_file else "ratio"
+            self.choose(
+                "Export active ratio CSV",
+                lambda paths: self.model.export_active_ratio(paths[0], active_file),
+                mode="save",
+                filename=f"{stem}_ratio.csv",
             )
         elif pressed == "export_all_rt":
             self.choose(
@@ -838,6 +869,117 @@ class GFactorApp(TourTarget, ImApp):
             implot.end_plot()
         im.set_item_tooltip(tr("Drag the green lines to choose the r(inf) region."))
 
+    def draw_ratio(self, box):
+        if (
+            self.model.fast is None
+            and self.model.slow is None
+            and self.model.sample is None
+            and not self.model.decays
+            and not self.model.batch_files
+        ):
+            im.text_wrapped(
+                tr(
+                    "The intensity ratio VV/VH and calibrated G-factor plateau appear here once decays are loaded."
+                )
+            )
+            return
+        opts = self.get_decay_options()
+        im.text("Decay:")
+        im.same_line()
+        im.set_next_item_width(170.0)
+        idx = min(self.plot_ratio_decay_idx, len(opts) - 1)
+        changed, self.plot_ratio_decay_idx = im.combo("##ratio_decay_select", idx, opts)
+        im.set_item_tooltip(tr("Select which decay's VV/VH ratio to display, or display all overlaid."))
+        im.same_line()
+        _, self.show_ratio_raw = im.checkbox("Raw ratio##chk", self.show_ratio_raw)
+        im.set_item_tooltip(tr("Show or hide raw intensity ratio VV(t) / VH(t)."))
+        im.same_line()
+        _, self.show_ratio_corrected = im.checkbox("Corrected ratio##chk", self.show_ratio_corrected)
+        im.set_item_tooltip(tr("Show or hide background-subtracted & shifted ratio."))
+        im.same_line()
+        _, self.show_g_line = im.checkbox("G baseline##chk", self.show_g_line)
+        im.set_item_tooltip(tr("Show horizontal baseline for calibrated detector G-factor."))
+        im.new_line()
+
+        if implot.begin_plot("##vvvh_ratio_plot", (-1, -1)):
+            implot.setup_axes("TAC bin", "VV / VH Ratio")
+            implot.setup_legend(implot.LOCATION_NORTH_EAST)
+
+            opts = self.get_decay_options()
+            if 0 < self.plot_ratio_decay_idx < len(opts):
+                selected_label = opts[self.plot_ratio_decay_idx]
+                if selected_label.startswith("[Sample] "):
+                    name = selected_label[9:]
+                    match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
+                    if match_path:
+                        ratio_series = [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
+                    else:
+                        ratio_series = self.series()
+                else:
+                    found = False
+                    for d in self.model.decays:
+                        if selected_label == f"[{d['role'].capitalize()}] {d['name']}":
+                            ratio_series = [(d["role"].capitalize(), self.model.decay_series(entry=d))]
+                            found = True
+                            break
+                    if not found:
+                        ratio_series = self.series()
+            else:
+                ratio_series = self.series()
+
+            max_len = 1
+            for _, data in ratio_series:
+                if data and "time" in data:
+                    max_len = max(max_len, len(data["time"]))
+
+            g = self.model.g_factor
+            g_val = float(g) if (g is not None and np.isfinite(g) and g > 0) else 1.0
+
+            implot.setup_axes_limits(
+                0,
+                max(1, max_len),
+                0.0,
+                max(3.0, g_val * 2.5),
+                cond=implot.COND_ONCE,
+            )
+
+            for label, data in ratio_series:
+                if not data:
+                    continue
+                if self.show_ratio_raw and "ratio_raw" in data:
+                    implot.plot_line(label + " ratio raw", data["time"], data["ratio_raw"])
+                if self.show_ratio_corrected and "ratio_corrected" in data:
+                    implot.plot_line(label + " ratio corrected", data["time"], data["ratio_corrected"])
+
+            # Horizontal baseline at calibrated G
+            if self.show_g_line and g is not None and np.isfinite(g) and g > 0:
+                gx = np.array([0.0, float(max_len)], dtype=float)
+                gy = np.array([float(g), float(g)], dtype=float)
+                implot.plot_line(f"G = {g:.5f}", gx, gy)
+
+            # Tail region shading and draggable boundary lines
+            bounds = self.model.region
+            implot.set_next_fill_style((255, 200, 40, 255), 0.2)
+            implot.plot_shaded(
+                "##tail_ratio_region",
+                np.array([min(bounds), max(bounds)]),
+                np.array([max(3.0, g_val * 2.5), max(3.0, g_val * 2.5)]),
+                np.array([0.0, 0.0]),
+            )
+            for index, value in enumerate(bounds):
+                result = implot.drag_line_x(300 + index, value, col=(255, 200, 40, 255))
+                if result.modified and not self.job.running:
+                    bounds[index] = round(result.value, 1)
+                    if self.model.fast is not None:
+                        self.calculate()
+
+            implot.end_plot()
+        im.set_item_tooltip(
+            tr(
+                "In the tail where anisotropy decays to 0, the ratio VV/VH reaches the G-factor plateau. Drag lines to adjust tail."
+            )
+        )
+
     # -- frame ------------------------------------------------------------------------------- #
     def render(self):
         self.job.poll()
@@ -850,7 +992,12 @@ class GFactorApp(TourTarget, ImApp):
         self.model.busy = self.job.running
         for form in self.forms.values():
             form.rects.clear()
-        im.begin_disabled(self.dialog is not None or self.dataset_picker.is_open or self.model.batch_open)
+        im.begin_disabled(
+            self.dialog is not None
+            or self.dataset_picker.is_open
+            or self.ref_picker.is_open
+            or self.model.batch_open
+        )
         self.docks.draw(frame)
         im.end_disabled()
 
@@ -882,6 +1029,8 @@ class GFactorApp(TourTarget, ImApp):
             window.end()
         if self.dataset_picker.is_open:
             self.dataset_picker.render(frame)
+        if self.ref_picker.is_open:
+            self.ref_picker.render(frame)
         self.help.draw(frame)
         self.guide.draw(*vp.size)
         signature = self.fingerprint()
@@ -940,6 +1089,7 @@ class GFactorApp(TourTarget, ImApp):
         snapshot = self.model.snapshot() if publish else None
         self.job.close()
         self.dataset_picker.close()
+        self.ref_picker.close()
         if self.on_close is not None:
             self.on_close(snapshot)
 

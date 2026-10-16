@@ -91,6 +91,7 @@ class GFactorModel:
         self.forget_selection = False
         self.decays = []
         self.selected_decay_idx = 0
+        self.selected_reference_idx = 0
         self.message = ""
         self.busy = False
 
@@ -410,6 +411,64 @@ class GFactorModel:
             self.sample_r_t = None
             self.sample_r_infty = float("nan")
 
+    def reference_rows(self) -> list[dict[str, object]]:
+        """The loaded reference standard decays as table rows."""
+        rows = []
+        ref_decays = [d for d in self.decays if d.get("role") != "sample"]
+        for i, d in enumerate(ref_decays):
+            rho = d.get("rho_ns")
+            tau = d.get("tau_ns") or d.get("tau_estimate_ns")
+            r0 = d.get("r0", self.fp_r0)
+            target_rs = d.get("r_expected")
+            l_est = d.get("l_estimate")
+            is_g = d.get("use_for_g", False) or (self.fast_file == d.get("path"))
+            rows.append({
+                "index": i,
+                "file": Path(d.get("path", d.get("name", ""))).name,
+                "path": str(d.get("path", "")),
+                "rho_ns": f"{float(rho):.2f}" if rho is not None else "",
+                "tau_ns": f"{float(tau):.2f}" if tau is not None else "",
+                "r0": f"{float(r0):.3f}" if r0 is not None else "",
+                "tail_match": "★ Yes" if is_g else "No",
+                "r_expected": f"{float(target_rs):.4f}" if target_rs is not None and np.isfinite(target_rs) else "",
+                "l_estimate": f"{float(l_est):.4f}" if l_est is not None and np.isfinite(l_est) else "",
+            })
+        return rows
+
+    def set_reference_tail_match(self, index: int) -> None:
+        """Assign reference at index as the tail-matching standard for G-factor calibration."""
+        ref_decays = [d for d in self.decays if d.get("role") != "sample"]
+        if not 0 <= index < len(ref_decays):
+            return
+        target = ref_decays[index]
+        for d in self.decays:
+            if d.get("role") != "sample":
+                d["use_for_g"] = (d == target)
+                if d == target:
+                    d["role"] = "fast"
+                elif d["role"] == "fast":
+                    d["role"] = "slow"
+        self.fast = target["data"]
+        self.fast_file = target["path"]
+        self.compute()
+
+    def remove_reference(self, record: dict | None = None) -> None:
+        """Drop the reference file in record."""
+        path = (record or {}).get("path")
+        idx = next((i for i, d in enumerate(self.decays) if d.get("path") == path), None)
+        if idx is not None:
+            self.remove_decay(idx)
+
+    def select_reference(self, record: dict | None = None) -> None:
+        """Set the active reference standard from table selection."""
+        if not record:
+            return
+        path = record.get("path")
+        ref_decays = [d for d in self.decays if d.get("role") != "sample"]
+        idx = next((i for i, d in enumerate(ref_decays) if d.get("path") == path), None)
+        if idx is not None:
+            self.selected_reference_idx = idx
+
     def result_rows(self) -> list[dict[str, str]]:
         """The G-factor and mixing results as ``{quantity, value, tooltip}`` rows."""
         rows = []
@@ -553,12 +612,15 @@ class GFactorModel:
         decay_tau = float(tau_ns) if tau_ns is not None else (self.tau_override if self.manual_tau else 4.0)
 
         entry = next((d for d in self.decays if d["path"] == str(path)), None)
+        is_first_ref = not any(d.get("role") != "sample" for d in self.decays)
+        use_g = (role == "fast") or (is_first_ref and role != "sample")
         if entry is None:
             entry = {
                 "name": Path(path).name,
                 "path": str(path),
                 "data": (vv[:n], vh[:n]),
                 "role": role,
+                "use_for_g": use_g,
                 "rho_ns": decay_rho,
                 "tau_ns": decay_tau,
                 "r0": float(self.fp_r0),
@@ -569,6 +631,7 @@ class GFactorModel:
         else:
             entry["data"] = (vv[:n], vh[:n])
             entry["role"] = role
+            entry["use_for_g"] = use_g
             if rho_ns is not None:
                 entry["rho_ns"] = decay_rho
             if tau_ns is not None:
@@ -613,6 +676,36 @@ class GFactorModel:
             except Exception:
                 pass
         return True
+
+    def load_reference(
+        self,
+        path: str | Path,
+        rho_ns: float | None = None,
+        tau_ns: float | None = None,
+        r0: float | None = None,
+        use_for_g: bool | None = None,
+    ) -> None:
+        """Load a reference standard decay into the calibration table."""
+        existing_refs = [d for d in self.decays if d.get("role") != "sample"]
+        if rho_ns is None:
+            rho_val = 0.2 if not existing_refs else self.fp_rho_ns
+        else:
+            rho_val = float(rho_ns)
+
+        if use_for_g is None:
+            use_for_g = not existing_refs or rho_val < min(d.get("rho_ns", 1e9) for d in existing_refs)
+
+        role = "fast" if use_for_g else "slow"
+        self.load(path, role=role, rho_ns=rho_val, tau_ns=tau_ns)
+        entry = next((d for d in self.decays if d["path"] == str(path)), None)
+        if entry:
+            entry["use_for_g"] = bool(use_for_g)
+            if r0 is not None:
+                entry["r0"] = float(r0)
+        if use_for_g and entry:
+            self.fast_file = str(path)
+            self.fast = entry["data"]
+            self.compute()
 
     def load_example(self, folder: str | Path | None = None, client: object | None = None) -> None:
         """Load simulated references (known G = 1.2) for demonstrations and testing."""
@@ -778,6 +871,38 @@ class GFactorModel:
             r_expecteds.append(float(exp_e))
             estimates.append((l_val, float(p_e.sum()), float(s_e.sum()), float(exp_e)))
 
+        # Also compute Perrin target and l for all other reference standards so table is complete
+        for d in self.decays:
+            if d.get("role") != "sample" and d not in slow_entries:
+                pair = d.get("data")
+                if pair is None:
+                    continue
+                par_d, perp_d = pair[::-1] if self.flip else pair
+                n_d = min(len(par_d), len(perp_d))
+                if n_d < 3:
+                    continue
+                time_d = np.arange(n_d, dtype=float)
+                shifted_d = time_d + self.shift
+                interp_d = np.interp(time_d, shifted_d, perp_d, left=0.0, right=0.0)
+                bp_d, bs_d = (
+                    compute_background_levels(par_d, perp_d, time_d, shifted_d, self.background_region)
+                    if self.background
+                    else (0.0, 0.0)
+                )
+                p_d = np.clip(par_d[:n_d] - bp_d, 0, None)
+                s_d = np.clip(interp_d[:n_d] - bs_d, 0, None)
+                t_est_d = estimate_lifetime_first_moment(time_d, p_d + 2 * g * s_d) * self.fp_dt_ns
+                tau_d = d.get("tau_ns") or t_est_d
+                rho_d = d.get("rho_ns", 0.2)
+                r0_d = d.get("r0", self.fp_r0)
+                exp_d = perrin_steady_state_anisotropy(tau_ns=tau_d, rho_ns=rho_d, r0=r0_d)
+                l_val_d = solve_linked_l_from_steady_state(
+                    sp=float(p_d.sum()), ss=float(s_d.sum()), g_factor=g, r_target=exp_d
+                )
+                d["l_estimate"] = float(l_val_d) if np.isfinite(l_val_d) else None
+                d["r_expected"] = float(exp_d) if np.isfinite(exp_d) else None
+                d["tau_estimate_ns"] = float(t_est_d)
+
         if not estimates:
             return
 
@@ -899,6 +1024,10 @@ class GFactorModel:
         l1 = self.l1
         l2 = self.l2
         corrected = shift_interp_on_axis(time, s, self.shift)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            raw_shifted_vh = shift_interp_on_axis(time, perp, self.shift) if len(perp) == len(time) else perp
+            ratio_raw = np.where(raw_shifted_vh > 0, par / raw_shifted_vh, np.nan)
+            ratio_corr = np.where(corrected > 0, p / corrected, np.nan)
         return {
             "time": time,
             "shifted_time": shifted,
@@ -906,6 +1035,8 @@ class GFactorModel:
             "vh_raw": perp,
             "vv_corrected": p,
             "vh_corrected": s * g_val,
+            "ratio_raw": np.clip(ratio_raw, -1.0, 50.0),
+            "ratio_corrected": np.clip(ratio_corr, -1.0, 50.0),
             "r_raw": np.clip(
                 compute_rt(par, perp, self.result.get("g_factor_uncorrected") or g_val), -0.5, 1.5
             ),
@@ -1063,6 +1194,10 @@ class GFactorModel:
             g = self.g_factor
             g_val = float(g) if g is not None and np.isfinite(g) and g > 0 else np.nan
             corrected = shift_interp_on_axis(time, s, self.shift)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                raw_shifted_vh = shift_interp_on_axis(time, perp[:n], self.shift) if len(perp) >= n else perp[:n]
+                ratio_raw = np.where(raw_shifted_vh > 0, par[:n] / raw_shifted_vh, np.nan)
+                ratio_corr = np.where(corrected > 0, p / corrected, np.nan)
             return {
                 "time": time,
                 "shifted_time": shifted,
@@ -1070,6 +1205,8 @@ class GFactorModel:
                 "vh_raw": perp[:n],
                 "vv_corrected": p,
                 "vh_corrected": s * g_val,
+                "ratio_raw": np.clip(ratio_raw, -1.0, 50.0),
+                "ratio_corrected": np.clip(ratio_corr, -1.0, 50.0),
                 "r_raw": np.clip(
                     compute_rt(par[:n], perp[:n], self.result.get("g_factor_uncorrected") or g_val),
                     -0.5,
@@ -1108,6 +1245,18 @@ class GFactorModel:
             for t, rr, rc in zip(series["time"], series["r_raw"], series["r_corrected"]):
                 f.write(f"{t:.4f},{rr:.6f},{rc:.6f}\n")
         self.message = f"Exported anisotropy r(t) to {Path(target_path).name}"
+
+    def export_active_ratio(self, target_path: str | Path, file_path: str | Path | None = None) -> None:
+        """Export time, raw VV/VH ratio, and corrected VV/VH ratio to a CSV file."""
+        series = self.get_decay_series(file_path=file_path)
+        if not series or "time" not in series:
+            raise ValueError("No ratio data available to export.")
+        columns = ["time", "ratio_raw", "ratio_corrected"]
+        with Path(target_path).open("w") as f:
+            f.write(",".join(columns) + "\n")
+            for t, rr, rc in zip(series["time"], series.get("ratio_raw", []), series.get("ratio_corrected", [])):
+                f.write(f"{t:.4f},{rr:.6f},{rc:.6f}\n")
+        self.message = f"Exported VV/VH ratio to {Path(target_path).name}"
 
     def export_all_rt(self, target_path: str | Path) -> None:
         """Export time-resolved anisotropy r(t) curves for all queued batch files into a CSV."""
