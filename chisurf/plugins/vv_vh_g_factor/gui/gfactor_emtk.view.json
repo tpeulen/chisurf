@@ -9,53 +9,94 @@
    "sections": [
     {
      "type": "panel",
-     "title": "Reference standards",
-     "description": "Reference standards.",
+     "title": "Reference parameters",
+     "description": "Reference parameters.",
      "sections": [
       {
        "type": "custom",
        "key": "data_table",
        "options": {
         "source": "reference_rows",
-        "min_column_width": 75,
+        "min_column_width": 50,
         "fit_columns": true,
         "delete_call": "remove_reference",
         "selected_call": "select_reference",
         "editable": true,
         "edited_call": "edit_reference",
         "expand": true,
-        "height": 95,
+        "height": 105,
         "columns": [
          {
           "key": "file",
-          "min_width": 140,
+          "min_width": 120,
           "title": "File",
           "tooltip": "Reference standard decay file name.",
           "editable": false
          },
          {
           "key": "rho_ns",
+          "min_width": 55,
           "title": "rho (ns)",
           "tooltip": "Rotational correlation time (ns). Click to edit.",
           "editable": true
          },
          {
           "key": "tau_ns",
+          "min_width": 55,
           "title": "tau (ns)",
           "tooltip": "Fluorescence lifetime (ns). Click to edit.",
           "editable": true
          },
          {
           "key": "r0",
+          "min_width": 45,
           "title": "r0",
           "tooltip": "Fundamental limiting anisotropy. Click to edit.",
           "editable": true
          },
          {
+          "key": "bg_vv",
+          "min_width": 50,
+          "title": "BG VV",
+          "tooltip": "VV channel background counts. Click to edit.",
+          "editable": true
+         },
+         {
+          "key": "bg_vh",
+          "min_width": 50,
+          "title": "BG VH",
+          "tooltip": "VH channel background counts. Click to edit.",
+          "editable": true
+         },
+         {
           "key": "tail_match",
+          "min_width": 65,
           "title": "Tail match",
           "tooltip": "Toggle checkbox to use this reference for tail matching G-factor.",
           "editable": true
+         }
+        ],
+        "context_menu": [
+         {
+          "label": "Remove",
+          "call": "remove_reference",
+          "description": "Remove selected reference standard from list.",
+          "enabled_when": "has_references"
+         },
+         {
+          "label": "Set as tail match",
+          "call": "set_tail_match_from_menu",
+          "description": "Use this reference standard for tail matching G-factor.",
+          "enabled_when": "has_references"
+         },
+         {
+          "separator": true
+         },
+         {
+          "label": "Clear all",
+          "call": "clear_references",
+          "description": "Clear all reference standards from list.",
+          "enabled_when": "has_references"
          }
         ]
        }
@@ -68,20 +109,20 @@
    "sections": [
     {
      "type": "panel",
-     "title": "Calibration parameters",
-     "description": "Calibration parameters.",
+     "title": "Instrumental parameters",
+     "description": "Instrumental parameters.",
      "sections": [
       {
        "type": "custom",
        "key": "data_table",
        "options": {
         "source": "parameter_rows",
-        "min_column_width": 55,
+        "min_column_width": 50,
         "fit_columns": true,
         "editable": true,
         "edited_call": "edit_parameter",
         "expand": true,
-        "height": 220,
+        "height": 215,
         "columns": [
          {
           "key": "parameter",
@@ -405,6 +446,23 @@
         "key": "error",
         "title": "Error",
         "tooltip": "Why the file could not be evaluated."
+       }
+      ],
+      "context_menu": [
+       {
+        "label": "Remove",
+        "call": "remove_batch",
+        "description": "Remove selected sample from batch list.",
+        "enabled_when": "has_batch_rows"
+       },
+       {
+        "separator": true
+       },
+       {
+        "label": "Clear all",
+        "call": "clear_batch",
+        "description": "Clear all files from batch list.",
+        "enabled_when": "has_batch_rows"
        }
       ]
      }

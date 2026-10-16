@@ -202,6 +202,27 @@ def type_value(ui, name, text):
     if row:
         m.edit_parameter(row, "value", text)
         return ui.settle()
+    if name in ("fp_rho_ns", "rho_ns", "rho"):
+        slow_d = next((d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None)
+        if slow_d:
+            ref_row = next((r for r in m.reference_rows() if r["path"] == slow_d.get("path")), None)
+            if ref_row:
+                m.edit_reference(ref_row, "rho_ns", text)
+                return ui.settle()
+    if name in ("fp_r0", "r0"):
+        slow_d = next((d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None)
+        if slow_d:
+            ref_row = next((r for r in m.reference_rows() if r["path"] == slow_d.get("path")), None)
+            if ref_row:
+                m.edit_reference(ref_row, "r0", text)
+                return ui.settle()
+    if name in ("tau_override", "tau_ns", "tau"):
+        slow_d = next((d for d in m.decays if d.get("role") == "slow" or d.get("path") == m.slow_file), None)
+        if slow_d:
+            ref_row = next((r for r in m.reference_rows() if r["path"] == slow_d.get("path")), None)
+            if ref_row:
+                m.edit_reference(ref_row, "tau_ns", text)
+                return ui.settle()
     ui.type_into(field(ui, name), text)
     return ui.settle()
 
@@ -436,7 +457,7 @@ def test_the_background_toggle_enables_its_region_and_the_corrected_rows(ui, fil
     m = ui.settle()
     assert m.background and m.enabled("background_start")
     assert m.result["g_factor"] == pytest.approx(m.result["g_factor_corrected"])
-    assert "Background VV" in [t[5] for t in ui.draw().texts]
+    assert any("BG VV" in t[5] or "Background VV" in t[5] for t in ui.draw().texts)
     m = type_value(ui, "background_start", "10")
     m = type_value(ui, "background_stop", "60")
     assert m.background_region == [10.0, 60.0]
@@ -481,13 +502,10 @@ def test_mixing_parameters_are_typed_and_change_the_estimate(ui, files, name, ty
 
 def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
     m = loaded(ui, files)
-    tau_row = next(r for r in m.parameter_rows() if r["key"] == "tau_override")
-    m.edit_parameter(tau_row, "fixed", True)
-    m.edit_parameter(tau_row, "value", 5.0)
+    slow_ref = next(r for r in m.reference_rows() if not r["tail_match"])
+    m.edit_reference(slow_ref, "tau_ns", 5.0)
     assert m.fp_result["tau_used_ns"] == pytest.approx(5.0)
-    rs_row = next(r for r in m.parameter_rows() if r["key"] == "rs_override")
-    m.edit_parameter(rs_row, "fixed", True)
-    m.edit_parameter(rs_row, "value", 0.2)
+    m.edit_reference(slow_ref, "r_expected", 0.2)
     assert m.fp_result["r_expected"] == pytest.approx(0.2)
     l1_row = next(r for r in m.parameter_rows() if r["key"] == "l1")
     m.edit_parameter(l1_row, "fixed", True)
@@ -647,13 +665,12 @@ def test_reference_table_and_multi_standard_calibration(ui, files):
 def test_parameter_table_and_in_place_editing(ui, files):
     m = loaded(ui, files)
     param_rows = m.parameter_rows()
-    assert len(param_rows) >= 15
+    assert len(param_rows) >= 10
     keys = [r["key"] for r in param_rows]
     assert "tail_start" in keys
     assert "tail_stop" in keys
     assert "background" in keys
     assert "shift" in keys
-    assert "fp_rho_ns" in keys
     assert "fp_dt_ns" in keys
 
     # Edit numeric parameter in table
@@ -688,6 +705,47 @@ def test_parameter_table_and_in_place_editing(ui, files):
     assert isinstance(l1_row["_parameter"], FittingParameter)
     m.edit_parameter(l1_row, "fixed", True)
     assert m.manual_l is True
+
+    # Reference parameters table: rho, tau, r0, bg_vv, bg_vh per sample
+    ref_rows = m.reference_rows()
+    assert len(ref_rows) >= 2
+    r_keys = ref_rows[0].keys()
+    assert "rho_ns" in r_keys
+    assert "tau_ns" in r_keys
+    assert "r0" in r_keys
+    assert "bg_vv" in r_keys
+    assert "bg_vh" in r_keys
+    assert "tail_match" in r_keys
+
+
+def test_context_menu_actions_remove_and_clear_samples(ui, files):
+    m = loaded(ui, files)
+    assert m.has_references is True
+    initial_refs = len(m.reference_rows())
+    assert initial_refs >= 2
+
+    # Remove single reference via menu action
+    first_row = m.reference_rows()[0]
+    m.remove_reference(first_row)
+    assert len(m.reference_rows()) == initial_refs - 1
+
+    # Clear all references via menu action
+    m.clear_references()
+    assert len(m.reference_rows()) == 0
+    assert m.has_references is False
+
+    # Batch list remove and clear via menu actions
+    ui.app.add_batch([files["batch1"], files["batch2"]])
+    assert m.has_batch_rows is True
+    assert len(m.batch_files) == 2
+
+    m.remove_batch({"path": files["batch1"]})
+    assert len(m.batch_files) == 1
+    assert files["batch1"] not in m.batch_files
+
+    m.clear_batch()
+    assert len(m.batch_files) == 0
+    assert m.has_batch_rows is False
 
 
 

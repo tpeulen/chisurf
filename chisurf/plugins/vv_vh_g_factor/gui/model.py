@@ -443,15 +443,27 @@ class GFactorModel:
 
     def remove_batch(self, record: dict | None = None) -> None:
         """Drop the queued file of *record* (and its result row)."""
-        path = (record or {}).get("path")
-        if path in self.batch_files:
-            self.batch_files.remove(path)
-        self.batch_results = [r for r in self.batch_results if r.get("file") != path]
+        path = (record or {}).get("path") or (record or {}).get("file")
+        if path:
+            if path in self.batch_files:
+                self.batch_files.remove(path)
+            else:
+                for f in list(self.batch_files):
+                    if Path(f).name == path or f == path:
+                        self.batch_files.remove(f)
+            self.batch_results = [
+                r for r in self.batch_results
+                if r.get("file") != path and Path(r.get("file", "")).name != Path(path).name
+            ]
 
     def clear_batch(self) -> None:
         """Empty the batch queue and results."""
         self.batch_files = []
         self.batch_results = []
+
+    @property
+    def has_batch_rows(self) -> bool:
+        return bool(self.batch_files) or bool(self.batch_results)
 
     def open_batch(self) -> None:
         """Open the modal batch window."""
@@ -539,6 +551,8 @@ class GFactorModel:
             r0 = d.get("r0", self.fp_r0)
             target_rs = d.get("r_expected")
             l_est = d.get("l_estimate")
+            bg_vv = d.get("bg_vv", 0.0)
+            bg_vh = d.get("bg_vh", 0.0)
             is_g = d.get("use_for_g", False) or (self.fast_file == d.get("path"))
             rows.append({
                 "index": i,
@@ -547,6 +561,8 @@ class GFactorModel:
                 "rho_ns": round(float(rho), 2) if rho is not None else 0.2,
                 "tau_ns": round(float(tau), 2) if tau is not None else 4.0,
                 "r0": round(float(r0), 3) if r0 is not None else 0.38,
+                "bg_vv": round(float(bg_vv), 2) if bg_vv is not None else 0.0,
+                "bg_vh": round(float(bg_vh), 2) if bg_vh is not None else 0.0,
                 "tail_match": bool(is_g),
                 "r_expected": f"{float(target_rs):.4f}" if target_rs is not None and np.isfinite(target_rs) else "",
                 "l_estimate": f"{float(l_est):.4f}" if l_est is not None and np.isfinite(l_est) else "",
@@ -571,11 +587,39 @@ class GFactorModel:
         self.compute()
 
     def remove_reference(self, record: dict | None = None) -> None:
-        """Drop the reference file in record."""
+        """Drop the reference file in record, or the currently selected reference."""
         path = (record or {}).get("path")
+        if not path and hasattr(self, "selected_reference_idx"):
+            ref_decays = [d for d in self.decays if d.get("role") != "sample"]
+            if 0 <= self.selected_reference_idx < len(ref_decays):
+                path = ref_decays[self.selected_reference_idx].get("path")
         idx = next((i for i, d in enumerate(self.decays) if d.get("path") == path), None)
         if idx is not None:
             self.remove_decay(idx)
+
+    def clear_references(self, *args, **kwargs) -> None:
+        """Clear all reference standard decays from list."""
+        self.decays = [d for d in self.decays if d.get("role") == "sample"]
+        self.fast = None
+        self.fast_file = None
+        self.slow = None
+        self.slow_file = None
+        self.result = {}
+        self.fp_result = {}
+        self.message = "All reference standards cleared."
+        self.update_fitting_parameters()
+
+    def set_tail_match_from_menu(self, record: dict | None = None, *args, **kwargs) -> None:
+        """Set the clicked reference as the tail matching standard."""
+        if not record:
+            return
+        idx = record.get("index")
+        if idx is not None:
+            self.set_reference_tail_match(int(idx))
+
+    @property
+    def has_references(self) -> bool:
+        return any(d.get("role") != "sample" for d in self.decays)
 
     def select_reference(self, record: dict | None = None) -> None:
         """Set the active reference standard from table selection."""
@@ -614,13 +658,23 @@ class GFactorModel:
                     if self.fast is not None:
                         self.compute()
             elif key == "r0":
-                new_r0 = float(value)
-                if -0.5 <= new_r0 <= 1.0:
-                    d["r0"] = new_r0
-                    if d.get("role") == "slow" or d.get("path") == self.slow_file:
-                        self.fp_r0 = new_r0
-                    if self.fast is not None:
-                        self.compute()
+                new_r0 = min(0.4, max(-0.2, float(value)))
+                d["r0"] = new_r0
+                if d.get("role") == "slow" or d.get("path") == self.slow_file:
+                    self.fp_r0 = new_r0
+                if self.fast is not None:
+                    self.compute()
+            elif key in ("bg_vv", "bg_vh"):
+                d[key] = float(value)
+                if self.fast is not None:
+                    self.compute()
+            elif key in ("r_expected", "rs_override"):
+                new_rs = float(value)
+                d["r_expected"] = new_rs
+                self.manual_rs = True
+                self.rs_override = new_rs
+                if self.fast is not None:
+                    self.compute()
             elif key == "tail_match":
                 bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "★ yes"))
                 if bool_val:
@@ -632,7 +686,7 @@ class GFactorModel:
             pass
 
     def parameter_rows(self) -> list[dict[str, object]]:
-        """The calibration parameters and overrides as standard fitting parameter table rows."""
+        """The instrumental calibration parameters as standard fitting parameter table rows."""
         self.update_fitting_parameters()
         rows = [
             {
@@ -661,60 +715,6 @@ class GFactorModel:
                 "fixed": bool(self.param_l2.fixed),
                 "error": f"± {self.param_l2.error_estimate:.4g}" if (self.param_l2.error_estimate is not None and np.isfinite(self.param_l2.error_estimate)) else "",
                 "_parameter": self.param_l2,
-            },
-            {
-                "key": "bg_vv",
-                "parameter": "Background VV",
-                "name": "Background VV",
-                "value": float(self.bg_vv),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "bg_vh",
-                "parameter": "Background VH",
-                "name": "Background VH",
-                "value": float(self.bg_vh),
-                "fixed": True,
-                "error": "",
-                "_parameter": None,
-            },
-            {
-                "key": "tau_override",
-                "parameter": "tau",
-                "name": "tau",
-                "value": float(self.param_tau.value),
-                "fixed": bool(self.manual_tau),
-                "error": "",
-                "_parameter": self.param_tau,
-            },
-            {
-                "key": "fp_rho_ns",
-                "parameter": "rho",
-                "name": "rho",
-                "value": float(self.param_rho.value),
-                "fixed": True,
-                "error": "",
-                "_parameter": self.param_rho,
-            },
-            {
-                "key": "fp_r0",
-                "parameter": "r0",
-                "name": "r0",
-                "value": float(self.param_r0.value),
-                "fixed": True,
-                "error": "",
-                "_parameter": self.param_r0,
-            },
-            {
-                "key": "rs_override",
-                "parameter": "Target rS",
-                "name": "Target rS",
-                "value": float(self.param_rs.value),
-                "fixed": bool(self.manual_rs),
-                "error": "",
-                "_parameter": self.param_rs,
             },
             {
                 "key": "fp_dt_ns",
@@ -763,8 +763,8 @@ class GFactorModel:
             },
             {
                 "key": "shift",
-                "parameter": "VH shift",
-                "name": "VH shift",
+                "parameter": "Shift",
+                "name": "Shift",
                 "value": float(self.param_shift.value),
                 "fixed": True,
                 "error": "",
@@ -772,8 +772,8 @@ class GFactorModel:
             },
             {
                 "key": "background",
-                "parameter": "Background subtraction",
-                "name": "Background subtraction",
+                "parameter": "BG sub",
+                "name": "BG sub",
                 "value": bool(self.background),
                 "fixed": True,
                 "error": "",
@@ -781,8 +781,8 @@ class GFactorModel:
             },
             {
                 "key": "flip",
-                "parameter": "Flip VV/VH",
-                "name": "Flip VV/VH",
+                "parameter": "Flip",
+                "name": "Flip",
                 "value": bool(self.flip),
                 "fixed": True,
                 "error": "",
@@ -1172,6 +1172,12 @@ class GFactorModel:
             self.result = client.calculate(**params)
         else:
             self.result = calculate_g_factor_core(**params)
+        fast_bp = float(self.result.get("bg_parallel_avg", 0.0))
+        fast_bs = float(self.result.get("bg_perpendicular_avg", 0.0))
+        for d in self.decays:
+            if d.get("role") == "fast" or d.get("path") == self.fast_file:
+                d["bg_vv"] = fast_bp
+                d["bg_vh"] = fast_bs
         if self.manual_g and (not np.isfinite(self.g_override) or self.g_override <= 0):
             raise ValueError("Manual G-factor must be positive and finite.")
         self.estimate_mixing(client)
@@ -1223,11 +1229,11 @@ class GFactorModel:
             time_e = np.arange(n_e, dtype=float)
             shifted_e = time_e + self.shift
             interp_e = np.interp(time_e, shifted_e, perp_e, left=0.0, right=0.0)
-            bp_e, bs_e = (
-                compute_background_levels(par_e, perp_e, time_e, shifted_e, self.background_region)
-                if self.background
-                else (0.0, 0.0)
-            )
+            bp_e, bs_e = compute_background_levels(par_e, perp_e, time_e, shifted_e, self.background_region)
+            entry["bg_vv"] = float(bp_e)
+            entry["bg_vh"] = float(bs_e)
+            if not self.background:
+                bp_e, bs_e = (0.0, 0.0)
             p_e = np.clip(par_e[:n_e] - bp_e, 0, None)
             s_e = np.clip(interp_e[:n_e] - bs_e, 0, None)
             t_est = estimate_lifetime_first_moment(time_e, p_e + 2 * g * s_e) * self.fp_dt_ns
@@ -1282,11 +1288,11 @@ class GFactorModel:
                 time_d = np.arange(n_d, dtype=float)
                 shifted_d = time_d + self.shift
                 interp_d = np.interp(time_d, shifted_d, perp_d, left=0.0, right=0.0)
-                bp_d, bs_d = (
-                    compute_background_levels(par_d, perp_d, time_d, shifted_d, self.background_region)
-                    if self.background
-                    else (0.0, 0.0)
-                )
+                bp_d, bs_d = compute_background_levels(par_d, perp_d, time_d, shifted_d, self.background_region)
+                d["bg_vv"] = float(bp_d)
+                d["bg_vh"] = float(bs_d)
+                if not self.background:
+                    bp_d, bs_d = (0.0, 0.0)
                 p_d = np.clip(par_d[:n_d] - bp_d, 0, None)
                 s_d = np.clip(interp_d[:n_d] - bs_d, 0, None)
                 t_est_d = estimate_lifetime_first_moment(time_d, p_d + 2 * g * s_d) * self.fp_dt_ns

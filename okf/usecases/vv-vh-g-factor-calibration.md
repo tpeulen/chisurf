@@ -11,6 +11,10 @@ timestamp: '2026-07-29T00:00:00Z'
 # Where to pick this up
 
 1. Completed (2026-10-16):
+   - Reference vs Instrumental Parameters Split: separated per-sample reference standard properties (`rho`, `tau`, `r0`, `BG VV`, `BG VH`, `Tail match`) into the dedicated Reference Parameters table, completely eliminating duplicated `rho`, `tau`, and `r0` from the general table.
+   - Instrumental Calibration Table: reserved the Instrumental Parameters table strictly for instrument-level calibration constants (`G`, `l1`, `l2`, `dt`, `Tail start/stop`, `BG start/stop`, `Shift`, `BG sub`, `Flip`).
+   - Abbreviated Parameter Labels: replaced long verbose descriptions with standardized concise abbreviations (`BG VV`, `BG VH`, `BG start`, `BG stop`, `BG sub`, `Shift`, `Flip`, `dt`).
+   - Declarative Context Menus: added right-click context menus (`Remove`, `Set as tail match`, `Clear all`) to the reference parameters table, batch files list, and batch results table for interactive management of samples.
    - Eliminated Duplicate Controls: removed redundant bottom panels (`Channels`, `Tail matching`, `Polarization mixing`) below the calibration parameters table, ensuring the fitting parameters table is the single source of truth for parameter viewing and editing.
    - Standard Fitting Parameter Table: adopted ChiSurf's standard `FittingParameterGroup` and `FittingParameter` table schema (`Parameter`, `Value`, `Fixed`, `Error`) backed by live parameter objects from `chisurf.core.fitting.parameter`. Implemented custom `__deepcopy__` to cleanly isolate C++ SWIG `GraphPort` bindings during model snapshots.
    - Interactive Parameter Editing & Fixed Overrides: inline cell editing supports direct numeric changes as well as toggling the `Fixed` checkbox to lock/override parameters (`manual_g`, `manual_l`, `manual_tau`, `manual_rs`).

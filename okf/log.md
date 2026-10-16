@@ -11,6 +11,7 @@
 - Streamline VV/VH G-factor UI by eliminating duplicate results table and duplicate controls, shortening table labels to l1 and l2, and recovering independent l1 != l2 mixing parameters
 - vv_vh_g_factor: eliminate duplicated G, l1, and l2 controls by consolidating overrides into FittingParameter table
 - Eliminated duplicate controls beneath calibration parameters table in VV/VH G-factor tool and ensured fitting parameter table is single source of truth for edits.
+- Split VV/VH calibration into Reference Parameters (sample-specific rho, tau, r0, BG VV, BG VH) and Instrumental Parameters, applied abbreviations (BG, Shift, Flip), and added declarative context menus to clear and remove samples.
 
 ## 2026-10-15
 
