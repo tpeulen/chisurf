@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-16
+
+- Clean up G-factor calibration UI text density: suppress false orange warnings on successful Perrin mixing estimates, move diagnostic details into table and path tooltips, and remove duplicate mixing_results table.
+
 ## 2026-10-15
 
 - Dock tabs spacing: add 2px horizontal padding and 2px inter-tab gap in emtk.docking for distinct visual separation

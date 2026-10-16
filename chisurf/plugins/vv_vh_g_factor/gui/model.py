@@ -330,28 +330,51 @@ class GFactorModel:
         self.batch_results = []
 
     def result_rows(self) -> list[dict[str, str]]:
-        """The G-factor results as ``{quantity, value}`` rows."""
-        keys = [("G raw", "g_factor_uncorrected"), ("G SD", "g_factor_stddev_uncorrected")]
+        """The G-factor and mixing results as ``{quantity, value, tooltip}`` rows."""
+        keys = [
+            ("G raw", "g_factor_uncorrected", "Detector sensitivity ratio VV/VH without background subtraction."),
+            ("G SD", "g_factor_stddev_uncorrected", "Standard deviation of per-bin VV/VH ratios across the tail matching region."),
+        ]
         if self.background:
             keys += [
-                ("G corrected", "g_factor_corrected"),
-                ("G corrected SD", "g_factor_stddev_corrected"),
-                ("Background VV", "bg_parallel_avg"),
-                ("Background VH", "bg_perpendicular_avg"),
+                ("G corrected", "g_factor_corrected", "Detector sensitivity ratio VV/VH after subtracting pre-pulse background."),
+                ("G corrected SD", "g_factor_stddev_corrected", "Standard deviation of background-corrected per-bin ratios."),
+                ("Background VV", "bg_parallel_avg", "Mean background counts per bin in parallel channel."),
+                ("Background VH", "bg_perpendicular_avg", "Mean background counts per bin in perpendicular channel."),
             ]
         rows = []
-        for label, key in keys:
+        for label, key, tip in keys:
             value = self.result.get(key)
             rows.append(
                 {
                     "quantity": label,
                     "value": f"{float(value):.6g}" if value is not None else "unavailable",
+                    "tooltip": tip,
                 }
             )
         if self.manual_g:
-            rows.append({"quantity": "G used (manual)", "value": f"{float(self.g_override):.6g}"})
-        rows.append({"quantity": "l1 (polarization mixing)", "value": f"{float(self.l1):.6g}"})
-        rows.append({"quantity": "l2 (polarization mixing)", "value": f"{float(self.l2):.6g}"})
+            rows.append({
+                "quantity": "G used (manual)",
+                "value": f"{float(self.g_override):.6g}",
+                "tooltip": "Manual override of the detector G-factor.",
+            })
+        mix_tip = (
+            f"Polarization mixing factor l1 = l2 = {float(self.l1):.5g}. "
+            f"Linked estimate from Perrin relation "
+            f"(tau = {self.fp_result.get('tau_used_ns', 0):.2f} ns, target rS = {self.fp_result.get('r_expected', 0):.3f})."
+            if self.fp_result and self.l1 is not None and np.isfinite(self.l1)
+            else "Polarization mixing factor (objective depolarization correction)."
+        )
+        rows.append({
+            "quantity": "l1 (polarization mixing)",
+            "value": f"{float(self.l1):.6g}",
+            "tooltip": mix_tip,
+        })
+        rows.append({
+            "quantity": "l2 (polarization mixing)",
+            "value": f"{float(self.l2):.6g}",
+            "tooltip": mix_tip,
+        })
         return rows
 
     def mixing_rows(self) -> list[dict[str, str]]:

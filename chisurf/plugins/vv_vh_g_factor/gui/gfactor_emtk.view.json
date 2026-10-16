@@ -255,54 +255,20 @@
    "sections": [
     {
      "type": "panel",
-     "title": "G-factor",
-     "description": "Results of the tail matching.",
+     "title": "Calibration results",
+     "description": "Calibrated detector G-factor and polarization-mixing factors l1, l2.",
      "sections": [
       {
        "type": "custom",
        "key": "data_table",
-       "description": "Quantity and value of the G-factor tail match.",
+       "description": "Quantity and value of the G-factor and polarization-mixing calibration.",
        "options": {
         "source": "result_rows",
-        "height": 200,
+        "height": 220,
         "stretch": 1,
-        "min_height": 200,
+        "min_height": 220,
         "editable": false,
-        "columns": [
-         {
-          "key": "quantity",
-          "title": "Quantity",
-          "tooltip": "What is reported."
-         },
-         {
-          "key": "value",
-          "title": "Value",
-          "tooltip": "The value for the current settings."
-         }
-        ]
-       }
-      }
-     ]
-    }
-   ]
-  },
-  "mixing_results": {
-   "sections": [
-    {
-     "type": "panel",
-     "title": "Mixing estimate",
-     "description": "Result of the slow-reference estimate.",
-     "sections": [
-      {
-       "type": "custom",
-       "key": "data_table",
-       "description": "Quantity and value of the mixing estimate.",
-       "options": {
-        "source": "mixing_rows",
-        "height": 180,
-        "stretch": 1,
-        "min_height": 180,
-        "editable": false,
+        "tooltip_key": "tooltip",
         "columns": [
          {
           "key": "quantity",
@@ -406,15 +372,6 @@
      "title": "Sample decay",
      "description": "Inspect time-resolved anisotropy r(t) and r-infinity of the sample decay.",
      "sections": [
-      {
-       "type": "value",
-       "attr": "sample_file",
-       "label": "Sample file",
-       "kind": "str",
-       "read_only": true,
-       "elide": "start",
-       "description": "Loaded VV/VH decay file."
-      },
       {
        "type": "value",
        "attr": "sample_region_start",

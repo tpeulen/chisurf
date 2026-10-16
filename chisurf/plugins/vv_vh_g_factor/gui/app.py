@@ -295,9 +295,10 @@ class GFactorApp(TourTarget, ImApp):
     def path_row(self, label, path, empty):
         im.text(label)
         im.same_line()
-        im.text_disabled(("..." + path[-52:]) if len(path) > 55 else (path or empty))
+        name = Path(path).name if path else empty
+        im.text_disabled(name)
         if path:
-            im.set_item_tooltip(path)
+            im.set_item_tooltip(f"{label} {path}")
 
     def draw_controls(self, box):
         m = self.model
@@ -375,16 +376,14 @@ class GFactorApp(TourTarget, ImApp):
         self.path_row("Fast:", m.fast_file, "no reference decay loaded")
         self.path_row("Slow:", m.slow_file, "no slow reference loaded")
         status_msg = m.message or "Load the fast-rotating reference dye VV/VH decay."
-        if m.slow is not None and m.l1 is not None and np.isfinite(m.l1) and "l1" not in status_msg:
-            status_msg += f" | l1 = l2 = {m.l1:.5f} (mixing)"
         im.text_wrapped(status_msg)
         im.separator()
         self.form("tail", m)
         self.form("mixing", m)
         self.form("results", m)
-        self.form("mixing_results", m)
-        if m.fp_result.get("warning"):
-            im.text_colored((255, 180, 80, 255), m.fp_result["warning"])
+        warn = m.fp_result.get("warning")
+        if warn and ("outside" in warn or "error" in warn.lower() or m.fp_result.get("l1") is None):
+            im.text_colored((255, 180, 80, 255), warn)
 
     def draw_sample(self, box):
         m = self.model
