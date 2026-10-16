@@ -2,6 +2,14 @@
 
 ## 2026-10-16
 
+- Final Qt-vs-emtk parity pass, capture half: every plugin GUI (120) opened in both the `--qt`
+  ControlHost window and the emtk shell dock, driven into the same realistic state (own demo,
+  main action, every tab) and captured; harness `test/gui/final_parity_plugins.py`, evidence
+  under `okf/plugins/emtk-ports/final-parity/plugins/` (report.json ranks the word-level
+  differences after ellipsis filtering). Recipe fixes: burst_ebfret waits for the VBEM backend
+  run, burst_mle_analysis runs Auto IRF before Fit bursts, mmfdb_admin completes the demo login
+  before capturing. Record: [Qt retirement (shell)](subsystems/qt-retirement.md); board ticket
+  T-20261014-FINAL-PARITY-PLUGINS.
 - Clean up G-factor calibration UI text density: suppress false orange warnings on successful Perrin mixing estimates, move diagnostic details into table and path tooltips, and remove duplicate mixing_results table.
 - vv_vh_g_factor: convert batch window to modal DialogWindow, add generalized multi-decay management with custom roles and rotational correlation times, compute dynamic Perrin l1/l2 mixing on slow reference change, add per-plot decay selector dropdowns, and format uncertainties on single line
 - vv_vh_g_factor: unified unknown samples tab with per-decay inspection, draggable tail bounds, CSV/TSV table and decay/anisotropy r(t) exports, multi-reference rho/tau calibration, and exact frozen parity (70/70 tests green)
