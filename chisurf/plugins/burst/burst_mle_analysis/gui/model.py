@@ -953,6 +953,17 @@ class MleViewModel(RunPickerMixin):
     def stop(self) -> None:
         self._cancel.set()
 
+    @property
+    def cancel_event(self) -> threading.Event:
+        """The Stop flag as the event :class:`~chisurf.emtk.jobs.SnapshotJob` reads.
+
+        ``SnapshotJob``'s held-job gate asks the snapshot's ``cancel_event`` whether the
+        drawn Stop control ended the job; ``stop()`` sets this model's ``_cancel`` event,
+        which ``copy.copy`` shares by reference between snapshot and host -- so the
+        property only has to name it what the gate looks for.
+        """
+        return self._cancel
+
     def export_results(self) -> int:
         """Write the ``b?4`` burst tables beside the burst folders; returns how many files were written."""
         self.session.burst_results = self.burst_results

@@ -1190,6 +1190,26 @@ class TraceBrowserModel:
         """Ask the running precompute job to stop after the file it is working on."""
         self.precompute["cancel"] = True
 
+    @property
+    def cancel_event(self):
+        """The precompute Stop flag as the event :class:`~chisurf.emtk.jobs.SnapshotJob` reads.
+
+        ``SnapshotJob``'s held-job gate asks the snapshot's ``cancel_event`` whether the
+        drawn Stop control ended the job; this model's Stop is the ``precompute["cancel"]``
+        flag -- a dict that stays one object between the snapshot and the host, so a Stop
+        pressed later is seen on both. The property returns a small adapter with the
+        ``is_set()`` the gate calls, closing over ``self``.
+        """
+        model = self
+
+        class _FlagEvent:
+            """A read-only view of a model's cancel flag with ``Event.is_set``'s shape."""
+
+            def is_set(self) -> bool:
+                return bool(model.precompute["cancel"])
+
+        return _FlagEvent()
+
     def prepare_precompute(self) -> None:
         """Mark the precompute job as running (the host calls this before it starts the worker)."""
         self.precompute.update(running=True, cancel=False, done=0, total=0, name="", message="")

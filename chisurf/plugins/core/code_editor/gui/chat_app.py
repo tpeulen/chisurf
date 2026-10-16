@@ -904,8 +904,14 @@ class ChatGui:
                     self.use_example(example.prompt)
                 im.set_item_tooltip(" ".join(example.explanation.split()))
             im.end_popup()
-        im.same_line()
-        if im.small_button(tr("📚 Wiki") + "##chat_wiki"):
+        # Wrap rather than run off a narrow dock: small_button passes an explicit size,
+        # so button()'s own clamp-to-room does not apply and the Wiki button was drawn
+        # 56 px past the agent dock's right clip (e2e: 'chat_wiki has no scroll/reveal route').
+        wiki_label = tr("📚 Wiki") + "##chat_wiki"
+        pad = 2 * im.get_style().frame_padding[0]
+        if im.get_line_avail() >= im.calc_text_size(tr("📚 Wiki"))[0] + pad:
+            im.same_line()
+        if im.small_button(wiki_label):
             self.wiki.show()
         im.set_item_tooltip(
             tr("Browse the LLM Wiki the assistant reads, or feed the codebase into it")
