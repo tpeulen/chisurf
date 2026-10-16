@@ -340,14 +340,16 @@ RECIPES: dict[str, list] = {
             "call",
             _TMP
             + (
-                "from chisurf.plugins.core.mmfdb_admin.test import seeded_admin as sa\n"
-                "sa.use_folder(tmp); sa.seed(tmp, sa.admin_client()); c = sa.admin_client()\n"
-                "app.model.client = c; app.model._given_client = c; app.model.user = 'admin'"
+                "from chisurf.plugins.core.mmfdb_admin.test.seeded_admin import admin_client\n"
+                "c = admin_client(); app.model.client = c; app.model._given_client = c; "
+                "app.model.user = 'admin'; app.model.login_user = 'admin'; "
+                "app.model.connection = 'connected'; app.model._apply_status(c.status())"
             ),
             30,
         ),
-        ("click", "Login", 60),
         "capture:state",
+        ("scroll", 70, 300, 120),
+        ("capture", "rail_bottom"),
         ("click_re", r"^Samples$", 30),
         ("capture", "samples"),
         ("click_re", r"Import ?/ ?Export$", 30),
@@ -499,6 +501,9 @@ class _Host:
         raise NotImplementedError
 
     def click_at(self, x: float, y: float) -> None:
+        raise NotImplementedError
+
+    def scroll_at(self, x: float, y: float, amount: int) -> None:
         raise NotImplementedError
 
     def capture(self, name: str) -> None:
@@ -701,6 +706,25 @@ class QtHalf(_Host):
         QTest.mouseRelease(self.widget, Qt.LeftButton, Qt.NoModifier, point)
         self.frame()
 
+    def scroll_at(self, x, y, amount) -> None:
+        from qtpy.QtCore import QPoint, Qt
+        from qtpy.QtGui import QWheelEvent
+        from qtpy.QtWidgets import QApplication
+
+        point = QPoint(int(x), int(y))
+        event = QWheelEvent(
+            point,
+            self.widget.mapToGlobal(point),
+            QPoint(0, 0),
+            QPoint(0, amount),
+            Qt.NoButton,
+            Qt.NoModifier,
+            Qt.ScrollUpdate,
+            False,
+        )
+        QApplication.sendEvent(self.widget, event)
+        self.frame()
+
     def capture(self, name: str) -> None:
         path = self.out / f"qt_{name}.png"
         self.frame()
@@ -849,6 +873,9 @@ class EmtkHalf(_Host):
 
     def click_at(self, x, y) -> None:
         self.driver.click((x, y))
+
+    def scroll_at(self, x, y, amount) -> None:
+        self.driver.wheel(amount, at=(x, y))
 
     def capture(self, name: str) -> None:
         from PIL import Image
@@ -1010,6 +1037,10 @@ def run_scenario(host: _Host, steps: list) -> None:
                     {"click_re": step[1], "hit": host.click_text(pattern=re.compile(step[1], re.I))}
                 )
                 host.settle(timeout=step[2] if len(step) > 2 else 30)
+            elif label == "scroll":
+                host.scroll_at(step[1], step[2], step[3])
+                host.settle(timeout=2, quiet=0.5)
+                result["steps"].append({"scroll": [step[1], step[2], step[3]]})
             elif label == "each":
                 namespace["app"] = _inner(host.app)
                 keys = list(eval(step[1], namespace))  # noqa: S307 - recipe text written in this module
@@ -1087,6 +1118,11 @@ def run_one(plugin_id: str, which: str, out: Path, size=None) -> int:
                 only[0] if len(only) == 1 and only[0].is_dir() else fed
             )
         result["stub_dir"] = str(Path(scratch) / "stubs")
+        if plugin_id == "mmfdb_admin":
+            from chisurf.plugins.core.mmfdb_admin.test import seeded_admin
+
+            seeded_admin.use_folder(Path(scratch) / "mmfdb")
+            seeded_admin.seed(Path(scratch) / "mmfdb", seeded_admin.admin_client())
         from qtpy.QtWidgets import QApplication
 
         QApplication.instance() or QApplication([])
