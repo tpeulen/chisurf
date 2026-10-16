@@ -337,6 +337,18 @@ class GFactorApp(TourTarget, ImApp):
         pressed = button_row(
             [
                 {
+                    "label": "Load...",
+                    "key": "load_fast",
+                    "enabled": not busy,
+                    "tip": "Load reference standard VV/VH decay file(s) for G-factor calibration.",
+                },
+                {
+                    "label": "Slow...",
+                    "key": "load_slow",
+                    "enabled": not busy,
+                    "tip": "Load a slow-rotating reference standard for polarization-mixing estimation.",
+                },
+                {
                     "label": action_caption("example"),
                     "key": "load_example",
                     "enabled": not busy,
@@ -348,40 +360,28 @@ class GFactorApp(TourTarget, ImApp):
                     ),
                 },
                 {
-                    "label": "Add references...",
-                    "key": "load_fast",
-                    "enabled": not busy,
-                    "tip": "Load reference standard VV/VH decay file(s) for G-factor calibration and polarization mixing.",
-                },
-                {
-                    "label": "Slow protein...",
-                    "key": "load_slow",
-                    "enabled": not busy,
-                    "tip": "Load a slow-rotating protein reference decay for polarization-mixing estimation.",
-                },
-                {
-                    "label": "Database...",
+                    "label": "MMFDB...",
                     "key": "load_database",
                     "enabled": not busy,
                     "tip": "Select and load reference standard datasets directly from MMFDB database.",
                 },
                 {
-                    "label": "Process samples ->",
+                    "label": "Batch ->",
                     "key": "open_batch",
                     "enabled": not busy,
                     "tip": "Switch to the Unknown Samples / Batch tab to process unknown files with this calibration.",
                 },
                 {
-                    "label": "Export calibration JSON...",
+                    "label": "Export...",
                     "key": "export",
                     "enabled": m.g_factor is not None and not busy,
-                    "tip": "Export values, uncertainty, mixing diagnostics and scientific settings.",
+                    "tip": "Export calibration results as JSON.",
                 },
                 {
-                    "label": "Archive reference calibration",
+                    "label": "Archive",
                     "key": "archive",
                     "enabled": m.g_factor is not None and not busy,
-                    "tip": "Register the raw reference decay, corrected traces, anisotropy and calibration provenance through the MMFDB RPC.",
+                    "tip": "Register the raw reference decay, corrected traces, anisotropy and calibration provenance through MMFDB.",
                 },
                 {
                     "label": "Stop",
@@ -422,32 +422,8 @@ class GFactorApp(TourTarget, ImApp):
             self.guide.start()
 
         self.form("references", m)
-
-        ref_decays = [d for d in m.decays if d.get("role") != "sample"]
-        if ref_decays:
-            active_idx = getattr(m, "selected_reference_idx", 0)
-            if not 0 <= active_idx < len(ref_decays):
-                active_idx = 0
-                m.selected_reference_idx = 0
-            cur = ref_decays[active_idx]
-            decay_idx = m.decays.index(cur)
-
-            im.text(f"Selected: {cur['name']}")
-            im.same_line()
-            is_tail_g = cur.get("use_for_g", False) or (m.fast_file == cur.get("path"))
-            ch_g, new_g = im.checkbox("Tail G##use_g", is_tail_g)
-            im.set_item_tooltip(tr("Use this reference decay for determining the detector G-factor via tail-matching."))
-            if ch_g and not is_tail_g:
-                m.set_reference_tail_match(active_idx)
-
-            im.same_line()
-            if im.button("Remove##ref"):
-                m.remove_decay(decay_idx)
-            im.set_item_tooltip(tr("Remove this reference standard."))
-
         status_msg = m.message or "Load reference standard VV/VH decay(s) for calibration."
-        im.text_wrapped(status_msg)
-        im.separator()
+        im.text(status_msg)
         self.form("parameters", m)
         self.form("results", m)
         self.form("tail", m)

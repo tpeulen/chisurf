@@ -10,12 +10,11 @@
     {
      "type": "panel",
      "title": "Reference standards",
-     "description": "Loaded reference decay standards with their rotational correlation times and Perrin mixing parameters.",
+     "description": "Reference standards.",
      "sections": [
       {
        "type": "custom",
        "key": "data_table",
-       "description": "Table of reference decays.",
        "options": {
         "source": "reference_rows",
         "min_column_width": 75,
@@ -82,48 +81,48 @@
     {
      "type": "panel",
      "title": "Calibration parameters",
-     "description": "Interactive table for calibration inputs and overrides: tail matching, background, channel shift, and polarization mixing.",
+     "description": "Calibration parameters.",
      "sections": [
       {
        "type": "custom",
        "key": "data_table",
-       "description": "Table of calibration parameters.",
        "options": {
         "source": "parameter_rows",
-        "min_column_width": 70,
+        "min_column_width": 55,
         "fit_columns": true,
         "editable": true,
         "edited_call": "edit_parameter",
         "expand": true,
-        "height": 190,
+        "height": 220,
         "columns": [
          {
           "key": "parameter",
-          "min_width": 145,
+          "min_width": 110,
           "title": "Parameter",
           "editable": false,
-          "tooltip": "Calibration setting or override name."
+          "tooltip": "Fitting parameter name."
          },
          {
           "key": "value",
-          "min_width": 70,
+          "min_width": 75,
           "title": "Value",
           "editable": true,
-          "tooltip": "Current value. Click to toggle boolean or click/double-click to edit number."
+          "format": "%.5g",
+          "tooltip": "Parameter value. Double-click or Enter to edit."
          },
          {
-          "key": "unit",
+          "key": "fixed",
           "min_width": 45,
-          "title": "Unit",
-          "editable": false,
-          "tooltip": "Physical or TAC channel unit."
+          "title": "Fixed",
+          "editable": true,
+          "tooltip": "Hold parameter constant / manual override."
          },
          {
-          "key": "description",
-          "min_width": 170,
-          "title": "Description",
+          "key": "error",
+          "min_width": 70,
+          "title": "Error",
           "editable": false,
-          "tooltip": "How this parameter is used in the calibration."
+          "tooltip": "Uncertainty / standard deviation from calibration."
          }
         ]
        }
@@ -137,8 +136,8 @@
     {
      "type": "panel",
      "title": "Channels",
+     "description": "Channel options.",
      "n_col": 2,
-     "description": "How the two channels of the reference file are used.",
      "sections": [
       {
        "type": "toggle",
@@ -157,8 +156,8 @@
     {
      "type": "panel",
      "title": "Tail matching",
+     "description": "Tail matching bounds.",
      "n_col": 2,
-     "description": "Region of the fast-rotating reference whose VV/VH ratio gives G, the background region and the VH shift.",
      "sections": [
       {
        "type": "value",
@@ -225,8 +224,8 @@
     {
      "type": "panel",
      "title": "Manual G",
+     "description": "Manual G-factor override.",
      "n_col": 2,
-     "description": "Use a G-factor of your own instead of the calculated one.",
      "sections": [
       {
        "type": "toggle",
@@ -255,8 +254,8 @@
     {
      "type": "panel",
      "title": "Polarization mixing",
+     "description": "Polarization mixing parameters.",
      "n_col": 2,
-     "description": "Polarization-mixing parameters l1, l2 determined from reference standards via the Perrin relation.",
      "sections": [
       {
        "type": "value",

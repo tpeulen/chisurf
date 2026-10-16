@@ -641,6 +641,23 @@ def test_parameter_table_and_in_place_editing(ui, files):
     m.edit_parameter(shift_row, "value", 0.3)
     assert m.shift == pytest.approx(0.3)
 
+    # Standard FittingParameter schema: Parameter, Value, Fixed, Error
+    from chisurf.core.fitting.parameter import FittingParameter
+    g_row = next(r for r in param_rows if r["key"] == "g")
+    assert isinstance(g_row["_parameter"], FittingParameter)
+    assert "parameter" in g_row and "value" in g_row and "fixed" in g_row and "error" in g_row
+    assert g_row["fixed"] is False
+
+    # Toggle fixed on G sets manual override
+    m.edit_parameter(g_row, "fixed", True)
+    assert m.manual_g is True
+
+    # Toggle fixed on l1 sets manual l override
+    l1_row = next(r for r in param_rows if r["key"] == "l1")
+    assert isinstance(l1_row["_parameter"], FittingParameter)
+    m.edit_parameter(l1_row, "fixed", True)
+    assert m.manual_l is True
+
 
 
 # ───────────────────────────────── export, archive, batch ───────────────────────────────── #

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
+from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fio import read_vv_vh
 from chisurf.core.fio.vv_vh import write_vv_vh
 
@@ -94,6 +95,115 @@ class GFactorModel:
         self.selected_reference_idx = 0
         self.message = ""
         self.busy = False
+
+        self._init_fitting_parameters()
+
+    def _init_fitting_parameters(self) -> None:
+        self.parameters = FittingParameterGroup(name="VV/VH Calibration")
+        self.param_g = FittingParameter(name="G", value=1.0, fixed=False)
+        self.param_l1 = FittingParameter(name="l1", value=0.0, fixed=False)
+        self.param_l2 = FittingParameter(name="l2", value=0.0, fixed=False)
+        self.param_tail_start = FittingParameter(name="Tail start", value=2000.0, fixed=True)
+        self.param_tail_stop = FittingParameter(name="Tail stop", value=3000.0, fixed=True)
+        self.param_bg_start = FittingParameter(name="BG start", value=50.0, fixed=True)
+        self.param_bg_stop = FittingParameter(name="BG stop", value=200.0, fixed=True)
+        self.param_shift = FittingParameter(name="VH shift", value=0.0, fixed=True)
+        self.param_dt = FittingParameter(name="dt (ns)", value=0.032, fixed=True)
+        self.param_r0 = FittingParameter(name="r0", value=0.38, fixed=True)
+        self.param_tau = FittingParameter(name="tau (ns)", value=3.0, fixed=False)
+        self.param_rho = FittingParameter(name="rho (ns)", value=0.4, fixed=True)
+        self.param_rs = FittingParameter(name="Target rS", value=0.3, fixed=False)
+
+        self.parameters.g = self.param_g
+        self.parameters.l1 = self.param_l1
+        self.parameters.l2 = self.param_l2
+        self.parameters.tail_start = self.param_tail_start
+        self.parameters.tail_stop = self.param_tail_stop
+        self.parameters.bg_start = self.param_bg_start
+        self.parameters.bg_stop = self.param_bg_stop
+        self.parameters.shift = self.param_shift
+        self.parameters.dt = self.param_dt
+        self.parameters.r0 = self.param_r0
+        self.parameters.tau = self.param_tau
+        self.parameters.rho = self.param_rho
+        self.parameters.rs = self.param_rs
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        skipped = {
+            "parameters",
+            "param_g",
+            "param_l1",
+            "param_l2",
+            "param_tail_start",
+            "param_tail_stop",
+            "param_bg_start",
+            "param_bg_stop",
+            "param_shift",
+            "param_dt",
+            "param_r0",
+            "param_tau",
+            "param_rho",
+            "param_rs",
+        }
+        for k, v in self.__dict__.items():
+            if k in skipped:
+                continue
+            setattr(result, k, deepcopy(v, memo))
+        result._init_fitting_parameters()
+        result.update_fitting_parameters()
+        return result
+
+    def update_fitting_parameters(self) -> None:
+        """Synchronize model state into live FittingParameter objects."""
+        if not hasattr(self, "parameters"):
+            return
+        # G factor
+        if self.manual_g:
+            self.param_g.value = float(self.g_override)
+            self.param_g.fixed = True
+            self.param_g.error_estimate = float("nan")
+        else:
+            self.param_g.value = float(self.g_factor) if self.g_factor is not None else 1.0
+            self.param_g.fixed = False
+            g_std = self.g_factor_std
+            self.param_g.error_estimate = float(g_std) if (g_std is not None and np.isfinite(g_std)) else float("nan")
+
+        # Polarization mixing l1, l2
+        l1_val = self.l1
+        l2_val = self.l2
+        l_sd = self.fp_result.get("l_sd") if self.fp_result else None
+        self.param_l1.value = float(l1_val) if (l1_val is not None and np.isfinite(l1_val)) else 0.0
+        self.param_l1.fixed = bool(self.manual_l)
+        self.param_l1.error_estimate = float(l_sd) if (l_sd is not None and np.isfinite(l_sd) and not self.manual_l) else float("nan")
+
+        self.param_l2.value = float(l2_val) if (l2_val is not None and np.isfinite(l2_val)) else 0.0
+        self.param_l2.fixed = bool(self.manual_l)
+        self.param_l2.error_estimate = float(l_sd) if (l_sd is not None and np.isfinite(l_sd) and not self.manual_l) else float("nan")
+
+        # Lifetime tau
+        if self.manual_tau:
+            self.param_tau.value = float(self.tau_override)
+            self.param_tau.fixed = True
+        else:
+            self.param_tau.value = float(self.fp_result.get("tau_used_ns", self.tau_override))
+            self.param_tau.fixed = False
+
+        # Steady-state anisotropy rS
+        self.param_rs.value = float(self.fp_result.get("r_expected", self.rs_override))
+        self.param_rs.fixed = bool(self.manual_rs)
+
+        # Regions and setup
+        self.param_tail_start.value = float(self.tail_start)
+        self.param_tail_stop.value = float(self.tail_stop)
+        self.param_bg_start.value = float(self.background_start)
+        self.param_bg_stop.value = float(self.background_stop)
+        self.param_shift.value = float(self.shift)
+        self.param_dt.value = float(self.fp_dt_ns)
+        self.param_r0.value = float(self.fp_r0)
+        self.param_rho.value = float(self.fp_rho_ns)
 
     def snapshot(self):
         return deepcopy(self)
@@ -248,6 +358,12 @@ class GFactorModel:
     def g_factor(self, value: float) -> None:
         self.manual_g = True
         self.g_override = float(value)
+
+    @property
+    def g_factor_std(self) -> float | None:
+        key = "g_factor_stddev_corrected" if self.background else "g_factor_stddev_uncorrected"
+        val = self.result.get(key)
+        return float(val) if val is not None and np.isfinite(val) else None
 
     @property
     def l_override(self) -> float:
@@ -514,145 +630,241 @@ class GFactorModel:
             pass
 
     def parameter_rows(self) -> list[dict[str, object]]:
-        """The calibration parameters and overrides as editable table rows."""
-        return [
+        """The calibration parameters and overrides as standard fitting parameter table rows."""
+        self.update_fitting_parameters()
+        rows = [
+            {
+                "key": "g",
+                "parameter": "G",
+                "name": "G",
+                "value": float(self.param_g.value),
+                "fixed": bool(self.param_g.fixed),
+                "error": f"± {self.param_g.error_estimate:.4g}" if (self.param_g.error_estimate is not None and np.isfinite(self.param_g.error_estimate)) else "",
+                "_parameter": self.param_g,
+            },
+            {
+                "key": "l1",
+                "parameter": "l1",
+                "name": "l1",
+                "value": float(self.param_l1.value),
+                "fixed": bool(self.param_l1.fixed),
+                "error": f"± {self.param_l1.error_estimate:.4g}" if (self.param_l1.error_estimate is not None and np.isfinite(self.param_l1.error_estimate)) else "",
+                "_parameter": self.param_l1,
+            },
+            {
+                "key": "l2",
+                "parameter": "l2",
+                "name": "l2",
+                "value": float(self.param_l2.value),
+                "fixed": bool(self.param_l2.fixed),
+                "error": f"± {self.param_l2.error_estimate:.4g}" if (self.param_l2.error_estimate is not None and np.isfinite(self.param_l2.error_estimate)) else "",
+                "_parameter": self.param_l2,
+            },
             {
                 "key": "tail_start",
                 "parameter": "Tail start",
-                "value": float(self.tail_start),
-                "unit": "bin",
-                "description": "First TAC bin of tail region for G-factor matching",
+                "name": "Tail start",
+                "value": float(self.param_tail_start.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_tail_start,
             },
             {
                 "key": "tail_stop",
                 "parameter": "Tail stop",
-                "value": float(self.tail_stop),
-                "unit": "bin",
-                "description": "Last TAC bin of tail region",
-            },
-            {
-                "key": "background",
-                "parameter": "Background subtraction",
-                "value": bool(self.background),
-                "unit": "toggle",
-                "description": "Subtract channel background before matching tails",
+                "name": "Tail stop",
+                "value": float(self.param_tail_stop.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_tail_stop,
             },
             {
                 "key": "background_start",
-                "parameter": "Background start",
-                "value": float(self.background_start),
-                "unit": "bin",
-                "description": "First TAC bin of signal-free background region",
+                "parameter": "BG start",
+                "name": "BG start",
+                "value": float(self.param_bg_start.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_bg_start,
             },
             {
                 "key": "background_stop",
-                "parameter": "Background stop",
-                "value": float(self.background_stop),
-                "unit": "bin",
-                "description": "Last TAC bin of signal-free background region",
+                "parameter": "BG stop",
+                "name": "BG stop",
+                "value": float(self.param_bg_stop.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_bg_stop,
             },
             {
                 "key": "shift",
                 "parameter": "VH shift",
-                "value": float(self.shift),
-                "unit": "bins",
-                "description": "TAC bin shift applied to perpendicular channel",
-            },
-            {
-                "key": "flip",
-                "parameter": "Flip VV/VH",
-                "value": bool(self.flip),
-                "unit": "toggle",
-                "description": "Swap parallel (VV) and perpendicular (VH) channels",
+                "name": "VH shift",
+                "value": float(self.param_shift.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_shift,
             },
             {
                 "key": "fp_dt_ns",
-                "parameter": "Time resolution (dt)",
-                "value": float(self.fp_dt_ns),
-                "unit": "ns/bin",
-                "description": "TAC calibration bin width in nanoseconds",
+                "parameter": "dt (ns)",
+                "name": "dt (ns)",
+                "value": float(self.param_dt.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_dt,
             },
             {
                 "key": "fp_r0",
-                "parameter": "Limiting anisotropy (r0)",
-                "value": float(self.fp_r0),
-                "unit": "",
-                "description": "Fundamental limiting anisotropy at t=0",
-            },
-            {
-                "key": "fp_rho_ns",
-                "parameter": "Rotational time (rho)",
-                "value": float(self.fp_rho_ns),
-                "unit": "ns",
-                "description": "Rotational correlation time used in Perrin relation",
-            },
-            {
-                "key": "manual_tau",
-                "parameter": "Manual lifetime toggle",
-                "value": bool(self.manual_tau),
-                "unit": "toggle",
-                "description": "Override the slow reference intensity moment lifetime",
+                "parameter": "r0",
+                "name": "r0",
+                "value": float(self.param_r0.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_r0,
             },
             {
                 "key": "tau_override",
-                "parameter": "Lifetime (tau)",
-                "value": float(self.tau_override),
-                "unit": "ns",
-                "description": "Fluorescence lifetime override value",
+                "parameter": "tau (ns)",
+                "name": "tau (ns)",
+                "value": float(self.param_tau.value),
+                "fixed": bool(self.param_tau.fixed),
+                "error": "",
+                "_parameter": self.param_tau,
             },
             {
-                "key": "manual_rs",
-                "parameter": "Manual target rS toggle",
-                "value": bool(self.manual_rs),
-                "unit": "toggle",
-                "description": "Override target steady-state anisotropy",
+                "key": "fp_rho_ns",
+                "parameter": "rho (ns)",
+                "name": "rho (ns)",
+                "value": float(self.param_rho.value),
+                "fixed": True,
+                "error": "",
+                "_parameter": self.param_rho,
             },
             {
                 "key": "rs_override",
                 "parameter": "Target rS",
-                "value": float(self.rs_override),
-                "unit": "",
-                "description": "Expected steady-state anisotropy r0 / (1 + tau/rho)",
+                "name": "Target rS",
+                "value": float(self.param_rs.value),
+                "fixed": bool(self.param_rs.fixed),
+                "error": "",
+                "_parameter": self.param_rs,
+            },
+            # Compatibility entries
+            {
+                "key": "background",
+                "parameter": "Background subtraction",
+                "name": "Background subtraction",
+                "value": bool(self.background),
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
+            },
+            {
+                "key": "flip",
+                "parameter": "Flip VV/VH",
+                "name": "Flip VV/VH",
+                "value": bool(self.flip),
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
             },
             {
                 "key": "manual_g",
-                "parameter": "Manual G toggle",
+                "parameter": "Manual G",
+                "name": "Manual G",
                 "value": bool(self.manual_g),
-                "unit": "toggle",
-                "description": "Override the tail-matched G-factor",
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
             },
             {
                 "key": "g_override",
                 "parameter": "G override",
+                "name": "G override",
                 "value": float(self.g_override),
-                "unit": "",
-                "description": "Manual detector sensitivity ratio G used for correction",
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
             },
             {
                 "key": "manual_l",
-                "parameter": "Manual l1/l2 toggle",
+                "parameter": "Manual l1/l2",
+                "name": "Manual l1/l2",
                 "value": bool(self.manual_l),
-                "unit": "toggle",
-                "description": "Override Perrin solved polarization mixing parameter(s)",
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
             },
             {
                 "key": "l_override",
                 "parameter": "l1 = l2 override",
+                "name": "l1 = l2 override",
                 "value": float(self.l_override),
-                "unit": "",
-                "description": "Manual polarization mixing parameter l1 = l2",
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
+            },
+            {
+                "key": "manual_tau",
+                "parameter": "Manual lifetime",
+                "name": "Manual lifetime",
+                "value": bool(self.manual_tau),
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
+            },
+            {
+                "key": "manual_rs",
+                "parameter": "Manual target rS",
+                "name": "Manual target rS",
+                "value": bool(self.manual_rs),
+                "fixed": True,
+                "error": "",
+                "_parameter": None,
             },
         ]
+        return rows
 
     def edit_parameter(self, record: dict | None, key: str, value: Any) -> None:
         """Update calibration parameter from table edit."""
-        if not record or key != "value":
+        if not record:
             return
         param_key = record.get("key")
         if not param_key:
             return
         try:
-            if param_key in ("background", "flip", "manual_g", "manual_tau", "manual_rs", "manual_l", "link_l1_l2"):
+            if key == "fixed":
+                val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "t"))
+                if param_key in ("g", "g_override"):
+                    self.manual_g = val
+                elif param_key in ("l1", "l2", "l_override", "manual_l"):
+                    self.manual_l = val
+                elif param_key in ("tau_override", "manual_tau"):
+                    self.manual_tau = val
+                elif param_key in ("rs_override", "manual_rs"):
+                    self.manual_rs = val
+                if self.fast is not None:
+                    self.compute()
+                elif self.sample is not None:
+                    self.compute_sample()
+                return
+
+            if key != "value":
+                return
+
+            if param_key in ("g", "g_override"):
+                float_val = float(value)
+                if float_val > 0:
+                    self.manual_g = True
+                    self.g_override = float_val
+            elif param_key == "l1":
+                self.manual_l = True
+                self.l1_override = float(value)
+            elif param_key == "l2":
+                self.manual_l = True
+                self.l2_override = float(value)
+            elif param_key in ("background", "flip", "manual_g", "manual_tau", "manual_rs", "manual_l", "link_l1_l2"):
                 bool_val = bool(value) if isinstance(value, bool) else (str(value).strip().lower() in ("true", "1", "yes", "t"))
                 setattr(self, param_key, bool_val)
             else:
@@ -663,9 +875,12 @@ class GFactorModel:
                         if d.get("role") == "slow" or d.get("path") == self.slow_file:
                             d["rho_ns"] = float_val
                 elif param_key == "tau_override":
+                    self.manual_tau = True
                     for d in self.decays:
                         if d.get("role") == "slow" or d.get("path") == self.slow_file:
                             d["tau_ns"] = float_val
+                elif param_key == "rs_override":
+                    self.manual_rs = True
                 elif param_key == "fp_r0":
                     for d in self.decays:
                         if d.get("role") == "slow" or d.get("path") == self.slow_file:
