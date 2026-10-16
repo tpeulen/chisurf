@@ -2,6 +2,7 @@ import numpy as np
 
 from chisurf.plugins.vv_vh_g_factor.core.calculations import (
     calculate_g_factor_core,
+    compute_steady_state_anisotropy,
     perrin_steady_state_anisotropy,
     solve_linked_l_from_steady_state,
 )
@@ -38,4 +39,15 @@ def test_solve_linked_l():
     # G=VV/VH corrects VH; solve r=(sp-G*ss)/(sp+2G*ss-3l(sp+G*ss)).
     expected = (sp + 2 * g * ss - (sp - g * ss) / 0.3) / (3 * (sp + g * ss))
     val = solve_linked_l_from_steady_state(sp=sp, ss=ss, g_factor=g, r_target=0.3)
+    assert np.allclose(val, expected)
+
+
+def test_compute_steady_state_anisotropy():
+    sp = 1000.0
+    ss = 600.0
+    g = 1.2
+    l1 = 0.05
+    l2 = 0.08
+    expected = (sp - g * ss) / ((1.0 - 3.0 * l2) * sp + (2.0 - 3.0 * l1) * g * ss)
+    val = compute_steady_state_anisotropy(sp=sp, ss=ss, g_factor=g, l1=l1, l2=l2)
     assert np.allclose(val, expected)

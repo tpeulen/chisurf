@@ -931,12 +931,19 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     assert [r["r_inf"] for r in m.batch_results] == pytest.approx(
         [r["r_inf"] for r in reference.batch_results]
     )
+    assert [r["r_ss"] for r in m.batch_results] == pytest.approx(
+        [r["r_ss"] for r in reference.batch_results]
+    )
+    assert all(r["r_ss"] is not None and np.isfinite(r["r_ss"]) for r in m.batch_results)
     shown = {t[5] for t in ui.draw().texts}
+    assert f"{m.batch_results[0]['r_ss']:.5f}" in shown
     assert f"{m.batch_results[0]['r_inf']:.5g}" in shown
     assert {
+        "r(SS)",
+        "r(inf)",
         "bg VV",
         "bg VH",
-    } <= shown  # The two backgrounds remain distinguishable in the narrow pane.
+    } <= shown  # The columns remain distinguishable in the pane.
     ui.app.last_dir = str(tmp_path)
     ui.click_name("save")
     ui.click_text("batch_anisotropy.tsv", last=False, fx=0.3)
@@ -947,13 +954,13 @@ def test_batch_queue_run_save_remove_and_clear_with_real_clicks(ui, files, tmp_p
     lines = (tmp_path / "table.tsv").read_text().splitlines()
     assert (
         lines[0].split("\t")
-        == ["file", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "error"]
+        == ["file", "r_ss", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "l1", "l2", "error"]
         and len(lines) == 3
     )
     rows = list(csv.DictReader(lines, delimiter="\t"))
     for row, result in zip(rows, m.batch_results):
         assert row["file"] == result["file"]
-        for quantity in ("r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor"):
+        for quantity in ("r_ss", "r_inf", "region_start", "region_stop", "bg_vv", "bg_vh", "g_factor", "l1", "l2"):
             assert float(row[quantity]) == pytest.approx(result[quantity])
     # The filename is elided in this narrow seven-column table; select its real numeric cell.
     ui.click_text(f"{m.batch_results[0]['r_inf']:.5g}")

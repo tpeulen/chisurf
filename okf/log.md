@@ -20,6 +20,7 @@
 - vv_vh_g_factor: eliminate duplicated G, l1, and l2 controls by consolidating overrides into FittingParameter table
 - Eliminated duplicate controls beneath calibration parameters table in VV/VH G-factor tool and ensured fitting parameter table is single source of truth for edits.
 - Split VV/VH calibration into Reference Parameters (sample-specific rho, tau, r0, BG VV, BG VH) and Instrumental Parameters, applied abbreviations (BG, Shift, Flip), and added declarative context menus to clear and remove samples.
+- vv_vh_g_factor: batch analysis determines steady-state anisotropy r(SS) from integrated counts using calibrated G, l1, l2 with per-sample background subtraction; exposed r_ss in batch table and export routines, verified with 75 passing tests and headless dock screenshot (gfactor_batch_dock.png).
 
 ## 2026-10-15
 

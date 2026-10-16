@@ -18,6 +18,7 @@ from ..core.calculations import (
     compute_background_levels,
     compute_r_infinity,
     compute_rt,
+    compute_steady_state_anisotropy,
     estimate_lifetime_first_moment,
     perrin_steady_state_anisotropy,
     shift_interp_on_axis,
@@ -85,6 +86,7 @@ class GFactorModel:
         self.fp_result = {}
         self.sample_r_t = None
         self.sample_r_infty = float("nan")
+        self.sample_r_ss = float("nan")
         self.batch_files = []
         self.batch_results = []
         self.batch_open = False
@@ -297,6 +299,11 @@ class GFactorModel:
     @property
     def sample_r_infty_text(self) -> str:
         val = self.sample_r_infty
+        return f"{val:.5f}" if np.isfinite(val) else "N/A"
+
+    @property
+    def sample_r_ss_text(self) -> str:
+        val = self.sample_r_ss
         return f"{val:.5f}" if np.isfinite(val) else "N/A"
 
     @property
@@ -540,6 +547,7 @@ class GFactorModel:
             self.sample_file = ""
             self.sample_r_t = None
             self.sample_r_infty = float("nan")
+            self.sample_r_ss = float("nan")
 
     def reference_rows(self) -> list[dict[str, object]]:
         """The loaded reference standard decays as table rows."""
@@ -956,6 +964,7 @@ class GFactorModel:
         rows = []
         for path in self.batch_files:
             r = done.get(path, {})
+            r_ss = r.get("r_ss")
             r_inf = r.get("r_inf")
             reg = ""
             if "region_start" in r and "region_stop" in r:
@@ -967,6 +976,7 @@ class GFactorModel:
                     "file": Path(path).name,
                     "filename": Path(path).name,
                     "path": path,
+                    "r_ss": f"{r_ss:.5f}" if (r_ss is not None and np.isfinite(r_ss)) else ("" if not r else "failed"),
                     "r_inf": f"{r_inf:.5g}" if (r_inf is not None and np.isfinite(r_inf)) else ("" if not r else "failed"),
                     "region": reg,
                     "region_min": r.get("region_start", r.get("region_min", 0.0)),
@@ -1422,7 +1432,7 @@ class GFactorModel:
         }
 
     def compute_sample(self) -> None:
-        """Compute time-resolved anisotropy r(t) and r-infinity for the sample decay."""
+        """Compute time-resolved anisotropy r(t), r-infinity and r(SS) for the sample decay."""
         if self.sample is None:
             if self.fast is not None:
                 self.sample = self.fast
@@ -1430,10 +1440,12 @@ class GFactorModel:
                 self.sample_region = list(self.region)
             else:
                 self.sample_r_t, self.sample_r_infty = None, float("nan")
+                self.sample_r_ss = float("nan")
                 return
         par, perp = self.channels(sample=True)
         if par is None:
             self.sample_r_t, self.sample_r_infty = None, float("nan")
+            self.sample_r_ss = float("nan")
             return
         n = min(len(par), len(perp))
         time = np.arange(n, dtype=float)
@@ -1451,6 +1463,10 @@ class GFactorModel:
         r_t = compute_rt(p, corrected_perp, g_val, l1=self.l1, l2=self.l2)
         self.sample_r_t = r_t
         self.sample_r_infty = compute_r_infinity(time, r_t, self.sample_region)
+        sp = float(np.sum(p))
+        valid_s = corrected_perp[np.isfinite(corrected_perp)]
+        ss = float(np.sum(np.maximum(valid_s, 0.0)))
+        self.sample_r_ss = compute_steady_state_anisotropy(sp, ss, g_val, l1=self.l1, l2=self.l2)
 
     def decay_series(
         self, slow: bool = False, sample: bool = False, entry: dict | None = None
@@ -1527,12 +1543,17 @@ class GFactorModel:
                     par, perp = perp, par
                 n = min(len(par), len(perp))
                 time = np.arange(n, dtype=float)
-                bp, bs = params["background_levels"] if params["background"] else (0.0, 0.0)
+                bp, bs = (
+                    compute_background_levels(par, perp, time, time + params["shift"], self.background_region)
+                    if params["background"]
+                    else (0.0, 0.0)
+                )
                 p = np.maximum(par[:n] - bp, 0.0)
                 s = np.maximum(perp[:n] - bs, 0.0)
+                shifted_perp = shift_interp_on_axis(time, s, params["shift"])
                 anisotropy = compute_rt(
                     p,
-                    shift_interp_on_axis(time, s, params["shift"]),
+                    shifted_perp,
                     params["g_factor"],
                     l1=params["l1"],
                     l2=params["l2"],
@@ -1542,10 +1563,24 @@ class GFactorModel:
                 stop = max(start + 1, min(n, int(round(stop))))
                 values = anisotropy[start:stop]
                 values = values[np.isfinite(values)]
+                r_inf = float(np.mean(values)) if len(values) else None
+
+                sp = float(np.sum(p))
+                valid_s = shifted_perp[np.isfinite(shifted_perp)]
+                ss = float(np.sum(np.maximum(valid_s, 0.0)))
+                r_ss = compute_steady_state_anisotropy(
+                    sp=sp,
+                    ss=ss,
+                    g_factor=params["g_factor"],
+                    l1=params["l1"],
+                    l2=params["l2"],
+                )
+
                 rows.append(
                     {
                         "file": filename,
-                        "r_inf": float(np.mean(values)) if len(values) else None,
+                        "r_ss": r_ss if np.isfinite(r_ss) else None,
+                        "r_inf": r_inf,
                         "region_start": start,
                         "region_stop": stop,
                         "region_min": float(start),
@@ -1559,7 +1594,7 @@ class GFactorModel:
                     }
                 )
             except Exception as exc:
-                rows.append({"file": filename, "r_inf": None, "error": str(exc)})
+                rows.append({"file": filename, "r_ss": None, "r_inf": None, "error": str(exc)})
         self.batch_results = rows
         self.message = f"Processed {len(rows)} batch decays."
         return rows
@@ -1571,12 +1606,15 @@ class GFactorModel:
             raise ValueError("Run batch analysis before exporting.")
         columns = [
             "file",
+            "r_ss",
             "r_inf",
             "region_start",
             "region_stop",
             "bg_vv",
             "bg_vh",
             "g_factor",
+            "l1",
+            "l2",
             "error",
         ]
         with Path(path).open("w") as stream:
@@ -1597,6 +1635,7 @@ class GFactorModel:
             raise ValueError("Run batch analysis before exporting.")
         columns = [
             "file",
+            "r_ss",
             "r_inf",
             "region_start",
             "region_stop",
@@ -1823,11 +1862,12 @@ class GFactorModel:
         with info_file.open("w", newline="", encoding="utf-8") as stream:
             writer = csv.writer(stream, lineterminator="\n")
             writer.writerow(
-                ("filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor", "l1", "l2")
+                ("filename", "r_ss", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor", "l1", "l2")
             )
             writer.writerow(
                 (
                     Path(self.sample_file).name,
+                    self.sample_r_ss,
                     r_inf,
                     min(self.sample_region),
                     max(self.sample_region),
@@ -1944,6 +1984,7 @@ class GFactorModel:
                     "fp_result": self.fp_result,
                     "sample": {
                         "file": self.sample_file,
+                        "r_ss": self.sample_r_ss,
                         "r_inf": self.sample_r_infty,
                         "region": self.sample_region,
                         "l1": self.l1,

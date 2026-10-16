@@ -444,3 +444,44 @@ def solve_linked_l_from_steady_state(
     num_val = sp - g * ss
     val = d - num_val / r
     return float(val / (3.0 * den_ss))
+
+
+def compute_steady_state_anisotropy(
+    sp: float,
+    ss: float,
+    g_factor: float,
+    l1: float = 0.0,
+    l2: float = 0.0,
+) -> float:
+    """Compute steady-state anisotropy r_SS from integrated channel intensities.
+
+    Parameters
+    ----------
+    sp : float
+        Sum of parallel channel counts (background corrected).
+    ss : float
+        Sum of perpendicular channel counts (background corrected and time-shifted).
+    g_factor : float
+        Detector sensitivity ratio VV/VH.
+    l1 : float, optional
+        Polarization mixing factor l1 (default 0.0).
+    l2 : float, optional
+        Polarization mixing factor l2 (default 0.0).
+
+    Returns
+    -------
+    float
+        Steady-state anisotropy r_SS, or NaN on degenerate input.
+    """
+    sp = float(sp)
+    ss = float(ss)
+    g = float(g_factor)
+    l1 = float(l1)
+    l2 = float(l2)
+    if not np.isfinite(sp) or not np.isfinite(ss) or not np.isfinite(g) or g <= 0.0:
+        return float("nan")
+    num = sp - g * ss
+    den = (1.0 - 3.0 * l2) * sp + (2.0 - 3.0 * l1) * g * ss
+    if not np.isfinite(den) or abs(den) < 1e-15:
+        return float("nan")
+    return float(num / den)

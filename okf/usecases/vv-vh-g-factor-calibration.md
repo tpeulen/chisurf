@@ -11,6 +11,9 @@ timestamp: '2026-07-29T00:00:00Z'
 # Where to pick this up
 
 1. Completed (2026-10-16):
+   - Steady-State Anisotropy r(SS) Determination in Batch Analysis: calculates steady-state anisotropy $r_{SS} = \frac{S_{VV} - G \cdot S_{VH}}{S_{VV}(1 - 3 l_2) + (2 - 3 l_1) G \cdot S_{VH}}$ for unknown batch samples using calibrated instrumental parameters ($G, l_1, l_2$) determined by the reference standards, with per-sample background subtraction.
+   - Batch Data Table & Export Parity: exposed `r_ss` (`r(SS)`) as a key primary column in the batch data table and in TSV/CSV export routines (`export_batch`, `export_batch_csv`, `save_sample_outputs`). Added `r(SS)` display field to the active sample inspection panel.
+   - Core Math Function: added `compute_steady_state_anisotropy(sp, ss, g_factor, l1, l2)` to `chisurf.plugins.vv_vh_g_factor.core.calculations` with unit test coverage.
    - Reference vs Instrumental Parameters Split: separated per-sample reference standard properties (`rho`, `tau`, `r0`, `BG VV`, `BG VH`, `Tail match`) into the dedicated Reference Parameters table, completely eliminating duplicated `rho`, `tau`, and `r0` from the general table.
    - Instrumental Calibration Table: reserved the Instrumental Parameters table strictly for instrument-level calibration constants (`G`, `l1`, `l2`, `dt`, `Tail start/stop`, `BG start/stop`, `Shift`, `BG sub`, `Flip`).
    - Abbreviated Parameter Labels: replaced long verbose descriptions with standardized concise abbreviations (`BG VV`, `BG VH`, `BG start`, `BG stop`, `BG sub`, `Shift`, `Flip`, `dt`).
@@ -23,11 +26,11 @@ timestamp: '2026-07-29T00:00:00Z'
    - MMFDB Universal Selection Endpoint: added Section 8 to `okf/prds/prd-10.md` formalizing MMFDB dataset picker endpoints; added `Database...` action button to load reference standard decays directly from MMFDB database.
    - Time-resolved VV/VH Ratio Plot: added dedicated `[VV/VH ratio (G-factor)]` dock tab plotting raw and background-corrected / shifted intensity ratio $I_{VV}(t)/I_{VH}(t)$, a horizontal baseline at $y = G$, shaded tail matching region with interactive draggable boundary lines, and CSV export via `export_active_ratio`.
    - Unified Unknown Samples Workflow: single unified tab "Unknown Samples (Batch)" for processing 1 to N unknown VV/VH files with interactive sample decay and anisotropy inspection.
-   - Verified 100% green test suite: 73/73 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines.
-   - Headless visual inspection: captured and verified `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_samples_unified.png`.
+   - Verified 100% green test suite: 75/75 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines.
+   - Headless visual inspection: captured and verified `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_batch_dock.png`.
 2. Acceptance derivation:
-   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 73 tests pass).
-   - Re-capture UI renders via `python scratch/capture_vv_vh_screens.py` and inspect `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_samples_unified.png`.
+   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 75 tests pass).
+   - Re-capture UI renders via `python scratch/capture_gfactor.py` and inspect `gfactor_batch_dock.png`.
 3. Open:
    - Multi-component global anisotropy curve fitting in batch pipelines.
 

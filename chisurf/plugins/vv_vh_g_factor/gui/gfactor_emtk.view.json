@@ -403,9 +403,14 @@
       "columns": [
        {
         "key": "file",
-        "min_width": 160,
+        "min_width": 140,
         "title": "File",
         "tooltip": "Queued VV/VH decay; select and press Delete to remove it from the queue."
+       },
+       {
+        "key": "r_ss",
+        "title": "r(SS)",
+        "tooltip": "Steady-state anisotropy r_SS determined using calibrated G, l1, l2."
        },
        {
         "key": "r_inf",
@@ -499,6 +504,14 @@
        "decimals": 1,
        "step": 1.0,
        "description": "Last bin of the region averaged to r-infinity."
+      },
+      {
+       "type": "value",
+       "attr": "sample_r_ss_text",
+       "label": "r(SS)",
+       "kind": "str",
+       "read_only": true,
+       "description": "Steady-state anisotropy r_SS calculated from integrated counts using calibrated G, l1, l2."
       },
       {
        "type": "value",
