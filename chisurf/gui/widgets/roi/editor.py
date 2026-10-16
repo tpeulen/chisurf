@@ -449,7 +449,14 @@ class RegionEditor(QtWidgets.QWidget):
         self.selectionChanged.emit(self.selected_name())
 
     def _on_item_changed(self, item: QtWidgets.QTreeWidgetItem, column: int) -> None:
-        """Apply a rename, an on/off tick or an invert tick back to the model."""
+        """Apply a rename, an on/off tick or an invert tick back to the model.
+
+        The row is updated in place and the footer recomputed; ``refresh()``
+        (which ``tree.clear()``s) must NOT run here: it would destroy the very
+        item whose ``itemChanged`` signal is still being emitted, and Qt's item
+        iterator then walks freed memory — a flaky segfault that fired in
+        roughly every other run of the region tests.
+        """
         if self._refreshing:
             return
         name = str(item.data(_COL_NAME, _NAME_ROLE))
@@ -461,9 +468,25 @@ class RegionEditor(QtWidgets.QWidget):
             typed = item.text(_COL_NAME).strip()
             if typed and typed != name:
                 name = self.collection.rename(name, typed)
+                item.setText(_COL_NAME, name)  # the suffix the collection chose
         elif column == _COL_INVERT:
             entry.invert = item.checkState(_COL_INVERT) == QtCore.Qt.Checked
-        self._emit()
+        # Re-sync the touched row without rebuilding the tree.
+        self._refreshing = True
+        try:
+            item.setData(_COL_NAME, _NAME_ROLE, name)
+            item.setText(_COL_SHAPE, type(entry.roi).__name__.replace("ROI", "").lower())
+            item.setText(_COL_INFO, self._measurement(entry.roi, self._image()))
+            item.setCheckState(
+                _COL_NAME, QtCore.Qt.Checked if entry.enabled else QtCore.Qt.Unchecked
+            )
+            item.setCheckState(
+                _COL_INVERT, QtCore.Qt.Checked if entry.invert else QtCore.Qt.Unchecked
+            )
+        finally:
+            self._refreshing = False
+        self._refresh_summary(self.collection, self._image())
+        self.changed.emit()
         self.select(name)
 
     # ── rendering ───────────────────────────────────────────────────────────
