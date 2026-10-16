@@ -21,6 +21,7 @@
 - Eliminated duplicate controls beneath calibration parameters table in VV/VH G-factor tool and ensured fitting parameter table is single source of truth for edits.
 - Split VV/VH calibration into Reference Parameters (sample-specific rho, tau, r0, BG VV, BG VH) and Instrumental Parameters, applied abbreviations (BG, Shift, Flip), and added declarative context menus to clear and remove samples.
 - vv_vh_g_factor: batch analysis determines steady-state anisotropy r(SS) from integrated counts using calibrated G, l1, l2 with per-sample background subtraction; exposed r_ss in batch table and export routines, verified with 75 passing tests and headless dock screenshot (gfactor_batch_dock.png).
+- vv_vh_g_factor: filter plots in batch analysis mode to render only decays selected in the batch table; wire selected_call/selection_attr bindings; add test_batch_mode_only_plots_selected_decays
 
 ## 2026-10-15
 

@@ -430,17 +430,36 @@ class GFactorApp(TourTarget, ImApp):
         if warn and ("outside" in warn or "error" in warn.lower() or m.fp_result.get("l1") is None):
             im.text_colored((255, 180, 80, 255), warn)
 
+    @property
+    def is_batch_mode(self) -> bool:
+        """True when the user is in batch analysis mode (batch dock focused or batch dialog open)."""
+        if getattr(self.model, "batch_open", False):
+            return True
+        if hasattr(self, "docks") and hasattr(self.docks, "active_tab"):
+            try:
+                return self.docks.active_tab("controls") == "batch"
+            except Exception:
+                return False
+        return False
+
     def get_active_batch_file(self) -> str | None:
         m = self.model
         if not m.batch_files:
             return m.sample_file or m.fast_file or None
-        idx = 0
-        if "batch" in self.forms and hasattr(self.forms["batch"], "path_list"):
+        path = None
+        if m.selected_batch_file and m.selected_batch_file in m.batch_files:
+            path = m.selected_batch_file
+        elif "batch" in self.forms and hasattr(self.forms["batch"], "path_list"):
             idx = self.forms["batch"].path_list.selected.get("batch_files", 0)
-        idx = min(max(0, idx), len(m.batch_files) - 1)
-        path = m.batch_files[idx]
+            idx = min(max(0, idx), len(m.batch_files) - 1)
+            path = m.batch_files[idx]
+        else:
+            path = m.batch_files[0]
+
         if m.selected_batch_file != path:
             m.selected_batch_file = path
+            if not getattr(m, "selected_batch_files", None):
+                m.selected_batch_files = [path]
             m.sample_file = path
             if Path(path).is_file():
                 try:
@@ -454,6 +473,19 @@ class GFactorApp(TourTarget, ImApp):
                 except Exception:
                     pass
         return path
+
+    def get_active_batch_files(self) -> list[str]:
+        """Return the batch files currently selected in the table."""
+        m = self.model
+        if not m.batch_files:
+            return []
+        selected = [p for p in getattr(m, "selected_batch_files", []) if p in m.batch_files]
+        if selected:
+            return selected
+        active = self.get_active_batch_file()
+        if active and active in m.batch_files:
+            return [active]
+        return [m.batch_files[0]]
 
     def draw_sample(self, box=None):
         return self.draw_batch(box)
@@ -597,6 +629,12 @@ class GFactorApp(TourTarget, ImApp):
 
     # -- plots ------------------------------------------------------------------------------- #
     def get_decay_options(self):
+        if self.is_batch_mode:
+            opts = ["Selected in table"]
+            if self.model.batch_files:
+                for p in self.model.batch_files:
+                    opts.append(f"[Sample] {Path(p).name}")
+            return opts
         opts = ["All (Overlay)"]
         if self.model.batch_files:
             for p in self.model.batch_files:
@@ -613,10 +651,27 @@ class GFactorApp(TourTarget, ImApp):
                 opts.append("Sample")
         return opts
 
-    def series(self):
+    def series(self, selected_idx: int | None = None):
         opts = self.get_decay_options()
-        if self.plot_decay_idx > 0 and self.plot_decay_idx < len(opts):
-            selected_label = opts[self.plot_decay_idx]
+        idx = self.plot_decay_idx if selected_idx is None else selected_idx
+        idx = min(max(0, idx), len(opts) - 1) if opts else 0
+
+        if self.is_batch_mode:
+            if idx > 0 and idx < len(opts):
+                selected_label = opts[idx]
+                if selected_label.startswith("[Sample] "):
+                    name = selected_label[9:]
+                    match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
+                    if match_path:
+                        return [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
+            selected_files = self.get_active_batch_files()
+            return [
+                (f"Sample {Path(p).name}", self.model.get_decay_series(file_path=p))
+                for p in selected_files
+            ]
+
+        if idx > 0 and idx < len(opts):
+            selected_label = opts[idx]
             if selected_label.startswith("[Sample] "):
                 name = selected_label[9:]
                 match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
@@ -633,9 +688,6 @@ class GFactorApp(TourTarget, ImApp):
                 return [("Sample", self.model.decay_series(sample=True))]
 
         res = []
-        if self.model.batch_files and self.show_sample:
-            for p in self.model.batch_files[:5]:
-                res.append((f"Sample {Path(p).name}", self.model.get_decay_series(file_path=p)))
         if self.model.decays:
             seen_roles = {}
             for d in self.model.decays:
@@ -667,14 +719,23 @@ class GFactorApp(TourTarget, ImApp):
         im.same_line()
         used, avail = im.get_cursor_pos()[0], im.get_content_region_avail()[0]
         spacing = im.get_style().item_spacing[0]
-        for attr, label in [
-            ("show_fast", "Fast reference"),
-            ("show_slow", "Slow reference"),
-            ("show_sample", "Sample"),
-            ("show_raw", "Raw"),
-            ("show_corrected", "Corrected"),
-            ("log_y", "Log counts"),
-        ]:
+        toggles = (
+            [
+                ("show_raw", "Raw"),
+                ("show_corrected", "Corrected"),
+                ("log_y", "Log counts"),
+            ]
+            if self.is_batch_mode
+            else [
+                ("show_fast", "Fast reference"),
+                ("show_slow", "Slow reference"),
+                ("show_sample", "Sample"),
+                ("show_raw", "Raw"),
+                ("show_corrected", "Corrected"),
+                ("log_y", "Log counts"),
+            ]
+        )
+        for attr, label in toggles:
             width = im.calc_text_size(label)[0] + 2 * im.get_frame_height() + spacing
             if used and used + width > avail:
                 im.new_line()
@@ -694,7 +755,7 @@ class GFactorApp(TourTarget, ImApp):
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
             if self.log_y:
                 implot.setup_axis_scale(implot.AXIS_Y1, implot.SCALE_LOG10)
-            series = self.series()
+            series = self.series(selected_idx=self.plot_decay_idx)
             vectors = [
                 v[k]
                 for _, v in series
@@ -768,27 +829,7 @@ class GFactorApp(TourTarget, ImApp):
         if implot.begin_plot("##anisotropy", (-1, -1)):
             implot.setup_axes("TAC bin", "Anisotropy r(t)")
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
-            opts = self.get_decay_options()
-            if self.plot_aniso_decay_idx > 0 and self.plot_aniso_decay_idx < len(opts):
-                selected_label = opts[self.plot_aniso_decay_idx]
-                if selected_label.startswith("[Sample] "):
-                    name = selected_label[9:]
-                    match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
-                    if match_path:
-                        aniso_series = [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
-                    else:
-                        aniso_series = self.series()
-                else:
-                    found = False
-                    for d in self.model.decays:
-                        if selected_label == f"[{d['role'].capitalize()}] {d['name']}":
-                            aniso_series = [(d["role"].capitalize(), self.model.decay_series(entry=d))]
-                            found = True
-                            break
-                    if not found:
-                        aniso_series = self.series()
-            else:
-                aniso_series = self.series()
+            aniso_series = self.series(selected_idx=self.plot_aniso_decay_idx)
             max_len = 1
             for _, data in aniso_series:
                 if data and "time" in data:
@@ -860,28 +901,7 @@ class GFactorApp(TourTarget, ImApp):
         if implot.begin_plot("##vvvh_ratio_plot", (-1, -1)):
             implot.setup_axes("TAC bin", "VV / VH Ratio")
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
-
-            opts = self.get_decay_options()
-            if 0 < self.plot_ratio_decay_idx < len(opts):
-                selected_label = opts[self.plot_ratio_decay_idx]
-                if selected_label.startswith("[Sample] "):
-                    name = selected_label[9:]
-                    match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
-                    if match_path:
-                        ratio_series = [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
-                    else:
-                        ratio_series = self.series()
-                else:
-                    found = False
-                    for d in self.model.decays:
-                        if selected_label == f"[{d['role'].capitalize()}] {d['name']}":
-                            ratio_series = [(d["role"].capitalize(), self.model.decay_series(entry=d))]
-                            found = True
-                            break
-                    if not found:
-                        ratio_series = self.series()
-            else:
-                ratio_series = self.series()
+            ratio_series = self.series(selected_idx=self.plot_ratio_decay_idx)
 
             max_len = 1
             for _, data in ratio_series:

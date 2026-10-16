@@ -91,6 +91,8 @@ class GFactorModel:
         self.batch_results = []
         self.batch_open = False
         self.selected_batch_file = ""
+        self.selected_batch_files = []
+        self._selected_batch_records = []
         self.forget_selection = False
         self.decays = []
         self.selected_decay_idx = 0
@@ -638,6 +640,50 @@ class GFactorModel:
         idx = next((i for i, d in enumerate(ref_decays) if d.get("path") == path), None)
         if idx is not None:
             self.selected_reference_idx = idx
+
+    @property
+    def selected_batch_records(self) -> list[dict]:
+        return getattr(self, "_selected_batch_records", [])
+
+    @selected_batch_records.setter
+    def selected_batch_records(self, records: list[dict] | None) -> None:
+        self._selected_batch_records = records or []
+        if self._selected_batch_records:
+            paths = []
+            for r in self._selected_batch_records:
+                p = r.get("path") or r.get("file")
+                if p:
+                    full = next((f for f in self.batch_files if f == p or Path(f).name == Path(p).name), p)
+                    paths.append(str(full))
+            self.selected_batch_files = paths
+            if paths:
+                self.selected_batch_file = paths[0]
+                self.select_batch(self._selected_batch_records[0])
+
+    def select_batch(self, record: dict | None = None) -> None:
+        """Set the active batch sample decay from table selection."""
+        if not record:
+            return
+        path = record.get("path") or record.get("file")
+        if not path:
+            return
+        full_path = next((f for f in self.batch_files if f == path or Path(f).name == Path(path).name), path)
+        self.selected_batch_file = str(full_path)
+        if str(full_path) not in self.selected_batch_files:
+            self.selected_batch_files = [str(full_path)]
+        self.sample_file = str(full_path)
+        if Path(full_path).is_file():
+            try:
+                vv, vh = read_vv_vh(str(full_path), split=True)
+                vv = np.asarray(vv, dtype=float)
+                vh = np.asarray(vh, dtype=float)
+                n = min(len(vv), len(vh))
+                self.sample = (vv[:n], vh[:n])
+                self.sample_region = list(self.region)
+                self.compute_sample()
+            except Exception:
+                pass
+
 
     def edit_reference(self, record: dict | None, key: str, value: Any) -> None:
         """Handle in-place editing of reference standard table cells."""
@@ -1543,11 +1589,7 @@ class GFactorModel:
                     par, perp = perp, par
                 n = min(len(par), len(perp))
                 time = np.arange(n, dtype=float)
-                bp, bs = (
-                    compute_background_levels(par, perp, time, time + params["shift"], self.background_region)
-                    if params["background"]
-                    else (0.0, 0.0)
-                )
+                bp, bs = params["background_levels"] if params["background"] else (0.0, 0.0)
                 p = np.maximum(par[:n] - bp, 0.0)
                 s = np.maximum(perp[:n] - bs, 0.0)
                 shifted_perp = shift_interp_on_axis(time, s, params["shift"])

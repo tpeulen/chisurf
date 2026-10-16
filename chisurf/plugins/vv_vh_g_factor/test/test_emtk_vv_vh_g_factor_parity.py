@@ -1071,6 +1071,39 @@ def test_every_control_has_a_tooltip_in_both_tabs(ui, files):
     assert not missing, sorted(missing)
 
 
+def test_batch_mode_only_plots_selected_decays(ui, files):
+    m = loaded(ui, files)
+    ui.app.add_batch([files["batch1"], files["batch2"]])
+    # In calibration mode, both references are plotted
+    ui.app.docks.focus("controls")
+    ui.settle()
+    assert ui.app.is_batch_mode is False
+    cal_opts = ui.app.get_decay_options()
+    assert cal_opts[0] == "All (Overlay)"
+    cal_series = ui.app.series()
+    cal_labels = [s[0] for s in cal_series]
+    assert any("Fast" in label for label in cal_labels)
+    assert any("Slow" in label for label in cal_labels)
+
+    # In batch mode, only the decay selected in table is plotted
+    open_batch(ui)
+    assert ui.app.is_batch_mode is True
+    batch_opts = ui.app.get_decay_options()
+    assert batch_opts[0] == "Selected in table"
+
+    batch_series = ui.app.series()
+    assert len(batch_series) == 1
+    assert batch_series[0][0] == f"Sample {Path(m.batch_files[0]).name}"
+    # Verify no references are present in batch mode plots
+    assert not any("Fast" in s[0] or "Slow" in s[0] for s in batch_series)
+
+    # Change table selection to second batch file
+    m.select_batch({"path": m.batch_files[1]})
+    batch_series2 = ui.app.series()
+    assert len(batch_series2) == 1
+    assert batch_series2[0][0] == f"Sample {Path(m.batch_files[1]).name}"
+
+
 def test_every_spec_field_exists_on_the_model_and_is_described():
     model = GFactorModel()
     spec = json.loads((PLUGIN / "gui" / "gfactor_emtk.view.json").read_text())["panels"]

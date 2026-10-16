@@ -394,6 +394,8 @@
      "description": "Anisotropy r(inf), region and status per queued file.",
      "options": {
       "source": "batch_rows",
+      "selected_call": "select_batch",
+      "selection_attr": "selected_batch_records",
       "min_column_width": 80,
       "fit_columns": true,
       "tooltip_key": "path",
