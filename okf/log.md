@@ -10,6 +10,7 @@
 - vv_vh_g_factor: adopt ChiSurf standard FittingParameter table (Parameter, Value, Fixed, Error) backed by live FittingParameterGroup/FittingParameter objects with deepcopy support, in-place value and fixed toggling, and declutter UI action buttons and tooltips; 73/73 tests pass
 - Streamline VV/VH G-factor UI by eliminating duplicate results table and duplicate controls, shortening table labels to l1 and l2, and recovering independent l1 != l2 mixing parameters
 - vv_vh_g_factor: eliminate duplicated G, l1, and l2 controls by consolidating overrides into FittingParameter table
+- Eliminated duplicate controls beneath calibration parameters table in VV/VH G-factor tool and ensured fitting parameter table is single source of truth for edits.
 
 ## 2026-10-15
 

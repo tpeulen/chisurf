@@ -147,11 +147,13 @@ class GFactorModel:
             "param_tau",
             "param_rho",
             "param_rs",
+            "_on_used",
         }
         for k, v in self.__dict__.items():
             if k in skipped:
                 continue
             setattr(result, k, deepcopy(v, memo))
+        result._on_used = getattr(self, "_on_used", None)
         result._init_fitting_parameters()
         result.update_fitting_parameters()
         return result
@@ -683,7 +685,7 @@ class GFactorModel:
                 "parameter": "tau",
                 "name": "tau",
                 "value": float(self.param_tau.value),
-                "fixed": True,
+                "fixed": bool(self.manual_tau),
                 "error": "",
                 "_parameter": self.param_tau,
             },
@@ -704,6 +706,15 @@ class GFactorModel:
                 "fixed": True,
                 "error": "",
                 "_parameter": self.param_r0,
+            },
+            {
+                "key": "rs_override",
+                "parameter": "Target rS",
+                "name": "Target rS",
+                "value": float(self.param_rs.value),
+                "fixed": bool(self.manual_rs),
+                "error": "",
+                "_parameter": self.param_rs,
             },
             {
                 "key": "fp_dt_ns",
@@ -814,6 +825,8 @@ class GFactorModel:
             elif param_key == "l1":
                 self.manual_l = True
                 self.l1_override = max(0.0, float(value))
+                if self.link_l1_l2:
+                    self.l2_override = self.l1_override
             elif param_key == "l2":
                 self.manual_l = True
                 self.l2_override = max(0.0, float(value))
@@ -822,6 +835,8 @@ class GFactorModel:
                 setattr(self, param_key, bool_val)
             else:
                 float_val = float(value)
+                if param_key == "fp_r0":
+                    float_val = min(0.4, max(-0.2, float_val))
                 setattr(self, param_key, float_val)
                 if param_key == "fp_rho_ns":
                     for d in self.decays:
@@ -842,6 +857,8 @@ class GFactorModel:
                 self.compute()
             elif self.sample is not None:
                 self.compute_sample()
+            if hasattr(self, "_on_used") and callable(self._on_used):
+                self._on_used(param_key)
         except (ValueError, TypeError):
             pass
 

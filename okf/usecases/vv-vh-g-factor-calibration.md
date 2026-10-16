@@ -11,6 +11,7 @@ timestamp: '2026-07-29T00:00:00Z'
 # Where to pick this up
 
 1. Completed (2026-10-16):
+   - Eliminated Duplicate Controls: removed redundant bottom panels (`Channels`, `Tail matching`, `Polarization mixing`) below the calibration parameters table, ensuring the fitting parameters table is the single source of truth for parameter viewing and editing.
    - Standard Fitting Parameter Table: adopted ChiSurf's standard `FittingParameterGroup` and `FittingParameter` table schema (`Parameter`, `Value`, `Fixed`, `Error`) backed by live parameter objects from `chisurf.core.fitting.parameter`. Implemented custom `__deepcopy__` to cleanly isolate C++ SWIG `GraphPort` bindings during model snapshots.
    - Interactive Parameter Editing & Fixed Overrides: inline cell editing supports direct numeric changes as well as toggling the `Fixed` checkbox to lock/override parameters (`manual_g`, `manual_l`, `manual_tau`, `manual_rs`).
    - Decluttered UI Layout: stripped redundant text descriptions from table columns into tooltips; unified toolbar into compact 1-2 row buttons with concise captions (`Load...`, `Slow...`, `Example`, `MMFDB...`, `Batch ->`, `Export...`, `Archive`, `Stop`, `Help`, `Guide`); removed redundant inline labels (`Selected: ... Tail G Remove`).

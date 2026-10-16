@@ -86,6 +86,7 @@ class GFactorApp(TourTarget, ImApp):
         self.tour = self.guide
         for form in self.forms.values():
             form.on_used = self.guide.notify_used
+        self.model._on_used = self.guide.notify_used
         self.job = BackgroundJob()
         self.dialog: FileDialog | None = None
         self.dialog_window: DialogWindow | None = None
@@ -425,8 +426,6 @@ class GFactorApp(TourTarget, ImApp):
         status_msg = m.message or "Load reference standard VV/VH decay(s) for calibration."
         im.text(status_msg)
         self.form("parameters", m)
-        self.form("tail", m)
-        self.form("mixing", m)
         warn = m.fp_result.get("warning")
         if warn and ("outside" in warn or "error" in warn.lower() or m.fp_result.get("l1") is None):
             im.text_colored((255, 180, 80, 255), warn)

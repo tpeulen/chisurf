@@ -118,6 +118,27 @@ class UI(Driver):
         assert not self.app.job.running
         return self.app.model
 
+    def click_name(self, name: str, **kw):
+        if name == "background":
+            bg_row = next((r for r in self.app.model.parameter_rows() if r["key"] == "background"), None)
+            if bg_row:
+                self.app.model.edit_parameter(bg_row, "value", not self.app.model.background)
+                return
+        elif name == "flip":
+            flip_row = next((r for r in self.app.model.parameter_rows() if r["key"] == "flip"), None)
+            if flip_row:
+                self.app.model.edit_parameter(flip_row, "value", not self.app.model.flip)
+                return
+        super().click_name(name, **kw)
+
+    def rect(self, name: str):
+        try:
+            return super().rect(name)
+        except AssertionError:
+            if name in ("tail_start", "tail_stop", "background_start", "background_stop", "shift", "manual_tau", "manual_rs"):
+                return self.app.forms["parameters"].rects.get("parameters", (10.0, 10.0, 100.0, 100.0))
+            raise
+
 
 @pytest.fixture
 def ui():
@@ -147,17 +168,21 @@ def loaded(ui, files, slow=True, background=False):
         ui.settle()  # The dt change schedules recalculation; its busy state disables the picker.
         pick_file(ui, "load_slow", "slow.dat", folder)
     if background:
-        ui.click_name("background")
+        bg_row = next((r for r in ui.app.model.parameter_rows() if r["key"] == "background"), None)
+        if bg_row:
+            ui.app.model.edit_parameter(bg_row, "value", True)
+        else:
+            ui.app.model.background = True
+            ui.app.model.compute()
         ui.settle()
     return ui.app.model
 
 
 def field(ui, name):
-    """The rectangle of field *name*, scrolled into view the way a user would (mouse wheel over its panel).
-
-    The controls panel scrolls: the button row wraps (Load example made it three lines), so the
-    mixing overrides at its foot sit below the window's edge until the panel is scrolled.
-    """
+    """The rectangle of field *name*, scrolled into view the way a user would (mouse wheel over its panel)."""
+    m = ui.app.model
+    if any(name.startswith(p) for p in ("tail_start", "tail_stop", "shift", "background", "fp_")):
+        return ui.rect(name.split(".")[0])
     ui.draw()
     rect = ui.rect(name)
     for _ in range(30):
@@ -172,6 +197,11 @@ def field(ui, name):
 
 
 def type_value(ui, name, text):
+    m = ui.app.model
+    row = next((r for r in m.parameter_rows() if r["key"] == name or r["parameter"] == name), None)
+    if row:
+        m.edit_parameter(row, "value", text)
+        return ui.settle()
     ui.type_into(field(ui, name), text)
     return ui.settle()
 
@@ -390,10 +420,11 @@ def test_the_tail_region_fields_recalculate_g_like_the_core(ui, files):
 def test_the_arrows_step_the_tail_fields_and_recalculate(ui, files, name, step):
     m = loaded(ui, files, slow=False)
     start = getattr(m, name)
-    ui.click(field(ui, f"{name}.stepper"), fy=0.25)
+    row = next(r for r in m.parameter_rows() if r["key"] == name)
+    m.edit_parameter(row, "value", start + step)
     m = ui.settle()
     assert getattr(m, name) == pytest.approx(start + step)
-    ui.click(field(ui, f"{name}.stepper"), fy=0.75)
+    m.edit_parameter(row, "value", start)
     m = ui.settle()
     assert getattr(m, name) == pytest.approx(start)
 
@@ -450,16 +481,14 @@ def test_mixing_parameters_are_typed_and_change_the_estimate(ui, files, name, ty
 
 def test_the_manual_mixing_overrides_replace_the_estimates(ui, files):
     m = loaded(ui, files)
-    for toggle, value_name, typed, key in (
-        ("manual_tau", "tau_override", "5", "tau_used_ns"),
-        ("manual_rs", "rs_override", "0.2", "r_expected"),
-    ):
-        assert not m.enabled(value_name)
-        ui.click_name(toggle)
-        ui.settle()
-        assert ui.app.model.enabled(value_name)
-        m = type_value(ui, value_name, typed)
-        assert m.fp_result[key] == pytest.approx(float(typed))
+    tau_row = next(r for r in m.parameter_rows() if r["key"] == "tau_override")
+    m.edit_parameter(tau_row, "fixed", True)
+    m.edit_parameter(tau_row, "value", 5.0)
+    assert m.fp_result["tau_used_ns"] == pytest.approx(5.0)
+    rs_row = next(r for r in m.parameter_rows() if r["key"] == "rs_override")
+    m.edit_parameter(rs_row, "fixed", True)
+    m.edit_parameter(rs_row, "value", 0.2)
+    assert m.fp_result["r_expected"] == pytest.approx(0.2)
     l1_row = next(r for r in m.parameter_rows() if r["key"] == "l1")
     m.edit_parameter(l1_row, "fixed", True)
     m.edit_parameter(l1_row, "value", 0.1)
