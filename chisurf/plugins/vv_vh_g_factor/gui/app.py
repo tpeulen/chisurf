@@ -30,6 +30,7 @@ from chisurf.plugins.emtk_layout import (
 from chisurf.plugins.microscopy.imaging_emtk.path_list import PathListView
 from chisurf.plugins.tttr.tttr_splitter.gui.jobs import BackgroundJob
 
+from chisurf.core.fio import read_vv_vh
 from .client import VvVhGFactorClient
 from .model import GFactorModel
 
@@ -104,10 +105,10 @@ class GFactorApp(TourTarget, ImApp):
             name="vv_vh_g_factor",
         )
         self.docks.add_window(
-            "controls", "G-factor calibration", self.draw_controls, dock="controls", closable=False
+            "controls", "Calibration (References)", self.draw_controls, dock="controls", closable=False
         )
         self.docks.add_window(
-            "sample", "Sample anisotropy", self.draw_sample, dock="controls", closable=False
+            "batch", "Unknown Samples (Batch)", self.draw_batch, dock="controls", closable=False
         )
         self.docks.add_window(
             "decays", "VV/VH decays", self.draw_decays, dock="decays", closable=False
@@ -350,10 +351,10 @@ class GFactorApp(TourTarget, ImApp):
                     "tip": "Load any VV/VH decay file into the multi-decay manager.",
                 },
                 {
-                    "label": "Batch...",
+                    "label": "Process samples ->",
                     "key": "open_batch",
                     "enabled": not busy,
-                    "tip": "Open the batch processing modal window to evaluate multiple queued VV/VH decays.",
+                    "tip": "Switch to the Unknown Samples / Batch tab to process unknown files with this calibration.",
                 },
                 {
                     "label": "Export calibration JSON...",
@@ -388,7 +389,7 @@ class GFactorApp(TourTarget, ImApp):
             self.choose("Load VV/VH decay", lambda paths: self.load_any_decay(paths[0]))
         elif pressed == "open_batch":
             self.model.open_batch()
-            self.batch_window.show()
+            self.docks.focus("batch")
         elif pressed == "export":
             self.choose(
                 "Calibration results",
@@ -417,32 +418,34 @@ class GFactorApp(TourTarget, ImApp):
         im.text_disabled(slow_name)
         if m.slow_file:
             im.set_item_tooltip(f"Slow protein: {m.slow_file}")
-        if len(m.decays) > 1:
+        ref_decays = [d for d in m.decays if d["role"] in ("fast", "slow")]
+        if len(ref_decays) > 1:
             im.separator()
-            im.text("Loaded decays:")
-            for i, d in enumerate(m.decays):
-                im.push_id(f"decay_{i}")
+            im.text("Loaded reference decays:")
+            for i, d in enumerate(ref_decays):
+                idx = m.decays.index(d)
+                im.push_id(f"decay_{idx}")
                 im.text(f"#{i+1} {d['name']}")
                 im.same_line()
                 role_opts = ["Fast", "Slow", "Sample"]
-                c_idx = role_opts.index(d["role"].capitalize()) if d["role"].capitalize() in role_opts else 2
+                c_idx = role_opts.index(d["role"].capitalize()) if d["role"].capitalize() in role_opts else 1
                 im.set_next_item_width(75.0)
                 ch_role, new_role = im.combo("##role", c_idx, role_opts)
                 im.set_item_tooltip(tr("Assign the role of this decay: Fast reference, Slow reference, or Sample."))
                 if ch_role:
-                    m.set_decay_role(i, role_opts[new_role].lower())
+                    m.set_decay_role(idx, role_opts[new_role].lower())
                 if d["role"] == "slow":
                     im.same_line()
                     im.text("rho:")
                     im.same_line()
                     im.set_next_item_width(65.0)
-                    ch_rho, new_rho = im.input_float("##rho", d["rho_ns"], 0.1, 1.0, fmt="%.1f")
+                    ch_rho, new_rho = im.input_float("##rho", d.get("rho_ns", 16.0), 0.1, 1.0, fmt="%.1f")
                     im.set_item_tooltip(tr("Rotational correlation time (ns) for this reference."))
                     if ch_rho and new_rho > 0:
-                        m.set_decay_rho(i, new_rho)
+                        m.set_decay_rho(idx, new_rho)
                 im.same_line()
                 if im.button("✕##del"):
-                    m.remove_decay(i)
+                    m.remove_decay(idx)
                 im.set_item_tooltip(tr("Remove this decay from the list."))
                 im.pop_id()
         status_msg = m.message or "Load the fast-rotating reference dye VV/VH decay."
@@ -455,96 +458,75 @@ class GFactorApp(TourTarget, ImApp):
         if warn and ("outside" in warn or "error" in warn.lower() or m.fp_result.get("l1") is None):
             im.text_colored((255, 180, 80, 255), warn)
 
-    def draw_sample(self, box):
+    def get_active_batch_file(self) -> str | None:
+        m = self.model
+        if not m.batch_files:
+            return m.sample_file or m.fast_file or None
+        idx = 0
+        if "batch" in self.forms and hasattr(self.forms["batch"], "path_list"):
+            idx = self.forms["batch"].path_list.selected.get("batch_files", 0)
+        idx = min(max(0, idx), len(m.batch_files) - 1)
+        path = m.batch_files[idx]
+        if m.selected_batch_file != path:
+            m.selected_batch_file = path
+            m.sample_file = path
+            if Path(path).is_file():
+                try:
+                    vv, vh = read_vv_vh(str(path), split=True)
+                    vv = np.asarray(vv, dtype=float)
+                    vh = np.asarray(vh, dtype=float)
+                    n = min(len(vv), len(vh))
+                    m.sample = (vv[:n], vh[:n])
+                    m.sample_region = list(m.region)
+                    m.compute_sample()
+                except Exception:
+                    pass
+        return path
+
+    def draw_sample(self, box=None):
+        return self.draw_batch(box)
+
+    def draw_batch(self, box=None):
         m = self.model
         m.busy = self.job.running
         busy = self.job.running or self.dialog is not None
         pressed = button_row(
             [
                 {
-                    "label": "Load sample...",
-                    "key": "load_sample",
+                    "label": "<- Calibration",
+                    "key": "to_controls",
                     "enabled": not busy,
-                    "tip": "Load a VV/VH decay file for time-resolved anisotropy analysis.",
+                    "tip": "Switch back to the Reference Calibration tab.",
                 },
                 {
-                    "label": "Save outputs...",
-                    "key": "save_outputs",
-                    "enabled": not busy and (m.sample is not None or m.fast is not None),
-                    "tip": "Save shifted VV/VH decays (_shifted.dat), anisotropy trace (_anisotropy.txt), and r-infinity metadata (_rinf.csv).",
-                },
-                {
-                    "label": "Use Fast as sample",
-                    "key": "use_fast",
-                    "enabled": not busy and m.fast is not None,
-                    "tip": "Set the fast reference dye as the current sample decay.",
-                },
-                {
-                    "label": "Use Slow as sample",
-                    "key": "use_slow",
-                    "enabled": not busy and m.slow is not None,
-                    "tip": "Set the slow reference dye as the current sample decay.",
-                },
-                {
-                    "label": "Batch...",
-                    "key": "open_batch",
-                    "enabled": not busy,
-                    "tip": "Open batch processing modal window.",
-                },
-            ],
-            remember=self.remember,
-        )
-        if pressed == "load_sample":
-            self.choose("Sample decay", lambda paths: self.load(paths[0], sample=True))
-        elif pressed == "save_outputs":
-            stem = Path(m.sample_file or m.fast_file or "sample").stem
-            self.choose(
-                "Save outputs base name",
-                lambda paths: self.run(lambda model: model.save_sample_outputs(paths[0])),
-                mode="save",
-                filename=f"{stem}_outputs",
-            )
-        elif pressed == "use_fast":
-            self.model.sample = self.model.fast
-            self.model.sample_file = self.model.fast_file
-            self.model.sample_region = list(self.model.region)
-            self.model.compute_sample()
-        elif pressed == "use_slow":
-            self.model.sample = self.model.slow
-            self.model.sample_file = self.model.slow_file
-            self.model.sample_region = list(self.model.region)
-            self.model.compute_sample()
-        elif pressed == "open_batch":
-            self.model.open_batch()
-            self.batch_window.show()
-
-        self.path_row("Sample:", m.sample_file, "no sample decay loaded (using fast reference if available)")
-        if m.g_factor is not None:
-            l1_s = f"{m.l1:.5f}" if m.l1 is not None and np.isfinite(m.l1) else "0.00000"
-            l2_s = f"{m.l2:.5f}" if m.l2 is not None and np.isfinite(m.l2) else "0.00000"
-            im.text_colored(
-                (100, 200, 255, 255),
-                f"Applied calibration: G = {m.g_factor:.5f} | l1 = {l1_s} | l2 = {l2_s}",
-            )
-        im.separator()
-        self.form("sample", m)
-
-    def draw_batch(self, box=None):
-        m = self.model
-        busy = self.job.running or self.dialog is not None
-        pressed = button_row(
-            [
-                {
-                    "label": "Run batch",
+                    "label": "Process all",
                     "key": "run",
                     "enabled": not busy and bool(m.batch_files) and m.g_factor is not None,
-                    "tip": "Compute r(inf), the mean corrected r(t) over the tail region, of every queued file with the current calibration.",
+                    "tip": "Compute r(inf), corrected decays, and anisotropy for all queued files using calibrated G, l1, l2.",
                 },
                 {
                     "label": "Save table...",
                     "key": "save",
                     "enabled": not busy and bool(m.batch_results),
                     "tip": "Write per-file r(inf), region, backgrounds, G, l1, l2 and errors as a table.",
+                },
+                {
+                    "label": "Export active decay...",
+                    "key": "export_active_decay",
+                    "enabled": not busy and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
+                    "tip": "Export the currently selected file's raw and corrected VV and VH decays to a CSV file.",
+                },
+                {
+                    "label": "Export active r(t)...",
+                    "key": "export_active_rt",
+                    "enabled": not busy and (bool(m.batch_files) or m.sample is not None or m.fast is not None),
+                    "tip": "Export the currently selected file's time-resolved anisotropy r(t) curve to a CSV file.",
+                },
+                {
+                    "label": "Export all r(t)...",
+                    "key": "export_all_rt",
+                    "enabled": not busy and bool(m.batch_files) and m.g_factor is not None,
+                    "tip": "Export time-resolved anisotropy r(t) curves for all queued batch files into a single CSV.",
                 },
                 {
                     "label": action_caption("close"),
@@ -555,7 +537,9 @@ class GFactorApp(TourTarget, ImApp):
             ],
             remember=self.remember,
         )
-        if pressed == "run":
+        if pressed == "to_controls":
+            self.docks.focus("controls")
+        elif pressed == "run":
             self.run(lambda model: model.compute_batch(self.job.cancelled.is_set))
         elif pressed == "save":
             self.choose(
@@ -564,10 +548,49 @@ class GFactorApp(TourTarget, ImApp):
                 mode="save",
                 filename="batch_anisotropy.tsv",
             )
+        elif pressed == "export_active_decay":
+            active_file = self.get_active_batch_file()
+            stem = Path(active_file).stem if active_file else "decay"
+            self.choose(
+                "Export active decay CSV",
+                lambda paths: self.model.export_active_decay(paths[0], active_file),
+                mode="save",
+                filename=f"{stem}_decay.csv",
+            )
+        elif pressed == "export_active_rt":
+            active_file = self.get_active_batch_file()
+            stem = Path(active_file).stem if active_file else "anisotropy"
+            self.choose(
+                "Export active anisotropy r(t) CSV",
+                lambda paths: self.model.export_active_rt(paths[0], active_file),
+                mode="save",
+                filename=f"{stem}_rt.csv",
+            )
+        elif pressed == "export_all_rt":
+            self.choose(
+                "Export all anisotropy r(t) CSV",
+                lambda paths: self.model.export_all_rt(paths[0]),
+                mode="save",
+                filename="all_anisotropy_rt.csv",
+            )
         elif pressed == "close":
             self.model.close_batch()
             if hasattr(self, "batch_window"):
                 self.batch_window.hide()
+
+        if m.g_factor is not None:
+            l1_s = f"{m.l1:.5f}" if m.l1 is not None and np.isfinite(m.l1) else "0.00000"
+            l2_s = f"{m.l2:.5f}" if m.l2 is not None and np.isfinite(m.l2) else "0.00000"
+            im.text_colored(
+                (100, 200, 255, 255),
+                f"Applied calibration: G = {m.g_factor:.5f} | l1 = {l1_s} | l2 = {l2_s}",
+            )
+        else:
+            im.text_colored(
+                (255, 180, 50, 255),
+                "Calibration pending: determine G on Calibration tab first.",
+            )
+
         if not m.batch_files:
             im.text_wrapped(
                 tr(
@@ -576,9 +599,21 @@ class GFactorApp(TourTarget, ImApp):
             )
         self.form("batch", m)
 
+        active_file = self.get_active_batch_file()
+        if active_file:
+            im.separator()
+            im.text("Selected sample:")
+            im.same_line()
+            im.text_colored((100, 200, 255, 255), Path(active_file).name)
+            im.set_item_tooltip(str(active_file))
+            self.form("sample", m)
+
     # -- plots ------------------------------------------------------------------------------- #
     def get_decay_options(self):
         opts = ["All (Overlay)"]
+        if self.model.batch_files:
+            for p in self.model.batch_files:
+                opts.append(f"[Sample] {Path(p).name}")
         if self.model.decays:
             for d in self.model.decays:
                 opts.append(f"[{d['role'].capitalize()}] {d['name']}")
@@ -587,37 +622,52 @@ class GFactorApp(TourTarget, ImApp):
                 opts.append("Fast reference")
             if self.model.slow is not None:
                 opts.append("Slow reference")
-            if self.model.sample is not None:
+            if self.model.sample is not None and not self.model.batch_files:
                 opts.append("Sample")
         return opts
 
     def series(self):
+        opts = self.get_decay_options()
+        if self.plot_decay_idx > 0 and self.plot_decay_idx < len(opts):
+            selected_label = opts[self.plot_decay_idx]
+            if selected_label.startswith("[Sample] "):
+                name = selected_label[9:]
+                match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
+                if match_path:
+                    return [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
+            for d in self.model.decays:
+                if selected_label == f"[{d['role'].capitalize()}] {d['name']}":
+                    return [(d["role"].capitalize(), self.model.decay_series(entry=d))]
+            if selected_label == "Fast reference" and self.model.fast is not None:
+                return [("Fast", self.model.decay_series(slow=False))]
+            if selected_label == "Slow reference" and self.model.slow is not None:
+                return [("Slow", self.model.decay_series(slow=True))]
+            if selected_label == "Sample" and self.model.sample is not None:
+                return [("Sample", self.model.decay_series(sample=True))]
+
+        res = []
+        if self.model.batch_files and self.show_sample:
+            for p in self.model.batch_files[:5]:
+                res.append((f"Sample {Path(p).name}", self.model.get_decay_series(file_path=p)))
         if self.model.decays:
-            if self.plot_decay_idx == 0:
-                res = []
-                seen_roles = {}
-                for d in self.model.decays:
-                    role = d["role"]
-                    if (role == "fast" and not self.show_fast) or (role == "slow" and not self.show_slow) or (role == "sample" and not self.show_sample):
-                        continue
-                    count = seen_roles.get(role, 0)
-                    seen_roles[role] = count + 1
-                    label = role.capitalize() if count == 0 else f"{role.capitalize()} {d['name']}"
-                    res.append((label, self.model.decay_series(entry=d)))
-                return res
-            else:
-                idx = min(self.plot_decay_idx - 1, len(self.model.decays) - 1)
-                d = self.model.decays[idx]
-                return [(d["role"].capitalize(), self.model.decay_series(entry=d))]
-        return [
-            (label, self.model.decay_series(slow=slow, sample=sample))
+            seen_roles = {}
+            for d in self.model.decays:
+                role = d["role"]
+                if (role == "fast" and not self.show_fast) or (role == "slow" and not self.show_slow) or (role == "sample" and not self.show_sample):
+                    continue
+                count = seen_roles.get(role, 0)
+                seen_roles[role] = count + 1
+                label = role.capitalize() if count == 0 else f"{role.capitalize()} {d['name']}"
+                res.append((label, self.model.decay_series(entry=d)))
+        else:
             for label, slow, sample, enabled in [
                 ("Fast", False, False, self.show_fast),
                 ("Slow", True, False, self.show_slow),
                 ("Sample", False, True, self.show_sample),
-            ]
-            if enabled
-        ]
+            ]:
+                if enabled and ((not slow and not sample and self.model.fast is not None) or (slow and self.model.slow is not None) or (sample and self.model.sample is not None)):
+                    res.append((label, self.model.decay_series(slow=slow, sample=sample)))
+        return res
 
     def draw_decays(self, box):
         opts = self.get_decay_options()
@@ -649,7 +699,7 @@ class GFactorApp(TourTarget, ImApp):
             im.set_item_tooltip(tr("Show or hide this trace group, or change the intensity scale."))
             used += width
         im.new_line()
-        if self.model.fast is None and self.model.slow is None and self.model.sample is None and not self.model.decays:
+        if self.model.fast is None and self.model.slow is None and self.model.sample is None and not self.model.decays and not self.model.batch_files:
             im.text_wrapped(tr("Load a VV/VH decay (button, or drop a file on the window)."))
             return
         if implot.begin_plot("##vvvh", (-1, -1)):
@@ -711,7 +761,7 @@ class GFactorApp(TourTarget, ImApp):
             implot.end_plot()
 
     def draw_anisotropy(self, box):
-        if self.model.fast is None and self.model.slow is None and self.model.sample is None and not self.model.decays:
+        if self.model.fast is None and self.model.slow is None and self.model.sample is None and not self.model.decays and not self.model.batch_files:
             im.text_wrapped(tr("The anisotropy r(t) of the loaded decays appears here."))
             return
         opts = self.get_decay_options()
@@ -731,9 +781,25 @@ class GFactorApp(TourTarget, ImApp):
         if implot.begin_plot("##anisotropy", (-1, -1)):
             implot.setup_axes("TAC bin", "Anisotropy r(t)")
             implot.setup_legend(implot.LOCATION_NORTH_EAST)
-            if self.model.decays and self.plot_aniso_decay_idx > 0:
-                selected_d = self.model.decays[min(self.plot_aniso_decay_idx - 1, len(self.model.decays) - 1)]
-                aniso_series = [(f"[{selected_d['role'].capitalize()}] {selected_d['name']}", self.model.decay_series(entry=selected_d))]
+            opts = self.get_decay_options()
+            if self.plot_aniso_decay_idx > 0 and self.plot_aniso_decay_idx < len(opts):
+                selected_label = opts[self.plot_aniso_decay_idx]
+                if selected_label.startswith("[Sample] "):
+                    name = selected_label[9:]
+                    match_path = next((p for p in self.model.batch_files if Path(p).name == name), None)
+                    if match_path:
+                        aniso_series = [(f"Sample {name}", self.model.get_decay_series(file_path=match_path))]
+                    else:
+                        aniso_series = self.series()
+                else:
+                    found = False
+                    for d in self.model.decays:
+                        if selected_label == f"[{d['role'].capitalize()}] {d['name']}":
+                            aniso_series = [(d["role"].capitalize(), self.model.decay_series(entry=d))]
+                            found = True
+                            break
+                    if not found:
+                        aniso_series = self.series()
             else:
                 aniso_series = self.series()
             max_len = 1
@@ -755,7 +821,7 @@ class GFactorApp(TourTarget, ImApp):
                 if self.show_corrected and "r_corrected" in data:
                     implot.plot_line(label + " corrected", data["time"], data["r_corrected"])
 
-            bounds = self.model.sample_region if self.model.sample is not None else self.model.region
+            bounds = self.model.sample_region if (self.model.sample is not None or self.model.batch_files) else self.model.region
             implot.set_next_fill_style((60, 205, 100, 255), 0.2)
             implot.plot_shaded(
                 "##rinf_region",

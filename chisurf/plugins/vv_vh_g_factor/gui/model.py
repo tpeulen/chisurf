@@ -626,7 +626,10 @@ class GFactorModel:
         self.background = True
         self.load(files["fast"], role="fast", rho_ns=0.2, tau_ns=float(DEMO["tau_ns"]))
         self.load(files["slow"], role="slow", rho_ns=float(DEMO["decays"][1][1]), tau_ns=float(DEMO["tau_ns"]))
-        self.load(files["fast"], role="sample")
+        if "batch1" in files:
+            self.load(files["batch1"], role="sample")
+        else:
+            self.load(files["fast"], role="sample")
         for key in ("batch1", "batch2"):
             if str(files[key]) not in self.batch_files:
                 self.batch_files.append(str(files[key]))
@@ -696,45 +699,108 @@ class GFactorModel:
         self.compute_sample()
 
     def estimate_mixing(self, client: object | None = None) -> None:
-        """Estimate linked l1=l2 mixing parameter from slow reference and Perrin relation."""
-        par, perp = self.channels(slow=True)
-        self.fp_result = {}
+        """Estimate linked l1=l2 mixing parameter from slow reference(s) and Perrin relation."""
         g = self.g_factor
-        if par is None or g is None or not np.isfinite(g) or g <= 0:
+        self.fp_result = {}
+        if g is None or not np.isfinite(g) or g <= 0:
             return
-        n = min(len(par), len(perp))
-        time = np.arange(n, dtype=float)
-        shifted = time + self.shift
-        interp = np.interp(time, shifted, perp, left=0.0, right=0.0)
-        bp, bs = (
-            compute_background_levels(par, perp, time, shifted, self.background_region)
-            if self.background
-            else (0.0, 0.0)
-        )
-        p = np.clip(par - bp, 0, None)
-        s = np.clip(interp - bs, 0, None)
-        tau_est = estimate_lifetime_first_moment(time, p + 2 * g * s) * self.fp_dt_ns
-        tau = self.tau_override if self.manual_tau else tau_est
-        expected = (
-            client.perrin_steady_state(tau_ns=tau, rho_ns=self.fp_rho_ns, r0=self.fp_r0)
-            if client
-            else perrin_steady_state_anisotropy(tau_ns=tau, rho_ns=self.fp_rho_ns, r0=self.fp_r0)
-        )
-        if self.manual_rs:
+
+        slow_entries = [d for d in self.decays if d.get("role") == "slow"]
+        if not slow_entries and self.slow is not None:
+            slow_entries = [{
+                "data": self.slow,
+                "rho_ns": float(self.fp_rho_ns),
+                "tau_ns": float(self.tau_override) if self.manual_tau else None,
+                "name": Path(self.slow_file).name if self.slow_file else "slow",
+            }]
+        if not slow_entries:
+            return
+
+        estimates = []
+        tau_ests = []
+        taus_used = []
+        r_expecteds = []
+
+        for entry in slow_entries:
+            pair = entry.get("data")
+            if pair is None:
+                continue
+            par_e, perp_e = pair[::-1] if self.flip else pair
+            n_e = min(len(par_e), len(perp_e))
+            if n_e < 3:
+                continue
+            time_e = np.arange(n_e, dtype=float)
+            shifted_e = time_e + self.shift
+            interp_e = np.interp(time_e, shifted_e, perp_e, left=0.0, right=0.0)
+            bp_e, bs_e = (
+                compute_background_levels(par_e, perp_e, time_e, shifted_e, self.background_region)
+                if self.background
+                else (0.0, 0.0)
+            )
+            p_e = np.clip(par_e[:n_e] - bp_e, 0, None)
+            s_e = np.clip(interp_e[:n_e] - bs_e, 0, None)
+            t_est = estimate_lifetime_first_moment(time_e, p_e + 2 * g * s_e) * self.fp_dt_ns
+            if self.manual_tau:
+                tau_e = self.tau_override
+            elif len(slow_entries) > 1 and entry.get("tau_ns") is not None:
+                tau_e = entry["tau_ns"]
+            else:
+                tau_e = t_est
+
+            if len(slow_entries) == 1:
+                rho_e = self.fp_rho_ns
+                r0_e = self.fp_r0
+            else:
+                rho_e = entry.get("rho_ns") if entry.get("rho_ns") is not None else self.fp_rho_ns
+                r0_e = entry.get("r0") if entry.get("r0") is not None else self.fp_r0
+
+            exp_e = (
+                client.perrin_steady_state(tau_ns=tau_e, rho_ns=rho_e, r0=r0_e)
+                if client
+                else perrin_steady_state_anisotropy(tau_ns=tau_e, rho_ns=rho_e, r0=r0_e)
+            )
+            if self.manual_rs and len(slow_entries) == 1:
+                exp_e = self.rs_override
+            l_val = (
+                client.solve_linked_l(
+                    sp=float(p_e.sum()), ss=float(s_e.sum()), g_factor=g, r_target=exp_e
+                )
+                if client
+                else solve_linked_l_from_steady_state(
+                    sp=float(p_e.sum()), ss=float(s_e.sum()), g_factor=g, r_target=exp_e
+                )
+            )
+            entry["l_estimate"] = float(l_val) if np.isfinite(l_val) else None
+            entry["r_expected"] = float(exp_e) if np.isfinite(exp_e) else None
+            entry["tau_estimate_ns"] = float(t_est)
+            tau_ests.append(float(t_est))
+            taus_used.append(float(tau_e))
+            r_expecteds.append(float(exp_e))
+            estimates.append((l_val, float(p_e.sum()), float(s_e.sum()), float(exp_e)))
+
+        if not estimates:
+            return
+
+        if len(slow_entries) == 1:
+            l, sp_val, ss_val, expected = estimates[0]
+            tau_est = tau_ests[0]
+            tau = taus_used[0]
+        else:
+            valid_ls = [e[0] for e in estimates if np.isfinite(e[0]) and 0 <= e[0] <= 0.5]
+            l = float(np.mean(valid_ls)) if valid_ls else estimates[0][0]
+            sp_val = float(np.mean([e[1] for e in estimates]))
+            ss_val = float(np.mean([e[2] for e in estimates]))
+            expected = float(np.mean(r_expecteds))
+            tau_est = float(np.mean(tau_ests))
+            tau = float(np.mean(taus_used))
+
+        if self.manual_rs and len(slow_entries) == 1:
             expected = self.rs_override
         elif np.isfinite(expected):
             self.rs_override = float(expected)
         if not self.manual_tau and np.isfinite(tau_est):
             self.tau_override = float(tau_est)
-        l = (
-            client.solve_linked_l(
-                sp=float(p.sum()), ss=float(s.sum()), g_factor=g, r_target=expected
-            )
-            if client
-            else solve_linked_l_from_steady_state(
-                sp=float(p.sum()), ss=float(s.sum()), g_factor=g, r_target=expected
-            )
-        )
+
         warning = "One steady-state observable determines only the linked estimate l1 = l2."
         if self.manual_l:
             l = self.l_override
@@ -758,9 +824,9 @@ class GFactorModel:
 
         l_sd = None
         if l1_val is not None and np.isfinite(l1_val) and 0 <= l1_val <= 0.5:
-            sp_val = float(p.sum())
-            ss_val = float(s.sum())
-            if sp_val > 0 and ss_val > 0 and expected > 0:
+            if len(slow_entries) > 1 and len(valid_ls) > 1:
+                l_sd = float(np.std(valid_ls, ddof=1) / np.sqrt(len(valid_ls)))
+            elif sp_val > 0 and ss_val > 0 and expected > 0:
                 u = sp_val
                 v = g * ss_val
                 denom = 3.0 * (u + v) ** 2
@@ -945,7 +1011,153 @@ class GFactorModel:
                 )
         self.message = f"Saved {Path(path).name}"
 
+    def export_batch_csv(self, path: str | Path) -> None:
+        """Export all summary columns (including G, l1, l2) to a CSV file."""
+        if not self.batch_results:
+            raise ValueError("Run batch analysis before exporting.")
+        columns = [
+            "file",
+            "r_inf",
+            "region_start",
+            "region_stop",
+            "g_factor",
+            "l1",
+            "l2",
+            "bg_vv",
+            "bg_vh",
+            "error",
+        ]
+        with Path(path).open("w") as stream:
+            stream.write(",".join(columns) + "\n")
+            for row in self.batch_results:
+                stream.write(
+                    ",".join(
+                        str(row.get(key, "") if row.get(key) is not None else "")
+                        for key in columns
+                    )
+                    + "\n"
+                )
+        self.message = f"Saved CSV to {Path(path).name}"
+
     save_batch = export_batch
+
+    def get_decay_series(self, file_path: str | Path | None = None) -> dict[str, np.ndarray]:
+        """Compute plotted vectors for a specific file or active sample."""
+        target = str(file_path) if file_path else (self.selected_batch_file or (self.batch_files[0] if self.batch_files else None))
+        if target and Path(target).is_file():
+            par, perp = read_vv_vh(target, split=True)
+            par = np.asarray(par, dtype=float)
+            perp = np.asarray(perp, dtype=float)
+            if self.flip:
+                par, perp = perp, par
+            n = min(len(par), len(perp))
+            time = np.arange(n, dtype=float)
+            shifted = time + self.shift
+            bp, bs = (
+                compute_background_levels(par, perp, time, shifted, self.background_region)
+                if self.background
+                else (0.0, 0.0)
+            )
+            p = np.maximum(par[:n] - bp, 0.0)
+            s = np.maximum(perp[:n] - bs, 0.0)
+            g = self.g_factor
+            g_val = float(g) if g is not None and np.isfinite(g) and g > 0 else np.nan
+            corrected = shift_interp_on_axis(time, s, self.shift)
+            return {
+                "time": time,
+                "shifted_time": shifted,
+                "vv_raw": par[:n],
+                "vh_raw": perp[:n],
+                "vv_corrected": p,
+                "vh_corrected": s * g_val,
+                "r_raw": np.clip(
+                    compute_rt(par[:n], perp[:n], self.result.get("g_factor_uncorrected") or g_val),
+                    -0.5,
+                    1.5,
+                ),
+                "r_corrected": np.clip(compute_rt(p, corrected, g_val, l1=self.l1, l2=self.l2), -0.5, 1.5),
+            }
+        return self.decay_series()
+
+    def export_active_decay(self, target_path: str | Path, file_path: str | Path | None = None) -> None:
+        """Export time, raw VV, raw VH, corrected VV, and corrected VH to a CSV file."""
+        series = self.get_decay_series(file_path=file_path)
+        if not series or "time" not in series:
+            raise ValueError("No decay data available to export.")
+        columns = ["time", "vv_raw", "vh_raw", "vv_corrected", "vh_corrected"]
+        with Path(target_path).open("w") as f:
+            f.write(",".join(columns) + "\n")
+            for t, vr, hr, vc, hc in zip(
+                series["time"],
+                series["vv_raw"],
+                series["vh_raw"],
+                series["vv_corrected"],
+                series["vh_corrected"],
+            ):
+                f.write(f"{t:.4f},{vr:.2f},{hr:.2f},{vc:.2f},{hc:.2f}\n")
+        self.message = f"Exported decays to {Path(target_path).name}"
+
+    def export_active_rt(self, target_path: str | Path, file_path: str | Path | None = None) -> None:
+        """Export time, raw r(t), and corrected r(t) to a CSV file."""
+        series = self.get_decay_series(file_path=file_path)
+        if not series or "time" not in series:
+            raise ValueError("No anisotropy data available to export.")
+        columns = ["time", "r_raw", "r_corrected"]
+        with Path(target_path).open("w") as f:
+            f.write(",".join(columns) + "\n")
+            for t, rr, rc in zip(series["time"], series["r_raw"], series["r_corrected"]):
+                f.write(f"{t:.4f},{rr:.6f},{rc:.6f}\n")
+        self.message = f"Exported anisotropy r(t) to {Path(target_path).name}"
+
+    def export_all_rt(self, target_path: str | Path) -> None:
+        """Export time-resolved anisotropy r(t) curves for all queued batch files into a CSV."""
+        if not self.batch_files:
+            raise ValueError("No unknown files queued.")
+        g = self.g_factor
+        if g is None or not np.isfinite(g) or g <= 0:
+            raise ValueError("Determine G before exporting anisotropy.")
+        all_curves = {}
+        max_len = 0
+        for path in self.batch_files:
+            try:
+                par, perp = read_vv_vh(path, split=True)
+                par = np.asarray(par, float)
+                perp = np.asarray(perp, float)
+                if self.flip:
+                    par, perp = perp, par
+                n = min(len(par), len(perp))
+                time = np.arange(n, dtype=float)
+                bp, bs = (
+                    compute_background_levels(par, perp, time, time + self.shift, self.background_region)
+                    if self.background
+                    else (0.0, 0.0)
+                )
+                p = np.maximum(par[:n] - bp, 0.0)
+                s = np.maximum(perp[:n] - bs, 0.0)
+                r_corr = compute_rt(
+                    p,
+                    shift_interp_on_axis(time, s, self.shift),
+                    float(g),
+                    l1=self.l1,
+                    l2=self.l2,
+                )
+                all_curves[Path(path).name] = r_corr
+                max_len = max(max_len, n)
+            except Exception:
+                pass
+        if not all_curves:
+            raise ValueError("Could not compute anisotropy for queued files.")
+        headers = ["time_ns"] + list(all_curves.keys())
+        time = np.arange(max_len, dtype=float) * self.fp_dt_ns
+        with Path(target_path).open("w") as f:
+            f.write(",".join(headers) + "\n")
+            for i in range(max_len):
+                row = [f"{time[i]:.4f}"]
+                for name, curve in all_curves.items():
+                    val = f"{curve[i]:.6f}" if i < len(curve) and np.isfinite(curve[i]) else "nan"
+                    row.append(val)
+                f.write(",".join(row) + "\n")
+        self.message = f"Exported {len(all_curves)} anisotropy curves to {Path(target_path).name}"
 
     def add_batch_paths(self, paths: list[str | Path]) -> int:
         """Queue .dat/.txt/.csv files and folders recursively into the batch."""

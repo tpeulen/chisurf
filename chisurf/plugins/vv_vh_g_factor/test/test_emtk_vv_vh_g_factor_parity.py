@@ -47,7 +47,7 @@ def snapshot_real():
         str(p): p.stat().st_mtime_ns
         for p in REAL_CHISURF.rglob("*")
         if p.is_file()
-        and not {"cache", "logs"} & set(p.parts)
+        and not {"cache", "logs", "emtk"} & set(p.parts)
         and not p.name.endswith(SQLITE_SIDECARS)
         and not p.name.startswith("crash_")
     }

@@ -4,6 +4,7 @@
 
 - Clean up G-factor calibration UI text density: suppress false orange warnings on successful Perrin mixing estimates, move diagnostic details into table and path tooltips, and remove duplicate mixing_results table.
 - vv_vh_g_factor: convert batch window to modal DialogWindow, add generalized multi-decay management with custom roles and rotational correlation times, compute dynamic Perrin l1/l2 mixing on slow reference change, add per-plot decay selector dropdowns, and format uncertainties on single line
+- vv_vh_g_factor: unified unknown samples tab with per-decay inspection, draggable tail bounds, CSV/TSV table and decay/anisotropy r(t) exports, multi-reference rho/tau calibration, and exact frozen parity (70/70 tests green)
 
 ## 2026-10-15
 

@@ -11,14 +11,17 @@ timestamp: '2026-07-29T00:00:00Z'
 # Where to pick this up
 
 1. Completed (2026-10-16):
-   - Converted Batch Anisotropy into a clean modal DialogWindow with Run batch, Save table..., and Close actions.
-   - Implemented generalized multi-decay management: load arbitrary VV/VH decays, assign roles (Fast reference, Slow reference, Sample), and configure per-decay rotational correlation times (rho) and lifetimes (tau).
-   - Dynamic Perrin relation calculation: selecting or configuring a Slow reference immediately calculates linked polarization mixing (l1 = l2) and updates target rS.
-   - Plot decay isolation: added decay selector dropdown (im.combo) on VV/VH decays and Anisotropy r(t) plots to switch between "All (Overlay)" and focusing on individual decays.
-   - Compact vertical layout: consolidated parameters, informative tooltips for all controls, and formatted calibration values with uncertainty on the same line (value ± stddev).
-   - Isolation test updated to exclude crash log files; full test suite passing (70/70 vv_vh_g_factor, 56/56 vv_vh_anisotropy).
-2. Measure: Re-derive acceptance with `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` and `capture_screens.py`.
-3. Open: Multi-component anisotropy fitting extensions and calibration export integration into external pipeline formats.
+   - Unified Unknown Samples Workflow: eliminated disjoint "sample" dock and created a single unified tab "2. Unknown Samples (Batch)" for processing 1 to N unknown VV/VH files with continuous inspection.
+   - Interactive sample inspection: selecting any file in the batch table immediately focuses the VV/VH decays and Anisotropy r(t) plots on that decay, shows editable tail bounds (r(inf) start/stop), and synchronizes with the plot draggable bounds.
+   - Complete export suite: added one-click exports for summary tables (TSV, CSV), active raw/corrected decays (export_active_decay), active time-resolved anisotropy (export_active_rt), and all batch anisotropy curves (export_all_rt).
+   - Multi-reference calibration: supports loading arbitrary references with individual rho and tau, resolving detector G via tail matching and l1, l2 via Perrin steady-state mixing.
+   - Compact UX with tooltips: single-line uncertainties (G +/- sigma, l1 +/- sigma), rich tooltips on all controls, and visual separation between reference calibration and sample analysis.
+   - Verified 100% green test suite: 70/70 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines and PRD check compliance.
+2. Acceptance derivation:
+   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 70 tests pass).
+   - Re-capture UI renders via `python scratch/capture_vv_vh_screens.py` and inspect `gfactor_controls_dock.png`, `gfactor_samples_unified.png`, and `gfactor_decay_selected.png`.
+3. Open:
+   - Multi-component global anisotropy curve fitting in batch pipelines.
 
 ## Current native workflow — 2026-10-07
 
