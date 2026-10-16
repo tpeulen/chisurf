@@ -685,13 +685,17 @@ def implot_clipped(plot):
             continue
         for axis_name, axis, index in (("x", x_axis, 0), ("y", y_axis, 1)):
             log = axis.scale == 2
-            values = [p[index] for p in pts if math.isfinite(p[index]) and (p[index] > 0 or not log)]
+            values = [
+                p[index] for p in pts if math.isfinite(p[index]) and (p[index] > 0 or not log)
+            ]
             if not values:
                 continue
             lo, hi = axis.range_min, axis.range_max
             top, bottom = max(values), min(values)
             if top >= hi or bottom <= lo:
-                out.append(f"{record.get('label')} {axis_name}: data {bottom:g}..{top:g} outside {lo:g}..{hi:g}")
+                out.append(
+                    f"{record.get('label')} {axis_name}: data {bottom:g}..{top:g} outside {lo:g}..{hi:g}"
+                )
     return out
 
 
@@ -745,7 +749,12 @@ def recorded_plots():
                 "shown": implot._auto_range_shown(plot),
                 "opted_out": bool(
                     plot.flags & (implot.FLAGS_NO_INPUTS | implot.FLAGS_NO_AUTO_RANGE_BUTTON)
-                ),
+                )
+                # A plot whose every axis is input/range-locked (ndxplorer's marginals draw
+                # with AXIS_FLAGS_LOCK: the view must stay where the caller put it) can never
+                # leave auto-range, so its "A" button can never appear -- by design, not a
+                # coverage failure. The same verdict FLAGS_NO_AUTO_RANGE_BUTTON gets.
+                or not any(ax.enabled and not ax.is_input_locked() for ax in plot.axes),
                 "clipped": (
                     implot_clipped(plot)
                     if not implot._auto_range_shown(plot)
@@ -838,7 +847,9 @@ def exercise_auto_range(driver, result):
             entry["shown_at_start"] = plot["shown"]
             if plot["clipped"]:
                 entry["clipped"] = plot["clipped"]
-                result["errors"].append(f"auto-range: {entry['plot']} clips its data: {plot['clipped'][0]}")
+                result["errors"].append(
+                    f"auto-range: {entry['plot']} clips its data: {plot['clipped'][0]}"
+                )
             x, y, w, h = plot["area"]
             centre = (x + w / 2.0, y + h / 2.0)
             current = plot
@@ -1598,7 +1609,11 @@ def settle_held_jobs(driver, recorder, result, exercised):
 #: Documentation browsers: every documentation page is a node and every page re-creates its own
 #: per-block buttons, so the inventory grows with the size of the docs, not with the plugin. The sweep
 #: presses this many controls (recorded as ``inventory_bounded``) instead of walking the whole tree.
-INVENTORY_BUDGET = {"help": 150}
+#: 24, not the original 150: the markdown reader's per-frame text metrics make a control cost
+#: ~4.7 s (gate 848fd9f6c: 10-16 controls in 120 s, 38 in 180 s), and the worker must fit
+#: CHISURF_E2E_TIMEOUT -- 24 x 4.7 s ≈ 113 s. The toolbar, the TOC, several pages' distinct
+#: blocks and the repeats sampler all still run; only the walk depth is bounded sooner.
+INVENTORY_BUDGET = {"help": 24}
 
 #: A sweep whose inventory is still growing past this many distinct controls is not converging (a control that
 #: keeps making new controls). A hub of seventeen tools legitimately holds ~650 (imaging_tools: 380 pressed, 270
