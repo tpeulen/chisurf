@@ -40,6 +40,7 @@ offered here.
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Callable
@@ -550,6 +551,14 @@ class EmtkShellApp(ImApp):
         self.docks.focus("tools")
         self.docks.focus("console")
         self.docks.focus("workspace")
+        try:
+            from chisurf.core.system_info import process_usage
+
+            self._usage_at, self._usage = time.monotonic(), process_usage()
+            if self._usage is not None:
+                self._usage_history = [self._usage]
+        except Exception:
+            pass
         # Last: the session's worker imports while it starts, so nothing of the shell may still be
         # importing on this thread when it begins (see :meth:`DataDocks.start`).
         self.data.start()
@@ -1589,25 +1598,32 @@ class EmtkShellApp(ImApp):
 
         if getattr(self, "_system_lines", None) is None:
             self._system_lines = system_info_lines()
-            self._usage_at, self._usage = 0.0, None
+            self._usage_at = 0.0
+            self._usage = None
             self._usage_history: list[tuple[float, float]] = []
         now = time.monotonic()
-        if now - self._usage_at > 1.0:
-            self._usage_at, self._usage = now, process_usage()
+        if now - getattr(self, "_usage_at", 0.0) >= 1.0 or getattr(self, "_usage", None) is None:
+            self._usage_at = now
+            self._usage = process_usage()
             if self._usage is not None:
-                self._usage_history = (self._usage_history + [self._usage])[
-                    -self.WATERMARK_SAMPLES :
-                ]
+                history = getattr(self, "_usage_history", [])
+                self._usage_history = (history + [self._usage])[-self.WATERMARK_SAMPLES :]
+
         # Under the workspace's tab strip too (where its floating windows may go), not on it.
         x, y, w, h = (float(v) for v in self.docks.floating_bounds())
         style = im.get_style()
         dark = is_dark(style.color(im.Col.WINDOW_BG))
-        # Faint: the Qt panel's translucent black (96/255) under half-transparent text.
-        panel = (0.0, 0.0, 0.0, 96 / 255) if dark else (0.0, 0.0, 0.0, 24 / 255)
-        ink = (1.0, 1.0, 1.0, 0.45) if dark else (0.0, 0.0, 0.0, 0.45)
+        panel = (0, 0, 0, 96) if dark else (0, 0, 0, 24)
+        ink = (255, 255, 255, 120) if dark else (0, 0, 0, 120)
+        track_fill = (255, 255, 255, 18) if dark else (0, 0, 0, 15)
+        track_border = (255, 255, 255, 42) if dark else (0, 0, 0, 35)
+        colours = (
+            (100, 180, 220, 245),  # CPU: bright cyan/blue
+            (100, 200, 100, 245),  # Mem: bright green
+        )
         im.push_font_scale(0.85)
         try:
-            line_h = im.get_text_line_height()
+            line_h = max(im.get_text_line_height(), 13.0)
             rows: list[tuple[str, int]] = []  # (text, sparkline index or -1)
             if self._usage is not None:
                 cpu, mem = self._usage
@@ -1623,21 +1639,32 @@ class EmtkShellApp(ImApp):
             bx, by = x + w - box_w - 10.0, y + 10.0
             draw = im.get_window_draw_list()
             draw.add_rect_filled((bx, by), (bx + box_w, by + box_h), panel, 3.0)
-            colours = ((100 / 255, 180 / 255, 220 / 255, 0.9), (100 / 255, 200 / 255, 100 / 255, 0.9))
             for row, (text, spark) in enumerate(rows):
                 ty = by + pad + row * line_h
                 tx = bx + pad + (spark_w + pad if spark >= 0 else 0.0)
                 draw.add_text((tx, ty), ink, text)
-                history = [sample[spark] for sample in self._usage_history] if spark >= 0 else []
-                if len(history) > 1:
-                    top = max(max(history), 1e-9)
-                    step = spark_w / (self.WATERMARK_SAMPLES - 1)
-                    x0 = bx + pad + spark_w - step * (len(history) - 1)
-                    points = [
-                        (x0 + i * step, ty + line_h - 2.0 - (v / top) * (line_h - 4.0))
-                        for i, v in enumerate(history)
-                    ]
-                    draw.add_polyline(points, colours[spark], 0, 1.0)
+                if spark >= 0:
+                    history = [sample[spark] for sample in getattr(self, "_usage_history", [])]
+                    gx = bx + pad
+                    gy = ty + 1.0
+                    gh = max(4.0, line_h - 3.0)
+                    draw.add_rect_filled((gx, gy), (gx + spark_w, gy + gh), track_fill, 2.0)
+                    draw.add_rect((gx, gy), (gx + spark_w, gy + gh), track_border, 2.0)
+                    if history:
+                        top = max(100.0, max(history)) if spark == 0 else max(max(history) * 1.15, 50.0)
+                        step = spark_w / max(self.WATERMARK_SAMPLES - 1, 1)
+                        if len(history) < 2:
+                            y_val = gy + gh - 1.0 - (history[0] / top) * (gh - 2.0)
+                            points = [(gx + 1.0, y_val), (gx + spark_w - 1.0, y_val)]
+                        else:
+                            x0 = gx + spark_w - step * (len(history) - 1)
+                            points = [
+                                (x0 + i * step, gy + gh - 1.0 - (v / top) * (gh - 2.0))
+                                for i, v in enumerate(history)
+                            ]
+                            if x0 > gx + 1.0:
+                                points.insert(0, (gx + 1.0, points[0][1]))
+                        draw.add_polyline(points, colours[spark], 0, 1.5)
             self.item_rects["system_info"] = (bx, by, box_w, box_h)
         finally:
             im.pop_font_scale()
@@ -1918,6 +1945,9 @@ class EmtkShellApp(ImApp):
     def next_frame_in(self):
         delays = [super().next_frame_in(), self.project.next_frame_in()]
         delays += [app.next_frame_in() for _key, app, _box in self._drawn.values()]
+        now = time.monotonic()
+        usage_age = now - getattr(self, "_usage_at", 0.0)
+        delays.append(max(0.05, 1.0 - usage_age))
         return min((delay for delay in delays if delay is not None), default=None)
 
     # ── persistence ───────────────────────────────────────────────────────

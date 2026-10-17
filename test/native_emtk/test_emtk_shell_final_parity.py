@@ -39,6 +39,9 @@ def test_the_watermark_is_drawn_in_the_workspace_background_under_the_fits():
         bx, by, bw, _bh = shell.item_rects["system_info"]
         wx, wy, ww, _wh = shell.docks.floating_bounds()
         assert abs((bx + bw) - (wx + ww - 10.0)) < 1.0 and abs(by - (wy + 10.0)) < 1.0
+        assert any(s.startswith("CPU: ") for s in strings)
+        assert any(s.startswith("Mem: ") for s in strings)
+        assert len(shell._usage_history) >= 1
         # A window floating in the workspace is drawn after (over) the watermark.
         shell.docks.add_window(
             "fit.x", "Fit X", lambda box: im.text_unformatted("FIT BODY"),
@@ -49,6 +52,29 @@ def test_the_watermark_is_drawn_in_the_workspace_background_under_the_fits():
         assert order.index(f"Python: {platform.python_version()}") < order.index("FIT BODY")
     finally:
         shell.close()
+
+
+def test_watermark_live_usage_accumulates_and_advances():
+    """Live process usage (CPU %, resident memory) is measured and history accumulates across frames."""
+    import time
+
+    shell = EmtkShellApp({}, loader=lambda plugin_id: None, console_history=False,
+                         console_session_file=False)
+    try:
+        driver = Driver(shell, (1440, 900))
+        driver.frame(1)
+        assert len(shell._usage_history) == 1
+        cpu, mem = shell._usage_history[0]
+        assert cpu >= 0.0
+        assert mem > 0.0
+
+        # Simulate 1.5 seconds elapsed to trigger usage update on subsequent frame
+        shell._usage_at = time.monotonic() - 1.5
+        driver.frame(1)
+        assert len(shell._usage_history) == 2
+    finally:
+        shell.close()
+
 
 def test_the_pda_editor_draws_its_binning_labels_and_light_path_note_readably():
     """The PDA editor drew ``x<sub>min</sub>`` with its tags, and typeset the light-path note

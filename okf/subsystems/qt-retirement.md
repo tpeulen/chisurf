@@ -273,7 +273,12 @@ own startup stages (item 5): S5 is done.
     Owner follow-ups the same day: a tool wider than its dock (never placed by the user) opens floating at its
     declared size; the system-info watermark is drawn in the workspace background (emtk 0.1.15
     `DockManager.workspace_background`); every new fit opens as a cascaded window inside the workspace, a tab
-    only while the fits are tabbed (`test_emtk_shell_fit_windows.py`). Open, cosmetic: the global parameter
+    only while the fits are tabbed (`test_emtk_shell_fit_windows.py`). Follow-up 2026-10-17: live CPU/memory
+    usage tracking and sparklines are fully hooked up (`chisurf/core/system_info.py`, `chisurf/emtk/main_app.py`);
+    `psutil.Process` instance caching prevents 0% CPU readouts, draw lists receive 0..255 integer RGBA tuples so
+    track and polylines are visible, and `next_frame_in` requests frames on a 1.0s cadence for live monitoring.
+    Open, cosmetic: the global parameter
+
     table drops columns at the default width (known issues). Traps: (a) the IBH `decay_fit` files carry no channel width -- set the reader's `dt` to
     0.0141 ns in *both* shells or the TCSPC fit lands on nonsense in both; (b) headless on private RPC ports the
     Qt fit window never gets `fit.ran`, so it shows the pre-fit curve until `window.update()` -- a harness

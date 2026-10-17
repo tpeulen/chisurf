@@ -14,6 +14,7 @@ import logging
 import os
 import platform
 from importlib import metadata
+from typing import Any
 
 
 def _version(distribution: str) -> str | None:
@@ -81,6 +82,9 @@ def system_info_lines() -> list[str]:
     return lines
 
 
+_PROCESS_CACHE: dict[int, Any] = {}
+
+
 def process_usage() -> tuple[float, float] | None:
     """``(cpu percent, resident memory in MB)`` of this process and its children.
 
@@ -93,19 +97,38 @@ def process_usage() -> tuple[float, float] | None:
     try:
         import psutil
 
-        process = psutil.Process()
-        members = [process]
+        main_pid = os.getpid()
+        if main_pid not in _PROCESS_CACHE:
+            _PROCESS_CACHE[main_pid] = psutil.Process(main_pid)
+            _PROCESS_CACHE[main_pid].cpu_percent(None)
+
+        main_proc = _PROCESS_CACHE[main_pid]
+        current_pids = {main_pid}
         try:
-            members += process.children(recursive=True)
+            for child in main_proc.children(recursive=True):
+                pid = child.pid
+                current_pids.add(pid)
+                if pid not in _PROCESS_CACHE:
+                    _PROCESS_CACHE[pid] = child
+                    child.cpu_percent(None)
         except Exception:  # noqa: BLE001
             pass
-        cpu = mem = 0.0
-        for member in members:
+
+        for pid in list(_PROCESS_CACHE):
+            if pid not in current_pids:
+                _PROCESS_CACHE.pop(pid, None)
+
+        cpu = 0.0
+        mem = 0.0
+        for pid, proc in list(_PROCESS_CACHE.items()):
             try:
-                cpu += member.cpu_percent(interval=None)
-                mem += member.memory_info().rss / 1024.0**2
-            except Exception:  # noqa: BLE001 - a child that ended
-                continue
+                cpu += proc.cpu_percent(interval=None)
+                mem += proc.memory_info().rss / 1024.0**2
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                _PROCESS_CACHE.pop(pid, None)
+            except Exception:  # noqa: BLE001
+                pass
+
         return cpu, mem
     except Exception:  # noqa: BLE001 - psutil is optional
         return None

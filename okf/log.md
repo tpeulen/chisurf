@@ -1,5 +1,9 @@
 # Update Log
 
+## 2026-10-17
+
+- emtk shell: live CPU/memory tracking with cached psutil processes, integer RGBA sparklines, tracks, and 1s cadence refresh
+
 ## 2026-10-16
 
 - Final Qt-vs-emtk parity pass, capture half: every plugin GUI (120) opened in both the `--qt`
