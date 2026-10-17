@@ -10,30 +10,28 @@ timestamp: '2026-07-29T00:00:00Z'
 
 # Where to pick this up
 
-1. Completed (2026-10-16):
-   - Selected Batch Decays Plotting Mode: in batch analysis mode (`is_batch_mode`), the Decays, Anisotropy $r(t)$, and Ratio plots exclusively render the decay(s) currently selected in the batch table (`Selected in table`) or explicitly chosen from the sample dropdown, eliminating trace clutter from unselected batch files and reference standards. Added row selection binding (`select_batch`, `selected_batch_records`, `selected_batch_files`) to the AutoForm `data_table`.
-   - Steady-State Anisotropy r(SS) Determination in Batch Analysis: calculates steady-state anisotropy $r_{SS} = \frac{S_{VV} - G \cdot S_{VH}}{S_{VV}(1 - 3 l_2) + (2 - 3 l_1) G \cdot S_{VH}}$ for unknown batch samples using calibrated instrumental parameters ($G, l_1, l_2$) determined by the reference standards, with per-sample background subtraction.
-   - Batch Data Table & Export Parity: exposed `r_ss` (`r(SS)`) as a key primary column in the batch data table and in TSV/CSV export routines (`export_batch`, `export_batch_csv`, `save_sample_outputs`). Added `r(SS)` display field to the active sample inspection panel.
-   - Core Math Function: added `compute_steady_state_anisotropy(sp, ss, g_factor, l1, l2)` to `chisurf.plugins.vv_vh_g_factor.core.calculations` with unit test coverage.
-   - Reference vs Instrumental Parameters Split: separated per-sample reference standard properties (`rho`, `tau`, `r0`, `BG VV`, `BG VH`, `Tail match`) into the dedicated Reference Parameters table, completely eliminating duplicated `rho`, `tau`, and `r0` from the general table.
-   - Instrumental Calibration Table: reserved the Instrumental Parameters table strictly for instrument-level calibration constants (`G`, `l1`, `l2`, `dt`, `Tail start/stop`, `BG start/stop`, `Shift`, `BG sub`, `Flip`).
-   - Abbreviated Parameter Labels: replaced long verbose descriptions with standardized concise abbreviations (`BG VV`, `BG VH`, `BG start`, `BG stop`, `BG sub`, `Shift`, `Flip`, `dt`).
-   - Declarative Context Menus: added right-click context menus (`Remove`, `Set as tail match`, `Clear all`) to the reference parameters table, batch files list, and batch results table for interactive management of samples.
-   - Eliminated Duplicate Controls: removed redundant bottom panels (`Channels`, `Tail matching`, `Polarization mixing`) below the calibration parameters table, ensuring the fitting parameters table is the single source of truth for parameter viewing and editing.
-   - Standard Fitting Parameter Table: adopted ChiSurf's standard `FittingParameterGroup` and `FittingParameter` table schema (`Parameter`, `Value`, `Fixed`, `Error`) backed by live parameter objects from `chisurf.core.fitting.parameter`. Implemented custom `__deepcopy__` to cleanly isolate C++ SWIG `GraphPort` bindings during model snapshots.
-   - Interactive Parameter Editing & Fixed Overrides: inline cell editing supports direct numeric changes as well as toggling the `Fixed` checkbox to lock/override parameters (`manual_g`, `manual_l`, `manual_tau`, `manual_rs`).
-   - Decluttered UI Layout: stripped redundant text descriptions from table columns into tooltips; unified toolbar into compact 1-2 row buttons with concise captions (`Load...`, `Slow...`, `Example`, `MMFDB...`, `Batch ->`, `Export...`, `Archive`, `Stop`, `Help`, `Guide`); removed redundant inline labels (`Selected: ... Tail G Remove`).
-   - In-Place Reference Standards Editing: updated `Reference standards` table (`source: "reference_rows"`, `editable: true`, `edited_call: "edit_reference"`) supporting direct double-click editing of rotational correlation times $\rho$ [ns], fluorescence lifetimes $\tau$ [ns], limiting anisotropy $r_0$, and interactive checkbox toggling for tail-matching standard assignment.
-   - MMFDB Universal Selection Endpoint: added Section 8 to `okf/prds/prd-10.md` formalizing MMFDB dataset picker endpoints; added `Database...` action button to load reference standard decays directly from MMFDB database.
-   - Time-resolved VV/VH Ratio Plot: added dedicated `[VV/VH ratio (G-factor)]` dock tab plotting raw and background-corrected / shifted intensity ratio $I_{VV}(t)/I_{VH}(t)$, a horizontal baseline at $y = G$, shaded tail matching region with interactive draggable boundary lines, and CSV export via `export_active_ratio`.
-   - Unified Unknown Samples Workflow: single unified tab "Unknown Samples (Batch)" for processing 1 to N unknown VV/VH files with interactive sample decay and anisotropy inspection.
-   - Verified 100% green test suite: 76/76 tests passing hermetically in `chisurf/plugins/vv_vh_g_factor/test/`, including exact numerical parity against frozen Qt baselines and batch mode selective decay plotting.
-   - Headless visual inspection: captured and verified `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`, and `gfactor_batch_dock.png`.
-2. Acceptance derivation:
-   - Run `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` (all 76 tests pass).
-   - Re-capture UI renders via `python scratch/capture_gfactor.py` and inspect `gfactor_batch_dock.png`.
-3. Open:
-   - Multi-component global anisotropy curve fitting in batch pipelines.
+1. Open: multi-component global anisotropy curve fitting in batch pipelines (the
+   single remaining feature gap; everything else below shipped 2026-10-16).
+2. Measure: `pytest chisurf/plugins/vv_vh_g_factor/test/ -q` — 76/76 green, including
+   numerical parity against the frozen Qt baselines and batch-mode selective decay
+   plotting.
+3. Measure: re-capture UI renders via `python scratch/capture_gfactor.py` and inspect
+   `gfactor_controls_dock.png`, `gfactor_ratio_dock.png`, `gfactor_anisotropy_dock.png`,
+   `gfactor_batch_dock.png` after any layout-touching change.
+4. Open: the page's fit parameters are model-local `FittingParameter`s mutated directly
+   (19 sites, `gui/model.py`) — migrate the page onto the `FittingClient` adapter to
+   retire its `EXPECTED_VIOLATIONS` entry (see `test_forbidden_communication.py`).
+
+Delivered 2026-10-16 (full detail in the T-20261016-01/02 and T-20261015-01..03 board
+entries): batch-mode selective decay plotting with table-row binding; steady-state
+anisotropy r(SS) with calibrated G/l1/l2 and per-sample background; r(SS) in the batch
+table and TSV/CSV export; `compute_steady_state_anisotropy` in core.calculations;
+reference-vs-instrumental parameter tables split; standardized `FittingParameterGroup`
+table with inline editing, Fixed toggles and manual overrides; context menus on all
+tables; single-table decluttered layout with tooltip-carried descriptions; in-place
+reference-standards editing; MMFDB `Database...` reference loading (PRD-10 §8);
+time-resolved VV/VH ratio dock with draggable tail bounds and CSV export; unified
+"Unknown Samples (Batch)" tab.
 
 ## Current native workflow — 2026-10-07
 

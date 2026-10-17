@@ -43,6 +43,11 @@ EXPECTED_VIOLATIONS: dict[str, int] = {
     "chisurf/gui/main.py": 2,
     # cs.run(...) of the detector-setup macro lines, recorded by the console history.
     "chisurf/gui/widgets/experiments/ics.py": 1,
+    # The G-factor calculator builds its OWN fit-page parameters (FittingParameter
+    # constructed in the model, model.py:107-110) and syncs them each frame — no
+    # session fit is reached through cs/chisurf. Migrating the page onto the
+    # FittingClient adapter retires this entry; see PRD-154 follow-ups.
+    "chisurf/plugins/vv_vh_g_factor/gui/model.py": 19,
 }
 
 # Files that are entirely exempt from scanning
