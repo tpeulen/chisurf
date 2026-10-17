@@ -212,6 +212,17 @@ def action_caption(key: str, icon: str | None = None) -> str:
     return icon_label(action.icon if icon is None else icon, tr(action.label))
 
 
+def help_close_caption() -> str:
+    """The drawn close control of a help/guide window: the title-bar border glyph.
+
+    Since emtk 9753aeb the :class:`~chisurf.emtk.help_guide.EmTkHelpWindow` closes via
+    the dialog header's ``×`` (plus Escape); it no longer draws a ``"✕  Close"`` content
+    button. Dialogs draw over everything else, so in a frame with the help window open
+    the LAST ``×`` in the drawn texts is its close control.
+    """
+    return "×"
+
+
 def action_tooltip(key: str, tooltip: str | None = None, shortcut: str | None = None) -> str:
     """The translated tooltip of action *key*: the canonical one, or *tooltip* where the action allows it.
 

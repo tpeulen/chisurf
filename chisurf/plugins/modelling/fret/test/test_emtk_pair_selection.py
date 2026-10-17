@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.modelling.fret.core.pair_run import PairParams, run_pair_selection
 from chisurf.plugins.modelling.fret.gui.pair_selection_app import PATH_ROWS, make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import CTRL_A, Ui
@@ -451,7 +451,7 @@ def test_help_opens_and_closes(inputs):
     ui = Ui(make_app(), (1200, 800))
     ui.click("help")
     assert ui.app.help_window.open and ui.shown("Optimal FRET pair selection")
-    ui.press_text(action_caption("close"))
+    ui.press_text(help_close_caption(), nth=-1)
     assert not ui.app.help_window.open
     ui.app.close()
 

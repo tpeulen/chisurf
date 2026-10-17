@@ -25,14 +25,12 @@ import pytest
 from native_window import process_events
 
 
-
-
 @pytest.fixture
 def loaded():
     """Build a window with a small map, its view model, and the panel."""
     from chimol.core.model.volume import VolumeGrid
-    from native_window import NativeWindow
     from chimol.plugins.density.window import DensityWindow
+    from native_window import NativeWindow
 
     win = NativeWindow()
     win.resize(900, 640)
@@ -243,8 +241,8 @@ def test_an_unknown_mode_is_refused(loaded):
 
 def test_the_panel_says_so_when_there_is_no_map():
     """It must not draw a histogram of nothing."""
-    from native_window import NativeWindow
     from chimol.plugins.density.window import DensityWindow
+    from native_window import NativeWindow
 
     win = NativeWindow()
     for _ in range(3):

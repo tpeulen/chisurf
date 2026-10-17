@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.fcs.fcs_filter_calculator.gui.app import create_app
 
 from .driving import BIG, SMALL, FilterDriver, hermetic_env
@@ -181,14 +181,14 @@ def test_stop_is_clickable_while_a_compute_runs_and_discards_it(drv, monkeypatch
 def test_guide_help_buttons_and_the_tour(drv):
     drv.click("help")
     window = drv.app.help
-    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
+    assert window.open and {"Start Guided Tour", help_close_caption()} <= set(
         drv.draw(2).strings
     )
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.click("help")
-    drv.click_text(action_caption("close"))
+    drv.click_text(help_close_caption(), last=True)
     assert not window.open
     drv.click("help")
     drv.escape()

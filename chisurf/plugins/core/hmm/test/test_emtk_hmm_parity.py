@@ -21,7 +21,7 @@ from emtk import keys
 
 from chisurf.plugins.core.hmm.gui.app import HmmApp, make_app
 from chisurf.plugins.core.hmm.gui.view_model import HmmViewModel
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 
 PLUGIN = Path(__file__).parent.parent
@@ -492,7 +492,7 @@ def test_set_traces_is_the_seam_other_tools_use(ui):
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_name("help")
     assert ui.app.help_window.open
-    ui.click_text(action_caption("close"))
+    ui.click_text(help_close_caption())
     assert not ui.app.help_window.open
     repo = next(p for p in PLUGIN.parents if (p / "pyproject.toml").exists())
     links = re.findall(r"\]\((docs/[^)#]+)", (PLUGIN / "gui" / "help.md").read_text())

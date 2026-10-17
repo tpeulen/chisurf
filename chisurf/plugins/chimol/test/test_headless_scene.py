@@ -192,9 +192,9 @@ def test_apply_payload_makes_the_viewer_non_empty():
     geometry appeared, and only the colour was missing.
     """
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     viewer = native_viewer(renderer_factory=SceneSink)
     _structure, payload = load_structure_payload(_PDB)

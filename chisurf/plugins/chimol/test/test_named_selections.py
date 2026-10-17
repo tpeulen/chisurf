@@ -25,7 +25,6 @@ import numpy as np
 import pytest
 
 
-
 @pytest.fixture
 def window(tmp_path):
     from native_window import NativeWindow

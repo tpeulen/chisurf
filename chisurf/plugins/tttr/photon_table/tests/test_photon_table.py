@@ -128,10 +128,10 @@ def test_markers_of_a_file_that_is_no_scan_are_other_markers():
 
 
 def test_the_kinds_are_declared_once_with_vocabulary_colours():
+    import tttrlib
+
     from chisurf.emtk.task_colors import categories
     from chisurf.plugins.tttr.photon_table.core.model import record_kinds
-
-    import tttrlib
 
     if not hasattr(tttrlib, "CLSM_RECORD_PHOTON"):
         pytest.skip("tttrlib predates CLSMRecordKind: rebuild tttrlib")

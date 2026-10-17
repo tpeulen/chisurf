@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.microscopy.imaging_tools.gui.app import PANELS, ImagingToolsApp
 
@@ -236,7 +236,7 @@ def test_the_source_and_hdf5_lines_follow_the_shared_context(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click_text("Help")
-    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
+    assert window.open and {"Start Guided Tour", help_close_caption()} <= set(
         drv.draw(2).strings
     )
     assert "Close Help" not in set(drv.draw(2).strings)
@@ -245,7 +245,7 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.app.tour.stop()
     drv.draw(2)
     drv.click_text("Help")
-    drv.click_text(action_caption("close"))
+    drv.click_text(help_close_caption(), last=True)
     assert not window.open
     drv.click_text("Help")
     drv.escape()

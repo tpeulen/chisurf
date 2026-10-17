@@ -23,8 +23,8 @@ import math
 import numpy as np
 import pytest
 from chimol.core.model.atoms_util import _bead_mask, _is_bead_model
-from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
+from native_window import native_viewer
 
 
 # --------------------------------------------------------------------------- #

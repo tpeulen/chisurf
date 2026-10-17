@@ -20,7 +20,7 @@ from chisurf.plugins.calculator.rics_precision.test.test_emtk_rics_parity import
     QT_ROWS,
     QT_STATUS,
 )
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 
 
 @pytest.fixture
@@ -278,8 +278,8 @@ def test_panel_headers_fold_and_unfold(ui, title, field, open_at_first):
 # -- Guide and Help ------------------------------------------------------------------------------------------
 def test_help_button_opens_and_closes_the_help_window(ui):
     ui.click(action_caption("help"))
-    assert ui.app.help_window.open and ui.drawn(action_caption("close"))
-    ui.click(action_caption("close"))
+    assert ui.app.help_window.open and ui.drawn(help_close_caption())
+    ui.click(help_close_caption(), nth=-1)
     assert not ui.app.help_window.open
 
 

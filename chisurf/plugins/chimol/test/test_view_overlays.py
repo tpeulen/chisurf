@@ -4,11 +4,10 @@ from types import MethodType
 
 import numpy as np
 from chimol.core.viewer import Viewer
-from native_window import native_viewer
 from chimol.geometry.surface import (
     _generate_surface_mesh_from_points,
 )
-
+from native_window import native_viewer
 
 
 def test_add_point_overlay_updates_dict():

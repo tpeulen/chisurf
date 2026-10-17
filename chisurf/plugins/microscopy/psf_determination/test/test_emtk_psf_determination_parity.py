@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.emtk_test_input import CTRL, SIZE, SMALL, Driver
 from chisurf.plugins.microscopy.psf_determination.gui.app import PsfDeterminationApp, make_app
 from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
@@ -527,7 +527,7 @@ def test_the_host_settings_seam_round_trips(demo):
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_name("help")
     assert ui.app.help_window.open
-    ui.click_text(action_caption("close"))
+    ui.click_text(help_close_caption())
     assert not ui.app.help_window.open
     repo = next(p for p in PLUGIN.parents if (p / "pyproject.toml").exists())
     links = re.findall(r"\]\((docs/[^)#]+)", (PLUGIN / "gui" / "help.md").read_text())

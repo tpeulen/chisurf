@@ -18,7 +18,7 @@ import pytest
 
 from chisurf.core.fio.image import imwrite
 from chisurf.core.fluorescence.imaging import frc as frc_mod
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import (
     Driver,
     assert_fingerprint,
@@ -891,7 +891,7 @@ def test_the_wheel_scrolls_the_settings_window_when_the_form_is_taller_than_it(a
 def test_help_button_opens_the_help_and_its_buttons_work(app, drv):
     drv.click("help")
     assert app.help_window.open
-    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not app.help_window.open and app.tour.active
     app.tour.stop()

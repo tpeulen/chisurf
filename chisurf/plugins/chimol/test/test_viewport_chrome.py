@@ -22,7 +22,6 @@ import pathlib
 import shutil
 
 import pytest
-
 from chimol.ui.gui import InternalGui
 
 

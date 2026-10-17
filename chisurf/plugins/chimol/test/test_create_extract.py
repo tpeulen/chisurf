@@ -37,8 +37,8 @@ def session():
     """Build a fresh viewer with 148L loaded, plus a command interpreter over it."""
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
+    from native_window import native_viewer
 
     view = native_viewer()
     view.add_structure(

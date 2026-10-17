@@ -14,7 +14,6 @@ one — and only one of them exists in a browser.
 from __future__ import annotations
 
 import pytest
-
 from emtk.keys import KEY_TAB
 from emtk.widgets.command_line import CommandLine
 

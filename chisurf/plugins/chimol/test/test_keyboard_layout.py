@@ -31,7 +31,6 @@ the page, which must pass on the character the layout produced, untouched.
 from __future__ import annotations
 
 
-
 def test_the_browser_host_passes_the_character_the_page_produced():
     """The browser path. `KeyboardEvent.key` is layout-aware and already
     shifted, so the page's text reaches the renderer untouched -- through

@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.microscopy.clsm.gui.app import ClsmApp
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
@@ -240,7 +240,7 @@ def test_help_guide_and_the_tour_is_walked(empty):
     ui = empty
     ui.click("help")
     assert ui.app.help.open
-    ui.press_text(action_caption("close"))
+    ui.press_text(help_close_caption(), nth=-1)
     ui.click("guide")
     assert ui.app.tour.active
     steps = len(ui.app.tour.steps)

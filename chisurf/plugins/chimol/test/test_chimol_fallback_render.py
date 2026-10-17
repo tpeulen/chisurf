@@ -16,8 +16,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 from chimol.core.viewer import _DISPLAY_CONFIG, Viewer
-from native_window import native_viewer  # noqa: E402
 from chimol.io.structure import _parse_pdb_backbone
+from native_window import native_viewer  # noqa: E402
 
 _PDB = (
     Path(__file__).resolve().parents[4]

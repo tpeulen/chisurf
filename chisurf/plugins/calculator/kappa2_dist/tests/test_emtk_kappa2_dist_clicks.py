@@ -13,7 +13,7 @@ import pytest
 from emtk import keys
 
 from chisurf.emtk import job_gate
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 
 from .test_emtk_kappa2_dist_verify import (  # noqa: F401  (hermetic is an autouse fixture)
     REPO,
@@ -310,7 +310,7 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     window = app.kappa2_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(painter.strings)
     assert "Close Help" not in set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.kappa2_gui.tour.active
@@ -318,7 +318,7 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     press_text(app, "Help")
     click(
         app,
-        text_rect(draw(app), action_caption("close"), last=False),
+        text_rect(draw(app), help_close_caption(), last=True),
     )
     assert not window.open
     press_text(app, "Help")

@@ -16,7 +16,7 @@ import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.fcs.fcs_correlator.correlator_model import CorrelatorSettingsModel
 from chisurf.plugins.fcs.fcs_correlator.demo import make_demo
 from chisurf.plugins.fcs.fcs_correlator.filter_model import FilterSettingsModel
@@ -367,7 +367,7 @@ def test_help_guide_and_the_tour_waits_for_the_user():
     hub = _hub()
     hub.click("help")
     assert hub.app.help.open
-    hub.press_text(action_caption("close"))
+    hub.press_text(help_close_caption(), nth=-1)
     hub.click("guide")
     tour = hub.app.tour
     assert tour.active and len(tour.steps) >= 5

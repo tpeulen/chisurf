@@ -90,9 +90,9 @@ def test_a_library_loads_and_conformers_are_placed_and_clash_filtered(tmp_path):
 
 def test_add_dye_with_a_rotamer_library_makes_an_av_object(tmp_path):
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     lib_path = tmp_path / "dye.pdb"
     _write_library(lib_path, reach=6.0)
@@ -235,10 +235,10 @@ def test_imp_bff_add_dye_and_distance_in_viewer(tmp_path):
         pytest.skip("IMP.bff not available")
 
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.plugins.labelling.distance import Distance
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)
@@ -276,7 +276,6 @@ def test_imp_bff_add_dye_and_distance_in_viewer(tmp_path):
 
 def test_switch_model_rotamer_or_av_default():
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.plugins.labelling.dyes import (
         adapt_dye_model,
@@ -286,6 +285,7 @@ def test_switch_model_rotamer_or_av_default():
     )
     from chimol.plugins.labelling.wizard import LabellingRunner, LabellingWizard
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     # 1. Spec parsing with default (AV) and explicit switch
     p_default = parse_dye_spec("Alexa488")

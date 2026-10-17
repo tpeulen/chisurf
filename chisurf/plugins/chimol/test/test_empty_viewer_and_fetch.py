@@ -28,7 +28,6 @@ import pytest
 from chimol.commands.builtin.selection import _NOTHING_LOADED
 
 
-
 @pytest.fixture
 def session():
     """A plugin window with the shared command object attached to it."""

@@ -13,8 +13,6 @@ import struct
 
 import numpy as np
 import pytest
-
-
 from chimol.core.model.volume import VolumeGrid
 from chimol.io.mesh_export import (
     scene_mesh_objects,
@@ -22,7 +20,6 @@ from chimol.io.mesh_export import (
     write_stl,
     write_wrl,
 )
-
 
 
 @pytest.fixture

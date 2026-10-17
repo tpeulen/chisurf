@@ -20,7 +20,6 @@ import numpy as np
 import pytest
 from native_window import process_events
 
-
 #: Deliberately the multi-chain fixture: a single-chain structure cannot tell a
 #: chain-aware lookup from an id-only one, which is how the bug survived.
 PDB = (

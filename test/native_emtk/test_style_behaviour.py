@@ -31,7 +31,7 @@ def test_style_new_save_apply_reset_flow(style_app):
     app.model.apply_callback = applied.append
 
     app.model.new("parity_test", discard=True)
-    target = styles_dir / "parity_test.qss"
+    target = styles_dir / "parity_test.css"
     app.model.save(target, overwrite=True)
     assert target.exists(), "save wrote no style file"
 
@@ -45,12 +45,12 @@ def test_style_new_save_apply_reset_flow(style_app):
 
 
 def test_style_new_creates_the_qss_file_like_qt(style_app):
-    """Qt's on_new_file writes <name>.qss into the styles directory; so must new()."""
+    """Qt's on_new_file writes <name>.css into the styles directory; so must new()."""
     app, styles_dir = style_app
     ok = app.model.new("session", discard=True)
     assert ok is not False
-    assert (styles_dir / "session.qss").exists(), (
-        "new() must create the .qss file like the Qt dialog flow"
+    assert (styles_dir / "session.css").exists(), (
+        "new() must create the .css file"
     )
     # Recreating over an existing file is guarded, exactly like Qt's existence check.
     assert app.model.new("session", discard=False) is False

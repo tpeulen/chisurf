@@ -18,7 +18,7 @@ from emtk import keys
 from emtk.testing import RecordingPainter
 
 from chisurf.plugins.burst.accurate_fret.gui.app import create_app
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 
 from .test_accurate_fret_plugin import TAU_D0
 from .test_emtk_accurate_fret_parity import _bursts
@@ -518,13 +518,13 @@ def test_help_button_opens_the_help_window_whose_buttons_work(app):
     window = app.accurate_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(painter.strings)
     assert "Close Help" not in set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.accurate_gui.tour.active
     app.accurate_gui.tour.stop()
     click(app, rect_of(app, "help"))
-    click(app, text_rect(draw(app), action_caption("close"), last=False))
+    click(app, text_rect(draw(app), help_close_caption(), last=True))
     assert not window.open
     click(app, rect_of(app, "help"))
     app.key(keys.KEY_ESCAPE, "")

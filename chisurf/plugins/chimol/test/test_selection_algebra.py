@@ -41,8 +41,8 @@ _PDB_148L = (
 @pytest.fixture(scope="module")
 def viewer():
     cs_struct = pytest.importorskip("chisurf.core.structure")
-    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
+    from native_window import native_viewer
 
     view = native_viewer()
     view.add_structure(

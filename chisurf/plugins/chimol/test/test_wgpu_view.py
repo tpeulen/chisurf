@@ -284,10 +284,9 @@ class TestLabels:
 
     def test_labels_are_drawn_into_the_chrome(self, renderer):
         """A label that is collected but never painted is not a label."""
-        from emtk.quad_painter import QuadPainter
-
         from chimol.viewport.canvas import Label
         from chimol.viewport.screen_overlays import paint_labels
+        from emtk.quad_painter import QuadPainter
 
         centre = np.array(renderer._target, dtype=float)
         labels = [Label(centre, "XXXXXXXX", (1.0, 1.0, 1.0, 1.0))]

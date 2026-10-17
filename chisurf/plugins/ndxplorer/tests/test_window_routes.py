@@ -172,9 +172,9 @@ def test_the_opener_reaches_the_app_once_the_path_is_open(make, tmp_path, monkey
 
 def test_with_no_app_open_the_chisurf_window_opens_one(make, monkeypatch):
     """No ndX open: the ChiSurf window opens the plugin as its menu does, and the table goes there."""
-    import chisurf
     from ndxplorer.core.data_source import DataSource
 
+    import chisurf
     from chisurf.core.plugin import handoff
     from chisurf.plugins.ndxplorer.gui import app as ndx_app
 
@@ -193,7 +193,6 @@ def test_with_no_app_open_the_chisurf_window_opens_one(make, monkeypatch):
 
 def test_with_no_window_at_all_the_route_says_why(monkeypatch):
     import chisurf
-
     from chisurf.core.plugin import handoff
     from chisurf.plugins.ndxplorer.gui import app as ndx_app
 

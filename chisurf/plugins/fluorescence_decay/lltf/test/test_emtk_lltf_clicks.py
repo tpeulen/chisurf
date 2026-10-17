@@ -24,7 +24,7 @@ from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui as _Ui, h
 from emtk import keys  # noqa: E402
 
 from chisurf.plugins.fluorescence_decay.lltf.gui.app import LLTFApp  # noqa: E402
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 # isort: on
 
 EXAMPLE = Path(__file__).parent.parent / "example"
@@ -127,7 +127,7 @@ def test_guide_and_help_buttons_are_pressed(ui):
     assert not ui.app.tour.active
     ui.click("help")
     assert ui.app.help_window.open
-    ui.press_text(action_caption("close"))
+    ui.press_text(help_close_caption(), nth=-1)
     assert not ui.app.help_window.open
 
 

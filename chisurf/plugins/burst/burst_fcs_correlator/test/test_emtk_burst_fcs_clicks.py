@@ -21,7 +21,7 @@ from emtk import keys
 from chisurf.plugins.burst.burst_fcs_correlator import demo
 from chisurf.plugins.burst.burst_fcs_correlator.core import algorithms as core
 from chisurf.plugins.burst.burst_fcs_correlator.gui.app import create_app
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 
 from .driving import BIG, SMALL, BurstDriver, hermetic_env
@@ -177,14 +177,14 @@ def test_a_failing_correlation_reports_instead_of_raising(drv, monkeypatch):
 def test_guide_and_help_buttons(drv):
     drv.click("help")
     window = drv.app.help_window
-    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
+    assert window.open and {"Start Guided Tour", help_close_caption()} <= set(
         drv.draw(2).strings
     )
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.click("help")
-    drv.click_text(action_caption("close"))
+    drv.click_text(help_close_caption(), last=True)
     drv.click("help")
     drv.escape()
     assert not window.open

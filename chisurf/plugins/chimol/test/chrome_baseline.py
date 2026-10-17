@@ -189,11 +189,10 @@ def capture(out_dir: pathlib.Path | None = None) -> dict[str, Any]:
     what ``ui.wgsl`` does. Must not be pointed at :data:`BASELINE_DIR`, the
     frozen QPainter half.
     """
+    from chimol.ui.gui import InternalGui
     from emtk.font import load_atlas
     from emtk.quad_painter import QuadPainter
     from PIL import Image
-
-    from chimol.ui.gui import InternalGui
 
     from . import quad_raster
 

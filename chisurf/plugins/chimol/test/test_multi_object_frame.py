@@ -14,10 +14,7 @@ own coordinates put them.
 from __future__ import annotations
 
 import numpy as np
-
-
 from native_window import native_viewer  # noqa: E402
-
 
 
 def _blob(centre, n=40, spread=5.0):

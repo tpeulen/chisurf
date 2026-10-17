@@ -17,7 +17,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver
 from chisurf.plugins.fluorescence_decay.maxent_decay.gui.app import make_app
 from chisurf.plugins.fluorescence_decay.maxent_decay.gui.model import MEMModel, execute_job
@@ -591,7 +591,7 @@ def test_the_json_editor_applies_valid_preferences_and_reports_invalid_ones(ui):
 def test_help_opens_with_live_links_and_closes(ui):
     ui.click_text(action_caption("help"))
     assert ui.app.help_window.open
-    ui.click_text(action_caption("close"))
+    ui.click_text(help_close_caption())
     assert not ui.app.help_window.open
     import re
 

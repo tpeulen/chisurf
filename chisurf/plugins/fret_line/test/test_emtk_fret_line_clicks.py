@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.fret_line.gui.app import FRETLineApp
 from chisurf.plugins.fret_line.gui.model import NO_NDX_WINDOW, FretLineModel
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
@@ -556,7 +556,7 @@ def test_the_divider_between_the_editor_and_the_left_window_can_be_dragged(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help_window
     drv.click_text(action_caption("help"))
-    close = action_caption("close")
+    close = help_close_caption()
     assert window.open and {"Start Guided Tour", close} <= set(drv.draw(2).strings)
     assert "Close Help" not in set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")

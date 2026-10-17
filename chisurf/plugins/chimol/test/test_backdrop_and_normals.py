@@ -18,10 +18,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from chimol.core.settings.config import _DISPLAY_CONFIG
-from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
 from chimol.render import backdrop
-
+from native_window import native_viewer
 
 
 # --------------------------------------------------------------------------- #

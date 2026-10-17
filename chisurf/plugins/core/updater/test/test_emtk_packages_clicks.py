@@ -13,7 +13,7 @@ import time
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 SIZE = (1000, 700)
@@ -427,7 +427,7 @@ def test_resting_the_pointer_on_a_control_shows_its_tooltip(ui, name, text):
 def test_help_and_guide(ui):
     ui.click("help")
     assert ui.app.help_window.open
-    ui.press_text(action_caption("close"))
+    ui.press_text(help_close_caption())  # PkgDriver already clicks the last match
     assert not ui.app.help_window.open
     ui.click("guide")
     assert ui.app.tour.active and ui.shown("Step 1 of 5") and ui.shown("Installed Packages")

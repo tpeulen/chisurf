@@ -12,7 +12,7 @@ import pytest
 from emtk import keys
 from emtk.view_form import spin_step
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 
 from .test_emtk_fret_calculator_parity import (
     SIZE,
@@ -315,14 +315,14 @@ def test_the_help_button_opens_a_window_with_working_buttons(app):
     press_text(app, action_caption("help"))
     assert app.help_window.open
     painter = draw(app)
-    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(painter.strings)
     assert "Close Help" not in set(painter.strings)
     assert "HeteroFRET links the donor-acceptor" in " ".join(painter.strings)
     click(app, text_rect(draw(app), "Start Guided Tour"))
     assert not app.help_window.open and app.tour.active
     app.tour.stop()
     press_text(app, action_caption("help"))
-    click(app, text_rect(draw(app), action_caption("close"), last=False))
+    click(app, text_rect(draw(app), help_close_caption(), last=True))
     assert not app.help_window.open
     press_text(app, action_caption("help"))
     app.key(keys.KEY_ESCAPE, "")

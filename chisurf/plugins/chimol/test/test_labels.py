@@ -182,8 +182,8 @@ def loaded():
 
     cs_struct = pytest.importorskip("chisurf.core.structure")
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.io.structure import _read_full_model
+    from native_window import native_viewer
 
     pdb = (
         pathlib.Path(__file__).resolve().parents[4]

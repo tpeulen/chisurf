@@ -16,7 +16,7 @@ from chisurf.plugins.emtk_hermetic import (  # noqa: F401  (autouse fixtures)
     hermetic,
     real_chisurf_untouched,
 )
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 
 from ..gui.app import BatchAnalysisApp
@@ -452,13 +452,13 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click_name("help")
     assert window.open
     painter = drv.draw(2)
-    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(painter.strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
     drv.click_name("help")
-    drv.click_text(action_caption("close"), last=True)
+    drv.click_text(help_close_caption(), last=True)
     assert not window.open
     drv.click_name("help")
     drv.escape()

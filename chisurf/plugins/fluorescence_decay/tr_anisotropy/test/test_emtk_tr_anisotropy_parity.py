@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.emtk_test_input import SIZE, SMALL, Driver
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.core import irf as core_irf
 from chisurf.plugins.fluorescence_decay.tr_anisotropy.core import spectra as core_spectra
@@ -702,7 +702,7 @@ def test_help_opens_a_window_with_live_links_and_closes(ui):
     ui.click_text(action_caption("help"))
     assert ui.app.help_window.open
     assert "Help" in " ".join(t[5] for t in ui.draw().texts)
-    ui.click_text(action_caption("close"))
+    ui.click_text(help_close_caption())
     assert not ui.app.help_window.open
 
 

@@ -16,7 +16,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.core.project_browser.test.driving import draw_clip, layout_problems
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 from chisurf.plugins.modelling.hydropro.app import HydroProApp, build_spec
 
@@ -605,7 +605,7 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click("help")
     assert window.open
     painter = drv.draw(2)
-    close = action_caption("close")  # the shared action vocabulary, icon included
+    close = help_close_caption()  # the dialog header glyph since emtk 9753aeb
     assert {"Start Guided Tour", close} <= set(painter.strings)
     assert "Close Help" not in set(painter.strings)
     drv.click_text("Start Guided Tour")

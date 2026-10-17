@@ -8,7 +8,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.emtk_hermetic import hermetic, real_chisurf_untouched  # noqa: F401
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear, tour_card_box
 
 from ..app import TrajectoryToolsHubApp
@@ -97,7 +97,7 @@ def test_the_wheel_scrolls_the_list_in_a_short_window(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click_name("help")
     assert drv.app.help_window.open
-    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(drv.draw(2).strings)
     drv.click_text("Start Guided Tour")
     assert not drv.app.help_window.open and drv.app.tour.active
     drv.app.tour.stop()

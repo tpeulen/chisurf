@@ -15,8 +15,6 @@ import pytest
 from native_window import process_events
 
 
-
-
 @pytest.fixture
 def window():
     from native_window import NativeWindow

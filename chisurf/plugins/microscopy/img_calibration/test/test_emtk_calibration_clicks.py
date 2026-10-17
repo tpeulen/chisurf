@@ -16,7 +16,7 @@ import pytest
 from emtk import keys
 
 from chisurf.plugins.core.project_browser.test.driving import clipped_texts, layout_problems
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, MetricPainter
 
 from .test_emtk_calibration_parity import SETUP, _binned, _loaded
@@ -120,7 +120,7 @@ def test_refresh_bins_the_histograms_again(drv):
 def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     window = drv.app.help
     drv.click(drv.rect("help"))
-    assert window.open and {"Start Guided Tour", action_caption("close")} <= set(
+    assert window.open and {"Start Guided Tour", help_close_caption()} <= set(
         drv.draw(2).strings
     )
     assert "Close Help" not in set(drv.draw(2).strings)
@@ -129,7 +129,7 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.app.tour.stop()
     drv.draw(2)
     drv.click(drv.rect("help"))
-    drv.click_text(action_caption("close"))
+    drv.click_text(help_close_caption(), last=True)
     assert not window.open
     drv.click(drv.rect("help"))
     drv.escape()

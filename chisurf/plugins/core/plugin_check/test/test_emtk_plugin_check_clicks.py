@@ -16,7 +16,7 @@ from emtk import keys
 
 from chisurf.plugins.core.plugin_check.gui.app import PluginCheckApp
 from chisurf.plugins.core.plugin_check.gui.model import PluginCheckModel
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 from .test_emtk_plugin_check_parity import (  # noqa: F401  (hermetic is autouse)
@@ -454,14 +454,14 @@ def test_help_button_opens_the_help_window_whose_buttons_work(drv):
     drv.click_text(action_caption("help"))
     assert window.open
     painter = drv.draw(2)
-    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(painter.strings)
     assert "Close Help" not in set(painter.strings)
     drv.click_text("Start Guided Tour")
     assert not window.open and drv.app.tour.active
     drv.app.tour.stop()
     drv.draw(2)
     drv.click_text(action_caption("help"))
-    drv.click_text(action_caption("close"))
+    drv.click_text(help_close_caption(), last=True)
     assert not window.open
     drv.click_text(action_caption("help"))
     drv.escape()

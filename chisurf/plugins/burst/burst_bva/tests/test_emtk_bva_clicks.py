@@ -19,6 +19,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.burst.burst_2cde.tests.demo_folder import build
 from chisurf.plugins.burst.burst_bva.core import computation as core
 from chisurf.plugins.burst.burst_bva.gui.app import create_app
+from chisurf.plugins.emtk_layout import help_close_caption
 
 from .test_emtk_bva_parity import _qt_facts, _std
 
@@ -604,7 +605,7 @@ def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(app):
     painter = draw(app)
     from chisurf.plugins.emtk_layout import action_caption
 
-    close = action_caption("close")  # the shared vocabulary draws "✕  Close"
+    close = help_close_caption()  # the dialog header glyph since emtk 9753aeb
     assert {"Start Guided Tour", close} <= set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.bva_gui.tour.active

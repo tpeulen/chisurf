@@ -20,9 +20,8 @@ import numpy as np
 import pytest
 from chimol.core.settings.config import _DISPLAY_CONFIG
 from chimol.core.viewer import Viewer
-from native_window import native_viewer
 from chimol.io.atoms import make_bead_rows
-
+from native_window import native_viewer
 
 
 @pytest.fixture

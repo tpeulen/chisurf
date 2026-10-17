@@ -278,11 +278,20 @@ def test_the_shell_settings_menu_switches_the_theme(settings_dir):
     try:
         settings = next(items for title, items in app.session_menus() if "Settings" in title)
         actions = {action.key: action for action in settings}
-        assert actions["theme_dark"].checked() and not actions["theme_light"].checked()
-        actions["theme_light"].run()
-        assert theme.current_theme() == "light" and actions["theme_light"].checked()
-        actions["theme_dark"].run()
-        assert theme.current_theme() == "dark"
+        assert "styles" in actions
+        styles_action = actions["styles"]
+        assert styles_action.children
+        child_actions = {a.key: a for a in styles_action.children}
+        assert "style_light" in child_actions
+        assert "style_dark" in child_actions
+        assert "style_dark_blue" in child_actions
+
+        child_actions["style_light"].run()
+        assert theme.current_theme() == "light" and child_actions["style_light"].checked()
+        child_actions["style_dark_blue"].run()
+        assert theme.current_theme() == "dark_blue" and child_actions["style_dark_blue"].checked()
+        child_actions["style_dark"].run()
+        assert theme.current_theme() == "dark" and child_actions["style_dark"].checked()
     finally:
         app.close()
 

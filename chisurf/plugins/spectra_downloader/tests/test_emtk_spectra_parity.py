@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 from emtk import i18n
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import CTRL, Driver, assert_tour_card_clear
 from chisurf.plugins.spectra_downloader.gui import native
 from chisurf.plugins.spectra_downloader.gui.app import PANELS, create_app, translated
@@ -543,7 +543,7 @@ def test_the_advanced_fields_are_typed_ports_are_spin_fields_and_the_password_is
 def test_help_and_guide_buttons_work(ui):
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text(action_caption("close"))
+    ui.click_text(help_close_caption())
     assert not ui.app.help.open
     ui.click_name("guide")
     assert ui.app.tour.active

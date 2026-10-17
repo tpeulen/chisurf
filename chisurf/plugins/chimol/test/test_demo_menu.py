@@ -12,7 +12,6 @@ ship and be unreachable.
 from __future__ import annotations
 
 import pytest
-
 from chimol.plugins.demos.catalog import DEMOS
 from chimol.ui.menus.bar import DEMO_MENU, MENU_BAR
 

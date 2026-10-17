@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 from emtk.testing import RecordingPainter
 
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver
 
 
@@ -381,7 +382,7 @@ def test_real_native_input_exercises_cancel_help_and_guide(ui):
     assert any("Acquisition" in text for text in ui.strings())
     from chisurf.plugins.emtk_layout import action_caption
 
-    ui.click_text(action_caption("close"), last=True)  # the help's one close button (its × is gone)
+    ui.click_text(help_close_caption(), last=True)
     assert not ui.app.help_window.open
     ui.click("guide")
     assert any("answer is known" in text for text in ui.strings())

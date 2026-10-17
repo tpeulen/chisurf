@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.microscopy.clsm_generator.gui.app import make_app
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
@@ -219,7 +219,7 @@ def test_settings_round_trip_through_the_dialogs(loaded, tmp_path):
 def test_help_guide_and_the_tour_is_walked(ui, maps):
     ui.click("Help")
     assert ui.app.help_window.open
-    ui.press_text(action_caption("close"))
+    ui.press_text(help_close_caption(), nth=-1)
     ui.click("Guide")
     assert ui.app.tour.active
     steps = len(ui.app.tour.steps)

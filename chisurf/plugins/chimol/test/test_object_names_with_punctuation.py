@@ -16,8 +16,6 @@ used to lex as INT + IDENT. This is its punctuation half.
 from __future__ import annotations
 
 import pytest
-
-
 from chimol.core.selection.parser import tokenize  # noqa: E402
 from chimol.ui.menus.objects import quote_selection_name  # noqa: E402
 from native_window import process_events

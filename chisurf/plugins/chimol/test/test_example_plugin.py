@@ -30,12 +30,12 @@ def test_the_example_plugin_does_everything_it_says(stars_module, tmp_path):
     from chimol.commands.command import Cmd
     from chimol.core.services.representations import REPRESENTATIONS
     from chimol.core.settings.registry import get_setting
-    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.io.registry import FORMATS
     from chimol.ui.input import keybindings
     from chimol.ui.menus import bar as menus
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     viewer = native_viewer(renderer_factory=SceneSink)
     host = ViewerHost(viewer)

@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from chisurf.core.fluorescence.imaging import tracking as tk
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, hermetic_env
 from chisurf.plugins.microscopy.img_tracking import core
 from chisurf.plugins.microscopy.img_tracking.gui.app import ImgTrackingApp, make_app
@@ -831,8 +831,8 @@ def test_the_tracks_table_header_sorts_by_value_and_a_row_click_changes_nothing(
 def test_help_button_opens_the_help_and_its_buttons_work(app, drv):
     drv.click("help")
     assert app.help_window.open
-    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
-    drv.click_text(action_caption("close"), last=False)
+    assert {"Start Guided Tour", help_close_caption()} <= set(drv.draw(2).strings)
+    drv.click_text(help_close_caption(), last=True)
     drv.escape() if app.help_window.open else None
     assert not app.help_window.open
 

@@ -143,9 +143,9 @@ def test_an_object_with_an_instance_set_builds_instanced_meshes():
 
     import chimol
     from chimol.core.model.instances import InstanceSet
-    from native_window import native_viewer
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     pdb = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
     viewer = native_viewer(renderer_factory=SceneSink)
@@ -178,9 +178,9 @@ def test_the_instances_command():
 
     import chimol
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     pdb = pathlib.Path(chimol.__file__).resolve().parent / "data" / "demos" / "148l.pdb"
     viewer = native_viewer(renderer_factory=SceneSink)

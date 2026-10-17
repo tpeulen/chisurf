@@ -25,9 +25,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 from chimol.core.model.atoms_util import _is_bead_model
-from native_window import native_viewer
 from chimol.io.atoms import bead_mask
 from chimol.io.structure import load_structure_payload
+from native_window import native_viewer
 from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolution_rmf
 
 RMF = pytest.importorskip("RMF", reason="reading an RMF needs the RMF package")

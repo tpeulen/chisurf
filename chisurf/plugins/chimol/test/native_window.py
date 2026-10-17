@@ -45,7 +45,7 @@ PDB_1RTD = PDB_DIR / "1rtd.pdb"
 
 #: Every live window, so :func:`process_events` can draw them all -- what a
 #: test used to get from ``QApplication.processEvents``.
-_LIVE: "weakref.WeakSet[NativeWindow]" = weakref.WeakSet()
+_LIVE: weakref.WeakSet[NativeWindow] = weakref.WeakSet()
 
 
 def process_events(frames: int = 1) -> None:

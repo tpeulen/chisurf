@@ -15,7 +15,6 @@ import pathlib
 import pytest
 from native_window import process_events
 
-
 PDB = (
     pathlib.Path(__file__).resolve().parents[4]
     / "test"

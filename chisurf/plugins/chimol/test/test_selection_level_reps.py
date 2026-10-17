@@ -16,8 +16,6 @@ import pytest
 from native_window import process_events
 
 
-
-
 @pytest.fixture
 def shell():
     pytest.importorskip("chisurf.core.structure")

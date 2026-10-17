@@ -21,7 +21,7 @@ from emtk.testing import RecordingPainter
 from chisurf.plugins.burst.burst_fusion import demo as demo_module
 from chisurf.plugins.burst.burst_fusion.gui import view_model
 from chisurf.plugins.burst.burst_fusion.gui.app import create_app
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 
 from .test_emtk_fusion_parity import _qt_facts
 
@@ -766,12 +766,12 @@ def test_help_click_opens_the_window_whose_buttons_and_escape_close_it(app):
     window = app.fusion_gui.help_window
     assert window.open
     painter = draw(app)
-    assert {"Start Guided Tour", action_caption("close")} <= set(painter.strings)
+    assert {"Start Guided Tour", help_close_caption()} <= set(painter.strings)
     click(app, text_rect(painter, "Start Guided Tour"))
     assert not window.open and app.fusion_gui.tour.active
     app.fusion_gui.tour.stop()
     press(app, "help")
-    click(app, text_rect(draw(app), action_caption("close")))
+    click(app, text_rect(draw(app), help_close_caption(), last=True))
     assert not window.open
     press(app, "help")
     app.key(keys.KEY_ESCAPE, "")

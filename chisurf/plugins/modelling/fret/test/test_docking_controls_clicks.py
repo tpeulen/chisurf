@@ -16,7 +16,7 @@ from typing import Any
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import help_close_caption
 from chisurf.plugins.modelling.fret.api.project import save_docking_project
 from chisurf.plugins.modelling.fret.gui.docking_card import make_app
 from chisurf.plugins.modelling.fret.gui.docking_session import DockingSession
@@ -298,8 +298,8 @@ def test_input_toolbar_and_rigid_body_controls_click_through_real_ui(inputs):
         assert not session.pdb_files and app.view.pdb_selected == -1
 
         ui.click("help")
-        assert app.help_window.open and ui.shown(action_caption("close"))
-        ui.press_text(action_caption("close"))
+        assert app.help_window.open and ui.shown(help_close_caption())
+        ui.press_text(help_close_caption(), nth=-1)
         assert not app.help_window.open
         ui.click("guide")
         steps = len(app.tour.steps)

@@ -13,11 +13,9 @@ exactly the coupling being removed) and `info_panel`.
 from __future__ import annotations
 
 import pytest
-from native_window import process_events
-
-
-from chimol.ui.menus.bar import TOOLBAR  # noqa: E402
 from chimol.ui.gui import InternalGui, SequenceRow  # noqa: E402
+from chimol.ui.menus.bar import TOOLBAR  # noqa: E402
+from native_window import process_events
 
 SIZE = (900, 640)
 

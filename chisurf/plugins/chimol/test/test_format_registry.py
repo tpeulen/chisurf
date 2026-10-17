@@ -62,10 +62,10 @@ class _XyzPlugin:
 
 def test_a_plugin_format_is_read_by_its_reader_and_routed_by_load(tmp_path):
     from chimol.commands.command import Cmd
-    from native_window import native_viewer
     from chimol.hosts.base import ViewerHost
     from chimol.io.structure import load_structure_payload
     from chimol.viewport.headless import SceneSink
+    from native_window import native_viewer
 
     cmd = Cmd(None, plugins=False)
     loaded = load_plugins(cmd, [_XyzPlugin()])

@@ -65,10 +65,10 @@ class _Point:
     def y(self) -> float:
         return self._y
 
-    def __add__(self, other: "_Point") -> "_Point":
+    def __add__(self, other: _Point) -> _Point:
         return _Point(self._x + other.x(), self._y + other.y())
 
-    def __sub__(self, other: "_Point") -> "_Point":
+    def __sub__(self, other: _Point) -> _Point:
         return _Point(self._x - other.x(), self._y - other.y())
 
 

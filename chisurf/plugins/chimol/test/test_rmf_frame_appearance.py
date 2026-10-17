@@ -27,9 +27,9 @@ import pytest
 
 RMF = pytest.importorskip("RMF")
 
-from native_window import native_viewer
 from chimol.io.rmf import load_rmf_full
 from chimol.io.structure import load_structure_payload
+from native_window import native_viewer
 
 N_BEADS = 6
 N_FRAMES = 4
