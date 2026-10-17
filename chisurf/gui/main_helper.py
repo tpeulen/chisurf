@@ -793,6 +793,13 @@ class SetupMixin:
                 )
 
             # Add readers
+            # Identity-guarded like the headless bootstrap (_register_readers):
+            # a reader declared without a ``name`` param is identified by its
+            # class, so a second Main() over the same registry must not append a
+            # second copy (Base equality is per-instance UUID and never matches
+            # a fresh construction).
+            existing_readers = {str(name) for name in experiment.reader_names}
+            existing_readers |= {type(reader).__name__ for reader in experiment.readers}
             for reader_cfg in config.get("readers", []):
                 try:
                     reader_class = self._resolve_class(reader_cfg.get("reader_class"))
@@ -802,6 +809,10 @@ class SetupMixin:
                     reader_params = reader_cfg.get("reader_params", {})
                     # Ensure experiment is passed to reader if it expects it
                     reader_params["experiment"] = experiment
+                    identity = str(reader_params.get("name") or reader_class.__name__)
+                    if identity in existing_readers:
+                        continue
+                    existing_readers.add(identity)
                     reader = reader_class(**reader_params)
 
                     # Register the controller lazily: only the reader the user

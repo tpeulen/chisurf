@@ -591,14 +591,21 @@ def setup_gui(
     def setup_ipython():
         import chisurf.gui.widgets
 
-        cs.console = cs.gui.widgets.ipython.QIPythonWidget()  # noqa: F823 -- ruff false-positive: a sibling function's local `import chisurf.x` submodule import confuses its cross-scope binding tracking for the module-level `cs` alias
-        cs.console.history_widget = None
+        console = cs.gui.widgets.ipython.QIPythonWidget()  # noqa: F823 -- ruff false-positive: a sibling function's local `import chisurf.x` submodule import confuses its cross-scope binding tracking for the module-level `cs` alias
+        cs.console = console
+        # The console is reparented into the main window: when the window dies the
+        # C++ object goes with it, and ``cs.console`` must not keep the dead wrapper.
+        console.destroyed.connect(lambda _object=None: setattr(cs, "console", None))
+        console.history_widget = None
 
     def startup_interface():
         from chisurf.gui.main import Main
 
         window = Main()
         cs.cs = window  # noqa: F823 -- same ruff false-positive as setup_ipython above
+        # Same invariant as startup.gui_services: ``cs.cs`` must never name a
+        # destroyed window (core project capture follows the global).
+        window.destroyed.connect(lambda _object=None: setattr(cs, "cs", None))
         import chisurf.core.base
 
         cs.core.base.set_safe_import_notify(
@@ -690,19 +697,31 @@ def setup_gui(
             name = str(name).strip()
             if not name:
                 return None
-            if user_styles_path is not None:
+            candidates = [name]
+            if not (name.endswith(".css") or name.endswith(".qss")):
+                candidates.extend([f"{name}.css", f"{name}.qss"])
+            for cand_name in candidates:
+                if user_styles_path is not None:
+                    try:
+                        cand = user_styles_path / cand_name
+                        if cand.is_file():
+                            return cand
+                    except Exception:
+                        pass
                 try:
-                    cand = user_styles_path / name
+                    cand = package_styles_path / cand_name
                     if cand.is_file():
                         return cand
                 except Exception:
                     pass
-            try:
-                cand = package_styles_path / name
-                if cand.is_file():
-                    return cand
-            except Exception:
-                pass
+                try:
+                    import emtk.styles
+
+                    cand = emtk.styles.get_stylesheet_path(cand_name)
+                    if cand and cand.is_file():
+                        return cand
+                except Exception:
+                    pass
             return None
 
         def _apply_style_by_name(name):

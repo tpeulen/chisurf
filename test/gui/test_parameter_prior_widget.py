@@ -250,9 +250,11 @@ class _GroupModel(ModelCurve):
         from chisurf.core.fitting.parameter import FittingParameterGroup
 
         super().__init__(fit)
-        self.rates = FittingParameterGroup(name="rates")
         self.k = FittingParameter(name="k", value=2.0)
-        self.rates.append(self.k)
+        # Constructor-owned parameters survive rediscovery (the group records them
+        # as _explicit_parameters); append_parameter adds to the current walk only,
+        # which the model's own find_parameters() then rebuilds without it.
+        self.rates = FittingParameterGroup(name="rates", parameters=[self.k])
         self.find_parameters()
 
     def _update_model(self, **kwargs):

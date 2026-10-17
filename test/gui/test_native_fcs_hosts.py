@@ -2,7 +2,7 @@
 
 import pytest
 
-from chisurf.plugins.emtk_layout import action_caption
+from chisurf.plugins.emtk_layout import action_caption, help_close_caption
 
 
 @pytest.mark.parametrize("full", [False, True])
@@ -155,9 +155,11 @@ def test_actual_native_fcs_factory_help_and_guide_buttons_are_bound(tmp_path, mo
         driver.click("help")
         painter = driver.draw(3)
         visible = {call[6] for call in painter.calls if call[0] == "text"}
-        assert app.help.open and action_caption("close") in visible
+        # emtk 9753aeb: the help window closes via its DialogWindow header glyph,
+        # the "✕  Close" content button is gone (help_close_caption documents this).
+        assert app.help.open and help_close_caption() in visible
         assert any("correl" in text.casefold() for text in visible)
-        driver.click(action_caption("close"))
+        driver.click(help_close_caption())
         assert not app.help.open
         driver.click("guide")
         painter = driver.draw(3)

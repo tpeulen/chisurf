@@ -78,8 +78,12 @@ def gui_imports(context) -> None:
 def setup_ipython(context) -> None:
     """Create the IPython console widget."""
     importlib.import_module("chisurf.gui.widgets.ipython")
-    cs.console = cs.gui.widgets.ipython.QIPythonWidget()
-    cs.console.history_widget = None
+    console = cs.gui.widgets.ipython.QIPythonWidget()
+    cs.console = console
+    # The console is reparented into the main window: when the window dies the
+    # C++ object goes with it, and ``cs.console`` must not keep the dead wrapper.
+    console.destroyed.connect(lambda _object=None: setattr(cs, "console", None))
+    console.history_widget = None
 
 
 def startup_interface(context) -> object:
@@ -88,6 +92,10 @@ def startup_interface(context) -> object:
 
     window = Main()
     cs.cs = window
+    # The module global must never outlive the C++ object it names: core project
+    # capture resolves the bound GUI through ``cs.cs`` and a dangling wrapper is
+    # a RuntimeError (deleted QMdiArea) waiting for the next caller.
+    window.destroyed.connect(lambda _object=None: setattr(cs, "cs", None))
     importlib.import_module("chisurf.core.base")
     cs.core.base.set_safe_import_notify(
         lambda title, text: dialogs.information(window, title, text)

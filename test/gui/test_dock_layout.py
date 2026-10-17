@@ -41,8 +41,12 @@ def window(qapp, qtbot, tmp_path, monkeypatch):
     import chisurf.gui.widgets  # noqa: F401  (binds cs.gui.widgets for the console below)
 
     if getattr(cs, "console", None) is None:
-        cs.console = cs.gui.widgets.ipython.QIPythonWidget()
-        cs.console.history_widget = None
+        console = cs.gui.widgets.ipython.QIPythonWidget()
+        cs.console = console
+        # Reparented into this fixture's window: clear the global when it dies so
+        # the next file (or Main.init_console) never sees a dead wrapper.
+        console.destroyed.connect(lambda _object=None: setattr(cs, "console", None))
+        console.history_widget = None
 
     from chisurf.gui.main import Main
 

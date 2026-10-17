@@ -323,8 +323,12 @@ def test_the_wheel_reaches_zero_and_crosses_it(table):
     value_column = COLUMN_IDS.index("value")
     view = widget.table_view
 
-    for _ in range(11):
-        turn_wheel(view, 0, value_column, -1)
+    # One gesture of eleven notches — the "fast wheel" the accumulation code
+    # documents — rather than eleven synthetic events whose spacing is at the
+    # mercy of whatever the process does between them: a pause over GESTURE_MS
+    # legitimately starts a new gesture and re-derives the step, which is the
+    # feature, not a bug for the loop form to trip over.
+    turn_wheel(view, 0, value_column, -11)
     assert params[0].value == pytest.approx(-0.1, abs=1e-9)
 
 
