@@ -166,6 +166,27 @@ silhouette's `WgpuMeshRenderer._silhouette_params` reads the display config, and
 silhouette=on` writes is the first thing to check. Not fixed in the chimol-off-Qt change: a
 render fix needs its own before/after images.
 
+## mmfdb: `AnalysisReconstructor` has never been run against a real container
+
+status: resolved
+
+**2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` claimed to re-run a stored
+burst search from a `.pto`. It read the stored settings under keys the burst
+selection never writes (`min_photons`, `rate_window`, `time_separation` at the
+top level) and searched with tttrlib's defaults, so its verdict meant nothing;
+it also called a `Measurement.artifact` method that does not exist, and
+"reconstructed" IRFs with a percentile background no writer uses.
+
+**Resolved 2026-10-14:** deleted, and replaced by
+`chisurf.plugins.burst.burst_selection.api.reproduce.reproduce_burst_search`,
+which walks `Measurement.lineage()` to the photon stream, rebuilds the
+`AnalysisSettings` from the stored `settings_json`, and re-runs the same
+`analyze_file` a normal run uses, read-only. Test:
+`chisurf/plugins/burst/burst_selection/tests/test_container_reproduce.py` (exact
+reproduction on real BH data, and a second run proving the result depends on
+the stored settings).
+
+---
 ## Help: one documentation formula does not typeset (found 2026-10-13)
 
 status: resolved 2026-10-13
@@ -8277,24 +8298,3 @@ re-inspecting; that is its own change, with its own before/after images.
 ---
 
 
-## mmfdb: `AnalysisReconstructor` has never been run against a real container
-
-status: resolved
-
-**2026-10-14.** `chisurf/core/fio/pto_reconstruct.py` claimed to re-run a stored
-burst search from a `.pto`. It read the stored settings under keys the burst
-selection never writes (`min_photons`, `rate_window`, `time_separation` at the
-top level) and searched with tttrlib's defaults, so its verdict meant nothing;
-it also called a `Measurement.artifact` method that does not exist, and
-"reconstructed" IRFs with a percentile background no writer uses.
-
-**Resolved 2026-10-14:** deleted, and replaced by
-`chisurf.plugins.burst.burst_selection.api.reproduce.reproduce_burst_search`,
-which walks `Measurement.lineage()` to the photon stream, rebuilds the
-`AnalysisSettings` from the stored `settings_json`, and re-runs the same
-`analyze_file` a normal run uses, read-only. Test:
-`chisurf/plugins/burst/burst_selection/tests/test_container_reproduce.py` (exact
-reproduction on real BH data, and a second run proving the result depends on
-the stored settings).
-
----

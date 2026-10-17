@@ -216,7 +216,7 @@ own startup stages (item 5): S5 is done.
    the dock under the pointer, not the one with the keys. `RealisticDriver.drop_files` reproduces it; the imaging
    repro is `test_a_file_dropped_on_a_plugin_dock_goes_to_the_dock_under_the_pointer`. Plugins with only an
    `action` entrypoint run from the shell (`run_plugin_action`; `menu_entries()` now 29 of 29 visible manifests).
-9. Measure (branch `s6-retire-qt-shell`): S6 is done there and waits for the owner's merge. `chisurf/gui/` holds
+9. Measure: (done 2026-10-17, branch `s6-retire-qt-shell`) S6 is merged onto `s6-merge` and validated; it lands on the baseline after the companion lane's working tree settles. `chisurf/gui/` holds
    only data (an import-free `__init__.py`, `i18n/*.ts`, `resources/icons/`); `python -m chisurf` opens the emtk
    shell and `--help` prints the usage without opening a window; `--qt` is gone. Re-derive: `grep -rlE
    '^\s*(from|import)\s+(qtpy|PyQt|PySide|pytestqt)' chisurf | wc -l` (0; guard `test/test_no_qt_imports.py`,
