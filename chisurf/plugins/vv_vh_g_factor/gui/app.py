@@ -376,10 +376,10 @@ class GFactorApp(TourTarget, ImApp):
                     "tip": "Switch to the Unknown Samples / Batch tab to process unknown files with this calibration.",
                 },
                 {
-                    "label": "Export...",
+                    "label": action_caption("export"),
                     "key": "export",
                     "enabled": m.g_factor is not None and not busy,
-                    "tip": "Export calibration results as JSON.",
+                    "tip": action_tooltip("export"),
                 },
                 {
                     "label": "Archive",
@@ -624,7 +624,7 @@ class GFactorApp(TourTarget, ImApp):
         active_file = self.get_active_batch_file()
         if active_file:
             im.separator()
-            im.text("Selected sample:")
+            im.text(tr("Selected sample:"))
             im.same_line()
             im.text_colored(style.TEXT_NOTE, Path(active_file).name)
             im.set_item_tooltip(str(active_file))
@@ -713,7 +713,7 @@ class GFactorApp(TourTarget, ImApp):
 
     def draw_decays(self, box):
         opts = self.get_decay_options()
-        im.text("Decay:")
+        im.text(tr("Decay:"))
         im.same_line()
         im.set_next_item_width(170.0)
         idx = min(self.plot_decay_idx, len(opts) - 1)
@@ -816,17 +816,17 @@ class GFactorApp(TourTarget, ImApp):
             im.text_wrapped(tr("The anisotropy r(t) of the loaded decays appears here."))
             return
         opts = self.get_decay_options()
-        im.text("Decay:")
+        im.text(tr("Decay:"))
         im.same_line()
         im.set_next_item_width(170.0)
         idx = min(self.plot_aniso_decay_idx, len(opts) - 1)
         changed, self.plot_aniso_decay_idx = im.combo("##aniso_decay_select", idx, opts)
         im.set_item_tooltip(tr("Select which decay to display in the anisotropy plot, or display all overlaid."))
         im.same_line()
-        _, self.show_raw = im.checkbox("Raw r(t)", self.show_raw)
+        _, self.show_raw = im.checkbox(tr("Raw r(t)"), self.show_raw)
         im.set_item_tooltip(tr("Show or hide raw anisotropy trace."))
         im.same_line()
-        _, self.show_corrected = im.checkbox("Corrected r(t)", self.show_corrected)
+        _, self.show_corrected = im.checkbox(tr("Corrected r(t)"), self.show_corrected)
         im.set_item_tooltip(tr("Show or hide corrected anisotropy trace."))
         im.new_line()
         if implot.begin_plot("##anisotropy", (-1, -1)):
@@ -884,20 +884,20 @@ class GFactorApp(TourTarget, ImApp):
             )
             return
         opts = self.get_decay_options()
-        im.text("Decay:")
+        im.text(tr("Decay:"))
         im.same_line()
         im.set_next_item_width(170.0)
         idx = min(self.plot_ratio_decay_idx, len(opts) - 1)
         changed, self.plot_ratio_decay_idx = im.combo("##ratio_decay_select", idx, opts)
         im.set_item_tooltip(tr("Select which decay's VV/VH ratio to display, or display all overlaid."))
         im.same_line()
-        _, self.show_ratio_raw = im.checkbox("Raw ratio##chk", self.show_ratio_raw)
+        _, self.show_ratio_raw = im.checkbox(tr("Raw ratio") + "##chk", self.show_ratio_raw)
         im.set_item_tooltip(tr("Show or hide raw intensity ratio VV(t) / VH(t)."))
         im.same_line()
-        _, self.show_ratio_corrected = im.checkbox("Corrected ratio##chk", self.show_ratio_corrected)
+        _, self.show_ratio_corrected = im.checkbox(tr("Corrected ratio") + "##chk", self.show_ratio_corrected)
         im.set_item_tooltip(tr("Show or hide background-subtracted & shifted ratio."))
         im.same_line()
-        _, self.show_g_line = im.checkbox("G baseline##chk", self.show_g_line)
+        _, self.show_g_line = im.checkbox(tr("G baseline") + "##chk", self.show_g_line)
         im.set_item_tooltip(tr("Show horizontal baseline for calibrated detector G-factor."))
         im.new_line()
 

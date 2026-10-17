@@ -15,6 +15,7 @@
       {
        "type": "custom",
        "key": "data_table",
+       "description": "The measured reference decays this calibration is built from; select a row to work on it, Delete removes it.",
        "options": {
         "source": "reference_rows",
         "min_column_width": 50,
@@ -115,6 +116,7 @@
       {
        "type": "custom",
        "key": "data_table",
+       "description": "The instrumental parameters of the calibration and their fitted values; edit a value to apply it.",
        "options": {
         "source": "parameter_rows",
         "min_column_width": 50,
