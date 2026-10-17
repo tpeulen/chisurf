@@ -20,7 +20,6 @@ import pytest
 import tttrlib
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import Driver, assert_tour_card_clear
 from chisurf.plugins.tttr.ptu_alex_creator import core
 from chisurf.plugins.tttr.ptu_alex_creator.api import AlexRequest, run
@@ -363,8 +362,9 @@ def test_the_wheel_over_a_field_steps_it(ui, field, step):
     assert getattr(ui.app.model, field) == start + step
     ui.wheel(x + w / 2, y + h / 2, -1.0)
     assert getattr(ui.app.model, field) == start
-    ui.wheel(x + w / 2, y + h / 2, -3.0)  # one notch is one step however large the delta
-    assert getattr(ui.app.model, field) == start - step
+    # emtk d0567a0: notches accumulate — three notches before a frame are three steps.
+    ui.wheel(x + w / 2, y + h / 2, -3.0)
+    assert getattr(ui.app.model, field) == start - 3 * step
 
 
 def test_the_form_stays_usable_while_the_histogram_refolds(ui, source):
@@ -645,7 +645,8 @@ def test_guide_and_help_buttons_work(ui):
     assert not ui.app.guide.active
     ui.click_name("help")
     assert ui.app.help.open
-    ui.click_text(action_caption("close"))
+    # emtk 9753aeb: the help window closes via its title-bar glyph (drawn last).
+    ui.click_text("×")
     assert not ui.app.help.open
 
 

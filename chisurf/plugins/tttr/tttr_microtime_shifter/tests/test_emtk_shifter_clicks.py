@@ -179,7 +179,8 @@ def test_guide_and_help_buttons_are_pressed(ui):
     assert not ui.app.tour.active
     ui.click("help")
     assert ui.app.help.open
-    ui.press_text(action_caption("close"))
+    # emtk 9753aeb: the help window closes via its title-bar glyph (drawn last).
+    ui.press_text("×", nth=-1)
     assert not ui.app.help.open
 
 

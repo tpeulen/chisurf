@@ -14,7 +14,6 @@ import numpy as np
 import pytest
 from emtk import keys
 
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.emtk_test_input import assert_tour_card_clear
 from chisurf.plugins.traj.traj_save_topology.test.real_input import Ui
 from chisurf.plugins.tttr.audifier.core import TTTRData
@@ -320,7 +319,9 @@ def test_guide_and_help_buttons_and_the_tour_is_walked():
     ui, _ = loaded()
     ui.click("help")
     assert ui.app.help.open
-    ui.press_text(action_caption("close"))
+    # emtk 9753aeb moved the help window's close to the title-bar border glyph; the
+    # dialog draws last, so the last '×' is its header close button.
+    ui.press_text("×", nth=-1)
     assert not ui.app.help.open
     ui.click("guide")
     assert ui.app.guide.active

@@ -18,7 +18,6 @@ import pytest
 from emtk import keys
 from emtk.testing import RecordingPainter
 
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.tttr.intensity_trace.gui.app import make_app
 from chisurf.plugins.tttr.intensity_trace.model import IntensityTraceModel
 
@@ -277,7 +276,8 @@ def test_help_and_the_tour_waits_for_the_user():
     ui = Ui(make_app())
     ui.click("request_help")
     assert ui.app.help.open
-    ui.press_text(action_caption("close"))
+    # emtk 9753aeb: the help window closes via its title-bar glyph (drawn last).
+    ui.press_text("×", nth=-1)
     ui.click("request_guide")
     tour = ui.app.tour
     assert tour.active and len(tour.steps) >= 5

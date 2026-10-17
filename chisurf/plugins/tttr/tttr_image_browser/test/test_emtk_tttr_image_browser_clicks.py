@@ -14,7 +14,6 @@ import pytest
 from emtk import keys
 from emtk.testing import PixelPainter
 
-from chisurf.plugins.emtk_layout import action_caption
 from chisurf.plugins.microscopy.imaging_emtk.testing import Driver, dialog_open, numeric_ticks, walk
 
 from .conftest import two_detector_setup
@@ -301,8 +300,9 @@ def test_help_opens_the_help_window_and_closes(app, drv):
     drv.click("show_help")
     drv.draw(2)
     assert app.help_window.open
-    assert {"Start Guided Tour", action_caption("close")} <= set(drv.draw(2).strings)
-    drv.click_text(action_caption("close"))
+    # emtk 9753aeb: the help window closes via its title-bar glyph (drawn last).
+    assert {"Start Guided Tour", "×"} <= set(drv.draw(2).strings)
+    drv.click_text("×")
     assert not app.help_window.open
 
 
